@@ -1077,11 +1077,20 @@ After those searches, registry evidence was collected with
 `@testing-library/user-event`, followed by `@redocly/cli`, `@types/node`,
 `@types/pg`, `eslint`, `@typescript-eslint/parser`,
 `@typescript-eslint/eslint-plugin`, `openapi-typescript`, and `openapi-fetch`.
-TypeScript 5.9.3, Vitest 2.1.9, the exactly matched coverage package, and jsdom
-26.1.0 were queried explicitly rather than inferred from a tag. Repository
-inspection confirmed Vite 5.4.21 and landing Vitest 2.0.5; therefore Vitest 4
-is not introduced during the Vite 5 migration. Vitest 2.1.9 declares Vite
-`^5.0.0`; jsdom 26.1.0 and `@testing-library/dom` 10.4.1 declare Node `>=18`.
+TypeScript 5.9.3, the exactly matched Vitest/coverage pair, and jsdom 26.1.0
+were queried explicitly rather than inferred from a tag. The implementation
+revalidation on 2026-07-17 rejected the originally recorded Vitest 2.1.9:
+`npm audit` reported a direct critical Vitest advisory and a vulnerable Vite 5
+chain with no patched Vite 5 release. The independent contracts package uses
+the smallest patched compatible set: Vitest 3.2.6, matching coverage 3.2.6,
+and direct Vite 6.4.3. Vitest 3.2.6 supports Vite 5/6/7 and Node 22, so existing
+frontend Vite 5 packages remain untouched; their test/runtime chain must be
+revalidated and upgraded in its owning phase. jsdom 26.1.0 and
+`@testing-library/dom` 10.4.1 declare Node `>=18`.
+The contracts package pins npm 11.16.0, enables engine-strict and
+strict-allow-scripts, approves only reviewed `esbuild@0.25.12`, and explicitly
+denies optional `fsevents` scripts. Before another package adopts the harness,
+its package-manager and install-script graph receive the same review.
 Frontend DOM packages are nevertheless deferred to the owning surface phase
 and revalidated there against the common Node `>=22.19.0 <23` floor, React,
 Next, and Vite versions.
@@ -1117,8 +1126,9 @@ Relevant results and decisions:
 | `@types/node` | `22.20.1` | MIT | Node 22 declarations for backend/contracts and Node-executed tooling. |
 | `@types/pg` | `8.20.0` | MIT | PostgreSQL driver declarations used at the Kysely adapter boundary. |
 | `tsx` | `4.23.1` | MIT | Development/watch and TypeScript operational scripts; production runs emitted JS. |
-| `vitest` | `2.1.9` | MIT | Latest Vitest 2 release, compatible with the checked-in Vite 5 workspace and Node 22. |
-| `@vitest/coverage-v8` | `2.1.9` | MIT | Exact Vitest-matched coverage provider; peer requires Vitest 2.1.9. |
+| `vitest` | `3.2.6` | MIT | First patched Vitest release for the critical advisory; supports Node 22 and Vite 5/6/7. The contracts package is independent of frontend manifests. |
+| `@vitest/coverage-v8` | `3.2.6` | MIT | Exact Vitest-matched coverage provider; peer requires Vitest 3.2.6. |
+| `vite` | `6.4.3` | MIT | Direct contracts test-tool pin; first patched Vite 6 release for the audited path-traversal chain and resolves safe esbuild `>=0.25`. It is not a frontend runtime upgrade. |
 | `eslint` | `9.39.5` | MIT | Flat-config lint runner; its Node engine accepts the Node 22.19 floor. |
 | `@typescript-eslint/parser` | `8.64.0` | MIT | TypeScript parser, peer-compatible with ESLint 9 and TypeScript 5.9. |
 | `@typescript-eslint/eslint-plugin` | `8.64.0` | MIT | Type-aware TypeScript rules; exactly matched to the parser. |

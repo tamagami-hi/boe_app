@@ -49,9 +49,9 @@ Define these once in the shared contract package:
 | VersionTag | z.string().trim().regex(/^[A-Za-z0-9._-]{1,40}$/) | Version string |
 | IdempotencyKey | z.string().regex(/^[A-Za-z0-9._:-]{8,128}$/) | Idempotency-Key header |
 | Cursor | z.string().regex(/^[A-Za-z0-9_-]{16,1024}$/) | Opaque base64url server cursor |
-| Paise | z.string().regex(/^(0|[1-9][0-9]*)$/) | Non-negative integer paise; never JSON number |
-| Decimal24x8 | z.string().regex(/^-?(0|[1-9][0-9]*)([.][0-9]{1,8})?$/) | PostgreSQL numeric(24,8), canonical output with eight fractional digits |
-| Decimal30x12 | z.string().regex(/^-?(0|[1-9][0-9]*)([.][0-9]{1,12})?$/) | PostgreSQL numeric(30,12), canonical output with twelve fractional digits |
+| Paise | z.string().regex(/^(0|[1-9][0-9]*)$/) plus signed-bigint upper-bound refinement | Non-negative integer paise from 0 through 9223372036854775807; never JSON number |
+| Decimal24x8 | z.string().regex(/^-?(0|[1-9][0-9]*)([.][0-9]{1,8})?$/) plus at most 16 integer digits | PostgreSQL numeric(24,8), canonical output with exactly eight fractional digits |
+| Decimal30x12 | z.string().regex(/^-?(0|[1-9][0-9]*)([.][0-9]{1,12})?$/) plus at most 18 integer digits | PostgreSQL numeric(30,12), canonical output with exactly twelve fractional digits |
 
 Zod objects are strict. Unknown request keys produce VALIDATION_FAILED. Output
 schemas also parse every handler result before it is serialized. Passwords are
@@ -66,6 +66,16 @@ example, the local part is never otherwise exposed, including when it has one
 scalar. The persisted value must equal this deterministic derivation; callers
 cannot submit it. Output fixtures cover ASCII/Unicode local parts and reject
 values that reveal any additional local-part scalar.
+
+`IsoDateTime` accepts `Z` or an explicit numeric offset and canonicalizes parsed
+output to UTC with a `Z` suffix while retaining a four-digit year. Inputs whose
+offset conversion would leave years 0000 through 9999 are rejected. Decimal
+inputs may omit the fractional part or provide from one digit through the
+declared scale; parsed output right-pads the fraction to exactly that scale
+without converting through a JSON number, and negative zero canonicalizes to
+unsigned zero. The integer-digit bounds reserve the declared scale within the
+PostgreSQL precision. These same-type canonicalizations remain representable in
+the generated JSON Schema/OpenAPI contract.
 
 ### 2.2 Envelope
 

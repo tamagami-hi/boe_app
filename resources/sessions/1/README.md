@@ -13,6 +13,12 @@ without updating every reference.
    - Current continuation point, unresolved planning blockers, recommended
      resolutions, and the exact gate before TypeScript implementation may start.
 
+## Implementation Progress
+
+1. [`07-implementation-progress.md`](./07-implementation-progress.md)
+   - Durable Phase 2 slice status, RED/GREEN evidence, verification results,
+     review outcomes, commits, and explicitly deferred work.
+
 ## Implementation Plans And Normative Specifications
 
 1. [`01-postgresql-typescript-rearchitecture-plan.md`](./01-postgresql-typescript-rearchitecture-plan.md)
@@ -35,12 +41,12 @@ without updating every reference.
 - Product direction and most domain/schema/API decisions are documented.
 - `PRODUCT.md` is reconciled with application-first persistence and public
   education-only wording.
-- This canonical planning set is staged for tracking at `resources/sessions/1`
-  in the primary checkout. Once this change is committed and merged/rebased,
-  the existing `resources` sparse patterns materialize it read-only in the
-  admin, client, and landing worktrees; the files are never copied into
-  surface-owned paths.
+- This canonical planning set is tracked at `resources/sessions/1` on `main`.
+  Once the planning commit is merged/rebased into each surface worktree, the
+  existing `resources` sparse patterns materialize it read-only there; the
+  files are never copied into surface-owned paths.
 - Phase 0 is **approved**. Independent contract/schema, security, and
   architecture gates completed with no CRITICAL or HIGH findings.
-- The TypeScript foundation is a separate Phase 2 action and remains blocked
-  until the user explicitly authorizes implementation work.
+- Phase 2 implementation is authorized and has started with only the contracts
+  scalar kernel. All other Phase 2 modules remain unstarted until this smallest
+  slice is accepted.
