@@ -29,6 +29,14 @@ backend_controller/data/*.bak
 backend_controller/data/*.backup*
 backend_controller/data/*.tmp
 resources/
+!resources/
+resources/*
+!resources/sessions/
+resources/sessions/*
+!resources/sessions/1/
+resources/sessions/1/**
+!resources/sessions/1/**/
+!resources/sessions/1/**/*.md
 resources/credentials/
 resources/testing/**/raw/
 *.pem

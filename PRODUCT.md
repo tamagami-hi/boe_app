@@ -8,11 +8,24 @@ brand
 
 First-time and early-stage Indian retail learners who want to understand money in plain language: budgeting, saving, debt and credit, and reading financial news without jargon. They arrive on the public site curious but cautious, often wary of being sold to. Their context is a quick, self-directed visit (frequently on mobile) to judge whether this is a credible place to learn, not a place being pitched an investment.
 
-The public site is **education-only** and doubles as the eligibility gateway: signing up creates a *learner account*. Actual investing lives behind authentication in a separate gated app, where eligibility is decided internally by admins and users are notified by email. That internal flow is never described or surfaced publicly.
+The public site is **education-only**. **Join BeOnEdge** is an education
+membership/signup experience: a learner submits their details, verifies their
+email, and receives any next step privately. Submission persists a
+non-credentialed application record; it does not create a learner account,
+username, password, authenticated session, or public application profile.
+Credentials exist only after a separate private activation. Public copy never
+names, hints at, or exposes internal access review, investing eligibility, or
+administrative workflow.
 
 ## Product Purpose
 
-BeOnEdge's public surface exists to teach financial literacy and to earn enough trust that a learner creates an account. Success is a visitor who understands a money concept they didn't before, believes this brand is credible and on their side, and signs up to keep learning. It is explicitly **not** a marketing funnel for investing products; it never carries invest / SIP / portfolio / returns copy.
+BeOnEdge's public surface exists to teach financial literacy and to earn enough
+trust that a learner chooses **Join BeOnEdge** to continue their education
+membership/signup. Success is a visitor who understands a money concept they
+didn't before, believes this brand is credible and on their side, and submits
+their details to keep learning. It is explicitly **not** a marketing funnel for
+investing products; it never carries invest / SIP / portfolio / returns copy or
+promises that signup creates immediate sign-in access.
 
 ## Brand Personality
 
@@ -33,7 +46,9 @@ Mandatory content rules (product policy, not style preference): no "guaranteed r
 - **Trust through restraint.** Credibility here comes from clarity, calm, and accuracy, not from urgency, superlatives, or visual noise. When in doubt, say less and say it precisely.
 - **Plain language first.** Translate jargon for someone seeing it for the first time; never gatekeep with terminology. Approachability and institutional precision are not in tension, they reinforce each other.
 - **Precision as a brand signal.** Honest numbers and honest framing. No overstatement, no implied promises. Indian currency formatting and disclaimers where money is discussed.
-- **Respect the boundary.** The public surface stays strictly education-only. The internal eligibility/investing flow is never named, hinted at, or surfaced publicly.
+- **Respect the boundary.** The public surface stays strictly education-only.
+  Internal access, administrative, and gated-product workflows are never named,
+  hinted at, or surfaced publicly.
 
 ## Accessibility & Inclusion
 
