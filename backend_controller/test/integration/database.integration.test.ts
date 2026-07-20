@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto"
 import { mkdtemp, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -520,5 +521,73 @@ describe("canonical public-onboarding schema (BE-007a)", () => {
         [providerEventId],
       ),
     ).rejects.toThrow()
+  })
+})
+
+
+describe("canonical Kysely schema types (BE-007f)", () => {
+  beforeAll(async () => {
+    const directory = fileURLToPath(new URL("../../db/migrations", import.meta.url))
+    const all = await loadMigrationFiles(directory)
+    await runMigrations(
+      pool,
+      all.filter((file) => file.version >= "009"),
+    )
+  }, 60_000)
+
+  test("round-trips typed inserts and selects against the live DDL", async () => {
+    // Defaulted enum + bigint-as-string + timestamptz mapping.
+    const application = await database
+      .insertInto("applications")
+      .values({
+        email_normalized: "typed@example.com",
+        phone_e164: "+14155550700",
+        full_name: "Typed User",
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow()
+    expect(typeof application.id).toBe("string")
+    expect(application.state).toBe("pending_email_verification")
+    expect(application.version).toBe("1")
+    expect(application.created_at).toBeInstanceOf(Date)
+    expect(application.email_verified_at).toBeNull()
+
+    // snake_case check column round-trips.
+    const role = await database
+      .insertInto("roles")
+      .values({ code: "be007f_role", name: "BE007f Role" })
+      .returningAll()
+      .executeTakeFirstOrThrow()
+    expect(role.code).toBe("be007f_role")
+    expect(role.version).toBe("1")
+
+    // jsonb (written as a string, selected as an object) + defaulted columns.
+    const event = await database
+      .insertInto("outbox_events")
+      .values({
+        topic: "email",
+        event_type: "typed.event",
+        event_version: 1,
+        aggregate_type: "application",
+        aggregate_id: application.id,
+        occurred_at: new Date(Date.now() - 60_000),
+        request_id: randomUUID(),
+        deduplication_key: "be007f-typed-dedup",
+        payload: JSON.stringify({ hello: "world" }),
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow()
+    expect(event.state).toBe("pending")
+    expect(event.attempt_count).toBe(0)
+    expect(event.payload).toEqual({ hello: "world" })
+    expect(event.available_at).toBeInstanceOf(Date)
+
+    // Typed select reads back the inserted rows.
+    const readBack = await database
+      .selectFrom("applications")
+      .selectAll()
+      .where("id", "=", application.id)
+      .executeTakeFirstOrThrow()
+    expect(readBack.email_normalized).toBe("typed@example.com")
   })
 })

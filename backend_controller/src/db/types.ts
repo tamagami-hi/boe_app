@@ -1,9 +1,472 @@
 /**
- * Kysely database type. The canonical first-slice tables (applications, users,
- * sessions, RBAC, audit, idempotency, outbox, email, ...) are introduced
- * additively by their owning schema batch (BE-007+). Until then this type is an
- * intentionally empty table map so the typed pool, transaction context, and raw
- * `sql` execution are available without asserting a schema that does not exist
- * yet. Repositories and per-table row types land with the schema.
+ * Canonical first-slice Kysely database schema. Table interfaces mirror the
+ * additive migrations `009`-`013` exactly (column names, nullability, defaults).
+ *
+ * Column-type conventions:
+ * - `Generated<T>` marks a column that has a database default and is therefore
+ *   optional on insert.
+ * - Timestamps select as `Date` and accept `Date | string` on write.
+ * - `bytea` selects as `Buffer` and accepts `Buffer | Uint8Array` on write.
+ * - `jsonb` selects as an object and is written as a serialized string.
+ * - `bigint` selects as a string (node-postgres default) and accepts
+ *   `string | number | bigint` on write.
+ *
+ * Repositories and the project repository interfaces build on these types; see
+ * `repositories.ts`.
  */
-export type Database = Readonly<Record<string, never>>
+import type { ColumnType, Generated, JSONColumnType } from "kysely"
+
+// Timestamps
+type Timestamp = ColumnType<Date, Date | string, Date | string>
+type TimestampDefault = ColumnType<Date, Date | string | undefined, Date | string>
+type NullableTimestamp = ColumnType<Date | null, Date | string | null | undefined, Date | string | null>
+
+// bytea
+type Bytea = ColumnType<Buffer, Buffer | Uint8Array, Buffer | Uint8Array>
+type NullableBytea = ColumnType<
+  Buffer | null,
+  Buffer | Uint8Array | null | undefined,
+  Buffer | Uint8Array | null
+>
+
+// bigint (node-postgres returns text)
+type BigIntString = ColumnType<string, string | number | bigint, string | number | bigint>
+type BigIntStringDefault = ColumnType<
+  string,
+  string | number | bigint | undefined,
+  string | number | bigint
+>
+
+// nullable scalar that is optional on insert
+type Nullable<T> = ColumnType<T | null, T | null | undefined, T | null>
+
+// jsonb
+type Json = JSONColumnType<Record<string, unknown>>
+type JsonDefault = ColumnType<Record<string, unknown>, string | undefined, string>
+
+// Enums (closed sets from migrations 009-013)
+export type ApplicationState =
+  | "pending_email_verification"
+  | "submitted"
+  | "in_review"
+  | "approved"
+  | "rejected"
+  | "withdrawn"
+export type TokenPurpose = "application_email_verification" | "password_reset"
+export type UserAccountState = "invited" | "active" | "suspended" | "closed"
+export type ActivationInviteState = "pending" | "accepted" | "revoked"
+export type ApplicationDecision = "approved" | "rejected"
+export type SessionChannel = "native" | "web"
+export type AuthSessionState = "active" | "revoked" | "expired"
+export type ApprovalState = "pending" | "approved" | "rejected" | "executed" | "stale" | "expired"
+export type ActorType = "public" | "user" | "admin" | "system" | "provider"
+export type OutboxState =
+  | "pending"
+  | "processing"
+  | "sending"
+  | "delivered"
+  | "retryable_failed"
+  | "dead_lettered"
+  | "cancelled"
+export type EmailDeliveryState =
+  | "queued"
+  | "sending"
+  | "sent"
+  | "delivered"
+  | "retryable_failed"
+  | "permanent_failed"
+  | "cancelled"
+export type EmailProviderEventState = "received" | "processed" | "ignored" | "unmatched"
+export type ConsentKind = "terms" | "privacy"
+
+export interface ApplicationsTable {
+  id: Generated<string>
+  email_normalized: string
+  phone_e164: string
+  full_name: string
+  state: Generated<ApplicationState>
+  email_verified_at: NullableTimestamp
+  submitted_at: NullableTimestamp
+  review_started_at: NullableTimestamp
+  decided_at: NullableTimestamp
+  withdrawn_at: NullableTimestamp
+  pii_tombstoned_at: NullableTimestamp
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
+export interface ConsentDocumentsTable {
+  id: Generated<string>
+  kind: ConsentKind
+  version: string
+  public_path: string
+  content_markdown: string
+  content_sha256: Bytea
+  published_at: Timestamp
+  retired_at: NullableTimestamp
+  created_at: TimestampDefault
+}
+
+export interface ApplicationConsentsTable {
+  id: Generated<string>
+  application_id: string
+  consent_document_id: string
+  accepted_at: Timestamp
+  ip_hmac: Bytea
+  ip_hmac_key_version: string
+  user_agent: Nullable<string>
+  created_at: TimestampDefault
+}
+
+export interface VerificationTokensTable {
+  id: Generated<string>
+  application_id: Nullable<string>
+  user_id: Nullable<string>
+  purpose: TokenPurpose
+  token_hash: Bytea
+  token_key_version: string
+  expires_at: Timestamp
+  consumed_at: NullableTimestamp
+  revoked_at: NullableTimestamp
+  created_at: TimestampDefault
+}
+
+export interface UsersTable {
+  id: Generated<string>
+  application_id: Nullable<string>
+  email_normalized: string
+  phone_e164: string
+  full_name: string
+  account_state: Generated<UserAccountState>
+  activated_at: NullableTimestamp
+  suspended_at: NullableTimestamp
+  closed_at: NullableTimestamp
+  pii_tombstoned_at: NullableTimestamp
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
+export interface UserCredentialsTable {
+  user_id: string
+  password_hash: Nullable<string>
+  password_changed_at: TimestampDefault
+  failed_attempt_count: Generated<number>
+  failed_attempt_window_started_at: NullableTimestamp
+  locked_until: NullableTimestamp
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
+export interface ApplicationReviewsTable {
+  id: Generated<string>
+  application_id: string
+  reviewer_user_id: string
+  decision: ApplicationDecision
+  reason_code: string
+  reason_detail: Nullable<string>
+  request_id: string
+  idempotency_key: string
+  created_at: TimestampDefault
+}
+
+export interface ActivationInvitesTable {
+  id: Generated<string>
+  user_id: string
+  application_id: string
+  token_hash: Bytea
+  token_key_version: string
+  state: Generated<ActivationInviteState>
+  expires_at: Timestamp
+  accepted_at: NullableTimestamp
+  revoked_at: NullableTimestamp
+  revocation_reason: Nullable<string>
+  created_by_user_id: Nullable<string>
+  created_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
+export interface AuthSessionsTable {
+  id: Generated<string>
+  user_id: string
+  token_family_id: Generated<string>
+  channel: SessionChannel
+  device_id_hash: NullableBytea
+  state: Generated<AuthSessionState>
+  generation: BigIntStringDefault
+  refresh_key_version: string
+  previous_refresh_token_hash: NullableBytea
+  previous_refresh_key_version: Nullable<string>
+  previous_refresh_valid_until: NullableTimestamp
+  last_rotation_id: Nullable<string>
+  csrf_token_hash: NullableBytea
+  csrf_key_version: Nullable<string>
+  previous_csrf_token_hash: NullableBytea
+  previous_csrf_key_version: Nullable<string>
+  previous_csrf_valid_until: NullableTimestamp
+  csrf_expires_at: NullableTimestamp
+  csrf_rotated_at: NullableTimestamp
+  ip_address: Nullable<string>
+  user_agent: Nullable<string>
+  last_seen_at: TimestampDefault
+  expires_at: Timestamp
+  revoked_at: NullableTimestamp
+  revocation_reason: Nullable<string>
+  expired_at: NullableTimestamp
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
+export interface AuthRefreshTokensTable {
+  id: Generated<string>
+  session_id: string
+  user_id: string
+  generation: BigIntString
+  token_hash: Bytea
+  token_key_version: string
+  expires_at: Timestamp
+  used_at: NullableTimestamp
+  revoked_at: NullableTimestamp
+  replaced_by_token_id: Nullable<string>
+  created_at: TimestampDefault
+}
+
+export interface RolesTable {
+  id: Generated<string>
+  code: string
+  name: string
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
+export interface PermissionsTable {
+  id: Generated<string>
+  code: string
+  description: string
+  created_at: TimestampDefault
+}
+
+export interface RolePermissionsTable {
+  role_id: string
+  permission_id: string
+  granted_by_user_id: string
+  granted_at: TimestampDefault
+  revoked_by_user_id: Nullable<string>
+  revoked_at: NullableTimestamp
+}
+
+export interface UserRolesTable {
+  user_id: string
+  role_id: string
+  granted_by_user_id: string
+  granted_at: TimestampDefault
+  revoked_by_user_id: Nullable<string>
+  revoked_at: NullableTimestamp
+}
+
+export interface ApprovalActionsTable {
+  id: Generated<string>
+  action_type: string
+  target_type: string
+  target_id: string
+  target_version: BigIntString
+  canonical_payload: Json
+  payload_hash: Bytea
+  state: Generated<ApprovalState>
+  maker_user_id: string
+  maker_reason: string
+  checker_user_id: Nullable<string>
+  checker_reason: Nullable<string>
+  created_at: TimestampDefault
+  approved_at: NullableTimestamp
+  rejected_at: NullableTimestamp
+  executed_at: NullableTimestamp
+  stale_at: NullableTimestamp
+  expired_at: NullableTimestamp
+  expires_at: Timestamp
+  updated_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
+export interface AuditEventsTable {
+  id: Generated<string>
+  occurred_at: TimestampDefault
+  actor_type: ActorType
+  actor_user_id: Nullable<string>
+  command: string
+  entity_type: string
+  entity_id: string
+  from_state: Nullable<string>
+  to_state: Nullable<string>
+  reason_code: Nullable<string>
+  reason_detail: Nullable<string>
+  request_id: string
+  idempotency_key: Nullable<string>
+  entity_version: BigIntString
+  ip_address: Nullable<string>
+  user_agent: Nullable<string>
+  metadata: JsonDefault
+}
+
+export interface IdempotencyRecordsTable {
+  id: Generated<string>
+  actor_scope: string
+  actor_scope_key_version: Nullable<string>
+  http_method: string
+  route_template: string
+  key: string
+  actor_user_id: Nullable<string>
+  request_hash: Bytea
+  response_status: number
+  response_body: Json
+  created_at: TimestampDefault
+  completed_at: TimestampDefault
+  expires_at: Timestamp
+}
+
+export interface RateLimitWindowsTable {
+  bucket: string
+  key_hash: Bytea
+  window_start: Timestamp
+  count: number
+  expires_at: Timestamp
+}
+
+export interface LegalHoldsTable {
+  id: Generated<string>
+  entity_type: string
+  entity_id: string
+  reason: string
+  placed_by: string
+  placed_at: TimestampDefault
+  expires_at: NullableTimestamp
+  released_by: Nullable<string>
+  released_at: NullableTimestamp
+}
+
+export interface OutboxEventsTable {
+  id: Generated<string>
+  topic: string
+  event_type: string
+  event_version: number
+  aggregate_type: string
+  aggregate_id: string
+  occurred_at: Timestamp
+  request_id: string
+  causation_id: Nullable<string>
+  correlation_id: Nullable<string>
+  deduplication_key: string
+  payload: Json
+  state: Generated<OutboxState>
+  attempt_count: Generated<number>
+  available_at: TimestampDefault
+  locked_at: NullableTimestamp
+  locked_by: Nullable<string>
+  lease_expires_at: NullableTimestamp
+  delivered_at: NullableTimestamp
+  cancelled_at: NullableTimestamp
+  last_error_code: Nullable<string>
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+}
+
+export interface EmailDeliveriesTable {
+  id: Generated<string>
+  outbox_event_id: Nullable<string>
+  application_id: Nullable<string>
+  user_id: Nullable<string>
+  verification_token_id: Nullable<string>
+  activation_invite_id: Nullable<string>
+  template_key: string
+  template_version: string
+  recipient_ciphertext: NullableBytea
+  recipient_nonce: NullableBytea
+  recipient_hmac: Bytea
+  recipient_masked: string
+  recipient_encryption_key_version: Nullable<string>
+  suppression_hmac_key_version: string
+  ses_configuration_set: string
+  ses_message_id: Nullable<string>
+  ses_request_id: Nullable<string>
+  state: Generated<EmailDeliveryState>
+  attempt_count: Generated<number>
+  last_attempt_at: NullableTimestamp
+  last_error_code: Nullable<string>
+  failure_detail_ciphertext: NullableBytea
+  failure_detail_nonce: NullableBytea
+  failure_detail_key_version: Nullable<string>
+  sent_at: NullableTimestamp
+  delivered_at: NullableTimestamp
+  bounced_at: NullableTimestamp
+  complained_at: NullableTimestamp
+  cancelled_at: NullableTimestamp
+  erased_at: NullableTimestamp
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
+export interface EmailProviderEventsTable {
+  id: Generated<string>
+  sns_message_id: string
+  sns_topic_arn: string
+  sns_type: string
+  ses_event_type: Nullable<string>
+  ses_message_id: Nullable<string>
+  delivery_correlation_id: Nullable<string>
+  email_delivery_id: Nullable<string>
+  payload_ciphertext: NullableBytea
+  payload_nonce: NullableBytea
+  payload_sha256: Bytea
+  payload_key_version: Nullable<string>
+  state: Generated<EmailProviderEventState>
+  received_at: TimestampDefault
+  processed_at: NullableTimestamp
+  expires_at: Timestamp
+  erased_at: NullableTimestamp
+}
+
+export interface EmailSuppressionsTable {
+  recipient_hmac: Bytea
+  suppression_hmac_key_version: string
+  reason: string
+  source_event_id: string
+  created_at: TimestampDefault
+  lifted_at: NullableTimestamp
+  lifted_by_user_id: Nullable<string>
+  lift_reason: Nullable<string>
+}
+
+/**
+ * The full canonical first-slice schema map consumed by the typed Kysely
+ * instance, repositories, and command services.
+ */
+export interface Database {
+  applications: ApplicationsTable
+  consent_documents: ConsentDocumentsTable
+  application_consents: ApplicationConsentsTable
+  verification_tokens: VerificationTokensTable
+  users: UsersTable
+  user_credentials: UserCredentialsTable
+  application_reviews: ApplicationReviewsTable
+  activation_invites: ActivationInvitesTable
+  auth_sessions: AuthSessionsTable
+  auth_refresh_tokens: AuthRefreshTokensTable
+  roles: RolesTable
+  permissions: PermissionsTable
+  role_permissions: RolePermissionsTable
+  user_roles: UserRolesTable
+  approval_actions: ApprovalActionsTable
+  audit_events: AuditEventsTable
+  idempotency_records: IdempotencyRecordsTable
+  rate_limit_windows: RateLimitWindowsTable
+  legal_holds: LegalHoldsTable
+  outbox_events: OutboxEventsTable
+  email_deliveries: EmailDeliveriesTable
+  email_provider_events: EmailProviderEventsTable
+  email_suppressions: EmailSuppressionsTable
+}

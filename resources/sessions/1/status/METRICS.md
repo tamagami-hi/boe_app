@@ -250,3 +250,19 @@ template<->subject FK matrix, 32-byte recipient HMAC, all-or-null recipient/
 failure/provider AES-256-GCM envelopes, unique SNS message id with valid-but-
 unknown correlation still committing, suppression composite PK + lift group).
 Fifth child of BE-007.
+
+## Delta: BE-007f Kysely Schema Types + Repository Interfaces (branch `ts-migration/backend`)
+
+Type foundation; deletes no JavaScript.
+
+| Change | Value |
+|---|---:|
+| Source TS added/expanded (`types.ts` full `Database`, `repositories.ts` §7 contract, `limits.ts`) | 3 files |
+| Tests added | `limits.test.ts` (unit) + 1 integration round-trip (unit 42 -> 43; integration 13 -> 14) |
+| Production JS/JSX deleted | 0 |
+
+Backend authored JS/JSX backlog unchanged at **83 files**. Typecheck resolves the
+whole §7 contract (`Row<T>` for all 23 tables); integration 14/14 vs PostgreSQL 16
+with a typed Kysely round-trip proving the schema types match the live DDL.
+Coverage 87.88% (type-only files are 0-statement; numeric ceilings covered by a
+unit test). Sixth child of BE-007.

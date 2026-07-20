@@ -34,6 +34,32 @@ backend, landing, admin, client, shared frontend, and operational entrypoints.
 | Phase 2: test and TypeScript foundation | In progress | Contract kernels plus authoritative TypeScript/Fastify liveness runtime; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
+## Completed Slice: Kysely Schema Types + Repository Interfaces (BE-007f)
+
+**Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Sixth
+child packet of BE-007 (parent remains in progress). Type foundation.
+
+**Scope:** `src/db/types.ts` now defines the full canonical `Database` map (23
+first-slice tables mirroring migrations `009`-`013`); `src/db/repositories.ts`
+transcribes spec §7 as the type-only repository interface contract; and
+`src/db/limits.ts` (+ unit test) pins the §7 numeric ceilings.
+
+**Explicitly deferred:** repository *implementations* land with their consuming
+command/route batches (BE-008+) where they get behavioral integration tests
+(matches the spec note that later slices add focused repositories). Later-domain
+repositories (Kyc/Fund/Order/Payment/...) land with §4 schema (BE-016+).
+Bootstrap seed -> BE-007g.
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Schema types compile | Complete | `npm run typecheck` green; `Row<T>`/`Selectable<Database[T]>` resolve for all 23 tables |
+| Types match live DDL | Complete | typed Kysely round-trip on `applications`/`roles`/`outbox_events` (defaulted enum, bigint-as-string, jsonb-object, timestamptz-as-Date) — 14/14 integration |
+| Coverage-safe | Complete | type-only files are 0-statement; numeric limits covered by `limits.test.ts`; aggregate 87.88% |
+| Unit check | Complete | `npm run check` green (43 unit tests) |
+| Review | Complete | Focused inline review; secrets typed opaque; branded ids; no CRITICAL/HIGH/MEDIUM |
+| JS deletion | N/A | Type foundation; onboarding JS deleted starting BE-008 |
+| Commit/push | Complete | Committed on `ts-migration/backend`; PR #1 updated |
+
 ## Completed Slice: Canonical Outbox/Email Delivery Tables (BE-007e)
 
 **Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Fifth

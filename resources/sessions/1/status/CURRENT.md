@@ -2,6 +2,23 @@
 
 ## Last Verified Code Checkpoint
 
+- Task: `BE-007f` Kysely schema types + repository interfaces (child of BE-007),
+  landed on branch `ts-migration/backend` (PR #1 to `main`).
+- Result: `src/db/types.ts` now defines the full canonical `Database` map (all 23
+  first-slice tables mirroring migrations `009`-`013`), `src/db/repositories.ts`
+  transcribes spec §7 as a type-only contract (ReadonlyDeep, Row<T>, branded ids,
+  cursor/query/command inputs, all 24 repository interfaces with a caller-owned
+  `Transaction`), and `src/db/limits.ts` (+ unit test) pins the §7 numeric
+  ceilings. A typed Kysely round-trip on `applications`/`roles`/`outbox_events`
+  proves the schema types match the live DDL (defaulted enum, bigint-as-string,
+  jsonb-object, timestamptz-as-Date). Integration 14/14; unit `check` green
+  (coverage 87.88%). Additive — no JS deleted (83). Repository implementations
+  are deferred to the consuming route/command batches (BE-008+).
+- BE-007 parent remains ACTIVE. Prior checkpoints: BE-007e, BE-007d, BE-007c,
+  BE-007b, BE-007a, BE-005, BE-004, BE-003, CON-006, BE-002.
+
+## Superseded Code Checkpoint (BE-007e)
+
 - Task: `BE-007e` canonical outbox/email delivery tables (child of BE-007),
   landed on branch `ts-migration/backend` (PR #1 to `main`).
 - Result: additive migration `db/migrations/013_canonical_outbox_email.sql` adds
@@ -126,8 +143,8 @@
 
 ## Next Code Tasks
 
-1. `BE-007f` — Kysely repository interfaces over the canonical tables
-   (spec `03` §7); then BE-007g bootstrap seed.
+1. `BE-007g` — typed idempotent bootstrap seed (roles/permissions + current
+   consent documents) closing out BE-007.
 2. `BE-008` public consent/application/verification Fastify routes — begins
    deleting the onboarding service JS (`website/services`).
 3. `CON-007` consumer contract/package wiring (openapi-fetch client factory).
