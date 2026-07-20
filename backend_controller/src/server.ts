@@ -3,6 +3,7 @@ import { pathToFileURL } from "node:url"
 import type { FastifyInstance } from "fastify"
 import type { Logger } from "pino"
 
+import { composeBackend } from "./runtime/composition.js"
 import { createApplication } from "./runtime/application.js"
 import {
   parseRuntimeEnvironment,
@@ -13,14 +14,21 @@ import { registerGracefulShutdown } from "./runtime/shutdown.js"
 
 type StartServerOptions = Readonly<{
   environment?: RuntimeEnvironment
+  env?: Readonly<Record<string, string | undefined>>
   logger?: Logger
 }>
 
 export const startServer = async ({
   environment = parseRuntimeEnvironment(process.env),
+  env = process.env,
   logger = createRuntimeLogger({ level: environment.logLevel }),
 }: StartServerOptions = {}): Promise<FastifyInstance> => {
-  const application = createApplication({ logger })
+  const backend = composeBackend(env)
+  const application = createApplication({ logger, registerRoutes: backend.registerRoutes })
+  // The pool is closed as part of the server's graceful drain.
+  application.addHook("onClose", async () => {
+    await backend.dispose()
+  })
   await application.listen({ host: environment.host, port: environment.port })
   logger.info({ host: environment.host, port: environment.port }, "Backend listening")
   return application

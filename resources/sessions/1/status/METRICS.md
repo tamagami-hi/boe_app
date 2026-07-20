@@ -646,3 +646,21 @@ unchanged; Legacy tree hash intact. The gate scans `src/` + `scripts/` (excludin
 `#`-subpath alias imports, and asserts both are empty. Reproduce: `find
 backend_controller/src backend_controller/scripts -type f \( -name '*.js' -o -name
 '*.jsx' \) | wc -l` -> 0.
+
+
+## Delta: PROD-001 Backend Server Composition Wiring (branch `ts-migration/backend`)
+
+Resolves the deferred production `server.ts` wiring: the canonical routes now
+serve on a running server, and both smokes boot the full composed app.
+
+| Change | Value |
+|---|---:|
+| Source TS added (`runtime/composition.ts`, `email/certificateFetcher.ts`) | 2 files |
+| Source TS extended (`runtime/environment.ts` parseServerConfig, `server.ts`, `scripts/smoke-entrypoint.ts`, `.env.example`) | 4 files |
+| Tests added/updated (`composition.test.ts`, `certificateFetcher.test.ts`, `server.test.ts`) | 3 files |
+| **Production JS/JSX** | **0** (unchanged) |
+| New runtime dependency | 0 (certificate fetcher uses the Node runtime) |
+
+`npm run check` green including both smokes booting the **full** composed server;
+integration 63/63; `package.json`/lock unchanged. Deferred: background email-worker
+entrypoint + concrete Amazon SES v2 adapter (worker command + port already exist).

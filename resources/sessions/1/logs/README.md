@@ -65,3 +65,5 @@ not rewrite prior RED/GREEN history to match later architecture.
 | BE-019 | DONE (deletion-only) | [Retire legacy transport/persistence/scripts](./BE-019-transport-persistence-retirement.md) | on `ts-migration/backend` (JS 13 -> 0; last legacy scaffolding, no TS consumers) |
 
 | BE-020 | DONE (gate) | [Backend zero-JavaScript gate](./BE-020-zero-js-gate.md) | on `ts-migration/backend` (permanent assertion: 0 authored JS/JSX + 0 legacy alias imports) — backend JS->TS migration complete |
+
+| PROD-001 | DONE | [Backend server composition wiring](./PROD-001-server-composition.md) | on `ts-migration/backend` (canonical routes now serve on a running server; smokes boot the full app) |

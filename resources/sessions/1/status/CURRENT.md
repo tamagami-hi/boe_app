@@ -2,6 +2,30 @@
 
 ## Last Verified Code Checkpoint
 
+- Task: `PROD-001` backend server composition wiring, landed on branch
+  `ts-migration/backend` (PR #1 to `main`). Resolves the deferred production
+  `server.ts` wiring: **the canonical routes now serve on a running server.**
+- Result: `src/runtime/composition.ts` (`composeBackend`) parses the environment
+  and builds pool/database/unit-of-work/crypto/access-token/breach-checker/
+  certificate-fetcher/repositories, and registers every canonical route group
+  (health, public onboarding, native auth, web auth, admin identity, SNS
+  provider-event ingress). `parseServerConfig` (in `environment.ts`) loads the
+  ES256 keyring, refresh/cursor HMAC keys, web cookie/origin, SES/SNS config, and
+  TTLs, failing fast on bad config. New SSRF-hardened `email/certificateFetcher.ts`
+  for the SNS route. `server.ts` composes + registers + closes the pool on drain.
+  The smoke entrypoint injects an ephemeral env so both smokes boot the full app.
+  New unit tests for composition, cursor cert fetcher, and updated server test.
+  `check` green (incl. full-server smokes); integration 63/63; backend JS still 0.
+  Still deferred: the background email-worker entrypoint + concrete SES adapter.
+- Prior checkpoints: BE-020 (zero-JS gate), BE-019 (transport/persistence retired,
+  JS 13 -> 0), BE-018 (shared retired, JS 39 -> 13), BE-017 (admin finance retired,
+  JS 51 -> 39), BE-016 (admin identity, additive JS 51), BE-015 (client retired, JS
+  67 -> 51), BE-014 (payment webhooks retired, JS 72 -> 67), BE-013 (public content
+  retired, JS 74 -> 72), BE-012 (outbox worker, additive JS 74), BE-011 (health, JS
+  76 -> 74), BE-010 (auth, JS 80 -> 76), and earlier BE-009..BE-002.
+
+## Superseded Checkpoint (BE-020)
+
 - Task: `BE-020` backend zero-JavaScript gate, landed on branch
   `ts-migration/backend` (PR #1 to `main`). **Backend JS -> TS migration
   complete.**
