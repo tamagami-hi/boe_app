@@ -80,6 +80,7 @@ packet is instantiated, and only one may become active with user authorization.
 
 - [Original assessment/handoff](./handoffs/00-database-typescript-rearchitecture-handoff.md)
 - [Planning-completion handoff](./handoffs/06-planning-completion-handoff.md)
+- [Backend TS migration complete + later-domain schema handoff](./handoffs/07-backend-ts-migration-and-later-domain-handoff.md)
 
 Historical handoffs preserve context and may contain sections explicitly marked
 superseded. Normative precedence is working model → decisions → master
