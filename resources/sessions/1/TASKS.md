@@ -11,8 +11,7 @@ The exact non-overlapping count partition is in
 | Task | Status | Depends on | Packet | Completion/deletion boundary |
 |---|---|---|---|---|
 | DOC-001 Session working model and reorganization | REVIEW | BE-001 | [Packet](./packets/DOC-001-session-working-model.md) | Migration working model, task ledger, logs/status/templates, repaired links, and Legacy hash guard committed |
-| CON-006 Deterministic OpenAPI generator | BACKLOG | CON-001..005 | Not instantiated | One committed generated OpenAPI artifact/staleness test; no duplicate schema authority; decide contract ESLint MJS tooling |
-| CON-007 Consumer contract/package wiring | BACKLOG | CON-006 | Not instantiated | Backend/landing/workspace builds consume `@beonedge/contracts` from repository-root contexts |
+| CON-007 Consumer contract/package wiring | BACKLOG | CON-006 | Not instantiated | openapi-fetch client factory + `@beonedge/contracts` `file:` consumption from repository-root contexts; publish generated `paths`/OpenAPI exports |
 | BE-003 Runtime configuration closure | BACKLOG | CON-006, BE-002 | Not instantiated | Replace/delete config/shared logger JS; strict startup/observability boundary; decide backend ESLint MJS tooling |
 
 ## Completed Foundations
@@ -27,6 +26,7 @@ The exact non-overlapping count partition is in
 | CON-005 Native authentication contracts | DONE | `45fc7f7` | Login/refresh/logout contracts |
 | BE-001 TypeScript/Fastify liveness runtime | DONE | `9e884ad` | Replaced 164 production JS + 47 test JS lines; emitted-only image and GET-only liveness |
 | BE-002 Graceful API lifecycle | DONE | on `dev` | Bounded SIGTERM/SIGINT drain in `runtime/shutdown.ts` wired into `server.ts`; exit 0 clean / 1 timeout; 9 tests; no JS deleted |
+| CON-006 Deterministic OpenAPI generator | DONE | on `ts-migration/backend` | Zod->committed OpenAPI 3.1 (`generated/openapi-v1.json`)->`openapi-typescript` types; deterministic + Redocly + staleness gates; shared `ErrorEnvelope` component; headers documented; 100% coverage |
 
 ## Sequential Phase Gates
 

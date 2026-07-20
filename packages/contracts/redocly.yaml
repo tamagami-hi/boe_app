@@ -1,0 +1,17 @@
+# Minimal ruleset for the generated first-slice OpenAPI document.
+# It enforces the CON-006 boundary checks from specifications/04 section 7:
+# structural validity (which catches invalid/unresolved references and
+# undocumented/invalid statuses) and unique/unambiguous operations and paths.
+# The opinionated recommended rules (operation-summary, security-defined,
+# no-empty-servers, info-license) are intentionally not enabled: summaries,
+# a security scheme registry, servers, and license metadata are added by later
+# contract slices, not by this generation-pipeline slice.
+extends: []
+rules:
+  struct: error
+  operation-operationId: error
+  operation-operationId-unique: error
+  no-identical-paths: error
+  no-ambiguous-paths: error
+  path-declaration-must-exist: error
+  path-not-include-query: error

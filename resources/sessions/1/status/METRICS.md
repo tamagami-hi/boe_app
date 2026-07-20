@@ -102,3 +102,22 @@ Backend migrated runtime after BE-002: ~348 production TS lines (4 prior + new
 authored backend JS/JSX backlog is unchanged at 89 files / 12,600 lines; the
 global JS-family backlog figures are unchanged because BE-002 deleted no JS.
 `npm run check`: 27 tests, 93.69% stmts / 91.89% branch / 90.9% funcs.
+
+## Delta: CON-006 Deterministic OpenAPI Generator (branch `ts-migration/backend`)
+
+Additive in `packages/contracts`; deletes no JavaScript.
+
+| Change | Value |
+|---|---:|
+| Tooling TS added (`scripts/generate-openapi.ts`) | +133 lines |
+| Test TS added (`src/openapi.test.ts`, 7 tests) | +84 lines |
+| Committed generated `openapi-v1.json` | 59 KB |
+| Committed generated `openapi-v1.d.ts` | 33 KB |
+| Production JS/JSX deleted | 0 |
+
+Contracts package after CON-006: 120 tests, 100% coverage on all four metrics,
+0 vulnerabilities. Exact deps added: `@asteasolutions/zod-to-openapi` 9.0.0,
+`openapi-typescript` 7.13.0, `@redocly/cli` 2.39.0, `tsx` 4.23.1;
+`openapi-fetch` removed (deferred to CON-007). Backend authored JS/JSX backlog
+unchanged at 89 files / 12,600 lines. `eslint.config.mjs` classified as a
+tooling exception (one of the 4 MJS files in the inventory ledger).

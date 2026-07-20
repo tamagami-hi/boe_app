@@ -8,7 +8,8 @@ template before production implementation starts.
 |---|---|---|---|
 | BE-001 | DONE | [Backend TypeScript runtime reset](./BE-001-backend-runtime-reset.md) | `9e884ad` |
 | DOC-001 | REVIEW | [Session working model and reorganization](./DOC-001-session-working-model.md) | Pending containing docs commit |
-| BE-002 | DONE | [Graceful API lifecycle](./BE-002-graceful-api-lifecycle.md) | on `dev` |
+| BE-002 | DONE | [Graceful API lifecycle](./BE-002-graceful-api-lifecycle.md) | on `ts-migration/backend` |
+| CON-006 | DONE | [Deterministic OpenAPI generator](./CON-006-deterministic-openapi-generator.md) | on `ts-migration/backend` |
 
 Completed logs preserve their evidence. Correct factual errors explicitly; do
 not rewrite prior RED/GREEN history to match later architecture.

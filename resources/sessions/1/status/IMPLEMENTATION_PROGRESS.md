@@ -34,6 +34,41 @@ backend, landing, admin, client, shared frontend, and operational entrypoints.
 | Phase 2: test and TypeScript foundation | In progress | Contract kernels plus authoritative TypeScript/Fastify liveness runtime; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
+## Completed Slice: Deterministic OpenAPI Generator (CON-006)
+
+**Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`).
+
+**Scope:** Build the single deterministic Zod -> committed OpenAPI 3.1 ->
+`openapi-typescript` path-types pipeline in `packages/contracts`.
+`scripts/generate-openapi.ts` registers the frozen public/activation/native-auth
+operation descriptors into `@asteasolutions/zod-to-openapi`
+(`OpenApiGeneratorV31`), hoists a shared `ErrorEnvelope` component via Zod 4
+`.meta({ id })`, documents modeled request headers as parameters, and writes
+`generated/openapi-v1.json`; `openapi-typescript` emits `generated/openapi-v1.d.ts`.
+`generate`/`generate:check` (staleness) and `lint:openapi` (Redocly, minimal
+ruleset) join `check`.
+
+**Explicitly out of scope (deferred to CON-007):** the `openapi-fetch` client
+factory (`src/client/**`), consumer `file:` installs, and generated `paths`/
+OpenAPI package exports.
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Feasibility research | Complete | Spike confirmed zod-to-openapi 9 handles Zod 4 tuples/unions/strictObject |
+| Tests before implementation | Complete | RED on missing generator module; a second RED proved the staleness gate catches drift |
+| Implementation GREEN | Complete | 7 generator tests; full suite 120/120 |
+| Determinism | Complete | sha256-identical regeneration across runs |
+| Coverage >=80% | Complete | 100% statements/branches/functions/lines |
+| Typecheck/lint/build/exports/Redocly | Complete | `npm run check` green on Node 22.22.3 / npm 11.16.0 |
+| Reviews | Complete | semantic_reviewer: HIGH (dropped headers) fixed by documenting header parameters; MEDIUM (test breadth) fixed; one LOW tracked |
+| JS deletion | N/A | Additive; backend backlog unchanged at 89 files / 12,600 lines |
+| Commit/push | Complete | Committed on `ts-migration/backend`; PR #1 updated |
+
+**Decisions:** shared component via Zod 4 `.meta({ id })` (333 KB inline -> 59 KB
+$ref); `eslint.config.mjs` classified as a tooling exception; header parameters
+documented (names only, no values); backward-compatibility snapshot gate tracked
+as a later LOW.
+
 ## Completed Slice: Graceful API Lifecycle (BE-002)
 
 **Status:** Complete (branch `dev`, PR to `main`).

@@ -2,7 +2,19 @@
 
 ## Last Verified Code Checkpoint
 
-- Task: `BE-002` graceful API lifecycle, landed on branch `dev` (PR to `main`).
+- Task: `CON-006` deterministic OpenAPI generator, landed on branch
+  `ts-migration/backend` (PR #1 to `main`).
+- Result: single Zod -> committed `packages/contracts/generated/openapi-v1.json`
+  (OpenAPI 3.1) -> `openapi-typescript` `openapi-v1.d.ts` pipeline, with a shared
+  `ErrorEnvelope` component (Zod 4 `.meta({ id })`), documented request headers,
+  and `generate`/`generate:check` (staleness)/`lint:openapi` (Redocly) gates in
+  `npm run check`. Deterministic (sha256-identical regeneration), 120 tests,
+  100% coverage, 0 vulnerabilities. No backend JS deleted.
+- Prior checkpoint in this branch: `BE-002` graceful API lifecycle.
+
+## Prior Checkpoint (BE-002)
+
+- Task: `BE-002` graceful API lifecycle, landed on branch `ts-migration/backend`.
 - Baseline before this batch: `main` at `f991298`; earlier runtime reset
   `9e884ad` (BE-001).
 - Result: bounded graceful `SIGTERM`/`SIGINT` drain in
@@ -19,19 +31,20 @@
 
 ## Active Task
 
-- `CON-006` deterministic OpenAPI generator is the next batch (owner
-  `packages/contracts`). Its packet/log must be instantiated before it becomes
-  `ACTIVE`. It unblocks `BE-003` (config closure), which is the first backend
-  batch that deletes legacy JS.
+- None active. `CON-007` consumer contract/package wiring is the next batch
+  (owner `packages/contracts` + consumer manifests): the `openapi-fetch` client
+  factory over the generated `paths`, `@beonedge/contracts` `file:` consumption,
+  and generated `paths`/OpenAPI package exports. Its packet/log must be
+  instantiated before it becomes `ACTIVE`.
 - `DOC-001` remains in `REVIEW` (documentation-only; its Legacy guard now
   reproduces since the Legacy tree is present).
 
 ## Next Code Tasks
 
-1. `CON-006` deterministic OpenAPI generation and staleness guard.
-2. `CON-007` consumer contract/package wiring.
-3. `BE-003` typed runtime configuration closure and deletion of legacy config JS
-   (`src/config/*.js`, `src/shared/logger.js`).
+1. `CON-007` consumer contract/package wiring (openapi-fetch client factory).
+2. `BE-003` typed runtime configuration closure and deletion of legacy config JS
+   (`src/config/*.js`, `src/shared/logger.js`) — first backend JS deletion.
+3. `BE-004` PostgreSQL/Kysely foundation (Phase 3; needs Testcontainers).
 
 Before a candidate becomes `READY`, create its complete packet and dedicated log
 under Session 1. Dependencies and acceptance remain authoritative in
