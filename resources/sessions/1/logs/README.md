@@ -11,6 +11,7 @@ template before production implementation starts.
 | BE-002 | DONE | [Graceful API lifecycle](./BE-002-graceful-api-lifecycle.md) | on `ts-migration/backend` |
 | CON-006 | DONE | [Deterministic OpenAPI generator](./CON-006-deterministic-openapi-generator.md) | on `ts-migration/backend` |
 | BE-003 | DONE | [Runtime configuration closure](./BE-003-runtime-configuration-closure.md) | on `ts-migration/backend` |
+| BE-004 | DONE | [PostgreSQL/Kysely foundation](./BE-004-postgresql-kysely-foundation.md) | on `ts-migration/backend` |
 
 Completed logs preserve their evidence. Correct factual errors explicitly; do
 not rewrite prior RED/GREEN history to match later architecture.

@@ -2,17 +2,22 @@
 
 ## Last Verified Code Checkpoint
 
-- Task: `BE-003` runtime configuration closure, landed on branch
+- Task: `BE-004` PostgreSQL/Kysely foundation, landed on branch
   `ts-migration/backend` (PR #1 to `main`).
-- Result: deleted the superseded legacy config/logger JavaScript
-  (`src/config/env.js`, `src/config/dotenv.js`, `src/shared/logger.js`); the
-  typed `runtime/environment.ts` + `runtime/logger.ts` boundary (BE-001) is the
-  sole authority, with Node `--env-file-if-exists` replacing the dotenv loader.
-  A runtime-boundary deletion guard asserts their absence. Backend authored JS
-  backlog **89 -> 86 files** (first backend JS deletion of the migration
-  program). `npm run check` green; no behavior change.
-- Prior checkpoints on this branch: `CON-006` (deterministic OpenAPI generator),
-  `BE-002` (graceful API lifecycle).
+- Result: typed owned `pg` pool (`src/db/pool.ts`), typed Kysely instance +
+  explicit unit-of-work transaction (`src/db/database.ts`), Zod DB config
+  (`src/db/config.ts`), and `Database` type (`src/db/types.ts`), proven by a
+  Testcontainers integration test against PostgreSQL 16 (pooled query + commit +
+  rollback, 3/3). Unit `check` green (34 tests, coverage >=80% all metrics).
+  Container-runtime feasibility solved: this podman-only sandbox has no Docker
+  socket, so `scripts/with-container-runtime.ts` starts a temporary
+  `podman system service` (ryuk disabled, log-based wait); real CI Docker
+  sockets are used unchanged. GATE-02 deviation recorded (authorized to unblock
+  the deletion-heavy persistence/identity batches). No JS deleted this batch.
+- Environment knowledge for resume: run DB integration tests with
+  `npm run test:integration` (wraps vitest in the podman-runtime provisioner).
+- Prior checkpoints on this branch: `BE-003` (config closure, first backend JS
+  deletion, 89->86), `CON-006` (OpenAPI generator), `BE-002` (graceful lifecycle).
 
 ## Prior Checkpoint (BE-002)
 
@@ -43,11 +48,12 @@
 
 ## Next Code Tasks
 
-1. `CON-007` consumer contract/package wiring (openapi-fetch client factory +
-   `@beonedge/contracts` `file:` consumption).
-2. `BE-004` PostgreSQL/Kysely foundation (Phase 3; introduces Testcontainers +
-   the additive canonical schema) — unlocks the identity/auth/route batches that
-   delete the bulk of the remaining 86 backend JS files.
+1. `BE-005` migration/seed/check tooling — emitted TS operational commands that
+   replace and DELETE `scripts/migrate.js`, `check-db.js`, `seed-auth.js`
+   (backend JS 86 -> 83; next JS deletion).
+2. `BE-007` canonical identity/onboarding schema (additive migrations +
+   repositories) — begins deleting the identity/auth service JS.
+3. `CON-007` consumer contract/package wiring (openapi-fetch client factory).
 
 Before a candidate becomes `READY`, create its complete packet and dedicated log
 under Session 1. Dependencies and acceptance remain authoritative in

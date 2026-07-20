@@ -34,6 +34,33 @@ backend, landing, admin, client, shared frontend, and operational entrypoints.
 | Phase 2: test and TypeScript foundation | In progress | Contract kernels plus authoritative TypeScript/Fastify liveness runtime; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
+## Completed Slice: PostgreSQL/Kysely Foundation (BE-004)
+
+**Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Phase 3
+keystone; authorized ahead of full GATE-02 closure (deviation recorded) to
+unblock the deletion-heavy persistence/identity/route batches.
+
+**Scope:** Typed owned `pg` pool, typed Kysely instance, explicit
+transaction/unit-of-work boundary, Zod DB config, and an (initially empty)
+`Database` type — proven against real PostgreSQL 16 via Testcontainers.
+
+**Explicitly out of scope:** the canonical schema/tables and repositories
+(BE-007+), and deletion of legacy DB JS (BE-005 scripts + final cutover).
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Feasibility (Testcontainers over podman) | Complete | Spike started PostgreSQL 16 with a log-based wait + ryuk disabled |
+| Unit tests | Complete | 34/34; coverage >=80% (src/db 95%/100%/83%) |
+| Integration | Complete | 3/3 vs PostgreSQL 16: pooled query, committed transaction, full rollback |
+| Typecheck/lint/build/smoke | Complete | `npm run check` green |
+| Review | Complete | Focused inline review: explicit transactions, owned lazy pool, safe process-spawning wrapper, denied native install scripts; no CRITICAL/HIGH/MEDIUM |
+| JS deletion | N/A | Additive; backlog stays 86 (BE-005 deletes DB scripts next) |
+| Commit/push | Complete | Committed on `ts-migration/backend`; PR #1 updated |
+
+**Decisions:** framework DB plugin rejected (backend owns pool/tx/shutdown);
+`Database` empty until BE-007; container-runtime wrapper provisions podman for
+the socket-less sandbox while real CI uses its Docker socket unchanged.
+
 ## Completed Slice: Runtime Configuration Closure (BE-003)
 
 **Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). First

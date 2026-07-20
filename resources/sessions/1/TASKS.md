@@ -28,6 +28,7 @@ The exact non-overlapping count partition is in
 | BE-002 Graceful API lifecycle | DONE | on `dev` | Bounded SIGTERM/SIGINT drain in `runtime/shutdown.ts` wired into `server.ts`; exit 0 clean / 1 timeout; 9 tests; no JS deleted |
 | CON-006 Deterministic OpenAPI generator | DONE | on `ts-migration/backend` | Zod->committed OpenAPI 3.1 (`generated/openapi-v1.json`)->`openapi-typescript` types; deterministic + Redocly + staleness gates; shared `ErrorEnvelope` component; headers documented; 100% coverage |
 | BE-003 Runtime configuration closure | DONE | on `ts-migration/backend` | Deleted legacy `config/env.js`, `config/dotenv.js`, `shared/logger.js` (superseded by typed `runtime/*`); deletion guard; backend JS 89->86 |
+| BE-004 PostgreSQL/Kysely foundation | DONE | on `ts-migration/backend` | Typed pool + Kysely + unit-of-work; Testcontainers integration (query/commit/rollback) green; podman-runtime wrapper for the sandbox; no JS deleted |
 
 ## Sequential Phase Gates
 
@@ -69,7 +70,7 @@ OpenAPI/types, and consumer fixtures before its backend/frontend implementation.
 |---|---|---|---|
 | BE-002 Graceful API lifecycle | DONE | BE-001 | Bounded signal drain in `server.ts`/`runtime/shutdown.ts` landed on `dev`; no JS deleted; packet [BE-002](./packets/BE-002-graceful-api-lifecycle.md) |
 | BE-003 Runtime configuration closure | DONE | CON-006, BE-002 | Deleted `src/config/*.js` + `src/shared/logger.js`; typed `runtime/*` authoritative; deletion guard; `eslint.config.mjs` classified as tooling exception; broader secret/DB/CORS config deferred to owning batches. Packet [BE-003](./packets/BE-003-runtime-configuration-closure.md) |
-| BE-004 PostgreSQL/Kysely foundation | BACKLOG | GATE-02, BE-003 | Typed pool, transaction context, DB types; legacy DB files remain assigned to final consumer cutover until no imports remain |
+| BE-004 PostgreSQL/Kysely foundation | DONE | BE-003, CON-006 (GATE-02 partial, deviation recorded) | Typed `pg` pool + Kysely + unit-of-work transaction + `Database` type; Testcontainers integration proven; no JS deleted (legacy DB files kept to consumer cutover). Packet [BE-004](./packets/BE-004-postgresql-kysely-foundation.md) |
 | BE-005 Migration/seed/check tooling | BACKLOG | BE-004 | Emitted TS operational commands; delete `scripts/check-db.js`, `migrate.js`, `seed-auth.js` |
 | BE-006 HTTP boundary primitives | BACKLOG | GATE-02, CON-006, BE-003 | Fastify request IDs, envelopes, Zod input/output, limits, idempotency; final legacy HTTP deletion belongs to BE-019 after all consumers move |
 | BE-007 Canonical identity/onboarding schema | BACKLOG | GATE-02, BE-004, BE-005 | Additive PostgreSQL schema/repositories/concurrency tests; completes through GATE-03 |

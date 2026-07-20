@@ -137,3 +137,22 @@ Deleted `src/config/env.js` (~140), `src/config/dotenv.js` (~40),
 12,600 -> ~12,392 lines**. `npm run check` green; no behavior change. Typed
 `runtime/environment.ts` + `runtime/logger.ts` (BE-001) are the sole config/
 observability authority.
+
+## Delta: BE-004 PostgreSQL/Kysely Foundation (branch `ts-migration/backend`)
+
+Additive persistence foundation; deletes no JavaScript (per BE-004 boundary).
+
+| Change | Value |
+|---|---:|
+| Production TS added (`src/db/config.ts`, `pool.ts`, `database.ts`, `types.ts`) | ~110 lines |
+| Unit test TS added (`db/config.test.ts` 4, `db/database.test.ts` 2) | 6 tests |
+| Integration test TS added (`test/integration/database.integration.test.ts`) | 3 tests |
+| Tooling TS added (`with-container-runtime.ts`, `vitest.integration.config.ts`) | 2 files |
+| Production JS/JSX deleted | 0 |
+
+Backend runtime after BE-004: unit suite 34 tests, 93.93% stmts / 93.02% branch
+/ 88.23% funcs; integration 3/3 against PostgreSQL 16 via Testcontainers. Deps
+(exact): `kysely` 0.29.3, `pg` 8.22.0, `@types/pg` 8.20.0, `testcontainers`
+12.0.4, `@testcontainers/postgresql` 12.0.4; 0 vulnerabilities. Backend authored
+JS/JSX backlog unchanged at 86 files. Native `ssh2`/`cpu-features` install
+scripts denied (optional, unused); `protobufjs` approved.
