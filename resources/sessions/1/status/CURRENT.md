@@ -2,8 +2,18 @@
 
 ## Last Verified Code Checkpoint
 
-- Task: `BE-007b` canonical identity/invite tables (child of BE-007), landed on
-  branch `ts-migration/backend` (PR #1 to `main`).
+- Task: `BE-007c` canonical session tables (child of BE-007), landed on branch
+  `ts-migration/backend` (PR #1 to `main`).
+- Result: additive migration `db/migrations/011_canonical_sessions.sql` adds
+  enums `session_channel`/`auth_session_state` and tables `auth_sessions`
+  (one-active-native-session-per-device partial unique; all-or-nothing
+  previous-refresh/CSRF groups; native-CSRF-null vs web-CSRF-present rules) and
+  `auth_refresh_tokens` (single-current-token partial unique; composite
+  `(session_id, user_id)` cascade FK). Proven on PostgreSQL 16 (integration
+  11/11), including NULL-safe CHECK fixes so partial CSRF/pair values are truly
+  rejected. Unit `check` green. Additive — no JS deleted (83).
+- BE-007 parent remains ACTIVE. Prior checkpoints: BE-007b, BE-007a, BE-005,
+  BE-004, BE-003, CON-006, BE-002.
 - Result: additive migration `db/migrations/010_canonical_identity.sql` adds
   enums `user_account_state`/`activation_invite_state`/`application_decision` and
   tables `users`, `user_credentials`, `application_reviews`, `activation_invites`
@@ -88,10 +98,10 @@
 
 ## Next Code Tasks
 
-1. `BE-007c` — `auth_sessions` + `auth_refresh_tokens` (refresh/CSRF rotation
-   columns, one-active-native-session-per-device, refresh-token cascade); then
-   BE-007d RBAC/audit/idempotency/rate-limit/legal-holds, BE-007e outbox/email,
-   BE-007f repositories, BE-007g bootstrap seed.
+1. `BE-007d` — RBAC (`roles`, `permissions`, `role_permissions`, `user_roles`),
+   `approval_actions`, `audit_events`, `idempotency_records`,
+   `rate_limit_windows`, `legal_holds`; then BE-007e outbox/email, BE-007f
+   repositories, BE-007g bootstrap seed.
 2. `BE-008` public consent/application/verification Fastify routes — begins
    deleting the onboarding service JS (`website/services`).
 3. `CON-007` consumer contract/package wiring (openapi-fetch client factory).

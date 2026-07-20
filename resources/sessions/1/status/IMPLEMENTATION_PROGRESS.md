@@ -34,6 +34,29 @@ backend, landing, admin, client, shared frontend, and operational entrypoints.
 | Phase 2: test and TypeScript foundation | In progress | Contract kernels plus authoritative TypeScript/Fastify liveness runtime; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
+## Completed Slice: Canonical Session Tables (BE-007c)
+
+**Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Third
+child packet of BE-007 (parent remains in progress).
+
+**Scope:** Additive migration `db/migrations/011_canonical_sessions.sql` adds
+enums `session_channel`/`auth_session_state` and tables `auth_sessions`,
+`auth_refresh_tokens` with their §3.2 constraints. Proven on PostgreSQL 16.
+
+**Explicitly deferred to later BE-007 children:** RBAC/audit/idempotency/
+rate-limit/legal-hold (BE-007d), outbox/email (BE-007e), the Kysely repositories
+(BE-007f), and the typed bootstrap seed (BE-007g).
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Migration applies on empty PG (`>= 009`) | Complete | BE-005 runner applies 009+010+011 |
+| Constraints verified | Complete | one-active-native-session/device, native/web CSRF rules, single-current refresh token, cascade FK — 11/11 integration |
+| NULL-safe CHECK correctness | Complete | web-requires-CSRF and all-or-nothing pairs rewritten with `IS NOT NULL` guards |
+| Unit check | Complete | `npm run check` green (42 tests) |
+| Review | Complete | Focused inline review; additive; no CRITICAL/HIGH/MEDIUM |
+| JS deletion | N/A | Additive; auth service JS deleted by BE-009/BE-010 |
+| Commit/push | Complete | Committed on `ts-migration/backend`; PR #1 updated |
+
 ## Completed Slice: Canonical Identity/Invite Tables (BE-007b)
 
 **Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Second

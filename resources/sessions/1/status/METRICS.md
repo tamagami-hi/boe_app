@@ -201,3 +201,18 @@ Backend authored JS/JSX backlog unchanged at **83 files**. Integration 10/10 vs
 PostgreSQL 16 (identity uniqueness, Argon2id hash-prefix + lock-window
 credential invariants, one-review-per-application, one-pending-invite composite
 ownership, verification-token user FK). Second child of BE-007.
+
+## Delta: BE-007c Canonical Session Tables (branch `ts-migration/backend`)
+
+Additive schema; deletes no JavaScript.
+
+| Change | Value |
+|---|---:|
+| Migration SQL added (`011_canonical_sessions.sql`: 2 tables, 2 enums) | 1 file |
+| Integration tests added | 1 (integration suite 10 -> 11) |
+| Production JS/JSX deleted | 0 |
+
+Backend authored JS/JSX backlog unchanged at **83 files**. Integration 11/11 vs
+PostgreSQL 16 (one-active-native-session-per-device, native/web CSRF rules,
+single-current refresh token, composite cascade FK; NULL-safe CHECK fixes).
+Third child of BE-007.

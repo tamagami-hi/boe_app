@@ -231,4 +231,68 @@ describe("canonical public-onboarding schema (BE-007a)", () => {
       ),
     ).rejects.toThrow()
   })
+
+  test("enforces session and refresh-token invariants (BE-007c)", async () => {
+    const user = await pool.query<{ id: string }>(
+      "insert into users (email_normalized, phone_e164, full_name, account_state, activated_at) " +
+        "values ('e@example.com', '+14155550400', 'Session User', 'active', now()) returning id",
+    )
+    const userId = user.rows[0]?.id
+
+    const session = await pool.query<{ id: string }>(
+      "insert into auth_sessions (user_id, channel, device_id_hash, refresh_key_version, expires_at) " +
+        "values ($1, 'native', decode(repeat('11', 32), 'hex'), 'rk1', now() + interval '30 days') returning id",
+      [userId],
+    )
+    const sessionId = session.rows[0]?.id
+
+    // one active native session per user+device
+    await expect(
+      pool.query(
+        "insert into auth_sessions (user_id, channel, device_id_hash, refresh_key_version, expires_at) " +
+          "values ($1, 'native', decode(repeat('11', 32), 'hex'), 'rk1', now() + interval '30 days')",
+        [userId],
+      ),
+    ).rejects.toThrow()
+
+    // native session must not carry CSRF fields
+    await expect(
+      pool.query(
+        "insert into auth_sessions (user_id, channel, refresh_key_version, csrf_token_hash, csrf_key_version, expires_at) " +
+          "values ($1, 'native', 'rk1', decode(repeat('22', 32), 'hex'), 'ck1', now() + interval '30 days')",
+        [userId],
+      ),
+    ).rejects.toThrow()
+
+    // web session must carry CSRF
+    await expect(
+      pool.query(
+        "insert into auth_sessions (user_id, channel, refresh_key_version, expires_at) " +
+          "values ($1, 'web', 'rk1', now() + interval '30 days')",
+        [userId],
+      ),
+    ).rejects.toThrow()
+
+    // one current (unused/unrevoked) refresh token per session
+    await pool.query(
+      "insert into auth_refresh_tokens (session_id, user_id, generation, token_hash, token_key_version, expires_at) " +
+        "values ($1, $2, 0, decode(repeat('33', 32), 'hex'), 'rk1', now() + interval '30 days')",
+      [sessionId, userId],
+    )
+    await expect(
+      pool.query(
+        "insert into auth_refresh_tokens (session_id, user_id, generation, token_hash, token_key_version, expires_at) " +
+          "values ($1, $2, 1, decode(repeat('44', 32), 'hex'), 'rk1', now() + interval '30 days')",
+        [sessionId, userId],
+      ),
+    ).rejects.toThrow()
+
+    // deleting the session cascades to its refresh tokens
+    await pool.query("delete from auth_sessions where id = $1", [sessionId])
+    const remaining = await pool.query<{ c: number }>(
+      "select count(*)::int as c from auth_refresh_tokens where session_id = $1",
+      [sessionId],
+    )
+    expect(remaining.rows[0]?.c).toBe(0)
+  })
 })
