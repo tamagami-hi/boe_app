@@ -2,34 +2,40 @@
 
 ## Last Verified Code Checkpoint
 
-- Commit: `9e884ad` (`feat: replace backend server runtime with TypeScript`)
-- Branch/remote: `main` pushed to `origin/main`
-- Result: authoritative strict TypeScript/Fastify backend liveness runtime;
-  superseded JS server, JS test, and JS dev launcher deleted.
-- Validation: Node 22.20.0/npm 11.16.0 check passed with 18 tests and coverage
-  above 80% on all metrics; real source/dist CLI smokes passed; digest-pinned
-  Docker image built and a non-root container reported healthy; contracts stayed
-  113/113 at 100% coverage; reviews found no remaining CRITICAL/HIGH/MEDIUM.
+- Task: `BE-002` graceful API lifecycle, landed on branch `dev` (PR to `main`).
+- Baseline before this batch: `main` at `f991298`; earlier runtime reset
+  `9e884ad` (BE-001).
+- Result: bounded graceful `SIGTERM`/`SIGINT` drain in
+  `backend_controller/src/runtime/shutdown.ts`, wired into `server.ts`; the
+  process now drains via Fastify `close()` and exits `0` on a clean close, `1`
+  on timeout/error, instead of Node's default signal termination. Additive
+  only — no backend JS deleted (backlog stays 89 files / 12,600 lines).
+- Validation: Node 22.22.3/npm 11.16.0 `npm run check` green — 27 tests,
+  coverage 93.69% stmts / 91.89% branch / 90.9% funcs (`shutdown.ts`
+  97.18%/95%/80%), build, and source+dist smoke asserting SIGTERM -> exit 0.
+  semantic_reviewer review: no CRITICAL/HIGH; one MEDIUM and two LOW resolved.
+- Guards: `git diff --check` clean; Legacy tree hash matches
+  `d5fd7425...`; branch pushed to `dev`.
 
-## Active Documentation Task
+## Active Task
 
-- Task: `DOC-001` in [TASKS.md](../TASKS.md)
-- Packet: [DOC-001 session working model](../packets/DOC-001-session-working-model.md)
-- Log: [DOC-001 execution evidence](../logs/DOC-001-session-working-model.md)
-- Objective: establish the BOE-specific working model, reorganize Session 1,
-  create the complete migration/deletion ledger, and apply logs/status/metrics.
-- Safety boundary: do not modify `resources/sessions/Legacy/**`.
-- Reference model: `/home/nethunter07/PROJECTS/algo_engine/WORKING_MODEL.md`.
+- `CON-006` deterministic OpenAPI generator is the next batch (owner
+  `packages/contracts`). Its packet/log must be instantiated before it becomes
+  `ACTIVE`. It unblocks `BE-003` (config closure), which is the first backend
+  batch that deletes legacy JS.
+- `DOC-001` remains in `REVIEW` (documentation-only; its Legacy guard now
+  reproduces since the Legacy tree is present).
 
-## Next Code Tasks After DOC-001
+## Next Code Tasks
 
 1. `CON-006` deterministic OpenAPI generation and staleness guard.
-2. `BE-002` graceful SIGTERM/SIGINT lifecycle before stateful routes.
-3. `BE-003` typed runtime configuration closure and deletion of legacy config JS.
+2. `CON-007` consumer contract/package wiring.
+3. `BE-003` typed runtime configuration closure and deletion of legacy config JS
+   (`src/config/*.js`, `src/shared/logger.js`).
 
-No migration code packet is active. Before a candidate becomes `READY`, create
-its complete packet and dedicated log under Session 1. Dependencies and
-acceptance remain authoritative in `TASKS.md`.
+Before a candidate becomes `READY`, create its complete packet and dedicated log
+under Session 1. Dependencies and acceptance remain authoritative in
+[TASKS.md](../TASKS.md).
 
 ## Resume Commands
 

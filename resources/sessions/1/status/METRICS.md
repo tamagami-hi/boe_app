@@ -83,3 +83,22 @@ authored-source total.
 
 Each completed packet appends a new snapshot or delta. Do not overwrite a prior
 checkpoint's figures without recording the correction and reason.
+
+## Delta: BE-002 Graceful API Lifecycle (branch `dev`)
+
+Additive runtime hardening; deletes no JavaScript.
+
+| Change | Lines |
+|---|---:|
+| Production TS added (`src/runtime/shutdown.ts`) | +127 |
+| Production TS changed (`src/server.ts` main block) | +12 / -5 |
+| Test TS added (`src/runtime/shutdown.test.ts`, 9 tests) | +185 |
+| Tooling TS changed (`scripts/smoke-entrypoint.ts`) | +40 / -8 |
+| Production JS/JSX deleted | 0 |
+| Test JS/JSX deleted | 0 |
+
+Backend migrated runtime after BE-002: ~348 production TS lines (4 prior + new
+`shutdown.ts`), 456 test TS lines, plus operational smoke/config TS. Remaining
+authored backend JS/JSX backlog is unchanged at 89 files / 12,600 lines; the
+global JS-family backlog figures are unchanged because BE-002 deleted no JS.
+`npm run check`: 27 tests, 93.69% stmts / 91.89% branch / 90.9% funcs.

@@ -34,6 +34,35 @@ backend, landing, admin, client, shared frontend, and operational entrypoints.
 | Phase 2: test and TypeScript foundation | In progress | Contract kernels plus authoritative TypeScript/Fastify liveness runtime; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
+## Completed Slice: Graceful API Lifecycle (BE-002)
+
+**Status:** Complete (branch `dev`, PR to `main`).
+
+**Scope:** Add bounded, tested graceful shutdown to the authoritative
+TypeScript/Fastify runtime. New `src/runtime/shutdown.ts` provides
+`performGracefulShutdown` (races Fastify `close()` against an unref'd, always
+cleared deadline; resolves `closed`/`timeout`/`error`) and
+`registerGracefulShutdown` (idempotent single-drain `SIGTERM`/`SIGINT` handlers,
+exit `0` clean / `1` timeout|error, injectable `target`/`exit`, returns an
+unregister). `server.ts` wires it after start. `scripts/smoke-entrypoint.ts` now
+asserts a graceful exit code `0` on `SIGTERM` in both source and dist modes.
+
+**Explicitly out of scope:** stateful routes, PostgreSQL, workers, providers,
+config closure, and any JS deletion.
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Tests before implementation | Complete | `shutdown.test.ts` RED on missing module; smoke RED because the un-wired server exited by `SIGTERM` signal, not code 0 |
+| Implementation GREEN | Complete | 9 shutdown tests pass; full suite 27/27 |
+| Coverage >=80% (>=90% lifecycle branch) | Complete | 93.69% stmts / 91.89% branch / 90.9% funcs; `shutdown.ts` 97.18% stmts / 95% branch |
+| Typecheck/lint/build/smoke | Complete | Strict typecheck, typed ESLint, build, and source+dist smoke (SIGTERM -> exit 0) pass on Node 22.22.3 / npm 11.16.0 |
+| Reviews | Complete | semantic_reviewer: no CRITICAL/HIGH; MEDIUM (drain proof) fixed with a deterministic drain-wait test; two LOW addressed/tracked |
+| JS deletion | N/A | Additive; backend backlog unchanged at 89 files / 12,600 lines |
+| Commit/push | Complete | Conventional commit on `dev`; PR opened to `main` |
+
+**Tracked LOW:** the startup `.catch` could mislabel a synchronous
+`registerGracefulShutdown` throw as `BACKEND_STARTUP_FAILURE`; latent only.
+
 ## Completed Slice: Backend TypeScript Runtime Reset And Liveness
 
 **Status:** Complete

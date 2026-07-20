@@ -13,7 +13,6 @@ The exact non-overlapping count partition is in
 | DOC-001 Session working model and reorganization | REVIEW | BE-001 | [Packet](./packets/DOC-001-session-working-model.md) | Migration working model, task ledger, logs/status/templates, repaired links, and Legacy hash guard committed |
 | CON-006 Deterministic OpenAPI generator | BACKLOG | CON-001..005 | Not instantiated | One committed generated OpenAPI artifact/staleness test; no duplicate schema authority; decide contract ESLint MJS tooling |
 | CON-007 Consumer contract/package wiring | BACKLOG | CON-006 | Not instantiated | Backend/landing/workspace builds consume `@beonedge/contracts` from repository-root contexts |
-| BE-002 Graceful API lifecycle | BACKLOG | BE-001 | Not instantiated | SIGTERM/SIGINT drain tests and implementation before any stateful route/worker |
 | BE-003 Runtime configuration closure | BACKLOG | CON-006, BE-002 | Not instantiated | Replace/delete config/shared logger JS; strict startup/observability boundary; decide backend ESLint MJS tooling |
 
 ## Completed Foundations
@@ -27,6 +26,7 @@ The exact non-overlapping count partition is in
 | CON-004 Native activation contract | DONE | `dedeeb6` | Native-only activation contract |
 | CON-005 Native authentication contracts | DONE | `45fc7f7` | Login/refresh/logout contracts |
 | BE-001 TypeScript/Fastify liveness runtime | DONE | `9e884ad` | Replaced 164 production JS + 47 test JS lines; emitted-only image and GET-only liveness |
+| BE-002 Graceful API lifecycle | DONE | on `dev` | Bounded SIGTERM/SIGINT drain in `runtime/shutdown.ts` wired into `server.ts`; exit 0 clean / 1 timeout; 9 tests; no JS deleted |
 
 ## Sequential Phase Gates
 
@@ -66,7 +66,7 @@ OpenAPI/types, and consumer fixtures before its backend/frontend implementation.
 
 | Task | Status | Depends on | TypeScript result and legacy deletion target |
 |---|---|---|---|
-| BE-002 Graceful API lifecycle | BACKLOG | BE-001 | Tested signal drain and bounded shutdown in `server.ts`; no JS deletion; instantiate packet before `READY` |
+| BE-002 Graceful API lifecycle | DONE | BE-001 | Bounded signal drain in `server.ts`/`runtime/shutdown.ts` landed on `dev`; no JS deleted; packet [BE-002](./packets/BE-002-graceful-api-lifecycle.md) |
 | BE-003 Runtime configuration closure | BACKLOG | CON-006, BE-002 | Typed env/secret/release config and observability; delete `src/config/*.js` and `src/shared/logger.js`; classify `eslint.config.mjs` as tooling conversion or explicit exception |
 | BE-004 PostgreSQL/Kysely foundation | BACKLOG | GATE-02, BE-003 | Typed pool, transaction context, DB types; legacy DB files remain assigned to final consumer cutover until no imports remain |
 | BE-005 Migration/seed/check tooling | BACKLOG | BE-004 | Emitted TS operational commands; delete `scripts/check-db.js`, `migrate.js`, `seed-auth.js` |

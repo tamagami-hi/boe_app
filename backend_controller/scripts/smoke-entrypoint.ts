@@ -57,16 +57,37 @@ const waitForLiveness = async (child: ChildProcess, port: number): Promise<void>
   throw new Error("Entrypoint did not become live before timeout")
 }
 
-const stopProcess = async (child: ChildProcess): Promise<void> => {
-  if (child.exitCode !== null) return
+type ExitResult = Readonly<{
+  code: number | null
+  signal: NodeJS.Signals | null
+  killedByTimeout: boolean
+}>
+
+const stopProcessGracefully = async (child: ChildProcess): Promise<ExitResult> => {
+  const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
+    (resolve) => {
+      child.once("exit", (code, signal) => {
+        resolve({ code, signal })
+      })
+    },
+  )
+
   child.kill("SIGTERM")
 
-  await Promise.race([
-    new Promise<void>((resolve) => child.once("exit", () => resolve())),
-    delay(STOP_TIMEOUT_MS).then(() => {
+  const controller = new AbortController()
+  let killedByTimeout = false
+  const timeout = delay(STOP_TIMEOUT_MS, undefined, { signal: controller.signal }).then(
+    () => {
+      killedByTimeout = true
       child.kill("SIGKILL")
-    }),
-  ])
+    },
+    () => undefined,
+  )
+
+  const result = await exited
+  controller.abort()
+  await timeout
+  return { code: result.code, signal: result.signal, killedByTimeout }
 }
 
 const runSmoke = async (mode: SmokeMode): Promise<void> => {
@@ -74,8 +95,19 @@ const runSmoke = async (mode: SmokeMode): Promise<void> => {
   const child = createEntrypointProcess(mode, port)
   try {
     await waitForLiveness(child, port)
+
+    const result = await stopProcessGracefully(child)
+    if (result.killedByTimeout) {
+      throw new Error(`Entrypoint did not exit within ${STOP_TIMEOUT_MS}ms of SIGTERM`)
+    }
+    if (result.signal !== null) {
+      throw new Error(`Entrypoint was terminated by ${result.signal} instead of draining`)
+    }
+    if (result.code !== 0) {
+      throw new Error(`Entrypoint exited with code ${String(result.code)} instead of 0`)
+    }
   } finally {
-    await stopProcess(child)
+    if (child.exitCode === null) child.kill("SIGKILL")
   }
 }
 

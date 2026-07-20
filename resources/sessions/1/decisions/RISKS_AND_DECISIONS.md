@@ -21,7 +21,7 @@
 
 | Risk | Severity now | Required closure |
 |---|---|---|
-| Liveness server has no graceful signal drain | LOW while stateless | `BE-002` before any stateful route or worker |
+| ~~Liveness server has no graceful signal drain~~ | RESOLVED by `BE-002` | Bounded SIGTERM/SIGINT drain (`runtime/shutdown.ts`) wired into `server.ts`; exits 0 clean / 1 on timeout; proven by unit tests and source/dist smoke |
 | Incomplete TypeScript runtime could be mistaken for release-ready | HIGH if published | Keep release blocked until readiness/routes/DB/consumers/CI gates pass |
 | 12,600 lines of unreachable backend JS remain | Migration risk | Execute `BE-003` through `BE-020`; delete only with real replacements |
 | 20,480 lines of authored frontend JS/JSX remain | Migration risk | Execute FE/AD packets with component/E2E and deletion guards |
