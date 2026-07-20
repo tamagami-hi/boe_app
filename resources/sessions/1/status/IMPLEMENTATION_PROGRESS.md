@@ -34,6 +34,28 @@ backend, landing, admin, client, shared frontend, and operational entrypoints.
 | Phase 2: test and TypeScript foundation | In progress | Contract kernels plus authoritative TypeScript/Fastify liveness runtime; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
+## Completed Slice: Public Consent-Documents Route (BE-008a)
+
+**Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). First
+child of BE-008; the first canonical `/v1` route end-to-end.
+
+**Scope:** `src/repositories/consentRepository.ts` (`findCurrentDocuments`) and
+`src/routes/publicOnboardingRoutes.ts` (`GET /v1/public/consent-documents`),
+composed into `createApplication` and proven on PostgreSQL 16.
+
+**Explicitly deferred:** `POST /v1/applications` (BE-008b); verify-email +
+deletion of `website/services/onboardingService.js` (BE-008c); the rest of
+`ConsentRepository` (BE-008b).
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Route returns authoritative docs | Complete | integration: seeded terms/privacy returned with matching SHA-256 (16/16) |
+| One current doc per kind | Complete | query filters `retired_at IS NULL`; partial unique index enforces |
+| Envelope | Complete | `reply.sendData` success envelope via the BE-006 boundary |
+| Unit check | Complete | `npm run check` green |
+| JS deletion | N/A | deferred to BE-008c |
+| Commit/push | Complete | Committed on `ts-migration/backend`; PR #1 updated |
+
 ## Completed Slice: Fastify HTTP Boundary Primitives (BE-006)
 
 **Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). The typed

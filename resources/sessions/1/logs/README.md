@@ -25,3 +25,5 @@ Completed logs preserve their evidence. Correct factual errors explicitly; do
 not rewrite prior RED/GREEN history to match later architecture.
 
 | BE-006 | DONE | [Fastify HTTP boundary primitives](./BE-006-http-boundary-primitives.md) | on `ts-migration/backend` |
+
+| BE-008a | DONE | [Public consent-documents route](./BE-008a-public-consent-documents-route.md) | on `ts-migration/backend` |

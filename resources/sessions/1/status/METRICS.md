@@ -298,3 +298,16 @@ Backend authored JS/JSX backlog unchanged at **83 files**. New boundary modules
 100% covered; integration unchanged (15/15). New modules named
 `errorCatalog`/`idempotencyProtocol` to avoid a `.ts`<->`.js` basename collision
 with the legacy `errors.js`/`idempotency.js` (resolved this batch).
+
+## Delta: BE-008a Public Consent-Documents Route (branch `ts-migration/backend`)
+
+First canonical `/v1` route; deletes no JavaScript yet.
+
+| Change | Value |
+|---|---:|
+| Source TS added (`repositories/consentRepository.ts`, `routes/publicOnboardingRoutes.ts`) | 2 files |
+| Integration tests added (`publicRoutes.integration.test.ts`) | 1 (integration 15 -> 16 across 2 files) |
+| Production JS/JSX deleted | 0 |
+
+Backend authored JS/JSX backlog unchanged at **83 files**. First real repository
+implementation + route proven end-to-end on PostgreSQL 16. First child of BE-008.

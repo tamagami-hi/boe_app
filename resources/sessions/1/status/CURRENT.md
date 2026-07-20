@@ -2,6 +2,21 @@
 
 ## Last Verified Code Checkpoint
 
+- Task: `BE-008a` public consent-documents route (child of BE-008), landed on
+  branch `ts-migration/backend` (PR #1 to `main`).
+- Result: the first canonical `/v1` route end-to-end. `src/repositories/consentRepository.ts`
+  (`findCurrentDocuments` — current, non-retired docs per kind) and
+  `src/routes/publicOnboardingRoutes.ts` register `GET /v1/public/consent-documents`,
+  which returns a success envelope of the current terms/privacy documents with
+  `publicPath`, `contentMarkdown`, and lowercase-hex `sha256`. Proven on
+  PostgreSQL 16 through the typed Fastify app (`app.inject`) after migrate + seed
+  (integration 16/16 across 2 files). Unit `check` green. Additive — no JS
+  deleted (83); onboarding JS deletion lands in BE-008c.
+- Prior checkpoints: BE-006, BE-007g (closed BE-007), BE-007f, BE-007e, BE-007d,
+  BE-007c, BE-007b, BE-007a, BE-005, BE-004, BE-003, CON-006, BE-002.
+
+## Superseded Code Checkpoint (BE-006)
+
 - Task: `BE-006` Fastify HTTP boundary primitives, landed on branch
   `ts-migration/backend` (PR #1 to `main`).
 - Result: typed HTTP boundary in `src/http/{errorCatalog,envelope,validation,idempotencyProtocol,boundary}.ts`
@@ -182,11 +197,13 @@
 
 ## Next Code Tasks
 
-1. `BE-008` public consent/application/verification Fastify routes + the first
-   repository implementations (ApplicationRepository, ConsentRepository,
-   VerificationTokenRepository) — begins the first onboarding JS deletion and
-   wires the idempotency orchestrator to the real repository.
-2. `BE-009` password/token/session security core — begins
+1. `BE-008b` — `POST /v1/applications` submission (duplicate/cooldown branches) +
+   ApplicationRepository/ConsentRepository.recordAcceptances/VerificationToken/
+   Idempotency/Outbox/EmailDelivery/Audit repository impls; wires
+   `executeIdempotent` to the real repository.
+2. `BE-008c` — `POST /v1/applications/verify-email` + delete legacy
+   `website/services/onboardingService.js` (first onboarding JS deletion).
+3. `BE-009` password/token/session security core — begins.
    deleting the onboarding service JS (`website/services`).
 3. `CON-007` consumer contract/package wiring (openapi-fetch client factory).
 
