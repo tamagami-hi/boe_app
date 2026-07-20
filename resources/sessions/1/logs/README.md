@@ -17,6 +17,7 @@ template before production implementation starts.
 | BE-007b | DONE | [Canonical identity/invite tables](./BE-007b-canonical-identity-tables.md) | on `ts-migration/backend` |
 | BE-007c | DONE | [Canonical session tables](./BE-007c-canonical-session-tables.md) | on `ts-migration/backend` |
 | BE-007d | DONE | [Canonical RBAC/audit/platform tables](./BE-007d-rbac-audit-platform-tables.md) | on `ts-migration/backend` |
+| BE-007e | DONE | [Canonical outbox/email delivery tables](./BE-007e-outbox-email-tables.md) | on `ts-migration/backend` |
 
 Completed logs preserve their evidence. Correct factual errors explicitly; do
 not rewrite prior RED/GREEN history to match later architecture.

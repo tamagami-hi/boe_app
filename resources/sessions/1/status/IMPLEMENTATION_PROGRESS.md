@@ -34,6 +34,31 @@ backend, landing, admin, client, shared frontend, and operational entrypoints.
 | Phase 2: test and TypeScript foundation | In progress | Contract kernels plus authoritative TypeScript/Fastify liveness runtime; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
+## Completed Slice: Canonical Outbox/Email Delivery Tables (BE-007e)
+
+**Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Fifth
+child packet of BE-007 (parent remains in progress).
+
+**Scope:** Additive migration `db/migrations/013_canonical_outbox_email.sql`
+adds enums `outbox_state`/`email_delivery_state` and the tables `outbox_events`,
+`email_deliveries`, `email_provider_events`, `email_suppressions` with their
+§3.3 constraints. Proven on PostgreSQL 16.
+
+**Explicitly deferred to later BE-007 children / other tasks:** the Kysely
+repositories (BE-007f) and the typed bootstrap seed (BE-007g). The worker
+claim/lease state machine, exponential-backoff schedule, AES-256-GCM envelope
+encryption, and SNS signature validation are command/worker-enforced.
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Migration applies on empty PG (`>= 009`) | Complete | BE-005 runner applies 009-013 |
+| Constraints verified | Complete | outbox dedup + transit-only lease group, template<->subject FK matrix, 32-byte recipient HMAC, all-or-null PII envelope, unique SNS id with unmatched-correlation commit, suppression PK + lift group — 13/13 integration |
+| NULL-safe CHECK correctness | Complete | envelope/lease/lift groups written as explicit all-null-or-all-present disjunctions |
+| Unit check | Complete | `npm run check` green (coverage 87.69%) |
+| Review | Complete | Focused inline review; additive; no CRITICAL/HIGH/MEDIUM |
+| JS deletion | N/A | Additive; outbox/email service JS deleted by a later route/worker task |
+| Commit/push | Complete | Committed on `ts-migration/backend`; PR #1 updated |
+
 ## Completed Slice: Canonical RBAC/Audit/Platform Tables (BE-007d)
 
 **Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Fourth

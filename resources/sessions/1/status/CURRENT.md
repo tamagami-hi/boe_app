@@ -2,6 +2,23 @@
 
 ## Last Verified Code Checkpoint
 
+- Task: `BE-007e` canonical outbox/email delivery tables (child of BE-007),
+  landed on branch `ts-migration/backend` (PR #1 to `main`).
+- Result: additive migration `db/migrations/013_canonical_outbox_email.sql` adds
+  enums `outbox_state`/`email_delivery_state` and 4 tables — `outbox_events`,
+  `email_deliveries`, `email_provider_events`, `email_suppressions` — with their
+  §3.3 constraints (unique dedup key + transit-only all-or-null lease group;
+  template<->subject FK matrix; recipient HMAC 32 bytes; all-or-null recipient /
+  failure / provider AES-256-GCM envelopes with 12-byte nonce, GCM tag, and
+  post-erasure nulling; unique SNS message id with valid-but-unknown correlation
+  still committing as unmatched; suppression composite PK + lift group). Proven
+  on PostgreSQL 16 (integration 13/13). Unit `check` green. Additive — no JS
+  deleted (83).
+- BE-007 parent remains ACTIVE. Prior checkpoints: BE-007d, BE-007c, BE-007b,
+  BE-007a, BE-005, BE-004, BE-003, CON-006, BE-002.
+
+## Superseded Code Checkpoint (BE-007d)
+
 - Task: `BE-007d` canonical RBAC/audit/platform tables (child of BE-007), landed
   on branch `ts-migration/backend` (PR #1 to `main`).
 - Result: additive migration `db/migrations/012_canonical_rbac_platform.sql` adds
@@ -109,8 +126,8 @@
 
 ## Next Code Tasks
 
-1. `BE-007e` — `outbox_events` + email delivery/provider-event tables
-   (spec `03` §3.3); then BE-007f Kysely repositories, BE-007g bootstrap seed.
+1. `BE-007f` — Kysely repository interfaces over the canonical tables
+   (spec `03` §7); then BE-007g bootstrap seed.
 2. `BE-008` public consent/application/verification Fastify routes — begins
    deleting the onboarding service JS (`website/services`).
 3. `CON-007` consumer contract/package wiring (openapi-fetch client factory).

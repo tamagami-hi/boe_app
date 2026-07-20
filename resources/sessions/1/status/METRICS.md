@@ -233,3 +233,20 @@ closed 8-code maker-checker set with maker<>checker, idempotency scope
 uniqueness, positive rate-limit counts, legal-hold allowlist +
 one-unreleased-per-entity; NULL-safe all-or-nothing groups). Fourth child of
 BE-007.
+
+## Delta: BE-007e Canonical Outbox/Email Delivery Tables (branch `ts-migration/backend`)
+
+Additive schema; deletes no JavaScript.
+
+| Change | Value |
+|---|---:|
+| Migration SQL added (`013_canonical_outbox_email.sql`: 4 tables, 2 enums) | 1 file |
+| Integration tests added | 1 (integration suite 12 -> 13) |
+| Production JS/JSX deleted | 0 |
+
+Backend authored JS/JSX backlog unchanged at **83 files**. Integration 13/13 vs
+PostgreSQL 16 (outbox dedup + transit-only all-or-null lease group,
+template<->subject FK matrix, 32-byte recipient HMAC, all-or-null recipient/
+failure/provider AES-256-GCM envelopes, unique SNS message id with valid-but-
+unknown correlation still committing, suppression composite PK + lift group).
+Fifth child of BE-007.

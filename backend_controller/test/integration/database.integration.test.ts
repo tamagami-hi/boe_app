@@ -398,4 +398,127 @@ describe("canonical public-onboarding schema (BE-007a)", () => {
       ),
     ).rejects.toThrow()
   })
+
+  test("enforces outbox and email-delivery invariants (BE-007e)", async () => {
+    // outbox deduplication key is unique
+    await pool.query(
+      "insert into outbox_events (topic, event_type, event_version, aggregate_type, aggregate_id, occurred_at, request_id, deduplication_key, payload) " +
+        "values ('email', 'application.verification_requested', 1, 'application', gen_random_uuid(), now(), gen_random_uuid(), 'dedup-1', '{}'::jsonb)",
+    )
+    await expect(
+      pool.query(
+        "insert into outbox_events (topic, event_type, event_version, aggregate_type, aggregate_id, occurred_at, request_id, deduplication_key, payload) " +
+          "values ('email', 'application.verification_requested', 1, 'application', gen_random_uuid(), now(), gen_random_uuid(), 'dedup-1', '{}'::jsonb)",
+      ),
+    ).rejects.toThrow()
+
+    // lease fields are not allowed outside a transit state
+    await expect(
+      pool.query(
+        "insert into outbox_events (topic, event_type, event_version, aggregate_type, aggregate_id, occurred_at, request_id, deduplication_key, payload, locked_at) " +
+          "values ('email', 'e', 1, 'application', gen_random_uuid(), now(), gen_random_uuid(), 'dedup-lease-bad', '{}'::jsonb, now())",
+      ),
+    ).rejects.toThrow()
+    // a fully-populated lease in a transit state is accepted
+    await pool.query(
+      "insert into outbox_events (topic, event_type, event_version, aggregate_type, aggregate_id, occurred_at, request_id, deduplication_key, payload, state, locked_at, locked_by, lease_expires_at) " +
+        "values ('email', 'e', 1, 'application', gen_random_uuid(), now(), gen_random_uuid(), 'dedup-lease-ok', '{}'::jsonb, 'processing', now(), 'worker-1', now() + interval '30 seconds')",
+    )
+
+    // subject: an application with a pending verification token for a verify_email delivery
+    const application = await pool.query<{ id: string }>(
+      "insert into applications (email_normalized, phone_e164, full_name) " +
+        "values ('h@example.com', '+14155550600', 'Email User') returning id",
+    )
+    const applicationId = application.rows[0]?.id
+    const token = await pool.query<{ id: string }>(
+      "insert into verification_tokens (application_id, purpose, token_hash, token_key_version, expires_at) " +
+        "values ($1, 'application_email_verification', decode(repeat('66', 32), 'hex'), 'k1', now() + interval '1 day') returning id",
+      [applicationId],
+    )
+    const tokenId = token.rows[0]?.id
+    const deliveryOutbox = await pool.query<{ id: string }>(
+      "insert into outbox_events (topic, event_type, event_version, aggregate_type, aggregate_id, occurred_at, request_id, deduplication_key, payload) " +
+        "values ('email', 'email.verify', 1, 'email_delivery', gen_random_uuid(), now(), gen_random_uuid(), 'dedup-del-1', '{}'::jsonb) returning id",
+    )
+    const deliveryOutboxId = deliveryOutbox.rows[0]?.id
+
+    // a well-formed verify_email delivery is accepted
+    await pool.query(
+      "insert into email_deliveries (outbox_event_id, application_id, verification_token_id, template_key, template_version, recipient_hmac, recipient_masked, suppression_hmac_key_version, ses_configuration_set) " +
+        "values ($1, $2, $3, 'verify_email', 'v1', decode(repeat('55', 32), 'hex'), 'h***@e***.com', 'sk1', 'cfg-set')",
+      [deliveryOutboxId, applicationId, tokenId],
+    )
+
+    // verify_email template requires its verification token
+    await expect(
+      pool.query(
+        "insert into email_deliveries (outbox_event_id, application_id, template_key, template_version, recipient_hmac, recipient_masked, suppression_hmac_key_version, ses_configuration_set) " +
+          "values ($1, $2, 'verify_email', 'v1', decode(repeat('55', 32), 'hex'), 'h***@e***.com', 'sk1', 'cfg-set')",
+        [deliveryOutboxId, applicationId],
+      ),
+    ).rejects.toThrow()
+
+    // recipient HMAC must be exactly 32 bytes
+    await expect(
+      pool.query(
+        "insert into email_deliveries (outbox_event_id, application_id, verification_token_id, template_key, template_version, recipient_hmac, recipient_masked, suppression_hmac_key_version, ses_configuration_set) " +
+          "values ($1, $2, $3, 'verify_email', 'v1', decode(repeat('55', 16), 'hex'), 'h***@e***.com', 'sk1', 'cfg-set')",
+        [deliveryOutboxId, applicationId, tokenId],
+      ),
+    ).rejects.toThrow()
+
+    // a partially-populated recipient PII envelope is rejected
+    await expect(
+      pool.query(
+        "insert into email_deliveries (outbox_event_id, application_id, verification_token_id, template_key, template_version, recipient_hmac, recipient_masked, recipient_ciphertext, suppression_hmac_key_version, ses_configuration_set) " +
+          "values ($1, $2, $3, 'verify_email', 'v1', decode(repeat('55', 32), 'hex'), 'h***@e***.com', decode(repeat('77', 32), 'hex'), 'sk1', 'cfg-set')",
+        [deliveryOutboxId, applicationId, tokenId],
+      ),
+    ).rejects.toThrow()
+
+    // a delivery with no application/user subject is rejected
+    await expect(
+      pool.query(
+        "insert into email_deliveries (template_key, template_version, recipient_hmac, recipient_masked, suppression_hmac_key_version, ses_configuration_set, state) " +
+          "values ('application_rejected', 'v1', decode(repeat('55', 32), 'hex'), 'h***@e***.com', 'sk1', 'cfg-set', 'sent')",
+      ),
+    ).rejects.toThrow()
+
+    // provider event: a valid but unknown correlation still commits as unmatched
+    const providerEvent = await pool.query<{ id: string }>(
+      "insert into email_provider_events (sns_message_id, sns_topic_arn, sns_type, payload_sha256, state, delivery_correlation_id, expires_at) " +
+        "values ('sns-1', 'arn:aws:sns:...', 'Notification', decode(repeat('88', 32), 'hex'), 'unmatched', gen_random_uuid(), now() + interval '7 days') returning id",
+    )
+    const providerEventId = providerEvent.rows[0]?.id
+    // duplicate SNS message id is rejected
+    await expect(
+      pool.query(
+        "insert into email_provider_events (sns_message_id, sns_topic_arn, sns_type, payload_sha256, expires_at) " +
+          "values ('sns-1', 'arn:aws:sns:...', 'Notification', decode(repeat('99', 32), 'hex'), now() + interval '7 days')",
+      ),
+    ).rejects.toThrow()
+
+    // suppression: a partial lift group is rejected; a clean row is accepted
+    await expect(
+      pool.query(
+        "insert into email_suppressions (recipient_hmac, suppression_hmac_key_version, reason, source_event_id, lifted_at) " +
+          "values (decode(repeat('aa', 32), 'hex'), 'sk1', 'bounce', $1, now())",
+        [providerEventId],
+      ),
+    ).rejects.toThrow()
+    await pool.query(
+      "insert into email_suppressions (recipient_hmac, suppression_hmac_key_version, reason, source_event_id) " +
+        "values (decode(repeat('aa', 32), 'hex'), 'sk1', 'bounce', $1)",
+      [providerEventId],
+    )
+    // duplicate suppression (same hmac + key version) is rejected
+    await expect(
+      pool.query(
+        "insert into email_suppressions (recipient_hmac, suppression_hmac_key_version, reason, source_event_id) " +
+          "values (decode(repeat('aa', 32), 'hex'), 'sk1', 'complaint', $1)",
+        [providerEventId],
+      ),
+    ).rejects.toThrow()
+  })
 })
