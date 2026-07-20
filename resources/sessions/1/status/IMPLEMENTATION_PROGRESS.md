@@ -34,6 +34,22 @@ backend, landing, admin, client, shared frontend, and operational entrypoints.
 | Phase 2: test and TypeScript foundation | In progress | Contract kernels plus authoritative TypeScript/Fastify liveness runtime; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
+## Completed Slice: Auth Session + Credential Repositories (BE-010a)
+
+**Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). First child
+of BE-010. Additive native-session DB layer.
+
+**Scope:** `credentialRepository` (exists/create) + `authSessionRepository`
+(createNativeSession, lockByRefreshTokenHash, revokeAllForUser).
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Credential create/exists | Complete | integration on real PG |
+| Native session + refresh | Complete | integration: session active/native + gen-0 refresh; row-lock lookup |
+| Family revoke | Complete | integration: active session + current refresh revoked with counts |
+| Unit + integration | Complete | `npm run check` green; integration coverage 99.64% stmts |
+| Commit/push | Complete | Committed on `ts-migration/backend`; PR #1 updated |
+
 ## Completed Slice: Refresh/CSRF Session-Token Primitives (BE-009d) — closes BE-009
 
 **Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Fourth

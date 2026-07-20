@@ -2,6 +2,20 @@
 
 ## Last Verified Code Checkpoint
 
+- Task: `BE-010a` auth session + credential repositories (child of BE-010),
+  landed on branch `ts-migration/backend` (PR #1 to `main`).
+- Result: `src/repositories/credentialRepository.ts` (exists/create, Argon2id
+  hash stored only) and `src/repositories/authSessionRepository.ts`
+  (createNativeSession = session + generation-0 refresh atomically;
+  lockByRefreshTokenHash with row locks; revokeAllForUser with counts). Proven on
+  PostgreSQL 16 (create/lookup/revoke). Unit `check` green; integration green
+  (coverage 99.64% stmts). Additive — no JS deleted (80).
+- Prior checkpoints: BE-009d (closed BE-009), BE-009c, BE-009b, BE-009a, BE-008c,
+  BE-008b-2/1, BE-008a, BE-006, BE-007g (closed BE-007), BE-007f..a, BE-005,
+  BE-004, BE-003, CON-006, BE-002.
+
+## Superseded Code Checkpoint (BE-009d)
+
 - Task: `BE-009d` refresh/CSRF session-token primitives (child of BE-009,
   **closes BE-009**), landed on branch `ts-migration/backend` (PR #1 to `main`).
 - Result: `src/auth/sessionTokens.ts` — opaque refresh + CSRF token generation,
@@ -299,13 +313,12 @@
 
 ## Next Code Tasks
 
-1. `BE-010` activation + web/native auth routes: session repositories
-   (auth_sessions/auth_refresh_tokens), activation command (consume invite,
-   create Argon2id credential + session + refresh), login/refresh/logout with
-   rotation + CSRF, Fastify auth guard; delete `security/auth.js` + legacy auth
-   routes (80 -> lower).
-2. `BE-011` readiness/health endpoints; delete legacy health service/routes.
-3. `BE-012` SES/SNS outbox + email delivery worker.
+1. `BE-010b` activation route: consume invite -> Argon2id credential + native
+   session + refresh + activate user + audit, atomically (invite/user/credential
+   repos + passwordHasher + breachCheck + sessionTokens + accessToken).
+2. `BE-010c` login/refresh-rotation/logout + Fastify auth guard; delete
+   `security/auth.js` + legacy auth routes.
+3. `BE-011` readiness/health endpoints; `BE-012` SES/SNS outbox worker.
    deleting the onboarding service JS (`website/services`).
 3. `CON-007` consumer contract/package wiring (openapi-fetch client factory).
 

@@ -410,3 +410,16 @@ Backend authored JS/JSX backlog **81 -> 80 files**. Opaque refresh/CSRF tokens
 with keyed hashing + constant-time verify proven. **BE-009 DONE (a-d)**; 3 of the
 security core's files gone (passwords + tokens; `auth.js` -> BE-010). Fourth
 child of BE-009 (BE-009d).
+
+## Delta: BE-010a Auth Session + Credential Repositories (branch `ts-migration/backend`)
+
+Additive native-session DB layer; deletes no JavaScript.
+
+| Change | Value |
+|---|---:|
+| Source TS added (`credentialRepository.ts`, `authSessionRepository.ts`) | 2 files |
+| Integration test added (`authRepositories.integration.test.ts`) | 1 file |
+| Production JS/JSX deleted | 0 |
+
+Backend authored JS/JSX backlog unchanged at **80 files**. Native session/refresh
+create + lookup + revoke proven on PostgreSQL 16. First child of BE-010 (BE-010a).
