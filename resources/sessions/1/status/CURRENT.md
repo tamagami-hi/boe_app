@@ -2,8 +2,21 @@
 
 ## Last Verified Code Checkpoint
 
-- Task: `BE-007a` canonical public-onboarding schema (child of BE-007), landed on
+- Task: `BE-007b` canonical identity/invite tables (child of BE-007), landed on
   branch `ts-migration/backend` (PR #1 to `main`).
+- Result: additive migration `db/migrations/010_canonical_identity.sql` adds
+  enums `user_account_state`/`activation_invite_state`/`application_decision` and
+  tables `users`, `user_credentials`, `application_reviews`, `activation_invites`
+  (composite `(user_id, application_id)` ownership FK, one-pending-per-user), and
+  attaches `verification_tokens.user_id -> users(id)`. Proven on PostgreSQL 16:
+  identity uniqueness, Argon2id hash-prefix + lock-window credential invariants,
+  one-review-per-application, one-pending-invite, and the verification-token user
+  FK. Integration 10/10; unit `check` green. Additive — no JS deleted (83).
+- Known risk (recorded in RISKS): canonical `users` collides by name with legacy
+  `001` on a mixed `migrate up`; canonical migrations run in isolation (`>= 009`)
+  and legacy is archived at CLEAN-002.
+- BE-007 parent remains ACTIVE. Prior checkpoints: BE-007a, BE-005, BE-004,
+  BE-003, CON-006, BE-002.
 - Result: additive migration `db/migrations/009_canonical_onboarding.sql` adds
   enums `application_state`/`token_purpose` and tables `applications`,
   `consent_documents`, `application_consents`, `verification_tokens` with the
@@ -75,11 +88,10 @@
 
 ## Next Code Tasks
 
-1. `BE-007b` — `users`, `user_credentials`, `activation_invites`,
-   `auth_sessions`, `auth_refresh_tokens`, `application_reviews` (+ deferred
-   `verification_tokens.user_id` FK); then BE-007c RBAC/audit/idempotency/
-   rate-limit/legal-holds, BE-007d outbox/email, BE-007e repositories, BE-007f
-   bootstrap seed.
+1. `BE-007c` — `auth_sessions` + `auth_refresh_tokens` (refresh/CSRF rotation
+   columns, one-active-native-session-per-device, refresh-token cascade); then
+   BE-007d RBAC/audit/idempotency/rate-limit/legal-holds, BE-007e outbox/email,
+   BE-007f repositories, BE-007g bootstrap seed.
 2. `BE-008` public consent/application/verification Fastify routes — begins
    deleting the onboarding service JS (`website/services`).
 3. `CON-007` consumer contract/package wiring (openapi-fetch client factory).

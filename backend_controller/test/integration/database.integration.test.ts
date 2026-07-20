@@ -93,7 +93,7 @@ describe("canonical public-onboarding schema (BE-007a)", () => {
   beforeAll(async () => {
     const directory = fileURLToPath(new URL("../../db/migrations", import.meta.url))
     const all = await loadMigrationFiles(directory)
-    const canonical = all.filter((file) => file.filename.startsWith("009_"))
+    const canonical = all.filter((file) => file.version >= "009")
     await runMigrations(pool, canonical)
   }, 60_000)
 
@@ -159,6 +159,75 @@ describe("canonical public-onboarding schema (BE-007a)", () => {
         "insert into verification_tokens (application_id, purpose, token_hash, token_key_version, expires_at) " +
           "values ($1, 'application_email_verification', decode(repeat('cd', 32), 'hex'), 'k1', now() + interval '1 day')",
         [applicationId],
+      ),
+    ).rejects.toThrow()
+  })
+
+  test("enforces identity uniqueness and credential/review/invite invariants (BE-007b)", async () => {
+    const application = await pool.query<{ id: string }>(
+      "insert into applications (email_normalized, phone_e164, full_name) " +
+        "values ('d@example.com', '+14155550300', 'Approved User') returning id",
+    )
+    const applicationId = application.rows[0]?.id
+    const user = await pool.query<{ id: string }>(
+      "insert into users (application_id, email_normalized, phone_e164, full_name, account_state, activated_at) " +
+        "values ($1, 'd@example.com', '+14155550300', 'Approved User', 'active', now()) returning id",
+      [applicationId],
+    )
+    const userId = user.rows[0]?.id
+
+    // duplicate user email rejected
+    await expect(
+      pool.query(
+        "insert into users (email_normalized, phone_e164, full_name) values ('d@example.com', '+14155550399', 'Dup')",
+      ),
+    ).rejects.toThrow()
+
+    // non-Argon2id credential hash rejected; a valid encoded hash is accepted
+    await expect(
+      pool.query("insert into user_credentials (user_id, password_hash) values ($1, 'plaintext')", [
+        userId,
+      ]),
+    ).rejects.toThrow()
+    await pool.query(
+      "insert into user_credentials (user_id, password_hash) values ($1, '$argon2id$v=19$m=65536,t=3,p=1$abc$def')",
+      [userId],
+    )
+
+    // one review per application
+    await pool.query(
+      "insert into application_reviews (application_id, reviewer_user_id, decision, reason_code, request_id, idempotency_key) " +
+        "values ($1, $2, 'approved', 'ok', gen_random_uuid(), 'idem-1')",
+      [applicationId, userId],
+    )
+    await expect(
+      pool.query(
+        "insert into application_reviews (application_id, reviewer_user_id, decision, reason_code, request_id, idempotency_key) " +
+          "values ($1, $2, 'approved', 'ok', gen_random_uuid(), 'idem-2')",
+        [applicationId, userId],
+      ),
+    ).rejects.toThrow()
+
+    // one pending activation invite per user (composite ownership FK)
+    await pool.query(
+      "insert into activation_invites (user_id, application_id, token_hash, token_key_version, expires_at) " +
+        "values ($1, $2, decode(repeat('ab', 32), 'hex'), 'k1', now() + interval '2 days')",
+      [userId, applicationId],
+    )
+    await expect(
+      pool.query(
+        "insert into activation_invites (user_id, application_id, token_hash, token_key_version, expires_at) " +
+          "values ($1, $2, decode(repeat('cd', 32), 'hex'), 'k1', now() + interval '2 days')",
+        [userId, applicationId],
+      ),
+    ).rejects.toThrow()
+  })
+
+  test("rejects a password-reset verification token referencing an unknown user", async () => {
+    await expect(
+      pool.query(
+        "insert into verification_tokens (user_id, purpose, token_hash, token_key_version, expires_at) " +
+          "values (gen_random_uuid(), 'password_reset', decode(repeat('ef', 32), 'hex'), 'k1', now() + interval '1 day')",
       ),
     ).rejects.toThrow()
   })

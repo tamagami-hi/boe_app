@@ -34,6 +34,34 @@ backend, landing, admin, client, shared frontend, and operational entrypoints.
 | Phase 2: test and TypeScript foundation | In progress | Contract kernels plus authoritative TypeScript/Fastify liveness runtime; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
+## Completed Slice: Canonical Identity/Invite Tables (BE-007b)
+
+**Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Second
+child packet of BE-007 (parent remains in progress).
+
+**Scope:** Additive migration `db/migrations/010_canonical_identity.sql` adds the
+enums `user_account_state`/`activation_invite_state`/`application_decision` and
+the tables `users`, `user_credentials`, `application_reviews`,
+`activation_invites`, and attaches the deferred
+`verification_tokens.user_id -> users(id)` FK. Proven on PostgreSQL 16.
+
+**Explicitly deferred to later BE-007 children:** `auth_sessions` +
+`auth_refresh_tokens` (BE-007c), RBAC/audit/idempotency/rate-limit/legal-hold,
+outbox/email, the Kysely repositories, and the typed bootstrap seed.
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Migration applies on empty PG (`>= 009` isolated) | Complete | BE-005 runner applies 009+010 in the harness |
+| Constraints verified | Complete | identity uniqueness, Argon2id hash-prefix + lock-window, one review/app, one pending invite, verification-token user FK — 10/10 integration |
+| Unit check | Complete | `npm run check` green (42 tests) |
+| Review | Complete | Focused inline review; additive; no CRITICAL/HIGH/MEDIUM |
+| JS deletion | N/A | Additive; identity/auth service JS deleted by BE-009/BE-010 |
+| Commit/push | Complete | Committed on `ts-migration/backend`; PR #1 updated |
+
+**Decision:** legacy `users` name-collision on a mixed `migrate up` recorded in
+RISKS_AND_DECISIONS; canonical migrations run in isolation; legacy archived at
+CLEAN-002.
+
 ## Completed Slice: Canonical Public-Onboarding Schema (BE-007a)
 
 **Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). First

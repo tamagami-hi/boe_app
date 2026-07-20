@@ -186,3 +186,18 @@ PostgreSQL 16 (unique-active partial index + reuse-after-rejection, phone-format
 check, `digest()` consent SHA-256 check, one-pending-token index). First child
 of BE-007; the `users`-dependent tables, RBAC/audit, outbox/email, repositories,
 and bootstrap seed follow in later BE-007 children.
+
+## Delta: BE-007b Canonical Identity/Invite Tables (branch `ts-migration/backend`)
+
+Additive schema; deletes no JavaScript.
+
+| Change | Value |
+|---|---:|
+| Migration SQL added (`010_canonical_identity.sql`: 4 tables, 3 enums, 1 FK) | 1 file |
+| Integration tests added | 2 (integration suite 8 -> 10) |
+| Production JS/JSX deleted | 0 |
+
+Backend authored JS/JSX backlog unchanged at **83 files**. Integration 10/10 vs
+PostgreSQL 16 (identity uniqueness, Argon2id hash-prefix + lock-window
+credential invariants, one-review-per-application, one-pending-invite composite
+ownership, verification-token user FK). Second child of BE-007.

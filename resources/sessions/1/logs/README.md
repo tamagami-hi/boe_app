@@ -14,6 +14,7 @@ template before production implementation starts.
 | BE-004 | DONE | [PostgreSQL/Kysely foundation](./BE-004-postgresql-kysely-foundation.md) | on `ts-migration/backend` |
 | BE-005 | DONE | [Migration/check tooling](./BE-005-migration-seed-check-tooling.md) | on `ts-migration/backend` |
 | BE-007a | DONE | [Canonical public-onboarding schema](./BE-007a-canonical-onboarding-schema.md) | on `ts-migration/backend` |
+| BE-007b | DONE | [Canonical identity/invite tables](./BE-007b-canonical-identity-tables.md) | on `ts-migration/backend` |
 
 Completed logs preserve their evidence. Correct factual errors explicitly; do
 not rewrite prior RED/GREEN history to match later architecture.
