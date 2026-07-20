@@ -27,6 +27,12 @@ describe("TypeScript runtime boundary", () => {
     await expect(pathExists(new URL("./shared/logger.js", SOURCE_ROOT))).resolves.toBe(false)
   })
 
+  test("removes the superseded operational DB scripts (BE-005)", async () => {
+    await expect(pathExists(new URL("../scripts/migrate.js", SOURCE_ROOT))).resolves.toBe(false)
+    await expect(pathExists(new URL("../scripts/check-db.js", SOURCE_ROOT))).resolves.toBe(false)
+    await expect(pathExists(new URL("../scripts/seed-auth.js", SOURCE_ROOT))).resolves.toBe(false)
+  })
+
   test("keeps the authoritative server outside the legacy alias and router graph", async () => {
     const source = await readFile(new URL("./server.ts", SOURCE_ROOT), "utf8")
 

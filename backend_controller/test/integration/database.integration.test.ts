@@ -1,3 +1,7 @@
+import { mkdtemp, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+
 import { PostgreSqlContainer } from "@testcontainers/postgresql"
 import type { StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import { sql } from "kysely"
@@ -9,6 +13,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest"
 import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
 import type { Database } from "../../src/db/types.js"
+import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
 
 let container: StartedPostgreSqlContainer
 let pool: Pool
@@ -63,5 +68,22 @@ describe("PostgreSQL foundation (integration)", () => {
 
     const rows = await sql<{ id: number }>`select id from rollback_probe`.execute(database)
     expect(rows.rows).toEqual([])
+  })
+
+  test("applies migrations idempotently and records them", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "boe-mig-int-"))
+    await writeFile(
+      join(directory, "001_probe.sql"),
+      "create table migrate_probe (id integer primary key);",
+    )
+    const files = await loadMigrationFiles(directory)
+
+    expect(await runMigrations(pool, files)).toEqual(["001_probe.sql"])
+    expect(await runMigrations(pool, files)).toEqual([])
+
+    const recorded = await sql<{ version: string }>`select version from schema_migrations`.execute(
+      database,
+    )
+    expect(recorded.rows).toEqual([{ version: "001_probe" }])
   })
 })

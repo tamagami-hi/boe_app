@@ -27,14 +27,14 @@ cutover; never port minified/generated output by hand.
 | Closure | Production | Tests | Replacement/deletion rule |
 |---|---:|---:|---|
 | Runtime config/logging | DONE (was 3 / 219) | 0 | BE-003 deleted `src/config/env.js`, `src/config/dotenv.js`, `src/shared/logger.js`; typed `runtime/*` boundary authoritative |
-| Persistence core + DB scripts | 5 / 700 | 0 | Kysely/PostgreSQL pool, transaction, migration tools; delete adapter/store/check/migrate JS |
-| Identity/auth/onboarding | 7 / 1,147 | 1 / 70 | Canonical repositories/security/Fastify auth; delete security/auth/onboarding/seed closure |
+| Persistence core + DB scripts | 3 / ~490 (was 5 / 700) | 0 | BE-004 added typed pool/Kysely/tx; BE-005 deleted `scripts/migrate.js`, `check-db.js`. Remaining: `src/db/client.js`, `pgAdapter.js`, `store.js` (whole-store adapter; deleted at consumer cutover, never ported) |
+| Identity/auth/onboarding | 6 / ~1,077 + 1 test (was 7) | 1 / 70 | BE-005 deleted `scripts/seed-auth.js`; typed bootstrap seed lands with BE-007. Canonical repositories/security/Fastify auth replace the rest (BE-007..BE-010) |
 | Public content/catalog | 9 / 1,473 | 2 / 411 | Canonical content/catalog routes/repositories; monolithic public route deletes last |
 | Money/events/shared read models | 17 / 1,720 | 1 / 39 | Contract/domain types and provider boundaries; do not bless legacy hardcoded behavior |
 | Client API/domain | 16 / 2,573 | 0 | Descriptor-backed client route groups; 436-line route monolith deletes after all imports move |
 | Admin API/domain | 12 / 3,220 | 0 | Typed admin domains/routes; 590-line route monolith deletes after all imports move |
 | Legacy transport/guards | 16 / 1,028 | 0 | Delete after canonical Fastify/typed inventory/authz guards exist |
-| **Total (after BE-003)** | **82 / 11,872** | **4 / 520** | **86 files / 12,392 lines** |
+| **Total (after BE-005)** | **~79 / ~11,690** | **4 / 520** | **83 files / ~12,210 lines** |
 
 BE-003 (branch `ts-migration/backend`) deleted the 3-file / ~208-line runtime
 config/logging closure, moving the backend authored backlog from 89 files /

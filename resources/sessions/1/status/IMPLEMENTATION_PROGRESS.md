@@ -34,6 +34,30 @@ backend, landing, admin, client, shared frontend, and operational entrypoints.
 | Phase 2: test and TypeScript foundation | In progress | Contract kernels plus authoritative TypeScript/Fastify liveness runtime; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
+## Completed Slice: Migration/Check Tooling (BE-005)
+
+**Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Third
+backend JS deletion of the program.
+
+**Scope:** Replace the legacy `psql`/alias-based operational scripts with emitted
+TypeScript commands over the BE-004 typed pool — `src/scripts/migrate.ts`
+(ordered, checksummed, per-migration transactional, idempotent apply tracked in
+`schema_migrations`; `status|up` CLI) and `src/scripts/check-db.ts`. Deleted
+`scripts/migrate.js`, `check-db.js`, `seed-auth.js`.
+
+**Explicitly out of scope:** the typed bootstrap seed (needs canonical identity
+tables; authored in BE-007) and the whole-store `pgAdapter.js`/`store.js`/
+`client.js` (deleted at consumer cutover).
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Unit tests | Complete | 42/42; overall 87.69%/92.18%/90.9% (fake-pool covers runner logic) |
+| RED before deletion | Complete | runtime-boundary deletion assertion failed while the JS existed |
+| GREEN | Complete | 3 JS deleted; `npm run check` green; backend JS 86 -> 83 |
+| Integration | Complete | 4/4 vs PostgreSQL 16, incl. idempotent migrate + `schema_migrations` record |
+| Review | Complete | Focused inline review: transactional apply/rollback, parameterized bookkeeping, trusted-file SQL, no secret logging; no CRITICAL/HIGH/MEDIUM |
+| Commit/push | Complete | Committed on `ts-migration/backend`; PR #1 updated |
+
 ## Completed Slice: PostgreSQL/Kysely Foundation (BE-004)
 
 **Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Phase 3

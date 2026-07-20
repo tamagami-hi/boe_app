@@ -2,6 +2,19 @@
 
 ## Last Verified Code Checkpoint
 
+- Task: `BE-005` migration/check tooling, landed on branch
+  `ts-migration/backend` (PR #1 to `main`).
+- Result: emitted TypeScript operational commands over the BE-004 typed pool —
+  `src/scripts/migrate.ts` (ordered, checksummed, per-migration transactional,
+  idempotent apply tracked in `schema_migrations`; `status|up` CLI) and
+  `src/scripts/check-db.ts`. Deleted the legacy `scripts/migrate.js`,
+  `check-db.js`, `seed-auth.js`. Backend authored JS backlog **86 -> 83**. Unit
+  42 tests (>=80% overall); integration 4/4 vs PostgreSQL 16 (incl. idempotent
+  migrate). Typed bootstrap seed deferred to BE-007 (needs canonical schema).
+- Prior checkpoint (foundation, no deletion):
+
+## Prior Checkpoint (BE-004)
+
 - Task: `BE-004` PostgreSQL/Kysely foundation, landed on branch
   `ts-migration/backend` (PR #1 to `main`).
 - Result: typed owned `pg` pool (`src/db/pool.ts`), typed Kysely instance +
@@ -48,12 +61,13 @@
 
 ## Next Code Tasks
 
-1. `BE-005` migration/seed/check tooling — emitted TS operational commands that
-   replace and DELETE `scripts/migrate.js`, `check-db.js`, `seed-auth.js`
-   (backend JS 86 -> 83; next JS deletion).
-2. `BE-007` canonical identity/onboarding schema (additive migrations +
-   repositories) — begins deleting the identity/auth service JS.
-3. `CON-007` consumer contract/package wiring (openapi-fetch client factory).
+1. `BE-007` canonical identity/onboarding schema — additive PostgreSQL
+   migrations (applications/users/sessions/RBAC/audit/idempotency/outbox/email)
+   + typed repositories (uses the BE-004 pool + BE-005 migration runner). Begins
+   deleting the identity/auth/onboarding service JS and adds the typed bootstrap
+   seed.
+2. `CON-007` consumer contract/package wiring (openapi-fetch client factory).
+3. Remaining Phase-2 gate items (`LN-000`, `OPS-001`, `OPS-003A`) for GATE-02.
 
 Before a candidate becomes `READY`, create its complete packet and dedicated log
 under Session 1. Dependencies and acceptance remain authoritative in

@@ -156,3 +156,16 @@ Backend runtime after BE-004: unit suite 34 tests, 93.93% stmts / 93.02% branch
 12.0.4, `@testcontainers/postgresql` 12.0.4; 0 vulnerabilities. Backend authored
 JS/JSX backlog unchanged at 86 files. Native `ssh2`/`cpu-features` install
 scripts denied (optional, unused); `protobufjs` approved.
+
+## Delta: BE-005 Migration/Check Tooling (branch `ts-migration/backend`)
+
+| Change | Value |
+|---|---:|
+| Production TS added (`src/scripts/migrate.ts`, `check-db.ts`) | ~155 lines |
+| Test TS added (`migrate.test.ts` 5, `check-db.test.ts` 2, +1 integration, +1 guard) | ~9 tests |
+| Production JS deleted (`migrate.js`, `check-db.js`, `seed-auth.js`) | 3 files |
+
+Backend authored JS/JSX backlog: **86 -> 83 files**. Unit suite 42 tests,
+overall 87.69% stmts / 92.18% branch / 90.9% funcs; integration 4/4 vs
+PostgreSQL 16. Cumulative backend JS deleted by this program: BE-001 (server/
+launcher) + BE-003 (3 config/logger) + BE-005 (3 DB scripts).
