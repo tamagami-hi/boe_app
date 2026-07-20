@@ -47,3 +47,5 @@ not rewrite prior RED/GREEN history to match later architecture.
 | BE-010 | DONE | [Activation + native/web auth](./BE-010-auth.md) | on `ts-migration/backend` (JS 80 -> 76; production wiring + `/csrf` recovery deferred) |
 
 | BE-011 | DONE | [Readiness/compatibility health](./BE-011-health-readiness.md) | on `ts-migration/backend` (JS 76 -> 74) |
+
+| BE-012 | DONE | [SES/SNS outbox delivery worker + signed provider-event ingress](./BE-012-outbox-email-worker.md) | on `ts-migration/backend` (additive; JS stays 74; AWS adapters deferred) |

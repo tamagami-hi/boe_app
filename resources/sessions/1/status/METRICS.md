@@ -468,3 +468,26 @@ plain, no value leaks; degraded until DB reachable + emailConfigured) and
 integration 35/35 (unaffected). Reproduce: `find backend_controller/src
 backend_controller/scripts -type f \( -name '*.js' -o -name '*.jsx' \) | wc -l`
 -> 74.
+
+
+## Delta: BE-012 SES/SNS Outbox Delivery Worker (branch `ts-migration/backend`)
+
+Adds the canonical email outbox worker + signed SNS provider-event ingress. This
+batch is purely additive redesign infrastructure (the legacy app had no SES/SNS
+worker), so it deletes no legacy JS.
+
+| Change | Value |
+|---|---:|
+| Pure TS added (`src/email/{ports,retrySchedule,snsMessages,snsProvenance}.ts`) + 3 unit tests | 7 files |
+| Repositories added (`emailProviderEventRepository`, `emailSuppressionRepository`) + 2 extended (`outboxRepository`, `emailDeliveryRepository`) | 4 files |
+| Domain added (`dispatchDueDeliveries`, `recordProviderEvent`) + route (`providerEventRoutes`) | 3 files |
+| Integration test (`emailDelivery.integration.test.ts`, 8 tests) | 1 file |
+| **Production JS/JSX deleted** | **0** |
+
+Backend authored JS/JSX backlog **stays 74 files** (unchanged — additive batch).
+Unit tests 57 new (email); integration 35 -> 43 (+8). `npm run check` green; full
+integration aggregate 96.2% stmts / 80.75% branch over repositories/routes/domain.
+`package.json`/`package-lock.json` unchanged (test cert fixture minted then tool
+removed). Concrete AWS SES/cert-fetch adapters deferred to production wiring.
+Reproduce JS count: `find backend_controller/src backend_controller/scripts -type f
+\( -name '*.js' -o -name '*.jsx' \) | wc -l` -> 74.

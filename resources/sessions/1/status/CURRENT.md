@@ -2,22 +2,28 @@
 
 ## Last Verified Code Checkpoint
 
-- Task: `BE-011` readiness/compatibility health, landed on branch
-  `ts-migration/backend` (PR #1 to `main`). Accelerated single-task mode.
-- Result: `src/runtime/health.ts` — `buildReadinessReport` (degraded until DB
-  reachable + emailConfigured), `createReadinessCheck` (fail-closed `select 1`
-  ping, wired at composition), and `registerHealthRoutes` adding `GET
-  /health/ready` (200/503 plain operational body exposing only booleans, no
-  configuration values) + `GET /v1/health` (versioned success envelope);
-  `/health/live` stays database-independent in `application.ts`. Light
-  `inject` unit test (ready/degraded/no-leak/envelope). **Deleted legacy
-  `shared/services/healthService.js` + `shared/routes/healthRoutes.js` — backend
-  JS 76 -> 74.** `check` green; integration 35/35 (unaffected). Deferred:
-  compose `createReadinessCheck` into the running `server.ts` (with the BE-010
-  auth/server wiring).
-- Prior checkpoints: BE-010 (native+web auth, JS 80 -> 76), BE-010a, BE-009d
-  (closed BE-009), BE-009c/b/a, BE-008c, BE-008b-2/1, BE-008a, BE-006, BE-007g
-  (closed BE-007), BE-007f..a, BE-005, BE-004, BE-003, CON-006, BE-002.
+- Task: `BE-012` SES/SNS outbox delivery worker + signed provider-event ingress,
+  landed on branch `ts-migration/backend` (PR #1 to `main`). Accelerated
+  single-task mode; highly-critical batch so it carries tests.
+- Result: pure `src/email/*` (retry ladder + deterministic jitter + failure
+  classification; strict SNS/SES Zod schemas; SNS provenance — SSRF cert-URL
+  hardening, AWS canonical v1/v2, RSA-SHA1/256 verify, cert expiry) unit-tested
+  (57). Worker `domain/email/dispatchDueDeliveries` (recover leases -> claim
+  `FOR UPDATE SKIP LOCKED` + lease -> commit `sending` point-of-no-return ->
+  call SES via port outside any tx -> settle delivered/retry/dead-letter; cancel
+  suppressed/obsolete work). SNS ingress `POST /v1/provider-events/aws-sns` (raw
+  text/plain 256 KiB, ordered provenance, uniform 401 on failure, dedup by
+  MessageId, monotonic evidence + bounce/complaint suppression). Repos: outbox
+  claim/settle, emailDelivery transitions/evidence, providerEvent inbox,
+  suppression. Integration 8/8 with a **fake SES sender + fake cert-fetch (no
+  live AWS)**. **Purely additive — deletes no legacy JS; backend JS stays 74.**
+  `check` green; full integration 43/43 (96.2% stmts / 80.75% branch). Deferred:
+  concrete AWS SES v2 sender + SSRF cert-fetch adapters (behind the ports),
+  provider-payload at-rest encryption, subscription bootstrap, retention.
+- Prior checkpoints: BE-011 (health/readiness, JS 76 -> 74), BE-010 (native+web
+  auth, JS 80 -> 76), BE-010a, BE-009d (closed BE-009), BE-009c/b/a, BE-008c,
+  BE-008b-2/1, BE-008a, BE-006, BE-007g (closed BE-007), BE-007f..a, BE-005,
+  BE-004, BE-003, CON-006, BE-002.
 
 ## Superseded Code Checkpoint (BE-010 native core)
 
