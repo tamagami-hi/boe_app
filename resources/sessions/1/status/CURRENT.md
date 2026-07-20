@@ -2,6 +2,19 @@
 
 ## Last Verified Code Checkpoint
 
+- Task: `BE-009b` breached-password check (child of BE-009), landed on branch
+  `ts-migration/backend` (PR #1 to `main`).
+- Result: `src/auth/breachCheck.ts` — HIBP k-anonymity checker (sends only the
+  5-char SHA-1 prefix, `Add-Padding: true`, 2s timeout, constant-time 35-char
+  suffix compare, 24h bounded prefix cache; positive count -> VALIDATION_FAILED;
+  non-2xx/reject -> DEPENDENCY_UNAVAILABLE fail-closed; `bypass` only in
+  test/development). `fetch` is injectable so unit tests are offline. Unit `check`
+  green; integration 24/24. Additive — no JS deleted (81).
+- Prior checkpoints: BE-009a, BE-008c, BE-008b-2, BE-008b-1, BE-008a, BE-006,
+  BE-007g (closed BE-007), BE-007f..a, BE-005, BE-004, BE-003, CON-006, BE-002.
+
+## Superseded Code Checkpoint (BE-009a)
+
 - Task: `BE-009a` Argon2id password hasher (child of BE-009), landed on branch
   `ts-migration/backend` (PR #1 to `main`).
 - Result: `src/auth/passwordHasher.ts` (OWASP Argon2id hash/verify + timing-safe
@@ -258,9 +271,10 @@
 
 ## Next Code Tasks
 
-1. `BE-009b` — HIBP breach check (k-anonymity SHA-1 prefix, injectable fetch).
-2. `BE-009c` — ES256 access-token service (jose; kid, claims, skew); `BE-009d`
-   refresh/CSRF rotation; then delete `security/{auth,tokens}.js` (81 -> 79).
+1. `BE-009c` — ES256 access-token service (jose; kid selection, pinned
+   iss/aud/typ, <=30s skew, 10-min TTL).
+2. `BE-009d` — refresh/CSRF token primitives + rotation helpers; then delete
+   `security/{auth,tokens}.js` (81 -> 79).
 3. `BE-010` activation + web/native auth routes.
    deleting the onboarding service JS (`website/services`).
 3. `CON-007` consumer contract/package wiring (openapi-fetch client factory).

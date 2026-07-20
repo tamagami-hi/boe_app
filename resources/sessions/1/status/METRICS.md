@@ -370,3 +370,16 @@ Security-core start; deletes legacy scrypt module.
 
 Backend authored JS/JSX backlog **82 -> 81 files**. Argon2id hashing proven in
 source + emitted dist. First child of BE-009 (BE-009a).
+
+## Delta: BE-009b Breached-Password Check (branch `ts-migration/backend`)
+
+Additive security capability; deletes no JavaScript.
+
+| Change | Value |
+|---|---:|
+| Source TS added (`auth/breachCheck.ts`) + test | 2 files |
+| Production JS/JSX deleted | 0 |
+
+Backend authored JS/JSX backlog unchanged at **81 files**. HIBP k-anonymity
+checker proven offline (breached/padding/cache/fail-closed/bypass). Second child
+of BE-009 (BE-009b).

@@ -34,6 +34,24 @@ backend, landing, admin, client, shared frontend, and operational entrypoints.
 | Phase 2: test and TypeScript foundation | In progress | Contract kernels plus authoritative TypeScript/Fastify liveness runtime; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
+## Completed Slice: Breached-Password Check (BE-009b)
+
+**Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Second
+child of BE-009. Additive (no deletion).
+
+**Scope:** `src/auth/breachCheck.ts` — HIBP k-anonymity checker with an
+injectable `fetch`, 2s timeout, 24h prefix cache, constant-time suffix compare,
+fail-closed DEPENDENCY_UNAVAILABLE, and test/dev-only bypass.
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Breached rejection | Complete | unit: count>0 -> VALIDATION_FAILED |
+| Padding tolerated | Complete | unit: count 0 suffix resolves |
+| Fail-closed | Complete | unit: non-2xx + reject -> DEPENDENCY_UNAVAILABLE |
+| Cache + bypass + mode | Complete | unit: one request per prefix; bypass no-op; prod+bypass rejected |
+| Unit + integration | Complete | `npm run check` green; integration 24/24 |
+| Commit/push | Complete | Committed on `ts-migration/backend`; PR #1 updated |
+
 ## Completed Slice: Argon2id Password Hasher (BE-009a)
 
 **Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). First child
