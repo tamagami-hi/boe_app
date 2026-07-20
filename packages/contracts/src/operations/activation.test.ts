@@ -86,10 +86,20 @@ describe("activation operation descriptor", () => {
 
   it("keeps shared auth and response policy types closed", () => {
     expectTypeOf<OperationInput["authChannel"]>().toEqualTypeOf<
-      "public" | "public-token" | "native-activation"
+      | "public"
+      | "public-token"
+      | "native-activation"
+      | "native-login"
+      | "native-refresh"
+      | "native-bearer"
     >()
     expectTypeOf<OperationInput["credentialPolicy"]>().toEqualTypeOf<
-      "none" | "public-body-token" | "native-body-token-only"
+      | "none"
+      | "public-body-token"
+      | "native-body-token-only"
+      | "native-password-body-only"
+      | "native-refresh-token-body-only"
+      | "native-bearer-and-refresh-body"
     >()
     expectTypeOf<OperationInput["success"]["status"]>().toEqualTypeOf<200 | 202>()
   })

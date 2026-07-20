@@ -13,10 +13,55 @@
 | Phase | Status | Current boundary |
 |---|---|---|
 | Phase 0: planning and architecture | Complete | Approved in commit `ec07d21` |
-| Phase 2: test and TypeScript foundation | In progress | Scalar, error/envelope, public-onboarding, and native-activation operation kernels; 0/7 full Phase 2 acceptance gates complete |
+| Phase 2: test and TypeScript foundation | In progress | Scalar, error/envelope, public-onboarding, native-activation, and native-authentication operation kernels; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
-## Active Slice: Native-Only Activation Operation Contract
+## Active Slice: Native Authentication Operation Contracts
+
+**Status:** Complete
+
+**Scope:** Add strict native login, deterministic refresh, and naturally
+idempotent logout wire contracts and immutable descriptors; expose root and
+`./native-auth` package surfaces; and extract route-neutral native schemas
+without changing activation compatibility exports.
+
+**Explicitly out of scope:** password hashing/HIBP/timing/lockout, database
+sessions and same-device locking, JWT verification/claims, refresh HMAC and
+30-second replay/family revocation, logout execution, raw header/cookie
+enforcement, header/body app-version equality, rate-limit implementation,
+secure storage/single-flight/client retry, routers, OpenAPI/client generation,
+consumer manifests, CI, Docker, and frontend/Android changes.
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Approved-plan review | Complete | Planner, factual extractor, TDD/security guide, and conflict-resolution review fixed the three routes, neutral native ownership, credential/idempotency/cache policies, error arrays, exclusions, and post-verification race boundary |
+| Research and reuse check | Complete | Normative `01`-`05`, current package schemas, repository patterns, and prior authenticated reuse research were reviewed; no dependency or competing contract source was added |
+| Tests written before implementation | Complete | `operations/native-auth.test.ts` preceded `operations/native-auth.ts`; review regressions for approved operation IDs, neutral token ownership, idempotency discrimination, exact request inference, and JSON Schema coverage preceded their fixes |
+| RED observed | Complete | Initial focused run failed on missing `./native-auth.js`; review RED then failed operation-ID assertions and typecheck because native refresh incorrectly accepted generic stored idempotency |
+| Minimal implementation | Complete | Three strict route contracts/descriptors, one frozen registry, internal route-neutral native schemas, preserved activation schema identities, closed combined security/idempotency policy, and root/`./native-auth` exports only |
+| Unit tests GREEN | Complete | Node 22.20.0/npm 11.16.0 Vitest 3.2.6: 113/113 package tests passed, including 13 focused native-auth tests |
+| Coverage >=80% on all four metrics | Complete | 100% statements, branches, functions, and lines across every authored contract source file |
+| Typecheck/lint/build/import smoke | Complete | Clean `npm ci`; strict typecheck, typed ESLint, declaration/ESM build, root/subpath export smoke, and 37-entry package dry-run passed under Node 22.20.0/npm 11.16.0 |
+| Security and privacy checks | Complete | Zero-vulnerability audit; closed body-only/bearer credential policies; route-wide no-store; strict secret-safe inputs/minimal outputs; enumeration-safe login errors; deterministic refresh and natural logout semantics without generic secret replay storage |
+| Focused reviews | Complete | Initial reviews found operation-ID/token-ownership compatibility, idempotency-discrimination, test-coverage, and enumeration-documentation issues; regression-first fixes were re-reviewed with no remaining CRITICAL, HIGH, or MEDIUM findings |
+| Commit | Complete | Recorded by the containing `feat: add native authentication contracts` commit |
+
+**Derived contract decisions:** operation IDs are `nativeLogin`,
+`refreshNativeSession`, and `logoutNativeSession`. Login credential/principal
+failures always use `INVALID_CREDENTIALS`; `STATE_CONFLICT` is reachable only
+after successful verification and active-principal determination when the
+single retry of the same-device resource race is exhausted. Refresh uses
+`SESSION_INVALID` and `deterministic-rotation`; logout uses descriptor-only
+bearer authority plus a strict refresh-token body and `naturally-idempotent`.
+Normalized compatibility DTOs never contain cookie or Authorization values.
+
+**Tracked LOW:** precise const-preserved descriptors still expand in emitted
+declarations. The current operation declarations total 1,623 lines/66,535
+bytes: public 641/26,802; native-auth 586/23,750; activation 260/10,803;
+native shared 76/2,917; descriptor 60/2,263. Exact route types remain correct;
+compaction stays deferred to deterministic generation.
+
+## Completed Slice: Native-Only Activation Operation Contract
 
 **Status:** Complete
 
@@ -175,7 +220,4 @@ fail-closed to an exact reviewed allowlist.
 
 ## Next Slice
 
-**Native Authentication Operation Contracts** is selected as the next bounded
-batch. It will cover the documented native login, refresh, and logout wire
-contracts only, reusing `NativeDevice`/`NativeUser` where their semantics match.
-Planning, RED tests, and implementation have not begun.
+Not selected. No additional module has begun.

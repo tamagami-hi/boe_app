@@ -1,35 +1,24 @@
 import { z } from "zod"
 
-import { createSuccessEnvelopeSchema } from "../envelope.js"
-import {
-  EmailInput,
-  FullName,
-  IsoDateTime,
-  PasswordInput,
-  Uuid,
-} from "../scalars.js"
+import { PasswordInput } from "../scalars.js"
 import { defineOperation, MAX_JSON_BODY_BYTES } from "./descriptor.js"
+import {
+  AppVersion,
+  NativeCompatibilityHeaders,
+  NativeDevice,
+  NativeSessionData,
+  NativeSessionSuccessEnvelope,
+  NativeUser,
+  OpaqueToken43,
+  PhoneMasked,
+} from "./native.js"
 
-export const ActivationToken = z.string().regex(/^[A-Za-z0-9_-]{43}$/u)
+export { AppVersion, NativeDevice, NativeUser, PhoneMasked }
+
+export const ActivationToken = OpaqueToken43
 export type ActivationToken = z.infer<typeof ActivationToken>
 
-export const AppVersion = z
-  .string()
-  .regex(/^[0-9]+[.][0-9]+[.][0-9]+([+-][A-Za-z0-9.-]+)?$/u)
-export type AppVersion = z.infer<typeof AppVersion>
-
-export const NativeDevice = z.strictObject({
-  installationId: Uuid,
-  name: z.string().trim().min(1).max(80),
-  platform: z.literal("android"),
-  appVersion: AppVersion,
-})
-export type NativeDevice = z.infer<typeof NativeDevice>
-
-export const CompleteActivationHeaders = z.strictObject({
-  "x-client-platform": z.literal("android"),
-  "x-app-version": AppVersion,
-})
+export const CompleteActivationHeaders = NativeCompatibilityHeaders
 export type CompleteActivationHeaders = z.infer<typeof CompleteActivationHeaders>
 
 export const CompleteActivationBody = z.strictObject({
@@ -39,31 +28,10 @@ export const CompleteActivationBody = z.strictObject({
 })
 export type CompleteActivationBody = z.infer<typeof CompleteActivationBody>
 
-export const PhoneMasked = z.string().regex(/^\+[1-9][0-9]{0,2}[*]{6}[0-9]{4}$/u)
-export type PhoneMasked = z.infer<typeof PhoneMasked>
-
-export const NativeUser = z.strictObject({
-  userId: Uuid,
-  fullName: FullName,
-  email: EmailInput,
-  phoneMasked: PhoneMasked,
-  accountStatus: z.literal("active"),
-})
-export type NativeUser = z.infer<typeof NativeUser>
-
-export const CompleteActivationData = z.strictObject({
-  user: NativeUser,
-  accessToken: z.string().min(100).max(4096),
-  accessTokenExpiresAt: IsoDateTime,
-  refreshToken: ActivationToken,
-  refreshTokenExpiresAt: IsoDateTime,
-  sessionId: Uuid,
-})
+export const CompleteActivationData = NativeSessionData
 export type CompleteActivationData = z.infer<typeof CompleteActivationData>
 
-export const CompleteActivationSuccessEnvelope = createSuccessEnvelopeSchema(
-  CompleteActivationData,
-)
+export const CompleteActivationSuccessEnvelope = NativeSessionSuccessEnvelope
 export type CompleteActivationSuccessEnvelope = z.infer<
   typeof CompleteActivationSuccessEnvelope
 >

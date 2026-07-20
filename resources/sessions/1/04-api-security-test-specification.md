@@ -779,6 +779,11 @@ the same deviceIdHash in deterministic ID order. Atomically revoke that prior
 session and its current refresh token with reason device_reauthenticated, then
 create the replacement session/token. The partial unique active-device
 constraint is the final race guard; a conflict retries this transaction once.
+Only after password verification and active-principal determination may a
+second exhausted same-device/resource race return retryable `STATE_CONFLICT`.
+Unknown, wrong-password, locked, invited, suspended, closed, rejected, and every
+other pre-verification path remain the identical `INVALID_CREDENTIALS` response;
+`STATE_CONFLICT` must never become an account- or credential-state oracle.
 Protected native requests validate that sid is still active, so the replaced
 session stops authorizing immediately rather than surviving the access-JWT TTL.
 

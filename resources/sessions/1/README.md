@@ -48,6 +48,7 @@ without updating every reference.
 - Phase 0 is **approved**. Independent contract/schema, security, and
   architecture gates completed with no CRITICAL or HIGH findings.
 - Phase 2 implementation is authorized. The contracts scalar, error/envelope,
-  public-onboarding, and native-activation operation kernels are complete
-  bounded slices; no full Phase 2 acceptance gate is complete yet. Native
-  authentication operation contracts are the next selected batch.
+  public-onboarding, native-activation, and native-authentication operation
+  kernels are complete bounded slices; no full Phase 2 acceptance gate is
+  complete yet. The next bounded operation group will be selected after this
+  checkpoint.

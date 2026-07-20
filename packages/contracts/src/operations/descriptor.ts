@@ -4,17 +4,51 @@ import type { ErrorCode } from "../errors.js"
 
 export const MAX_JSON_BODY_BYTES = 65_536
 
-export type AuthChannel = "public" | "public-token" | "native-activation"
-export type CredentialPolicy = "none" | "public-body-token" | "native-body-token-only"
+export type OperationSecurityPolicy =
+  | Readonly<{
+      authChannel: "public"
+      credentialPolicy: "none"
+      idempotency: "none" | "required"
+      responseCacheControl?: never
+    }>
+  | Readonly<{
+      authChannel: "public-token"
+      credentialPolicy: "public-body-token"
+      idempotency: "single-use-token"
+      responseCacheControl?: never
+    }>
+  | Readonly<{
+      authChannel: "native-activation"
+      credentialPolicy: "native-body-token-only"
+      idempotency: "single-use-token"
+      responseCacheControl: "no-store"
+    }>
+  | Readonly<{
+      authChannel: "native-login"
+      credentialPolicy: "native-password-body-only"
+      idempotency: "none"
+      responseCacheControl: "no-store"
+    }>
+  | Readonly<{
+      authChannel: "native-refresh"
+      credentialPolicy: "native-refresh-token-body-only"
+      idempotency: "deterministic-rotation"
+      responseCacheControl: "no-store"
+    }>
+  | Readonly<{
+      authChannel: "native-bearer"
+      credentialPolicy: "native-bearer-and-refresh-body"
+      idempotency: "naturally-idempotent"
+      responseCacheControl: "no-store"
+    }>
 
-export type OperationInput = Readonly<{
+export type AuthChannel = OperationSecurityPolicy["authChannel"]
+export type CredentialPolicy = OperationSecurityPolicy["credentialPolicy"]
+
+type OperationBase = Readonly<{
   operationId: string
   method: "GET" | "POST"
   path: string
-  authChannel: AuthChannel
-  credentialPolicy: CredentialPolicy
-  idempotency: "none" | "required" | "single-use-token"
-  responseCacheControl?: "no-store"
   request: Readonly<{
     body?: z.ZodType
     headers?: z.ZodType
@@ -27,6 +61,8 @@ export type OperationInput = Readonly<{
   }>
   errorCodes: readonly ErrorCode[]
 }>
+
+export type OperationInput = Readonly<OperationBase & OperationSecurityPolicy>
 
 export type FrozenOperation<TOperation extends OperationInput> = Readonly<
   Omit<TOperation, "request" | "success" | "errorCodes"> & {
