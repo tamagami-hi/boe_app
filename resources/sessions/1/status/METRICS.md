@@ -266,3 +266,19 @@ whole §7 contract (`Row<T>` for all 23 tables); integration 14/14 vs PostgreSQL
 with a typed Kysely round-trip proving the schema types match the live DDL.
 Coverage 87.88% (type-only files are 0-statement; numeric ceilings covered by a
 unit test). Sixth child of BE-007.
+
+## Delta: BE-007g Typed Idempotent Bootstrap Seed (branch `ts-migration/backend`) — closes BE-007
+
+Additive bootstrap data + tooling; deletes no JavaScript.
+
+| Change | Value |
+|---|---:|
+| Source TS added (`seedCatalog.ts`, `scripts/seed.ts`) | 2 files |
+| Package scripts added (`seed`, `seed:dev`) | 2 |
+| Tests added (`seedCatalog.test.ts`, `seed.test.ts` unit; 1 integration idempotency) | unit 45 -> 51; integration 14 -> 15 |
+| Production JS/JSX deleted | 0 (legacy `seed-auth.js` deleted at BE-005) |
+
+Backend authored JS/JSX backlog unchanged at **83 files**. Integration 15/15 vs
+PostgreSQL 16 (catalog applied + idempotent on a second run; consent SHA-256
+matches the pgcrypto CHECK). **BE-007 is DONE** (children a-g). Seventh child of
+BE-007.

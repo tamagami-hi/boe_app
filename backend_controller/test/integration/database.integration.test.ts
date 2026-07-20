@@ -14,8 +14,10 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest"
 
 import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
+import { SEED_PERMISSIONS, SEED_ROLES } from "../../src/db/seedCatalog.js"
 import type { Database } from "../../src/db/types.js"
 import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
+import { runSeed } from "../../src/scripts/seed.js"
 
 let container: StartedPostgreSqlContainer
 let pool: Pool
@@ -589,5 +591,57 @@ describe("canonical Kysely schema types (BE-007f)", () => {
       .where("id", "=", application.id)
       .executeTakeFirstOrThrow()
     expect(readBack.email_normalized).toBe("typed@example.com")
+  })
+})
+
+
+describe("canonical bootstrap seed (BE-007g)", () => {
+  beforeAll(async () => {
+    const directory = fileURLToPath(new URL("../../db/migrations", import.meta.url))
+    const all = await loadMigrationFiles(directory)
+    await runMigrations(
+      pool,
+      all.filter((file) => file.version >= "009"),
+    )
+  }, 60_000)
+
+  const countRow = async (query: string, values: readonly unknown[] = []): Promise<number> => {
+    const result = await pool.query<{ c: number }>(query, values as unknown[])
+    return result.rows[0]?.c ?? 0
+  }
+
+  test("seeds the catalog and is idempotent on a second run", async () => {
+    const applied = await runSeed(pool)
+    expect(applied).toBe(SEED_ROLES.length + SEED_PERMISSIONS.length + 2)
+
+    // every catalog role and permission exists after seeding
+    expect(
+      await countRow("select count(*)::int as c from roles where code = any($1)", [
+        SEED_ROLES.map((role) => role.code),
+      ]),
+    ).toBe(SEED_ROLES.length)
+    expect(
+      await countRow("select count(*)::int as c from permissions where code = any($1)", [
+        SEED_PERMISSIONS.map((permission) => permission.code),
+      ]),
+    ).toBe(SEED_PERMISSIONS.length)
+    // exactly one current document for each of terms and privacy
+    expect(
+      await countRow(
+        "select count(*)::int as c from consent_documents where retired_at is null and kind in ('terms', 'privacy')",
+      ),
+    ).toBe(2)
+
+    // idempotency: a second run changes nothing
+    const rolesBefore = await countRow("select count(*)::int as c from roles")
+    const permissionsBefore = await countRow("select count(*)::int as c from permissions")
+    const consentsBefore = await countRow("select count(*)::int as c from consent_documents")
+
+    const appliedAgain = await runSeed(pool)
+    expect(appliedAgain).toBe(applied)
+
+    expect(await countRow("select count(*)::int as c from roles")).toBe(rolesBefore)
+    expect(await countRow("select count(*)::int as c from permissions")).toBe(permissionsBefore)
+    expect(await countRow("select count(*)::int as c from consent_documents")).toBe(consentsBefore)
   })
 })

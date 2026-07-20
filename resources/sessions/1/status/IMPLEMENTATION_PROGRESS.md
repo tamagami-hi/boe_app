@@ -34,6 +34,29 @@ backend, landing, admin, client, shared frontend, and operational entrypoints.
 | Phase 2: test and TypeScript foundation | In progress | Contract kernels plus authoritative TypeScript/Fastify liveness runtime; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
+## Completed Slice: Typed Idempotent Bootstrap Seed (BE-007g) — closes BE-007
+
+**Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Seventh
+and final child packet of BE-007; **BE-007 is now DONE**.
+
+**Scope:** `src/db/seedCatalog.ts` (authoritative role/permission catalog +
+role->permission map + current consent documents + `buildSeedStatements()`) and
+`src/scripts/seed.ts` (transactional runner + CLI; `seed`/`seed:dev` scripts).
+
+**Explicitly deferred:** `role_permissions`/`user_roles` grants and the optional
+admin user + Argon2id credential + redacted audit event (the security bootstrap
+transaction — needs a granting user) land with BE-009/BE-016 per spec 02 §3.5.
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Catalog validity | Complete | unit: snake_case roles, single-dot permission codes, superadmin holds all, mappings reference known rows |
+| Idempotency | Complete | integration: `runSeed` twice leaves role/permission/consent counts unchanged; every statement `ON CONFLICT DO NOTHING` |
+| Consent digest correctness | Complete | TS SHA-256 equals pgcrypto `digest(...,'sha256')` CHECK — 15/15 integration |
+| No compiled admin secret | Complete | seed contains catalog rows only (spec 02 §3.5) |
+| Unit check | Complete | `npm run check` green (seedCatalog.ts 100%, seed.ts 75% CLI-only) |
+| JS deletion | N/A | legacy `seed-auth.js` already deleted at BE-005 |
+| Commit/push | Complete | Committed on `ts-migration/backend`; PR #1 updated |
+
 ## Completed Slice: Kysely Schema Types + Repository Interfaces (BE-007f)
 
 **Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Sixth

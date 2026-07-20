@@ -2,6 +2,25 @@
 
 ## Last Verified Code Checkpoint
 
+- Task: `BE-007g` typed idempotent bootstrap seed (child of BE-007, **closes
+  BE-007**), landed on branch `ts-migration/backend` (PR #1 to `main`).
+- Result: `src/db/seedCatalog.ts` publishes the authoritative catalog (5 roles;
+  21 single-dot `domain.action` permissions; least-privilege role->permission
+  map with superadmin holding all; current terms/privacy consent docs) and
+  `buildSeedStatements()` (idempotent `ON CONFLICT DO NOTHING` inserts with a
+  TS-computed SHA-256 matching the pgcrypto digest CHECK). `src/scripts/seed.ts`
+  runs them in one transaction (+ CLI; `seed`/`seed:dev` scripts). Proven on
+  PostgreSQL 16 (integration 15/15: applies the catalog + is idempotent on a
+  second run). Unit `check` green. Additive — no JS deleted (83). Grants + admin
+  user + Argon2id credential deferred to the security bootstrap (BE-009/BE-016)
+  per spec 02 §3.5.
+- **BE-007 (canonical identity/onboarding schema) is DONE** (children a-g). The
+  canonical schema (migrations 009-013), its typed §7 contract, and the bootstrap
+  seed are complete. Prior checkpoints: BE-007f, BE-007e, BE-007d, BE-007c,
+  BE-007b, BE-007a, BE-005, BE-004, BE-003, CON-006, BE-002.
+
+## Superseded Code Checkpoint (BE-007f)
+
 - Task: `BE-007f` Kysely schema types + repository interfaces (child of BE-007),
   landed on branch `ts-migration/backend` (PR #1 to `main`).
 - Result: `src/db/types.ts` now defines the full canonical `Database` map (all 23
@@ -143,8 +162,9 @@
 
 ## Next Code Tasks
 
-1. `BE-007g` — typed idempotent bootstrap seed (roles/permissions + current
-   consent documents) closing out BE-007.
+1. `BE-006` — Fastify HTTP boundary primitives (request IDs, response envelopes,
+   Zod input/output, body limits, idempotency middleware); consumed by every
+   route batch.
 2. `BE-008` public consent/application/verification Fastify routes — begins
    deleting the onboarding service JS (`website/services`).
 3. `CON-007` consumer contract/package wiring (openapi-fetch client factory).

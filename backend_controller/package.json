@@ -27,6 +27,8 @@
     "start": "node dist/server.js",
     "migrate": "node dist/scripts/migrate.js up",
     "migrate:dev": "tsx src/scripts/migrate.ts",
+    "seed": "node dist/scripts/seed.js",
+    "seed:dev": "tsx src/scripts/seed.ts",
     "check:db": "node dist/scripts/check-db.js",
     "test": "vitest run --config vitest.config.ts",
     "test:coverage": "vitest run --config vitest.config.ts --coverage",
