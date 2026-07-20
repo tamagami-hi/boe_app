@@ -2,6 +2,34 @@
 
 ## Last Verified Code Checkpoint
 
+- Task: `BE-016` canonical admin identity/compliance domain, landed on branch
+  `ts-migration/backend` (PR #1 to `main`). Accelerated single-task mode;
+  security-critical build with tests.
+- Result: the first-slice admin surface (spec §3.2/§4.5) in TypeScript — six
+  web-cookie + RBAC endpoints: applications queue (authenticated cursor),
+  application detail (with strict-safe embedded deliveries), start review,
+  decision (approve creates invited user + activation invite + review + audit +
+  activation outbox + delivery; reject creates review + audit + rejection outbox
+  + delivery; If-Match + idempotency; no maker-checker), activation-invite
+  resend, and email-deliveries list (full vs masked projection). New
+  `http/cursor.ts` (HMAC opaque cursor), `domain/admin/adminAccess.ts` (RBAC
+  guard with live permission checks), three `domain/admin/*` commands, extended
+  application/user/invite/email-delivery repositories, and a new
+  application-review repository. `envelope`/`boundary` gained an optional
+  `meta.page`. **Additive — no legacy deletion (the whole admin JS block, imported
+  only by BE-017's `adminRoutes.js`, is retired in BE-017). Backend JS stays 51.**
+  `check` green; integration 63/63 (aggregate ≥80% branch). Deferred: production
+  route/env wiring.
+- Prior checkpoints: BE-015 (retire client investment domain, JS 67 -> 51),
+  BE-014 (retire payment/mandate webhooks+providers, JS 72 -> 67), BE-013 (retire
+  public content/catalog, JS 74 -> 72), BE-012 (SES/SNS outbox worker +
+  provider-event ingress, additive JS 74), BE-011 (health/readiness, JS 76 -> 74),
+  BE-010 (native+web auth, JS 80 -> 76), BE-010a, BE-009d (closed BE-009),
+  BE-009c/b/a, BE-008c, BE-008b-2/1, BE-008a, BE-006, BE-007g (closed BE-007),
+  BE-007f..a, BE-005, BE-004, BE-003, CON-006, BE-002.
+
+## Superseded Checkpoint (BE-015)
+
 - Task: `BE-015` retire legacy client investment domain, landed on branch
   `ts-migration/backend` (PR #1 to `main`). Accelerated single-task mode;
   deletion-only.

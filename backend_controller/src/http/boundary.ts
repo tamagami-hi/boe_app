@@ -10,7 +10,7 @@ import { randomUUID } from "node:crypto"
 import type { FastifyError, FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
 
 import { AppError, type ErrorCode } from "./errorCatalog.js"
-import { errorEnvelope, successEnvelope } from "./envelope.js"
+import { errorEnvelope, successEnvelope, type PageMeta } from "./envelope.js"
 
 export const MAX_JSON_BODY_BYTES = 65_536
 
@@ -23,7 +23,11 @@ declare module "fastify" {
   interface FastifyReply {
     sendData: <TData>(
       data: TData,
-      options?: { readonly status?: number; readonly idempotencyReplay?: boolean },
+      options?: {
+        readonly status?: number
+        readonly idempotencyReplay?: boolean
+        readonly page?: PageMeta
+      },
     ) => FastifyReply
   }
 }
@@ -139,13 +143,18 @@ export const renderError = (error: unknown, request: FastifyRequest, reply: Fast
 function sendData(
   this: FastifyReply,
   data: unknown,
-  options: { readonly status?: number; readonly idempotencyReplay?: boolean } = {},
+  options: {
+    readonly status?: number
+    readonly idempotencyReplay?: boolean
+    readonly page?: PageMeta
+  } = {},
 ): FastifyReply {
   const status = options.status ?? this.statusCode
   return this.status(status).send(
     successEnvelope(data, {
       requestId: this.request.requestId,
       ...(options.idempotencyReplay === undefined ? {} : { idempotencyReplay: options.idempotencyReplay }),
+      ...(options.page === undefined ? {} : { page: options.page }),
     }),
   )
 }

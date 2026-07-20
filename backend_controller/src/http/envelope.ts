@@ -4,10 +4,17 @@
  */
 import type { ErrorCode } from "./errorCatalog.js"
 
+export interface PageMeta {
+  readonly nextCursor: string | null
+  readonly limit: number
+  readonly hasMore: boolean
+}
+
 export interface EnvelopeMeta {
   readonly requestId: string
   readonly timestamp: string
   readonly idempotencyReplay?: boolean
+  readonly page?: PageMeta
 }
 
 export interface SuccessEnvelope<TData> {
@@ -35,6 +42,7 @@ export interface MetaInput {
   readonly requestId: string
   readonly timestamp?: string
   readonly idempotencyReplay?: boolean
+  readonly page?: PageMeta
 }
 
 const buildMeta = (meta: MetaInput): EnvelopeMeta => {
@@ -42,9 +50,11 @@ const buildMeta = (meta: MetaInput): EnvelopeMeta => {
     requestId: meta.requestId,
     timestamp: meta.timestamp ?? new Date().toISOString(),
   }
-  return meta.idempotencyReplay === undefined
-    ? base
-    : { ...base, idempotencyReplay: meta.idempotencyReplay }
+  return {
+    ...base,
+    ...(meta.idempotencyReplay === undefined ? {} : { idempotencyReplay: meta.idempotencyReplay }),
+    ...(meta.page === undefined ? {} : { page: meta.page }),
+  }
 }
 
 export const successEnvelope = <TData>(data: TData, meta: MetaInput): SuccessEnvelope<TData> => ({

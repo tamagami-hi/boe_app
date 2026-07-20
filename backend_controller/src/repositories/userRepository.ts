@@ -16,8 +16,17 @@ export interface RolesAndPermissions {
   readonly permissions: readonly string[]
 }
 
+export interface CreateInvitedUserInput {
+  readonly applicationId: string
+  readonly emailNormalized: string
+  readonly phoneE164: string
+  readonly fullName: string
+}
+
 export interface UserWriteRepository {
   lockById: (tx: Transaction, userId: UserId) => Promise<User | null>
+  /** Create the invited user for an approved application (account_state defaults to invited). */
+  createInvited: (tx: Transaction, input: CreateInvitedUserInput) => Promise<User>
   activate: (tx: Transaction, userId: UserId, now: Date) => Promise<User>
   lockByEmailWithCredential: (tx: Transaction, emailNormalized: string) => Promise<UserWithCredential | null>
   findActiveRolesAndPermissions: (tx: Transaction, userId: UserId) => Promise<RolesAndPermissions>
@@ -28,6 +37,18 @@ export const createUserRepository = (): UserWriteRepository => ({
     const row = await tx.selectFrom("users").selectAll().where("id", "=", userId).forUpdate().executeTakeFirst()
     return row ?? null
   },
+
+  createInvited: async (tx, input) =>
+    tx
+      .insertInto("users")
+      .values({
+        application_id: input.applicationId,
+        email_normalized: input.emailNormalized,
+        phone_e164: input.phoneE164,
+        full_name: input.fullName,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow(),
 
   activate: async (tx, userId, now) =>
     tx

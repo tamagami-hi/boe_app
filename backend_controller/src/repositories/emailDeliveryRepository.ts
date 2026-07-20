@@ -41,8 +41,56 @@ export interface RecordSendFailureInput {
 /** Monotonic evidence a provider event contributes; delivered never regresses. */
 export type DeliveryEvidence = "delivered" | "bounced" | "complained"
 
+export interface CreateActivationInviteDeliveryInput {
+  readonly outboxEventId: string
+  readonly userId: string
+  readonly applicationId: string
+  readonly activationInviteId: string
+  readonly recipientCiphertext: Buffer
+  readonly recipientNonce: Buffer
+  readonly recipientHmac: Buffer
+  readonly recipientMasked: string
+  readonly recipientEncryptionKeyVersion: string
+  readonly suppressionHmacKeyVersion: string
+  readonly sesConfigurationSet: string
+  readonly templateVersion: string
+}
+
+export interface CreateRejectionDeliveryInput {
+  readonly outboxEventId: string
+  readonly applicationId: string
+  readonly recipientCiphertext: Buffer
+  readonly recipientNonce: Buffer
+  readonly recipientHmac: Buffer
+  readonly recipientMasked: string
+  readonly recipientEncryptionKeyVersion: string
+  readonly suppressionHmacKeyVersion: string
+  readonly sesConfigurationSet: string
+  readonly templateVersion: string
+}
+
+export interface AdminEmailDeliveryQuery {
+  readonly states?: readonly EmailDelivery["state"][]
+  readonly templateKeys?: readonly string[]
+  readonly applicationId?: string
+  readonly userId?: string
+  readonly afterCreatedAt?: Date
+  readonly afterId?: string
+  readonly limit: number
+}
+
 export interface EmailDeliveryWriteRepository {
   create: (tx: Transaction, input: CreateEmailDeliveryInput) => Promise<EmailDelivery>
+  createActivationInviteDelivery: (
+    tx: Transaction,
+    input: CreateActivationInviteDeliveryInput,
+  ) => Promise<EmailDelivery>
+  createRejectionDelivery: (tx: Transaction, input: CreateRejectionDeliveryInput) => Promise<EmailDelivery>
+  adminList: (tx: Transaction, query: AdminEmailDeliveryQuery) => Promise<readonly EmailDelivery[]>
+  listByApplication: (
+    tx: Transaction,
+    input: Readonly<{ applicationId: string; afterCreatedAt?: Date; afterId?: string; limit: number }>,
+  ) => Promise<readonly EmailDelivery[]>
   lockByOutboxEventId: (tx: Transaction, outboxEventId: string) => Promise<EmailDelivery | null>
   lockById: (tx: Transaction, deliveryId: string) => Promise<EmailDelivery | null>
   lockBySesMessageId: (tx: Transaction, sesMessageId: string) => Promise<EmailDelivery | null>
@@ -83,6 +131,84 @@ export const createEmailDeliveryRepository = (): EmailDeliveryWriteRepository =>
       })
       .returningAll()
       .executeTakeFirstOrThrow(),
+
+  createActivationInviteDelivery: async (tx, input) =>
+    tx
+      .insertInto("email_deliveries")
+      .values({
+        outbox_event_id: input.outboxEventId,
+        user_id: input.userId,
+        application_id: input.applicationId,
+        activation_invite_id: input.activationInviteId,
+        template_key: "activation_invite",
+        template_version: input.templateVersion,
+        recipient_ciphertext: input.recipientCiphertext,
+        recipient_nonce: input.recipientNonce,
+        recipient_hmac: input.recipientHmac,
+        recipient_masked: input.recipientMasked,
+        recipient_encryption_key_version: input.recipientEncryptionKeyVersion,
+        suppression_hmac_key_version: input.suppressionHmacKeyVersion,
+        ses_configuration_set: input.sesConfigurationSet,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow(),
+
+  createRejectionDelivery: async (tx, input) =>
+    tx
+      .insertInto("email_deliveries")
+      .values({
+        outbox_event_id: input.outboxEventId,
+        application_id: input.applicationId,
+        template_key: "application_rejected",
+        template_version: input.templateVersion,
+        recipient_ciphertext: input.recipientCiphertext,
+        recipient_nonce: input.recipientNonce,
+        recipient_hmac: input.recipientHmac,
+        recipient_masked: input.recipientMasked,
+        recipient_encryption_key_version: input.recipientEncryptionKeyVersion,
+        suppression_hmac_key_version: input.suppressionHmacKeyVersion,
+        ses_configuration_set: input.sesConfigurationSet,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow(),
+
+  adminList: async (tx, query) => {
+    let builder = tx.selectFrom("email_deliveries").selectAll()
+    if (query.states !== undefined && query.states.length > 0) {
+      builder = builder.where("state", "in", [...query.states])
+    }
+    if (query.templateKeys !== undefined && query.templateKeys.length > 0) {
+      builder = builder.where("template_key", "in", [...query.templateKeys])
+    }
+    if (query.applicationId !== undefined) builder = builder.where("application_id", "=", query.applicationId)
+    if (query.userId !== undefined) builder = builder.where("user_id", "=", query.userId)
+    if (query.afterCreatedAt !== undefined && query.afterId !== undefined) {
+      const afterCreatedAt = query.afterCreatedAt
+      const afterId = query.afterId
+      builder = builder.where((eb) =>
+        eb.or([
+          eb("created_at", "<", afterCreatedAt),
+          eb.and([eb("created_at", "=", afterCreatedAt), eb("id", "<", afterId)]),
+        ]),
+      )
+    }
+    return builder.orderBy("created_at", "desc").orderBy("id", "desc").limit(query.limit).execute()
+  },
+
+  listByApplication: async (tx, input) => {
+    let builder = tx.selectFrom("email_deliveries").selectAll().where("application_id", "=", input.applicationId)
+    if (input.afterCreatedAt !== undefined && input.afterId !== undefined) {
+      const afterCreatedAt = input.afterCreatedAt
+      const afterId = input.afterId
+      builder = builder.where((eb) =>
+        eb.or([
+          eb("created_at", "<", afterCreatedAt),
+          eb.and([eb("created_at", "=", afterCreatedAt), eb("id", "<", afterId)]),
+        ]),
+      )
+    }
+    return builder.orderBy("created_at", "desc").orderBy("id", "desc").limit(input.limit).execute()
+  },
 
   lockByOutboxEventId: async (tx, outboxEventId) => {
     const row = await tx

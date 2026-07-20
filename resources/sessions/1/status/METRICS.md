@@ -551,3 +551,24 @@ Backend authored JS/JSX backlog **67 -> 51 files** (`src/client/` removed). All 
 (unaffected). Canonical client finance domain + schema deferred to a later slice
 (GATE-08). Reproduce: `find backend_controller/src backend_controller/scripts -type f
 \( -name '*.js' -o -name '*.jsx' \) | wc -l` -> 51.
+
+
+## Delta: BE-016 Canonical Admin Identity/Compliance Domain (branch `ts-migration/backend`)
+
+First non-deletion domain batch since BE-012: builds the first-slice admin
+identity surface (spec §3.2/§4.5) in TypeScript. Additive — no legacy JS deleted
+(the admin JS block, imported only by BE-017's `adminRoutes.js`, is retired in
+BE-017).
+
+| Change | Value |
+|---|---:|
+| Source TS added (`http/cursor.ts`, `domain/admin/*` [adminAccess + 3 commands], `applicationReviewRepository.ts`, `routes/adminIdentityRoutes.ts`) | 7 files |
+| Source TS extended (`envelope.ts`, `boundary.ts`, `applicationRepository.ts`, `userRepository.ts`, `activationInviteRepository.ts`, `emailDeliveryRepository.ts`) | 6 files |
+| Tests added (`http/cursor.test.ts` unit + `adminIdentity.integration.test.ts` 20 tests) | 2 files |
+| **Production JS/JSX deleted** | **0** |
+
+Backend authored JS/JSX backlog **stays 51 files** (additive). Integration 43 -> 63
+(+20). `npm run check` green; full integration aggregate ≥80% branch over
+repositories/routes/domain. `package.json`/`package-lock.json` unchanged. Admin
+legacy retirement deferred to BE-017. Reproduce JS count: `find backend_controller/src
+backend_controller/scripts -type f \( -name '*.js' -o -name '*.jsx' \) | wc -l` -> 51.
