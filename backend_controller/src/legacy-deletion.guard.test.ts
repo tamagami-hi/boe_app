@@ -43,6 +43,28 @@ const DELETED_LEGACY_FILES: readonly string[] = [
   "shared/services/payments/mockProvider.js",
   "shared/services/payments/providerFactory.js",
   "shared/services/payments/razorpayProvider.js",
+  // BE-015: legacy client investment domain. Every /v1/client/* route (dashboard,
+  // portfolio, products, SIPs, orders, payments, mandates, transactions,
+  // statements, notifications, KYC, support, withdrawals, redemptions) is financial
+  // and deferred to later slices per spec 04; the services ran on the retired JSON
+  // store. No canonical replacement in the first slice (client auth is native/web
+  // from BE-010). Owner of clientRoutes.js + all client/services/*.js.
+  "client/routes/clientRoutes.js",
+  "client/services/clientDataService.js",
+  "client/services/fundsService.js",
+  "client/services/kycService.js",
+  "client/services/mandateService.js",
+  "client/services/notificationService.js",
+  "client/services/orderService.js",
+  "client/services/paymentService.js",
+  "client/services/portfolioService.js",
+  "client/services/sipControlService.js",
+  "client/services/sipService.js",
+  "client/services/statementService.js",
+  "client/services/supportService.js",
+  "client/services/supportTicketDetailService.js",
+  "client/services/transactionService.js",
+  "client/services/withdrawalService.js",
 ]
 
 describe("legacy deletion guard", () => {

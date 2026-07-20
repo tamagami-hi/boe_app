@@ -53,3 +53,5 @@ not rewrite prior RED/GREEN history to match later architecture.
 | BE-013 | DONE (deletion-only) | [Retire legacy public content/catalog](./BE-013-public-content-retirement.md) | on `ts-migration/backend` (JS 74 -> 72; content/catalog deferred to a later slice per spec 04) |
 
 | BE-014 | DONE (deletion-only) | [Retire legacy payment/mandate webhooks + providers](./BE-014-payments-webhooks-retirement.md) | on `ts-migration/backend` (JS 72 -> 67; payments/financial deferred to a later slice per spec 04) |
+
+| BE-015 | DONE (deletion-only) | [Retire legacy client investment domain](./BE-015-client-domain-retirement.md) | on `ts-migration/backend` (JS 67 -> 51; client financial domain deferred to a later slice per spec 04) |

@@ -532,3 +532,22 @@ consumers; `providerFactory` still imported only by legacy `orderService`/`sipSe
 `npm run check` green; integration 43/43 (unaffected). Canonical payments/provider
 design deferred to a later slice (GATE-08). Reproduce: `find backend_controller/src
 backend_controller/scripts -type f \( -name '*.js' -o -name '*.jsx' \) | wc -l` -> 67.
+
+
+## Delta: BE-015 Retire Legacy Client Investment Domain (branch `ts-migration/backend`)
+
+Spec-faithful deletion batch. Every `/v1/client/*` route is financial and absent
+from spec 04's exhaustive first-slice inventory; the services ran on the retired
+JSON store. The first-slice client surface is native/web auth (BE-010). No new
+schema/routes.
+
+| Change | Value |
+|---|---:|
+| **Production JS/JSX deleted (`client/routes/clientRoutes.js` + 15 `client/services/*.js`)** | **16** |
+| New TS/schema added | 0 |
+
+Backend authored JS/JSX backlog **67 -> 51 files** (`src/client/` removed). All dead
+(no TS consumers; no non-client importer). `npm run check` green; integration 43/43
+(unaffected). Canonical client finance domain + schema deferred to a later slice
+(GATE-08). Reproduce: `find backend_controller/src backend_controller/scripts -type f
+\( -name '*.js' -o -name '*.jsx' \) | wc -l` -> 51.
