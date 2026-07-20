@@ -26,6 +26,13 @@ const DELETED_LEGACY_FILES: readonly string[] = [
   // (/health/ready readiness + /v1/health envelope; /health/live in application.ts).
   "shared/services/healthService.js",
   "shared/routes/healthRoutes.js",
+  // BE-013: legacy public content/catalog. Spec 04 declares the route inventory
+  // exhaustive for the first slice and defers courses/plans/FAQs/general content/
+  // financial routes to later slices; the only first-slice public content route,
+  // GET /v1/public/consent-documents, is served by routes/publicOnboardingRoutes.ts.
+  // Both files were already dead (publicRoutes imported the deleted onboardingService.js).
+  "website/routes/publicRoutes.js",
+  "website/services/disclosureService.js",
 ]
 
 describe("legacy deletion guard", () => {

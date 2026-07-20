@@ -2,6 +2,28 @@
 
 ## Last Verified Code Checkpoint
 
+- Task: `BE-013` retire legacy public content/catalog, landed on branch
+  `ts-migration/backend` (PR #1 to `main`). Accelerated single-task mode.
+- Result: **scope corrected to deletion-only.** Spec 04 declares its route
+  inventory exhaustive for the first slice and defers courses/plans/FAQs/general
+  content/disclosures/financial routes to later slices; the only first-slice
+  public content route (`GET /v1/public/consent-documents`) is already served by
+  `routes/publicOnboardingRoutes.ts` (BE-008). Building content/catalog now would
+  contradict the spec, so BE-013 deleted the dead legacy
+  `website/routes/publicRoutes.js` + `website/services/disclosureService.js`
+  (both already dead — publicRoutes imported only by dead `router.js` and imported
+  the deleted `onboardingService.js`; disclosureService imported only by
+  publicRoutes), guarded in `legacy-deletion.guard.test.ts`. **Backend JS 74 ->
+  72.** `check` green; integration 43/43 (unaffected). Canonical content/catalog
+  + schema are a later-slice task (GATE-07/BE-017/AD-006).
+- Prior checkpoints: BE-012 (SES/SNS outbox worker + provider-event ingress,
+  additive, JS 74), BE-011 (health/readiness, JS 76 -> 74), BE-010 (native+web
+  auth, JS 80 -> 76), BE-010a, BE-009d (closed BE-009), BE-009c/b/a, BE-008c,
+  BE-008b-2/1, BE-008a, BE-006, BE-007g (closed BE-007), BE-007f..a, BE-005,
+  BE-004, BE-003, CON-006, BE-002.
+
+## Superseded Checkpoint (BE-012)
+
 - Task: `BE-012` SES/SNS outbox delivery worker + signed provider-event ingress,
   landed on branch `ts-migration/backend` (PR #1 to `main`). Accelerated
   single-task mode; highly-critical batch so it carries tests.

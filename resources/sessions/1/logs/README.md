@@ -49,3 +49,5 @@ not rewrite prior RED/GREEN history to match later architecture.
 | BE-011 | DONE | [Readiness/compatibility health](./BE-011-health-readiness.md) | on `ts-migration/backend` (JS 76 -> 74) |
 
 | BE-012 | DONE | [SES/SNS outbox delivery worker + signed provider-event ingress](./BE-012-outbox-email-worker.md) | on `ts-migration/backend` (additive; JS stays 74; AWS adapters deferred) |
+
+| BE-013 | DONE (deletion-only) | [Retire legacy public content/catalog](./BE-013-public-content-retirement.md) | on `ts-migration/backend` (JS 74 -> 72; content/catalog deferred to a later slice per spec 04) |

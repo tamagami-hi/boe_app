@@ -491,3 +491,24 @@ integration aggregate 96.2% stmts / 80.75% branch over repositories/routes/domai
 removed). Concrete AWS SES/cert-fetch adapters deferred to production wiring.
 Reproduce JS count: `find backend_controller/src backend_controller/scripts -type f
 \( -name '*.js' -o -name '*.jsx' \) | wc -l` -> 74.
+
+
+## Delta: BE-013 Retire Legacy Public Content/Catalog (branch `ts-migration/backend`)
+
+Spec-faithful deletion batch. Spec 04 declares the first-slice route inventory
+exhaustive and defers courses/plans/FAQs/general content/disclosures/financial
+routes to later slices; the only first-slice public content route is
+`GET /v1/public/consent-documents` (already served by `publicOnboardingRoutes.ts`).
+No new schema/routes were added.
+
+| Change | Value |
+|---|---:|
+| **Production JS/JSX deleted (`website/routes/publicRoutes.js`, `website/services/disclosureService.js`)** | **2** |
+| New TS/schema added | 0 |
+
+Backend authored JS/JSX backlog **74 -> 72 files**. Both deleted files were already
+dead (publicRoutes imported only by dead `router.js` and imported the deleted
+`onboardingService.js`; disclosureService imported only by publicRoutes). `npm run
+check` green; integration 43/43 (unaffected). Canonical content/catalog + schema
+deferred to a later slice (GATE-07). Reproduce: `find backend_controller/src
+backend_controller/scripts -type f \( -name '*.js' -o -name '*.jsx' \) | wc -l` -> 72.
