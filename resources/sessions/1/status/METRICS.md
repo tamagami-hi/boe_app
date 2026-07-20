@@ -512,3 +512,23 @@ dead (publicRoutes imported only by dead `router.js` and imported the deleted
 check` green; integration 43/43 (unaffected). Canonical content/catalog + schema
 deferred to a later slice (GATE-07). Reproduce: `find backend_controller/src
 backend_controller/scripts -type f \( -name '*.js' -o -name '*.jsx' \) | wc -l` -> 72.
+
+
+## Delta: BE-014 Retire Legacy Payment/Mandate Webhooks + Providers (branch `ts-migration/backend`)
+
+Spec-faithful deletion batch. Spec 04's only first-slice webhook is
+`POST /v1/provider-events/aws-sns` (SES/SNS email, BE-012); payment/mandate provider
+webhooks and the wider financial domain are deferred to later slices, and the legacy
+code ran on the retired JSON store + non-canonical tables. No new schema/routes.
+
+| Change | Value |
+|---|---:|
+| **Production JS/JSX deleted (`webhookRoutes.js`, `webhookService.js`, `payments/{mockProvider,providerFactory,razorpayProvider}.js`)** | **5** |
+| New TS/schema added | 0 |
+
+Backend authored JS/JSX backlog **72 -> 67 files**. All five were dead (no TS
+consumers; `providerFactory` still imported only by legacy `orderService`/`sipService`
+[BE-015] + `reconcileService` [BE-017], which are dead JS outside the TS build graph).
+`npm run check` green; integration 43/43 (unaffected). Canonical payments/provider
+design deferred to a later slice (GATE-08). Reproduce: `find backend_controller/src
+backend_controller/scripts -type f \( -name '*.js' -o -name '*.jsx' \) | wc -l` -> 67.

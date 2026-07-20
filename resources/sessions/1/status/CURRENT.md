@@ -2,6 +2,29 @@
 
 ## Last Verified Code Checkpoint
 
+- Task: `BE-014` retire legacy payment/mandate webhooks + provider abstractions,
+  landed on branch `ts-migration/backend` (PR #1 to `main`). Accelerated
+  single-task mode; deletion-only.
+- Result: spec 04's first-slice webhook surface is only `POST
+  /v1/provider-events/aws-sns` (SES/SNS email, built in BE-012); payment/mandate
+  provider webhooks and the wider financial domain are deferred to later slices,
+  and the legacy code ran on the retired JSON store + non-canonical tables
+  (payments/mandates/transactions/investmentPlans). Deleted the dead legacy
+  `shared/routes/webhookRoutes.js`, `shared/services/webhookService.js`, and
+  `shared/services/payments/{mockProvider,providerFactory,razorpayProvider}.js`
+  (no TS consumers; `payments/` dir now empty), guarded in
+  `legacy-deletion.guard.test.ts`. **Backend JS 72 -> 67.** `check` green;
+  integration 43/43 (unaffected). Canonical Razorpay provider + idempotent
+  payment/mandate evidence are a later-slice task (GATE-08).
+- Prior checkpoints: BE-013 (retire public content/catalog, JS 74 -> 72), BE-012
+  (SES/SNS outbox worker + provider-event ingress, additive JS 74), BE-011
+  (health/readiness, JS 76 -> 74), BE-010 (native+web auth, JS 80 -> 76),
+  BE-010a, BE-009d (closed BE-009), BE-009c/b/a, BE-008c, BE-008b-2/1, BE-008a,
+  BE-006, BE-007g (closed BE-007), BE-007f..a, BE-005, BE-004, BE-003, CON-006,
+  BE-002.
+
+## Superseded Checkpoint (BE-013)
+
 - Task: `BE-013` retire legacy public content/catalog, landed on branch
   `ts-migration/backend` (PR #1 to `main`). Accelerated single-task mode.
 - Result: **scope corrected to deletion-only.** Spec 04 declares its route

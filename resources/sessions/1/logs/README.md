@@ -51,3 +51,5 @@ not rewrite prior RED/GREEN history to match later architecture.
 | BE-012 | DONE | [SES/SNS outbox delivery worker + signed provider-event ingress](./BE-012-outbox-email-worker.md) | on `ts-migration/backend` (additive; JS stays 74; AWS adapters deferred) |
 
 | BE-013 | DONE (deletion-only) | [Retire legacy public content/catalog](./BE-013-public-content-retirement.md) | on `ts-migration/backend` (JS 74 -> 72; content/catalog deferred to a later slice per spec 04) |
+
+| BE-014 | DONE (deletion-only) | [Retire legacy payment/mandate webhooks + providers](./BE-014-payments-webhooks-retirement.md) | on `ts-migration/backend` (JS 72 -> 67; payments/financial deferred to a later slice per spec 04) |

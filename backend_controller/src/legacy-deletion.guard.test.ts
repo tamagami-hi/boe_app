@@ -33,6 +33,16 @@ const DELETED_LEGACY_FILES: readonly string[] = [
   // Both files were already dead (publicRoutes imported the deleted onboardingService.js).
   "website/routes/publicRoutes.js",
   "website/services/disclosureService.js",
+  // BE-014: legacy payment/mandate provider webhooks + provider abstractions.
+  // Spec 04's first-slice webhook surface is only POST /v1/provider-events/aws-sns
+  // (routes/providerEventRoutes.ts, BE-012); payment/mandate provider webhooks and
+  // the wider financial domain are deferred to later slices, and this code ran on
+  // the retired JSON store and non-canonical tables (payments/mandates/transactions).
+  "shared/routes/webhookRoutes.js",
+  "shared/services/webhookService.js",
+  "shared/services/payments/mockProvider.js",
+  "shared/services/payments/providerFactory.js",
+  "shared/services/payments/razorpayProvider.js",
 ]
 
 describe("legacy deletion guard", () => {
