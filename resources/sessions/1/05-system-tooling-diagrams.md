@@ -1,6 +1,7 @@
 # System, TypeScript, Tooling, and Contract Architecture
 
-**Status:** Phase 0 approved; Phase 2 implementation not yet authorized
+**Status:** Phase 0 approved; Phase 2 implementation in progress through the
+contracts scalar and error/envelope kernels
 
 **Applies to:** Phase 2 foundation through the Phase 10 clean baseline
 
@@ -29,8 +30,8 @@ monorepo:
 - The release manager currently builds backend and landing from package-specific
   Docker contexts. Both builds move to the repository-root context, with
   explicit Dockerfile paths, when the common contract package is introduced.
-- The canonical planning set is staged for tracking at
-  `resources/sessions/1/*.md` in the primary checkout. After its commit is
+- The canonical planning set is tracked at `resources/sessions/1/*.md` in the
+  primary checkout. After its commit is
   merged/rebased, the existing `resources` sparse patterns materialize it
   read-only in each surface worktree. The sparse worktrees include no root
   `packages` path yet, so that path must be extended explicitly when contracts

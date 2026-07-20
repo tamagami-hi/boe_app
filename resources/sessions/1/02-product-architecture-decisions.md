@@ -1,6 +1,7 @@
 # Product and Architecture Decisions for the PostgreSQL/TypeScript Rearchitecture
 
-**Status:** Phase 0 approved; Phase 2 implementation not yet authorized
+**Status:** Phase 0 approved; Phase 2 implementation in progress through the
+contracts scalar and error/envelope kernels
 
 **Applies to:** Phases 0-10 of the rearchitecture plan
 

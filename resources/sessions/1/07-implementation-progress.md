@@ -13,10 +13,38 @@
 | Phase | Status | Current boundary |
 |---|---|---|
 | Phase 0: planning and architecture | Complete | Approved in commit `ec07d21` |
-| Phase 2: test and TypeScript foundation | In progress | Scalar kernel only |
+| Phase 2: test and TypeScript foundation | In progress | Scalar plus error/envelope kernels; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
-## Active Slice: Contracts Scalar Kernel
+## Active Slice: Contracts Error And Envelope Kernel
+
+**Status:** Complete
+
+**Scope:** Add the exact public error-code/status/retryability catalog and the
+strict shared success, error, and metadata envelope schemas. Export the new
+modules from the package root and dedicated subpaths.
+
+**Explicitly out of scope:** operation descriptors, route request/response
+schemas, OpenAPI generation packages/artifacts, generated clients, backend and
+consumer manifests, CI, Docker, release tooling, PostgreSQL, authentication,
+providers, and frontend changes.
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Approved-plan review | Complete | Factual, planning, and TDD audits selected errors plus envelopes as the smallest cohesive successor to scalars |
+| GitHub reuse search | Complete | Authenticated code search found generic envelope examples but no implementation matching the normative 22-code policy and strict metadata contract |
+| Primary docs/registry check | Complete | Zod 4 strict-object, enum, union, record, and JSON Schema behavior rechecked against official documentation; no dependency was added or changed |
+| Tests written before implementation | Complete | `errors.test.ts` and `envelope.test.ts` preceded both implementation modules; review-discovered immutability, prototype-key, JSON Schema, and type-inference regressions also preceded their fixes |
+| RED observed | Complete | Initial focused run failed in two suites on missing `./errors.js` and `./envelope.js`; review regression run then failed 5 tests for mutable exports, prototype-sensitive field keys, and missing JSON Schema variants; the property-name parity test also failed before the representable regex fix |
+| Minimal implementation | Complete | Deeply frozen 22-code catalog, inferred `ErrorCode`, strict metadata, success schema factory, and three strict JSON-Schema-visible error variants only |
+| Unit tests GREEN | Complete | Node 22.20.0/npm 11.16.0 Vitest 3.2.6: 60/60 full package tests passed, including 40 focused error/envelope tests |
+| Coverage >=80% on all four metrics | Complete | 100% statements (227/227), branches (77/77), functions (18/18), and lines (227/227) across all authored contract source |
+| Typecheck/lint/build/import smoke | Complete | Clean `npm ci`; strict typecheck, typed ESLint, declaration/ESM build, automated root/scalars/errors/envelope export smoke, and 17-file `npm pack --dry-run` passed under Node 22.20.0/npm 11.16.0 |
+| Security and generated-contract checks | Complete | Zero-vulnerability lock audit; runtime policy exports are deeply frozen; prototype-sensitive validation field keys are rejected; generated JSON Schema preserves retryability, validation-fields, and strict-object constraints |
+| Focused reviews | Complete | General, TypeScript/package, and security reviews found mutable-policy and generated-schema blockers; regression-first fixes were re-reviewed with no remaining CRITICAL, HIGH, or MEDIUM findings |
+| Commit | Complete | Recorded by the containing `feat: add contract error envelopes` commit |
+
+## Completed Slice: Contracts Scalar Kernel
 
 **Status:** Complete
 
