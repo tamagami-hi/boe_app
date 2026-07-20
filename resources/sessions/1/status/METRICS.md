@@ -396,3 +396,17 @@ Additive; deletes no JavaScript.
 Backend authored JS/JSX backlog unchanged at **81 files**. ES256 sign/verify with
 kid selection proven (round-trip + unknown-kid/wrong-audience/tampered rejects).
 Third child of BE-009 (BE-009c).
+
+## Delta: BE-009d Refresh/CSRF Session-Token Primitives (branch `ts-migration/backend`) — closes BE-009
+
+Deletes the legacy HS256 token module.
+
+| Change | Value |
+|---|---:|
+| Source TS added (`auth/sessionTokens.ts`) + test | 2 files |
+| **Production JS/JSX deleted (`security/tokens.js`)** | **1** |
+
+Backend authored JS/JSX backlog **81 -> 80 files**. Opaque refresh/CSRF tokens
+with keyed hashing + constant-time verify proven. **BE-009 DONE (a-d)**; 3 of the
+security core's files gone (passwords + tokens; `auth.js` -> BE-010). Fourth
+child of BE-009 (BE-009d).

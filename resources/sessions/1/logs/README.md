@@ -39,3 +39,5 @@ not rewrite prior RED/GREEN history to match later architecture.
 | BE-009b | DONE | [Breached-password check (HIBP)](./BE-009b-breach-check.md) | on `ts-migration/backend` |
 
 | BE-009c | DONE | [ES256 access-token service](./BE-009c-access-token.md) | on `ts-migration/backend` |
+
+| BE-009d | DONE | [Refresh/CSRF session-token primitives](./BE-009d-session-tokens.md) | on `ts-migration/backend` (JS 81 -> 80; closes BE-009) |

@@ -34,6 +34,26 @@ backend, landing, admin, client, shared frontend, and operational entrypoints.
 | Phase 2: test and TypeScript foundation | In progress | Contract kernels plus authoritative TypeScript/Fastify liveness runtime; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
+## Completed Slice: Refresh/CSRF Session-Token Primitives (BE-009d) — closes BE-009
+
+**Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Fourth
+child of BE-009; **BE-009 (security core) is DONE**.
+
+**Scope:** `src/auth/sessionTokens.ts` (opaque refresh/CSRF generation + keyed
+HMAC hashing + constant-time verify + key config). Deletes `security/tokens.js`.
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Refresh/CSRF generate+verify | Complete | unit: match true, mismatch false, 43-char/32-byte |
+| Distinct keys | Complete | unit: refresh vs CSRF hash of same token differ |
+| **JS deletion** | **Complete** | **`security/tokens.js` removed; backend JS 81 -> 80** |
+| Unit + integration | Complete | `npm run check` green; integration 24/24 |
+| Commit/push | Complete | Committed on `ts-migration/backend`; PR #1 updated |
+
+**BE-009 summary:** Argon2id hashing (009a), HIBP breach check (009b), ES256
+access tokens (009c), refresh/CSRF primitives (009d); deleted
+`security/passwords.js` + `security/tokens.js`; `security/auth.js` -> BE-010.
+
 ## Completed Slice: ES256 Access-Token Service (BE-009c)
 
 **Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Third child

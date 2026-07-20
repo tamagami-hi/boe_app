@@ -13,6 +13,9 @@ const DELETED_LEGACY_FILES: readonly string[] = [
   "website/services/onboardingService.js",
   // BE-009a: replaced by src/auth/passwordHasher.ts (Argon2id).
   "security/passwords.js",
+  // BE-009d: HS256 token module replaced by src/auth/accessToken.ts (ES256)
+  // + src/auth/sessionTokens.ts (opaque refresh/CSRF).
+  "security/tokens.js",
 ]
 
 describe("legacy deletion guard", () => {

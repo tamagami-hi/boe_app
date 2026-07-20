@@ -2,6 +2,21 @@
 
 ## Last Verified Code Checkpoint
 
+- Task: `BE-009d` refresh/CSRF session-token primitives (child of BE-009,
+  **closes BE-009**), landed on branch `ts-migration/backend` (PR #1 to `main`).
+- Result: `src/auth/sessionTokens.ts` — opaque refresh + CSRF token generation,
+  keyed HMAC-SHA-256 hashing under distinct versioned keys, and constant-time
+  verification; own 2-key config so the public-onboarding `CryptoContext` is
+  unchanged. **Deleted `src/security/tokens.js` (HS256) — backend JS 81 -> 80.**
+  Unit `check` green; integration 24/24. **BE-009 (security core) DONE** (a-d:
+  Argon2id, HIBP, ES256, refresh/CSRF); `security/auth.js` deletion + rotation
+  state machine -> BE-010.
+- Prior checkpoints: BE-009c, BE-009b, BE-009a, BE-008c, BE-008b-2/1, BE-008a,
+  BE-006, BE-007g (closed BE-007), BE-007f..a, BE-005, BE-004, BE-003, CON-006,
+  BE-002.
+
+## Superseded Code Checkpoint (BE-009c)
+
 - Task: `BE-009c` ES256 access-token service (child of BE-009), landed on branch
   `ts-migration/backend` (PR #1 to `main`).
 - Result: `src/auth/accessToken.ts` (`createAccessTokenService`) — ES256-only
@@ -284,11 +299,13 @@
 
 ## Next Code Tasks
 
-1. `BE-009d` — refresh/CSRF token primitives + rotation helpers; then delete
-   `security/{auth,tokens}.js` (81 -> 79).
-2. `BE-010` activation + web/native auth routes (consume password hasher, breach
-   check, access token, refresh rotation, session repositories).
-3. `BE-011` readiness/health endpoints.
+1. `BE-010` activation + web/native auth routes: session repositories
+   (auth_sessions/auth_refresh_tokens), activation command (consume invite,
+   create Argon2id credential + session + refresh), login/refresh/logout with
+   rotation + CSRF, Fastify auth guard; delete `security/auth.js` + legacy auth
+   routes (80 -> lower).
+2. `BE-011` readiness/health endpoints; delete legacy health service/routes.
+3. `BE-012` SES/SNS outbox + email delivery worker.
    deleting the onboarding service JS (`website/services`).
 3. `CON-007` consumer contract/package wiring (openapi-fetch client factory).
 
