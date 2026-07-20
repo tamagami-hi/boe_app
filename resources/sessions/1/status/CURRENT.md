@@ -2,19 +2,22 @@
 
 ## Last Verified Code Checkpoint
 
-- Task: `BE-010` activation + native/web auth, landed on branch
+- Task: `BE-011` readiness/compatibility health, landed on branch
   `ts-migration/backend` (PR #1 to `main`). Accelerated single-task mode.
-- Result: native (activation, login, refresh-rotation with 30s grace + reuse
-  revocation, logout, ES256 bearer guard) AND web (cookie/CSRF login, refresh
-  rotating refresh+CSRF together, logout, Origin/Sec-Fetch + constant-time CSRF
-  guard) — `domain/auth/{nativeAuth,webAuth}.ts`, `routes/{nativeAuthRoutes,webAuthRoutes}.ts`,
-  session/user/invite/credential repositories, `refreshDerivation`/`phone` utils.
-  Critical integration tests across 5 container files (35/35). **Deleted the
-  legacy auth trio — backend JS 80 -> 76.** Deferred: `GET /v1/auth/web/csrf`
-  reload recovery + production `server.ts` wiring/env composition.
-- Prior checkpoints: BE-010a, BE-009d (closed BE-009), BE-009c/b/a, BE-008c,
-  BE-008b-2/1, BE-008a, BE-006, BE-007g (closed BE-007), BE-007f..a, BE-005,
-  BE-004, BE-003, CON-006, BE-002.
+- Result: `src/runtime/health.ts` — `buildReadinessReport` (degraded until DB
+  reachable + emailConfigured), `createReadinessCheck` (fail-closed `select 1`
+  ping, wired at composition), and `registerHealthRoutes` adding `GET
+  /health/ready` (200/503 plain operational body exposing only booleans, no
+  configuration values) + `GET /v1/health` (versioned success envelope);
+  `/health/live` stays database-independent in `application.ts`. Light
+  `inject` unit test (ready/degraded/no-leak/envelope). **Deleted legacy
+  `shared/services/healthService.js` + `shared/routes/healthRoutes.js` — backend
+  JS 76 -> 74.** `check` green; integration 35/35 (unaffected). Deferred:
+  compose `createReadinessCheck` into the running `server.ts` (with the BE-010
+  auth/server wiring).
+- Prior checkpoints: BE-010 (native+web auth, JS 80 -> 76), BE-010a, BE-009d
+  (closed BE-009), BE-009c/b/a, BE-008c, BE-008b-2/1, BE-008a, BE-006, BE-007g
+  (closed BE-007), BE-007f..a, BE-005, BE-004, BE-003, CON-006, BE-002.
 
 ## Superseded Code Checkpoint (BE-010 native core)
 

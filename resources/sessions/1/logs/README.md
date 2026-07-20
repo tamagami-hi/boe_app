@@ -44,4 +44,6 @@ not rewrite prior RED/GREEN history to match later architecture.
 
 | BE-010a | DONE | [Auth session + credential repositories](./BE-010a-auth-session-repositories.md) | on `ts-migration/backend` |
 
-| BE-010 (native core) | ACTIVE | [Activation + native auth](./BE-010-auth.md) | on `ts-migration/backend`; refresh/web/deletion remaining |
+| BE-010 | DONE | [Activation + native/web auth](./BE-010-auth.md) | on `ts-migration/backend` (JS 80 -> 76; production wiring + `/csrf` recovery deferred) |
+
+| BE-011 | DONE | [Readiness/compatibility health](./BE-011-health-readiness.md) | on `ts-migration/backend` (JS 76 -> 74) |

@@ -451,3 +451,20 @@ Completes the BE-010 auth surface and removes the legacy auth trio.
 Backend authored JS/JSX **80 -> 76 files**. Integration 35/35 across 5 container
 files; global coverage 96.81% stmts / 81.89% branch. BE-010 auth surface (native
 + web) complete; production wiring + `/csrf` recovery deferred.
+
+
+## Delta: BE-011 Readiness/Compatibility Health (branch `ts-migration/backend`)
+
+Adds canonical health/readiness; deletes the legacy leaky health surface.
+
+| Change | Value |
+|---|---:|
+| Source TS added (`runtime/health.ts`) + unit test (`runtime/health.test.ts`) | 2 files |
+| **Production JS/JSX deleted (`shared/services/healthService.js`, `shared/routes/healthRoutes.js`)** | **2** |
+
+Backend authored JS/JSX backlog **76 -> 74 files**. `/health/ready` (200/503
+plain, no value leaks; degraded until DB reachable + emailConfigured) and
+`/v1/health` (success envelope); `/health/live` unchanged. `npm run check` green;
+integration 35/35 (unaffected). Reproduce: `find backend_controller/src
+backend_controller/scripts -type f \( -name '*.js' -o -name '*.jsx' \) | wc -l`
+-> 74.

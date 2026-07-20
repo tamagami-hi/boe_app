@@ -22,6 +22,10 @@ const DELETED_LEGACY_FILES: readonly string[] = [
   "shared/services/authService.js",
   "shared/services/authService.signup.test.js",
   "shared/routes/authRoutes.js",
+  // BE-011: legacy health/reachability replaced by src/runtime/health.ts
+  // (/health/ready readiness + /v1/health envelope; /health/live in application.ts).
+  "shared/services/healthService.js",
+  "shared/routes/healthRoutes.js",
 ]
 
 describe("legacy deletion guard", () => {
