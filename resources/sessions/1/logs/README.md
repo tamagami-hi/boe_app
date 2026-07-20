@@ -59,3 +59,5 @@ not rewrite prior RED/GREEN history to match later architecture.
 | BE-016 | DONE (additive build) | [Canonical admin identity domain](./BE-016-admin-identity.md) | on `ts-migration/backend` (JS stays 51; admin legacy deletion consolidated to BE-017) |
 
 | BE-017 | DONE (deletion-only) | [Retire legacy admin finance/content domain](./BE-017-admin-finance-retirement.md) | on `ts-migration/backend` (JS 51 -> 39; admin finance/content deferred to a later slice per spec 04) |
+
+| BE-018 | DONE (deletion-only) | [Retire remaining legacy shared block](./BE-018-shared-retirement.md) | on `ts-migration/backend` (JS 39 -> 13; deferred content/financial shared closures on the retired JSON store) |

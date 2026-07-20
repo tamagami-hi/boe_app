@@ -84,6 +84,37 @@ const DELETED_LEGACY_FILES: readonly string[] = [
   "admin/services/sipControlAdminService.js",
   "admin/services/supportTicketAdminService.js",
   "admin/services/userDetailService.js",
+  // BE-018: remaining legacy shared routes/services/contracts/config/utils. All
+  // served deferred content/financial domains on the retired JSON store and had
+  // no TypeScript consumers; the canonical first-slice surface lives in
+  // src/routes/*.ts + src/runtime. The legacy transport (http/*.js, router.js)
+  // and legacy persistence (db/{client,pgAdapter,store}.js) are retired in BE-019.
+  "shared/config/taxConfig.js",
+  "shared/config/taxConfig.test.js",
+  "shared/contracts/index.js",
+  "shared/contracts/moneyState.js",
+  "shared/contracts/payloads.js",
+  "shared/contracts/receipt.js",
+  "shared/routes/constants.js",
+  "shared/routes/index.js",
+  "shared/routes/internalRoutes.js",
+  "shared/routes/receiptRoutes.js",
+  "shared/routes/timelineRoutes.js",
+  "shared/services/appConfigService.js",
+  "shared/services/copyRegistry.js",
+  "shared/services/courseService.js",
+  "shared/services/fundCatalogService.js",
+  "shared/services/fundClientView.js",
+  "shared/services/fundClientView.test.js",
+  "shared/services/landingConfigSchema.js",
+  "shared/services/landingConfigSchema.test.js",
+  "shared/services/landingConfigService.js",
+  "shared/services/placeholderService.js",
+  "shared/services/planService.js",
+  "shared/services/receiptService.js",
+  "shared/services/timelineService.js",
+  "shared/services/withReceipt.js",
+  "shared/utils/istDate.js",
 ]
 
 describe("legacy deletion guard", () => {

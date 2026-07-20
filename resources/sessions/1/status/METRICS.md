@@ -591,3 +591,22 @@ Backend authored JS/JSX backlog **51 -> 39 files** (`src/admin/` removed). All d
 admin finance/content deferred to a later slice (GATE-08). Reproduce: `find
 backend_controller/src backend_controller/scripts -type f \( -name '*.js' -o -name
 '*.jsx' \) | wc -l` -> 39.
+
+
+## Delta: BE-018 Retire Remaining Legacy Shared Block (branch `ts-migration/backend`)
+
+Spec-faithful deletion batch. The remaining `src/shared/**` legacy JS served
+deferred content/financial domains on the retired JSON store with no TS consumers;
+the canonical first-slice surface lives in `src/routes/*.ts` + `src/runtime`.
+
+| Change | Value |
+|---|---:|
+| **Production JS/JSX deleted (`src/shared/**` config/contracts/routes/services/utils)** | **26** |
+| New TS/schema added | 0 |
+
+Backend authored JS/JSX backlog **39 -> 13 files** (`src/shared/` removed). All dead
+(no TS consumers). `npm run check` green; integration 63/63 (unaffected). Remaining
+13 = legacy transport (`http/*.js` x5, `router.js`), persistence
+(`db/{client,pgAdapter,store}.js` x3), and legacy `scripts/*.js` x4 -> BE-019, then
+BE-020 zero-JS gate. Reproduce: `find backend_controller/src backend_controller/scripts
+-type f \( -name '*.js' -o -name '*.jsx' \) | wc -l` -> 13.

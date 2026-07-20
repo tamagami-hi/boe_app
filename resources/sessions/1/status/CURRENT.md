@@ -2,6 +2,29 @@
 
 ## Last Verified Code Checkpoint
 
+- Task: `BE-018` retire remaining legacy shared block, landed on branch
+  `ts-migration/backend` (PR #1 to `main`). Accelerated single-task mode;
+  deletion-only.
+- Result: the remaining dead legacy `src/shared/**` (content/financial services,
+  contracts, route registrations, tax config, date utils) had no TypeScript
+  consumers and served deferred domains on the retired JSON store. Deleted 26
+  files (`src/shared/` removed), guarded in `legacy-deletion.guard.test.ts`.
+  **Backend JS 39 -> 13.** `check` green; integration 63/63 (unaffected). The
+  legacy transport (`http/*.js`, `router.js`), persistence
+  (`db/{client,pgAdapter,store}.js`), and four legacy `scripts/*.js` are retired
+  in BE-019; BE-020 asserts zero backend JS.
+- Prior checkpoints: BE-017 (retire admin finance/content, JS 51 -> 39), BE-016
+  (canonical admin identity domain, additive JS 51), BE-015 (retire client
+  investment domain, JS 67 -> 51), BE-014 (retire payment/mandate
+  webhooks+providers, JS 72 -> 67), BE-013 (retire public content/catalog, JS 74
+  -> 72), BE-012 (SES/SNS outbox worker + provider-event ingress, additive JS 74),
+  BE-011 (health/readiness, JS 76 -> 74), BE-010 (native+web auth, JS 80 -> 76),
+  BE-010a, BE-009d (closed BE-009), BE-009c/b/a, BE-008c, BE-008b-2/1, BE-008a,
+  BE-006, BE-007g (closed BE-007), BE-007f..a, BE-005, BE-004, BE-003, CON-006,
+  BE-002.
+
+## Superseded Checkpoint (BE-017)
+
 - Task: `BE-017` retire legacy admin finance/content domain, landed on branch
   `ts-migration/backend` (PR #1 to `main`). Accelerated single-task mode;
   deletion-only.
