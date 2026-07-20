@@ -2,6 +2,20 @@
 
 ## Last Verified Code Checkpoint
 
+- Task: `BE-008b-1` onboarding crypto primitives (child of BE-008), landed on
+  branch `ts-migration/backend` (PR #1 to `main`).
+- Result: `src/crypto/primitives.ts` (opaque 43-char base64url token, keyed
+  HMAC-SHA-256, AES-256-GCM envelope with 12-byte nonce + appended 16-byte tag,
+  constant-time compare, email mask) and `src/crypto/context.ts` (`parseCryptoKeys`
+  decodes/length-validates four base64 keys + versions; `createCryptoContext`
+  binds them into token/HMAC/envelope/mask helpers). Pure `node:crypto`, fully
+  unit-tested (round-trip, tamper rejection, format, key-length). `check` green;
+  integration unchanged (16/16). Additive — no JS deleted (83).
+- Prior checkpoints: BE-008a, BE-006, BE-007g (closed BE-007), BE-007f..a,
+  BE-005, BE-004, BE-003, CON-006, BE-002.
+
+## Superseded Code Checkpoint (BE-008a)
+
 - Task: `BE-008a` public consent-documents route (child of BE-008), landed on
   branch `ts-migration/backend` (PR #1 to `main`).
 - Result: the first canonical `/v1` route end-to-end. `src/repositories/consentRepository.ts`
@@ -197,10 +211,11 @@
 
 ## Next Code Tasks
 
-1. `BE-008b` — `POST /v1/applications` submission (duplicate/cooldown branches) +
+1. `BE-008b-2` — `POST /v1/applications` submission (new-pair / duplicate-pending
+   15-min-cooldown / duplicate-active / cross-match / uniqueness-race branches) +
    ApplicationRepository/ConsentRepository.recordAcceptances/VerificationToken/
-   Idempotency/Outbox/EmailDelivery/Audit repository impls; wires
-   `executeIdempotent` to the real repository.
+   Idempotency/Outbox/EmailDelivery/Audit repository impls; revise
+   `executeIdempotent` to check-completed-first and wire the real repository.
 2. `BE-008c` — `POST /v1/applications/verify-email` + delete legacy
    `website/services/onboardingService.js` (first onboarding JS deletion).
 3. `BE-009` password/token/session security core — begins.

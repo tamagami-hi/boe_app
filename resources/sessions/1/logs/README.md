@@ -27,3 +27,5 @@ not rewrite prior RED/GREEN history to match later architecture.
 | BE-006 | DONE | [Fastify HTTP boundary primitives](./BE-006-http-boundary-primitives.md) | on `ts-migration/backend` |
 
 | BE-008a | DONE | [Public consent-documents route](./BE-008a-public-consent-documents-route.md) | on `ts-migration/backend` |
+
+| BE-008b-1 | DONE | [Onboarding crypto primitives](./BE-008b1-crypto-primitives.md) | on `ts-migration/backend` |

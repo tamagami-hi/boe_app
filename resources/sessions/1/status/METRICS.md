@@ -311,3 +311,17 @@ First canonical `/v1` route; deletes no JavaScript yet.
 
 Backend authored JS/JSX backlog unchanged at **83 files**. First real repository
 implementation + route proven end-to-end on PostgreSQL 16. First child of BE-008.
+
+## Delta: BE-008b-1 Onboarding Crypto Primitives (branch `ts-migration/backend`)
+
+New `node:crypto` module; deletes no JavaScript yet.
+
+| Change | Value |
+|---|---:|
+| Source TS added (`crypto/primitives.ts`, `crypto/context.ts`) | 2 files |
+| Test TS added (`crypto/primitives.test.ts`, `crypto/context.test.ts`) | 2 files |
+| Production JS/JSX deleted | 0 |
+
+Backend authored JS/JSX backlog unchanged at **83 files**. AES-256-GCM envelope +
+keyed HMAC + opaque-token primitives proven by unit tests (round-trip, tamper,
+format, key length). Second child of BE-008 (BE-008b-1).
