@@ -10,8 +10,7 @@ The exact non-overlapping count partition is in
 
 | Task | Status | Depends on | Packet | Completion/deletion boundary |
 |---|---|---|---|---|
-| DOC-001 Session working model and reorganization | REVIEW | BE-001 | [Packet](./packets/DOC-001-session-working-model.md) | Working model, `_coord` protocol, task ledger, logs/status/templates, repaired links, and Legacy hash guard committed |
-| COORD-001 Central coordination system | ACTIVE | DOC-001 draft, BE-001 | [Packet](./packets/COORD-001-central-coordination-system.md) | Atomic central state, dependency-aware tasks, hierarchical claims, protected paths, stale recovery, audit/JSON status, tracked tooling and ignored live state |
+| DOC-001 Session working model and reorganization | REVIEW | BE-001 | [Packet](./packets/DOC-001-session-working-model.md) | Migration working model, task ledger, logs/status/templates, repaired links, and Legacy hash guard committed |
 | CON-006 Deterministic OpenAPI generator | BACKLOG | CON-001..005 | Not instantiated | One committed generated OpenAPI artifact/staleness test; no duplicate schema authority; decide contract ESLint MJS tooling |
 | CON-007 Consumer contract/package wiring | BACKLOG | CON-006 | Not instantiated | Backend/landing/workspace builds consume `@beonedge/contracts` from repository-root contexts |
 | BE-002 Graceful API lifecycle | BACKLOG | BE-001 | Not instantiated | SIGTERM/SIGINT drain tests and implementation before any stateful route/worker |

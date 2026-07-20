@@ -189,9 +189,9 @@ branches, functions, and lines when the selected runner exposes them.
 cd /home/nethunter07/PROJECTS/boe_app
 git status --short
 git log -5 --oneline
-sed -n '1,260p' resources/sessions/1/handoffs/07-central-coordination-system-handoff.md
-sed -n '1,260p' resources/sessions/1/packets/COORD-001-central-coordination-system.md
-sed -n '1,260p' resources/sessions/1/logs/COORD-001-central-coordination-system.md
+sed -n '1,260p' resources/_coord/handoffs/07-central-coordination-system-handoff.md
+sed -n '1,260p' resources/_coord/packets/COORD-001-central-coordination-system.md
+sed -n '1,260p' resources/_coord/logs/COORD-001-central-coordination-system.md
 sed -n '1,420p' resources/_coord/coord.mjs
 ```
 
@@ -203,7 +203,7 @@ in the COORD-001 phase log.
 
 Implementation began after this pre-implementation handoff. The exact current
 state is recorded in the [COORD-001 phase log](../logs/COORD-001-central-coordination-system.md)
-and [current resume point](../status/CURRENT.md): 20 isolated tests pass,
+and the [coordinator handbook](../README.md): 20 isolated tests pass,
 including the three-agent contention test, but branch coverage is 64.85% and
 the root `resources/*` ignore rule still hides the coordinator source/tests.
 Do not treat the coordinator as accepted, complete, or commit-ready until those

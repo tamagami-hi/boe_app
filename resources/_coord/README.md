@@ -1,5 +1,20 @@
 # Live Multi-Agent Coordination With `resources/_coord`
 
+## Scope And Current Status
+
+This folder owns all coordination-system work: the coordinator source, policy,
+tests, runtime state, task packets, logs, and handoffs. Its engineering records
+are in `handoffs/`, `packets/`, and `logs/`; they do not belong to the BOE
+JavaScript-to-TypeScript migration records in `resources/sessions/1`.
+
+The separate coordination workstream status is in
+[TASKS.md](./TASKS.md).
+
+The central-coordinator replacement is currently in progress. Read
+[COORD-001 handoff](./handoffs/07-central-coordination-system-handoff.md),
+[packet](./packets/COORD-001-central-coordination-system.md), and
+[log](./logs/COORD-001-central-coordination-system.md) before modifying it.
+
 ## Purpose
 
 `resources/_coord/coord.mjs` replaces manual Markdown tracking of live agent

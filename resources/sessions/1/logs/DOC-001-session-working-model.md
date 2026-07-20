@@ -1,5 +1,7 @@
 # DOC-001 Phase Log: Session Working Model And Reorganization
 
+Status: `REVIEW`
+
 ## Objective
 
 Create a BOE-specific execution/logging model based on the referenced algo
@@ -16,7 +18,8 @@ self-contained without touching `resources/sessions/Legacy`.
 - [ ] Repair and validate every moved-document link/path statement.
 - [ ] Verify task inventory counts and Legacy tree hash.
 - [ ] Run documentation review and resolve findings.
-- [ ] Commit, push, mark `DOC-001` done, and select the next active task.
+- [x] Commit and push the initial Session 1 reorganization as `b2c369b`.
+- [ ] Complete migration-ledger review, then mark `DOC-001` done.
 
 ## Current File Layout
 

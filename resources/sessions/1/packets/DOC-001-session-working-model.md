@@ -4,13 +4,13 @@
 - Owner surface: `resources/sessions/1/**` only
 - Dependencies: BE-001 code checkpoint `9e884ad`
 - Objective: adapt the referenced algo-engine working flow, reorganize Session
-  1, integrate `_coord` live coordination, and create durable migration,
+  1 and create durable migration,
   deletion, evidence, metrics, and resume records.
 - Normative sources: user instructions; referenced
   `/home/nethunter07/PROJECTS/algo_engine/WORKING_MODEL.md`; existing Session 1
-  master plan/specifications; `resources/_coord/coord.mjs` protocol.
-- Dominant risk: a stale or ambiguous authority/resume system causing agents to
-  duplicate work, edit the same files, or retain old JS unintentionally.
+  master plan/specifications.
+- Dominant risk: a stale or ambiguous migration authority/resume system causing
+  duplicate work or unintended legacy JavaScript retention.
 - Production replacement closure: documentation/process only; no code changes
   authorized after checkpoint `9e884ad`.
 - Exact JS/JSX deletion target: none.

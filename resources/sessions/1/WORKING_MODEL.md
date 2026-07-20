@@ -92,9 +92,7 @@ expand an active packet. A row without a complete packet cannot be `READY`.
 | `DONE` | Code, deletion, validation, review, metrics, log, commit, and push complete |
 
 Milestone status changes are written to `TASKS.md`, `status/CURRENT.md`, and the
-task log in the same commit as the evidence that justifies the change. Live
-file ownership, heartbeats, and agent-to-agent coordination are not tracked in
-Markdown; they use `resources/_coord` as defined below.
+task log in the same commit as the evidence that justifies the change.
 
 ## 6. Eval-First And TDD Loop
 
@@ -167,27 +165,11 @@ Every packet runs its focused tests plus the applicable surface gates:
 Security-sensitive, data, provider, filesystem, auth, and financial changes also
 require security review. Code changes always require code/TypeScript review.
 
-## 10. Live Multi-Agent Coordination
+## 10. Migration Evidence Boundary
 
-[`COORDINATION.md`](./COORDINATION.md) defines the repository's live
-coordination protocol. `resources/_coord/coord.mjs` is the operational board for:
-
-- unique agent identity and stable session instance;
-- one-line task brief and context references;
-- exact-file `next` intent and race-safe `claim` holdings;
-- heartbeat/stale detection and explicit stale reclamation;
-- release-to-done or drop-without-done; and
-- global conflict/status inspection.
-
-Each agent writes only its own JSON file through the coordination script. Agents
-must claim every exact existing, new, moved-from, moved-to, or deleted path
-before editing. Directory strings do not lock descendants because the current
-tool compares normalized paths exactly.
-
-The `_coord` board is advisory live state. It does not prove correctness,
-replace Git, select architecture, satisfy task dependencies, or preserve test
-evidence. Session Markdown is updated at task/milestone boundaries, not for
-heartbeats, tentative file lists, or each agent handoff.
+Session 1 records only migration task packets, source/deletion boundaries,
+validation, reviews, metrics, decisions, and resume checkpoints. Do not add
+unrelated tooling implementation records to this session.
 
 ## 11. Durable Logging Model
 
@@ -205,8 +187,8 @@ Every task packet gets `logs/<TASK_ID>-<short-name>.md` containing:
 - metrics; and
 - commit/push plus next resume point.
 
-Session-wide records updated after every landed packet, not every coordination
-event:
+Session-wide records updated after every landed packet, not every transient
+execution event:
 
 - `status/CURRENT.md` — one-page resume point;
 - `TASKS.md` — packet states and next ready work;
@@ -228,8 +210,7 @@ A new session resumes by reading, in order:
 3. the active workstream row and packet file;
 4. the active task log as non-normative execution evidence;
 5. relevant risks, plan, and specification sections;
-6. `resources/_coord` global status for live file claims;
-7. `git status --short`, `git log -5 --oneline`, and the last validation record.
+6. `git status --short`, `git log -5 --oneline`, and the last validation record.
 
 Before changing code, confirm that the recorded commit matches `HEAD`, no
 unexplained worktree changes overlap the task, and the listed old-file deletion

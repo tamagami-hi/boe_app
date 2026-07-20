@@ -30,15 +30,11 @@ Read in this order:
 
 1. [Current resume point](./status/CURRENT.md)
 2. [BOE working model](./WORKING_MODEL.md)
-3. [Live agent coordination protocol](./COORDINATION.md)
-4. [Executable workstream ledger](./TASKS.md)
-5. The active [DOC-001 packet](./packets/DOC-001-session-working-model.md) and
+3. [Executable workstream ledger](./TASKS.md)
+4. The active [DOC-001 packet](./packets/DOC-001-session-working-model.md) and
    its non-normative [execution log](./logs/DOC-001-session-working-model.md)
-6. The prepared [central coordinator handoff](./handoffs/07-central-coordination-system-handoff.md),
-   [COORD-001 packet](./packets/COORD-001-central-coordination-system.md), and
-   [pre-implementation log](./logs/COORD-001-central-coordination-system.md)
-7. Relevant risks, plan, and specification documents
-8. [Migration inventory](./inventory/JS_TS_MIGRATION_LEDGER.md)
+5. Relevant risks, plan, and specification documents
+6. [Migration inventory](./inventory/JS_TS_MIGRATION_LEDGER.md)
 
 Latest verified code checkpoint: `9e884ad`. The TypeScript/Fastify liveness
 runtime is complete and pushed. `DOC-001` is reorganizing and validating this
@@ -52,8 +48,6 @@ packet is instantiated, and only one may become active with user authorization.
 
 - [WORKING_MODEL.md](./WORKING_MODEL.md) — task selection, eval-first/TDD,
   replacement/deletion, validation, logging, and resume rules.
-- [COORDINATION.md](./COORDINATION.md) — `_coord` identity, heartbeat, exact-file
-  claims, conflicts, release, and stale recovery.
 - [TASKS.md](./TASKS.md) — workstream statuses, phase dependencies, deletion
   owners, and links to complete execution packets.
 - [Current](./status/CURRENT.md) — one-page continuation point.
@@ -86,7 +80,6 @@ packet is instantiated, and only one may become active with user authorization.
 
 - [Original assessment/handoff](./handoffs/00-database-typescript-rearchitecture-handoff.md)
 - [Planning-completion handoff](./handoffs/06-planning-completion-handoff.md)
-- [Central coordination implementation handoff](./handoffs/07-central-coordination-system-handoff.md)
 
 Historical handoffs preserve context and may contain sections explicitly marked
 superseded. Normative precedence is working model → decisions → master

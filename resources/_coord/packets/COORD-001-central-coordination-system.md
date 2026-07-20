@@ -8,7 +8,7 @@
 - Objective: replace the race-prone ignored advisory board with a tracked,
   centralized, atomic, dependency-aware coordination system for all project
   agents.
-- Normative sources: user instructions; [working model](../WORKING_MODEL.md);
+- Normative sources: user instructions; [migration working model](../../sessions/1/WORKING_MODEL.md);
   [coordination handoff](../handoffs/07-central-coordination-system-handoff.md);
   current `resources/_coord/coord.mjs`; Node filesystem semantics; reviewed
   lock-directory pattern from `moxystudio/node-proper-lockfile`.

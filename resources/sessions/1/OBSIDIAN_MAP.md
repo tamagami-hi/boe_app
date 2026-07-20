@@ -3,7 +3,6 @@ tags:
   - boe
   - migration
   - typescript
-  - coordination
 ---
 
 # Session 1 Obsidian Map
@@ -18,7 +17,6 @@ Start with [[resources/sessions/1/README|Session 1 home]], then follow
 ## Execution Authority
 
 - [[resources/sessions/1/WORKING_MODEL|Working model]]
-- [[resources/sessions/1/COORDINATION|Live coordination protocol]]
 - [[resources/sessions/1/TASKS|Migration task ledger]]
 - [[resources/sessions/1/status/CURRENT|Current resume point]]
 - [[resources/sessions/1/status/IMPLEMENTATION_PROGRESS|Implementation progress]]
@@ -38,8 +36,6 @@ Start with [[resources/sessions/1/README|Session 1 home]], then follow
 
 - [[resources/sessions/1/packets/DOC-001-session-working-model|DOC-001 packet]]
 - [[resources/sessions/1/logs/DOC-001-session-working-model|DOC-001 log]]
-- [[resources/sessions/1/packets/COORD-001-central-coordination-system|COORD-001 packet]]
-- [[resources/sessions/1/logs/COORD-001-central-coordination-system|COORD-001 log]]
 - [[resources/sessions/1/logs/BE-001-backend-runtime-reset|BE-001 runtime-reset log]]
 - [[resources/sessions/1/logs/README|Task-log index]]
 
@@ -47,7 +43,6 @@ Start with [[resources/sessions/1/README|Session 1 home]], then follow
 
 - [[resources/sessions/1/handoffs/00-database-typescript-rearchitecture-handoff|Original assessment handoff]]
 - [[resources/sessions/1/handoffs/06-planning-completion-handoff|Planning-completion handoff]]
-- [[resources/sessions/1/handoffs/07-central-coordination-system-handoff|Central-coordination handoff]]
 - [[resources/sessions/1/inventory/JS_TS_MIGRATION_LEDGER|JS/TS migration inventory]]
 - [[resources/sessions/1/removed/README|Removed-mechanism index]]
 - [[resources/sessions/1/removed/BE-001-javascript-server|BE-001 removed JavaScript server]]

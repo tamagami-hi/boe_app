@@ -31,6 +31,7 @@ backend_controller/data/*.tmp
 resources/
 !resources/
 resources/*
+!resources/_coord/
 !resources/sessions/
 resources/sessions/*
 !resources/sessions/1/
@@ -71,7 +72,25 @@ SKILL.md
 frontend_stack/.codex
 frontend_stack/.codex/
 resources/agent/
-resources/_coord/
+resources/_coord/*
+!resources/_coord/coord.mjs
+!resources/_coord/coord.test.mjs
+!resources/_coord/project.json
+!resources/_coord/README.md
+!resources/_coord/TASKS.md
+!resources/_coord/lib/
+!resources/_coord/lib/*.mjs
+!resources/_coord/handoffs/
+!resources/_coord/handoffs/*.md
+!resources/_coord/packets/
+!resources/_coord/packets/*.md
+!resources/_coord/logs/
+!resources/_coord/logs/*.md
+resources/_coord/state.json
+resources/_coord/state.lock/
+resources/_coord/state.lock.stale.*/
+resources/_coord/state.json.tmp.*
+resources/_coord/agents/
 extra/coding-sessions/
 
 # Kimi round-trip harness
