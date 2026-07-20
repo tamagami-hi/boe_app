@@ -13,7 +13,7 @@ import type { AccessTokenService } from "../../auth/accessToken.js"
 import type { BreachChecker } from "../../auth/breachCheck.js"
 import { hashPassword, verifyDummyPassword, verifyPassword } from "../../auth/passwordHasher.js"
 import { maskPhone } from "../../auth/phone.js"
-import { generateInitialRefreshToken, hashToken } from "../../auth/refreshDerivation.js"
+import { deriveRefreshToken, generateInitialRefreshToken, hashToken } from "../../auth/refreshDerivation.js"
 import type { CryptoContext } from "../../crypto/context.js"
 import type { Transaction, User, UserId } from "../../db/repositories.js"
 import type { Database } from "../../db/types.js"
@@ -62,9 +62,12 @@ export interface NativeAuthDeps {
   readonly breachChecker: BreachChecker
   readonly accessTokenService: AccessTokenService
   readonly database: Kysely<Database>
+  readonly refreshKey: Buffer
   readonly refreshKeyVersion: string
   readonly clock: () => Date
 }
+
+const REFRESH_GRACE_MS = 30 * 1000
 
 const deviceIdHash = (installationId: string): Buffer =>
   createHash("sha256").update(installationId).digest()
@@ -227,6 +230,102 @@ export const authenticateNativeRequest = async (
     throw new AppError("ACCOUNT_NOT_ACTIVE")
   }
   return { userId: verified.sub, sessionId: verified.sid }
+}
+
+export interface NativeRefreshInput {
+  readonly refreshToken: string
+  readonly rotationId: string
+}
+
+export interface NativeRefreshResult {
+  readonly accessToken: string
+  readonly accessTokenExpiresAt: string
+  readonly refreshToken: string
+  readonly refreshTokenExpiresAt: string
+  readonly sessionId: string
+}
+
+export type NativeRefreshOutcome =
+  | { readonly kind: "issued"; readonly result: NativeRefreshResult }
+  | { readonly kind: "reuse_revoked" }
+
+const bufferEquals = (a: Buffer, b: Buffer | null): boolean => b !== null && Buffer.from(a).equals(Buffer.from(b))
+
+/**
+ * Native refresh rotation (spec 04 §3.3, 03 §5-§6). Consumes generation N and
+ * derives generation N+1; a same-rotationId re-presentation of the immediately
+ * previous token inside the 30s grace reproduces the successor without a write;
+ * any other reuse revokes the family.
+ */
+export const nativeRefresh = async (
+  tx: Transaction,
+  deps: NativeAuthDeps,
+  input: NativeRefreshInput,
+): Promise<NativeRefreshOutcome> => {
+  const presentedHash = hashToken(input.refreshToken)
+  const locked = await deps.authSessionRepository.lockByRefreshTokenHash(tx, presentedHash)
+  // Unknown token or an already-inactive session: nothing to persist, so a throw
+  // (which rolls back the empty transaction) is correct.
+  if (locked === null) throw new AppError("SESSION_INVALID")
+
+  const { session, refreshToken: presented } = locked
+  const now = deps.clock()
+  if (session.state !== "active" || new Date(session.expires_at).getTime() <= now.getTime()) {
+    throw new AppError("SESSION_INVALID")
+  }
+
+  const issue = async (successorRaw: string): Promise<NativeRefreshOutcome> => {
+    const accessToken = await deps.accessTokenService.sign({ sub: session.user_id, sid: session.id })
+    return {
+      kind: "issued",
+      result: {
+        accessToken,
+        accessTokenExpiresAt: new Date(now.getTime() + ACCESS_TOKEN_TTL_MS).toISOString(),
+        refreshToken: successorRaw,
+        refreshTokenExpiresAt: new Date(now.getTime() + REFRESH_IDLE_MS).toISOString(),
+        sessionId: session.id,
+      },
+    }
+  }
+
+  // Current token (unused, unrevoked): perform the rotation.
+  if (presented.used_at === null && presented.revoked_at === null) {
+    const successorGeneration = Number(presented.generation) + 1
+    const successorRaw = deriveRefreshToken(deps.refreshKey, session.id, successorGeneration, input.rotationId)
+    await deps.authSessionRepository.rotateRefresh(tx, {
+      sessionId: session.id,
+      userId: session.user_id,
+      currentTokenId: presented.id,
+      currentTokenHash: Buffer.from(presented.token_hash as unknown as Uint8Array),
+      currentKeyVersion: presented.token_key_version,
+      successorGeneration,
+      successorHash: hashToken(successorRaw),
+      refreshKeyVersion: deps.refreshKeyVersion,
+      rotationId: input.rotationId,
+      previousValidUntil: new Date(now.getTime() + REFRESH_GRACE_MS),
+      refreshExpiresAt: new Date(now.getTime() + REFRESH_IDLE_MS),
+      now,
+    })
+    return issue(successorRaw)
+  }
+
+  // Previous token within the 30s grace with the identical rotationId: reproduce.
+  const previousHash =
+    session.previous_refresh_token_hash === null
+      ? null
+      : Buffer.from(session.previous_refresh_token_hash as unknown as Uint8Array)
+  const graceUntil = session.previous_refresh_valid_until
+  const withinGrace = graceUntil !== null && new Date(graceUntil).getTime() > now.getTime()
+  if (bufferEquals(presentedHash, previousHash) && withinGrace && session.last_rotation_id === input.rotationId) {
+    const successorRaw = deriveRefreshToken(deps.refreshKey, session.id, Number(session.generation), input.rotationId)
+    return issue(successorRaw)
+  }
+
+  // Any other reuse revokes the family. The revocation MUST commit, so we return
+  // an outcome (rather than throw, which would roll it back); the route maps it
+  // to SESSION_INVALID.
+  await deps.authSessionRepository.revokeSessionFamily(tx, { sessionId: session.id, reason: "refresh_reuse", now })
+  return { kind: "reuse_revoked" }
 }
 
 export const nativeLogout = async (

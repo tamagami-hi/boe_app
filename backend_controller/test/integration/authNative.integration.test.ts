@@ -93,6 +93,7 @@ beforeAll(async () => {
     breachChecker: createBreachChecker("bypass"),
     accessTokenService,
     database,
+    refreshKey: randomBytes(32),
     refreshKeyVersion: "rt1",
     clock: () => new Date(),
     unitOfWork: createUnitOfWork(database),
@@ -189,6 +190,53 @@ describe("native authentication (integration)", () => {
       payload: { email: "nobody@example.com", password: PASSWORD, device: DEVICE },
     })
     expect(unknown.statusCode).toBe(401)
+  })
+
+  test("refresh rotates the token, reproduces on same-rotationId retry, and revokes on reuse", async () => {
+    const login = await app.inject({
+      method: "POST",
+      url: "/v1/auth/native/login",
+      payload: { email: "activate@example.com", password: PASSWORD, device: DEVICE },
+    })
+    const original = dataOf<NativeResult>(login)
+    const rotationId = randomUUID()
+
+    // First rotation consumes gen N and issues gen N+1.
+    const rotated = await app.inject({
+      method: "POST",
+      url: "/v1/auth/native/refresh",
+      payload: { refreshToken: original.refreshToken, rotationId },
+    })
+    expect(rotated.statusCode).toBe(200)
+    const successor = dataOf<NativeResult>(rotated)
+    expect(successor.refreshToken).toMatch(/^[A-Za-z0-9_-]{43}$/u)
+    expect(successor.refreshToken).not.toBe(original.refreshToken)
+
+    // Same rotationId re-presentation of the previous token reproduces the successor (no new rotation).
+    const reproduced = await app.inject({
+      method: "POST",
+      url: "/v1/auth/native/refresh",
+      payload: { refreshToken: original.refreshToken, rotationId },
+    })
+    expect(reproduced.statusCode).toBe(200)
+    expect(dataOf<NativeResult>(reproduced).refreshToken).toBe(successor.refreshToken)
+
+    // Reusing the previous token with a DIFFERENT rotationId revokes the family.
+    const reuse = await app.inject({
+      method: "POST",
+      url: "/v1/auth/native/refresh",
+      payload: { refreshToken: original.refreshToken, rotationId: randomUUID() },
+    })
+    expect(reuse.statusCode).toBe(401)
+    expect(reuse.json<{ error: { code: string } }>().error.code).toBe("SESSION_INVALID")
+
+    // The successor no longer works because the family is revoked.
+    const afterRevoke = await app.inject({
+      method: "POST",
+      url: "/v1/auth/native/refresh",
+      payload: { refreshToken: successor.refreshToken, rotationId: randomUUID() },
+    })
+    expect(afterRevoke.statusCode).toBe(401)
   })
 
   test("logout revokes the session with a valid bearer and rejects a missing one", async () => {

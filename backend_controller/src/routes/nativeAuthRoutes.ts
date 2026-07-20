@@ -7,12 +7,14 @@ import { z } from "zod"
 
 import { passwordInputSchema } from "../auth/passwordHasher.js"
 import type { UnitOfWork } from "../db/database.js"
+import { AppError } from "../http/errorCatalog.js"
 import { parseOrThrow } from "../http/validation.js"
 import {
   activateUser,
   authenticateNativeRequest,
   nativeLogin,
   nativeLogout,
+  nativeRefresh,
   type NativeAuthDeps,
 } from "../domain/auth/nativeAuth.js"
 
@@ -36,6 +38,10 @@ const loginSchema = z
   .strict()
 
 const logoutSchema = z.object({ refreshToken: z.string().regex(/^[A-Za-z0-9_-]{43}$/u) }).strict()
+
+const refreshSchema = z
+  .object({ refreshToken: z.string().regex(/^[A-Za-z0-9_-]{43}$/u), rotationId: z.string().uuid() })
+  .strict()
 
 export const registerNativeAuthRoutes = (application: FastifyInstance, deps: NativeAuthRouteDeps): void => {
   application.post("/v1/activations/complete", async (request, reply) => {
@@ -62,6 +68,15 @@ export const registerNativeAuthRoutes = (application: FastifyInstance, deps: Nat
       }),
     )
     return reply.sendData(result, { status: 200 })
+  })
+
+  application.post("/v1/auth/native/refresh", async (request, reply) => {
+    const body = parseOrThrow(refreshSchema, request.body)
+    const outcome = await deps.unitOfWork.execute((tx) =>
+      nativeRefresh(tx, deps, { refreshToken: body.refreshToken, rotationId: body.rotationId }),
+    )
+    if (outcome.kind === "reuse_revoked") throw new AppError("SESSION_INVALID")
+    return reply.sendData(outcome.result, { status: 200 })
   })
 
   application.post("/v1/auth/native/logout", async (request, reply) => {

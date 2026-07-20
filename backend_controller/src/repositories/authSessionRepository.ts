@@ -27,6 +27,21 @@ export interface RevokeSessionsResult {
   readonly revokedRefreshTokenCount: number
 }
 
+export interface RotateRefreshInput {
+  readonly sessionId: string
+  readonly userId: string
+  readonly currentTokenId: string
+  readonly currentTokenHash: Buffer
+  readonly currentKeyVersion: string
+  readonly successorGeneration: number
+  readonly successorHash: Buffer
+  readonly refreshKeyVersion: string
+  readonly rotationId: string
+  readonly previousValidUntil: Date
+  readonly refreshExpiresAt: Date
+  readonly now: Date
+}
+
 export interface AuthSessionWriteRepository {
   createNativeSession: (tx: Transaction, input: CreateNativeSessionInput) => Promise<CreatedSession>
   lockByRefreshTokenHash: (tx: Transaction, tokenHash: Buffer) => Promise<CreatedSession | null>
@@ -35,6 +50,7 @@ export interface AuthSessionWriteRepository {
     input: Readonly<{ userId: UserId; deviceIdHash: Buffer }>,
   ) => Promise<AuthSession | null>
   lockActiveBySid: (tx: Transaction, sessionId: string) => Promise<AuthSession | null>
+  rotateRefresh: (tx: Transaction, input: RotateRefreshInput) => Promise<void>
   revokeSessionFamily: (
     tx: Transaction,
     input: Readonly<{ sessionId: string; reason: string; now: Date }>,
@@ -117,6 +133,49 @@ export const createAuthSessionRepository = (): AuthSessionWriteRepository => ({
       .forUpdate()
       .executeTakeFirst()
     return row ?? null
+  },
+
+  rotateRefresh: async (tx, input) => {
+    // Mark the consumed token used first so the single-current-token partial
+    // unique index permits the successor insert.
+    await tx
+      .updateTable("auth_refresh_tokens")
+      .set({ used_at: input.now })
+      .where("id", "=", input.currentTokenId)
+      .execute()
+
+    const successor = await tx
+      .insertInto("auth_refresh_tokens")
+      .values({
+        session_id: input.sessionId,
+        user_id: input.userId,
+        generation: input.successorGeneration,
+        token_hash: input.successorHash,
+        token_key_version: input.refreshKeyVersion,
+        expires_at: input.refreshExpiresAt,
+      })
+      .returning("id")
+      .executeTakeFirstOrThrow()
+
+    await tx
+      .updateTable("auth_refresh_tokens")
+      .set({ replaced_by_token_id: successor.id })
+      .where("id", "=", input.currentTokenId)
+      .execute()
+
+    await tx
+      .updateTable("auth_sessions")
+      .set({
+        generation: input.successorGeneration,
+        last_rotation_id: input.rotationId,
+        previous_refresh_token_hash: input.currentTokenHash,
+        previous_refresh_key_version: input.currentKeyVersion,
+        previous_refresh_valid_until: input.previousValidUntil,
+        last_seen_at: input.now,
+        updated_at: input.now,
+      })
+      .where("id", "=", input.sessionId)
+      .execute()
   },
 
   revokeSessionFamily: async (tx, input) => {

@@ -36,11 +36,19 @@ Correctness note: refresh/CSRF successors are deterministically HMAC-derived and
 stored as SHA-256(raw); this supersedes BE-009d's keyed-hash approach for the
 rotation path (BE-009d `sessionTokens.ts` is now only a generic primitive).
 
+## Native refresh rotation — LANDED
+
+`POST /v1/auth/native/refresh` + `authSessionRepository.rotateRefresh` +
+`nativeRefresh` command: consumes gen N, derives + inserts gen N+1
+(`deriveRefreshToken`), 30s previous-pair grace reproduces the successor on the
+identical rotationId without a write, any other reuse revokes the family. Bug
+fixed during implementation: the reuse path must COMMIT the revocation, so the
+command returns a `reuse_revoked` outcome (the route maps it to SESSION_INVALID)
+instead of throwing, which would have rolled back the revoke. Integration 32/32;
+`nativeAuth.ts` 97.65%.
+
 ## Remaining for BE-010
 
-- Native refresh rotation (`/v1/auth/native/refresh`): consume gen N, derive +
-  insert gen N+1, 30s previous-pair grace with matching rotationId, family reuse
-  revocation.
 - Web auth (`/v1/auth/web/{login,csrf,refresh,logout}`): HttpOnly cookies,
   synchronizer CSRF, Origin/Referer + Sec-Fetch-Site checks, CSRF rotation.
 - Web auth guard + wiring routes into production `server.ts`.
