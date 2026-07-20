@@ -37,3 +37,5 @@ not rewrite prior RED/GREEN history to match later architecture.
 | BE-009a | DONE | [Argon2id password hasher](./BE-009a-password-hasher.md) | on `ts-migration/backend` (JS 82 -> 81) |
 
 | BE-009b | DONE | [Breached-password check (HIBP)](./BE-009b-breach-check.md) | on `ts-migration/backend` |
+
+| BE-009c | DONE | [ES256 access-token service](./BE-009c-access-token.md) | on `ts-migration/backend` |

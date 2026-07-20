@@ -383,3 +383,16 @@ Additive security capability; deletes no JavaScript.
 Backend authored JS/JSX backlog unchanged at **81 files**. HIBP k-anonymity
 checker proven offline (breached/padding/cache/fail-closed/bypass). Second child
 of BE-009 (BE-009b).
+
+## Delta: BE-009c ES256 Access-Token Service (branch `ts-migration/backend`)
+
+Additive; deletes no JavaScript.
+
+| Change | Value |
+|---|---:|
+| Source TS added (`auth/accessToken.ts`) + test | 2 files |
+| Production JS/JSX deleted | 0 |
+
+Backend authored JS/JSX backlog unchanged at **81 files**. ES256 sign/verify with
+kid selection proven (round-trip + unknown-kid/wrong-audience/tampered rejects).
+Third child of BE-009 (BE-009c).

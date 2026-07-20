@@ -2,6 +2,19 @@
 
 ## Last Verified Code Checkpoint
 
+- Task: `BE-009c` ES256 access-token service (child of BE-009), landed on branch
+  `ts-migration/backend` (PR #1 to `main`).
+- Result: `src/auth/accessToken.ts` (`createAccessTokenService`) — ES256-only
+  sign/verify via `jose`; signs with the current `kid` (header alg/kid/typ +
+  iss/aud/sub/sid/jti/iat/nbf/exp, 10-min TTL); verify rejects missing/unknown
+  `kid`, pins issuer/audience/ES256/`typ=access`/<=30s skew, and collapses every
+  failure to AUTHENTICATION_REQUIRED; keys imported lazily + cached. Unit `check`
+  green (jose in dist smoke); integration 24/24. Additive — no JS deleted (81).
+- Prior checkpoints: BE-009b, BE-009a, BE-008c, BE-008b-2/1, BE-008a, BE-006,
+  BE-007g (closed BE-007), BE-007f..a, BE-005, BE-004, BE-003, CON-006, BE-002.
+
+## Superseded Code Checkpoint (BE-009b)
+
 - Task: `BE-009b` breached-password check (child of BE-009), landed on branch
   `ts-migration/backend` (PR #1 to `main`).
 - Result: `src/auth/breachCheck.ts` — HIBP k-anonymity checker (sends only the
@@ -271,11 +284,11 @@
 
 ## Next Code Tasks
 
-1. `BE-009c` — ES256 access-token service (jose; kid selection, pinned
-   iss/aud/typ, <=30s skew, 10-min TTL).
-2. `BE-009d` — refresh/CSRF token primitives + rotation helpers; then delete
+1. `BE-009d` — refresh/CSRF token primitives + rotation helpers; then delete
    `security/{auth,tokens}.js` (81 -> 79).
-3. `BE-010` activation + web/native auth routes.
+2. `BE-010` activation + web/native auth routes (consume password hasher, breach
+   check, access token, refresh rotation, session repositories).
+3. `BE-011` readiness/health endpoints.
    deleting the onboarding service JS (`website/services`).
 3. `CON-007` consumer contract/package wiring (openapi-fetch client factory).
 

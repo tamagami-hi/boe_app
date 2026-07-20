@@ -34,6 +34,22 @@ backend, landing, admin, client, shared frontend, and operational entrypoints.
 | Phase 2: test and TypeScript foundation | In progress | Contract kernels plus authoritative TypeScript/Fastify liveness runtime; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
+## Completed Slice: ES256 Access-Token Service (BE-009c)
+
+**Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Third child
+of BE-009. Additive.
+
+**Scope:** `src/auth/accessToken.ts` — ES256-only `jose` sign/verify with
+versioned `kid`, pinned iss/aud/`typ=access`/<=30s skew, 10-min TTL.
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Sign/verify round-trip | Complete | unit: sub/sid/jti/kid returned |
+| kid + audience pinning | Complete | unit: unknown kid + wrong audience reject |
+| Tamper/malformed | Complete | unit: both reject with AUTHENTICATION_REQUIRED |
+| Unit + integration | Complete | `npm run check` green (jose in dist smoke); integration 24/24 |
+| Commit/push | Complete | Committed on `ts-migration/backend`; PR #1 updated |
+
 ## Completed Slice: Breached-Password Check (BE-009b)
 
 **Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Second
