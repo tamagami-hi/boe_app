@@ -36,13 +36,9 @@ describe("createApplication", () => {
     })
 
     expect(response.statusCode).toBe(404)
-    expect(response.json()).toEqual({
-      error: {
-        code: "RESOURCE_NOT_FOUND",
-        message: "Resource not found",
-        retryable: false,
-      },
-    })
+    const body = response.json<{ ok: boolean; error: { code: string; retryable: boolean } }>()
+    expect(body.ok).toBe(false)
+    expect(body.error).toMatchObject({ code: "RESOURCE_NOT_FOUND", retryable: false })
     expect(response.body).not.toMatch(/secret-path|secret-query|secret-header/u)
   })
 
@@ -53,13 +49,9 @@ describe("createApplication", () => {
     const response = await application.inject({ method: "GET", url: "/secret-path%" })
 
     expect(response.statusCode).toBe(400)
-    expect(response.json()).toEqual({
-      error: {
-        code: "VALIDATION_FAILED",
-        message: "Request validation failed",
-        retryable: false,
-      },
-    })
+    const body = response.json<{ ok: boolean; error: { code: string; retryable: boolean } }>()
+    expect(body.ok).toBe(false)
+    expect(body.error).toMatchObject({ code: "VALIDATION_FAILED", retryable: false })
     expect(response.body).not.toMatch(/secret-path|FST_ERR_BAD_URL|valid url component/u)
   })
 
@@ -83,13 +75,9 @@ describe("createApplication", () => {
     const response = await application.inject({ method: "GET", url: "/test/failure" })
 
     expect(response.statusCode).toBe(500)
-    expect(response.json()).toEqual({
-      error: {
-        code: "INTERNAL_ERROR",
-        message: "Internal server error",
-        retryable: true,
-      },
-    })
+    const body = response.json<{ ok: boolean; error: { code: string; retryable: boolean } }>()
+    expect(body.ok).toBe(false)
+    expect(body.error).toMatchObject({ code: "INTERNAL_ERROR", retryable: true })
     expect(response.body).not.toContain("secret-provider-error")
     expect(output).toContain("Request failed unexpectedly")
     expect(output).not.toContain("secret-provider-error")
@@ -104,7 +92,7 @@ describe("createApplication", () => {
       const response = await application.inject({ method, url: "/health/live" })
 
       expect(response.statusCode).toBe(404)
-      expect(response.json()).toMatchObject({ error: { code: "RESOURCE_NOT_FOUND" } })
+      expect(response.json()).toMatchObject({ ok: false, error: { code: "RESOURCE_NOT_FOUND" } })
     },
   )
 })

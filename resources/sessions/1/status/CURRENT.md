@@ -2,6 +2,26 @@
 
 ## Last Verified Code Checkpoint
 
+- Task: `BE-006` Fastify HTTP boundary primitives, landed on branch
+  `ts-migration/backend` (PR #1 to `main`).
+- Result: typed HTTP boundary in `src/http/{errorCatalog,envelope,validation,idempotencyProtocol,boundary}.ts`
+  wired into `createApplication`: request-id resolution (valid `X-Request-Id`
+  UUID or fresh), the canonical `{ok,data,error,meta}` envelope via
+  `reply.sendData`, the stable `ErrorCode` catalog + internal->public mapping +
+  `AppError`, `MAX_JSON_BODY_BYTES=65536` (413) and media-type (415) enforcement,
+  Zod `parseOrThrow`, and the pure `executeIdempotent` orchestrator over the
+  `IdempotencyRepository` interface. `renderError` never leaks internal/SQL/stack
+  text. Unit + Fastify `inject` tests green; integration unchanged (15/15). New
+  boundary modules 100% covered. Additive — no JS deleted (83); legacy
+  `src/http/*.js` deletion is BE-019.
+- Note: new modules are named `errorCatalog`/`idempotencyProtocol` to avoid a
+  `.ts`<->`.js` basename collision with legacy `errors.js`/`idempotency.js` under
+  Vite resolution (RED hit and fixed this batch).
+- Prior checkpoints: BE-007g (closed BE-007), BE-007f, BE-007e, BE-007d, BE-007c,
+  BE-007b, BE-007a, BE-005, BE-004, BE-003, CON-006, BE-002.
+
+## Superseded Code Checkpoint (BE-007g)
+
 - Task: `BE-007g` typed idempotent bootstrap seed (child of BE-007, **closes
   BE-007**), landed on branch `ts-migration/backend` (PR #1 to `main`).
 - Result: `src/db/seedCatalog.ts` publishes the authoritative catalog (5 roles;
@@ -162,10 +182,11 @@
 
 ## Next Code Tasks
 
-1. `BE-006` — Fastify HTTP boundary primitives (request IDs, response envelopes,
-   Zod input/output, body limits, idempotency middleware); consumed by every
-   route batch.
-2. `BE-008` public consent/application/verification Fastify routes — begins
+1. `BE-008` public consent/application/verification Fastify routes + the first
+   repository implementations (ApplicationRepository, ConsentRepository,
+   VerificationTokenRepository) — begins the first onboarding JS deletion and
+   wires the idempotency orchestrator to the real repository.
+2. `BE-009` password/token/session security core — begins
    deleting the onboarding service JS (`website/services`).
 3. `CON-007` consumer contract/package wiring (openapi-fetch client factory).
 

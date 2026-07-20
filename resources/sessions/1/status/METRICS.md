@@ -282,3 +282,19 @@ Backend authored JS/JSX backlog unchanged at **83 files**. Integration 15/15 vs
 PostgreSQL 16 (catalog applied + idempotent on a second run; consent SHA-256
 matches the pgcrypto CHECK). **BE-007 is DONE** (children a-g). Seventh child of
 BE-007.
+
+## Delta: BE-006 Fastify HTTP Boundary Primitives (branch `ts-migration/backend`)
+
+Additive typed boundary; deletes no JavaScript (legacy `http/*.js` -> BE-019).
+
+| Change | Value |
+|---|---:|
+| Source TS added (`errorCatalog`, `envelope`, `validation`, `idempotencyProtocol`, `boundary`) | 5 files |
+| Source TS rewired (`runtime/application.ts`) | 1 file |
+| Tests added/updated (5 boundary test files; `application.test.ts` to canonical envelope) | unit 51 -> 75 |
+| Production JS/JSX deleted | 0 |
+
+Backend authored JS/JSX backlog unchanged at **83 files**. New boundary modules
+100% covered; integration unchanged (15/15). New modules named
+`errorCatalog`/`idempotencyProtocol` to avoid a `.ts`<->`.js` basename collision
+with the legacy `errors.js`/`idempotency.js` (resolved this batch).

@@ -34,6 +34,33 @@ backend, landing, admin, client, shared frontend, and operational entrypoints.
 | Phase 2: test and TypeScript foundation | In progress | Contract kernels plus authoritative TypeScript/Fastify liveness runtime; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
+## Completed Slice: Fastify HTTP Boundary Primitives (BE-006)
+
+**Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). The typed
+HTTP boundary every `/v1` route batch consumes.
+
+**Scope:** `src/http/{errorCatalog,envelope,validation,idempotencyProtocol,boundary}.ts`
+wired into `createApplication` — request-id resolution, canonical
+`{ok,data,error,meta}` envelope (`reply.sendData`), stable `ErrorCode` catalog +
+internal->public mapping + `AppError`, `MAX_JSON_BODY_BYTES=65536` (413) +
+media-type (415), Zod `parseOrThrow`, and the pure `executeIdempotent`
+orchestrator over `IdempotencyRepository`.
+
+**Explicitly deferred:** legacy `src/http/*.js` + `router.js` deletion (BE-019);
+SNS raw-body route + signature (BE-012/BE-014); cookie/CSRF/auth guards
+(BE-009/BE-010); idempotency repository impl + transaction wiring (BE-008).
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Envelope + request id | Complete | inject: 200 `sendData` envelope; valid `X-Request-Id` echoed, invalid replaced |
+| Stable error mapping | Complete | unit: every code has status/retryable/message; internal->public map; inject 404/409 |
+| Body/media limits | Complete | inject: 413 PAYLOAD_TOO_LARGE (>65536), 415 UNSUPPORTED_MEDIA_TYPE |
+| No internal leakage | Complete | inject: 500 redacted, no secret path/query/header/provider text; logs redacted |
+| Idempotency protocol | Complete | unit: lock-win/replay/reused/in-progress over a fake repository |
+| Unit check | Complete | `npm run check` green; boundary modules 100% |
+| JS deletion | N/A | additive; legacy transport deleted at BE-019 |
+| Commit/push | Complete | Committed on `ts-migration/backend`; PR #1 updated |
+
 ## Completed Slice: Typed Idempotent Bootstrap Seed (BE-007g) — closes BE-007
 
 **Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Seventh
