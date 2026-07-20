@@ -342,3 +342,18 @@ proven on PostgreSQL 16 (uniform 202, DB idempotency, atomic multi-table create)
 Unit coverage now excludes `repositories/routes/domain`; the integration config
 enforces its own 80% gate over them (measured 99.48% stmts / 85.24% branch).
 Third child of BE-008 (BE-008b-2).
+
+## Delta: BE-008c Verify-Email Route + First Onboarding JS Deletion (branch `ts-migration/backend`)
+
+**First backend JavaScript deletion.**
+
+| Change | Value |
+|---|---:|
+| Source TS added (`verifyApplicationEmail` + verify route + token repo methods) | 1 file + edits |
+| Test added (verify integration + `legacy-deletion.guard.test.ts`) | integration 21 -> 24; +1 unit guard |
+| **Production JS/JSX deleted (`onboardingService.js`)** | **1** |
+
+Backend authored JS/JSX backlog **83 -> 82 files**. `POST /v1/applications/verify-email`
+proven on PostgreSQL 16 (single-use token -> submitted; 409/410/400). Fourth child
+of BE-008 (BE-008c). Reproduce: `find backend_controller/src backend_controller/scripts
+-type f \( -name '*.js' -o -name '*.jsx' \) | wc -l` -> 82.

@@ -34,6 +34,30 @@ backend, landing, admin, client, shared frontend, and operational entrypoints.
 | Phase 2: test and TypeScript foundation | In progress | Contract kernels plus authoritative TypeScript/Fastify liveness runtime; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
+## Completed Slice: Verify-Email Route + First Onboarding JS Deletion (BE-008c)
+
+**Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Fourth
+child of BE-008; the **first backend JavaScript deletion**.
+
+**Scope:** `POST /v1/applications/verify-email` (`verifyApplicationEmail` command
++ `verificationTokenRepository.lockByHash`/`consume` +
+`applicationRepository.markEmailVerified`), and deletion of
+`src/website/services/onboardingService.js` guarded by
+`legacy-deletion.guard.test.ts`.
+
+**Explicitly deferred:** cooldown resend + cross-match + race savepoint
+(BE-008b-3); the `publicRoutes.js` monolith (BE-013).
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Single-use verification | Complete | integration: valid -> 200 submitted; replay -> 409 TOKEN_ALREADY_USED |
+| Token error mapping | Complete | integration: unknown -> 400 TOKEN_INVALID; expired -> 410 TOKEN_EXPIRED |
+| Atomic transition | Complete | consume + `submitted` + `email_verified_at` + audit in one tx |
+| Deletion safety | Complete | no TS consumer; legacy graph has no entrypoint; guard test asserts absence |
+| **JS deletion** | **Complete** | **`onboardingService.js` removed; backend JS 83 -> 82** |
+| Unit + integration | Complete | `npm run check` green; integration 24/24 (99.58% stmts) |
+| Commit/push | Complete | Committed on `ts-migration/backend`; PR #1 updated |
+
 ## Completed Slice: Application Submission Route (BE-008b-2)
 
 **Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Third child

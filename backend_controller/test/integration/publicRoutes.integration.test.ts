@@ -24,9 +24,12 @@ import { createApplication } from "../../src/runtime/application.js"
 import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
 import { runSeed } from "../../src/scripts/seed.js"
 
+import type { CryptoContext } from "../../src/crypto/context.js"
+
 let container: StartedPostgreSqlContainer
 let pool: Pool
 let app: FastifyInstance
+let cryptoContext: CryptoContext
 
 interface ConsentItem {
   kind: string
@@ -81,7 +84,7 @@ beforeAll(async () => {
   await runSeed(pool)
 
   const database = createDatabase(pool)
-  const crypto = createCryptoContext(
+  cryptoContext = createCryptoContext(
     parseCryptoKeys({
       CRYPTO_TOKEN_HASH_KEY: key(32),
       CRYPTO_TOKEN_HASH_KEY_VERSION: "tk1",
@@ -101,7 +104,7 @@ beforeAll(async () => {
         database,
         unitOfWork: createUnitOfWork(database),
         clock: () => new Date(),
-        crypto,
+        crypto: cryptoContext,
         config: {
           verificationTokenTtlMs: 24 * 60 * 60 * 1000,
           idempotencyTtlMs: 24 * 60 * 60 * 1000,
@@ -233,5 +236,87 @@ describe("POST /v1/applications (integration)", () => {
     expect(
       await countWhere("select count(*)::int as c from applications where email_normalized = $1", ["stale1@example.com"]),
     ).toBe(0)
+  })
+})
+
+const rawTokenForApplication = async (email: string): Promise<string> => {
+  const result = await pool.query<{ payload: { verificationToken: string } }>(
+    "select o.payload as payload from outbox_events o " +
+      "join applications a on a.id = o.aggregate_id where a.email_normalized = $1",
+    [email],
+  )
+  const token = result.rows[0]?.payload.verificationToken
+  if (token === undefined) throw new Error("no verification token found")
+  return token
+}
+
+describe("POST /v1/applications/verify-email (integration)", () => {
+  test("consumes a valid token and moves the application to submitted", async () => {
+    const email = "verify1@example.com"
+    await app.inject({
+      method: "POST",
+      url: "/v1/applications",
+      headers: { "idempotency-key": "key-verify-0001" },
+      payload: submitBody(email, "+14155551010"),
+    })
+    const token = await rawTokenForApplication(email)
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/applications/verify-email",
+      payload: { token },
+    })
+    expect(response.statusCode).toBe(200)
+    expect(response.json<{ data: { verified: boolean } }>().data).toEqual({ verified: true })
+
+    const state = (
+      await pool.query<{ state: string; email_verified_at: string | null }>(
+        "select state, email_verified_at from applications where email_normalized = $1",
+        [email],
+      )
+    ).rows[0]
+    expect(state?.state).toBe("submitted")
+    expect(state?.email_verified_at).not.toBeNull()
+
+    // replay is TOKEN_ALREADY_USED
+    const replay = await app.inject({
+      method: "POST",
+      url: "/v1/applications/verify-email",
+      payload: { token },
+    })
+    expect(replay.statusCode).toBe(409)
+    expect(replay.json<SubmitEnvelope>().error?.code).toBe("TOKEN_ALREADY_USED")
+  })
+
+  test("rejects an unknown token", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/applications/verify-email",
+      payload: { token: "A".repeat(43) },
+    })
+    expect(response.statusCode).toBe(400)
+    expect(response.json<SubmitEnvelope>().error?.code).toBe("TOKEN_INVALID")
+  })
+
+  test("rejects an expired token with 410", async () => {
+    const application = await pool.query<{ id: string }>(
+      "insert into applications (email_normalized, phone_e164, full_name) " +
+        "values ('expired1@example.com', '+14155551011', 'Expired User') returning id",
+    )
+    const applicationId = application.rows[0]?.id
+    const expiredToken = cryptoContext.generateVerificationToken()
+    await pool.query(
+      "insert into verification_tokens (application_id, purpose, token_hash, token_key_version, expires_at, created_at) " +
+        "values ($1, 'application_email_verification', $2, $3, now() - interval '1 hour', now() - interval '2 hours')",
+      [applicationId, expiredToken.hash, expiredToken.keyVersion],
+    )
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/applications/verify-email",
+      payload: { token: expiredToken.token },
+    })
+    expect(response.statusCode).toBe(410)
+    expect(response.json<SubmitEnvelope>().error?.code).toBe("TOKEN_EXPIRED")
   })
 })

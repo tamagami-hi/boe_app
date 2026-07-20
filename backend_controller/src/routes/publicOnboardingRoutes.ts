@@ -28,6 +28,7 @@ import type { EmailDeliveryWriteRepository } from "../repositories/emailDelivery
 import type { OutboxWriteRepository } from "../repositories/outboxRepository.js"
 import type { VerificationTokenWriteRepository } from "../repositories/verificationTokenRepository.js"
 import { submitApplication } from "../domain/onboarding/submitApplication.js"
+import { verifyApplicationEmail } from "../domain/onboarding/verifyApplicationEmail.js"
 
 export interface PublicOnboardingConfig {
   readonly verificationTokenTtlMs: number
@@ -100,6 +101,10 @@ const submitApplicationBodySchema = z
         "exactly one terms and one privacy consent are required",
       ),
   })
+  .strict()
+
+const verifyEmailBodySchema = z
+  .object({ token: z.string().regex(/^[A-Za-z0-9_-]{43}$/u) })
   .strict()
 
 const normalizePhone = (raw: string): string => {
@@ -202,4 +207,22 @@ export const registerPublicOnboardingRoutes = (
   })
 
   application.post("/v1/applications", async (request, reply) => handleSubmission(deps, request, reply))
+
+  application.post("/v1/applications/verify-email", async (request, reply) => {
+    const body = parseOrThrow(verifyEmailBodySchema, request.body)
+    await deps.unitOfWork.execute((tx) =>
+      verifyApplicationEmail(
+        tx,
+        {
+          applicationRepository: deps.applicationRepository,
+          verificationTokenRepository: deps.verificationTokenRepository,
+          auditRepository: deps.auditRepository,
+          crypto: deps.crypto,
+          clock: deps.clock,
+        },
+        { token: body.token, requestId: request.requestId },
+      ),
+    )
+    return reply.sendData({ verified: true }, { status: 200 })
+  })
 }

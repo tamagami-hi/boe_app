@@ -13,6 +13,8 @@ export interface CreateVerificationTokenInput {
 
 export interface VerificationTokenWriteRepository {
   create: (tx: Transaction, input: CreateVerificationTokenInput) => Promise<VerificationToken>
+  lockByHash: (tx: Transaction, tokenHash: Buffer) => Promise<VerificationToken | null>
+  consume: (tx: Transaction, input: Readonly<{ tokenId: string; consumedAt: Date }>) => Promise<void>
 }
 
 export const createVerificationTokenRepository = (): VerificationTokenWriteRepository => ({
@@ -28,4 +30,20 @@ export const createVerificationTokenRepository = (): VerificationTokenWriteRepos
       })
       .returningAll()
       .executeTakeFirstOrThrow(),
+  lockByHash: async (tx, tokenHash) => {
+    const row = await tx
+      .selectFrom("verification_tokens")
+      .selectAll()
+      .where("token_hash", "=", tokenHash)
+      .forUpdate()
+      .executeTakeFirst()
+    return row ?? null
+  },
+  consume: async (tx, input) => {
+    await tx
+      .updateTable("verification_tokens")
+      .set({ consumed_at: input.consumedAt })
+      .where("id", "=", input.tokenId)
+      .execute()
+  },
 })

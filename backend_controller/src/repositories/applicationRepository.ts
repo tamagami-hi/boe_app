@@ -18,6 +18,10 @@ export interface ApplicationWriteRepository {
     input: Readonly<{ emailNormalized: string; phoneE164: string }>,
   ) => Promise<boolean>
   createSubmission: (tx: Transaction, input: CreateSubmissionInput) => Promise<Application>
+  markEmailVerified: (
+    tx: Transaction,
+    input: Readonly<{ applicationId: string; verifiedAt: Date }>,
+  ) => Promise<Application>
 }
 
 export const createApplicationRepository = (): ApplicationWriteRepository => ({
@@ -45,6 +49,20 @@ export const createApplicationRepository = (): ApplicationWriteRepository => ({
         phone_e164: input.phoneE164,
         full_name: input.fullName,
       })
+      .returningAll()
+      .executeTakeFirstOrThrow(),
+  markEmailVerified: async (tx, input) =>
+    tx
+      .updateTable("applications")
+      .set({
+        state: "submitted",
+        email_verified_at: input.verifiedAt,
+        submitted_at: input.verifiedAt,
+        version: sql<string>`version + 1`,
+        updated_at: sql<Date>`now()`,
+      })
+      .where("id", "=", input.applicationId)
+      .where("state", "=", "pending_email_verification")
       .returningAll()
       .executeTakeFirstOrThrow(),
 })

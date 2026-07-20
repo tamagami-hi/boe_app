@@ -2,6 +2,23 @@
 
 ## Last Verified Code Checkpoint
 
+- Task: `BE-008c` verify-email route + first onboarding JS deletion (child of
+  BE-008), landed on branch `ts-migration/backend` (PR #1 to `main`).
+- Result: `POST /v1/applications/verify-email` end-to-end on PostgreSQL 16. The
+  `verifyApplicationEmail` command locks the token by hash `FOR UPDATE`, rejects
+  unknown/revoked (`TOKEN_INVALID` 400), consumed (`TOKEN_ALREADY_USED` 409), and
+  expired (`TOKEN_EXPIRED` 410), and otherwise consumes the token + transitions
+  the application `pending_email_verification -> submitted` atomically with an
+  audit event; response `{verified:true}` leaks no id/state. **Deleted
+  `src/website/services/onboardingService.js` — the first backend JS deletion
+  (83 -> 82)** — guarded by `legacy-deletion.guard.test.ts` (verified no TS
+  consumer; legacy graph has no entrypoint). Unit `check` green; integration
+  24/24 (coverage gate 99.58% stmts).
+- Prior checkpoints: BE-008b-2, BE-008b-1, BE-008a, BE-006, BE-007g (closed
+  BE-007), BE-007f..a, BE-005, BE-004, BE-003, CON-006, BE-002.
+
+## Superseded Code Checkpoint (BE-008b-2)
+
 - Task: `BE-008b-2` application submission route (child of BE-008), landed on
   branch `ts-migration/backend` (PR #1 to `main`).
 - Result: `POST /v1/applications` end-to-end on PostgreSQL 16. Seven repository
@@ -229,13 +246,11 @@
 
 ## Next Code Tasks
 
-1. `BE-008c` — `POST /v1/applications/verify-email` (consume token single-use,
-   move application to submitted; 409 TOKEN_ALREADY_USED replay, 410 TOKEN_EXPIRED)
-   + delete legacy `website/services/onboardingService.js` (first backend JS
-   deletion, 83 -> 82).
-2. `BE-008b-3` — duplicate-pending cooldown resend + cross-match security metric
+1. `BE-008b-3` — duplicate-pending cooldown resend + cross-match security metric
    + concurrent-race savepoint.
-3. `BE-009` password/token/session security core — begins.
+2. `BE-009` password/token/session security core (Argon2id, HIBP, ES256, refresh
+   rotation); deletes `src/security/{auth,passwords,tokens}.js` (82 -> 79).
+3. `BE-010` activation + web/native auth routes.
    deleting the onboarding service JS (`website/services`).
 3. `CON-007` consumer contract/package wiring (openapi-fetch client factory).
 
