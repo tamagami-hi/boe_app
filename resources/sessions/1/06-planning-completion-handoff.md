@@ -77,6 +77,12 @@ git ls-files resources/sessions/1
 
 ### 2. Finish The Mixed JavaScript/TypeScript Runtime Bridge
 
+**Superseded by the direct-replacement directive recorded after commit
+`45fc7f7`.** Do not implement the mixed bridge below. The authoritative backend
+uses `allowJs: false`, a TypeScript/Fastify entrypoint, emitted-only production,
+and per-batch deletion of superseded JavaScript. This section remains only as
+historical planning context.
+
 **Planning resolution recorded:** `01`, `02`, and `05` now lock complete `src`
 emission, conditional source/default aliases, source and emitted smoke tests,
 unchanged legacy tests, and the no-switch-before-smoke rule.
@@ -112,10 +118,10 @@ Copy/reference points:
 
 ### 3. Correct Tooling Phase Scope And Dependencies
 
-**Planning resolution recorded:** `01`, `02`, and `05` now lock Node
-`>=22.19.0 <23`, move PostgreSQL/Testcontainers to Phase 3 with both required
-packages, retain `node:test`, bound new TypeScript coverage, and defer frontend
-and transport dependencies to their owning phases.
+**Superseded in part by the direct-replacement directive and the completed
+TypeScript runtime reset.** The current authority is `01`, `02`, `05`, and the
+implementation progress record. The backend uses Vitest-only migrated tests,
+Fastify from the reset, `allowJs:false`, and no legacy-runtime gate.
 
 Locked decisions in `01`, `02`, and `05`:
 
@@ -124,16 +130,16 @@ Locked decisions in `01`, `02`, and `05`:
 - In Phase 3 pin both `testcontainers@12.0.4` and
   `@testcontainers/postgresql@12.0.4`; use the documented
   `PostgreSqlContainer` API.
-- Phase 2 runs existing `node:test` suites unchanged and new Vitest suites in
-  parallel. Enforce 80% on new/changed TypeScript packages; merge or replace
-  legacy coverage only when each legacy module is converted.
+- Each migrated dependency closure replaces its JavaScript tests with Vitest
+  and enforces at least 80% statements, branches, functions, and lines.
 - Add `@testing-library/dom@10.4.1` only in the owning frontend-surface phase,
   alongside React Testing Library and `user-event`; do not install those three
   in the backend foundation.
-- Separate “selected now” dependencies from deferred Fastify/frontend/provider
-  candidates. Deferred packages are revalidated when their phase begins.
+- Separate selected dependencies from deferred frontend/provider candidates.
+  Fastify is selected for the authoritative backend runtime; remaining deferred
+  packages are revalidated when their phase begins.
 - Phase 2 acceptance is limited to tooling, contract generation, source/emitted
-  build smoke, legacy regression tests, and later-slice test plans/fixtures.
+  build smoke, migrated regression tests, and later-slice test plans/fixtures.
   Enabled known-failing tests are never committed; RED is observed and resolved
   inside the owning slice.
 

@@ -20,8 +20,8 @@ the documents before writing runtime code.
   RBAC, idempotency, SES/SNS processing, dependency-reuse workflow, coverage,
   and per-slice review gates.
 - [System, TypeScript, tooling, and contract architecture](./05-system-tooling-diagrams.md)
-  defines the system diagrams, package/install boundaries, mixed-JS/TypeScript
-  migration rules, single OpenAPI/typed-client pipeline, exact tooling pins,
+  defines the system diagrams, package/install boundaries, direct TypeScript
+  replacement rules, single OpenAPI/typed-client pipeline, exact tooling pins,
   CI dependency graph, and phase-specific tooling acceptance gates.
 
 ## 1. Architecture and Product Decisions
@@ -35,7 +35,9 @@ the documents before writing runtime code.
   - Create the password during activation; remove pre-approval username/password credentials.
   - Collect KYC and risk information after authenticated activation.
 - Keep the `/v1` namespace and response envelope, but replace unsafe signup/auth contracts because no installed APK compatibility is required.
-- Retain the custom router during the first vertical slice. Migrate to Fastify only after the slice passes contract tests, using route-parity tests as the compatibility boundary.
+- Replace the custom router with Fastify at the TypeScript runtime reset. Add
+  canonical business routes directly from authored contract fixtures; do not
+  preserve the development JavaScript router as a parity target.
 - Use additive target migrations during vertical migration. Replace the migration history with one clean baseline only after all legacy table dependencies are removed.
 - Treat pool/AUM as a dated, admin-published snapshot—not an accounting ledger. Do not implement a fake double-entry ledger.
 - Use Amazon SES with an outbox worker and signed SNS delivery/bounce/complaint events.
@@ -325,23 +327,25 @@ Preserve the envelope `{ ok, data, error, meta }` and stable machine-readable er
 2. **Test and TypeScript foundation**
    - Standardize development, CI, Docker, and VPS on Node `>=22.19.0 <23`.
    - Add strict TypeScript, `tsx`, production `tsc`, Vite-5-compatible Vitest/coverage, linting, Zod, Kysely types, `jose`, Argon2id, phone normalization, structured logging/redaction, and the single Zod → committed OpenAPI → `openapi-typescript` → `openapi-fetch` contract pipeline.
-   - Compile the complete backend `src` tree with `allowJs: true`,
-     `checkJs: false`, build `rootDir: src`, and `outDir: dist`. Conditional
-     package imports resolve legacy `#` aliases to `src` only under the
-     `development` condition and to `dist` by default. New TypeScript uses
-     NodeNext-relative `.js` specifiers without requiring an immediate
-     `server.ts` conversion.
-   - Keep every existing `node:test` suite unchanged and running alongside new
-     Vitest suites. Enforce 80% statements, branches, functions, and lines on
-     new or changed TypeScript packages; merge or replace a legacy module's
-     coverage only when that module is converted.
+   - Reset the backend production entrypoint to strict TypeScript with
+     `allowJs: false`, build `rootDir: src`, and `outDir: dist`. The first
+     dependency-closed runtime exposes only database-independent
+     `GET /health/live` through Fastify. It does not compile, import, or preserve
+     the legacy custom-router graph. New TypeScript uses NodeNext-relative `.js`
+     specifiers; no conditional mixed-source alias bridge is introduced.
+   - Replace tests module-by-module with Vitest. A replaced production module
+     and its superseded JavaScript test are deleted together; unrelated legacy
+     tests are not gates for the authoritative TypeScript runtime. Enforce 80%
+     statements, branches, functions, and lines on every migrated package.
    - Accept this phase on the foundation harness, deterministic
-     generation/staleness check, typecheck, lint, both test runners, coverage
+     generation/staleness check, typecheck, lint, migrated TypeScript suites, coverage
      configuration, source-mode and emitted-mode smoke tests, production build,
      and basic backend/landing image build-start smoke using database-independent
-     `/health/live` and a BFF proxy-to-live endpoint without PostgreSQL. Do not switch the
-     live entrypoint or make an image `dist`-only until both runtime smoke tests
-     pass. Later repository, transaction, provider, E2E, Android, and worker
+     `/health/live` and a BFF proxy-to-live endpoint without PostgreSQL. The
+     TypeScript entrypoint becomes authoritative once source and emitted smoke
+     pass; the incomplete artifact remains isolated and non-release while
+     canonical routes are restored. Later repository, transaction, provider,
+     E2E, Android, and worker
      test plans/fixtures may be committed, but enabled known-failing tests may
      not. RED is observed when the owning slice begins and must become GREEN
      before that slice/phase is accepted.
@@ -371,13 +375,13 @@ Preserve the envelope `{ ok, data, error, meta }` and stable machine-readable er
 4. **First backend vertical slice**
    - Implement application submission, email verification, admin review, approval/rejection, SES delivery, invite resend, activation, native/web login, refresh rotation, logout, and authorization.
    - Retire direct user creation from landing signup.
-   - Keep the custom router only as the transport adapter, but implement the
-     complete first-slice security contract now: strict Zod boundary/output
+   - Add the canonical route groups directly to Fastify and implement the
+     complete first-slice security contract: strict Zod boundary/output
      validation, request IDs, stable safe errors, payload/content-type limits,
      secure cookies and synchronizer CSRF, exact CORS, RBAC, database-backed
      idempotency, rate limits, raw-body SNS validation, signature checks,
      redacted structured logging, and secret startup validation. None of these
-     controls waits for Fastify.
+     controls are deferred to a later transport migration.
    - Acceptance gate: the complete handoff flow passes with concurrent approvals, duplicate submissions, expired tokens, SES failure, and rollback cases.
 
 5. **Surface and Android cutover**
@@ -390,12 +394,13 @@ Preserve the envelope `{ ok, data, error, meta }` and stable machine-readable er
      are introduced in Phase 2.
    - Integrate shared contracts and backend changes only through `main`.
 
-6. **Fastify transport migration**
-   - Preserve the already-enforced `/v1` envelopes, error codes,
-     authorization, CORS, cookies, CSRF, security headers, rate limiting,
-     request IDs, raw webhook bodies, validation, and logging while changing
-     the transport; add Fastify/Helmet integration without weakening behavior.
-   - Port one route group at a time with parity tests; remove the custom router only after every route is accounted for.
+6. **Fastify transport hardening and complete route inventory**
+   - Verify every canonical Fastify route preserves `/v1` envelopes, error
+     codes, authorization, CORS, cookies, CSRF, security headers, rate limiting,
+     request IDs, raw webhook bodies, validation, and logging.
+   - Inventory authored contract descriptors against registered routes and fail
+     on missing, duplicate, or undocumented handlers. No legacy-router parity
+     or rollback adapter exists.
 
 7. **Catalog and content**
    - Establish authoritative funds, NAV, positions, disclosures, and AUM
@@ -417,9 +422,12 @@ Preserve the envelope `{ ok, data, error, meta }` and stable machine-readable er
    - Do not add accounting journals unless a later custody/AUM decision establishes a real accounting requirement.
 
 9. **TypeScript completion and cleanup**
-   - Convert shared Vite services/platform code, client, admin, and remaining backend modules.
+   - Finish direct replacement of shared Vite services/platform code, client,
+     admin, and remaining backend modules, deleting each superseded JS/JSX area
+     in its owning batch.
    - Make landing consume generated shared contracts.
-   - Disable `allowJs`; remove JS/JSX, compatibility adapters, JSON parity persistence, duplicate tables, and dead routes.
+   - Prove zero remaining production JS/JSX; remove compatibility adapters,
+     JSON parity persistence, duplicate tables, and dead routes.
 
 10. **Clean baseline and release**
     - Generate and independently review a clean migration baseline.

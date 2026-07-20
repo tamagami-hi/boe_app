@@ -1,8 +1,7 @@
 # System, TypeScript, Tooling, and Contract Architecture
 
 **Status:** Phase 0 approved; Phase 2 implementation in progress through the
-contracts scalar, error/envelope, public-onboarding, native-activation, and
-native-authentication operation kernels
+contracts kernels and the authoritative TypeScript/Fastify liveness runtime
 
 **Applies to:** Phase 2 foundation through the Phase 10 clean baseline
 
@@ -12,11 +11,13 @@ native-authentication operation kernels
 
 ## 1. Repository Truth and Fixed Boundaries
 
-The design below is based on the checked-out repository, not a hypothetical
-monorepo:
+The design below began from the pre-reset repository snapshot. Items explicitly
+marked as current are updated as replacement batches land:
 
-- `backend_controller` is an independent Node ESM package with its own lockfile,
-  a custom JavaScript router, `pg`, Razorpay, and no TypeScript configuration.
+- Before the runtime-reset batch, `backend_controller` was an independent Node
+  ESM package with a custom JavaScript router, `pg`, Razorpay, and no TypeScript
+  configuration. Its current authoritative entrypoint is strict TypeScript and
+  Fastify; unreplaced JavaScript remains unreachable migration inventory.
 - `frontend_stack` is an npm workspace for `app` and `packages/*`, explicitly
   excluding `packages/landing_page`. Its app is Vite/React and owns the
   Capacitor/Android shell.
@@ -283,7 +284,7 @@ controls.
 
 ```mermaid
 flowchart LR
-    transport[Custom router first; Fastify route adapters later]
+    transport[Fastify TypeScript transport]
     boundary[Zod request, response, environment, provider boundaries]
     authn[Web and native authentication]
     authz[Permission and ownership authorization]
@@ -725,13 +726,12 @@ against the 22.19 floor. Backend and contract package engines, CI setup,
 container bases, and the documented operator runtime use the same range so
 local and release behavior do not silently diverge.
 
-Use three compiler configurations:
+Use two backend compiler configurations:
 
-- `backend_controller/tsconfig.base.json`: shared strict options.
+- `backend_controller/tsconfig.json`: strict source, test, and guard-tool
+  typecheck with `noEmit`.
 - `backend_controller/tsconfig.build.json`: emits production API, worker, and
   scripts to `dist` while excluding tests.
-- `backend_controller/tsconfig.test.json`: includes unit/integration tests and
-  uses `noEmit`.
 
 The base compiler options are fixed:
 
@@ -747,8 +747,7 @@ The base compiler options are fixed:
     "exactOptionalPropertyTypes": true,
     "useUnknownInCatchVariables": true,
     "noImplicitOverride": true,
-    "allowJs": true,
-    "checkJs": false,
+    "allowJs": false,
     "verbatimModuleSyntax": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
@@ -761,89 +760,67 @@ The base compiler options are fixed:
 }
 ```
 
-`tsconfig.build.json` sets `rootDir: "src"`, `outDir: "dist"`, and
-`noEmit: false`; it includes the complete `src/**/*` tree and excludes
-`**/*.test.*`, `test/**/*`, and `dist`. `tsconfig.test.json` deliberately does
-not set `rootDir`; it includes source, test-support scripts, and `test/**/*`,
-and sets `noEmit: true`. Production operational entrypoints such as migrate and
+`tsconfig.build.json` extends `tsconfig.json`, sets `rootDir: "src"`,
+`outDir: "dist"`, and `noEmit: false`; it includes the TypeScript `src/**/*`
+tree and excludes `**/*.test.*` and `dist`. `tsconfig.json` includes source,
+tests, source-only guard tooling, and Vitest configuration without a `rootDir`.
+Production operational entrypoints such as migrate and
 bootstrap seed move under `src/scripts` in the authorized Phase 2 change so
 they are emitted into `dist/scripts`; source-only guard tooling may remain under
 the root `scripts` directory and is never required by the runtime image. No
 production declaration files are needed for the application; the contract
 package emits declarations.
 
-`allowJs: true` is a migration bridge only. Existing JS is copied into `dist`
-without being made the type authority; every new file is `.ts`, and a converted
-module must not retain a parallel `.js` source. `checkJs` stays false to avoid
-spending the migration on weak JSDoc types. Phase 9 changes `allowJs` to false,
-removes JS includes and alias fallbacks, and fails if runtime `.js/.jsx` sources
-remain. `skipLibCheck` may be reconsidered only after all package majors are
-pinned; project source remains fully strict regardless.
+`allowJs` is false from the first backend runtime reset. Existing JavaScript is
+not copied into `dist` and is not a supported source-mode runtime. Every bounded
+replacement deletes its superseded `.js`/`.jsx` production and test files in the
+same commit. Untouched legacy files may remain only as unreachable migration
+inventory until their real TypeScript replacement lands. Phase 9 proves no
+production JS/JSX remains; it does not perform a late compiler-mode switch.
+`skipLibCheck` may be reconsidered only after all package majors are pinned;
+project source remains fully strict regardless.
 
 ### 3.2 ESM imports and aliases
 
-Keep `type: module`. Convert every existing package-import alias (`#router`,
-`#config/*`, `#db/*`, `#http/*`, `#security/*`, `#shared/*`, `#client/*`,
-`#admin/*`, and `#website/*`) to the same conditional shape:
-
-```json
-{
-  "#router": {
-    "development": "./src/router.js",
-    "default": "./dist/router.js"
-  },
-  "#config/*": {
-    "development": "./src/config/*",
-    "default": "./dist/config/*"
-  }
-}
-```
-
-Apply that mapping mechanically to every current wildcard alias. Source-mode
-commands and test configuration activate the `development` condition; emitted
-production commands use Node's default condition. No default target points at
-`.ts` or `src`, and no new blanket TypeScript alias is introduced.
-Every retained source-run guard or tool that imports a `#` alias—including the
-authorization invariant scripts run before build—also invokes Node with
-`--conditions=development`. Alternatively, a guard may run after build against
-`dist` with default conditions; no source guard may accidentally resolve the
-production alias before `dist` exists.
+Keep `type: module`. The authoritative TypeScript runtime does not inherit the
+legacy `#router`, `#config/*`, `#db/*`, `#http/*`, `#security/*`, `#shared/*`,
+`#client/*`, `#admin/*`, or `#website/*` aliases. New and converted modules use
+NodeNext-relative `.js` specifiers. Package-name imports are reserved for real
+package boundaries such as `@beonedge/contracts`; no source/dist conditional
+alias bridge or blanket TypeScript path alias is introduced.
 
 Every new or converted backend TypeScript module uses a NodeNext-relative
 specifier with the emitted `.js` suffix—for example,
 `import { parseInput } from "./parse-input.js"`. TypeScript and `tsx` resolve
 that specifier to the sibling `.ts` source during typecheck/development, while
-the emitted import runs directly in Node. A converted leaf may still import an
-unchanged legacy `#` alias, but new TypeScript modules do not extend that alias
-system. Remove an alias only after repository-wide search proves no legacy
-consumer remains. The contract package is imported by package name; Kysely
-database types stay under `src/db/types` and never enter that package.
+the emitted import runs directly in Node. A migrated dependency closure must not
+import an unchanged legacy alias or production JavaScript. The contract package
+is imported by package name; Kysely database types stay under `src/db/types` and
+never enter that package.
 
 ### 3.3 Package scripts and output
 
-Phase 2 adds typecheck, build, lint, smoke, and dual-runner test scripts without
-requiring `src/server.ts` or `src/worker.ts` to exist. `allowJs` emits the
-existing `src/server.js` as `dist/server.js`; entrypoint conversion is not a
-precondition for an emitted production runtime. The live command changes only
-after source-mode and emitted-mode smoke both pass.
+Phase 2 adds typecheck, build, lint, test, and smoke scripts and immediately
+replaces `src/server.js` with the authoritative `src/server.ts`. Production runs
+only emitted `dist`; source and emitted liveness smoke must pass before the
+runtime-reset slice completes.
 
 | Script | Exact purpose/command shape |
 |---|---|
-| `dev` | `node --conditions=development --import=tsx --watch src/server.js` during the mixed tree; use the same shape with `src/server.ts` after conversion |
-| `dev:worker` | after worker introduction: `node --conditions=development --import=tsx --watch src/worker.ts` |
-| `typecheck` | `tsc -p tsconfig.test.json --noEmit` |
+| `dev` | `node --import=tsx --watch src/server.ts` |
+| `dev:worker` | after worker introduction: `node --import=tsx --watch src/worker.ts` |
+| `typecheck` | `tsc -p tsconfig.json` |
 | `build` | clean ignored `dist`, then `tsc -p tsconfig.build.json` |
-| `start` | `node dist/server.js`; Node's default package-import condition resolves aliases inside `dist` |
+| `start` | `node dist/server.js`; the emitted runtime uses relative NodeNext imports and no legacy aliases |
 | `start:worker` | after worker introduction: `node dist/worker.js` |
 | `migrate` | `node dist/scripts/migrate.js up` in production; a separate `migrate:dev` uses `tsx` |
 | `seed:bootstrap` | `node dist/scripts/seed-bootstrap.js` in production; explicit enable/config required |
-| `test:legacy` | run the existing files unchanged with `node --conditions=development --test "src/**/*.test.js"`; do not port them merely to unify runners |
-| `test:unit` | `vitest run --config vitest.config.ts` for new/changed TypeScript; config resolves the `development` condition |
-| `test` | run both legacy and TypeScript unit suites; CI may fan them out as separate jobs |
+| `test:unit` | `vitest run --config vitest.config.ts` for migrated TypeScript |
+| `test` | run the TypeScript suites owned by the migrated runtime closure |
 | `test:integration` | introduced in Phase 3 with the PostgreSQL/Testcontainers harness, not installed or accepted in Phase 2 |
-| `test:coverage` | Vitest V8 coverage for new/changed TypeScript packages; legacy coverage is merged or replaced only module-by-module on conversion |
-| `smoke:source` | launch the source entrypoint with `tsx` and the `development` condition; assert startup, aliases, and health |
-| `smoke:dist` | build, launch `node dist/server.js` with default conditions, and assert startup, aliases, and health |
+| `test:coverage` | Vitest V8 coverage for the migrated TypeScript package; enforce at least 80% on all four metrics |
+| `smoke:source` | launch `src/server.ts` with `tsx` and assert exact `/health/live` behavior without PostgreSQL |
+| `smoke:dist` | build, launch plain `node dist/server.js`, and assert the same liveness behavior |
 
 Only the build script removes ignored `dist`; source, migrations, generated
 contracts, and snapshots are never deleted. After `smoke:dist` passes, Docker
@@ -869,7 +846,7 @@ backend_controller/src/
 │   ├── payments/
 │   └── platform/
 ├── db/                  # Kysely instance, database types, migrations adapter
-├── http/                # current router/Fastify adapters, envelope mapping
+├── http/                # Fastify adapters and envelope mapping
 ├── providers/           # SES, SNS, Razorpay, crypto and clock adapters
 ├── security/            # auth/session/password/RBAC policies
 ├── workers/             # queue claim loops and handler registries
@@ -920,10 +897,10 @@ behavior before those limits.
 Add `frontend_stack/tsconfig.base.json` with ES2022, `module: ESNext`,
 `moduleResolution: Bundler`, `strict`, `noEmit`, `jsx: react-jsx`,
 `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`,
-`useUnknownInCatchVariables`, `resolveJsonModule`, and temporary
-`allowJs: true/checkJs: false`. App, admin, client, shared, design-token tooling,
-and UI-kit package configs extend it and include only their own source/tests.
-Phase 9 disables `allowJs` after `.js/.jsx` removal.
+`useUnknownInCatchVariables`, `resolveJsonModule`, and `allowJs: false`. App,
+admin, client, shared, design-token tooling, and UI-kit package configs extend it
+only when each package is reset as a dependency-closed TypeScript boundary; its
+superseded JS/JSX is deleted in that same batch.
 
 Landing retains its Next.js requirements (`jsx: preserve`, Next plugin,
 `.next/types`, DOM libs, `moduleResolution: Bundler`) while extending the common
@@ -962,10 +939,9 @@ rules separate while sharing wire types.
 - Backend unit tests are colocated `src/**/*.test.ts`, use Node environment, and
   have no network/database. They cover schemas, immutable transitions, money,
   tokens, permissions, and error mapping.
-- Existing JavaScript `node:test` files remain unchanged and run as a separate
-  legacy regression suite throughout Phase 2. Vitest does not absorb those files
-  or claim their coverage; a legacy module moves to Vitest coverage only when
-  that module is converted.
+- Each migrated module replaces its JavaScript tests with Vitest and deletes the
+  superseded test file in the same batch. Unmigrated JavaScript tests are not
+  gates for the authoritative TypeScript runtime and never contribute coverage.
 - Beginning in Phase 3, backend PostgreSQL tests live at
   `test/integration/**/*.test.ts`, use exact `testcontainers@12.0.4` and
   `@testcontainers/postgresql@12.0.4` with the documented
@@ -999,7 +975,7 @@ remain measured.
 ### 5.2 CI dependency graph
 
 The eventual full-program CI order is below. Phase 2 installs the static,
-contract, lint/typecheck, deterministic-generation, dual unit-runner,
+contract, lint/typecheck, deterministic-generation, TypeScript unit-runner,
 source/emitted smoke, and production-build portions of steps 1-3, plus the basic
 backend/landing image proof in step 9. PostgreSQL behavior in step 4 starts in
 Phase 3. Full surface, provider, worker, E2E, Android, migration-image, and
@@ -1012,10 +988,10 @@ owning slice records RED and reaches GREEN before its acceptance.
 2. **Contracts:** `npm ci` in `packages/contracts`; typecheck, unit tests,
    coverage, generation, OpenAPI validation, and clean generated diff; build
    `dist` for local-file consumers.
-3. **Backend unit/runtime:** `npm ci` in `backend_controller`; run unchanged
-   legacy `node:test` and new TypeScript Vitest suites as separate gates,
-   typecheck, new/changed-TypeScript coverage, route/permission inventory,
-   production build, source smoke, and emitted smoke.
+3. **Backend unit/runtime:** `npm ci` in `backend_controller`; run migrated
+   TypeScript Vitest suites, typecheck, coverage, deletion/import guards,
+   production build, source smoke, and emitted smoke. Unmigrated JS is absent
+   from `dist` and does not gate the reset runtime.
 4. **PostgreSQL integration (Phase 3+):** start the documented
    `PostgreSqlContainer`, migrate from empty, run
    constraints/repositories/concurrency/idempotency/outbox/retention suites,
@@ -1141,6 +1117,7 @@ Relevant results and decisions:
 | `argon2` | `0.44.0` | MIT | Argon2id credential hashing/verification; native build stays in builder stage. |
 | `libphonenumber-js` | `1.13.8` | MIT | Boundary parsing and E.164 normalization. |
 | `pino` | `10.3.1` | MIT | Structured logging with allowlists/redaction and request/event IDs. |
+| `fastify` | `5.10.0` | MIT | Sole authoritative backend HTTP transport beginning with the TypeScript `/health/live` runtime reset. |
 | `@asteasolutions/zod-to-openapi` | `9.0.0` | MIT | Generates OpenAPI 3 from Zod 4; npm metadata declares peer `zod ^4.0.0`. |
 | `openapi-typescript` | `7.13.0` | MIT | Generates path types only from committed OpenAPI; peer requires TypeScript 5.x. |
 | `openapi-fetch` | `0.17.0` | MIT | Typed fetch client runtime parameterized by `openapi-typescript` path types. |
@@ -1167,7 +1144,6 @@ and the owning lockfile when its phase begins.
 | Phase 5 owning frontend surface | `@testing-library/dom` | `10.4.1` | MIT | Install explicitly alongside React Testing Library and `user-event`, never in the backend foundation. |
 | Phase 5 owning frontend surface | `@testing-library/react` | `16.3.2` | MIT | User-observable React 18 component tests. |
 | Phase 5 owning frontend surface | `@testing-library/user-event` | `14.6.1` | MIT | Keyboard/pointer interaction tests. |
-| Phase 6 transport migration | `fastify` | `5.10.0` | MIT | Revalidate only when route-parity transport work begins. |
 
 SES/SNS and later financial-provider SDKs are likewise deferred candidates;
 no provider package is selected or installed by the backend foundation. Their
@@ -1195,8 +1171,8 @@ diff, and the owning phase's full test/build run.
 - A generic Fastify/Kysely plugin is rejected as the owner of the database.
   BeOnEdge controls pool creation, transaction injection, health, and shutdown.
 - `zod-openapi` and framework-owned schemas are rejected for this slice because
-  the selected generator has a direct Zod 4 peer contract, upstream registry
-  examples, and does not require Fastify before Phase 6.
+  the selected generator has a direct Zod 4 peer contract and upstream registry
+  examples; Fastify remains the transport consumer, not the schema authority.
 - A custom operation-map or per-surface client-source generator is rejected.
   Zod generates one OpenAPI artifact, `openapi-typescript` generates its types,
   and `openapi-fetch` is the only client runtime.
@@ -1341,15 +1317,13 @@ Phase 2 tooling is accepted when:
 2. Zod deterministically generates the committed OpenAPI document,
    `openapi-typescript` deterministically generates its committed path types,
    and `openapi-fetch` typechecks against them; regeneration leaves a clean diff.
-3. The TypeScript harness resolves new NodeNext-relative `.js` specifiers from
-   `.ts` sources in typecheck/test/build while every existing `#` alias resolves
-   to `src` under the `development` condition and to `dist` by default. Both
-   source and emitted startup/health smoke pass; Phase 2 does not require a
-   migrated `server.ts`.
-4. New TypeScript is strict while old JavaScript remains temporarily runnable;
-   a documented Phase 9 gate removes `allowJs` and every runtime JS/JSX file.
-5. Contract and backend foundation typecheck, lint, unchanged legacy
-   `node:test`, new TypeScript Vitest/coverage, deterministic
+3. The TypeScript harness resolves NodeNext-relative `.js` specifiers from `.ts`
+   sources in typecheck/test/build. Source and emitted `/health/live` smoke pass
+   from the new `server.ts`; no mixed alias/runtime bridge exists.
+4. New TypeScript is strict and authoritative. Superseded JavaScript is deleted
+   per batch; unmigrated JavaScript is unreachable and absent from `dist`.
+5. Contract and backend foundation typecheck, lint, TypeScript Vitest/coverage,
+   deterministic
    generation/staleness check, and production build pass. The PostgreSQL
    Testcontainers harness is not installed or started. Later test plans may be
    present, but enabled known-failing tests are forbidden; repository, PostgreSQL,

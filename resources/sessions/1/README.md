@@ -49,6 +49,10 @@ without updating every reference.
   architecture gates completed with no CRITICAL or HIGH findings.
 - Phase 2 implementation is authorized. The contracts scalar, error/envelope,
   public-onboarding, native-activation, and native-authentication operation
-  kernels are complete bounded slices; no full Phase 2 acceptance gate is
-  complete yet. The next bounded operation group will be selected after this
-  checkpoint.
+  kernels and direct TypeScript backend runtime reset are complete bounded
+  slices; no full Phase 2 acceptance gate is complete yet. The next requested
+  batch establishes the project-specific working model, reorganized Session 1
+  records, and complete migration/deletion task ledger.
+- The post-`45fc7f7` direct-replacement directive supersedes every mixed-runtime
+  bridge assumption: migrated areas delete superseded JS/JSX immediately;
+  unmigrated legacy code is unreachable and absent from authoritative builds.

@@ -1,33 +1,42 @@
-FROM node:22-alpine AS deps
+FROM node:22.20.0-alpine3.22@sha256:dbcedd8aeab47fbc0f4dd4bffa55b7c3c729a707875968d467aaaea42d6225af AS base
 
 WORKDIR /app
 
-RUN apk add --no-cache postgresql-client
+RUN npm install --global npm@11.16.0
 
-COPY package.json package-lock.json ./
+FROM base AS dependencies
+
+COPY package.json package-lock.json .npmrc ./
+RUN npm ci
+
+FROM dependencies AS build
+
+COPY tsconfig.json tsconfig.build.json ./
+COPY src ./src
+RUN npm run build
+
+FROM base AS production-dependencies
+
+COPY package.json package-lock.json .npmrc ./
 RUN npm ci --omit=dev
 
-FROM node:22-alpine AS runtime
+FROM node:22.20.0-alpine3.22@sha256:dbcedd8aeab47fbc0f4dd4bffa55b7c3c729a707875968d467aaaea42d6225af AS runtime
 
 WORKDIR /app
-
-RUN apk add --no-cache postgresql-client
 
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=47502
 
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=production-dependencies --chown=node:node /app/node_modules ./node_modules
+COPY --from=build --chown=node:node /app/dist ./dist
 COPY --chown=node:node package.json package-lock.json ./
-COPY --chown=node:node src ./src
-COPY --chown=node:node scripts ./scripts
-COPY --chown=node:node db ./db
 
 USER node
 
 EXPOSE 47502
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:' + (process.env.PORT || 47502) + '/health').then(async r => { if (!r.ok) process.exit(1); const body = await r.json(); process.exit(body?.data?.database?.ok ? 0 : 1); }).catch(() => process.exit(1))"
+  CMD node -e "fetch('http://127.0.0.1:' + (process.env.PORT || 47502) + '/health/live').then(async response => { const body = await response.json(); if (!response.ok || body?.status !== 'ok') process.exit(1) }).catch(() => process.exit(1))"
 
-CMD ["node", "src/server.js"]
+CMD ["node", "dist/server.js"]

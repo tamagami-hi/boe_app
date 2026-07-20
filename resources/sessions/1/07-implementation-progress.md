@@ -8,15 +8,72 @@
   required reviews pass.
 - Update this file in the same commit as the slice it describes.
 
+## Direct Replacement Directive
+
+The user clarified the implementation target after commit `45fc7f7`: this is a
+direct JavaScript-to-TypeScript replacement, not a compatibility exercise.
+The new TypeScript backend and frontend implementations become authoritative as
+they are introduced; the old JavaScript application does not have to remain
+runnable between batches. Every replacement batch must identify and delete all
+superseded `.js`/`.jsx` production and test files in the same commit. Untouched
+legacy files may remain only as explicitly unmigrated inventory; they are not
+compiled, supported, or acceptance-tested through a mixed-runtime bridge.
+
+Database forward-migration safety and supported external `/v1`/APK contracts
+remain governed by `02`-`04`; this directive removes source-runtime coexistence,
+not data integrity or public compatibility requirements. Progress reports must
+separately state production TypeScript added, TypeScript tests added, and legacy
+JavaScript/JSX removed. Completion requires replacement and deletion across the
+backend, landing, admin, client, shared frontend, and operational entrypoints.
+
 ## Overall Status
 
 | Phase | Status | Current boundary |
 |---|---|---|
 | Phase 0: planning and architecture | Complete | Approved in commit `ec07d21` |
-| Phase 2: test and TypeScript foundation | In progress | Scalar, error/envelope, public-onboarding, native-activation, and native-authentication operation kernels; 0/7 full Phase 2 acceptance gates complete |
+| Phase 2: test and TypeScript foundation | In progress | Contract kernels plus authoritative TypeScript/Fastify liveness runtime; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
-## Active Slice: Native Authentication Operation Contracts
+## Completed Slice: Backend TypeScript Runtime Reset And Liveness
+
+**Status:** Complete
+
+**Scope:** Replace the backend production entrypoint with strict TypeScript and
+Fastify, expose only database-independent `GET /health/live`, establish exact
+Node/npm/tooling pins, validate environment input, use secret-safe structured
+logging, build emitted-only production output, and replace the server Docker
+runtime. The superseded server, server test, and development launcher JavaScript
+files are deleted in this batch.
+
+**Explicitly out of scope:** legacy business routes, PostgreSQL readiness,
+repositories/migrations, authentication/authorization, providers, workers,
+landing BFF, frontend consumers, and release publication. Unreplaced JavaScript
+is unreachable and excluded from the authoritative build; it is deleted only
+with its real TypeScript replacement.
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Research and reuse | Complete | Repository/GitHub/registry and primary Fastify, Node, TypeScript, Pino, and Zod documentation reviewed; exact Fastify 5.10.0 and approved Phase 2 toolchain selected |
+| Tests before implementation | Complete | Missing-module/deletion RED failed 5 suites; deployment-boundary RED failed on the old Docker/launcher; review regressions failed for implicit HEAD, malformed URL reflection, shallow nested redaction, loopback binding, digest pins, and missing real-entrypoint smoke before fixes |
+| Runtime replacement | Complete | Strict `allowJs:false` NodeNext build; Fastify-only `server.ts`; exact GET-only liveness; safe 400/404/500 boundaries; Zod environment parsing; Pino redaction; no legacy alias/router/DB/auth imports |
+| JavaScript deletion | Complete | Deleted 164 production/operational JS lines (`src/server.js` 40, `scripts/start-dev.js` 124) plus 47 JS test lines (`src/server.test.js`) |
+| TypeScript added | Complete | 209 production runtime lines, 88 operational smoke lines, 271 TypeScript test lines, and 22 TypeScript tooling-config lines |
+| Node 22 acceptance | Complete | Node 22.20.0/npm 11.16.0: strict typecheck, typed lint, 18/18 tests, 95.17% statements/lines, 88.88% branches, 100% functions, build, and real source/emitted CLI smokes passed |
+| Container and dependency acceptance | Complete | Digest-pinned image built; non-root container reached Docker healthy and returned exact `{status:"ok"}`; production audit found zero vulnerabilities |
+| Regression and reviews | Complete | Contracts remained 113/113 with 100% coverage; code/TypeScript and security re-reviews reported no remaining CRITICAL, HIGH, or MEDIUM findings |
+| Commit | Pending | Recorded by the containing runtime-reset commit |
+
+**Remaining legacy inventory after this slice:** 85 production/operational JS
+files and 4 JS tests, 12,600 lines total across `backend_controller/src` and
+`backend_controller/scripts`. These are migration backlog, not supported
+runtime code. Docker `dist` contains only the four migrated production modules.
+
+**Tracked LOW:** graceful SIGTERM/SIGINT draining must land before stateful
+routes or workers. The liveness-only server currently exits through the process
+signal default. Release publication remains blocked even though the image is
+buildable and healthy.
+
+## Completed Slice: Native Authentication Operation Contracts
 
 **Status:** Complete
 
@@ -218,6 +275,10 @@ fail-closed to an exact reviewed allowlist.
   Future logging and UI slices must preserve escaped output for format, bidi,
   and permitted control characters.
 
-## Next Slice
+## Next Requested Documentation Batch
 
-Not selected. No additional module has begun.
+Create a BOE-specific working model from the referenced `algo_engine` model,
+reorganize the non-legacy Session 1 records, build the complete dependency-closed
+TypeScript conversion/deletion task ledger, and apply phase logs, risks,
+validation, metrics, and resume checkpoints. Do not modify
+`resources/sessions/Legacy`.

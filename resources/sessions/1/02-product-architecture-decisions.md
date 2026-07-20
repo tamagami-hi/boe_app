@@ -157,8 +157,9 @@ captured before traffic switches.
 - A fake double-entry ledger. AUM/pool is a dated, admin-published presentation
   snapshot unless a later custody decision proves that real accounting is needed.
 - A generic repository/event abstraction that hides domain transitions.
-- Migrating the HTTP router before the first TypeScript repository slice works;
-  Fastify follows the verified slice and route-parity tests.
+- Preserving the development JavaScript router or a mixed-runtime bridge. The
+  TypeScript reset installs Fastify first; canonical repositories and business
+  routes follow on that sole transport.
 - Play Store release automation. The approved first distribution path is direct
   APK from the official HTTPS domain.
 
@@ -415,6 +416,19 @@ KYC/order/payment/mandate parents propagate exactly as specified in `03`.
 
 ## 5. Migration and Compatibility Decision
 
+Source-code replacement and data/API compatibility are separate concerns. The
+application migration is direct: a migrated backend or frontend area is replaced
+by strict production TypeScript and its superseded JavaScript/JSX source and
+tests are deleted in the same bounded batch. The old mixed JavaScript runtime is
+not required to build or run between batches, and `allowJs` is not used to copy
+legacy application code into the new production output. Unmigrated files may
+remain temporarily only as an explicit backlog and are outside the authoritative
+TypeScript runtime.
+
+The database and external compatibility rules below still apply. Forward-only
+schema safety, evidence preservation, the stable `/v1` contract, and supported
+APK behavior must not be weakened merely because old source code can be removed.
+
 ### 5.1 Expansion first, clean baseline last
 
 The handoff's high-level order suggested replacing the old migration chain before
@@ -422,26 +436,26 @@ the TypeScript foundation. The approved plan intentionally resolves that
 conflict by using additive target migrations during each vertical slice and
 squashing only after all legacy consumers are gone.
 
-This is safer even without production data because it:
+For database evolution and released external contracts, this is safer because it:
 
-- keeps every intermediate commit buildable and independently testable;
-- permits the existing router and unmigrated surfaces to run beside new domains;
+- keeps every migrated dependency closure independently buildable and testable;
 - avoids designing a final baseline before repository and concurrency tests
   validate constraints;
 - provides a route/config rollback without reversing schema or losing evidence;
 - exposes hidden legacy dependencies before destructive cleanup; and
 - prevents one simultaneous database, framework, auth, and frontend cutover.
 
-Each slice follows expand/migrate/contract:
+Database/domain slices follow expand/migrate/contract. This sequence does not
+require the deleted JavaScript runtime to coexist with its TypeScript replacement:
 
 1. **Expand:** add new tables, constraints, indexes, repositories, contracts,
    and disabled code paths. New migrations are forward-only and additive.
-2. **Verify:** run clean-database, old-path, new-path, concurrency, and rollback
+2. **Verify:** run clean-database, contract, concurrency, and rollback
    tests. Where a source must move, perform an explicit idempotent backfill and
    compare counts/checksums; do not add indefinite dual writes.
-3. **Switch:** enable the new route/service behind a server-side feature flag or
-   atomic routing/config change. The old read path remains available for one
-   release when compatible.
+3. **Switch:** enable the canonical TypeScript route/service through an atomic
+   routing/config change. Pre-release JavaScript paths are deleted, not retained
+   for a compatibility release.
 4. **Observe:** verify error, queue, reconciliation, and data-integrity metrics.
 5. **Contract:** remove the old path/table only after all repository, route,
    job, frontend, reporting, seed, and deployment references are zero.
@@ -451,8 +465,10 @@ Each slice follows expand/migrate/contract:
 - Preserve `/v1`, the response envelope, HTTP semantics, and stable error codes.
   Unsafe signup/auth payloads may change before an installed APK exists, but
   contract fixtures define the new baseline before clients integrate.
-- The custom router remains through the first vertical slice. Fastify routes
-  must pass parity tests before each old route is removed.
+- Fastify is the sole authoritative TypeScript transport beginning with the
+  `/health/live` runtime reset. Business routes are added directly from authored
+  contracts/fixtures; the deleted development custom router is not a parity
+  target.
 - Database migrations must be backward compatible with the previously deployed
   backend until its traffic is stopped. A release may not require an old binary
   to understand a newly mandatory column without a default/backfill.
@@ -470,8 +486,8 @@ Each slice follows expand/migrate/contract:
 Replace the additive target migrations with one reviewed baseline only when all
 of these are true:
 
-1. `allowJs` is disabled and all runtime JS/JSX and `pgAdapter.js` dependencies
-   are removed.
+1. All runtime JS/JSX and `pgAdapter.js` dependencies are removed; migrated
+   packages have enforced `allowJs: false` throughout replacement.
 2. No code, tests, seed, query, report, Docker command, or release script refers
    to legacy/JSON parity tables or old status vocabulary.
 3. All landing, admin, client, API, worker, provider, and scheduled flows use the
@@ -645,14 +661,14 @@ policy/schema decision matching the lifecycle specification.
 | Phase | Depends on | Primary risk | Rollback/forward point | Acceptance gate |
 |---|---|---|---|---|
 | 1. Planning and architecture | Approved handoff/plan | Ambiguous vocabulary or product copy leaks into schemas and UI | Documentation-only; revise decisions before code starts | PRD, ADRs, diagrams, source map, state machines, ERD/schema, table disposition, API fixtures, security/deployment policy agree; every MVP endpoint/screen maps to one source |
-| 2. Test and TypeScript foundation | Phase 1 contracts and tool choices; narrowly tracked release-tool source | Tooling churn, broken mixed-runtime emission, or false coverage while JS remains | Revert isolated tooling/config commit; no runtime switch until source/emitted smoke passes | Node `>=22.19.0 <23`; strict TS/`tsx`/`tsc`; unchanged legacy `node:test` plus new Vitest; conditional source/emitted aliases; Zod, Kysely types, `jose`, Argon2id, logging/redaction, OpenAPI/client generation; source/emitted and backend/landing image build-start smoke uses database-independent `/health/live` and BFF-live proxy without PostgreSQL; later test plans may land but no enabled known-failing test; `allowJs` is temporary and documented |
+| 2. Test and TypeScript foundation | Phase 1 contracts and tool choices; narrowly tracked release-tool source | Tooling churn, an incomplete runtime mistaken for release-ready, or false coverage over unmigrated JS | Revert the bounded runtime-reset commit; artifact remains isolated/non-release until canonical gates pass | Node `>=22.19.0 <23`; strict TS/`tsx`/`tsc` with `allowJs:false`; Fastify `server.ts`; Vitest; no legacy aliases/runtime imports; Zod, Kysely types, `jose`, Argon2id, logging/redaction, OpenAPI/client generation; source/emitted and backend/landing image build-start smoke uses database-independent `/health/live` and BFF-live proxy without PostgreSQL; per-batch deletion guard and no enabled known-failing test |
 | 3. Additive canonical identity schema | Phase 2 test/runtime foundation; approved schema | Locks, incorrect uniqueness, deletion leaks, role overreach | Additive objects remain inert; disable feature flags and roll back app; fix migrations forward | Exact `testcontainers@12.0.4` plus `@testcontainers/postgresql@12.0.4` use documented `PostgreSqlContainer`; clean and existing dev DB migration pass; constraints/indexes/grants/concurrency/rollback are tested; repositories are transaction-scoped and no old behavior switched |
-| 4. First backend vertical slice | Phase 3 repositories/schema | Duplicate identities, token/session compromise, orphan email, provider retry defects | Switch routes back to old/disabled path while retaining additive data; forward-fix committed rows | Full application→verification→approval/rejection→SES/SNS→native-only activation→web/native auth flow passes, including bounded queues, masked/full projections, lost-response refresh/CSRF replay, immediate session/account/permission revocation, exact send point/cancellation codes, signed SNS erasure, duplicate/concurrent/expiry/reuse/failure cases; custom router remains the adapter |
+| 4. First backend vertical slice | Phase 3 repositories/schema | Duplicate identities, token/session compromise, orphan email, provider retry defects | Disable incomplete Fastify route groups while retaining additive data; forward-fix committed rows | Full application→verification→approval/rejection→SES/SNS→native-only activation→web/native auth flow passes, including bounded queues, masked/full projections, lost-response refresh/CSRF replay, immediate session/account/permission revocation, exact send point/cancellation codes, signed SNS erasure, duplicate/concurrent/expiry/reuse/failure cases on the canonical Fastify transport |
 | 5. Surface and Android cutover | Phase 4 stable contracts and public domain setup | Surface drift, token leakage, broken deep links/process restore | Roll landing/admin route flag back; retain prior signed APK and backend `/v1`; do not revoke working old artifact | Landing uses application copy/BFF, admin queue and delivery tools work, APK uses secure sessions/App Links/restoration/HTTPS/backup exclusions, all consume generated contracts |
-| 6. Fastify migration | Phase 4 contract fixtures; Phase 5 supported clients | Envelope/auth/raw-body mismatch or all-at-once transport cutover | Route-group switch returns traffic to custom router; schema unchanged | Per-route parity for envelope/errors/RBAC/CORS/cookies/CSRF/Helmet/rate limit/request IDs/raw webhooks/logging; every route inventoried before custom router removal |
+| 6. Fastify hardening/inventory | Phase 4 contract fixtures; Phase 5 supported clients | Envelope/auth/raw-body mismatch or undocumented handler drift | Disable affected canonical route group; schema unchanged; no legacy transport fallback | Descriptor-to-handler inventory plus envelope/errors/RBAC/CORS/cookies/CSRF/Helmet/rate limit/request IDs/raw webhooks/logging tests for every canonical route |
 | 7. Catalog and content | Stable transport/repository conventions | Third catalog survives or publication mutates history | Disable catalog write routes; retain previous published version; additive rows remain | One authoritative fund source; typed terms/NAV/positions/disclosures/AUM; versioned content/courses/membership plans; app config contains presentation/flags only; maker-checker paths pass |
 | 8. Financial vertical slices | Phases 3, 6, 7 plus eligibility/provider contracts | Money precision, provider/orphan events, oversold units, non-idempotent booking | Feature-flag each sub-slice; stop workers; keep evidence; forward-fix financial state, never destructive down-migrate | Pre-phase gate proves payment `(id,user_id)` ownership uniqueness; atomic payment+attempt-one+provider-outbox; sender consumes rather than creates attempt; refund money/provider evidence with null NAV/units; append-only lot movements/projections; redemption settlement books linked order; then all unit/integration/E2E/concurrency/reconciliation and dual-control tests pass; no fake ledger |
-| 9. TypeScript completion/cleanup | All migrated domains and surface contracts | Removing compatibility while a hidden consumer remains | Remove in small reviewed commits; restore prior app commit while additive schema stays | `allowJs` off; no runtime JS/JSX, `pgAdapter`, JSON parity, duplicate tables/routes/adapters; all builds/tests and 80% coverage pass |
+| 9. TypeScript completion/cleanup | All migrated domains and surface contracts | Hidden unmigrated source or dead consumer remains | Remove in small reviewed commits; restore prior app commit while additive schema stays | No runtime JS/JSX, `pgAdapter`, JSON parity, duplicate tables/routes/adapters; all builds/tests and 80% coverage pass |
 | 10. Clean baseline and release | Phase 9 plus all squash gates | Irreversible baseline mismatch or backend/APK release ordering | Before cutover preserve bundle+dump; recreate non-production DBs; in production prefer forward fix, whole-release+DB restore only by rehearsed incident procedure | Baseline recreation/schema fingerprint/seed/full suite pass; independent review complete; local Docker and VPS ready; signed APK metadata/checksum/signature/App Links verified; rollback rehearsal succeeds |
 
 Phases are sequential at their acceptance gates. Work inside a phase may run in
@@ -848,7 +864,7 @@ and follow-up corrective work.
   start of this program, but every released APK is treated as non-atomic from
   that point onward.
 - PostgreSQL 16, one backend, Kysely/`pg`, strict TypeScript, Zod, `jose` v6,
-  Argon2id, SES/SNS, Fastify v5 after the first slice, and direct APK are the
+  Argon2id, SES/SNS, Fastify v5 from the backend runtime reset, and direct APK are the
   approved targets.
 - AUM is presentation-only; accounting journals remain postponed.
 - Support tickets and generated receipts/statements are postponed.
