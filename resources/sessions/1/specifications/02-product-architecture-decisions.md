@@ -519,7 +519,8 @@ The observed worktrees are `main`, `wt/admin`, `wt/client`, and `wt/landing`.
 Sparse visibility is not write ownership: surface worktrees can see shared paths
 for compilation and review, but shared changes land once through `main`.
 The canonical planning set is staged for tracking at
-`resources/sessions/1/*.md` in the primary checkout. Once its commit is
+the structured Markdown tree under `resources/sessions/1/` in the primary
+checkout. Once its commit is
 merged/rebased, the existing `resources` sparse patterns expose that same set
 read-only to all three surface worktrees. No surface owns or copies a private
 planning set.
@@ -545,7 +546,7 @@ planning set.
 - Cross-surface deployment and preview: `frontend_stack/deploy/**`,
   `frontend_stack/preview/**`, `emu/**`, and any root/shared test harness.
 - Product/architecture/process: `PRODUCT.md`, `WORKFLOW.md`, root manifests,
-  `.github/**`, the tracked `resources/sessions/1/*.md` planning set, and
+  `.github/**`, the tracked `resources/sessions/1/**/*.md` planning set, and
   repository-wide configuration. Other ignored `resources/**` data does not
   become tracked merely because `main` owns its policy.
 - Release: source-controlled release scripts, libraries, version metadata,

@@ -61,7 +61,7 @@ with its real TypeScript replacement.
 | Node 22 acceptance | Complete | Node 22.20.0/npm 11.16.0: strict typecheck, typed lint, 18/18 tests, 95.17% statements/lines, 88.88% branches, 100% functions, build, and real source/emitted CLI smokes passed |
 | Container and dependency acceptance | Complete | Digest-pinned image built; non-root container reached Docker healthy and returned exact `{status:"ok"}`; production audit found zero vulnerabilities |
 | Regression and reviews | Complete | Contracts remained 113/113 with 100% coverage; code/TypeScript and security re-reviews reported no remaining CRITICAL, HIGH, or MEDIUM findings |
-| Commit | Pending | Recorded by the containing runtime-reset commit |
+| Commit | Complete | `9e884ad` (`feat: replace backend server runtime with TypeScript`), pushed to `origin/main` |
 
 **Remaining legacy inventory after this slice:** 85 production/operational JS
 files and 4 JS tests, 12,600 lines total across `backend_controller/src` and

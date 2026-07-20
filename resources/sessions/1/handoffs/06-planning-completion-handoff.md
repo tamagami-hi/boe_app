@@ -8,7 +8,7 @@ stop. Do **not** install packages, add TypeScript configuration, write migration
 or tests, or change runtime code until the user explicitly authorizes the
 TypeScript foundation.
 
-The current planning set is indexed in [`README.md`](./README.md). Treat
+The current planning set is indexed in [`README.md`](../README.md). Treat
 `02` through `05` as normative companion specifications to the master plan.
 
 ## Work Completed
@@ -375,9 +375,9 @@ Useful commands:
 
 ```bash
 rg -n "TODO|TBD|either|or may|optional|learner account|RenderingFailure|renderingFailure" \
-  PRODUCT.md resources/sessions/1/*.md
+  PRODUCT.md resources/sessions/1/*.md resources/sessions/1/**/*.md
 rg -n "rotationId|previous_csrf|ES256|PKCS#8|SPKI|PostgreSqlContainer|node:test" \
-  resources/sessions/1/*.md
+  resources/sessions/1/*.md resources/sessions/1/**/*.md
 git diff --check
 ```
 

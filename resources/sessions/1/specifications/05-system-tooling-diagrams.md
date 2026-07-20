@@ -32,7 +32,7 @@ marked as current are updated as replacement batches land:
 - The release manager currently builds backend and landing from package-specific
   Docker contexts. Both builds move to the repository-root context, with
   explicit Dockerfile paths, when the common contract package is introduced.
-- The canonical planning set is tracked at `resources/sessions/1/*.md` in the
+- The canonical planning set is tracked below `resources/sessions/1/` in the
   primary checkout. After its commit is
   merged/rebased, the existing `resources` sparse patterns materialize it
   read-only in each surface worktree. The sparse worktrees include no root

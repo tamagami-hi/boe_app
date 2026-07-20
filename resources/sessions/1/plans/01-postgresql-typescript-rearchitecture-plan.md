@@ -8,18 +8,18 @@ security, testing, rollout, or product decision. If wording here is less
 specific, implement the companion specification; resolve any true conflict in
 the documents before writing runtime code.
 
-- [Product and architecture decisions](./02-product-architecture-decisions.md)
+- [Product and architecture decisions](../specifications/02-product-architecture-decisions.md)
   defines the product boundary, source-of-truth map, migration/cutover policy,
   exact maker-checker action set, phase gates, and deployment ADR.
-- [Schema and lifecycle specification](./03-schema-lifecycle-specification.md)
+- [Schema and lifecycle specification](../specifications/03-schema-lifecycle-specification.md)
   defines canonical PostgreSQL types/tables/constraints, derived eligibility,
   transitions, lock ordering, project repository interfaces, and legacy-table
   disposition.
-- [API, security, and test specification](./04-api-security-test-specification.md)
+- [API, security, and test specification](../specifications/04-api-security-test-specification.md)
   defines the first-slice wire contract, authentication/CSRF/cookie policy,
   RBAC, idempotency, SES/SNS processing, dependency-reuse workflow, coverage,
   and per-slice review gates.
-- [System, TypeScript, tooling, and contract architecture](./05-system-tooling-diagrams.md)
+- [System, TypeScript, tooling, and contract architecture](../specifications/05-system-tooling-diagrams.md)
   defines the system diagrams, package/install boundaries, direct TypeScript
   replacement rules, single OpenAPI/typed-client pipeline, exact tooling pins,
   CI dependency graph, and phase-specific tooling acceptance gates.
@@ -44,7 +44,7 @@ the documents before writing runtime code.
 - Target direct APK distribution through an official HTTPS download page, signed artifacts, published checksums, minimum-version metadata, and verified Android App Links.
 - Implement domain RBAC for `superadmin`, `onboarding`, `finance`, `content`, and `support`; the initial MVP admin receives every permission.
 - Apply maker-checker only to the closed six policy categories in
-  [02, section 7](./02-product-architecture-decisions.md#7-maker-checker-policy):
+  [02, section 7](../specifications/02-product-architecture-decisions.md#7-maker-checker-policy):
   every investable fund/term publication; resume or archive of a fund that is
   or was published; published NAV/AUM correction; booked-order reversal;
   above-threshold redemption approval; and runtime role/permission grant,
@@ -65,13 +65,13 @@ Phase 0 must reconcile and update `PRODUCT.md`, because its learner-account mode
 - AWS SES v2 and SNS signature-verification documentation.
 
 The repository methods in this plan and
-[03, section 7](./03-schema-lifecycle-specification.md#7-project-repository-interfaces)
+[03, section 7](../specifications/03-schema-lifecycle-specification.md#7-project-repository-interfaces)
 are intentionally project-defined domain interfaces; they are not claims about
 Kysely. Third-party APIs—including Fastify plugins, Kysely clauses, Capacitor
 hooks, SES/SNS parameters, and package integrations—must exist in the selected
 version's primary vendor documentation. Follow the dependency research,
 licensing, registry/security review, pinning, and narrow-adapter workflow in
-[04, section 7](./04-api-security-test-specification.md#7-openapi-and-typed-client-pipeline)
+[04, section 7](../specifications/04-api-security-test-specification.md#7-openapi-and-typed-client-pipeline)
 before selecting or upgrading a package.
 
 ## 2. Canonical Model, Interfaces, and Lifecycles
@@ -142,7 +142,7 @@ Use integer paise for INR amounts, scaled PostgreSQL `numeric` for NAV and units
   `pending_submission → submitted → in_review → approved | rejected | needs_information`.
 - Risk:
   `not_started → submitted → assessed`. Derived eligibility follows
-  [03, section 2.3](./03-schema-lifecycle-specification.md#23-derived-investing-eligibility):
+  [03, section 2.3](../specifications/03-schema-lifecycle-specification.md#23-derived-investing-eligibility):
   closed/suspended users yield `suspended`; any other non-active account yields
   `blocked`; missing, unapproved, or expired KYC or missing/unassessed risk
   yields `pending_compliance`; only an active user with current approved KYC
@@ -264,7 +264,7 @@ terms/privacy consent documents are first-slice content.
 Preserve the envelope `{ ok, data, error, meta }` and stable machine-readable error codes.
 
 - Browser admin uses the synchronizer-token design and exact cookie/CSRF policy
-  in [04, sections 3.4 and 4.3](./04-api-security-test-specification.md#34-browser-admin-authentication-and-csrf):
+  in [04, sections 3.4 and 4.3](../specifications/04-api-security-test-specification.md#34-browser-admin-authentication-and-csrf):
   `__Host-boe_access` and `__Host-boe_refresh` are `HttpOnly; Secure;
   SameSite=Lax; Path=/` with no `Domain`; access `Max-Age` is 600 seconds and
   refresh `Max-Age` cannot exceed its remaining idle/absolute lifetime.
@@ -418,7 +418,7 @@ Preserve the envelope `{ ok, data, error, meta }` and stable machine-readable er
      with null NAV/units; preserve append-only lot movements/projections; and
      book the linked order atomically on redemption settlement.
    - Apply maker-checker only to the covered actions and separation-of-duty
-     invariants in [02, section 7](./02-product-architecture-decisions.md#7-maker-checker-policy).
+     invariants in [02, section 7](../specifications/02-product-architecture-decisions.md#7-maker-checker-policy).
    - Do not add accounting journals unless a later custody/AUM decision establishes a real accounting requirement.
 
 9. **TypeScript completion and cleanup**
@@ -438,14 +438,14 @@ Preserve the envelope `{ ok, data, error, meta }` and stable machine-readable er
 
 - Follow RED → GREEN → REFACTOR for every slice.
 - Apply the complete review gate in
-  [04, section 9](./04-api-security-test-specification.md#9-per-slice-review-and-release-gates)
+  [04, section 9](../specifications/04-api-security-test-specification.md#9-per-slice-review-and-release-gates)
   separately to application submission, verification, review,
   activation/email, web auth, native auth, and each later domain slice. Every
   slice requires general code review, TypeScript review, and security review;
   CRITICAL/HIGH findings block integration, and the affected test/coverage
   matrix must be rerun after fixes with commands/results recorded.
 - Before new implementation or dependency selection, follow the reuse workflow
-  in [04, section 7](./04-api-security-test-specification.md#7-openapi-and-typed-client-pipeline):
+  in [04, section 7](../specifications/04-api-security-test-specification.md#7-openapi-and-typed-client-pipeline):
   search maintained GitHub implementations first, inspect package-registry
   metadata/security/license posture, verify the exact API in primary vendor
   docs, record the selected version and rejected alternatives, and prefer a

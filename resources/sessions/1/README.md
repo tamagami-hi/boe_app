@@ -1,58 +1,112 @@
-# Session 1 Planning Index
+# Session 1: PostgreSQL And TypeScript Rearchitecture
 
-This folder contains two kinds of documents. Keep the existing filenames stable:
-the documents cross-reference one another and should not be moved or renamed
-without updating every reference.
+## Intent
 
-## Handoffs
+This session exists to replace the complete authored backend and frontend
+JavaScript/JSX codebase with production TypeScript/TSX and delete the superseded
+legacy code as each dependency-closed replacement lands.
 
-1. [`00-database-typescript-rearchitecture-handoff.md`](./00-database-typescript-rearchitecture-handoff.md)
-   - Original repository assessment, confirmed product direction, known defects,
-     required planner deliverables, and initial open decisions.
-2. [`06-planning-completion-handoff.md`](./06-planning-completion-handoff.md)
-   - Current continuation point, unresolved planning blockers, recommended
-     resolutions, and the exact gate before TypeScript implementation may start.
+The migration is **not** a JS/TS compatibility exercise:
 
-## Implementation Progress
+- the old JavaScript application does not need to keep running during migration;
+- migrated packages use strict TypeScript with `allowJs:false`;
+- a migrated behavior deletes its old JS/JSX production and tests in the same
+  task packet;
+- unreplaced JavaScript may remain only as unreachable, uncompiled backlog;
+- no authoritative build, smoke test, or release path may fall back to it; and
+- database forward-migration, security, evidence, and supported API/client
+  compatibility rules still apply.
 
-1. [`07-implementation-progress.md`](./07-implementation-progress.md)
-   - Durable Phase 2 slice status, RED/GREEN evidence, verification results,
-     review outcomes, commits, and explicitly deferred work.
+Do not modify, move, or reinterpret `resources/sessions/Legacy/**`. It is outside
+this session's active authority.
 
-## Implementation Plans And Normative Specifications
+## Resume Here
 
-1. [`01-postgresql-typescript-rearchitecture-plan.md`](./01-postgresql-typescript-rearchitecture-plan.md)
-   - Master phased implementation plan and acceptance gates.
-2. [`02-product-architecture-decisions.md`](./02-product-architecture-decisions.md)
-   - Product requirements, architecture decisions, source ownership, worktree
-     rules, migration sequencing, maker-checker policy, deployment, and rollback.
-3. [`03-schema-lifecycle-specification.md`](./03-schema-lifecycle-specification.md)
-   - Canonical PostgreSQL tables, constraints, retention, state machines,
-     repository contracts, transactions, locking, and later-domain schema.
-4. [`04-api-security-test-specification.md`](./04-api-security-test-specification.md)
-   - API contracts, authentication transports, CSRF, sessions, SES/SNS,
-     idempotency, rate limiting, security policy, testing, and review gates.
-5. [`05-system-tooling-diagrams.md`](./05-system-tooling-diagrams.md)
-   - System/container/component diagrams, ERD, TypeScript package layout,
-     dependency research, build pipeline, generated contracts, and CI design.
+For Obsidian Graph View, open [[resources/sessions/1/OBSIDIAN_MAP|Session 1
+Obsidian Map]]. It explicitly links the active Session 1 notes while preserving
+the ordinary repository-relative links below.
 
-## Current Status
+Read in this order:
 
-- Product direction and most domain/schema/API decisions are documented.
-- `PRODUCT.md` is reconciled with application-first persistence and public
-  education-only wording.
-- This canonical planning set is tracked at `resources/sessions/1` on `main`.
-  Once the planning commit is merged/rebased into each surface worktree, the
-  existing `resources` sparse patterns materialize it read-only there; the
-  files are never copied into surface-owned paths.
-- Phase 0 is **approved**. Independent contract/schema, security, and
-  architecture gates completed with no CRITICAL or HIGH findings.
-- Phase 2 implementation is authorized. The contracts scalar, error/envelope,
-  public-onboarding, native-activation, and native-authentication operation
-  kernels and direct TypeScript backend runtime reset are complete bounded
-  slices; no full Phase 2 acceptance gate is complete yet. The next requested
-  batch establishes the project-specific working model, reorganized Session 1
-  records, and complete migration/deletion task ledger.
-- The post-`45fc7f7` direct-replacement directive supersedes every mixed-runtime
-  bridge assumption: migrated areas delete superseded JS/JSX immediately;
-  unmigrated legacy code is unreachable and absent from authoritative builds.
+1. [Current resume point](./status/CURRENT.md)
+2. [BOE working model](./WORKING_MODEL.md)
+3. [Live agent coordination protocol](./COORDINATION.md)
+4. [Executable workstream ledger](./TASKS.md)
+5. The active [DOC-001 packet](./packets/DOC-001-session-working-model.md) and
+   its non-normative [execution log](./logs/DOC-001-session-working-model.md)
+6. The prepared [central coordinator handoff](./handoffs/07-central-coordination-system-handoff.md),
+   [COORD-001 packet](./packets/COORD-001-central-coordination-system.md), and
+   [pre-implementation log](./logs/COORD-001-central-coordination-system.md)
+7. Relevant risks, plan, and specification documents
+8. [Migration inventory](./inventory/JS_TS_MIGRATION_LEDGER.md)
+
+Latest verified code checkpoint: `9e884ad`. The TypeScript/Fastify liveness
+runtime is complete and pushed. `DOC-001` is reorganizing and validating this
+session. After it lands, `CON-006` is the next contract candidate and `BE-002`
+is the next backend-runtime candidate. Neither is `READY` until its complete
+packet is instantiated, and only one may become active with user authorization.
+
+## Directory Map
+
+### Execution Authority
+
+- [WORKING_MODEL.md](./WORKING_MODEL.md) — task selection, eval-first/TDD,
+  replacement/deletion, validation, logging, and resume rules.
+- [COORDINATION.md](./COORDINATION.md) — `_coord` identity, heartbeat, exact-file
+  claims, conflicts, release, and stale recovery.
+- [TASKS.md](./TASKS.md) — workstream statuses, phase dependencies, deletion
+  owners, and links to complete execution packets.
+- [Current](./status/CURRENT.md) — one-page continuation point.
+- [Implementation progress](./status/IMPLEMENTATION_PROGRESS.md) — completed
+  milestone summaries.
+- [Validation summary](./status/VALIDATION_SUMMARY.md) — durable check evidence.
+- [Metrics](./status/METRICS.md) — TS additions and remaining/deleted JS counts.
+- [Risks and decisions](./decisions/RISKS_AND_DECISIONS.md) — binding decisions
+  and unresolved risks.
+
+### Plans And Normative Specifications
+
+- [Master rearchitecture plan](./plans/01-postgresql-typescript-rearchitecture-plan.md)
+- [Product and architecture decisions](./specifications/02-product-architecture-decisions.md)
+- [Schema and lifecycle specification](./specifications/03-schema-lifecycle-specification.md)
+- [API, security, email, and test specification](./specifications/04-api-security-test-specification.md)
+- [System, TypeScript, tooling, and contract architecture](./specifications/05-system-tooling-diagrams.md)
+
+### Inventory, Logs, And Removed History
+
+- [JS/TS migration inventory](./inventory/JS_TS_MIGRATION_LEDGER.md) — complete,
+  non-overlapping authored backlog partition and counts.
+- [Task log index](./logs/README.md), including the BE-001 runtime reset and
+  active DOC-001 working-model logs
+- [Removed mechanisms](./removed/README.md)
+- [Phase log template](./templates/PHASE_LOG_TEMPLATE.md)
+- [Task packet template](./templates/TASK_PACKET_TEMPLATE.md)
+
+### Historical Handoffs
+
+- [Original assessment/handoff](./handoffs/00-database-typescript-rearchitecture-handoff.md)
+- [Planning-completion handoff](./handoffs/06-planning-completion-handoff.md)
+- [Central coordination implementation handoff](./handoffs/07-central-coordination-system-handoff.md)
+
+Historical handoffs preserve context and may contain sections explicitly marked
+superseded. Normative precedence is working model → decisions → master
+plan/specifications → complete task packet. Task logs are read early for resume
+efficiency but are non-normative evidence and never override specifications.
+
+## Current Measured State
+
+- Contracts: 857 production TS lines and 1,641 test TS lines; 113 tests at 100%
+  coverage.
+- Backend migrated runtime: 209 production TS lines, 88 operational TS lines,
+  271 test TS lines; 18 tests above all 80% coverage gates.
+- Backend legacy backlog: 89 JS files / 12,600 lines.
+- Other frontend authored backlog: 188 JS/JSX files / 20,480 lines, plus two
+  surface-specific MJS configs/scripts; landing authored source is already TS.
+- Global active JS-family backlog including four tooling/config MJS files:
+  281 files / 33,176 lines.
+- JS removed by this program so far: 164 production/operational lines and 47
+  test lines, all in `BE-001`.
+
+Exact partitions and reproduction commands are in the inventory and metrics
+documents. Generated Android bundles are classified separately and are never
+hand-converted.
