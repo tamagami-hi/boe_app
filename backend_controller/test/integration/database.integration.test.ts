@@ -1,6 +1,7 @@
 import { mkdtemp, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { fileURLToPath } from "node:url"
 
 import { PostgreSqlContainer } from "@testcontainers/postgresql"
 import type { StartedPostgreSqlContainer } from "@testcontainers/postgresql"
@@ -85,5 +86,80 @@ describe("PostgreSQL foundation (integration)", () => {
       database,
     )
     expect(recorded.rows).toEqual([{ version: "001_probe" }])
+  })
+})
+
+describe("canonical public-onboarding schema (BE-007a)", () => {
+  beforeAll(async () => {
+    const directory = fileURLToPath(new URL("../../db/migrations", import.meta.url))
+    const all = await loadMigrationFiles(directory)
+    const canonical = all.filter((file) => file.filename.startsWith("009_"))
+    await runMigrations(pool, canonical)
+  }, 60_000)
+
+  test("enforces one active application per email but allows reuse after rejection", async () => {
+    await pool.query(
+      "insert into applications (email_normalized, phone_e164, full_name) values ($1, $2, $3)",
+      ["a@example.com", "+14155550100", "Ada Lovelace"],
+    )
+    await expect(
+      pool.query(
+        "insert into applications (email_normalized, phone_e164, full_name) values ($1, $2, $3)",
+        ["a@example.com", "+14155550101", "Ada Two"],
+      ),
+    ).rejects.toThrow()
+
+    await pool.query(
+      "update applications set state = 'rejected', decided_at = now() where email_normalized = $1",
+      ["a@example.com"],
+    )
+    await pool.query(
+      "insert into applications (email_normalized, phone_e164, full_name) values ($1, $2, $3)",
+      ["a@example.com", "+14155550102", "Ada Three"],
+    )
+  })
+
+  test("rejects a malformed E.164 phone", async () => {
+    await expect(
+      pool.query(
+        "insert into applications (email_normalized, phone_e164, full_name) values ($1, $2, $3)",
+        ["b@example.com", "5550100", "Bad Phone"],
+      ),
+    ).rejects.toThrow()
+  })
+
+  test("requires the consent digest to equal SHA-256 of the markdown", async () => {
+    await expect(
+      pool.query(
+        "insert into consent_documents (kind, version, public_path, content_markdown, content_sha256, published_at) " +
+          "values ('terms', 'v1', '/legal/terms', 'hello', decode('00', 'hex'), now())",
+      ),
+    ).rejects.toThrow()
+
+    await pool.query(
+      "insert into consent_documents (kind, version, public_path, content_markdown, content_sha256, published_at) " +
+        "values ('terms', 'v1', '/legal/terms', 'hello', digest('hello', 'sha256'), now())",
+    )
+  })
+
+  test("allows only one pending verification token per application", async () => {
+    const application = await pool.query<{ id: string }>(
+      "insert into applications (email_normalized, phone_e164, full_name) " +
+        "values ('c@example.com', '+14155550200', 'Verify User') returning id",
+    )
+    const applicationId = application.rows[0]?.id
+
+    await pool.query(
+      "insert into verification_tokens (application_id, purpose, token_hash, token_key_version, expires_at) " +
+        "values ($1, 'application_email_verification', decode(repeat('ab', 32), 'hex'), 'k1', now() + interval '1 day')",
+      [applicationId],
+    )
+    await expect(
+      pool.query(
+        "insert into verification_tokens (application_id, purpose, token_hash, token_key_version, expires_at) " +
+          "values ($1, 'application_email_verification', decode(repeat('cd', 32), 'hex'), 'k1', now() + interval '1 day')",
+        [applicationId],
+      ),
+    ).rejects.toThrow()
   })
 })

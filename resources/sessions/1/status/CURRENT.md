@@ -2,8 +2,22 @@
 
 ## Last Verified Code Checkpoint
 
-- Task: `BE-005` migration/check tooling, landed on branch
-  `ts-migration/backend` (PR #1 to `main`).
+- Task: `BE-007a` canonical public-onboarding schema (child of BE-007), landed on
+  branch `ts-migration/backend` (PR #1 to `main`).
+- Result: additive migration `db/migrations/009_canonical_onboarding.sql` adds
+  enums `application_state`/`token_purpose` and tables `applications`,
+  `consent_documents`, `application_consents`, `verification_tokens` with the
+  §3.1 constraints/partial-unique indexes. Proven on empty PostgreSQL 16 via the
+  BE-005 runner: unique-active email/phone + reuse-after-rejection, phone-format
+  check, `digest()`-backed consent SHA-256 check, one-pending-token index.
+  Integration 8/8; unit `check` green. Additive — no JS deleted (backlog 83).
+- BE-007 parent remains ACTIVE: next child BE-007b adds `users`/credentials/
+  invites/sessions/refresh-tokens/reviews (+ the deferred
+  `verification_tokens.user_id` FK), then RBAC/audit, outbox/email, repositories,
+  and the typed bootstrap seed.
+- DB integration tests run via `npm run test:integration` (podman-runtime
+  wrapper).
+- Prior checkpoints: BE-005, BE-004, BE-003, CON-006, BE-002.
 - Result: emitted TypeScript operational commands over the BE-004 typed pool —
   `src/scripts/migrate.ts` (ordered, checksummed, per-migration transactional,
   idempotent apply tracked in `schema_migrations`; `status|up` CLI) and
@@ -61,13 +75,14 @@
 
 ## Next Code Tasks
 
-1. `BE-007` canonical identity/onboarding schema — additive PostgreSQL
-   migrations (applications/users/sessions/RBAC/audit/idempotency/outbox/email)
-   + typed repositories (uses the BE-004 pool + BE-005 migration runner). Begins
-   deleting the identity/auth/onboarding service JS and adds the typed bootstrap
-   seed.
-2. `CON-007` consumer contract/package wiring (openapi-fetch client factory).
-3. Remaining Phase-2 gate items (`LN-000`, `OPS-001`, `OPS-003A`) for GATE-02.
+1. `BE-007b` — `users`, `user_credentials`, `activation_invites`,
+   `auth_sessions`, `auth_refresh_tokens`, `application_reviews` (+ deferred
+   `verification_tokens.user_id` FK); then BE-007c RBAC/audit/idempotency/
+   rate-limit/legal-holds, BE-007d outbox/email, BE-007e repositories, BE-007f
+   bootstrap seed.
+2. `BE-008` public consent/application/verification Fastify routes — begins
+   deleting the onboarding service JS (`website/services`).
+3. `CON-007` consumer contract/package wiring (openapi-fetch client factory).
 
 Before a candidate becomes `READY`, create its complete packet and dedicated log
 under Session 1. Dependencies and acceptance remain authoritative in

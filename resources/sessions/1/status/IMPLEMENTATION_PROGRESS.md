@@ -34,6 +34,36 @@ backend, landing, admin, client, shared frontend, and operational entrypoints.
 | Phase 2: test and TypeScript foundation | In progress | Contract kernels plus authoritative TypeScript/Fastify liveness runtime; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
+## Completed Slice: Canonical Public-Onboarding Schema (BE-007a)
+
+**Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). First
+child packet of BE-007 (parent remains in progress).
+
+**Scope:** Additive migration `db/migrations/009_canonical_onboarding.sql` adds
+the enums `application_state`/`token_purpose` and the public-onboarding tables
+`applications`, `consent_documents`, `application_consents`,
+`verification_tokens` with their §3.1 constraints and partial-unique indexes,
+proven on empty PostgreSQL 16 via the BE-005 migration runner.
+
+**Explicitly deferred to later BE-007 children:** the `users`-dependent tables
+(users/credentials/invites/sessions/refresh-tokens/reviews and the
+`verification_tokens.user_id` FK), RBAC/audit/idempotency/rate-limit/legal-hold,
+outbox/email, the Kysely repositories, and the typed bootstrap seed.
+
+| Gate | Status | Evidence |
+|---|---|---|
+| No legacy collision | Complete | grep confirmed the 4 table names are new |
+| Migration applies on empty PG | Complete | BE-005 runner applies `009` in the integration harness |
+| Constraints verified | Complete | unique-active + reuse-after-rejection, phone format, consent SHA-256 digest, one-pending token — 8/8 integration |
+| Unit check | Complete | `npm run check` green (42 tests) |
+| Review | Complete | Focused inline review; additive; no CRITICAL/HIGH/MEDIUM |
+| JS deletion | N/A | Additive; onboarding service JS deleted by BE-008 |
+| Commit/push | Complete | Committed on `ts-migration/backend`; PR #1 updated |
+
+**Honest note:** a strict RED-first run was not separately captured for this
+schema increment (migration + assertions authored together, GREEN on first run);
+recorded in the log.
+
 ## Completed Slice: Migration/Check Tooling (BE-005)
 
 **Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Third

@@ -169,3 +169,20 @@ Backend authored JS/JSX backlog: **86 -> 83 files**. Unit suite 42 tests,
 overall 87.69% stmts / 92.18% branch / 90.9% funcs; integration 4/4 vs
 PostgreSQL 16. Cumulative backend JS deleted by this program: BE-001 (server/
 launcher) + BE-003 (3 config/logger) + BE-005 (3 DB scripts).
+
+## Delta: BE-007a Canonical Public-Onboarding Schema (branch `ts-migration/backend`)
+
+Additive schema; deletes no JavaScript.
+
+| Change | Value |
+|---|---:|
+| Migration SQL added (`009_canonical_onboarding.sql`: 4 tables, 2 enums) | 1 file |
+| Integration tests added | 4 (integration suite 4 -> 8) |
+| Production/unit-test TS added | 0 (schema only) |
+| Production JS/JSX deleted | 0 |
+
+Backend authored JS/JSX backlog unchanged at **83 files**. Integration 8/8 vs
+PostgreSQL 16 (unique-active partial index + reuse-after-rejection, phone-format
+check, `digest()` consent SHA-256 check, one-pending-token index). First child
+of BE-007; the `users`-dependent tables, RBAC/audit, outbox/email, repositories,
+and bootstrap seed follow in later BE-007 children.
