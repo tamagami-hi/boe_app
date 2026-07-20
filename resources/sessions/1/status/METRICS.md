@@ -572,3 +572,22 @@ Backend authored JS/JSX backlog **stays 51 files** (additive). Integration 43 ->
 repositories/routes/domain. `package.json`/`package-lock.json` unchanged. Admin
 legacy retirement deferred to BE-017. Reproduce JS count: `find backend_controller/src
 backend_controller/scripts -type f \( -name '*.js' -o -name '*.jsx' \) | wc -l` -> 51.
+
+
+## Delta: BE-017 Retire Legacy Admin Finance/Content Domain (branch `ts-migration/backend`)
+
+Spec-faithful deletion batch. Every `/v1/admin/*` finance/content/compliance route
+is deferred to later slices per spec 04; the services ran on the retired JSON store.
+The first-slice admin identity surface is served by `adminIdentityRoutes.ts`
+(BE-016). No new schema/routes.
+
+| Change | Value |
+|---|---:|
+| **Production JS/JSX deleted (`admin/routes/adminRoutes.js` + 11 `admin/services/*.js`)** | **12** |
+| New TS/schema added | 0 |
+
+Backend authored JS/JSX backlog **51 -> 39 files** (`src/admin/` removed). All dead
+(no TS consumers). `npm run check` green; integration 63/63 (unaffected). Canonical
+admin finance/content deferred to a later slice (GATE-08). Reproduce: `find
+backend_controller/src backend_controller/scripts -type f \( -name '*.js' -o -name
+'*.jsx' \) | wc -l` -> 39.

@@ -2,6 +2,32 @@
 
 ## Last Verified Code Checkpoint
 
+- Task: `BE-017` retire legacy admin finance/content domain, landed on branch
+  `ts-migration/backend` (PR #1 to `main`). Accelerated single-task mode;
+  deletion-only.
+- Result: every `/v1/admin/*` finance/content/compliance route (overview/stats,
+  users/approvals, KYC/risk, products/funds/capital/redemptions,
+  payments/mandates/SIP/reconciliation, app+landing config, notifications,
+  FAQs/courses/plans, support) is deferred to later slices per spec 04, and the
+  services ran on the retired JSON store. The first-slice admin identity surface
+  is served by `routes/adminIdentityRoutes.ts` (BE-016). Deleted the dead legacy
+  `admin/routes/adminRoutes.js` + all 11 `admin/services/*.js` (no TS consumers;
+  `admin/` dir removed; also clears the dangling imports the BE-014 provider
+  deletion left in `reconcileService.js`), guarded in
+  `legacy-deletion.guard.test.ts`. **Backend JS 51 -> 39.** `check` green;
+  integration 63/63 (unaffected). Canonical admin finance/content is a
+  later-slice task (GATE-08).
+- Prior checkpoints: BE-016 (canonical admin identity domain, additive JS 51),
+  BE-015 (retire client investment domain, JS 67 -> 51), BE-014 (retire
+  payment/mandate webhooks+providers, JS 72 -> 67), BE-013 (retire public
+  content/catalog, JS 74 -> 72), BE-012 (SES/SNS outbox worker + provider-event
+  ingress, additive JS 74), BE-011 (health/readiness, JS 76 -> 74), BE-010
+  (native+web auth, JS 80 -> 76), BE-010a, BE-009d (closed BE-009), BE-009c/b/a,
+  BE-008c, BE-008b-2/1, BE-008a, BE-006, BE-007g (closed BE-007), BE-007f..a,
+  BE-005, BE-004, BE-003, CON-006, BE-002.
+
+## Superseded Checkpoint (BE-016)
+
 - Task: `BE-016` canonical admin identity/compliance domain, landed on branch
   `ts-migration/backend` (PR #1 to `main`). Accelerated single-task mode;
   security-critical build with tests.

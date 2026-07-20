@@ -65,6 +65,25 @@ const DELETED_LEGACY_FILES: readonly string[] = [
   "client/services/supportTicketDetailService.js",
   "client/services/transactionService.js",
   "client/services/withdrawalService.js",
+  // BE-017: legacy admin finance/content/compliance domain. Every /v1/admin/*
+  // route (overview, users, approvals, KYC/risk, products/funds/capital,
+  // payments/mandates/SIP/reconciliation, app/landing config, notifications,
+  // FAQs/courses/plans, support) is financial/content and deferred to later
+  // slices per spec 04; the services ran on the retired JSON store. The
+  // first-slice admin identity surface is served by routes/adminIdentityRoutes.ts
+  // (BE-016). Owner of adminRoutes.js + all admin/services/*.js.
+  "admin/routes/adminRoutes.js",
+  "admin/services/adminDataService.js",
+  "admin/services/faqAdminService.js",
+  "admin/services/fundsService.js",
+  "admin/services/kycReviewService.js",
+  "admin/services/mandateAdminService.js",
+  "admin/services/notificationComposerService.js",
+  "admin/services/paymentReconcileService.js",
+  "admin/services/reconcileService.js",
+  "admin/services/sipControlAdminService.js",
+  "admin/services/supportTicketAdminService.js",
+  "admin/services/userDetailService.js",
 ]
 
 describe("legacy deletion guard", () => {
