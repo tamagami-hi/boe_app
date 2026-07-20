@@ -216,3 +216,20 @@ Backend authored JS/JSX backlog unchanged at **83 files**. Integration 11/11 vs
 PostgreSQL 16 (one-active-native-session-per-device, native/web CSRF rules,
 single-current refresh token, composite cascade FK; NULL-safe CHECK fixes).
 Third child of BE-007.
+
+## Delta: BE-007d Canonical RBAC/Audit/Platform Tables (branch `ts-migration/backend`)
+
+Additive schema; deletes no JavaScript.
+
+| Change | Value |
+|---|---:|
+| Migration SQL added (`012_canonical_rbac_platform.sql`: 9 tables, 2 enums) | 1 file |
+| Integration tests added | 1 (integration suite 11 -> 12) |
+| Production JS/JSX deleted | 0 |
+
+Backend authored JS/JSX backlog unchanged at **83 files**. Integration 12/12 vs
+PostgreSQL 16 (snake_case role codes + single active role-permission grant,
+closed 8-code maker-checker set with maker<>checker, idempotency scope
+uniqueness, positive rate-limit counts, legal-hold allowlist +
+one-unreleased-per-entity; NULL-safe all-or-nothing groups). Fourth child of
+BE-007.

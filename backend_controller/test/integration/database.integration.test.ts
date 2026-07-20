@@ -295,4 +295,107 @@ describe("canonical public-onboarding schema (BE-007a)", () => {
     )
     expect(remaining.rows[0]?.c).toBe(0)
   })
+
+  test("enforces RBAC, maker-checker, idempotency, rate-limit, and hold invariants (BE-007d)", async () => {
+    const maker = await pool.query<{ id: string }>(
+      "insert into users (email_normalized, phone_e164, full_name, account_state, activated_at) " +
+        "values ('f@example.com', '+14155550500', 'Maker User', 'active', now()) returning id",
+    )
+    const makerId = maker.rows[0]?.id
+    const checker = await pool.query<{ id: string }>(
+      "insert into users (email_normalized, phone_e164, full_name, account_state, activated_at) " +
+        "values ('g@example.com', '+14155550501', 'Checker User', 'active', now()) returning id",
+    )
+    const checkerId = checker.rows[0]?.id
+
+    // role code must be snake_case; duplicate code rejected
+    await expect(pool.query("insert into roles (code, name) values ('Bad Code', 'x')")).rejects.toThrow()
+    const role = await pool.query<{ id: string }>(
+      "insert into roles (code, name) values ('onboarding', 'Onboarding') returning id",
+    )
+    const roleId = role.rows[0]?.id
+    await expect(pool.query("insert into roles (code, name) values ('onboarding', 'Dup')")).rejects.toThrow()
+
+    const permission = await pool.query<{ id: string }>(
+      "insert into permissions (code, description) values ('applications.review', 'Review apps') returning id",
+    )
+    const permissionId = permission.rows[0]?.id
+
+    // one active role-permission grant
+    await pool.query(
+      "insert into role_permissions (role_id, permission_id, granted_by_user_id) values ($1, $2, $3)",
+      [roleId, permissionId, makerId],
+    )
+    await expect(
+      pool.query(
+        "insert into role_permissions (role_id, permission_id, granted_by_user_id) values ($1, $2, $3)",
+        [roleId, permissionId, makerId],
+      ),
+    ).rejects.toThrow()
+
+    // maker must differ from checker
+    await expect(
+      pool.query(
+        "insert into approval_actions (action_type, target_type, target_id, target_version, canonical_payload, payload_hash, maker_user_id, maker_reason, checker_user_id, expires_at) " +
+          "values ('rbac.permissions.change', 'role', gen_random_uuid(), 1, '{}'::jsonb, decode(repeat('aa', 32), 'hex'), $1, 'a valid reason', $1, now() + interval '1 day')",
+        [makerId],
+      ),
+    ).rejects.toThrow()
+
+    // action_type must be in the closed set
+    await expect(
+      pool.query(
+        "insert into approval_actions (action_type, target_type, target_id, target_version, canonical_payload, payload_hash, maker_user_id, maker_reason, expires_at) " +
+          "values ('not.allowed', 'role', gen_random_uuid(), 1, '{}'::jsonb, decode(repeat('aa', 32), 'hex'), $1, 'a valid reason', now() + interval '1 day')",
+        [makerId],
+      ),
+    ).rejects.toThrow()
+
+    // a well-formed approval action is accepted
+    await pool.query(
+      "insert into approval_actions (action_type, target_type, target_id, target_version, canonical_payload, payload_hash, maker_user_id, maker_reason, checker_user_id, checker_reason, expires_at) " +
+        "values ('rbac.permissions.change', 'role', gen_random_uuid(), 1, '{}'::jsonb, decode(repeat('bb', 32), 'hex'), $1, 'a valid reason', $2, 'approved reason', now() + interval '1 day')",
+      [makerId, checkerId],
+    )
+
+    // idempotency scope/key uniqueness
+    await pool.query(
+      "insert into idempotency_records (actor_scope, http_method, route_template, key, request_hash, response_status, response_body, expires_at) " +
+        "values ('user:1', 'POST', '/v1/applications', 'k1', decode(repeat('cc', 32), 'hex'), 202, '{}'::jsonb, now() + interval '1 day')",
+    )
+    await expect(
+      pool.query(
+        "insert into idempotency_records (actor_scope, http_method, route_template, key, request_hash, response_status, response_body, expires_at) " +
+          "values ('user:1', 'POST', '/v1/applications', 'k1', decode(repeat('dd', 32), 'hex'), 202, '{}'::jsonb, now() + interval '1 day')",
+      ),
+    ).rejects.toThrow()
+
+    // rate-limit count must be positive
+    await expect(
+      pool.query(
+        "insert into rate_limit_windows (bucket, key_hash, window_start, count, expires_at) " +
+          "values ('b', decode(repeat('ee', 32), 'hex'), now(), 0, now() + interval '1 minute')",
+      ),
+    ).rejects.toThrow()
+
+    // legal-hold entity_type allowlist + one unreleased per entity
+    await expect(
+      pool.query(
+        "insert into legal_holds (entity_type, entity_id, reason, placed_by) values ('not_allowed', gen_random_uuid(), 'a valid reason here', $1)",
+        [makerId],
+      ),
+    ).rejects.toThrow()
+    const held = await pool.query<{ id: string }>("select gen_random_uuid() as id")
+    const entityId = held.rows[0]?.id
+    await pool.query(
+      "insert into legal_holds (entity_type, entity_id, reason, placed_by) values ('user', $1, 'a valid reason here', $2)",
+      [entityId, makerId],
+    )
+    await expect(
+      pool.query(
+        "insert into legal_holds (entity_type, entity_id, reason, placed_by) values ('user', $1, 'another valid reason', $2)",
+        [entityId, makerId],
+      ),
+    ).rejects.toThrow()
+  })
 })

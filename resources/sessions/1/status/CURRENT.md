@@ -2,8 +2,19 @@
 
 ## Last Verified Code Checkpoint
 
-- Task: `BE-007c` canonical session tables (child of BE-007), landed on branch
-  `ts-migration/backend` (PR #1 to `main`).
+- Task: `BE-007d` canonical RBAC/audit/platform tables (child of BE-007), landed
+  on branch `ts-migration/backend` (PR #1 to `main`).
+- Result: additive migration `db/migrations/012_canonical_rbac_platform.sql` adds
+  enums `approval_state`/`actor_type` and 9 tables — `roles`, `permissions`,
+  `role_permissions`, `user_roles`, `approval_actions`, `audit_events`,
+  `idempotency_records`, `rate_limit_windows`, `legal_holds` — with their §3.3
+  constraints (snake_case role codes; one active grant per pair; closed 8-code
+  maker-checker action set with maker<>checker; idempotency scope uniqueness;
+  positive rate-limit counts; legal-hold allowlist + one-unreleased-per-entity;
+  NULL-safe all-or-nothing groups). Proven on PostgreSQL 16 (integration 12/12).
+  Unit `check` green. Additive — no JS deleted (83).
+- BE-007 parent remains ACTIVE. Prior checkpoints: BE-007c, BE-007b, BE-007a,
+  BE-005, BE-004, BE-003, CON-006, BE-002.
 - Result: additive migration `db/migrations/011_canonical_sessions.sql` adds
   enums `session_channel`/`auth_session_state` and tables `auth_sessions`
   (one-active-native-session-per-device partial unique; all-or-nothing
@@ -98,10 +109,8 @@
 
 ## Next Code Tasks
 
-1. `BE-007d` — RBAC (`roles`, `permissions`, `role_permissions`, `user_roles`),
-   `approval_actions`, `audit_events`, `idempotency_records`,
-   `rate_limit_windows`, `legal_holds`; then BE-007e outbox/email, BE-007f
-   repositories, BE-007g bootstrap seed.
+1. `BE-007e` — `outbox_events` + email delivery/provider-event tables
+   (spec `03` §3.3); then BE-007f Kysely repositories, BE-007g bootstrap seed.
 2. `BE-008` public consent/application/verification Fastify routes — begins
    deleting the onboarding service JS (`website/services`).
 3. `CON-007` consumer contract/package wiring (openapi-fetch client factory).

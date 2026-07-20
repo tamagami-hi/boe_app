@@ -34,6 +34,31 @@ backend, landing, admin, client, shared frontend, and operational entrypoints.
 | Phase 2: test and TypeScript foundation | In progress | Contract kernels plus authoritative TypeScript/Fastify liveness runtime; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
+## Completed Slice: Canonical RBAC/Audit/Platform Tables (BE-007d)
+
+**Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Fourth
+child packet of BE-007 (parent remains in progress).
+
+**Scope:** Additive migration `db/migrations/012_canonical_rbac_platform.sql`
+adds enums `approval_state`/`actor_type` and the tables `roles`, `permissions`,
+`role_permissions`, `user_roles`, `approval_actions`, `audit_events`,
+`idempotency_records`, `rate_limit_windows`, `legal_holds` with their §3.3
+constraints. Proven on PostgreSQL 16.
+
+**Explicitly deferred to later BE-007 children:** outbox/email (BE-007e), the
+Kysely repositories (BE-007f), and the typed bootstrap seed (BE-007g). Append-
+only enforcement triggers and app-role grant hardening are a later step.
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Migration applies on empty PG (`>= 009`) | Complete | BE-005 runner applies 009+010+011+012 |
+| Constraints verified | Complete | snake_case role codes + single active grant, closed maker-checker set with maker<>checker, idempotency scope uniqueness, rate-limit count>0, legal-hold allowlist + one-unreleased — 12/12 integration |
+| NULL-safe CHECK correctness | Complete | all-or-nothing revoke/release groups + actor-user rule use explicit `IS NULL`/`IS NOT NULL` guards |
+| Unit check | Complete | `npm run check` green |
+| Review | Complete | Focused inline review; additive; no CRITICAL/HIGH/MEDIUM |
+| JS deletion | N/A | Additive; RBAC/audit service JS deleted by BE-010/BE-012/BE-016 |
+| Commit/push | Complete | Committed on `ts-migration/backend`; PR #1 updated |
+
 ## Completed Slice: Canonical Session Tables (BE-007c)
 
 **Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Third
