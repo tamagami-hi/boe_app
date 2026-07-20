@@ -13,10 +13,53 @@
 | Phase | Status | Current boundary |
 |---|---|---|
 | Phase 0: planning and architecture | Complete | Approved in commit `ec07d21` |
-| Phase 2: test and TypeScript foundation | In progress | Scalar plus error/envelope kernels; 0/7 full Phase 2 acceptance gates complete |
+| Phase 2: test and TypeScript foundation | In progress | Scalar, error/envelope, and public-onboarding operation kernels; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
-## Active Slice: Contracts Error And Envelope Kernel
+## Active Slice: Public Onboarding Operation Contracts
+
+**Status:** Complete
+
+**Scope:** Add strict Zod wire schemas and deeply immutable descriptors for
+the exact three public onboarding routes: current consent documents,
+enumeration-safe application submission, and single-use email verification.
+Expose the group through the package root and the public-only subpath.
+
+**Explicitly out of scope:** admin/activation/auth/provider operations, OpenAPI
+generation packages or artifacts, generated clients, backend/router/BFF
+wiring, Markdown rendering, database/idempotency/rate-limit implementation,
+consumer manifests, CI, Docker, release tooling, and frontend changes.
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Approved-plan review | Complete | Planner, factual extractor, and TDD guide selected the three-route public group as one cohesive operation batch and fixed exact IDs, route metadata, derived error lists, and exclusions |
+| GitHub reuse search | Complete | Authenticated searches for Zod operation descriptors and consent contracts found generic examples but no maintained implementation matching this route/error/idempotency contract |
+| Primary docs/registry check | Complete | Official Zod 4 strict-object, tuple, union, metadata, and input/output JSON Schema behavior rechecked; no dependency was added or changed |
+| Security contract correction | Complete | Review found the old `publicPath` regex permitted origin-confusing paths; `03` and `04` now define the same canonical root-relative, uppercase-escape rule implemented and hostile-fixture tested by `PublicPath` |
+| Tests written before implementation | Complete | `operations/public.test.ts` preceded `operations/public.ts`; JSON Schema cardinality and exact descriptor-type regressions also preceded their fixes |
+| RED observed | Complete | Initial focused run failed on missing `./public.js`; first GREEN attempt left 1/22 tests failing because emitted tuple JSON Schema omitted cardinality; review type assertions then failed typecheck against widened bodyless request metadata |
+| Minimal implementation | Complete | Three strict request/data/success contracts, exact two-kind tuple permutations, public-path schema, frozen route metadata/error lists/registry, and root plus `./public` exports only |
+| Unit tests GREEN | Complete | Node 22.20.0/npm 11.16.0 Vitest 3.2.6: 84/84 full package tests passed, including 24 focused public-operation tests |
+| Coverage >=80% on all four metrics | Complete | 100% statements (364/364), branches (79/79), functions (22/22), and lines (364/364) across all authored contract source |
+| Typecheck/lint/build/import smoke | Complete | Clean `npm ci`; strict typecheck, typed ESLint, declaration/ESM build, automated root/scalars/errors/envelope/public export smoke, and package dry-run passed under Node 22.20.0/npm 11.16.0 |
+| Security and privacy checks | Complete | Zero-vulnerability audit; hostile same-origin path fixtures, strict unknown-key rejection, generic submission/verification data, absent public duplicate error, token isolation, exact header/idempotency policy, and runtime-frozen descriptors passed |
+| Focused reviews | Complete | General, TypeScript/package, and security reviews found one descriptor-type MEDIUM plus declaration/JSON Schema improvements; regression-first fixes were re-reviewed with no remaining CRITICAL, HIGH, or MEDIUM findings |
+| Commit | Complete | Recorded by the containing `feat: add public onboarding contracts` commit |
+
+**Derived contract decisions:** exact per-operation error arrays and operation
+IDs were absent from the normative route snippets. This slice records the
+reviewed arrays and stable IDs in the descriptors/tests. Stale consent
+prerequisites map to `STATE_CONFLICT`; malformed/unknown verification token
+semantics retain `TOKEN_INVALID` alongside boundary `VALIDATION_FAILED`.
+Concrete OpenAPI examples remain owned by the later deterministic-generator
+slice; no second example source was introduced here.
+
+**Tracked LOW:** the precise inferred descriptor/schema declarations make
+`dist/operations/public.d.ts` verbose. Keep the exact types for this batch;
+when the second operation group begins, extract the shared descriptor surface
+then and verify declaration size without widening route-specific request keys.
+
+## Completed Slice: Contracts Error And Envelope Kernel
 
 **Status:** Complete
 

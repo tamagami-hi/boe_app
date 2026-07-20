@@ -174,8 +174,10 @@ must contain no credentials, government identifiers, or file bodies.
 Unique `(kind, version)`, unique `public_path`, and one current document per
 kind via partial unique index `(kind) WHERE retired_at IS NULL`. Checks permit
 first-slice kinds only `terms` and `privacy`, require version to match
-`^[A-Za-z0-9._-]{1,40}$`, require `public_path` to be a normalized absolute
-site path, require nonblank Markdown, require a 32-byte digest equal to
+`^[A-Za-z0-9._-]{1,40}$`, require `public_path` to be the canonical
+root-relative site-path form in `04` (including uppercase percent escapes and
+the protocol-relative/dot-segment/encoded-separator exclusions), require
+nonblank Markdown, require a 32-byte digest equal to
 SHA-256 of the UTF-8 bytes of `content_markdown`, and require retirement after
 publication. Publication boundary validation enforces the safe Markdown subset
 in `04`: raw HTML/images/active content are forbidden and link schemes are

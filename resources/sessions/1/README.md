@@ -47,6 +47,7 @@ without updating every reference.
   files are never copied into surface-owned paths.
 - Phase 0 is **approved**. Independent contract/schema, security, and
   architecture gates completed with no CRITICAL or HIGH findings.
-- Phase 2 implementation is authorized. The contracts scalar kernel and the
-  contracts error/envelope kernel are complete bounded slices; no full Phase 2
-  acceptance gate is complete yet, and all remaining modules are unstarted.
+- Phase 2 implementation is authorized. The contracts scalar, error/envelope,
+  and public-onboarding operation kernels are complete bounded slices; no full
+  Phase 2 acceptance gate is complete yet, and all remaining modules are
+  unstarted.

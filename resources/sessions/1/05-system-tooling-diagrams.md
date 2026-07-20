@@ -1,7 +1,7 @@
 # System, TypeScript, Tooling, and Contract Architecture
 
 **Status:** Phase 0 approved; Phase 2 implementation in progress through the
-contracts scalar and error/envelope kernels
+contracts scalar, error/envelope, and public-onboarding operation kernels
 
 **Applies to:** Phase 2 foundation through the Phase 10 clean baseline
 

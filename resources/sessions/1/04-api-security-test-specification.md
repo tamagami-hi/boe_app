@@ -241,7 +241,7 @@ No authentication. Returns the current published terms and privacy documents:
   items: [{
     kind: z.enum(["terms", "privacy"]),
     version: VersionTag,
-    publicPath: z.string().regex(/^\/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*$/),
+    publicPath: z.string().regex(/^(?!\/\/)(?!.*\/\.{1,2}(?:\/|$))(?!.*%(?:25|2F|5C|2E))\/(?:[A-Za-z0-9._~!$&'()*+,;=:@\/-]|%[0-9A-F]{2})*$/),
     contentMarkdown: z.string().min(1),
     sha256: z.string().regex(/^[a-f0-9]{64}$/)
   }]
@@ -255,6 +255,12 @@ authoritative UTF-8 Markdown, and `sha256` is the digest of those bytes. The
 landing form renders that content at the returned path and submits its displayed
 version. Configuration, an external URL, or client constants cannot define
 consent content, path, digest, or version.
+
+`publicPath` is a canonical root-relative site path, not a URL. It is stored
+and compared byte-for-byte, uses uppercase percent escapes, and rejects
+protocol-relative paths, dot segments, query/fragment delimiters, backslashes,
+and percent- or double-encoded slash, backslash, dot, or percent. Markdown link
+targets use their separate scheme policy below.
 
 Consent publication and rendering use a fixed safe Markdown profile. Raw HTML,
 embedded images, iframes, SVG, CSS, script, event-handler syntax, and data/blob/

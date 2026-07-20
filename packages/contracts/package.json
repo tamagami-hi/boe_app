@@ -36,6 +36,11 @@
       "types": "./dist/errors.d.ts",
       "import": "./dist/errors.js",
       "default": "./dist/errors.js"
+    },
+    "./public": {
+      "types": "./dist/operations/public.d.ts",
+      "import": "./dist/operations/public.js",
+      "default": "./dist/operations/public.js"
     }
   },
   "scripts": {
@@ -44,7 +49,7 @@
     "lint": "eslint .",
     "test": "vitest run --config vitest.config.ts",
     "test:coverage": "vitest run --config vitest.config.ts --coverage",
-    "test:exports": "node --input-type=module -e \"const root = await import('@beonedge/contracts'); const scalars = await import('@beonedge/contracts/scalars'); const envelope = await import('@beonedge/contracts/envelope'); const errors = await import('@beonedge/contracts/errors'); if (root.Uuid !== scalars.Uuid || root.ErrorEnvelope !== envelope.ErrorEnvelope || root.ErrorCode !== errors.ErrorCode) throw new Error('Package export mismatch')\"",
+    "test:exports": "node --input-type=module -e \"const root = await import('@beonedge/contracts'); const scalars = await import('@beonedge/contracts/scalars'); const envelope = await import('@beonedge/contracts/envelope'); const errors = await import('@beonedge/contracts/errors'); const publicContracts = await import('@beonedge/contracts/public'); if (root.Uuid !== scalars.Uuid || root.ErrorEnvelope !== envelope.ErrorEnvelope || root.ErrorCode !== errors.ErrorCode || root.PUBLIC_OPERATIONS !== publicContracts.PUBLIC_OPERATIONS) throw new Error('Package export mismatch')\"",
     "typecheck": "tsc -p tsconfig.json",
     "check": "npm run typecheck && npm run lint && npm run test:coverage && npm run build && npm run test:exports"
   },
