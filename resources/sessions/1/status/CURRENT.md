@@ -2,6 +2,18 @@
 
 ## Last Verified Code Checkpoint
 
+- Task: `BE-009a` Argon2id password hasher (child of BE-009), landed on branch
+  `ts-migration/backend` (PR #1 to `main`).
+- Result: `src/auth/passwordHasher.ts` (OWASP Argon2id hash/verify + timing-safe
+  dummy verify + `passwordInputSchema` 12-128 code points no control) using the
+  pinned native `argon2@0.44.0` (prebuilt binary loads in source + dist smoke);
+  `jose@6.2.3` pinned for BE-009c. **Deleted `src/security/passwords.js` (scrypt)
+  — backend JS 82 -> 81.** Unit `check` green; integration 24/24.
+- Prior checkpoints: BE-008c, BE-008b-2, BE-008b-1, BE-008a, BE-006, BE-007g
+  (closed BE-007), BE-007f..a, BE-005, BE-004, BE-003, CON-006, BE-002.
+
+## Superseded Code Checkpoint (BE-008c)
+
 - Task: `BE-008c` verify-email route + first onboarding JS deletion (child of
   BE-008), landed on branch `ts-migration/backend` (PR #1 to `main`).
 - Result: `POST /v1/applications/verify-email` end-to-end on PostgreSQL 16. The
@@ -246,10 +258,9 @@
 
 ## Next Code Tasks
 
-1. `BE-008b-3` — duplicate-pending cooldown resend + cross-match security metric
-   + concurrent-race savepoint.
-2. `BE-009` password/token/session security core (Argon2id, HIBP, ES256, refresh
-   rotation); deletes `src/security/{auth,passwords,tokens}.js` (82 -> 79).
+1. `BE-009b` — HIBP breach check (k-anonymity SHA-1 prefix, injectable fetch).
+2. `BE-009c` — ES256 access-token service (jose; kid, claims, skew); `BE-009d`
+   refresh/CSRF rotation; then delete `security/{auth,tokens}.js` (81 -> 79).
 3. `BE-010` activation + web/native auth routes.
    deleting the onboarding service JS (`website/services`).
 3. `CON-007` consumer contract/package wiring (openapi-fetch client factory).

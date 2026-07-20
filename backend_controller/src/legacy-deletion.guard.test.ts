@@ -11,6 +11,8 @@ const DELETED_LEGACY_FILES: readonly string[] = [
   // BE-008c: replaced by src/domain/onboarding/{submitApplication,verifyApplicationEmail}.ts
   // + src/routes/publicOnboardingRoutes.ts + the onboarding repositories.
   "website/services/onboardingService.js",
+  // BE-009a: replaced by src/auth/passwordHasher.ts (Argon2id).
+  "security/passwords.js",
 ]
 
 describe("legacy deletion guard", () => {

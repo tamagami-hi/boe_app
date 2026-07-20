@@ -34,6 +34,28 @@ backend, landing, admin, client, shared frontend, and operational entrypoints.
 | Phase 2: test and TypeScript foundation | In progress | Contract kernels plus authoritative TypeScript/Fastify liveness runtime; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
+## Completed Slice: Argon2id Password Hasher (BE-009a)
+
+**Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). First child
+of BE-009 (security core).
+
+**Scope:** `src/auth/passwordHasher.ts` (Argon2id hash/verify + timing-safe dummy
+verify + `PasswordInput`) on the pinned native `argon2@0.44.0`; `jose@6.2.3`
+pinned for BE-009c. Deletes `src/security/passwords.js`.
+
+**Explicitly deferred:** breach check (BE-009b), ES256 access tokens (BE-009c),
+refresh/CSRF rotation (BE-009d), auth routes (BE-010); legacy
+`security/{auth,tokens}.js` deleted as those land.
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Argon2id hash/verify | Complete | unit: `$argon2id$` prefix; verify true/false |
+| PasswordInput | Complete | unit: rejects short + control; accepts valid |
+| Native dep in dist | Complete | build + `smoke:dist` load argon2 prebuilt |
+| **JS deletion** | **Complete** | **`security/passwords.js` removed; backend JS 82 -> 81** |
+| Unit + integration | Complete | `npm run check` green; integration 24/24 |
+| Commit/push | Complete | Committed on `ts-migration/backend`; PR #1 updated |
+
 ## Completed Slice: Verify-Email Route + First Onboarding JS Deletion (BE-008c)
 
 **Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Fourth

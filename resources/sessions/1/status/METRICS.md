@@ -357,3 +357,16 @@ Backend authored JS/JSX backlog **83 -> 82 files**. `POST /v1/applications/verif
 proven on PostgreSQL 16 (single-use token -> submitted; 409/410/400). Fourth child
 of BE-008 (BE-008c). Reproduce: `find backend_controller/src backend_controller/scripts
 -type f \( -name '*.js' -o -name '*.jsx' \) | wc -l` -> 82.
+
+## Delta: BE-009a Argon2id Password Hasher (branch `ts-migration/backend`)
+
+Security-core start; deletes legacy scrypt module.
+
+| Change | Value |
+|---|---:|
+| Pinned deps added (`argon2@0.44.0`, `jose@6.2.3`) | 2 |
+| Source TS added (`auth/passwordHasher.ts`) + test | 2 files |
+| **Production JS/JSX deleted (`security/passwords.js`)** | **1** |
+
+Backend authored JS/JSX backlog **82 -> 81 files**. Argon2id hashing proven in
+source + emitted dist. First child of BE-009 (BE-009a).

@@ -33,3 +33,5 @@ not rewrite prior RED/GREEN history to match later architecture.
 | BE-008b-2 | DONE | [Application submission route](./BE-008b2-application-submission-route.md) | on `ts-migration/backend` |
 
 | BE-008c | DONE | [Verify-email route + first onboarding JS deletion](./BE-008c-verify-email-route.md) | on `ts-migration/backend` (JS 83 -> 82) |
+
+| BE-009a | DONE | [Argon2id password hasher](./BE-009a-password-hasher.md) | on `ts-migration/backend` (JS 82 -> 81) |

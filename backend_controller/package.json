@@ -13,6 +13,7 @@
     "esbuild@0.25.12": true,
     "esbuild@0.28.1": true,
     "protobufjs@7.6.5": true,
+    "argon2@0.44.0": true,
     "ssh2@1.17.0": false,
     "cpu-features@0.0.10": false,
     "fsevents": false
@@ -37,7 +38,9 @@
     "check": "npm run typecheck && npm run lint && npm run test:coverage && npm run build && npm run smoke:source && npm run smoke:dist"
   },
   "dependencies": {
+    "argon2": "0.44.0",
     "fastify": "5.10.0",
+    "jose": "6.2.3",
     "pino": "10.3.1",
     "zod": "4.4.3"
   },
