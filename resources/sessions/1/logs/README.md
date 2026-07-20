@@ -67,3 +67,5 @@ not rewrite prior RED/GREEN history to match later architecture.
 | BE-020 | DONE (gate) | [Backend zero-JavaScript gate](./BE-020-zero-js-gate.md) | on `ts-migration/backend` (permanent assertion: 0 authored JS/JSX + 0 legacy alias imports) — backend JS->TS migration complete |
 
 | PROD-001 | DONE | [Backend server composition wiring](./PROD-001-server-composition.md) | on `ts-migration/backend` (canonical routes now serve on a running server; smokes boot the full app) |
+
+| BE-021.1 | DONE | [Later-domain schema increment 1 (compliance/catalog/platform)](./BE-021-later-domain-schema-1.md) | on `ts-migration/backend` (migrations 014-016 validated; investing/payments + types are increment 2) |

@@ -664,3 +664,22 @@ serve on a running server, and both smokes boot the full composed app.
 `npm run check` green including both smokes booting the **full** composed server;
 integration 63/63; `package.json`/lock unchanged. Deferred: background email-worker
 entrypoint + concrete Amazon SES v2 adapter (worker command + port already exist).
+
+
+## Delta: BE-021.1 Later-Domain Canonical Schema — Increment 1 (branch `ts-migration/backend`)
+
+First half of spec-03 §4 later-domain schema (compliance, catalog, platform),
+additive on the `>= 009` baseline. Grounded in the spec.
+
+| Change | Value |
+|---|---:|
+| Canonical migrations added (014 compliance, 015 catalog, 016 platform) | 3 files (16 tables) |
+| Migration-apply integration test | 1 file (6 tests) |
+| Backend authored JS/JSX | 0 (unchanged) |
+
+`npm run check` green; integration 69/69 (8 files); package/lock unchanged; Legacy
+hash intact. Increment 2 (money-movement core §4.3/§4.4 + Kysely types) is the next
+batch. Tables introduced: investor_profiles, kyc_cases, kyc_documents, kyc_reviews,
+risk_assessments, funds, fund_versions, fund_disclosure_versions, fund_nav_prices,
+fund_positions, fund_aum_snapshots, finance_policy_versions, marketing_leads,
+courses, membership_plans, app_config_versions, content_items.

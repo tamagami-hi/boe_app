@@ -2,6 +2,25 @@
 
 ## Last Verified Code Checkpoint
 
+- Task: `BE-021.1` later-domain canonical schema (increment 1: compliance,
+  catalog, platform/policy/content), landed on branch `ts-migration/backend`
+  (PR #1). Grounded in spec 03 §4 (not speculative).
+- Result: additive migrations `014_canonical_compliance.sql` (§4.1 investor
+  profiles/KYC/risk), `015_canonical_catalog.sql` (§4.2 funds/versions/disclosures/
+  NAV/positions/AUM with same-fund composite FKs), `016_canonical_platform.sql`
+  (§4.5 finance policy/marketing leads/courses/plans/app config/content items).
+  Validated by `test/integration/laterDomainSchema.integration.test.ts` (6 tests
+  incl. composite-FK + partial-unique negatives). No Kysely types/repositories
+  yet — they land with the money-movement batch. `check` green; integration 69/69;
+  backend authored JS still 0. Increment 2 = §4.3 investing/ownership + §4.4
+  payments + later-domain Kysely types.
+- Prior checkpoints: PROD-001 (server composition), BE-020 (zero-JS gate), BE-019
+  (transport/persistence retired, JS 13 -> 0), BE-018 (shared retired, JS 39 ->
+  13), BE-017 (admin finance retired, JS 51 -> 39), BE-016 (admin identity,
+  additive JS 51), BE-015..BE-010, and earlier BE-009..BE-002.
+
+## Superseded Checkpoint (PROD-001)
+
 - Task: `PROD-001` backend server composition wiring, landed on branch
   `ts-migration/backend` (PR #1 to `main`). Resolves the deferred production
   `server.ts` wiring: **the canonical routes now serve on a running server.**
