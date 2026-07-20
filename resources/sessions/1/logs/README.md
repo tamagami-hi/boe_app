@@ -61,3 +61,5 @@ not rewrite prior RED/GREEN history to match later architecture.
 | BE-017 | DONE (deletion-only) | [Retire legacy admin finance/content domain](./BE-017-admin-finance-retirement.md) | on `ts-migration/backend` (JS 51 -> 39; admin finance/content deferred to a later slice per spec 04) |
 
 | BE-018 | DONE (deletion-only) | [Retire remaining legacy shared block](./BE-018-shared-retirement.md) | on `ts-migration/backend` (JS 39 -> 13; deferred content/financial shared closures on the retired JSON store) |
+
+| BE-019 | DONE (deletion-only) | [Retire legacy transport/persistence/scripts](./BE-019-transport-persistence-retirement.md) | on `ts-migration/backend` (JS 13 -> 0; last legacy scaffolding, no TS consumers) |

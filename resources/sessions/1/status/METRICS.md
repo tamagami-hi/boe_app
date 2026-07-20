@@ -610,3 +610,21 @@ Backend authored JS/JSX backlog **39 -> 13 files** (`src/shared/` removed). All 
 (`db/{client,pgAdapter,store}.js` x3), and legacy `scripts/*.js` x4 -> BE-019, then
 BE-020 zero-JS gate. Reproduce: `find backend_controller/src backend_controller/scripts
 -type f \( -name '*.js' -o -name '*.jsx' \) | wc -l` -> 13.
+
+
+## Delta: BE-019 Retire Legacy Transport/Persistence/Scripts (branch `ts-migration/backend`)
+
+Spec-faithful deletion batch. The last dead legacy scaffolding: legacy transport
+(`http/*.js`, `router.js`), legacy persistence (`db/{client,pgAdapter,store}.js`),
+and the four legacy route-inventory `scripts/*.js`. No TS consumers; not in
+package.json/CI. Canonical transport/persistence are `src/http/*.ts` + `src/db/*.ts`.
+
+| Change | Value |
+|---|---:|
+| **Production JS/JSX deleted (http x5, router.js, db x3, scripts x4)** | **13** |
+| New TS/schema added | 0 |
+
+Backend authored JS/JSX backlog **13 -> 0 files**. `npm run check` green; integration
+63/63 (unaffected). BE-020 adds the permanent zero-JavaScript assertion. Reproduce:
+`find backend_controller/src backend_controller/scripts -type f \( -name '*.js' -o
+-name '*.jsx' \) | wc -l` -> 0.

@@ -115,6 +115,25 @@ const DELETED_LEGACY_FILES: readonly string[] = [
   "shared/services/timelineService.js",
   "shared/services/withReceipt.js",
   "shared/utils/istDate.js",
+  // BE-019: legacy transport + persistence scaffolding and the legacy route-
+  // inventory scripts. The canonical transport is src/http/*.ts (boundary,
+  // errorCatalog, envelope, validation, idempotencyProtocol, cursor) and the
+  // canonical persistence is src/db/*.ts (pool, database, repositories, types).
+  // With these gone the backend has zero authored JavaScript (asserted by the
+  // zero-JavaScript guard).
+  "http/errors.js",
+  "http/idempotency.js",
+  "http/response.js",
+  "http/router.js",
+  "http/validate.js",
+  "router.js",
+  "db/client.js",
+  "db/pgAdapter.js",
+  "db/store.js",
+  "../scripts/check-admin-rbac-routes.js",
+  "../scripts/check-auth-403-envelope.js",
+  "../scripts/print-routes.js",
+  "../scripts/t11-route-inventory.js",
 ]
 
 describe("legacy deletion guard", () => {

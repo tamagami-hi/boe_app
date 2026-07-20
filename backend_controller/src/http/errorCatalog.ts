@@ -6,8 +6,8 @@
  * public code; handlers never serialize their internal names, PostgreSQL text,
  * stacks, provider responses, or account-existence signals.
  *
- * Named `errorCatalog` (not `errors`) so it does not collide with the legacy
- * `src/http/errors.js` at module resolution time; the legacy file is deleted in
+ * Named `errorCatalog` (not `errors`) so it did not collide with the legacy
+ * `src/http/errors.js` at module resolution time; that legacy file was removed in
  * BE-019.
  */
 export type ErrorCode =

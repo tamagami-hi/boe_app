@@ -2,6 +2,31 @@
 
 ## Last Verified Code Checkpoint
 
+- Task: `BE-019` retire legacy transport/persistence/route-inventory scripts,
+  landed on branch `ts-migration/backend` (PR #1 to `main`). Accelerated
+  single-task mode; deletion-only. **This batch takes the backend to zero
+  authored JavaScript.**
+- Result: deleted the last dead legacy scaffolding — `src/http/{errors,
+  idempotency,response,router,validate}.js`, root `src/router.js`,
+  `src/db/{client,pgAdapter,store}.js`, and the four legacy `scripts/*.js` (13
+  files; no TS consumers; not wired into package.json/CI). Canonical transport is
+  `src/http/*.ts`, canonical persistence `src/db/*.ts`. Guarded in
+  `legacy-deletion.guard.test.ts`; updated the errorCatalog/idempotencyProtocol
+  basename-collision comments to past tense. **Backend authored JS/JSX 13 -> 0.**
+  `check` green; integration 63/63 (unaffected). BE-020 adds the permanent
+  zero-JavaScript assertion.
+- Prior checkpoints: BE-018 (retire remaining shared block, JS 39 -> 13), BE-017
+  (retire admin finance/content, JS 51 -> 39), BE-016 (canonical admin identity
+  domain, additive JS 51), BE-015 (retire client investment domain, JS 67 -> 51),
+  BE-014 (retire payment/mandate webhooks+providers, JS 72 -> 67), BE-013 (retire
+  public content/catalog, JS 74 -> 72), BE-012 (SES/SNS outbox worker +
+  provider-event ingress, additive JS 74), BE-011 (health/readiness, JS 76 -> 74),
+  BE-010 (native+web auth, JS 80 -> 76), BE-010a, BE-009d (closed BE-009),
+  BE-009c/b/a, BE-008c, BE-008b-2/1, BE-008a, BE-006, BE-007g (closed BE-007),
+  BE-007f..a, BE-005, BE-004, BE-003, CON-006, BE-002.
+
+## Superseded Checkpoint (BE-018)
+
 - Task: `BE-018` retire remaining legacy shared block, landed on branch
   `ts-migration/backend` (PR #1 to `main`). Accelerated single-task mode;
   deletion-only.

@@ -5,9 +5,9 @@
  * or is rejected as reused / in-progress. The real repository implementation and
  * transaction wiring land with the first mutation route batch (BE-008).
  *
- * Named `idempotencyProtocol` (not `idempotency`) so it does not collide with the
- * legacy `src/http/idempotency.js` at module resolution time; the legacy file is
- * deleted in BE-019.
+ * Named `idempotencyProtocol` (not `idempotency`) so it did not collide with the
+ * legacy `src/http/idempotency.js` at module resolution time; that legacy file was
+ * removed in BE-019.
  */
 import { z } from "zod"
 
