@@ -1,7 +1,6 @@
 import { z } from "zod"
 
 import { createSuccessEnvelopeSchema } from "../envelope.js"
-import type { ErrorCode } from "../errors.js"
 import {
   EmailInput,
   FullName,
@@ -9,8 +8,9 @@ import {
   PhoneInput,
   VersionTag,
 } from "../scalars.js"
+import { defineOperation, MAX_JSON_BODY_BYTES } from "./descriptor.js"
 
-export const MAX_JSON_BODY_BYTES = 65_536
+export { MAX_JSON_BODY_BYTES } from "./descriptor.js"
 
 export const ConsentKind = z.enum(["terms", "privacy"])
 export type ConsentKind = z.infer<typeof ConsentKind>
@@ -101,59 +101,24 @@ export type VerifyApplicationEmailSuccessEnvelope = z.infer<
   typeof VerifyApplicationEmailSuccessEnvelope
 >
 
-type PublicOperationInput = Readonly<{
-  operationId: string
-  method: "GET" | "POST"
-  path: string
-  authChannel: "public" | "public-token"
-  idempotency: "none" | "required" | "single-use-token"
-  request: Readonly<{
-    body?: z.ZodType
-    headers?: z.ZodType
-    mediaType?: "application/json"
-    maxBodyBytes?: number
-  }>
-  success: Readonly<{ status: 200 | 202; schema: z.ZodType }>
-  errorCodes: readonly ErrorCode[]
-}>
-
-type FrozenPublicOperation<TOperation extends PublicOperationInput> = Readonly<
-  Omit<TOperation, "request" | "success" | "errorCodes"> & {
-    request: Readonly<TOperation["request"]>
-    success: Readonly<TOperation["success"]>
-    errorCodes: Readonly<TOperation["errorCodes"]>
-  }
->
-
-const definePublicOperation = <const TOperation extends PublicOperationInput>(
-  operation: TOperation,
-) => {
-  const frozenOperation = Object.freeze({
-    ...operation,
-    request: Object.freeze({ ...operation.request }),
-    success: Object.freeze({ ...operation.success }),
-    errorCodes: Object.freeze([...operation.errorCodes]),
-  })
-
-  return frozenOperation as FrozenPublicOperation<TOperation>
-}
-
-export const getPublicConsentDocuments = definePublicOperation({
+export const getPublicConsentDocuments = defineOperation({
   operationId: "getPublicConsentDocuments",
   method: "GET",
   path: "/v1/public/consent-documents",
   authChannel: "public",
+  credentialPolicy: "none",
   idempotency: "none",
   request: {},
   success: { status: 200, schema: ConsentDocumentsSuccessEnvelope },
   errorCodes: ["RATE_LIMITED", "INTERNAL_ERROR", "DEPENDENCY_UNAVAILABLE"],
 })
 
-export const submitApplication = definePublicOperation({
+export const submitApplication = defineOperation({
   operationId: "submitApplication",
   method: "POST",
   path: "/v1/applications",
   authChannel: "public",
+  credentialPolicy: "none",
   idempotency: "required",
   request: {
     body: SubmitApplicationBody,
@@ -175,11 +140,12 @@ export const submitApplication = definePublicOperation({
   ],
 })
 
-export const verifyApplicationEmail = definePublicOperation({
+export const verifyApplicationEmail = defineOperation({
   operationId: "verifyApplicationEmail",
   method: "POST",
   path: "/v1/applications/verify-email",
   authChannel: "public-token",
+  credentialPolicy: "public-body-token",
   idempotency: "single-use-token",
   request: {
     body: VerifyApplicationEmailBody,

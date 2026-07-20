@@ -699,7 +699,10 @@ X-Client-Platform: android and its semantic X-App-Version. These headers are
 boundary/compatibility signals, not proof of an installed app and never an
 authorization factor. The high-entropy single-use activation bearer is the
 actual authority. “Native-only” is an approved client/UX and response-transport
-contract; device attestation is not claimed in this release.
+contract; device attestation is not claimed in this release. Operation metadata
+records this activation boundary as `native-body-token-only`: the activation
+token is accepted only in the JSON body, while cookie authentication,
+Authorization-header credentials, and browser fallback exchange are forbidden.
 
 #### POST /v1/activations/complete
 
@@ -744,10 +747,14 @@ NativeUser is:
   userId: Uuid,
   fullName: FullName,
   email: EmailInput,
-  phoneMasked: z.string(),
+  phoneMasked: z.string().regex(/^\+[1-9][0-9]{0,2}[*]{6}[0-9]{4}$/),
   accountStatus: z.literal("active")
 }
 ~~~
+
+`phoneMasked` is the canonical display-only form: a `+` country calling code,
+exactly six mask characters, and the final four digits. A raw E.164 phone or a
+different mask representation fails output validation.
 
 #### POST /v1/auth/native/login
 

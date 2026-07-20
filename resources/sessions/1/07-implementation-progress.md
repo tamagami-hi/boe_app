@@ -13,10 +13,53 @@
 | Phase | Status | Current boundary |
 |---|---|---|
 | Phase 0: planning and architecture | Complete | Approved in commit `ec07d21` |
-| Phase 2: test and TypeScript foundation | In progress | Scalar, error/envelope, and public-onboarding operation kernels; 0/7 full Phase 2 acceptance gates complete |
+| Phase 2: test and TypeScript foundation | In progress | Scalar, error/envelope, public-onboarding, and native-activation operation kernels; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
-## Active Slice: Public Onboarding Operation Contracts
+## Active Slice: Native-Only Activation Operation Contract
+
+**Status:** Complete
+
+**Scope:** Add the strict native-only, single-use activation request, response,
+and immutable operation descriptor; expose root and `./activation` package
+surfaces; and extract the operation constructor shared with public onboarding.
+
+**Explicitly out of scope:** activation persistence and atomic state changes,
+password hashing, session/JWT/refresh implementation, raw-header enforcement,
+header/body app-version equality, device attestation, browser fallback exchange,
+backend/router/client wiring, OpenAPI generation, consumer manifests, CI,
+Docker, release tooling, and frontend changes.
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Approved-plan review | Complete | Planner, factual extractor, TDD guide, and security reviewer selected the single activation route plus the now-justified shared descriptor extraction and fixed the route/body/header/response/error boundary |
+| Research and reuse check | Complete | Repository and authenticated GitHub searches found generic Zod descriptor patterns but no maintained implementation matching the native-only token, response, and error policy; existing Zod/scalar/envelope kernels were reused |
+| Tests written before implementation | Complete | `operations/activation.test.ts` preceded `operations/activation.ts`; review regressions for closed auth/status policy, route-wide no-store, explicit credential transport, canonical phone masking, secret-safe issues, and exact request inference preceded their fixes |
+| RED observed | Complete | Initial focused run failed on missing `./activation.js`; review RED then failed runtime policy assertions and typecheck for widened `authChannel`/status plus missing credential and masked-phone contracts |
+| Minimal implementation | Complete | One activation operation, strict schemas, canonical masked-phone output, frozen registry, root/`./activation` exports, and internal immutable descriptor helper; public descriptors gained only explicit credential-policy metadata |
+| Unit tests GREEN | Complete | Node 22.20.0/npm 11.16.0 Vitest 3.2.6: 100/100 full package tests passed, including 16 focused activation and 24 public-operation tests |
+| Coverage >=80% on all four metrics | Complete | 100% statements, branches, functions, and lines across every authored contract source file |
+| Typecheck/lint/build/import smoke | Complete | Clean `npm ci`; strict typecheck, typed ESLint, declaration/ESM build, root/subpath export smoke, and package dry-run passed under Node 22.20.0/npm 11.16.0 |
+| Security and privacy checks | Complete | Zero-vulnerability audit; strict body/header/device/output objects; token/password issue serialization excludes inputs; cookie/Authorization/browser exchange is forbidden by closed `native-body-token-only` policy; all auth responses are `no-store`; raw phone output is rejected |
+| Focused reviews | Complete | Initial general/security reviews blocked broad auth/status types, success-only caching, implicit credential transport, and unconstrained phone masking; regression-first fixes were re-reviewed with no remaining CRITICAL, HIGH, or MEDIUM findings |
+| Commit | Complete | Recorded by the containing `feat: add native activation contract` commit |
+
+**Derived contract decisions:** exact operation ID/error list and descriptor
+policy fields were absent from route snippets. The reviewed operation ID is
+`completeActivation`; credential policy is `native-body-token-only`; cache
+policy applies to every response; and `phoneMasked` has one display-only form
+(`+` country code, six `*`, final four digits). Compatibility headers remain
+non-authoritative. Header/body app-version equality and raw-header rejection
+remain Phase 4 transport gates.
+
+**Tracked LOW:** source-level descriptor logic is now shared, but const-preserved
+inference still expands in emitted declarations. Compared with the prior public
+declaration (635 lines/26,542 bytes), the extraction alone caused no reduction;
+the explicit credential field makes the current file 641 lines/26,802 bytes.
+Activation emits 277 lines/11,380 bytes. Keep exact request-key inference and
+address declaration compaction in the deterministic-generation batch.
+
+## Completed Slice: Public Onboarding Operation Contracts
 
 **Status:** Complete
 
@@ -132,4 +175,7 @@ fail-closed to an exact reviewed allowlist.
 
 ## Next Slice
 
-Not selected. No additional module has begun.
+**Native Authentication Operation Contracts** is selected as the next bounded
+batch. It will cover the documented native login, refresh, and logout wire
+contracts only, reusing `NativeDevice`/`NativeUser` where their semantics match.
+Planning, RED tests, and implementation have not begun.
