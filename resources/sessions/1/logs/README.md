@@ -43,3 +43,5 @@ not rewrite prior RED/GREEN history to match later architecture.
 | BE-009d | DONE | [Refresh/CSRF session-token primitives](./BE-009d-session-tokens.md) | on `ts-migration/backend` (JS 81 -> 80; closes BE-009) |
 
 | BE-010a | DONE | [Auth session + credential repositories](./BE-010a-auth-session-repositories.md) | on `ts-migration/backend` |
+
+| BE-010 (native core) | ACTIVE | [Activation + native auth](./BE-010-auth.md) | on `ts-migration/backend`; refresh/web/deletion remaining |

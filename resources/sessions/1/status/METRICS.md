@@ -423,3 +423,17 @@ Additive native-session DB layer; deletes no JavaScript.
 
 Backend authored JS/JSX backlog unchanged at **80 files**. Native session/refresh
 create + lookup + revoke proven on PostgreSQL 16. First child of BE-010 (BE-010a).
+
+## Delta: BE-010 native auth core (branch `ts-migration/backend`)
+
+Accelerated single-task mode; additive (deletion pending full auth replacement).
+
+| Change | Value |
+|---|---:|
+| Dep added (`libphonenumber-js@1.13.8`) | 1 |
+| Source TS added (`refreshDerivation`, `phone`, `userRepository`, `activationInviteRepository`, `nativeAuth`, `nativeAuthRoutes`) + extended `authSessionRepository` | 6 + 1 |
+| Critical integration test added (`authNative.integration.test.ts`) | 1 file / 4 tests |
+| Production JS/JSX deleted | 0 (legacy auth trio deleted once web+refresh land) |
+
+Backend authored JS/JSX unchanged at **80**. Integration 31/31 across 4 container
+files; coverage 97.56% stmts / 86.2% branch over repositories/routes/domain.

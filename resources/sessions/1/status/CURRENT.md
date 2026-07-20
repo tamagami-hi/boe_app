@@ -2,6 +2,26 @@
 
 ## Last Verified Code Checkpoint
 
+- Task: `BE-010` native auth core (activation + login + logout + bearer guard),
+  landed on branch `ts-migration/backend` (PR #1 to `main`). Accelerated mode:
+  single BE task, critical-only tests.
+- Result: `domain/auth/nativeAuth.ts` (`activateUser`, `nativeLogin`,
+  `nativeLogout`, `authenticateNativeRequest`) + `routes/nativeAuthRoutes.ts`
+  (`POST /v1/activations/complete`, `/v1/auth/native/{login,logout}`), backed by
+  new `userRepository`/`activationInviteRepository` + extended
+  `authSessionRepository`, `refreshDerivation.ts`, `phone.ts` (libphonenumber-js).
+  Critical integration test proves activate -> active user/credential/session,
+  replay -> TOKEN_ALREADY_USED, login + same-device replacement, wrong/unknown ->
+  INVALID_CREDENTIALS, logout family-revoke + bearer required. `check` green;
+  integration 31/31 (coverage 97.56% stmts). Additive — no JS deleted (80).
+- BE-010 remaining: native refresh rotation (30s grace + reuse revoke), web
+  cookie/CSRF auth, production `server.ts` wiring, delete legacy auth trio.
+- Prior checkpoints: BE-010a, BE-009d (closed BE-009), BE-009c/b/a, BE-008c,
+  BE-008b-2/1, BE-008a, BE-006, BE-007g (closed BE-007), BE-007f..a, BE-005,
+  BE-004, BE-003, CON-006, BE-002.
+
+## Superseded Code Checkpoint (BE-010a)
+
 - Task: `BE-010a` auth session + credential repositories (child of BE-010),
   landed on branch `ts-migration/backend` (PR #1 to `main`).
 - Result: `src/repositories/credentialRepository.ts` (exists/create, Argon2id

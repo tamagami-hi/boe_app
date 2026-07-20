@@ -30,6 +30,15 @@ export interface RevokeSessionsResult {
 export interface AuthSessionWriteRepository {
   createNativeSession: (tx: Transaction, input: CreateNativeSessionInput) => Promise<CreatedSession>
   lockByRefreshTokenHash: (tx: Transaction, tokenHash: Buffer) => Promise<CreatedSession | null>
+  lockActiveNativeByUserAndDevice: (
+    tx: Transaction,
+    input: Readonly<{ userId: UserId; deviceIdHash: Buffer }>,
+  ) => Promise<AuthSession | null>
+  lockActiveBySid: (tx: Transaction, sessionId: string) => Promise<AuthSession | null>
+  revokeSessionFamily: (
+    tx: Transaction,
+    input: Readonly<{ sessionId: string; reason: string; now: Date }>,
+  ) => Promise<void>
   revokeAllForUser: (
     tx: Transaction,
     input: Readonly<{ userId: UserId; reason: string; now: Date }>,
@@ -84,6 +93,46 @@ export const createAuthSessionRepository = (): AuthSessionWriteRepository => ({
     if (session === undefined) return null
 
     return { session, refreshToken }
+  },
+
+  lockActiveNativeByUserAndDevice: async (tx, input) => {
+    const row = await tx
+      .selectFrom("auth_sessions")
+      .selectAll()
+      .where("user_id", "=", input.userId)
+      .where("channel", "=", "native")
+      .where("state", "=", "active")
+      .where("device_id_hash", "=", input.deviceIdHash)
+      .forUpdate()
+      .executeTakeFirst()
+    return row ?? null
+  },
+
+  lockActiveBySid: async (tx, sessionId) => {
+    const row = await tx
+      .selectFrom("auth_sessions")
+      .selectAll()
+      .where("id", "=", sessionId)
+      .where("state", "=", "active")
+      .forUpdate()
+      .executeTakeFirst()
+    return row ?? null
+  },
+
+  revokeSessionFamily: async (tx, input) => {
+    await tx
+      .updateTable("auth_sessions")
+      .set({ state: "revoked", revoked_at: input.now, revocation_reason: input.reason })
+      .where("id", "=", input.sessionId)
+      .where("state", "=", "active")
+      .execute()
+    await tx
+      .updateTable("auth_refresh_tokens")
+      .set({ revoked_at: input.now })
+      .where("session_id", "=", input.sessionId)
+      .where("used_at", "is", null)
+      .where("revoked_at", "is", null)
+      .execute()
   },
 
   revokeAllForUser: async (tx, input) => {
