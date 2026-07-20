@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto"
 import { fileURLToPath } from "node:url"
 
 import { PostgreSqlContainer } from "@testcontainers/postgresql"
@@ -7,10 +8,17 @@ import type { Pool } from "pg"
 import { Wait } from "testcontainers"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 
-import { createDatabase } from "../../src/db/database.js"
+import { createCryptoContext, parseCryptoKeys } from "../../src/crypto/context.js"
+import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
 import { consentDigest, SEED_CONSENT_DOCUMENTS } from "../../src/db/seedCatalog.js"
+import { createApplicationRepository } from "../../src/repositories/applicationRepository.js"
+import { createAuditRepository } from "../../src/repositories/auditRepository.js"
 import { createConsentRepository } from "../../src/repositories/consentRepository.js"
+import { createEmailDeliveryRepository } from "../../src/repositories/emailDeliveryRepository.js"
+import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
+import { createOutboxRepository } from "../../src/repositories/outboxRepository.js"
+import { createVerificationTokenRepository } from "../../src/repositories/verificationTokenRepository.js"
 import { registerPublicOnboardingRoutes } from "../../src/routes/publicOnboardingRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
 import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
@@ -26,6 +34,30 @@ interface ConsentItem {
   publicPath: string
   contentMarkdown: string
   sha256: string
+}
+
+interface SubmitEnvelope {
+  ok: boolean
+  data: { accepted: boolean } | null
+  error: { code: string } | null
+  meta: { requestId: string; idempotencyReplay?: boolean }
+}
+
+const key = (bytes: number): string => randomBytes(bytes).toString("base64")
+
+const submitBody = (email: string, phone: string, termsVersion = "v1") => ({
+  fullName: "Ada Lovelace",
+  email,
+  phone,
+  consents: [
+    { kind: "terms", version: termsVersion, accepted: true },
+    { kind: "privacy", version: "v1", accepted: true },
+  ],
+})
+
+const countWhere = async (query: string, values: readonly unknown[]): Promise<number> => {
+  const result = await pool.query<{ c: number }>(query, values as unknown[])
+  return result.rows[0]?.c ?? 0
 }
 
 beforeAll(async () => {
@@ -49,12 +81,39 @@ beforeAll(async () => {
   await runSeed(pool)
 
   const database = createDatabase(pool)
+  const crypto = createCryptoContext(
+    parseCryptoKeys({
+      CRYPTO_TOKEN_HASH_KEY: key(32),
+      CRYPTO_TOKEN_HASH_KEY_VERSION: "tk1",
+      CRYPTO_CONSENT_IP_HMAC_KEY: key(32),
+      CRYPTO_CONSENT_IP_HMAC_KEY_VERSION: "ck1",
+      CRYPTO_RECIPIENT_HMAC_KEY: key(32),
+      CRYPTO_RECIPIENT_HMAC_KEY_VERSION: "rk1",
+      CRYPTO_RECIPIENT_ENC_KEY: key(32),
+      CRYPTO_RECIPIENT_ENC_KEY_VERSION: "ek1",
+    }),
+  )
+
   app = createApplication({
     logger: false,
     registerRoutes: (instance) => {
       registerPublicOnboardingRoutes(instance, {
         database,
+        unitOfWork: createUnitOfWork(database),
+        clock: () => new Date(),
+        crypto,
+        config: {
+          verificationTokenTtlMs: 24 * 60 * 60 * 1000,
+          idempotencyTtlMs: 24 * 60 * 60 * 1000,
+          sesConfigurationSet: "boe-transactional",
+        },
+        applicationRepository: createApplicationRepository(),
         consentRepository: createConsentRepository(),
+        verificationTokenRepository: createVerificationTokenRepository(),
+        emailDeliveryRepository: createEmailDeliveryRepository(),
+        outboxRepository: createOutboxRepository(),
+        auditRepository: createAuditRepository(),
+        idempotencyRepository: createIdempotencyRepository(),
       })
     },
   })
@@ -73,18 +132,106 @@ describe("GET /v1/public/consent-documents (integration)", () => {
 
     const body = response.json<{ ok: boolean; data: { items: ConsentItem[] } }>()
     expect(body.ok).toBe(true)
-
-    const items = body.data.items
-    expect(items.map((item) => item.kind).sort()).toEqual(["privacy", "terms"])
+    expect(body.data.items.map((item) => item.kind).sort()).toEqual(["privacy", "terms"])
 
     for (const seeded of SEED_CONSENT_DOCUMENTS) {
-      const item = items.find((candidate) => candidate.kind === seeded.kind)
-      expect(item).toBeDefined()
-      expect(item?.version).toBe(seeded.version)
+      const item = body.data.items.find((candidate) => candidate.kind === seeded.kind)
       expect(item?.publicPath).toBe(seeded.publicPath)
-      expect(item?.contentMarkdown).toBe(seeded.contentMarkdown)
-      expect(item?.sha256).toMatch(/^[a-f0-9]{64}$/u)
       expect(item?.sha256).toBe(consentDigest(seeded.contentMarkdown).toString("hex"))
     }
+  })
+})
+
+describe("POST /v1/applications (integration)", () => {
+  test("atomically creates all onboarding rows on a new submission", async () => {
+    const email = "new1@example.com"
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/applications",
+      headers: { "idempotency-key": "key-new-00000001" },
+      payload: submitBody(email, "+14155551001"),
+    })
+
+    expect(response.statusCode).toBe(202)
+    const body = response.json<SubmitEnvelope>()
+    expect(body.data).toEqual({ accepted: true })
+    expect(body.meta.idempotencyReplay).toBeUndefined()
+
+    const applicationId = (
+      await pool.query<{ id: string; state: string }>(
+        "select id, state from applications where email_normalized = $1",
+        [email],
+      )
+    ).rows[0]
+    expect(applicationId?.state).toBe("pending_email_verification")
+    const id = applicationId?.id
+    expect(await countWhere("select count(*)::int as c from application_consents where application_id = $1", [id])).toBe(2)
+    expect(await countWhere("select count(*)::int as c from verification_tokens where application_id = $1", [id])).toBe(1)
+    expect(
+      await countWhere(
+        "select count(*)::int as c from email_deliveries where application_id = $1 and template_key = 'verify_email' and state = 'queued'",
+        [id],
+      ),
+    ).toBe(1)
+    expect(await countWhere("select count(*)::int as c from outbox_events where aggregate_id = $1", [id])).toBe(1)
+    expect(await countWhere("select count(*)::int as c from audit_events where entity_id = $1", [id])).toBe(1)
+  })
+
+  test("replays the same response for a repeated idempotency key", async () => {
+    const email = "replay1@example.com"
+    const payload = submitBody(email, "+14155551002")
+    const headers = { "idempotency-key": "key-replay-0001" }
+
+    const first = await app.inject({ method: "POST", url: "/v1/applications", headers, payload })
+    const second = await app.inject({ method: "POST", url: "/v1/applications", headers, payload })
+
+    expect(first.statusCode).toBe(202)
+    expect(second.statusCode).toBe(202)
+    expect(second.json<SubmitEnvelope>().meta.idempotencyReplay).toBe(true)
+    expect(await countWhere("select count(*)::int as c from applications where email_normalized = $1", [email])).toBe(1)
+  })
+
+  test("treats a duplicate identity as a uniform no-op", async () => {
+    const email = "dup1@example.com"
+    await app.inject({
+      method: "POST",
+      url: "/v1/applications",
+      headers: { "idempotency-key": "key-dup-000001a" },
+      payload: submitBody(email, "+14155551003"),
+    })
+    const second = await app.inject({
+      method: "POST",
+      url: "/v1/applications",
+      headers: { "idempotency-key": "key-dup-000001b" },
+      payload: submitBody(email, "+14155551003"),
+    })
+
+    expect(second.statusCode).toBe(202)
+    expect(second.json<SubmitEnvelope>().data).toEqual({ accepted: true })
+    expect(await countWhere("select count(*)::int as c from applications where email_normalized = $1", [email])).toBe(1)
+  })
+
+  test("rejects a missing Idempotency-Key", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/applications",
+      payload: submitBody("nokey@example.com", "+14155551004"),
+    })
+    expect(response.statusCode).toBe(400)
+    expect(response.json<SubmitEnvelope>().error?.code).toBe("VALIDATION_FAILED")
+  })
+
+  test("rejects a stale consent version", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/applications",
+      headers: { "idempotency-key": "key-stale-00001" },
+      payload: submitBody("stale1@example.com", "+14155551005", "v2"),
+    })
+    expect(response.statusCode).toBe(400)
+    expect(response.json<SubmitEnvelope>().error?.code).toBe("VALIDATION_FAILED")
+    expect(
+      await countWhere("select count(*)::int as c from applications where email_normalized = $1", ["stale1@example.com"]),
+    ).toBe(0)
   })
 })

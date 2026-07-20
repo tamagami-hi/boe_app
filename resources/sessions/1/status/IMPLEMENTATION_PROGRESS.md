@@ -34,6 +34,29 @@ backend, landing, admin, client, shared frontend, and operational entrypoints.
 | Phase 2: test and TypeScript foundation | In progress | Contract kernels plus authoritative TypeScript/Fastify liveness runtime; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
+## Completed Slice: Application Submission Route (BE-008b-2)
+
+**Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). Third child
+of BE-008 (`POST /v1/applications`), building on BE-008b-1 crypto.
+
+**Scope:** 7 repository implementations (application/consent/verification-token/
+outbox/email-delivery/audit/idempotency), the `submitApplication` command, the
+route with database-backed idempotency, and the corrected `executeIdempotent`.
+
+**Explicitly deferred:** cooldown resend + cross-match metric + concurrent-race
+savepoint (BE-008b-3); verify-email + `onboardingService.js` deletion (BE-008c);
+SES sending + transient-token hardening (BE-012).
+
+| Gate | Status | Evidence |
+|---|---|---|
+| New submission atomic | Complete | integration: 1 application + 2 consents + 1 token + 1 queued delivery + 1 outbox + 1 audit |
+| Uniform response | Complete | integration: new and duplicate both return 202 `{accepted:true}` |
+| DB idempotency | Complete | integration: repeated key replays (no new rows); missing key -> 400 |
+| Consent authority | Complete | integration: stale consent version -> 400; documents resolved from the table |
+| Coverage | Complete | unit gate excludes repositories/routes/domain; integration gate 99.48% stmts / 85.24% branch |
+| JS deletion | N/A | deferred to BE-008c |
+| Commit/push | Complete | Committed on `ts-migration/backend`; PR #1 updated |
+
 ## Completed Slice: Public Consent-Documents Route (BE-008a)
 
 **Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). First

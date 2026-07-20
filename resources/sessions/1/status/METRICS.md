@@ -325,3 +325,20 @@ New `node:crypto` module; deletes no JavaScript yet.
 Backend authored JS/JSX backlog unchanged at **83 files**. AES-256-GCM envelope +
 keyed HMAC + opaque-token primitives proven by unit tests (round-trip, tamper,
 format, key length). Second child of BE-008 (BE-008b-1).
+
+## Delta: BE-008b-2 Application Submission Route (branch `ts-migration/backend`)
+
+New route + repositories + command; deletes no JavaScript yet (BE-008c).
+
+| Change | Value |
+|---|---:|
+| Source TS added (6 repositories + `submitApplication`) | 7 files |
+| Source TS modified (route, `idempotencyProtocol`, `crypto/primitives`, both vitest configs) | 5 files |
+| Integration tests added | +5 (integration 16 -> 21) |
+| Production JS/JSX deleted | 0 |
+
+Backend authored JS/JSX backlog unchanged at **83 files**. `POST /v1/applications`
+proven on PostgreSQL 16 (uniform 202, DB idempotency, atomic multi-table create).
+Unit coverage now excludes `repositories/routes/domain`; the integration config
+enforces its own 80% gate over them (measured 99.48% stmts / 85.24% branch).
+Third child of BE-008 (BE-008b-2).

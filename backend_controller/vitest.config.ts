@@ -8,7 +8,15 @@ export default defineConfig({
     include: ["src/**/*.test.ts"],
     coverage: {
       provider: "v8",
-      exclude: ["src/**/*.test.ts", "src/smoke.ts"],
+      // repositories/routes/domain are PostgreSQL-bound and gated by the
+      // integration coverage config (vitest.integration.config.ts), not here.
+      exclude: [
+        "src/**/*.test.ts",
+        "src/smoke.ts",
+        "src/repositories/**",
+        "src/routes/**",
+        "src/domain/**",
+      ],
       include: ["src/**/*.ts"],
       reporter: ["text", "json-summary"],
       thresholds: {

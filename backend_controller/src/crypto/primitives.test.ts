@@ -53,11 +53,10 @@ describe("AES-256-GCM envelope", () => {
 })
 
 describe("maskEmail", () => {
-  test("hides the local part and full domain", () => {
-    const masked = maskEmail("learner@example.com")
-    expect(masked).toBe("l***@e***")
+  test("reveals only the first local scalar and keeps the domain", () => {
+    const masked = maskEmail("Learner@Example.com")
+    expect(masked).toBe("L***@example.com")
     expect(masked).not.toContain("earner")
-    expect(masked).not.toMatch(/@[^@]+\.[^@]+$/u)
   })
 
   test("returns a safe placeholder for a malformed address", () => {

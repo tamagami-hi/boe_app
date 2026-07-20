@@ -58,6 +58,6 @@ describe("createCryptoContext", () => {
   })
 
   test("masks an email", () => {
-    expect(context.maskEmail("learner@example.com")).toBe("l***@e***")
+    expect(context.maskEmail("learner@example.com")).toBe("l***@example.com")
   })
 })

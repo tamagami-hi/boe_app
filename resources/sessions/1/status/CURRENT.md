@@ -2,6 +2,24 @@
 
 ## Last Verified Code Checkpoint
 
+- Task: `BE-008b-2` application submission route (child of BE-008), landed on
+  branch `ts-migration/backend` (PR #1 to `main`).
+- Result: `POST /v1/applications` end-to-end on PostgreSQL 16. Seven repository
+  implementations (application/consent/verification-token/outbox/email-delivery/
+  audit/idempotency), the `submitApplication` command (consent resolution +
+  active-conflict no-op + atomic create), and the route (Idempotency-Key + Zod
+  body + normalization + request hash + unit-of-work + `executeIdempotent`). A new
+  pair returns 202 and atomically creates application+2 consents+token+queued
+  verify_email delivery+outbox+audit; a repeated key replays; a duplicate identity
+  is a uniform 202 no-op; missing key / stale consent -> 400. Corrected
+  `executeIdempotent` (check-completed-first) and `maskEmail` (full domain).
+  Unit `check` green; integration 21/21 with a new integration coverage gate over
+  repositories/routes/domain (99.48% stmts). Additive — no JS deleted (83).
+- Prior checkpoints: BE-008b-1, BE-008a, BE-006, BE-007g (closed BE-007),
+  BE-007f..a, BE-005, BE-004, BE-003, CON-006, BE-002.
+
+## Superseded Code Checkpoint (BE-008b-1)
+
 - Task: `BE-008b-1` onboarding crypto primitives (child of BE-008), landed on
   branch `ts-migration/backend` (PR #1 to `main`).
 - Result: `src/crypto/primitives.ts` (opaque 43-char base64url token, keyed
@@ -211,13 +229,12 @@
 
 ## Next Code Tasks
 
-1. `BE-008b-2` — `POST /v1/applications` submission (new-pair / duplicate-pending
-   15-min-cooldown / duplicate-active / cross-match / uniqueness-race branches) +
-   ApplicationRepository/ConsentRepository.recordAcceptances/VerificationToken/
-   Idempotency/Outbox/EmailDelivery/Audit repository impls; revise
-   `executeIdempotent` to check-completed-first and wire the real repository.
-2. `BE-008c` — `POST /v1/applications/verify-email` + delete legacy
-   `website/services/onboardingService.js` (first onboarding JS deletion).
+1. `BE-008c` — `POST /v1/applications/verify-email` (consume token single-use,
+   move application to submitted; 409 TOKEN_ALREADY_USED replay, 410 TOKEN_EXPIRED)
+   + delete legacy `website/services/onboardingService.js` (first backend JS
+   deletion, 83 -> 82).
+2. `BE-008b-3` — duplicate-pending cooldown resend + cross-match security metric
+   + concurrent-race savepoint.
 3. `BE-009` password/token/session security core — begins.
    deleting the onboarding service JS (`website/services`).
 3. `CON-007` consumer contract/package wiring (openapi-fetch client factory).

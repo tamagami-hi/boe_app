@@ -64,15 +64,16 @@ export const decryptGcm = (key: Buffer, ciphertext: Buffer, nonce: Buffer): stri
 }
 
 /**
- * Mask an email for display evidence so it contains no complete address: the
- * local part and domain label are reduced to their first character.
+ * Mask an email per the `MaskedEmail` contract (spec 04 §2.1): reveal exactly the
+ * first Unicode scalar of the local part, then `***@`, then the complete
+ * lowercase domain. The local part is hidden so the result is never a complete
+ * address; the domain is retained.
  */
 export const maskEmail = (email: string): string => {
   const atIndex = email.lastIndexOf("@")
   if (atIndex <= 0 || atIndex === email.length - 1) return "***"
   const local = email.slice(0, atIndex)
-  const domain = email.slice(atIndex + 1)
-  const dotIndex = domain.indexOf(".")
-  const domainLabel = dotIndex === -1 ? domain : domain.slice(0, dotIndex)
-  return `${local[0] ?? ""}***@${domainLabel[0] ?? ""}***`
+  const domain = email.slice(atIndex + 1).toLowerCase()
+  const firstScalar = [...local][0] ?? ""
+  return `${firstScalar}***@${domain}`
 }

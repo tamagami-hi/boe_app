@@ -58,23 +58,32 @@ export const executeIdempotent = async <TBody>(
 ): Promise<IdempotentOutcome<TBody>> => {
   const { repository, tx, scope, requestHash } = params
 
-  const acquired = await repository.tryAcquireTransactionLock(tx, scope)
-  if (!acquired) {
+  // Replay a completed record if it exists (must be checked before acquiring the
+  // lock, because a committed request has already released its advisory lock).
+  const replayIfCompleted = async (): Promise<IdempotentOutcome<TBody> | null> => {
     const completed = await repository.findCompleted(tx, scope)
-    if (completed === null) {
-      throw new AppError("IDEMPOTENCY_IN_PROGRESS", { retryAfterSeconds: 1 })
-    }
+    if (completed === null) return null
     // `request_hash` is a bytea (Buffer) at runtime; ReadonlyDeep obscures the type.
     const storedHash = completed.request_hash as unknown as Uint8Array
     if (!equalBytes(storedHash, requestHash)) {
       throw new AppError("IDEMPOTENCY_KEY_REUSED")
     }
-    return {
-      status: completed.response_status,
-      body: completed.response_body as TBody,
-      replay: true,
-    }
+    return { status: completed.response_status, body: completed.response_body as TBody, replay: true }
   }
+
+  const alreadyCompleted = await replayIfCompleted()
+  if (alreadyCompleted !== null) return alreadyCompleted
+
+  const acquired = await repository.tryAcquireTransactionLock(tx, scope)
+  if (!acquired) {
+    const completedUnderRace = await replayIfCompleted()
+    if (completedUnderRace !== null) return completedUnderRace
+    throw new AppError("IDEMPOTENCY_IN_PROGRESS", { retryAfterSeconds: 1 })
+  }
+
+  // Re-check after acquiring in case a concurrent request completed first.
+  const completedAfterAcquire = await replayIfCompleted()
+  if (completedAfterAcquire !== null) return completedAfterAcquire
 
   const result = await params.execute()
   await repository.insertCompleted(tx, {
