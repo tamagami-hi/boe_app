@@ -26,7 +26,7 @@ cutover; never port minified/generated output by hand.
 
 | Closure | Production | Tests | Replacement/deletion rule |
 |---|---:|---:|---|
-| Runtime config/logging | 3 / 219 lines | 0 | Replace `src/config/**` and old shared logger with typed startup/observability boundary |
+| Runtime config/logging | DONE (was 3 / 219) | 0 | BE-003 deleted `src/config/env.js`, `src/config/dotenv.js`, `src/shared/logger.js`; typed `runtime/*` boundary authoritative |
 | Persistence core + DB scripts | 5 / 700 | 0 | Kysely/PostgreSQL pool, transaction, migration tools; delete adapter/store/check/migrate JS |
 | Identity/auth/onboarding | 7 / 1,147 | 1 / 70 | Canonical repositories/security/Fastify auth; delete security/auth/onboarding/seed closure |
 | Public content/catalog | 9 / 1,473 | 2 / 411 | Canonical content/catalog routes/repositories; monolithic public route deletes last |
@@ -34,7 +34,13 @@ cutover; never port minified/generated output by hand.
 | Client API/domain | 16 / 2,573 | 0 | Descriptor-backed client route groups; 436-line route monolith deletes after all imports move |
 | Admin API/domain | 12 / 3,220 | 0 | Typed admin domains/routes; 590-line route monolith deletes after all imports move |
 | Legacy transport/guards | 16 / 1,028 | 0 | Delete after canonical Fastify/typed inventory/authz guards exist |
-| **Total** | **85 / 12,080** | **4 / 520** | **89 files / 12,600 lines** |
+| **Total (after BE-003)** | **82 / 11,872** | **4 / 520** | **86 files / 12,392 lines** |
+
+BE-003 (branch `ts-migration/backend`) deleted the 3-file / ~208-line runtime
+config/logging closure, moving the backend authored backlog from 89 files /
+12,600 lines to 86 files / 12,392 lines. The `eslint.config.mjs` files (backend
+and contracts) are classified tooling exceptions among the four active MJS
+files, not authored application backlog.
 
 Raw backend ownership totals: 78 production source files / 11,636 lines, seven
 operational scripts / 444 lines, and four tests / 520 lines.

@@ -2,15 +2,17 @@
 
 ## Last Verified Code Checkpoint
 
-- Task: `CON-006` deterministic OpenAPI generator, landed on branch
+- Task: `BE-003` runtime configuration closure, landed on branch
   `ts-migration/backend` (PR #1 to `main`).
-- Result: single Zod -> committed `packages/contracts/generated/openapi-v1.json`
-  (OpenAPI 3.1) -> `openapi-typescript` `openapi-v1.d.ts` pipeline, with a shared
-  `ErrorEnvelope` component (Zod 4 `.meta({ id })`), documented request headers,
-  and `generate`/`generate:check` (staleness)/`lint:openapi` (Redocly) gates in
-  `npm run check`. Deterministic (sha256-identical regeneration), 120 tests,
-  100% coverage, 0 vulnerabilities. No backend JS deleted.
-- Prior checkpoint in this branch: `BE-002` graceful API lifecycle.
+- Result: deleted the superseded legacy config/logger JavaScript
+  (`src/config/env.js`, `src/config/dotenv.js`, `src/shared/logger.js`); the
+  typed `runtime/environment.ts` + `runtime/logger.ts` boundary (BE-001) is the
+  sole authority, with Node `--env-file-if-exists` replacing the dotenv loader.
+  A runtime-boundary deletion guard asserts their absence. Backend authored JS
+  backlog **89 -> 86 files** (first backend JS deletion of the migration
+  program). `npm run check` green; no behavior change.
+- Prior checkpoints on this branch: `CON-006` (deterministic OpenAPI generator),
+  `BE-002` (graceful API lifecycle).
 
 ## Prior Checkpoint (BE-002)
 
@@ -41,10 +43,11 @@
 
 ## Next Code Tasks
 
-1. `CON-007` consumer contract/package wiring (openapi-fetch client factory).
-2. `BE-003` typed runtime configuration closure and deletion of legacy config JS
-   (`src/config/*.js`, `src/shared/logger.js`) — first backend JS deletion.
-3. `BE-004` PostgreSQL/Kysely foundation (Phase 3; needs Testcontainers).
+1. `CON-007` consumer contract/package wiring (openapi-fetch client factory +
+   `@beonedge/contracts` `file:` consumption).
+2. `BE-004` PostgreSQL/Kysely foundation (Phase 3; introduces Testcontainers +
+   the additive canonical schema) — unlocks the identity/auth/route batches that
+   delete the bulk of the remaining 86 backend JS files.
 
 Before a candidate becomes `READY`, create its complete packet and dedicated log
 under Session 1. Dependencies and acceptance remain authoritative in

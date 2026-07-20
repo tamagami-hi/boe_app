@@ -34,6 +34,32 @@ backend, landing, admin, client, shared frontend, and operational entrypoints.
 | Phase 2: test and TypeScript foundation | In progress | Contract kernels plus authoritative TypeScript/Fastify liveness runtime; 0/7 full Phase 2 acceptance gates complete |
 | Phases 3-10 | Not started | Blocked by earlier phase gates |
 
+## Completed Slice: Runtime Configuration Closure (BE-003)
+
+**Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`). First
+backend JavaScript deletion of the program.
+
+**Scope:** Retire the superseded legacy config/logger JavaScript now that the
+typed `runtime/environment.ts` + `runtime/logger.ts` boundary (BE-001) and Node
+`--env-file-if-exists` are authoritative. Deleted `src/config/env.js`,
+`src/config/dotenv.js`, `src/shared/logger.js`; added a runtime-boundary
+deletion guard.
+
+**Explicitly out of scope (deferred to owning batches):** typed secret/DB/CORS/
+keyring configuration and its production startup validation (BE-004 DB, BE-006
+HTTP/CORS, BE-009 security) — the liveness runtime has no such surface yet.
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Import-graph safety | Complete | No `src/**/*.ts` imports the removed files; legacy `#config`/`#shared` alias graph already removed in BE-001 |
+| RED before deletion | Complete | runtime-boundary deletion assertion failed while files existed (1 failed / 3 passed) |
+| GREEN | Complete | Files deleted; `npm run check` green; backend JS 89 -> 86 |
+| Review | Complete | Focused inline review (dead-code deletion): no lost control, redaction intact, no CRITICAL/HIGH/MEDIUM |
+| Commit/push | Complete | Committed on `ts-migration/backend`; PR #1 updated |
+
+**Decisions:** `eslint.config.mjs` classified as a tooling exception; broader
+typed config deferred to owning batches (no speculative adjacent work).
+
 ## Completed Slice: Deterministic OpenAPI Generator (CON-006)
 
 **Status:** Complete (branch `ts-migration/backend`, PR #1 to `main`).

@@ -121,3 +121,19 @@ Contracts package after CON-006: 120 tests, 100% coverage on all four metrics,
 `openapi-fetch` removed (deferred to CON-007). Backend authored JS/JSX backlog
 unchanged at 89 files / 12,600 lines. `eslint.config.mjs` classified as a
 tooling exception (one of the 4 MJS files in the inventory ledger).
+
+## Delta: BE-003 Runtime Configuration Closure (branch `ts-migration/backend`)
+
+First backend JavaScript deletion of the migration program.
+
+| Change | Value |
+|---|---:|
+| Production JS deleted | 3 files / ~208 lines |
+| Test TS changed (`runtime-boundary.test.ts`) | +1 deletion-guard test |
+| Production/Test TS added | 0 (typed replacement pre-existed in BE-001) |
+
+Deleted `src/config/env.js` (~140), `src/config/dotenv.js` (~40),
+`src/shared/logger.js` (~28). Backend authored JS/JSX backlog: **89 -> 86 files,
+12,600 -> ~12,392 lines**. `npm run check` green; no behavior change. Typed
+`runtime/environment.ts` + `runtime/logger.ts` (BE-001) are the sole config/
+observability authority.
