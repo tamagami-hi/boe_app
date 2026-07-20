@@ -63,3 +63,5 @@ not rewrite prior RED/GREEN history to match later architecture.
 | BE-018 | DONE (deletion-only) | [Retire remaining legacy shared block](./BE-018-shared-retirement.md) | on `ts-migration/backend` (JS 39 -> 13; deferred content/financial shared closures on the retired JSON store) |
 
 | BE-019 | DONE (deletion-only) | [Retire legacy transport/persistence/scripts](./BE-019-transport-persistence-retirement.md) | on `ts-migration/backend` (JS 13 -> 0; last legacy scaffolding, no TS consumers) |
+
+| BE-020 | DONE (gate) | [Backend zero-JavaScript gate](./BE-020-zero-js-gate.md) | on `ts-migration/backend` (permanent assertion: 0 authored JS/JSX + 0 legacy alias imports) — backend JS->TS migration complete |

@@ -2,6 +2,33 @@
 
 ## Last Verified Code Checkpoint
 
+- Task: `BE-020` backend zero-JavaScript gate, landed on branch
+  `ts-migration/backend` (PR #1 to `main`). **Backend JS -> TS migration
+  complete.**
+- Result: `src/zero-legacy-js.guard.test.ts` permanently asserts (under `npm run
+  check`) that `src/` + `scripts/` contain zero authored `.js/.jsx/.cjs/.mjs`
+  and zero legacy `#`-subpath alias imports. Backend authored JS/JSX is **0**
+  (83 at the BE-001 baseline -> 0). The canonical TypeScript backend covers the
+  spec-04 first slice end to end (public application + verification, admin
+  review/approval/invite, native/web auth + refresh rotation, RBAC, audit,
+  idempotency, SES/SNS outbox worker + provider-event ingress, health/readiness).
+  `check` green; integration 63/63. Deferred (documented): production `server.ts`
+  composition + concrete AWS adapters; later-slice business domains
+  (content/catalog, payments, client investing, admin finance) retired here for
+  canonical re-introduction with their schema in later slices; BE-019A hardening
+  inventory (audit, not a JS item).
+- Prior checkpoints: BE-019 (retire transport/persistence/scripts, JS 13 -> 0),
+  BE-018 (retire remaining shared block, JS 39 -> 13), BE-017 (retire admin
+  finance/content, JS 51 -> 39), BE-016 (canonical admin identity domain, additive
+  JS 51), BE-015 (retire client investment domain, JS 67 -> 51), BE-014 (retire
+  payment/mandate webhooks+providers, JS 72 -> 67), BE-013 (retire public
+  content/catalog, JS 74 -> 72), BE-012 (SES/SNS outbox worker + provider-event
+  ingress, additive JS 74), BE-011 (health/readiness, JS 76 -> 74), BE-010
+  (native+web auth, JS 80 -> 76), BE-010a, BE-009d..a, BE-008c, BE-008b-2/1,
+  BE-008a, BE-006, BE-007g..a, BE-005, BE-004, BE-003, CON-006, BE-002.
+
+## Superseded Checkpoint (BE-019)
+
 - Task: `BE-019` retire legacy transport/persistence/route-inventory scripts,
   landed on branch `ts-migration/backend` (PR #1 to `main`). Accelerated
   single-task mode; deletion-only. **This batch takes the backend to zero

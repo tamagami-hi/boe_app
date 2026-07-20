@@ -628,3 +628,21 @@ Backend authored JS/JSX backlog **13 -> 0 files**. `npm run check` green; integr
 63/63 (unaffected). BE-020 adds the permanent zero-JavaScript assertion. Reproduce:
 `find backend_controller/src backend_controller/scripts -type f \( -name '*.js' -o
 -name '*.jsx' \) | wc -l` -> 0.
+
+
+## Delta: BE-020 Backend Zero-JavaScript Gate — MIGRATION COMPLETE (branch `ts-migration/backend`)
+
+Adds the permanent zero-JS assertion; the backend controller is now fully
+TypeScript.
+
+| Change | Value |
+|---|---:|
+| Gate test added (`src/zero-legacy-js.guard.test.ts`, 2 assertions) | 1 file |
+| **Backend authored JS/JSX** | **0** (from 83 at the BE-001 baseline) |
+
+`npm run check` green (incl. the new gate); integration 63/63; `package.json`/lock
+unchanged; Legacy tree hash intact. The gate scans `src/` + `scripts/` (excluding
+`dist/`/`node_modules/`) for authored `.js/.jsx/.cjs/.mjs` and for legacy
+`#`-subpath alias imports, and asserts both are empty. Reproduce: `find
+backend_controller/src backend_controller/scripts -type f \( -name '*.js' -o -name
+'*.jsx' \) | wc -l` -> 0.
