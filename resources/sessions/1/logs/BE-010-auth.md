@@ -47,10 +47,28 @@ command returns a `reuse_revoked` outcome (the route maps it to SESSION_INVALID)
 instead of throwing, which would have rolled back the revoke. Integration 32/32;
 `nativeAuth.ts` 97.65%.
 
-## Remaining for BE-010
+## Web auth — LANDED
 
-- Web auth (`/v1/auth/web/{login,csrf,refresh,logout}`): HttpOnly cookies,
-  synchronizer CSRF, Origin/Referer + Sec-Fetch-Site checks, CSRF rotation.
-- Web auth guard + wiring routes into production `server.ts`.
-- Delete `security/auth.js`, `shared/services/authService.js` (+ signup test),
-  `shared/routes/authRoutes.js` once the native+web replacement is complete.
+`domain/auth/webAuth.ts` + `routes/webAuthRoutes.ts`: `POST /v1/auth/web/login`
+(HttpOnly `__Host-boe_*` cookies + synchronizer CSRF + roles/permissions),
+`/v1/auth/web/refresh` (refresh+CSRF rotate together, 30s grace reproduce, reuse
+revoke), `/v1/auth/web/logout` (CSRF + Origin/Sec-Fetch enforced, family revoke +
+cookie expiry). `authenticateWebRequest` guard: cookie access verify -> session/
+user recheck -> constant-time CSRF -> Origin allowlist. `createWebSession` +
+`rotateWebRefresh` repository methods. Critical integration test authWeb (login/
+cookies/roles, wrong password, refresh rotate + reuse revoke, logout with CSRF +
+Origin rejection). Integration 35/35.
+
+## Legacy deletion — DONE (BE-010 JS reduction 80 -> 76)
+
+Deleted `security/auth.js`, `shared/services/authService.js` (+ signup test),
+`shared/routes/authRoutes.js` (dead legacy signup/login on the old schema),
+registered in `legacy-deletion.guard.test.ts`.
+
+## Deferred (documented)
+
+- `GET /v1/auth/web/csrf` reload recovery + the current-refresh/previous-CSRF
+  partial-response mixed-pair recovery edge.
+- Production `server.ts` route wiring + env composition (crypto/access-token
+  PEMs, cookie/origin config) — a dedicated composition step wires public
+  onboarding + native + web auth into the running server together.

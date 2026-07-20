@@ -16,6 +16,12 @@ const DELETED_LEGACY_FILES: readonly string[] = [
   // BE-009d: HS256 token module replaced by src/auth/accessToken.ts (ES256)
   // + src/auth/sessionTokens.ts (opaque refresh/CSRF).
   "security/tokens.js",
+  // BE-010: legacy request-auth + auth service/routes replaced by the canonical
+  // native (domain/auth/nativeAuth.ts) and web (domain/auth/webAuth.ts) flows.
+  "security/auth.js",
+  "shared/services/authService.js",
+  "shared/services/authService.signup.test.js",
+  "shared/routes/authRoutes.js",
 ]
 
 describe("legacy deletion guard", () => {

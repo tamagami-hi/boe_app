@@ -437,3 +437,17 @@ Accelerated single-task mode; additive (deletion pending full auth replacement).
 
 Backend authored JS/JSX unchanged at **80**. Integration 31/31 across 4 container
 files; coverage 97.56% stmts / 86.2% branch over repositories/routes/domain.
+
+## Delta: BE-010 web auth + legacy deletion (branch `ts-migration/backend`)
+
+Completes the BE-010 auth surface and removes the legacy auth trio.
+
+| Change | Value |
+|---|---:|
+| Source TS added (`webAuth.ts`, `webAuthRoutes.ts`) + extended `authSessionRepository` (web create/rotate) | 2 + 1 |
+| Critical integration test added (`authWeb.integration.test.ts`) | 1 file / 3 tests |
+| **Production JS/JSX deleted (`security/auth.js`, `authService.js`, `authService.signup.test.js`, `authRoutes.js`)** | **4** |
+
+Backend authored JS/JSX **80 -> 76 files**. Integration 35/35 across 5 container
+files; global coverage 96.81% stmts / 81.89% branch. BE-010 auth surface (native
++ web) complete; production wiring + `/csrf` recovery deferred.

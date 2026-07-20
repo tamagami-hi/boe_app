@@ -42,6 +42,25 @@ export interface RotateRefreshInput {
   readonly now: Date
 }
 
+export interface CreateWebSessionInput {
+  readonly userId: UserId
+  readonly refreshTokenHash: Buffer
+  readonly refreshKeyVersion: string
+  readonly csrfTokenHash: Buffer
+  readonly csrfKeyVersion: string
+  readonly sessionExpiresAt: Date
+  readonly refreshExpiresAt: Date
+  readonly csrfExpiresAt: Date
+}
+
+export interface RotateWebRefreshInput extends RotateRefreshInput {
+  readonly currentCsrfHash: Buffer
+  readonly currentCsrfKeyVersion: string
+  readonly successorCsrfHash: Buffer
+  readonly csrfKeyVersion: string
+  readonly csrfExpiresAt: Date
+}
+
 export interface AuthSessionWriteRepository {
   createNativeSession: (tx: Transaction, input: CreateNativeSessionInput) => Promise<CreatedSession>
   lockByRefreshTokenHash: (tx: Transaction, tokenHash: Buffer) => Promise<CreatedSession | null>
@@ -50,7 +69,9 @@ export interface AuthSessionWriteRepository {
     input: Readonly<{ userId: UserId; deviceIdHash: Buffer }>,
   ) => Promise<AuthSession | null>
   lockActiveBySid: (tx: Transaction, sessionId: string) => Promise<AuthSession | null>
+  createWebSession: (tx: Transaction, input: CreateWebSessionInput) => Promise<CreatedSession>
   rotateRefresh: (tx: Transaction, input: RotateRefreshInput) => Promise<void>
+  rotateWebRefresh: (tx: Transaction, input: RotateWebRefreshInput) => Promise<void>
   revokeSessionFamily: (
     tx: Transaction,
     input: Readonly<{ sessionId: string; reason: string; now: Date }>,
@@ -59,6 +80,36 @@ export interface AuthSessionWriteRepository {
     tx: Transaction,
     input: Readonly<{ userId: UserId; reason: string; now: Date }>,
   ) => Promise<RevokeSessionsResult>
+}
+
+// Shared refresh-row rotation: mark the consumed token used (so the single-
+// current-token partial unique index permits the insert), insert the successor,
+// then link the predecessor.
+const rotateRefreshRows = async (tx: Transaction, input: RotateRefreshInput): Promise<void> => {
+  await tx
+    .updateTable("auth_refresh_tokens")
+    .set({ used_at: input.now })
+    .where("id", "=", input.currentTokenId)
+    .execute()
+
+  const successor = await tx
+    .insertInto("auth_refresh_tokens")
+    .values({
+      session_id: input.sessionId,
+      user_id: input.userId,
+      generation: input.successorGeneration,
+      token_hash: input.successorHash,
+      token_key_version: input.refreshKeyVersion,
+      expires_at: input.refreshExpiresAt,
+    })
+    .returning("id")
+    .executeTakeFirstOrThrow()
+
+  await tx
+    .updateTable("auth_refresh_tokens")
+    .set({ replaced_by_token_id: successor.id })
+    .where("id", "=", input.currentTokenId)
+    .execute()
 }
 
 export const createAuthSessionRepository = (): AuthSessionWriteRepository => ({
@@ -135,34 +186,39 @@ export const createAuthSessionRepository = (): AuthSessionWriteRepository => ({
     return row ?? null
   },
 
-  rotateRefresh: async (tx, input) => {
-    // Mark the consumed token used first so the single-current-token partial
-    // unique index permits the successor insert.
-    await tx
-      .updateTable("auth_refresh_tokens")
-      .set({ used_at: input.now })
-      .where("id", "=", input.currentTokenId)
-      .execute()
+  createWebSession: async (tx, input) => {
+    const session = await tx
+      .insertInto("auth_sessions")
+      .values({
+        user_id: input.userId,
+        channel: "web",
+        refresh_key_version: input.refreshKeyVersion,
+        csrf_token_hash: input.csrfTokenHash,
+        csrf_key_version: input.csrfKeyVersion,
+        csrf_expires_at: input.csrfExpiresAt,
+        expires_at: input.sessionExpiresAt,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow()
 
-    const successor = await tx
+    const refreshToken = await tx
       .insertInto("auth_refresh_tokens")
       .values({
-        session_id: input.sessionId,
+        session_id: session.id,
         user_id: input.userId,
-        generation: input.successorGeneration,
-        token_hash: input.successorHash,
+        generation: 0,
+        token_hash: input.refreshTokenHash,
         token_key_version: input.refreshKeyVersion,
         expires_at: input.refreshExpiresAt,
       })
-      .returning("id")
+      .returningAll()
       .executeTakeFirstOrThrow()
 
-    await tx
-      .updateTable("auth_refresh_tokens")
-      .set({ replaced_by_token_id: successor.id })
-      .where("id", "=", input.currentTokenId)
-      .execute()
+    return { session, refreshToken }
+  },
 
+  rotateRefresh: async (tx, input) => {
+    await rotateRefreshRows(tx, input)
     await tx
       .updateTable("auth_sessions")
       .set({
@@ -171,6 +227,30 @@ export const createAuthSessionRepository = (): AuthSessionWriteRepository => ({
         previous_refresh_token_hash: input.currentTokenHash,
         previous_refresh_key_version: input.currentKeyVersion,
         previous_refresh_valid_until: input.previousValidUntil,
+        last_seen_at: input.now,
+        updated_at: input.now,
+      })
+      .where("id", "=", input.sessionId)
+      .execute()
+  },
+
+  rotateWebRefresh: async (tx, input) => {
+    await rotateRefreshRows(tx, input)
+    await tx
+      .updateTable("auth_sessions")
+      .set({
+        generation: input.successorGeneration,
+        last_rotation_id: input.rotationId,
+        previous_refresh_token_hash: input.currentTokenHash,
+        previous_refresh_key_version: input.currentKeyVersion,
+        previous_refresh_valid_until: input.previousValidUntil,
+        csrf_token_hash: input.successorCsrfHash,
+        csrf_key_version: input.csrfKeyVersion,
+        csrf_expires_at: input.csrfExpiresAt,
+        csrf_rotated_at: input.now,
+        previous_csrf_token_hash: input.currentCsrfHash,
+        previous_csrf_key_version: input.currentCsrfKeyVersion,
+        previous_csrf_valid_until: input.previousValidUntil,
         last_seen_at: input.now,
         updated_at: input.now,
       })
