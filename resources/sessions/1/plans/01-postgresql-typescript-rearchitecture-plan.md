@@ -483,3 +483,12 @@ Preserve the envelope `{ ok, data, error, meta }` and stable machine-readable er
 - Direct APK distribution uses an official HTTPS domain and the existing release manager.
 - Support tickets and generated documents are not MVP requirements.
 - AUM is presentation data, so double-entry accounting is postponed.
+
+
+## Related notes (Obsidian graph)
+
+- Companion specifications: [[specifications/02-product-architecture-decisions|02 · Product & architecture]] · [[specifications/03-schema-lifecycle-specification|03 · Schema & lifecycle]] · [[specifications/04-api-security-test-specification|04 · API/security/email/test]] · [[specifications/05-system-tooling-diagrams|05 · System/tooling/contracts]]
+- Planning inputs: [[handoffs/00-database-typescript-rearchitecture-handoff|00 · Original assessment]] · [[handoffs/06-planning-completion-handoff|06 · Planning completion]]
+- Operating rules & decisions: [[WORKING_MODEL|Working model]] · [[decisions/RISKS_AND_DECISIONS|Risks & decisions]]
+- Execution: [[TASKS|Task ledger]]
+- Home: [[README|Session 1 home]]

@@ -683,3 +683,10 @@ batch. Tables introduced: investor_profiles, kyc_cases, kyc_documents, kyc_revie
 risk_assessments, funds, fund_versions, fund_disclosure_versions, fund_nav_prices,
 fund_positions, fund_aum_snapshots, finance_policy_versions, marketing_leads,
 courses, membership_plans, app_config_versions, content_items.
+
+
+## Related notes (Obsidian graph)
+
+- Status siblings: [[status/CURRENT|Current resume point]] · [[status/IMPLEMENTATION_PROGRESS|Implementation progress]] · [[status/VALIDATION_SUMMARY|Validation summary]]
+- Counts authority: [[inventory/JS_TS_MIGRATION_LEDGER|JS/TS migration inventory]] · Ledger: [[TASKS|Task ledger]]
+- Home: [[README|Session 1 home]]

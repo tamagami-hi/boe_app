@@ -1928,3 +1928,12 @@ activation/email, web auth, and native auth:
 No slice is accepted with skipped security tests, stale OpenAPI output,
 insecure-cookie exceptions outside tests, raw tokens in logs/fixtures, a
 localStorage native fallback, or less than the required coverage.
+
+
+## Related notes (Obsidian graph)
+
+- Master plan: [[plans/01-postgresql-typescript-rearchitecture-plan|Rearchitecture plan]]
+- Companion specs: [[specifications/02-product-architecture-decisions|02 · Product & architecture]] · [[specifications/03-schema-lifecycle-specification|03 · Schema & lifecycle]] · [[specifications/05-system-tooling-diagrams|05 · System/tooling/contracts]]
+- Rules & decisions: [[WORKING_MODEL|Working model]] · [[decisions/RISKS_AND_DECISIONS|Risks & decisions]]
+- Execution: [[TASKS|Task ledger]] · [[logs/README|Task-log index]]
+- Home: [[README|Session 1 home]]

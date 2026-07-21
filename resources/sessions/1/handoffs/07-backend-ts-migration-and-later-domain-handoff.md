@@ -167,3 +167,12 @@ normalized financial tables would be.
 - Status: `resources/sessions/1/status/CURRENT.md`, `.../METRICS.md`.
 - Per-batch logs: `resources/sessions/1/logs/README.md` (BE-010 … BE-021.1,
   PROD-001).
+
+
+## Related notes (Obsidian graph)
+
+- Prior handoffs: [[handoffs/00-database-typescript-rearchitecture-handoff|00 · Original assessment]] · [[handoffs/06-planning-completion-handoff|06 · Planning completion]]
+- Current state: [[status/CURRENT|Current resume point]] · [[status/IMPLEMENTATION_PROGRESS|Implementation progress]] · [[status/METRICS|Metrics]]
+- Next work: [[TASKS|Task ledger]] · [[logs/BE-021-later-domain-schema-1|BE-021 later-domain schema]]
+- Design: [[specifications/03-schema-lifecycle-specification|03 · Schema & lifecycle]] · [[specifications/04-api-security-test-specification|04 · API/security/email/test]]
+- Home: [[README|Session 1 home]]

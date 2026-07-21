@@ -791,3 +791,10 @@ reorganize the non-legacy Session 1 records, build the complete dependency-close
 TypeScript conversion/deletion task ledger, and apply phase logs, risks,
 validation, metrics, and resume checkpoints. Do not modify
 `resources/sessions/Legacy`.
+
+
+## Related notes (Obsidian graph)
+
+- Status siblings: [[status/CURRENT|Current resume point]] · [[status/METRICS|Metrics]] · [[status/VALIDATION_SUMMARY|Validation summary]]
+- Evidence: [[logs/README|Task-log index]] · Ledger: [[TASKS|Task ledger]]
+- Home: [[README|Session 1 home]]

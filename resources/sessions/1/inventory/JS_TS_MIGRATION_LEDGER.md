@@ -90,3 +90,10 @@ tests / 222 lines. It has no authored JS/JSX source.
 
 Execution status and commit evidence live in [TASKS.md](../TASKS.md); this file
 is the count/ownership authority and must remain a non-overlapping partition.
+
+
+## Related notes (Obsidian graph)
+
+- Execution status: [[TASKS|Task ledger]] · Operating rules: [[WORKING_MODEL|Working model]]
+- Counts rollup: [[status/METRICS|Metrics]]
+- Home: [[README|Session 1 home]]

@@ -1345,3 +1345,12 @@ Phase 2 tooling is accepted when:
    license, engines/peers pass, lockfile provenance is local/registry-correct,
    and no deferred or rejected framework/skeleton behavior enters the
    foundation.
+
+
+## Related notes (Obsidian graph)
+
+- Master plan: [[plans/01-postgresql-typescript-rearchitecture-plan|Rearchitecture plan]]
+- Companion specs: [[specifications/02-product-architecture-decisions|02 · Product & architecture]] · [[specifications/03-schema-lifecycle-specification|03 · Schema & lifecycle]] · [[specifications/04-api-security-test-specification|04 · API/security/email/test]]
+- Rules & decisions: [[WORKING_MODEL|Working model]] · [[decisions/RISKS_AND_DECISIONS|Risks & decisions]]
+- Contract task: [[logs/CON-006-deterministic-openapi-generator|CON-006 OpenAPI generator]]
+- Home: [[README|Session 1 home]]

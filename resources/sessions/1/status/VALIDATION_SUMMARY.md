@@ -41,3 +41,10 @@ Legacy-tree guard baseline for this reorganization:
 It is the SHA-256 of the sorted per-file SHA-256 list under
 `resources/sessions/Legacy`. Recompute it before the documentation commit; it
 must match exactly.
+
+
+## Related notes (Obsidian graph)
+
+- Status siblings: [[status/CURRENT|Current resume point]] · [[status/IMPLEMENTATION_PROGRESS|Implementation progress]] · [[status/METRICS|Metrics]]
+- Evidence: [[logs/README|Task-log index]] · Rules: [[WORKING_MODEL|Working model]]
+- Home: [[README|Session 1 home]]

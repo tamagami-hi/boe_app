@@ -69,3 +69,11 @@ not rewrite prior RED/GREEN history to match later architecture.
 | PROD-001 | DONE | [Backend server composition wiring](./PROD-001-server-composition.md) | on `ts-migration/backend` (canonical routes now serve on a running server; smokes boot the full app) |
 
 | BE-021.1 | DONE | [Later-domain schema increment 1 (compliance/catalog/platform)](./BE-021-later-domain-schema-1.md) | on `ts-migration/backend` (migrations 014-016 validated; investing/payments + types are increment 2) |
+
+
+## Related notes (Obsidian graph)
+
+- Governed by: [[WORKING_MODEL|Working model]] · Ledger: [[TASKS|Task ledger]]
+- Template: [[templates/PHASE_LOG_TEMPLATE|Phase-log template]]
+- Deletion history: [[removed/README|Removed-mechanisms index]]
+- Home: [[README|Session 1 home]]

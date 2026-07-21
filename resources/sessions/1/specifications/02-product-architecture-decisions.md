@@ -875,3 +875,12 @@ and follow-up corrective work.
 - The existing release manager remains the release entry point for backend,
   landing, and PostgreSQL. It must be extended for a worker and safer readiness;
   it does not become the APK signer or an admin-hosting system by implication.
+
+
+## Related notes (Obsidian graph)
+
+- Master plan: [[plans/01-postgresql-typescript-rearchitecture-plan|Rearchitecture plan]]
+- Companion specs: [[specifications/03-schema-lifecycle-specification|03 · Schema & lifecycle]] · [[specifications/04-api-security-test-specification|04 · API/security/email/test]] · [[specifications/05-system-tooling-diagrams|05 · System/tooling/contracts]]
+- Rules & decisions: [[WORKING_MODEL|Working model]] · [[decisions/RISKS_AND_DECISIONS|Risks & decisions]]
+- Execution: [[TASKS|Task ledger]]
+- Home: [[README|Session 1 home]]

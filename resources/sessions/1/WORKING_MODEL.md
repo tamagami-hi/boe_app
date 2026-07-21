@@ -231,3 +231,12 @@ A packet lands only after:
 7. the commit is pushed.
 
 The next packet begins only after the prior checkpoint is recoverable from Git.
+
+
+## Related notes (Obsidian graph)
+
+- Design authority: [[plans/01-postgresql-typescript-rearchitecture-plan|Master rearchitecture plan]] · [[specifications/02-product-architecture-decisions|02 · Product & architecture]] · [[specifications/03-schema-lifecycle-specification|03 · Schema & lifecycle]] · [[specifications/04-api-security-test-specification|04 · API/security/email/test]] · [[specifications/05-system-tooling-diagrams|05 · System/tooling/contracts]]
+- Binding decisions: [[decisions/RISKS_AND_DECISIONS|Risks & decisions]]
+- Execution: [[TASKS|Task ledger]] · [[logs/README|Task-log index]] · [[status/CURRENT|Current resume point]]
+- Templates: [[templates/PHASE_LOG_TEMPLATE|Phase-log template]] · [[templates/TASK_PACKET_TEMPLATE|Task-packet template]]
+- Home: [[README|Session 1 home]]
