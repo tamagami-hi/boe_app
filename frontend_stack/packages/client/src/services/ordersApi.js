@@ -50,13 +50,46 @@ let rId = 1;
 
 function nextId(prefix, n) { return `${prefix}_${String(n).padStart(3, '0')}`; }
 
+// Map a canonical SIP (POST /v1/client/sips) to the UI shape. Money is paise on
+// the wire and rupees in the UI.
+function mapSip(sip) {
+  return {
+    id: sip.sipId,
+    type: 'sip',
+    status: sip.status,
+    fundId: sip.fundId,
+    amount: sip.amountPaise === null || sip.amountPaise === undefined ? null : Number(sip.amountPaise) / 100,
+    debitDay: sip.debitDay,
+    durationMonths: sip.durationMonths ?? null,
+    mandateId: sip.mandateId ?? null,
+    mandateStatus: sip.mandateStatus ?? null,
+    nextDueDate: sip.nextDueDate ?? null,
+    source: 'canonical',
+  };
+}
+
 export async function createSip({ fundId, amount, frequency = 'monthly', durationMonths, debitDay, stepUp, consentTextVersion, consentedAt }) {
   if (useHttpApi()) {
-    return apiRequest('/v1/client/sips', {
+    // Canonical: POST /v1/client/sips creates a draft SIP. The client then
+    // requests the debit mandate (requestSipMandate); the mandate is activated
+    // by the signed provider webhook, after which the scheduler generates
+    // installment orders that flow through the payment/booking pipeline.
+    const created = await apiRequest('/v1/client/sips', {
       method: 'POST',
-      body: { fundId, amount, frequency, durationMonths, debitDay, stepUp, consentTextVersion, consentedAt },
+      headers: { 'idempotency-key': idempotencyKey() },
+      body: {
+        fundId,
+        amountPaise: Math.round(amount * 100),
+        debitDay: debitDay ?? 1,
+        ...(durationMonths ? { durationMonths } : {}),
+      },
     });
+    return mapSip(created);
   }
+  void frequency;
+  void stepUp;
+  void consentTextVersion;
+  void consentedAt;
 
   await delay(180);
   const orderId = nextId('ord_sip', oId++);
@@ -102,6 +135,36 @@ export async function createSip({ fundId, amount, frequency = 'monthly', duratio
   });
   return clone(order);
 }
+
+/** Request the debit mandate for a draft SIP (spec 03 §5.2). Returns { mandateId, status }. */
+export async function requestSipMandate(sipId) {
+  if (useHttpApi()) {
+    const sip = await apiRequest(`/v1/client/sips/${encodeURIComponent(sipId)}/mandate`, {
+      method: 'POST',
+      headers: { 'idempotency-key': idempotencyKey() },
+    });
+    return mapSip(sip);
+  }
+  await delay(160);
+  return { id: sipId, status: 'pending_mandate', mandateId: null };
+}
+
+const sipControl = (action) => async (sipId) => {
+  if (useHttpApi()) {
+    const sip = await apiRequest(`/v1/client/sips/${encodeURIComponent(sipId)}/${action}`, {
+      method: 'POST',
+      headers: { 'idempotency-key': idempotencyKey() },
+    });
+    return mapSip(sip);
+  }
+  await delay(140);
+  const statusByAction = { pause: 'paused', resume: 'active', cancel: 'cancelled' };
+  return { id: sipId, status: statusByAction[action] };
+};
+
+export const pauseSip = sipControl('pause');
+export const resumeSip = sipControl('resume');
+export const cancelSip = sipControl('cancel');
 
 export async function createLumpsum({ fundId, amount }) {
   if (useHttpApi()) {

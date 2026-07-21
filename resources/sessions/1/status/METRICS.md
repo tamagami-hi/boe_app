@@ -850,6 +850,26 @@ integration branch 80.9%; new env vars `PAYMENT_PROVIDER` /
 new dependencies.
 
 
+## Delta: RA-C.9 SIP slice — mandates + installment scheduler (branch `ts-migration/backend`)
+
+Recurring-investment domain: SIP lifecycle, debit mandates (signed webhook
+authorization), and the installment scheduler feeding the payment→booking
+pipeline.
+
+| Change | Value |
+|---|---:|
+| New backend files (2 repos, 3 domain commands, 2 routes, 1 worker entrypoint) | 8 |
+| Backend files touched (orderRepository, composition, package.json) | 3 |
+| New unit tests (`sipWorker.test.ts`) | 2 |
+| New backend integration test file (`clientSip`) | 1 (11 tests) |
+| Frontend service touched (`ordersApi.js`) | 1 |
+| Backend authored JS/JSX | 0 (unchanged) |
+
+`npm run check` green (**331 unit**, was 329); integration 119 -> 130 (15 files);
+integration branch 80.3%; new npm scripts `worker:sips` / `worker:sips:dev`;
+`package-lock.json` unchanged; Legacy hash intact. No new dependencies.
+
+
 ## Related notes (Obsidian graph)
 
 - Status siblings: [[status/CURRENT|Current resume point]] · [[status/IMPLEMENTATION_PROGRESS|Implementation progress]] · [[status/VALIDATION_SUMMARY|Validation summary]]

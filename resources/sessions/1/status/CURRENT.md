@@ -2,33 +2,32 @@
 
 ## Last Verified Code Checkpoint
 
-- Task: `RA-C.8` env-driven payment provider + paid/failed confirmation
-  checkpoint — landed on branch `ts-migration/backend` (spec 03 §5.2, §6).
-- Result: `runtime/environment.ts` reads the gateway from env
-  (`PAYMENT_PROVIDER`, `PAYMENT_WEBHOOK_SECRET`, `PAYMENT_GATEWAY_KEY_ID/SECRET`,
-  `PAYMENT_ATTEMPT_TTL_MS`) into `serverConfig.payments`. Added the failure path
-  (`paymentRepository.fail` + `orderRepository.failPayment` + `failPayment`
-  command) and, in `settlePayment.ts`, `advancePaymentToBooked` (provider-agnostic
-  driver), `dispatchPayment` (real-gateway dispatch-only), and
-  `recordPaymentResult` (idempotent webhook entry). New
-  `routes/paymentWebhookRoutes.ts` — signed `POST /v1/provider-events/payment`
-  (HMAC-SHA256 of the raw body; env-gated) drives confirm+book / fail. The
-  settlement worker is provider-aware (mock auto-settles; real gateway dispatch
-  only, webhook confirms). `check` green (329 unit); integration **119/119 (14
-  files)**, incl. new `paymentWebhook.integration.test.ts` (5); backend authored
-  JS still 0; Legacy hash intact.
-- Confirmation flow: mock provider → `worker:payments` books instantly; real
-  gateway → worker dispatches, the signed webhook posts `succeeded`
-  (→ confirm+book) or `failed` (→ payment_failed). Each SIP installment payment
-  will pass through this same checkpoint.
-- Next: SIPs + mandates + the recurring installment scheduler (spec 03 §5.2),
-  reusing this payment→confirmation→booking pipeline; then a real gateway
-  outbound API client behind `dispatchPayment`; then redemptions and the
-  remaining client screens. APK/emulator packaging stays on the user's local
-  stack.
-- Prior checkpoint: `RA-C.7` payment settlement worker — `settleDuePayments`
-  drains the `payment` outbox; `worker:payments` entrypoint; paid orders reach
-  `booked` and holdings populate in the running app.
+- Task: `RA-C.9` SIP slice — mandates, lifecycle, and the recurring installment
+  scheduler — landed on branch `ts-migration/backend` (spec 03 §4.3/§4.4/§5.2).
+- Result: new `mandateRepository` + `sipRepository`; commands `createSip`,
+  `requestSipMandate`, `pauseSip`/`resumeSip`/`cancelSip` (`sip.ts`),
+  `activateMandate` + idempotent `recordMandateResult` (`activateMandate.ts`), and
+  the `generateSipInstallments` scheduler. Native-authenticated
+  `POST /v1/client/sips*` routes; a signed `POST /v1/provider-events/mandate`
+  webhook (env-gated) is the mandate authorization checkpoint; a `worker:sips`
+  entrypoint runs the scheduler. Each installment is a `sip_installment` order
+  that flows through the same payment → paid/failed confirmation → booking
+  pipeline. Frontend `ordersApi` SIP services wired. `check` green (**331
+  unit**); integration **130/130 (15 files)**, incl. new
+  `clientSip.integration.test.ts` (11) proving the full create → mandate →
+  authorize → schedule → settle → booked chain; frontend build green; backend
+  authored JS still 0; Legacy hash intact.
+- End-to-end (mock provider): `POST /v1/client/sips` → `.../:id/mandate` →
+  (authorize) mandate webhook activates the SIP → `worker:sips` generates the due
+  installment order → `worker:payments` settles + books it → holdings grow each
+  cycle.
+- Next: a real gateway outbound API client behind the `dispatchPayment` seam
+  (credentials already wired from env); then redemptions (spec 03 §5.2); then the
+  remaining client screens (SIP list read, mandate-authorization UI step).
+  APK/emulator packaging stays on the user's local stack.
+- Prior checkpoint: `RA-C.8` env-driven payment provider + paid/failed
+  confirmation — gateway config from env; signed `POST /v1/provider-events/payment`
+  drives confirm+book / fail; provider-aware settlement worker.
 - Prior checkpoint: `RA-B0` deploy-env boot compatibility (Option 3) — backend
   boots/serves under the `release_manager` deploy stack unedited (`CORS_ORIGIN`,
   optional AWS SES/SNS, `\n`-escaped ES256 key, `seed:auth`, Dockerfile

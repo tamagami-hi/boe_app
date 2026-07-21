@@ -22,10 +22,13 @@ import { createActivationInviteRepository } from "../repositories/activationInvi
 import { createApplicationRepository } from "../repositories/applicationRepository.js"
 import { createClientPortfolioRepository } from "../repositories/clientPortfolioRepository.js"
 import { createHoldingRepository } from "../repositories/holdingRepository.js"
+import { createMandateRepository } from "../repositories/mandateRepository.js"
 import { createNotificationRepository } from "../repositories/notificationRepository.js"
 import { createOrderRepository } from "../repositories/orderRepository.js"
 import { createPaymentRepository } from "../repositories/paymentRepository.js"
+import { createSipRepository } from "../repositories/sipRepository.js"
 import { settleDuePayments, type SettleSummary } from "../domain/client/settlePayment.js"
+import { generateSipInstallments, type GenerateSipInstallmentsSummary } from "../domain/client/generateSipInstallments.js"
 import { createApplicationReviewRepository } from "../repositories/applicationReviewRepository.js"
 import { createAuditRepository } from "../repositories/auditRepository.js"
 import { createAuthSessionRepository } from "../repositories/authSessionRepository.js"
@@ -41,6 +44,8 @@ import { createVerificationTokenRepository } from "../repositories/verificationT
 import { registerAdminIdentityRoutes } from "../routes/adminIdentityRoutes.js"
 import { registerClientOrderRoutes } from "../routes/clientOrderRoutes.js"
 import { registerClientPortfolioRoutes } from "../routes/clientPortfolioRoutes.js"
+import { registerClientSipRoutes } from "../routes/clientSipRoutes.js"
+import { registerMandateWebhookRoutes } from "../routes/mandateWebhookRoutes.js"
 import { registerPaymentWebhookRoutes } from "../routes/paymentWebhookRoutes.js"
 import { registerNativeAuthRoutes } from "../routes/nativeAuthRoutes.js"
 import { registerProviderEventRoutes } from "../routes/providerEventRoutes.js"
@@ -91,6 +96,8 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const paymentRepository = createPaymentRepository()
   const holdingRepository = createHoldingRepository()
   const notificationRepository = createNotificationRepository()
+  const sipRepository = createSipRepository()
+  const mandateRepository = createMandateRepository()
 
   const webAuth: WebAuthDeps = {
     userRepository,
@@ -190,7 +197,34 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
           webhookSecret: serverConfig.payments.webhookSecret,
         },
       })
+      registerMandateWebhookRoutes(application, {
+        unitOfWork,
+        clock,
+        mandateRepository,
+        sipRepository,
+        auditRepository,
+        config: { webhookSecret: serverConfig.payments.webhookSecret },
+      })
     }
+
+    registerClientSipRoutes(application, {
+      accessTokenService,
+      database,
+      unitOfWork,
+      clock,
+      sipRepository,
+      mandateRepository,
+      orderRepository,
+      userRepository,
+      outboxRepository,
+      auditRepository,
+      idempotencyRepository,
+      config: {
+        idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
+        paymentProvider: serverConfig.payments.provider,
+        mandateFrequency: "monthly",
+      },
+    })
 
     registerWebAuthRoutes(application, { ...webAuth, unitOfWork })
 
@@ -289,6 +323,49 @@ export const composePaymentSettlementWorker = (
 
   return {
     runOnce: () => settleDuePayments(deps),
+    dispose: async () => {
+      await pool.end()
+    },
+  }
+}
+
+export interface SipInstallmentWorker {
+  /** Run one pass generating installment orders for due active SIPs. */
+  readonly runOnce: () => Promise<GenerateSipInstallmentsSummary>
+  readonly dispose: () => Promise<void>
+}
+
+/**
+ * Compose the SIP installment scheduler (spec 03 §5.2). A separate entrypoint
+ * that, per pass, creates a `sip_installment` order for each due active SIP and
+ * begins its payment; the payment worker + webhook then settle and book it.
+ */
+export const composeSipInstallmentWorker = (
+  source: Readonly<Record<string, string | undefined>>,
+): SipInstallmentWorker => {
+  const pool = createPool(parseDatabaseConfig(source))
+  const database = createDatabase(pool)
+  const unitOfWork = createUnitOfWork(database)
+  const clock = (): Date => new Date()
+
+  const limit = Math.min(Math.max(Number(source.SIP_WORKER_CLAIM_LIMIT ?? 50), 1), 100)
+  const paymentProvider = source.PAYMENT_PROVIDER ?? "manual"
+  const attemptTtlMs = Math.max(Number(source.PAYMENT_ATTEMPT_TTL_MS ?? 900_000), 1_000)
+
+  const deps = {
+    unitOfWork,
+    sipRepository: createSipRepository(),
+    orderRepository: createOrderRepository(),
+    userRepository: createUserRepository(),
+    paymentRepository: createPaymentRepository(),
+    outboxRepository: createOutboxRepository(),
+    auditRepository: createAuditRepository(),
+    clock,
+    config: { limit, paymentProvider, attemptTtlMs },
+  }
+
+  return {
+    runOnce: () => generateSipInstallments(deps),
     dispose: async () => {
       await pool.end()
     },

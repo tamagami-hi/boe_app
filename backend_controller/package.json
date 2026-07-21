@@ -28,6 +28,8 @@
     "start": "node dist/server.js",
     "worker:payments": "node dist/paymentWorker.js",
     "worker:payments:dev": "node --env-file-if-exists=.env --import=tsx src/paymentWorker.ts",
+    "worker:sips": "node dist/sipWorker.js",
+    "worker:sips:dev": "node --env-file-if-exists=.env --import=tsx src/sipWorker.ts",
     "migrate": "node dist/scripts/migrate.js up",
     "migrate:dev": "tsx src/scripts/migrate.ts",
     "seed": "node dist/scripts/seed.js",

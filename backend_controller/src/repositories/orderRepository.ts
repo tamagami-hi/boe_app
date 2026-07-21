@@ -38,6 +38,11 @@ export interface OrderWriteRepository {
   findFundOrderTerms: (tx: Transaction, fundId: string) => Promise<FundOrderTermsRow | null>
   latestCompliance: (tx: Transaction, userId: string) => Promise<LatestComplianceRow>
   createPurchase: (tx: Transaction, input: CreateOrderInput) => Promise<InvestmentOrder>
+  createSipInstallment: (
+    tx: Transaction,
+    input: Readonly<{ userId: string; fundId: string; sipPlanId: string; amountPaise: string; currency: string; now: Date }>,
+  ) => Promise<InvestmentOrder>
+  countBySipPlan: (tx: Transaction, sipPlanId: string) => Promise<number>
   lockById: (
     tx: Transaction,
     input: Readonly<{ orderId: string; userId: string }>,
@@ -111,6 +116,28 @@ export const createOrderRepository = (): OrderWriteRepository => ({
       })
       .returningAll()
       .executeTakeFirstOrThrow(),
+
+  createSipInstallment: async (tx, input) =>
+    tx
+      .insertInto("investment_orders")
+      .values({
+        user_id: input.userId,
+        fund_id: input.fundId,
+        sip_plan_id: input.sipPlanId,
+        type: "sip_installment",
+        amount_paise: input.amountPaise,
+        currency: input.currency,
+        requested_at: input.now,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow(),
+
+  countBySipPlan: async (tx, sipPlanId) => {
+    const result = await sql<{ count: string }>`
+      select count(*)::text as count from investment_orders where sip_plan_id = ${sipPlanId}
+    `.execute(tx)
+    return Number(result.rows[0]?.count ?? "0")
+  },
 
   lockById: async (tx, input) => {
     const row = await tx

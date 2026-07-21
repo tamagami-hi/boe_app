@@ -73,6 +73,8 @@ not rewrite prior RED/GREEN history to match later architecture.
 
 | RA-C.8 | DONE | [Env payment provider + paid/failed confirmation](./RA-C-8-payment-provider-and-confirmation.md) | on `ts-migration/backend` (payment provider + gateway credentials + webhook secret from env; signed `POST /v1/provider-events/payment` confirmation checkpoint drives confirm+book (succeeded) / fail (failed), idempotent; `failPayment` command; worker provider-aware (mock auto-settles, real gateway dispatch-only + webhook); integration 113 -> 119) |
 
+| RA-C.9 | DONE | [SIP slice — mandates + recurring installment scheduler](./RA-C-9-sip-and-mandates.md) | on `ts-migration/backend` (createSip/requestSipMandate/pause/resume/cancel + `POST /v1/client/sips*`; signed mandate webhook `POST /v1/provider-events/mandate`; installment scheduler `worker:sips` generates sip_installment orders that flow through the payment→confirmation→booking pipeline; SIP/Mandate repos; frontend SIP services wired; unit 329 -> 331, integration 119 -> 130) |
+
 
 ## Related notes (Obsidian graph)
 
