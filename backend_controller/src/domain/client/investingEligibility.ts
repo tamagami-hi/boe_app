@@ -6,13 +6,14 @@
  * repository supplies the inputs and the investing command re-derives under lock
  * before accepting money.
  *
- * Derivation (spec 03 §2.3), evaluated in order:
- *   closed or suspended user                              -> suspended
- *   account_state <> active                               -> blocked
- *   no KYC case, or KYC not approved                      -> pending_compliance
- *   no risk assessment, or risk not assessed              -> pending_compliance
- *   approved KYC has expired                              -> pending_compliance
- *   active user + current approved KYC + assessed risk    -> eligible
+ * Derivation (evaluated in order). This intentionally deviates from spec 03 §2.3
+ * by dropping the risk-assessment gate (decision 9: clients are not risk-profiled;
+ * risk is a fund attribute the client chooses):
+ *   closed or suspended user                     -> suspended
+ *   account_state <> active                       -> blocked
+ *   no KYC case, or KYC not approved              -> pending_compliance
+ *   approved KYC has expired                      -> pending_compliance
+ *   active user + current approved KYC            -> eligible
  */
 import type { KycCaseState, RiskAssessmentState, UserAccountState } from "../../db/types.js"
 
@@ -28,8 +29,13 @@ export interface EligibilityInputs {
   readonly accountState: UserAccountState
   /** The user's latest KYC case, or null when none exists. */
   readonly kyc: EligibilityKycInput | null
-  /** The user's latest risk-assessment state, or null when none exists. */
-  readonly riskState: RiskAssessmentState | null
+  /**
+   * The user's latest risk-assessment state. Retained for schema/read
+   * compatibility but NOT a gate: clients are not risk-profiled (decision 9;
+   * intentional deviation from spec 03 §2.3). Risk is a fund attribute the client
+   * chooses. Left optional so callers need not supply it.
+   */
+  readonly riskState?: RiskAssessmentState | null
   /** Database-derived evaluation time; KYC expiry is compared against this. */
   readonly now: Date
 }
@@ -43,7 +49,6 @@ export type EligibilityReason =
   | "account_not_active"
   | "kyc_required"
   | "kyc_expired"
-  | "risk_assessment_required"
   | null
 
 export interface EligibilityDecision {
@@ -61,11 +66,10 @@ export const deriveInvestingEligibility = (inputs: EligibilityInputs): Eligibili
   if (inputs.kyc === null || inputs.kyc.state !== "approved") {
     return { eligibility: "pending_compliance", reason: "kyc_required" }
   }
-  if (inputs.riskState !== "assessed") {
-    return { eligibility: "pending_compliance", reason: "risk_assessment_required" }
-  }
   if (inputs.kyc.expiresAt !== null && new Date(inputs.kyc.expiresAt).getTime() <= inputs.now.getTime()) {
     return { eligibility: "pending_compliance", reason: "kyc_expired" }
   }
+  // No client risk profiling (decision 9): active account + current approved KYC
+  // is sufficient. Risk is chosen per-fund at investment time.
   return { eligibility: "eligible", reason: null }
 }

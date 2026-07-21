@@ -6,13 +6,19 @@ const NOW = new Date("2026-07-21T00:00:00.000Z")
 const base: EligibilityInputs = {
   accountState: "active",
   kyc: { state: "approved", expiresAt: "2027-07-21T00:00:00.000Z" },
-  riskState: "assessed",
   now: NOW,
 }
 
-describe("deriveInvestingEligibility (spec 03 §2.3)", () => {
-  test("active user with current approved KYC and assessed risk is eligible", () => {
+describe("deriveInvestingEligibility (decision 9: KYC-only, no client risk profiling)", () => {
+  test("active user with current approved KYC is eligible", () => {
     expect(deriveInvestingEligibility(base)).toEqual({ eligibility: "eligible", reason: null })
+  })
+
+  test("risk assessment is NOT a gate — eligible regardless of riskState", () => {
+    expect(deriveInvestingEligibility({ ...base, riskState: null }).eligibility).toBe("eligible")
+    expect(deriveInvestingEligibility({ ...base, riskState: "not_started" }).eligibility).toBe("eligible")
+    expect(deriveInvestingEligibility({ ...base, riskState: "submitted" }).eligibility).toBe("eligible")
+    expect(deriveInvestingEligibility({ ...base, riskState: "assessed" }).eligibility).toBe("eligible")
   })
 
   test("closed or suspended user is suspended", () => {
@@ -33,22 +39,20 @@ describe("deriveInvestingEligibility (spec 03 §2.3)", () => {
     })
   })
 
-  test("missing or unapproved KYC is pending_compliance", () => {
-    expect(deriveInvestingEligibility({ ...base, kyc: null }).eligibility).toBe("pending_compliance")
-    expect(deriveInvestingEligibility({ ...base, kyc: null }).reason).toBe("kyc_required")
+  test("missing or unapproved KYC is pending_compliance (kyc_required)", () => {
+    expect(deriveInvestingEligibility({ ...base, kyc: null })).toEqual({
+      eligibility: "pending_compliance",
+      reason: "kyc_required",
+    })
     expect(
-      deriveInvestingEligibility({ ...base, kyc: { state: "in_review", expiresAt: null } }).eligibility,
+      deriveInvestingEligibility({ ...base, kyc: { state: "submitted", expiresAt: null } }).reason,
+    ).toBe("kyc_required")
+    expect(
+      deriveInvestingEligibility({ ...base, kyc: { state: "pending_submission", expiresAt: null } }).eligibility,
     ).toBe("pending_compliance")
   })
 
-  test("missing or unassessed risk is pending_compliance", () => {
-    expect(deriveInvestingEligibility({ ...base, riskState: null }).reason).toBe("risk_assessment_required")
-    expect(deriveInvestingEligibility({ ...base, riskState: "submitted" }).reason).toBe(
-      "risk_assessment_required",
-    )
-  })
-
-  test("expired approved KYC is pending_compliance", () => {
+  test("expired approved KYC is pending_compliance (kyc_expired)", () => {
     expect(
       deriveInvestingEligibility({
         ...base,
@@ -65,17 +69,13 @@ describe("deriveInvestingEligibility (spec 03 §2.3)", () => {
 
   test("KYC expiring exactly at now is treated as expired (<=)", () => {
     expect(
-      deriveInvestingEligibility({
-        ...base,
-        kyc: { state: "approved", expiresAt: NOW.toISOString() },
-      }).reason,
+      deriveInvestingEligibility({ ...base, kyc: { state: "approved", expiresAt: NOW.toISOString() } }).reason,
     ).toBe("kyc_expired")
   })
 
-  test("suspension takes precedence over missing compliance", () => {
+  test("suspension takes precedence over missing KYC", () => {
     expect(
-      deriveInvestingEligibility({ ...base, accountState: "suspended", kyc: null, riskState: null })
-        .eligibility,
+      deriveInvestingEligibility({ ...base, accountState: "suspended", kyc: null }).eligibility,
     ).toBe("suspended")
   })
 })

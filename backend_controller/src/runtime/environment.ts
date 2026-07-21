@@ -72,6 +72,20 @@ const ServerConfigSchema = z.object({
   PAYMENT_GATEWAY_KEY_ID: z.string().trim().optional(),
   PAYMENT_GATEWAY_KEY_SECRET: z.string().trim().optional(),
   PAYMENT_ATTEMPT_TTL_MS: z.coerce.number().int().min(1).default(15 * 60 * 1000),
+  // Transactional email (KYC codes). The company mailbox is both the SMTP login
+  // and the `From`. When SMTP is not fully configured, a local/log sender is used
+  // (dev/test). Decision 10.
+  KYC_EMAIL_FROM: z.string().trim().optional(),
+  EMAIL_SMTP_HOST: z.string().trim().optional(),
+  EMAIL_SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
+  EMAIL_SMTP_USER: z.string().trim().optional(),
+  EMAIL_SMTP_PASSWORD: z.string().optional(),
+  EMAIL_SMTP_SECURE: z.enum(["true", "false"]).default("false"),
+  // KYC email-OTP policy.
+  KYC_CODE_TTL_MS: z.coerce.number().int().min(1).default(10 * 60 * 1000),
+  KYC_CODE_MAX_ATTEMPTS: z.coerce.number().int().min(1).default(5),
+  KYC_RESEND_COOLDOWN_MS: z.coerce.number().int().min(1).default(60 * 1000),
+  KYC_VALIDITY_MS: z.coerce.number().int().min(1).default(365 * DAY_MS),
 })
 
 export interface ServerConfig {
@@ -93,6 +107,22 @@ export interface ServerConfig {
     readonly gatewayKeyId: string | null
     readonly gatewayKeySecret: string | null
     readonly attemptTtlMs: number
+  }
+  readonly email: {
+    readonly fromAddress: string | null
+    readonly smtp: {
+      readonly host: string
+      readonly port: number
+      readonly user: string
+      readonly password: string
+      readonly secure: boolean
+    } | null
+  }
+  readonly kyc: {
+    readonly codeTtlMs: number
+    readonly maxAttempts: number
+    readonly resendCooldownMs: number
+    readonly validityMs: number
   }
   readonly ttls: {
     readonly verificationTokenTtlMs: number
@@ -183,6 +213,28 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
       gatewayKeyId: nonEmpty(parsed.PAYMENT_GATEWAY_KEY_ID),
       gatewayKeySecret: nonEmpty(parsed.PAYMENT_GATEWAY_KEY_SECRET),
       attemptTtlMs: parsed.PAYMENT_ATTEMPT_TTL_MS,
+    },
+    email: {
+      fromAddress: nonEmpty(parsed.KYC_EMAIL_FROM),
+      // SMTP is enabled only when host + credentials are all present.
+      smtp:
+        nonEmpty(parsed.EMAIL_SMTP_HOST) !== null &&
+        nonEmpty(parsed.EMAIL_SMTP_USER) !== null &&
+        nonEmpty(parsed.EMAIL_SMTP_PASSWORD) !== null
+          ? {
+              host: parsed.EMAIL_SMTP_HOST as string,
+              port: parsed.EMAIL_SMTP_PORT,
+              user: parsed.EMAIL_SMTP_USER as string,
+              password: parsed.EMAIL_SMTP_PASSWORD as string,
+              secure: parsed.EMAIL_SMTP_SECURE === "true",
+            }
+          : null,
+    },
+    kyc: {
+      codeTtlMs: parsed.KYC_CODE_TTL_MS,
+      maxAttempts: parsed.KYC_CODE_MAX_ATTEMPTS,
+      resendCooldownMs: parsed.KYC_RESEND_COOLDOWN_MS,
+      validityMs: parsed.KYC_VALIDITY_MS,
     },
     ttls: {
       verificationTokenTtlMs: parsed.VERIFICATION_TOKEN_TTL_MS,

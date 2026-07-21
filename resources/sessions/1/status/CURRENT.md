@@ -2,29 +2,33 @@
 
 ## Last Verified Code Checkpoint
 
-- Task: `RA-C.9` SIP slice — mandates, lifecycle, and the recurring installment
-  scheduler — landed on branch `ts-migration/backend` (spec 03 §4.3/§4.4/§5.2).
-- Result: new `mandateRepository` + `sipRepository`; commands `createSip`,
-  `requestSipMandate`, `pauseSip`/`resumeSip`/`cancelSip` (`sip.ts`),
-  `activateMandate` + idempotent `recordMandateResult` (`activateMandate.ts`), and
-  the `generateSipInstallments` scheduler. Native-authenticated
-  `POST /v1/client/sips*` routes; a signed `POST /v1/provider-events/mandate`
-  webhook (env-gated) is the mandate authorization checkpoint; a `worker:sips`
-  entrypoint runs the scheduler. Each installment is a `sip_installment` order
-  that flows through the same payment → paid/failed confirmation → booking
-  pipeline. Frontend `ordersApi` SIP services wired. `check` green (**331
-  unit**); integration **130/130 (15 files)**, incl. new
-  `clientSip.integration.test.ts` (11) proving the full create → mandate →
-  authorize → schedule → settle → booked chain; frontend build green; backend
-  authored JS still 0; Legacy hash intact.
-- End-to-end (mock provider): `POST /v1/client/sips` → `.../:id/mandate` →
-  (authorize) mandate webhook activates the SIP → `worker:sips` generates the due
-  installment order → `worker:payments` settles + books it → holdings grow each
-  cycle.
-- Next: a real gateway outbound API client behind the `dispatchPayment` seam
-  (credentials already wired from env); then redemptions (spec 03 §5.2); then the
-  remaining client screens (SIP list read, mandate-authorization UI step).
-  APK/emulator packaging stays on the user's local stack.
+- Task: `RA-C.10` email-OTP KYC + frictionless (KYC-only) eligibility — landed on
+  branch `ts-migration/backend` (decisions 8-10).
+- Result: migration `019` adds a dedicated `kyc_verification_codes` table (hashed
+  6-digit OTP, attempts, one-active-per-case). New transport-agnostic
+  `EmailSender` port + `nodemailer@7` SMTP adapter (company mailbox +
+  `KYC_EMAIL_FROM` from env) + a metadata-only log fallback. `kycRepository` +
+  `domain/client/kyc.ts` (`requestKycCode` post-commit-emails a code with a resend
+  cooldown; `verifyKyc` returns an outcome so a failed attempt's increment
+  commits, approves the case with an expiry). Native-authenticated
+  `POST /v1/client/kyc/{start,resend,verify}`. Eligibility simplified to
+  `active + current approved KYC` (risk gate dropped — decision 9; risk is a fund
+  attribute; `risk_assessments` dormant; eligibility endpoint no longer exposes
+  risk). Frontend `kycApi` start/resend/verify (legacy fetchKycStatus/
+  updateKycDepth preserved). `check` green (331 unit); integration **136/136 (16
+  files)**, incl. new `clientKyc.integration.test.ts` (6) proving the end-to-end
+  **not-eligible → KYC → eligible → invest** path in one go; frontend build green;
+  backend authored JS still 0; Legacy hash intact. New dep: `nodemailer@7`.
+- Onboarding is now frictionless end-to-end: signup → admin approve → activate →
+  login → **verify email (KYC)** → eligible → pick a fund by its risk tier →
+  invest. For real delivery, set the company mailbox `EMAIL_SMTP_*` +
+  `KYC_EMAIL_FROM` in `.env`.
+- Next: admin fund-pool (catalog) creation so funds exist through the API (with a
+  return tier alongside `risk_level`); then redemptions; then the client
+  onboarding UI wiring. APK/emulator packaging stays on the user's local stack.
+- Prior checkpoint: `RA-C.9` SIP slice — mandates + the recurring installment
+  scheduler (`POST /v1/client/sips*`, signed mandate webhook, `worker:sips`;
+  installments flow through the payment → confirmation → booking pipeline).
 - Prior checkpoint: `RA-C.8` env-driven payment provider + paid/failed
   confirmation — gateway config from env; signed `POST /v1/provider-events/payment`
   drives confirm+book / fail; provider-aware settlement worker.

@@ -22,6 +22,8 @@ import { createActivationInviteRepository } from "../repositories/activationInvi
 import { createApplicationRepository } from "../repositories/applicationRepository.js"
 import { createClientPortfolioRepository } from "../repositories/clientPortfolioRepository.js"
 import { createHoldingRepository } from "../repositories/holdingRepository.js"
+import { createKycRepository } from "../repositories/kycRepository.js"
+import { createSmtpEmailSender, createLogEmailSender, type EmailSender } from "../email/emailSender.js"
 import { createMandateRepository } from "../repositories/mandateRepository.js"
 import { createNotificationRepository } from "../repositories/notificationRepository.js"
 import { createOrderRepository } from "../repositories/orderRepository.js"
@@ -42,6 +44,7 @@ import { createOutboxRepository } from "../repositories/outboxRepository.js"
 import { createUserRepository } from "../repositories/userRepository.js"
 import { createVerificationTokenRepository } from "../repositories/verificationTokenRepository.js"
 import { registerAdminIdentityRoutes } from "../routes/adminIdentityRoutes.js"
+import { registerClientKycRoutes } from "../routes/clientKycRoutes.js"
 import { registerClientOrderRoutes } from "../routes/clientOrderRoutes.js"
 import { registerClientPortfolioRoutes } from "../routes/clientPortfolioRoutes.js"
 import { registerClientSipRoutes } from "../routes/clientSipRoutes.js"
@@ -98,6 +101,16 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const notificationRepository = createNotificationRepository()
   const sipRepository = createSipRepository()
   const mandateRepository = createMandateRepository()
+  const kycRepository = createKycRepository()
+
+  // KYC/transactional email sender: real SMTP (company mailbox) when configured,
+  // otherwise a safe local/log sender for dev/test (decision 10).
+  const emailFromAddress =
+    serverConfig.email.fromAddress ?? serverConfig.email.smtp?.user ?? "no-reply@localhost"
+  const emailSender: EmailSender =
+    serverConfig.email.smtp !== null
+      ? createSmtpEmailSender({ ...serverConfig.email.smtp, fromAddress: emailFromAddress })
+      : createLogEmailSender(emailFromAddress)
 
   const webAuth: WebAuthDeps = {
     userRepository,
@@ -223,6 +236,24 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
         paymentProvider: serverConfig.payments.provider,
         mandateFrequency: "monthly",
+      },
+    })
+
+    registerClientKycRoutes(application, {
+      accessTokenService,
+      database,
+      unitOfWork,
+      clock,
+      crypto,
+      kycRepository,
+      userRepository,
+      auditRepository,
+      emailSender,
+      config: {
+        codeTtlMs: serverConfig.kyc.codeTtlMs,
+        maxAttempts: serverConfig.kyc.maxAttempts,
+        resendCooldownMs: serverConfig.kyc.resendCooldownMs,
+        validityMs: serverConfig.kyc.validityMs,
       },
     })
 

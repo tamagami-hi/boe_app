@@ -75,6 +75,8 @@ not rewrite prior RED/GREEN history to match later architecture.
 
 | RA-C.9 | DONE | [SIP slice — mandates + recurring installment scheduler](./RA-C-9-sip-and-mandates.md) | on `ts-migration/backend` (createSip/requestSipMandate/pause/resume/cancel + `POST /v1/client/sips*`; signed mandate webhook `POST /v1/provider-events/mandate`; installment scheduler `worker:sips` generates sip_installment orders that flow through the payment→confirmation→booking pipeline; SIP/Mandate repos; frontend SIP services wired; unit 329 -> 331, integration 119 -> 130) |
 
+| RA-C.10 | DONE | [Email-OTP KYC + KYC-only eligibility](./RA-C-10-kyc-email-otp-and-eligibility.md) | on `ts-migration/backend` (company-emailed 6-digit KYC code: `POST /v1/client/kyc/{start,resend,verify}`; dedicated `kyc_verification_codes` migration 019; transport-agnostic `EmailSender` + `nodemailer@7` SMTP adapter (company mailbox from env) + log fallback; eligibility simplified to active+approved-KYC, risk dropped (decision 9); frontend kycApi; integration 130 -> 136 incl. end-to-end signup->eligible->invest) |
+
 
 ## Related notes (Obsidian graph)
 

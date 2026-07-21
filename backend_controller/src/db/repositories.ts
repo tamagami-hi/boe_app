@@ -53,6 +53,7 @@ export type EmailSuppression = Row<"email_suppressions">
 // Later domain (migrations 014-018; spec 03 §4)
 export type InvestorProfile = Row<"investor_profiles">
 export type KycCase = Row<"kyc_cases">
+export type KycVerificationCode = Row<"kyc_verification_codes">
 export type KycDocument = Row<"kyc_documents">
 export type KycReview = Row<"kyc_reviews">
 export type RiskAssessment = Row<"risk_assessments">

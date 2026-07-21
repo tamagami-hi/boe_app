@@ -17,13 +17,8 @@ import type { SipWriteRepository } from "../../repositories/sipRepository.js"
 import type { UserWriteRepository } from "../../repositories/userRepository.js"
 import { deriveInvestingEligibility, type EligibilityInputs } from "./investingEligibility.js"
 
-const assertEligible = (
-  accountState: UserAccountState,
-  kyc: EligibilityInputs["kyc"],
-  riskState: EligibilityInputs["riskState"],
-  now: Date,
-): void => {
-  const { eligibility } = deriveInvestingEligibility({ accountState, kyc, riskState, now })
+const assertEligible = (accountState: UserAccountState, kyc: EligibilityInputs["kyc"], now: Date): void => {
+  const { eligibility } = deriveInvestingEligibility({ accountState, kyc, now })
   if (eligibility === "eligible") return
   if (eligibility === "suspended" || eligibility === "blocked") throw new AppError("ACCOUNT_NOT_ACTIVE")
   throw new AppError("STATE_CONFLICT")
@@ -59,7 +54,6 @@ export const createSip = async (tx: Transaction, deps: CreateSipDeps, input: Cre
           state: compliance.kycState,
           expiresAt: compliance.kycExpiresAt === null ? null : new Date(compliance.kycExpiresAt).toISOString(),
         },
-    compliance.riskState,
     now,
   )
 

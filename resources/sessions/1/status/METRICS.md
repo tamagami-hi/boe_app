@@ -870,6 +870,28 @@ integration branch 80.3%; new npm scripts `worker:sips` / `worker:sips:dev`;
 `package-lock.json` unchanged; Legacy hash intact. No new dependencies.
 
 
+## Delta: RA-C.10 Email-OTP KYC + KYC-only eligibility (branch `ts-migration/backend`)
+
+Company-emailed one-time-code KYC over `kyc_cases`, and eligibility simplified to
+KYC-only (risk dropped, decision 9) so a client reaches `eligible` end-to-end in
+one go.
+
+| Change | Value |
+|---|---:|
+| New backend files (migration, EmailSender, kycRepository, kyc domain, kyc routes) | 5 |
+| Backend files touched (environment, composition, eligibility fn + endpoint, sip, types, repositories) | 6 |
+| New backend integration test file (`clientKyc`) | 1 (6 tests) |
+| Frontend service touched (`kycApi.js`) | 1 |
+| New dependency | `nodemailer@7` (+ `@types/nodemailer`) |
+| Backend authored JS/JSX | 0 (unchanged) |
+
+`npm run check` green (331 unit; eligibility unit tests rewritten for KYC-only);
+integration 130 -> 136 (16 files); integration branch 80.7%; new env vars
+`KYC_EMAIL_FROM` / `EMAIL_SMTP_*` / `KYC_CODE_TTL_MS` / `KYC_CODE_MAX_ATTEMPTS` /
+`KYC_RESEND_COOLDOWN_MS` / `KYC_VALIDITY_MS`; `package-lock.json` changed
+(nodemailer); Legacy hash intact.
+
+
 ## Related notes (Obsidian graph)
 
 - Status siblings: [[status/CURRENT|Current resume point]] · [[status/IMPLEMENTATION_PROGRESS|Implementation progress]] · [[status/VALIDATION_SUMMARY|Validation summary]]

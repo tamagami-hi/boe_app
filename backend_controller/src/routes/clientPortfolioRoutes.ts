@@ -149,17 +149,16 @@ const getEligibility = async (deps: ClientPortfolioDeps, request: FastifyRequest
       inputsRow.kycState === null
         ? null
         : { state: inputsRow.kycState, expiresAt: isoOrNull(inputsRow.kycExpiresAt) },
-    riskState: inputsRow.riskState,
     now,
   }
   const decision = deriveInvestingEligibility(inputs)
+  // Risk is not exposed to clients (decision 9): only KYC drives the gate.
   return reply.sendData(
     {
       eligibility: decision.eligibility,
       reason: decision.reason,
       canInvest: decision.eligibility === "eligible",
       kycState: inputsRow.kycState,
-      riskState: inputsRow.riskState,
       evaluatedAt: iso(now),
     },
     { status: 200 },
