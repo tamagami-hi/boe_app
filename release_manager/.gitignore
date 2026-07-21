@@ -1,0 +1,24 @@
+# Build artifacts and live deployment state — never committed.
+recent_builds/*
+rollback/*
+!recent_builds/.gitkeep
+!rollback/.gitkeep
+
+# Live deployment dir keeps only its compose + env template in git.
+BOE_APP/.env
+BOE_APP/images/*
+!BOE_APP/images/.gitkeep
+BOE_APP/releases/*
+!BOE_APP/releases/.gitkeep
+BOE_APP/version.json
+BOE_APP/current-version.json
+BOE_APP/manifest.json
+BOE_APP/README.txt
+
+# Local copies of the VPS Postgres database (pulled on --ship) — contains real
+# production user data. NEVER commit. (release_manager/ is already root-ignored;
+# this is an explicit safeguard.)
+BOE_APP/db_records/
+
+# Image tarballs anywhere.
+*.tar.gz
