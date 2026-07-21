@@ -2248,5 +2248,5 @@ for an entity suspends every cleanup below.
 - Master plan: [[plans/01-postgresql-typescript-rearchitecture-plan|Rearchitecture plan]]
 - Companion specs: [[specifications/02-product-architecture-decisions|02 · Product & architecture]] · [[specifications/04-api-security-test-specification|04 · API/security/email/test]] · [[specifications/05-system-tooling-diagrams|05 · System/tooling/contracts]]
 - Rules & decisions: [[WORKING_MODEL|Working model]] · [[decisions/RISKS_AND_DECISIONS|Risks & decisions]]
-- Implements as schema tasks: [[logs/BE-021-later-domain-schema-1|BE-021 later-domain schema]]
+- Implements as schema tasks: [[logs/BE-021-later-domain-schema-1|BE-021.1 compliance/catalog/platform]] · [[logs/BE-021-later-domain-schema-2|BE-021.2 investing/ownership + payments]]
 - Home: [[README|Session 1 home]]

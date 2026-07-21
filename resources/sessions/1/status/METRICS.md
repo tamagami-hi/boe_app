@@ -685,6 +685,30 @@ fund_positions, fund_aum_snapshots, finance_policy_versions, marketing_leads,
 courses, membership_plans, app_config_versions, content_items.
 
 
+## Delta: BE-021.2 Later-Domain Canonical Schema — Increment 2 (branch `ts-migration/backend`)
+
+Second half of spec-03 §4 later-domain schema (money-movement core: §4.3
+investing/ownership + §4.4 payments/provider inbox) plus the Kysely types for all
+later-domain tables. Additive on the `>= 009` baseline. **Later-domain schema
+(§4.1-§4.5) now complete.**
+
+| Change | Value |
+|---|---:|
+| Canonical migrations added (017 investing/ownership, 018 payments/inbox) | 2 files (12 tables) |
+| Kysely `Database` table interfaces added (all later-domain tables 014-018) | 29 tables + 13 enum unions |
+| `Row<>` domain aliases added in `repositories.ts` | 29 |
+| Migration-apply integration tests added | +6 (12 total in the file) |
+| Backend authored JS/JSX | 0 (unchanged) |
+
+`npm run check` green (294 unit tests, build, source/dist smokes); integration
+75/75 (8 files, was 69); package/lock unchanged; Legacy hash intact. Tables
+introduced: mandates, sip_plans, investment_orders, investment_executions,
+holdings, holding_lots, holding_lot_movements, redemption_requests, payments,
+payment_attempts, provider_events, notifications. Next batch: repositories +
+command services + routes consuming the later domain (spec 03 §6/§7; spec 04
+later financial slices).
+
+
 ## Related notes (Obsidian graph)
 
 - Status siblings: [[status/CURRENT|Current resume point]] · [[status/IMPLEMENTATION_PROGRESS|Implementation progress]] · [[status/VALIDATION_SUMMARY|Validation summary]]
