@@ -2,8 +2,9 @@
  * Operational health + readiness (spec 05 §9, 04 §6.1). `/health/live` (in
  * createApplication) is database-independent. `/health/ready` reports readiness
  * without exposing any configuration value: it is degraded until the database is
- * reachable and email is configured. `/v1/health` is the versioned envelope
- * health. Readiness never leaks secrets, versions, or connection strings.
+ * reachable. Email configuration is reported as an informational check (email
+ * transport is optional/out-of-band, so it does not gate readiness). `/v1/health`
+ * is the versioned envelope health. Readiness never leaks secrets or values.
  */
 import type { FastifyInstance } from "fastify"
 import { sql } from "kysely"
@@ -17,9 +18,13 @@ export interface ReadinessReport {
   readonly emailConfigured: boolean
 }
 
-/** Aggregate the readiness signal from its component checks. */
+/**
+ * Aggregate the readiness signal. The database is the hard readiness gate;
+ * `emailConfigured` is reported for observability but does not gate readiness,
+ * because email transport is optional and dispatched out-of-band by the worker.
+ */
 export const buildReadinessReport = (database: boolean, emailConfigured: boolean): ReadinessReport => ({
-  ready: database && emailConfigured,
+  ready: database,
   database,
   emailConfigured,
 })

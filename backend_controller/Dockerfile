@@ -31,6 +31,9 @@ ENV PORT=47502
 COPY --from=production-dependencies --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --chown=node:node package.json package-lock.json ./
+# SQL migrations are not compiled into dist; the migrate command reads them from
+# ./db/migrations at runtime, so they must be present in the image.
+COPY --chown=node:node db/migrations ./db/migrations
 
 USER node
 

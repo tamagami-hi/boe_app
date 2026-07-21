@@ -50,10 +50,15 @@ const ServerConfigSchema = z.object({
   CSRF_KEY_VERSION: z.string().trim().min(1),
   CURSOR_HMAC_KEY: z.string().min(1),
   WEB_COOKIE_SECURE: z.enum(["true", "false"]).default("true"),
-  WEB_ORIGIN_ALLOWLIST: z.string().trim().min(1),
-  AWS_REGION: z.string().trim().min(1),
-  SNS_TOPIC_ARN: z.string().trim().min(1),
-  SES_CONFIGURATION_SET: z.string().trim().min(1),
+  // Deploy compat: WEB_ORIGIN_ALLOWLIST is authoritative, but a deployment that
+  // only sets the legacy CORS_ORIGIN is accepted as the allowlist source.
+  WEB_ORIGIN_ALLOWLIST: z.string().trim().optional(),
+  CORS_ORIGIN: z.string().trim().optional(),
+  // Email transport (SES) + provider inbox (SNS) are optional: a deployment
+  // without AWS boots with email in a disabled/degraded state.
+  AWS_REGION: z.string().trim().optional(),
+  SNS_TOPIC_ARN: z.string().trim().optional(),
+  SES_CONFIGURATION_SET: z.string().trim().optional(),
   PROVIDER_EVENT_TTL_MS: z.coerce.number().int().min(1).default(7 * DAY_MS),
   VERIFICATION_TOKEN_TTL_MS: z.coerce.number().int().min(1).default(DAY_MS),
   IDEMPOTENCY_TTL_MS: z.coerce.number().int().min(1).default(DAY_MS),
@@ -67,7 +72,7 @@ export interface ServerConfig {
   readonly csrfKeyVersion: string
   readonly cursorKey: Buffer
   readonly web: { readonly cookieSecure: boolean; readonly originAllowlist: readonly string[] }
-  readonly providerEvents: { readonly awsRegion: string; readonly topicArn: string; readonly ttlMs: number }
+  readonly providerEvents: { readonly awsRegion: string | null; readonly topicArn: string | null; readonly ttlMs: number }
   readonly sesConfigurationSet: string
   readonly emailConfigured: boolean
   readonly ttls: {
@@ -108,17 +113,33 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
   if (verificationKeysSpki[parsed.ACCESS_TOKEN_CURRENT_KID] === undefined) {
     throw new Error("ACCESS_TOKEN_VERIFICATION_KEYS must include the current kid")
   }
-  const originAllowlist = parsed.WEB_ORIGIN_ALLOWLIST.split(",")
+  const originsRaw = parsed.WEB_ORIGIN_ALLOWLIST ?? parsed.CORS_ORIGIN ?? ""
+  const originAllowlist = originsRaw
+    .split(",")
     .map((origin) => origin.trim())
     .filter((origin) => origin.length > 0)
-  if (originAllowlist.length === 0) throw new Error("WEB_ORIGIN_ALLOWLIST must list at least one origin")
+  if (originAllowlist.length === 0) {
+    throw new Error("WEB_ORIGIN_ALLOWLIST (or CORS_ORIGIN) must list at least one origin")
+  }
+
+  // A raw PKCS#8 PEM cannot be a single .env line; accept `\n`-escaped PEMs and
+  // restore real newlines. (Verification keys are JSON, whose `\n` escapes are
+  // already decoded by JSON.parse.)
+  const signingKeyPkcs8 = parsed.ACCESS_TOKEN_SIGNING_KEY.replace(/\\n/gu, "\n")
+
+  const nonEmpty = (value: string | undefined): string | null =>
+    value !== undefined && value.length > 0 ? value : null
+  const awsRegion = nonEmpty(parsed.AWS_REGION)
+  const topicArn = nonEmpty(parsed.SNS_TOPIC_ARN)
+  const sesConfigurationSet = nonEmpty(parsed.SES_CONFIGURATION_SET)
+  const emailConfigured = awsRegion !== null && topicArn !== null && sesConfigurationSet !== null
 
   return Object.freeze({
     access: {
       issuer: parsed.ACCESS_TOKEN_ISSUER,
       audience: parsed.ACCESS_TOKEN_AUDIENCE,
       currentKid: parsed.ACCESS_TOKEN_CURRENT_KID,
-      signingKeyPkcs8: parsed.ACCESS_TOKEN_SIGNING_KEY,
+      signingKeyPkcs8,
       verificationKeysSpki,
     },
     refreshKey: decode32ByteKey("REFRESH_HMAC_KEY", parsed.REFRESH_HMAC_KEY),
@@ -127,12 +148,14 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
     cursorKey: decode32ByteKey("CURSOR_HMAC_KEY", parsed.CURSOR_HMAC_KEY),
     web: { cookieSecure: parsed.WEB_COOKIE_SECURE === "true", originAllowlist },
     providerEvents: {
-      awsRegion: parsed.AWS_REGION,
-      topicArn: parsed.SNS_TOPIC_ARN,
+      awsRegion,
+      topicArn,
       ttlMs: parsed.PROVIDER_EVENT_TTL_MS,
     },
-    sesConfigurationSet: parsed.SES_CONFIGURATION_SET,
-    emailConfigured: true,
+    // A non-empty value is retained for email_delivery rows even when email is
+    // not fully configured (the worker/SES adapter are out-of-band).
+    sesConfigurationSet: sesConfigurationSet ?? "unconfigured",
+    emailConfigured,
     ttls: {
       verificationTokenTtlMs: parsed.VERIFICATION_TOKEN_TTL_MS,
       idempotencyTtlMs: parsed.IDEMPOTENCY_TTL_MS,

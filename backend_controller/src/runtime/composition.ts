@@ -155,19 +155,24 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       idempotencyRepository,
     })
 
-    registerProviderEventRoutes(application, {
-      unitOfWork,
-      clock,
-      certificateFetcher,
-      config: {
-        awsRegion: serverConfig.providerEvents.awsRegion,
-        topicArn: serverConfig.providerEvents.topicArn,
-        providerEventTtlMs: serverConfig.providerEvents.ttlMs,
-      },
-      emailProviderEventRepository,
-      emailDeliveryRepository,
-      emailSuppressionRepository,
-    })
+    // The signed SNS provider-event ingress is only wired when AWS SES/SNS is
+    // configured; a deployment without AWS boots without it (email degraded).
+    const { awsRegion, topicArn, ttlMs } = serverConfig.providerEvents
+    if (awsRegion !== null && topicArn !== null) {
+      registerProviderEventRoutes(application, {
+        unitOfWork,
+        clock,
+        certificateFetcher,
+        config: {
+          awsRegion,
+          topicArn,
+          providerEventTtlMs: ttlMs,
+        },
+        emailProviderEventRepository,
+        emailDeliveryRepository,
+        emailSuppressionRepository,
+      })
+    }
   }
 
   return {
