@@ -18,7 +18,7 @@ The migration is **not** a JS/TS compatibility exercise:
   compatibility rules still apply.
 
 Do not modify, move, or reinterpret `resources/sessions/Legacy/**`. It is outside
-this session's active authority.
+this session's active authority.  
 
 ## Resume Here
 
