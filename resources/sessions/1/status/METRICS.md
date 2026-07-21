@@ -709,6 +709,42 @@ command services + routes consuming the later domain (spec 03 §6/§7; spec 04
 later financial slices).
 
 
+## Delta: BE-022 Web CSRF reload-recovery (branch `ts-migration/backend`)
+
+`GET /v1/auth/web/csrf` re-issues the synchronizer CSRF token from the access or
+refresh cookie (spec 04 §3.4). Additive; backend authored JS/JSX 0 (unchanged).
+`npm run check` green; integration 75 -> 79 (+4 in `authWeb`). Legacy hash intact.
+
+
+## Delta: BE-024 Migrate-CLI baseline / legacy 001-008 disposition (branch `ts-migration/backend`)
+
+Archived legacy migrations `001-008` to `db/migrations-archive/` (spec 03 §8);
+applied `db/migrations/` is canonical `>= 009` only, so `migrate up` is
+collision-free from an empty DB. +2 guard unit tests. `npm run check` green
+(296 unit); integration 79/79. package/lock unchanged; Legacy hash intact.
+
+
+## Delta: RA-B0 Deploy-env boot compatibility — Option 3 (branch `ts-migration/backend`)
+
+Realignment spinoff: the rearchitected backend now boots under the
+`release_manager` deploy env unedited (accept `CORS_ORIGIN`; optional AWS SES/SNS;
+`\n`-escaped ES256 key; `Dockerfile` copies `db/migrations`), plus a real
+`seed:auth` admin bootstrap and a `keys:generate` operator helper.
+
+| Change | Value |
+|---|---:|
+| Backend source files touched (environment/composition/health) | 3 |
+| New scripts (`src/scripts/seedAuth.ts`, `scripts/generate-deploy-secrets.ts`) | 2 |
+| New npm scripts (`seed:auth`, `seed:auth:dev`, `keys:generate`) | 3 |
+| New integration test file (`deployBoot`) | 1 (5 tests) |
+| Unit tests added (`seedAuth`) | 8 |
+| Backend authored JS/JSX | 0 (unchanged) |
+
+`npm run check` green (304 unit, was 296); integration 79 -> 84 (9 files);
+`package-lock.json` unchanged (`package.json` gains scripts only); Legacy hash
+intact. No new dependencies.
+
+
 ## Related notes (Obsidian graph)
 
 - Status siblings: [[status/CURRENT|Current resume point]] · [[status/IMPLEMENTATION_PROGRESS|Implementation progress]] · [[status/VALIDATION_SUMMARY|Validation summary]]

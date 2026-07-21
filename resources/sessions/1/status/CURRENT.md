@@ -2,31 +2,33 @@
 
 ## Last Verified Code Checkpoint
 
-- Task: `BE-021.2` later-domain canonical schema (increment 2: the money-movement
-  core — §4.3 investing/ownership + §4.4 payments/provider inbox) plus the Kysely
-  types for all later-domain tables, landed on branch `ts-migration/backend`
-  (PR #1). Grounded in spec 03 §4 (not speculative). **The later-domain schema
-  (spec 03 §4.1-§4.5) is now complete.**
-- Result: additive migrations `017_canonical_investing.sql` (mandates, sip_plans,
-  investment_orders, investment_executions, holdings, holding_lots,
-  holding_lot_movements, redemption_requests) and `018_canonical_payments.sql`
-  (payments, payment_attempts, provider_events, notifications), with composite
-  ownership FKs, append-only booked financial evidence, and paise `bigint` /
-  `numeric(24,8)` money types. Added Kysely `Database` types + `Row<>` aliases for
-  ALL later-domain tables (014-018), which increment 1 had deferred. Validated by
-  the extended `test/integration/laterDomainSchema.integration.test.ts` (12 tests
-  incl. money-core happy path + cross-user composite-FK / one-booking / units /
-  signature / reserved negatives). `check` green (294 unit tests, build, both
-  smokes); integration 75/75 (8 files); backend authored JS still 0.
-- Next: the repositories + command services + routes that consume the later
-  domain (spec 03 §6/§7 atomic transactions, locking, repository interfaces;
-  spec 04 later financial route slices).
-- Prior checkpoints: BE-021.1 (later-domain schema increment 1: compliance/
-  catalog/platform, integration 69), PROD-001 (server composition), BE-020
-  (zero-JS gate), BE-019
-  (transport/persistence retired, JS 13 -> 0), BE-018 (shared retired, JS 39 ->
-  13), BE-017 (admin finance retired, JS 51 -> 39), BE-016 (admin identity,
-  additive JS 51), BE-015..BE-010, and earlier BE-009..BE-002.
+- Task: `RA-B0` deploy-env boot compatibility (Option 3 of the frontend/backend
+  realignment spinoff), landed on branch `ts-migration/backend`. Makes the
+  rearchitected backend boot and serve under the `release_manager` deploy stack
+  unedited, so `docker compose up` works on localhost/VPS without AWS.
+- Result: `runtime/environment.ts` accepts legacy `CORS_ORIGIN` as the web origin
+  allowlist source and makes AWS SES/SNS optional (`emailConfigured` flag) +
+  accepts a `\n`-escaped ES256 signing key; `composition.ts` wires the SNS
+  ingress only when AWS is configured; `health.ts` makes email an informational
+  readiness check (DB is the hard gate); `Dockerfile` copies `db/migrations`;
+  new `seed:auth` script bootstraps an admin login (Argon2id + superadmin) from
+  `ADMIN_*`/`SEED_ADMIN_*`; `keys:generate` prints the operator key block.
+  Validated by `test/integration/deployBoot.integration.test.ts` (deploy-shaped
+  boot + seeded-admin web login). `check` green (304 unit); integration 84/84
+  (9 files); backend authored JS still 0. Operator steps: see
+  `logs/RA-B0-deploy-boot-compat.md`.
+- Next: `RA-B` — wire the landing signup UX to `POST /v1/applications` (the new
+  application→approval→activation model); then `RA-C` client financial routes.
+  The full spec-04 financial/catalog route build and the paused backend
+  finalization items (BE-023 SES sender, BE-008b-3, BE-019A) remain deprioritized
+  behind runnability.
+- Prior checkpoints: RA-A (each side builds/runs; frontend fixture mode),
+  BE-024 (archived legacy migrations 001-008; `migrate up` canonical-only),
+  BE-022 (web CSRF reload-recovery `GET /v1/auth/web/csrf`), BE-021.2 (later-domain
+  schema increment 2; later-domain schema §4.1-§4.5 complete), BE-021.1,
+  PROD-001 (server composition), BE-020 (zero-JS gate), BE-019 (JS 13 -> 0),
+  BE-018 (JS 39 -> 13), BE-017 (JS 51 -> 39), BE-016 (admin identity),
+  BE-015..BE-010, and earlier BE-009..BE-002.
 
 ## Superseded Checkpoint (PROD-001)
 
