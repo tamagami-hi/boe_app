@@ -1,0 +1,142 @@
+# BeOnEdge — DEPLOY compose (image-based; no build).
+#
+# Images are produced by release_manager/export.sh, shipped as tarballs, and
+# loaded by release_manager/deploy.sh. This file references them by tag only.
+# Deploys ONLY: landing (Next.js) + backend_controller (Node API) + PostgreSQL.
+# Admin portal + client APK are NOT here — they connect to this backend over
+# the public domain via the host nginx.
+#
+# Operated by the release_manager scripts; do not run directly except for
+# manual checks. PostgreSQL data persists in the `pgdata` named volume.
+
+x-backend-env: &backend-env
+  NODE_ENV: ${NODE_ENV:-production}
+  HOST: 0.0.0.0
+  PORT: ${BACKEND_PORT:-47502}
+  PROVIDER_MODE: ${PROVIDER_MODE:-live}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+
+  DATA_STORE: postgres
+  DB_DRIVER: postgres
+  DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+  DATABASE_HOST: postgres
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: ${POSTGRES_DB}
+  DATABASE_USER: ${POSTGRES_USER}
+  DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+  DATABASE_SSL: "false"
+  MIGRATIONS_DIR: ./db/migrations
+
+  PUBLIC_API_BASE_URL: ${PUBLIC_API_BASE_URL}
+  CORS_ORIGIN: ${CORS_ORIGIN}
+  ACCESS_TOKEN_SECRET: ${ACCESS_TOKEN_SECRET}
+  REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET}
+  ALLOW_DEV_AUTH: "false"
+
+  SIGNUP_ALLOWED_ORIGIN: ${PUBLIC_LANDING_ORIGIN}
+  SIGNUP_PROXY_SECRET: ${SIGNUP_PROXY_SECRET}
+
+  ADMIN_USER_ID: ${ADMIN_USER_ID}
+  ADMIN_LOGIN_ID: ${ADMIN_LOGIN_ID}
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+  ADMIN_FIRST_NAME: ${ADMIN_FIRST_NAME:-BeOnEdge}
+  ADMIN_LAST_NAME: ${ADMIN_LAST_NAME:-Admin}
+  ADMIN_PHONE: ${ADMIN_PHONE:-+910000000001}
+
+  SEED_AUTH_ENABLED: ${SEED_AUTH_ENABLED:-true}
+  SEED_AUTH_ALLOW_PRODUCTION: ${SEED_AUTH_ALLOW_PRODUCTION:-true}
+  SEED_AUTH_OVERWRITE: ${SEED_AUTH_OVERWRITE:-false}
+  SEED_ADMIN_EMAIL: ${ADMIN_LOGIN_ID}
+  SEED_ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+  SEED_CLIENT_EMAIL: ${SEED_CLIENT_EMAIL}
+  SEED_CLIENT_PASSWORD: ${SEED_CLIENT_PASSWORD}
+
+services:
+  postgres:
+    container_name: boe-postgres
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_BIND_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - boe
+
+  migrate:
+    container_name: boe-migrate
+    image: boe-backend:${BOE_VERSION:-local}
+    command: ["npm", "run", "migrate"]
+    environment:
+      <<: *backend-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - boe
+
+  seed:
+    container_name: boe-seed
+    image: boe-backend:${BOE_VERSION:-local}
+    command: ["npm", "run", "seed:auth"]
+    environment:
+      <<: *backend-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+    networks:
+      - boe
+
+  backend:
+    container_name: boe-backend
+    image: boe-backend:${BOE_VERSION:-local}
+    restart: unless-stopped
+    environment:
+      <<: *backend-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-47502}:${BACKEND_PORT:-47502}"
+    networks:
+      - boe
+
+  landing:
+    container_name: boe-landing
+    image: boe-landing:${BOE_VERSION:-local}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: ${LANDING_PORT:-3100}
+      HOSTNAME: 0.0.0.0
+      BEO_API_BASE: http://backend:${BACKEND_PORT:-47502}
+      SIGNUP_PROXY_SECRET: ${SIGNUP_PROXY_SECRET}
+      SIGNUP_ALLOWED_ORIGIN: ${PUBLIC_LANDING_ORIGIN}
+    depends_on:
+      - backend
+    ports:
+      - "127.0.0.1:${LANDING_PORT:-3100}:${LANDING_PORT:-3100}"
+    networks:
+      - boe
+
+volumes:
+  pgdata:
+    driver: local
+
+networks:
+  boe:
+    driver: bridge

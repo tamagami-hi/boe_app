@@ -105,6 +105,3 @@ kimi_response*.txt
 .kimi-patch-*.patch
 kimi-api-key.txt
 
-# Local release and emulator artifacts
-release_manager/
-emu/
