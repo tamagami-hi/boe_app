@@ -70,6 +70,8 @@ not rewrite prior RED/GREEN history to match later architecture.
 
 | BE-021.1 | DONE | [Later-domain schema increment 1 (compliance/catalog/platform)](./BE-021-later-domain-schema-1.md) | on `ts-migration/backend` (migrations 014-016 validated; investing/payments + types are increment 2) |
 
+| BE-021.2 | DONE | [Later-domain schema increment 2 (investing/ownership + payments)](./BE-021-later-domain-schema-2.md) | on `ts-migration/backend` (migrations 017-018 + Kysely types for all later-domain tables; integration 69 -> 75) |
+
 
 ## Related notes (Obsidian graph)
 
