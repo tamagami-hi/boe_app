@@ -14,6 +14,7 @@ import { composeBackend } from "../../src/runtime/composition.js"
 import { createApplication } from "../../src/runtime/application.js"
 import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
 import { runSeed } from "../../src/scripts/seed.js"
+import { resolveSeedAuthConfig, runSeedAuth } from "../../src/scripts/seedAuth.js"
 
 /**
  * RA-B0 (Option 3) proof: the rearchitected backend boots under the
@@ -112,5 +113,42 @@ describe("deploy-shaped boot (RA-B0)", () => {
       payload: "{}",
     })
     expect(response.statusCode).toBe(404)
+  })
+
+  test("seed:auth bootstraps an admin that can log in via web auth", async () => {
+    const password = "correct horse battery staple"
+    const result = await runSeedAuth(
+      pool,
+      resolveSeedAuthConfig({
+        NODE_ENV: "production",
+        SEED_AUTH_ALLOW_PRODUCTION: "true",
+        ADMIN_LOGIN_ID: "ops@beonedge.test",
+        ADMIN_PASSWORD: password,
+      }),
+    )
+    expect(result.adminSeeded).toBe(true)
+
+    const login = await app.inject({
+      method: "POST",
+      url: "/v1/auth/web/login",
+      headers: { origin: "https://admin.beonedge.test" },
+      payload: { email: "ops@beonedge.test", password },
+    })
+    expect(login.statusCode).toBe(200)
+    const body = login.json<{ data: { user: { roles: string[]; permissions: string[] } } }>()
+    expect(body.data.user.roles).toContain("superadmin")
+    expect(body.data.user.permissions).toContain("applications.read")
+
+    // Re-running is idempotent (no duplicate admin, still logs in).
+    const rerun = await runSeedAuth(
+      pool,
+      resolveSeedAuthConfig({
+        NODE_ENV: "production",
+        SEED_AUTH_ALLOW_PRODUCTION: "true",
+        ADMIN_LOGIN_ID: "ops@beonedge.test",
+        ADMIN_PASSWORD: password,
+      }),
+    )
+    expect(rerun.adminSeeded).toBe(true)
   })
 })

@@ -38,8 +38,9 @@ calls).
 
 | Task | Status | Depends on | Completion boundary |
 |---|---|---|---|
-| RA-A Prove each side runs | ACTIVE | BE-020, PROD-001 | Backend boots+serves (check/smoke green); frontend `cd frontend_stack && npm install && npm run build` passes and renders in fixture mode; integration reality documented |
-| RA-B Wire overlapping real flows | BACKLOG | RA-A | Landing signup -> `POST /v1/applications` (+ verify-email) via signup BFF; admin auth+identity queue against `/v1/auth/web/*` + `/v1/admin/*` (cookie+CSRF) work in http mode |
+| RA-A Prove each side runs | DONE | BE-020, PROD-001 | Backend boots+serves (smoke/check green); frontend `cd frontend_stack && npm install && npm run build` passes in fixture mode; integration reality documented |
+| RA-B0 Deploy-env boot compat (Option 3) | DONE | RA-A | Backend boots under the `release_manager` deploy env unedited: accept `CORS_ORIGIN`; optional AWS SES/SNS; `\n`-escaped ES256 key; real `seed:auth` (admin login + superadmin); Dockerfile copies `db/migrations`; `keys:generate` helper. Verified by deploy-shaped boot + seeded-admin login integration tests. [log](./logs/RA-B0-deploy-boot-compat.md) |
+| RA-B Wire overlapping real flows | BACKLOG | RA-B0 | Landing signup -> `POST /v1/applications` (+ verify-email) via signup BFF; admin auth+identity queue against `/v1/auth/web/*` + `/v1/admin/*` (cookie+CSRF) work in http mode |
 | RA-C Client financial routes on new backend | BACKLOG | RA-B, BE-021 | Repositories+commands+routes for the `/v1/client/*` surface the frontend calls, over the BE-021 schema (spec 03 §6/§7); client http mode works end-to-end for covered flows |
 | RA-D Legacy-compat shim (remainder) | BACKLOG | RA-C | Any remaining frontend-expected endpoints mapped onto canonical services; no unhandled calls in http mode |
 | RA-APK Emulator/APK build | USER | RA-* | Capacitor + Gradle APK build and emulator testing performed locally by the user; agent stops at passing web build |

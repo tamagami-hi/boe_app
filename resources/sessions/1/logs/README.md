@@ -53,6 +53,8 @@ not rewrite prior RED/GREEN history to match later architecture.
 
 | BE-024 | DONE | [Migrate-CLI baseline / legacy 001-008 disposition](./BE-024-migrate-baseline-disposition.md) | on `ts-migration/backend` (archived legacy migrations 001-008 per spec 03 §8; `migrate up` now collision-free on the canonical >=009 baseline; +2 guard tests) |
 
+| RA-B0 | DONE | [Deploy-env boot compatibility (Option 3)](./RA-B0-deploy-boot-compat.md) | on `ts-migration/backend` (backend boots under the release_manager deploy env unedited: CORS_ORIGIN, optional AWS, seed:auth, Dockerfile migrations, keys:generate; integration 84) |
+
 
 ## Related notes (Obsidian graph)
 
