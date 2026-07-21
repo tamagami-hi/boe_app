@@ -21,13 +21,14 @@
 
 | Risk | Severity now | Required closure |
 |---|---|---|
-| Liveness server has no graceful signal drain | LOW while stateless | `BE-002` before any stateful route or worker |
+| ~~Liveness server has no graceful signal drain~~ | RESOLVED by `BE-002` | Bounded SIGTERM/SIGINT drain (`runtime/shutdown.ts`) wired into `server.ts`; exits 0 clean / 1 on timeout; proven by unit tests and source/dist smoke |
 | Incomplete TypeScript runtime could be mistaken for release-ready | HIGH if published | Keep release blocked until readiness/routes/DB/consumers/CI gates pass |
 | 12,600 lines of unreachable backend JS remain | Migration risk | Execute `BE-003` through `BE-020`; delete only with real replacements |
 | 20,480 lines of authored frontend JS/JSX remain | Migration risk | Execute FE/AD packets with component/E2E and deletion guards |
 | Contract declarations are verbose | LOW | Compact only through deterministic generation without widening types |
 | Historical handoff contains superseded mixed-runtime text | LOW/controlled | Keep explicit superseded markers; current authority is working model/task/status/specs |
 | Generated Android assets can distort JS metrics | MEDIUM reporting risk | Exclude/classify build output and record the exact inventory command |
+| Canonical `users`/other tables share names with the legacy `001-008` chain, so a full `migrate up` over legacy+canonical would collide (BE-007b `010` onward) | MEDIUM (latent; no environment runs the mixed chain) | Canonical migrations (`>= 009`) are validated in isolation on empty PG; there is no production data; the legacy chain is archived to non-executable historical reference at `CLEAN-002`. Until then, do not run `migrate up` over a DB carrying the legacy chain (matches `02` §5.3 point 10). |
 
 ## Rollback Shape
 

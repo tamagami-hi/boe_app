@@ -1,0 +1,1843 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "BeOnEdge API",
+    "version": "v1"
+  },
+  "components": {
+    "schemas": {
+      "ErrorEnvelope": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              false
+            ]
+          },
+          "data": {
+            "type": "null"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "enum": [
+                      "VALIDATION_FAILED"
+                    ]
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "fields": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "retryable": {
+                    "type": "boolean",
+                    "enum": [
+                      false
+                    ]
+                  }
+                },
+                "required": [
+                  "code",
+                  "message",
+                  "retryable"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "enum": [
+                      "STATE_CONFLICT",
+                      "IDEMPOTENCY_IN_PROGRESS",
+                      "RATE_LIMITED",
+                      "INTERNAL_ERROR",
+                      "DEPENDENCY_UNAVAILABLE"
+                    ]
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "retryable": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ]
+                  }
+                },
+                "required": [
+                  "code",
+                  "message",
+                  "retryable"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "enum": [
+                      "CURSOR_INVALID",
+                      "TOKEN_INVALID",
+                      "AUTHENTICATION_REQUIRED",
+                      "INVALID_CREDENTIALS",
+                      "SESSION_INVALID",
+                      "SNS_SIGNATURE_INVALID",
+                      "AUTHORIZATION_DENIED",
+                      "ACCOUNT_NOT_ACTIVE",
+                      "CSRF_INVALID",
+                      "RESOURCE_NOT_FOUND",
+                      "ACTIVE_APPLICATION_EXISTS",
+                      "IDEMPOTENCY_KEY_REUSED",
+                      "TOKEN_ALREADY_USED",
+                      "TOKEN_EXPIRED",
+                      "PAYLOAD_TOO_LARGE",
+                      "UNSUPPORTED_MEDIA_TYPE"
+                    ]
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "retryable": {
+                    "type": "boolean",
+                    "enum": [
+                      false
+                    ]
+                  }
+                },
+                "required": [
+                  "code",
+                  "message",
+                  "retryable"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "requestId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "timestamp": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "idempotencyReplay": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "requestId",
+              "timestamp"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error",
+          "meta"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "parameters": {}
+  },
+  "paths": {
+    "/v1/public/consent-documents": {
+      "get": {
+        "operationId": "getPublicConsentDocuments",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "anyOf": [
+                            {
+                              "type": "array",
+                              "prefixItems": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "terms"
+                                      ]
+                                    },
+                                    "version": {
+                                      "type": "string",
+                                      "pattern": "^[A-Za-z0-9._-]{1,40}$/u"
+                                    },
+                                    "publicPath": {
+                                      "type": "string",
+                                      "pattern": "^(?!\\/\\/)(?!.*\\/\\.{1,2}(?:\\/|$))(?!.*%(?:25|2F|5C|2E))\\/(?:[A-Za-z0-9._~!$&'()*+,;=:@\\/-]|%[0-9A-F]{2})*$/u"
+                                    },
+                                    "contentMarkdown": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "sha256": {
+                                      "type": "string",
+                                      "pattern": "^[a-f0-9]{64}$/u"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "version",
+                                    "publicPath",
+                                    "contentMarkdown",
+                                    "sha256"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "privacy"
+                                      ]
+                                    },
+                                    "version": {
+                                      "type": "string",
+                                      "pattern": "^[A-Za-z0-9._-]{1,40}$/u"
+                                    },
+                                    "publicPath": {
+                                      "type": "string",
+                                      "pattern": "^(?!\\/\\/)(?!.*\\/\\.{1,2}(?:\\/|$))(?!.*%(?:25|2F|5C|2E))\\/(?:[A-Za-z0-9._~!$&'()*+,;=:@\\/-]|%[0-9A-F]{2})*$/u"
+                                    },
+                                    "contentMarkdown": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "sha256": {
+                                      "type": "string",
+                                      "pattern": "^[a-f0-9]{64}$/u"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "version",
+                                    "publicPath",
+                                    "contentMarkdown",
+                                    "sha256"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ],
+                              "minItems": 2,
+                              "maxItems": 2
+                            },
+                            {
+                              "type": "array",
+                              "prefixItems": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "privacy"
+                                      ]
+                                    },
+                                    "version": {
+                                      "type": "string",
+                                      "pattern": "^[A-Za-z0-9._-]{1,40}$/u"
+                                    },
+                                    "publicPath": {
+                                      "type": "string",
+                                      "pattern": "^(?!\\/\\/)(?!.*\\/\\.{1,2}(?:\\/|$))(?!.*%(?:25|2F|5C|2E))\\/(?:[A-Za-z0-9._~!$&'()*+,;=:@\\/-]|%[0-9A-F]{2})*$/u"
+                                    },
+                                    "contentMarkdown": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "sha256": {
+                                      "type": "string",
+                                      "pattern": "^[a-f0-9]{64}$/u"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "version",
+                                    "publicPath",
+                                    "contentMarkdown",
+                                    "sha256"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "terms"
+                                      ]
+                                    },
+                                    "version": {
+                                      "type": "string",
+                                      "pattern": "^[A-Za-z0-9._-]{1,40}$/u"
+                                    },
+                                    "publicPath": {
+                                      "type": "string",
+                                      "pattern": "^(?!\\/\\/)(?!.*\\/\\.{1,2}(?:\\/|$))(?!.*%(?:25|2F|5C|2E))\\/(?:[A-Za-z0-9._~!$&'()*+,;=:@\\/-]|%[0-9A-F]{2})*$/u"
+                                    },
+                                    "contentMarkdown": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "sha256": {
+                                      "type": "string",
+                                      "pattern": "^[a-f0-9]{64}$/u"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "version",
+                                    "publicPath",
+                                    "contentMarkdown",
+                                    "sha256"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ],
+                              "minItems": 2,
+                              "maxItems": 2
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/applications": {
+      "post": {
+        "operationId": "submitApplication",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fullName": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string",
+                    "maxLength": 254,
+                    "format": "email"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 32
+                  },
+                  "consents": {
+                    "anyOf": [
+                      {
+                        "type": "array",
+                        "prefixItems": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "terms"
+                                ]
+                              },
+                              "version": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z0-9._-]{1,40}$/u"
+                              },
+                              "accepted": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
+                                ]
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "version",
+                              "accepted"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "privacy"
+                                ]
+                              },
+                              "version": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z0-9._-]{1,40}$/u"
+                              },
+                              "accepted": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
+                                ]
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "version",
+                              "accepted"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ],
+                        "minItems": 2,
+                        "maxItems": 2
+                      },
+                      {
+                        "type": "array",
+                        "prefixItems": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "privacy"
+                                ]
+                              },
+                              "version": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z0-9._-]{1,40}$/u"
+                              },
+                              "accepted": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
+                                ]
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "version",
+                              "accepted"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "terms"
+                                ]
+                              },
+                              "version": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z0-9._-]{1,40}$/u"
+                              },
+                              "accepted": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
+                                ]
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "version",
+                              "accepted"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ],
+                        "minItems": 2,
+                        "maxItems": 2
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "fullName",
+                  "email",
+                  "phone",
+                  "consents"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "accepted": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "accepted"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/applications/verify-email": {
+      "post": {
+        "operationId": "verifyApplicationEmail",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{43}$/u"
+                  }
+                },
+                "required": [
+                  "token"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "verified": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "verified"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/activations/complete": {
+      "post": {
+        "operationId": "completeActivation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{43}$/u"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "device": {
+                    "type": "object",
+                    "properties": {
+                      "installationId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80
+                      },
+                      "platform": {
+                        "type": "string",
+                        "enum": [
+                          "android"
+                        ]
+                      },
+                      "appVersion": {
+                        "type": "string",
+                        "pattern": "^[0-9]+[.][0-9]+[.][0-9]+([+-][A-Za-z0-9.-]+)?$/u"
+                      }
+                    },
+                    "required": [
+                      "installationId",
+                      "name",
+                      "platform",
+                      "appVersion"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "token",
+                  "password",
+                  "device"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user": {
+                          "type": "object",
+                          "properties": {
+                            "userId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "fullName": {
+                              "type": "string"
+                            },
+                            "email": {
+                              "type": "string",
+                              "maxLength": 254,
+                              "format": "email"
+                            },
+                            "phoneMasked": {
+                              "type": "string",
+                              "pattern": "^\\+[1-9][0-9]{0,2}[*]{6}[0-9]{4}$/u"
+                            },
+                            "accountStatus": {
+                              "type": "string",
+                              "enum": [
+                                "active"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "userId",
+                            "fullName",
+                            "email",
+                            "phoneMasked",
+                            "accountStatus"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "accessToken": {
+                          "type": "string",
+                          "minLength": 100,
+                          "maxLength": 4096
+                        },
+                        "accessTokenExpiresAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "refreshToken": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_-]{43}$/u"
+                        },
+                        "refreshTokenExpiresAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "sessionId": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      },
+                      "required": [
+                        "user",
+                        "accessToken",
+                        "accessTokenExpiresAt",
+                        "refreshToken",
+                        "refreshTokenExpiresAt",
+                        "sessionId"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "x-app-version",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-client-platform",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/auth/native/login": {
+      "post": {
+        "operationId": "nativeLogin",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "maxLength": 254,
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "device": {
+                    "type": "object",
+                    "properties": {
+                      "installationId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80
+                      },
+                      "platform": {
+                        "type": "string",
+                        "enum": [
+                          "android"
+                        ]
+                      },
+                      "appVersion": {
+                        "type": "string",
+                        "pattern": "^[0-9]+[.][0-9]+[.][0-9]+([+-][A-Za-z0-9.-]+)?$/u"
+                      }
+                    },
+                    "required": [
+                      "installationId",
+                      "name",
+                      "platform",
+                      "appVersion"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "email",
+                  "password",
+                  "device"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user": {
+                          "type": "object",
+                          "properties": {
+                            "userId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "fullName": {
+                              "type": "string"
+                            },
+                            "email": {
+                              "type": "string",
+                              "maxLength": 254,
+                              "format": "email"
+                            },
+                            "phoneMasked": {
+                              "type": "string",
+                              "pattern": "^\\+[1-9][0-9]{0,2}[*]{6}[0-9]{4}$/u"
+                            },
+                            "accountStatus": {
+                              "type": "string",
+                              "enum": [
+                                "active"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "userId",
+                            "fullName",
+                            "email",
+                            "phoneMasked",
+                            "accountStatus"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "accessToken": {
+                          "type": "string",
+                          "minLength": 100,
+                          "maxLength": 4096
+                        },
+                        "accessTokenExpiresAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "refreshToken": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_-]{43}$/u"
+                        },
+                        "refreshTokenExpiresAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "sessionId": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      },
+                      "required": [
+                        "user",
+                        "accessToken",
+                        "accessTokenExpiresAt",
+                        "refreshToken",
+                        "refreshTokenExpiresAt",
+                        "sessionId"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "x-app-version",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-client-platform",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/auth/native/refresh": {
+      "post": {
+        "operationId": "refreshNativeSession",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "refreshToken": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{43}$/u"
+                  },
+                  "rotationId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "refreshToken",
+                  "rotationId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "accessToken": {
+                          "type": "string",
+                          "minLength": 100,
+                          "maxLength": 4096
+                        },
+                        "accessTokenExpiresAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "refreshToken": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_-]{43}$/u"
+                        },
+                        "refreshTokenExpiresAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "sessionId": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      },
+                      "required": [
+                        "accessToken",
+                        "accessTokenExpiresAt",
+                        "refreshToken",
+                        "refreshTokenExpiresAt",
+                        "sessionId"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "x-app-version",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-client-platform",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/auth/native/logout": {
+      "post": {
+        "operationId": "logoutNativeSession",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "refreshToken": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{43}$/u"
+                  }
+                },
+                "required": [
+                  "refreshToken"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "loggedOut": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "loggedOut"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "x-app-version",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-client-platform",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "webhooks": {}
+}
