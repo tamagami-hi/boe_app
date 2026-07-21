@@ -59,6 +59,8 @@ not rewrite prior RED/GREEN history to match later architecture.
 
 | RA-C.1 | DONE | [Admin web-auth wiring](./RA-C-1-admin-web-auth-wiring.md) | on `ts-migration/backend` (admin login/session/logout -> `/v1/auth/web/*` cookie+CSRF via shared authApi; reachability -> `/v1/health`; frontend app build green) |
 
+| RA-C.2 | DONE | [Client native-auth wiring](./RA-C-2-client-native-auth-wiring.md) | on `ts-migration/backend` (client login/refresh/logout -> `/v1/auth/native/*` bearer + rotation + device; signup fails fast per the application model; app build green). Auth complete for both surfaces |
+
 
 ## Related notes (Obsidian graph)
 

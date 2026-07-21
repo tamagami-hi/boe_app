@@ -6,10 +6,14 @@ import {
   delay,
   setSessionCsrf,
   setSessionTokens,
+  storedAccessToken,
   storedRefreshToken,
   storedUser,
   useHttpApi,
 } from './_util.js';
+
+const DEVICE_ID_KEY = 'boe.client.deviceId';
+const CLIENT_APP_VERSION = '1.0.0';
 
 let _users = {
   client: null,
@@ -37,6 +41,43 @@ function maskPhone(phone) {
 function localUuid() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
   return `local-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+// Native login/refresh require a stable device installation UUID. On the APK
+// this identifies the Capacitor install; in the browser preview it is a stable
+// per-browser UUID. platform is 'android' as the backend requires.
+function getOrCreateDeviceId() {
+  const storage = localStorageHandle();
+  if (!storage) return localUuid();
+  let id = storage.getItem(DEVICE_ID_KEY);
+  if (!id) {
+    id = localUuid();
+    storage.setItem(DEVICE_ID_KEY, id);
+  }
+  return id;
+}
+
+function buildDevice() {
+  return {
+    installationId: getOrCreateDeviceId(),
+    name: 'BeOnEdge Client',
+    platform: 'android',
+    appVersion: CLIENT_APP_VERSION,
+  };
+}
+
+// Map the canonical native principal ({ userId, fullName, phoneMasked,
+// accountStatus }) to the app's user input shape for toClientUser.
+function fromNativeUser(nativeUser) {
+  return {
+    id: nativeUser?.userId,
+    name: nativeUser?.fullName,
+    email: nativeUser?.email,
+    phoneMasked: nativeUser?.phoneMasked,
+    status: 'approved',
+    role: 'client',
+    roles: ['client'],
+  };
 }
 
 function localStorageHandle() {
@@ -161,13 +202,18 @@ export async function login(credentials = {}, { scope = 'client' } = {}) {
       return clone(user);
     }
 
-    // Client (native) auth wiring lands with the client batch (RA-C).
-    const result = await apiRequest('/v1/auth/login', {
+    // Client (native) auth: bearer access + rotating refresh, held in storage.
+    const result = await apiRequest('/v1/auth/native/login', {
       method: 'POST',
       auth: false,
-      body: credentials,
+      scope,
+      body: {
+        email: credentials.identifier || credentials.email,
+        password: credentials.password,
+        device: buildDevice(),
+      },
     });
-    const user = assertScopeUser(toClientUser(result.user), scope);
+    const user = assertScopeUser(toClientUser(fromNativeUser(result.user)), scope);
     setSessionTokens({ user, accessToken: result.accessToken, refreshToken: result.refreshToken, scope });
     _users[scope] = user;
     return clone(user);
@@ -198,15 +244,15 @@ export async function listPendingApprovals() {
 
 export async function signup(details = {}, { scope = 'client' } = {}) {
   if (useHttpApi()) {
-    const result = await apiRequest('/v1/auth/signup', {
-      method: 'POST',
-      auth: false,
-      body: details,
-    });
-    const user = assertScopeUser(toClientUser(result.user), scope);
-    setSessionTokens({ user, accessToken: result.accessToken, refreshToken: result.refreshToken, scope });
-    _users[scope] = user;
-    return clone(user);
+    // The canonical onboarding model has no self-service account signup: a user
+    // applies (on the website), verifies their email, is approved by an admin,
+    // and receives an activation link where they set a password. Direct API
+    // account creation is intentionally unsupported here.
+    const error = new Error(
+      'Account creation is by application and admin approval. Apply on the website to receive an activation link.',
+    );
+    error.code = 'SIGNUP_VIA_APPLICATION';
+    throw error;
   }
 
   await delay(280);
@@ -228,9 +274,10 @@ export async function signup(details = {}, { scope = 'client' } = {}) {
 
 export async function logout({ scope = 'client' } = {}) {
   if (useHttpApi()) {
-    const logoutPath = scope === 'admin' ? '/v1/auth/web/logout' : '/v1/auth/logout';
+    const logoutPath = scope === 'admin' ? '/v1/auth/web/logout' : '/v1/auth/native/logout';
+    const logoutBody = scope === 'admin' ? undefined : { refreshToken: storedRefreshToken(scope) };
     try {
-      await apiRequest(logoutPath, { method: 'POST', scope });
+      await apiRequest(logoutPath, { method: 'POST', scope, body: logoutBody });
     } finally {
       clearSessionTokens(scope);
       _users[scope] = null;
@@ -247,13 +294,14 @@ async function refreshCurrentUser(scope) {
   if (!refreshToken) {
     throw new Error('No refresh token available.');
   }
-  const result = await apiRequest('/v1/auth/refresh', {
+  const result = await apiRequest('/v1/auth/native/refresh', {
     method: 'POST',
     auth: false,
     scope,
-    body: { refreshToken },
+    body: { refreshToken, rotationId: localUuid() },
   });
-  const user = assertScopeUser(toClientUser(result.user), scope);
+  // Native refresh returns tokens only; retain the stored principal.
+  const user = assertScopeUser(toClientUser(storedUser(scope)), scope);
   setSessionTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken, user, scope });
   _users[scope] = user;
   return clone(user);
@@ -278,35 +326,26 @@ export async function currentUser({ scope = 'client' } = {}) {
       }
     }
 
-    let current;
-    try {
-      current = await apiRequest('/v1/auth/session', { scope });
-    } catch {
-      const refreshed = await refreshCurrentUser(scope).catch(() => null);
-      if (refreshed) return refreshed;
-      clearSessionTokens(scope);
-      _users[scope] = null;
-      return null;
+    // Client (native): there is no server session endpoint. Trust the stored
+    // principal while an access token is present; otherwise rotate the refresh
+    // token to re-establish the session.
+    const storedClientUser = storedUser(scope);
+    if (storedAccessToken(scope) && storedClientUser) {
+      try {
+        const user = assertScopeUser(toClientUser(storedClientUser), scope);
+        _users[scope] = user;
+        return clone(user);
+      } catch {
+        clearSessionTokens(scope);
+        _users[scope] = null;
+        return null;
+      }
     }
-
-    if (!current.authenticated) {
-      const refreshed = await refreshCurrentUser(scope).catch(() => null);
-      if (refreshed) return refreshed;
-      clearSessionTokens(scope);
-      _users[scope] = null;
-      return null;
-    }
-
-    let user;
-    try {
-      user = assertScopeUser(toClientUser({ ...storedUser(scope), ...current.user }), scope);
-    } catch {
-      clearSessionTokens(scope);
-      _users[scope] = null;
-      return null;
-    }
-    _users[scope] = user;
-    return clone(user);
+    const refreshed = await refreshCurrentUser(scope).catch(() => null);
+    if (refreshed) return refreshed;
+    clearSessionTokens(scope);
+    _users[scope] = null;
+    return null;
   }
 
   await delay(60);
