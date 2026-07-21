@@ -25,6 +25,25 @@ slices tracked under GATE-07/GATE-08, not part of finalization.
 | BE-019A Fastify hardening / descriptor inventory | BACKLOG | BE-006, BE-008..016 | Phase-6 security-control + descriptor-to-handler inventory (audit); no legacy fallback |
 | CON-007 Consumer contract/package wiring | BACKLOG | CON-006 | openapi-fetch client factory + `@beonedge/contracts` `file:` consumption from repository-root contexts; publish generated `paths`/OpenAPI exports (unblocks frontend) |
 
+## Realignment Spinoff (frontend<->backend runnability)
+
+Spinoff track created after a drift check against the user's primary goal
+(backend in TS + keep frontend as-is + app runs together). See
+[plans/02-frontend-backend-realignment-spinoff.md](./plans/02-frontend-backend-realignment-spinoff.md).
+Executed in order A -> B -> C -> D. **Agent does normal web builds/tests only and
+stops before APK/Android/Capacitor/Gradle packaging; the user builds the emulator
+APK locally.** This track deprioritizes the paused backend-finalization items
+(BE-023/BE-008b-3/BE-019A) and overlaps GATE-07/08 (build only what the frontend
+calls).
+
+| Task | Status | Depends on | Completion boundary |
+|---|---|---|---|
+| RA-A Prove each side runs | ACTIVE | BE-020, PROD-001 | Backend boots+serves (check/smoke green); frontend `cd frontend_stack && npm install && npm run build` passes and renders in fixture mode; integration reality documented |
+| RA-B Wire overlapping real flows | BACKLOG | RA-A | Landing signup -> `POST /v1/applications` (+ verify-email) via signup BFF; admin auth+identity queue against `/v1/auth/web/*` + `/v1/admin/*` (cookie+CSRF) work in http mode |
+| RA-C Client financial routes on new backend | BACKLOG | RA-B, BE-021 | Repositories+commands+routes for the `/v1/client/*` surface the frontend calls, over the BE-021 schema (spec 03 §6/§7); client http mode works end-to-end for covered flows |
+| RA-D Legacy-compat shim (remainder) | BACKLOG | RA-C | Any remaining frontend-expected endpoints mapped onto canonical services; no unhandled calls in http mode |
+| RA-APK Emulator/APK build | USER | RA-* | Capacitor + Gradle APK build and emulator testing performed locally by the user; agent stops at passing web build |
+
 ## Completed Foundations
 
 | Task | Status | Commit | Result |
