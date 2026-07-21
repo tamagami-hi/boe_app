@@ -17,13 +17,15 @@
   boot + seeded-admin web login). `check` green (304 unit); integration 84/84
   (9 files); backend authored JS still 0. Operator steps: see
   `logs/RA-B0-deploy-boot-compat.md`.
-- Next: `RA-C` (in progress). RA-C.1 (admin web auth) + RA-C.2 (client native
-  auth) done — **login works for both surfaces**. Remaining: admin applications
-  queue wiring (`/v1/admin/applications*`, routes already exist); then the large
-  build — `/v1/client/*` financial routes on the backend over the BE-021 schema
-  (spec 03 §6/§7 money-math/locking/maker-checker, with integration tests) + the
-  client data screens. The paused backend finalization items (BE-023 SES sender,
-  BE-008b-3, BE-019A) remain deprioritized behind runnability.
+- Next: `RA-C` (in progress). RA-C.1 (admin web auth), RA-C.2 (client native
+  auth), and RA-C.3 (admin applications queue + review/decision) are done —
+  **login works for both surfaces and the admin console's approvals flow is
+  wired end-to-end**. Remaining is the large build: `/v1/client/*` financial
+  routes on the backend over the BE-021 schema (spec 03 §6/§7
+  money-math/locking/maker-checker, with integration tests), built slice-by-slice
+  (read paths first), then the client data screens. The paused backend
+  finalization items (BE-023 SES sender, BE-008b-3, BE-019A) remain deprioritized
+  behind runnability.
 - Prior checkpoints: RA-B (landing signup wired to `POST /v1/applications`; both
   landing forms adopt the application model), RA-A (each side builds/runs; frontend fixture mode),
   BE-024 (archived legacy migrations 001-008; `migrate up` canonical-only),

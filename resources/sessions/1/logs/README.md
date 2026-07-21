@@ -61,6 +61,8 @@ not rewrite prior RED/GREEN history to match later architecture.
 
 | RA-C.2 | DONE | [Client native-auth wiring](./RA-C-2-client-native-auth-wiring.md) | on `ts-migration/backend` (client login/refresh/logout -> `/v1/auth/native/*` bearer + rotation + device; signup fails fast per the application model; app build green). Auth complete for both surfaces |
 
+| RA-C.3 | DONE | [Admin applications queue wiring](./RA-C-3-admin-applications-queue-wiring.md) | on `ts-migration/backend` (admin approvals queue + review->decision handshake -> `/v1/admin/applications*` with CSRF/Idempotency-Key/If-Match; app build green) |
+
 
 ## Related notes (Obsidian graph)
 

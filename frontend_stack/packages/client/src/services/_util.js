@@ -92,7 +92,10 @@ export function storedUser(scope = 'client') {
   }
 }
 
-export async function apiRequest(path, { method = 'GET', body, auth = true, scope = 'client' } = {}) {
+export async function apiRequest(
+  path,
+  { method = 'GET', body, auth = true, scope = 'client', headers: extraHeaders } = {},
+) {
   const headers = { accept: 'application/json' };
 
   if (body !== undefined) headers['content-type'] = 'application/json';
@@ -107,6 +110,9 @@ export async function apiRequest(path, { method = 'GET', body, auth = true, scop
     const csrf = storedCsrf(scope);
     if (csrf) headers['x-csrf-token'] = csrf;
   }
+
+  // Per-request headers (e.g. Idempotency-Key, If-Match) win over the defaults.
+  if (extraHeaders) Object.assign(headers, extraHeaders);
 
   const response = await fetch(`${apiBaseUrl()}${path}`, {
     method,

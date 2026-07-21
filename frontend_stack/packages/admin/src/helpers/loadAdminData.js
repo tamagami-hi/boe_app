@@ -1,6 +1,7 @@
 import { apiRequest, useHttpApi } from '@beonedge/client/services/_util.js';
 import { listPendingApprovals } from '@beonedge/client/services/authApi.js';
-import { collectionKey, normalizeAdminCollection } from './formatters.js';
+import { listPendingApplications } from '@beonedge/client/services/adminApplicationsApi.js';
+import { collectionKey, normalizeAdminCollection, normalizeApprovalRow } from './formatters.js';
 
 export async function loadAdminOverview() {
   if (!useHttpApi()) {
@@ -11,7 +12,33 @@ export async function loadAdminOverview() {
       stats: { pendingApprovals: approvals.length },
     };
   }
-  return apiRequest('/v1/admin/overview', { scope: 'admin' });
+  // Derive the pending count from the canonical applications queue (there is no
+  // separate overview endpoint in the canonical first slice).
+  const pending = await listPendingApplications().catch(() => []);
+  return {
+    source: 'http',
+    counts: { approvals: pending.length },
+    stats: { pendingApprovals: pending.length },
+  };
+}
+
+// Map a canonical application list item to the admin approval row shape, keeping
+// the applicationId + version needed for the review/decision handshake.
+function toApprovalRow(application) {
+  return {
+    ...normalizeApprovalRow({
+      id: application.applicationId,
+      name: application.fullName,
+      email: application.email,
+      phone: application.phone,
+      status: application.status,
+      createdAt: application.createdAt,
+    }),
+    applicationId: application.applicationId,
+    version: application.version,
+    emailVerifiedAt: application.emailVerifiedAt ?? null,
+    isPiiTombstoned: application.isPiiTombstoned ?? false,
+  };
 }
 
 function extractAdminCollection(payload, path) {
@@ -27,6 +54,11 @@ function extractAdminCollection(payload, path) {
 export async function loadAdminCollection(path) {
   if (!useHttpApi()) {
     return path.endsWith('/approvals') ? listPendingApprovals() : [];
+  }
+  // The approvals screen is backed by the canonical applications queue.
+  if (path.endsWith('/approvals')) {
+    const applications = await listPendingApplications();
+    return applications.map(toApprovalRow);
   }
   const payload = await apiRequest(path, { scope: 'admin' });
   return normalizeAdminCollection(extractAdminCollection(payload, path), path);
