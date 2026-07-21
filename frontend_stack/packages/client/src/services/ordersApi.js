@@ -4,6 +4,11 @@ import { apiRequest, clone, delay, listFromPayload, useHttpApi } from './_util.j
 const ACTIVE_ORDER_STATES = new Set(['submitted', 'payment_pending', 'payment_confirmed', 'booked']);
 const CANCELLED_ORDER_STATES = new Set(['cancelled', 'rejected', 'refunded', 'reversed']);
 
+function idempotencyKey() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  return `idem-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 // Map a canonical GET /v1/client/orders item to the UI order shape. Money is
 // integer paise (string) on the wire and rupees in the UI.
 function mapOrder(item) {
@@ -100,10 +105,14 @@ export async function createSip({ fundId, amount, frequency = 'monthly', duratio
 
 export async function createLumpsum({ fundId, amount }) {
   if (useHttpApi()) {
-    return apiRequest('/v1/client/lumpsum-orders', {
+    // Canonical: POST /v1/client/orders creates a one-time purchase order in
+    // `submitted`. Money is integer paise on the wire; the UI works in rupees.
+    const created = await apiRequest('/v1/client/orders', {
       method: 'POST',
-      body: { fundId, amount },
+      headers: { 'idempotency-key': idempotencyKey() },
+      body: { fundId, amountPaise: Math.round(amount * 100) },
     });
+    return mapOrder(created);
   }
 
   await delay(180);
@@ -132,6 +141,24 @@ export async function createLumpsum({ fundId, amount }) {
     currency: 'INR',
   });
   return clone(order);
+}
+
+/**
+ * Begin payment for a submitted order (spec 03 §5.2 `beginPayment`). Moves the
+ * order to `payment_pending` and returns the payment/attempt identifiers; the
+ * provider call itself is driven by the backend worker.
+ */
+export async function beginOrderPayment(orderId) {
+  if (useHttpApi()) {
+    return apiRequest(`/v1/client/orders/${encodeURIComponent(orderId)}/pay`, {
+      method: 'POST',
+      headers: { 'idempotency-key': idempotencyKey() },
+    });
+  }
+
+  await delay(160);
+  const found = payments.get(orders.find((o) => o.id === orderId)?.paymentId);
+  return clone(found ?? { orderId, status: 'payment_pending' });
 }
 
 export async function getOrder(orderId) {

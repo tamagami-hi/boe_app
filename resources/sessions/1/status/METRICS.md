@@ -767,6 +767,28 @@ frontend `npm run build` green; `package-lock.json`/`package.json` unchanged;
 Legacy hash intact. No new dependencies.
 
 
+## Delta: RA-C.5 Client order write path (branch `ts-migration/backend`)
+
+First canonical `/v1/client/*` **write** commands over the BE-021 investing
+schema: `createOrder` (`POST /v1/client/orders`) and `beginPayment`
+(`POST /v1/client/orders/:id/pay`). Eligibility re-derived under lock,
+published-fund + minimum guards, DB idempotency protocol, audit, and a
+`payment` provider-call outbox event.
+
+| Change | Value |
+|---|---:|
+| New backend files (2 write repos, 2 domain commands, 1 route) | 5 |
+| Backend files touched (composition wiring) | 1 |
+| New backend integration test file (`clientOrders`) | 1 (10 tests) |
+| Frontend service touched (`ordersApi.js`) | 1 |
+| Backend authored JS/JSX | 0 (unchanged) |
+
+`npm run check` green (313 unit, unchanged — new domain/repos/routes are
+integration-gated); integration 94 -> 104 (11 files); frontend `npm run build`
+green; `package.json`/`package-lock.json` unchanged; Legacy hash intact. No new
+dependencies.
+
+
 ## Related notes (Obsidian graph)
 
 - Status siblings: [[status/CURRENT|Current resume point]] · [[status/IMPLEMENTATION_PROGRESS|Implementation progress]] · [[status/VALIDATION_SUMMARY|Validation summary]]

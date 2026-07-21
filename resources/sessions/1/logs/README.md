@@ -65,6 +65,8 @@ not rewrite prior RED/GREEN history to match later architecture.
 
 | RA-C.4 | DONE | [Client portfolio read slice (eligibility/holdings/orders)](./RA-C-4-client-portfolio-reads-wiring.md) | on `ts-migration/backend` (first canonical `/v1/client/*` reads: `GET /v1/client/{eligibility,holdings,orders}` native-authenticated over BE-021 schema; derived eligibility spec 03 §2.3; client portfolio/orders/eligibility services wired; integration 84 -> 94; app build green) |
 
+| RA-C.5 | DONE | [Client order write path (createOrder + beginPayment)](./RA-C-5-client-order-write-path.md) | on `ts-migration/backend` (first canonical `/v1/client/*` writes: `POST /v1/client/orders` + `POST /v1/client/orders/:id/pay`; eligibility re-derived under lock, published-fund + minimum guards, idempotency + audit + provider-call outbox; Order/Payment write repos; client createLumpsum/beginOrderPayment wired; integration 94 -> 104; app build green) |
+
 
 ## Related notes (Obsidian graph)
 

@@ -21,6 +21,8 @@ import { createCertificateFetcher } from "../email/certificateFetcher.js"
 import { createActivationInviteRepository } from "../repositories/activationInviteRepository.js"
 import { createApplicationRepository } from "../repositories/applicationRepository.js"
 import { createClientPortfolioRepository } from "../repositories/clientPortfolioRepository.js"
+import { createOrderRepository } from "../repositories/orderRepository.js"
+import { createPaymentRepository } from "../repositories/paymentRepository.js"
 import { createApplicationReviewRepository } from "../repositories/applicationReviewRepository.js"
 import { createAuditRepository } from "../repositories/auditRepository.js"
 import { createAuthSessionRepository } from "../repositories/authSessionRepository.js"
@@ -34,6 +36,7 @@ import { createOutboxRepository } from "../repositories/outboxRepository.js"
 import { createUserRepository } from "../repositories/userRepository.js"
 import { createVerificationTokenRepository } from "../repositories/verificationTokenRepository.js"
 import { registerAdminIdentityRoutes } from "../routes/adminIdentityRoutes.js"
+import { registerClientOrderRoutes } from "../routes/clientOrderRoutes.js"
 import { registerClientPortfolioRoutes } from "../routes/clientPortfolioRoutes.js"
 import { registerNativeAuthRoutes } from "../routes/nativeAuthRoutes.js"
 import { registerProviderEventRoutes } from "../routes/providerEventRoutes.js"
@@ -80,6 +83,8 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const emailSuppressionRepository = createEmailSuppressionRepository()
   const idempotencyRepository = createIdempotencyRepository()
   const clientPortfolioRepository = createClientPortfolioRepository()
+  const orderRepository = createOrderRepository()
+  const paymentRepository = createPaymentRepository()
 
   const webAuth: WebAuthDeps = {
     userRepository,
@@ -140,6 +145,27 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       clientPortfolioRepository,
       clock,
       config: { cursorKey: serverConfig.cursorKey },
+    })
+
+    registerClientOrderRoutes(application, {
+      accessTokenService,
+      database,
+      unitOfWork,
+      clock,
+      orderRepository,
+      paymentRepository,
+      userRepository,
+      outboxRepository,
+      auditRepository,
+      idempotencyRepository,
+      config: {
+        idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
+        // Placeholder payment gateway identifier + 15-minute attempt window until
+        // a live provider integration lands; the provider-call outbox event is the
+        // durable trigger the later sender worker consumes.
+        paymentProvider: "manual",
+        attemptTtlMs: 15 * 60 * 1000,
+      },
     })
 
     registerWebAuthRoutes(application, { ...webAuth, unitOfWork })

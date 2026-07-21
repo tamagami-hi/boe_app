@@ -2,29 +2,34 @@
 
 ## Last Verified Code Checkpoint
 
-- Task: `RA-C.4` client portfolio read slice — the **first canonical
-  `/v1/client/*` routes** — landed on branch `ts-migration/backend`.
-  Native-authenticated reads over the BE-021 investing/ownership schema:
-  `GET /v1/client/eligibility`, `GET /v1/client/holdings`, `GET /v1/client/orders`.
-- Result: new `domain/client/investingEligibility.ts` (pure derived eligibility,
-  spec 03 §2.3: suspended/blocked/pending_compliance/eligible; never stored),
-  `repositories/clientPortfolioRepository.ts` (eligibility inputs via lateral
-  latest-KYC/latest-risk; holdings valued at the greatest-revision current NAV
-  with paise/units emitted as strings; owner-scoped `(created_at DESC, id DESC)`
-  keyset), and `routes/clientPortfolioRoutes.ts` (native bearer re-check on every
-  handler; opaque keyset cursor). `authenticateNativeRequest` refactored to a
-  narrow `NativeRequestAuthDeps`. Frontend: `portfolioApi` derives the portfolio
-  from `/v1/client/holdings`, new `eligibilityApi`, `ordersApi.listOrders` reads
-  the canonical cursor endpoint (fixture fallbacks kept). `check` green (313
-  unit); integration **94/94 (10 files)**, incl. new
-  `clientPortfolio.integration.test.ts` (10); frontend `npm run build` green;
-  backend authored JS still 0; Legacy hash intact.
-- Next: `RA-C` continues with the client **write** domain — command services +
-  routes for `/v1/client/*` orders create/pay/book, SIPs, mandates, redemptions
-  (spec 03 §5-§6 money-math/locking/maker-checker, with integration tests), built
-  slice-by-slice, then the remaining client data screens. The paused backend
-  finalization items (BE-023 SES sender, BE-008b-3, BE-019A) remain deprioritized
-  behind runnability. APK/emulator packaging stays on the user's local stack.
+- Task: `RA-C.5` client order **write** path — the first canonical `/v1/client/*`
+  mutations — landed on branch `ts-migration/backend`. `POST /v1/client/orders`
+  (create a one-time purchase order) and `POST /v1/client/orders/:id/pay`
+  (begin payment), native-authenticated and idempotent, over the BE-021 schema.
+- Result: new `repositories/orderRepository.ts` (fund-order terms, latest
+  compliance, createPurchase, lockById, guarded `submitted -> payment_pending`)
+  and `repositories/paymentRepository.ts` (payment + first attempt); new
+  `domain/client/createOrder.ts` (locks user, **re-derives eligibility** spec
+  03 §2.3, published-fund + minimum guards, audit) and
+  `domain/client/beginPayment.ts` (transition + payment/attempt +
+  `payment` provider-call outbox + audit); new `routes/clientOrderRoutes.ts`
+  (Idempotency-Key + DB idempotency protocol, `user:<id>` scope). Frontend
+  `ordersApi.createLumpsum` -> `POST /v1/client/orders`, new
+  `beginOrderPayment` -> `.../pay`. `check` green (313 unit); integration
+  **104/104 (11 files)**, incl. new `clientOrders.integration.test.ts` (10);
+  frontend `npm run build` green; backend authored JS still 0; Legacy hash
+  intact.
+- Next: finish the order lifecycle — `sendPaymentToProvider` worker (consumes
+  the provider-call outbox), `confirmPayment` (signed provider event), then
+  `bookOrder` (`payment_confirmed -> booked`: immutable execution + lot +
+  holding delta with round-half-even money math, spec 03 §4.3/§6) — after which
+  holdings populate. Then SIPs, mandates, redemptions, and the remaining client
+  data screens. Build slice-by-slice with integration tests. APK/emulator
+  packaging stays on the user's local stack.
+- Prior checkpoint: `RA-C.4` client portfolio read slice —
+  `GET /v1/client/{eligibility,holdings,orders}` native-authenticated reads over
+  the BE-021 investing/ownership schema (derived eligibility spec 03 §2.3;
+  holdings valued at current NAV; owner-scoped keyset).
 - Prior checkpoint: `RA-B0` deploy-env boot compatibility (Option 3) — backend
   boots/serves under the `release_manager` deploy stack unedited (`CORS_ORIGIN`,
   optional AWS SES/SNS, `\n`-escaped ES256 key, `seed:auth`, Dockerfile
