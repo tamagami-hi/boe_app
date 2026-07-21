@@ -6,6 +6,8 @@
  * attempt and outbox and never runs inside a transaction. Ownership is carried
  * by composite `(id, user_id)` / `(payment_id, user_id)` foreign keys.
  */
+import { sql } from "kysely"
+
 import type { Payment, PaymentAttempt, Transaction } from "../db/repositories.js"
 
 export interface CreatePaymentInput {
@@ -26,6 +28,21 @@ export interface CreatedPayment {
 export interface PaymentWriteRepository {
   /** Create the payment (state `created`) and its first attempt (attempt_number 1). */
   createWithFirstAttempt: (tx: Transaction, input: CreatePaymentInput) => Promise<CreatedPayment>
+  /** Lock the order's payment aggregate for a state transition. */
+  lockByOrder: (
+    tx: Transaction,
+    input: Readonly<{ orderId: string; userId: string }>,
+  ) => Promise<Payment | null>
+  /** created -> provider_pending on the payment and its current attempt. */
+  sendToProvider: (
+    tx: Transaction,
+    input: Readonly<{ paymentId: string; userId: string; providerPaymentId: string; now: Date }>,
+  ) => Promise<Payment | null>
+  /** provider_pending -> succeeded on the payment and its current attempt. */
+  succeed: (
+    tx: Transaction,
+    input: Readonly<{ paymentId: string; userId: string; now: Date }>,
+  ) => Promise<Payment | null>
 }
 
 export const createPaymentRepository = (): PaymentWriteRepository => ({
@@ -54,5 +71,64 @@ export const createPaymentRepository = (): PaymentWriteRepository => ({
       .executeTakeFirstOrThrow()
 
     return { payment, attempt }
+  },
+
+  lockByOrder: async (tx, input) => {
+    const row = await tx
+      .selectFrom("payments")
+      .selectAll()
+      .where("order_id", "=", input.orderId)
+      .where("user_id", "=", input.userId)
+      .forUpdate()
+      .executeTakeFirst()
+    return row ?? null
+  },
+
+  sendToProvider: async (tx, input) => {
+    const row = await tx
+      .updateTable("payments")
+      .set({ state: "provider_pending", version: sql<string>`version + 1`, updated_at: sql<Date>`now()` })
+      .where("id", "=", input.paymentId)
+      .where("user_id", "=", input.userId)
+      .where("state", "=", "created")
+      .returningAll()
+      .executeTakeFirst()
+    if (row === undefined) return null
+    await tx
+      .updateTable("payment_attempts")
+      .set({
+        state: "provider_pending",
+        provider_payment_id: input.providerPaymentId,
+        version: sql<string>`version + 1`,
+        updated_at: sql<Date>`now()`,
+      })
+      .where("payment_id", "=", input.paymentId)
+      .where("state", "=", "created")
+      .execute()
+    return row
+  },
+
+  succeed: async (tx, input) => {
+    const row = await tx
+      .updateTable("payments")
+      .set({
+        state: "succeeded",
+        succeeded_at: input.now,
+        version: sql<string>`version + 1`,
+        updated_at: sql<Date>`now()`,
+      })
+      .where("id", "=", input.paymentId)
+      .where("user_id", "=", input.userId)
+      .where("state", "=", "provider_pending")
+      .returningAll()
+      .executeTakeFirst()
+    if (row === undefined) return null
+    await tx
+      .updateTable("payment_attempts")
+      .set({ state: "succeeded", version: sql<string>`version + 1`, updated_at: sql<Date>`now()` })
+      .where("payment_id", "=", input.paymentId)
+      .where("state", "=", "provider_pending")
+      .execute()
+    return row
   },
 })

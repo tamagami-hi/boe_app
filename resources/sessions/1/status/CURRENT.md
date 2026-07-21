@@ -2,34 +2,35 @@
 
 ## Last Verified Code Checkpoint
 
-- Task: `RA-C.5` client order **write** path — the first canonical `/v1/client/*`
-  mutations — landed on branch `ts-migration/backend`. `POST /v1/client/orders`
-  (create a one-time purchase order) and `POST /v1/client/orders/:id/pay`
-  (begin payment), native-authenticated and idempotent, over the BE-021 schema.
-- Result: new `repositories/orderRepository.ts` (fund-order terms, latest
-  compliance, createPurchase, lockById, guarded `submitted -> payment_pending`)
-  and `repositories/paymentRepository.ts` (payment + first attempt); new
-  `domain/client/createOrder.ts` (locks user, **re-derives eligibility** spec
-  03 §2.3, published-fund + minimum guards, audit) and
-  `domain/client/beginPayment.ts` (transition + payment/attempt +
-  `payment` provider-call outbox + audit); new `routes/clientOrderRoutes.ts`
-  (Idempotency-Key + DB idempotency protocol, `user:<id>` scope). Frontend
-  `ordersApi.createLumpsum` -> `POST /v1/client/orders`, new
-  `beginOrderPayment` -> `.../pay`. `check` green (313 unit); integration
-  **104/104 (11 files)**, incl. new `clientOrders.integration.test.ts` (10);
-  frontend `npm run build` green; backend authored JS still 0; Legacy hash
-  intact.
-- Next: finish the order lifecycle — `sendPaymentToProvider` worker (consumes
-  the provider-call outbox), `confirmPayment` (signed provider event), then
-  `bookOrder` (`payment_confirmed -> booked`: immutable execution + lot +
-  holding delta with round-half-even money math, spec 03 §4.3/§6) — after which
-  holdings populate. Then SIPs, mandates, redemptions, and the remaining client
-  data screens. Build slice-by-slice with integration tests. APK/emulator
-  packaging stays on the user's local stack.
-- Prior checkpoint: `RA-C.4` client portfolio read slice —
-  `GET /v1/client/{eligibility,holdings,orders}` native-authenticated reads over
-  the BE-021 investing/ownership schema (derived eligibility spec 03 §2.3;
-  holdings valued at current NAV; owner-scoped keyset).
+- Task: `RA-C.6` order booking money-math — completes the purchase-order
+  lifecycle to `booked`, producing holdings — landed on branch
+  `ts-migration/backend`. `sendPaymentToProvider`, `confirmPayment`, and
+  `bookOrder` (spec 03 §4.3 arithmetic, §5.2, §6).
+- Result: new `src/finance/money.ts` (+ 14 unit tests) — pure BigInt
+  round-half-to-even arithmetic (`computeAllotmentUnits` = round-once of
+  `amount_paise · 1e14 / navScaled8`, never floating point); placed under
+  `src/finance/` so it is unit-gated like the `auth`/`crypto` primitives. New
+  `repositories/holdingRepository.ts` (current NAV, `upsertHolding`, execution/
+  lot/movement inserts) and `repositories/notificationRepository.ts`; new
+  `domain/client/confirmPayment.ts` (`sendPaymentToProvider` + evidence-checked
+  `confirmPayment`) and `domain/client/bookOrder.ts` (guarded
+  `payment_confirmed -> booked` appending immutable execution + holding + lot +
+  movement + notification + audit). `check` green (**327 unit**, was 313);
+  integration **109/109 (12 files)**, incl. new
+  `clientBooking.integration.test.ts` (5) proving ₹2,000 @ NAV 20.00 →
+  `100.00000000` units exactly; backend authored JS still 0; Legacy hash intact.
+- Next: add the **runtime trigger** so booking runs in the live app (not just
+  tests) — a `sendPaymentToProvider` worker draining the `payment` provider-call
+  outbox, a signed provider webhook (real Razorpay) invoking `confirmPayment`,
+  and an ops/system `bookOrder` trigger. Then SIPs, mandates, redemptions, and
+  the remaining client data screens. Build slice-by-slice with integration
+  tests. APK/emulator packaging stays on the user's local stack.
+- Prior checkpoint: `RA-C.5` client order **write** path —
+  `POST /v1/client/orders` (create purchase order) and
+  `POST /v1/client/orders/:id/pay` (begin payment), native-authenticated and
+  idempotent, over the BE-021 schema (eligibility re-derived under lock,
+  published-fund + minimum guards, provider-call outbox; Order/Payment write
+  repos; frontend `createLumpsum`/`beginOrderPayment` wired).
 - Prior checkpoint: `RA-B0` deploy-env boot compatibility (Option 3) — backend
   boots/serves under the `release_manager` deploy stack unedited (`CORS_ORIGIN`,
   optional AWS SES/SNS, `\n`-escaped ES256 key, `seed:auth`, Dockerfile

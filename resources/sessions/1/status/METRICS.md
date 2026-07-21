@@ -789,6 +789,27 @@ green; `package.json`/`package-lock.json` unchanged; Legacy hash intact. No new
 dependencies.
 
 
+## Delta: RA-C.6 Order booking money-math (branch `ts-migration/backend`)
+
+Completes the purchase-order lifecycle to `booked`: `sendPaymentToProvider` +
+`confirmPayment` (provider seam) and `bookOrder` (immutable execution + holding
++ lot + movement), driven by exact round-half-to-even BigInt arithmetic.
+
+| Change | Value |
+|---|---:|
+| New backend files (money module, 2 repos, 2 domain commands) | 5 |
+| Backend files touched (order/payment repo transitions) | 2 |
+| New unit tests (`src/finance/money.test.ts`) | 14 |
+| New backend integration test file (`clientBooking`) | 1 (5 tests) |
+| Backend authored JS/JSX | 0 (unchanged) |
+
+`npm run check` green (**327 unit**, was 313 — the pure `src/finance` money
+module is unit-gated); integration 104 -> 109 (12 files); integration branch
+coverage 82.0% (money math moved out of `domain/` so it no longer drags the
+integration aggregate); `package.json`/`package-lock.json` unchanged; Legacy
+hash intact. No new dependencies.
+
+
 ## Related notes (Obsidian graph)
 
 - Status siblings: [[status/CURRENT|Current resume point]] · [[status/IMPLEMENTATION_PROGRESS|Implementation progress]] · [[status/VALIDATION_SUMMARY|Validation summary]]

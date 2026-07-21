@@ -67,6 +67,8 @@ not rewrite prior RED/GREEN history to match later architecture.
 
 | RA-C.5 | DONE | [Client order write path (createOrder + beginPayment)](./RA-C-5-client-order-write-path.md) | on `ts-migration/backend` (first canonical `/v1/client/*` writes: `POST /v1/client/orders` + `POST /v1/client/orders/:id/pay`; eligibility re-derived under lock, published-fund + minimum guards, idempotency + audit + provider-call outbox; Order/Payment write repos; client createLumpsum/beginOrderPayment wired; integration 94 -> 104; app build green) |
 
+| RA-C.6 | DONE | [Order booking money-math (paid -> confirmed -> booked)](./RA-C-6-order-booking-money-math.md) | on `ts-migration/backend` (completes the purchase lifecycle: `sendPaymentToProvider`/`confirmPayment`/`bookOrder` system commands; exact round-half-even `src/finance/money.ts`; booking appends execution+holding+lot+movement+notification; unit 313 -> 327, integration 104 -> 109; confirm/book runtime trigger + provider webhook deferred) |
+
 
 ## Related notes (Obsidian graph)
 
