@@ -57,6 +57,11 @@ export interface OrderWriteRepository {
     tx: Transaction,
     input: Readonly<{ orderId: string; userId: string; now: Date }>,
   ) => Promise<InvestmentOrder | null>
+  /** payment_pending -> payment_failed; null when the guard fails. */
+  failPayment: (
+    tx: Transaction,
+    input: Readonly<{ orderId: string; userId: string; failureCode: string; now: Date }>,
+  ) => Promise<InvestmentOrder | null>
 }
 
 export const createOrderRepository = (): OrderWriteRepository => ({
@@ -164,6 +169,23 @@ export const createOrderRepository = (): OrderWriteRepository => ({
       .where("id", "=", input.orderId)
       .where("user_id", "=", input.userId)
       .where("state", "=", "payment_confirmed")
+      .returningAll()
+      .executeTakeFirst()
+    return row ?? null
+  },
+
+  failPayment: async (tx, input) => {
+    const row = await tx
+      .updateTable("investment_orders")
+      .set({
+        state: "payment_failed",
+        failure_code: input.failureCode,
+        version: sql<string>`version + 1`,
+        updated_at: sql<Date>`now()`,
+      })
+      .where("id", "=", input.orderId)
+      .where("user_id", "=", input.userId)
+      .where("state", "=", "payment_pending")
       .returningAll()
       .executeTakeFirst()
     return row ?? null

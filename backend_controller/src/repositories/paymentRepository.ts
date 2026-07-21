@@ -45,6 +45,11 @@ export interface PaymentWriteRepository {
     tx: Transaction,
     input: Readonly<{ paymentId: string; userId: string; now: Date }>,
   ) => Promise<Payment | null>
+  /** created|provider_pending -> failed on the payment and its current attempt. */
+  fail: (
+    tx: Transaction,
+    input: Readonly<{ paymentId: string; userId: string; failureCode: string; now: Date }>,
+  ) => Promise<Payment | null>
 }
 
 export const createPaymentRepository = (): PaymentWriteRepository => ({
@@ -135,6 +140,35 @@ export const createPaymentRepository = (): PaymentWriteRepository => ({
       .set({ state: "succeeded", version: sql<string>`version + 1`, updated_at: sql<Date>`now()` })
       .where("payment_id", "=", input.paymentId)
       .where("state", "=", "provider_pending")
+      .execute()
+    return row
+  },
+
+  fail: async (tx, input) => {
+    const row = await tx
+      .updateTable("payments")
+      .set({
+        state: "failed",
+        failed_at: input.now,
+        version: sql<string>`version + 1`,
+        updated_at: sql<Date>`now()`,
+      })
+      .where("id", "=", input.paymentId)
+      .where("user_id", "=", input.userId)
+      .where("state", "in", ["created", "provider_pending"])
+      .returningAll()
+      .executeTakeFirst()
+    if (row === undefined) return null
+    await tx
+      .updateTable("payment_attempts")
+      .set({
+        state: "failed",
+        failure_code: input.failureCode,
+        version: sql<string>`version + 1`,
+        updated_at: sql<Date>`now()`,
+      })
+      .where("payment_id", "=", input.paymentId)
+      .where("state", "in", ["created", "provider_pending"])
       .execute()
     return row
   },

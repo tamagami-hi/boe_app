@@ -63,6 +63,15 @@ const ServerConfigSchema = z.object({
   VERIFICATION_TOKEN_TTL_MS: z.coerce.number().int().min(1).default(DAY_MS),
   IDEMPOTENCY_TTL_MS: z.coerce.number().int().min(1).default(DAY_MS),
   ACTIVATION_INVITE_TTL_MS: z.coerce.number().int().min(1).default(7 * DAY_MS),
+  // Payment gateway. `manual` is the built-in mock provider (instant success,
+  // auto-settled by the worker). A real gateway (e.g. `razorpay`) supplies its
+  // API credentials and a webhook signing secret; when the secret is present the
+  // signed payment webhook is enabled and drives the paid/failed confirmation.
+  PAYMENT_PROVIDER: z.string().trim().min(1).default("manual"),
+  PAYMENT_WEBHOOK_SECRET: z.string().trim().optional(),
+  PAYMENT_GATEWAY_KEY_ID: z.string().trim().optional(),
+  PAYMENT_GATEWAY_KEY_SECRET: z.string().trim().optional(),
+  PAYMENT_ATTEMPT_TTL_MS: z.coerce.number().int().min(1).default(15 * 60 * 1000),
 })
 
 export interface ServerConfig {
@@ -75,6 +84,16 @@ export interface ServerConfig {
   readonly providerEvents: { readonly awsRegion: string | null; readonly topicArn: string | null; readonly ttlMs: number }
   readonly sesConfigurationSet: string
   readonly emailConfigured: boolean
+  readonly payments: {
+    readonly provider: string
+    /** Mock provider: the worker auto-confirms + books. Real gateway: the webhook does. */
+    readonly autoConfirm: boolean
+    readonly webhookSecret: string | null
+    readonly webhookConfigured: boolean
+    readonly gatewayKeyId: string | null
+    readonly gatewayKeySecret: string | null
+    readonly attemptTtlMs: number
+  }
   readonly ttls: {
     readonly verificationTokenTtlMs: number
     readonly idempotencyTtlMs: number
@@ -156,6 +175,15 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
     // not fully configured (the worker/SES adapter are out-of-band).
     sesConfigurationSet: sesConfigurationSet ?? "unconfigured",
     emailConfigured,
+    payments: {
+      provider: parsed.PAYMENT_PROVIDER,
+      autoConfirm: parsed.PAYMENT_PROVIDER === "manual",
+      webhookSecret: nonEmpty(parsed.PAYMENT_WEBHOOK_SECRET),
+      webhookConfigured: nonEmpty(parsed.PAYMENT_WEBHOOK_SECRET) !== null,
+      gatewayKeyId: nonEmpty(parsed.PAYMENT_GATEWAY_KEY_ID),
+      gatewayKeySecret: nonEmpty(parsed.PAYMENT_GATEWAY_KEY_SECRET),
+      attemptTtlMs: parsed.PAYMENT_ATTEMPT_TTL_MS,
+    },
     ttls: {
       verificationTokenTtlMs: parsed.VERIFICATION_TOKEN_TTL_MS,
       idempotencyTtlMs: parsed.IDEMPOTENCY_TTL_MS,

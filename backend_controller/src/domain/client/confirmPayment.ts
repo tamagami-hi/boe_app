@@ -119,3 +119,54 @@ export const confirmPayment = async (
   })
   return { order, payment }
 }
+
+export interface FailPaymentInput {
+  readonly userId: string
+  readonly orderId: string
+  readonly failureCode: string
+  readonly requestId: string
+}
+
+/**
+ * Record a failed provider result: the payment fails and the order moves to
+ * `payment_failed` atomically. This is the negative side of the paid/not-paid
+ * confirmation checkpoint (important for recurring SIP installments).
+ */
+export const failPayment = async (
+  tx: Transaction,
+  deps: PaymentSeamDeps,
+  input: FailPaymentInput,
+): Promise<ConfirmPaymentResult> => {
+  const now = deps.clock()
+  const locked = await deps.paymentRepository.lockByOrder(tx, { orderId: input.orderId, userId: input.userId })
+  if (locked === null) throw new AppError("RESOURCE_NOT_FOUND")
+
+  const payment = await deps.paymentRepository.fail(tx, {
+    paymentId: locked.id,
+    userId: input.userId,
+    failureCode: input.failureCode,
+    now,
+  })
+  if (payment === null) throw new AppError("STATE_CONFLICT")
+
+  const order = await deps.orderRepository.failPayment(tx, {
+    orderId: input.orderId,
+    userId: input.userId,
+    failureCode: input.failureCode,
+    now,
+  })
+  if (order === null) throw new AppError("STATE_CONFLICT")
+
+  await deps.auditRepository.append(tx, {
+    actorType: "provider",
+    command: "order.fail_payment",
+    entityType: "investment_order",
+    entityId: order.id,
+    fromState: "payment_pending",
+    toState: "payment_failed",
+    requestId: input.requestId,
+    entityVersion: Number(order.version),
+    metadata: { paymentId: payment.id, failureCode: input.failureCode },
+  })
+  return { order, payment }
+}

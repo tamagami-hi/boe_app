@@ -1,17 +1,18 @@
-import { randomBytes, randomUUID } from "node:crypto"
+import { createHmac, randomBytes, randomUUID } from "node:crypto"
 import { fileURLToPath } from "node:url"
 
 import { PostgreSqlContainer } from "@testcontainers/postgresql"
 import type { StartedPostgreSqlContainer } from "@testcontainers/postgresql"
+import type { FastifyInstance } from "fastify"
 import type { Pool } from "pg"
 import { Wait } from "testcontainers"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 
-import { createDatabase, createUnitOfWork, type UnitOfWork } from "../../src/db/database.js"
+import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
 import { beginPayment } from "../../src/domain/client/beginPayment.js"
 import { createOrder } from "../../src/domain/client/createOrder.js"
-import { settleDuePayments, type SettleDuePaymentsDeps } from "../../src/domain/client/settlePayment.js"
+import { dispatchPayment } from "../../src/domain/client/settlePayment.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
 import { createHoldingRepository } from "../../src/repositories/holdingRepository.js"
 import { createNotificationRepository } from "../../src/repositories/notificationRepository.js"
@@ -19,13 +20,16 @@ import { createOrderRepository } from "../../src/repositories/orderRepository.js
 import { createOutboxRepository } from "../../src/repositories/outboxRepository.js"
 import { createPaymentRepository } from "../../src/repositories/paymentRepository.js"
 import { createUserRepository } from "../../src/repositories/userRepository.js"
+import { registerPaymentWebhookRoutes, type PaymentWebhookDeps } from "../../src/routes/paymentWebhookRoutes.js"
+import { createApplication } from "../../src/runtime/application.js"
 import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
 import { runSeed } from "../../src/scripts/seed.js"
 
+const WEBHOOK_SECRET = "test-payment-webhook-secret"
+
 let container: StartedPostgreSqlContainer
 let pool: Pool
-let uow: UnitOfWork
-let workerDeps: SettleDuePaymentsDeps
+let app: FastifyInstance
 let userId: string
 let fundId: string
 
@@ -33,10 +37,12 @@ const orderRepository = createOrderRepository()
 const paymentRepository = createPaymentRepository()
 const holdingRepository = createHoldingRepository()
 const notificationRepository = createNotificationRepository()
-const userRepository = createUserRepository()
 const outboxRepository = createOutboxRepository()
+const userRepository = createUserRepository()
 const auditRepository = createAuditRepository()
 const clock = () => new Date()
+
+let uow: ReturnType<typeof createUnitOfWork>
 
 const createDeps = { orderRepository, userRepository, auditRepository, clock }
 const beginDeps = {
@@ -45,11 +51,25 @@ const beginDeps = {
   outboxRepository,
   auditRepository,
   clock,
-  config: { paymentProvider: "manual", attemptTtlMs: 900_000 },
+  config: { paymentProvider: "razorpay", attemptTtlMs: 900_000 },
+}
+const advanceDeps = {
+  paymentRepository,
+  orderRepository,
+  holdingRepository,
+  notificationRepository,
+  auditRepository,
+  clock,
+  config: { paymentProvider: "razorpay" },
 }
 
-/** Create a purchase order and begin its payment; returns the order id. */
-const createAndPay = async (amountPaise: number): Promise<string> => {
+const dataOf = <T>(response: { json: () => unknown }): T => (response.json() as { data: T }).data
+const errorOf = (response: { json: () => unknown }): string =>
+  (response.json() as { error: { code: string } }).error.code
+const sign = (raw: string): string => createHmac("sha256", WEBHOOK_SECRET).update(raw).digest("hex")
+
+/** Create + pay + dispatch a payment (real-provider path); returns { orderId, paymentId }. */
+const createPaidPending = async (amountPaise: number): Promise<{ orderId: string; paymentId: string }> => {
   const orderId = await uow.execute(async (tx) => {
     const order = await createOrder(tx, createDeps, {
       userId,
@@ -60,7 +80,20 @@ const createAndPay = async (amountPaise: number): Promise<string> => {
     return order.id
   })
   await uow.execute((tx) => beginPayment(tx, beginDeps, { userId, orderId, requestId: randomUUID() }))
-  return orderId
+  const paymentRow = await pool.query<{ id: string }>("select id from payments where order_id = $1", [orderId])
+  const paymentId = paymentRow.rows[0]!.id
+  await uow.execute((tx) => dispatchPayment(tx, advanceDeps, { paymentId, requestId: randomUUID() }))
+  return { orderId, paymentId }
+}
+
+const postWebhook = (payload: Record<string, unknown>, signature?: string) => {
+  const raw = JSON.stringify(payload)
+  return app.inject({
+    method: "POST",
+    url: "/v1/provider-events/payment",
+    headers: { "content-type": "application/json", "x-payment-signature": signature ?? sign(raw) },
+    payload: raw,
+  })
 }
 
 beforeAll(async () => {
@@ -80,23 +113,24 @@ beforeAll(async () => {
     all.filter((file) => file.version >= "009"),
   )
   await runSeed(pool)
-  uow = createUnitOfWork(createDatabase(pool))
-  workerDeps = {
+  const database = createDatabase(pool)
+  uow = createUnitOfWork(database)
+
+  const deps: PaymentWebhookDeps = {
     unitOfWork: uow,
-    outboxRepository,
     paymentRepository,
     orderRepository,
     holdingRepository,
     notificationRepository,
     auditRepository,
     clock,
-    config: { paymentProvider: "manual" },
-    settleConfig: { topic: "payment", workerId: "test-worker", leaseMs: 60_000, claimLimit: 50, autoConfirm: true },
+    config: { paymentProvider: "razorpay", webhookSecret: WEBHOOK_SECRET },
   }
+  app = createApplication({ logger: false, registerRoutes: (instance) => registerPaymentWebhookRoutes(instance, deps) })
 
   const user = await pool.query<{ id: string }>(
     "insert into users (email_normalized, phone_e164, full_name, account_state, activated_at) " +
-      "values ('worker@example.com','+14155551401','Worker User','active', now()) returning id",
+      "values ('webhook@example.com','+14155551501','Webhook User','active', now()) returning id",
   )
   userId = user.rows[0]!.id
   await pool.query(
@@ -109,7 +143,7 @@ beforeAll(async () => {
     [userId],
   )
   const fund = await pool.query<{ id: string }>(
-    "insert into funds (slug, state, published_at, created_by_user_id) values ('worker-fund','published', now(), $1) returning id",
+    "insert into funds (slug, state, published_at, created_by_user_id) values ('webhook-fund','published', now(), $1) returning id",
     [userId],
   )
   fundId = fund.rows[0]!.id
@@ -125,93 +159,80 @@ beforeAll(async () => {
   )
   const version = await pool.query<{ id: string }>(
     "insert into fund_versions (fund_id, version, name, category, objective, risk_level, minimum_sip_paise, minimum_purchase_paise, disclosure_version_id, initial_nav_price_id, terms_sha256, created_by_user_id) " +
-      "values ($1,1,'Worker Fund','equity','grow','high', 50000, 100000, $2, $3, $4, $5) returning id",
+      "values ($1,1,'Webhook Fund','equity','grow','high', 50000, 100000, $2, $3, $4, $5) returning id",
     [fundId, disclosure.rows[0]!.id, nav.rows[0]!.id, randomBytes(32), userId],
   )
   await pool.query("update funds set current_published_version_id = $1 where id = $2", [version.rows[0]!.id, fundId])
 }, 200_000)
 
 afterAll(async () => {
+  await app.close()
   await pool.end()
   await container.stop()
 })
 
-describe("payment settlement worker (integration)", () => {
-  test("a settlement pass books a paid order and materializes the holding", async () => {
-    const orderId = await createAndPay(200_000) // ₹2,000 @ NAV 20 => 100 units
+describe("payment webhook confirmation checkpoint (integration)", () => {
+  test("a signed success books the order and materializes the holding", async () => {
+    const { orderId, paymentId } = await createPaidPending(200_000) // 100 units
 
-    const summary = await settleDuePayments(workerDeps)
-    expect(summary.claimed).toBe(1)
-    expect(summary.booked).toBe(1)
+    const response = await postWebhook({ paymentId, status: "succeeded", providerPaymentId: "pay_abc123" })
+    expect(response.statusCode).toBe(200)
+    expect(dataOf<{ outcome: string }>(response).outcome).toBe("booked")
 
     const order = await pool.query<{ state: string }>("select state from investment_orders where id = $1", [orderId])
     expect(order.rows[0]?.state).toBe("booked")
-    const payment = await pool.query<{ state: string }>("select state from payments where order_id = $1", [orderId])
-    expect(payment.rows[0]?.state).toBe("succeeded")
     const holding = await pool.query<{ total_units: string }>(
       "select total_units from holdings where user_id = $1 and fund_id = $2",
       [userId, fundId],
     )
     expect(holding.rows[0]?.total_units).toBe("100.00000000")
-    const outbox = await pool.query<{ state: string }>(
-      "select state from outbox_events where topic = 'payment' and aggregate_id = (select id from payments where order_id = $1)",
-      [orderId],
-    )
-    expect(outbox.rows[0]?.state).toBe("delivered")
   })
 
-  test("a second pass is a no-op (the delivered event is not reclaimed)", async () => {
-    const summary = await settleDuePayments(workerDeps)
-    expect(summary.claimed).toBe(0)
-    expect(summary.booked).toBe(0)
+  test("a signed success is idempotent on replay", async () => {
+    const { paymentId } = await createPaidPending(100_000)
+    const first = await postWebhook({ paymentId, status: "succeeded" })
+    expect(dataOf<{ outcome: string }>(first).outcome).toBe("booked")
+    const replay = await postWebhook({ paymentId, status: "succeeded" })
+    expect(replay.statusCode).toBe(200)
+    expect(dataOf<{ outcome: string }>(replay).outcome).toBe("already_booked")
 
-    // Exactly one execution exists for the previously booked order.
     const executions = await pool.query<{ c: number }>(
-      "select count(*)::int as c from investment_executions where user_id = $1",
-      [userId],
+      "select count(*)::int as c from investment_executions where order_id = (select order_id from payments where id = $1)",
+      [paymentId],
     )
     expect(executions.rows[0]?.c).toBe(1)
   })
 
-  test("one pass settles multiple due payments", async () => {
-    const before = await pool.query<{ c: number }>(
-      "select count(*)::int as c from investment_orders where user_id = $1 and state = 'booked'",
-      [userId],
-    )
-    await createAndPay(100_000) // 50 units
-    await createAndPay(100_000) // 50 units
+  test("a signed failure fails the payment and the order (no holding)", async () => {
+    const { orderId, paymentId } = await createPaidPending(100_000)
 
-    const summary = await settleDuePayments(workerDeps)
-    expect(summary.claimed).toBe(2)
-    expect(summary.booked).toBe(2)
+    const response = await postWebhook({ paymentId, status: "failed", failureCode: "insufficient_funds" })
+    expect(response.statusCode).toBe(200)
+    expect(dataOf<{ outcome: string }>(response).outcome).toBe("failed")
 
-    const after = await pool.query<{ c: number }>(
-      "select count(*)::int as c from investment_orders where user_id = $1 and state = 'booked'",
-      [userId],
+    const order = await pool.query<{ state: string; failure_code: string | null }>(
+      "select state, failure_code from investment_orders where id = $1",
+      [orderId],
     )
-    expect(after.rows[0]!.c).toBe(before.rows[0]!.c + 2)
+    expect(order.rows[0]?.state).toBe("payment_failed")
+    expect(order.rows[0]?.failure_code).toBe("insufficient_funds")
+    const payment = await pool.query<{ state: string }>("select state from payments where order_id = $1", [orderId])
+    expect(payment.rows[0]?.state).toBe("failed")
   })
 
-  test("a pass with nothing due settles nothing", async () => {
-    const summary = await settleDuePayments(workerDeps)
-    expect(summary).toMatchObject({ claimed: 0, booked: 0, alreadyBooked: 0, retried: 0, deadLettered: 0 })
-  })
-
-  test("a real-provider pass only dispatches (awaits webhook), it does not book", async () => {
-    const orderId = await createAndPay(100_000)
-    const realProviderDeps: SettleDuePaymentsDeps = {
-      ...workerDeps,
-      config: { paymentProvider: "razorpay" },
-      settleConfig: { ...workerDeps.settleConfig, autoConfirm: false },
-    }
-
-    const summary = await settleDuePayments(realProviderDeps)
-    expect(summary.dispatched).toBe(1)
-    expect(summary.booked).toBe(0)
+  test("an invalid signature is rejected (401) and does not mutate", async () => {
+    const { orderId, paymentId } = await createPaidPending(100_000)
+    const response = await postWebhook({ paymentId, status: "succeeded" }, "deadbeef")
+    expect(response.statusCode).toBe(401)
+    expect(errorOf(response)).toBe("AUTHENTICATION_REQUIRED")
 
     const order = await pool.query<{ state: string }>("select state from investment_orders where id = $1", [orderId])
-    expect(order.rows[0]?.state).toBe("payment_pending") // awaiting the webhook confirmation
-    const payment = await pool.query<{ state: string }>("select state from payments where order_id = $1", [orderId])
-    expect(payment.rows[0]?.state).toBe("provider_pending")
+    expect(order.rows[0]?.state).toBe("payment_pending")
+  })
+
+  test("an unknown paymentId is RESOURCE_NOT_FOUND", async () => {
+    const response = await postWebhook({ paymentId: randomUUID(), status: "succeeded" })
+    expect(response.statusCode).toBe(404)
+    expect(errorOf(response)).toBe("RESOURCE_NOT_FOUND")
   })
 })

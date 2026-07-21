@@ -71,6 +71,8 @@ not rewrite prior RED/GREEN history to match later architecture.
 
 | RA-C.7 | DONE | [Payment settlement worker (runtime trigger to booking)](./RA-C-7-payment-settlement-worker.md) | on `ts-migration/backend` (drains the `payment` provider-call outbox and drives send->confirm->book so paid orders reach booked + holdings populate in the running app; `settleMockPayment` idempotent driver + `settleDuePayments` pass + `worker:payments` entrypoint; unit 327 -> 329, integration 109 -> 113; real gateway webhook deferred) |
 
+| RA-C.8 | DONE | [Env payment provider + paid/failed confirmation](./RA-C-8-payment-provider-and-confirmation.md) | on `ts-migration/backend` (payment provider + gateway credentials + webhook secret from env; signed `POST /v1/provider-events/payment` confirmation checkpoint drives confirm+book (succeeded) / fail (failed), idempotent; `failPayment` command; worker provider-aware (mock auto-settles, real gateway dispatch-only + webhook); integration 113 -> 119) |
+
 
 ## Related notes (Obsidian graph)
 

@@ -41,6 +41,7 @@ import { createVerificationTokenRepository } from "../repositories/verificationT
 import { registerAdminIdentityRoutes } from "../routes/adminIdentityRoutes.js"
 import { registerClientOrderRoutes } from "../routes/clientOrderRoutes.js"
 import { registerClientPortfolioRoutes } from "../routes/clientPortfolioRoutes.js"
+import { registerPaymentWebhookRoutes } from "../routes/paymentWebhookRoutes.js"
 import { registerNativeAuthRoutes } from "../routes/nativeAuthRoutes.js"
 import { registerProviderEventRoutes } from "../routes/providerEventRoutes.js"
 import { registerPublicOnboardingRoutes } from "../routes/publicOnboardingRoutes.js"
@@ -88,6 +89,8 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const clientPortfolioRepository = createClientPortfolioRepository()
   const orderRepository = createOrderRepository()
   const paymentRepository = createPaymentRepository()
+  const holdingRepository = createHoldingRepository()
+  const notificationRepository = createNotificationRepository()
 
   const webAuth: WebAuthDeps = {
     userRepository,
@@ -163,13 +166,31 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       idempotencyRepository,
       config: {
         idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
-        // Placeholder payment gateway identifier + 15-minute attempt window until
-        // a live provider integration lands; the provider-call outbox event is the
-        // durable trigger the later sender worker consumes.
-        paymentProvider: "manual",
-        attemptTtlMs: 15 * 60 * 1000,
+        // Provider + attempt window come from the environment; the provider-call
+        // outbox event is the durable trigger the settlement worker consumes.
+        paymentProvider: serverConfig.payments.provider,
+        attemptTtlMs: serverConfig.payments.attemptTtlMs,
       },
     })
+
+    // The signed payment webhook (real-gateway paid/failed confirmation) is only
+    // wired when a webhook secret is configured; the mock provider is auto-settled
+    // by the payment worker instead.
+    if (serverConfig.payments.webhookConfigured && serverConfig.payments.webhookSecret !== null) {
+      registerPaymentWebhookRoutes(application, {
+        unitOfWork,
+        clock,
+        paymentRepository,
+        orderRepository,
+        holdingRepository,
+        notificationRepository,
+        auditRepository,
+        config: {
+          paymentProvider: serverConfig.payments.provider,
+          webhookSecret: serverConfig.payments.webhookSecret,
+        },
+      })
+    }
 
     registerWebAuthRoutes(application, { ...webAuth, unitOfWork })
 
@@ -249,6 +270,7 @@ export const composePaymentSettlementWorker = (
   const workerId = source.WORKER_ID ?? "payment-worker"
   const claimLimit = Math.min(Math.max(Number(source.PAYMENT_WORKER_CLAIM_LIMIT ?? 50), 1), 100)
   const leaseMs = Math.max(Number(source.PAYMENT_WORKER_LEASE_MS ?? 60_000), 1_000)
+  const paymentProvider = source.PAYMENT_PROVIDER ?? "manual"
 
   const deps = {
     unitOfWork,
@@ -259,8 +281,10 @@ export const composePaymentSettlementWorker = (
     notificationRepository: createNotificationRepository(),
     auditRepository: createAuditRepository(),
     clock,
-    config: { paymentProvider: source.PAYMENT_PROVIDER ?? "manual" },
-    settleConfig: { topic: "payment", workerId, leaseMs, claimLimit },
+    config: { paymentProvider },
+    // The mock provider is auto-settled to booked in the pass; a real gateway is
+    // only dispatched here and confirmed later via the signed webhook.
+    settleConfig: { topic: "payment", workerId, leaseMs, claimLimit, autoConfirm: paymentProvider === "manual" },
   }
 
   return {

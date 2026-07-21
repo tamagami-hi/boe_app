@@ -830,6 +830,26 @@ integration branch coverage 81.6%; new npm scripts `worker:payments` /
 dependencies.
 
 
+## Delta: RA-C.8 Env payment provider + paid/failed confirmation (branch `ts-migration/backend`)
+
+Payment gateway configured from env; signed webhook confirmation checkpoint
+(succeeded → confirm+book, failed → payment_failed); provider-aware worker.
+
+| Change | Value |
+|---|---:|
+| New backend files (payment webhook route) | 1 |
+| Backend files touched (environment, order/payment repos, confirmPayment, settlePayment, composition) | 6 |
+| New backend integration test file (`paymentWebhook`) | 1 (5 tests) |
+| `.env` example files updated | 2 |
+| Backend authored JS/JSX | 0 (unchanged) |
+
+`npm run check` green (329 unit, unchanged); integration 113 -> 119 (14 files);
+integration branch 80.9%; new env vars `PAYMENT_PROVIDER` /
+`PAYMENT_WEBHOOK_SECRET` / `PAYMENT_GATEWAY_KEY_ID` / `PAYMENT_GATEWAY_KEY_SECRET`
+/ `PAYMENT_ATTEMPT_TTL_MS`; `package-lock.json` unchanged; Legacy hash intact. No
+new dependencies.
+
+
 ## Related notes (Obsidian graph)
 
 - Status siblings: [[status/CURRENT|Current resume point]] · [[status/IMPLEMENTATION_PROGRESS|Implementation progress]] · [[status/VALIDATION_SUMMARY|Validation summary]]
