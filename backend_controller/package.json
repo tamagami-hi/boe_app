@@ -26,6 +26,8 @@
     "smoke:source": "tsx scripts/smoke-entrypoint.ts source",
     "smoke:dist": "tsx scripts/smoke-entrypoint.ts dist",
     "start": "node dist/server.js",
+    "worker:payments": "node dist/paymentWorker.js",
+    "worker:payments:dev": "node --env-file-if-exists=.env --import=tsx src/paymentWorker.ts",
     "migrate": "node dist/scripts/migrate.js up",
     "migrate:dev": "tsx src/scripts/migrate.ts",
     "seed": "node dist/scripts/seed.js",

@@ -21,8 +21,11 @@ import { createCertificateFetcher } from "../email/certificateFetcher.js"
 import { createActivationInviteRepository } from "../repositories/activationInviteRepository.js"
 import { createApplicationRepository } from "../repositories/applicationRepository.js"
 import { createClientPortfolioRepository } from "../repositories/clientPortfolioRepository.js"
+import { createHoldingRepository } from "../repositories/holdingRepository.js"
+import { createNotificationRepository } from "../repositories/notificationRepository.js"
 import { createOrderRepository } from "../repositories/orderRepository.js"
 import { createPaymentRepository } from "../repositories/paymentRepository.js"
+import { settleDuePayments, type SettleSummary } from "../domain/client/settlePayment.js"
 import { createApplicationReviewRepository } from "../repositories/applicationReviewRepository.js"
 import { createAuditRepository } from "../repositories/auditRepository.js"
 import { createAuthSessionRepository } from "../repositories/authSessionRepository.js"
@@ -215,6 +218,53 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   return {
     registerRoutes,
     checkReadiness,
+    dispose: async () => {
+      await pool.end()
+    },
+  }
+}
+
+export interface PaymentSettlementWorker {
+  /** Run one settlement pass over the due `payment` provider-call outbox events. */
+  readonly runOnce: () => Promise<SettleSummary>
+  readonly dispose: () => Promise<void>
+}
+
+/**
+ * Compose the payment settlement worker (spec 03 §5.2, §6). A separate entrypoint
+ * from the HTTP server: it owns its own pool and drains the `payment`
+ * provider-call outbox, driving each payment `send -> confirm -> book` with the
+ * placeholder "manual" provider (instant success). A real gateway swaps in a
+ * genuine dispatch + signed webhook without changing the claim/lease/retry loop.
+ */
+export const composePaymentSettlementWorker = (
+  source: Readonly<Record<string, string | undefined>>,
+): PaymentSettlementWorker => {
+  const databaseConfig = parseDatabaseConfig(source)
+  const pool = createPool(databaseConfig)
+  const database = createDatabase(pool)
+  const unitOfWork = createUnitOfWork(database)
+  const clock = (): Date => new Date()
+
+  const workerId = source.WORKER_ID ?? "payment-worker"
+  const claimLimit = Math.min(Math.max(Number(source.PAYMENT_WORKER_CLAIM_LIMIT ?? 50), 1), 100)
+  const leaseMs = Math.max(Number(source.PAYMENT_WORKER_LEASE_MS ?? 60_000), 1_000)
+
+  const deps = {
+    unitOfWork,
+    outboxRepository: createOutboxRepository(),
+    paymentRepository: createPaymentRepository(),
+    orderRepository: createOrderRepository(),
+    holdingRepository: createHoldingRepository(),
+    notificationRepository: createNotificationRepository(),
+    auditRepository: createAuditRepository(),
+    clock,
+    config: { paymentProvider: source.PAYMENT_PROVIDER ?? "manual" },
+    settleConfig: { topic: "payment", workerId, leaseMs, claimLimit },
+  }
+
+  return {
+    runOnce: () => settleDuePayments(deps),
     dispose: async () => {
       await pool.end()
     },

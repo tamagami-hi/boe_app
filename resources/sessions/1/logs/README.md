@@ -69,6 +69,8 @@ not rewrite prior RED/GREEN history to match later architecture.
 
 | RA-C.6 | DONE | [Order booking money-math (paid -> confirmed -> booked)](./RA-C-6-order-booking-money-math.md) | on `ts-migration/backend` (completes the purchase lifecycle: `sendPaymentToProvider`/`confirmPayment`/`bookOrder` system commands; exact round-half-even `src/finance/money.ts`; booking appends execution+holding+lot+movement+notification; unit 313 -> 327, integration 104 -> 109; confirm/book runtime trigger + provider webhook deferred) |
 
+| RA-C.7 | DONE | [Payment settlement worker (runtime trigger to booking)](./RA-C-7-payment-settlement-worker.md) | on `ts-migration/backend` (drains the `payment` provider-call outbox and drives send->confirm->book so paid orders reach booked + holdings populate in the running app; `settleMockPayment` idempotent driver + `settleDuePayments` pass + `worker:payments` entrypoint; unit 327 -> 329, integration 109 -> 113; real gateway webhook deferred) |
+
 
 ## Related notes (Obsidian graph)
 

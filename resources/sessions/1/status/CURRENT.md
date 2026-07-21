@@ -2,35 +2,32 @@
 
 ## Last Verified Code Checkpoint
 
-- Task: `RA-C.6` order booking money-math — completes the purchase-order
-  lifecycle to `booked`, producing holdings — landed on branch
-  `ts-migration/backend`. `sendPaymentToProvider`, `confirmPayment`, and
-  `bookOrder` (spec 03 §4.3 arithmetic, §5.2, §6).
-- Result: new `src/finance/money.ts` (+ 14 unit tests) — pure BigInt
-  round-half-to-even arithmetic (`computeAllotmentUnits` = round-once of
-  `amount_paise · 1e14 / navScaled8`, never floating point); placed under
-  `src/finance/` so it is unit-gated like the `auth`/`crypto` primitives. New
-  `repositories/holdingRepository.ts` (current NAV, `upsertHolding`, execution/
-  lot/movement inserts) and `repositories/notificationRepository.ts`; new
-  `domain/client/confirmPayment.ts` (`sendPaymentToProvider` + evidence-checked
-  `confirmPayment`) and `domain/client/bookOrder.ts` (guarded
-  `payment_confirmed -> booked` appending immutable execution + holding + lot +
-  movement + notification + audit). `check` green (**327 unit**, was 313);
-  integration **109/109 (12 files)**, incl. new
-  `clientBooking.integration.test.ts` (5) proving ₹2,000 @ NAV 20.00 →
-  `100.00000000` units exactly; backend authored JS still 0; Legacy hash intact.
-- Next: add the **runtime trigger** so booking runs in the live app (not just
-  tests) — a `sendPaymentToProvider` worker draining the `payment` provider-call
-  outbox, a signed provider webhook (real Razorpay) invoking `confirmPayment`,
-  and an ops/system `bookOrder` trigger. Then SIPs, mandates, redemptions, and
-  the remaining client data screens. Build slice-by-slice with integration
-  tests. APK/emulator packaging stays on the user's local stack.
-- Prior checkpoint: `RA-C.5` client order **write** path —
-  `POST /v1/client/orders` (create purchase order) and
-  `POST /v1/client/orders/:id/pay` (begin payment), native-authenticated and
-  idempotent, over the BE-021 schema (eligibility re-derived under lock,
-  published-fund + minimum guards, provider-call outbox; Order/Payment write
-  repos; frontend `createLumpsum`/`beginOrderPayment` wired).
+- Task: `RA-C.7` payment settlement worker — the runtime trigger that takes a
+  paid order to `booked` in the running app — landed on branch
+  `ts-migration/backend` (spec 03 §5.2, §6).
+- Result: new `src/domain/client/settlePayment.ts` — `settleMockPayment` (an
+  idempotent driver: `payment_pending → send → confirm → book`, tolerant of
+  partial progress) and `settleDuePayments` (one worker pass draining the
+  `payment` provider-call outbox, mirroring the email delivery worker's
+  claim → sending → settle → retry loop). Added `paymentRepository.findById`;
+  `composePaymentSettlementWorker(env)` + a `src/paymentWorker.ts` entrypoint and
+  `worker:payments` npm script. `check` green (**329 unit**, was 327);
+  integration **113/113 (13 files)**, incl. new
+  `paymentWorker.integration.test.ts` (4) proving a pass books a paid order and
+  materializes the holding, is a no-op on the second pass, and settles multiple
+  due payments; backend authored JS still 0; Legacy hash intact.
+- End-to-end (mock provider): `POST /v1/client/orders` → `POST
+  /v1/client/orders/:id/pay` → run `worker:payments` (schedule it) → order
+  `booked`, holding created, visible via `GET /v1/client/holdings`.
+- Next: a real payment gateway (Razorpay) — async dispatch + signed webhook that
+  replaces the mock provider seam and invokes `confirmPayment` (same claim/lease/
+  retry loop). Then SIPs, mandates, redemptions, and the remaining client data
+  screens. Build slice-by-slice with integration tests. APK/emulator packaging
+  stays on the user's local stack.
+- Prior checkpoint: `RA-C.6` order booking money-math — `sendPaymentToProvider`,
+  `confirmPayment`, `bookOrder` (spec 03 §4.3/§5.2/§6); pure round-half-to-even
+  `src/finance/money.ts`; booking appends immutable execution + holding + lot +
+  movement + notification + audit.
 - Prior checkpoint: `RA-B0` deploy-env boot compatibility (Option 3) — backend
   boots/serves under the `release_manager` deploy stack unedited (`CORS_ORIGIN`,
   optional AWS SES/SNS, `\n`-escaped ES256 key, `seed:auth`, Dockerfile

@@ -810,6 +810,26 @@ integration aggregate); `package.json`/`package-lock.json` unchanged; Legacy
 hash intact. No new dependencies.
 
 
+## Delta: RA-C.7 Payment settlement worker (branch `ts-migration/backend`)
+
+The runtime trigger that closes the booking gap: a worker drains the `payment`
+provider-call outbox and drives each paid order `send -> confirm -> book`, so
+holdings materialize in the running app.
+
+| Change | Value |
+|---|---:|
+| New backend files (settlePayment domain, worker entrypoint) | 2 |
+| Backend files touched (paymentRepository.findById, composition worker, package.json scripts) | 3 |
+| New unit tests (`paymentWorker.test.ts`) | 2 |
+| New backend integration test file (`paymentWorker`) | 1 (4 tests) |
+| Backend authored JS/JSX | 0 (unchanged) |
+
+`npm run check` green (**329 unit**, was 327); integration 109 -> 113 (13 files);
+integration branch coverage 81.6%; new npm scripts `worker:payments` /
+`worker:payments:dev`; `package-lock.json` unchanged; Legacy hash intact. No new
+dependencies.
+
+
 ## Related notes (Obsidian graph)
 
 - Status siblings: [[status/CURRENT|Current resume point]] · [[status/IMPLEMENTATION_PROGRESS|Implementation progress]] · [[status/VALIDATION_SUMMARY|Validation summary]]

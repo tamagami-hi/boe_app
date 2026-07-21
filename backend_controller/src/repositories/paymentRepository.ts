@@ -28,6 +28,8 @@ export interface CreatedPayment {
 export interface PaymentWriteRepository {
   /** Create the payment (state `created`) and its first attempt (attempt_number 1). */
   createWithFirstAttempt: (tx: Transaction, input: CreatePaymentInput) => Promise<CreatedPayment>
+  /** Resolve a payment by its id (used by the settlement worker to find its order/owner). */
+  findById: (tx: Transaction, paymentId: string) => Promise<Payment | null>
   /** Lock the order's payment aggregate for a state transition. */
   lockByOrder: (
     tx: Transaction,
@@ -71,6 +73,11 @@ export const createPaymentRepository = (): PaymentWriteRepository => ({
       .executeTakeFirstOrThrow()
 
     return { payment, attempt }
+  },
+
+  findById: async (tx, paymentId) => {
+    const row = await tx.selectFrom("payments").selectAll().where("id", "=", paymentId).executeTakeFirst()
+    return row ?? null
   },
 
   lockByOrder: async (tx, input) => {
