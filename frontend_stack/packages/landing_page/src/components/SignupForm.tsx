@@ -1,61 +1,80 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from './AuthProvider';
-import { validateSignup, type SignupErrors } from '../lib/auth';
 
+import { submitApplication } from '../lib/onboarding';
+import { validateLead, type LeadErrors } from '../lib/validation';
+
+// The backend onboarding model is application -> email verify -> admin approval
+// -> activation invite (which is where the user sets a password). There is no
+// self-service password signup, so this form collects only name/email/mobile +
+// consent and submits an application; the password step happens later via the
+// emailed activation link.
 type Status =
   | { kind: 'idle' }
   | { kind: 'submitting' }
+  | { kind: 'success' }
   | { kind: 'error'; message: string };
 
-const initialValues = {
-  name: '',
-  username: '',
-  email: '',
-  mobile: '',
-  password: '',
-  confirmPassword: '',
-};
+const initialValues = { name: '', email: '', mobile: '' };
 
 export default function SignupForm() {
-  const router = useRouter();
-  const { signup } = useAuth();
   const [values, setValues] = useState(initialValues);
-  const [errors, setErrors] = useState<SignupErrors>({});
+  const [errors, setErrors] = useState<LeadErrors>({});
+  const [accepted, setAccepted] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
 
   function update<K extends keyof typeof values>(key: K, value: string) {
-    const nextValue = key === 'username' ? value.toLowerCase() : value;
-    setValues((prev) => ({ ...prev, [key]: nextValue }));
+    setValues((prev) => ({ ...prev, [key]: value }));
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const result = validateSignup(values);
+    const result = validateLead({ name: values.name, email: values.email, phone: values.mobile });
     setErrors(result.errors);
-    if (!result.ok) {
+    const missingConsent = !accepted;
+    setConsentError(missingConsent ? 'Please accept the Terms of Service and Privacy Policy.' : null);
+    if (!result.ok || missingConsent) {
       setStatus({ kind: 'idle' });
       return;
     }
 
     setStatus({ kind: 'submitting' });
     try {
-      await signup(values);
-      router.push('/');
+      await submitApplication({
+        fullName: values.name,
+        email: values.email,
+        phone: values.mobile,
+        acceptedConsents: accepted,
+      });
+      setStatus({ kind: 'success' });
+      setValues(initialValues);
+      setAccepted(false);
     } catch (err) {
       setStatus({
         kind: 'error',
-        message: err instanceof Error ? err.message : 'Signup failed. Please try again.',
+        message: err instanceof Error ? err.message : 'We could not submit your application. Please try again.',
       });
     }
   }
 
   const submitting = status.kind === 'submitting';
 
+  if (status.kind === 'success') {
+    return (
+      <div className="form__status form__status--success" role="status" aria-live="polite">
+        <p>
+          Thanks — your application has been received. Please check your email to verify your
+          address. Our team will review your application and email you an activation link once it is
+          approved.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <form onSubmit={onSubmit} noValidate aria-label="Create account form">
+    <form onSubmit={onSubmit} noValidate aria-label="Apply for access form">
       <div className={`field ${errors.name ? 'field--error' : ''}`}>
         <label htmlFor="signup-name">Name</label>
         <input
@@ -67,19 +86,6 @@ export default function SignupForm() {
           aria-invalid={Boolean(errors.name)}
         />
         {errors.name ? <span className="field__error">{errors.name}</span> : null}
-      </div>
-
-      <div className={`field ${errors.username ? 'field--error' : ''}`}>
-        <label htmlFor="signup-username">Username</label>
-        <input
-          id="signup-username"
-          name="username"
-          autoComplete="username"
-          value={values.username}
-          onChange={(event) => update('username', event.target.value)}
-          aria-invalid={Boolean(errors.username)}
-        />
-        {errors.username ? <span className="field__error">{errors.username}</span> : null}
       </div>
 
       <div className={`field ${errors.email ? 'field--error' : ''}`}>
@@ -96,7 +102,7 @@ export default function SignupForm() {
         {errors.email ? <span className="field__error">{errors.email}</span> : null}
       </div>
 
-      <div className={`field ${errors.mobile ? 'field--error' : ''}`}>
+      <div className={`field ${errors.phone ? 'field--error' : ''}`}>
         <label htmlFor="signup-mobile">Mobile</label>
         <input
           id="signup-mobile"
@@ -105,43 +111,31 @@ export default function SignupForm() {
           autoComplete="tel"
           value={values.mobile}
           onChange={(event) => update('mobile', event.target.value)}
-          aria-invalid={Boolean(errors.mobile)}
+          aria-invalid={Boolean(errors.phone)}
         />
-        {errors.mobile ? <span className="field__error">{errors.mobile}</span> : null}
+        {errors.phone ? <span className="field__error">{errors.phone}</span> : null}
       </div>
 
-      <div className={`field ${errors.password ? 'field--error' : ''}`}>
-        <label htmlFor="signup-password">Password</label>
-        <input
-          id="signup-password"
-          name="password"
-          type="password"
-          autoComplete="new-password"
-          value={values.password}
-          onChange={(event) => update('password', event.target.value)}
-          aria-invalid={Boolean(errors.password)}
-        />
-        {errors.password ? <span className="field__error">{errors.password}</span> : null}
-      </div>
-
-      <div className={`field ${errors.confirmPassword ? 'field--error' : ''}`}>
-        <label htmlFor="signup-confirm-password">Confirm password</label>
-        <input
-          id="signup-confirm-password"
-          name="confirmPassword"
-          type="password"
-          autoComplete="new-password"
-          value={values.confirmPassword}
-          onChange={(event) => update('confirmPassword', event.target.value)}
-          aria-invalid={Boolean(errors.confirmPassword)}
-        />
-        {errors.confirmPassword ? (
-          <span className="field__error">{errors.confirmPassword}</span>
-        ) : null}
+      <div className={`field ${consentError ? 'field--error' : ''}`}>
+        <label className="field__checkbox">
+          <input
+            type="checkbox"
+            name="acceptConsents"
+            checked={accepted}
+            onChange={(event) => setAccepted(event.target.checked)}
+            aria-invalid={Boolean(consentError)}
+          />
+          <span>
+            I accept the{' '}
+            <a href="/terms" target="_blank" rel="noreferrer">Terms of Service</a> and{' '}
+            <a href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>.
+          </span>
+        </label>
+        {consentError ? <span className="field__error">{consentError}</span> : null}
       </div>
 
       <button type="submit" className="btn btn--primary btn--block" disabled={submitting}>
-        {submitting ? 'Creating...' : 'Create account'}
+        {submitting ? 'Submitting…' : 'Apply for access'}
       </button>
 
       <div aria-live="polite">

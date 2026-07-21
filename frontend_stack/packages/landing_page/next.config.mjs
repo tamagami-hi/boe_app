@@ -18,11 +18,10 @@ const nextConfig = {
     outputFileTracingRoot: import.meta.dirname,
   },
   async rewrites() {
+    // Onboarding is handled by the /api/onboarding/applications route handler
+    // (maps to the canonical POST /v1/applications). Other same-origin /v1/*
+    // calls are proxied to the backend server-side.
     return [
-      {
-        source: '/api/onboarding/:path*',
-        destination: `${BACKEND}/v1/onboarding/:path*`,
-      },
       {
         source: '/v1/:path*',
         destination: `${BACKEND}/v1/:path*`,

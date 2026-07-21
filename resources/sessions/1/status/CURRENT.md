@@ -17,12 +17,13 @@
   boot + seeded-admin web login). `check` green (304 unit); integration 84/84
   (9 files); backend authored JS still 0. Operator steps: see
   `logs/RA-B0-deploy-boot-compat.md`.
-- Next: `RA-B` — wire the landing signup UX to `POST /v1/applications` (the new
-  application→approval→activation model); then `RA-C` client financial routes.
-  The full spec-04 financial/catalog route build and the paused backend
-  finalization items (BE-023 SES sender, BE-008b-3, BE-019A) remain deprioritized
-  behind runnability.
-- Prior checkpoints: RA-A (each side builds/runs; frontend fixture mode),
+- Next: `RA-C` — the `/v1/client/*` financial routes the client app calls (over
+  the BE-021 schema), plus wiring web/native login + the admin identity queue to
+  the canonical `/v1/auth/*` and `/v1/admin/*`. The full spec-04 financial/catalog
+  route build and the paused backend finalization items (BE-023 SES sender,
+  BE-008b-3, BE-019A) remain deprioritized behind runnability.
+- Prior checkpoints: RA-B (landing signup wired to `POST /v1/applications`; both
+  landing forms adopt the application model), RA-A (each side builds/runs; frontend fixture mode),
   BE-024 (archived legacy migrations 001-008; `migrate up` canonical-only),
   BE-022 (web CSRF reload-recovery `GET /v1/auth/web/csrf`), BE-021.2 (later-domain
   schema increment 2; later-domain schema §4.1-§4.5 complete), BE-021.1,
