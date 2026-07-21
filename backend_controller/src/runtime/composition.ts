@@ -20,6 +20,7 @@ import { createPool } from "../db/pool.js"
 import { createCertificateFetcher } from "../email/certificateFetcher.js"
 import { createActivationInviteRepository } from "../repositories/activationInviteRepository.js"
 import { createApplicationRepository } from "../repositories/applicationRepository.js"
+import { createClientPortfolioRepository } from "../repositories/clientPortfolioRepository.js"
 import { createApplicationReviewRepository } from "../repositories/applicationReviewRepository.js"
 import { createAuditRepository } from "../repositories/auditRepository.js"
 import { createAuthSessionRepository } from "../repositories/authSessionRepository.js"
@@ -33,6 +34,7 @@ import { createOutboxRepository } from "../repositories/outboxRepository.js"
 import { createUserRepository } from "../repositories/userRepository.js"
 import { createVerificationTokenRepository } from "../repositories/verificationTokenRepository.js"
 import { registerAdminIdentityRoutes } from "../routes/adminIdentityRoutes.js"
+import { registerClientPortfolioRoutes } from "../routes/clientPortfolioRoutes.js"
 import { registerNativeAuthRoutes } from "../routes/nativeAuthRoutes.js"
 import { registerProviderEventRoutes } from "../routes/providerEventRoutes.js"
 import { registerPublicOnboardingRoutes } from "../routes/publicOnboardingRoutes.js"
@@ -77,6 +79,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const emailProviderEventRepository = createEmailProviderEventRepository()
   const emailSuppressionRepository = createEmailSuppressionRepository()
   const idempotencyRepository = createIdempotencyRepository()
+  const clientPortfolioRepository = createClientPortfolioRepository()
 
   const webAuth: WebAuthDeps = {
     userRepository,
@@ -129,6 +132,14 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       refreshKeyVersion: serverConfig.refreshKeyVersion,
       clock,
       unitOfWork,
+    })
+
+    registerClientPortfolioRoutes(application, {
+      accessTokenService,
+      database,
+      clientPortfolioRepository,
+      clock,
+      config: { cursorKey: serverConfig.cursorKey },
     })
 
     registerWebAuthRoutes(application, { ...webAuth, unitOfWork })

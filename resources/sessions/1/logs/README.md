@@ -63,6 +63,8 @@ not rewrite prior RED/GREEN history to match later architecture.
 
 | RA-C.3 | DONE | [Admin applications queue wiring](./RA-C-3-admin-applications-queue-wiring.md) | on `ts-migration/backend` (admin approvals queue + review->decision handshake -> `/v1/admin/applications*` with CSRF/Idempotency-Key/If-Match; app build green) |
 
+| RA-C.4 | DONE | [Client portfolio read slice (eligibility/holdings/orders)](./RA-C-4-client-portfolio-reads-wiring.md) | on `ts-migration/backend` (first canonical `/v1/client/*` reads: `GET /v1/client/{eligibility,holdings,orders}` native-authenticated over BE-021 schema; derived eligibility spec 03 §2.3; client portfolio/orders/eligibility services wired; integration 84 -> 94; app build green) |
+
 
 ## Related notes (Obsidian graph)
 

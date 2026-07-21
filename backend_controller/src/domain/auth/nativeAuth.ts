@@ -202,10 +202,21 @@ export const nativeLogin = async (
   return result
 }
 
+/**
+ * Narrow dependency slice needed to resolve a native bearer principal. Any
+ * native-authenticated route (client portfolio reads, logout, ...) can depend on
+ * just this pair; `NativeAuthDeps` is a structural superset, so existing callers
+ * continue to satisfy it.
+ */
+export interface NativeRequestAuthDeps {
+  readonly accessTokenService: AccessTokenService
+  readonly database: Kysely<Database>
+}
+
 /** Resolve and re-check the native bearer principal (spec 04 §4.5). */
 export const authenticateNativeRequest = async (
   request: FastifyRequest,
-  deps: NativeAuthDeps,
+  deps: NativeRequestAuthDeps,
 ): Promise<{ userId: string; sessionId: string }> => {
   const header = request.headers.authorization
   if (typeof header !== "string" || !header.startsWith("Bearer ")) {

@@ -745,6 +745,28 @@ Realignment spinoff: the rearchitected backend now boots under the
 intact. No new dependencies.
 
 
+## Delta: RA-C.4 Client portfolio read slice (branch `ts-migration/backend`)
+
+First canonical `/v1/client/*` routes: native-authenticated reads over the
+BE-021 investing/ownership schema — derived investing eligibility (spec 03 §2.3),
+holdings valued at the current NAV, and the order history — plus the client
+portfolio/orders/eligibility services wired to them.
+
+| Change | Value |
+|---|---:|
+| New backend files (domain/eligibility, repository, routes) | 3 |
+| Backend files touched (nativeAuth narrow deps, composition) | 2 |
+| New backend integration test file (`clientPortfolio`) | 1 (10 tests) |
+| Unit tests added (`investingEligibility`) | 9 |
+| New frontend service (`eligibilityApi.js`) | 1 |
+| Frontend services touched (`portfolioApi`, `ordersApi`) | 2 |
+| Backend authored JS/JSX | 0 (unchanged) |
+
+`npm run check` green (313 unit, was 304); integration 84 -> 94 (10 files);
+frontend `npm run build` green; `package-lock.json`/`package.json` unchanged;
+Legacy hash intact. No new dependencies.
+
+
 ## Related notes (Obsidian graph)
 
 - Status siblings: [[status/CURRENT|Current resume point]] · [[status/IMPLEMENTATION_PROGRESS|Implementation progress]] · [[status/VALIDATION_SUMMARY|Validation summary]]

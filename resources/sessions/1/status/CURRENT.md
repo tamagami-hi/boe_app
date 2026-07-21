@@ -2,30 +2,35 @@
 
 ## Last Verified Code Checkpoint
 
-- Task: `RA-B0` deploy-env boot compatibility (Option 3 of the frontend/backend
-  realignment spinoff), landed on branch `ts-migration/backend`. Makes the
-  rearchitected backend boot and serve under the `release_manager` deploy stack
-  unedited, so `docker compose up` works on localhost/VPS without AWS.
-- Result: `runtime/environment.ts` accepts legacy `CORS_ORIGIN` as the web origin
-  allowlist source and makes AWS SES/SNS optional (`emailConfigured` flag) +
-  accepts a `\n`-escaped ES256 signing key; `composition.ts` wires the SNS
-  ingress only when AWS is configured; `health.ts` makes email an informational
-  readiness check (DB is the hard gate); `Dockerfile` copies `db/migrations`;
-  new `seed:auth` script bootstraps an admin login (Argon2id + superadmin) from
-  `ADMIN_*`/`SEED_ADMIN_*`; `keys:generate` prints the operator key block.
-  Validated by `test/integration/deployBoot.integration.test.ts` (deploy-shaped
-  boot + seeded-admin web login). `check` green (304 unit); integration 84/84
-  (9 files); backend authored JS still 0. Operator steps: see
-  `logs/RA-B0-deploy-boot-compat.md`.
-- Next: `RA-C` (in progress). RA-C.1 (admin web auth), RA-C.2 (client native
-  auth), and RA-C.3 (admin applications queue + review/decision) are done —
-  **login works for both surfaces and the admin console's approvals flow is
-  wired end-to-end**. Remaining is the large build: `/v1/client/*` financial
-  routes on the backend over the BE-021 schema (spec 03 §6/§7
-  money-math/locking/maker-checker, with integration tests), built slice-by-slice
-  (read paths first), then the client data screens. The paused backend
+- Task: `RA-C.4` client portfolio read slice — the **first canonical
+  `/v1/client/*` routes** — landed on branch `ts-migration/backend`.
+  Native-authenticated reads over the BE-021 investing/ownership schema:
+  `GET /v1/client/eligibility`, `GET /v1/client/holdings`, `GET /v1/client/orders`.
+- Result: new `domain/client/investingEligibility.ts` (pure derived eligibility,
+  spec 03 §2.3: suspended/blocked/pending_compliance/eligible; never stored),
+  `repositories/clientPortfolioRepository.ts` (eligibility inputs via lateral
+  latest-KYC/latest-risk; holdings valued at the greatest-revision current NAV
+  with paise/units emitted as strings; owner-scoped `(created_at DESC, id DESC)`
+  keyset), and `routes/clientPortfolioRoutes.ts` (native bearer re-check on every
+  handler; opaque keyset cursor). `authenticateNativeRequest` refactored to a
+  narrow `NativeRequestAuthDeps`. Frontend: `portfolioApi` derives the portfolio
+  from `/v1/client/holdings`, new `eligibilityApi`, `ordersApi.listOrders` reads
+  the canonical cursor endpoint (fixture fallbacks kept). `check` green (313
+  unit); integration **94/94 (10 files)**, incl. new
+  `clientPortfolio.integration.test.ts` (10); frontend `npm run build` green;
+  backend authored JS still 0; Legacy hash intact.
+- Next: `RA-C` continues with the client **write** domain — command services +
+  routes for `/v1/client/*` orders create/pay/book, SIPs, mandates, redemptions
+  (spec 03 §5-§6 money-math/locking/maker-checker, with integration tests), built
+  slice-by-slice, then the remaining client data screens. The paused backend
   finalization items (BE-023 SES sender, BE-008b-3, BE-019A) remain deprioritized
-  behind runnability.
+  behind runnability. APK/emulator packaging stays on the user's local stack.
+- Prior checkpoint: `RA-B0` deploy-env boot compatibility (Option 3) — backend
+  boots/serves under the `release_manager` deploy stack unedited (`CORS_ORIGIN`,
+  optional AWS SES/SNS, `\n`-escaped ES256 key, `seed:auth`, Dockerfile
+  migrations, `keys:generate`); RA-C.1 admin web auth, RA-C.2 client native auth,
+  RA-C.3 admin applications queue + review/decision (login works for both
+  surfaces; approvals wired end-to-end).
 - Prior checkpoints: RA-B (landing signup wired to `POST /v1/applications`; both
   landing forms adopt the application model), RA-A (each side builds/runs; frontend fixture mode),
   BE-024 (archived legacy migrations 001-008; `migrate up` canonical-only),

@@ -1,5 +1,37 @@
 import { apiRequest, clone, delay, listFromPayload, useHttpApi } from './_util.js';
 
+// Canonical order states (spec 03 §2.1) grouped for the UI's coarse filter.
+const ACTIVE_ORDER_STATES = new Set(['submitted', 'payment_pending', 'payment_confirmed', 'booked']);
+const CANCELLED_ORDER_STATES = new Set(['cancelled', 'rejected', 'refunded', 'reversed']);
+
+// Map a canonical GET /v1/client/orders item to the UI order shape. Money is
+// integer paise (string) on the wire and rupees in the UI.
+function mapOrder(item) {
+  return {
+    id: item.orderId,
+    fundId: item.fundId,
+    sipPlanId: item.sipPlanId,
+    type: item.type,
+    status: item.status,
+    amount: item.amountPaise === null || item.amountPaise === undefined ? null : Number(item.amountPaise) / 100,
+    requestedUnits: item.requestedUnits === null ? null : Number(item.requestedUnits),
+    currency: item.currency,
+    requestedAt: item.requestedAt,
+    bookedAt: item.bookedAt,
+    cancelledAt: item.cancelledAt,
+    failureCode: item.failureCode,
+    createdAt: item.createdAt,
+    source: 'canonical',
+  };
+}
+
+function matchesOrderFilter(order, filter) {
+  if (filter === 'active') return ACTIVE_ORDER_STATES.has(order.status);
+  if (filter === 'cancelled') return CANCELLED_ORDER_STATES.has(order.status);
+  if (filter === 'paused') return false; // SIP pause lives on sip_plans, not orders
+  return true;
+}
+
 let orders = [];
 let mandates = [];
 let pendingPayments = [];
@@ -111,7 +143,11 @@ export async function getOrder(orderId) {
 
 export async function listOrders({ filter = 'all' } = {}) {
   if (useHttpApi()) {
-    return listFromPayload(await apiRequest(`/v1/client/orders?filter=${encodeURIComponent(filter)}`));
+    // The canonical endpoint returns the full owner-scoped history via an opaque
+    // keyset cursor; the coarse UI filter is applied client-side over the page.
+    const payload = await apiRequest('/v1/client/orders?limit=100');
+    const mapped = listFromPayload(payload).map(mapOrder);
+    return mapped.filter((order) => matchesOrderFilter(order, filter));
   }
 
   await delay();
