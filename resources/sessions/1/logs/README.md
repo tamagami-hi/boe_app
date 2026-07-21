@@ -74,6 +74,8 @@ not rewrite prior RED/GREEN history to match later architecture.
 
 | BE-022 | DONE | [Web CSRF reload-recovery endpoint](./BE-022-web-csrf-recovery.md) | on `ts-migration/backend` (`GET /v1/auth/web/csrf` access-or-refresh-cookie recovery; integration 75 -> 79) |
 
+| BE-024 | DONE | [Migrate-CLI baseline / legacy 001-008 disposition](./BE-024-migrate-baseline-disposition.md) | on `ts-migration/backend` (archived legacy migrations 001-008 per spec 03 §8; `migrate up` now collision-free on the canonical >=009 baseline; +2 guard tests) |
+
 
 ## Related notes (Obsidian graph)
 

@@ -1,6 +1,7 @@
 import { mkdtemp, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { fileURLToPath } from "node:url"
 
 import { describe, expect, test, vi } from "vitest"
 
@@ -86,6 +87,33 @@ describe("runMigrations", () => {
     await expect(runMigrations(pool, files)).rejects.toThrow("fail")
     expect(client.query).toHaveBeenCalledWith("ROLLBACK")
     expect(client.release).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("canonical migration baseline (BE-024)", () => {
+  test("db/migrations contains only the canonical >= 009 baseline (legacy 001-008 archived)", async () => {
+    const directory = fileURLToPath(new URL("../../db/migrations", import.meta.url))
+    const files = await loadMigrationFiles(directory)
+    expect(files.length).toBeGreaterThan(0)
+    for (const file of files) {
+      expect(file.version.slice(0, 3) >= "009").toBe(true)
+    }
+    expect(files.some((file) => file.version === "009_canonical_onboarding")).toBe(true)
+  })
+
+  test("legacy pre-canonical migrations 001-008 are retained in the archive only", async () => {
+    const archive = fileURLToPath(new URL("../../db/migrations-archive", import.meta.url))
+    const files = await loadMigrationFiles(archive)
+    expect(files.map((file) => file.version.slice(0, 3)).sort()).toEqual([
+      "001",
+      "002",
+      "003",
+      "004",
+      "005",
+      "006",
+      "007",
+      "008",
+    ])
   })
 })
 
