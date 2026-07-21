@@ -7,11 +7,13 @@ const SESSION_KEYS = {
     accessToken: 'boe.client.accessToken',
     refreshToken: 'boe.client.refreshToken',
     user: 'boe.client.user',
+    csrfToken: 'boe.client.csrfToken',
   },
   admin: {
     accessToken: 'boe.admin.accessToken',
     refreshToken: 'boe.admin.refreshToken',
     user: 'boe.admin.user',
+    csrfToken: 'boe.admin.csrfToken',
   },
 };
 const DEFAULT_API_BASE_URL = 'http://127.0.0.1:47502';
@@ -57,6 +59,19 @@ export function clearSessionTokens(scope = 'client') {
   storage.removeItem(keys.accessToken);
   storage.removeItem(keys.refreshToken);
   storage.removeItem(keys.user);
+  storage.removeItem(keys.csrfToken);
+}
+
+// Web (admin) auth is cookie-based; the synchronizer CSRF token is held here and
+// sent on unsafe requests. Native (client) auth does not use this.
+export function setSessionCsrf(csrfToken, scope = 'client') {
+  const storage = localStorageHandle();
+  if (!storage || !csrfToken) return;
+  storage.setItem(sessionKeys(scope).csrfToken, csrfToken);
+}
+
+export function storedCsrf(scope = 'client') {
+  return localStorageHandle()?.getItem(sessionKeys(scope).csrfToken) || '';
 }
 
 export function storedAccessToken(scope = 'client') {
@@ -85,6 +100,12 @@ export async function apiRequest(path, { method = 'GET', body, auth = true, scop
   if (auth) {
     const token = storedAccessToken(scope);
     if (token) headers.authorization = `Bearer ${token}`;
+  }
+
+  // Web (cookie) scopes attach the synchronizer CSRF token on unsafe methods.
+  if (method !== 'GET') {
+    const csrf = storedCsrf(scope);
+    if (csrf) headers['x-csrf-token'] = csrf;
   }
 
   const response = await fetch(`${apiBaseUrl()}${path}`, {

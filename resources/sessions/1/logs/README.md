@@ -57,6 +57,8 @@ not rewrite prior RED/GREEN history to match later architecture.
 
 | RA-B | DONE | [Landing signup wiring (both surfaces)](./RA-B-landing-signup-wiring.md) | on `ts-migration/backend` (lead + account forms -> `POST /v1/applications` via Next BFF with consent + idempotency; landing build + 24 tests green) |
 
+| RA-C.1 | DONE | [Admin web-auth wiring](./RA-C-1-admin-web-auth-wiring.md) | on `ts-migration/backend` (admin login/session/logout -> `/v1/auth/web/*` cookie+CSRF via shared authApi; reachability -> `/v1/health`; frontend app build green) |
+
 
 ## Related notes (Obsidian graph)
 

@@ -4,6 +4,7 @@ import {
   clearSessionTokens,
   clone,
   delay,
+  setSessionCsrf,
   setSessionTokens,
   storedRefreshToken,
   storedUser,
@@ -103,6 +104,27 @@ function toClientUser(user) {
   };
 }
 
+// Map the canonical web-auth principal ({ userId, fullName, email, roles,
+// permissions }) to the app's user shape. Any successful web login is an admin
+// principal (the backend rejects zero-role users), so 'admin' is injected to
+// satisfy the admin app's role gate while the canonical roles/permissions are
+// preserved for RBAC-aware UI.
+function toAdminUser(principal) {
+  const canonicalRoles = Array.isArray(principal?.roles)
+    ? principal.roles.map((value) => String(value).toLowerCase())
+    : [];
+  const permissions = Array.isArray(principal?.permissions) ? principal.permissions : [];
+  const base = toClientUser({
+    id: principal?.userId,
+    name: principal?.fullName,
+    email: principal?.email,
+    status: 'approved',
+    role: 'admin',
+    roles: [...new Set([...canonicalRoles, 'admin'])],
+  });
+  return { ...base, permissions };
+}
+
 export function hasRole(user, role) {
   return user?.roles?.some((value) => String(value).toLowerCase() === role) ||
     String(user?.role || '').toLowerCase() === role;
@@ -124,6 +146,22 @@ function assertScopeUser(user, scope) {
 
 export async function login(credentials = {}, { scope = 'client' } = {}) {
   if (useHttpApi()) {
+    if (scope === 'admin') {
+      // Admin uses canonical web auth: HttpOnly cookies + synchronizer CSRF.
+      const result = await apiRequest('/v1/auth/web/login', {
+        method: 'POST',
+        auth: false,
+        scope,
+        body: { email: credentials.identifier || credentials.email, password: credentials.password },
+      });
+      const user = assertScopeUser(toAdminUser(result.user), scope);
+      setSessionCsrf(result.csrfToken, scope);
+      setSessionTokens({ user, scope });
+      _users[scope] = user;
+      return clone(user);
+    }
+
+    // Client (native) auth wiring lands with the client batch (RA-C).
     const result = await apiRequest('/v1/auth/login', {
       method: 'POST',
       auth: false,
@@ -190,8 +228,9 @@ export async function signup(details = {}, { scope = 'client' } = {}) {
 
 export async function logout({ scope = 'client' } = {}) {
   if (useHttpApi()) {
+    const logoutPath = scope === 'admin' ? '/v1/auth/web/logout' : '/v1/auth/logout';
     try {
-      await apiRequest('/v1/auth/logout', { method: 'POST', scope });
+      await apiRequest(logoutPath, { method: 'POST', scope });
     } finally {
       clearSessionTokens(scope);
       _users[scope] = null;
@@ -222,6 +261,23 @@ async function refreshCurrentUser(scope) {
 
 export async function currentUser({ scope = 'client' } = {}) {
   if (useHttpApi()) {
+    if (scope === 'admin') {
+      // Restore the admin session from the HttpOnly cookies via the CSRF
+      // reload-recovery endpoint, which returns the principal + a fresh token.
+      try {
+        const recovered = await apiRequest('/v1/auth/web/csrf', { scope });
+        const user = assertScopeUser(toAdminUser(recovered.user), scope);
+        setSessionCsrf(recovered.csrfToken, scope);
+        setSessionTokens({ user, scope });
+        _users[scope] = user;
+        return clone(user);
+      } catch {
+        clearSessionTokens(scope);
+        _users[scope] = null;
+        return null;
+      }
+    }
+
     let current;
     try {
       current = await apiRequest('/v1/auth/session', { scope });
@@ -264,7 +320,9 @@ export async function checkReachability() {
   }
 
   if (useHttpApi()) {
-    return apiRequest('/v1/system/reachability', { auth: false });
+    // Canonical health envelope: { status: 'ok' }. Map to the reachability shape.
+    const health = await apiRequest('/v1/health', { auth: false }).catch(() => null);
+    return { ok: health?.status === 'ok', minVersion: '1.0.0' };
   }
 
   await delay(180);
