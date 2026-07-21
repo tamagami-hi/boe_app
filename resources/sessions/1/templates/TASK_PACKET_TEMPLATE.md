@@ -15,3 +15,11 @@
 - Rollback shape:
 - Done condition:
 - Phase log:
+
+
+## Related notes (Obsidian graph)
+
+- Governed by: [[WORKING_MODEL|Working model]]
+- Companion template: [[templates/PHASE_LOG_TEMPLATE|Phase-log template]]
+- Instantiated packets are tracked in: [[TASKS|Task ledger]]
+- Home: [[README|Session 1 home]]

@@ -11,3 +11,10 @@ completed replacement packets. It is not an active implementation backlog.
 
 Future completed packets add one removed note and link it here. The active task
 ledger drops completed legacy targets while this history remains stable.
+
+
+## Related notes (Obsidian graph)
+
+- Execution evidence: [[logs/README|Task-log index]] · Ledger: [[TASKS|Task ledger]]
+- Operating rules: [[WORKING_MODEL|Working model]]
+- Home: [[README|Session 1 home]]

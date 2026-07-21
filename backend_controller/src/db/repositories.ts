@@ -50,6 +50,36 @@ export type OutboxEvent = Row<"outbox_events">
 export type EmailDelivery = Row<"email_deliveries">
 export type EmailProviderEvent = Row<"email_provider_events">
 export type EmailSuppression = Row<"email_suppressions">
+// Later domain (migrations 014-018; spec 03 §4)
+export type InvestorProfile = Row<"investor_profiles">
+export type KycCase = Row<"kyc_cases">
+export type KycDocument = Row<"kyc_documents">
+export type KycReview = Row<"kyc_reviews">
+export type RiskAssessment = Row<"risk_assessments">
+export type Fund = Row<"funds">
+export type FundVersion = Row<"fund_versions">
+export type FundDisclosureVersion = Row<"fund_disclosure_versions">
+export type FundNavPrice = Row<"fund_nav_prices">
+export type FundPosition = Row<"fund_positions">
+export type FundAumSnapshot = Row<"fund_aum_snapshots">
+export type FinancePolicyVersion = Row<"finance_policy_versions">
+export type MarketingLead = Row<"marketing_leads">
+export type Course = Row<"courses">
+export type MembershipPlan = Row<"membership_plans">
+export type AppConfigVersion = Row<"app_config_versions">
+export type ContentItem = Row<"content_items">
+export type Mandate = Row<"mandates">
+export type SipPlan = Row<"sip_plans">
+export type InvestmentOrder = Row<"investment_orders">
+export type InvestmentExecution = Row<"investment_executions">
+export type Holding = Row<"holdings">
+export type HoldingLot = Row<"holding_lots">
+export type HoldingLotMovement = Row<"holding_lot_movements">
+export type RedemptionRequest = Row<"redemption_requests">
+export type Payment = Row<"payments">
+export type PaymentAttempt = Row<"payment_attempts">
+export type ProviderEvent = Row<"provider_events">
+export type Notification = Row<"notifications">
 
 export type CursorInput = ReadonlyDeep<{
   after?: string

@@ -67,3 +67,11 @@
 - Rollback shape:
 - Commit/push:
 - Exact next action:
+
+
+## Related notes (Obsidian graph)
+
+- Governed by: [[WORKING_MODEL|Working model]]
+- Companion template: [[templates/TASK_PACKET_TEMPLATE|Task-packet template]]
+- Where logs live: [[logs/README|Task-log index]]
+- Home: [[README|Session 1 home]]

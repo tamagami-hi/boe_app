@@ -37,3 +37,12 @@
 - Never roll back provider/financial evidence by deletion.
 - Documentation reorganization rolls back as one docs commit; it never touches
   `resources/sessions/Legacy`.
+
+
+## Related notes (Obsidian graph)
+
+- Operating rules: [[WORKING_MODEL|Working model]]
+- Specifications that resolve these decisions: [[specifications/02-product-architecture-decisions|02 · Product & architecture]] · [[specifications/03-schema-lifecycle-specification|03 · Schema & lifecycle]] · [[specifications/04-api-security-test-specification|04 · API/security/email/test]] · [[specifications/05-system-tooling-diagrams|05 · System/tooling/contracts]]
+- Plan: [[plans/01-postgresql-typescript-rearchitecture-plan|Master rearchitecture plan]]
+- Execution ledger: [[TASKS|Task ledger]]
+- Home: [[README|Session 1 home]]

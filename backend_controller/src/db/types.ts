@@ -36,6 +36,22 @@ type BigIntStringDefault = ColumnType<
   string | number | bigint | undefined,
   string | number | bigint
 >
+type NullableBigIntString = ColumnType<
+  string | null,
+  string | number | bigint | null | undefined,
+  string | number | bigint | null
+>
+
+// numeric/decimal (node-postgres returns text); persisted at scale 8 for
+// NAV/units/allocation, so selects are strings and writes accept string | number.
+type Numeric = ColumnType<string, string | number, string | number>
+type NumericDefault = ColumnType<string, string | number | undefined, string | number>
+type NullableNumeric = ColumnType<string | null, string | number | null | undefined, string | number | null>
+
+// date (node-postgres returns a Date for the `date` type; time component is
+// midnight). Writes accept a Date or an ISO/`YYYY-MM-DD` string.
+type DateColumn = ColumnType<Date, Date | string, Date | string>
+type NullableDateColumn = ColumnType<Date | null, Date | string | null | undefined, Date | string | null>
 
 // nullable scalar that is optional on insert
 type Nullable<T> = ColumnType<T | null, T | null | undefined, T | null>
@@ -78,6 +94,56 @@ export type EmailDeliveryState =
   | "cancelled"
 export type EmailProviderEventState = "received" | "processed" | "ignored" | "unmatched"
 export type ConsentKind = "terms" | "privacy"
+
+// Later-domain enums (closed sets from migrations 014-018; spec 03 §2.1/§2.2).
+export type KycCaseState =
+  | "pending_submission"
+  | "submitted"
+  | "in_review"
+  | "approved"
+  | "rejected"
+  | "needs_information"
+export type RiskAssessmentState = "not_started" | "submitted" | "assessed"
+export type RiskCategory = "conservative" | "balanced" | "growth" | "aggressive"
+export type FundState = "draft" | "review_pending" | "published" | "paused" | "archived"
+export type FundRiskLevel = "low" | "moderate" | "high" | "very_high"
+export type MandateState =
+  | "created"
+  | "pending_user_authorization"
+  | "active"
+  | "paused"
+  | "revoked"
+  | "failed"
+  | "expired"
+export type SipState = "draft" | "pending_mandate" | "active" | "paused" | "cancelled" | "completed"
+export type OrderType = "purchase" | "sip_installment" | "redemption" | "refund" | "adjustment"
+export type OrderState =
+  | "submitted"
+  | "payment_pending"
+  | "payment_confirmed"
+  | "booked"
+  | "payment_failed"
+  | "cancelled"
+  | "rejected"
+  | "refunded"
+  | "reversed"
+export type ExecutionType = "allotment" | "redemption" | "refund" | "reversal" | "adjustment"
+export type RedemptionState =
+  | "submitted"
+  | "units_reserved"
+  | "approved"
+  | "settlement_pending"
+  | "settled"
+  | "rejected"
+  | "cancelled"
+export type PaymentState =
+  | "created"
+  | "provider_pending"
+  | "succeeded"
+  | "failed"
+  | "expired"
+  | "refunded"
+export type ProviderEventState = "received" | "processing" | "processed" | "dead_lettered"
 
 export interface ApplicationsTable {
   id: Generated<string>
@@ -441,9 +507,462 @@ export interface EmailSuppressionsTable {
   lift_reason: Nullable<string>
 }
 
+// ---------------------------------------------------------------------------
+// Later-domain tables (migrations 014-018; spec 03 §4). Compliance, catalog,
+// platform/policy/content, investing/ownership, and payments/provider inbox.
+// ---------------------------------------------------------------------------
+
+export interface InvestorProfilesTable {
+  user_id: string
+  date_of_birth_ciphertext: NullableBytea
+  date_of_birth_nonce: NullableBytea
+  address_ciphertext: NullableBytea
+  address_nonce: NullableBytea
+  encryption_key_version: Nullable<string>
+  erased_at: NullableTimestamp
+  tax_residency_country: Nullable<string>
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
+export interface KycCasesTable {
+  id: Generated<string>
+  user_id: string
+  state: Generated<KycCaseState>
+  provider: Nullable<string>
+  provider_case_id: Nullable<string>
+  submitted_at: NullableTimestamp
+  review_started_at: NullableTimestamp
+  decided_at: NullableTimestamp
+  expires_at: NullableTimestamp
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
+export interface KycDocumentsTable {
+  id: Generated<string>
+  kyc_case_id: string
+  user_id: string
+  document_type: string
+  object_key: string
+  content_sha256: Bytea
+  encryption_key_version: string
+  created_at: TimestampDefault
+}
+
+export interface KycReviewsTable {
+  id: Generated<string>
+  kyc_case_id: string
+  user_id: string
+  reviewer_user_id: string
+  from_state: Nullable<KycCaseState>
+  to_state: KycCaseState
+  reason_code: Nullable<string>
+  reason_detail: Nullable<string>
+  request_id: string
+  created_at: TimestampDefault
+}
+
+export interface RiskAssessmentsTable {
+  id: Generated<string>
+  user_id: string
+  state: Generated<RiskAssessmentState>
+  questionnaire_version: string
+  answers: JsonDefault
+  score: Nullable<number>
+  category: Nullable<RiskCategory>
+  submitted_at: NullableTimestamp
+  assessed_at: NullableTimestamp
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
+export interface FundsTable {
+  id: Generated<string>
+  slug: string
+  state: Generated<FundState>
+  current_published_version_id: Nullable<string>
+  published_at: NullableTimestamp
+  paused_at: NullableTimestamp
+  archived_at: NullableTimestamp
+  created_by_user_id: string
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
+export interface FundVersionsTable {
+  id: Generated<string>
+  fund_id: string
+  version: number
+  name: string
+  category: string
+  objective: string
+  risk_level: FundRiskLevel
+  currency: Generated<string>
+  minimum_sip_paise: BigIntString
+  minimum_purchase_paise: BigIntString
+  minimum_duration_months: Nullable<number>
+  recommended_holding_months: Nullable<number>
+  disclosure_version_id: string
+  initial_nav_price_id: string
+  terms_sha256: Bytea
+  created_by_user_id: string
+  created_at: TimestampDefault
+}
+
+export interface FundDisclosureVersionsTable {
+  id: Generated<string>
+  fund_id: string
+  version: number
+  title: string
+  body: string
+  content_sha256: Bytea
+  effective_from: Timestamp
+  published_by_user_id: string
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+}
+
+export interface FundNavPricesTable {
+  id: Generated<string>
+  fund_id: string
+  nav: Numeric
+  as_of_date: DateColumn
+  revision: Generated<number>
+  source: Nullable<string>
+  published_by_user_id: string
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+}
+
+export interface FundPositionsTable {
+  id: Generated<string>
+  fund_id: string
+  as_of_date: DateColumn
+  revision: Generated<number>
+  asset_key: string
+  asset_name: string
+  asset_class: Nullable<string>
+  sector: Nullable<string>
+  allocation_percent: Numeric
+  source: Nullable<string>
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+}
+
+export interface FundAumSnapshotsTable {
+  id: Generated<string>
+  fund_id: string
+  as_of_date: DateColumn
+  aum_paise: BigIntString
+  revision: Generated<number>
+  source: Nullable<string>
+  published_by_user_id: string
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+}
+
+export interface FinancePolicyVersionsTable {
+  id: Generated<string>
+  version: number
+  redemption_dual_approval_threshold_paise: BigIntStringDefault
+  effective_from: Timestamp
+  retired_at: NullableTimestamp
+  published_by_user_id: string
+  created_at: TimestampDefault
+}
+
+export interface MarketingLeadsTable {
+  id: Generated<string>
+  full_name_ciphertext: NullableBytea
+  full_name_nonce: NullableBytea
+  email_ciphertext: NullableBytea
+  email_nonce: NullableBytea
+  phone_ciphertext: NullableBytea
+  phone_nonce: NullableBytea
+  email_hmac: NullableBytea
+  phone_hmac: NullableBytea
+  pii_key_version: Nullable<string>
+  pii_erased_at: NullableTimestamp
+  source: string
+  state: Generated<string>
+  application_id: Nullable<string>
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
+export interface CoursesTable {
+  id: Generated<string>
+  slug: string
+  version: number
+  title: string
+  summary: string
+  price_paise: BigIntStringDefault
+  currency: Generated<string>
+  duration_minutes: number
+  state: Generated<string>
+  published_by_user_id: Nullable<string>
+  published_at: NullableTimestamp
+  archived_at: NullableTimestamp
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+}
+
+export interface MembershipPlansTable {
+  id: Generated<string>
+  code: string
+  version: number
+  name: string
+  description: string
+  price_paise: BigIntStringDefault
+  currency: Generated<string>
+  billing_period_months: number
+  state: Generated<string>
+  published_by_user_id: Nullable<string>
+  published_at: NullableTimestamp
+  archived_at: NullableTimestamp
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+}
+
+export interface AppConfigVersionsTable {
+  id: Generated<string>
+  version: number
+  payload: Json
+  content_sha256: Bytea
+  published_by_user_id: string
+  published_at: Timestamp
+  retired_at: NullableTimestamp
+  created_at: TimestampDefault
+}
+
+export interface ContentItemsTable {
+  id: Generated<string>
+  content_key: string
+  kind: string
+  version: number
+  title: string
+  body: string
+  payload: JsonDefault
+  state: Generated<string>
+  published_by_user_id: Nullable<string>
+  published_at: NullableTimestamp
+  archived_at: NullableTimestamp
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+}
+
+export interface MandatesTable {
+  id: Generated<string>
+  user_id: string
+  provider: string
+  provider_mandate_id: Nullable<string>
+  max_amount_paise: BigIntString
+  frequency: string
+  debit_day: Nullable<number>
+  state: Generated<MandateState>
+  valid_from: NullableTimestamp
+  valid_to: NullableTimestamp
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
+export interface SipPlansTable {
+  id: Generated<string>
+  user_id: string
+  fund_id: string
+  amount_paise: BigIntString
+  debit_day: number
+  duration_months: Nullable<number>
+  state: Generated<SipState>
+  mandate_id: Nullable<string>
+  start_date: NullableDateColumn
+  next_due_date: NullableDateColumn
+  paused_at: NullableTimestamp
+  cancelled_at: NullableTimestamp
+  completed_at: NullableTimestamp
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
+export interface InvestmentOrdersTable {
+  id: Generated<string>
+  user_id: string
+  fund_id: string
+  sip_plan_id: Nullable<string>
+  type: OrderType
+  state: Generated<OrderState>
+  amount_paise: NullableBigIntString
+  requested_units: NullableNumeric
+  currency: Generated<string>
+  requested_at: NullableTimestamp
+  payment_confirmed_at: NullableTimestamp
+  booked_at: NullableTimestamp
+  cancelled_at: NullableTimestamp
+  failure_code: Nullable<string>
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
+export interface InvestmentExecutionsTable {
+  id: Generated<string>
+  order_id: string
+  user_id: string
+  fund_id: string
+  type: ExecutionType
+  amount_paise: BigIntString
+  nav: NullableNumeric
+  units: NullableNumeric
+  executed_at: TimestampDefault
+  reverses_execution_id: Nullable<string>
+  provider_reference: Nullable<string>
+  created_at: TimestampDefault
+}
+
+export interface HoldingsTable {
+  id: Generated<string>
+  user_id: string
+  fund_id: string
+  total_units: NumericDefault
+  reserved_units: NumericDefault
+  cost_basis_paise: BigIntStringDefault
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
+export interface HoldingLotsTable {
+  id: Generated<string>
+  holding_id: string
+  user_id: string
+  fund_id: string
+  source_execution_id: string
+  acquired_on: DateColumn
+  cost_basis_paise: BigIntString
+  original_units: Numeric
+  remaining_units: Numeric
+  reserved_units: NumericDefault
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
+export interface HoldingLotMovementsTable {
+  id: Generated<string>
+  holding_lot_id: string
+  holding_id: string
+  user_id: string
+  fund_id: string
+  execution_id: string
+  movement_type: string
+  units_delta: Numeric
+  cost_basis_delta_paise: BigIntString
+  occurred_at: TimestampDefault
+  created_at: TimestampDefault
+}
+
+export interface RedemptionRequestsTable {
+  id: Generated<string>
+  order_id: string
+  user_id: string
+  fund_id: string
+  state: Generated<RedemptionState>
+  requested_units: Numeric
+  reserved_units: NumericDefault
+  estimated_value_paise: BigIntString
+  finance_policy_version: number
+  requires_dual_approval: boolean
+  submitted_at: NullableTimestamp
+  reserved_at: NullableTimestamp
+  approved_at: NullableTimestamp
+  settled_at: NullableTimestamp
+  cancelled_at: NullableTimestamp
+  reason_code: Nullable<string>
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
+export interface PaymentsTable {
+  id: Generated<string>
+  order_id: string
+  user_id: string
+  amount_paise: BigIntString
+  currency: Generated<string>
+  state: Generated<PaymentState>
+  succeeded_at: NullableTimestamp
+  failed_at: NullableTimestamp
+  refunded_at: NullableTimestamp
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
+export interface PaymentAttemptsTable {
+  id: Generated<string>
+  payment_id: string
+  user_id: string
+  attempt_number: number
+  provider: string
+  provider_payment_id: Nullable<string>
+  state: Generated<PaymentState>
+  failure_code: Nullable<string>
+  expires_at: NullableTimestamp
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
+export interface ProviderEventsTable {
+  id: Generated<string>
+  provider: string
+  provider_event_id: string
+  event_type: string
+  state: Generated<ProviderEventState>
+  signature_valid: boolean
+  payload_ciphertext: NullableBytea
+  payload_nonce: NullableBytea
+  payload_key_version: Nullable<string>
+  payload_sha256: Bytea
+  erased_at: NullableTimestamp
+  payment_id: Nullable<string>
+  mandate_id: Nullable<string>
+  user_id: Nullable<string>
+  attempt_count: Generated<number>
+  available_at: TimestampDefault
+  locked_at: NullableTimestamp
+  locked_by: Nullable<string>
+  processed_at: NullableTimestamp
+  last_error_code: Nullable<string>
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
+export interface NotificationsTable {
+  id: Generated<string>
+  user_id: string
+  kind: string
+  title: string
+  body: string
+  read_at: NullableTimestamp
+  payload: JsonDefault
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+}
+
 /**
- * The full canonical first-slice schema map consumed by the typed Kysely
- * instance, repositories, and command services.
+ * The full canonical schema map consumed by the typed Kysely instance,
+ * repositories, and command services. First-slice tables (009-013) plus the
+ * later-domain tables (014-018).
  */
 export interface Database {
   applications: ApplicationsTable
@@ -469,4 +988,34 @@ export interface Database {
   email_deliveries: EmailDeliveriesTable
   email_provider_events: EmailProviderEventsTable
   email_suppressions: EmailSuppressionsTable
+  // Later domain (014-018)
+  investor_profiles: InvestorProfilesTable
+  kyc_cases: KycCasesTable
+  kyc_documents: KycDocumentsTable
+  kyc_reviews: KycReviewsTable
+  risk_assessments: RiskAssessmentsTable
+  funds: FundsTable
+  fund_versions: FundVersionsTable
+  fund_disclosure_versions: FundDisclosureVersionsTable
+  fund_nav_prices: FundNavPricesTable
+  fund_positions: FundPositionsTable
+  fund_aum_snapshots: FundAumSnapshotsTable
+  finance_policy_versions: FinancePolicyVersionsTable
+  marketing_leads: MarketingLeadsTable
+  courses: CoursesTable
+  membership_plans: MembershipPlansTable
+  app_config_versions: AppConfigVersionsTable
+  content_items: ContentItemsTable
+  mandates: MandatesTable
+  sip_plans: SipPlansTable
+  investment_orders: InvestmentOrdersTable
+  investment_executions: InvestmentExecutionsTable
+  holdings: HoldingsTable
+  holding_lots: HoldingLotsTable
+  holding_lot_movements: HoldingLotMovementsTable
+  redemption_requests: RedemptionRequestsTable
+  payments: PaymentsTable
+  payment_attempts: PaymentAttemptsTable
+  provider_events: ProviderEventsTable
+  notifications: NotificationsTable
 }

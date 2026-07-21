@@ -778,3 +778,11 @@ The plan is ready for implementation only when:
 - Each phase leaves the repository buildable and has clear acceptance criteria.
 - Open product decisions are either resolved or clearly block only the affected
   later phase.
+
+
+## Related notes (Obsidian graph)
+
+- Produced the plan: [[plans/01-postgresql-typescript-rearchitecture-plan|Master rearchitecture plan]]
+- Companion specs: [[specifications/02-product-architecture-decisions|02]] · [[specifications/03-schema-lifecycle-specification|03]] · [[specifications/04-api-security-test-specification|04]] · [[specifications/05-system-tooling-diagrams|05]]
+- Later handoffs: [[handoffs/06-planning-completion-handoff|06 · Planning completion]] · [[handoffs/07-backend-ts-migration-and-later-domain-handoff|07 · Backend TS + later-domain]]
+- Home: [[README|Session 1 home]]

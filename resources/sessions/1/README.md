@@ -22,9 +22,14 @@ this session's active authority.
 
 ## Resume Here
 
-For Obsidian Graph View, open [[resources/sessions/1/OBSIDIAN_MAP|Session 1
-Obsidian Map]]. It explicitly links the active Session 1 notes while preserving
-the ordinary repository-relative links below.
+This folder is a self-contained **Obsidian vault** (`resources/sessions/1`). Open
+it in Obsidian and use **Graph View** to see the workflow: planning handoffs feed
+the plan and specifications, which the working model and decisions govern, which
+the task ledger drives into per-task packets and phase logs, which roll up into
+status. Nodes are colour-grouped by folder (design, ledger, packets, logs,
+status, removed, inventory, templates). The [[#obsidian-graph-map|Obsidian graph
+map]] below is the wiki-link entry point; the ordinary repository-relative links
+in the rest of this page remain authoritative.
 
 Read in this order:
 
@@ -104,3 +109,53 @@ efficiency but are non-normative evidence and never override specifications.
 Exact partitions and reproduction commands are in the inventory and metrics
 documents. Generated Android bundles are classified separately and are never
 hand-converted.
+
+
+## Obsidian Graph Map
+
+This section is the Obsidian graph entry point for the Session 1 vault. It adds
+explicit wiki links without replacing the ordinary Markdown links above, which
+remain authoritative for repository use. Start here, then follow
+[[status/CURRENT|the current resume point]].
+
+### Execution authority
+
+- [[WORKING_MODEL|Working model]]
+- [[TASKS|Migration task ledger]]
+- [[status/CURRENT|Current resume point]]
+- [[status/IMPLEMENTATION_PROGRESS|Implementation progress]]
+- [[status/VALIDATION_SUMMARY|Validation summary]]
+- [[status/METRICS|Migration metrics]]
+- [[decisions/RISKS_AND_DECISIONS|Risks and decisions]]
+
+### Plan and specifications
+
+- [[plans/01-postgresql-typescript-rearchitecture-plan|Master rearchitecture plan]]
+- [[specifications/02-product-architecture-decisions|Product and architecture decisions]]
+- [[specifications/03-schema-lifecycle-specification|Schema and lifecycle specification]]
+- [[specifications/04-api-security-test-specification|API, security, email, and test specification]]
+- [[specifications/05-system-tooling-diagrams|System, TypeScript, tooling, and contract architecture]]
+
+### Task evidence
+
+- [[packets/DOC-001-session-working-model|DOC-001 packet]]
+- [[logs/DOC-001-session-working-model|DOC-001 log]]
+- [[logs/BE-001-backend-runtime-reset|BE-001 runtime-reset log]]
+- [[logs/README|Task-log index]] (links every phase log)
+
+### Handoffs and migration history
+
+- [[handoffs/00-database-typescript-rearchitecture-handoff|Original assessment handoff]]
+- [[handoffs/06-planning-completion-handoff|Planning-completion handoff]]
+- [[handoffs/07-backend-ts-migration-and-later-domain-handoff|Backend TS migration + later-domain handoff]]
+- [[inventory/JS_TS_MIGRATION_LEDGER|JS/TS migration inventory]]
+- [[removed/README|Removed-mechanism index]]
+- [[removed/BE-001-javascript-server|BE-001 removed JavaScript server]]
+
+### Reusable templates
+
+- [[templates/PHASE_LOG_TEMPLATE|Phase-log template]]
+- [[templates/TASK_PACKET_TEMPLATE|Task-packet template]]
+
+`resources/sessions/Legacy/**` is deliberately excluded from this graph and from
+all active-session links. It remains immutable historical material.

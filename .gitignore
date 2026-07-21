@@ -40,6 +40,9 @@ resources/sessions/*
 resources/sessions/1/**
 !resources/sessions/1/**/
 !resources/sessions/1/**/*.md
+# Obsidian vault configuration for the sessions/1 vault (shared, committed).
+!resources/sessions/1/.obsidian/
+!resources/sessions/1/.obsidian/**
 resources/credentials/
 resources/testing/**/raw/
 *.pem

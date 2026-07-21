@@ -394,3 +394,11 @@ Planning is complete only when:
   only non-planning exception); and
 - starting the TypeScript foundation remains blocked until a separate explicit
   user authorization after this planning handoff completes.
+
+
+## Related notes (Obsidian graph)
+
+- Prior handoff: [[handoffs/00-database-typescript-rearchitecture-handoff|00 · Original assessment]]
+- Next handoff: [[handoffs/07-backend-ts-migration-and-later-domain-handoff|07 · Backend TS + later-domain]]
+- Planning set: [[plans/01-postgresql-typescript-rearchitecture-plan|Plan]] · [[specifications/02-product-architecture-decisions|02]] · [[specifications/03-schema-lifecycle-specification|03]] · [[specifications/04-api-security-test-specification|04]] · [[specifications/05-system-tooling-diagrams|05]]
+- Home: [[README|Session 1 home]]
