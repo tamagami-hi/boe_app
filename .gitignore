@@ -43,6 +43,11 @@ resources/sessions/1/**
 # Obsidian vault configuration for the sessions/1 vault (shared, committed).
 !resources/sessions/1/.obsidian/
 !resources/sessions/1/.obsidian/**
+# Session 2 (admin control audit + build), committed markdown.
+!resources/sessions/2/
+resources/sessions/2/**
+!resources/sessions/2/**/
+!resources/sessions/2/**/*.md
 resources/credentials/
 resources/testing/**/raw/
 *.pem
