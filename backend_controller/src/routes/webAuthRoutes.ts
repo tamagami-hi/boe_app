@@ -1,7 +1,8 @@
 /**
  * Browser-admin (web) authentication routes (spec 04 §3.4): cookie + synchronizer
- * CSRF login, refresh rotation, and logout. The CSRF-recovery GET is a later
- * refinement.
+ * CSRF login, refresh rotation, logout, and the `GET /v1/auth/web/csrf` reload-
+ * recovery endpoint that re-issues the CSRF token from the access or refresh
+ * cookie.
  */
 import type { FastifyInstance } from "fastify"
 import { z } from "zod"
@@ -14,10 +15,12 @@ import {
   applyAuthCookies,
   authenticateWebRequest,
   expireAuthCookies,
+  readAccessCookie,
   readRefreshCookie,
   validateWebOrigin,
   webLogin,
   webLogout,
+  webRecoverCsrf,
   webRefresh,
   type WebAuthDeps,
 } from "../domain/auth/webAuth.js"
@@ -57,6 +60,15 @@ export const registerWebAuthRoutes = (application: FastifyInstance, deps: WebAut
     }
     applyAuthCookies(reply, deps, outcome.result)
     return reply.sendData(outcome.result.body, { status: 200 })
+  })
+
+  application.get("/v1/auth/web/csrf", async (request, reply) => {
+    validateWebOrigin(request, deps)
+    const accessCookie = readAccessCookie(request)
+    const refreshCookie = readRefreshCookie(request)
+    const result = await deps.unitOfWork.execute((tx) => webRecoverCsrf(tx, deps, { accessCookie, refreshCookie }))
+    reply.header("cache-control", "no-store")
+    return reply.sendData(result.body, { status: 200 })
   })
 
   application.post("/v1/auth/web/logout", async (request, reply) => {

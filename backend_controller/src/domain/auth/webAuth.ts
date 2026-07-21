@@ -2,8 +2,10 @@
  * Browser-admin (web) authentication (spec 04 §3.4, §4.3): HttpOnly cookie access
  * + opaque rotating refresh + synchronizer CSRF, with Origin/Referer and
  * Sec-Fetch-Site checks. Refresh + CSRF rotate together with the same 30s grace
- * and family-reuse revocation as native. The partial-response mixed-pair recovery
- * edge (current refresh + previous CSRF) is a documented later refinement.
+ * and family-reuse revocation as native. `GET /v1/auth/web/csrf` (webRecoverCsrf)
+ * re-issues the synchronizer token on reload from the access or refresh cookie
+ * with no prior CSRF. The partial-response mixed-pair recovery edge (current
+ * refresh + previous CSRF) is a documented later refinement.
  */
 import type { FastifyReply, FastifyRequest } from "fastify"
 import type { Kysely } from "kysely"
@@ -17,7 +19,7 @@ import {
   hashToken,
 } from "../../auth/refreshDerivation.js"
 import { bytesEqual } from "../../crypto/primitives.js"
-import type { Transaction, UserId } from "../../db/repositories.js"
+import type { AuthSession, Transaction, UserId } from "../../db/repositories.js"
 import type { Database } from "../../db/types.js"
 import { AppError } from "../../http/errorCatalog.js"
 import type { AuditWriteRepository } from "../../repositories/auditRepository.js"
@@ -88,6 +90,9 @@ export const parseCookies = (header: string | undefined): Record<string, string>
 
 export const readRefreshCookie = (request: FastifyRequest): string | undefined =>
   parseCookies(request.headers.cookie)[REFRESH_COOKIE]
+
+export const readAccessCookie = (request: FastifyRequest): string | undefined =>
+  parseCookies(request.headers.cookie)[ACCESS_COOKIE]
 
 const buildCookie = (name: string, value: string, maxAgeSeconds: number, secure: boolean): string =>
   `${name}=${value}; HttpOnly; ${secure ? "Secure; " : ""}SameSite=Lax; Path=/; Max-Age=${String(maxAgeSeconds)}`
@@ -355,4 +360,75 @@ export const webRefresh = async (
 
   await deps.authSessionRepository.revokeSessionFamily(tx, { sessionId: session.id, reason: "refresh_reuse", now })
   return { kind: "reuse_revoked" }
+}
+
+export interface WebCsrfResult {
+  readonly body: {
+    readonly user: WebPrincipal
+    readonly csrfToken: string
+    readonly csrfTokenExpiresAt: string
+  }
+}
+
+/**
+ * Reload recovery for the synchronizer CSRF token (spec 04 §3.4,
+ * `GET /v1/auth/web/csrf`). The SPA has lost its in-memory CSRF token after a
+ * reload but still holds the HttpOnly access/refresh cookies. Identify the web
+ * session from the access cookie if it still verifies, else from the refresh
+ * cookie, then re-issue a fresh CSRF token (no prior CSRF required). Safe without
+ * CSRF because the caller must pass the Origin/Fetch-Metadata check (enforced in
+ * the route) and a cross-origin caller cannot read the JSON response.
+ */
+export const webRecoverCsrf = async (
+  tx: Transaction,
+  deps: WebAuthDeps,
+  input: Readonly<{ accessCookie: string | undefined; refreshCookie: string | undefined }>,
+): Promise<WebCsrfResult> => {
+  const now = deps.clock()
+
+  let session: AuthSession | undefined
+  if (input.accessCookie !== undefined) {
+    const verified = await deps.accessTokenService.verify(input.accessCookie).catch(() => null)
+    if (verified !== null) {
+      session = await tx
+        .selectFrom("auth_sessions")
+        .selectAll()
+        .where("id", "=", verified.sid)
+        .forUpdate()
+        .executeTakeFirst()
+    }
+  }
+  if ((session === undefined || session.state !== "active") && input.refreshCookie !== undefined) {
+    const locked = await deps.authSessionRepository.lockByRefreshTokenHash(tx, hashToken(input.refreshCookie))
+    if (locked !== null) session = locked.session
+  }
+
+  if (session === undefined || session.state !== "active" || session.channel !== "web") {
+    throw new AppError("AUTHENTICATION_REQUIRED")
+  }
+  if (new Date(session.expires_at).getTime() <= now.getTime()) throw new AppError("SESSION_INVALID")
+
+  const user = await tx
+    .selectFrom("users")
+    .select(["id", "full_name", "email_normalized", "account_state"])
+    .where("id", "=", session.user_id)
+    .executeTakeFirst()
+  if (user === undefined || user.account_state !== "active") throw new AppError("ACCOUNT_NOT_ACTIVE")
+
+  const csrfRaw = generateInitialRefreshToken()
+  await deps.authSessionRepository.rotateWebCsrf(tx, {
+    sessionId: session.id,
+    csrfTokenHash: hashToken(csrfRaw),
+    csrfKeyVersion: deps.csrfKeyVersion,
+    csrfExpiresAt: new Date(now.getTime() + ACCESS_TOKEN_TTL_MS),
+    now,
+  })
+  const principal = await buildPrincipal(deps, tx, user)
+  return {
+    body: {
+      user: principal,
+      csrfToken: csrfRaw,
+      csrfTokenExpiresAt: new Date(now.getTime() + ACCESS_TOKEN_TTL_MS).toISOString(),
+    },
+  }
 }

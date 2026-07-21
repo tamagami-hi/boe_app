@@ -72,6 +72,16 @@ export interface AuthSessionWriteRepository {
   createWebSession: (tx: Transaction, input: CreateWebSessionInput) => Promise<CreatedSession>
   rotateRefresh: (tx: Transaction, input: RotateRefreshInput) => Promise<void>
   rotateWebRefresh: (tx: Transaction, input: RotateWebRefreshInput) => Promise<void>
+  rotateWebCsrf: (
+    tx: Transaction,
+    input: Readonly<{
+      sessionId: string
+      csrfTokenHash: Buffer
+      csrfKeyVersion: string
+      csrfExpiresAt: Date
+      now: Date
+    }>,
+  ) => Promise<void>
   revokeSessionFamily: (
     tx: Transaction,
     input: Readonly<{ sessionId: string; reason: string; now: Date }>,
@@ -255,6 +265,26 @@ export const createAuthSessionRepository = (): AuthSessionWriteRepository => ({
         updated_at: input.now,
       })
       .where("id", "=", input.sessionId)
+      .execute()
+  },
+
+  // CSRF-only re-issue for reload recovery (GET /v1/auth/web/csrf): rotate the
+  // synchronizer token without touching the refresh chain. The prior CSRF is
+  // overwritten (the client had lost it), so it is immediately invalidated.
+  rotateWebCsrf: async (tx, input) => {
+    await tx
+      .updateTable("auth_sessions")
+      .set({
+        csrf_token_hash: input.csrfTokenHash,
+        csrf_key_version: input.csrfKeyVersion,
+        csrf_expires_at: input.csrfExpiresAt,
+        csrf_rotated_at: input.now,
+        last_seen_at: input.now,
+        updated_at: input.now,
+      })
+      .where("id", "=", input.sessionId)
+      .where("state", "=", "active")
+      .where("channel", "=", "web")
       .execute()
   },
 

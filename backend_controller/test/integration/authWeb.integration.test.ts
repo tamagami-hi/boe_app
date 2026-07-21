@@ -206,4 +206,68 @@ describe("web authentication (integration)", () => {
     expect(ok.statusCode).toBe(200)
     expect(dataOf<{ loggedOut: boolean }>(ok).loggedOut).toBe(true)
   })
+
+  test("GET /v1/auth/web/csrf recovers a fresh CSRF token from the access cookie and invalidates the old one", async () => {
+    const { jar, csrf } = await login()
+
+    const recovered = await app.inject({
+      method: "GET",
+      url: "/v1/auth/web/csrf",
+      headers: { origin: ORIGIN, cookie: cookieHeader(jar) },
+    })
+    expect(recovered.statusCode).toBe(200)
+    const body = dataOf<WebBody>(recovered)
+    expect(body.csrfToken).toMatch(/^[A-Za-z0-9_-]{43}$/u)
+    expect(body.csrfToken).not.toBe(csrf)
+    expect(body.user.roles).toContain("onboarding")
+
+    // The recovered token authorizes a state-changing request; the stale one does not.
+    const staleLogout = await app.inject({
+      method: "POST",
+      url: "/v1/auth/web/logout",
+      headers: { origin: ORIGIN, cookie: cookieHeader(jar), "x-csrf-token": csrf },
+    })
+    expect(staleLogout.statusCode).toBe(403)
+
+    const freshLogout = await app.inject({
+      method: "POST",
+      url: "/v1/auth/web/logout",
+      headers: { origin: ORIGIN, cookie: cookieHeader(jar), "x-csrf-token": body.csrfToken },
+    })
+    expect(freshLogout.statusCode).toBe(200)
+  })
+
+  test("GET /v1/auth/web/csrf recovers from the refresh cookie when the access cookie is absent", async () => {
+    const { jar } = await login()
+    const refreshOnly: Record<string, string> = {}
+    const refreshValue = jar["__Host-boe_refresh"]
+    if (refreshValue !== undefined) refreshOnly["__Host-boe_refresh"] = refreshValue
+
+    const recovered = await app.inject({
+      method: "GET",
+      url: "/v1/auth/web/csrf",
+      headers: { origin: ORIGIN, cookie: cookieHeader(refreshOnly) },
+    })
+    expect(recovered.statusCode).toBe(200)
+    expect(dataOf<WebBody>(recovered).csrfToken).toMatch(/^[A-Za-z0-9_-]{43}$/u)
+  })
+
+  test("GET /v1/auth/web/csrf rejects a cross-site origin", async () => {
+    const { jar } = await login()
+    const bad = await app.inject({
+      method: "GET",
+      url: "/v1/auth/web/csrf",
+      headers: { origin: "https://evil.example", cookie: cookieHeader(jar) },
+    })
+    expect(bad.statusCode).toBe(403)
+  })
+
+  test("GET /v1/auth/web/csrf requires an authenticated session", async () => {
+    const res = await app.inject({
+      method: "GET",
+      url: "/v1/auth/web/csrf",
+      headers: { origin: ORIGIN },
+    })
+    expect(res.statusCode).toBe(401)
+  })
 })

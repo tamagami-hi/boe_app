@@ -18,7 +18,7 @@ slices tracked under GATE-07/GATE-08, not part of finalization.
 
 | Task | Status | Depends on | Completion boundary |
 |---|---|---|---|
-| BE-022 Web CSRF reload-recovery endpoint | ACTIVE | BE-010 | `GET /v1/auth/web/csrf` re-issues the CSRF cookie + token for an authenticated web session (rotate + short grace); wired into composition; integration-tested |
+| BE-022 Web CSRF reload-recovery endpoint | DONE | BE-010, PROD-001 | `GET /v1/auth/web/csrf` recovery from access **or** refresh cookie; integration 75 -> 79. [log](./logs/BE-022-web-csrf-recovery.md) |
 | BE-023 Concrete AWS SES v2 sender + email-worker entrypoint | BACKLOG | BE-012, PROD-001 | Real `SesEmailSender` adapter over the existing port + a background worker runner over `dispatchDueDeliveries`; source/dist smoke + integration |
 | BE-024 Migrate-CLI baseline / `001-008` disposition | BACKLOG | BE-005, spec 03 §8 | Make `migrate up` production-correct for the canonical `>= 009` baseline per the spec 03 §8 disposition matrix (archive/relocate legacy `001-008` or filter the runner) |
 | BE-008b-3 Onboarding resend cooldown/cross-match/race | BACKLOG | BE-008 | Cooldown resend + cross-match + race savepoint on `POST /v1/applications` resubmission; integration negatives |
@@ -113,7 +113,7 @@ complete and self-consistent before frontend work. They are additive/hardening
 
 | Task | Status | Depends on | Completion boundary |
 |---|---|---|---|
-| BE-022 Web CSRF reload-recovery endpoint | ACTIVE | BE-010, PROD-001 | `GET /v1/auth/web/csrf` re-issues the CSRF cookie + token for an authenticated web session (rotate + short grace, Origin/Sec-Fetch guarded); wired into composition; integration-tested |
+| BE-022 Web CSRF reload-recovery endpoint | DONE | BE-010, PROD-001 | `GET /v1/auth/web/csrf` re-issues the CSRF token from the access **or** refresh cookie (no prior CSRF), Origin/Sec-Fetch guarded, auto-wired via `registerWebAuthRoutes`; integration 75 -> 79. [log](./logs/BE-022-web-csrf-recovery.md) |
 | BE-023 Concrete AWS SES v2 sender + email-worker entrypoint | BACKLOG | BE-012, PROD-001 | Real `SesEmailSender` over the existing port + background worker runner over `dispatchDueDeliveries`; source/dist smoke + integration |
 | BE-024 Migrate-CLI baseline / `001-008` disposition | BACKLOG | BE-005, spec 03 §8 | Production-correct `migrate up` on the canonical `>= 009` baseline per spec 03 §8 (archive/relocate legacy `001-008` or filter the runner + guard) |
 | BE-008b-3 Onboarding resend cooldown/cross-match/race | BACKLOG | BE-008 | Cooldown resend + cross-match + race savepoint on application resubmission; integration negatives |

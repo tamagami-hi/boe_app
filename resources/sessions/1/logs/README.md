@@ -72,6 +72,8 @@ not rewrite prior RED/GREEN history to match later architecture.
 
 | BE-021.2 | DONE | [Later-domain schema increment 2 (investing/ownership + payments)](./BE-021-later-domain-schema-2.md) | on `ts-migration/backend` (migrations 017-018 + Kysely types for all later-domain tables; integration 69 -> 75) |
 
+| BE-022 | DONE | [Web CSRF reload-recovery endpoint](./BE-022-web-csrf-recovery.md) | on `ts-migration/backend` (`GET /v1/auth/web/csrf` access-or-refresh-cookie recovery; integration 75 -> 79) |
+
 
 ## Related notes (Obsidian graph)
 
