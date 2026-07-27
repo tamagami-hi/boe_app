@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { validateLead, type LeadErrors } from '../lib/validation';
-import { submitLead } from '../lib/onboarding';
+import { submitApplication } from '../lib/onboarding';
 import { leadFormDefaults } from '../lib/landingDefaults';
 import type { LeadFormDefaults } from '../lib/landingDefaults';
 
@@ -36,6 +36,8 @@ export default function LeadForm({
 
   const [values, setValues] = useState(initialValues);
   const [errors, setErrors] = useState<LeadErrors>({});
+  const [accepted, setAccepted] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
 
   function update<K extends keyof typeof values>(key: K, value: string) {
@@ -46,16 +48,24 @@ export default function LeadForm({
     event.preventDefault();
     const result = validateLead(values);
     setErrors(result.errors);
-    if (!result.ok) {
+    const missingConsent = !accepted;
+    setConsentError(missingConsent ? 'Please accept the Terms of Service and Privacy Policy.' : null);
+    if (!result.ok || missingConsent) {
       setStatus({ kind: 'idle' });
       return;
     }
 
     setStatus({ kind: 'submitting' });
     try {
-      await submitLead(values);
+      await submitApplication({
+        fullName: values.name,
+        email: values.email,
+        phone: values.phone,
+        acceptedConsents: accepted,
+      });
       setStatus({ kind: 'success' });
       setValues(initialValues);
+      setAccepted(false);
     } catch (err) {
       setStatus({
         kind: 'error',
@@ -146,6 +156,24 @@ export default function LeadForm({
                 value={values.message}
                 onChange={(e) => update('message', e.target.value)}
               />
+            </div>
+
+            <div className={`field ${consentError ? 'field--error' : ''}`}>
+              <label className="field__checkbox">
+                <input
+                  type="checkbox"
+                  name="acceptConsents"
+                  checked={accepted}
+                  onChange={(e) => setAccepted(e.target.checked)}
+                  aria-invalid={Boolean(consentError)}
+                />
+                <span>
+                  I accept the{' '}
+                  <a href="/terms" target="_blank" rel="noreferrer">Terms of Service</a> and{' '}
+                  <a href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>.
+                </span>
+              </label>
+              {consentError ? <span className="field__error">{consentError}</span> : null}
             </div>
 
             <button

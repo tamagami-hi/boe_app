@@ -1,35 +1,32 @@
-// Lead submission to the existing backend onboarding endpoint.
-// Contract: POST /v1/onboarding/applications with { name, email, phone }.
-// The backend ignores unknown fields, so interest/message ride along safely
-// for future use. Errors are intentionally NOT swallowed - the UI surfaces
-// err.message to the user.
+// Application submission to the canonical backend, via the same-origin BFF
+// (src/app/api/onboarding/applications/route.ts), which maps to
+// POST /v1/applications (spec 04 §3.1: name/email/phone + accepted terms &
+// privacy consents). The new onboarding model is application -> email verify ->
+// admin approval -> activation invite; there is no self-service password signup.
+// Errors are NOT swallowed - the UI surfaces err.message.
 
-import { normalizeLead, type LeadInput, type NormalizedLead } from './validation';
-
-// Same-origin endpoint. next.config.mjs rewrites /api/onboarding/* to the
-// unchanged backend_controller /v1/onboarding/* endpoint server-side, so the
-// browser never makes a cross-origin call and no CORS allowlist change is
-// needed on the backend.
 const ENDPOINT = '/api/onboarding/applications';
 
-export type LeadResult = {
-  id?: string;
-  status?: string;
-  [key: string]: unknown;
-};
+export interface ApplicationInput {
+  readonly fullName: string;
+  readonly email: string;
+  readonly phone: string;
+  readonly acceptedConsents: boolean;
+}
 
-export async function submitLead(input: LeadInput): Promise<LeadResult> {
-  const lead: NormalizedLead = normalizeLead(input);
+export interface ApplicationResult {
+  readonly accepted: boolean;
+}
 
+export async function submitApplication(input: ApplicationInput): Promise<ApplicationResult> {
   const response = await fetch(ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      name: lead.name,
-      email: lead.email,
-      phone: lead.phone,
-      interest: lead.interest || undefined,
-      message: lead.message || undefined,
+      fullName: input.fullName.trim(),
+      email: input.email.trim(),
+      phone: input.phone.trim(),
+      acceptedConsents: input.acceptedConsents === true,
     }),
   });
 
@@ -42,11 +39,11 @@ export async function submitLead(input: LeadInput): Promise<LeadResult> {
 
   if (!response.ok) {
     const message =
-      (payload as { message?: string; error?: string } | null)?.message ||
-      (payload as { error?: string } | null)?.error ||
+      (payload as { error?: string; message?: string } | null)?.error ||
+      (payload as { message?: string } | null)?.message ||
       'We could not submit your request. Please try again.';
     throw new Error(message);
   }
 
-  return (payload as LeadResult) ?? {};
+  return { accepted: (payload as { accepted?: boolean } | null)?.accepted === true };
 }

@@ -4,11 +4,16 @@ import {
   clearSessionTokens,
   clone,
   delay,
+  setSessionCsrf,
   setSessionTokens,
+  storedAccessToken,
   storedRefreshToken,
   storedUser,
   useHttpApi,
 } from './_util.js';
+
+const DEVICE_ID_KEY = 'boe.client.deviceId';
+const CLIENT_APP_VERSION = '1.0.0';
 
 let _users = {
   client: null,
@@ -36,6 +41,43 @@ function maskPhone(phone) {
 function localUuid() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
   return `local-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+// Native login/refresh require a stable device installation UUID. On the APK
+// this identifies the Capacitor install; in the browser preview it is a stable
+// per-browser UUID. platform is 'android' as the backend requires.
+function getOrCreateDeviceId() {
+  const storage = localStorageHandle();
+  if (!storage) return localUuid();
+  let id = storage.getItem(DEVICE_ID_KEY);
+  if (!id) {
+    id = localUuid();
+    storage.setItem(DEVICE_ID_KEY, id);
+  }
+  return id;
+}
+
+function buildDevice() {
+  return {
+    installationId: getOrCreateDeviceId(),
+    name: 'BeOnEdge Client',
+    platform: 'android',
+    appVersion: CLIENT_APP_VERSION,
+  };
+}
+
+// Map the canonical native principal ({ userId, fullName, phoneMasked,
+// accountStatus }) to the app's user input shape for toClientUser.
+function fromNativeUser(nativeUser) {
+  return {
+    id: nativeUser?.userId,
+    name: nativeUser?.fullName,
+    email: nativeUser?.email,
+    phoneMasked: nativeUser?.phoneMasked,
+    status: 'approved',
+    role: 'client',
+    roles: ['client'],
+  };
 }
 
 function localStorageHandle() {
@@ -103,6 +145,27 @@ function toClientUser(user) {
   };
 }
 
+// Map the canonical web-auth principal ({ userId, fullName, email, roles,
+// permissions }) to the app's user shape. Any successful web login is an admin
+// principal (the backend rejects zero-role users), so 'admin' is injected to
+// satisfy the admin app's role gate while the canonical roles/permissions are
+// preserved for RBAC-aware UI.
+function toAdminUser(principal) {
+  const canonicalRoles = Array.isArray(principal?.roles)
+    ? principal.roles.map((value) => String(value).toLowerCase())
+    : [];
+  const permissions = Array.isArray(principal?.permissions) ? principal.permissions : [];
+  const base = toClientUser({
+    id: principal?.userId,
+    name: principal?.fullName,
+    email: principal?.email,
+    status: 'approved',
+    role: 'admin',
+    roles: [...new Set([...canonicalRoles, 'admin'])],
+  });
+  return { ...base, permissions };
+}
+
 export function hasRole(user, role) {
   return user?.roles?.some((value) => String(value).toLowerCase() === role) ||
     String(user?.role || '').toLowerCase() === role;
@@ -124,12 +187,33 @@ function assertScopeUser(user, scope) {
 
 export async function login(credentials = {}, { scope = 'client' } = {}) {
   if (useHttpApi()) {
-    const result = await apiRequest('/v1/auth/login', {
+    if (scope === 'admin') {
+      // Admin uses canonical web auth: HttpOnly cookies + synchronizer CSRF.
+      const result = await apiRequest('/v1/auth/web/login', {
+        method: 'POST',
+        auth: false,
+        scope,
+        body: { email: credentials.identifier || credentials.email, password: credentials.password },
+      });
+      const user = assertScopeUser(toAdminUser(result.user), scope);
+      setSessionCsrf(result.csrfToken, scope);
+      setSessionTokens({ user, scope });
+      _users[scope] = user;
+      return clone(user);
+    }
+
+    // Client (native) auth: bearer access + rotating refresh, held in storage.
+    const result = await apiRequest('/v1/auth/native/login', {
       method: 'POST',
       auth: false,
-      body: credentials,
+      scope,
+      body: {
+        email: credentials.identifier || credentials.email,
+        password: credentials.password,
+        device: buildDevice(),
+      },
     });
-    const user = assertScopeUser(toClientUser(result.user), scope);
+    const user = assertScopeUser(toClientUser(fromNativeUser(result.user)), scope);
     setSessionTokens({ user, accessToken: result.accessToken, refreshToken: result.refreshToken, scope });
     _users[scope] = user;
     return clone(user);
@@ -160,15 +244,15 @@ export async function listPendingApprovals() {
 
 export async function signup(details = {}, { scope = 'client' } = {}) {
   if (useHttpApi()) {
-    const result = await apiRequest('/v1/auth/signup', {
-      method: 'POST',
-      auth: false,
-      body: details,
-    });
-    const user = assertScopeUser(toClientUser(result.user), scope);
-    setSessionTokens({ user, accessToken: result.accessToken, refreshToken: result.refreshToken, scope });
-    _users[scope] = user;
-    return clone(user);
+    // The canonical onboarding model has no self-service account signup: a user
+    // applies (on the website), verifies their email, is approved by an admin,
+    // and receives an activation link where they set a password. Direct API
+    // account creation is intentionally unsupported here.
+    const error = new Error(
+      'Account creation is by application and admin approval. Apply on the website to receive an activation link.',
+    );
+    error.code = 'SIGNUP_VIA_APPLICATION';
+    throw error;
   }
 
   await delay(280);
@@ -190,8 +274,10 @@ export async function signup(details = {}, { scope = 'client' } = {}) {
 
 export async function logout({ scope = 'client' } = {}) {
   if (useHttpApi()) {
+    const logoutPath = scope === 'admin' ? '/v1/auth/web/logout' : '/v1/auth/native/logout';
+    const logoutBody = scope === 'admin' ? undefined : { refreshToken: storedRefreshToken(scope) };
     try {
-      await apiRequest('/v1/auth/logout', { method: 'POST', scope });
+      await apiRequest(logoutPath, { method: 'POST', scope, body: logoutBody });
     } finally {
       clearSessionTokens(scope);
       _users[scope] = null;
@@ -208,13 +294,14 @@ async function refreshCurrentUser(scope) {
   if (!refreshToken) {
     throw new Error('No refresh token available.');
   }
-  const result = await apiRequest('/v1/auth/refresh', {
+  const result = await apiRequest('/v1/auth/native/refresh', {
     method: 'POST',
     auth: false,
     scope,
-    body: { refreshToken },
+    body: { refreshToken, rotationId: localUuid() },
   });
-  const user = assertScopeUser(toClientUser(result.user), scope);
+  // Native refresh returns tokens only; retain the stored principal.
+  const user = assertScopeUser(toClientUser(storedUser(scope)), scope);
   setSessionTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken, user, scope });
   _users[scope] = user;
   return clone(user);
@@ -222,35 +309,43 @@ async function refreshCurrentUser(scope) {
 
 export async function currentUser({ scope = 'client' } = {}) {
   if (useHttpApi()) {
-    let current;
-    try {
-      current = await apiRequest('/v1/auth/session', { scope });
-    } catch {
-      const refreshed = await refreshCurrentUser(scope).catch(() => null);
-      if (refreshed) return refreshed;
-      clearSessionTokens(scope);
-      _users[scope] = null;
-      return null;
+    if (scope === 'admin') {
+      // Restore the admin session from the HttpOnly cookies via the CSRF
+      // reload-recovery endpoint, which returns the principal + a fresh token.
+      try {
+        const recovered = await apiRequest('/v1/auth/web/csrf', { scope });
+        const user = assertScopeUser(toAdminUser(recovered.user), scope);
+        setSessionCsrf(recovered.csrfToken, scope);
+        setSessionTokens({ user, scope });
+        _users[scope] = user;
+        return clone(user);
+      } catch {
+        clearSessionTokens(scope);
+        _users[scope] = null;
+        return null;
+      }
     }
 
-    if (!current.authenticated) {
-      const refreshed = await refreshCurrentUser(scope).catch(() => null);
-      if (refreshed) return refreshed;
-      clearSessionTokens(scope);
-      _users[scope] = null;
-      return null;
+    // Client (native): there is no server session endpoint. Trust the stored
+    // principal while an access token is present; otherwise rotate the refresh
+    // token to re-establish the session.
+    const storedClientUser = storedUser(scope);
+    if (storedAccessToken(scope) && storedClientUser) {
+      try {
+        const user = assertScopeUser(toClientUser(storedClientUser), scope);
+        _users[scope] = user;
+        return clone(user);
+      } catch {
+        clearSessionTokens(scope);
+        _users[scope] = null;
+        return null;
+      }
     }
-
-    let user;
-    try {
-      user = assertScopeUser(toClientUser({ ...storedUser(scope), ...current.user }), scope);
-    } catch {
-      clearSessionTokens(scope);
-      _users[scope] = null;
-      return null;
-    }
-    _users[scope] = user;
-    return clone(user);
+    const refreshed = await refreshCurrentUser(scope).catch(() => null);
+    if (refreshed) return refreshed;
+    clearSessionTokens(scope);
+    _users[scope] = null;
+    return null;
   }
 
   await delay(60);
@@ -264,7 +359,9 @@ export async function checkReachability() {
   }
 
   if (useHttpApi()) {
-    return apiRequest('/v1/system/reachability', { auth: false });
+    // Canonical health envelope: { status: 'ok' }. Map to the reachability shape.
+    const health = await apiRequest('/v1/health', { auth: false }).catch(() => null);
+    return { ok: health?.status === 'ok', minVersion: '1.0.0' };
   }
 
   await delay(180);

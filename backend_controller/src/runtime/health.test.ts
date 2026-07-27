@@ -17,9 +17,12 @@ const buildApp = (report: ReadinessReport): FastifyInstance =>
   })
 
 describe("buildReadinessReport", () => {
-  test("is ready only when the database and email are both configured", () => {
+  test("is ready when the database is reachable; email is informational only", () => {
     expect(buildReadinessReport(true, true).ready).toBe(true)
-    expect(buildReadinessReport(true, false).ready).toBe(false)
+    // Email not configured no longer degrades readiness (optional/out-of-band).
+    expect(buildReadinessReport(true, false).ready).toBe(true)
+    expect(buildReadinessReport(true, false).emailConfigured).toBe(false)
+    // The database remains the hard readiness gate.
     expect(buildReadinessReport(false, true).ready).toBe(false)
   })
 })

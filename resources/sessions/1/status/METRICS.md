@@ -709,6 +709,189 @@ command services + routes consuming the later domain (spec 03 §6/§7; spec 04
 later financial slices).
 
 
+## Delta: BE-022 Web CSRF reload-recovery (branch `ts-migration/backend`)
+
+`GET /v1/auth/web/csrf` re-issues the synchronizer CSRF token from the access or
+refresh cookie (spec 04 §3.4). Additive; backend authored JS/JSX 0 (unchanged).
+`npm run check` green; integration 75 -> 79 (+4 in `authWeb`). Legacy hash intact.
+
+
+## Delta: BE-024 Migrate-CLI baseline / legacy 001-008 disposition (branch `ts-migration/backend`)
+
+Archived legacy migrations `001-008` to `db/migrations-archive/` (spec 03 §8);
+applied `db/migrations/` is canonical `>= 009` only, so `migrate up` is
+collision-free from an empty DB. +2 guard unit tests. `npm run check` green
+(296 unit); integration 79/79. package/lock unchanged; Legacy hash intact.
+
+
+## Delta: RA-B0 Deploy-env boot compatibility — Option 3 (branch `ts-migration/backend`)
+
+Realignment spinoff: the rearchitected backend now boots under the
+`release_manager` deploy env unedited (accept `CORS_ORIGIN`; optional AWS SES/SNS;
+`\n`-escaped ES256 key; `Dockerfile` copies `db/migrations`), plus a real
+`seed:auth` admin bootstrap and a `keys:generate` operator helper.
+
+| Change | Value |
+|---|---:|
+| Backend source files touched (environment/composition/health) | 3 |
+| New scripts (`src/scripts/seedAuth.ts`, `scripts/generate-deploy-secrets.ts`) | 2 |
+| New npm scripts (`seed:auth`, `seed:auth:dev`, `keys:generate`) | 3 |
+| New integration test file (`deployBoot`) | 1 (5 tests) |
+| Unit tests added (`seedAuth`) | 8 |
+| Backend authored JS/JSX | 0 (unchanged) |
+
+`npm run check` green (304 unit, was 296); integration 79 -> 84 (9 files);
+`package-lock.json` unchanged (`package.json` gains scripts only); Legacy hash
+intact. No new dependencies.
+
+
+## Delta: RA-C.4 Client portfolio read slice (branch `ts-migration/backend`)
+
+First canonical `/v1/client/*` routes: native-authenticated reads over the
+BE-021 investing/ownership schema — derived investing eligibility (spec 03 §2.3),
+holdings valued at the current NAV, and the order history — plus the client
+portfolio/orders/eligibility services wired to them.
+
+| Change | Value |
+|---|---:|
+| New backend files (domain/eligibility, repository, routes) | 3 |
+| Backend files touched (nativeAuth narrow deps, composition) | 2 |
+| New backend integration test file (`clientPortfolio`) | 1 (10 tests) |
+| Unit tests added (`investingEligibility`) | 9 |
+| New frontend service (`eligibilityApi.js`) | 1 |
+| Frontend services touched (`portfolioApi`, `ordersApi`) | 2 |
+| Backend authored JS/JSX | 0 (unchanged) |
+
+`npm run check` green (313 unit, was 304); integration 84 -> 94 (10 files);
+frontend `npm run build` green; `package-lock.json`/`package.json` unchanged;
+Legacy hash intact. No new dependencies.
+
+
+## Delta: RA-C.5 Client order write path (branch `ts-migration/backend`)
+
+First canonical `/v1/client/*` **write** commands over the BE-021 investing
+schema: `createOrder` (`POST /v1/client/orders`) and `beginPayment`
+(`POST /v1/client/orders/:id/pay`). Eligibility re-derived under lock,
+published-fund + minimum guards, DB idempotency protocol, audit, and a
+`payment` provider-call outbox event.
+
+| Change | Value |
+|---|---:|
+| New backend files (2 write repos, 2 domain commands, 1 route) | 5 |
+| Backend files touched (composition wiring) | 1 |
+| New backend integration test file (`clientOrders`) | 1 (10 tests) |
+| Frontend service touched (`ordersApi.js`) | 1 |
+| Backend authored JS/JSX | 0 (unchanged) |
+
+`npm run check` green (313 unit, unchanged — new domain/repos/routes are
+integration-gated); integration 94 -> 104 (11 files); frontend `npm run build`
+green; `package.json`/`package-lock.json` unchanged; Legacy hash intact. No new
+dependencies.
+
+
+## Delta: RA-C.6 Order booking money-math (branch `ts-migration/backend`)
+
+Completes the purchase-order lifecycle to `booked`: `sendPaymentToProvider` +
+`confirmPayment` (provider seam) and `bookOrder` (immutable execution + holding
++ lot + movement), driven by exact round-half-to-even BigInt arithmetic.
+
+| Change | Value |
+|---|---:|
+| New backend files (money module, 2 repos, 2 domain commands) | 5 |
+| Backend files touched (order/payment repo transitions) | 2 |
+| New unit tests (`src/finance/money.test.ts`) | 14 |
+| New backend integration test file (`clientBooking`) | 1 (5 tests) |
+| Backend authored JS/JSX | 0 (unchanged) |
+
+`npm run check` green (**327 unit**, was 313 — the pure `src/finance` money
+module is unit-gated); integration 104 -> 109 (12 files); integration branch
+coverage 82.0% (money math moved out of `domain/` so it no longer drags the
+integration aggregate); `package.json`/`package-lock.json` unchanged; Legacy
+hash intact. No new dependencies.
+
+
+## Delta: RA-C.7 Payment settlement worker (branch `ts-migration/backend`)
+
+The runtime trigger that closes the booking gap: a worker drains the `payment`
+provider-call outbox and drives each paid order `send -> confirm -> book`, so
+holdings materialize in the running app.
+
+| Change | Value |
+|---|---:|
+| New backend files (settlePayment domain, worker entrypoint) | 2 |
+| Backend files touched (paymentRepository.findById, composition worker, package.json scripts) | 3 |
+| New unit tests (`paymentWorker.test.ts`) | 2 |
+| New backend integration test file (`paymentWorker`) | 1 (4 tests) |
+| Backend authored JS/JSX | 0 (unchanged) |
+
+`npm run check` green (**329 unit**, was 327); integration 109 -> 113 (13 files);
+integration branch coverage 81.6%; new npm scripts `worker:payments` /
+`worker:payments:dev`; `package-lock.json` unchanged; Legacy hash intact. No new
+dependencies.
+
+
+## Delta: RA-C.8 Env payment provider + paid/failed confirmation (branch `ts-migration/backend`)
+
+Payment gateway configured from env; signed webhook confirmation checkpoint
+(succeeded → confirm+book, failed → payment_failed); provider-aware worker.
+
+| Change | Value |
+|---|---:|
+| New backend files (payment webhook route) | 1 |
+| Backend files touched (environment, order/payment repos, confirmPayment, settlePayment, composition) | 6 |
+| New backend integration test file (`paymentWebhook`) | 1 (5 tests) |
+| `.env` example files updated | 2 |
+| Backend authored JS/JSX | 0 (unchanged) |
+
+`npm run check` green (329 unit, unchanged); integration 113 -> 119 (14 files);
+integration branch 80.9%; new env vars `PAYMENT_PROVIDER` /
+`PAYMENT_WEBHOOK_SECRET` / `PAYMENT_GATEWAY_KEY_ID` / `PAYMENT_GATEWAY_KEY_SECRET`
+/ `PAYMENT_ATTEMPT_TTL_MS`; `package-lock.json` unchanged; Legacy hash intact. No
+new dependencies.
+
+
+## Delta: RA-C.9 SIP slice — mandates + installment scheduler (branch `ts-migration/backend`)
+
+Recurring-investment domain: SIP lifecycle, debit mandates (signed webhook
+authorization), and the installment scheduler feeding the payment→booking
+pipeline.
+
+| Change | Value |
+|---|---:|
+| New backend files (2 repos, 3 domain commands, 2 routes, 1 worker entrypoint) | 8 |
+| Backend files touched (orderRepository, composition, package.json) | 3 |
+| New unit tests (`sipWorker.test.ts`) | 2 |
+| New backend integration test file (`clientSip`) | 1 (11 tests) |
+| Frontend service touched (`ordersApi.js`) | 1 |
+| Backend authored JS/JSX | 0 (unchanged) |
+
+`npm run check` green (**331 unit**, was 329); integration 119 -> 130 (15 files);
+integration branch 80.3%; new npm scripts `worker:sips` / `worker:sips:dev`;
+`package-lock.json` unchanged; Legacy hash intact. No new dependencies.
+
+
+## Delta: RA-C.10 Email-OTP KYC + KYC-only eligibility (branch `ts-migration/backend`)
+
+Company-emailed one-time-code KYC over `kyc_cases`, and eligibility simplified to
+KYC-only (risk dropped, decision 9) so a client reaches `eligible` end-to-end in
+one go.
+
+| Change | Value |
+|---|---:|
+| New backend files (migration, EmailSender, kycRepository, kyc domain, kyc routes) | 5 |
+| Backend files touched (environment, composition, eligibility fn + endpoint, sip, types, repositories) | 6 |
+| New backend integration test file (`clientKyc`) | 1 (6 tests) |
+| Frontend service touched (`kycApi.js`) | 1 |
+| New dependency | `nodemailer@7` (+ `@types/nodemailer`) |
+| Backend authored JS/JSX | 0 (unchanged) |
+
+`npm run check` green (331 unit; eligibility unit tests rewritten for KYC-only);
+integration 130 -> 136 (16 files); integration branch 80.7%; new env vars
+`KYC_EMAIL_FROM` / `EMAIL_SMTP_*` / `KYC_CODE_TTL_MS` / `KYC_CODE_MAX_ATTEMPTS` /
+`KYC_RESEND_COOLDOWN_MS` / `KYC_VALIDITY_MS`; `package-lock.json` changed
+(nodemailer); Legacy hash intact.
+
+
 ## Related notes (Obsidian graph)
 
 - Status siblings: [[status/CURRENT|Current resume point]] · [[status/IMPLEMENTATION_PROGRESS|Implementation progress]] · [[status/VALIDATION_SUMMARY|Validation summary]]

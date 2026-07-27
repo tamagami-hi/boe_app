@@ -1,0 +1,187 @@
+/**
+ * Deploy auth seed (`npm run seed:auth`). Runs the idempotent bootstrap catalog
+ * (roles/permissions/consent) and then, when enabled, bootstraps a single admin
+ * login from the environment: an active `users` row, an Argon2id
+ * `user_credentials` row, the `superadmin` role's permission grants, and a
+ * `superadmin` `user_roles` assignment. All writes are idempotent, so repeated
+ * runs are safe. This is the security bootstrap the canonical catalog seed
+ * deferred (spec 02 §3.5; roles/permissions grants need a granting user).
+ */
+import { pathToFileURL } from "node:url"
+
+import { hashPassword } from "../auth/passwordHasher.js"
+import { parseDatabaseConfig } from "../db/config.js"
+import { createPool } from "../db/pool.js"
+import { buildSeedStatements, SEED_ROLE_PERMISSIONS } from "../db/seedCatalog.js"
+
+export interface SeedAuthClient {
+  query: (text: string, values?: readonly unknown[]) => Promise<{ rows: readonly unknown[] }>
+  release: () => void
+}
+
+export interface SeedAuthPool {
+  connect: () => Promise<SeedAuthClient>
+}
+
+export interface SeedAuthConfig {
+  readonly enabled: boolean
+  readonly allowProduction: boolean
+  readonly overwrite: boolean
+  readonly isProduction: boolean
+  readonly adminEmail: string | null
+  readonly adminPassword: string | null
+  readonly adminPhone: string
+  readonly adminFullName: string
+}
+
+export type SeedAuthResult = Readonly<{
+  catalogStatements: number
+  adminSeeded: boolean
+  skipped: "disabled" | "production_not_allowed" | null
+}>
+
+const SUPERADMIN_ROLE = "superadmin"
+const DEFAULT_ADMIN_PHONE = "+910000000001"
+
+const trimmedOrNull = (value: string | undefined): string | null => {
+  if (value === undefined) return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
+/** Resolve the seed-auth configuration from an environment source (pure). */
+export const resolveSeedAuthConfig = (source: Readonly<Record<string, string | undefined>>): SeedAuthConfig => {
+  const firstName = trimmedOrNull(source.ADMIN_FIRST_NAME) ?? "BeOnEdge"
+  const lastName = trimmedOrNull(source.ADMIN_LAST_NAME) ?? "Admin"
+  return {
+    enabled: source.SEED_AUTH_ENABLED !== "false",
+    allowProduction: source.SEED_AUTH_ALLOW_PRODUCTION === "true",
+    overwrite: source.SEED_AUTH_OVERWRITE === "true",
+    isProduction: source.NODE_ENV === "production",
+    adminEmail: (trimmedOrNull(source.SEED_ADMIN_EMAIL) ?? trimmedOrNull(source.ADMIN_LOGIN_ID))?.toLowerCase() ?? null,
+    adminPassword: trimmedOrNull(source.SEED_ADMIN_PASSWORD) ?? trimmedOrNull(source.ADMIN_PASSWORD),
+    adminPhone: trimmedOrNull(source.ADMIN_PHONE) ?? DEFAULT_ADMIN_PHONE,
+    adminFullName: `${firstName} ${lastName}`,
+  }
+}
+
+const firstRow = <T>(result: { rows: readonly unknown[] }): T | undefined => result.rows[0] as T | undefined
+
+/**
+ * Apply the catalog seed and, when enabled, the idempotent admin bootstrap in a
+ * single transaction. `hasher` is injectable so tests avoid a real Argon2id run.
+ */
+export const runSeedAuth = async (
+  pool: SeedAuthPool,
+  config: SeedAuthConfig,
+  hasher: (plain: string) => Promise<string> = hashPassword,
+): Promise<SeedAuthResult> => {
+  const statements = buildSeedStatements()
+
+  if (config.enabled && (config.adminEmail === null || config.adminPassword === null)) {
+    throw new Error(
+      "seed:auth requires an admin email + password (ADMIN_LOGIN_ID/SEED_ADMIN_EMAIL and ADMIN_PASSWORD/SEED_ADMIN_PASSWORD)",
+    )
+  }
+  const seedAdmin = config.enabled && !(config.isProduction && !config.allowProduction)
+  // Hash outside the transaction to keep it short.
+  const passwordHash = seedAdmin && config.adminPassword !== null ? await hasher(config.adminPassword) : null
+
+  const client = await pool.connect()
+  try {
+    await client.query("BEGIN")
+    for (const statement of statements) {
+      await client.query(statement.text, statement.values)
+    }
+
+    if (!config.enabled) {
+      await client.query("COMMIT")
+      return { catalogStatements: statements.length, adminSeeded: false, skipped: "disabled" }
+    }
+    if (!seedAdmin) {
+      await client.query("COMMIT")
+      return { catalogStatements: statements.length, adminSeeded: false, skipped: "production_not_allowed" }
+    }
+
+    const existing = firstRow<{ id: string }>(
+      await client.query("SELECT id FROM users WHERE email_normalized = $1", [config.adminEmail]),
+    )
+    const adminId =
+      existing?.id ??
+      firstRow<{ id: string }>(
+        await client.query(
+          "INSERT INTO users (email_normalized, phone_e164, full_name, account_state, activated_at) " +
+            "VALUES ($1, $2, $3, 'active', now()) RETURNING id",
+          [config.adminEmail, config.adminPhone, config.adminFullName],
+        ),
+      )?.id
+
+    if (adminId === undefined) throw new Error("seed:auth could not resolve the admin user id")
+
+    const credential = firstRow<{ user_id: string }>(
+      await client.query("SELECT user_id FROM user_credentials WHERE user_id = $1", [adminId]),
+    )
+    if (credential === undefined) {
+      await client.query("INSERT INTO user_credentials (user_id, password_hash) VALUES ($1, $2)", [
+        adminId,
+        passwordHash,
+      ])
+    } else if (config.overwrite) {
+      await client.query(
+        "UPDATE user_credentials SET password_hash = $2, password_changed_at = now(), updated_at = now() WHERE user_id = $1",
+        [adminId, passwordHash],
+      )
+    }
+
+    const role = firstRow<{ id: string }>(
+      await client.query("SELECT id FROM roles WHERE code = $1", [SUPERADMIN_ROLE]),
+    )
+    if (role === undefined) throw new Error("seed:auth could not resolve the superadmin role")
+
+    for (const permissionCode of SEED_ROLE_PERMISSIONS[SUPERADMIN_ROLE] ?? []) {
+      const permission = firstRow<{ id: string }>(
+        await client.query("SELECT id FROM permissions WHERE code = $1", [permissionCode]),
+      )
+      if (permission === undefined) continue
+      await client.query(
+        "INSERT INTO role_permissions (role_id, permission_id, granted_by_user_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+        [role.id, permission.id, adminId],
+      )
+    }
+
+    await client.query(
+      "INSERT INTO user_roles (user_id, role_id, granted_by_user_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+      [adminId, role.id, adminId],
+    )
+
+    await client.query("COMMIT")
+    return { catalogStatements: statements.length, adminSeeded: true, skipped: null }
+  } catch (error: unknown) {
+    await client.query("ROLLBACK")
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
+const isMainModule =
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href
+
+if (isMainModule) {
+  const config = resolveSeedAuthConfig(process.env)
+  const pool = createPool(parseDatabaseConfig(process.env))
+  try {
+    const result = await runSeedAuth(pool, config)
+    if (result.skipped === "disabled") {
+      process.stdout.write("seed:auth disabled (SEED_AUTH_ENABLED=false); catalog seeded only\n")
+    } else if (result.skipped === "production_not_allowed") {
+      process.stdout.write(
+        "seed:auth skipped admin bootstrap in production (set SEED_AUTH_ALLOW_PRODUCTION=true); catalog seeded\n",
+      )
+    } else {
+      process.stdout.write(`seed:auth applied; admin ${result.adminSeeded ? "bootstrapped" : "unchanged"}\n`)
+    }
+  } finally {
+    await pool.end()
+  }
+}

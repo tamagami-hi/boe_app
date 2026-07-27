@@ -1,5 +1,42 @@
 import { apiRequest, clone, delay, listFromPayload, useHttpApi } from './_util.js';
 
+// Canonical order states (spec 03 §2.1) grouped for the UI's coarse filter.
+const ACTIVE_ORDER_STATES = new Set(['submitted', 'payment_pending', 'payment_confirmed', 'booked']);
+const CANCELLED_ORDER_STATES = new Set(['cancelled', 'rejected', 'refunded', 'reversed']);
+
+function idempotencyKey() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  return `idem-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+// Map a canonical GET /v1/client/orders item to the UI order shape. Money is
+// integer paise (string) on the wire and rupees in the UI.
+function mapOrder(item) {
+  return {
+    id: item.orderId,
+    fundId: item.fundId,
+    sipPlanId: item.sipPlanId,
+    type: item.type,
+    status: item.status,
+    amount: item.amountPaise === null || item.amountPaise === undefined ? null : Number(item.amountPaise) / 100,
+    requestedUnits: item.requestedUnits === null ? null : Number(item.requestedUnits),
+    currency: item.currency,
+    requestedAt: item.requestedAt,
+    bookedAt: item.bookedAt,
+    cancelledAt: item.cancelledAt,
+    failureCode: item.failureCode,
+    createdAt: item.createdAt,
+    source: 'canonical',
+  };
+}
+
+function matchesOrderFilter(order, filter) {
+  if (filter === 'active') return ACTIVE_ORDER_STATES.has(order.status);
+  if (filter === 'cancelled') return CANCELLED_ORDER_STATES.has(order.status);
+  if (filter === 'paused') return false; // SIP pause lives on sip_plans, not orders
+  return true;
+}
+
 let orders = [];
 let mandates = [];
 let pendingPayments = [];
@@ -13,13 +50,46 @@ let rId = 1;
 
 function nextId(prefix, n) { return `${prefix}_${String(n).padStart(3, '0')}`; }
 
+// Map a canonical SIP (POST /v1/client/sips) to the UI shape. Money is paise on
+// the wire and rupees in the UI.
+function mapSip(sip) {
+  return {
+    id: sip.sipId,
+    type: 'sip',
+    status: sip.status,
+    fundId: sip.fundId,
+    amount: sip.amountPaise === null || sip.amountPaise === undefined ? null : Number(sip.amountPaise) / 100,
+    debitDay: sip.debitDay,
+    durationMonths: sip.durationMonths ?? null,
+    mandateId: sip.mandateId ?? null,
+    mandateStatus: sip.mandateStatus ?? null,
+    nextDueDate: sip.nextDueDate ?? null,
+    source: 'canonical',
+  };
+}
+
 export async function createSip({ fundId, amount, frequency = 'monthly', durationMonths, debitDay, stepUp, consentTextVersion, consentedAt }) {
   if (useHttpApi()) {
-    return apiRequest('/v1/client/sips', {
+    // Canonical: POST /v1/client/sips creates a draft SIP. The client then
+    // requests the debit mandate (requestSipMandate); the mandate is activated
+    // by the signed provider webhook, after which the scheduler generates
+    // installment orders that flow through the payment/booking pipeline.
+    const created = await apiRequest('/v1/client/sips', {
       method: 'POST',
-      body: { fundId, amount, frequency, durationMonths, debitDay, stepUp, consentTextVersion, consentedAt },
+      headers: { 'idempotency-key': idempotencyKey() },
+      body: {
+        fundId,
+        amountPaise: Math.round(amount * 100),
+        debitDay: debitDay ?? 1,
+        ...(durationMonths ? { durationMonths } : {}),
+      },
     });
+    return mapSip(created);
   }
+  void frequency;
+  void stepUp;
+  void consentTextVersion;
+  void consentedAt;
 
   await delay(180);
   const orderId = nextId('ord_sip', oId++);
@@ -66,12 +136,46 @@ export async function createSip({ fundId, amount, frequency = 'monthly', duratio
   return clone(order);
 }
 
+/** Request the debit mandate for a draft SIP (spec 03 §5.2). Returns { mandateId, status }. */
+export async function requestSipMandate(sipId) {
+  if (useHttpApi()) {
+    const sip = await apiRequest(`/v1/client/sips/${encodeURIComponent(sipId)}/mandate`, {
+      method: 'POST',
+      headers: { 'idempotency-key': idempotencyKey() },
+    });
+    return mapSip(sip);
+  }
+  await delay(160);
+  return { id: sipId, status: 'pending_mandate', mandateId: null };
+}
+
+const sipControl = (action) => async (sipId) => {
+  if (useHttpApi()) {
+    const sip = await apiRequest(`/v1/client/sips/${encodeURIComponent(sipId)}/${action}`, {
+      method: 'POST',
+      headers: { 'idempotency-key': idempotencyKey() },
+    });
+    return mapSip(sip);
+  }
+  await delay(140);
+  const statusByAction = { pause: 'paused', resume: 'active', cancel: 'cancelled' };
+  return { id: sipId, status: statusByAction[action] };
+};
+
+export const pauseSip = sipControl('pause');
+export const resumeSip = sipControl('resume');
+export const cancelSip = sipControl('cancel');
+
 export async function createLumpsum({ fundId, amount }) {
   if (useHttpApi()) {
-    return apiRequest('/v1/client/lumpsum-orders', {
+    // Canonical: POST /v1/client/orders creates a one-time purchase order in
+    // `submitted`. Money is integer paise on the wire; the UI works in rupees.
+    const created = await apiRequest('/v1/client/orders', {
       method: 'POST',
-      body: { fundId, amount },
+      headers: { 'idempotency-key': idempotencyKey() },
+      body: { fundId, amountPaise: Math.round(amount * 100) },
     });
+    return mapOrder(created);
   }
 
   await delay(180);
@@ -102,6 +206,24 @@ export async function createLumpsum({ fundId, amount }) {
   return clone(order);
 }
 
+/**
+ * Begin payment for a submitted order (spec 03 §5.2 `beginPayment`). Moves the
+ * order to `payment_pending` and returns the payment/attempt identifiers; the
+ * provider call itself is driven by the backend worker.
+ */
+export async function beginOrderPayment(orderId) {
+  if (useHttpApi()) {
+    return apiRequest(`/v1/client/orders/${encodeURIComponent(orderId)}/pay`, {
+      method: 'POST',
+      headers: { 'idempotency-key': idempotencyKey() },
+    });
+  }
+
+  await delay(160);
+  const found = payments.get(orders.find((o) => o.id === orderId)?.paymentId);
+  return clone(found ?? { orderId, status: 'payment_pending' });
+}
+
 export async function getOrder(orderId) {
   if (useHttpApi()) return apiRequest(`/v1/client/orders/${encodeURIComponent(orderId)}`);
 
@@ -111,7 +233,11 @@ export async function getOrder(orderId) {
 
 export async function listOrders({ filter = 'all' } = {}) {
   if (useHttpApi()) {
-    return listFromPayload(await apiRequest(`/v1/client/orders?filter=${encodeURIComponent(filter)}`));
+    // The canonical endpoint returns the full owner-scoped history via an opaque
+    // keyset cursor; the coarse UI filter is applied client-side over the page.
+    const payload = await apiRequest('/v1/client/orders?limit=100');
+    const mapped = listFromPayload(payload).map(mapOrder);
+    return mapped.filter((order) => matchesOrderFilter(order, filter));
   }
 
   await delay();

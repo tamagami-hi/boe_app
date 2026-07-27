@@ -526,6 +526,18 @@ export interface InvestorProfilesTable {
   version: BigIntStringDefault
 }
 
+export interface KycVerificationCodesTable {
+  id: Generated<string>
+  kyc_case_id: string
+  user_id: string
+  code_hash: Bytea
+  code_key_version: string
+  attempt_count: Generated<number>
+  expires_at: Timestamp
+  consumed_at: NullableTimestamp
+  created_at: TimestampDefault
+}
+
 export interface KycCasesTable {
   id: Generated<string>
   user_id: string
@@ -1018,4 +1030,6 @@ export interface Database {
   payment_attempts: PaymentAttemptsTable
   provider_events: ProviderEventsTable
   notifications: NotificationsTable
+  // Compliance email-OTP KYC (migration 019)
+  kyc_verification_codes: KycVerificationCodesTable
 }

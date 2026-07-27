@@ -2,31 +2,50 @@
 
 ## Last Verified Code Checkpoint
 
-- Task: `BE-021.2` later-domain canonical schema (increment 2: the money-movement
-  core — §4.3 investing/ownership + §4.4 payments/provider inbox) plus the Kysely
-  types for all later-domain tables, landed on branch `ts-migration/backend`
-  (PR #1). Grounded in spec 03 §4 (not speculative). **The later-domain schema
-  (spec 03 §4.1-§4.5) is now complete.**
-- Result: additive migrations `017_canonical_investing.sql` (mandates, sip_plans,
-  investment_orders, investment_executions, holdings, holding_lots,
-  holding_lot_movements, redemption_requests) and `018_canonical_payments.sql`
-  (payments, payment_attempts, provider_events, notifications), with composite
-  ownership FKs, append-only booked financial evidence, and paise `bigint` /
-  `numeric(24,8)` money types. Added Kysely `Database` types + `Row<>` aliases for
-  ALL later-domain tables (014-018), which increment 1 had deferred. Validated by
-  the extended `test/integration/laterDomainSchema.integration.test.ts` (12 tests
-  incl. money-core happy path + cross-user composite-FK / one-booking / units /
-  signature / reserved negatives). `check` green (294 unit tests, build, both
-  smokes); integration 75/75 (8 files); backend authored JS still 0.
-- Next: the repositories + command services + routes that consume the later
-  domain (spec 03 §6/§7 atomic transactions, locking, repository interfaces;
-  spec 04 later financial route slices).
-- Prior checkpoints: BE-021.1 (later-domain schema increment 1: compliance/
-  catalog/platform, integration 69), PROD-001 (server composition), BE-020
-  (zero-JS gate), BE-019
-  (transport/persistence retired, JS 13 -> 0), BE-018 (shared retired, JS 39 ->
-  13), BE-017 (admin finance retired, JS 51 -> 39), BE-016 (admin identity,
-  additive JS 51), BE-015..BE-010, and earlier BE-009..BE-002.
+- Task: `RA-C.10` email-OTP KYC + frictionless (KYC-only) eligibility — landed on
+  branch `ts-migration/backend` (decisions 8-10).
+- Result: migration `019` adds a dedicated `kyc_verification_codes` table (hashed
+  6-digit OTP, attempts, one-active-per-case). New transport-agnostic
+  `EmailSender` port + `nodemailer@7` SMTP adapter (company mailbox +
+  `KYC_EMAIL_FROM` from env) + a metadata-only log fallback. `kycRepository` +
+  `domain/client/kyc.ts` (`requestKycCode` post-commit-emails a code with a resend
+  cooldown; `verifyKyc` returns an outcome so a failed attempt's increment
+  commits, approves the case with an expiry). Native-authenticated
+  `POST /v1/client/kyc/{start,resend,verify}`. Eligibility simplified to
+  `active + current approved KYC` (risk gate dropped — decision 9; risk is a fund
+  attribute; `risk_assessments` dormant; eligibility endpoint no longer exposes
+  risk). Frontend `kycApi` start/resend/verify (legacy fetchKycStatus/
+  updateKycDepth preserved). `check` green (331 unit); integration **136/136 (16
+  files)**, incl. new `clientKyc.integration.test.ts` (6) proving the end-to-end
+  **not-eligible → KYC → eligible → invest** path in one go; frontend build green;
+  backend authored JS still 0; Legacy hash intact. New dep: `nodemailer@7`.
+- Onboarding is now frictionless end-to-end: signup → admin approve → activate →
+  login → **verify email (KYC)** → eligible → pick a fund by its risk tier →
+  invest. For real delivery, set the company mailbox `EMAIL_SMTP_*` +
+  `KYC_EMAIL_FROM` in `.env`.
+- Next: admin fund-pool (catalog) creation so funds exist through the API (with a
+  return tier alongside `risk_level`); then redemptions; then the client
+  onboarding UI wiring. APK/emulator packaging stays on the user's local stack.
+- Prior checkpoint: `RA-C.9` SIP slice — mandates + the recurring installment
+  scheduler (`POST /v1/client/sips*`, signed mandate webhook, `worker:sips`;
+  installments flow through the payment → confirmation → booking pipeline).
+- Prior checkpoint: `RA-C.8` env-driven payment provider + paid/failed
+  confirmation — gateway config from env; signed `POST /v1/provider-events/payment`
+  drives confirm+book / fail; provider-aware settlement worker.
+- Prior checkpoint: `RA-B0` deploy-env boot compatibility (Option 3) — backend
+  boots/serves under the `release_manager` deploy stack unedited (`CORS_ORIGIN`,
+  optional AWS SES/SNS, `\n`-escaped ES256 key, `seed:auth`, Dockerfile
+  migrations, `keys:generate`); RA-C.1 admin web auth, RA-C.2 client native auth,
+  RA-C.3 admin applications queue + review/decision (login works for both
+  surfaces; approvals wired end-to-end).
+- Prior checkpoints: RA-B (landing signup wired to `POST /v1/applications`; both
+  landing forms adopt the application model), RA-A (each side builds/runs; frontend fixture mode),
+  BE-024 (archived legacy migrations 001-008; `migrate up` canonical-only),
+  BE-022 (web CSRF reload-recovery `GET /v1/auth/web/csrf`), BE-021.2 (later-domain
+  schema increment 2; later-domain schema §4.1-§4.5 complete), BE-021.1,
+  PROD-001 (server composition), BE-020 (zero-JS gate), BE-019 (JS 13 -> 0),
+  BE-018 (JS 39 -> 13), BE-017 (JS 51 -> 39), BE-016 (admin identity),
+  BE-015..BE-010, and earlier BE-009..BE-002.
 
 ## Superseded Checkpoint (PROD-001)
 

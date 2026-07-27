@@ -53,6 +53,30 @@ not rewrite prior RED/GREEN history to match later architecture.
 
 | BE-024 | DONE | [Migrate-CLI baseline / legacy 001-008 disposition](./BE-024-migrate-baseline-disposition.md) | on `ts-migration/backend` (archived legacy migrations 001-008 per spec 03 §8; `migrate up` now collision-free on the canonical >=009 baseline; +2 guard tests) |
 
+| RA-B0 | DONE | [Deploy-env boot compatibility (Option 3)](./RA-B0-deploy-boot-compat.md) | on `ts-migration/backend` (backend boots under the release_manager deploy env unedited: CORS_ORIGIN, optional AWS, seed:auth, Dockerfile migrations, keys:generate; integration 84) |
+
+| RA-B | DONE | [Landing signup wiring (both surfaces)](./RA-B-landing-signup-wiring.md) | on `ts-migration/backend` (lead + account forms -> `POST /v1/applications` via Next BFF with consent + idempotency; landing build + 24 tests green) |
+
+| RA-C.1 | DONE | [Admin web-auth wiring](./RA-C-1-admin-web-auth-wiring.md) | on `ts-migration/backend` (admin login/session/logout -> `/v1/auth/web/*` cookie+CSRF via shared authApi; reachability -> `/v1/health`; frontend app build green) |
+
+| RA-C.2 | DONE | [Client native-auth wiring](./RA-C-2-client-native-auth-wiring.md) | on `ts-migration/backend` (client login/refresh/logout -> `/v1/auth/native/*` bearer + rotation + device; signup fails fast per the application model; app build green). Auth complete for both surfaces |
+
+| RA-C.3 | DONE | [Admin applications queue wiring](./RA-C-3-admin-applications-queue-wiring.md) | on `ts-migration/backend` (admin approvals queue + review->decision handshake -> `/v1/admin/applications*` with CSRF/Idempotency-Key/If-Match; app build green) |
+
+| RA-C.4 | DONE | [Client portfolio read slice (eligibility/holdings/orders)](./RA-C-4-client-portfolio-reads-wiring.md) | on `ts-migration/backend` (first canonical `/v1/client/*` reads: `GET /v1/client/{eligibility,holdings,orders}` native-authenticated over BE-021 schema; derived eligibility spec 03 §2.3; client portfolio/orders/eligibility services wired; integration 84 -> 94; app build green) |
+
+| RA-C.5 | DONE | [Client order write path (createOrder + beginPayment)](./RA-C-5-client-order-write-path.md) | on `ts-migration/backend` (first canonical `/v1/client/*` writes: `POST /v1/client/orders` + `POST /v1/client/orders/:id/pay`; eligibility re-derived under lock, published-fund + minimum guards, idempotency + audit + provider-call outbox; Order/Payment write repos; client createLumpsum/beginOrderPayment wired; integration 94 -> 104; app build green) |
+
+| RA-C.6 | DONE | [Order booking money-math (paid -> confirmed -> booked)](./RA-C-6-order-booking-money-math.md) | on `ts-migration/backend` (completes the purchase lifecycle: `sendPaymentToProvider`/`confirmPayment`/`bookOrder` system commands; exact round-half-even `src/finance/money.ts`; booking appends execution+holding+lot+movement+notification; unit 313 -> 327, integration 104 -> 109; confirm/book runtime trigger + provider webhook deferred) |
+
+| RA-C.7 | DONE | [Payment settlement worker (runtime trigger to booking)](./RA-C-7-payment-settlement-worker.md) | on `ts-migration/backend` (drains the `payment` provider-call outbox and drives send->confirm->book so paid orders reach booked + holdings populate in the running app; `settleMockPayment` idempotent driver + `settleDuePayments` pass + `worker:payments` entrypoint; unit 327 -> 329, integration 109 -> 113; real gateway webhook deferred) |
+
+| RA-C.8 | DONE | [Env payment provider + paid/failed confirmation](./RA-C-8-payment-provider-and-confirmation.md) | on `ts-migration/backend` (payment provider + gateway credentials + webhook secret from env; signed `POST /v1/provider-events/payment` confirmation checkpoint drives confirm+book (succeeded) / fail (failed), idempotent; `failPayment` command; worker provider-aware (mock auto-settles, real gateway dispatch-only + webhook); integration 113 -> 119) |
+
+| RA-C.9 | DONE | [SIP slice — mandates + recurring installment scheduler](./RA-C-9-sip-and-mandates.md) | on `ts-migration/backend` (createSip/requestSipMandate/pause/resume/cancel + `POST /v1/client/sips*`; signed mandate webhook `POST /v1/provider-events/mandate`; installment scheduler `worker:sips` generates sip_installment orders that flow through the payment→confirmation→booking pipeline; SIP/Mandate repos; frontend SIP services wired; unit 329 -> 331, integration 119 -> 130) |
+
+| RA-C.10 | DONE | [Email-OTP KYC + KYC-only eligibility](./RA-C-10-kyc-email-otp-and-eligibility.md) | on `ts-migration/backend` (company-emailed 6-digit KYC code: `POST /v1/client/kyc/{start,resend,verify}`; dedicated `kyc_verification_codes` migration 019; transport-agnostic `EmailSender` + `nodemailer@7` SMTP adapter (company mailbox from env) + log fallback; eligibility simplified to active+approved-KYC, risk dropped (decision 9); frontend kycApi; integration 130 -> 136 incl. end-to-end signup->eligible->invest) |
+
 
 ## Related notes (Obsidian graph)
 

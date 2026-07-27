@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiRequest } from '@beonedge/client/services/_util.js';
+import { resolveApplication } from '@beonedge/client/services/adminApplicationsApi.js';
 import { loadAdminCollection, loadAdminOverview } from '../helpers/loadAdminData.js';
 import { useToast } from '../components/ToastProvider.jsx';
 import ApprovalReviewPanel from '../screens/ApprovalReviewPanel.jsx';
@@ -151,25 +152,18 @@ export default function LegacyAdminDataProvider({ children }) {
     }));
 
     try {
-      const result = await apiRequest(`/v1/admin/users/${encodeURIComponent(row.id)}/status`, {
-        method: 'PATCH',
-        body: {
-          status,
-          reason: reason || (status === 'approved' ? 'Approved from admin dashboard.' : 'Rejected from admin dashboard.'),
-        },
-        scope: 'admin',
+      // Canonical review -> decision handshake (submitted rows are moved to
+      // in_review first; the decision uses the post-review version via If-Match).
+      await resolveApplication({
+        applicationId: row.applicationId || row.id,
+        version: row.version,
+        status: row.status,
+        outcome: status,
+        reasonCode: status === 'approved' ? 'approved_by_admin' : 'rejected_by_admin',
+        reasonDetail: reason || undefined,
       });
       setReviewRow(null);
       setReviewReason('');
-
-      // Update sidebar badge count from response
-      if (result?.pendingCount !== undefined) {
-        setOverview((prev) => ({
-          ...prev,
-          counts: { ...prev.counts, approvals: result.pendingCount },
-          stats: { ...prev.stats, pendingApprovals: result.pendingCount },
-        }));
-      }
 
       addToast(
         status === 'approved'
