@@ -6,7 +6,7 @@ import type { StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import type { FastifyInstance } from "fastify"
 import type { Pool } from "pg"
 import { Wait } from "testcontainers"
-import { afterAll, beforeAll, describe, expect, test } from "vitest"
+import { afterAll, beforeAll, describe, expect, test, vi } from "vitest"
 
 import { createCryptoContext, parseCryptoKeys } from "../../src/crypto/context.js"
 import type { CryptoContext } from "../../src/crypto/context.js"
@@ -16,6 +16,7 @@ import { createPool } from "../../src/db/pool.js"
 import { dispatchDueDeliveries } from "../../src/domain/email/dispatchDueDeliveries.js"
 import { submitApplication } from "../../src/domain/onboarding/submitApplication.js"
 import type { SesEmailSender, SesSendResult } from "../../src/email/ports.js"
+import { createTransactionalEmailSender } from "../../src/email/transactionalEmailSender.js"
 import { buildCanonicalMessage } from "../../src/email/snsProvenance.js"
 import { parseSnsEnvelope } from "../../src/email/snsMessages.js"
 import { createApplicationRepository } from "../../src/repositories/applicationRepository.js"
@@ -209,11 +210,8 @@ beforeAll(async () => {
   })
 
   const directory = fileURLToPath(new URL("../../db/migrations", import.meta.url))
-  const all = await loadMigrationFiles(directory)
-  await runMigrations(
-    pool,
-    all.filter((file) => file.version >= "009"),
-  )
+  const migrations = await loadMigrationFiles(directory)
+  await runMigrations(pool, migrations)
   await runSeed(pool)
 
   const database = createDatabase(pool)
@@ -266,6 +264,66 @@ describe("email delivery worker (integration)", () => {
     const outbox = await outboxState(seeded.outboxId)
     expect(outbox.state).toBe("delivered")
     expect(outbox.locked_at).toBeNull()
+  })
+
+  test("the transport adapter renders a usable verification email end to end", async () => {
+    // Exercises the concrete sender the deploy stack uses, not a stub: the token in
+    // the queued payload has to reach the body, or the recipient cannot continue.
+    const seeded = await seedQueuedDelivery("worker-render@example.com", "+14155559021")
+    const token = (
+      await pool.query<{ token: string }>(
+        "select payload->>'verificationToken' as token from outbox_events where id = $1",
+        [seeded.outboxId],
+      )
+    ).rows[0]?.token
+    expect(token).toBeTruthy()
+
+    const sent: { to: string; subject: string; text: string }[] = []
+    const adapter = createTransactionalEmailSender({
+      sender: {
+        send: (message) => {
+          sent.push({ to: message.to, subject: message.subject, text: message.text })
+          return Promise.resolve({ messageId: "<render-1@mailbox>" })
+        },
+      },
+      templates: {
+        landingOrigin: "https://beonedge.example",
+        activationUrl: null,
+        supportAddress: "support@beonedge.example",
+      },
+    })
+
+    const summary = await dispatchDueDeliveries(workerDeps(adapter))
+
+    expect(summary.sent).toBe(1)
+    expect(sent).toHaveLength(1)
+    // The recipient is decrypted from the delivery row, and the link is complete.
+    expect(sent[0]?.to).toBe("worker-render@example.com")
+    expect(sent[0]?.text).toContain(`https://beonedge.example/verify-email?token=${token ?? ""}`)
+    const delivery = await deliveryState(seeded.deliveryId)
+    expect(delivery.state).toBe("sent")
+    expect(delivery.ses_message_id).toBe("<render-1@mailbox>")
+  })
+
+  test("a delivery whose payload lost its token dead-letters instead of sending", async () => {
+    const seeded = await seedQueuedDelivery("worker-notoken@example.com", "+14155559022")
+    await pool.query("update outbox_events set payload = '{\"template\":\"verify_email\"}'::jsonb where id = $1", [
+      seeded.outboxId,
+    ])
+
+    const send = vi.fn()
+    const summary = await dispatchDueDeliveries(
+      workerDeps(
+        createTransactionalEmailSender({
+          sender: { send },
+          templates: { landingOrigin: null, activationUrl: null, supportAddress: null },
+        }),
+      ),
+    )
+
+    expect(summary.deadLettered).toBe(1)
+    expect(send).not.toHaveBeenCalled()
+    expect((await outboxState(seeded.outboxId)).state).toBe("dead_lettered")
   })
 
   test("reschedules a retryable SES failure with an incremented attempt", async () => {

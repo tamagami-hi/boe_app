@@ -1,67 +1,68 @@
 import { fixturePortfolio } from '../data/fixturePortfolio.js';
-import { apiRequest, clone, delay, listFromPayload, useHttpApi } from './_util.js';
+import { apiRequest, clone, delay, useHttpApi } from './_util.js';
 
-// Canonical money is integer paise (string); NAV/units are numeric(24,8) strings
-// (spec 03 §1). The UI works in rupees, so convert at the adapter boundary.
-const paiseToRupees = (paise) => (paise === null || paise === undefined ? null : Number(paise) / 100);
-const toNumber = (value) => (value === null || value === undefined ? null : Number(value));
+// Option B: an investor's position is money on a dated ledger — there are no
+// units and no NAV. `GET /v1/client/portfolio` derives every figure from that
+// ledger on each read, so this adapter only converts paise to the rupees the UI
+// renders. Nothing is cached client-side.
 
-// Map a canonical GET /v1/client/holdings item to the UI holding shape.
-function mapHolding(item) {
-  const units = toNumber(item.totalUnits);
-  const investedRupees = paiseToRupees(item.costBasisPaise);
-  const marketValueRupees = paiseToRupees(item.marketValuePaise);
+const paiseToRupees = (paise) =>
+  paise === null || paise === undefined ? null : Number(paise) / 100;
+
+/** One pool's position: what went in, what it is worth now, and the difference. */
+function mapPool(pool) {
   return {
-    fundId: item.fundId,
-    fundName: item.fundName ?? item.fundSlug,
-    fundSlug: item.fundSlug,
-    units,
-    reservedUnits: toNumber(item.reservedUnits),
-    availableUnits: toNumber(item.availableUnits),
-    avgCost: units && investedRupees ? investedRupees / units : null,
-    invested: investedRupees,
-    currentNav: toNumber(item.currentNav),
-    marketValue: marketValueRupees,
-    navAsOf: item.navAsOfDate,
-    riskLevel: item.fundRiskLevel,
-    category: item.fundCategory,
-    status: item.fundState,
-    dataAsOf: item.updatedAt,
-    asOf: item.updatedAt,
-    source: 'canonical',
+    fundId: pool.fundId,
+    invested: paiseToRupees(pool.totalInvestmentPaise),
+    currentValue: paiseToRupees(pool.currentValuePaise),
+    totalReturn: paiseToRupees(pool.totalReturnPaise),
+    returnPercent: pool.returnPercent,
+    sipInstallments: pool.sipInstallmentCount,
+    sipTotal: paiseToRupees(pool.sipTotalPaise),
+    lumpSumCount: pool.lumpSumCount,
+    lumpSumTotal: paiseToRupees(pool.lumpSumTotalPaise),
+    redeemedTotal: paiseToRupees(pool.redeemedTotalPaise),
+    allocatedGain: paiseToRupees(pool.allocatedGainPaise),
+    firstInvestmentDate: pool.firstInvestmentDate,
+    lastActivityDate: pool.lastActivityDate,
   };
 }
 
-/** The authoritative holdings list (spec 03 §4.3), owner-scoped, native-authenticated. */
-export async function getHoldings() {
-  if (useHttpApi()) {
-    const payload = await apiRequest('/v1/client/holdings');
-    return listFromPayload(payload).map(mapHolding);
-  }
-
-  await delay();
-  return clone(fixturePortfolio.holdings);
-}
-
 /**
- * Portfolio summary. In HTTP mode this is derived from the authoritative
- * holdings (there is no separate cached portfolio table in the canonical schema;
- * holdings and lots are ownership truth per spec 03 §4.3).
+ * The "My Investment" card and the "Investment Summary" block in one read.
+ *
+ *   currentValue  = previous value + allocated gains - redemptions + new money
+ *   invested      = SIP paid + lump sums - principal redeemed
+ *   totalReturn   = currentValue - invested
  */
 export async function getPortfolio() {
   if (useHttpApi()) {
-    const holdings = await getHoldings();
-    const invested = holdings.reduce((total, h) => total + (h.invested ?? 0), 0);
-    const marketValue = holdings.reduce((total, h) => total + (h.marketValue ?? 0), 0);
-    const navDates = holdings.map((h) => h.navAsOf).filter(Boolean).sort();
+    const payload = await apiRequest('/v1/client/portfolio');
+    const summary = payload?.summary ?? {};
     return {
-      invested,
-      marketValue,
-      asOf: new Date().toISOString(),
-      dataAsOf: navDates.length ? navDates[navDates.length - 1] : null,
+      currentValue: paiseToRupees(payload?.currentValuePaise) ?? 0,
+      invested: paiseToRupees(payload?.totalInvestmentPaise) ?? 0,
+      totalReturn: paiseToRupees(payload?.totalReturnPaise) ?? 0,
+      returnPercent: payload?.returnPercent ?? null,
+      // "Return Since First Investment" and "Last Updated" on the card.
+      returnSince: payload?.returnSince ?? null,
+      lastUpdated: payload?.lastUpdated ?? null,
+      summary: {
+        sipInstallments: summary.sipInstallmentCount ?? 0,
+        sipTotal: paiseToRupees(summary.sipTotalPaise) ?? 0,
+        lumpSumCount: summary.lumpSumCount ?? 0,
+        lumpSumTotal: paiseToRupees(summary.lumpSumTotalPaise) ?? 0,
+        redemptionCount: summary.redemptionCount ?? 0,
+        redeemedTotal: paiseToRupees(summary.redeemedTotalPaise) ?? 0,
+        allocatedGain: paiseToRupees(summary.allocatedGainPaise) ?? 0,
+      },
+      pools: (payload?.pools ?? []).map(mapPool),
+      // Legacy field names some older screens still read.
+      marketValue: paiseToRupees(payload?.currentValuePaise) ?? 0,
+      asOf: payload?.lastUpdated ?? null,
+      dataAsOf: payload?.lastUpdated ?? null,
       staleFlag: false,
       source: 'canonical',
-      holdings,
     };
   }
 

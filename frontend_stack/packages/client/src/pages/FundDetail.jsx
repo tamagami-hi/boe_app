@@ -11,7 +11,7 @@ import * as disclosureApi from '../services/disclosureApi.js';
 import { AllocationRing, PieChart3D, LineComparisonChart, DonutChart } from '../components/Charts.jsx';
 import { useAppConfig } from '../hooks/useAppConfig.js';
 import { isComponentEnabled } from '@beonedge/shared/appConfig.js';
-import { fmtMoney, fmtNum, fmtPct } from '../utils/format.js';
+import { fmtMoney, fmtNum, fmtPct, fmtDate } from '../utils/format.js';
 import { formatReturnPct, formatNavDate, returnTone } from '../utils/fundDisplay.js';
 import MoneyValue from '@beonedge/shared/components/MoneyValue.jsx';
 import { FadeIn, Skeleton } from '@beonedge/shared';
@@ -336,8 +336,22 @@ export default function FundDetail() {
                       <div className="apk-stat-card-icon apk-stat-card-icon--green">
                         <Briefcase size={18} strokeWidth={2} />
                       </div>
-                      <div className="apk-stat-card-label">Pool Size</div>
-                      <div className="apk-stat-card-value be-money"><MoneyValue amount={fund.totalPoolSize} source={fund.source || 'mock'} asOf={new Date().toISOString()} /></div>
+                      {/* Option B "Fund Overview": the latest published monthly
+                          AUM. Investors see only the closing figure and when it
+                          was last updated — there is no per-unit price. */}
+                      <div className="apk-stat-card-label">Fund Size (AUM)</div>
+                      <div className="apk-stat-card-value be-money">
+                        <MoneyValue
+                          amount={fund.totalPoolSize}
+                          source={fund.source || 'mock'}
+                          asOf={fund.fundSizeUpdatedAt || new Date().toISOString()}
+                        />
+                      </div>
+                      {fund.fundSizeUpdatedAt && (
+                        <div className="apk-stat-card-note">
+                          Last updated {fmtDate(fund.fundSizeUpdatedAt)}
+                        </div>
+                      )}
                     </div>
                     <div className="apk-stat-card">
                       <div className="apk-stat-card-icon apk-stat-card-icon--gold">
@@ -446,20 +460,29 @@ export default function FundDetail() {
               </FadeIn>
             )}
 
-            {/* Portfolio exposure */}
-            {isActive && isComponentEnabled(appConfig, 'fundDetail', 'portfolio_exposure') && fund.topHoldings?.length > 0 && (
+            {/* Fund Portfolio — the administrator-curated stock list. */}
+            {isComponentEnabled(appConfig, 'fundDetail', 'portfolio_exposure') && (fund.stocks?.length ?? 0) > 0 && (
               <FadeIn direction="up" distance={12} duration={400} delay={240}>
                 <div className="be-card apk-holding">
-                  <div className="be-eyebrow">{copy.exposureTitle}</div>
-                  {fund.topHoldings.slice(0, screen.exposureLimit).map((h) => (
-                    <div key={h.symbol} className="apk-holding-row">
+                  <div className="be-eyebrow">Fund Portfolio</div>
+                  <div className="apk-holding-head">
+                    <span>Stock name</span>
+                    <span>Quarter added</span>
+                  </div>
+                  {fund.stocks.map((stock) => (
+                    <div key={`${stock.name}-${stock.quarterAdded}`} className="apk-holding-row">
                       <div>
-                        <div className="apk-holding-name">{h.name}</div>
+                        <div className="apk-holding-name">{stock.name}</div>
+                        {stock.weight !== null && stock.weight !== undefined && (
+                          <div className="apk-holding-sub be-num">
+                            {fmtPct(stock.weight / 100, { sign: false, decimals: 2 })}
+                          </div>
+                        )}
                       </div>
-                      <div className="apk-holding-pct be-num">{fmtPct((h.pct ?? 0) / 100, { sign: false, decimals: 1 })}</div>
+                      <div className="apk-holding-pct">{stock.quarterAdded}</div>
                     </div>
                   ))}
-                  <a className="apk-link apk-inline-link">{copy.exposureLinkLabel}</a>
+                  <div className="be-disclosure apk-disclosure-tight">Updated quarterly</div>
                 </div>
               </FadeIn>
             )}

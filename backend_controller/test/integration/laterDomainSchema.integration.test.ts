@@ -58,13 +58,10 @@ beforeAll(async () => {
     idleTimeoutMs: 10_000,
   })
   const directory = fileURLToPath(new URL("../../db/migrations", import.meta.url))
-  const all = await loadMigrationFiles(directory)
-  // Applying the full canonical baseline (>= 009), including the later-domain
-  // migrations 014-016, is itself the primary assertion that the DDL is valid.
-  await runMigrations(
-    pool,
-    all.filter((file) => file.version >= "009"),
-  )
+  // Applying the whole canonical baseline, including the later-domain migrations
+  // 014-018, is itself the primary assertion that the DDL is valid.
+  const migrations = await loadMigrationFiles(directory)
+  await runMigrations(pool, migrations)
   userId = await seedUser()
 }, 220_000)
 
@@ -295,13 +292,23 @@ describe("later-domain schema (integration)", () => {
     ).rejects.toThrow()
   })
 
-  test("orders: a non-redemption order may not carry requested units", async () => {
+  test("orders: an order must carry an amount (Option B) or a legacy unit quantity", async () => {
     const owner = await seedUser()
     const fund = await createFund(owner)
+    // Migration 021 dropped the units-only-for-redemption rule: the money model
+    // records every order, including a redemption, as an amount.
     await expect(
       pool.query(
-        "insert into investment_orders (user_id, fund_id, type, state, amount_paise, requested_units) " +
-          "values ($1, $2, 'purchase', 'submitted', 100000, 5)",
+        "insert into investment_orders (user_id, fund_id, type, state, amount_paise) " +
+          "values ($1, $2, 'redemption', 'submitted', 100000)",
+        [owner, fund],
+      ),
+    ).resolves.toBeDefined()
+
+    // What is still refused is an order carrying neither.
+    await expect(
+      pool.query(
+        "insert into investment_orders (user_id, fund_id, type, state) values ($1, $2, 'purchase', 'submitted')",
         [owner, fund],
       ),
     ).rejects.toThrow()

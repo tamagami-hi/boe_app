@@ -1,421 +1,326 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PieChart, RotateCcw, Wallet } from 'lucide-react';
+import { PieChart, RotateCcw, Wallet, TrendingUp } from 'lucide-react';
 import * as portfolioApi from '../services/portfolioApi.js';
 import * as fundsApi from '../services/fundsApi.js';
-import { fmtMoney, fmtNum, fmtPct, fmtUnits, fmtDate } from '../utils/format.js';
-import MoneyValue from '@beonedge/shared/components/MoneyValue.jsx';
+import { fmtMoney, fmtPct, fmtDate } from '../utils/format.js';
 import { EmptyState } from '@beonedge/shared';
+
+// Option B portfolio screen.
+//
+//   My Investment      current value, total investment, total return (₹ and %),
+//                      return since the first investment, last updated
+//   Investment Summary SIP installments paid + total, lump sums + total
+//   Pools              the same figures per fund
+//   Redeem             full / returns only / 50% / custom amount
+//
+// Every figure comes from `GET /v1/client/portfolio`, which derives them from the
+// investor's ledger on each read. There are no units and no NAV to display.
+
+const REDEMPTION_MODES = [
+  { value: 'full', label: 'Redeem full amount' },
+  { value: 'returns_only', label: 'Redeem returns only' },
+  { value: 'half', label: 'Redeem 50%' },
+  { value: 'custom', label: 'Redeem custom amount' },
+];
 
 export default function Portfolio() {
   const navigate = useNavigate();
   const [portfolio, setPortfolio] = useState(null);
-  const [tab, setTab] = useState('all');
-  const [redeemModal, setRedeemModal] = useState(null);
-  const [redeemAmount, setRedeemAmount] = useState('');
-  const [redeemType, setRedeemType] = useState('partial');
-  const [redeemSubmitting, setRedeemSubmitting] = useState(false);
-  const [redeemMessage, setRedeemMessage] = useState(null);
-  const [redeemStep, setRedeemStep] = useState('form');
-  const [redeemPreview, setRedeemPreview] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [sheet, setSheet] = useState(null);
+  const [mode, setMode] = useState('full');
+  const [amount, setAmount] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState(null);
+  const [receipt, setReceipt] = useState(null);
 
-  useEffect(() => { portfolioApi.getPortfolio().then(setPortfolio).catch(() => setPortfolio(null)); }, []);
+  useEffect(() => {
+    portfolioApi
+      .getPortfolio()
+      .then(setPortfolio)
+      .catch(() => setPortfolio(null))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const activeMoneyStates = new Set([
-    'units_allotted', 'units_pending', 'payment_received', 'mandate_pending',
-    'mandate_active', 'redemption_requested', 'pending_payment',
-  ]);
-  const closedMoneyStates = new Set([
-    'redemption_paid', 'failed_refund_pending', 'mandate_failed',
-  ]);
-
-  const holdings = useMemo(() => {
-    if (!portfolio) return [];
-    if (tab === 'active') return portfolio.holdings.filter((h) => activeMoneyStates.has(h.status));
-    if (tab === 'closed') return portfolio.holdings.filter((h) => closedMoneyStates.has(h.status));
-    return portfolio.holdings;
-  }, [portfolio, tab]);
-
-  const counts = useMemo(() => {
-    if (!portfolio) return { all: 0, active: 0, closed: 0 };
-    return {
-      all: portfolio.holdings.length,
-      active: portfolio.holdings.filter((h) => activeMoneyStates.has(h.status)).length,
-      closed: portfolio.holdings.filter((h) => closedMoneyStates.has(h.status)).length,
-    };
-  }, [portfolio]);
-
-  function holdingBadgeClass(status) {
-    switch (status) {
-      case 'units_allotted':
-      case 'mandate_active':
-        return 'be-badge-active';
-      case 'units_pending':
-      case 'redemption_requested':
-      case 'pending_payment':
-      case 'payment_received':
-      case 'mandate_pending':
-        return 'be-badge-paused';
-      case 'mandate_failed':
-      case 'failed_refund_pending':
-        return 'be-badge-failed';
-      case 'redemption_paid':
-        return 'be-badge-neutral';
-      default:
-        return 'be-badge-neutral';
-    }
-  }
-  function holdingBadgeLabel(status) {
-    switch (status) {
-      case 'units_allotted': return 'Allotted';
-      case 'units_pending': return 'Pending Allotment';
-      case 'redemption_requested': return 'Redemption Pending';
-      case 'pending_payment': return 'Payment Pending';
-      case 'payment_received': return 'Payment Received';
-      case 'mandate_pending': return 'Mandate Pending';
-      case 'mandate_active': return 'Mandate Active';
-      case 'mandate_failed': return 'Mandate Failed';
-      case 'redemption_paid': return 'Redeemed';
-      case 'failed_refund_pending': return 'Refund Pending';
-      default: return status;
-    }
+  function openRedeem(pool) {
+    setSheet(pool);
+    setMode('full');
+    setAmount('');
+    setMessage(null);
+    setReceipt(null);
   }
 
-
-
-  function resetRedeemModal() {
-    setRedeemModal(null);
-    setRedeemAmount('');
-    setRedeemType('partial');
-    setRedeemMessage(null);
-    setRedeemStep('form');
-    setRedeemPreview(null);
+  function closeRedeem() {
+    if (submitting) return;
+    setSheet(null);
+    setReceipt(null);
   }
 
-  async function handleRedeemSubmit(e) {
-    e.preventDefault();
-    if (!redeemModal) return;
-    const amount = redeemType === 'full' ? redeemModal.currentValue : Number(redeemAmount);
-    if (!amount || amount <= 0) {
-      setRedeemMessage({ type: 'error', text: 'Please enter a valid amount.' });
-      return;
+  async function onSubmitRedemption() {
+    if (!sheet || submitting) return;
+    if (mode === 'custom') {
+      const requested = Number(amount);
+      if (!Number.isFinite(requested) || requested <= 0) {
+        setMessage({ type: 'error', text: 'Enter the amount you want to redeem.' });
+        return;
+      }
+      if (requested > (sheet.currentValue ?? 0)) {
+        setMessage({ type: 'error', text: 'That is more than your current value.' });
+        return;
+      }
     }
-    setRedeemSubmitting(true);
-    setRedeemMessage(null);
+    setSubmitting(true);
+    setMessage(null);
     try {
-      const preview = await fundsApi.previewWithdrawal(redeemModal.fundId, amount);
-      setRedeemPreview(preview);
-      setRedeemStep('preview');
-    } catch (err) {
-      setRedeemMessage({ type: 'error', text: err.message || 'Failed to load redemption preview.' });
+      const result = await fundsApi.submitRedemption({ fundId: sheet.fundId, mode, amount });
+      setReceipt(result);
+      // Requesting does not change value; refresh anyway so any concurrent
+      // allocation is reflected.
+      portfolioApi.getPortfolio().then(setPortfolio).catch(() => {});
+    } catch (error) {
+      setMessage({ type: 'error', text: error?.message || 'We could not submit that redemption.' });
     } finally {
-      setRedeemSubmitting(false);
+      setSubmitting(false);
     }
   }
 
-  async function handleConfirmRedemption() {
-    if (!redeemPreview) return;
-    setRedeemSubmitting(true);
-    setRedeemMessage(null);
-    try {
-      await fundsApi.createWithdrawal(redeemPreview.id);
-      setRedeemMessage({ type: 'success', text: 'Redemption request submitted. Awaiting admin approval.' });
-      setTimeout(() => {
-        resetRedeemModal();
-      }, 2000);
-    } catch (err) {
-      setRedeemMessage({ type: 'error', text: err.message || 'Failed to submit redemption request.' });
-    } finally {
-      setRedeemSubmitting(false);
-    }
+  if (loading) {
+    return (
+      <div className="apk-screen">
+        <div className="be-card apk-portfolio-skeleton">Loading your investment…</div>
+      </div>
+    );
   }
 
-  return (
-    <div className="apk-screen apk-portfolio-screen">
-      <header className="apk-portfolio-header">
-        <div>
-          <span className="be-eyebrow">Your investments</span>
-          <h1 className="apk-h">Portfolio</h1>
-        </div>
-        <div className="apk-portfolio-header-actions">
-          <button className="be-btn be-btn-ghost be-btn-sm" onClick={() => navigate('/app/withdrawals')}>
-            <RotateCcw size={14} /> Withdrawals
-          </button>
-          {portfolio && (
-            <div className="apk-portfolio-asof" aria-label={`Portfolio updated ${fmtDate(portfolio.asOf, { withTime: true })}`}>
-              <span>Updated</span>
-              <strong>{fmtDate(portfolio.asOf)}</strong>
-            </div>
-          )}
-        </div>
-      </header>
-
-      {!portfolio ? (
-        <>
-          <div className="be-card apk-portfolio-summary-skeleton">
-            <div className="apk-skel apk-summary-skel-title" />
-            <div className="apk-skel apk-summary-skel-value" />
-            <div className="apk-portfolio-summary-grid-skeleton">
-              {[1,2].map(i => <div key={i} className="apk-skel apk-summary-skel-tile" />)}
-            </div>
-          </div>
-          <div className="apk-holdings-list-skeleton">
-            {[1,2].map(i => (
-              <div key={i} className="be-card apk-holding-skeleton">
-                <div className="apk-skel apk-holding-skel-name" />
-                <div className="apk-skel apk-holding-skel-meta" />
-                <div className="apk-holding-metrics-skeleton">
-                  {[1,2].map(j => <div key={j} className="apk-skel apk-holding-skel-metric" />)}
-                </div>
-                <div className="apk-skel apk-holding-skel-action" />
-              </div>
-            ))}
-          </div>
-        </>
-      ) : (
-        <section className="be-card apk-portfolio apk-portfolio-summary" aria-label="Portfolio summary">
-          <div className="apk-portfolio-hero">
-            <span className="be-eyebrow apk-portfolio-eye">Your investments</span>
-            <div className="apk-portfolio-num be-money"><MoneyValue amount={portfolio.invested} source={portfolio.source} asOf={portfolio.asOf} showBadge={false} /></div>
-            <div className="apk-portfolio-hero-label">
-              Total invested
-            </div>
-          </div>
-          <dl className="apk-portfolio-grid apk-portfolio-summary-grid">
-            <div>
-              <dt className="apk-portfolio-mini-l">Holdings</dt>
-              <dd className="apk-portfolio-mini-v be-num">{counts.active} active</dd>
-            </div>
-            <div>
-              <dt className="apk-portfolio-mini-l">Closed</dt>
-              <dd className="apk-portfolio-mini-v be-num">{counts.closed} closed</dd>
-            </div>
-          </dl>
-        </section>
-      )}
-
-      <div className="apk-section-head apk-portfolio-section-head">
-        <div>
-          <span className="be-eyebrow">Holdings</span>
-          {portfolio && <div className="apk-portfolio-section-count">{holdings.length} shown</div>}
-        </div>
-      </div>
-
-      <div className="apk-tabs apk-portfolio-tabs" role="tablist" aria-label="Holdings filter">
-        {[['all','All'],['active','Active'],['closed','Closed']].map(([k, l]) => (
-          <button
-            key={k}
-            type="button"
-            role="tab"
-            aria-selected={tab === k}
-            className={tab === k ? 'is-active' : ''}
-            onClick={() => setTab(k)}
-          >
-            {l}
-            <span className="apk-tab-count" aria-hidden="true">{counts[k] || 0}</span>
-          </button>
-        ))}
-      </div>
-
-      {!portfolio ? null : holdings.length === 0 ? (
+  if (!portfolio || (portfolio.invested === 0 && portfolio.currentValue === 0)) {
+    return (
+      <div className="apk-screen">
         <EmptyState
-          className="be-card apk-portfolio-empty"
-          icon={<PieChart size={36} strokeWidth={1.5} />}
-          title="No holdings yet"
-          description="Once you invest, your funds appear here."
+          icon={Wallet}
+          title="No investments yet"
+          description="Once your first SIP or lump sum is recorded, your investment appears here."
           action={
-            <button className="be-btn be-btn-primary apk-empty-cta" onClick={() => navigate('/app/explore')}>
-              Explore funds
+            <button className="be-btn be-btn-primary" onClick={() => navigate('/app/explore')}>
+              Browse strategies
             </button>
           }
         />
-      ) : (
-        <div className="apk-holdings-list">
-          {holdings.map((h) => (
-            <button
-              key={h.fundId}
-              type="button"
-              className="be-card apk-holding apk-holding-card"
-              onClick={() => navigate(`/app/funds/${h.fundId}`)}
-              aria-label={`Open ${h.fundName}`}
-            >
-              <div className="apk-holding-head">
-                <div className="apk-holding-title">
-                  <div className="apk-fund-name" title={h.fundName}>{h.fundName}</div>
-                  <div className="apk-cell-meta">{fmtUnits(h.units)} units</div>
-                </div>
-                <div className="apk-holding-side">
-                  <span className={'be-badge ' + holdingBadgeClass(h.status)}>
-                    <span className="be-badge-dot" />{holdingBadgeLabel(h.status)}
-                  </span>
+      </div>
+    );
+  }
+
+  const summary = portfolio.summary || {};
+  const gained = (portfolio.totalReturn ?? 0) >= 0;
+
+  return (
+    <div className="apk-screen">
+      {/* ── My Investment ─────────────────────────────────────────────────── */}
+      <div className="be-card apk-invest-card">
+        <div className="be-eyebrow">My Investment</div>
+        <div className="apk-invest-label">Current portfolio value</div>
+        <div className="apk-invest-value be-money">{fmtMoney(portfolio.currentValue, { decimals: 2 })}</div>
+
+        <div className="apk-invest-grid">
+          <div>
+            <div className="apk-invest-mini-l">Total investment (SIP + lump sum)</div>
+            <div className="apk-invest-mini-v be-money">{fmtMoney(portfolio.invested, { decimals: 2 })}</div>
+          </div>
+          <div>
+            <div className="apk-invest-mini-l">Total return</div>
+            <div className={`apk-invest-mini-v be-money ${gained ? 'is-gain' : 'is-loss'}`}>
+              {gained ? '+' : '−'}{fmtMoney(Math.abs(portfolio.totalReturn ?? 0), { decimals: 2 })}
+              {portfolio.returnPercent !== null && portfolio.returnPercent !== undefined && (
+                <span className="apk-invest-pct"> ({fmtPct(portfolio.returnPercent, { decimals: 2 })})</span>
+              )}
+            </div>
+          </div>
+          <div>
+            <div className="apk-invest-mini-l">Return since first investment</div>
+            <div className="apk-invest-mini-v">{portfolio.returnSince ? fmtDate(portfolio.returnSince) : '—'}</div>
+          </div>
+          <div>
+            <div className="apk-invest-mini-l">Last updated</div>
+            <div className="apk-invest-mini-v">{portfolio.lastUpdated ? fmtDate(portfolio.lastUpdated) : '—'}</div>
+          </div>
+        </div>
+
+        <div className="apk-invest-actions">
+          <button className="be-btn be-btn-primary be-btn-lg" onClick={() => navigate('/app/explore')}>
+            Invest more
+          </button>
+          <button
+            className="be-btn be-btn-secondary be-btn-lg"
+            onClick={() => openRedeem(portfolio.pools?.[0])}
+            disabled={(portfolio.pools?.length ?? 0) === 0}
+          >
+            Redeem
+          </button>
+        </div>
+      </div>
+
+      {/* ── Investment Summary ────────────────────────────────────────────── */}
+      <div className="be-card apk-summary-card">
+        <div className="be-eyebrow">
+          <PieChart size={14} strokeWidth={1.8} /> Investment Summary
+        </div>
+        <dl className="apk-summary-list">
+          <div>
+            <dt>Total SIP paid</dt>
+            <dd>
+              {summary.sipInstallments ?? 0} {summary.sipInstallments === 1 ? 'installment' : 'installments'}
+            </dd>
+          </div>
+          <div>
+            <dt>Total SIP amount</dt>
+            <dd className="be-money">{fmtMoney(summary.sipTotal ?? 0)}</dd>
+          </div>
+          <div>
+            <dt>Total lump sum investments</dt>
+            <dd>{summary.lumpSumCount ?? 0}</dd>
+          </div>
+          <div>
+            <dt>Total lump sum amount</dt>
+            <dd className="be-money">{fmtMoney(summary.lumpSumTotal ?? 0)}</dd>
+          </div>
+          {(summary.redemptionCount ?? 0) > 0 && (
+            <div>
+              <dt>Redeemed</dt>
+              <dd className="be-money">
+                {fmtMoney(summary.redeemedTotal ?? 0)} ({summary.redemptionCount})
+              </dd>
+            </div>
+          )}
+          <div>
+            <dt>Returns allocated</dt>
+            <dd className="be-money">{fmtMoney(summary.allocatedGain ?? 0)}</dd>
+          </div>
+        </dl>
+        <button className="be-btn be-btn-ghost be-btn-block" onClick={() => navigate('/app/transactions')}>
+          View all transactions
+        </button>
+      </div>
+
+      {/* ── Per-pool breakdown ────────────────────────────────────────────── */}
+      {(portfolio.pools?.length ?? 0) > 1 && (
+        <div className="be-card">
+          <div className="be-eyebrow">
+            <TrendingUp size={14} strokeWidth={1.8} /> By strategy
+          </div>
+          {portfolio.pools.map((pool) => (
+            <div key={pool.fundId} className="apk-pool-row">
+              <div className="apk-pool-main">
+                <div className="apk-pool-value be-money">{fmtMoney(pool.currentValue)}</div>
+                <div className="apk-pool-meta">
+                  Invested {fmtMoney(pool.invested)}
+                  {pool.returnPercent !== null && pool.returnPercent !== undefined
+                    ? ` · ${fmtPct(pool.returnPercent, { decimals: 2 })}`
+                    : ''}
                 </div>
               </div>
-              <dl className="apk-metric-grid apk-metric-grid-2 apk-holding-metrics">
-                <div className="apk-metric">
-                  <dt className="apk-portfolio-mini-l">Invested</dt>
-                  <dd className="apk-portfolio-mini-v be-money"><MoneyValue amount={h.invested} source="derived" asOf={h.asOf || portfolio.asOf} showBadge={false} /></dd>
-                </div>
-                <div className="apk-metric">
-                  <dt className="apk-portfolio-mini-l">Units</dt>
-                  <dd className="apk-portfolio-mini-v be-num">{fmtUnits(h.units)}</dd>
-                </div>
-              </dl>
-              <div className="apk-holding-actions">
-                <button
-                  className="be-btn be-btn-secondary be-btn-sm apk-holding-action-btn"
-                  onClick={(e) => { e.stopPropagation(); setRedeemModal(h); setRedeemAmount(''); setRedeemType('partial'); setRedeemMessage(null); setRedeemStep('form'); setRedeemPreview(null); }}
-                >
-                  <Wallet size={14} /> Redeem
+              <div className="apk-pool-actions">
+                <button className="be-btn be-btn-ghost be-btn-sm" onClick={() => navigate(`/app/funds/${pool.fundId}`)}>
+                  View
+                </button>
+                <button className="be-btn be-btn-secondary be-btn-sm" onClick={() => openRedeem(pool)}>
+                  <RotateCcw size={13} /> Redeem
                 </button>
               </div>
-            </button>
+            </div>
           ))}
         </div>
       )}
-      {portfolio && (
-        <p className="be-disclosure apk-portfolio-disclosure">
-          Holdings as of {fmtDate(portfolio.asOf, { withTime: true })}. Investment values are subject to market risk. Published by BeOnEdge.
-        </p>
-      )}
 
-      {/* Redemption Modal */}
-      {redeemModal && (
-        <div className="apk-sheet-overlay" role="presentation" onMouseDown={() => !redeemSubmitting && resetRedeemModal()}>
-          <section className="apk-sheet" role="dialog" aria-modal="true" onMouseDown={e => e.stopPropagation()}>
+      {/* ── Redemption sheet ──────────────────────────────────────────────── */}
+      {sheet && (
+        <div className="apk-sheet-overlay" role="presentation" onMouseDown={closeRedeem}>
+          <div className="apk-sheet" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}>
             <div className="apk-sheet-head">
-              <h2>{redeemStep === 'preview' ? 'Redemption Preview' : `Redeem from ${redeemModal.fundName}`}</h2>
-              <button className="apk-sheet-close" onClick={() => resetRedeemModal()} aria-label="Close" disabled={redeemSubmitting}>×</button>
+              <h2>{receipt ? 'Redemption submitted' : 'Redeem investment'}</h2>
+              <button className="apk-sheet-close" onClick={closeRedeem} aria-label="Close" disabled={submitting}>
+                ×
+              </button>
             </div>
-            {redeemStep === 'form' && (
-              <form onSubmit={handleRedeemSubmit} className="apk-sheet-form">
-                {redeemMessage && (
-                  <div className={`apk-sheet-message apk-sheet-message--${redeemMessage.type}`}>
-                    {redeemMessage.text}
+
+            {receipt ? (
+              <div className="apk-sheet-body">
+                <p>
+                  We have recorded your request for <strong>{fmtMoney(receipt.requestedAmount)}</strong>. Your
+                  portfolio value changes once the redemption is settled.
+                </p>
+                <dl className="apk-summary-list">
+                  <div>
+                    <dt>From returns</dt>
+                    <dd className="be-money">{fmtMoney(receipt.returnsComponent ?? 0)}</dd>
                   </div>
-                )}
-                <div className="apk-sheet-grid-2">
-                  <div><div className="be-eyebrow">Current Value</div><div className="be-money apk-sheet-value-lg">{fmtMoney(redeemModal.currentValue)}</div></div>
-                  <div><div className="be-eyebrow">Units</div><div className="be-num apk-sheet-value-lg">{fmtUnits(redeemModal.units)}</div></div>
+                  <div>
+                    <dt>From invested principal</dt>
+                    <dd className="be-money">{fmtMoney(receipt.principalComponent ?? 0)}</dd>
+                  </div>
+                </dl>
+                <button className="be-btn be-btn-primary be-btn-block" onClick={closeRedeem}>
+                  Done
+                </button>
+              </div>
+            ) : (
+              <div className="apk-sheet-body">
+                <div className="apk-sheet-amount">
+                  <span>Available amount</span>
+                  <strong className="be-money">{fmtMoney(sheet.currentValue)}</strong>
                 </div>
-                <div className="apk-sheet-actions apk-sheet-actions--inline">
-                  <button type="button" className={`be-btn be-btn-sm apk-sheet-btn ${redeemType === 'partial' ? 'be-btn-primary' : 'be-btn-secondary'}`} onClick={() => setRedeemType('partial')}>
-                    Partial
-                  </button>
-                  <button type="button" className={`be-btn be-btn-sm apk-sheet-btn ${redeemType === 'full' ? 'be-btn-primary' : 'be-btn-secondary'}`} onClick={() => setRedeemType('full')}>
-                    Full Amount
-                  </button>
-                </div>
-                {redeemType === 'partial' && (
-                  <label className="be-field">
-                    <span>Amount to redeem (₹)</span>
+
+                <fieldset className="apk-radio-group">
+                  <legend className="apk-sr-only">Redemption type</legend>
+                  {REDEMPTION_MODES.map((option) => (
+                    <label key={option.value} className="apk-radio">
+                      <input
+                        type="radio"
+                        name="redemption-mode"
+                        value={option.value}
+                        checked={mode === option.value}
+                        onChange={() => setMode(option.value)}
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  ))}
+                </fieldset>
+
+                {mode === 'custom' && (
+                  <label className="apk-field">
+                    <span>Amount (₹)</span>
                     <input
-                      className="be-input be-num"
                       type="number"
+                      inputMode="decimal"
                       min="1"
-                      max={redeemModal.currentValue}
-                      value={redeemAmount}
-                      onChange={e => setRedeemAmount(e.target.value)}
-                      placeholder="Enter amount"
-                      required
+                      max={sheet.currentValue ?? undefined}
+                      value={amount}
+                      onChange={(event) => setAmount(event.target.value)}
                     />
                   </label>
                 )}
-                {redeemType === 'full' && (
-                  <div className="apk-sheet-well apk-sheet-well--center">
-                    <div className="be-eyebrow">You will redeem</div>
-                    <div className="be-money apk-sheet-value-xl">{fmtMoney(redeemModal.currentValue)}</div>
+
+                {mode === 'returns_only' && (
+                  <p className="be-disclosure">
+                    Redeeming returns only leaves your invested principal untouched.
+                  </p>
+                )}
+
+                {message && (
+                  <div className={`apk-sheet-message apk-sheet-message--${message.type}`} role="alert">
+                    {message.text}
                   </div>
                 )}
-                <div className="be-disclosure apk-sheet-disclosure">
-                  Redemption requests require admin approval. Funds will be returned to your registered account within 2-3 business days after approval.
-                </div>
-                <div className="apk-sheet-actions apk-sheet-actions--inline">
-                  <button type="button" className="be-btn be-btn-secondary apk-sheet-btn" onClick={() => resetRedeemModal()} disabled={redeemSubmitting}>Cancel</button>
-                  <button type="submit" className="be-btn be-btn-primary apk-sheet-btn" disabled={redeemSubmitting}>
-                    {redeemSubmitting ? 'Loading...' : 'Preview Redemption'}
-                  </button>
-                </div>
-              </form>
-            )}
-            {redeemStep === 'preview' && redeemPreview && (
-              <div className="apk-sheet-body">
-                {redeemMessage && (
-                  <div className={`apk-sheet-message apk-sheet-message--${redeemMessage.type}`}>
-                    {redeemMessage.text}
-                  </div>
-                )}
-                <div className="apk-sheet-grid-2">
-                  <div><div className="be-eyebrow">Units to redeem</div><div className="be-num apk-sheet-value-md">{fmtUnits(redeemPreview.units)}</div></div>
-                  <div><div className="be-eyebrow">Gross amount</div><div className="be-money apk-sheet-value-md">{fmtMoney(redeemPreview.grossAmount)}</div></div>
-                </div>
 
-                <div className="apk-sheet-well apk-sheet-well--col">
-                  <div className="apk-sheet-row apk-sheet-row--emphasis">
-                    <span>Gross amount</span>
-                    <span className="be-money">{fmtMoney(redeemPreview.grossAmount)}</span>
-                  </div>
-                  <div className="apk-sheet-row">
-                    <span className="apk-sheet-label">Exit load ({(redeemPreview.exitLoadRate * 100).toFixed(2)}%)</span>
-                    <span className="be-money apk-sheet-value--muted">−{fmtMoney(redeemPreview.exitLoadAmount)}</span>
-                  </div>
-                  <div className="apk-sheet-caption">{redeemPreview.exitLoadFormula}</div>
-                  <div className="apk-sheet-row">
-                    <span className="apk-sheet-label">STT ({(redeemPreview.sttRate * 100).toFixed(3)}%)</span>
-                    <span className="be-money apk-sheet-value--muted">−{fmtMoney(redeemPreview.sttAmount)}</span>
-                  </div>
-                  <div className="apk-sheet-divider" />
-                  <div className="apk-sheet-row">
-                    <span className="apk-sheet-label">Gain ({redeemPreview.gainType})</span>
-                    <span className="be-num apk-sheet-value--muted">{fmtMoney(redeemPreview.gainAmount)}</span>
-                  </div>
-                  <div className="apk-sheet-caption">Holding period: {redeemPreview.holdingPeriodMonths} months</div>
-                  {redeemPreview.gainType === 'LTCG' && (
-                    <>
-                      <div className="apk-sheet-row">
-                        <span className="apk-sheet-label">Exemption applied</span>
-                        <span className="be-money apk-sheet-value--gain">−{fmtMoney(redeemPreview.ltcgExemptionUsed)}</span>
-                      </div>
-                      <div className="apk-sheet-row">
-                        <span className="apk-sheet-label">Taxable gain</span>
-                        <span className="be-money apk-sheet-value--muted">{fmtMoney(redeemPreview.gainAmount - redeemPreview.ltcgExemptionUsed)}</span>
-                      </div>
-                    </>
-                  )}
-                  <div className="apk-sheet-row">
-                    <span className="apk-sheet-label">Tax ({(redeemPreview.taxRate * 100).toFixed(1)}%)</span>
-                    <span className="be-money apk-sheet-value--muted">−{fmtMoney(redeemPreview.taxAmount)}</span>
-                  </div>
-                  <div className="apk-sheet-divider" />
-                  <div className="apk-sheet-row apk-sheet-row--total">
-                    <span>Net proceeds</span>
-                    <span className="be-money">{fmtMoney(redeemPreview.netProceeds)}</span>
-                  </div>
-                </div>
-
-                <div className="apk-sheet-well">
-                  <div className="be-eyebrow">Assumptions</div>
-                  <div className="apk-sheet-assumptions">
-                    <div>STCG rate: {(redeemPreview.assumptions.stcgRate * 100).toFixed(1)}%</div>
-                    <div>LTCG rate: {(redeemPreview.assumptions.ltcgRate * 100).toFixed(1)}%</div>
-                    <div>LTCG exemption: ₹{fmtNum(redeemPreview.assumptions.ltcgExemptionLimit)}</div>
-                    <div>STT rate: {(redeemPreview.assumptions.sttRate * 100).toFixed(3)}%</div>
-                    <div>Holding cutoff: {redeemPreview.assumptions.holdingPeriodCutoffMonths} months</div>
-                    <div>Calculated: {fmtDate(redeemPreview.assumptions.calculationDate, { withTime: true })}</div>
-                  </div>
-                </div>
-
-                <div className="be-disclosure apk-sheet-disclosure">
-                  Redemption requests require admin approval. Funds will be returned to your registered account within 2-3 business days after approval.
-                </div>
-                <div className="apk-sheet-actions apk-sheet-actions--inline">
-                  <button type="button" className="be-btn be-btn-secondary apk-sheet-btn" onClick={() => setRedeemStep('form')} disabled={redeemSubmitting}>Back</button>
-                  <button type="button" className="be-btn be-btn-primary apk-sheet-btn" onClick={handleConfirmRedemption} disabled={redeemSubmitting}>
-                    {redeemSubmitting ? 'Submitting...' : 'Confirm & Request'}
-                  </button>
-                </div>
+                <button
+                  className="be-btn be-btn-primary be-btn-block be-btn-lg"
+                  onClick={onSubmitRedemption}
+                  disabled={submitting}
+                >
+                  {submitting ? 'Submitting…' : 'Submit redemption'}
+                </button>
               </div>
             )}
-          </section>
+          </div>
         </div>
       )}
     </div>

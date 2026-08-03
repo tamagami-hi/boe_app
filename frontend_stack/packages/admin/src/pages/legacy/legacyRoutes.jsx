@@ -4,22 +4,25 @@ import ApprovalsScreen from '../../screens/ApprovalsScreen.jsx';
 import AumScreen from '../../screens/AumScreen.jsx';
 import AppBuilderScreen from '../../screens/AppBuilderScreen.jsx';
 import AuditLogScreen from '../../screens/AuditLogScreen.jsx';
+import EmailDeliveriesScreen from '../../screens/EmailDeliveriesScreen.jsx';
 import EnvironmentScreen from '../../screens/EnvironmentScreen.jsx';
 import HoldingsScreen from '../../screens/HoldingsScreen.jsx';
 import KycReviewScreen from '../../screens/KycReviewScreen.jsx';
-import LedgerScreen from '../../screens/LedgerScreen.jsx';
-import SipControlScreen from '../../screens/SipControlScreen.jsx';
 import MandatesScreen from '../../screens/MandatesScreen.jsx';
 import PaymentsScreen from '../../screens/PaymentsScreen.jsx';
 import TransactionsScreen from '../../screens/TransactionsScreen.jsx';
-import RiskProfilesScreen from '../../screens/RiskProfilesScreen.jsx';
-import SupportTicketsScreen from '../../screens/SupportTicketsScreen.jsx';
 import UserDetailScreen from '../../screens/UserDetailScreen.jsx';
 import UserDetailsListScreen from '../../screens/UserDetailsListScreen.jsx';
 
 // Thin route wrappers: each mounts a pre-redesign screen with the exact
 // props it received from the old monolithic Admin.jsx. They disappear one
 // by one as domains get their full rebuild passes.
+//
+// Retired here (canonical decisions, session-2 audit §C): risk profiles (no
+// client risk profiling), the reconciliation ledger and capital-transaction tab
+// (spec §8 removed the synthetic ledger), the SIP control-request queue (SIP
+// state changes are commands, not a request inbox), and support tickets
+// (out of MVP, no schema). Their screens are deleted rather than left dark.
 
 export function ApprovalsRoute() {
   const ctx = useLegacyAdminData();
@@ -45,6 +48,7 @@ export function FundsRoute() {
       auditLogs={ctx.adminData.auditLogs}
       onCreate={ctx.handleCreateFund}
       onUpdate={ctx.handleUpdateFund}
+      onLifecycle={ctx.handleFundLifecycle}
       onDelete={ctx.handleDeleteFund}
       onUserDetail={ctx.openUserDetail}
     />
@@ -59,10 +63,6 @@ export function PaymentsRoute() {
       funds={ctx.adminData.funds}
       stats={ctx.overview.stats || {}}
       onUserDetail={ctx.openUserDetail}
-      onApprovePayment={ctx.handleApprovePayment}
-      onRejectPayment={ctx.handleRejectPayment}
-      busyPaymentId={ctx.paymentBusyId}
-      paymentActionError={ctx.paymentActionError}
     />
   );
 }
@@ -100,40 +100,13 @@ export function KycRoute() {
   );
 }
 
-export function RiskProfilesRoute() {
-  const ctx = useLegacyAdminData();
-  return (
-    <RiskProfilesScreen
-      rows={ctx.adminData.riskProfiles}
-      loading={ctx.loading}
-      onUserDetail={ctx.openUserDetail}
-    />
-  );
-}
-
-export function SipControlRoute() {
-  return <SipControlScreen />;
-}
-
 export function AuditLogRoute() {
   const ctx = useLegacyAdminData();
   return <AuditLogScreen rows={ctx.adminData.auditLogs} loading={ctx.loading} />;
 }
 
-export function SupportRoute() {
-  const ctx = useLegacyAdminData();
-  return (
-    <SupportTicketsScreen
-      rows={ctx.adminData.supportTickets}
-      loading={ctx.loading}
-      onUserDetail={ctx.openUserDetail}
-    />
-  );
-}
-
-export function LedgerRoute() {
-  const ctx = useLegacyAdminData();
-  return <LedgerScreen rows={ctx.adminData.ledger} loading={ctx.loading} />;
+export function EmailDeliveriesRoute() {
+  return <EmailDeliveriesScreen />;
 }
 
 export function HoldingsRoute() {

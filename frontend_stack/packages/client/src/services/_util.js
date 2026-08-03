@@ -92,10 +92,48 @@ export function storedUser(scope = 'client') {
   }
 }
 
+// Raised instead of performing a network request when the app runs in fixture
+// mode. Callers that have local fixture data catch this and fall back; callers
+// that do not surface it as an explicit "not available offline" state. Without
+// it, `apiRequest` would silently fetch `apiBaseUrl()` even though the app was
+// configured to stay offline.
+export class FixtureModeError extends Error {
+  constructor(path) {
+    super('This screen needs the backend. Set VITE_BEO_API_MODE=http to use live data.');
+    this.name = 'FixtureModeError';
+    this.code = 'FIXTURE_MODE';
+    this.path = path;
+  }
+}
+
+export function isFixtureModeError(error) {
+  return error?.code === 'FIXTURE_MODE';
+}
+
+// Per-scope session refreshers, registered by `authApi` (which cannot be
+// imported here without a cycle). `apiRequest` calls the matching one once when
+// a request comes back 401, so an expired access token is rotated transparently.
+const sessionRefreshers = {};
+
+export function registerSessionRefresher(scope, refresher) {
+  sessionRefreshers[scope] = refresher;
+}
+
 export async function apiRequest(
   path,
-  { method = 'GET', body, auth = true, scope = 'client', headers: extraHeaders } = {},
+  {
+    method = 'GET',
+    body,
+    auth = true,
+    scope = 'client',
+    headers: extraHeaders,
+    envelope = false,
+    _retried: retried = false,
+  } = {},
 ) {
+  // Mode gate: fixture mode never touches the network, whichever layer calls in.
+  if (!useHttpApi()) throw new FixtureModeError(path);
+
   const headers = { accept: 'application/json' };
 
   if (body !== undefined) headers['content-type'] = 'application/json';
@@ -130,6 +168,26 @@ export async function apiRequest(
     error.code = payload?.error?.code;
     error.details = payload?.error?.details;
     if (response.status === 401) {
+      // Access tokens are short-lived. Give the scope's registered refresher one
+      // chance to rotate the session and replay the request before treating the
+      // 401 as a real sign-out. `_retried` stops a refresh loop.
+      const refresher = sessionRefreshers[scope];
+      if (!retried && refresher) {
+        try {
+          await refresher();
+          return await apiRequest(path, {
+            method,
+            body,
+            auth,
+            scope,
+            headers: extraHeaders,
+            envelope,
+            _retried: true,
+          });
+        } catch {
+          /* fall through to invalidation below */
+        }
+      }
       clearSessionTokens(scope);
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('boe:session-invalidated', { detail: { scope } }));
@@ -137,6 +195,10 @@ export async function apiRequest(
     }
     throw error;
   }
+
+  // `envelope: true` keeps `{ ok, data, meta }` intact — list callers need
+  // `meta.page.nextCursor` for keyset pagination, which unwrapping would drop.
+  if (envelope) return payload;
 
   return payload && Object.prototype.hasOwnProperty.call(payload, 'data') ? payload.data : payload;
 }

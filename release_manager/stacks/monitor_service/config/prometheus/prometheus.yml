@@ -1,0 +1,143 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# prometheus.yml — BOE_APP monitoring scrape configuration.
+#
+# Shipped to /srv/dev_stack/BOE_APP/monitor_service/config/prometheus/ and
+# mounted read-only into the Prometheus container.
+#
+# WHAT IT CAN AND CANNOT SEE
+#   The backend currently exposes NO /metrics endpoint, so there are no
+#   application-level request-rate or latency series. Coverage today is:
+#     • host metrics                → node_exporter
+#     • container metrics           → cAdvisor (CPU, memory, restarts)
+#     • public reachability + TLS   → blackbox_exporter
+#     • nginx connection counts     → nginx stub_status
+#     • database internals          → postgres_exporter (optional profiles)
+#   Add a /metrics route to the backend and uncomment the boe-backend jobs below
+#   to get application series.
+# ─────────────────────────────────────────────────────────────────────────────
+
+global:
+  scrape_interval: 30s
+  scrape_timeout: 10s
+  evaluation_interval: 30s
+  external_labels:
+    host: beonedge-vps
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  # ── Prometheus itself ─────────────────────────────────────────────────────
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # ── host ──────────────────────────────────────────────────────────────────
+  - job_name: node
+    static_configs:
+      - targets: ["node_exporter:9100"]
+        labels:
+          instance: beonedge-vps
+
+  # ── containers ────────────────────────────────────────────────────────────
+  # cAdvisor emits a very high-cardinality set; keep only what the dashboards
+  # use, or the TSDB grows far faster than the retention window suggests.
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: "container_(cpu_usage_seconds_total|memory_usage_bytes|memory_working_set_bytes|network_receive_bytes_total|network_transmit_bytes_total|fs_usage_bytes|last_seen|start_time_seconds|tasks_state)"
+        action: keep
+      # Drop the noisy per-container-id series with no name label.
+      - source_labels: [name]
+        regex: "^$"
+        action: drop
+
+  # ── nginx ─────────────────────────────────────────────────────────────────
+  # stub_status on the host loopback (see release_manager/nginx/boe-shared.conf).
+  # host.docker.internal is not available on Linux by default, so the compose
+  # file would need an extra_hosts entry; using the docker bridge gateway works
+  # without one.
+  - job_name: nginx
+    metrics_path: /nginx_status
+    static_configs:
+      - targets: ["172.17.0.1:8080"]
+
+  # ── external reachability, TLS expiry, response time ──────────────────────
+  - job_name: blackbox_https
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - https://beonedge.in
+          - https://app.beonedge.in
+          - https://admin.beonedge.in
+          - https://dev-app.beonedge.in
+          - https://dev-admin.beonedge.in
+          - https://monitor.beonedge.in
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox_exporter:9115
+
+  # ── application health, probed from inside the host ───────────────────────
+  # /health/ready is deliberately not public (nginx denies it), so it is probed
+  # over the docker bridge gateway against the loopback-published port.
+  - job_name: blackbox_health
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - http://172.17.0.1:47413/health/ready   # prod backend
+          - http://172.17.0.1:47423/health/ready   # dev backend
+        labels:
+          probe: readiness
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox_exporter:9115
+
+  # ── databases (only resolve when the exporter profiles are enabled) ───────
+  - job_name: postgres_prod
+    static_configs:
+      - targets: ["postgres_exporter_prod:9187"]
+        labels:
+          environment: production
+
+  - job_name: postgres_dev
+    static_configs:
+      - targets: ["postgres_exporter_dev:9187"]
+        labels:
+          environment: development
+
+  # ── application metrics (not available yet) ───────────────────────────────
+  # Uncomment once the backend serves /metrics. Keep it on the internal network
+  # only — an unauthenticated metrics endpoint must never be public (plan §25.1).
+  #
+  # - job_name: boe_backend_prod
+  #   metrics_path: /metrics
+  #   static_configs:
+  #     - targets: ["172.17.0.1:47413"]
+  #       labels:
+  #         environment: production
+  #
+  # - job_name: boe_backend_dev
+  #   metrics_path: /metrics
+  #   static_configs:
+  #     - targets: ["172.17.0.1:47423"]
+  #       labels:
+  #         environment: development

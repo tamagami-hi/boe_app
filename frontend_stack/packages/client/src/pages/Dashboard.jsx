@@ -6,9 +6,10 @@ import * as portfolioApi from '../services/portfolioApi.js';
 import * as ordersApi from '../services/ordersApi.js';
 import * as researchApi from '../services/researchApi.js';
 import * as fundsApi from '../services/fundsApi.js';
+import { getInvestingEligibility } from '../services/eligibilityApi.js';
 import { useAppConfig } from '../hooks/useAppConfig.js';
 import { isComponentEnabled, visibleQuickActions } from '@beonedge/shared/appConfig.js';
-import { fmtMoney, fmtDate } from '../utils/format.js';
+import { fmtMoney, fmtPct, fmtDate } from '../utils/format.js';
 import MoneyValue from '@beonedge/shared/components/MoneyValue.jsx';
 import { Skeleton, EmptyState, FadeIn } from '@beonedge/shared';
 import { isExecutionRoute, isPendingApprovalUser } from '../utils/approval.js';
@@ -39,28 +40,33 @@ export default function Dashboard() {
   const [orders, setOrders] = useState([]);
   const [research, setResearch] = useState([]);
   const [fundsById, setFundsById] = useState({});
+  const [eligibility, setEligibility] = useState(null);
 
   useEffect(() => {
     portfolioApi.getPortfolio().then(setPortfolio).catch(() => setPortfolio(null));
-    ordersApi.listOrders({ filter: 'active' }).then(setOrders).catch(() => setOrders([]));
+    // Plans come from the SIP endpoint: a plan's own state (draft / pending mandate /
+    // active / paused) lives on the plan, not on the orders it generates.
+    ordersApi.listSips().then(setOrders).catch(() => setOrders([]));
     researchApi.getResearchContext().then(setResearch).catch(() => setResearch([]));
     fundsApi.listFunds().then((fs) => setFundsById(Object.fromEntries(fs.map((f) => [f.id, f])))).catch(() => setFundsById({}));
+    // Derived server-side on every read; drives the "verify your email" prompt.
+    getInvestingEligibility().then(setEligibility).catch(() => setEligibility(null));
   }, [appConfig.publishedAt]);
 
   const firstName = (user?.name || '').split(' ')[0];
   const isPendingApproval = isPendingApprovalUser(user);
-  const activeSips = orders.filter((o) =>
-    o.type === 'sip' &&
-    ['active', 'pending_first_payment', 'pending_mandate_setup', 'paused', 'cancel_requested'].includes(o.status)
+  const activeSips = orders.filter((plan) =>
+    ['active', 'paused', 'pending_mandate', 'draft'].includes(plan.status),
   );
 
   function sipBadgeClass(status) {
     switch (status) {
       case 'active': return 'be-badge-active';
       case 'paused': return 'be-badge-paused';
-      case 'cancel_requested': return 'be-badge-failed';
-      case 'pending_first_payment':
-      case 'pending_mandate_setup':
+      case 'cancelled': return 'be-badge-failed';
+      // A plan waiting on its mandate, or still a draft, is not yet collecting.
+      case 'pending_mandate':
+      case 'draft':
         return 'be-badge-paused';
       default: return 'be-badge-neutral';
     }
@@ -69,9 +75,9 @@ export default function Dashboard() {
     switch (status) {
       case 'active': return 'Active';
       case 'paused': return 'Paused';
-      case 'cancel_requested': return 'Cancel Pending';
-      case 'pending_first_payment': return 'Payment Pending';
-      case 'pending_mandate_setup': return 'Mandate Setup';
+      case 'cancelled': return 'Cancelled';
+      case 'pending_mandate': return 'Awaiting mandate';
+      case 'draft': return 'Not started';
       default: return status;
     }
   }
@@ -87,6 +93,30 @@ export default function Dashboard() {
           <div className="apk-greet-line" aria-hidden="true" />
         </div>
       </FadeIn>
+
+      {eligibility && eligibility.canInvest === false && (
+        <FadeIn direction="up" distance={10} duration={420}>
+          <div className="be-card apk-approval-card apk-kyc-prompt">
+            <div className="apk-approval-icon"><ShieldCheck size={20} strokeWidth={1.6} /></div>
+            <div>
+              <div className="be-eyebrow">Verification needed</div>
+              <div className="apk-h-sm">Verify your email to start investing</div>
+              <p>
+                {eligibility.reason === 'kyc_required' || eligibility.kycState !== 'approved'
+                  ? 'We send a 6-digit code to your registered email address.'
+                  : 'Your account needs one more check before investing unlocks.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="be-btn be-btn-primary be-btn-sm"
+              onClick={() => navigate('/app/verify-email')}
+            >
+              Verify now
+            </button>
+          </div>
+        </FadeIn>
+      )}
 
       {isPendingApproval && (
         <FadeIn direction="up" distance={10} duration={400} delay={100}>
@@ -109,23 +139,33 @@ export default function Dashboard() {
             <div className="apk-grid-portfolio">
               {portfolio ? (
                 <div className="be-card apk-portfolio" onClick={() => navigate('/app/portfolio')}>
+                  {/* Option B: the headline is the current portfolio value, with
+                      total investment and return beneath it. */}
                   <div className="apk-portfolio-eye">{copy.portfolioTitle}</div>
-                  <div className="apk-portfolio-num be-money"><MoneyValue amount={portfolio.invested} source={portfolio.source} asOf={portfolio.asOf} showBadge={false} /></div>
+                  <div className="apk-portfolio-num be-money">
+                    <MoneyValue amount={portfolio.currentValue} source={portfolio.source} asOf={portfolio.lastUpdated} showBadge={false} />
+                  </div>
                   <div className="apk-portfolio-row">
-                    <span className="apk-portfolio-label">Total invested</span>
+                    <span className="apk-portfolio-label">Current portfolio value</span>
                   </div>
                   <div className="apk-portfolio-grid">
                     <div>
-                      <div className="apk-portfolio-mini-l">Holdings</div>
-                      <div className="apk-portfolio-mini-v be-num">{(portfolio.holdings || []).length}</div>
+                      <div className="apk-portfolio-mini-l">Total invested</div>
+                      <div className="apk-portfolio-mini-v be-money">{fmtMoney(portfolio.invested, { decimals: 2 })}</div>
                     </div>
                     <div>
-                      <div className="apk-portfolio-mini-l">Active SIPs</div>
-                      <div className="apk-portfolio-mini-v be-num">{activeSips.length}</div>
+                      <div className="apk-portfolio-mini-l">Total return</div>
+                      <div className="apk-portfolio-mini-v be-money">
+                        {portfolio.returnPercent === null || portfolio.returnPercent === undefined
+                          ? `${fmtMoney(portfolio.totalReturn ?? 0, { decimals: 2 })}`
+                          : `${fmtMoney(portfolio.totalReturn ?? 0, { decimals: 2 })} (${fmtPct(portfolio.returnPercent, { decimals: 2 })})`}
+                      </div>
                     </div>
                   </div>
                   <div className="be-disclosure apk-disclosure-tight">
-                    As of {fmtDate(portfolio.asOf, { withTime: true })} · Published by BeOnEdge
+                    {portfolio.lastUpdated
+                      ? `Last updated ${fmtDate(portfolio.lastUpdated)} · Published by BeOnEdge`
+                      : 'Published by BeOnEdge'}
                   </div>
                 </div>
               ) : (

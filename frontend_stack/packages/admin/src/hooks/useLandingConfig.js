@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { apiRequest } from '@beonedge/client/services/_util.js';
+import { apiRequest, useHttpApi } from '@beonedge/client/services/_util.js';
 import { LANDING_DEFAULTS } from '../features/site/landingDefaults.js';
 
 // Loads the published landing config, overlays it on the built-in defaults
@@ -42,6 +42,20 @@ export default function useLandingConfig() {
     const reqId = ++reqRef.current;
     setLoading(true);
     setError('');
+
+    // Fixture mode: render the built-in defaults instead of failing. The
+    // canonical `/v1/admin/landing-config` endpoint is still unbuilt (marketing
+    // content has no canonical table yet), so http mode surfaces that error.
+    if (!useHttpApi()) {
+      const merged = mergeWithDefaults(null);
+      if (reqId !== reqRef.current) return;
+      setDraft(merged);
+      setBaseline(merged);
+      setVersionMeta({ version: null, publishedAt: null, publishedBy: null });
+      setLoading(false);
+      return;
+    }
+
     try {
       const payload = await apiRequest('/v1/admin/landing-config', { scope: 'admin' });
       if (reqId !== reqRef.current) return;

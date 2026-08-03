@@ -13,6 +13,7 @@
  * grants derive from a single authoritative mapping.
  */
 import { createHash } from "node:crypto"
+import { SEED_CONTENT_DOCUMENTS } from "./seedContent.js"
 
 export interface SeedRole {
   readonly code: string
@@ -62,12 +63,18 @@ export const SEED_PERMISSIONS: readonly SeedPermission[] = [
   { code: "roles.assign", description: "Assign and revoke user role grants" },
   { code: "permissions.change", description: "Change role-permission mappings via approved control" },
   { code: "funds.read", description: "Read funds and the catalog" },
+  { code: "funds.write", description: "Create funds and publish catalog versions, NAV, AUM, and positions" },
   { code: "finance.read", description: "Read finance projections" },
   { code: "finance.operate", description: "Operate finance workflows" },
   { code: "approvals.request", description: "Request a maker-checker approval" },
   { code: "approvals.check", description: "Check (approve or reject) a maker-checker request" },
   { code: "content.read", description: "Read site content" },
   { code: "content.publish", description: "Publish site content and disclosures" },
+  { code: "config.read", description: "Read the published application configuration" },
+  { code: "config.publish", description: "Publish a new application configuration version" },
+  { code: "audit.read", description: "Read the redacted audit event log" },
+  { code: "kyc.read", description: "Read KYC cases and their review history" },
+  { code: "kyc.review", description: "Approve or reject a KYC case" },
   { code: "support.read", description: "Read support tickets" },
   { code: "support.write", description: "Respond to support tickets" },
 ]
@@ -87,9 +94,18 @@ export const SEED_ROLE_PERMISSIONS: Readonly<Record<string, readonly string[]>> 
     "invitations.manage",
     "email_deliveries.read",
     "users.read",
+    "kyc.read",
+    "kyc.review",
   ],
-  finance: ["funds.read", "finance.read", "finance.operate", "approvals.request", "approvals.check"],
-  content: ["content.read", "content.publish", "funds.read"],
+  finance: [
+    "funds.read",
+    "funds.write",
+    "finance.read",
+    "finance.operate",
+    "approvals.request",
+    "approvals.check",
+  ],
+  content: ["content.read", "content.publish", "config.read", "config.publish", "funds.read"],
   support: ["users.read_limited", "email_deliveries.read_masked", "support.read", "support.write"],
 }
 
@@ -148,6 +164,25 @@ export const buildSeedStatements = (): readonly SeedStatement[] => {
         document.publicPath,
         document.contentMarkdown,
         consentDigest(document.contentMarkdown),
+      ],
+    })
+  }
+
+  // Published documents the app and public routes read (FAQs, disclosures, the
+  // investor charter, grievance redressal, research context). Keyed by
+  // `content_key` so an admin edit is never overwritten by a later seed run.
+  for (const document of SEED_CONTENT_DOCUMENTS) {
+    statements.push({
+      text:
+        "INSERT INTO content_items (content_key, kind, version, title, body, payload, state, published_at) " +
+        "VALUES ($1, $2, 1, $3, $4, $5::jsonb, 'published', now()) " +
+        "ON CONFLICT (content_key, version) DO NOTHING",
+      values: [
+        document.contentKey,
+        document.kind,
+        document.title,
+        document.body,
+        JSON.stringify(document.payload),
       ],
     })
   }

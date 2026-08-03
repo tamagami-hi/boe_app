@@ -15,7 +15,7 @@ import { createPool } from "../../src/db/pool.js"
 import { generateSipInstallments } from "../../src/domain/client/generateSipInstallments.js"
 import { settleDuePayments } from "../../src/domain/client/settlePayment.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
-import { createHoldingRepository } from "../../src/repositories/holdingRepository.js"
+import { createInvestorLedgerRepository } from "../../src/repositories/investorLedgerRepository.js"
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
 import { createMandateRepository } from "../../src/repositories/mandateRepository.js"
 import { createNotificationRepository } from "../../src/repositories/notificationRepository.js"
@@ -46,7 +46,7 @@ const mandateRepository = createMandateRepository()
 const orderRepository = createOrderRepository()
 const userRepository = createUserRepository()
 const paymentRepository = createPaymentRepository()
-const holdingRepository = createHoldingRepository()
+const investorLedgerRepository = createInvestorLedgerRepository()
 const notificationRepository = createNotificationRepository()
 const outboxRepository = createOutboxRepository()
 const auditRepository = createAuditRepository()
@@ -76,7 +76,7 @@ const settleDeps = () => ({
   outboxRepository,
   paymentRepository,
   orderRepository,
-  holdingRepository,
+  investorLedgerRepository,
   notificationRepository,
   auditRepository,
   clock,
@@ -120,11 +120,8 @@ beforeAll(async () => {
     idleTimeoutMs: 10_000,
   })
   const directory = fileURLToPath(new URL("../../db/migrations", import.meta.url))
-  const all = await loadMigrationFiles(directory)
-  await runMigrations(
-    pool,
-    all.filter((file) => file.version >= "009"),
-  )
+  const migrations = await loadMigrationFiles(directory)
+  await runMigrations(pool, migrations)
   await runSeed(pool)
   const database = createDatabase(pool)
   uow = createUnitOfWork(database)
@@ -275,11 +272,12 @@ describe("client SIP lifecycle (integration)", () => {
     // Payment worker (mock) settles + books it into the holding.
     const settleSummary = await settleDuePayments(settleDeps())
     expect(settleSummary.booked).toBe(1)
-    const holding = await pool.query<{ total_units: string }>(
-      "select total_units from holdings where user_id = $1 and fund_id = $2",
+    // The installment lands as a `sip_installment` ledger entry, not units.
+    const holding = await pool.query<{ entry_type: string; value_delta_paise: string }>(
+      "select entry_type, value_delta_paise from investor_ledger_entries where user_id = $1 and fund_id = $2",
       [userId, fundId],
     )
-    expect(holding.rows[0]?.total_units).toBe("100.00000000")
+    expect(holding.rows[0]?.entry_type).toBe("sip_installment")
 
     // The plan's next due date advanced by a month (day clamped to debit_day 5).
     const advanced = await pool.query<{ next_due_date: string }>(
@@ -287,6 +285,99 @@ describe("client SIP lifecycle (integration)", () => {
       [sip.sipId],
     )
     expect(advanced.rows[0]?.next_due_date).toMatch(/-05$/u)
+  })
+
+  test("lists the investor's plans and refuses another account's mandate", async () => {
+    const listed = await app.inject({ method: "GET", url: "/v1/client/sips", headers: bearer() })
+    expect(listed.statusCode).toBe(200)
+    const items = dataOf<{ items: { sipId: string; status: string; mandateId: string | null }[] }>(listed)
+      .items
+    // The plan created and activated above is present with its mandate linked.
+    expect(items.length).toBeGreaterThan(0)
+    expect(items.some((row) => row.status === "active" && row.mandateId !== null)).toBe(true)
+
+    const mandateId = items.find((row) => row.mandateId !== null)?.mandateId as string
+    const mine = await app.inject({
+      method: "GET",
+      url: `/v1/client/mandates/${mandateId}`,
+      headers: bearer(),
+    })
+    expect(mine.statusCode).toBe(200)
+    expect(dataOf<{ status: string; provider: string }>(mine)).toMatchObject({
+      status: "active",
+      provider: "manual",
+    })
+
+    // Another investor's token must not resolve it, and an unknown id is the same 404.
+    const foreign = await app.inject({
+      method: "GET",
+      url: `/v1/client/mandates/${mandateId}`,
+      headers: { authorization: `Bearer ${ineligibleToken}` },
+    })
+    expect(foreign.statusCode).toBe(404)
+    const unknown = await app.inject({
+      method: "GET",
+      url: `/v1/client/mandates/${randomUUID()}`,
+      headers: bearer(),
+    })
+    expect(unknown.statusCode).toBe(404)
+  })
+
+  test("the app can authorize a mock mandate itself, activating the waiting plan", async () => {
+    // With the mock provider there is no bank screen, so the owner-driven route
+    // stands in for it — the same role the payment worker plays for `manual` pay.
+    const created = await createSipHttp(150_000)
+    const sipId = dataOf<{ sipId: string }>(created).sipId
+    const requested = await app.inject({
+      method: "POST",
+      url: `/v1/client/sips/${sipId}/mandate`,
+      headers: bearer(randomUUID()),
+    })
+    const mandateId = dataOf<{ mandateId: string }>(requested).mandateId
+
+    const key = randomUUID()
+    const authorized = await app.inject({
+      method: "POST",
+      url: `/v1/client/mandates/${mandateId}/authorize`,
+      headers: bearer(key),
+    })
+    expect(authorized.statusCode).toBe(200)
+    const body = dataOf<{ status: string; activatedSipIds: string[] }>(authorized)
+    expect(body.status).toBe("active")
+    expect(body.activatedSipIds).toContain(sipId)
+
+    const plan = await pool.query<{ state: string }>("select state from sip_plans where id = $1", [sipId])
+    expect(plan.rows[0]?.state).toBe("active")
+
+    // Replaying the same key returns the first result rather than re-authorizing.
+    const replay = await app.inject({
+      method: "POST",
+      url: `/v1/client/mandates/${mandateId}/authorize`,
+      headers: bearer(key),
+    })
+    expect(replay.statusCode).toBe(200)
+    expect(dataOf<{ status: string }>(replay).status).toBe("active")
+
+    // A fresh key against an already-active mandate is a conflict, not a re-run.
+    const again = await app.inject({
+      method: "POST",
+      url: `/v1/client/mandates/${mandateId}/authorize`,
+      headers: bearer(randomUUID()),
+    })
+    expect(again.statusCode).toBe(409)
+
+    // Clean up so the scheduler assertions in later tests stay deterministic.
+    await app.inject({ method: "POST", url: `/v1/client/sips/${sipId}/cancel`, headers: bearer(randomUUID()) })
+  })
+
+  test("authorizing without an idempotency key is refused", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/client/mandates/${randomUUID()}/authorize`,
+      headers: { authorization: `Bearer ${token}` },
+    })
+    expect(response.statusCode).toBe(400)
+    expect(errorOf(response)).toBe("VALIDATION_FAILED")
   })
 
   test("a second scheduler pass does not double-charge (next due date is in the future)", async () => {

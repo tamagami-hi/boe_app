@@ -17,6 +17,11 @@ export interface SesSendRequest {
   readonly templateKey: string
   readonly templateVersion: string
   readonly configurationSet: string
+  /**
+   * The queued outbox payload for this delivery (SES `TemplateData`). Carries the
+   * transient secret the body needs, e.g. the verification or activation token.
+   */
+  readonly templateData: Readonly<Record<string, unknown>>
 }
 
 /** A successful SES acceptance: the assigned MessageId and acceptance time. */

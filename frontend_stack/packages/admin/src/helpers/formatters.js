@@ -33,8 +33,62 @@ export function normalizeApprovalRow(row = {}) {
   };
 }
 
+// The canonical `/v1/admin/funds` projection is catalogue-shaped (slug + current
+// published version + latest NAV/AUM snapshots). The AUM screens were written
+// against the legacy fund document, so map once here instead of rewriting them:
+// paise -> rupees for the pool size, the published state as the lifecycle stage,
+// and the version's minimums/risk band as flat fields.
+export function normalizeFundRow(row = {}) {
+  // Option B: a pool's size is the latest published monthly closing AUM. There is
+  // no NAV and no unit price to surface.
+  const aumPaise = Number(row.aum?.closingPaise ?? 0);
+  return {
+    ...row,
+    id: row.id || '',
+    slug: row.slug || '',
+    name: row.name || row.slug || 'Untitled fund',
+    status: row.status || 'draft',
+    lifecycleStage: row.status || 'draft',
+    tagline: row.objective || '',
+    category: row.category || '',
+    riskLabel: row.riskLevel || '',
+    returnTier: row.returnTier || null,
+    totalPoolSize: Number.isFinite(aumPaise) ? aumPaise / 100 : 0,
+    aumPeriodStart: row.aum?.periodStart ?? null,
+    aumUpdatedAt: row.aum?.updatedAt ?? null,
+    stockCount: row.stockCount ?? 0,
+    minSip: row.minimumSipPaise === null || row.minimumSipPaise === undefined
+      ? null
+      : Number(row.minimumSipPaise) / 100,
+    minLumpsum: row.minimumPurchasePaise === null || row.minimumPurchasePaise === undefined
+      ? null
+      : Number(row.minimumPurchasePaise) / 100,
+    currentVersion: row.currentVersion ?? null,
+    analytics: { totalInvested: 0 },
+    sectors: [],
+    investments: [],
+  };
+}
+
+// `GET /v1/admin/audit-logs` emits the canonical event shape. The audit screen
+// filters on `action`/`adminId`/`reason`, so alias them here rather than in the
+// backend projection, which stays faithful to `audit_events`.
+export function normalizeAuditRow(row = {}) {
+  return {
+    ...row,
+    action: row.action || row.command || '',
+    adminId: row.actorEmail || row.actorUserId || '',
+    reason: row.reasonCode || '',
+    createdAt: row.createdAt || row.occurredAt || '',
+  };
+}
+
 export function normalizeAdminCollection(rows, path) {
-  return collectionKey(path) === 'approvals' ? rows.map(normalizeApprovalRow) : rows;
+  const key = collectionKey(path);
+  if (key === 'approvals') return rows.map(normalizeApprovalRow);
+  if (key === 'funds') return rows.map(normalizeFundRow);
+  if (key === 'audit-logs') return rows.map(normalizeAuditRow);
+  return rows;
 }
 
 export function clone(value) {

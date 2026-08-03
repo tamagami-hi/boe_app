@@ -1,0 +1,22 @@
+# Grafana dashboard provisioning.
+#
+# Drop dashboard JSON files into config/grafana/provisioning/dashboards/json/
+# and they are loaded on start. They are re-shipped with every monitoring
+# deploy, so dashboards are version-controlled alongside the stack rather than
+# living only in Grafana's database.
+#
+# `allowUiUpdates: false` keeps the file the source of truth — a UI edit that
+# nobody exports would otherwise be silently lost on the next deploy.
+apiVersion: 1
+
+providers:
+  - name: BeOnEdge
+    orgId: 1
+    folder: BeOnEdge
+    type: file
+    disableDeletion: false
+    allowUiUpdates: false
+    updateIntervalSeconds: 60
+    options:
+      path: /etc/grafana/provisioning/dashboards/json
+      foldersFromFilesStructure: false

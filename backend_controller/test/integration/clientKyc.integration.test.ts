@@ -15,6 +15,8 @@ import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
 import type { EmailMessage, EmailSender } from "../../src/email/emailSender.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
+import { createInvestorLedgerRepository } from "../../src/repositories/investorLedgerRepository.js"
+import { createRedemptionRepository } from "../../src/repositories/redemptionRepository.js"
 import { createClientPortfolioRepository } from "../../src/repositories/clientPortfolioRepository.js"
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
 import { createKycRepository } from "../../src/repositories/kycRepository.js"
@@ -40,7 +42,7 @@ const sentByRecipient = new Map<string, EmailMessage>()
 const capturingSender: EmailSender = {
   send: (message) => {
     sentByRecipient.set(message.to, message)
-    return Promise.resolve()
+    return Promise.resolve({ messageId: null })
   },
 }
 const codeFor = (email: string): string => {
@@ -92,11 +94,8 @@ beforeAll(async () => {
     idleTimeoutMs: 10_000,
   })
   const directory = fileURLToPath(new URL("../../db/migrations", import.meta.url))
-  const all = await loadMigrationFiles(directory)
-  await runMigrations(
-    pool,
-    all.filter((file) => file.version >= "009"),
-  )
+  const migrations = await loadMigrationFiles(directory)
+  await runMigrations(pool, migrations)
   await runSeed(pool)
   const database = createDatabase(pool)
   const unitOfWork = createUnitOfWork(database)
@@ -142,6 +141,10 @@ beforeAll(async () => {
         accessTokenService,
         database,
         clientPortfolioRepository: createClientPortfolioRepository(),
+        investorLedgerRepository: createInvestorLedgerRepository(),
+        redemptionRepository: createRedemptionRepository(),
+        auditRepository: createAuditRepository(),
+        unitOfWork: createUnitOfWork(database),
         clock,
         config: { cursorKey: randomBytes(32) },
       })
@@ -230,6 +233,46 @@ describe("client email-OTP KYC + eligibility (integration)", () => {
     })
     expect(order.statusCode).toBe(201)
     expect(dataOf<{ status: string }>(order).status).toBe("submitted")
+  })
+
+  test("kyc-status reports not_started, then the open case, then approval", async () => {
+    const { token } = await seedActiveUser("client-status@example.com", "+14155551711")
+    const status = (bearerToken: string) =>
+      app.inject({ method: "GET", url: "/v1/client/kyc-status", headers: bearer(bearerToken) })
+
+    // A fresh account has no case at all: that is a status, not an error.
+    const fresh = await status(token)
+    expect(fresh.statusCode).toBe(200)
+    expect(dataOf<{ status: string; kycState: string | null; expired: boolean }>(fresh)).toMatchObject({
+      status: "not_started",
+      kycState: null,
+      method: "email_otp",
+      expired: false,
+    })
+
+    await kyc(token, "start")
+    const pending = await status(token)
+    // A case exists but is not decided; the app shows "verification in progress".
+    expect(dataOf<{ status: string; decidedAt: string | null }>(pending).decidedAt).toBeNull()
+    expect(["in_progress", "submitted", "in_review"]).toContain(
+      dataOf<{ status: string }>(pending).status,
+    )
+
+    await verify(token, codeFor("client-status@example.com"))
+    const approved = await status(token)
+    const body = dataOf<{ status: string; expiresAt: string | null; expired: boolean; decidedAt: string | null }>(
+      approved,
+    )
+    expect(body.status).toBe("approved")
+    expect(body.decidedAt).not.toBeNull()
+    // Approval carries the expiry that drives re-verification.
+    expect(body.expiresAt).not.toBeNull()
+    expect(body.expired).toBe(false)
+  })
+
+  test("kyc-status requires a session", async () => {
+    const response = await app.inject({ method: "GET", url: "/v1/client/kyc-status" })
+    expect(response.statusCode).toBe(401)
   })
 
   test("verifying an already-approved user is an idempotent no-op success", async () => {

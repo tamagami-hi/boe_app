@@ -14,14 +14,21 @@ import type { FastifyInstance } from "fastify"
 import { createAccessTokenService } from "../auth/accessToken.js"
 import { createBreachChecker, resolveBreachCheckMode } from "../auth/breachCheck.js"
 import { createCryptoContext, parseCryptoKeys } from "../crypto/context.js"
+import {
+  dispatchDueDeliveries,
+  type DispatchSummary,
+} from "../domain/email/dispatchDueDeliveries.js"
+import { createTransactionalEmailSender } from "../email/transactionalEmailSender.js"
 import { createDatabase, createUnitOfWork } from "../db/database.js"
 import { parseDatabaseConfig } from "../db/config.js"
 import { createPool } from "../db/pool.js"
 import { createCertificateFetcher } from "../email/certificateFetcher.js"
 import { createActivationInviteRepository } from "../repositories/activationInviteRepository.js"
 import { createApplicationRepository } from "../repositories/applicationRepository.js"
+import { createClientCatalogRepository } from "../repositories/clientCatalogRepository.js"
 import { createClientPortfolioRepository } from "../repositories/clientPortfolioRepository.js"
-import { createHoldingRepository } from "../repositories/holdingRepository.js"
+import { createInvestorLedgerRepository } from "../repositories/investorLedgerRepository.js"
+import { createRedemptionRepository } from "../repositories/redemptionRepository.js"
 import { createKycRepository } from "../repositories/kycRepository.js"
 import { createSmtpEmailSender, createLogEmailSender, type EmailSender } from "../email/emailSender.js"
 import { createMandateRepository } from "../repositories/mandateRepository.js"
@@ -36,6 +43,7 @@ import { createAuditRepository } from "../repositories/auditRepository.js"
 import { createAuthSessionRepository } from "../repositories/authSessionRepository.js"
 import { createConsentRepository } from "../repositories/consentRepository.js"
 import { createCredentialRepository } from "../repositories/credentialRepository.js"
+import { createClientAccountRepository } from "../repositories/clientAccountRepository.js"
 import { createEmailDeliveryRepository } from "../repositories/emailDeliveryRepository.js"
 import { createEmailProviderEventRepository } from "../repositories/emailProviderEventRepository.js"
 import { createEmailSuppressionRepository } from "../repositories/emailSuppressionRepository.js"
@@ -44,10 +52,19 @@ import { createOutboxRepository } from "../repositories/outboxRepository.js"
 import { createUserRepository } from "../repositories/userRepository.js"
 import { createVerificationTokenRepository } from "../repositories/verificationTokenRepository.js"
 import { registerAdminIdentityRoutes } from "../routes/adminIdentityRoutes.js"
+import { registerAdminCatalogRoutes } from "../routes/adminCatalogRoutes.js"
+import { registerAdminContentRoutes } from "../routes/adminContentRoutes.js"
+import { registerAdminOversightRoutes } from "../routes/adminOversightRoutes.js"
+import { createAdminCatalogRepository } from "../repositories/adminCatalogRepository.js"
+import { createAdminContentRepository } from "../repositories/adminContentRepository.js"
+import { createAdminOversightRepository } from "../repositories/adminOversightRepository.js"
+import { registerClientAccountRoutes } from "../routes/clientAccountRoutes.js"
 import { registerClientKycRoutes } from "../routes/clientKycRoutes.js"
 import { registerClientOrderRoutes } from "../routes/clientOrderRoutes.js"
+import { registerClientCatalogRoutes } from "../routes/clientCatalogRoutes.js"
 import { registerClientPortfolioRoutes } from "../routes/clientPortfolioRoutes.js"
 import { registerClientSipRoutes } from "../routes/clientSipRoutes.js"
+import { registerPublicContentRoutes } from "../routes/publicContentRoutes.js"
 import { registerMandateWebhookRoutes } from "../routes/mandateWebhookRoutes.js"
 import { registerPaymentWebhookRoutes } from "../routes/paymentWebhookRoutes.js"
 import { registerNativeAuthRoutes } from "../routes/nativeAuthRoutes.js"
@@ -60,6 +77,8 @@ import { parseServerConfig } from "./environment.js"
 
 export interface BackendServices {
   readonly registerRoutes: (application: FastifyInstance) => void
+  /** Browser origins allowed to call this API cross-origin (drives CORS). */
+  readonly corsAllowlist: readonly string[]
   readonly checkReadiness: () => Promise<ReadinessReport>
   readonly dispose: () => Promise<void>
 }
@@ -97,11 +116,13 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const clientPortfolioRepository = createClientPortfolioRepository()
   const orderRepository = createOrderRepository()
   const paymentRepository = createPaymentRepository()
-  const holdingRepository = createHoldingRepository()
+  const investorLedgerRepository = createInvestorLedgerRepository()
+  const redemptionRepository = createRedemptionRepository()
   const notificationRepository = createNotificationRepository()
   const sipRepository = createSipRepository()
   const mandateRepository = createMandateRepository()
   const kycRepository = createKycRepository()
+  const clientAccountRepository = createClientAccountRepository()
 
   // KYC/transactional email sender: real SMTP (company mailbox) when configured,
   // otherwise a safe local/log sender for dev/test (decision 10).
@@ -169,8 +190,21 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       accessTokenService,
       database,
       clientPortfolioRepository,
+      investorLedgerRepository,
+      redemptionRepository,
+      auditRepository,
+      unitOfWork,
       clock,
       config: { cursorKey: serverConfig.cursorKey },
+    })
+
+    // Published fund catalogue for the client app (AUM-proportional pool view).
+    registerClientCatalogRoutes(application, {
+      accessTokenService,
+      database,
+      clock,
+      config: { cursorKey: serverConfig.cursorKey },
+      clientCatalogRepository: createClientCatalogRepository(),
     })
 
     registerClientOrderRoutes(application, {
@@ -202,7 +236,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         clock,
         paymentRepository,
         orderRepository,
-        holdingRepository,
+        investorLedgerRepository,
         notificationRepository,
         auditRepository,
         config: {
@@ -257,6 +291,20 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       },
     })
 
+    // Inbox, payment history, derived statements, support and research context.
+    registerClientAccountRoutes(application, {
+      accessTokenService,
+      database,
+      clientAccountRepository,
+      investorLedgerRepository,
+      auditRepository,
+      unitOfWork,
+      clock,
+    })
+
+    // Compliance documents, readable without a session.
+    registerPublicContentRoutes(application, { clientAccountRepository, unitOfWork })
+
     registerWebAuthRoutes(application, { ...webAuth, unitOfWork })
 
     registerAdminIdentityRoutes(application, {
@@ -281,7 +329,55 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       idempotencyRepository,
     })
 
-    // The signed SNS provider-event ingress is only wired when AWS SES/SNS is
+    // Admin content/catalog/oversight groups: the console's site content, fund
+    // catalogue, and supervision reads over authoritative evidence.
+    registerAdminContentRoutes(application, {
+      webAuth,
+      unitOfWork,
+      database,
+      clock,
+      config: {
+        cursorKey: serverConfig.cursorKey,
+        idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
+      },
+      contentRepository: createAdminContentRepository(),
+      auditRepository,
+      idempotencyRepository,
+    })
+
+    registerAdminCatalogRoutes(application, {
+      webAuth,
+      notificationRepository,
+      unitOfWork,
+      database,
+      clock,
+      config: {
+        cursorKey: serverConfig.cursorKey,
+        idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
+      },
+      catalogRepository: createAdminCatalogRepository(),
+      investorLedgerRepository,
+      auditRepository,
+      idempotencyRepository,
+    })
+
+    registerAdminOversightRoutes(application, {
+      webAuth,
+      unitOfWork,
+      database,
+      clock,
+      config: {
+        cursorKey: serverConfig.cursorKey,
+        idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
+        kycValidityMs: serverConfig.kyc.validityMs,
+      },
+      oversightRepository: createAdminOversightRepository(),
+      investorLedgerRepository,
+      redemptionRepository,
+      notificationRepository,
+      auditRepository,
+      idempotencyRepository,
+    })
     // configured; a deployment without AWS boots without it (email degraded).
     const { awsRegion, topicArn, ttlMs } = serverConfig.providerEvents
     if (awsRegion !== null && topicArn !== null) {
@@ -303,6 +399,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
 
   return {
     registerRoutes,
+    corsAllowlist: serverConfig.web.originAllowlist,
     checkReadiness,
     dispose: async () => {
       await pool.end()
@@ -342,7 +439,7 @@ export const composePaymentSettlementWorker = (
     outboxRepository: createOutboxRepository(),
     paymentRepository: createPaymentRepository(),
     orderRepository: createOrderRepository(),
-    holdingRepository: createHoldingRepository(),
+    investorLedgerRepository: createInvestorLedgerRepository(),
     notificationRepository: createNotificationRepository(),
     auditRepository: createAuditRepository(),
     clock,
@@ -354,6 +451,61 @@ export const composePaymentSettlementWorker = (
 
   return {
     runOnce: () => settleDuePayments(deps),
+    dispose: async () => {
+      await pool.end()
+    },
+  }
+}
+
+export interface EmailDispatchWorker {
+  /** Run one delivery pass over the due `email` outbox events. */
+  readonly runOnce: () => Promise<DispatchSummary>
+  readonly dispose: () => Promise<void>
+}
+
+/**
+ * Composes the outbox email delivery worker. Without this process the onboarding
+ * emails — address verification and the activation invite — stay queued forever
+ * and nobody can activate an account, so the deploy stack runs it alongside the
+ * payment and SIP workers.
+ *
+ * The sender is the same company mailbox the KYC codes use: real SMTP when
+ * configured, otherwise the metadata-only log sender, which keeps dev and test
+ * runs from attempting network sends.
+ */
+export const composeEmailDispatchWorker = (
+  source: Readonly<Record<string, string | undefined>>,
+): EmailDispatchWorker => {
+  const pool = createPool(parseDatabaseConfig(source))
+  const database = createDatabase(pool)
+  const unitOfWork = createUnitOfWork(database)
+  const serverConfig = parseServerConfig(source)
+  const crypto = createCryptoContext(parseCryptoKeys(source))
+
+  const fromAddress = serverConfig.email.fromAddress ?? serverConfig.email.smtp?.user ?? "no-reply@localhost"
+  const transport: EmailSender =
+    serverConfig.email.smtp !== null
+      ? createSmtpEmailSender({ ...serverConfig.email.smtp, fromAddress })
+      : createLogEmailSender(fromAddress)
+
+  const deps = {
+    unitOfWork,
+    outboxRepository: createOutboxRepository(),
+    emailDeliveryRepository: createEmailDeliveryRepository(),
+    emailSuppressionRepository: createEmailSuppressionRepository(),
+    sender: createTransactionalEmailSender({ sender: transport, templates: serverConfig.email.links }),
+    crypto,
+    clock: (): Date => new Date(),
+    config: {
+      topic: "email",
+      workerId: source.WORKER_ID ?? "email-worker",
+      leaseMs: serverConfig.email.worker.leaseMs,
+      claimLimit: serverConfig.email.worker.claimLimit,
+    },
+  }
+
+  return {
+    runOnce: () => dispatchDueDeliveries(deps),
     dispose: async () => {
       await pool.end()
     },

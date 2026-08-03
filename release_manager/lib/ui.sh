@@ -19,6 +19,9 @@ ok()      { printf '   %s✓%s %s\n' "$c_grn" "$c_rst" "$1"; }
 warn()    { printf '   %s!%s %s\n' "$c_yel" "$c_rst" "$1"; }
 err()     { printf '   %s✗%s %s\n' "$c_red" "$c_rst" "$1" >&2; }
 field()   { printf '   %s%-18s%s %s\n' "$c_dim" "$1" "$c_rst" "$2"; }
+# Dimmed commentary — subordinate to ok/warn/err, used for context that is
+# worth printing but is not a result.
+info()    { printf '   %s%s%s\n' "$c_dim" "$1" "$c_rst"; }
 
 # Interactive y/N — true only on a real terminal, reading the controlling tty.
 UI_INTERACTIVE=false; [[ -t 0 && -t 1 ]] && UI_INTERACTIVE=true

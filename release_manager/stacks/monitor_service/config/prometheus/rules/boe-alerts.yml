@@ -1,0 +1,192 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# boe-alerts.yml — alerting rules (plan §29).
+#
+# Thresholds are starting points, deliberately conservative. Tune them after a
+# week of real data: an alert that fires constantly trains people to ignore it,
+# which is worse than having no alert at all.
+#
+# No alert message includes a secret, a token, or user data.
+# ─────────────────────────────────────────────────────────────────────────────
+
+groups:
+  # ── availability ──────────────────────────────────────────────────────────
+  - name: boe-availability
+    rules:
+      - alert: ProductionEndpointDown
+        expr: probe_success{instance=~"https://(app|admin)\\.beonedge\\.in"} == 0
+        for: 3m
+        labels:
+          severity: critical
+          environment: production
+        annotations:
+          summary: "Production endpoint unreachable: {{ $labels.instance }}"
+          description: "Blackbox probes have failed for 3 minutes."
+
+      - alert: ProductionBackendNotReady
+        expr: probe_success{probe="readiness",instance=~".*47413.*"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          environment: production
+        annotations:
+          summary: "Production backend readiness failing"
+          description: "/health/ready is not returning 200. The database dependency is the usual cause."
+
+      - alert: LandingSiteDown
+        expr: probe_success{instance="https://beonedge.in"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Public landing site unreachable"
+
+      - alert: DevelopmentEndpointDown
+        expr: probe_success{instance=~"https://dev-(app|admin)\\.beonedge\\.in"} == 0
+        for: 15m
+        labels:
+          severity: warning
+          environment: development
+        annotations:
+          summary: "Development endpoint unreachable: {{ $labels.instance }}"
+          description: "Only a warning — the dev stack is not always expected to be up."
+
+  # ── TLS ───────────────────────────────────────────────────────────────────
+  - name: boe-tls
+    rules:
+      - alert: CertificateExpiringSoon
+        expr: (probe_ssl_earliest_cert_expiry - time()) / 86400 < 21
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "TLS certificate for {{ $labels.instance }} expires in {{ $value | printf \"%.0f\" }} days"
+          description: "Certbot renews at 30 days. Below 21 means renewal is failing."
+
+      - alert: CertificateExpiringCritical
+        expr: (probe_ssl_earliest_cert_expiry - time()) / 86400 < 7
+        for: 30m
+        labels:
+          severity: critical
+        annotations:
+          summary: "TLS certificate for {{ $labels.instance }} expires in under 7 days"
+          description: "Run: sudo certbot renew --dry-run"
+
+  # ── containers ────────────────────────────────────────────────────────────
+  - name: boe-containers
+    rules:
+      # A container whose start time keeps moving is crash-looping. Workers are
+      # excluded: they exit and restart by design.
+      - alert: ContainerRestartLoop
+        expr: |
+          changes(container_start_time_seconds{name=~"boe.*", name!~".*worker.*"}[15m]) > 3
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Container {{ $labels.name }} is restarting repeatedly"
+          description: "{{ $value }} restarts in 15 minutes."
+
+      - alert: ContainerHighMemory
+        expr: |
+          container_memory_working_set_bytes{name=~"boe.*"}
+            / container_spec_memory_limit_bytes{name=~"boe.*"} > 0.9
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.name }} is above 90% of its memory limit"
+
+  # ── host ──────────────────────────────────────────────────────────────────
+  - name: boe-host
+    rules:
+      - alert: DiskSpaceLow
+        expr: |
+          node_filesystem_avail_bytes{mountpoint=~"/|/srv/dev_stack|/srv/backup"}
+            / node_filesystem_size_bytes{mountpoint=~"/|/srv/dev_stack|/srv/backup"} < 0.15
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disk space low on {{ $labels.mountpoint }}"
+          description: "{{ $value | humanizePercentage }} remaining. Deploys need headroom for rollback archives."
+
+      - alert: DiskSpaceCritical
+        expr: |
+          node_filesystem_avail_bytes{mountpoint=~"/|/srv/dev_stack|/srv/backup"}
+            / node_filesystem_size_bytes{mountpoint=~"/|/srv/dev_stack|/srv/backup"} < 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Disk space CRITICAL on {{ $labels.mountpoint }}"
+
+      # The backup disk being unmounted is silent and dangerous: writes would
+      # land on the root filesystem and vanish on remount. The deploy scripts
+      # refuse to run in that state, so this alert explains why deploys fail.
+      - alert: BackupDiskMissing
+        expr: absent(node_filesystem_size_bytes{mountpoint="/srv/backup"})
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backup disk /srv/backup is not mounted"
+          description: "No rollback artifacts or database snapshots can be written. Deploys will refuse to run."
+
+      - alert: HostHighCPU
+        expr: 100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))) > 90
+        for: 20m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Sustained CPU above 90%"
+
+      - alert: HostMemoryPressure
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.10
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Less than 10% memory available"
+
+  # ── database ──────────────────────────────────────────────────────────────
+  - name: boe-database
+    rules:
+      - alert: PostgresDown
+        expr: pg_up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL unreachable ({{ $labels.environment }})"
+
+      - alert: PostgresConnectionsHigh
+        expr: |
+          sum by (environment) (pg_stat_activity_count)
+            / on (environment) group_left pg_settings_max_connections > 0.8
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL connections above 80% of max ({{ $labels.environment }})"
+
+      - alert: PostgresDeadlocks
+        expr: increase(pg_stat_database_deadlocks[15m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL deadlock detected ({{ $labels.environment }})"
+
+  # ── monitoring self-check ─────────────────────────────────────────────────
+  - name: boe-monitoring
+    rules:
+      # If scraping itself breaks, every other alert here goes quiet. This is the
+      # alert that tells you the monitoring is lying to you.
+      - alert: ScrapeTargetDown
+        expr: up == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus cannot scrape {{ $labels.job }} ({{ $labels.instance }})"
+          description: "Metrics and alerts from this target are stale."

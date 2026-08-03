@@ -19,6 +19,10 @@ describe('fetchLandingConfig', () => {
     } as Response);
     const config = await fetchLandingConfig();
     expect(config?.hero?.title).toBe('Updated');
+    expect(fetch).toHaveBeenCalledWith(
+      'http://127.0.0.1:47502/v1/public/landing-config',
+      { cache: 'no-store' },
+    );
   });
 
   it('returns null when backend returns 500', async () => {

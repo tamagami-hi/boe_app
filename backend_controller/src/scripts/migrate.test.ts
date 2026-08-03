@@ -1,4 +1,4 @@
-import { mkdtemp, writeFile } from "node:fs/promises"
+import { mkdtemp, readdir, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -90,8 +90,8 @@ describe("runMigrations", () => {
   })
 })
 
-describe("canonical migration baseline (BE-024)", () => {
-  test("db/migrations contains only the canonical >= 009 baseline (legacy 001-008 archived)", async () => {
+describe("canonical migration baseline", () => {
+  test("db/migrations contains only the canonical >= 009 baseline", async () => {
     const directory = fileURLToPath(new URL("../../db/migrations", import.meta.url))
     const files = await loadMigrationFiles(directory)
     expect(files.length).toBeGreaterThan(0)
@@ -101,19 +101,20 @@ describe("canonical migration baseline (BE-024)", () => {
     expect(files.some((file) => file.version === "009_canonical_onboarding")).toBe(true)
   })
 
-  test("legacy pre-canonical migrations 001-008 are retained in the archive only", async () => {
-    const archive = fileURLToPath(new URL("../../db/migrations-archive", import.meta.url))
-    const files = await loadMigrationFiles(archive)
-    expect(files.map((file) => file.version.slice(0, 3)).sort()).toEqual([
-      "001",
-      "002",
-      "003",
-      "004",
-      "005",
-      "006",
-      "007",
-      "008",
-    ])
+  test("the legacy pre-canonical migrations 001-008 are deleted, not merely archived", async () => {
+    // The eight pre-rearchitecture migrations collided with the canonical
+    // baseline (legacy 001 created tables canonical 010/014 recreate), so they
+    // were archived out of the apply path and are now removed outright. This
+    // guard fails if any of them — or the archive directory — reappears anywhere
+    // under db/, which would make `migrate up` from an empty database ambiguous.
+    const databaseDirectory = fileURLToPath(new URL("../../db", import.meta.url))
+    const entries = await readdir(databaseDirectory, { withFileTypes: true, recursive: true })
+    const legacyVersions = /^00[1-8]_/u
+    const offenders = entries
+      .filter((entry) => entry.isFile() && legacyVersions.test(entry.name))
+      .map((entry) => entry.name)
+    expect(offenders).toEqual([])
+    expect(entries.some((entry) => entry.name === "migrations-archive")).toBe(false)
   })
 })
 

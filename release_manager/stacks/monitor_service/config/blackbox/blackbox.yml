@@ -1,0 +1,60 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# blackbox.yml — external probe definitions.
+#
+# Probes the application the way a user or the mobile app does: over HTTPS, from
+# outside the container, validating the certificate. This is the only monitoring
+# that would catch a broken nginx config, an expired certificate, or a DNS
+# failure — all of which are invisible to container-level metrics.
+# ─────────────────────────────────────────────────────────────────────────────
+
+modules:
+  # Public HTTPS endpoints. 401/403 count as success because the development and
+  # monitoring hosts sit behind basic auth — "the server answered correctly" is
+  # what we are measuring, not "we are authorised".
+  http_2xx:
+    prober: http
+    timeout: 10s
+    http:
+      valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+      valid_status_codes: [200, 301, 302, 401, 403]
+      method: GET
+      follow_redirects: true
+      fail_if_ssl: false
+      fail_if_not_ssl: false
+      tls_config:
+        insecure_skip_verify: false
+      preferred_ip_protocol: ip4
+
+  # Strict variant: certificate must be valid. Used for TLS expiry tracking.
+  http_2xx_strict_tls:
+    prober: http
+    timeout: 10s
+    http:
+      valid_status_codes: [200]
+      method: GET
+      fail_if_not_ssl: true
+      tls_config:
+        insecure_skip_verify: false
+      preferred_ip_protocol: ip4
+
+  # Readiness endpoints answer 200 when healthy and 503 when degraded. Only 200
+  # is success — a 503 must show as a failed probe, which is the whole point.
+  http_health:
+    prober: http
+    timeout: 5s
+    http:
+      valid_status_codes: [200]
+      method: GET
+      follow_redirects: false
+      preferred_ip_protocol: ip4
+
+  # Plain TCP reachability, for a port with no HTTP surface.
+  tcp_connect:
+    prober: tcp
+    timeout: 5s
+
+  icmp:
+    prober: icmp
+    timeout: 5s
+    icmp:
+      preferred_ip_protocol: ip4

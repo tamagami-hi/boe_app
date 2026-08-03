@@ -23,10 +23,6 @@ const EMPTY_DATA = {
   mandates: [],
   auditLogs: [],
   kycReview: [],
-  riskProfiles: [],
-  sipControlRequests: [],
-  supportTickets: [],
-  ledger: [],
   transactions: [],
 };
 
@@ -58,24 +54,25 @@ export default function LegacyAdminDataProvider({ children }) {
     const reqId = ++loadRef.current;
     setLoading(true);
     setLoadNote('');
+    // Only canonical collections are fetched. Risk profiles, the reconciliation
+    // ledger, SIP control requests, and support tickets were retired by the
+    // canonical decisions (spec §8 / MVP scope), so nothing requests them.
+    const COLLECTIONS = [
+      '/v1/admin/approvals',
+      '/v1/admin/funds',
+      '/v1/admin/payments',
+      '/v1/admin/mandates',
+      '/v1/admin/audit-logs',
+      '/v1/admin/kyc-review',
+      '/v1/admin/transactions',
+    ];
     const results = await Promise.allSettled([
       loadAdminOverview(),
-      loadAdminCollection('/v1/admin/approvals'),
-      loadAdminCollection('/v1/admin/funds'),
-      loadAdminCollection('/v1/admin/payments'),
-      loadAdminCollection('/v1/admin/mandates'),
-      loadAdminCollection('/v1/admin/audit-logs'),
-      loadAdminCollection('/v1/admin/kyc-review'),
-      loadAdminCollection('/v1/admin/risk-profiles'),
-      loadAdminCollection('/v1/admin/sip-control-requests'),
-      loadAdminCollection('/v1/admin/support/tickets'),
-      loadAdminCollection('/v1/admin/reconciliation-ledger'),
-      loadAdminCollection('/v1/admin/transactions'),
+      ...COLLECTIONS.map((path) => loadAdminCollection(path)),
     ]);
     if (reqId !== loadRef.current) return; // ignore stale responses
-    const [nextOverview, approvals, funds, payments, mandates, auditLogs, kycReview, riskProfiles, sipControlRequests, supportTickets, ledger, transactions] = results.map((result) => (
-      result.status === 'fulfilled' ? result.value : null
-    ));
+    const [nextOverview, approvals, funds, payments, mandates, auditLogs, kycReview, transactions] =
+      results.map((result) => (result.status === 'fulfilled' ? result.value : null));
     setOverview(nextOverview || EMPTY_OVERVIEW);
     setAdminData({
       approvals: approvals || [],
@@ -84,15 +81,14 @@ export default function LegacyAdminDataProvider({ children }) {
       mandates: mandates || [],
       auditLogs: auditLogs || [],
       kycReview: kycReview || [],
-      riskProfiles: riskProfiles || [],
-      sipControlRequests: sipControlRequests || [],
-      supportTickets: supportTickets || [],
-      ledger: ledger || [],
       transactions: transactions || [],
     });
 
+    const labels = ['overview', ...COLLECTIONS.map((path) => path.replace('/v1/admin/', ''))];
     const failures = results
-      .map((result, index) => (result.status === 'rejected' ? `${['overview', 'approvals', 'funds', 'payments', 'mandates', 'audit-logs', 'kyc-review', 'risk-profiles', 'sip-control-requests', 'support-tickets', 'reconciliation-ledger', 'transactions'][index]}: ${result.reason?.message || 'failed'}` : ''))
+      .map((result, index) =>
+        result.status === 'rejected' ? `${labels[index]}: ${result.reason?.message || 'failed'}` : '',
+      )
       .filter(Boolean);
     if (failures.length > 0) setLoadNote(`Some admin data could not be loaded: ${failures.join('; ')}`);
     setLoading(false);
@@ -106,13 +102,139 @@ export default function LegacyAdminDataProvider({ children }) {
     return () => { cancelled = true };
   }, []);
 
+  // The canonical catalogue splits what the legacy editor submitted as one
+  // document into: create a draft fund (slug), publish an immutable version
+  // (name/category/risk/minimums + disclosure + initial NAV), then publish AUM
+  // and position snapshots per date. These adapters do that translation so the
+  // existing editor keeps working against the real endpoints.
+  const RISK_LEVELS = ['low', 'moderate', 'high', 'very_high'];
+
+  function slugify(value) {
+    return String(value || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 60);
+  }
+
+  function riskLevelOf(payload) {
+    const raw = String(payload?.riskLabel || payload?.riskText || '').toLowerCase().replace(/\s+/g, '_');
+    return RISK_LEVELS.includes(raw) ? raw : 'moderate';
+  }
+
+  function today() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function toPaise(rupees) {
+    const value = Number(rupees);
+    return Number.isFinite(value) && value > 0 ? Math.round(value * 100) : 0;
+  }
+
+  async function publishFundVersion(fundId, payload) {
+    await apiRequest(`/v1/admin/funds/${encodeURIComponent(fundId)}/versions`, {
+      method: 'POST',
+      scope: 'admin',
+      body: {
+        name: payload.name,
+        category: payload.category?.trim() || 'general',
+        objective: payload.tagline || payload.performanceSummary || '',
+        riskLevel: riskLevelOf(payload),
+        returnTier: payload.returnTier || null,
+        minimumSipPaise: toPaise(payload.minSip),
+        minimumPurchasePaise: toPaise(payload.minLumpsum),
+        disclosure: {
+          title: `${payload.name} disclosure`,
+          body: payload.riskText?.trim() || 'Disclosure pending review.',
+        },
+      },
+    });
+  }
+
+  /**
+   * Option B follow-up publications. The pool's size is a monthly figure, so the
+   * editor's pool-size field opens the current month; its stock rows become the
+   * disclosed stock list. Both are tolerant of already-published periods — the
+   * canonical routes refuse a repeat, and a refused follow-up must not fail the
+   * fund save itself.
+   */
+  function currentPeriodStart() {
+    const now = new Date();
+    return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-01`;
+  }
+
+  function currentQuarterLabel() {
+    const now = new Date();
+    const month = now.getUTCMonth();
+    const fiscalIndex = Math.floor(((month + 9) % 12) / 3) + 1;
+    const fiscalYearEnd = month >= 3 ? now.getUTCFullYear() + 1 : now.getUTCFullYear();
+    return `Q${fiscalIndex} FY${String(fiscalYearEnd).slice(-2)}`;
+  }
+
+  async function publishFundFollowUps(fundId, payload) {
+    const aumPaise = toPaise(payload.totalPoolSize);
+    if (aumPaise > 0) {
+      await apiRequest(`/v1/admin/funds/${encodeURIComponent(fundId)}/aum-updates`, {
+        method: 'POST',
+        scope: 'admin',
+        body: {
+          periodStart: currentPeriodStart(),
+          openingAumPaise: aumPaise,
+          note: 'Opening balance set from the fund editor.',
+        },
+      }).catch(() => null);
+    }
+
+    const stocks = (payload.investments || [])
+      .filter((investment) => investment?.companyName)
+      .map((investment, index) => ({
+        stockName: investment.companyName,
+        quarterLabel: currentQuarterLabel(),
+        sortOrder: index + 1,
+      }));
+    for (const stock of stocks) {
+      await apiRequest(`/v1/admin/funds/${encodeURIComponent(fundId)}/stocks`, {
+        method: 'POST',
+        scope: 'admin',
+        body: stock,
+      }).catch(() => null);
+    }
+  }
+
   async function handleCreateFund(payload) {
-    await apiRequest('/v1/admin/funds', { method: 'POST', body: payload, scope: 'admin' });
+    const created = await apiRequest('/v1/admin/funds', {
+      method: 'POST',
+      scope: 'admin',
+      body: { slug: payload.slug || slugify(payload.name) },
+    });
+    const fundId = created?.fund?.id;
+    if (fundId) {
+      await publishFundVersion(fundId, payload);
+      await publishFundFollowUps(fundId, payload);
+    }
     await loadAdminData();
   }
 
   async function handleUpdateFund(fundId, payload) {
-    await apiRequest(`/v1/admin/funds/${encodeURIComponent(fundId)}`, { method: 'PATCH', body: payload, scope: 'admin' });
+    // A published fund version is immutable, so an edit publishes the next one.
+    await publishFundVersion(fundId, payload);
+    await publishFundFollowUps(fundId, payload);
+    if (payload.status === 'paused' || payload.status === 'archived') {
+      await apiRequest(`/v1/admin/funds/${encodeURIComponent(fundId)}`, {
+        method: 'PATCH',
+        scope: 'admin',
+        body: { status: payload.status },
+      });
+    }
+    await loadAdminData();
+  }
+
+  async function handleFundLifecycle(fundId, status) {
+    await apiRequest(`/v1/admin/funds/${encodeURIComponent(fundId)}`, {
+      method: 'PATCH',
+      scope: 'admin',
+      body: { status },
+    });
     await loadAdminData();
   }
 
@@ -192,51 +314,9 @@ export default function LegacyAdminDataProvider({ children }) {
     await handleUserDecision(row, 'approved');
   }
 
-  async function handleApprovePayment(row, payload) {
-    if (!row?.id || paymentBusyId) return;
-    setPaymentBusyId(row.id);
-    setPaymentActionError('');
-    try {
-      const result = await apiRequest(`/v1/admin/payments/${encodeURIComponent(row.id)}/approve`, {
-        method: 'POST',
-        body: payload,
-        scope: 'admin',
-      });
-      addToast(`${row.fundName || 'Fund pool'} credited with approved payment.`, 'success');
-      await loadAdminData();
-      return result;
-    } catch (error) {
-      const message = error?.message || 'Payment approval failed.';
-      setPaymentActionError(message);
-      addToast(message, 'error');
-      throw error;
-    } finally {
-      setPaymentBusyId('');
-    }
-  }
-
-  async function handleRejectPayment(row, payload) {
-    if (!row?.id || paymentBusyId) return;
-    setPaymentBusyId(row.id);
-    setPaymentActionError('');
-    try {
-      const result = await apiRequest(`/v1/admin/payments/${encodeURIComponent(row.id)}/reject`, {
-        method: 'POST',
-        body: payload,
-        scope: 'admin',
-      });
-      addToast(`Payment ${row.id} rejected.`, 'warning');
-      await loadAdminData();
-      return result;
-    } catch (error) {
-      const message = error?.message || 'Payment rejection failed.';
-      setPaymentActionError(message);
-      addToast(message, 'error');
-      throw error;
-    } finally {
-      setPaymentBusyId('');
-    }
-  }
+  // Payment approve/reject is intentionally absent: confirmation is driven by the
+  // signed provider webhook (`POST /v1/provider-events/payment`), so the console
+  // is read-only oversight over payment evidence.
 
   function openUserDetail(rowOrId) {
     const id = rowOrId?.userId || rowOrId?.user_id || rowOrId?.id || rowOrId;
@@ -262,10 +342,9 @@ export default function LegacyAdminDataProvider({ children }) {
     openReview,
     handleApproveUser,
     handleUserDecision,
-    handleApprovePayment,
-    handleRejectPayment,
     handleCreateFund,
     handleUpdateFund,
+    handleFundLifecycle,
     handleDeleteFund,
     openUserDetail,
     navigateToUsers,

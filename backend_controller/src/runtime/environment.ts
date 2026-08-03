@@ -81,6 +81,15 @@ const ServerConfigSchema = z.object({
   EMAIL_SMTP_USER: z.string().trim().optional(),
   EMAIL_SMTP_PASSWORD: z.string().optional(),
   EMAIL_SMTP_SECURE: z.enum(["true", "false"]).default("false"),
+  // Where onboarding emails point. Verification continues on the public site;
+  // activation happens in the app, which has no deep-link scheme yet, so the
+  // invite carries the code as text unless an activation URL is configured.
+  PUBLIC_LANDING_ORIGIN: z.string().trim().optional(),
+  APP_ACTIVATION_URL: z.string().trim().optional(),
+  SUPPORT_EMAIL: z.string().trim().optional(),
+  // Outbox email delivery worker knobs (mirrors the payment worker).
+  EMAIL_WORKER_CLAIM_LIMIT: z.coerce.number().int().min(1).max(200).default(25),
+  EMAIL_WORKER_LEASE_MS: z.coerce.number().int().min(1000).default(60_000),
   // KYC email-OTP policy.
   KYC_CODE_TTL_MS: z.coerce.number().int().min(1).default(10 * 60 * 1000),
   KYC_CODE_MAX_ATTEMPTS: z.coerce.number().int().min(1).default(5),
@@ -117,6 +126,13 @@ export interface ServerConfig {
       readonly password: string
       readonly secure: boolean
     } | null
+    /** Link targets baked into onboarding email bodies. */
+    readonly links: {
+      readonly landingOrigin: string | null
+      readonly activationUrl: string | null
+      readonly supportAddress: string | null
+    }
+    readonly worker: { readonly claimLimit: number; readonly leaseMs: number }
   }
   readonly kyc: {
     readonly codeTtlMs: number
@@ -229,6 +245,15 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
               secure: parsed.EMAIL_SMTP_SECURE === "true",
             }
           : null,
+      links: {
+        landingOrigin: nonEmpty(parsed.PUBLIC_LANDING_ORIGIN),
+        activationUrl: nonEmpty(parsed.APP_ACTIVATION_URL),
+        supportAddress: nonEmpty(parsed.SUPPORT_EMAIL),
+      },
+      worker: {
+        claimLimit: parsed.EMAIL_WORKER_CLAIM_LIMIT,
+        leaseMs: parsed.EMAIL_WORKER_LEASE_MS,
+      },
     },
     kyc: {
       codeTtlMs: parsed.KYC_CODE_TTL_MS,

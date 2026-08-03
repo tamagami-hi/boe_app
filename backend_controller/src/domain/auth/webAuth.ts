@@ -26,8 +26,22 @@ import type { AuditWriteRepository } from "../../repositories/auditRepository.js
 import type { AuthSessionWriteRepository } from "../../repositories/authSessionRepository.js"
 import type { UserWriteRepository } from "../../repositories/userRepository.js"
 
-const ACCESS_COOKIE = "__Host-boe_access"
-const REFRESH_COOKIE = "__Host-boe_refresh"
+/**
+ * The `__Host-` prefix is only legal on a cookie that also carries `Secure`:
+ * browsers (and curl) discard a `__Host-` cookie sent without it, so a non-TLS
+ * deployment that keeps the prefix cannot log anybody in at all. Prefix the name
+ * only when the cookie is actually secure, and accept either name when reading so
+ * sessions issued before a TLS switch keep working.
+ */
+const SECURE_ACCESS_COOKIE = "__Host-boe_access"
+const SECURE_REFRESH_COOKIE = "__Host-boe_refresh"
+const PLAIN_ACCESS_COOKIE = "boe_access"
+const PLAIN_REFRESH_COOKIE = "boe_refresh"
+
+const accessCookieName = (secure: boolean): string =>
+  secure ? SECURE_ACCESS_COOKIE : PLAIN_ACCESS_COOKIE
+const refreshCookieName = (secure: boolean): string =>
+  secure ? SECURE_REFRESH_COOKIE : PLAIN_REFRESH_COOKIE
 const ACCESS_TOKEN_TTL_MS = 10 * 60 * 1000
 const REFRESH_IDLE_MS = 30 * 24 * 60 * 60 * 1000
 const SESSION_ABSOLUTE_MS = 90 * 24 * 60 * 60 * 1000
@@ -88,11 +102,15 @@ export const parseCookies = (header: string | undefined): Record<string, string>
   return cookies
 }
 
-export const readRefreshCookie = (request: FastifyRequest): string | undefined =>
-  parseCookies(request.headers.cookie)[REFRESH_COOKIE]
+export const readRefreshCookie = (request: FastifyRequest): string | undefined => {
+  const cookies = parseCookies(request.headers.cookie)
+  return cookies[SECURE_REFRESH_COOKIE] ?? cookies[PLAIN_REFRESH_COOKIE]
+}
 
-export const readAccessCookie = (request: FastifyRequest): string | undefined =>
-  parseCookies(request.headers.cookie)[ACCESS_COOKIE]
+export const readAccessCookie = (request: FastifyRequest): string | undefined => {
+  const cookies = parseCookies(request.headers.cookie)
+  return cookies[SECURE_ACCESS_COOKIE] ?? cookies[PLAIN_ACCESS_COOKIE]
+}
 
 const buildCookie = (name: string, value: string, maxAgeSeconds: number, secure: boolean): string =>
   `${name}=${value}; HttpOnly; ${secure ? "Secure; " : ""}SameSite=Lax; Path=/; Max-Age=${String(maxAgeSeconds)}`
@@ -100,16 +118,29 @@ const buildCookie = (name: string, value: string, maxAgeSeconds: number, secure:
 export const applyAuthCookies = (reply: FastifyReply, deps: WebAuthDeps, result: WebAuthResult): void => {
   reply.header("cache-control", "no-store")
   reply.header("set-cookie", [
-    buildCookie(ACCESS_COOKIE, result.accessToken, ACCESS_TOKEN_TTL_MS / 1000, deps.config.cookieSecure),
-    buildCookie(REFRESH_COOKIE, result.refreshToken, result.refreshMaxAgeSeconds, deps.config.cookieSecure),
+    buildCookie(
+      accessCookieName(deps.config.cookieSecure),
+      result.accessToken,
+      ACCESS_TOKEN_TTL_MS / 1000,
+      deps.config.cookieSecure,
+    ),
+    buildCookie(
+      refreshCookieName(deps.config.cookieSecure),
+      result.refreshToken,
+      result.refreshMaxAgeSeconds,
+      deps.config.cookieSecure,
+    ),
   ])
 }
 
 export const expireAuthCookies = (reply: FastifyReply, deps: WebAuthDeps): void => {
   reply.header("cache-control", "no-store")
   reply.header("set-cookie", [
-    buildCookie(ACCESS_COOKIE, "", 0, deps.config.cookieSecure),
-    buildCookie(REFRESH_COOKIE, "", 0, deps.config.cookieSecure),
+    // Clear both spellings: a session may have been issued under either policy.
+    buildCookie(SECURE_ACCESS_COOKIE, "", 0, deps.config.cookieSecure),
+    buildCookie(SECURE_REFRESH_COOKIE, "", 0, deps.config.cookieSecure),
+    buildCookie(PLAIN_ACCESS_COOKIE, "", 0, deps.config.cookieSecure),
+    buildCookie(PLAIN_REFRESH_COOKIE, "", 0, deps.config.cookieSecure),
   ])
 }
 
@@ -218,8 +249,7 @@ export const authenticateWebRequest = async (
   options: Readonly<{ requireCsrf: boolean }>,
 ): Promise<{ userId: string; sessionId: string }> => {
   validateWebOrigin(request, deps)
-  const cookies = parseCookies(request.headers.cookie)
-  const accessCookie = cookies[ACCESS_COOKIE]
+  const accessCookie = readAccessCookie(request)
   if (accessCookie === undefined) throw new AppError("AUTHENTICATION_REQUIRED")
   const verified = await deps.accessTokenService.verify(accessCookie)
 

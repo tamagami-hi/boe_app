@@ -1,0 +1,217 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.monitor_service.yml — BeOnEdge MONITORING stack.
+#
+# Runs on the VPS at /srv/dev_stack/BOE_APP/monitor_service.
+# Brought up exclusively by ./ms_deploy.sh.
+#
+# DESIGN NOTES
+#   • Upstream images only, all tag-pinned. Nothing from this repository is
+#     built into the monitoring stack, so ms_deploy.sh PULLS rather than loading
+#     tarballs.
+#   • Only Grafana publishes a host port. Prometheus, Alertmanager, cAdvisor and
+#     the exporters stay on the monitoring network (plan §26). Prometheus and
+#     Alertmanager also get loopback ports for local debugging — they are NOT
+#     exposed through nginx.
+#   • NO Docker socket is mounted anywhere. Mounting /var/run/docker.sock into a
+#     container is equivalent to granting host root (plan §30.1). Container
+#     metrics come from cAdvisor's read-only cgroup/proc mounts instead, and
+#     database backups are host-side systemd jobs, not container jobs.
+#   • This stack must keep running through an application deploy or rollback
+#     (plan §37), which is why it has its own compose project and lock.
+#
+# WHAT IT CANNOT SEE YET
+#   The backend currently exposes NO /metrics endpoint and has no WebSocket
+#   support. Application-level metrics therefore come from blackbox probes of
+#   /health/live and /health/ready plus cAdvisor container stats. Add a /metrics
+#   endpoint to the backend to get request-rate and latency series.
+# ─────────────────────────────────────────────────────────────────────────────
+
+x-security: &security
+  security_opt:
+    - no-new-privileges:true
+  init: true
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  # ── metrics store ─────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: ${BOE_CONTAINER_PREFIX:-boe-ms}-prometheus
+    <<: *security
+    user: "65534:65534"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-30d}
+      - --web.enable-lifecycle
+      - --web.listen-address=0.0.0.0:9090
+    volumes:
+      - ./config/prometheus:/etc/prometheus:ro
+      - prometheus_data:/prometheus
+    ports:
+      # Loopback only, for `curl 127.0.0.1:PORT` debugging. Not proxied.
+      - "127.0.0.1:${PROMETHEUS_PORT}:9090"
+    networks:
+      - monitor
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9090/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ── dashboards (the only publicly proxied service) ────────────────────────
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: ${BOE_CONTAINER_PREFIX:-boe-ms}-grafana
+    <<: *security
+    user: "472:472"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      # Anonymous access disabled: monitor.beonedge.in must never be readable
+      # without credentials (plan §26).
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-https://monitor.beonedge.in}
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT}:3000"
+    networks:
+      - monitor
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ── alert routing ─────────────────────────────────────────────────────────
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: ${BOE_CONTAINER_PREFIX:-boe-ms}-alertmanager
+    <<: *security
+    user: "65534:65534"
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+      - --web.listen-address=0.0.0.0:9093
+    volumes:
+      - ./config/alertmanager:/etc/alertmanager:ro
+      - alertmanager_data:/alertmanager
+    ports:
+      - "127.0.0.1:${ALERTMANAGER_PORT}:9093"
+    networks:
+      - monitor
+
+  # ── host metrics ──────────────────────────────────────────────────────────
+  # Needs host namespaces to report real host figures; all mounts read-only.
+  node_exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: ${BOE_CONTAINER_PREFIX:-boe-ms}-node-exporter
+    <<: *security
+    command:
+      - --path.rootfs=/host
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    networks:
+      - monitor
+
+  # ── container metrics (no docker socket) ──────────────────────────────────
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: ${BOE_CONTAINER_PREFIX:-boe-ms}-cadvisor
+    <<: *security
+    privileged: false
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    networks:
+      - monitor
+
+  # ── external reachability, TLS expiry, response time ──────────────────────
+  blackbox_exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: ${BOE_CONTAINER_PREFIX:-boe-ms}-blackbox
+    <<: *security
+    user: "65534:65534"
+    command:
+      - --config.file=/etc/blackbox/blackbox.yml
+      - --web.listen-address=0.0.0.0:9115
+    volumes:
+      - ./config/blackbox:/etc/blackbox:ro
+    ports:
+      - "127.0.0.1:${BLACKBOX_PORT}:9115"
+    networks:
+      - monitor
+
+  # ── database metrics ──────────────────────────────────────────────────────
+  # Joins the application stacks' internal networks (declared external below) so
+  # it can reach each postgres by service name without any host port binding.
+  # Use monitoring-only database credentials here, never the application user.
+  postgres_exporter_prod:
+    image: prometheuscommunity/postgres-exporter:v0.16.0
+    container_name: ${BOE_CONTAINER_PREFIX:-boe-ms}-pg-exporter-prod
+    <<: *security
+    user: "65534:65534"
+    environment:
+      DATA_SOURCE_NAME: ${PROD_PG_EXPORTER_DSN}
+    networks:
+      - monitor
+      - prod_internal
+    profiles: ["with-prod-db"]
+
+  postgres_exporter_dev:
+    image: prometheuscommunity/postgres-exporter:v0.16.0
+    container_name: ${BOE_CONTAINER_PREFIX:-boe-ms}-pg-exporter-dev
+    <<: *security
+    user: "65534:65534"
+    environment:
+      DATA_SOURCE_NAME: ${DEV_PG_EXPORTER_DSN}
+    networks:
+      - monitor
+      - dev_internal
+    profiles: ["with-dev-db"]
+
+networks:
+  monitor:
+    name: ${COMPOSE_PROJECT_NAME:-boe_monitor}_monitor
+  # These are the application stacks' internal networks. Declared external so
+  # this stack attaches to them rather than creating its own — and so the
+  # monitoring stack can start even when they do not exist (the exporters are
+  # behind compose profiles).
+  prod_internal:
+    external: true
+    name: boe_prod_internal
+  dev_internal:
+    external: true
+    name: boe_dev_internal
+
+volumes:
+  prometheus_data:
+    name: ${COMPOSE_PROJECT_NAME:-boe_monitor}_prometheus_data
+  grafana_data:
+    name: ${COMPOSE_PROJECT_NAME:-boe_monitor}_grafana_data
+  alertmanager_data:
+    name: ${COMPOSE_PROJECT_NAME:-boe_monitor}_alertmanager_data

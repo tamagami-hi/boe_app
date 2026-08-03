@@ -24,7 +24,12 @@ export const startServer = async ({
   logger = createRuntimeLogger({ level: environment.logLevel }),
 }: StartServerOptions = {}): Promise<FastifyInstance> => {
   const backend = composeBackend(env)
-  const application = createApplication({ logger, registerRoutes: backend.registerRoutes })
+  const application = createApplication({
+    logger,
+    registerRoutes: backend.registerRoutes,
+    // The browser clients (Capacitor WebView, admin console) are cross-origin.
+    corsAllowlist: backend.corsAllowlist,
+  })
   // The pool is closed as part of the server's graceful drain.
   application.addHook("onClose", async () => {
     await backend.dispose()

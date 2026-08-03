@@ -29,8 +29,9 @@ import I from '../components/I.jsx';
 import StatTile from '../components/StatTile.jsx';
 import EmptyTableRow from '../components/EmptyTableRow.jsx';
 import { fmtInt, clone, initials } from '../helpers/formatters.js';
-import AumAllocationsTab from './AumAllocationsTab.jsx';
-import AumCapitalTab from './AumCapitalTab.jsx';
+import FundAumPanel from './FundAumPanel.jsx';
+import FundInvestorsPanel from './FundInvestorsPanel.jsx';
+import FundStockListPanel from './FundStockListPanel.jsx';
 import AumRedemptionsTab from './AumRedemptionsTab.jsx';
 import AumDisplayFields from './AumDisplayFields.jsx';
 
@@ -894,11 +895,8 @@ function AumScreen({ funds = [], auditLogs = [], onCreate, onUpdate, onDelete, o
         <button className={activeTab === 'funds' ? 'is-active' : ''} onClick={() => setActiveTab('funds')}>
           <I icon={Layers} size={14}/> Funds
         </button>
-        <button className={activeTab === 'allocations' ? 'is-active' : ''} onClick={() => setActiveTab('allocations')}>
-          <I icon={PieChart} size={14}/> Allocations
-        </button>
-        <button className={activeTab === 'capital' ? 'is-active' : ''} onClick={() => setActiveTab('capital')}>
-          <I icon={TrendingUp} size={14}/> Capital Flow
+        <button className={activeTab === 'portfolio' ? 'is-active' : ''} onClick={() => setActiveTab('portfolio')}>
+          <I icon={PieChart} size={14}/> Fund size &amp; portfolio
         </button>
         <button className={activeTab === 'redemptions' ? 'is-active' : ''} onClick={() => setActiveTab('redemptions')}>
           <I icon={RotateCcw} size={14}/> Redemptions
@@ -1200,14 +1198,37 @@ function AumScreen({ funds = [], auditLogs = [], onCreate, onUpdate, onDelete, o
         </div>
       )}
 
-      {/* Tab 3: Allocations */}
-      {activeTab === 'allocations' && (
-        <AumAllocationsTab funds={funds} />
-      )}
-
-      {/* Tab 4: Capital Flow */}
-      {activeTab === 'capital' && (
-        <AumCapitalTab funds={funds} />
+      {/* Tab 3: Fund size (monthly AUM) + the disclosed stock list. Both are
+          administrator-entered: this model has no market data feed and no NAV. */}
+      {activeTab === 'portfolio' && (
+        <div className="be-stack-4">
+          <div className="adm-card-toolbar">
+            <label className="adm-field">
+              <span>Pool</span>
+              <select value={selectedFundId || ''} onChange={(event) => setSelectedFundId(event.target.value)}>
+                <option value="">Select a pool…</option>
+                {funds.map((fund) => (
+                  <option key={fund.id} value={fund.id}>
+                    {fund.name || fund.slug}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {selectedFundId ? (
+            <>
+              <FundAumPanel fundId={selectedFundId} />
+              {/* Who is in the pool, and how a period's growth reaches them. */}
+              <FundInvestorsPanel fundId={selectedFundId} />
+              <FundStockListPanel fundId={selectedFundId} />
+            </>
+          ) : (
+            <div className="adm-load-note">
+              Choose a pool to publish its fund size, credit growth to its investors, and manage its stock
+              list.
+            </div>
+          )}
+        </div>
       )}
 
       {/* Tab 5: Redemptions (Withdrawal Requests) */}

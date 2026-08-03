@@ -1,11 +1,30 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { useSession } from '../store/SessionContext.jsx';
+import { fetchKycStatus } from '../services/kycApi.js';
+
+const KYC_LABEL = {
+  approved: 'Verified',
+  not_started: 'Not started',
+  in_progress: 'Code sent',
+  submitted: 'In review',
+  in_review: 'In review',
+  rejected: 'Not verified',
+};
 
 export default function Profile() {
   const navigate = useNavigate();
   const { user, logout } = useSession();
+  // The session principal does not carry KYC state, so read it from the source
+  // rather than showing a stale badge.
+  const [kyc, setKyc] = useState(null);
+
+  useEffect(() => {
+    fetchKycStatus()
+      .then(setKyc)
+      .catch(() => setKyc(null));
+  }, []);
 
   async function onSignOut() { await logout(); navigate('/app/login'); }
 
@@ -30,7 +49,12 @@ export default function Profile() {
 
       <div className="be-eyebrow">Account Details</div>
       <div className="be-card be-card--flush">
-        <Row label="KYC & Compliance" onClick={() => navigate('/app/profile/kyc')} badgeStatus={user?.kycStatus === 'approved' ? 'active' : 'paused'} />
+        <Row
+          label="KYC & Compliance"
+          onClick={() => navigate('/app/profile/kyc')}
+          meta={kyc === null ? undefined : KYC_LABEL[kyc.status] || kyc.status}
+          badgeStatus={kyc?.status === 'approved' && kyc?.expired !== true ? 'active' : 'paused'}
+        />
       </div>
 
       <div className="be-eyebrow">Settings</div>

@@ -107,6 +107,8 @@ export type RiskAssessmentState = "not_started" | "submitted" | "assessed"
 export type RiskCategory = "conservative" | "balanced" | "growth" | "aggressive"
 export type FundState = "draft" | "review_pending" | "published" | "paused" | "archived"
 export type FundRiskLevel = "low" | "moderate" | "high" | "very_high"
+/** Expected-return band shown beside `risk_level` on client fund cards (020). */
+export type FundReturnTier = "low" | "moderate" | "high"
 export type MandateState =
   | "created"
   | "pending_user_authorization"
@@ -144,6 +146,14 @@ export type PaymentState =
   | "expired"
   | "refunded"
 export type ProviderEventState = "received" | "processing" | "processed" | "dead_lettered"
+// Option B money model (migration 021): no units, no NAV.
+export type LedgerEntryType =
+  | "sip_installment"
+  | "lump_sum"
+  | "redemption"
+  | "gain_allocation"
+  | "adjustment"
+export type RedemptionMode = "full" | "returns_only" | "half" | "custom"
 
 export interface ApplicationsTable {
   id: Generated<string>
@@ -614,13 +624,16 @@ export interface FundVersionsTable {
   category: string
   objective: string
   risk_level: FundRiskLevel
+  /** Migration 020: expected-return band, null on versions published before it. */
+  return_tier: Nullable<FundReturnTier>
   currency: Generated<string>
   minimum_sip_paise: BigIntString
   minimum_purchase_paise: BigIntString
   minimum_duration_months: Nullable<number>
   recommended_holding_months: Nullable<number>
   disclosure_version_id: string
-  initial_nav_price_id: string
+  /** Nullable since migration 021: Option B publishes versions without a price. */
+  initial_nav_price_id: Nullable<string>
   terms_sha256: Bytea
   created_by_user_id: string
   created_at: TimestampDefault
@@ -716,7 +729,9 @@ export interface CoursesTable {
   summary: string
   price_paise: BigIntStringDefault
   currency: Generated<string>
-  duration_minutes: number
+  duration_minutes: Nullable<number>
+  /** Migration 020: presentation attributes (level, format, outcome, sortOrder). */
+  payload: JsonDefault
   state: Generated<string>
   published_by_user_id: Nullable<string>
   published_at: NullableTimestamp
@@ -734,6 +749,8 @@ export interface MembershipPlansTable {
   price_paise: BigIntStringDefault
   currency: Generated<string>
   billing_period_months: number
+  /** Migration 020: presentation attributes (cadence, features, ctaLabel, featured, sortOrder). */
+  payload: JsonDefault
   state: Generated<string>
   published_by_user_id: Nullable<string>
   published_at: NullableTimestamp
@@ -971,11 +988,88 @@ export interface NotificationsTable {
   updated_at: TimestampDefault
 }
 
+/** Investor support requests (migration 022). */
+export type SupportRequestState = "open" | "in_progress" | "resolved" | "closed"
+
+export interface SupportRequestsTable {
+  id: Generated<string>
+  user_id: string
+  reference: string
+  category: string
+  subject: string
+  body: string
+  state: Generated<SupportRequestState>
+  resolution_note: string | null
+  resolved_at: NullableTimestamp
+  closed_at: NullableTimestamp
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  version: Generated<string>
+}
+
 /**
  * The full canonical schema map consumed by the typed Kysely instance,
  * repositories, and command services. First-slice tables (009-013) plus the
  * later-domain tables (014-018).
  */
+/**
+ * Option B per-investor transaction ledger (migration 021). Append-only: every
+ * contribution, redemption, and admin-allocated gain is one dated row, and all
+ * dashboard figures are derived from these rows rather than a stored balance.
+ * `principal_delta_paise` moves Total Investment; `value_delta_paise` moves
+ * Current Portfolio Value.
+ */
+export interface InvestorLedgerEntriesTable {
+  id: Generated<string>
+  user_id: string
+  fund_id: string
+  entry_type: LedgerEntryType
+  principal_delta_paise: BigIntString
+  value_delta_paise: BigIntString
+  amount_paise: BigIntString
+  effective_date: DateColumn
+  order_id: Nullable<string>
+  payment_id: Nullable<string>
+  redemption_request_id: Nullable<string>
+  allocated_by_user_id: Nullable<string>
+  reason_code: Nullable<string>
+  note: Nullable<string>
+  request_id: string
+  metadata: JsonDefault
+  created_at: TimestampDefault
+}
+
+/** Monthly AUM ledger: opening + new investments - redemptions +/- gain = closing. */
+export interface FundAumUpdatesTable {
+  id: Generated<string>
+  fund_id: string
+  period_start: DateColumn
+  opening_aum_paise: BigIntString
+  new_investments_paise: BigIntStringDefault
+  redemptions_paise: BigIntStringDefault
+  portfolio_gain_paise: BigIntStringDefault
+  closing_aum_paise: BigIntString
+  note: Nullable<string>
+  published_by_user_id: string
+  request_id: string
+  created_at: TimestampDefault
+}
+
+/** Administrator-curated stock list shown to investors, tagged by quarter. */
+export interface FundStockDisclosuresTable {
+  id: Generated<string>
+  fund_id: string
+  stock_name: string
+  quarter_label: string
+  weight_percent: Nullable<Numeric>
+  state: Generated<string>
+  sort_order: Generated<number>
+  added_by_user_id: string
+  exited_at: NullableTimestamp
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+}
+
 export interface Database {
   applications: ApplicationsTable
   consent_documents: ConsentDocumentsTable
@@ -1032,4 +1126,10 @@ export interface Database {
   notifications: NotificationsTable
   // Compliance email-OTP KYC (migration 019)
   kyc_verification_codes: KycVerificationCodesTable
+  // Option B investment model (migration 021)
+  investor_ledger_entries: InvestorLedgerEntriesTable
+  fund_aum_updates: FundAumUpdatesTable
+  // Investor support requests (migration 022)
+  support_requests: SupportRequestsTable
+  fund_stock_disclosures: FundStockDisclosuresTable
 }

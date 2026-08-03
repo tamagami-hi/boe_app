@@ -47,9 +47,23 @@ export interface DispatchSummary {
 }
 
 type PreparedSend =
-  | { readonly kind: "ready"; readonly deliveryId: string; readonly recipient: string; readonly templateKey: string; readonly templateVersion: string; readonly configurationSet: string }
+  | {
+      readonly kind: "ready"
+      readonly deliveryId: string
+      readonly recipient: string
+      readonly templateKey: string
+      readonly templateVersion: string
+      readonly configurationSet: string
+      readonly templateData: Readonly<Record<string, unknown>>
+    }
   | { readonly kind: "cancelled" }
   | { readonly kind: "skipped" }
+
+/** The enqueued payload, which carries the token the message needs. */
+const templateDataOf = (event: OutboxEvent): Readonly<Record<string, unknown>> => {
+  const payload: unknown = event.payload
+  return typeof payload === "object" && payload !== null ? (payload as Record<string, unknown>) : {}
+}
 
 // Lock the delivery + outbox, validate, and either cancel obsolete work or
 // commit both to `sending`. Returns what SES should be called with, if anything.
@@ -86,6 +100,7 @@ const prepare = async (deps: DispatchDeps, event: OutboxEvent): Promise<Prepared
       templateKey: delivery.template_key,
       templateVersion: delivery.template_version,
       configurationSet: delivery.ses_configuration_set,
+      templateData: templateDataOf(event),
     }
   })
 
@@ -97,6 +112,7 @@ const callSes = async (deps: DispatchDeps, prepared: Extract<PreparedSend, { kin
       templateKey: prepared.templateKey,
       templateVersion: prepared.templateVersion,
       configurationSet: prepared.configurationSet,
+      templateData: prepared.templateData,
     })
   } catch {
     // A thrown transport error is retryable; the settle transaction reschedules.

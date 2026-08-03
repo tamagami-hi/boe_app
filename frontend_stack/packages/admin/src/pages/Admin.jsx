@@ -9,15 +9,12 @@ import {
   UserDirectoryRoute,
   UserDetailRoute,
   KycRoute,
-  RiskProfilesRoute,
   FundsRoute,
   HoldingsRoute,
   TransactionsRoute,
-  LedgerRoute,
-  SipControlRoute,
   AppBuilderRoute,
-  SupportRoute,
   AuditLogRoute,
+  EmailDeliveriesRoute,
   EnvironmentRoute,
 } from './legacy/legacyRoutes.jsx';
 import CoursesPage from '../features/site/CoursesPage.jsx';
@@ -41,7 +38,8 @@ export default function Admin() {
         <Route path="users/directory" element={<UserDirectoryRoute />} />
         <Route path="users/directory/:userId" element={<UserDetailRoute />} />
         <Route path="users/kyc" element={<KycRoute />} />
-        <Route path="users/risk-profiles" element={<RiskProfilesRoute />} />
+        {/* Retired by canonical decision: no client risk profiling. */}
+        <Route path="users/risk-profiles" element={<Navigate to="/admin/users/kyc" replace />} />
 
         <Route path="site/content" element={<LandingContentPage />} />
         <Route path="site/courses" element={<CoursesPage />} />
@@ -53,11 +51,16 @@ export default function Admin() {
         <Route path="ops/funds" element={<FundsRoute />} />
         <Route path="ops/holdings" element={<HoldingsRoute />} />
         <Route path="ops/transactions" element={<TransactionsRoute />} />
-        <Route path="ops/ledger" element={<LedgerRoute />} />
-        <Route path="ops/sip-control" element={<SipControlRoute />} />
+        {/* Retired: the synthetic reconciliation ledger and the SIP control-request
+            inbox were both removed by the canonical schema/decisions. Transactions
+            is the reconciliation view; SIP changes are commands on the plan. */}
+        <Route path="ops/ledger" element={<Navigate to="/admin/ops/transactions" replace />} />
+        <Route path="ops/sip-control" element={<Navigate to="/admin/ops/transactions" replace />} />
 
-        <Route path="system/support" element={<SupportRoute />} />
+        {/* Support tickets are postponed (out of MVP, no schema). */}
+        <Route path="system/support" element={<Navigate to="/admin/system/audit-log" replace />} />
         <Route path="system/audit-log" element={<AuditLogRoute />} />
+        <Route path="system/emails" element={<EmailDeliveriesRoute />} />
         <Route path="system/environment" element={<EnvironmentRoute />} />
 
         <Route path="*" element={<Navigate to="/admin/overview" replace />} />

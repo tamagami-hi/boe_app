@@ -26,36 +26,21 @@ export async function verifyKyc(code) {
   return { status: 'approved' };
 }
 
-// --- Legacy KYC-detail screen (deferred document/depth KYC) ----------------
-// Retained for the existing KycDetail screen. These target not-yet-built
-// endpoints and fall back to fixtures; they are separate from the email-OTP
-// eligibility gate above.
-
-const FIXTURE_KYC = {
-  id: 'fixture-kyc-1',
-  userId: 'fixture-user-1',
-  panLast4: null,
-  aadhaarLast4: null,
-  addressJson: {},
-  documentRefsJson: [],
-  fatcaStatus: 'not_started',
-  fatcaDeclaration: null,
-  nominees: [],
-  reKycDueDate: null,
-  reKycTriggerReason: null,
-  reviewStatus: 'not_started',
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-};
+// --- KYC standing ---------------------------------------------------------
+// The status screen reads the investor's current KYC case: whether it exists, its
+// state, and when it expires. There is no document/FATCA/nominee capture — nothing
+// stores that today, so nothing here writes it.
 
 export async function fetchKycStatus() {
   if (useHttpApi()) return apiRequest('/v1/client/kyc-status', { method: 'GET' });
   await delay(180);
-  return { ...FIXTURE_KYC };
-}
-
-export async function updateKycDepth(payload) {
-  if (useHttpApi()) return apiRequest('/v1/client/kyc-depth', { method: 'POST', body: payload });
-  await delay(280);
-  return { ...FIXTURE_KYC, ...payload, updatedAt: new Date().toISOString() };
+  return {
+    status: 'not_started',
+    kycState: null,
+    method: 'email_otp',
+    expiresAt: null,
+    expired: false,
+    submittedAt: null,
+    decidedAt: null,
+  };
 }

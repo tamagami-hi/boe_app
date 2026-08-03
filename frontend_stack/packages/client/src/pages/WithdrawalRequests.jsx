@@ -60,8 +60,8 @@ export default function WithdrawalRequests() {
           <div key={req.id} className="be-card apk-withdrawal-card">
             <div className="apk-withdrawal-card-head">
               <div>
-                <div className="apk-withdrawal-fund">{req.fundName || 'Fund'}</div>
-                <div className="apk-withdrawal-date">{fmtDate(req.requestedAt)}</div>
+                <div className="apk-withdrawal-fund">{req.fundSlug || 'Fund'}</div>
+                <div className="apk-withdrawal-date">{fmtDate(req.submittedAt)}</div>
               </div>
               <span className={`apk-status-pill apk-status-pill--${req.status || 'pending'}`}>
                 <Icon size={12} strokeWidth={2} />
@@ -71,13 +71,28 @@ export default function WithdrawalRequests() {
             <div className="apk-withdrawal-amount-row">
               <div>
                 <div className="be-eyebrow">Amount</div>
-                <div className="be-money apk-withdrawal-amount">{fmtMoney(req.amount)}</div>
+                <div className="be-money apk-withdrawal-amount">{fmtMoney(req.requestedAmount, { decimals: 2 })}</div>
               </div>
               <div className="apk-withdrawal-type">
                 <div className="be-eyebrow">Type</div>
-                <div className="apk-withdrawal-type-value">{req.type}</div>
+                {/* Option B modes: full / returns only / 50% / custom, with the
+                    principal-vs-returns split the backend derived. */}
+                <div className="apk-withdrawal-type-value">
+                  {{
+                    full: 'Full amount',
+                    returns_only: 'Returns only',
+                    half: '50%',
+                    custom: 'Custom amount',
+                  }[req.mode] || req.mode || '—'}
+                </div>
               </div>
             </div>
+            {(req.returnsComponent !== null || req.principalComponent !== null) && (
+              <div className="apk-withdrawal-split">
+                From returns {fmtMoney(req.returnsComponent ?? 0, { decimals: 2 })} · From principal
+                {fmtMoney(req.principalComponent ?? 0, { decimals: 2 })}
+              </div>
+            )}
             {req.adminReason && (
               <div className="apk-withdrawal-note">
                 <strong>Admin note:</strong> {req.adminReason}
@@ -87,7 +102,7 @@ export default function WithdrawalRequests() {
         );
       })}
       <p className="be-disclosure">
-        Redemption requests require approval. Final values may vary with market movement until units are processed.
+        Redemption requests require approval. Your portfolio value changes once a request is settled.
       </p>
     </div>
   );

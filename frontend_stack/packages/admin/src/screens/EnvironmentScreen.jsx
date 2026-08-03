@@ -26,11 +26,21 @@ function EnvironmentScreen() {
     return () => { cancelled = true; };
   }, []);
 
+  // Canonical `/v1/admin/app-config` payload: presentation, feature flags,
+  // minimum supported versions, download links, and maintenance state.
+  const flags = config?.config?.featureFlags || {};
+  const minVersions = config?.config?.minimumSupportedVersion || {};
+  const maintenance = config?.config?.maintenance || {};
   const checks = config ? [
     { label: 'App config version', value: config.version || '—', ok: !!config.version },
     { label: 'Published at', value: config.publishedAt ? String(config.publishedAt).slice(0, 19).replace('T', ' ') : '—', ok: !!config.publishedAt },
-    { label: 'Components', value: Array.isArray(config.components) ? `${config.components.length} component(s)` : 'None', ok: Array.isArray(config.components) && config.components.length > 0 },
-    { label: 'Content blocks', value: Array.isArray(config.contentBlocks) ? `${config.contentBlocks.length} block(s)` : 'None', ok: Array.isArray(config.contentBlocks) && config.contentBlocks.length > 0 },
+    { label: 'Feature flags', value: `${Object.keys(flags).length} flag(s)`, ok: Object.keys(flags).length > 0 },
+    {
+      label: 'Minimum app version',
+      value: Object.entries(minVersions).map(([platform, version]) => `${platform} ${version}`).join(', ') || '—',
+      ok: Object.keys(minVersions).length > 0,
+    },
+    { label: 'Maintenance mode', value: maintenance.enabled ? 'Enabled' : 'Off', ok: !maintenance.enabled },
   ] : [];
 
   return (

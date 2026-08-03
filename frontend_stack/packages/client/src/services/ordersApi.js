@@ -136,6 +136,16 @@ export async function createSip({ fundId, amount, frequency = 'monthly', duratio
   return clone(order);
 }
 
+/** The investor's SIP plans. */
+export async function listSips() {
+  if (useHttpApi()) {
+    return listFromPayload(await apiRequest('/v1/client/sips')).map(mapSip);
+  }
+
+  await delay();
+  return clone(orders.filter((order) => order.type === 'sip'));
+}
+
 /** Request the debit mandate for a draft SIP (spec 03 §5.2). Returns { mandateId, status }. */
 export async function requestSipMandate(sipId) {
   if (useHttpApi()) {
@@ -224,8 +234,59 @@ export async function beginOrderPayment(orderId) {
   return clone(found ?? { orderId, status: 'payment_pending' });
 }
 
+// The canonical detail endpoints wrap their row (`{ order }` / `{ payment }`) and
+// report money in paise as strings. The screens were written against a legacy
+// rupee-denominated shape, so translate once here.
+function mapOrderDetail(payload) {
+  const row = payload?.order ?? payload;
+  if (!row) return null;
+  return {
+    ...mapOrder(row),
+    id: row.orderId,
+    fundId: row.fundId,
+    status: row.status,
+    amount: row.amountPaise === null || row.amountPaise === undefined ? null : Number(row.amountPaise) / 100,
+  };
+}
+
+// `succeeded` is the canonical terminal success state; the status screen keys off
+// the legacy `success`. Failure/expiry map straight through.
+const PAYMENT_STATUS_WIRE = {
+  created: 'created',
+  provider_pending: 'pending',
+  succeeded: 'success',
+  failed: 'failed',
+  expired: 'expired',
+  refunded: 'refunded',
+};
+
+function mapPaymentDetail(payload) {
+  const row = payload?.payment ?? payload;
+  if (!row) return null;
+  return {
+    id: row.paymentId,
+    orderId: row.orderId,
+    fundId: row.fundId,
+    amount: Number(row.amountPaise) / 100,
+    currency: row.currency,
+    status: PAYMENT_STATUS_WIRE[row.status] || row.status,
+    provider: row.provider,
+    providerPaymentId: row.providerPaymentId,
+    // No gateway key is ever returned to the client, so the SDK launch path stays
+    // disabled until a real gateway is configured server-side.
+    providerKeyId: null,
+    failureReason: row.failureCode,
+    expiresAt: row.expiresAt,
+    confirmedAt: row.succeededAt,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
 export async function getOrder(orderId) {
-  if (useHttpApi()) return apiRequest(`/v1/client/orders/${encodeURIComponent(orderId)}`);
+  if (useHttpApi()) {
+    return mapOrderDetail(await apiRequest(`/v1/client/orders/${encodeURIComponent(orderId)}`));
+  }
 
   await delay(80);
   return clone(orders.find((o) => o.id === orderId));
@@ -248,9 +309,27 @@ export async function listOrders({ filter = 'all' } = {}) {
   return clone(out);
 }
 
+// The payments list carries the same fields as the detail read, so the screens can
+// show a row and its detail sheet from one mapper.
+function mapPaymentRow(row) {
+  return {
+    id: row.id,
+    orderId: row.orderId,
+    fundId: row.fundId ?? null,
+    amount: row.amountPaise === null || row.amountPaise === undefined ? null : Number(row.amountPaise) / 100,
+    status: row.status,
+    provider: row.provider ?? null,
+    method: row.provider ?? '',
+    failureCode: row.failureCode ?? null,
+    confirmedAt: row.succeededAt ?? null,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
 export async function listPendingPayments() {
   if (useHttpApi()) {
-    return listFromPayload(await apiRequest('/v1/client/payments?status=created,gateway_initiated,pending'));
+    return listFromPayload(await apiRequest('/v1/client/payments?status=pending')).map(mapPaymentRow);
   }
 
   await delay();
@@ -261,7 +340,7 @@ export async function listPendingPayments() {
 
 export async function listFailedPayments() {
   if (useHttpApi()) {
-    return listFromPayload(await apiRequest('/v1/client/payments?status=failed,expired,rejected'));
+    return listFromPayload(await apiRequest('/v1/client/payments?status=failed,expired')).map(mapPaymentRow);
   }
 
   await delay();
@@ -271,7 +350,7 @@ export async function listFailedPayments() {
 
 export async function listApprovalPayments() {
   if (useHttpApi()) {
-    return listFromPayload(await apiRequest('/v1/client/payments?status=success,confirmed,reconciled'));
+    return listFromPayload(await apiRequest('/v1/client/payments?status=succeeded')).map(mapPaymentRow);
   }
 
   await delay();
@@ -279,12 +358,18 @@ export async function listApprovalPayments() {
   return clone(Array.from(payments.values()).filter((payment) => approvalStatuses.has(payment.status)));
 }
 
+/**
+ * Apply a plan control. Pause, resume and cancel act on the plan directly — there
+ * is no approval queue in between, so the caller sees the new plan state rather
+ * than a pending request.
+ */
 export async function requestSipControl({ orderId, requestType, requestedValue, effectiveDate, reason }) {
   if (useHttpApi()) {
-    return apiRequest('/v1/client/sip-control-requests', {
-      method: 'POST',
-      body: { planId: orderId, action: requestType, requestedValue, effectiveDate, reason },
-    });
+    const action = { pause: pauseSip, resume: resumeSip, cancel: cancelSip }[requestType];
+    if (!action) {
+      throw new Error(`Unsupported plan control '${requestType}'. Pause, resume and cancel are available.`);
+    }
+    return action(orderId);
   }
 
   await delay(180);
@@ -300,16 +385,18 @@ export async function requestSipControl({ orderId, requestType, requestedValue, 
 }
 
 export async function listSipControlRequests(orderId) {
-  if (useHttpApi()) {
-    return listFromPayload(await apiRequest(`/v1/client/sip-control-requests?orderId=${encodeURIComponent(orderId)}`));
-  }
+  // Controls apply immediately, so there is nothing pending to list against a
+  // live backend; the plan's own state is the record.
+  if (useHttpApi()) return [];
 
   await delay();
   return clone(sipRequests.filter((r) => r.orderId === orderId));
 }
 
 export async function getPayment(paymentId) {
-  if (useHttpApi()) return apiRequest(`/v1/client/payments/${encodeURIComponent(paymentId)}`);
+  if (useHttpApi()) {
+    return mapPaymentDetail(await apiRequest(`/v1/client/payments/${encodeURIComponent(paymentId)}`));
+  }
 
   await delay(80);
   const found = payments.get(paymentId);
@@ -317,16 +404,15 @@ export async function getPayment(paymentId) {
   return { id: paymentId, orderId: '', amount: null, status: 'pending', method: '', createdAt: '' };
 }
 
-export async function confirmRazorpayPayment(paymentId, response) {
+/**
+ * Confirm a gateway checkout. A live gateway confirms server-side on its signed
+ * webhook, and the mock provider is settled by the payment worker — in both cases
+ * the client's job is to read the resulting state, not to assert it. So against a
+ * real backend this reads the payment back instead of posting a confirmation.
+ */
+export async function confirmRazorpayPayment(paymentId) {
   if (useHttpApi()) {
-    return apiRequest(`/v1/client/payments/${encodeURIComponent(paymentId)}/confirm-razorpay`, {
-      method: 'POST',
-      body: {
-        razorpay_payment_id: response.razorpay_payment_id,
-        razorpay_order_id: response.razorpay_order_id,
-        razorpay_signature: response.razorpay_signature,
-      },
-    });
+    return mapPaymentDetail(await apiRequest(`/v1/client/payments/${encodeURIComponent(paymentId)}`));
   }
 
   const found = payments.get(paymentId);
@@ -340,7 +426,9 @@ export async function confirmRazorpayPayment(paymentId, response) {
 // Simulates a full lifecycle: created -> gateway_initiated -> pending -> success.
 const _pollState = new Map();
 export async function pollPaymentStatus(paymentId) {
-  if (useHttpApi()) return apiRequest(`/v1/client/payments/${encodeURIComponent(paymentId)}`);
+  if (useHttpApi()) {
+    return mapPaymentDetail(await apiRequest(`/v1/client/payments/${encodeURIComponent(paymentId)}`));
+  }
 
   await delay(800);
   const p = payments.get(paymentId);
@@ -364,6 +452,7 @@ export async function authorizeMandate(mandateId) {
   if (useHttpApi()) {
     return apiRequest(`/v1/client/mandates/${encodeURIComponent(mandateId)}/authorize`, {
       method: 'POST',
+      headers: { 'idempotency-key': idempotencyKey() },
     });
   }
 

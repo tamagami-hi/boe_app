@@ -458,6 +458,32 @@ export async function loadRemoteAppConfig({ admin = false, persist = true } = {}
   return persist ? persistAppConfig(next) : clone(next);
 }
 
+/**
+ * Project the local app-builder document onto the canonical
+ * `app_config_versions` payload. The canonical contract is presentation and
+ * feature-flag data only: fund/product catalogue data lives in `funds` and
+ * monetary policy in `finance_policy_versions`, so the backend schema is strict
+ * and rejects them. Component toggles become flat feature flags; the rich
+ * builder document stays in local storage for editing.
+ */
+export function toCanonicalAppConfig(config) {
+  const featureFlags = {};
+  const screens = config?.mobile?.screens || {};
+  for (const [screenId, screen] of Object.entries(screens)) {
+    for (const component of screen?.components || []) {
+      if (!component?.id) continue;
+      featureFlags[`${screenId}_${component.id}`.slice(0, 80)] = component.enabled !== false;
+    }
+  }
+  return {
+    featureFlags,
+    minimumSupportedVersion: config?.minimumSupportedVersion || {},
+    downloads: config?.downloads || {},
+    maintenance: config?.maintenance || { enabled: false },
+    presentation: config?.presentation || {},
+  };
+}
+
 export async function publishAppConfig(config, { reason = 'Published from admin app builder.' } = {}) {
   const next = normalizeAppConfig({ ...config, publishedAt: new Date().toISOString() });
 
@@ -465,14 +491,14 @@ export async function publishAppConfig(config, { reason = 'Published from admin 
     return persistAppConfig(next);
   }
 
-  const payload = await appConfigRequest('/v1/admin/app-config', {
+  await appConfigRequest('/v1/admin/app-config', {
     method: 'PATCH',
     auth: true,
     scope: 'admin',
-    body: { config: next, reason },
+    body: { config: toCanonicalAppConfig(next), reason },
   });
 
-  return persistAppConfig(payload?.config || next);
+  return persistAppConfig(next);
 }
 
 export function resetAppConfig() {

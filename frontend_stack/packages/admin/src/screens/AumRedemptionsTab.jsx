@@ -31,7 +31,7 @@ import EmptyTableRow from '../components/EmptyTableRow.jsx';
 
 function AumRedemptionsTab({ onUserDetail }) {
   const [requests, setRequests] = useState([]);
-  const [filter, setFilter] = useState('pending');
+  const [filter, setFilter] = useState('submitted');
   const [loading, setLoading] = useState(true);
   const [actionRequest, setActionRequest] = useState(null);
   const [actionType, setActionType] = useState(null);
@@ -41,7 +41,8 @@ function AumRedemptionsTab({ onUserDetail }) {
   async function loadRequests() {
     setLoading(true);
     try {
-      const r = await apiRequest(`/v1/admin/redemption-requests?status=${filter}`, { scope: 'admin' });
+      const query = filter === 'all' ? '' : `?status=${encodeURIComponent(filter)}`;
+      const r = await apiRequest(`/v1/admin/redemption-requests${query}`, { scope: 'admin' });
       setRequests(r.items || []);
     } catch (err) {
       setRequests([]);
@@ -75,7 +76,15 @@ function AumRedemptionsTab({ onUserDetail }) {
   }
 
   const statusBadge = (status) => {
-    const label = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' }[status] || status || '—';
+    const label = {
+      submitted: 'Submitted',
+      units_reserved: 'Units reserved',
+      approved: 'Approved',
+      settlement_pending: 'Settling',
+      settled: 'Settled',
+      rejected: 'Rejected',
+      cancelled: 'Cancelled',
+    }[status] || status || '—';
     return <span className={`adm-status-badge adm-status-badge--${status || 'pending'}`}>{label}</span>;
   };
 
@@ -91,8 +100,10 @@ function AumRedemptionsTab({ onUserDetail }) {
             <div className="adm-filter">
               <select value={filter} onChange={e => setFilter(e.target.value)}>
                 <option value="all">All</option>
-                <option value="pending">Pending</option>
+                <option value="submitted">Submitted</option>
+                <option value="units_reserved">Units reserved</option>
                 <option value="approved">Approved</option>
+                <option value="settled">Settled</option>
                 <option value="rejected">Rejected</option>
               </select>
             </div>
@@ -109,15 +120,31 @@ function AumRedemptionsTab({ onUserDetail }) {
               {!loading && requests.length === 0 && <EmptyTableRow colSpan={7}>No redemption requests.</EmptyTableRow>}
               {!loading && requests.map(req => (
                 <tr key={req.id}>
-                  <td>{req.userId?.slice(0, 8) || '—'}</td>
-                  <td>{req.fundName || req.fundId?.slice(0, 8)}</td>
-                  <td className="adm-capitalize">{req.type}</td>
-                  <td className="be-money">₹{(req.amount || 0).toLocaleString()}</td>
+                  <td>{req.userEmail || req.userId?.slice(0, 8) || '—'}</td>
+                  <td>{req.fundSlug || req.fundId?.slice(0, 8)}</td>
+                  <td className="adm-capitalize">
+                    {{
+                      full: 'Full amount',
+                      returns_only: 'Returns only',
+                      half: '50%',
+                      custom: 'Custom',
+                    }[req.mode] || req.mode || '—'}
+                  </td>
+                  <td className="be-money">
+                    ₹{(Number(req.settledAmountPaise ?? req.requestedAmountPaise ?? 0) / 100).toLocaleString('en-IN')}
+                    {/* Approving settles the payout: returns are drawn before principal. */}
+                    {req.returnsComponentPaise !== null && req.returnsComponentPaise !== undefined && (
+                      <div className="adm-cell-sub">
+                        returns ₹{(Number(req.returnsComponentPaise) / 100).toLocaleString('en-IN')} · principal ₹
+                        {(Number(req.principalComponentPaise ?? 0) / 100).toLocaleString('en-IN')}
+                      </div>
+                    )}
+                  </td>
                   <td>{statusBadge(req.status)}</td>
-                  <td className="adm-cell-meta">{req.requestedAt ? new Date(req.requestedAt).toLocaleDateString() : '—'}</td>
+                  <td className="adm-cell-meta">{req.submittedAt ? new Date(req.submittedAt).toLocaleDateString() : '—'}</td>
                   <td className="adm-cell-actions">
                     <button className="be-btn be-btn-ghost be-btn-sm" onClick={() => onUserDetail?.(req)}>View</button>
-                    {req.status === 'pending' && (
+                    {(req.status === 'submitted' || req.status === 'units_reserved') && (
                       <>
                         <button className="be-btn be-btn-primary be-btn-sm" onClick={() => { setActionRequest(req); setActionType('approved'); }}>Approve</button>
                         <button className="be-btn be-btn-danger be-btn-sm" onClick={() => { setActionRequest(req); setActionType('rejected'); }}>Reject</button>

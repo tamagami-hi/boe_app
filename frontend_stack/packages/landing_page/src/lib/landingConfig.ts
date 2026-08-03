@@ -5,7 +5,7 @@ const API_BASE = process.env.BEO_API_BASE || 'http://127.0.0.1:47502';
 export async function fetchLandingConfig(): Promise<LandingConfig | null> {
   try {
     const res = await fetch(`${API_BASE}/v1/public/landing-config`, {
-      next: { revalidate: 300 },
+      cache: 'no-store',
     });
     if (!res.ok) return null;
     const envelope = await res.json();

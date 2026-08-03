@@ -13,9 +13,13 @@ const nextConfig = {
   output: 'standalone',
   // This app lives inside an npm workspace but is a standalone Next.js build.
   // Keep its file-tracing root at the package so workspace hoisting does not
-  // confuse the build. (Top-level in Next 15+; under experimental in Next 14.)
-  experimental: {
-    outputFileTracingRoot: import.meta.dirname,
+  // confuse the build. This option is top-level in Next 15+.
+  outputFileTracingRoot: import.meta.dirname,
+  // Next traces Sharp itself but can omit the platform-specific libvips package
+  // from standalone output. Include the patched Alpine runtime explicitly so a
+  // future next/image use cannot fail after deployment.
+  outputFileTracingIncludes: {
+    '/*': ['./node_modules/@img/**/*'],
   },
   async rewrites() {
     // Onboarding is handled by the /api/onboarding/applications route handler

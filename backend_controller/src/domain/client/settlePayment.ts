@@ -19,7 +19,7 @@ import type { OutboxEvent, Transaction } from "../../db/repositories.js"
 import { isExhausted, nextRetryDelayMs } from "../../email/retrySchedule.js"
 import { AppError } from "../../http/errorCatalog.js"
 import type { AuditWriteRepository } from "../../repositories/auditRepository.js"
-import type { HoldingWriteRepository } from "../../repositories/holdingRepository.js"
+import type { InvestorLedgerRepository } from "../../repositories/investorLedgerRepository.js"
 import type { NotificationWriteRepository } from "../../repositories/notificationRepository.js"
 import type { OrderWriteRepository } from "../../repositories/orderRepository.js"
 import type { OutboxWriteRepository } from "../../repositories/outboxRepository.js"
@@ -30,7 +30,7 @@ import { confirmPayment, failPayment, sendPaymentToProvider } from "./confirmPay
 export interface AdvancePaymentDeps {
   readonly paymentRepository: PaymentWriteRepository
   readonly orderRepository: OrderWriteRepository
-  readonly holdingRepository: HoldingWriteRepository
+  readonly investorLedgerRepository: InvestorLedgerRepository
   readonly notificationRepository: NotificationWriteRepository
   readonly auditRepository: AuditWriteRepository
   readonly clock: () => Date
@@ -46,7 +46,7 @@ const seamDepsOf = (deps: AdvancePaymentDeps) => ({
 
 const bookDepsOf = (deps: AdvancePaymentDeps) => ({
   orderRepository: deps.orderRepository,
-  holdingRepository: deps.holdingRepository,
+  investorLedgerRepository: deps.investorLedgerRepository,
   notificationRepository: deps.notificationRepository,
   auditRepository: deps.auditRepository,
   clock: deps.clock,
@@ -88,12 +88,22 @@ export const advancePaymentToBooked = async (
       evidenceCurrency: payment.currency,
       requestId: input.requestId,
     })
-    await bookOrder(tx, bookDepsOf(deps), { userId, orderId, requestId: input.requestId })
+    await bookOrder(tx, bookDepsOf(deps), {
+      userId,
+      orderId,
+      requestId: input.requestId,
+      paymentId: input.paymentId,
+    })
     return "booked"
   }
 
   if (order.state === "payment_confirmed") {
-    await bookOrder(tx, bookDepsOf(deps), { userId, orderId, requestId: input.requestId })
+    await bookOrder(tx, bookDepsOf(deps), {
+      userId,
+      orderId,
+      requestId: input.requestId,
+      paymentId: input.paymentId,
+    })
     return "booked"
   }
 

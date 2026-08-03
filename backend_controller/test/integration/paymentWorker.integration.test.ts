@@ -13,7 +13,7 @@ import { beginPayment } from "../../src/domain/client/beginPayment.js"
 import { createOrder } from "../../src/domain/client/createOrder.js"
 import { settleDuePayments, type SettleDuePaymentsDeps } from "../../src/domain/client/settlePayment.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
-import { createHoldingRepository } from "../../src/repositories/holdingRepository.js"
+import { createInvestorLedgerRepository } from "../../src/repositories/investorLedgerRepository.js"
 import { createNotificationRepository } from "../../src/repositories/notificationRepository.js"
 import { createOrderRepository } from "../../src/repositories/orderRepository.js"
 import { createOutboxRepository } from "../../src/repositories/outboxRepository.js"
@@ -31,7 +31,7 @@ let fundId: string
 
 const orderRepository = createOrderRepository()
 const paymentRepository = createPaymentRepository()
-const holdingRepository = createHoldingRepository()
+const investorLedgerRepository = createInvestorLedgerRepository()
 const notificationRepository = createNotificationRepository()
 const userRepository = createUserRepository()
 const outboxRepository = createOutboxRepository()
@@ -74,11 +74,8 @@ beforeAll(async () => {
     idleTimeoutMs: 10_000,
   })
   const directory = fileURLToPath(new URL("../../db/migrations", import.meta.url))
-  const all = await loadMigrationFiles(directory)
-  await runMigrations(
-    pool,
-    all.filter((file) => file.version >= "009"),
-  )
+  const migrations = await loadMigrationFiles(directory)
+  await runMigrations(pool, migrations)
   await runSeed(pool)
   uow = createUnitOfWork(createDatabase(pool))
   workerDeps = {
@@ -86,7 +83,7 @@ beforeAll(async () => {
     outboxRepository,
     paymentRepository,
     orderRepository,
-    holdingRepository,
+    investorLedgerRepository,
     notificationRepository,
     auditRepository,
     clock,
@@ -148,11 +145,12 @@ describe("payment settlement worker (integration)", () => {
     expect(order.rows[0]?.state).toBe("booked")
     const payment = await pool.query<{ state: string }>("select state from payments where order_id = $1", [orderId])
     expect(payment.rows[0]?.state).toBe("succeeded")
-    const holding = await pool.query<{ total_units: string }>(
-      "select total_units from holdings where user_id = $1 and fund_id = $2",
+    // Option B: the settled payment appears as one contribution ledger entry.
+    const holding = await pool.query<{ value_delta_paise: string }>(
+      "select value_delta_paise from investor_ledger_entries where user_id = $1 and fund_id = $2",
       [userId, fundId],
     )
-    expect(holding.rows[0]?.total_units).toBe("100.00000000")
+    expect(holding.rows[0]?.value_delta_paise).toBe("200000")
     const outbox = await pool.query<{ state: string }>(
       "select state from outbox_events where topic = 'payment' and aggregate_id = (select id from payments where order_id = $1)",
       [orderId],
@@ -167,7 +165,7 @@ describe("payment settlement worker (integration)", () => {
 
     // Exactly one execution exists for the previously booked order.
     const executions = await pool.query<{ c: number }>(
-      "select count(*)::int as c from investment_executions where user_id = $1",
+      "select count(*)::int as c from investor_ledger_entries where user_id = $1",
       [userId],
     )
     expect(executions.rows[0]?.c).toBe(1)

@@ -1,8 +1,8 @@
 import {
-  LayoutDashboard, UserCheck, Users, ShieldCheck, LineChart, CreditCard, Repeat,
-  Globe, GraduationCap, Tags, HelpCircle, PenSquare,
+  LayoutDashboard, UserCheck, Users, ShieldCheck, CreditCard, Repeat,
+  GraduationCap, Tags, HelpCircle, PenSquare,
   Layers, PieChart, History, BookOpen, Inbox,
-  LayoutGrid, LifeBuoy, Settings,
+  LayoutGrid, Settings,
 } from 'lucide-react';
 
 // Single source of truth for the admin information architecture.
@@ -25,7 +25,6 @@ export const NAV_DOMAINS = [
       { path: '/admin/users/payments', label: 'Payments', icon: CreditCard, title: 'Payments' },
       { path: '/admin/users/directory', label: 'Directory', icon: Users, title: 'User directory' },
       { path: '/admin/users/kyc', label: 'KYC review', icon: ShieldCheck, badge: 'kyc', title: 'KYC review' },
-      { path: '/admin/users/risk-profiles', label: 'Risk profiles', icon: LineChart, title: 'Risk profiles' },
     ],
   },
   {
@@ -52,16 +51,14 @@ export const NAV_DOMAINS = [
       { path: '/admin/ops/funds', label: 'AUM pools', icon: Layers, title: 'AUM pools' },
       { path: '/admin/ops/holdings', label: 'Holdings', icon: PieChart, title: 'Holdings' },
       { path: '/admin/ops/transactions', label: 'Transactions', icon: BookOpen, title: 'Transactions' },
-      { path: '/admin/ops/ledger', label: 'Ledger', icon: History, title: 'Reconciliation ledger' },
-      { path: '/admin/ops/sip-control', label: 'SIP control', icon: Inbox, badge: 'requests', title: 'SIP control' },
     ],
   },
   {
     id: 'system',
     label: 'System',
     items: [
-      { path: '/admin/system/support', label: 'Support tickets', icon: LifeBuoy, title: 'Support tickets' },
       { path: '/admin/system/audit-log', label: 'Audit log', icon: History, title: 'Audit log' },
+      { path: '/admin/system/emails', label: 'Email log', icon: Inbox, title: 'Email deliveries' },
       { path: '/admin/system/environment', label: 'Environment', icon: Settings, title: 'Environment' },
     ],
   },

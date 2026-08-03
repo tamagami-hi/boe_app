@@ -3,6 +3,8 @@ import ClientLayout from './layout/ClientLayout.jsx';
 
 import Splash from './pages/Splash.jsx';
 import Login from './pages/Login.jsx';
+import Activate from './pages/Activate.jsx';
+import KycVerify from './pages/KycVerify.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Explore from './pages/Explore.jsx';
 import FundDetail from './pages/FundDetail.jsx';
@@ -42,6 +44,8 @@ export default function ClientApp() {
       <Route element={<ClientLayout />}>
         <Route path="splash" element={<RouteErrorBoundary><Splash /></RouteErrorBoundary>} />
         <Route path="login" element={<RouteErrorBoundary><Login /></RouteErrorBoundary>} />
+        <Route path="activate" element={<RouteErrorBoundary><Activate /></RouteErrorBoundary>} />
+        <Route path="verify-email" element={<RouteErrorBoundary><KycVerify /></RouteErrorBoundary>} />
         <Route path="start" element={<Navigate to="dashboard" replace />} />
         <Route path="approval-required" element={<RouteErrorBoundary><ApprovalRequired /></RouteErrorBoundary>} />
         <Route path="dashboard" element={<RouteErrorBoundary><Dashboard /></RouteErrorBoundary>} />

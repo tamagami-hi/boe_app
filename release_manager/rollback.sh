@@ -1,269 +1,202 @@
 #!/usr/bin/env bash
-
-# Restore a previous BeOnEdge release from release_manager/rollback into BOE_APP.
-# With no --rollback-dir, prompts to pick a snapshot interactively.
-# The pgdata Postgres volume is preserved (compose down without -v).
+# ─────────────────────────────────────────────────────────────────────────────
+# rollback.sh — ROLLBACK stage. Runs on this computer; rolls back nothing itself.
+#
+# Structurally identical to deploy.sh, as required: it is a thin, safe front end
+# that validates preconditions locally and then invokes the VPS-native rollback
+# script over SSH. Every docker command runs on the VPS.
+#
+# It never uploads a bundle. Rollback deliberately uses the artifacts already
+# archived under /srv/backup/BOE_APP/<STACK>_ROLLBACK/, because the point of a
+# rollback is to return to a release that was already verified on the VPS — not
+# to re-derive one from this machine's current working tree.
+#
+# Usage:
+#   ./release_manager/rollback.sh --dev  --list
+#   ./release_manager/rollback.sh --prod --latest
+#   ./release_manager/rollback.sh --prod --to 1.4.1
+#   ./release_manager/rollback.sh --prod --to 1.4.1 --restore-db
+# ─────────────────────────────────────────────────────────────────────────────
 
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ACTIVE_DIR="$ROOT_DIR/BOE_APP"
-ROLLBACK_DIR="$ROOT_DIR/rollback"
-ACTIVE_COMPOSE_FILE="$ACTIVE_DIR/docker-compose.yml"
-PG_CONTAINER="${PG_CONTAINER:-boe-postgres}"   # compose-fixed Postgres container name
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+RM_DIR="$ROOT_DIR/release_manager"
 
 # shellcheck source=lib/ui.sh
-source "$ROOT_DIR/lib/ui.sh"
+source "$RM_DIR/lib/ui.sh"
+# shellcheck source=lib/stacks.sh
+source "$RM_DIR/lib/stacks.sh"
+# shellcheck source=lib/paths.sh
+source "$RM_DIR/lib/paths.sh"
 
-TARGET_DIR=""
-SKIP_DOWN=false
-SKIP_LOAD=false
-SKIP_CHECKS=false
-SKIP_DB_RESTORE=false   # --skip-db-restore: roll back images only, leave DB as-is
+STACK=""
+LIST_ONLY=false
+RESTORE_DB=false
+ASSUME_YES=false
+REMOTE_ARGS=()
 
 usage() {
     cat <<'USAGE'
-Usage: ./release_manager/rollback.sh [--rollback-dir DIR] [--skip-down] [--skip-load]
-                                     [--skip-checks] [--skip-db-restore]
+Usage: ./release_manager/rollback.sh (--dev | --prod | --monitor) [options]
 
-Restores a previous release snapshot from release_manager/rollback into BOE_APP.
-Without --rollback-dir, lists snapshots and prompts for a selection.
+Invokes the VPS-native rollback script for the chosen stack. All docker work
+happens on the VPS, against artifacts already archived there.
 
-If the chosen snapshot contains a db.sql.gz (captured by deploy.sh), the database
-is also restored to match the rolled-back release: Postgres is brought up alone,
-the current DB is OVERWRITTEN from the dump (after an explicit confirm), then the
-full stack starts. Pass --skip-db-restore to roll back images only and keep the
-current data (safe only when migrations are backward-compatible — see DEPLOY.md).
+Stack selection (required, exactly one):
+  --dev        → dev_rollback.sh
+  --prod       → prod_rollback.sh
+  --monitor    → ms_rollback.sh
+
+Target selection:
+  --list, -l        show available rollback versions and exit (start here)
+  --to <version>    roll back to a specific version
+  --latest          roll back to the newest archived version that is not running
+
+Options:
+  --restore-db    ALSO restore that release's pre-deploy database snapshot.
+                  Destructive: discards transactions committed since then, and
+                  requires typing RESTORE at the remote prompt.
+  --yes, -y       skip confirmation prompts (local and remote)
+  --skip-checks   pass --skip-checks to the remote script
+  --help, -h      this message
+
+Application rollback (the default) only swaps container images; it is safe and
+itself reversible. Database restoration is a separate, opt-in operation.
 USAGE
-}
-
-write_step() { printf '\n==> %s\n' "$1"; }
-assert_dir() { [[ -d "$1" ]] || { printf '%s not found: %s\n' "$2" "$1" >&2; exit 1; }; }
-assert_file() { [[ -f "$1" ]] || { printf '%s not found: %s\n' "$2" "$1" >&2; exit 1; }; }
-read_json_value() { jq -r "$2" "$1" 2>/dev/null || printf ''; }  # never abort a `set -e` caller on bad/odd JSON; callers tolerate empty
-write_json_version() { jq -n --arg version "$2" '{version: $version}' > "$1"; }
-
-resolve_snapshot_version() {
-    local snapshot_dir="$1" v_file="" v_manifest=""
-    v_file="$(read_json_value "$snapshot_dir/version.json" '.version // empty' 2>/dev/null || true)"
-    [[ -f "$snapshot_dir/manifest.json" ]] && v_manifest="$(read_json_value "$snapshot_dir/manifest.json" '.version // empty' 2>/dev/null || true)"
-    if [[ -n "$v_file" && -n "$v_manifest" && "$v_file" != "$v_manifest" ]]; then
-        printf 'Snapshot version mismatch: version.json=%s manifest.json=%s (%s)\n' "$v_file" "$v_manifest" "$snapshot_dir" >&2
-        exit 1
-    fi
-    [[ -n "$v_file" ]] && { printf '%s\n' "$v_file"; return; }
-    [[ -n "$v_manifest" ]] && { printf '%s\n' "$v_manifest"; return; }
-    printf '\n'
-}
-
-# BeOnEdge persistence contract: the Postgres data volume must be declared and
-# mounted, or we refuse to roll back (guards against silent state loss).
-assert_compose_persistence_contract() {
-    local compose_file="$1" label="$2"
-    assert_file "$compose_file" "$label"
-    grep -Fq -- "pgdata:/var/lib/postgresql/data" "$compose_file" || {
-        printf '%s is missing the pgdata volume mount: %s\n' "$label" "$compose_file" >&2; exit 1; }
-    grep -Eq '^volumes:' "$compose_file" || {
-        printf '%s is missing a top-level volumes section: %s\n' "$label" "$compose_file" >&2; exit 1; }
-    grep -Eq '^[[:space:]]+pgdata:' "$compose_file" || {
-        printf '%s is missing the pgdata volume declaration: %s\n' "$label" "$compose_file" >&2; exit 1; }
-}
-
-assert_runtime_state_markers() {
-    local label="$1"
-    [[ -f "$ACTIVE_DIR/current-version.json" ]] || return 0
-    local cfg; cfg="$(docker compose config --format json 2>/dev/null || true)"
-    [[ -n "$cfg" ]] || { printf '%s could not resolve compose volumes from %s\n' "$label" "$ACTIVE_COMPOSE_FILE" >&2; exit 1; }
-    local expected=(); mapfile -t expected < <(printf '%s' "$cfg" | jq -r '(.volumes // {}) | to_entries[]? | (.value.name // .key)')
-    [[ ${#expected[@]} -eq 0 ]] && return 0
-    local missing=() v
-    for v in "${expected[@]}"; do [[ -n "$v" ]] || continue; docker volume inspect "$v" >/dev/null 2>&1 || missing+=("$v"); done
-    if [[ ${#missing[@]} -gt 0 ]]; then
-        printf '%s refused: expected persistent Docker volumes are missing: %s\n' "$label" "${missing[*]}" >&2
-        printf 'Refusing to continue because this looks like state loss or a changed compose project context.\n' >&2
-        exit 1
-    fi
-}
-
-invoke_health_check() {
-    if curl -fsS --max-time 30 "$1" >/dev/null; then printf '%s OK -> %s\n' "$2" "$1"
-    else printf '%s FAILED -> %s\n' "$2" "$1" >&2; exit 1; fi
-}
-
-copy_snapshot_into_active() {
-    local snapshot_dir="$1"
-    rm -rf "$ACTIVE_DIR/images"
-    rm -f "$ACTIVE_DIR/docker-compose.yml" "$ACTIVE_DIR/README.txt" "$ACTIVE_DIR/version.json" "$ACTIVE_DIR/manifest.json"
-    mkdir -p "$ACTIVE_DIR/images"
-    cp "$snapshot_dir/docker-compose.yml" "$ACTIVE_DIR/docker-compose.yml"
-    cp "$snapshot_dir/version.json" "$ACTIVE_DIR/version.json"
-    cp "$snapshot_dir/.env" "$ACTIVE_DIR/.env"
-    cp "$snapshot_dir/backend.tar.gz" "$ACTIVE_DIR/images/backend.tar.gz"
-    cp "$snapshot_dir/landing.tar.gz" "$ACTIVE_DIR/images/landing.tar.gz"
-    [[ -f "$snapshot_dir/README.txt" ]] && cp "$snapshot_dir/README.txt" "$ACTIVE_DIR/README.txt"
-    [[ -f "$snapshot_dir/manifest.json" ]] && cp "$snapshot_dir/manifest.json" "$ACTIVE_DIR/manifest.json"
-}
-
-env_value() {
-    local key="$1"
-    [[ -f "$ACTIVE_DIR/.env" ]] || return 0
-    sed -n "s/^${key}=//p" "$ACTIVE_DIR/.env" | tail -n 1
-}
-
-# Poll until the Postgres container accepts connections (it has a compose
-# healthcheck, but we want the data path ready before restoring).
-wait_for_postgres_ready() {
-    local pg_user="$1" pg_db="$2" i
-    for i in $(seq 1 30); do
-        docker exec "$PG_CONTAINER" pg_isready -U "$pg_user" -d "$pg_db" >/dev/null 2>&1 && return 0
-        sleep 2
-    done
-    return 1
-}
-
-# Restore the snapshot's db.sql.gz so the data matches the rolled-back release.
-# Must run with Postgres UP but the app DOWN (no writers): we drop + recreate the
-# DB and reload the plain dump onto a clean schema, avoiding clashes with tables
-# the newer release's migrations may have added. Guarded by --skip-db-restore,
-# the absence of a dump, and an explicit destructive-overwrite confirmation.
-maybe_restore_database() {
-    if [[ "$SKIP_DB_RESTORE" == true ]]; then
-        warn "DB restore skipped (--skip-db-restore) — app rolled back onto current data."
-        return 0
-    fi
-    local dump="$TARGET_DIR/db.sql.gz"
-    if [[ ! -f "$dump" ]]; then
-        warn "Snapshot has no db.sql.gz — app-only rollback (database left as-is)."
-        return 0
-    fi
-
-    local pg_user pg_db
-    pg_user="$(env_value POSTGRES_USER)"
-    pg_db="$(env_value POSTGRES_DB)"
-    [[ -n "$pg_user" && -n "$pg_db" ]] || {
-        err "POSTGRES_USER/POSTGRES_DB missing from restored .env — cannot restore DB."; exit 1; }
-
-    warn "DB RESTORE will OVERWRITE the current '${pg_db}' database with the snapshot's data."
-    warn "This is destructive and cannot be undone — current data will be lost."
-    if ! confirm "Restore database '${pg_db}' from snapshot $(basename "$TARGET_DIR")?"; then
-        warn "Database restore declined — continuing with app-only rollback (data left as-is)."
-        warn "(pass --skip-db-restore to silence this prompt next time)"
-        return 0
-    fi
-
-    write_step "Bringing up Postgres only for restore"
-    docker compose up -d postgres
-    wait_for_postgres_ready "$pg_user" "$pg_db" || {
-        err "Postgres did not become ready in time — aborting before restore."; exit 1; }
-
-    write_step "Restoring database '${pg_db}' from $(basename "$dump")"
-    docker exec "$PG_CONTAINER" psql -v ON_ERROR_STOP=1 -U "$pg_user" -d postgres \
-        -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${pg_db}' AND pid <> pg_backend_pid();" >/dev/null
-    docker exec "$PG_CONTAINER" psql -v ON_ERROR_STOP=1 -U "$pg_user" -d postgres \
-        -c "DROP DATABASE IF EXISTS \"${pg_db}\";"
-    docker exec "$PG_CONTAINER" psql -v ON_ERROR_STOP=1 -U "$pg_user" -d postgres \
-        -c "CREATE DATABASE \"${pg_db}\" OWNER \"${pg_user}\";"
-    if gunzip -c "$dump" | docker exec -i "$PG_CONTAINER" psql -v ON_ERROR_STOP=1 -U "$pg_user" "$pg_db" >/dev/null; then
-        printf 'Database restored from %s\n' "$(basename "$dump")"
-    else
-        err "Database restore FAILED — '${pg_db}' may be inconsistent. Investigate before"
-        err "bringing the app up; you may need to re-run the rollback."
-        exit 1
-    fi
-}
-
-select_snapshot_interactively() {
-    mapfile -t entries < <(find "$ROLLBACK_DIR" -mindepth 1 -maxdepth 1 -type d | sort -r)
-    [[ ${#entries[@]} -gt 0 ]] || { echo "No rollback snapshots found in $ROLLBACK_DIR" >&2; exit 1; }
-    echo "Available rollback snapshots:"
-    local display=() entry version
-    for entry in "${entries[@]}"; do
-        version="unknown"
-        [[ -f "$entry/version.json" ]] && version="$(read_json_value "$entry/version.json" '.version // "unknown"')"
-        display+=("$(basename "$entry") | version=$version")
-    done
-    select choice in "${display[@]}"; do
-        [[ -n "${choice:-}" ]] && { TARGET_DIR="${entries[$((REPLY-1))]}"; break; }
-        echo "Invalid selection"
-    done
 }
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --rollback-dir) TARGET_DIR="$(cd "$2" && pwd)"; shift 2 ;;
-        --skip-down) SKIP_DOWN=true; shift ;;
-        --skip-load) SKIP_LOAD=true; shift ;;
-        --skip-checks) SKIP_CHECKS=true; shift ;;
-        --skip-db-restore) SKIP_DB_RESTORE=true; shift ;;
-        --help|-h) usage; exit 0 ;;
-        *) printf 'Unknown argument: %s\n' "$1" >&2; usage >&2; exit 1 ;;
+        --dev|--prod|--monitor)
+            [[ -z "$STACK" ]] || { err "only one stack may be selected"; exit 1; }
+            STACK="$(resolve_stack "$1")" || exit 1; shift ;;
+        --list|-l)     LIST_ONLY=true; REMOTE_ARGS+=(--list); shift ;;
+        --to)          [[ -n "${2:-}" ]] || { err "--to needs a version"; exit 1; }
+                       REMOTE_ARGS+=(--to "$2"); shift 2 ;;
+        --latest)      REMOTE_ARGS+=(--latest); shift ;;
+        --restore-db)  RESTORE_DB=true; REMOTE_ARGS+=(--restore-db); shift ;;
+        --yes|-y)      ASSUME_YES=true; REMOTE_ARGS+=(--yes); shift ;;
+        --skip-checks) REMOTE_ARGS+=(--skip-checks); shift ;;
+        --help|-h)     usage; exit 0 ;;
+        *) err "unknown argument: $1"; usage >&2; exit 1 ;;
     esac
 done
 
-command -v docker >/dev/null || { echo "docker is required" >&2; exit 1; }
-command -v jq >/dev/null || { echo "jq is required" >&2; exit 1; }
-command -v curl >/dev/null || { echo "curl is required" >&2; exit 1; }
+[[ -n "$STACK" ]] || { err "a stack is required: --dev, --prod or --monitor"; usage >&2; exit 1; }
+command -v ssh >/dev/null || { err "ssh is required"; exit 1; }
 
-assert_dir "$ACTIVE_DIR" "Active deployment directory"
-assert_dir "$ROLLBACK_DIR" "Rollback directory"
+REMOTE_DIR="$(stack_dir "$STACK")"
+assert_safe_remote_dir "$REMOTE_DIR" || exit 1
+ROLLBACK_NAME="$(stack_attr "$STACK" rollback)"
+VERSION_NAME="$(stack_attr "$STACK" version_file)"
 
-[[ -z "$TARGET_DIR" ]] && select_snapshot_interactively
+banner "ROLLBACK · $STACK"
+field "remote" "${BOE_SSH_ALIAS}:${REMOTE_DIR}"
+field "script" "$ROLLBACK_NAME"
 
-assert_dir "$TARGET_DIR" "Selected rollback bundle"
-assert_file "$TARGET_DIR/docker-compose.yml" "Rollback compose file"
-assert_file "$TARGET_DIR/version.json" "Rollback version file"
-assert_file "$TARGET_DIR/.env" "Rollback environment file"
-assert_file "$TARGET_DIR/backend.tar.gz" "Rollback backend archive"
-assert_file "$TARGET_DIR/landing.tar.gz" "Rollback landing archive"
-assert_compose_persistence_contract "$TARGET_DIR/docker-compose.yml" "Rollback compose file"
+# ── preflight ───────────────────────────────────────────────────────────────
+section "PREFLIGHT"
 
-target_version="$(resolve_snapshot_version "$TARGET_DIR")"
-[[ -n "$target_version" ]] || { printf 'Selected snapshot has no usable version metadata: %s\n' "$TARGET_DIR" >&2; exit 1; }
+step "checking SSH connectivity"
+boe_ssh true 2>/dev/null || { err "cannot reach $BOE_SSH_ALIAS over SSH"; exit 1; }
+ok "SSH ok"
 
-write_step "Restoring previous release"
-printf 'Selected snapshot: %s\nVersion: %s\n' "$TARGET_DIR" "$target_version"
+step "checking the remote stack is provisioned"
+PRE="$(boe_ssh "bash -s -- '$REMOTE_DIR' '$ROLLBACK_NAME' '$BOE_BACKUP_MOUNT' '$BOE_BACKUP_ROOT'" <<'REMOTE' || true
+set -u
+d="$1"; script="$2"; mount="$3"; broot="$4"
+printf 'script_present=%s\n'  "$([[ -x "$d/$script" ]] && echo yes || echo no)"
+printf 'paths_present=%s\n'   "$([[ -f "$d/paths.json" ]] && echo yes || echo no)"
+printf 'lib_present=%s\n'     "$([[ -f "$d/_boe_lib.sh" ]] && echo yes || echo no)"
+printf 'backup_mounted=%s\n'  "$(mountpoint -q "$mount" && echo yes || echo no)"
+printf 'backup_writable=%s\n' "$([[ -w "$broot" ]] && echo yes || echo no)"
+printf 'docker_ok=%s\n'       "$(docker info >/dev/null 2>&1 && echo yes || echo no)"
+REMOTE
+)"
+get_flag() { printf '%s\n' "$PRE" | sed -n "s/^$1=//p" | tail -n1; }
 
-copy_snapshot_into_active "$TARGET_DIR"
+if [[ "$(get_flag script_present)" != "yes" ]]; then
+    err "$REMOTE_DIR/$ROLLBACK_NAME is not present or not executable on the VPS"
+    err "ship the stack at least once first: ./release_manager/deploy.sh --${STACK%%_*} --ship-only"
+    exit 1
+fi
+[[ "$(get_flag paths_present)" == "yes" ]] || { err "remote paths.json missing — ship the stack first"; exit 1; }
+[[ "$(get_flag lib_present)"   == "yes" ]] || { err "remote _boe_lib.sh missing — ship the stack first"; exit 1; }
+[[ "$(get_flag docker_ok)"     == "yes" ]] || { err "docker not usable on the VPS"; exit 1; }
+ok "remote stack is provisioned"
 
-pushd "$ACTIVE_DIR" >/dev/null
-trap 'popd >/dev/null' EXIT
+[[ "$(get_flag backup_mounted)" == "yes" ]] || { err "backup disk not mounted at $BOE_BACKUP_MOUNT — rollback artifacts are unreadable"; exit 1; }
+if [[ "$(get_flag backup_writable)" != "yes" ]]; then
+    err "$BOE_BACKUP_ROOT is not writable by the deploy user on the VPS"
+    err "rollback needs to write a pre-rollback snapshot and a log. Fix once:"
+    err "    sudo chown -R beonedge:beonedge $BOE_BACKUP_ROOT"
+    err "See release_manager/OPERATOR_MANUAL_STEPS.md §1."
+    exit 1
+fi
+ok "backup tree ready"
 
-write_step "Checking Docker availability"
-docker version >/dev/null
-docker compose version >/dev/null
-assert_compose_persistence_contract "$ACTIVE_COMPOSE_FILE" "Active compose file"
-assert_runtime_state_markers "Rollback"
+CURRENT="$(boe_ssh "jq -r '.version // empty' '$REMOTE_DIR/$VERSION_NAME' 2>/dev/null" || true)"
+field "currently deployed" "${CURRENT:-<none>}"
 
-if [[ "$SKIP_DOWN" == false ]]; then
-    write_step "Stopping existing stack"
-    docker compose down
+# ── warn loudly about database restoration ──────────────────────────────────
+if [[ "$RESTORE_DB" == true ]]; then
+    printf '\n'
+    warn "--restore-db requested"
+    warn "This will DROP and recreate the ${STACK} database from a snapshot."
+    warn "Every transaction committed after that snapshot will be lost."
+    warn "The remote script will back up the current database first and will"
+    warn "require you to type RESTORE before proceeding."
+    if [[ "$ASSUME_YES" != true && "$UI_INTERACTIVE" == true ]]; then
+        confirm "Continue to the remote database-restore prompt?" || { warn "aborted"; exit 0; }
+    fi
 fi
 
-if [[ "$SKIP_LOAD" == false ]]; then
-    write_step "Loading images"
-    docker load -i "$ACTIVE_DIR/images/backend.tar.gz"
-    docker load -i "$ACTIVE_DIR/images/landing.tar.gz"
+if [[ "$LIST_ONLY" != true && "$ASSUME_YES" != true && "$UI_INTERACTIVE" == true ]]; then
+    confirm "Run $ROLLBACK_NAME on $BOE_SSH_ALIAS for $STACK?" || { warn "aborted"; exit 0; }
 fi
 
-# Restore DATA before the app comes up (Postgres up, writers down). No-op when
-# the snapshot has no dump or --skip-db-restore is set.
-maybe_restore_database
+# ── hand off to the VPS-native rollback script ──────────────────────────────
+section "REMOTE ROLLBACK" "all docker work happens on the VPS from here"
 
-write_step "Starting restored stack"
-docker compose up -d
-docker compose ps
+boe_ssh_opts
+printf '\n'
+if ssh -t "${BOE_SSH_OPTS[@]}" "$BOE_SSH_ALIAS" \
+        "cd '$REMOTE_DIR' && ./'$ROLLBACK_NAME' ${REMOTE_ARGS[*]:-}"; then
+    REMOTE_RC=0
+else
+    REMOTE_RC=$?
+fi
+printf '\n'
 
-if [[ "$SKIP_CHECKS" == false ]]; then
-    write_step "Running local health checks"
-    backend_port="$(env_value BACKEND_PORT)"; backend_port="${backend_port:-47502}"
-    landing_port="$(env_value LANDING_PORT)"; landing_port="${landing_port:-3100}"
-    invoke_health_check "http://localhost:${backend_port}/health" "Backend"
-    invoke_health_check "http://localhost:${landing_port}/" "Landing"
+[[ "$LIST_ONLY" == true ]] && exit "$REMOTE_RC"
+
+# ── reconcile the local ledger ──────────────────────────────────────────────
+section "RECONCILE"
+
+NOW="$(boe_ssh "jq -r '.version // empty' '$REMOTE_DIR/$VERSION_NAME' 2>/dev/null" || true)"
+STATUS="$(boe_ssh "jq -r '.status // empty' '$REMOTE_DIR/$VERSION_NAME' 2>/dev/null" || true)"
+
+mkdir -p "$RM_DIR/state"
+LEDGER="$RM_DIR/state/versions.json"
+[[ -s "$LEDGER" ]] || printf '{}\n' > "$LEDGER"
+tmp="$(mktemp "${LEDGER}.XXXXXX")"
+jq --arg stack "$STACK" --arg deployed "${NOW:-}" --arg status "${STATUS:-unknown}" \
+   --arg from "${CURRENT:-}" --arg at "$(date -Is)" \
+   '.[$stack] = ((.[$stack] // {}) + {deployed: $deployed, status: $status,
+                                      rolled_back_from: $from, rolled_back_at: $at})' \
+   "$LEDGER" > "$tmp" && mv "$tmp" "$LEDGER"
+
+field "was"    "${CURRENT:-<none>}"
+field "now"    "${NOW:-<unknown>}"
+field "status" "${STATUS:-<unknown>}"
+
+if (( REMOTE_RC != 0 )); then
+    err "remote rollback exited with status $REMOTE_RC"
+    exit "$REMOTE_RC"
 fi
 
-write_json_version "$ACTIVE_DIR/current-version.json" "$target_version"
-write_step "Rollback completed"
-printf 'Active version: %s\n' "$target_version"
-warn "Local deploy is now an OLDER release ($target_version) — it intentionally"
-warn "diverges from remote main. Do not ship from this state; re-deploy a current"
-warn "release once the incident is resolved (deploy.sh's ship gate enforces this)."
+banner "ROLLED BACK"
+field "stack" "$STACK"
+field "version" "${NOW:-<unknown>}"
+printf '\n'

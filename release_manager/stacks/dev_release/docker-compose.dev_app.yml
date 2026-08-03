@@ -1,0 +1,340 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.dev_app.yml — BeOnEdge DEVELOPMENT application stack.
+#
+# Runs on the VPS at /srv/dev_stack/BOE_APP/dev_release.
+# Brought up exclusively by ./dev_deploy.sh (never by hand), which supplies
+# --env-file and --project-name.
+#
+# NETWORK CONTRACT
+#   • Every published port binds to 127.0.0.1 only. Host nginx is the sole
+#     public entry point; nothing here is reachable from the LAN or internet.
+#   • Postgres has NO host port binding at all. It is only reachable over the
+#     internal Docker network. (This also avoids the host postgres already
+#     listening on 127.0.0.1:5432.)
+#   • dev_internal is `internal: true`, so the database has no route off-host.
+#
+# IMAGE CONTRACT
+#   Images are never built here. They arrive as tarballs and are loaded by
+#   dev_deploy.sh, then referenced by the exact version in BOE_VERSION.
+#   No `:latest` anywhere — a rollback must be able to name a precise image.
+#
+# STARTUP ORDER
+#   postgres (healthy) → migrate (completed) → seed (completed) → backend
+#   → workers + frontends. Enforced by depends_on conditions, so a single
+#   `up -d` is correct and migrations always run before the backend serves.
+#
+# WORKERS
+#   payments/email/sips workers are the SAME backend image with different
+#   commands. Without them a paid order never confirms or books, and SIP
+#   installments are never generated. They are not optional.
+# ─────────────────────────────────────────────────────────────────────────────
+
+x-security: &security
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  init: true
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
+
+x-worker-health: &worker-health
+  test: ["CMD-SHELL", "test -f /tmp/boe-worker-ready"]
+  interval: 5s
+  timeout: 2s
+  retries: 3
+  start_period: 30s
+
+x-backend-env: &backend-env
+  NODE_ENV: ${NODE_ENV:-production}
+  HOST: 0.0.0.0
+  PORT: ${BACKEND_PORT}
+  PROVIDER_MODE: ${PROVIDER_MODE:-live}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+
+  DATA_STORE: postgres
+  DB_DRIVER: postgres
+  DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+  DATABASE_HOST: postgres
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: ${POSTGRES_DB}
+  DATABASE_USER: ${POSTGRES_USER}
+  DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+  DATABASE_SSL: "false"
+  MIGRATIONS_DIR: ./db/migrations
+
+  PUBLIC_API_BASE_URL: ${PUBLIC_API_BASE_URL}
+  PUBLIC_LANDING_ORIGIN: ${PUBLIC_LANDING_ORIGIN}
+  CORS_ORIGIN: ${CORS_ORIGIN}
+  WEB_ORIGIN_ALLOWLIST: ${WEB_ORIGIN_ALLOWLIST:-${CORS_ORIGIN}}
+  WEB_COOKIE_SECURE: ${WEB_COOKIE_SECURE:-true}
+
+  ACCESS_TOKEN_SECRET: ${ACCESS_TOKEN_SECRET}
+  REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET}
+  ALLOW_DEV_AUTH: "false"
+  ACCESS_TOKEN_ISSUER: ${ACCESS_TOKEN_ISSUER}
+  ACCESS_TOKEN_AUDIENCE: ${ACCESS_TOKEN_AUDIENCE}
+  ACCESS_TOKEN_CURRENT_KID: ${ACCESS_TOKEN_CURRENT_KID}
+  ACCESS_TOKEN_SIGNING_KEY: ${ACCESS_TOKEN_SIGNING_KEY}
+  ACCESS_TOKEN_VERIFICATION_KEYS: ${ACCESS_TOKEN_VERIFICATION_KEYS}
+  REFRESH_HMAC_KEY: ${REFRESH_HMAC_KEY}
+  REFRESH_KEY_VERSION: ${REFRESH_KEY_VERSION:-rt1}
+  CSRF_KEY_VERSION: ${CSRF_KEY_VERSION:-cs1}
+  CURSOR_HMAC_KEY: ${CURSOR_HMAC_KEY}
+
+  CRYPTO_TOKEN_HASH_KEY: ${CRYPTO_TOKEN_HASH_KEY}
+  CRYPTO_TOKEN_HASH_KEY_VERSION: ${CRYPTO_TOKEN_HASH_KEY_VERSION:-tk1}
+  CRYPTO_CONSENT_IP_HMAC_KEY: ${CRYPTO_CONSENT_IP_HMAC_KEY}
+  CRYPTO_CONSENT_IP_HMAC_KEY_VERSION: ${CRYPTO_CONSENT_IP_HMAC_KEY_VERSION:-ck1}
+  CRYPTO_RECIPIENT_HMAC_KEY: ${CRYPTO_RECIPIENT_HMAC_KEY}
+  CRYPTO_RECIPIENT_HMAC_KEY_VERSION: ${CRYPTO_RECIPIENT_HMAC_KEY_VERSION:-rk1}
+  CRYPTO_RECIPIENT_ENC_KEY: ${CRYPTO_RECIPIENT_ENC_KEY}
+  CRYPTO_RECIPIENT_ENC_KEY_VERSION: ${CRYPTO_RECIPIENT_ENC_KEY_VERSION:-ek1}
+
+  PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-manual}
+  PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET}
+  PAYMENT_GATEWAY_KEY_ID: ${PAYMENT_GATEWAY_KEY_ID}
+  PAYMENT_GATEWAY_KEY_SECRET: ${PAYMENT_GATEWAY_KEY_SECRET}
+  PAYMENT_ATTEMPT_TTL_MS: ${PAYMENT_ATTEMPT_TTL_MS:-900000}
+
+  KYC_EMAIL_FROM: ${KYC_EMAIL_FROM}
+  EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST}
+  EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
+  EMAIL_SMTP_USER: ${EMAIL_SMTP_USER}
+  EMAIL_SMTP_PASSWORD: ${EMAIL_SMTP_PASSWORD}
+  EMAIL_SMTP_SECURE: ${EMAIL_SMTP_SECURE:-false}
+  EMAIL_WORKER_CLAIM_LIMIT: ${EMAIL_WORKER_CLAIM_LIMIT:-25}
+  EMAIL_WORKER_LEASE_MS: ${EMAIL_WORKER_LEASE_MS:-60000}
+
+  KYC_CODE_TTL_MS: ${KYC_CODE_TTL_MS:-600000}
+  KYC_CODE_MAX_ATTEMPTS: ${KYC_CODE_MAX_ATTEMPTS:-5}
+  KYC_RESEND_COOLDOWN_MS: ${KYC_RESEND_COOLDOWN_MS:-60000}
+  KYC_VALIDITY_MS: ${KYC_VALIDITY_MS:-31536000000}
+
+  APP_ACTIVATION_URL: ${APP_ACTIVATION_URL}
+  SUPPORT_EMAIL: ${SUPPORT_EMAIL}
+  SIGNUP_ALLOWED_ORIGIN: ${PUBLIC_LANDING_ORIGIN}
+  SIGNUP_PROXY_SECRET: ${SIGNUP_PROXY_SECRET}
+
+  ADMIN_USER_ID: ${ADMIN_USER_ID}
+  ADMIN_LOGIN_ID: ${ADMIN_LOGIN_ID}
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+  ADMIN_FIRST_NAME: ${ADMIN_FIRST_NAME:-BeOnEdge}
+  ADMIN_LAST_NAME: ${ADMIN_LAST_NAME:-Admin}
+  ADMIN_PHONE: ${ADMIN_PHONE:-+910000000001}
+
+  SEED_AUTH_ENABLED: ${SEED_AUTH_ENABLED:-true}
+  SEED_AUTH_ALLOW_PRODUCTION: ${SEED_AUTH_ALLOW_PRODUCTION:-true}
+  SEED_AUTH_OVERWRITE: ${SEED_AUTH_OVERWRITE:-false}
+  SEED_ADMIN_EMAIL: ${ADMIN_LOGIN_ID}
+  SEED_ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+  SEED_CLIENT_EMAIL: ${SEED_CLIENT_EMAIL}
+  SEED_CLIENT_PASSWORD: ${SEED_CLIENT_PASSWORD}
+
+services:
+  # ── database ──────────────────────────────────────────────────────────────
+  # No `ports:` on purpose. Reachable only as `postgres:5432` on dev_internal.
+  # Not read_only: postgres requires writable storage.
+  postgres:
+    image: postgres:16-alpine
+    container_name: ${BOE_CONTAINER_PREFIX:-boe-dev}-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - dev_postgres_data:/var/lib/postgresql/data
+    networks:
+      - dev_internal
+    security_opt:
+      - no-new-privileges:true
+    init: true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ── schema migrations (one-shot, gates the backend) ───────────────────────
+  migrate:
+    image: boe-dev-backend:${BOE_VERSION}
+    container_name: ${BOE_CONTAINER_PREFIX:-boe-dev}-migrate
+    <<: *security
+    command: ["npm", "run", "migrate"]
+    environment: *backend-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - dev_internal
+    restart: "no"
+
+  # ── admin/user seeding (one-shot) ─────────────────────────────────────────
+  seed:
+    image: boe-dev-backend:${BOE_VERSION}
+    container_name: ${BOE_CONTAINER_PREFIX:-boe-dev}-seed
+    <<: *security
+    command: ["npm", "run", "seed:auth"]
+    environment: *backend-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - dev_internal
+    restart: "no"
+
+  # ── shared backend (serves app + admin + landing) ─────────────────────────
+  backend:
+    image: boe-dev-backend:${BOE_VERSION}
+    container_name: ${BOE_CONTAINER_PREFIX:-boe-dev}-backend
+    <<: *security
+    restart: unless-stopped
+    environment: *backend-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:${BACKEND_PORT}:${BACKEND_PORT}"
+    networks:
+      - dev_frontend
+      - dev_internal
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:'+process.env.PORT+'/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  # ── background workers (same image, different entrypoints) ────────────────
+  payments-worker:
+    image: boe-dev-backend:${BOE_VERSION}
+    container_name: ${BOE_CONTAINER_PREFIX:-boe-dev}-payments-worker
+    <<: *security
+    restart: unless-stopped
+    command: ["sh", "-ec", "rm -f /tmp/boe-worker-ready; while true; do node dist/paymentWorker.js; touch /tmp/boe-worker-ready; sleep ${PAYMENT_WORKER_INTERVAL_SECONDS:-20}; done"]
+    environment: *backend-env
+    healthcheck: *worker-health
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    networks:
+      - dev_internal
+
+  email-worker:
+    image: boe-dev-backend:${BOE_VERSION}
+    container_name: ${BOE_CONTAINER_PREFIX:-boe-dev}-email-worker
+    <<: *security
+    restart: unless-stopped
+    command: ["sh", "-ec", "rm -f /tmp/boe-worker-ready; while true; do node dist/emailWorker.js; touch /tmp/boe-worker-ready; sleep ${EMAIL_WORKER_INTERVAL_SECONDS:-15}; done"]
+    environment: *backend-env
+    healthcheck: *worker-health
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    networks:
+      - dev_internal
+
+  sips-worker:
+    image: boe-dev-backend:${BOE_VERSION}
+    container_name: ${BOE_CONTAINER_PREFIX:-boe-dev}-sips-worker
+    <<: *security
+    restart: unless-stopped
+    command: ["sh", "-ec", "rm -f /tmp/boe-worker-ready; while true; do node dist/sipWorker.js; touch /tmp/boe-worker-ready; sleep ${SIP_WORKER_INTERVAL_SECONDS:-300}; done"]
+    environment: *backend-env
+    healthcheck: *worker-health
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    networks:
+      - dev_internal
+
+  # ── development landing site (dev.beonedge.in) ─────────────────────────────────────
+  landing:
+    image: boe-dev-landing:${BOE_VERSION}
+    container_name: ${BOE_CONTAINER_PREFIX:-boe-dev}-landing
+    <<: *security
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m
+    environment:
+      NODE_ENV: production
+      PORT: ${LANDING_PORT}
+      HOSTNAME: 0.0.0.0
+      BEO_API_BASE: http://backend:${BACKEND_PORT}
+      SIGNUP_PROXY_SECRET: ${SIGNUP_PROXY_SECRET}
+      SIGNUP_ALLOWED_ORIGIN: ${PUBLIC_LANDING_ORIGIN}
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${LANDING_PORT}:${LANDING_PORT}"
+    networks:
+      - dev_frontend
+
+  # ── user SPA (dev-app.beonedge.in) ────────────────────────────────────────────
+  # Static nginx-served bundle. Its API origin is baked in at BUILD time, so a
+  # change of origin requires a rebuild, not an env edit.
+  app_frontend:
+    image: boe-dev-app:${BOE_VERSION}
+    container_name: ${BOE_CONTAINER_PREFIX:-boe-dev}-app
+    <<: *security
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${APP_FRONTEND_PORT}:8080"
+    networks:
+      - dev_frontend
+
+  # ── admin SPA (dev-admin.beonedge.in) ─────────────────────────────────────────
+  # Same Dockerfile as app_frontend, built with a different app target.
+  # Authorization is enforced server-side; serving admin on its own hostname is
+  # isolation, never an authorization boundary.
+  admin_frontend:
+    image: boe-dev-admin:${BOE_VERSION}
+    container_name: ${BOE_CONTAINER_PREFIX:-boe-dev}-admin
+    <<: *security
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${ADMIN_FRONTEND_PORT}:8080"
+    networks:
+      - dev_frontend
+
+networks:
+  # Reachable from the host loopback via published ports; fronted by nginx.
+  dev_frontend:
+    name: ${COMPOSE_PROJECT_NAME:-boe_dev}_frontend
+  # internal: true — no gateway, no route off-host. The database lives here.
+  dev_internal:
+    name: ${COMPOSE_PROJECT_NAME:-boe_dev}_internal
+    internal: true
+
+volumes:
+  dev_postgres_data:
+    name: ${COMPOSE_PROJECT_NAME:-boe_dev}_postgres_data
+    driver: local

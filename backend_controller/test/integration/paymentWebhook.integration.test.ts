@@ -14,7 +14,7 @@ import { beginPayment } from "../../src/domain/client/beginPayment.js"
 import { createOrder } from "../../src/domain/client/createOrder.js"
 import { dispatchPayment } from "../../src/domain/client/settlePayment.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
-import { createHoldingRepository } from "../../src/repositories/holdingRepository.js"
+import { createInvestorLedgerRepository } from "../../src/repositories/investorLedgerRepository.js"
 import { createNotificationRepository } from "../../src/repositories/notificationRepository.js"
 import { createOrderRepository } from "../../src/repositories/orderRepository.js"
 import { createOutboxRepository } from "../../src/repositories/outboxRepository.js"
@@ -35,7 +35,7 @@ let fundId: string
 
 const orderRepository = createOrderRepository()
 const paymentRepository = createPaymentRepository()
-const holdingRepository = createHoldingRepository()
+const investorLedgerRepository = createInvestorLedgerRepository()
 const notificationRepository = createNotificationRepository()
 const outboxRepository = createOutboxRepository()
 const userRepository = createUserRepository()
@@ -56,7 +56,7 @@ const beginDeps = {
 const advanceDeps = {
   paymentRepository,
   orderRepository,
-  holdingRepository,
+  investorLedgerRepository,
   notificationRepository,
   auditRepository,
   clock,
@@ -107,11 +107,8 @@ beforeAll(async () => {
     idleTimeoutMs: 10_000,
   })
   const directory = fileURLToPath(new URL("../../db/migrations", import.meta.url))
-  const all = await loadMigrationFiles(directory)
-  await runMigrations(
-    pool,
-    all.filter((file) => file.version >= "009"),
-  )
+  const migrations = await loadMigrationFiles(directory)
+  await runMigrations(pool, migrations)
   await runSeed(pool)
   const database = createDatabase(pool)
   uow = createUnitOfWork(database)
@@ -120,7 +117,7 @@ beforeAll(async () => {
     unitOfWork: uow,
     paymentRepository,
     orderRepository,
-    holdingRepository,
+    investorLedgerRepository,
     notificationRepository,
     auditRepository,
     clock,
@@ -181,11 +178,12 @@ describe("payment webhook confirmation checkpoint (integration)", () => {
 
     const order = await pool.query<{ state: string }>("select state from investment_orders where id = $1", [orderId])
     expect(order.rows[0]?.state).toBe("booked")
-    const holding = await pool.query<{ total_units: string }>(
-      "select total_units from holdings where user_id = $1 and fund_id = $2",
+    // Option B: the confirmed payment appears as one contribution ledger entry.
+    const holding = await pool.query<{ value_delta_paise: string }>(
+      "select value_delta_paise from investor_ledger_entries where user_id = $1 and fund_id = $2",
       [userId, fundId],
     )
-    expect(holding.rows[0]?.total_units).toBe("100.00000000")
+    expect(holding.rows[0]?.value_delta_paise).toBe("200000")
   })
 
   test("a signed success is idempotent on replay", async () => {
@@ -197,7 +195,7 @@ describe("payment webhook confirmation checkpoint (integration)", () => {
     expect(dataOf<{ outcome: string }>(replay).outcome).toBe("already_booked")
 
     const executions = await pool.query<{ c: number }>(
-      "select count(*)::int as c from investment_executions where order_id = (select order_id from payments where id = $1)",
+      "select count(*)::int as c from investor_ledger_entries where order_id = (select order_id from payments where id = $1)",
       [paymentId],
     )
     expect(executions.rows[0]?.c).toBe(1)

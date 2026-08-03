@@ -1,0 +1,15 @@
+**/node_modules
+**/.next
+**/dist
+**/coverage
+**/.gradle
+**/build
+**/.env
+**/.env.*
+**/local.properties
+**/*.jks
+**/*.keystore
+**/*.p12
+**/*.pfx
+**/*.log
+.git

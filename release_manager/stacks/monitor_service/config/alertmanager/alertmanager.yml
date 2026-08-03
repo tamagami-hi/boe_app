@@ -1,0 +1,90 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# alertmanager.yml — alert routing.
+#
+# Ships with a null receiver so the monitoring stack deploys and runs before any
+# notification channel exists. Alerts are visible in Grafana and the Alertmanager
+# UI immediately; wire a real receiver when you are ready.
+#
+# Secrets (SMTP password, Telegram token, Slack webhook) must never be written
+# in this shipped file. Keep configured values in monitor_service/.env and wire
+# them through Compose or an Alertmanager *_file option before enabling a
+# receiver.
+# ─────────────────────────────────────────────────────────────────────────────
+
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: null-receiver
+  group_by: ["alertname", "severity", "environment"]
+  # Wait briefly before the first notification so a burst of related alerts
+  # (a stack going down takes several endpoints with it) arrives as one message.
+  group_wait: 45s
+  group_interval: 5m
+  repeat_interval: 4h
+
+  routes:
+    # Critical production alerts: notify fast, repeat often.
+    - matchers:
+        - severity = "critical"
+      receiver: null-receiver
+      group_wait: 15s
+      repeat_interval: 1h
+      continue: false
+
+    # Development warnings are informational; batch them.
+    - matchers:
+        - environment = "development"
+        - severity = "warning"
+      receiver: null-receiver
+      group_wait: 5m
+      repeat_interval: 24h
+
+inhibit_rules:
+  # If a whole endpoint is down, suppress the derived alerts it causes. Without
+  # this, one outage produces a dozen notifications and the real cause is buried.
+  - source_matchers:
+      - alertname = "ProductionEndpointDown"
+    target_matchers:
+      - alertname = "ProductionBackendNotReady"
+    equal: ["environment"]
+
+  - source_matchers:
+      - alertname = "PostgresDown"
+    target_matchers:
+      - alertname =~ "Postgres(ConnectionsHigh|Deadlocks)"
+    equal: ["environment"]
+
+  # A critical alert supersedes the warning-level version of the same thing.
+  - source_matchers:
+      - severity = "critical"
+    target_matchers:
+      - severity = "warning"
+    equal: ["alertname", "instance"]
+
+receivers:
+  - name: null-receiver
+
+  # ── example receivers — configure one, then point `route.receiver` at it ───
+  #
+  # Email. Wire a secret from monitor_service/.env before enabling this receiver:
+  #
+  # - name: email
+  #   email_configs:
+  #     - to: ops@beonedge.in
+  #       from: alerts@beonedge.in
+  #       smarthost: smtp.example.com:587
+  #       auth_username: alerts@beonedge.in
+  #       auth_password_file: /run/secrets/smtp_password
+  #       send_resolved: true
+  #
+  # Telegram:
+  #
+  # - name: telegram
+  #   telegram_configs:
+  #     - bot_token_file: /run/secrets/telegram_token
+  #       chat_id: -1000000000000
+  #       send_resolved: true
+  #
+  # Never inline a token here. Never include user data or secrets in an alert
+  # body — alert notifications travel over third-party infrastructure.

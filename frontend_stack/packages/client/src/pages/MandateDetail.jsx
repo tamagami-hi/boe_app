@@ -1,49 +1,101 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import AppBar from '../layout/AppBar.jsx';
 import Skeleton from '@beonedge/shared/components/Skeleton.jsx';
 import * as ordersApi from '../services/ordersApi.js';
 import { fmtMoney, fmtDate } from '../utils/format.js';
 
+// A mandate is the standing debit authority behind one or more SIP plans. The
+// plans are what can be paused, resumed or cancelled, and those controls apply
+// immediately — there is no approval queue in between, so this screen shows the
+// resulting plan state rather than a pending request.
+
+const STATUS_LABEL = {
+  created: 'Setup pending',
+  pending_user_authorization: 'Awaiting your approval',
+  active: 'Active',
+  paused: 'Paused',
+  revoked: 'Revoked',
+  failed: 'Failed',
+  expired: 'Expired',
+};
+
+const PLAN_BADGE = { active: 'be-badge-active', paused: 'be-badge-paused', draft: 'be-badge-paused' };
+
 export default function MandateDetail() {
   const { mandateId } = useParams();
   const navigate = useNavigate();
   const [mandate, setMandate] = useState(null);
-  const [order, setOrder] = useState(null);
-  const [requests, setRequests] = useState([]);
-  const [confirm, setConfirm] = useState(null); // { type, value }
-  const [submitting, setSubmitting] = useState(false);
-  const [newAmount, setNewAmount] = useState('');
+  const [plans, setPlans] = useState([]);
+  const [confirm, setConfirm] = useState(null); // { action, planId }
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [notFound, setNotFound] = useState(false);
 
-  useEffect(() => {
-    ordersApi.getMandate(mandateId).then(async (m) => {
-      setMandate(m);
-      if (m?.orderId) {
-        const o = await ordersApi.getOrder(m.orderId);
-        setOrder(o);
-        setNewAmount(o?.amount ?? '');
-        ordersApi.listSipControlRequests(m.orderId).then(setRequests).catch(() => setRequests([]));
+  const load = useCallback(async () => {
+    try {
+      const found = await ordersApi.getMandate(mandateId);
+      setMandate(found ?? null);
+      if (!found) {
+        setNotFound(true);
+        return;
       }
-    }).catch(() => setMandate(null));
+      const allPlans = await ordersApi.listSips();
+      setPlans(allPlans.filter((plan) => plan.mandateId === mandateId));
+    } catch (loadError) {
+      setNotFound(true);
+      setError(loadError?.message || 'This mandate could not be loaded.');
+    }
   }, [mandateId]);
 
-  if (!mandate) return (<><AppBar title="Mandate" /><div className="apk-screen"><Skeleton variant="card" height={200} /></div></>);
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  const isRazorpayPending = mandate.provider === 'razorpay' && !mandate.providerMandateId;
-
-  async function submitRequest() {
-    if (!confirm || !order) return;
-    setSubmitting(true);
-    const requestedAmount = newAmount === '' ? null : Number(newAmount);
-    const req = await ordersApi.requestSipControl({
-      orderId: order.id,
-      requestType: confirm.type,
-      requestedValue: confirm.type === 'change_amount' && Number.isFinite(requestedAmount) ? requestedAmount : undefined,
-    });
-    setRequests((r) => [req, ...r]);
-    setConfirm(null);
-    setSubmitting(false);
+  async function applyControl() {
+    if (!confirm) return;
+    setBusy(true);
+    setError('');
+    try {
+      await ordersApi.requestSipControl({ orderId: confirm.planId, requestType: confirm.action });
+      setConfirm(null);
+      await load();
+    } catch (controlError) {
+      setError(controlError?.message || 'That change could not be applied.');
+    } finally {
+      setBusy(false);
+    }
   }
+
+  if (notFound) {
+    return (
+      <>
+        <AppBar title="Mandate" />
+        <div className="apk-screen">
+          <div className="be-card apk-empty">
+            <h2 className="apk-h-sm">Mandate unavailable</h2>
+            <p>{error || 'This mandate is no longer available on your account.'}</p>
+            <button type="button" className="be-btn be-btn-secondary" onClick={() => navigate('/app/orders')}>
+              Back to plans
+            </button>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (!mandate) {
+    return (
+      <>
+        <AppBar title="Mandate" />
+        <div className="apk-screen">
+          <Skeleton variant="card" height={200} />
+        </div>
+      </>
+    );
+  }
+
+  const awaitingApproval = mandate.status === 'pending_user_authorization';
 
   return (
     <>
@@ -51,82 +103,143 @@ export default function MandateDetail() {
       <div className="apk-screen">
         <div className="be-card apk-mandate-card">
           <div className="apk-mandate-head">
-            <div className="apk-fund-name">{order?.type === 'sip' ? `SIP · ${fmtMoney(order.amount)}/mo` : 'Mandate'}</div>
+            <div className="apk-fund-name">Auto-debit mandate</div>
             <span className={'be-badge ' + (mandate.status === 'active' ? 'be-badge-active' : 'be-badge-paused')}>
-              <span className="be-badge-dot" />{mandate.status.replace('_', ' ')}
+              <span className="be-badge-dot" />
+              {STATUS_LABEL[mandate.status] || mandate.status}
             </span>
           </div>
-          <div className="apk-sheet-summary-row"><span>Max per cycle</span><strong className="be-money">{fmtMoney(mandate.maxAmount)}</strong></div>
-          {mandate.validTo && <div className="apk-sheet-summary-row"><span>Valid until</span><strong>{fmtDate(mandate.validTo)}</strong></div>}
+          <div className="apk-sheet-summary-row">
+            <span>Max per cycle</span>
+            <strong className="be-money">
+              {fmtMoney(mandate.maxAmountPaise ? Number(mandate.maxAmountPaise) / 100 : mandate.maxAmount)}
+            </strong>
+          </div>
+          <div className="apk-sheet-summary-row">
+            <span>Debit day</span>
+            <strong>{mandate.debitDay ?? '—'}</strong>
+          </div>
+          {mandate.validFrom && (
+            <div className="apk-sheet-summary-row">
+              <span>Active from</span>
+              <strong>{fmtDate(mandate.validFrom)}</strong>
+            </div>
+          )}
+          {mandate.validTo && (
+            <div className="apk-sheet-summary-row">
+              <span>Valid until</span>
+              <strong>{fmtDate(mandate.validTo)}</strong>
+            </div>
+          )}
         </div>
 
-        <div className="be-eyebrow">Manage SIP</div>
-        {isRazorpayPending ? (
-          <div className="be-card be-pad-4 apk-text-center">
+        {awaitingApproval && (
+          <div className="be-card be-pad-4">
             <p className="apk-body-text">
-              AutoPay setup is pending. Management options will appear after your first successful payment.
+              This mandate still needs your approval before instalments can be collected.
             </p>
-          </div>
-        ) : (
-          <div className="apk-mandate-actions">
-            <button className="be-btn be-btn-secondary" onClick={() => setConfirm({ type: 'pause' })}>Pause</button>
-            <button className="be-btn be-btn-secondary" onClick={() => setConfirm({ type: 'change_amount' })}>Change amount</button>
-            <button className="be-btn be-btn-danger" onClick={() => setConfirm({ type: 'cancel' })}>Cancel</button>
+            <button
+              type="button"
+              className="be-btn be-btn-primary"
+              onClick={() => navigate(`/app/mandates/${mandateId}/authorize`)}
+            >
+              Approve mandate
+            </button>
           </div>
         )}
 
-        <div className="be-eyebrow apk-mt-3">My recent requests</div>
-        {requests.length === 0 ? (
-          <div className="be-card apk-empty"><p>No requests yet.</p></div>
+        <div className="be-eyebrow apk-mt-3">Plans on this mandate</div>
+        {plans.length === 0 ? (
+          <div className="be-card apk-empty">
+            <p>No plans are using this mandate.</p>
+          </div>
         ) : (
-          <div className="be-card apk-pad-x">
-            {requests.map((r) => (
-              <div key={r.id} className="apk-list-row apk-list-row-thin">
-                <div>
-                  <div className="apk-list-l">{r.requestType.replace('_', ' ')}{r.requestedValue ? ` → ${fmtMoney(r.requestedValue)}` : ''}</div>
-                  <div className="apk-list-meta">{fmtDate(r.createdAt, { withTime: true })}</div>
-                </div>
-                <span className={'be-badge ' + (r.status === 'completed' ? 'be-badge-active' : r.status === 'rejected' ? 'be-badge-failed' : 'be-badge-paused')}>
-                  <span className="be-badge-dot" />{r.status}
+          plans.map((plan) => (
+            <div key={plan.id} className="be-card apk-mandate-card">
+              <div className="apk-mandate-head">
+                <div className="apk-fund-name be-money">{fmtMoney(plan.amount)}/month</div>
+                <span className={'be-badge ' + (PLAN_BADGE[plan.status] || 'be-badge-paused')}>
+                  <span className="be-badge-dot" />
+                  {plan.status}
                 </span>
               </div>
-            ))}
-          </div>
-        )}
-
-        <div className="be-disclosure">Requests are auditable and reviewed by our team. You'll be notified once processed.</div>
-      </div>
-
-      {confirm && (
-        <div className="apk-sheet-overlay" onClick={() => !submitting && setConfirm(null)}>
-          <div className="apk-sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="apk-sheet-handle" />
-            <h2 className="apk-h-sm">Confirm {confirm.type.replace('_', ' ')} request</h2>
-            <p className="apk-body-text apk-mt-1">
-              {confirm.type === 'pause' && 'Pausing stops future debits. Your current investments remain active. You can resume later from this screen.'}
-              {confirm.type === 'cancel' && 'Cancelling stops all future debits and terminates the mandate. This cannot be undone.'}
-              {confirm.type === 'change_amount' && 'This updates your monthly SIP amount. The change takes effect after review.'}
-            </p>
-            {confirm.type === 'change_amount' && (
-              <div className="be-field apk-mt-3">
-                <label>New monthly amount</label>
-                <div className="apk-amount-row">
-                  <span className="apk-amount-prefix">₹</span>
-                  <input className="apk-amount-input be-money" type="number" inputMode="numeric" min={order?.amount ? Math.round(order.amount * 0.5) : 0} step="500" value={newAmount} onChange={(e) => setNewAmount(e.target.value === '' ? '' : Math.max(0, Math.floor(Number(e.target.value))))} placeholder="0" />
+              {plan.nextDueDate && (
+                <div className="apk-sheet-summary-row">
+                  <span>Next instalment</span>
+                  <strong>{fmtDate(plan.nextDueDate)}</strong>
                 </div>
-                {newAmount !== '' && Number(newAmount) < (order?.amount ? Math.round(order.amount * 0.5) : 0) && (
-                  <div className="be-field-error apk-mt-1">Minimum is {fmtMoney(order?.amount ? Math.round(order.amount * 0.5) : 0)}.</div>
+              )}
+              <div className="apk-mandate-actions">
+                {plan.status === 'active' && (
+                  <button
+                    type="button"
+                    className="be-btn be-btn-secondary"
+                    onClick={() => setConfirm({ action: 'pause', planId: plan.id })}
+                  >
+                    Pause
+                  </button>
+                )}
+                {plan.status === 'paused' && (
+                  <button
+                    type="button"
+                    className="be-btn be-btn-secondary"
+                    onClick={() => setConfirm({ action: 'resume', planId: plan.id })}
+                  >
+                    Resume
+                  </button>
+                )}
+                {plan.status !== 'cancelled' && (
+                  <button
+                    type="button"
+                    className="be-btn be-btn-danger"
+                    onClick={() => setConfirm({ action: 'cancel', planId: plan.id })}
+                  >
+                    Cancel
+                  </button>
                 )}
               </div>
-            )}
-            <div className="apk-sheet-actions">
-              <button className="be-btn be-btn-secondary apk-flex-1" onClick={() => setConfirm(null)} disabled={submitting}>Cancel</button>
+            </div>
+          ))
+        )}
+
+        {error !== '' && <p className="be-error">{error}</p>}
+
+        <p className="be-disclosure">
+          To change the amount, cancel this plan and start a new one. Cancelling releases the mandate when no
+          other plan is using it.
+        </p>
+      </div>
+
+      {confirm !== null && (
+        <div className="apk-sheet-backdrop" role="dialog" aria-modal="true" onClick={() => setConfirm(null)}>
+          <div className="apk-sheet" onClick={(event) => event.stopPropagation()}>
+            <h2 className="apk-h-sm">
+              {confirm.action === 'pause' && 'Pause this plan?'}
+              {confirm.action === 'resume' && 'Resume this plan?'}
+              {confirm.action === 'cancel' && 'Cancel this plan?'}
+            </h2>
+            <p className="apk-body-text">
+              {confirm.action === 'pause' && 'No further instalments are collected until you resume it.'}
+              {confirm.action === 'resume' && 'Instalments resume from the next debit day.'}
+              {confirm.action === 'cancel' &&
+                'This cannot be undone. Money already invested stays invested and keeps earning returns.'}
+            </p>
+            <div className="apk-mandate-actions">
               <button
-                className="be-btn be-btn-primary apk-flex-1"
-                onClick={submitRequest}
-                disabled={submitting || (confirm.type === 'change_amount' && (newAmount === '' || Number(newAmount) < (order?.amount ? Math.round(order.amount * 0.5) : 0)))}
+                type="button"
+                className="be-btn be-btn-secondary"
+                onClick={() => setConfirm(null)}
+                disabled={busy}
               >
-                {submitting ? 'Submitting…' : 'Submit request'}
+                Keep as is
+              </button>
+              <button
+                type="button"
+                className={confirm.action === 'cancel' ? 'be-btn be-btn-danger' : 'be-btn be-btn-primary'}
+                onClick={applyControl}
+                disabled={busy}
+              >
+                {busy ? 'Applying…' : 'Confirm'}
               </button>
             </div>
           </div>

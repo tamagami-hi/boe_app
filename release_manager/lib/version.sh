@@ -30,6 +30,24 @@ assert_semver() {
     fi
 }
 
+# release_origin_is_approved <repo>
+#   Require exactly one fetch URL and one push URL, both pointing at the
+#   canonical BeOnEdge repository. Multiple push URLs would make one push write
+#   to every configured destination, so cardinality is part of the check.
+release_origin_is_approved() {
+    local repo="$1" origin_url
+    local -a fetch_urls=() push_urls=()
+    mapfile -t fetch_urls < <(git -C "$repo" remote get-url --all origin 2>/dev/null)
+    mapfile -t push_urls < <(git -C "$repo" remote get-url --push --all origin 2>/dev/null)
+    [[ "${#fetch_urls[@]}" -eq 1 && "${#push_urls[@]}" -eq 1 ]] || return 1
+    for origin_url in "${fetch_urls[0]}" "${push_urls[0]}"; do
+        case "$origin_url" in
+            https://github.com/tamagami-hi/boe_app.git|git@github.com:tamagami-hi/boe_app.git) : ;;
+            *) return 1 ;;
+        esac
+    done
+}
+
 # bump_version <version> <patch|minor|major> — echo the bumped X.Y.Z.
 bump_version() {
     local version="$1" bump="$2" major minor patch
@@ -45,9 +63,15 @@ bump_version() {
     printf '%s.%s.%s\n' "$major" "$minor" "$patch"
 }
 
-# canonical_version <version_file> <active_dir> <repo>
+# canonical_version <version_file> <fallback_dir> <repo>
 #   The current STABLE version, in priority order:
-#     tracked VERSION file → BOE_APP/current-version.json → latest git tag → 0.0.0
+#     tracked VERSION file → <fallback_dir>/current-version.json → latest git tag → 0.0.0
+#
+#   <fallback_dir> is caller-supplied so this works for any stack. The new
+#   pipeline passes a per-stack build directory (release_manager/build/<stack>);
+#   the old single-stack pipeline passed release_manager/BOE_APP. In practice the
+#   tracked VERSION file almost always wins, and the fallback only matters on a
+#   fresh clone with no tags.
 canonical_version() {
     local version_file="$1" active_dir="$2" repo="$3" t
     if [[ -s "$version_file" ]]; then
@@ -88,4 +112,36 @@ on_exact_release_tag() {
     [[ -z "$(git -C "$repo" status --porcelain 2>/dev/null)" ]] || return 1
     exact="$(git -C "$repo" describe --exact-match --tags HEAD 2>/dev/null || true)"
     [[ "$exact" == "v$version" ]]
+}
+
+# remote_release_tag_matches <repo> <version> [expected-commit]
+#   True only when origin has v<version> and that tag resolves to the expected
+#   commit. Annotated and lightweight tags are both supported. Transport errors
+#   fail closed, which prevents a local-only tag from becoming a stable bundle.
+remote_release_tag_matches() {
+    local repo="$1" version="$2" expected="${3:-}" refs direct peeled target
+    [[ -n "$expected" ]] || expected="$(git -C "$repo" rev-parse HEAD 2>/dev/null || true)"
+    [[ "$expected" =~ ^[0-9a-f]{40}$ ]] || return 1
+    refs="$(git -C "$repo" ls-remote --tags origin \
+        "refs/tags/v$version" "refs/tags/v$version^{}" 2>/dev/null)" || return 1
+    direct="$(awk -v ref="refs/tags/v$version" '$2 == ref { print $1; exit }' <<< "$refs")"
+    peeled="$(awk -v ref="refs/tags/v$version^{}" '$2 == ref { print $1; exit }' <<< "$refs")"
+    target="${peeled:-$direct}"
+    [[ "$target" == "$expected" ]]
+}
+
+# remote_release_refs_match <repo> <version> <expected-commit>
+#   Resolve live origin/main and the release tag in one ls-remote snapshot and
+#   require both to identify the same expected commit.
+remote_release_refs_match() {
+    local repo="$1" version="$2" expected="$3" refs branch direct peeled target
+    [[ "$expected" =~ ^[0-9a-f]{40}$ ]] || return 1
+    refs="$(git -C "$repo" ls-remote origin \
+        refs/heads/main "refs/tags/v$version" "refs/tags/v$version^{}" 2>/dev/null)" \
+        || return 1
+    branch="$(awk '$2 == "refs/heads/main" { print $1; exit }' <<< "$refs")"
+    direct="$(awk -v ref="refs/tags/v$version" '$2 == ref { print $1; exit }' <<< "$refs")"
+    peeled="$(awk -v ref="refs/tags/v$version^{}" '$2 == ref { print $1; exit }' <<< "$refs")"
+    target="${peeled:-$direct}"
+    [[ "$branch" == "$expected" && "$target" == "$expected" ]]
 }

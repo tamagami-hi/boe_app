@@ -4,6 +4,7 @@
  *   POST /v1/client/kyc/start    issue a verification code (emailed from the company mailbox)
  *   POST /v1/client/kyc/resend   re-issue the code (cooldown-guarded)
  *   POST /v1/client/kyc/verify   submit the code -> KYC approved -> client becomes eligible
+ *   GET  /v1/client/kyc-status   the investor's current KYC standing
  *
  * The code is emailed AFTER the DB transaction commits (never during it), and is
  * never included in any HTTP response.
@@ -99,8 +100,35 @@ const postVerify = async (deps: ClientKycDeps, request: FastifyRequest, reply: F
   throw new AppError("STATE_CONFLICT") // no_active_case | locked
 }
 
+/**
+ * The investor's KYC standing. Reports the latest case whatever its state, so the
+ * app can distinguish "never started" from "awaiting a code" from "approved", and
+ * carries the expiry that drives re-verification.
+ */
+const getStatus = async (deps: ClientKycDeps, request: FastifyRequest, reply: FastifyReply) => {
+  const principal = await authenticateNativeRequest(request, deps)
+  const kycCase = await deps.unitOfWork.execute((tx) =>
+    deps.kycRepository.findLatestByUser(tx, principal.userId),
+  )
+  const now = deps.clock()
+  const expiresAt = kycCase?.expires_at ?? null
+  const expired = expiresAt !== null && new Date(expiresAt).getTime() <= now.getTime()
+
+  return reply.sendData({
+    // `not_started` is a status, not an error: a fresh account has no case yet.
+    status: kycCase === null ? "not_started" : kycCase.state,
+    kycState: kycCase?.state ?? null,
+    method: "email_otp",
+    expiresAt: expiresAt === null ? null : new Date(expiresAt).toISOString(),
+    expired,
+    submittedAt: kycCase?.submitted_at === null || kycCase === null ? null : new Date(kycCase.submitted_at).toISOString(),
+    decidedAt: kycCase?.decided_at === null || kycCase === null ? null : new Date(kycCase.decided_at).toISOString(),
+  })
+}
+
 export const registerClientKycRoutes = (application: FastifyInstance, deps: ClientKycDeps): void => {
   application.post("/v1/client/kyc/start", async (request, reply) => issueCode(deps, request, reply))
   application.post("/v1/client/kyc/resend", async (request, reply) => issueCode(deps, request, reply))
   application.post("/v1/client/kyc/verify", async (request, reply) => postVerify(deps, request, reply))
+  application.get("/v1/client/kyc-status", async (request, reply) => getStatus(deps, request, reply))
 }

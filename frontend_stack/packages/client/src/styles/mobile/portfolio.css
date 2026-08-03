@@ -479,3 +479,101 @@
   font-size: var(--be-text-xs);
   color: var(--be-slate-2);
 }
+
+/* ── Option B portfolio ──────────────────────────────────────────────────────
+   "My Investment" leads with the current value; the supporting figures sit in a
+   two-column grid beneath it. Gains and losses are distinguished by colour and
+   by an explicit sign, never by colour alone. */
+.apk-invest-card {
+  display: grid;
+  gap: var(--space-3, 0.75rem);
+}
+
+.apk-invest-label {
+  font-size: 0.8125rem;
+  opacity: 0.75;
+}
+
+.apk-invest-value {
+  font-size: 2rem;
+  line-height: 1.1;
+  font-weight: 600;
+}
+
+.apk-invest-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3, 0.75rem);
+}
+
+.apk-invest-mini-l {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.apk-invest-mini-v {
+  font-size: 0.9375rem;
+  font-weight: 550;
+}
+
+.apk-invest-mini-v.is-gain { color: var(--be-green, #0f8b56); }
+.apk-invest-mini-v.is-loss { color: var(--be-red, #c0392b); }
+.apk-invest-pct { font-size: 0.8125rem; opacity: 0.85; }
+
+.apk-invest-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2, 0.5rem);
+}
+
+.apk-summary-card { margin-top: var(--space-4, 1rem); }
+
+.apk-summary-list {
+  display: grid;
+  gap: 0.5rem;
+  margin: var(--space-3, 0.75rem) 0;
+}
+
+.apk-summary-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  align-items: baseline;
+}
+
+.apk-summary-list dt { font-size: 0.8125rem; opacity: 0.75; }
+.apk-summary-list dd { margin: 0; font-weight: 550; }
+
+.apk-pool-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem) 0;
+  border-top: 1px solid var(--be-hairline, rgba(0, 0, 0, 0.08));
+}
+
+.apk-pool-value { font-weight: 600; }
+.apk-pool-meta { font-size: 0.75rem; opacity: 0.7; }
+.apk-pool-actions { display: flex; gap: 0.5rem; }
+
+/* Redemption sheet: the four modes from the model document. */
+.apk-sheet-amount {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: var(--space-3, 0.75rem);
+  border-bottom: 1px solid var(--be-hairline, rgba(0, 0, 0, 0.08));
+  margin-bottom: var(--space-3, 0.75rem);
+}
+
+.apk-radio-group { border: 0; margin: 0 0 var(--space-3, 0.75rem); padding: 0; display: grid; gap: 0.5rem; }
+.apk-radio { display: flex; align-items: center; gap: 0.625rem; font-size: 0.9375rem; }
+.apk-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

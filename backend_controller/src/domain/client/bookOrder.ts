@@ -1,36 +1,35 @@
 /**
- * bookOrder command (spec 03 §5.2 `bookOrder`, §4.3 arithmetic, §6 "Payment
- * success/book"). A system/operations command: a `payment_confirmed` purchase
- * order is booked into immutable financial evidence and the authoritative
- * ownership projection, all in one transaction:
- *   - compute allotted units exactly (units = amount_paise/100/nav, round once
- *     half-to-even at scale 8);
- *   - append the immutable `allotment` execution;
- *   - create or increment the (user, fund) holding;
- *   - create the acquisition lot and its `allotment` lot movement;
- *   - notify the user and append audit.
+ * bookOrder command — Option B money model.
  *
- * The order lock plus the holding upsert (unique on (user_id, fund_id)) serialize
- * concurrent bookings; executions, lots, and movements are append-only.
+ * A `payment_confirmed` purchase or SIP installment is booked by appending **one
+ * dated ledger entry** for the money received, in the same transaction as the
+ * order's state transition:
+ *
+ *   Total Investment += amount   (principal delta)
+ *   Current Value    += amount   (value delta)
+ *
+ * There is no unit allotment and no NAV: an investor's ownership is the money
+ * they contributed, and growth arrives separately as an administrator-allocated
+ * gain (see `allocateGain`). Consequently there is no execution row, holding row,
+ * acquisition lot, or lot movement to write — the ledger is the record.
+ *
+ * The order lock serializes concurrent bookings, and the partial unique index on
+ * `investor_ledger_entries.payment_id` makes a replayed settlement pass a no-op
+ * rather than a double credit.
  */
-import type {
-  Holding,
-  HoldingLot,
-  HoldingLotMovement,
-  InvestmentExecution,
-  InvestmentOrder,
-  Transaction,
-} from "../../db/repositories.js"
+import type { InvestmentOrder, Transaction } from "../../db/repositories.js"
 import { AppError } from "../../http/errorCatalog.js"
 import type { AuditWriteRepository } from "../../repositories/auditRepository.js"
-import type { HoldingWriteRepository } from "../../repositories/holdingRepository.js"
+import type {
+  InvestorLedgerRepository,
+  LedgerEntryRow,
+} from "../../repositories/investorLedgerRepository.js"
 import type { NotificationWriteRepository } from "../../repositories/notificationRepository.js"
 import type { OrderWriteRepository } from "../../repositories/orderRepository.js"
-import { computeAllotmentUnits } from "../../finance/money.js"
 
 export interface BookOrderDeps {
   readonly orderRepository: OrderWriteRepository
-  readonly holdingRepository: HoldingWriteRepository
+  readonly investorLedgerRepository: InvestorLedgerRepository
   readonly notificationRepository: NotificationWriteRepository
   readonly auditRepository: AuditWriteRepository
   readonly clock: () => Date
@@ -40,15 +39,16 @@ export interface BookOrderInput {
   readonly userId: string
   readonly orderId: string
   readonly requestId: string
+  /** Set when booking follows a payment, so the ledger entry is idempotent. */
+  readonly paymentId?: string | null
 }
 
 export interface BookOrderResult {
   readonly order: InvestmentOrder
-  readonly execution: InvestmentExecution
-  readonly holding: Holding
-  readonly lot: HoldingLot
-  readonly movement: HoldingLotMovement
+  readonly entry: LedgerEntryRow
 }
+
+const rupees = (paise: string): string => (Number(paise) / 100).toLocaleString("en-IN")
 
 export const bookOrder = async (
   tx: Transaction,
@@ -57,64 +57,39 @@ export const bookOrder = async (
 ): Promise<BookOrderResult> => {
   const now = deps.clock()
 
-  // Lock the order; only a payment-confirmed purchase/SIP allotment is bookable.
+  // Lock the order; only a payment-confirmed contribution is bookable.
   const locked = await deps.orderRepository.lockById(tx, { orderId: input.orderId, userId: input.userId })
   if (locked === null) throw new AppError("RESOURCE_NOT_FOUND")
   if (locked.type !== "purchase" && locked.type !== "sip_installment") throw new AppError("STATE_CONFLICT")
   if (locked.amount_paise === null) throw new AppError("STATE_CONFLICT")
 
-  // An applicable current NAV must exist.
-  const nav = await deps.holdingRepository.findCurrentNav(tx, locked.fund_id)
-  if (nav === null) throw new AppError("STATE_CONFLICT")
-
-  const amountPaise = locked.amount_paise
-  const units = computeAllotmentUnits(BigInt(amountPaise), nav.nav)
+  const amountPaise = String(locked.amount_paise)
 
   // Guarded transition: payment_confirmed -> booked.
   const order = await deps.orderRepository.book(tx, { orderId: input.orderId, userId: input.userId, now })
   if (order === null) throw new AppError("STATE_CONFLICT")
 
-  const execution = await deps.holdingRepository.insertAllotmentExecution(tx, {
-    orderId: order.id,
+  const entry = await deps.investorLedgerRepository.append(tx, {
     userId: input.userId,
     fundId: order.fund_id,
+    entryType: order.type === "sip_installment" ? "sip_installment" : "lump_sum",
+    // A contribution moves invested principal and current value in step.
+    principalDeltaPaise: amountPaise,
+    valueDeltaPaise: amountPaise,
     amountPaise,
-    nav: nav.nav,
-    units,
-    now,
-  })
-  const holding = await deps.holdingRepository.upsertHolding(tx, {
-    userId: input.userId,
-    fundId: order.fund_id,
-    addUnits: units,
-    addCostBasisPaise: amountPaise,
-  })
-  const lot = await deps.holdingRepository.insertLot(tx, {
-    holdingId: holding.id,
-    userId: input.userId,
-    fundId: order.fund_id,
-    sourceExecutionId: execution.id,
-    acquiredOn: now.toISOString().slice(0, 10),
-    costBasisPaise: amountPaise,
-    units,
-  })
-  const movement = await deps.holdingRepository.insertAllotmentMovement(tx, {
-    holdingLotId: lot.id,
-    holdingId: holding.id,
-    userId: input.userId,
-    fundId: order.fund_id,
-    executionId: execution.id,
-    unitsDelta: units,
-    costBasisDeltaPaise: amountPaise,
-    now,
+    effectiveDate: now.toISOString().slice(0, 10),
+    orderId: order.id,
+    paymentId: input.paymentId ?? null,
+    requestId: input.requestId,
+    metadata: { orderType: order.type },
   })
 
   await deps.notificationRepository.create(tx, {
     userId: input.userId,
     kind: "order_booked",
-    title: "Units allotted",
-    body: `Your order for ${units} units has been booked.`,
-    payload: { orderId: order.id, fundId: order.fund_id, units },
+    title: "Investment recorded",
+    body: `₹${rupees(amountPaise)} has been added to your investment.`,
+    payload: { orderId: order.id, fundId: order.fund_id, amountPaise, ledgerEntryId: entry.id },
   })
 
   await deps.auditRepository.append(tx, {
@@ -126,8 +101,8 @@ export const bookOrder = async (
     toState: "booked",
     requestId: input.requestId,
     entityVersion: Number(order.version),
-    metadata: { executionId: execution.id, units, navAsOf: nav.asOfDate },
+    metadata: { ledgerEntryId: entry.id, amountPaise, entryType: entry.entryType },
   })
 
-  return { order, execution, holding, lot, movement }
+  return { order, entry }
 }

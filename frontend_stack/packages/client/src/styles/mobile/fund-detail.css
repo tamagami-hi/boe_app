@@ -747,3 +747,26 @@
 }
 
 .apk-holding-row { display: grid; grid-template-columns: 1fr auto; padding: 8px 0; align-items: center; gap: 8px; }
+
+/* Fund Overview / Fund Portfolio (Option B): AUM with its last-updated stamp,
+   and the administrator-curated stock list tagged by quarter. */
+.apk-stat-card-note {
+  font-size: 0.6875rem;
+  opacity: 0.65;
+  margin-top: 0.25rem;
+}
+
+.apk-holding-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.6;
+  padding-bottom: 0.5rem;
+}
+
+.apk-holding-sub {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}

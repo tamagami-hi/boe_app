@@ -10,9 +10,12 @@ import { Wait } from "testcontainers"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 
 import { createAccessTokenService, type AccessTokenService } from "../../src/auth/accessToken.js"
-import { createDatabase } from "../../src/db/database.js"
+import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
+import { createAuditRepository } from "../../src/repositories/auditRepository.js"
 import { createClientPortfolioRepository } from "../../src/repositories/clientPortfolioRepository.js"
+import { createInvestorLedgerRepository } from "../../src/repositories/investorLedgerRepository.js"
+import { createRedemptionRepository } from "../../src/repositories/redemptionRepository.js"
 import {
   registerClientPortfolioRoutes,
   type ClientPortfolioDeps,
@@ -78,11 +81,8 @@ beforeAll(async () => {
     idleTimeoutMs: 10_000,
   })
   const directory = fileURLToPath(new URL("../../db/migrations", import.meta.url))
-  const all = await loadMigrationFiles(directory)
-  await runMigrations(
-    pool,
-    all.filter((file) => file.version >= "009"),
-  )
+  const migrations = await loadMigrationFiles(directory)
+  await runMigrations(pool, migrations)
   await runSeed(pool)
 
   const database = createDatabase(pool)
@@ -99,6 +99,10 @@ beforeAll(async () => {
     accessTokenService,
     database,
     clientPortfolioRepository: createClientPortfolioRepository(),
+    investorLedgerRepository: createInvestorLedgerRepository(),
+    redemptionRepository: createRedemptionRepository(),
+    auditRepository: createAuditRepository(),
+    unitOfWork: createUnitOfWork(database),
     clock: () => new Date(),
     config: { cursorKey: randomBytes(32) },
   }
@@ -164,12 +168,32 @@ beforeAll(async () => {
     fundId,
   ])
 
-  // --- holdings: 10 units at current NAV 30.00 => 300.00 => 30000 paise ---
+  // --- ledger: ₹1,00,000 lump sum + ₹25,000 SIP + a ₹12,500 allocated gain ---
+  const ledger = async (
+    type: "lump_sum" | "sip_installment" | "gain_allocation",
+    amountPaise: number,
+    date: string,
+  ): Promise<void> => {
+    const principal = type === "gain_allocation" ? 0 : amountPaise
+    const allocator = type === "gain_allocation" ? eligibleUserId : null
+    await pool.query(
+      "insert into investor_ledger_entries (user_id, fund_id, entry_type, principal_delta_paise, " +
+        "value_delta_paise, amount_paise, effective_date, allocated_by_user_id, request_id) " +
+        "values ($1,$2,$3,$4,$5,$6,$7::date,$8,$9)",
+      [eligibleUserId, fundId, type, principal, amountPaise, amountPaise, date, allocator, randomUUID()],
+    )
+  }
+  // Redemptions reference the active finance policy version (the deploy seed
+  // publishes version 1; this harness runs the catalog seed only).
   await pool.query(
-    "insert into holdings (user_id, fund_id, total_units, reserved_units, cost_basis_paise) " +
-      "values ($1,$2, 10.00000000, 2.00000000, 25000)",
-    [eligibleUserId, fundId],
+    "insert into finance_policy_versions (version, effective_from, published_by_user_id) " +
+      "values (1, now(), $1) on conflict (version) do nothing",
+    [eligibleUserId],
   )
+
+  await ledger("lump_sum", 10_000_000, "2026-01-10")
+  await ledger("sip_installment", 2_500_000, "2026-02-05")
+  await ledger("gain_allocation", 1_250_000, "2026-07-31")
 
   // --- orders: three purchase orders with distinct created_at for pagination ---
   for (let index = 0; index < 3; index += 1) {
@@ -222,30 +246,167 @@ describe("client portfolio reads (integration)", () => {
     expect(errorOf(response)).toBe("AUTHENTICATION_REQUIRED")
   })
 
-  test("holdings: valued at the greatest-revision current NAV, with money/units as strings", async () => {
-    const response = await app.inject({ method: "GET", url: "/v1/client/holdings", headers: bearer(eligibleToken) })
+  test("portfolio: derives My Investment and the Investment Summary from the ledger", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/client/portfolio",
+      headers: bearer(eligibleToken),
+    })
     expect(response.statusCode).toBe(200)
-    const body = dataOf<{ items: Record<string, unknown>[] }>(response)
-    expect(body.items).toHaveLength(1)
-    const holding = body.items[0]!
-    expect(holding.fundId).toBe(fundId)
-    expect(holding.fundName).toBe("BeOnEdge Growth")
-    expect(holding.totalUnits).toBe("10.00000000")
-    expect(holding.reservedUnits).toBe("2.00000000")
-    expect(holding.availableUnits).toBe("8.00000000")
-    // 10 units * 30.00 NAV (revision 2 wins) * 100 = 30000 paise
-    expect(holding.currentNav).toBe("30.00000000")
-    expect(holding.marketValuePaise).toBe("30000")
-    expect(holding.costBasisPaise).toBe("25000")
+    const body = dataOf<{
+      currentValuePaise: string
+      totalInvestmentPaise: string
+      totalReturnPaise: string
+      returnPercent: number
+      returnSince: string
+      lastUpdated: string
+      summary: Record<string, unknown>
+      pools: { fundId: string; currentValuePaise: string }[]
+    }>(response)
+
+    // ₹1,25,000 invested, ₹12,500 allocated => ₹1,37,500 value, +10%.
+    expect(body).toMatchObject({
+      totalInvestmentPaise: "12500000",
+      currentValuePaise: "13750000",
+      totalReturnPaise: "1250000",
+      returnPercent: 10,
+      // "Return Since First Investment" is the earliest contribution, not the
+      // earliest event of any kind.
+      returnSince: "2026-01-10",
+      lastUpdated: "2026-07-31",
+    })
+    expect(body.summary).toMatchObject({
+      sipInstallmentCount: 1,
+      sipTotalPaise: "2500000",
+      lumpSumCount: 1,
+      lumpSumTotalPaise: "10000000",
+      redemptionCount: 0,
+      allocatedGainPaise: "1250000",
+    })
+    expect(body.pools).toHaveLength(1)
+    expect(body.pools[0]).toMatchObject({ fundId, currentValuePaise: "13750000" })
   })
 
-  test("holdings: another user sees none of the eligible user's holdings", async () => {
-    const response = await app.inject({ method: "GET", url: "/v1/client/holdings", headers: bearer(pendingToken) })
+  test("portfolio: an investor with no ledger sees zeros, not an error", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/client/portfolio",
+      headers: bearer(pendingToken),
+    })
     expect(response.statusCode).toBe(200)
-    expect(dataOf<{ items: unknown[] }>(response).items).toHaveLength(0)
+    expect(dataOf<Record<string, unknown>>(response)).toMatchObject({
+      totalInvestmentPaise: "0",
+      currentValuePaise: "0",
+      returnPercent: null,
+      returnSince: null,
+    })
+  })
+
+  test("transactions: the dated ledger behind the dashboard, newest first", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/v1/client/transactions?limit=10",
+      headers: bearer(eligibleToken),
+    })
+    expect(response.statusCode).toBe(200)
+    const items = dataOf<{ items: { type: string; amountPaise: string; date: string; principalDeltaPaise: string }[] }>(
+      response,
+    ).items
+    expect(items.map((item) => item.type)).toEqual(["gain_allocation", "sip_installment", "lump_sum"])
+    // An allocated gain moves value but never invested principal.
+    expect(items[0]).toMatchObject({ amountPaise: "1250000", principalDeltaPaise: "0" })
+
+    const other = await app.inject({
+      method: "GET",
+      url: "/v1/client/transactions",
+      headers: bearer(pendingToken),
+    })
+    expect(dataOf<{ items: unknown[] }>(other).items).toHaveLength(0)
+  })
+
+  test("redemption: returns-only draws the gain and leaves principal intact", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/client/redemptions",
+      headers: bearer(eligibleToken),
+      payload: { fundId, mode: "returns_only" },
+    })
+    expect(response.statusCode).toBe(201)
+    const body = dataOf<{
+      redemption: {
+        id: string
+        mode: string
+        status: string
+        requestedAmountPaise: string
+        principalComponentPaise: string
+        returnsComponentPaise: string
+      }
+      availableValuePaise: string
+    }>(response)
+    expect(body.availableValuePaise).toBe("13750000")
+    expect(body.redemption).toMatchObject({
+      mode: "returns_only",
+      status: "submitted",
+      requestedAmountPaise: "1250000",
+      principalComponentPaise: "0",
+      returnsComponentPaise: "1250000",
+    })
+
+    // The request does not move the investor's value: only settlement does.
+    const after = await app.inject({
+      method: "GET",
+      url: "/v1/client/portfolio",
+      headers: bearer(eligibleToken),
+    })
+    expect(dataOf<{ currentValuePaise: string }>(after).currentValuePaise).toBe("13750000")
+
+    // A second open request for the same pool is refused.
+    const second = await app.inject({
+      method: "POST",
+      url: "/v1/client/redemptions",
+      headers: bearer(eligibleToken),
+      payload: { fundId, mode: "half" },
+    })
+    expect(second.statusCode).toBe(409)
+
+    const listed = await app.inject({
+      method: "GET",
+      url: "/v1/client/redemptions",
+      headers: bearer(eligibleToken),
+    })
+    expect(dataOf<{ items: { id: string }[] }>(listed).items[0]?.id).toBe(body.redemption.id)
+  })
+
+  test("redemption: guards a custom amount, an empty position, and a missing amount", async () => {
+    // No ledger at all in this pool.
+    const noPosition = await app.inject({
+      method: "POST",
+      url: "/v1/client/redemptions",
+      headers: bearer(pendingToken),
+      payload: { fundId, mode: "full" },
+    })
+    expect(noPosition.statusCode).toBe(409)
+
+    const missingAmount = await app.inject({
+      method: "POST",
+      url: "/v1/client/redemptions",
+      headers: bearer(eligibleToken),
+      payload: { fundId, mode: "custom" },
+    })
+    expect(missingAmount.statusCode).toBe(400)
+
+    const anonymous = await app.inject({
+      method: "POST",
+      url: "/v1/client/redemptions",
+      payload: { fundId, mode: "full" },
+    })
+    expect(anonymous.statusCode).toBe(401)
   })
 
   test("orders: keyset pagination returns a stable, owner-scoped history", async () => {
+    // The exact order count depends on what other cases in this file have
+    // submitted (a redemption also records an order), so assert the paging
+    // contract rather than a fixed total.
     const first = await app.inject({
       method: "GET",
       url: "/v1/client/orders?limit=2",
@@ -265,15 +426,14 @@ describe("client portfolio reads (integration)", () => {
     })
     expect(second.statusCode).toBe(200)
     const secondItems = dataOf<{ items: { orderId: string }[] }>(second).items
-    expect(secondItems).toHaveLength(1)
-    expect(pageOf(second).hasMore).toBe(false)
+    expect(secondItems.length).toBeGreaterThan(0)
 
-    // no overlap across pages
+    // Pages never overlap.
     const ids = new Set([...firstItems.map((o) => o.orderId), ...secondItems.map((o) => o.orderId)])
-    expect(ids.size).toBe(3)
+    expect(ids.size).toBe(firstItems.length + secondItems.length)
   })
 
-  test("cursor: an orders cursor replayed against the holdings route is CURSOR_INVALID", async () => {
+  test("cursor: a tampered orders cursor is CURSOR_INVALID", async () => {
     const ordersFirst = await app.inject({
       method: "GET",
       url: "/v1/client/orders?limit=1",
@@ -283,7 +443,7 @@ describe("client portfolio reads (integration)", () => {
     expect(cursor).not.toBeNull()
     const replay = await app.inject({
       method: "GET",
-      url: `/v1/client/holdings?limit=1&after=${encodeURIComponent(cursor!)}`,
+      url: `/v1/client/orders?limit=1&after=${encodeURIComponent(`${cursor!}x`)}`,
       headers: bearer(eligibleToken),
     })
     expect(replay.statusCode).toBe(400)

@@ -29,6 +29,11 @@ export interface DueSipRow {
 export interface SipWriteRepository {
   create: (tx: Transaction, input: CreateSipInput) => Promise<SipPlan>
   lockById: (tx: Transaction, input: Readonly<{ sipId: string; userId: string }>) => Promise<SipPlan | null>
+  /** The investor's own plans, newest first — the app's SIP list. */
+  listByUser: (
+    tx: Transaction,
+    input: Readonly<{ userId: string; limit: number }>,
+  ) => Promise<readonly SipPlan[]>
   /** draft -> pending_mandate; links the mandate. */
   linkMandate: (
     tx: Transaction,
@@ -72,6 +77,16 @@ export const createSipRepository = (): SipWriteRepository => ({
       })
       .returningAll()
       .executeTakeFirstOrThrow(),
+
+  listByUser: async (tx, input) =>
+    tx
+      .selectFrom("sip_plans")
+      .selectAll()
+      .where("user_id", "=", input.userId)
+      .orderBy("created_at", "desc")
+      .orderBy("id", "desc")
+      .limit(input.limit)
+      .execute(),
 
   lockById: async (tx, input) => {
     const row = await tx

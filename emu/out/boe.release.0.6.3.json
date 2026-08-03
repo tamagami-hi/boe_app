@@ -1,0 +1,11 @@
+{
+  "apk": "boe.release.0.6.3.apk",
+  "buildType": "release",
+  "version": "0.6.3",
+  "buildLabel": "0.6.3-dev.18.g62274c0.dirty",
+  "apiBaseUrl": "https://algogon.xyz",
+  "gitCommit": "62274c0",
+  "gitDirty": true,
+  "builtAt": "2026-07-30T11:01:20Z",
+  "signing": "debug"
+}

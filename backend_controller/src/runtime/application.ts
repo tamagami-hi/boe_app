@@ -3,6 +3,7 @@ import type { DestinationStream, LevelWithSilent, Logger } from "pino"
 import type { FastifyBaseLogger, FastifyError, FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
 
 import { MAX_JSON_BODY_BYTES, registerHttpBoundary, renderError } from "../http/boundary.js"
+import { registerCors } from "../http/cors.js"
 
 import { createRuntimeLogger } from "./logger.js"
 
@@ -13,6 +14,11 @@ type ApplicationOptions = Readonly<{
   level?: LevelWithSilent
   logger?: Logger | false
   registerRoutes?: (application: FastifyInstance) => void
+  /**
+   * Origins allowed to call this API from a browser. Defaults to empty, which
+   * emits no CORS headers — correct for tests and for same-origin deployments.
+   */
+  corsAllowlist?: readonly string[]
 }>
 
 const createFastifyInstance = ({
@@ -42,6 +48,7 @@ export const createApplication = (options: ApplicationOptions = {}): FastifyInst
   const application = createFastifyInstance(options)
 
   registerHttpBoundary(application)
+  registerCors(application, options.corsAllowlist ?? [])
 
   application.get("/health/live", () => LIVE_RESPONSE)
   options.registerRoutes?.(application)

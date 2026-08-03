@@ -3,11 +3,18 @@
  * mutation requires an `Idempotency-Key` and runs under the database idempotency
  * protocol.
  *
+ *   GET  /v1/client/sips                 the investor's plans
  *   POST /v1/client/sips                 create a SIP (draft)
  *   POST /v1/client/sips/:id/mandate     request the debit mandate (-> pending_mandate)
  *   POST /v1/client/sips/:id/pause       pause an active SIP
  *   POST /v1/client/sips/:id/resume      resume a paused SIP
  *   POST /v1/client/sips/:id/cancel      cancel a SIP (revokes an unshared mandate)
+ *   GET  /v1/client/mandates/:id         the mandate backing a plan
+ *   POST /v1/client/mandates/:id/authorize
+ *                                        confirm the debit mandate. With the mock
+ *                                        provider the app stands in for the bank
+ *                                        screen; a real gateway confirms on its
+ *                                        signed webhook instead, so this refuses.
  */
 import { createHash } from "node:crypto"
 
@@ -15,8 +22,9 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
 import { z } from "zod"
 
 import type { UnitOfWork } from "../db/database.js"
-import type { IdempotencyRepository, IdempotencyScope, SipPlan } from "../db/repositories.js"
+import type { IdempotencyRepository, IdempotencyScope, Mandate, SipPlan } from "../db/repositories.js"
 import { authenticateNativeRequest, type NativeRequestAuthDeps } from "../domain/auth/nativeAuth.js"
+import { activateMandate } from "../domain/client/activateMandate.js"
 import {
   cancelSip,
   createSip,
@@ -54,6 +62,8 @@ export interface ClientSipDeps extends NativeRequestAuthDeps {
 }
 
 const SIPS_ROUTE = "/v1/client/sips"
+const MANDATES_ROUTE = "/v1/client/mandates"
+const MAX_SIPS = 100
 
 const createSipBodySchema = z
   .object({
@@ -240,7 +250,92 @@ const runControl = async (
   })
 }
 
+const mandateBody = (mandate: Mandate): Record<string, unknown> => ({
+  mandateId: mandate.id,
+  status: mandate.state,
+  provider: mandate.provider,
+  maxAmountPaise: mandate.max_amount_paise,
+  debitDay: mandate.debit_day,
+  frequency: mandate.frequency,
+  validFrom: mandate.valid_from === null ? null : iso(mandate.valid_from),
+  validTo: mandate.valid_to === null ? null : iso(mandate.valid_to),
+  version: Number(mandate.version),
+  createdAt: iso(mandate.created_at),
+})
+
+const getSips = async (deps: ClientSipDeps, request: FastifyRequest, reply: FastifyReply) => {
+  const principal = await authenticateNativeRequest(request, deps)
+  const sips = await deps.unitOfWork.execute((tx) =>
+    deps.sipRepository.listByUser(tx, { userId: principal.userId, limit: MAX_SIPS }),
+  )
+  return reply.sendData({ items: sips.map(sipBody) })
+}
+
+const getMandate = async (deps: ClientSipDeps, request: FastifyRequest, reply: FastifyReply) => {
+  const principal = await authenticateNativeRequest(request, deps)
+  const mandateId = parseOrThrow(uuidParam, (request.params as { mandateId?: string }).mandateId)
+  const mandate = await deps.unitOfWork.execute((tx) => deps.mandateRepository.findById(tx, mandateId))
+  // Another investor's mandate is reported exactly like a missing one.
+  if (mandate === null || mandate.user_id !== principal.userId) throw new AppError("RESOURCE_NOT_FOUND")
+  return reply.sendData(mandateBody(mandate))
+}
+
+/**
+ * Owner-driven mandate authorization. This is the mock provider's stand-in for the
+ * bank/UPI approval screen, mirroring how a `manual` payment is settled by the
+ * worker: it exists so the SIP flow can be exercised end to end without a
+ * gateway. When a real provider is configured the authorization arrives on the
+ * signed mandate webhook, and this route refuses rather than forging consent.
+ */
+const postAuthorizeMandate = async (deps: ClientSipDeps, request: FastifyRequest, reply: FastifyReply) => {
+  const principal = await authenticateNativeRequest(request, deps)
+  const idempotencyKey = requireIdempotencyKey(request)
+  const mandateId = parseOrThrow(uuidParam, (request.params as { mandateId?: string }).mandateId)
+  // A real gateway owns the authorization; accepting it here would forge consent.
+  if (deps.config.paymentProvider !== "manual") throw new AppError("STATE_CONFLICT")
+  const now = deps.clock()
+
+  const outcome = await deps.unitOfWork.execute((tx) =>
+    executeIdempotent<Record<string, unknown>>({
+      repository: deps.idempotencyRepository,
+      tx,
+      scope: userScope(principal.userId, `${MANDATES_ROUTE}/:id/authorize`, idempotencyKey),
+      requestHash: hashRequest({ mandateId }),
+      now: now.toISOString(),
+      expiresAt: new Date(now.getTime() + deps.config.idempotencyTtlMs).toISOString(),
+      execute: async () => {
+        const existing = await deps.mandateRepository.lockById(tx, { mandateId, userId: principal.userId })
+        if (existing === null) throw new AppError("RESOURCE_NOT_FOUND")
+
+        const result = await activateMandate(
+          tx,
+          {
+            mandateRepository: deps.mandateRepository,
+            sipRepository: deps.sipRepository,
+            auditRepository: deps.auditRepository,
+            clock: deps.clock,
+          },
+          {
+            mandateId,
+            providerMandateId: `${existing.provider}:${existing.id}`,
+            requestId: request.requestId,
+          },
+        )
+        return {
+          status: 200,
+          body: { ...mandateBody(result.mandate), activatedSipIds: result.activatedSipIds },
+        }
+      },
+    }),
+  )
+  return reply.sendData(outcome.body, {
+    status: outcome.status,
+    ...(outcome.replay ? { idempotencyReplay: true } : {}),
+  })
+}
+
 export const registerClientSipRoutes = (application: FastifyInstance, deps: ClientSipDeps): void => {
+  application.get(SIPS_ROUTE, async (request, reply) => getSips(deps, request, reply))
   application.post(SIPS_ROUTE, async (request, reply) => postCreateSip(deps, request, reply))
   application.post(`${SIPS_ROUTE}/:sipId/mandate`, async (request, reply) => postRequestMandate(deps, request, reply))
   application.post(`${SIPS_ROUTE}/:sipId/pause`, async (request, reply) =>
@@ -251,5 +346,9 @@ export const registerClientSipRoutes = (application: FastifyInstance, deps: Clie
   )
   application.post(`${SIPS_ROUTE}/:sipId/cancel`, async (request, reply) =>
     runControl(deps, request, reply, `${SIPS_ROUTE}/:id/cancel`, cancelSip),
+  )
+  application.get(`${MANDATES_ROUTE}/:mandateId`, async (request, reply) => getMandate(deps, request, reply))
+  application.post(`${MANDATES_ROUTE}/:mandateId/authorize`, async (request, reply) =>
+    postAuthorizeMandate(deps, request, reply),
   )
 }

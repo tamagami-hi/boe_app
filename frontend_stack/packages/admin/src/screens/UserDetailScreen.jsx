@@ -8,13 +8,41 @@ import '../styles/desktop/admin.css';
 import './admin-screens-shared.css';
 import I from '../components/I.jsx';
 import EmptyState from '@beonedge/shared/components/EmptyState.jsx';
+import GainAllocationForm from './GainAllocationForm.jsx';
 import { initials } from '../helpers/formatters.js';
+
+// The canonical admin projection sends money as paise strings and units/share as
+// numeric strings; format for display without pretending these are floats in the
+// data model.
+function rupees(paise) {
+  if (paise === null || paise === undefined || paise === '') return '—';
+  return `₹${(Number(paise) / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+}
+
+function signedRupees(paise) {
+  if (paise === null || paise === undefined || paise === '') return '—';
+  const value = Number(paise) / 100;
+  return `${value > 0 ? '+' : ''}₹${value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+}
+
+function units(value) {
+  if (value === null || value === undefined) return '—';
+  return Number(value).toLocaleString('en-IN', { maximumFractionDigits: 4 });
+}
+
+function sharePercent(fraction) {
+  if (fraction === null || fraction === undefined) return '—';
+  return `${(Number(fraction) * 100).toFixed(2)}%`;
+}
 
 function UserDetailScreen({ userId, onClose }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
+  // Bumped after an allocation so the derived figures refetch.
+  const [refreshToken, setRefreshToken] = useState(0);
+  const reload = () => setRefreshToken((token) => token + 1);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,19 +59,28 @@ function UserDetailScreen({ userId, onClose }) {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [userId]);
+  }, [userId, refreshToken]);
 
+  // Canonical `GET /v1/admin/users/:id/detail` returns user + roles + latest KYC
+  // case + recent orders/payments/mandates/SIPs + holdings. Sections with no
+  // canonical source (support tickets, SIP control requests, notifications) were
+  // retired by the canonical decisions and render their empty state.
   const user = data?.user || {};
-  const blockingReasons = data?.blockingReasons || [];
-  const investmentPlans = data?.investmentPlans || [];
+  const roles = data?.roles || [];
+  const kyc = data?.kyc || null;
+  const blockingReasons = kyc !== null && kyc.status !== 'approved' ? ['KYC is not approved'] : [];
+  const investmentPlans = data?.sips || [];
+  const orders = data?.orders || [];
   const payments = data?.payments || [];
   const mandates = data?.mandates || [];
-  const redemptionRequests = data?.redemptionRequests || [];
-  const sipControlRequests = data?.sipControlRequests || [];
-  const supportTickets = data?.supportTickets || [];
-  const notifications = (data?.notifications || []).slice(0, 20);
-  const auditLogsList = (data?.auditLogs || []).slice(0, 20);
-  const portfolio = data?.portfolioSummary || null;
+  const positions = data?.positions || [];
+  const portfolioTotals = data?.portfolio || null;
+  const redemptionRequests = [];
+  const sipControlRequests = [];
+  const supportTickets = [];
+  const notifications = [];
+  const auditLogsList = [];
+  const portfolio = portfolioTotals;
 
   const hasBlocking = blockingReasons.length > 0;
 
@@ -225,16 +262,72 @@ function UserDetailScreen({ userId, onClose }) {
                   ])}
 
                   {portfolio && renderInfoCard('Portfolio Summary', PieChart, [
-                    { label: 'Total Invested', value: <span className="be-money">₹{(portfolio.totalInvested || 0).toLocaleString()}</span> },
-                    { label: 'Current Value', value: <span className="be-money">₹{(portfolio.currentValue || 0).toLocaleString()}</span> },
-                    { label: 'Returns', value: portfolio.returns != null ? `${portfolio.returns}%` : '—' },
-                    { label: 'Funds', value: portfolio.fundCount ?? '—' },
+                    { label: 'Pools held', value: portfolio.poolCount ?? '—' },
+                    {
+                      label: 'Total investment (SIP + lump sum)',
+                      value: <span className="be-money">{rupees(portfolio.totalInvestmentPaise)}</span>,
+                    },
+                    {
+                      label: 'Current value',
+                      value: <span className="be-money">{rupees(portfolio.currentValuePaise)}</span>,
+                    },
+                    {
+                      label: 'Total return',
+                      value: (
+                        <span className="be-money">
+                          {signedRupees(portfolio.totalReturnPaise)}
+                          {portfolio.returnPercent === null || portfolio.returnPercent === undefined
+                            ? ''
+                            : ` (${portfolio.returnPercent.toFixed(2)}%)`}
+                        </span>
+                      ),
+                    },
+                    {
+                      label: 'Returns allocated to date',
+                      value: <span className="be-money">{rupees(portfolio.allocatedGainPaise)}</span>,
+                    },
+                    { label: 'SIP installments paid', value: portfolio.sipInstallmentCount ?? 0 },
+                    { label: 'Lump sums', value: portfolio.lumpSumCount ?? 0 },
                   ])}
                 </div>
               )}
 
               {tab.id === 'investments' && (
                 <div className="be-stack-4">
+                  {/* Option B: one row per pool, derived from this investor's
+                      ledger. These are the same figures the client is shown. */}
+                  {renderTable(
+                    'Pool positions',
+                    PieChart,
+                    ['Pool', 'Total investment', 'Current value', 'Return', 'SIP / lump sum', 'Last activity'],
+                    positions,
+                    (position, i) => (
+                      <tr key={position.fundId || i}>
+                        <td>
+                          <div className="adm-cell-main">{position.fundName || position.fundSlug || '—'}</div>
+                          {position.firstInvestmentDate && (
+                            <div className="adm-cell-sub">since {position.firstInvestmentDate}</div>
+                          )}
+                        </td>
+                        <td className="be-money">{rupees(position.totalInvestmentPaise)}</td>
+                        <td className="be-money">{rupees(position.currentValuePaise)}</td>
+                        <td className="be-money">
+                          {signedRupees(position.totalReturnPaise)}
+                          {position.returnPercent === null || position.returnPercent === undefined
+                            ? ''
+                            : ` (${position.returnPercent.toFixed(2)}%)`}
+                        </td>
+                        <td className="be-num">
+                          {position.sipInstallmentCount ?? 0} / {position.lumpSumCount ?? 0}
+                        </td>
+                        <td className="adm-cell-meta">{position.lastActivityDate || '—'}</td>
+                      </tr>
+                    ),
+                    'No pool positions yet.',
+                  )}
+
+                  <GainAllocationForm userId={userId} positions={positions} onAllocated={reload} />
+
                   {renderTable('Investment Plans', Briefcase, ['Fund', 'Amount', 'Type', 'Status', 'Started'], investmentPlans, (plan, i) => (
                     <tr key={i}>
                       <td>{plan.fundName || plan.fundId || '—'}</td>

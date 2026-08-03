@@ -21,9 +21,17 @@ export interface EmailMessage {
   readonly html?: string
 }
 
+/**
+ * What the transport reported for an accepted message. `messageId` lets a send be
+ * traced in the mailbox; transports that do not supply one return null.
+ */
+export interface EmailSendResult {
+  readonly messageId: string | null
+}
+
 /** Sends a single transactional email. Throws on transport failure. */
 export interface EmailSender {
-  send: (message: EmailMessage) => Promise<void>
+  send: (message: EmailMessage) => Promise<EmailSendResult>
 }
 
 export interface SmtpEmailConfig {
@@ -45,13 +53,14 @@ export const createSmtpEmailSender = (config: SmtpEmailConfig): EmailSender => {
   })
   return {
     send: async (message) => {
-      await transporter.sendMail({
+      const info = await transporter.sendMail({
         from: config.fromAddress,
         to: message.to,
         subject: message.subject,
         text: message.text,
         ...(message.html === undefined ? {} : { html: message.html }),
       })
+      return { messageId: typeof info.messageId === "string" ? info.messageId : null }
     },
   }
 }
@@ -64,6 +73,6 @@ export interface EmailSendLog {
 export const createLogEmailSender = (fromAddress: string, log?: EmailSendLog): EmailSender => ({
   send: (message) => {
     log?.({ to: message.to, subject: message.subject, fromAddress })
-    return Promise.resolve()
+    return Promise.resolve({ messageId: null })
   },
 })

@@ -3,8 +3,24 @@ import { apiRequest, clone, delay, listFromPayload, useHttpApi } from './_util.j
 
 let items = clone(fixtureNotifications);
 
+// The inbox screen groups by `ts` and follows `deepLink`; the wire carries the
+// timestamp as `createdAt` and any target inside the event payload.
+function mapNotification(row) {
+  return {
+    id: row.id,
+    kind: row.kind,
+    title: row.title,
+    body: row.body,
+    read: !!row.read,
+    ts: row.createdAt,
+    deepLink: row.payload?.deepLink ?? null,
+  };
+}
+
 export async function listNotifications() {
-  if (useHttpApi()) return listFromPayload(await apiRequest('/v1/client/notifications'));
+  if (useHttpApi()) {
+    return listFromPayload(await apiRequest('/v1/client/notifications')).map(mapNotification);
+  }
 
   await delay();
   return clone(items);

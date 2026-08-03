@@ -60,6 +60,20 @@ const login = async (): Promise<{ jar: Record<string, string>; csrf: string }> =
   return { jar: cookieJar(response.headers["set-cookie"]), csrf: dataOf<WebBody>(response).csrfToken }
 }
 
+let webDeps: WebAuthRouteDeps
+
+/** Builds an app over the shared database under a chosen cookie policy. */
+const buildTestApp = (overrides: { readonly cookieSecure: boolean }) => {
+  const instanceDeps: WebAuthRouteDeps = {
+    ...webDeps,
+    config: { ...webDeps.config, cookieSecure: overrides.cookieSecure },
+  }
+  return createApplication({
+    logger: false,
+    registerRoutes: (instance) => registerWebAuthRoutes(instance, instanceDeps),
+  })
+}
+
 beforeAll(async () => {
   container = await new PostgreSqlContainer("postgres:16-alpine")
     .withWaitStrategy(Wait.forLogMessage(/database system is ready to accept connections/u, 2))
@@ -71,11 +85,8 @@ beforeAll(async () => {
     idleTimeoutMs: 10_000,
   })
   const directory = fileURLToPath(new URL("../../db/migrations", import.meta.url))
-  const all = await loadMigrationFiles(directory)
-  await runMigrations(
-    pool,
-    all.filter((file) => file.version >= "009"),
-  )
+  const migrations = await loadMigrationFiles(directory)
+  await runMigrations(pool, migrations)
   await runSeed(pool)
 
   const database = createDatabase(pool)
@@ -87,7 +98,7 @@ beforeAll(async () => {
     signingKeyPkcs8: await exportPKCS8(keyPair.privateKey),
     verificationKeysSpki: { k1: await exportSPKI(keyPair.publicKey) },
   })
-  const deps: WebAuthRouteDeps = {
+  webDeps = {
     userRepository: createUserRepository(),
     authSessionRepository: createAuthSessionRepository(),
     auditRepository: createAuditRepository(),
@@ -100,7 +111,7 @@ beforeAll(async () => {
     config: { cookieSecure: false, originAllowlist: [ORIGIN] },
     unitOfWork: createUnitOfWork(database),
   }
-  app = createApplication({ logger: false, registerRoutes: (instance) => registerWebAuthRoutes(instance, deps) })
+  app = buildTestApp({ cookieSecure: false })
 
   // Active admin user with credential + onboarding role + one permission grant.
   const userRow = await pool.query<{ id: string }>(
@@ -142,8 +153,13 @@ describe("web authentication (integration)", () => {
     expect(response.statusCode).toBe(200)
     const setCookie = response.headers["set-cookie"]
     const cookies = Array.isArray(setCookie) ? setCookie.join("\n") : String(setCookie)
-    expect(cookies).toContain("__Host-boe_access=")
-    expect(cookies).toContain("__Host-boe_refresh=")
+    // This harness runs the non-TLS policy (cookieSecure: false), so the names must
+    // NOT carry the `__Host-` prefix: browsers discard a `__Host-` cookie that has
+    // no `Secure` attribute, which would make login silently impossible.
+    expect(cookies).toContain("boe_access=")
+    expect(cookies).toContain("boe_refresh=")
+    expect(cookies).not.toContain("__Host-")
+    expect(cookies).not.toContain("Secure")
     expect(cookies).toContain("HttpOnly")
     expect(cookies).toContain("SameSite=Lax")
     const body = dataOf<WebBody>(response)
@@ -158,6 +174,42 @@ describe("web authentication (integration)", () => {
       payload: { email: "admin@example.com", password: "wrong password value" },
     })
     expect(wrong.statusCode).toBe(401)
+  })
+
+  test("the TLS policy prefixes the cookie names and marks them Secure", async () => {
+    // Same login against a secure-cookie config: prefix and Secure travel together.
+    const secureApp = buildTestApp({ cookieSecure: true })
+    try {
+      const response = await secureApp.inject({
+        method: "POST",
+        url: "/v1/auth/web/login",
+        headers: { origin: ORIGIN },
+        payload: { email: "admin@example.com", password: PASSWORD },
+      })
+      expect(response.statusCode).toBe(200)
+      const setCookie = response.headers["set-cookie"]
+      const cookies = Array.isArray(setCookie) ? setCookie.join("\n") : String(setCookie)
+      expect(cookies).toContain("__Host-boe_access=")
+      expect(cookies).toContain("__Host-boe_refresh=")
+      expect(cookies).toContain("Secure")
+
+      // A session issued under the TLS policy is still readable, which is what makes
+      // flipping the policy non-breaking for logged-in admins.
+      const jar: Record<string, string> = {}
+      for (const cookie of Array.isArray(setCookie) ? setCookie : [String(setCookie)]) {
+        const [pair] = cookie.split(";")
+        const index = (pair ?? "").indexOf("=")
+        if (index > 0) jar[(pair ?? "").slice(0, index)] = (pair ?? "").slice(index + 1)
+      }
+      const csrf = await secureApp.inject({
+        method: "GET",
+        url: "/v1/auth/web/csrf",
+        headers: { origin: ORIGIN, cookie: cookieHeader(jar) },
+      })
+      expect(csrf.statusCode).toBe(200)
+    } finally {
+      await secureApp.close()
+    }
   })
 
   test("refresh rotates the pair and reuse with a different rotationId revokes", async () => {
@@ -240,8 +292,8 @@ describe("web authentication (integration)", () => {
   test("GET /v1/auth/web/csrf recovers from the refresh cookie when the access cookie is absent", async () => {
     const { jar } = await login()
     const refreshOnly: Record<string, string> = {}
-    const refreshValue = jar["__Host-boe_refresh"]
-    if (refreshValue !== undefined) refreshOnly["__Host-boe_refresh"] = refreshValue
+    const refreshValue = jar["boe_refresh"]
+    if (refreshValue !== undefined) refreshOnly["boe_refresh"] = refreshValue
 
     const recovered = await app.inject({
       method: "GET",

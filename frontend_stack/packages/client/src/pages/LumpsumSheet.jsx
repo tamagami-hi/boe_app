@@ -112,7 +112,7 @@ export default function LumpsumSheet() {
         <button className="be-btn be-btn-primary be-btn-block be-btn-lg" disabled={!valid || !riskConsent || submitting} onClick={onContinue}>
           {submitting ? 'Setting up investment...' : (
             <>
-              <CreditCard size={18} strokeWidth={2} /> Pay ₹{fmtMoney(amountNumber)}
+              <CreditCard size={18} strokeWidth={2} /> Pay {fmtMoney(amountNumber)}
             </>
           )}
         </button>

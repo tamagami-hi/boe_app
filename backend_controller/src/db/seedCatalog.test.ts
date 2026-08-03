@@ -10,6 +10,7 @@ import {
   SEED_ROLE_PERMISSIONS,
   SEED_ROLES,
 } from "./seedCatalog.js"
+import { SEED_CONTENT_DOCUMENTS } from "./seedContent.js"
 
 const ROLE_CODE = /^[a-z][a-z0-9_]*$/u
 const PERMISSION_CODE = /^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/u
@@ -64,15 +65,40 @@ describe("bootstrap catalog", () => {
     expect(digest.equals(createHash("sha256").update(markdown, "utf8").digest())).toBe(true)
   })
 
+  test("publishes the documents the app reads, with a payload the client can render", () => {
+    // The client used to hard-code this copy; it is content now so wording and
+    // contacts can change without a release.
+    const keys = SEED_CONTENT_DOCUMENTS.map((document) => document.contentKey)
+    expect(keys).toContain("disclosures")
+    expect(keys).toContain("investor-charter")
+    expect(keys).toContain("grievance-redressal")
+    expect(keys).toContain("research-context")
+    expect(SEED_CONTENT_DOCUMENTS.filter((document) => document.kind === "faq").length).toBeGreaterThan(3)
+    expect(new Set(keys).size).toBe(keys.length)
+
+    // This model has no units and no per-unit price, so the copy must not promise
+    // either — that wording is what the retired NAV model used.
+    const copy = JSON.stringify(SEED_CONTENT_DOCUMENTS).toLowerCase()
+    expect(copy).not.toContain("nav")
+    expect(copy).not.toContain("units allocate")
+    expect(copy).not.toContain("per unit")
+  })
+
   test("builds one idempotent statement per catalog row", () => {
     const statements = buildSeedStatements()
     expect(statements).toHaveLength(
-      SEED_ROLES.length + SEED_PERMISSIONS.length + SEED_CONSENT_DOCUMENTS.length,
+      SEED_ROLES.length +
+        SEED_PERMISSIONS.length +
+        SEED_CONSENT_DOCUMENTS.length +
+        SEED_CONTENT_DOCUMENTS.length,
     )
     for (const statement of statements) {
       expect(statement.text).toContain("ON CONFLICT")
     }
-    const consentStatements = statements.slice(SEED_ROLES.length + SEED_PERMISSIONS.length)
+    const consentStatements = statements.slice(
+      SEED_ROLES.length + SEED_PERMISSIONS.length,
+      SEED_ROLES.length + SEED_PERMISSIONS.length + SEED_CONSENT_DOCUMENTS.length,
+    )
     for (const statement of consentStatements) {
       const digestValue = statement.values[4]
       expect(Buffer.isBuffer(digestValue)).toBe(true)

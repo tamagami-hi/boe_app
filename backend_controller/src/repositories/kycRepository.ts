@@ -12,6 +12,8 @@ import type { KycCase, KycVerificationCode, Transaction } from "../db/repositori
 export interface KycWriteRepository {
   /** The user's current approved case (if any), for the already-verified short-circuit. */
   findApprovedByUser: (tx: Transaction, userId: string) => Promise<KycCase | null>
+  /** The investor's most recent case in any state — what the status screen reads. */
+  findLatestByUser: (tx: Transaction, userId: string) => Promise<KycCase | null>
   /** Lock the user's open (nonterminal) case, or null. */
   lockOpenCaseByUser: (tx: Transaction, userId: string) => Promise<KycCase | null>
   /** Create a new email-OTP case (`pending_submission`, provider `email_otp`). */
@@ -57,6 +59,17 @@ export const createKycRepository = (): KycWriteRepository => ({
       .where("user_id", "=", userId)
       .where("state", "=", "approved")
       .orderBy("decided_at", "desc")
+      .limit(1)
+      .executeTakeFirst()
+    return row ?? null
+  },
+
+  findLatestByUser: async (tx, userId) => {
+    const row = await tx
+      .selectFrom("kyc_cases")
+      .selectAll()
+      .where("user_id", "=", userId)
+      .orderBy("created_at", "desc")
       .limit(1)
       .executeTakeFirst()
     return row ?? null

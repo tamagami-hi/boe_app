@@ -10,6 +10,7 @@ import {
   storedRefreshToken,
   storedUser,
   useHttpApi,
+  registerSessionRefresher,
 } from './_util.js';
 
 const DEVICE_ID_KEY = 'boe.client.deviceId';
@@ -306,6 +307,60 @@ async function refreshCurrentUser(scope) {
   _users[scope] = user;
   return clone(user);
 }
+
+/**
+ * Rotate the admin web session from its HttpOnly refresh cookie
+ * (`POST /v1/auth/web/refresh`). The response rotates both the refresh cookie
+ * and the synchronizer CSRF token, so the new token is stored before any further
+ * unsafe request. Used when a cookie-scoped call comes back 401 after the short
+ * access-token TTL has elapsed.
+ */
+export async function refreshAdminSession() {
+  const result = await apiRequest('/v1/auth/web/refresh', {
+    method: 'POST',
+    auth: false,
+    scope: 'admin',
+  });
+  const user = assertScopeUser(toAdminUser(result.user), 'admin');
+  setSessionCsrf(result.csrfToken, 'admin');
+  setSessionTokens({ user, scope: 'admin' });
+  _users.admin = user;
+  return clone(user);
+}
+
+/**
+ * Complete an activation invite (`POST /v1/activations/complete`): the invited
+ * user sets their first password with the token from the invite email and
+ * receives a native session in return. This is the only self-service path into
+ * an account — signup is application + admin approval.
+ */
+export async function completeActivation({ token, password } = {}) {
+  if (!useHttpApi()) {
+    await delay(120);
+    throw new Error('Activation needs the backend. Set VITE_BEO_API_MODE=http.');
+  }
+  const result = await apiRequest('/v1/activations/complete', {
+    method: 'POST',
+    auth: false,
+    scope: 'client',
+    body: { token, password, device: buildDevice() },
+  });
+  const user = assertScopeUser(toClientUser(fromNativeUser(result.user)), 'client');
+  setSessionTokens({
+    user,
+    accessToken: result.accessToken,
+    refreshToken: result.refreshToken,
+    scope: 'client',
+  });
+  _users.client = user;
+  return clone(user);
+}
+
+// Register the 401 recovery paths with the transport: the admin (cookie) scope
+// rotates via `/v1/auth/web/refresh`, the client (native) scope via its stored
+// refresh token. Registered once at module load.
+registerSessionRefresher('admin', refreshAdminSession);
+registerSessionRefresher('client', () => refreshCurrentUser('client'));
 
 export async function currentUser({ scope = 'client' } = {}) {
   if (useHttpApi()) {

@@ -14,7 +14,7 @@ import { bookOrder } from "../../src/domain/client/bookOrder.js"
 import { confirmPayment, sendPaymentToProvider } from "../../src/domain/client/confirmPayment.js"
 import { createOrder } from "../../src/domain/client/createOrder.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
-import { createHoldingRepository } from "../../src/repositories/holdingRepository.js"
+import { createInvestorLedgerRepository } from "../../src/repositories/investorLedgerRepository.js"
 import { createNotificationRepository } from "../../src/repositories/notificationRepository.js"
 import { createOrderRepository } from "../../src/repositories/orderRepository.js"
 import { createOutboxRepository } from "../../src/repositories/outboxRepository.js"
@@ -31,7 +31,7 @@ let fundId: string
 
 const orderRepository = createOrderRepository()
 const paymentRepository = createPaymentRepository()
-const holdingRepository = createHoldingRepository()
+const investorLedgerRepository = createInvestorLedgerRepository()
 const notificationRepository = createNotificationRepository()
 const userRepository = createUserRepository()
 const outboxRepository = createOutboxRepository()
@@ -48,7 +48,7 @@ const beginDeps = {
   config: { paymentProvider: "manual", attemptTtlMs: 900_000 },
 }
 const seamDeps = { paymentRepository, orderRepository, auditRepository, clock }
-const bookDeps = { orderRepository, holdingRepository, notificationRepository, auditRepository, clock }
+const bookDeps = { orderRepository, investorLedgerRepository, notificationRepository, auditRepository, clock }
 
 /** Drive an order through the full lifecycle to `booked`; returns the order id. */
 const runFullChain = async (amountPaise: number): Promise<string> => {
@@ -94,11 +94,8 @@ beforeAll(async () => {
     idleTimeoutMs: 10_000,
   })
   const directory = fileURLToPath(new URL("../../db/migrations", import.meta.url))
-  const all = await loadMigrationFiles(directory)
-  await runMigrations(
-    pool,
-    all.filter((file) => file.version >= "009"),
-  )
+  const migrations = await loadMigrationFiles(directory)
+  await runMigrations(pool, migrations)
   await runSeed(pool)
   uow = createUnitOfWork(createDatabase(pool))
 
@@ -146,9 +143,10 @@ afterAll(async () => {
   await container.stop()
 })
 
-describe("order booking money-math (integration)", () => {
-  test("a full create->pay->confirm->book chain allots exact units into a holding", async () => {
-    // ₹2,000 (200000 paise) at NAV 20.00 => exactly 100 units.
+describe("order booking into the investor ledger (integration)", () => {
+  test("a full create->pay->confirm->book chain appends one contribution entry", async () => {
+    // Option B: ₹2,000 received becomes ₹2,000 of invested principal and ₹2,000 of
+    // current value. There is no unit quantity and no price.
     const orderId = await runFullChain(200_000)
 
     const order = await pool.query<{ state: string; booked_at: string | null }>(
@@ -158,34 +156,38 @@ describe("order booking money-math (integration)", () => {
     expect(order.rows[0]?.state).toBe("booked")
     expect(order.rows[0]?.booked_at).not.toBeNull()
 
-    const execution = await pool.query<{ type: string; units: string; nav: string; amount_paise: string }>(
-      "select type, units, nav, amount_paise from investment_executions where order_id = $1",
+    const entry = await pool.query<{
+      entry_type: string
+      principal_delta_paise: string
+      value_delta_paise: string
+      amount_paise: string
+      effective_date: string
+      payment_id: string | null
+      allocated_by_user_id: string | null
+    }>(
+      "select entry_type, principal_delta_paise, value_delta_paise, amount_paise, " +
+        "effective_date::text as effective_date, payment_id, allocated_by_user_id " +
+        "from investor_ledger_entries where order_id = $1",
       [orderId],
     )
-    expect(execution.rows[0]).toEqual({
-      type: "allotment",
-      units: "100.00000000",
-      nav: "20.00000000",
+    expect(entry.rows).toHaveLength(1)
+    expect(entry.rows[0]).toMatchObject({
+      entry_type: "lump_sum",
+      principal_delta_paise: "200000",
+      value_delta_paise: "200000",
       amount_paise: "200000",
+      // A contribution is never administrator-originated.
+      allocated_by_user_id: null,
     })
 
-    const holding = await pool.query<{ total_units: string; cost_basis_paise: string; reserved_units: string }>(
-      "select total_units, cost_basis_paise, reserved_units from holdings where user_id = $1 and fund_id = $2",
-      [userId, fundId],
+    // The unit-era tables stay untouched by the money model.
+    const legacy = await pool.query<{ executions: number; holdings: number; lots: number }>(
+      "select (select count(*)::int from investment_executions where order_id = $1) as executions, " +
+        "(select count(*)::int from holdings where user_id = $2) as holdings, " +
+        "(select count(*)::int from holding_lots where user_id = $2) as lots",
+      [orderId, userId],
     )
-    expect(holding.rows[0]).toEqual({ total_units: "100.00000000", cost_basis_paise: "200000", reserved_units: "0.00000000" })
-
-    const lot = await pool.query<{ original_units: string; remaining_units: string; cost_basis_paise: string }>(
-      "select original_units, remaining_units, cost_basis_paise from holding_lots where source_execution_id = (select id from investment_executions where order_id = $1)",
-      [orderId],
-    )
-    expect(lot.rows[0]).toEqual({ original_units: "100.00000000", remaining_units: "100.00000000", cost_basis_paise: "200000" })
-
-    const movement = await pool.query<{ movement_type: string; units_delta: string; cost_basis_delta_paise: string }>(
-      "select movement_type, units_delta, cost_basis_delta_paise from holding_lot_movements where execution_id = (select id from investment_executions where order_id = $1)",
-      [orderId],
-    )
-    expect(movement.rows[0]).toEqual({ movement_type: "allotment", units_delta: "100.00000000", cost_basis_delta_paise: "200000" })
+    expect(legacy.rows[0]).toEqual({ executions: 0, holdings: 0, lots: 0 })
 
     const payment = await pool.query<{ state: string }>("select state from payments where order_id = $1", [orderId])
     expect(payment.rows[0]?.state).toBe("succeeded")
@@ -196,23 +198,27 @@ describe("order booking money-math (integration)", () => {
     expect(notification.rows[0]?.c).toBeGreaterThanOrEqual(1)
   })
 
-  test("a second booking in the same fund increments the holding and adds a lot", async () => {
-    const before = await pool.query<{ total_units: string; lots: number }>(
-      "select h.total_units, (select count(*)::int from holding_lots l where l.user_id = $1 and l.fund_id = $2) as lots from holdings h where h.user_id = $1 and h.fund_id = $2",
+  test("a second contribution adds another dated entry rather than mutating a balance", async () => {
+    const before = await pool.query<{ entries: number; principal: string }>(
+      "select count(*)::int as entries, coalesce(sum(principal_delta_paise),0)::text as principal " +
+        "from investor_ledger_entries where user_id = $1 and fund_id = $2",
       [userId, fundId],
     )
-    const beforeUnits = Number(before.rows[0]?.total_units)
-    const beforeLots = Number(before.rows[0]?.lots)
+    const beforeEntries = Number(before.rows[0]?.entries)
+    const beforePrincipal = BigInt(before.rows[0]?.principal ?? "0")
 
-    // ₹1,000 at NAV 20.00 => 50 units.
     await runFullChain(100_000)
 
-    const after = await pool.query<{ total_units: string; cost_basis_paise: string; lots: number }>(
-      "select h.total_units, h.cost_basis_paise, (select count(*)::int from holding_lots l where l.user_id = $1 and l.fund_id = $2) as lots from holdings h where h.user_id = $1 and h.fund_id = $2",
+    const after = await pool.query<{ entries: number; principal: string; value: string }>(
+      "select count(*)::int as entries, coalesce(sum(principal_delta_paise),0)::text as principal, " +
+        "coalesce(sum(value_delta_paise),0)::text as value " +
+        "from investor_ledger_entries where user_id = $1 and fund_id = $2",
       [userId, fundId],
     )
-    expect(Number(after.rows[0]?.total_units)).toBeCloseTo(beforeUnits + 50, 8)
-    expect(Number(after.rows[0]?.lots)).toBe(beforeLots + 1)
+    expect(Number(after.rows[0]?.entries)).toBe(beforeEntries + 1)
+    expect(BigInt(after.rows[0]?.principal ?? "0")).toBe(beforePrincipal + 100_000n)
+    // Total Investment and Current Value move together for contributions.
+    expect(after.rows[0]?.value).toBe(after.rows[0]?.principal)
   })
 
   test("booking a payment_pending order is rejected (STATE_CONFLICT)", async () => {
@@ -259,14 +265,14 @@ describe("order booking money-math (integration)", () => {
     ).rejects.toMatchObject({ code: "STATE_CONFLICT" })
   })
 
-  test("double booking the same order is rejected (no second allotment)", async () => {
+  test("double booking the same order is rejected (no second ledger entry)", async () => {
     const orderId = await runFullChain(200_000)
     await expect(
       uow.execute((tx) => bookOrder(tx, bookDeps, { userId, orderId, requestId: randomUUID() })),
     ).rejects.toMatchObject({ code: "STATE_CONFLICT" })
 
     const executions = await pool.query<{ c: number }>(
-      "select count(*)::int as c from investment_executions where order_id = $1",
+      "select count(*)::int as c from investor_ledger_entries where order_id = $1",
       [orderId],
     )
     expect(executions.rows[0]?.c).toBe(1)

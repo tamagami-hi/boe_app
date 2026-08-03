@@ -25,12 +25,39 @@ function applyFilter(items, filter) {
   return items;
 }
 
-export async function listTransactions({ filter = 'all', from, to } = {}) {
+// Option B ledger row -> the transaction list shape. Each row is a dated event:
+// a SIP installment, a lump sum, an administrator-allocated gain, or a redemption.
+function mapLedgerRow(row) {
+  const toRupees = (paise) =>
+    paise === null || paise === undefined ? null : Number(paise) / 100;
+  const label = {
+    sip_installment: 'SIP installment',
+    lump_sum: 'Lump sum',
+    gain_allocation: 'Returns allocated',
+    redemption: 'Redemption',
+    adjustment: 'Adjustment',
+  };
+  return {
+    id: row.id,
+    fundId: row.fundId,
+    rawType: row.type,
+    type: row.type === 'sip_installment' ? 'sip' : row.type === 'lump_sum' ? 'lumpsum' : row.type,
+    label: label[row.type] ?? row.type,
+    amount: toRupees(row.amountPaise),
+    // Signed deltas explain which headline figure the row moved.
+    investmentDelta: toRupees(row.principalDeltaPaise),
+    valueDelta: toRupees(row.valueDeltaPaise),
+    date: row.date,
+    createdAt: row.createdAt,
+    // Ledger entries are settled facts; the list has no pending state.
+    status: 'completed',
+    note: row.note,
+  };
+}
+
+export async function listTransactions({ filter = 'all' } = {}) {
   if (useHttpApi()) {
-    const params = new URLSearchParams({ filter });
-    if (from) params.set('from', from);
-    if (to) params.set('to', to);
-    const items = listFromPayload(await apiRequest(`/v1/client/transactions?${params.toString()}`));
+    const items = listFromPayload(await apiRequest('/v1/client/transactions?limit=100')).map(mapLedgerRow);
     return applyFilter(items, filter);
   }
 

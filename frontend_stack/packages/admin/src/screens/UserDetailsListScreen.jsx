@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Search, ChevronLeft, ChevronRight, User, Mail, Phone, CheckCircle2, Clock } from 'lucide-react';
-import { apiRequest } from '@beonedge/client/services/_util.js';
+import { Search, CheckCircle2 } from 'lucide-react';
+import useAdminList from '../hooks/useAdminList.js';
 import I from '../components/I.jsx';
 import EmptyTableRow from '../components/EmptyTableRow.jsx';
 import SkeletonTableRow from '../components/SkeletonTableRow.jsx';
@@ -8,43 +8,24 @@ import { initials, displayRole, fmtInt } from '../helpers/formatters.js';
 import './admin-screens-shared.css';
 
 export default function UserDetailsListScreen({ onUserDetail }) {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [q, setQ] = useState('');
-  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('active');
   const [limit, setLimit] = useState(25);
-  const [total, setTotal] = useState(0);
   const [sortKey, setSortKey] = useState('createdAt');
   const [sortDir, setSortDir] = useState('desc');
 
-  async function loadUsers() {
-    setLoading(true);
-    setError('');
-    try {
-      const params = new URLSearchParams();
-      params.set('status', 'approved');
-      if (q.trim()) params.set('q', q.trim());
-      params.set('page', String(page));
-      params.set('limit', String(limit));
-      const payload = await apiRequest(`/v1/admin/users?${params.toString()}`, { scope: 'admin' });
-      const items = payload?.items || payload?.data?.items || [];
-      const payloadTotal = payload?.total ?? payload?.data?.total ?? items.length;
-      setUsers(items);
-      setTotal(payloadTotal);
-    } catch (err) {
-      setError(err?.message || 'Failed to load users.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
+  // Debounce the search box so each keystroke does not open a new keyset page.
   useEffect(() => {
-    const timer = setTimeout(() => {
-      loadUsers();
-    }, 300);
+    const timer = setTimeout(() => setSearch(q.trim()), 300);
     return () => clearTimeout(timer);
-  }, [q, page, limit]);
+  }, [q]);
+
+  const { items: users, loading, error, hasMore, loadMore } = useAdminList(
+    '/v1/admin/users',
+    { status, q: search },
+    { limit },
+  );
 
   const sortedUsers = [...users].sort((a, b) => {
     const aVal = a[sortKey] || '';
@@ -76,8 +57,6 @@ export default function UserDetailsListScreen({ onUserDetail }) {
     );
   }
 
-  const totalPages = Math.max(1, Math.ceil(total / limit));
-
   return (
     <div className="adm-screen">
       <div className="adm-card adm-table">
@@ -87,7 +66,7 @@ export default function UserDetailsListScreen({ onUserDetail }) {
             <h2 className="adm-card-title">Approved Users</h2>
           </div>
           <div className="adm-card-actions">
-            <span className="adm-cell-meta">{fmtInt(total)} total</span>
+            <span className="adm-cell-meta">{fmtInt(users.length)} loaded</span>
           </div>
         </div>
 
@@ -98,11 +77,20 @@ export default function UserDetailsListScreen({ onUserDetail }) {
               type="text"
               placeholder="Search by name, email or phone..."
               value={q}
-              onChange={(e) => { setPage(1); setQ(e.target.value); }}
+              onChange={(e) => setQ(e.target.value)}
             />
           </div>
           <div className="adm-filter">
-            <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}>
+            <select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Account status">
+              <option value="active">Active</option>
+              <option value="invited">Invited</option>
+              <option value="suspended">Suspended</option>
+              <option value="closed">Closed</option>
+              <option value="all">All statuses</option>
+            </select>
+          </div>
+          <div className="adm-filter">
+            <select value={limit} onChange={(e) => setLimit(Number(e.target.value))} aria-label="Page size">
               <option value={10}>10 / page</option>
               <option value={25}>25 / page</option>
               <option value={50}>50 / page</option>
@@ -136,7 +124,7 @@ export default function UserDetailsListScreen({ onUserDetail }) {
               )}
               {!loading && sortedUsers.length === 0 && (
                 <EmptyTableRow colSpan={6}>
-                  No approved users yet. Approved clients will appear here automatically.
+                  No users match this filter yet. Approved clients appear here automatically.
                 </EmptyTableRow>
               )}
               {sortedUsers.map((r) => (
@@ -154,10 +142,10 @@ export default function UserDetailsListScreen({ onUserDetail }) {
                     <span className="adm-cell-meta">{r.createdAt || '—'}</span>
                   </td>
                   <td className="adm-col-date">
-                    <span className="adm-cell-meta">{r.approvedAt || '—'}</span>
+                    <span className="adm-cell-meta">{r.activatedAt || '—'}</span>
                   </td>
                   <td className="adm-col-status">
-                    <span className="be-badge be-badge-green"><CheckCircle2 size={12} /> Approved</span>
+                    <span className="be-badge be-badge-green"><CheckCircle2 size={12} /> {r.status || 'active'}</span>
                   </td>
                   <td className="adm-col-role">{displayRole(r)}</td>
                   <td className="adm-col-actions">
@@ -169,14 +157,10 @@ export default function UserDetailsListScreen({ onUserDetail }) {
           </table>
         </div>
 
-        {totalPages > 1 && (
+        {hasMore && (
           <div className="adm-toolbar adm-toolbar--center adm-toolbar--bordered adm-toolbar--gap-2">
-            <button className="be-btn be-btn-secondary be-btn-sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-              <I icon={ChevronLeft} size={14} /> Prev
-            </button>
-            <span className="adm-cell-meta">Page {page} of {totalPages}</span>
-            <button className="be-btn be-btn-secondary be-btn-sm" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
-              Next <I icon={ChevronRight} size={14} />
+            <button className="be-btn be-btn-secondary be-btn-sm" disabled={loading} onClick={loadMore}>
+              Load more
             </button>
           </div>
         )}

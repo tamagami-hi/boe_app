@@ -15,6 +15,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest"
 import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
 import { SEED_PERMISSIONS, SEED_ROLES } from "../../src/db/seedCatalog.js"
+import { SEED_CONTENT_DOCUMENTS } from "../../src/db/seedContent.js"
 import type { Database } from "../../src/db/types.js"
 import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
 import { runSeed } from "../../src/scripts/seed.js"
@@ -95,8 +96,7 @@ describe("PostgreSQL foundation (integration)", () => {
 describe("canonical public-onboarding schema (BE-007a)", () => {
   beforeAll(async () => {
     const directory = fileURLToPath(new URL("../../db/migrations", import.meta.url))
-    const all = await loadMigrationFiles(directory)
-    const canonical = all.filter((file) => file.version >= "009")
+    const canonical = await loadMigrationFiles(directory)
     await runMigrations(pool, canonical)
   }, 60_000)
 
@@ -530,11 +530,8 @@ describe("canonical public-onboarding schema (BE-007a)", () => {
 describe("canonical Kysely schema types (BE-007f)", () => {
   beforeAll(async () => {
     const directory = fileURLToPath(new URL("../../db/migrations", import.meta.url))
-    const all = await loadMigrationFiles(directory)
-    await runMigrations(
-      pool,
-      all.filter((file) => file.version >= "009"),
-    )
+    const migrations = await loadMigrationFiles(directory)
+    await runMigrations(pool, migrations)
   }, 60_000)
 
   test("round-trips typed inserts and selects against the live DDL", async () => {
@@ -598,11 +595,8 @@ describe("canonical Kysely schema types (BE-007f)", () => {
 describe("canonical bootstrap seed (BE-007g)", () => {
   beforeAll(async () => {
     const directory = fileURLToPath(new URL("../../db/migrations", import.meta.url))
-    const all = await loadMigrationFiles(directory)
-    await runMigrations(
-      pool,
-      all.filter((file) => file.version >= "009"),
-    )
+    const migrations = await loadMigrationFiles(directory)
+    await runMigrations(pool, migrations)
   }, 60_000)
 
   const countRow = async (query: string, values: readonly unknown[] = []): Promise<number> => {
@@ -612,7 +606,9 @@ describe("canonical bootstrap seed (BE-007g)", () => {
 
   test("seeds the catalog and is idempotent on a second run", async () => {
     const applied = await runSeed(pool)
-    expect(applied).toBe(SEED_ROLES.length + SEED_PERMISSIONS.length + 2)
+    expect(applied).toBe(
+      SEED_ROLES.length + SEED_PERMISSIONS.length + 2 + SEED_CONTENT_DOCUMENTS.length,
+    )
 
     // every catalog role and permission exists after seeding
     expect(
@@ -632,7 +628,21 @@ describe("canonical bootstrap seed (BE-007g)", () => {
       ),
     ).toBe(2)
 
+    // the documents the app reads are published, one current version each
+    expect(
+      await countRow("select count(*)::int as c from content_items where state = 'published'"),
+    ).toBe(SEED_CONTENT_DOCUMENTS.length)
+    for (const contentKey of ["disclosures", "investor-charter", "grievance-redressal", "research-context"]) {
+      expect(
+        await countRow(
+          "select count(*)::int as c from content_items where content_key = $1 and state = 'published'",
+          [contentKey],
+        ),
+      ).toBe(1)
+    }
+
     // idempotency: a second run changes nothing
+    const contentBefore = await countRow("select count(*)::int as c from content_items")
     const rolesBefore = await countRow("select count(*)::int as c from roles")
     const permissionsBefore = await countRow("select count(*)::int as c from permissions")
     const consentsBefore = await countRow("select count(*)::int as c from consent_documents")
@@ -643,5 +653,6 @@ describe("canonical bootstrap seed (BE-007g)", () => {
     expect(await countRow("select count(*)::int as c from roles")).toBe(rolesBefore)
     expect(await countRow("select count(*)::int as c from permissions")).toBe(permissionsBefore)
     expect(await countRow("select count(*)::int as c from consent_documents")).toBe(consentsBefore)
+    expect(await countRow("select count(*)::int as c from content_items")).toBe(contentBefore)
   })
 })

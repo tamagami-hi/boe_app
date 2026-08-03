@@ -154,6 +154,21 @@ export const runSeedAuth = async (
       [adminId, role.id, adminId],
     )
 
+    // A finance policy version must exist before any redemption can reference it
+    // (`redemption_requests.finance_policy_version` is a foreign key). Version 1
+    // carries the schema's default dual-approval threshold; changing thresholds is
+    // an administrative act that publishes a new version.
+    const policy = firstRow<{ version: number }>(
+      await client.query("SELECT version FROM finance_policy_versions WHERE retired_at IS NULL"),
+    )
+    if (policy === undefined) {
+      await client.query(
+        "INSERT INTO finance_policy_versions (version, effective_from, published_by_user_id) " +
+          "VALUES (1, now(), $1) ON CONFLICT (version) DO NOTHING",
+        [adminId],
+      )
+    }
+
     await client.query("COMMIT")
     return { catalogStatements: statements.length, adminSeeded: true, skipped: null }
   } catch (error: unknown) {
