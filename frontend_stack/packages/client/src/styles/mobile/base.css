@@ -123,11 +123,53 @@
 
 /* Splash */
 .apk-splash {
-  position: fixed; inset: 0;
-  background: var(--be-ink);
+  /* Sized with viewport units instead of inset: the animated PageTransition
+     wrapper (will-change: transform) becomes the containing block for fixed
+     descendants and can be shorter than the viewport, collapsing inset:0. */
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+  background: #1800ad;
   color: var(--be-bone);
   display: flex; align-items: center; justify-content: center;
   flex-direction: column; gap: var(--be-space-6);
+}
+
+/* Brand moment: the logo settles in first, then the wordmark slides out
+   from behind its right edge. Masked so the two never overlap. */
+.apk-splash-brand {
+  display: flex; align-items: center; gap: 20px;
+}
+
+.apk-splash-logo {
+  animation: apk-splash-logo-in 640ms var(--be-ease-out) both;
+}
+
+.apk-splash-name-mask {
+  display: block; overflow: hidden;
+}
+
+.apk-splash-name {
+  display: block;
+  font-family: var(--be-font-serif);
+  font-size: 24px; font-weight: 600;
+  letter-spacing: 0.01em; line-height: 1;
+  white-space: nowrap;
+  color: var(--be-bone);
+  animation: apk-splash-name-in 720ms var(--be-ease-out) 560ms both;
+}
+
+@keyframes apk-splash-logo-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes apk-splash-name-in {
+  from { opacity: 0; transform: translateX(-100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .apk-splash-logo,
+  .apk-splash-name { animation: none; }
 }
 
 .apk-splash-spinner {
@@ -141,7 +183,7 @@
   position: absolute;
   left: -40%; top: 0;
   height: 1px; width: 40%;
-  background: var(--be-gold);
+  background: var(--be-bone);
   animation: apk-slide 1.2s var(--be-ease) infinite;
 }
 

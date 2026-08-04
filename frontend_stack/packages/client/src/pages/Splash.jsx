@@ -50,7 +50,12 @@ export default function Splash() {
 
   return (
     <div className="apk-splash">
-      <img className="apk-logo-img apk-splash-logo" src={logoOnDark} alt="BeOnEdge" />
+      <div className="apk-splash-brand">
+        <img className="apk-logo-img apk-splash-logo" src={logoOnDark} alt="BeOnEdge" />
+        <span className="apk-splash-name-mask">
+          <span className="apk-splash-name">BeOnEdge</span>
+        </span>
+      </div>
       {unreachable ? (
         <div className="apk-splash-error" role="alert">
           <p>BeOnEdge servers are not reachable right now. Check your connection and try again.</p>

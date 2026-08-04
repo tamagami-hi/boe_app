@@ -242,7 +242,7 @@
 .apk-logo-img { display: block; width: auto; object-fit: contain; }
 .apk-login-logo { height: 56px; max-width: 220px; }
 /* Splash (mobile-first) */
-.apk-splash-logo { height: 56px; max-width: 200px; }
+.apk-splash-logo { height: 104px; max-width: 104px; }
 
 
 .apk-login-title { font-family: var(--be-font-serif); font-size: 32px; font-weight: 600; line-height: 1.1; margin: 0; }
