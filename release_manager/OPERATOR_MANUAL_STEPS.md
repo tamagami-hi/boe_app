@@ -397,7 +397,7 @@ ssh beonedge 'cd /srv/dev_stack/BOE_APP/dev_release && docker compose --project-
 Production follows the same route, but requires a cut release first:
 
 ```bash
-./release_manager/status.sh        # option 5 prepares Git; option 6 cuts a release
+./release_manager/status.sh        # Git → Full workflow; then Git → Cut a release
 ./release_manager/export.sh --prod
 ./release_manager/deploy.sh --prod
 ```
@@ -415,7 +415,10 @@ Each is currently detected and reported rather than silently worked around.
 
 2. **Gradle product flavors + release signing** (`android/app/build.gradle`).
    Today one `applicationId` means dev and prod APKs cannot be co-installed, and
-   `--prod` yields a debug-signed APK. `boe_update.sh` warns about both.
+   `--prod` yields a debug-signed APK. `boe_update.sh` warns about both. Because
+   the builder only produces `assembleDebug`, production APK publishing is
+   refused outright (the sidecar records `signing: "debug"`) until a release
+   signing config exists.
 
 3. **Backend `/metrics` endpoint.** None exists, so Prometheus has no
    application-level series. Monitoring currently covers host, container and

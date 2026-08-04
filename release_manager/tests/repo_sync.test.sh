@@ -32,4 +32,7 @@ repo_sync_eval "$repo"
     || fail_test 'dirty worktree with spaces was reported clean'
 [[ "$RS_CLEAN_SYNC" == false ]] || fail_test 'dirty worktree passed the clean release gate'
 
+grep -qF 'GIT_TERMINAL_PROMPT=0' "$ROOT_DIR/release_manager/lib/repo_sync.sh" \
+    || fail_test 'origin fetch can block on a terminal credential prompt'
+
 printf 'PASS: repository sync handles main-worktree paths containing spaces\n'

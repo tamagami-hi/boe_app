@@ -40,11 +40,29 @@ source "$RM_DIR/lib/repo_sync.sh"
 source "$RM_DIR/lib/git_workflow.sh"
 # shellcheck source=lib/input_validation.sh
 source "$RM_DIR/lib/input_validation.sh"
+# shellcheck source=lib/apk_ship.sh
+source "$RM_DIR/lib/apk_ship.sh"
 
 for c in jq git ssh; do
     command -v "$c" >/dev/null || { err "$c is required"; exit 1; }
 done
-for remote_root in "$BOE_VPS_ROOT" "$BOE_BACKUP_ROOT" "$BOE_BACKUP_MOUNT"; do
+
+# The tracked contracts are the sole path authority. Validate all three before
+# anything reads a path, then take the shared roots from them (they agree —
+# the cross-stack check proves it).
+for _s in "${BOE_STACKS[@]}"; do
+    paths_validate "$_s" "$(stack_paths_file "$_s")" || {
+        err "the $_s path contract failed validation — fix stacks/$_s/paths.json"
+        exit 1
+    }
+done
+paths_validate_cross_stack || { err "path contracts disagree across stacks"; exit 1; }
+_paths_dev="$(stack_paths_file dev_release)"
+VPS_ROOT="$(paths_get "$_paths_dev" .vps.root)" || exit 1
+BACKUP_ROOT="$(paths_get "$_paths_dev" .backup.root)" || exit 1
+BACKUP_MOUNT="$(paths_get "$_paths_dev" .backup.mount_check)" || exit 1
+unset _paths_dev
+for remote_root in "$VPS_ROOT" "$BACKUP_ROOT" "$BACKUP_MOUNT"; do
     is_safe_absolute_remote_path "$remote_root" || {
         err "unsafe configured remote path: $remote_root"
         exit 1
@@ -67,42 +85,58 @@ bundle_version() {
     jq -r '.version // empty' "$b/manifest.json" 2>/dev/null || true
 }
 
-ledger_get() {
-    [[ -s "$LEDGER" ]] || return 0
-    jq -r --arg s "$1" --arg k "$2" '.[$s][$k] // empty' "$LEDGER" 2>/dev/null || true
-}
-
 # fetch_remote_state — one SSH call that returns every stack's live version,
-# status and container count. Everything the dashboard needs.
+# status and container count. Everything the dashboard needs. Every remote
+# path comes from the validated contracts; nothing is constructed here.
 fetch_remote_state() {
     [[ "$REMOTE_FETCHED" == true ]] && return 0
     REMOTE_FETCHED=true
-    REMOTE_STATE="$(boe_ssh "bash -s -- '$BOE_VPS_ROOT' '$BOE_BACKUP_MOUNT' '$BOE_BACKUP_ROOT'" <<'REMOTE' 2>/dev/null || true
+
+    local s f
+    # One argv element per value: the remote shell re-parses the command
+    # string, so a '|'-joined spec would be read as a pipeline.
+    local -a rargs=("$BACKUP_MOUNT" "$BACKUP_ROOT")
+    for s in "${BOE_STACKS[@]}"; do
+        f="$(stack_paths_file "$s")"
+        rargs+=("$(paths_get "$f" .vps.stack_dir)"
+                "$(paths_get "$f" .vps.version_name)"
+                "$(paths_get "$f" .vps.env_file)")
+    done
+
+    local qcmd="bash -s --" a
+    for a in "${rargs[@]}"; do
+        printf -v a '%q' "$a"
+        qcmd+=" $a"
+    done
+
+    REMOTE_STATE="$(boe_ssh "$qcmd" <<'REMOTE' 2>/dev/null || true
 set -u
-root="$1"; mount="$2"; broot="$3"
+mount="$1"; broot="$2"; shift 2
 printf 'REACHABLE=yes\n'
+printf 'JQ=%s\n'             "$(command -v jq >/dev/null 2>&1 && echo yes || echo no)"
 printf 'DOCKER=%s\n'          "$(docker info >/dev/null 2>&1 && echo yes || echo no)"
 printf 'BACKUP_MOUNTED=%s\n'  "$(mountpoint -q "$mount" && echo yes || echo no)"
 printf 'BACKUP_WRITABLE=%s\n' "$([[ -w "$broot" ]] && echo yes || echo no)"
-printf 'DISK_STACK=%s\n'      "$(df -h --output=avail "$root" 2>/dev/null | tail -n1 | tr -d ' ')"
+printf 'DISK_STACK=%s\n'      "$(df -h --output=avail "$1" 2>/dev/null | tail -n1 | tr -d ' ')"
 printf 'DISK_BACKUP=%s\n'     "$(df -h --output=avail "$mount" 2>/dev/null | tail -n1 | tr -d ' ')"
 printf 'NGINX=%s\n'           "$(systemctl is-active nginx 2>/dev/null || echo unknown)"
-for s in dev_release:dev-version.json prod_release:release-version.json monitor_service:monitor_service-version.json; do
-  stack="${s%%:*}"; vf="${s##*:}"; d="$root/$stack"
+while (( $# >= 3 )); do
+  d="$1"; vf="$2"; envf="$3"; shift 3
+  stack="${d##*/}"
   v=""; st=""
-  if [[ -s "$d/$vf" ]]; then
+  if [[ -s "$d/$vf" ]] && command -v jq >/dev/null 2>&1; then
     v="$(jq -r '.version // empty' "$d/$vf" 2>/dev/null || true)"
     st="$(jq -r '.status // empty'  "$d/$vf" 2>/dev/null || true)"
   fi
   printf '%s_VERSION=%s\n' "$stack" "$v"
   printf '%s_STATUS=%s\n'  "$stack" "$st"
-  printf '%s_ENV=%s\n'     "$stack" "$([[ -s "$d/.env" ]] && echo yes || echo no)"
-  env_mode="$(stat -c '%a' "$d/.env" 2>/dev/null || true)"
-  env_owner="$(stat -c '%U:%G' "$d/.env" 2>/dev/null || true)"
+  printf '%s_ENV=%s\n'     "$stack" "$([[ -s "$envf" ]] && echo yes || echo no)"
+  env_mode="$(stat -c '%a' "$envf" 2>/dev/null || true)"
+  env_owner="$(stat -c '%U:%G' "$envf" 2>/dev/null || true)"
   env_safe=no
-  if [[ ! -L "$d/.env" && -f "$d/.env" && -r "$d/.env" ]]; then
-    env_uid="$(stat -c '%u' "$d/.env" 2>/dev/null || true)"
-    env_links="$(stat -c '%h' "$d/.env" 2>/dev/null || true)"
+  if [[ ! -L "$envf" && -f "$envf" && -r "$envf" ]]; then
+    env_uid="$(stat -c '%u' "$envf" 2>/dev/null || true)"
+    env_links="$(stat -c '%h' "$envf" 2>/dev/null || true)"
     if [[ "$env_links" == 1 ]] && { [[ "$env_uid" == "$(id -u)" && "$env_mode" == 600 ]] || [[ "$env_uid" == 0 && "$env_mode" == 640 ]]; }; then
       env_safe=yes
     fi
@@ -122,7 +156,14 @@ REMOTE
     [[ -n "$REMOTE_STATE" ]] || REMOTE_STATE="REACHABLE=no"
 }
 
-rs() { printf '%s\n' "$REMOTE_STATE" | sed -n "s/^$1=//p" | tail -n1; }
+# rs <key> — one value out of the cached remote state. First-writer wins
+# (head -n1): a duplicated key cannot smuggle a second value past the first.
+# Values are remote output, so control bytes (including ESC) are stripped
+# before they ever reach the terminal.
+rs() {
+    printf '%s\n' "$REMOTE_STATE" | sed -n "s/^$1=//p" | head -n1 \
+        | LC_ALL=C tr -d '\000-\010\013-\037\177'
+}
 
 # ── dashboard ───────────────────────────────────────────────────────────────
 
@@ -168,11 +209,11 @@ show_status() {
         if [[ "$(rs BACKUP_WRITABLE)" == "yes" ]]; then
             ok "backup tree writable"
         else
-            err "backup tree NOT writable — deploys will refuse (see menu option 9)"
+            err "backup tree NOT writable — see Ship + Deploy → Diagnose the VPS"
         fi
         field "nginx"        "$(rs NGINX)"
-        field "free /srv/dev_stack" "$(rs DISK_STACK)"
-        field "free /srv/backup"    "$(rs DISK_BACKUP)"
+        field "free stack disk"  "$(rs DISK_STACK)"
+        field "free backup disk" "$(rs DISK_BACKUP)"
     fi
 
     # ── stacks ──────────────────────────────────────────────────────────────
@@ -226,6 +267,14 @@ show_status() {
 
 # ── actions ─────────────────────────────────────────────────────────────────
 
+# status_lock — serialize local state-mutating actions (cutting a release,
+# publishing APKs) against a second status.sh running on the same checkout.
+status_lock() {
+    mkdir -p "$RM_DIR/state"
+    exec 9>"$RM_DIR/state/.status.lock"
+    flock -n 9 || { err "another status.sh release action is in progress"; return 1; }
+}
+
 pick_stack() {
     local prompt="${1:-Select stack}"
     printf '\n   1) dev_release      (development)\n' >&2
@@ -250,9 +299,15 @@ stack_flag() {
 }
 
 action_export() {
-    local s flag extra=()
+    local mode="${1:-build}" s flag
+    local -a extra=()
     s="$(pick_stack 'Export which stack?')" || { err "invalid selection"; return 1; }
     flag="$(stack_flag "$s")"
+    case "$mode" in
+        build) : ;;
+        restage) extra+=(--skip-build) ;;
+        *) err "unknown export mode: $mode"; return 1 ;;
+    esac
     if [[ "$s" != "monitor_service" ]] && confirm "Also build the Android APKs?"; then
         extra+=(--with-apk)
     fi
@@ -261,21 +316,29 @@ action_export() {
 }
 
 action_deploy() {
-    local s flag
+    local mode="${1:-deploy}" s flag deploy_rc=0
+    local -a extra=()
     s="$(pick_stack 'Deploy which stack?')" || { err "invalid selection"; return 1; }
     flag="$(stack_flag "$s")"
+    case "$mode" in
+        deploy) : ;;
+        ship-only) extra+=(--ship-only) ;;
+        force) extra+=(--force) ;;
+        *) err "unknown deployment mode: $mode"; return 1 ;;
+    esac
     local b; b="$(latest_bundle "$s")"
     if [[ -z "$b" ]]; then
         err "no bundle staged for $s"
         confirm "Run export for $s now?" && "$RM_DIR/export.sh" "$flag" || return 1
     fi
     printf '\n'
-    "$RM_DIR/deploy.sh" "$flag"
+    "$RM_DIR/deploy.sh" "$flag" "${extra[@]}" || deploy_rc=$?
     REMOTE_FETCHED=false
+    return "$deploy_rc"
 }
 
 action_rollback() {
-    local s flag
+    local s flag rollback_rc=0
     s="$(pick_stack 'Roll back which stack?')" || { err "invalid selection"; return 1; }
     flag="$(stack_flag "$s")"
     printf '\n'
@@ -287,28 +350,56 @@ action_rollback() {
     printf '\n%s   ➜ choice [1-3]: %s' "$c_bold" "$c_rst"
     local n; read -r n
     case "$n" in
-        1) "$RM_DIR/rollback.sh" "$flag" --latest ;;
+        1) "$RM_DIR/rollback.sh" "$flag" --latest || rollback_rc=$? ;;
         2) printf '%s   ➜ version: %s' "$c_bold" "$c_rst"; local v; read -r v
            [[ -n "$v" ]] || { err "no version given"; return 1; }
            local dbflag=()
            confirm "Also restore that release's database snapshot? (DESTRUCTIVE)" && dbflag+=(--restore-db)
-           "$RM_DIR/rollback.sh" "$flag" --to "$v" "${dbflag[@]}" ;;
+           "$RM_DIR/rollback.sh" "$flag" --to "$v" "${dbflag[@]}" || rollback_rc=$? ;;
         *) warn "cancelled" ;;
     esac
     REMOTE_FETCHED=false
+    return "$rollback_rc"
 }
 
 action_apk() {
+    status_lock || return 1
     printf '\n   1) development APKs (client + admin)\n'
     printf '   2) production APKs (client + admin)\n'
     printf '   3) cancel\n'
     printf '\n%s   ➜ choice [1-3]: %s' "$c_bold" "$c_rst"
-    local n; read -r n
+    local n stack target version expected_git="" mode=dev
+    read -r n
     case "$n" in
-        1) "$ROOT_DIR/emu/boe_update.sh" --dev --both ;;
-        2) "$ROOT_DIR/emu/boe_update.sh" --prod --both ;;
-        *) warn "cancelled" ;;
+        1) stack=dev_release; target=dev ;;
+        2) stack=prod_release; target=prod ;;
+        *) warn "cancelled"; return 0 ;;
     esac
+    version="$(canonical_version "$VERSION_FILE" "$BUILD_DIR/prod_release" "$ROOT_DIR")"
+    assert_semver "$version" || return 1
+    if [[ "$target" == prod ]]; then
+        # Gate BEFORE any build: a production APK may only ever be published
+        # from the clean, tagged, pushed release commit. The library then
+        # independently refuses anything the sidecar proves is dirty,
+        # off-commit, off-version, or not release-signed.
+        prepare_release_git || return 1
+        on_exact_release_tag "$ROOT_DIR" "$version" || {
+            err "production APKs require HEAD on the exact v$version release tag"
+            err "cut the release first: status.sh → Git → Cut a release"
+            return 1
+        }
+        expected_git="$(git -C "$ROOT_DIR" rev-parse HEAD)"
+        remote_release_refs_match "$ROOT_DIR" "$version" "$expected_git" || {
+            err "origin/main and v$version do not both resolve to HEAD"
+            err "push the release before publishing production APKs"
+            return 1
+        }
+        mode=prod
+    fi
+    BOE_APK_VERSION="$version" "$ROOT_DIR/emu/boe_update.sh" "--$target" --no-install --both || return 1
+    section "SHIP APKs" "publish to the dedicated VPS paths.json directories"
+    paths_validate "$stack" "$(stack_paths_file "$stack")" || return 1
+    apk_ship_release "$RM_DIR/stacks/$stack/paths.json" "$ROOT_DIR/emu/out" "$target" "$version" true "$expected_git" "$mode"
 }
 
 assert_release_origin_approved() {
@@ -323,6 +414,11 @@ action_git_workflow() {
     section "GIT WORKFLOW" "commit worktrees/main → integrate → review PRs → push main"
     assert_release_origin_approved || return 1
     git_workflow_run "$ROOT_DIR"
+}
+
+action_sync_worktrees() {
+    section "SYNC LOCAL WORKTREES" "merge main into wt/admin, wt/client and wt/landing"
+    git_workflow_sync_worktrees "$ROOT_DIR"
 }
 
 prepare_release_git() {
@@ -354,6 +450,7 @@ prepare_release_git() {
 
 # Cut a release: bump VERSION, commit, tag, push. The ONLY place this happens.
 action_cut_release() {
+    status_lock || return 1
     local canonical next bump remote_tag_status
     prepare_release_git || return 1
     canonical="$(canonical_version "$VERSION_FILE" "$BUILD_DIR/prod_release" "$ROOT_DIR")"
@@ -392,7 +489,15 @@ action_cut_release() {
     field "branch"      "main"
     confirm "Cut release v$next (commit, tag and atomically push)?" || { warn "cancelled"; return 0; }
 
-    printf '%s\n' "$next" > "$VERSION_FILE" || {
+    # Atomic VERSION write: a crash mid-write must never leave a truncated
+    # file for the next export to read.
+    local vtmp
+    vtmp="$(mktemp "$ROOT_DIR/.VERSION.XXXXXX")" || {
+        err "could not create a temporary VERSION file"
+        return 1
+    }
+    printf '%s\n' "$next" > "$vtmp" && mv "$vtmp" "$VERSION_FILE" || {
+        rm -f "$vtmp"
         err "could not write VERSION"
         return 1
     }
@@ -420,19 +525,20 @@ action_cut_release() {
     printf '\n   Next:  ./release_manager/export.sh --prod\n\n'
 }
 
-action_regenerate() {
-    section "REGENERATE STACK ARTIFACTS" "paths.json from lib/stacks.sh"
+action_validate_contracts() {
+    section "VALIDATE PATH CONTRACTS" "tracked schema-3 paths.json is the sole path authority"
     local s
     for s in "${BOE_STACKS[@]}"; do
-        paths_write "$s" "$RM_DIR/stacks/$s/paths.json" && ok "$s/paths.json"
+        paths_validate "$s" "$(stack_paths_file "$s")" && ok "$s/paths.json" || return 1
     done
-    info "re-ship for these to take effect on the VPS:  ./release_manager/deploy.sh <stack> --ship-only"
+    paths_validate_cross_stack && ok "all three contracts are consistent and non-overlapping"
+    info "re-ship a contract after editing it:  ./release_manager/deploy.sh <stack> --ship-only"
 }
 
 action_logs() {
     local s dir
     s="$(pick_stack 'Show logs for which stack?')" || { err "invalid selection"; return 1; }
-    dir="$(paths_get "$RM_DIR/stacks/$s/paths.json" .backup.deploy_log)" || { err "cannot resolve log dir"; return 1; }
+    dir="$(paths_get "$(stack_paths_file "$s")" .backup.deploy_log)" || { err "cannot resolve log dir"; return 1; }
     is_safe_absolute_remote_path "$dir" || { err "unsafe remote log directory"; return 1; }
     printf '\n'
     step "last 5 deploy logs in $dir"
@@ -455,9 +561,10 @@ REMOTE
 action_containers() {
     local s
     s="$(pick_stack 'Inspect which stack?')" || { err "invalid selection"; return 1; }
-    local d project
-    d="$(stack_dir "$s")"
-    project="$(stack_attr "$s" project)"
+    local f d project
+    f="$(stack_paths_file "$s")"
+    d="$(paths_get "$f" .vps.stack_dir)" || { err "cannot resolve the stack directory"; return 1; }
+    project="$(paths_get "$f" .vps.compose_project)" || { err "cannot resolve the compose project"; return 1; }
     printf '\n'
     step "compose ps"
     boe_ssh "cd '$d' 2>/dev/null && docker compose --project-name '$project' -f '$(stack_attr "$s" compose)' ps 2>&1 || echo 'stack not deployed'"
@@ -476,20 +583,28 @@ action_diagnose() {
     section "connectivity"
     if [[ "$(rs REACHABLE)" == "yes" ]]; then ok "SSH to $BOE_SSH_ALIAS"; else err "SSH failed"; blockers=$((blockers+1)); fi
     if [[ "$(rs DOCKER)" == "yes" ]]; then ok "docker usable without sudo"; else err "docker not usable"; blockers=$((blockers+1)); fi
+    if [[ "$(rs REACHABLE)" == "yes" ]]; then
+        if [[ "$(rs JQ)" == "yes" ]]; then
+            ok "remote jq present"
+        else
+            err "remote jq MISSING — version and status reporting is degraded"
+            blockers=$((blockers+1))
+        fi
+    fi
 
     section "storage"
-    if [[ "$(rs BACKUP_MOUNTED)" == "yes" ]]; then ok "$BOE_BACKUP_MOUNT is a mountpoint"; else err "$BOE_BACKUP_MOUNT not mounted"; blockers=$((blockers+1)); fi
+    if [[ "$(rs BACKUP_MOUNTED)" == "yes" ]]; then ok "$BACKUP_MOUNT is a mountpoint"; else err "$BACKUP_MOUNT not mounted"; blockers=$((blockers+1)); fi
     if [[ "$(rs BACKUP_WRITABLE)" == "yes" ]]; then
-        ok "$BOE_BACKUP_ROOT writable"
+        ok "$BACKUP_ROOT writable"
     else
-        err "$BOE_BACKUP_ROOT NOT writable by the deploy user"
+        err "$BACKUP_ROOT NOT writable by the deploy user"
         printf '\n     %sFix (run on the VPS, once):%s\n' "$c_bold" "$c_rst"
-        printf '       sudo chown -R beonedge:beonedge %s\n' "$BOE_BACKUP_ROOT"
-        printf '       sudo chmod -R u+rwX,go+rX %s\n\n' "$BOE_BACKUP_ROOT"
+        printf '       sudo chown -R beonedge:beonedge %s\n' "$BACKUP_ROOT"
+        printf '       sudo chmod -R u+rwX,go+rX %s\n\n' "$BACKUP_ROOT"
         blockers=$((blockers+1))
     fi
-    field "free /srv/dev_stack" "$(rs DISK_STACK)"
-    field "free /srv/backup"    "$(rs DISK_BACKUP)"
+    field "free stack disk"  "$(rs DISK_STACK)"
+    field "free backup disk" "$(rs DISK_BACKUP)"
 
     section "host services"
     field "nginx" "$(rs NGINX)"
@@ -539,13 +654,134 @@ action_operator_guide() {
     if command -v less >/dev/null; then less "$guide"; else cat "$guide"; fi
 }
 
+# ── menus ───────────────────────────────────────────────────────────────────
+
+pause_after_action() {
+    printf '\n%s   ➜ press Enter to continue %s' "$c_dim" "$c_rst"
+    read -r _
+}
+
+menu_git() {
+    local choice
+    while true; do
+        cat <<MENU
+
+${c_bold}━━ Git${c_rst}
+   1) Full Git workflow       commit, review PRs, integrate and push main
+   2) Sync local worktrees    merge main into admin, client and landing
+   3) Cut a release           prepare Git, bump VERSION, tag and push
+   b) Back
+
+MENU
+        printf '%s   ➜ Git choice: %s' "$c_bold" "$c_rst"
+        read -r choice || return 0
+        case "$choice" in
+            1) action_git_workflow || warn "Git workflow did not complete" ;;
+            2) action_sync_worktrees || warn "worktree synchronization did not complete" ;;
+            3) action_cut_release || warn "release not cut" ;;
+            b|B) return 0 ;;
+            *) warn "unknown Git choice: $choice"; continue ;;
+        esac
+        pause_after_action || return 0
+    done
+}
+
+menu_exports() {
+    local choice
+    while true; do
+        cat <<MENU
+
+${c_bold}━━ Exports${c_rst}
+   1) Build bundle            build images, optionally APKs, then stage
+   2) Re-stage dev bundle     reuse existing images; production is blocked
+   3) Build + ship APKs       publish client + admin to paths.json folders
+   4) Validate path contracts check the schema-3 path authority
+   b) Back
+
+MENU
+        printf '%s   ➜ Export choice: %s' "$c_bold" "$c_rst"
+        read -r choice || return 0
+        case "$choice" in
+            1) action_export build || warn "export did not complete" ;;
+            2) action_export restage || warn "re-stage did not complete" ;;
+            3) action_apk || warn "APK build did not complete" ;;
+            4) action_validate_contracts ;;
+            b|B) return 0 ;;
+            *) warn "unknown Export choice: $choice"; continue ;;
+        esac
+        pause_after_action || return 0
+    done
+}
+
+menu_ship_deploy() {
+    local choice
+    while true; do
+        cat <<MENU
+
+${c_bold}━━ Ship + Deploy${c_rst}
+   1) Ship + deploy           upload the latest bundle and deploy it
+   2) Ship only               upload for inspection; do not deploy
+   3) Force redeploy          redeploy the latest bundle with --force
+   4) Roll back               select an archived VPS release
+   5) View deploy logs        tail a remote deployment log
+   6) Inspect containers      remote compose ps and recent logs
+   7) Diagnose the VPS        readiness checks and blockers
+   8) Operator manual         steps that must be run by hand
+   b) Back
+
+MENU
+        printf '%s   ➜ Ship + Deploy choice: %s' "$c_bold" "$c_rst"
+        read -r choice || return 0
+        case "$choice" in
+            1) action_deploy deploy || warn "deploy did not complete" ;;
+            2) action_deploy ship-only || warn "shipping did not complete" ;;
+            3) action_deploy force || warn "forced redeploy did not complete" ;;
+            4) action_rollback || warn "rollback did not complete" ;;
+            5) action_logs || true ;;
+            6) action_containers || true ;;
+            7) action_diagnose ;;
+            8) action_operator_guide || true ;;
+            b|B) return 0 ;;
+            *) warn "unknown Ship + Deploy choice: $choice"; continue ;;
+        esac
+        pause_after_action || return 0
+    done
+}
+
+menu_main() {
+    local choice
+    while true; do
+        show_status
+        cat <<MENU
+${c_bold}━━ workflows${c_rst}
+   1) Git                    prepare and synchronize source control
+   2) Exports                build and stage images or APKs
+   3) Ship + Deploy          transfer, deploy and operate VPS stacks
+   r) Refresh
+   q) Quit
+
+MENU
+        printf '%s   ➜ workflow: %s' "$c_bold" "$c_rst"
+        read -r choice || return 0
+        case "$choice" in
+            1) menu_git ;;
+            2) menu_exports ;;
+            3) menu_ship_deploy ;;
+            r|R) REMOTE_FETCHED=false ;;
+            q|Q) printf '\n'; return 0 ;;
+            *) warn "unknown workflow: $choice" ;;
+        esac
+    done
+}
+
 # ── entry ───────────────────────────────────────────────────────────────────
 
-case "${1:-}" in
-    --status)   show_status; exit 0 ;;
-    --diagnose) action_diagnose; exit 0 ;;
-    --help|-h)
-        cat <<'USAGE'
+status_main() {
+    case "${1:-}" in
+        --status) show_status; return 0 ;;
+        --diagnose) action_diagnose; return 0 ;;
+        --help|-h)
+            cat <<'USAGE'
 Usage: ./release_manager/status.sh [--status | --diagnose]
 
 With no arguments, opens the interactive control center.
@@ -553,50 +789,16 @@ With no arguments, opens the interactive control center.
   --status      print the state dashboard and exit
   --diagnose    run the VPS readiness check and exit
 USAGE
-        exit 0 ;;
-    "") : ;;
-    *) err "unknown argument: $1"; exit 1 ;;
-esac
-
-[[ "$UI_INTERACTIVE" == true ]] || { err "not a terminal — use --status or --diagnose"; exit 1; }
-
-while true; do
-    show_status
-    cat <<MENU
-${c_bold}━━ actions${c_rst}
-   1) Export a bundle        build images (+APKs) and stage a release
-   2) Deploy                 ship a bundle and run the remote deploy
-   3) Roll back              run the remote rollback
-   4) Build APKs only        no docker images, no shipping
-   5) Git workflow           commit worktrees/main, review PRs, push
-   6) Cut a release          prepare Git, bump VERSION, tag, push
-   7) Regenerate paths.json  after editing lib/stacks.sh
-   8) View deploy logs       tail a remote deploy log
-   9) Inspect containers     remote compose ps
-  10) Diagnose the VPS       readiness + blockers, with fixes
-  11) Operator manual        the steps you must run by hand
-   r) Refresh
-   q) Quit
-
-MENU
-    printf '%s   ➜ choice: %s' "$c_bold" "$c_rst"
-    read -r choice || break
-    case "$choice" in
-        1)  action_export        || warn "export did not complete" ;;
-        2)  action_deploy        || warn "deploy did not complete" ;;
-        3)  action_rollback      || warn "rollback did not complete" ;;
-        4)  action_apk           || warn "APK build did not complete" ;;
-        5)  action_git_workflow  || warn "Git workflow did not complete" ;;
-        6)  action_cut_release   || warn "release not cut" ;;
-        7)  action_regenerate ;;
-        8)  action_logs          || true ;;
-        9)  action_containers    || true ;;
-        10) action_diagnose ;;
-        11) action_operator_guide || true ;;
-        r|R) REMOTE_FETCHED=false ;;
-        q|Q) printf '\n'; exit 0 ;;
-        *)  warn "unknown choice: $choice" ;;
+            return 0 ;;
+        "") : ;;
+        *) err "unknown argument: $1"; return 1 ;;
     esac
-    printf '\n%s   ➜ press Enter to continue %s' "$c_dim" "$c_rst"
-    read -r _ || break
-done
+
+    [[ "$UI_INTERACTIVE" == true ]] \
+        || { err "not a terminal — use --status or --diagnose"; return 1; }
+    menu_main
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    status_main "$@"
+fi

@@ -36,11 +36,24 @@ every docker command:
 ./release_manager/status.sh                 # see everything; do most things from here
 ```
 
-In the interactive menu, option 5 runs the Git-only preparation workflow: it
-previews and commits dirty `wt/admin`, `wt/client`, and `wt/landing` worktrees and
-main; checks, reviews, and integrates approved PRs; synchronizes `origin/main`;
-and pushes after confirmation. Option 6 cuts a release and offers to run that
+The interactive menu is organized as `Git → Exports → Ship + Deploy`. Under
+`Git`, the full workflow previews and commits dirty `wt/admin`, `wt/client`, and
+`wt/landing` worktrees and main; checks, reviews, and integrates approved PRs;
+synchronizes `origin/main`; pushes after confirmation; and fast-forwards main
+back into each surface worktree. `Sync local worktrees` runs only that final
+main-to-worktree synchronization. `Cut a release` offers to run the full Git
 preparation automatically when needed.
+
+`Exports → Build + ship APKs` builds the client and admin variants for the exact
+release version, validates their sidecar provenance and SHA-256, archives any
+previously published APKs into variant-specific rollback directories, and then
+publishes each artifact atomically (temp upload → remote digest check → rename)
+to the dedicated VPS directories declared by that stack's `paths.json`. The
+production route first requires a clean, tagged, pushed release commit and
+refuses debug-signed artifacts. APKs included in a full bundle are selected by
+the bundle manifest and published only after the remote deploy succeeds;
+`deploy.sh --ship-only` stages them under `<stack>/apk/` for inspection without
+touching the live APK directories.
 
 Or directly:
 
@@ -49,7 +62,7 @@ Or directly:
 ./release_manager/export.sh --dev
 ./release_manager/deploy.sh --dev
 
-# production (needs a cut release first — status.sh option 6)
+# production (needs Git → Cut a release first)
 ./release_manager/export.sh --prod
 ./release_manager/deploy.sh --prod
 
@@ -101,10 +114,14 @@ pipeline, kept for reference. Nothing new reads them.
 
 ## Design rules
 
-**One source of truth for paths.** `lib/stacks.sh` defines every path; `paths.sh`
-serialises it to `paths.json`, which is shipped and read by both sides. Change a
-path in one place, regenerate, re-ship. `verify.sh` fails if a `paths.json` on
-disk has drifted from what `stacks.sh` would generate.
+**One source of truth for paths.** Each stack's tracked `paths.json` (schema 3)
+is the sole authority for every deployment, backup, log, database, image,
+configuration and APK path. It is hand-edited canonical configuration —
+`paths.sh` only validates and reads it; nothing generates it. Change a path by
+editing the contract, validate it (`status.sh` → Exports → Validate path
+contracts), and re-ship. `verify.sh` fails if a contract is malformed, unsafe,
+escapes its containment, or overlaps another stack's APK directories, and if
+any operational script carries a raw path literal.
 
 **The version advances in exactly one place.** `export.sh` labels the build:
 a clean tree on the exact `vX.Y.Z` tag produces a stable, shippable version only

@@ -89,4 +89,24 @@ if (boe_deploy_assert_env >/dev/null 2>&1); then
     exit 1
 fi
 
+# POSTGRES_USER / POSTGRES_DB become SQL identifiers in the restore path
+# (DROP/CREATE DATABASE), so anything outside [A-Za-z0-9_] must be rejected.
+unsafe_user_env="$TEST_DIR/unsafe-user.env"
+sed 's/^POSTGRES_USER=.*/POSTGRES_USER=bad;user/' "$env_file" > "$unsafe_user_env"
+chmod 600 "$unsafe_user_env"
+BOE_EFFECTIVE_ENV="$unsafe_user_env"
+if (boe_deploy_assert_env >/dev/null 2>&1); then
+    printf 'FAIL: deploy accepted a POSTGRES_USER unsafe as a SQL identifier\n' >&2
+    exit 1
+fi
+
+unsafe_db_env="$TEST_DIR/unsafe-db.env"
+sed 's/^POSTGRES_DB=.*/POSTGRES_DB=bad"db/' "$env_file" > "$unsafe_db_env"
+chmod 600 "$unsafe_db_env"
+BOE_EFFECTIVE_ENV="$unsafe_db_env"
+if (boe_deploy_assert_env >/dev/null 2>&1); then
+    printf 'FAIL: deploy accepted a POSTGRES_DB unsafe as a SQL identifier\n' >&2
+    exit 1
+fi
+
 printf 'PASS: deployment validates complete application security configuration\n'

@@ -30,7 +30,8 @@ repo_sync_eval() {
     local g=(git -C "$repo")
 
     RS_FETCHED=true
-    "${g[@]}" fetch -q origin 2>/dev/null || RS_FETCHED=false
+    # Never prompt for credentials mid-dashboard: fail the fetch instead.
+    GIT_TERMINAL_PROMPT=0 "${g[@]}" fetch -q origin 2>/dev/null || RS_FETCHED=false
 
     RS_MAIN_WT=""
     worktree_path=""

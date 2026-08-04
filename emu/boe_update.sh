@@ -121,7 +121,13 @@ while [[ $# -gt 0 ]]; do
         --both)        VARIANTS=(client admin); shift ;;
         --install)     DO_INSTALL=true;  shift ;;
         --no-install)  DO_INSTALL=false; shift ;;
-        --keep)        KEEP_OUT="${2:-6}"; shift 2 ;;
+        --keep)
+            # validated BEFORE assignment: KEEP_OUT is later spliced into
+            # arithmetic, where an unvalidated value is an injection vector,
+            # and a bare trailing --keep must fail cleanly instead of shifting
+            [[ "${2:-}" =~ ^[0-9]+$ ]] \
+                || { err "--keep requires a non-negative integer (got: '${2:-<none>}')"; exit 1; }
+            KEEP_OUT="$2"; shift 2 ;;
         --help|-h)     usage; exit 0 ;;
         *) err "unknown argument: $1"; usage >&2; exit 1 ;;
     esac
@@ -161,6 +167,10 @@ esac
 # A distributed APK must never fall back to cleartext HTTP.
 if [[ "$TARGET" != "local" && "$API_BASE" != https://* ]]; then
     err "target '$TARGET' requires an https API origin, got: $API_BASE"
+    exit 1
+fi
+if [[ "$TARGET" != "local" && "$ONBOARDING" != https://* ]]; then
+    err "target '$TARGET' requires an https onboarding URL, got: $ONBOARDING"
     exit 1
 fi
 
@@ -215,7 +225,11 @@ require_cmd() {
     command -v "$1" >/dev/null 2>&1 || { err "missing required command: $1"; exit 1; }
 }
 require_cmd npm
+require_cmd npx
+require_cmd node
 require_cmd git
+require_cmd jq
+require_cmd numfmt
 require_cmd sha256sum
 # `if`, not `[ ... ] && require_cmd adb` — as the last command in a && chain a
 # false test would abort the whole script under `set -e`.

@@ -3,6 +3,7 @@
 set -uo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+EXPORT_SCRIPT="$ROOT_DIR/release_manager/export.sh"
 # shellcheck source=../lib/version.sh
 source "$ROOT_DIR/release_manager/lib/version.sh"
 
@@ -10,6 +11,13 @@ fail_test() {
     printf 'FAIL: %s\n' "$1" >&2
     exit 1
 }
+
+skip_build_output=""
+if skip_build_output="$(bash "$EXPORT_SCRIPT" --prod --skip-build 2>&1)"; then
+    fail_test 'production export permits unproven local image reuse'
+fi
+grep -qF 'production exports may not use --skip-build' <<< "$skip_build_output" \
+    || fail_test 'production image-reuse rejection has no clear diagnostic'
 
 TEST_DIR="$(mktemp -d)"
 trap 'rm -rf "$TEST_DIR"' EXIT

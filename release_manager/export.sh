@@ -39,6 +39,8 @@ source "$RM_DIR/lib/version.sh"
 source "$RM_DIR/lib/stacks.sh"
 # shellcheck source=lib/paths.sh
 source "$RM_DIR/lib/paths.sh"
+# shellcheck source=lib/apk_ship.sh
+source "$RM_DIR/lib/apk_ship.sh"
 
 STACK=""
 SKIP_BUILD=false
@@ -59,7 +61,7 @@ Stack selection (required, exactly one):
 
 Options:
   --with-apk     also build + stage the Android APKs for this stack
-  --skip-build   reuse already-built images; only re-stage the bundle
+  --skip-build   reuse already-built images; development/monitoring only
   --keep N       how many past bundles to retain per stack (default 3)
   --help, -h     this message
 
@@ -79,13 +81,22 @@ while [[ $# -gt 0 ]]; do
             STACK="$(resolve_stack "$1")" || exit 1; shift ;;
         --with-apk)   WITH_APK=true; shift ;;
         --skip-build) SKIP_BUILD=true; shift ;;
-        --keep)       KEEP_BUNDLES="${2:-3}"; shift 2 ;;
+        --keep)
+            [[ $# -ge 2 && "$2" =~ ^[0-9]+$ && "$2" -ge 1 ]] \
+                || { err "--keep requires a positive integer (got: ${2:-<none>})"; exit 1; }
+            KEEP_BUNDLES="$2"; shift 2 ;;
         --help|-h)    usage; exit 0 ;;
         *) err "unknown argument: $1"; usage >&2; exit 1 ;;
     esac
 done
 
 [[ -n "$STACK" ]] || { err "a stack is required: --dev, --prod or --monitor"; usage >&2; exit 1; }
+
+if [[ "$STACK" == prod_release && "$SKIP_BUILD" == true ]]; then
+    err "production exports may not use --skip-build"
+    err "rebuild production images so their contents come from the reviewed release commit"
+    exit 1
+fi
 
 for c in docker jq gzip sha256sum git; do
     command -v "$c" >/dev/null || { err "$c is required"; exit 1; }
@@ -273,8 +284,7 @@ fi
 
 # ── save images ─────────────────────────────────────────────────────────────
 declare -A SHA=()
-if [[ "$STACK" != "monitor_service" && "$SKIP_BUILD" != true ]] || \
-   { [[ "$STACK" != "monitor_service" ]] && [[ "$SKIP_BUILD" == true ]]; }; then
+if [[ "$STACK" != "monitor_service" ]]; then
     section "SAVE IMAGES"
     while IFS=: read -r key archive port; do
         [[ -n "$key" ]] || continue
@@ -323,10 +333,15 @@ if [[ "$STACK" == "monitor_service" && -d "$STACKS_SRC/$STACK/config" ]]; then
     ok "staged monitoring config"
 fi
 
-# paths.json is regenerated at export time so it can never lag lib/stacks.sh.
-paths_write "$STACK" "$BUNDLE/paths.json"
-cp "$BUNDLE/paths.json" "$STACKS_SRC/$STACK/paths.json"
-ok "generated paths.json"
+# paths.json is the stack's hand-edited canonical contract (schema 3): the
+# sole authority for every path this bundle will use. It is validated and
+# copied byte-for-byte — never generated, regenerated, or overwritten here.
+PATHS_FILE="$(stack_paths_file "$STACK")" || exit 1
+paths_validate "$STACK" "$PATHS_FILE" \
+    || { err "the $STACK path contract failed validation — fix stacks/$STACK/paths.json"; exit 1; }
+cp "$PATHS_FILE" "$BUNDLE/paths.json"
+PATHS_SHA="$(sha256sum "$BUNDLE/paths.json" | cut -d' ' -f1)"
+ok "validated and staged paths.json (schema 3, unchanged)"
 
 COMPOSE_SHA="$(sha256sum "$BUNDLE/$COMPOSE_NAME" | cut -d' ' -f1)"
 
@@ -338,22 +353,43 @@ if [[ "$WITH_APK" == true ]]; then
     else
         section "BUILD APKs"
         apk_target="$([[ "$STACK" == "prod_release" ]] && echo --prod || echo --dev)"
+        apk_short="$(stack_attr "$STACK" short)"
+        apk_mode=dev
+        [[ "$STACK" == "prod_release" ]] && apk_mode=prod
+        # Filenames carry the BASE semver (boe_update.sh strips any -dev label),
+        # so the exact artifacts of THIS build are addressed by name — never by
+        # wildcard or mtime, which could sweep retained older builds into the
+        # bundle.
+        apk_base_version="${VERSION%%-*}"
         if BOE_APK_VERSION="$VERSION" "$ROOT_DIR/emu/boe_update.sh" "$apk_target" --no-install --both; then
+            mkdir -p "$BUNDLE/apk"
             for variant in client admin; do
-                for f in "$ROOT_DIR"/emu/out/boe."$(stack_attr "$STACK" short)".*"$variant"*.apk; do
-                    [[ -f "$f" ]] || continue
-                    mkdir -p "$BUNDLE/apk"
-                    cp "$f" "$BUNDLE/apk/"
-                    [[ -f "${f%.apk}.json" ]] && cp "${f%.apk}.json" "$BUNDLE/apk/"
-                    APK_JSON="$(printf '%s' "$APK_JSON" | jq \
-                        --arg v "$variant" --arg f "$(basename "$f")" \
-                        --arg s "$(sha256sum "$f" | cut -d' ' -f1)" \
-                        '.[$v] = {file: $f, sha256: $s}')"
-                    ok "staged $(basename "$f")"
-                done
+                apk="$(apk_ship_exact_apk "$ROOT_DIR/emu/out" "$apk_short" "$variant" "$apk_base_version")" || {
+                    err "APK build did not produce the exact $variant artifact for $apk_base_version"
+                    exit 1
+                }
+                apk_expected_git=""
+                [[ "$GIT_SHA" != unknown ]] && apk_expected_git="$GIT_SHA"
+                apk_sha="$(apk_validate_local_artifact "$apk" "$apk_short" "$variant" \
+                    "$apk_base_version" "$apk_expected_git" "$apk_mode")" || exit 1
+                cp -- "$apk" "$BUNDLE/apk/"
+                cp -- "${apk%.apk}.json" "$BUNDLE/apk/"
+                APK_JSON="$(printf '%s' "$APK_JSON" | jq \
+                    --arg v "$variant" --arg f "$(basename "$apk")" \
+                    --arg s "$apk_sha" --arg t "$apk_short" \
+                    --arg ver "$apk_base_version" --arg g "$GIT_SHA" \
+                    '.[$v] = {variant: $v, file: $f, sha256: $s,
+                              target: $t, version: $ver, git_sha: $g}')"
+                ok "staged $(basename "$apk")"
             done
         else
-            warn "APK build failed — bundle staged without APKs"
+            # --with-apk was explicitly requested: an APK-less bundle would
+            # silently ship a release without the artifacts the operator asked
+            # for. Fail closed instead — the incomplete bundle is removed by
+            # the EXIT trap.
+            err "--with-apk was requested but the APK build failed"
+            err "fix the Android build, or re-run without --with-apk"
+            exit 1
         fi
     fi
 fi
@@ -383,22 +419,30 @@ jq -n \
     --argjson git_dirty "$GIT_DIRTY" \
     --arg compose_file "$COMPOSE_NAME" \
     --arg compose_sha "$COMPOSE_SHA" \
+    --arg paths_sha "$PATHS_SHA" \
     --argjson images "$IMAGES_JSON" \
     --argjson apk "$APK_JSON" \
     '{version: $version, kind: $kind, stack: $stack, environment: $environment,
       created_at: $created_at,
       git_sha: $git_sha, git_branch: $git_branch, git_dirty: $git_dirty,
       compose: {file: $compose_file, sha256: $compose_sha},
+      paths: {file: "paths.json", sha256: $paths_sha},
       images: $images,
       apk: $apk}' > "$BUNDLE/manifest.json"
 
 jq empty "$BUNDLE/manifest.json" || { err "generated invalid manifest"; exit 1; }
 
+# A flat checksum list too, so `sha256sum -c` works on the VPS without jq. It
+# covers EVERY staged file — compose, paths.json, manifest.json, all scripts,
+# .env.example, the guide, the monitor config tree, image archives and the APK
+# artifacts — so deploy.sh's remote check genuinely proves upload integrity.
+# A generation failure aborts the export; the incomplete bundle is removed by
+# the EXIT trap.
+( cd "$BUNDLE" && find . -type f ! -name 'checksums.sha256' -print0 \
+    | sort -z | xargs -0 -r sha256sum > checksums.sha256 )
+
 # From here the bundle is coherent and may be shipped.
 BUNDLE_COMPLETE=true
-
-# A flat checksum list too, so `sha256sum -c` works on the VPS without jq.
-( cd "$BUNDLE" && { sha256sum "$COMPOSE_NAME"; [[ -d images ]] && sha256sum images/*.tar.gz; } > checksums.sha256 2>/dev/null ) || true
 
 ok "manifest.json written"
 

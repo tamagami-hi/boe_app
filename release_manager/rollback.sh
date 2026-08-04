@@ -7,9 +7,9 @@
 # script over SSH. Every docker command runs on the VPS.
 #
 # It never uploads a bundle. Rollback deliberately uses the artifacts already
-# archived under /srv/backup/BOE_APP/<STACK>_ROLLBACK/, because the point of a
-# rollback is to return to a release that was already verified on the VPS — not
-# to re-derive one from this machine's current working tree.
+# archived under the stack's rollback tree on the backup disk, because the
+# point of a rollback is to return to a release that was already verified on
+# the VPS — not to re-derive one from this machine's current working tree.
 #
 # Usage:
 #   ./release_manager/rollback.sh --dev  --list
@@ -73,6 +73,13 @@ while [[ $# -gt 0 ]]; do
             STACK="$(resolve_stack "$1")" || exit 1; shift ;;
         --list|-l)     LIST_ONLY=true; REMOTE_ARGS+=(--list); shift ;;
         --to)          [[ -n "${2:-}" ]] || { err "--to needs a version"; exit 1; }
+                       # Validate locally, before anything reaches the remote
+                       # shell: the version is spliced into a remotely-parsed
+                       # command string, so it must carry no shell syntax.
+                       # This also covers the version status.sh reads
+                       # interactively and passes straight through here.
+                       [[ "$2" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.]+)?$ ]] \
+                           || { err "invalid rollback version: $2"; exit 1; }
                        REMOTE_ARGS+=(--to "$2"); shift 2 ;;
         --latest)      REMOTE_ARGS+=(--latest); shift ;;
         --restore-db)  RESTORE_DB=true; REMOTE_ARGS+=(--restore-db); shift ;;
@@ -86,7 +93,14 @@ done
 [[ -n "$STACK" ]] || { err "a stack is required: --dev, --prod or --monitor"; usage >&2; exit 1; }
 command -v ssh >/dev/null || { err "ssh is required"; exit 1; }
 
-REMOTE_DIR="$(stack_dir "$STACK")"
+# The tracked contract is the sole path authority. Validate it, then read
+# every remote location from it — nothing is derived here.
+PATHS_FILE="$(stack_paths_file "$STACK")" || exit 1
+paths_validate "$STACK" "$PATHS_FILE" \
+    || { err "the $STACK path contract failed validation — fix stacks/$STACK/paths.json"; exit 1; }
+REMOTE_DIR="$(paths_get "$PATHS_FILE" .vps.stack_dir)" || exit 1
+BACKUP_MOUNT="$(paths_get "$PATHS_FILE" .backup.mount_check)" || exit 1
+BACKUP_ROOT="$(paths_get "$PATHS_FILE" .backup.root)" || exit 1
 assert_safe_remote_dir "$REMOTE_DIR" || exit 1
 ROLLBACK_NAME="$(stack_attr "$STACK" rollback)"
 VERSION_NAME="$(stack_attr "$STACK" version_file)"
@@ -103,7 +117,7 @@ boe_ssh true 2>/dev/null || { err "cannot reach $BOE_SSH_ALIAS over SSH"; exit 1
 ok "SSH ok"
 
 step "checking the remote stack is provisioned"
-PRE="$(boe_ssh "bash -s -- '$REMOTE_DIR' '$ROLLBACK_NAME' '$BOE_BACKUP_MOUNT' '$BOE_BACKUP_ROOT'" <<'REMOTE' || true
+PRE="$(boe_ssh "bash -s -- '$REMOTE_DIR' '$ROLLBACK_NAME' '$BACKUP_MOUNT' '$BACKUP_ROOT'" <<'REMOTE' || true
 set -u
 d="$1"; script="$2"; mount="$3"; broot="$4"
 printf 'script_present=%s\n'  "$([[ -x "$d/$script" ]] && echo yes || echo no)"
@@ -126,11 +140,11 @@ fi
 [[ "$(get_flag docker_ok)"     == "yes" ]] || { err "docker not usable on the VPS"; exit 1; }
 ok "remote stack is provisioned"
 
-[[ "$(get_flag backup_mounted)" == "yes" ]] || { err "backup disk not mounted at $BOE_BACKUP_MOUNT — rollback artifacts are unreadable"; exit 1; }
+[[ "$(get_flag backup_mounted)" == "yes" ]] || { err "backup disk not mounted at $BACKUP_MOUNT — rollback artifacts are unreadable"; exit 1; }
 if [[ "$(get_flag backup_writable)" != "yes" ]]; then
-    err "$BOE_BACKUP_ROOT is not writable by the deploy user on the VPS"
+    err "$BACKUP_ROOT is not writable by the deploy user on the VPS"
     err "rollback needs to write a pre-rollback snapshot and a log. Fix once:"
-    err "    sudo chown -R beonedge:beonedge $BOE_BACKUP_ROOT"
+    err "    sudo chown -R beonedge:beonedge $BACKUP_ROOT"
     err "See release_manager/OPERATOR_MANUAL_STEPS.md §1."
     exit 1
 fi
@@ -160,9 +174,16 @@ fi
 section "REMOTE ROLLBACK" "all docker work happens on the VPS from here"
 
 boe_ssh_opts
+# Every argument is individually shell-quoted before it is spliced into the
+# remotely-parsed command string, so no argument can ever break out and be
+# re-interpreted by the remote shell.
+REMOTE_TAIL=""
+if (( ${#REMOTE_ARGS[@]} > 0 )); then
+    printf -v REMOTE_TAIL ' %q' "${REMOTE_ARGS[@]}"
+fi
 printf '\n'
 if ssh -t "${BOE_SSH_OPTS[@]}" "$BOE_SSH_ALIAS" \
-        "cd '$REMOTE_DIR' && ./'$ROLLBACK_NAME' ${REMOTE_ARGS[*]:-}"; then
+        "cd '$REMOTE_DIR' && ./'$ROLLBACK_NAME'$REMOTE_TAIL"; then
     REMOTE_RC=0
 else
     REMOTE_RC=$?

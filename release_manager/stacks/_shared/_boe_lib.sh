@@ -10,15 +10,15 @@
 # operator machine never runs docker against the VPS — it only ships tarballs
 # and invokes these scripts. That separation is a hard requirement.
 #
-# All paths come from paths.json (see release_manager/lib/paths.sh). Nothing
-# here hardcodes a directory.
+# All paths come from the stack's paths.json contract (schema 3 — see
+# release_manager/lib/paths.sh). Nothing here hardcodes or derives a directory.
 #
 # Verified environment assumptions (checked on beonedge-vps, Ubuntu 26.04):
 #   • docker 29.1.3 + compose v5.3.1, usable WITHOUT sudo
 #   • sudo -n is NOT available — never prepend sudo to anything
 #   • jq sha256sum flock mountpoint numfmt gzip tar curl are all present
 #   • /run/lock is writable by the deploying user
-#   • /srv/backup is a real mountpoint
+#   • the backup disk is a real mountpoint
 # ─────────────────────────────────────────────────────────────────────────────
 
 set -euo pipefail
@@ -65,12 +65,24 @@ require_cmds() {
 # literal path.
 declare -A P=()
 
+# _boe_safe_abs <path> — absolute, normalized, shell-safe remote path. The
+# contract was validated before shipping; this is the fail-closed recheck on
+# the values this runtime is about to interpolate into shell commands.
+_boe_safe_abs() {
+    local p="$1"
+    [[ "$p" =~ ^/[A-Za-z0-9._/-]+$ ]] || return 1
+    [[ "$p" != *'//'* && "$p" != */ ]] || return 1
+    [[ "$p" != *'..'* ]] || return 1
+    return 0
+}
+
 boe_load_paths() {
     local file="$1" schema
     [[ -f "$file" ]] || die "paths.json not found: $file"
+    [[ ! -L "$file" ]] || die "paths.json must not be a symlink: $file"
     jq empty "$file" 2>/dev/null || die "paths.json is not valid JSON: $file"
     schema="$(jq -r '.schema // 0' "$file")"
-    [[ "$schema" == "2" ]] \
+    [[ "$schema" == "3" ]] \
         || die "unsupported paths.json schema $schema — ship a current release bundle"
 
     local k v
@@ -93,6 +105,8 @@ boe_load_paths() {
           ["manifest_file",    .vps.manifest_file],
           ["checksums_file",   .vps.checksums_file],
           ["registry",         .vps.registry],
+          ["database_dir",     (.vps.database_dir // "")],
+          ["config_dir",       (.vps.config_dir // "")],
           ["docker",           .vps.docker],
           ["container_prefix", .vps.container_prefix],
           ["compose_project",  .vps.compose_project],
@@ -113,11 +127,40 @@ boe_load_paths() {
 
     BOE_PATHS_FILE="$file"
     [[ -n "${P[stack_dir]:-}" ]] || die "paths.json missing vps.stack_dir"
+
+    # Recheck every path value before it is interpolated into a command.
+    local path_keys=(stack_dir images_dir compose_file env_file env_example
+        version_file manifest_file checksums_file registry lock_file
+        backup_mount backup_root rollback_root rollback_images rollback_apk
+        rollback_db db_backups deploy_log image_log db_log
+        database_dir config_dir)
+    for k in "${path_keys[@]}"; do
+        v="${P[$k]:-}"
+        [[ -z "$v" ]] && continue
+        _boe_safe_abs "$v" || die "unsafe path in paths.json at $k: $v"
+    done
+
+    # keep_releases is used in arithmetic by boe_prune_rollbacks; anything but
+    # plain digits would be an arithmetic-evaluation hazard.
+    [[ "${P[keep_releases]:-}" =~ ^[0-9]+$ ]] \
+        || die "retention.keep_releases must be a non-negative integer in paths.json"
 }
 
 # boe_images — echo "key<TAB>archive<TAB>container_port" per image.
 boe_images() {
     jq -r '.images[]? | [.key, .archive, (.container_port|tostring)] | @tsv' "$BOE_PATHS_FILE"
+}
+
+# boe_apk_destinations — echo "variant<TAB>current_dir<TAB>rollback_dir" per
+# configured APK destination, routing by explicit variant only.
+boe_apk_destinations() {
+    local variant current_dir rollback_dir
+    while IFS=$'\t' read -r variant current_dir rollback_dir; do
+        [[ -n "$variant" ]] || continue
+        _boe_safe_abs "$current_dir" && _boe_safe_abs "$rollback_dir" \
+            || die "unsafe APK destination in paths.json for variant $variant"
+        printf '%s\t%s\t%s\n' "$variant" "$current_dir" "$rollback_dir"
+    done < <(jq -r '.apk.destinations[]? | [.variant, .current_dir, .rollback_dir] | @tsv' "$BOE_PATHS_FILE")
 }
 
 # ── locking (plan §18: deploy and rollback share one lock) ──────────────────
@@ -132,7 +175,7 @@ boe_lock() {
 }
 
 # ── backup disk safety (plan §32) ───────────────────────────────────────────
-# Without this, an unmounted /srv/backup silently writes to the root filesystem
+# Without this, an unmounted backup disk silently writes to the root filesystem
 # and the "backups" vanish the moment the disk is remounted.
 boe_assert_backup_mounted() {
     local mp="${P[backup_mount]}"
@@ -143,9 +186,8 @@ boe_assert_backup_mounted() {
 # boe_assert_writable <dir...> — verify each directory exists (creating it if
 # the parent permits) and is writable by the current user.
 #
-# This is the check that surfaces the known /srv/backup/BOE_APP ownership
-# problem as a clear message instead of a confusing mkdir failure halfway
-# through a deploy.
+# This is the check that surfaces the known backup-tree ownership problem as a
+# clear message instead of a confusing mkdir failure halfway through a deploy.
 boe_assert_writable() {
     local d
     for d in "$@"; do
@@ -161,7 +203,7 @@ boe_assert_writable() {
 boe_assert_space() {
     local dir="$1" need_mib="$2" avail_mib
     avail_mib="$(df -BM --output=avail "$dir" 2>/dev/null | tail -n1 | tr -dc '0-9')"
-    [[ -n "$avail_mib" ]] || { warn "could not determine free space on $dir"; return 0; }
+    [[ -n "$avail_mib" ]] || die "could not determine free space on $dir — refusing to guess"
     if (( avail_mib < need_mib )); then
         die "insufficient space on $dir: ${avail_mib}MiB free, need ${need_mib}MiB"
     fi
@@ -387,9 +429,13 @@ boe_verify_checksums() {
 
 # ── version state ───────────────────────────────────────────────────────────
 # boe_current_version — the version currently recorded as deployed, or empty.
+# A record left by a FAILED deploy is not a deployed version: .version keeps
+# pointing at the previous release (the attempted one lives in last_attempted),
+# and this function ignores failed records either way.
 boe_current_version() {
     [[ -f "${P[version_file]}" ]] || return 0
-    jq -r '.version // empty' "${P[version_file]}" 2>/dev/null || true
+    jq -r 'if (.status // "active") == "failed" then empty else (.version // empty) end' \
+        "${P[version_file]}" 2>/dev/null || true
 }
 
 # boe_incoming_version — the version of the staged release bundle.
@@ -397,13 +443,17 @@ boe_incoming_version() {
     [[ -f "${P[manifest_file]}" ]] || die "manifest.json missing at ${P[manifest_file]}"
     local v; v="$(jq -r '.version // empty' "${P[manifest_file]}")"
     [[ -n "$v" ]] || die "manifest.json has no .version"
+    [[ "$v" =~ ^[A-Za-z0-9._-]+$ ]] \
+        || die "manifest.json .version contains unsafe characters: $v"
     printf '%s\n' "$v"
 }
 
-# boe_write_version <version> <previous> <status> — atomic version-file update
-# (plan §17.3). Written ONLY after health checks pass.
+# boe_write_version <version> <previous> <status> [last_attempted] — atomic
+# version-file update (plan §17.3). Status "active" is written ONLY after
+# health checks pass; a failed deploy records its attempted version in
+# last_attempted while .version stays on the previous release.
 boe_write_version() {
-    local version="$1" previous="${2:-}" status="${3:-active}" tmp images_json
+    local version="$1" previous="${2:-}" status="${3:-active}" attempted="${4:-}" tmp images_json
     images_json="$(jq -c '.images | with_entries(.value |= .tag)' "${P[manifest_file]}" 2>/dev/null || echo '{}')"
     tmp="$(mktemp "${P[version_file]}.XXXXXX")"
     jq -n \
@@ -411,11 +461,13 @@ boe_write_version() {
         --arg stack "${P[stack]}" \
         --arg version "$version" \
         --arg previous "$previous" \
+        --arg attempted "$attempted" \
         --arg deployed_at "$(date -Is)" \
         --arg status "$status" \
         --argjson images "$images_json" \
         '{environment: $environment, stack: $stack, version: $version,
           previous_version: (if $previous == "" then null else $previous end),
+          last_attempted: (if $attempted == "" then null else $attempted end),
           deployed_at: $deployed_at, status: $status, images: $images}' > "$tmp"
     jq empty "$tmp" || { rm -f "$tmp"; die "refusing to write malformed version file"; }
     mv "$tmp" "${P[version_file]}"
@@ -424,20 +476,25 @@ boe_write_version() {
 
 # boe_update_registry <version> — refresh this stack's entry in the shared
 # BOE_APP/manifest.json so one file shows all three stacks at a glance.
+# The registry is shared across stacks, so the read-modify-write runs under a
+# sidecar flock; two stacks deploying at once must not lose each other's entry.
 boe_update_registry() {
     local version="$1" reg="${P[registry]}" tmp
     [[ -n "$reg" ]] || return 0
-    [[ -f "$reg" ]] && [[ -s "$reg" ]] || printf '{}\n' > "$reg"
-    jq empty "$reg" 2>/dev/null || printf '{}\n' > "$reg"
-    tmp="$(mktemp "${reg}.XXXXXX")"
-    jq \
-        --arg stack "${P[stack]}" \
-        --arg version "$version" \
-        --arg environment "${P[environment]}" \
-        --arg updated_at "$(date -Is)" \
-        '.stacks[$stack] = {version: $version, environment: $environment, updated_at: $updated_at}
-         | .updated_at = $updated_at' \
-        "$reg" > "$tmp" && mv "$tmp" "$reg" || { rm -f "$tmp"; warn "could not update registry $reg"; }
+    (
+        flock -w 30 8 || exit 1
+        [[ -f "$reg" ]] && [[ -s "$reg" ]] || printf '{}\n' > "$reg"
+        jq empty "$reg" 2>/dev/null || printf '{}\n' > "$reg"
+        tmp="$(mktemp "${reg}.XXXXXX")"
+        jq \
+            --arg stack "${P[stack]}" \
+            --arg version "$version" \
+            --arg environment "${P[environment]}" \
+            --arg updated_at "$(date -Is)" \
+            '.stacks[$stack] = {version: $version, environment: $environment, updated_at: $updated_at}
+             | .updated_at = $updated_at' \
+            "$reg" > "$tmp" && mv "$tmp" "$reg" || { rm -f "$tmp"; exit 1; }
+    ) 8> "${reg}.lock" || warn "could not update registry $reg"
 }
 
 # ── image archive / load ────────────────────────────────────────────────────
@@ -474,8 +531,29 @@ boe_archive_current_images() {
     [[ -f "${P[manifest_file]}" ]]  && cp "${P[manifest_file]}"  "$dest/manifest.json"
     [[ -f "${P[version_file]}" ]]   && cp "${P[version_file]}"   "$dest/${P[version_name]}"
 
-    ( cd "$dest" && sha256sum ./*.tar.gz > checksums.sha256 2>/dev/null ) || true
+    # Checksums must cover everything a rollback trusts — not just the image
+    # tarballs but also the compose, manifest, and version copies (mirrors the
+    # monitoring stack's approach in ms_deploy.sh).
+    ( cd "$dest" && find . -type f ! -name checksums.sha256 -exec sha256sum {} + > checksums.sha256 2>/dev/null ) || true
     ok "archived $saved image(s) for rollback → $dest"
+}
+
+# boe_rollback_verify <dir> — checksum the archive against its own
+# checksums.sha256 before loading anything from it. Lives in the shared
+# library because both the rollback flow and the deploy flow's auto-rollback
+# must verify an archive before trusting it.
+boe_rollback_verify() {
+    local dir="$1"
+    [[ -d "$dir" ]] || die "rollback directory missing: $dir"
+    if [[ -f "$dir/checksums.sha256" ]]; then
+        if ( cd "$dir" && sha256sum -c --quiet checksums.sha256 2>/dev/null ); then
+            ok "rollback archive checksums verified"
+        else
+            die "rollback archive failed checksum verification: $dir"
+        fi
+    else
+        warn "no checksums.sha256 in $dir — cannot verify integrity"
+    fi
 }
 
 # boe_load_images — load the staged archives into the docker image store.
@@ -531,18 +609,27 @@ boe_wait_postgres() {
     die "postgres did not become ready within $(( tries * 2 ))s"
 }
 
-# boe_backup_database <dest_dir> <label> — pre-deployment logical backup
-# (plan §18 step 13, §30.3 naming). Never overwrites; always checksummed.
+# boe_backup_database <dest_dir> <label> [required] — pre-deployment logical
+# backup (plan §18 step 13, §30.3 naming). Never overwrites; always checksummed.
+# With required=true the silent-skip paths become fatal — used when a rollback
+# is about to restore the database and MUST have a fresh snapshot to fall back to.
 boe_backup_database() {
-    local dest="$1" label="$2" user db stamp base dump meta size sha
+    local dest="$1" label="$2" required="${3:-false}" user db stamp base dump meta size sha
     [[ "${P[has_database]}" == "true" ]] || { info "stack has no database — skipping backup"; return 0; }
 
     user="$(env_get POSTGRES_USER "$BOE_EFFECTIVE_ENV")"
     db="$(env_get POSTGRES_DB "$BOE_EFFECTIVE_ENV")"
-    [[ -n "$user" && -n "$db" ]] || { warn "POSTGRES_USER/POSTGRES_DB unset — skipping backup"; return 0; }
+    if [[ -z "$user" || -z "$db" ]]; then
+        [[ "$required" == true ]] \
+            && die "POSTGRES_USER/POSTGRES_DB unset — cannot take the mandatory pre-rollback backup"
+        warn "POSTGRES_USER/POSTGRES_DB unset — skipping backup"
+        return 0
+    fi
 
     if ! "$(docker_bin)" ps --filter "name=^/$(pg_container)$" --filter status=running --format '{{.Names}}' \
          | grep -qx "$(pg_container)"; then
+        [[ "$required" == true ]] \
+            && die "postgres is not running — cannot take the mandatory pre-rollback backup"
         info "postgres not running — no pre-deploy backup to take"
         return 0
     fi
@@ -553,8 +640,10 @@ boe_backup_database() {
     dump="$dest/${base}.dump"
 
     log "backing up database $db → ${base}.dump"
-    if ! "$(docker_bin)" exec "$(pg_container)" \
-            pg_dump -U "$user" -d "$db" --format=custom > "$dump.partial" 2>/dev/null; then
+    # umask 077: the staged dump contains the full database and must be
+    # mode 600 from the moment it is created, not only after the mv.
+    if ! ( umask 077; "$(docker_bin)" exec "$(pg_container)" \
+            pg_dump -U "$user" -d "$db" --format=custom > "$dump.partial" 2>/dev/null ); then
         rm -f "$dump.partial"
         die "pg_dump failed — refusing to continue a deployment without a backup"
     fi

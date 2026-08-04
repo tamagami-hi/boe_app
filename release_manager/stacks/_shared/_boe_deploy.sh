@@ -285,6 +285,13 @@ boe_validate_app_policy() {
     value="$(env_get POSTGRES_PASSWORD "$BOE_EFFECTIVE_ENV")"
     [[ "$value" =~ ^[A-Za-z0-9._~-]{24,}$ ]] \
         || die "POSTGRES_PASSWORD must be at least 24 URL-safe characters (A-Z, a-z, 0-9, . _ ~ -)"
+    # These become SQL identifiers in the restore path (DROP/CREATE DATABASE),
+    # so they must never carry quotes, spaces, or punctuation.
+    for key in POSTGRES_USER POSTGRES_DB; do
+        value="$(env_get "$key" "$BOE_EFFECTIVE_ENV")"
+        [[ "$value" =~ ^[A-Za-z0-9_]+$ ]] \
+            || die "$key must match ^[A-Za-z0-9_]+$ (it is used as a SQL identifier)"
+    done
     [[ "$(env_get WEB_COOKIE_SECURE "$BOE_EFFECTIVE_ENV")" == "true" ]] \
         || die "WEB_COOKIE_SECURE must be true"
     allowlist="$(env_get WEB_ORIGIN_ALLOWLIST "$BOE_EFFECTIVE_ENV")"
@@ -310,33 +317,39 @@ boe_validate_app_policy() {
     fi
 }
 
-# Copy the currently published APKs into rollback storage before they are
-# replaced (plan §18 step 12).
+# Archive the currently published APKs of every configured variant into that
+# variant's own rollback directory before they can be replaced (plan §18 step
+# 12). Routing comes from the contract's explicit apk.destinations[] — never
+# from array position or a directory basename.
 boe_deploy_archive_apks() {
-    local current="$1" d dest count=0
+    local current="$1" variant current_dir rollback_dir dest count=0
     [[ -n "$current" ]] || { info "no current version — no APKs to preserve"; return 0; }
-    dest="${P[rollback_apk]}/$current"
 
     local any=false
-    while read -r d; do
-        [[ -n "$d" && -d "$d" ]] || continue
-        compgen -G "$d/*.apk" >/dev/null 2>&1 || continue
+    while IFS=$'\t' read -r variant current_dir rollback_dir; do
+        [[ -n "$current_dir" && -d "$current_dir" ]] || continue
+        compgen -G "$current_dir/*.apk" >/dev/null 2>&1 || continue
         any=true
-    done < <(jq -r '.vps.apk_dirs[]?' "$BOE_PATHS_FILE")
+    done < <(boe_apk_destinations)
 
     [[ "$any" == true ]] || { info "no APK artifacts published yet"; return 0; }
 
-    boe_assert_writable "$dest"
-    while read -r d; do
-        [[ -n "$d" && -d "$d" ]] || continue
-        compgen -G "$d/*.apk" >/dev/null 2>&1 || continue
-        mkdir -p "$dest/$(basename "$d")"
-        cp -f "$d"/*.apk "$dest/$(basename "$d")/" 2>/dev/null || true
-        cp -f "$d"/*.json "$dest/$(basename "$d")/" 2>/dev/null || true
+    while IFS=$'\t' read -r variant current_dir rollback_dir; do
+        [[ -n "$current_dir" && -d "$current_dir" ]] || continue
+        compgen -G "$current_dir/*.apk" >/dev/null 2>&1 || continue
+        dest="$rollback_dir/pre-deploy-$current"
+        boe_assert_writable "$dest"
+        # Copy only regular files — never dereference symlinks, matching the
+        # standalone archiver in lib/apk_ship.sh (fail-closed artifact rule).
+        local f
+        for f in "$current_dir"/*.apk "$current_dir"/*.json; do
+            [[ -f "$f" && ! -L "$f" ]] || continue
+            cp -p -- "$f" "$dest/" 2>/dev/null || true
+        done
+        ( cd "$dest" && find . -name '*.apk' -exec sha256sum {} + > checksums.sha256 2>/dev/null ) || true
         count=$(( count + 1 ))
-    done < <(jq -r '.vps.apk_dirs[]?' "$BOE_PATHS_FILE")
-    ( cd "$dest" && find . -name '*.apk' -exec sha256sum {} + > checksums.sha256 2>/dev/null ) || true
-    ok "preserved APKs from $count directory(ies) → $dest"
+    done < <(boe_apk_destinations)
+    ok "preserved APKs from $count variant directory(ies) before deploy"
 }
 
 # Application-level smoke tests (plan §18 steps 18-21). Ports are read from the
@@ -362,6 +375,11 @@ boe_deploy_smoke_tests() {
 # boe_deploy_fail <previous> <attempted> <reason> — mark the release failed and
 # attempt an automatic application-level rollback.
 #
+# A failed deploy must not rewrite history: the version record keeps .version
+# pointing at the previous release and records the attempted one in
+# last_attempted, so a retry is not told the failed version is "already
+# deployed" and rollback state stays consistent.
+#
 # Deliberately does NOT restore the database: a failed application deploy should
 # trigger an application rollback, not silently discard committed transactions
 # (plan §20.2). Database restore stays an explicit, separate operation.
@@ -371,23 +389,32 @@ boe_deploy_fail() {
     compose logs --tail 40 2>/dev/null || true
 
     if [[ -z "$previous" ]]; then
-        boe_write_version "$attempted" "" failed
+        boe_write_version "" "" failed "$attempted"
         die "deployment failed and there is no previous version to restore"
     fi
 
     local rb="${P[rollback_images]}/$previous"
     if [[ ! -d "$rb" ]]; then
-        boe_write_version "$attempted" "$previous" failed
+        boe_write_version "$previous" "" failed "$attempted"
         die "deployment failed and no rollback archive exists at $rb"
     fi
 
     step "AUTO-ROLLBACK to $previous"
+    # Never load an archive that fails integrity verification, and never start
+    # a half-loaded rollback: any load failure aborts the auto-rollback.
+    boe_rollback_verify "$rb"
     local key archive port path
     while IFS=$'\t' read -r key archive port; do
         path="$rb/$archive"
-        [[ -f "$path" ]] || { warn "missing rollback archive $archive"; continue; }
-        gzip -dc "$path" | "$(docker_bin)" image load >/dev/null 2>&1 \
-            && info "restored $archive" || warn "could not restore $archive"
+        if [[ ! -f "$path" ]]; then
+            boe_write_version "$previous" "" failed "$attempted"
+            die "deployment failed ($reason) and rollback archive is missing $archive — auto-rollback aborted"
+        fi
+        if ! gzip -dc "$path" | "$(docker_bin)" image load >/dev/null 2>&1; then
+            boe_write_version "$previous" "" failed "$attempted"
+            die "deployment failed ($reason) and rollback archive $archive would not load — auto-rollback aborted"
+        fi
+        info "restored $archive"
     done < <(boe_images)
 
     [[ -f "$rb/${P[compose_name]}" ]] && cp "$rb/${P[compose_name]}" "${P[compose_file]}"
@@ -401,6 +428,6 @@ boe_deploy_fail() {
         fi
     fi
 
-    boe_write_version "$attempted" "$previous" failed
+    boe_write_version "$previous" "" failed "$attempted"
     die "deployment failed ($reason) AND automatic rollback did not come up healthy — manual intervention required"
 }

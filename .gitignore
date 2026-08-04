@@ -112,3 +112,5 @@ kimi_chunks/
 kimi_response*.txt
 .kimi-patch-*.patch
 kimi-api-key.txt
+
+.kiro/

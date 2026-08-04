@@ -48,6 +48,8 @@ boe_assert_images_present() { :; }
 
 # Archive the compose file and config, not image tarballs — the upstream images
 # are always re-pullable by tag, but the configuration is what actually changes.
+# The config location comes from the contract's vps.config_dir, never from
+# where this script happens to live.
 boe_archive_current_images() {
     local dest="$1" version="$2"
     [[ -n "$version" ]] || { info "no current version to archive"; return 0; }
@@ -55,10 +57,12 @@ boe_archive_current_images() {
     [[ -f "${P[compose_file]}" ]]  && cp "${P[compose_file]}"  "$dest/${P[compose_name]}"
     [[ -f "${P[manifest_file]}" ]] && cp "${P[manifest_file]}" "$dest/manifest.json"
     [[ -f "${P[version_file]}" ]]  && cp "${P[version_file]}"  "$dest/${P[version_name]}"
-    if [[ -d "$HERE/config" ]]; then
-        mkdir -p "$dest/config" && cp -r "$HERE/config/." "$dest/config/" 2>/dev/null || true
+    if [[ -n "${P[config_dir]:-}" && -d "${P[config_dir]}" ]]; then
+        mkdir -p "$dest/config" && cp -r "${P[config_dir]}/." "$dest/config/" \
+            || die "could not archive monitoring configuration from ${P[config_dir]}"
     fi
-    ( cd "$dest" && find . -type f ! -name checksums.sha256 -exec sha256sum {} + > checksums.sha256 2>/dev/null ) || true
+    ( cd "$dest" && find . -type f ! -name checksums.sha256 -exec sha256sum {} + > checksums.sha256 2>/dev/null ) \
+        || die "could not write checksums for the archived monitoring configuration"
     ok "archived monitoring configuration → $dest"
 }
 

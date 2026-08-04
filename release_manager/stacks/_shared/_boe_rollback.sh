@@ -10,7 +10,9 @@
 #   • Application rollback swaps container images back. It is safe and routine.
 #   • Database restoration discards transactions committed since the snapshot.
 #     It requires --restore-db plus a typed confirmation, always backs up the
-#     current database first, and is logged separately.
+#     current database first (a failed or impossible backup aborts the whole
+#     rollback in that mode), and is logged separately. In production the
+#     literal typed RESTORE is ALWAYS required — --yes never waives it.
 #
 # Uses the same flock as the deploy script, so a rollback can never race a
 # deploy (plan §18).
@@ -123,6 +125,12 @@ boe_rollback_main() {
     step "database handling"
     if [[ "${P[has_database]}" != "true" ]]; then
         info "stack has no database"
+    elif [[ "$RESTORE_DB" == true ]]; then
+        # A restore discards committed transactions; proceeding without a
+        # fresh pre-rollback snapshot would make that unrecoverable, so the
+        # backup is mandatory and any failure/skip aborts the rollback.
+        boe_assert_writable "${P[rollback_db]}/pre-rollback"
+        boe_backup_database "${P[rollback_db]}/pre-rollback" "pre-rollback" true >/dev/null
     else
         boe_assert_writable "${P[rollback_db]}/pre-rollback"
         boe_backup_database "${P[rollback_db]}/pre-rollback" "pre-rollback" >/dev/null || true
@@ -200,7 +208,8 @@ Roll this stack back to a previously archived release.
   --latest          roll back to the newest archived version that is not running
   --restore-db      ALSO restore the database snapshot taken before that release
                     (destructive: discards transactions committed since then)
-  --yes, -y         skip confirmation prompts
+  --yes, -y         skip confirmation prompts (in production the typed RESTORE
+                    confirmation for --restore-db is still always required)
   --skip-checks     do not gate on health checks
   --help, -h        this message
 
@@ -248,26 +257,14 @@ boe_rollback_print_inventory() {
     printf '\n'
 }
 
-# boe_rollback_verify <dir> — checksum the archive against its own
-# checksums.sha256 before loading anything from it.
-boe_rollback_verify() {
-    local dir="$1"
-    [[ -d "$dir" ]] || die "rollback directory missing: $dir"
-    if [[ -f "$dir/checksums.sha256" ]]; then
-        if ( cd "$dir" && sha256sum -c --quiet checksums.sha256 2>/dev/null ); then
-            ok "rollback archive checksums verified"
-        else
-            die "rollback archive failed checksum verification: $dir"
-        fi
-    else
-        warn "no checksums.sha256 in $dir — cannot verify integrity"
-    fi
-}
+# boe_rollback_verify lives in _boe_lib.sh — the deploy flow's auto-rollback
+# needs it as well, and deploy entry points do not source this file.
 
 # boe_rollback_restore_database <version> <assume_yes>
 #
 # Separate, explicit, doubly confirmed. Requires typing RESTORE so it cannot
-# happen by reflex, because it discards committed transactions.
+# happen by reflex, because it discards committed transactions. In production
+# the typed RESTORE is mandatory even when --yes was given.
 boe_rollback_restore_database() {
     local version="$1" assume_yes="$2" dump dir user db reply
     [[ "${P[has_database]}" == "true" ]] || { warn "stack has no database to restore"; return 0; }
@@ -276,21 +273,26 @@ boe_rollback_restore_database() {
     dump="$(find "$dir" -maxdepth 1 -name '*.dump' -type f 2>/dev/null | sort | tail -n1)"
     [[ -n "$dump" ]] || die "no database snapshot found for $version in $dir"
 
-    if [[ -f "${dump%.dump}.metadata.json" ]]; then
-        local expected actual
-        expected="$(jq -r '.sha256 // empty' "${dump%.dump}.metadata.json")"
-        if [[ "$expected" =~ ^[0-9a-f]{64}$ ]]; then
-            actual="$(sha256sum "$dump" | cut -d' ' -f1)"
-            [[ "$actual" == "$expected" ]] || die "database snapshot checksum mismatch: $dump"
-            ok "snapshot checksum verified"
-        fi
-    fi
+    # A dump without verifiable provenance is not trusted: the sidecar written
+    # by boe_backup_database must exist, carry a sha256, and match.
+    local meta="${dump%.dump}.metadata.json"
+    [[ -f "$meta" ]] \
+        || die "database snapshot has no metadata sidecar: $meta — refusing to restore an unverified dump"
+    local expected actual
+    expected="$(jq -r '.sha256 // empty' "$meta")"
+    [[ "$expected" =~ ^[0-9a-f]{64}$ ]] \
+        || die "database snapshot metadata has no valid sha256: $meta"
+    actual="$(sha256sum "$dump" | cut -d' ' -f1)"
+    [[ "$actual" == "$expected" ]] || die "database snapshot checksum mismatch: $dump"
+    ok "snapshot checksum verified"
 
     printf '\n%s%sDATABASE RESTORATION%s\n' "$_c_bold" "$_c_red" "$_c_rst"
     printf '  Snapshot: %s\n' "$dump"
     printf '  %sThis DISCARDS every transaction committed after that snapshot.%s\n' "$_c_yel" "$_c_rst"
 
-    if [[ "$assume_yes" != true ]]; then
+    if [[ "${P[environment]}" == "production" || "$assume_yes" != true ]]; then
+        [[ "${P[environment]}" == "production" && "$assume_yes" == true ]] \
+            && warn "production: --yes does not waive the typed RESTORE confirmation"
         [[ -t 0 ]] || die "database restoration requires an interactive terminal"
         printf '%s  ➜ type RESTORE to proceed: %s' "$_c_bold" "$_c_rst"
         read -r reply || reply=""
@@ -304,11 +306,15 @@ boe_rollback_restore_database() {
     compose up -d postgres || die "failed to start postgres"
     boe_wait_postgres
 
-    # Drop connections, recreate the database, then restore.
-    "$(docker_bin)" exec -i "$(pg_container)" psql -U "$user" -d postgres -v ON_ERROR_STOP=1 <<SQL || die "failed to reset database"
-SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${db}' AND pid <> pg_backend_pid();
-DROP DATABASE IF EXISTS "${db}";
-CREATE DATABASE "${db}" OWNER "${user}";
+    # Drop connections, recreate the database, then restore. The heredoc is
+    # quoted ('SQL') so nothing in it is expanded locally, and the database /
+    # role names reach psql as variables with identifier quoting (:"...") —
+    # never through shell interpolation.
+    "$(docker_bin)" exec -i "$(pg_container)" psql -U "$user" -d postgres \
+        -v ON_ERROR_STOP=1 -v db="$db" -v dbuser="$user" <<'SQL' || die "failed to reset database"
+SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = :'db' AND pid <> pg_backend_pid();
+DROP DATABASE IF EXISTS :"db";
+CREATE DATABASE :"db" OWNER :"dbuser";
 SQL
 
     if "$(docker_bin)" exec -i "$(pg_container)" \

@@ -35,14 +35,28 @@ _prod_guard() {
         fi
     done
 
-    local manifest="$HERE/manifest.json" version
-    if [[ -f "$manifest" ]]; then
-        version="$(jq -r '.version // empty' "$manifest" 2>/dev/null || true)"
-        if [[ "$version" == *-* ]]; then
-            printf 'error: refusing to deploy a development build to production: %s\n' "$version" >&2
-            printf '       cut a stable release first (release_manager/status.sh)\n' >&2
-            exit 1
-        fi
+    # The manifest location comes from the path contract, and an unreadable
+    # version is fatal — silently skipping this check could let a dev-labelled
+    # build through.
+    local manifest version
+    manifest="$(jq -r '.vps.manifest_file // empty' "$HERE/paths.json" 2>/dev/null)"
+    if [[ -z "$manifest" ]]; then
+        printf 'error: cannot read vps.manifest_file from %s/paths.json\n' "$HERE" >&2
+        exit 1
+    fi
+    if [[ ! -f "$manifest" ]]; then
+        printf 'error: manifest.json missing at %s — has deploy.sh shipped a bundle yet?\n' "$manifest" >&2
+        exit 1
+    fi
+    version="$(jq -r '.version // empty' "$manifest" 2>/dev/null)"
+    if [[ -z "$version" ]]; then
+        printf 'error: cannot read .version from %s\n' "$manifest" >&2
+        exit 1
+    fi
+    if [[ "$version" == *-* ]]; then
+        printf 'error: refusing to deploy a development build to production: %s\n' "$version" >&2
+        printf '       cut a stable release first (release_manager/status.sh)\n' >&2
+        exit 1
     fi
 }
 

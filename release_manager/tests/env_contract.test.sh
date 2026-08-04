@@ -136,4 +136,94 @@ declare -F boe_assert_clean_docker_environment >/dev/null \
     && fail_test "an inherited DOCKER_HOST was accepted"
 unset DOCKER_HOST
 
+# ── version state: a failed deploy must not pose as the deployed version ────
+P[stack]="dev_release"
+P[environment]="development"
+P[version_file]="$TEST_DIR/version.json"
+P[version_name]="version.json"
+P[manifest_file]="$TEST_DIR/manifest.json"
+printf '{"images":{}}\n' > "${P[manifest_file]}"
+
+boe_write_version "1.0.0" "" active >/dev/null
+[[ "$(boe_current_version)" == "1.0.0" ]] \
+    || fail_test "an active version was not recorded as current"
+
+boe_write_version "1.0.0" "" failed "1.1.0" >/dev/null
+[[ -z "$(boe_current_version)" ]] \
+    || fail_test "a failed deploy poses as the currently deployed version"
+jq -e '.version == "1.0.0" and .last_attempted == "1.1.0" and .status == "failed"' \
+    "${P[version_file]}" >/dev/null \
+    || fail_test "a failed deploy did not keep .version on the previous release with last_attempted recorded"
+
+# ── the staged release version is charset-checked before use ────────────────
+jq -n '{version: "1.2.3-dev.4", images: {}}' > "${P[manifest_file]}"
+[[ "$(boe_incoming_version)" == "1.2.3-dev.4" ]] \
+    || fail_test "a clean dev-labelled manifest version was rejected"
+jq -n '{version: "1.0.0;rm", images: {}}' > "${P[manifest_file]}"
+( boe_incoming_version >/dev/null 2>&1 ) \
+    && fail_test "a manifest version with shell metacharacters was accepted"
+printf '{"images":{}}\n' > "${P[manifest_file]}"
+
+# ── rollback archives checksum the compose/manifest copies, not just images ──
+BOE_PATHS_FILE="$TEST_DIR/images-paths.json"
+jq -n '{images: [{key: "app", archive: "app.tar.gz", container_port: 8080}]}' > "$BOE_PATHS_FILE"
+P[docker]="$TEST_DIR/docker-archive-stub"
+cat > "${P[docker]}" <<'STUB'
+#!/usr/bin/env bash
+case "${1:-} ${2:-}" in
+    "image inspect") exit 0 ;;
+    "image save")    printf 'fake-image-tar'; exit 0 ;;
+esac
+exit 1
+STUB
+chmod 700 "${P[docker]}"
+P[compose_file]="$TEST_DIR/archive-compose.yml"
+P[compose_name]="archive-compose.yml"
+printf 'services: {}\n' > "${P[compose_file]}"
+archive_dest="$TEST_DIR/rollback-archive"
+
+boe_archive_current_images "$archive_dest" "1.0.0" >/dev/null
+[[ -f "$archive_dest/checksums.sha256" ]] \
+    || fail_test "rollback archive has no checksums.sha256"
+grep -q 'app.tar.gz' "$archive_dest/checksums.sha256" \
+    || fail_test "rollback archive checksums do not cover the image tarball"
+grep -q 'archive-compose.yml' "$archive_dest/checksums.sha256" \
+    || fail_test "rollback archive checksums do not cover the compose copy"
+grep -q 'manifest.json' "$archive_dest/checksums.sha256" \
+    || fail_test "rollback archive checksums do not cover the manifest copy"
+( boe_rollback_verify "$archive_dest" >/dev/null 2>&1 ) \
+    || fail_test "a freshly written rollback archive failed verification"
+
+# ── keep_releases is re-validated VPS-side (arithmetic-evaluation safety) ────
+paths_fixture="$TEST_DIR/full-paths.json"
+jq -n --arg dir "$TEST_DIR" '{
+    schema: 3, stack: "dev_release", environment: "development", short: "dev",
+    vps: {
+        stack_dir: $dir, images_dir: $dir,
+        compose_file: ($dir + "/compose.yml"), compose_name: "compose.yml",
+        env_file: ($dir + "/.env"), env_example: ($dir + "/.env.example"),
+        version_file: ($dir + "/version.json"), version_name: "version.json",
+        manifest_file: ($dir + "/manifest.json"), checksums_file: ($dir + "/checksums.sha256"),
+        registry: ($dir + "/registry.json"), database_dir: "", config_dir: "",
+        docker: "docker", container_prefix: "boe-dev", compose_project: "boe_dev",
+        lock_file: ($dir + "/.lock")
+    },
+    backup: {
+        mount_check: $dir, root: $dir, rollback_root: ($dir + "/rb"),
+        rollback_images: ($dir + "/rb/images"), rollback_apk: ($dir + "/rb/apk"),
+        rollback_db: ($dir + "/rb/db"), db_backups: ($dir + "/db"),
+        deploy_log: ($dir + "/logs"), image_log: ($dir + "/logs"), db_log: ($dir + "/logs")
+    },
+    has_database: false, retention: {keep_releases: 3}
+}' > "$paths_fixture"
+
+boe_load_paths "$paths_fixture" >/dev/null \
+    || fail_test "a valid paths.json with numeric keep_releases was rejected"
+[[ "${P[keep_releases]}" == "3" ]] \
+    || fail_test "keep_releases was not loaded from the contract"
+
+jq '.retention.keep_releases = "3;rm -rf /"' "$paths_fixture" > "$paths_fixture.bad"
+( boe_load_paths "$paths_fixture.bad" >/dev/null 2>&1 ) \
+    && fail_test "a non-numeric keep_releases was accepted (arithmetic-evaluation hazard)"
+
 printf 'PASS: stack-local .env contract\n'

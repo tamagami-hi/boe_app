@@ -54,10 +54,11 @@ bump_version() {
     assert_semver "$version" || return 1
     IFS=. read -r major minor patch <<<"$version"
     major="${major:-0}"; minor="${minor:-0}"; patch="${patch:-0}"
+    # 10# forces decimal: a component with a leading zero (0.7.09) is not octal.
     case "$bump" in
-        major) major=$((major + 1)); minor=0; patch=0 ;;
-        minor) minor=$((minor + 1)); patch=0 ;;
-        patch|"") patch=$((patch + 1)) ;;
+        major) major=$((10#$major + 1)); minor=0; patch=0 ;;
+        minor) minor=$((10#$minor + 1)); patch=0 ;;
+        patch|"") patch=$((10#$patch + 1)) ;;
         *) printf 'Unsupported bump: %s\n' "$bump" >&2; return 1 ;;
     esac
     printf '%s.%s.%s\n' "$major" "$minor" "$patch"

@@ -13,7 +13,11 @@
 #   • every port a compose file publishes is bound to 127.0.0.1
 #   • postgres has no host port and lives only on the internal network
 #   • the ports in .env.example match the ports in the nginx configs
-#   • paths.json on disk matches what lib/stacks.sh would generate right now
+#   • every tracked paths.json is a valid schema-3 contract (schema, typing,
+#     safe paths, containment, per-stack APK policy) and the three contracts
+#     are consistent and non-overlapping across stacks
+#   • no operational script contains a raw /srv/... path literal — every path
+#     comes from the contracts
 #   • the VPS-native scripts have no unresolved dependencies
 #
 # Run before shipping, and after editing lib/stacks.sh or any compose file:
@@ -52,29 +56,50 @@ while read -r f; do
     else fail "SYNTAX ERROR: ${f#"$RM_DIR"/}"; fi
 done < <(find "$RM_DIR" -name '*.sh' -not -path '*/build/*' | sort; echo "$ROOT_DIR/emu/boe_update.sh")
 
-# ── 2. json validity + freshness ────────────────────────────────────────────
-section "2  paths.json validity and freshness"
+# ── 2. path contract authority ──────────────────────────────────────────────
+section "2  paths.json schema-3 contracts (the sole path authority)"
 for s in "${BOE_STACKS[@]}"; do
-    pj="$STACKS/$s/paths.json"
+    pj="$(stack_paths_file "$s")"
     if [[ ! -f "$pj" ]]; then fail "missing $s/paths.json"; continue; fi
     if ! jq empty "$pj" 2>/dev/null; then fail "$s/paths.json is not valid JSON"; continue; fi
     pass "$s/paths.json is valid JSON"
 
-    # Regenerate into a temp file and compare, ignoring generated_at.
-    tmp="$(mktemp)"
-    if paths_write "$s" "$tmp" 2>/dev/null; then
-        a="$(jq -S 'del(.generated_at)' "$pj")"
-        b="$(jq -S 'del(.generated_at)' "$tmp")"
-        if [[ "$a" == "$b" ]]; then pass "$s/paths.json is up to date with lib/stacks.sh"
-        else fail "$s/paths.json is STALE — run status.sh option 7 to regenerate"; fi
-    else
-        fail "could not regenerate paths.json for $s"
-    fi
-    rm -f "$tmp"
+    contract_err="$(paths_validate "$s" "$pj" 2>&1)" \
+        && pass "$s/paths.json passes schema-3 validation" \
+        || fail "$s/paths.json failed validation — $contract_err"
 done
 
+cross_err="$(paths_validate_cross_stack 2>&1)" \
+    && pass "APK destinations are unique and shared roots agree across all three contracts" \
+    || fail "cross-stack contract validation failed — $cross_err"
+
+# No operational script may carry a raw deployment/backup path literal: every
+# path must come from the contracts. Full-line comments may show examples.
+section "2a no raw /srv/ path literals in operational scripts"
+literal_offenders=""
+while read -r f; do
+    [[ -f "$f" ]] || continue
+    # Line numbers come from the ORIGINAL file: grep -n first, then drop
+    # full-line comments (a comment may show an example path).
+    hits="$(grep -nE '/srv/[A-Za-z0-9_.-]' "$f" | grep -vE '^[0-9]+:[[:space:]]*#' || true)"
+    if [[ -n "$hits" ]]; then
+        literal_offenders+="${f#"$ROOT_DIR"/}:"$'\n'
+        literal_offenders+="$(printf '%s\n' "$hits" | sed 's/^/        /')"$'\n'
+    fi
+done < <(
+    find "$RM_DIR" -maxdepth 1 -name '*.sh' | sort
+    find "$RM_DIR/lib" "$RM_DIR/stacks" -name '*.sh' | sort
+    printf '%s\n' "$ROOT_DIR/emu/boe_update.sh"
+)
+if [[ -z "$literal_offenders" ]]; then
+    pass "operational scripts contain no raw /srv/ path literals"
+else
+    fail "raw /srv/ path literals in operational scripts:"
+    printf '%s' "$literal_offenders"
+fi
+
 if grep -q -- "--exclude='/.env'" "$RM_DIR/deploy.sh" \
-    && ! find "$RM_DIR/build" -type f \( \( -name '.env*' ! -name '.env.example' \) -o -name '*.pem' -o -name '*.key' -o -name '*.swp' -o -name '*.swo' -o -name '*~' \) \
+    && ! find "$RM_DIR/build" \( -type f -o -type l \) \( \( -name '.env*' ! -name '.env.example' \) -o -name '*.pem' -o -name '*.key' -o -name '*.swp' -o -name '*.swo' -o -name '*~' \) \
         -print -quit 2>/dev/null | grep -q .; then
     pass "release shipping and staged bundles exclude stack .env files"
 else
@@ -103,10 +128,25 @@ if bash "$RM_DIR/tests/database_backup.test.sh" >/dev/null 2>&1; then
 else
     fail "database backup CLI contract tests failed"
 fi
+if bash "$RM_DIR/tests/apk_ship.test.sh" >/dev/null 2>&1; then
+    pass "APK artifacts route through paths.json with checksum verification"
+else
+    fail "APK artifact shipping tests failed"
+fi
+if bash "$RM_DIR/tests/paths_contract.test.sh" >/dev/null 2>&1; then
+    pass "schema-3 path contracts validate and reject malformed fixtures"
+else
+    fail "path contract validation tests failed"
+fi
 if bash "$RM_DIR/tests/git_workflow.test.sh" >/dev/null 2>&1; then
     pass "Git workflow commits, integrates and pushes dirty release work"
 else
     fail "Git release preparation workflow tests failed"
+fi
+if bash "$RM_DIR/tests/status_menu.test.sh" >/dev/null 2>&1; then
+    pass "status control center routes each workflow submenu correctly"
+else
+    fail "status control center menu routing tests failed"
 fi
 if bash "$RM_DIR/tests/git_pr_workflow.test.sh" >/dev/null 2>&1; then
     pass "PR workflow pins, checks, approves and integrates reviewed heads"
@@ -131,7 +171,7 @@ fi
 
 for s in "${BOE_STACKS[@]}"; do
     pj="$STACKS/$s/paths.json"
-    if jq -e '.schema == 2 and .vps.env_file == (.vps.stack_dir + "/.env") and (.vps | has("secrets_env") | not)' \
+    if jq -e '.schema == 3 and .vps.env_file == (.vps.stack_dir + "/.env") and (.vps | has("secrets_env") | not)' \
         "$pj" >/dev/null 2>&1; then
         pass "$s: paths.json has one authoritative .env"
     else
@@ -197,10 +237,30 @@ done
 
 # ── 5. port bindings are loopback-only ──────────────────────────────────────
 section "5  every published port is bound to 127.0.0.1"
+# The compose files publish ports as "127.0.0.1:${VAR}:..." — a literal-digit
+# grep matches zero real bindings. Prefer the rendered `docker compose config`
+# output; fall back to an extended regex that also accepts ${VAR} port slots.
+port_tok='([0-9]+|\$\{[A-Z0-9_]+\})'
 for s in dev_release prod_release monitor_service; do
     cf="$STACKS/$s/$(stack_attr "$s" compose)"
     [[ -f "$cf" ]] || { skip "$s"; continue; }
-    bad="$(grep -nE '^[[:space:]]*-[[:space:]]*"[^"]*:[0-9]+:[0-9]+"' "$cf" | grep -v '"127\.0\.0\.1:' || true)"
+    bad="" rendered=""
+    if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+        rendered="$(docker compose --env-file "$STACKS/$s/.env.example" -f "$cf" \
+            config --format json 2>/dev/null || true)"
+    fi
+    if [[ -n "$rendered" ]]; then
+        bad="$(printf '%s' "$rendered" | jq -r '
+            [.services[]?.ports[]?
+             | select((.host_ip // "") != "127.0.0.1")
+             | "non-loopback bind \(.host_ip // "0.0.0.0"):\(.published // "?") -> \(.target // "?")"] | .[]')"
+    else
+        # Extended regex fallback: the host IP prefix is optional in compose
+        # short syntax, and a missing prefix means 0.0.0.0 — so a two-part
+        # "PORT:container" binding must also fail.
+        bad="$(grep -nE "^[[:space:]]*-[[:space:]]*\"([^\"]*:)?${port_tok}:${port_tok}\"" "$cf" \
+            | grep -v '"127\.0\.0\.1:' || true)"
+    fi
     if [[ -z "$bad" ]]; then
         pass "$s: all published ports bound to 127.0.0.1"
     else
@@ -271,14 +331,26 @@ check_nginx_port monitor.beonedge.in.conf   "$gp"  "grafana"
 # not a listener, so it legitimately has the same value in every stack.
 section "7b uniqueness of host ports across all stacks"
 HOST_PORT_VARS='BACKEND_PORT|LANDING_PORT|APP_FRONTEND_PORT|ADMIN_FRONTEND_PORT|GRAFANA_PORT|PROMETHEUS_PORT|ALERTMANAGER_PORT|BLACKBOX_PORT'
-allports="$(for s in "${BOE_STACKS[@]}"; do
-    grep -hE "^(${HOST_PORT_VARS})=" "$STACKS/$s/.env.example" 2>/dev/null | cut -d= -f2
-done | grep -E '^[0-9]+$' | tr -d '\r' | sort)"
-dupes="$(printf '%s\n' "$allports" | uniq -d)"
-if [[ -z "$dupes" ]]; then
-    pass "all $(printf '%s\n' "$allports" | grep -c .) host-binding ports are unique"
+raw_ports="$(for s in "${BOE_STACKS[@]}"; do
+    grep -hE "^(${HOST_PORT_VARS})=" "$STACKS/$s/.env.example" 2>/dev/null
+done | tr -d '\r')"
+# A non-numeric value must FAIL here — silently dropping it would let two
+# stacks collide on a port this check never saw.
+bad_ports="$(printf '%s\n' "$raw_ports" | sed '/^$/d' | grep -vE '^[A-Z_]+=[0-9]+$' || true)"
+allports=""
+if [[ -z "$raw_ports" ]]; then
+    fail "no host port declarations found in any .env.example"
+elif [[ -n "$bad_ports" ]]; then
+    fail "non-numeric host port value(s) in .env.example:"
+    printf '%s\n' "$bad_ports" | sed 's/^/        /'
 else
-    fail "duplicate host-binding ports across stacks: $(printf '%s' "$dupes" | tr '\n' ' ')"
+    allports="$(printf '%s\n' "$raw_ports" | cut -d= -f2 | sort)"
+    dupes="$(printf '%s\n' "$allports" | uniq -d)"
+    if [[ -z "$dupes" ]]; then
+        pass "all $(printf '%s\n' "$allports" | grep -c .) host-binding ports are unique"
+    else
+        fail "duplicate host-binding ports across stacks: $(printf '%s' "$dupes" | tr '\n' ' ')"
+    fi
 fi
 
 # A host binding must not collide with something already listening on the VPS.
@@ -369,16 +441,21 @@ if [[ "$CHECK_REMOTE" == true ]]; then
 
         boe_ssh 'docker info >/dev/null 2>&1' && pass "remote docker usable without sudo" \
             || fail "remote docker not usable"
-        boe_ssh "mountpoint -q $BOE_BACKUP_MOUNT" && pass "remote $BOE_BACKUP_MOUNT is mounted" \
-            || fail "remote $BOE_BACKUP_MOUNT NOT mounted"
-        if boe_ssh "test -w $BOE_BACKUP_ROOT" 2>/dev/null; then
-            pass "remote $BOE_BACKUP_ROOT is writable"
+        # Backup roots come from the contracts (all three agree — the local
+        # cross-stack validation above proves it before we get here).
+        vpj="$(stack_paths_file dev_release)"
+        remote_backup_mount="$(paths_get "$vpj" .backup.mount_check)"
+        remote_backup_root="$(paths_get "$vpj" .backup.root)"
+        boe_ssh "mountpoint -q '$remote_backup_mount'" && pass "remote $remote_backup_mount is mounted" \
+            || fail "remote $remote_backup_mount NOT mounted"
+        if boe_ssh "test -w '$remote_backup_root'" 2>/dev/null; then
+            pass "remote $remote_backup_root is writable"
         else
-            fail "remote $BOE_BACKUP_ROOT NOT writable — see OPERATOR_MANUAL_STEPS.md §1"
+            fail "remote $remote_backup_root NOT writable — see OPERATOR_MANUAL_STEPS.md §1"
         fi
 
         for s in "${BOE_STACKS[@]}"; do
-            remote_env="$BOE_VPS_ROOT/$s/.env"
+            remote_env="$(paths_get "$(stack_paths_file "$s")" .vps.env_file)"
             if ! boe_ssh "test -s '$remote_env'" 2>/dev/null; then
                 skip "$s: remote .env missing/empty"
                 continue

@@ -45,6 +45,8 @@ source "$RM_DIR/lib/stacks.sh"
 source "$RM_DIR/lib/paths.sh"
 # shellcheck source=lib/repo_sync.sh
 source "$RM_DIR/lib/repo_sync.sh"
+# shellcheck source=lib/apk_ship.sh
+source "$RM_DIR/lib/apk_ship.sh"
 
 STACK=""
 BUNDLE_ARG=""
@@ -62,9 +64,12 @@ Uploads the latest staged bundle to the VPS and then runs that stack's native
 deploy script there. All docker work happens on the VPS.
 
 Stack selection (required, exactly one):
-  --dev        → /srv/dev_stack/BOE_APP/dev_release      → dev_deploy.sh
-  --prod       → /srv/dev_stack/BOE_APP/prod_release     → prod_deploy.sh
-  --monitor    → /srv/dev_stack/BOE_APP/monitor_service  → ms_deploy.sh
+  --dev        ship to the development stack   → dev_deploy.sh
+  --prod       ship to the production stack    → prod_deploy.sh
+  --monitor    ship to the monitoring stack    → ms_deploy.sh
+
+Every destination comes from the selected stack's tracked paths.json
+contract (schema 3); this script derives no remote path itself.
 
 Options:
   --bundle DIR    ship a specific bundle instead of the newest
@@ -99,7 +104,14 @@ for c in ssh scp rsync jq sha256sum; do
     command -v "$c" >/dev/null || { err "$c is required"; exit 1; }
 done
 
-REMOTE_DIR="$(stack_dir "$STACK")"
+# The tracked contract is the sole path authority. Validate it, then read
+# every remote location from it — nothing is derived here.
+PATHS_FILE="$(stack_paths_file "$STACK")" || exit 1
+paths_validate "$STACK" "$PATHS_FILE" \
+    || { err "the $STACK path contract failed validation — fix stacks/$STACK/paths.json"; exit 1; }
+REMOTE_DIR="$(paths_get "$PATHS_FILE" .vps.stack_dir)" || exit 1
+BACKUP_MOUNT="$(paths_get "$PATHS_FILE" .backup.mount_check)" || exit 1
+BACKUP_ROOT="$(paths_get "$PATHS_FILE" .backup.root)" || exit 1
 assert_safe_remote_dir "$REMOTE_DIR" || exit 1
 
 banner "DEPLOY · $STACK"
@@ -111,7 +123,15 @@ if [[ -n "$BUNDLE_ARG" ]]; then
     BUNDLE="$(cd "$BUNDLE_ARG" 2>/dev/null && pwd)" || { err "no such bundle: $BUNDLE_ARG"; exit 1; }
 else
     BUNDLE="$(find "$BUILD_DIR/$STACK" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort -V | tail -n1)"
-    [[ -n "$BUNDLE" ]] || { err "no bundle staged for $STACK — run: ./release_manager/export.sh $([[ "$STACK" == prod_release ]] && echo --prod || echo --dev)"; exit 1; }
+    [[ -n "$BUNDLE" ]] || {
+        stack_flag="--dev"
+        case "$STACK" in
+            prod_release)    stack_flag="--prod" ;;
+            monitor_service) stack_flag="--monitor" ;;
+        esac
+        err "no bundle staged for $STACK — run: ./release_manager/export.sh $stack_flag"
+        exit 1
+    }
 fi
 
 COMPOSE_NAME="$(stack_attr "$STACK" compose)"
@@ -124,11 +144,35 @@ for f in manifest.json paths.json "$COMPOSE_NAME" "$DEPLOY_NAME" "$ROLLBACK_NAME
 done
 
 PATHS_SCHEMA="$(jq -r '.schema // 0' "$BUNDLE/paths.json" 2>/dev/null || printf '0')"
-[[ "$PATHS_SCHEMA" == "2" ]] || {
-    err "bundle uses paths schema $PATHS_SCHEMA; schema 2 is required"
-    err "export a new bundle so deployment cannot restore the retired external-secrets overlay"
+[[ "$PATHS_SCHEMA" == "3" ]] || {
+    err "bundle uses paths schema $PATHS_SCHEMA; schema 3 is required"
+    err "export a new bundle so deployment uses the authoritative path contract"
     exit 1
 }
+
+# Bind the bundle to THIS stack's tracked canonical contract before any upload:
+# the bundle's paths.json must still be a valid contract for the selected stack
+# (the .stack identity check inside paths_validate), must match the digest the
+# manifest recorded at export time, and must be byte-identical to the tracked
+# contract. A contract edited after export — or a bundle built for another
+# stack — fails closed here, not on the VPS.
+step "binding the bundle to the tracked $STACK path contract"
+paths_validate "$STACK" "$BUNDLE/paths.json" \
+    || { err "bundle paths.json is not a valid $STACK contract — re-export the bundle"; exit 1; }
+BUNDLE_PATHS_SHA="$(sha256sum "$BUNDLE/paths.json" | cut -d' ' -f1)"
+MANIFEST_PATHS_SHA="$(jq -r '.paths.sha256 // empty' "$BUNDLE/manifest.json")"
+if [[ -n "$MANIFEST_PATHS_SHA" && "$MANIFEST_PATHS_SHA" != "$BUNDLE_PATHS_SHA" ]]; then
+    err "bundle paths.json does not match the digest in its own manifest"
+    err "the bundle was tampered with after export — re-export it"
+    exit 1
+fi
+TRACKED_PATHS_SHA="$(sha256sum "$PATHS_FILE" | cut -d' ' -f1)"
+if [[ "$BUNDLE_PATHS_SHA" != "$TRACKED_PATHS_SHA" ]]; then
+    err "bundle paths.json does not match the tracked stacks/$STACK/paths.json"
+    err "the path contract changed after this bundle was exported — re-export the bundle"
+    exit 1
+fi
+ok "bundle path contract matches the tracked contract"
 
 VERSION="$(jq -r '.version // empty' "$BUNDLE/manifest.json")"
 KIND="$(jq -r '.kind // "unknown"' "$BUNDLE/manifest.json")"
@@ -139,14 +183,19 @@ field "version" "$VERSION"
 field "kind"    "$KIND"
 field "remote"  "${BOE_SSH_ALIAS}:${REMOTE_DIR}"
 
-# Verify locally before spending bandwidth on a corrupt archive.
+# Verify locally before spending bandwidth on a corrupt archive. The jq
+# extraction must succeed and every recorded image must carry a valid digest —
+# a manifest that cannot prove its checksums aborts the deploy here.
 step "verifying bundle checksums"
+IMAGE_ENTRIES="$(jq -r '.images | to_entries[] | [.key, .value.sha256, .value.archive] | @tsv' \
+    "$BUNDLE/manifest.json")" \
+    || { err "cannot read image checksums from the bundle manifest"; exit 1; }
 while read -r key sha archive; do
     [[ -n "$key" ]] || continue
-    [[ "$sha" =~ ^[0-9a-f]{64}$ ]] || { warn "no checksum recorded for $key"; continue; }
+    [[ "$sha" =~ ^[0-9a-f]{64}$ ]] || { err "no checksum recorded for image $key"; exit 1; }
     actual="$(sha256sum "$BUNDLE/$archive" | cut -d' ' -f1)"
     [[ "$actual" == "$sha" ]] || { err "local checksum mismatch for $archive"; exit 1; }
-done < <(jq -r '.images | to_entries[] | [.key, .value.sha256, .value.archive] | @tsv' "$BUNDLE/manifest.json")
+done <<< "$IMAGE_ENTRIES"
 ok "bundle checksums verified locally"
 
 # ── 2. production gate ──────────────────────────────────────────────────────
@@ -199,7 +248,7 @@ ok "SSH ok"
 
 # One round trip that reports everything we need to know before uploading.
 # Read-only: it changes nothing on the VPS.
-PREFLIGHT="$(boe_ssh "bash -s -- '$REMOTE_DIR' '$BOE_BACKUP_MOUNT' '$BOE_BACKUP_ROOT'" <<'REMOTE' || true
+PREFLIGHT="$(boe_ssh "bash -s -- '$REMOTE_DIR' '$BACKUP_MOUNT' '$BACKUP_ROOT'" <<'REMOTE' || true
 set -u
 stack_dir="$1"; backup_mount="$2"; backup_root="$3"
 printf 'stack_dir_exists=%s\n'  "$([[ -d "$stack_dir" ]] && echo yes || echo no)"
@@ -237,23 +286,23 @@ ok "docker, compose and rsync available on the VPS"
 ok "remote stack directory writable"
 
 if [[ "$(get_flag backup_mounted)" != "yes" ]]; then
-    err "backup disk is not mounted at $BOE_BACKUP_MOUNT on the VPS"
+    err "backup disk is not mounted at $BACKUP_MOUNT on the VPS"
     err "the remote deploy would refuse to write rollback artifacts"
     exit 1
 fi
 ok "backup disk mounted"
 
-# This is the known blocker: /srv/backup/BOE_APP is root-owned by default, and
+# This is the known blocker: the backup root is root-owned by default, and
 # the VPS has no passwordless sudo, so the deploy user cannot write rollbacks.
 # Surface it here — before uploading — with the exact fix.
 if [[ "$(get_flag backup_writable)" != "yes" ]]; then
-    err "$BOE_BACKUP_ROOT is NOT writable by the deploy user on the VPS"
+    err "$BACKUP_ROOT is NOT writable by the deploy user on the VPS"
     err ""
     err "The remote deploy cannot create rollback artifacts, database snapshots"
     err "or logs. Fix it once, by hand, on the VPS:"
     err ""
-    err "    sudo chown -R beonedge:beonedge $BOE_BACKUP_ROOT"
-    err "    sudo chmod -R u+rwX,go+rX $BOE_BACKUP_ROOT"
+    err "    sudo chown -R beonedge:beonedge $BACKUP_ROOT"
+    err "    sudo chmod -R u+rwX,go+rX $BACKUP_ROOT"
     err ""
     err "See release_manager/OPERATOR_MANUAL_STEPS.md §1."
     exit 1
@@ -303,7 +352,7 @@ section "5/7  UPLOAD"
 RSYNC_OPTS=(-az --checksum --human-readable --partial --info=progress2
             --chmod=F644,D755 --exclude='/.env')
 boe_ssh_opts
-RSYNC_SSH="ssh ${BOE_SSH_OPTS[*]}"
+printf -v RSYNC_SSH '%q ' ssh "${BOE_SSH_OPTS[@]}"
 
 step "uploading release artifacts"
 rsync "${RSYNC_OPTS[@]}" -e "$RSYNC_SSH" \
@@ -324,7 +373,8 @@ rsync -az --checksum --chmod=F755,D755 -e "$RSYNC_SSH" \
 
 if [[ -f "$BUNDLE/$(stack_attr "$STACK" guide)" ]]; then
     rsync -az --checksum --chmod=F644 -e "$RSYNC_SSH" \
-        "$BUNDLE/$(stack_attr "$STACK" guide)" "${BOE_SSH_ALIAS}:${REMOTE_DIR}/" || true
+        "$BUNDLE/$(stack_attr "$STACK" guide)" "${BOE_SSH_ALIAS}:${REMOTE_DIR}/" \
+        || { err "failed to upload the operator guide"; exit 1; }
 fi
 
 if [[ -d "$BUNDLE/images" ]] && compgen -G "$BUNDLE/images/*.tar.gz" >/dev/null; then
@@ -345,22 +395,18 @@ if [[ -d "$BUNDLE/config" ]]; then
         || { err "failed to upload config"; exit 1; }
 fi
 
-# APKs go into their designated holder directories (plan §16.7).
+# The checksums manifest covers every staged file, so the APK artifacts are
+# uploaded here — before the remote integrity check — in BOTH modes. Uploading
+# changes nothing live: publication into the APK holders is a separate step
+# (a full deploy publishes them; --ship-only leaves them staged next to the
+# bundle for inspection).
 if [[ -d "$BUNDLE/apk" ]]; then
-    step "publishing APK artifacts"
-    while read -r apk_dir; do
-        [[ -n "$apk_dir" ]] || continue
-        boe_ssh "mkdir -p '$apk_dir'" || continue
-        case "$apk_dir" in
-            *admin*) pattern="*admin*" ;;
-            *)       pattern="*client*" ;;
-        esac
-        for f in "$BUNDLE"/apk/$pattern; do
-            [[ -f "$f" ]] || continue
-            rsync -az --checksum --chmod=F644 -e "$RSYNC_SSH" "$f" "${BOE_SSH_ALIAS}:${apk_dir}/" \
-                && ok "published $(basename "$f") → ${apk_dir##*/}"
-        done
-    done < <(jq -r '.vps.apk_dirs[]?' "$BUNDLE/paths.json")
+    step "uploading APK artifacts"
+    boe_ssh "test ! -L '$REMOTE_DIR/apk' && install -d -m 755 -- '$REMOTE_DIR/apk'" \
+        || { err "cannot create the remote APK staging directory"; exit 1; }
+    rsync -az --checksum --chmod=F644 -e "$RSYNC_SSH" \
+        "$BUNDLE/apk/" "${BOE_SSH_ALIAS}:${REMOTE_DIR}/apk/" \
+        || { err "failed to upload the APK artifacts"; exit 1; }
 fi
 
 step "verifying uploads on the VPS"
@@ -373,6 +419,12 @@ fi
 ok "remote checksums match — upload intact"
 
 if [[ "$SHIP_ONLY" == true ]]; then
+    # Upload-only must never change the live APK holders. The staged APKs were
+    # uploaded next to the bundle for inspection only; live publication is a
+    # separate explicit action (a full deploy, or the APK flow in status.sh).
+    if [[ -d "$BUNDLE/apk" ]]; then
+        info "APK artifacts staged under $REMOTE_DIR/apk — not published"
+    fi
     banner "SHIPPED (not deployed)"
     field "version" "$VERSION"
     field "remote"  "$REMOTE_DIR"
@@ -395,6 +447,15 @@ else
     REMOTE_RC=$?
 fi
 printf '\n'
+
+APK_RC=0
+if (( REMOTE_RC == 0 )) && [[ -d "$BUNDLE/apk" ]]; then
+    step "publishing manifest-bound APK artifacts after the VPS archived the previous release"
+    APK_MODE=dev
+    [[ "$STACK" == prod_release ]] && APK_MODE=prod
+    apk_ship_bundle "$BUNDLE/paths.json" "$BUNDLE" \
+        "$(stack_attr "$STACK" short)" true "$APK_MODE" || APK_RC=$?
+fi
 
 # ── 7. reconcile ────────────────────────────────────────────────────────────
 section "7/7  RECONCILE"
@@ -421,6 +482,11 @@ if (( REMOTE_RC != 0 )); then
     err "inspect the log on the VPS:"
     err "  ssh $BOE_SSH_ALIAS 'ls -t $(paths_get "$BUNDLE/paths.json" .backup.deploy_log)/ | head'"
     exit "$REMOTE_RC"
+fi
+
+if (( APK_RC != 0 )); then
+    err "application deployed, but APK artifact publishing failed"
+    exit "$APK_RC"
 fi
 
 if [[ "$DEPLOYED" != "$VERSION" ]]; then

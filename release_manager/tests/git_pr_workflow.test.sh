@@ -43,6 +43,7 @@ export FAKE_GH_HEAD_SHA="$(git -C "$contributor" rev-parse HEAD)"
 export FAKE_GH_ORIGIN="$origin"
 export FAKE_GH_LOG="$TEST_DIR/gh.log"
 export FAKE_GH_APPROVED="$TEST_DIR/approved"
+export FAKE_GH_NO_CHECKS="$TEST_DIR/no-checks"
 initial_main_sha="$(git --git-dir="$origin" rev-parse refs/heads/main)"
 
 printf '%s\n' \
@@ -60,7 +61,8 @@ printf '%s\n' \
     '      *) printf "{\"headRefOid\":\"%s\",\"mergeable\":\"MERGEABLE\",\"files\":[{\"path\":\"contributor.txt\",\"additions\":1,\"deletions\":0}]}\n" "$FAKE_GH_HEAD_SHA" ;;' \
     '    esac' \
     '    ;;' \
-    '  "pr checks") exit 0 ;;' \
+    '  "pr checks") if [ -f "$FAKE_GH_NO_CHECKS" ]; then exit 0; fi' \
+    '    printf "build\tpass\t1m\thttps://example.invalid/checks/1\n"; exit 0 ;;' \
     '  "pr diff") printf "diff --git a/contributor.txt b/contributor.txt\n" ;;' \
     '  "pr merge") git --git-dir="$FAKE_GH_ORIGIN" update-ref refs/heads/main "$FAKE_GH_HEAD_SHA" ;;' \
     '  "api --method") : > "$FAKE_GH_APPROVED" ;;' \
@@ -112,5 +114,17 @@ summary="$(printf '{"files":[{"path":"safe\\rspoof.txt","additions":1,"deletions
     | git_workflow_render_file_summary)"
 [[ "$summary" == '      safespoof.txt (+1 -0)' ]] \
     || fail_test 'terminal control bytes were not removed from PR file summaries'
+
+# An empty required-check list proves nothing: approval must be skipped, and
+# the library must say why.
+: > "$FAKE_GH_NO_CHECKS"
+GIT_WORKFLOW_REVIEWED_PR_NUMBERS=()
+git_workflow_review_pull_requests "$main_worktree" > "$TEST_DIR/review.out" 2>&1 \
+    || fail_test 'PR review failed outright on an empty required-check list'
+grep -qF 'no required checks' "$TEST_DIR/review.out" \
+    || fail_test 'empty required-check list was not reported clearly'
+[[ "${#GIT_WORKFLOW_REVIEWED_PR_NUMBERS[@]}" -eq 0 ]] \
+    || fail_test 'a PR with zero required checks was approved'
+rm -f "$FAKE_GH_NO_CHECKS"
 
 printf 'PASS: reviewed PRs are pinned, checked, approved and integrated into origin/main\n'

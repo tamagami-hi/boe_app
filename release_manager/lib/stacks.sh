@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
 # stacks.sh — the stack registry. THE single place that knows the three
-# deployable stacks exist and where each one lives on the VPS.
+# deployable stacks exist, how they are named, and how to reach the VPS.
 #
-# Replaces the old lib/ship.sh two-channel model (dev → /srv/dev_stack/BOE_APP,
-# prod → /srv/prod_stack/BOE_APP), which was wrong on both paths and had no
-# concept of a monitoring stack.
+# Replaces the old lib/ship.sh two-channel model, which was wrong on its paths
+# and had no concept of a monitoring stack.
 #
-# Verified VPS layout this encodes (all three stacks share ONE parent):
-#   /srv/dev_stack/BOE_APP/dev_release
-#   /srv/dev_stack/BOE_APP/prod_release
-#   /srv/dev_stack/BOE_APP/monitor_service
+# AUTHORITY BOUNDARY (schema 3)
+# This file owns stack IDENTITY only: stack ids, selector resolution, image
+# naming rules, and non-path metadata (compose filename, container prefix,
+# retention policy). It owns NO paths. Every deployment, backup, log, database,
+# image, configuration and APK path lives in the stack's tracked paths.json
+# contract and is read through lib/paths.sh (stack_paths_file, paths_validate,
+# paths_get). A path change is a paths.json edit — never an edit here.
 #
 # Design rules enforced here:
-#   • Nothing is hardcoded twice. Local scripts and VPS scripts both resolve
-#     paths through the per-stack paths.json that this library generates.
 #   • Sourcing this file has NO side effects beyond defining functions and
 #     read-only constants. (The old ship.sh mutated PG_CONTAINER at import
 #     time, which silently broke local DB dumps.)
@@ -27,42 +27,26 @@
 # machine, but never guessed: no user, host, IP, or port is hardcoded.
 BOE_SSH_ALIAS="${BOE_SSH_ALIAS:-beonedge}"
 
-# Verified: `docker info` succeeds as beonedge (docker group), and `sudo -n`
-# fails. Anything that prepends sudo here will hang waiting for a password.
-BOE_DOCKER="${BOE_DOCKER:-docker}"
-
-# Shared parent of all three stacks on the VPS.
-BOE_VPS_ROOT="${BOE_VPS_ROOT:-/srv/dev_stack/BOE_APP}"
-
-# Backup disk. Must be a real mountpoint before anything is written to it.
-BOE_BACKUP_ROOT="${BOE_BACKUP_ROOT:-/srv/backup/BOE_APP}"
-BOE_BACKUP_MOUNT="${BOE_BACKUP_MOUNT:-/srv/backup}"
-
 # The three stack ids, in deploy-order preference.
 BOE_STACKS=(dev_release prod_release monitor_service)
 
 # ── stack attribute lookup ──────────────────────────────────────────────────
 # stack_attr <stack> <attr> — echo one attribute, or return 1 if unknown.
 #
+# Only NON-PATH metadata lives here (identity and naming rules). Anything that
+# is a filesystem path belongs to the stack's paths.json contract; ask for it
+# with paths_get "$(stack_paths_file <stack>)" <query> after paths_validate.
+#
 # Attributes:
 #   env             environment name (development|production|monitoring)
 #   short           short id used in filenames and container prefixes
-#   dir             absolute stack directory on the VPS
 #   compose         compose filename inside the stack dir
 #   version_file    per-stack version filename inside the stack dir
 #   deploy          native deploy script filename
 #   rollback        native rollback script filename
 #   guide           guide filename
-#   lock            absolute flock path
 #   prefix          container name prefix
 #   project         compose project name
-#   rollback_root   backup subtree root for this stack
-#   images_sub      rollback images subdirectory name
-#   apk_sub         rollback APK subdirectory name
-#   db_sub          rollback DB subdirectory name
-#   log_sub         log subtree name
-#   db_backup_sub   scheduled DB backup subtree name
-#   apk_dirs        space-separated APK holder dirs inside the stack dir
 #   keep            how many rollback releases to retain
 #   has_db          true|false — does this stack own a postgres service
 stack_attr() {
@@ -79,14 +63,6 @@ stack_attr() {
                 guide)         printf 'DEV_GUIDE.md\n' ;;
                 prefix)        printf 'boe-dev\n' ;;
                 project)       printf 'boe_dev\n' ;;
-                rollback_root) printf '%s/DEV_ROLLBACK\n' "$BOE_BACKUP_ROOT" ;;
-                images_sub)    printf 'DEPLOY_IMAGES\n' ;;
-                apk_sub)       printf 'DEV_APK\n' ;;
-                db_sub)        printf 'DEV_PSQL_DB\n' ;;
-                log_sub)       printf 'DEV_LOGS\n' ;;
-                log_prefix)    printf 'DEV_\n' ;;
-                db_backup_sub) printf 'DEV\n' ;;
-                apk_dirs)      printf 'dev_apk dev_admin_apk\n' ;;
                 keep)          printf '3\n' ;;
                 has_db)        printf 'true\n' ;;
                 *) return 1 ;;
@@ -102,14 +78,6 @@ stack_attr() {
                 guide)         printf 'PROD_GUIDE.md\n' ;;
                 prefix)        printf 'boe\n' ;;
                 project)       printf 'boe_prod\n' ;;
-                rollback_root) printf '%s/PROD_ROLLBACK\n' "$BOE_BACKUP_ROOT" ;;
-                images_sub)    printf 'IMAGES\n' ;;
-                apk_sub)       printf 'APK\n' ;;
-                db_sub)        printf 'PSQL_DB\n' ;;
-                log_sub)       printf 'PROD_LOGS\n' ;;
-                log_prefix)    printf '\n' ;;
-                db_backup_sub) printf 'PROD\n' ;;
-                apk_dirs)      printf 'prod_apk admin_apk\n' ;;
                 keep)          printf '5\n' ;;
                 has_db)        printf 'true\n' ;;
                 *) return 1 ;;
@@ -125,26 +93,13 @@ stack_attr() {
                 guide)         printf 'MS_GUIDE.md\n' ;;
                 prefix)        printf 'boe-ms\n' ;;
                 project)       printf 'boe_monitor\n' ;;
-                rollback_root) printf '%s/MONITOR_ROLLBACK\n' "$BOE_BACKUP_ROOT" ;;
-                images_sub)    printf 'IMAGES\n' ;;
-                apk_sub)       printf 'MS_APK\n' ;;
-                db_sub)        printf 'PSQL_DB\n' ;;
-                log_sub)       printf 'MONITOR_LOGS\n' ;;
-                log_prefix)    printf '\n' ;;
-                db_backup_sub) printf 'MONITOR\n' ;;
-                apk_dirs)      printf 'ms_apk\n' ;;
                 keep)          printf '3\n' ;;
                 has_db)        printf 'false\n' ;;
                 *) return 1 ;;
             esac ;;
         *) return 1 ;;
     esac
-    # dir/lock are uniform across stacks; handled after the case for brevity.
 }
-
-# Uniform attributes that derive from the stack id.
-stack_dir()  { printf '%s/%s\n' "$BOE_VPS_ROOT" "$1"; }
-stack_lock() { printf '/run/lock/boe-%s.lock\n' "$1"; }
 
 # is_stack <candidate> — true if the argument names a real stack.
 is_stack() {
@@ -213,23 +168,30 @@ stack_image_tag() {
 # ── ssh plumbing ────────────────────────────────────────────────────────────
 # boe_ssh_opts — populate the BOE_SSH_OPTS array. BatchMode so a missing key
 # fails fast instead of prompting and hanging a script.
+# BOE_SSH_ALIAS and BOE_SSH_KEY are operator-controlled environment values:
+# validate them before they become ssh/scp argv, so a hostile value can never
+# smuggle extra options (an alias like "-oProxyCommand=..." is just argv).
 boe_ssh_opts() {
+    if [[ ! "$BOE_SSH_ALIAS" =~ ^[A-Za-z0-9._-]+$ || "$BOE_SSH_ALIAS" == -* ]]; then
+        printf 'boe_ssh_opts: unsafe BOE_SSH_ALIAS: %s\n' \
+            "$(printf '%s' "$BOE_SSH_ALIAS" | LC_ALL=C tr -d '\000-\010\013-\037\177')" >&2
+        return 1
+    fi
     BOE_SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=15)
     if [[ -n "${BOE_SSH_KEY:-}" ]]; then
+        if [[ ! "$BOE_SSH_KEY" =~ ^[A-Za-z0-9._/~+-]+$ || "$BOE_SSH_KEY" == -* ]]; then
+            printf 'boe_ssh_opts: unsafe BOE_SSH_KEY path: %s\n' \
+                "$(printf '%s' "$BOE_SSH_KEY" | LC_ALL=C tr -d '\000-\010\013-\037\177')" >&2
+            return 1
+        fi
         BOE_SSH_OPTS+=(-i "$BOE_SSH_KEY" -o IdentitiesOnly=yes)
     fi
 }
 
 # boe_ssh <args...> — run a command on the VPS.
 boe_ssh() {
-    boe_ssh_opts
+    boe_ssh_opts || return 1
     ssh "${BOE_SSH_OPTS[@]}" "$BOE_SSH_ALIAS" "$@"
-}
-
-# boe_scp <local> <remote-abs-path> — copy one file to the VPS.
-boe_scp() {
-    boe_ssh_opts
-    scp -q "${BOE_SSH_OPTS[@]}" "$1" "${BOE_SSH_ALIAS}:$2"
 }
 
 # assert_safe_remote_dir <path> — refuse to operate on a path that could
@@ -237,11 +199,15 @@ boe_scp() {
 # `rm -rf "$dir/something"` from becoming catastrophic.
 assert_safe_remote_dir() {
     local dir="${1:-}"
+    # Rejected values are untrusted: strip control bytes before printing so a
+    # hostile path cannot forge or overwrite the refusal message.
+    local shown
+    shown="$(printf '%s' "$dir" | LC_ALL=C tr -d '\000-\010\013-\037\177')"
     [[ -n "$dir" ]]                      || { printf 'Refusing empty remote dir\n' >&2; return 1; }
-    [[ "$dir" != *".."* ]]               || { printf 'Refusing remote dir with ..: %s\n' "$dir" >&2; return 1; }
-    [[ "$dir" =~ ^/[A-Za-z0-9_./-]+$ ]]  || { printf 'Refusing unsafe remote dir: %s\n' "$dir" >&2; return 1; }
-    # Require depth >= 3 (/srv/dev_stack/BOE_APP/<stack>) so a truncated
-    # variable can never resolve to /srv or /.
+    [[ "$dir" != *".."* ]]               || { printf 'Refusing remote dir with ..: %s\n' "$shown" >&2; return 1; }
+    [[ "$dir" =~ ^/[A-Za-z0-9_./-]+$ ]]  || { printf 'Refusing unsafe remote dir: %s\n' "$shown" >&2; return 1; }
+    # Require depth >= 3 so a truncated variable can never resolve to a
+    # top-level directory.
     local depth; depth="$(printf '%s' "${dir//[!\/]/}" | wc -c)"
-    (( depth >= 3 )) || { printf 'Refusing shallow remote dir: %s\n' "$dir" >&2; return 1; }
+    (( depth >= 3 )) || { printf 'Refusing shallow remote dir: %s\n' "$shown" >&2; return 1; }
 }

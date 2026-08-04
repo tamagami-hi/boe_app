@@ -31,7 +31,7 @@ git -C "$main_worktree" config user.name 'Release Test'
 git -C "$main_worktree" config user.email 'release-test@example.invalid'
 printf 'initial\n' > "$main_worktree/shared.txt"
 printf 'obsolete\n' > "$main_worktree/obsolete.txt"
-printf '.env\n' > "$main_worktree/.gitignore"
+printf '.env\ncache.bin\ncache-parent\n' > "$main_worktree/.gitignore"
 git -C "$main_worktree" add shared.txt obsolete.txt .gitignore
 git -C "$main_worktree" commit -m 'chore: initial state' >/dev/null
 git -C "$main_worktree" push -u origin main >/dev/null 2>&1
@@ -93,12 +93,121 @@ surface_sha="$(git -C "$surface_worktree" rev-parse wt/client)"
 [[ "$main_sha" == "$surface_sha" ]] \
     || fail_test 'main was not fanned back out to the surface worktree'
 
+printf 'fan-out change\n' > "$main_worktree/fan-out.txt"
+git -C "$main_worktree" add fan-out.txt
+git -C "$main_worktree" commit -m 'chore: test explicit worktree sync' >/dev/null
+git_workflow_sync_worktrees "$main_worktree" >/dev/null \
+    || fail_test 'explicit worktree synchronization failed'
+[[ "$(git -C "$surface_worktree" rev-parse HEAD)" == \
+   "$(git -C "$main_worktree" rev-parse main)" ]] \
+    || fail_test 'explicit synchronization did not fast-forward a surface worktree'
+[[ "$(git -C "$ignored_worktree" rev-parse HEAD)" != \
+   "$(git -C "$main_worktree" rev-parse main)" ]] \
+    || fail_test 'explicit synchronization changed a non-surface worktree'
+
+printf 'LOCAL SECRET\n' > "$surface_worktree/.env"
+printf 'tracked value\n' > "$main_worktree/.env"
+git -C "$main_worktree" add -f .env
+git -C "$main_worktree" commit -m 'test: incoming ignored-path collision' >/dev/null
+if git_workflow_sync_worktrees "$main_worktree" >/dev/null 2>&1; then
+    fail_test 'worktree synchronization overwrote an ignored local secret'
+fi
+[[ "$(cat "$surface_worktree/.env")" == 'LOCAL SECRET' ]] \
+    || fail_test 'ignored local secret changed after rejected synchronization'
+git -C "$main_worktree" rm .env >/dev/null
+git -C "$main_worktree" commit -m 'test: remove incoming ignored path' >/dev/null
+git -C "$surface_worktree" reset --hard main >/dev/null
+
+mkdir -p "$main_worktree/cache-parent"
+printf 'tracked child\n' > "$main_worktree/cache-parent/file.txt"
+git -C "$main_worktree" add -f cache-parent/file.txt
+git -C "$main_worktree" commit -m 'test: incoming parent collision' >/dev/null
+printf 'LOCAL PARENT FILE\n' > "$surface_worktree/cache-parent"
+if git_workflow_sync_worktrees "$main_worktree" >/dev/null 2>&1; then
+    fail_test 'worktree synchronization replaced an ignored parent path'
+fi
+[[ "$(cat "$surface_worktree/cache-parent")" == 'LOCAL PARENT FILE' ]] \
+    || fail_test 'ignored parent path changed after rejected synchronization'
+git -C "$main_worktree" rm cache-parent/file.txt >/dev/null
+git -C "$main_worktree" commit -m 'test: remove incoming parent collision' >/dev/null
+rm "$surface_worktree/cache-parent"
+git -C "$surface_worktree" reset --hard main >/dev/null
+
+printf 'tracked cache\n' > "$main_worktree/cache.bin"
+git -C "$main_worktree" add -f cache.bin
+git -C "$main_worktree" commit -m 'test: prompt-time ignored collision' >/dev/null
+git_workflow_confirm() {
+    printf 'LOCAL PROMPT CACHE\n' > "$surface_worktree/cache.bin"
+    return 0
+}
+if git_workflow_sync_worktrees "$main_worktree" >/dev/null 2>&1; then
+    fail_test 'prompt-time ignored path was overwritten during synchronization'
+fi
+[[ "$(cat "$surface_worktree/cache.bin")" == 'LOCAL PROMPT CACHE' ]] \
+    || fail_test 'prompt-time ignored path was not preserved'
+git_workflow_confirm() { return 0; }
+git -C "$main_worktree" rm cache.bin >/dev/null
+git -C "$main_worktree" commit -m 'test: remove prompt-time ignored collision' >/dev/null
+rm "$surface_worktree/cache.bin"
+git -C "$surface_worktree" reset --hard main >/dev/null
+
+printf 'branch race\n' > "$main_worktree/branch-race.txt"
+git -C "$main_worktree" add branch-race.txt
+git -C "$main_worktree" commit -m 'test: worktree branch race' >/dev/null
+git_workflow_confirm() {
+    git -C "$surface_worktree" switch -c wt/switched-during-confirm >/dev/null 2>&1
+}
+if git_workflow_sync_worktrees "$main_worktree" >/dev/null 2>&1; then
+    fail_test 'worktree synchronization merged into a branch switched during confirmation'
+fi
+git_workflow_confirm() { return 0; }
+git -C "$surface_worktree" switch wt/client >/dev/null 2>&1
+git -C "$main_worktree" branch -D wt/switched-during-confirm >/dev/null
+git -C "$main_worktree" rm branch-race.txt >/dev/null
+git -C "$main_worktree" commit -m 'test: remove worktree branch race' >/dev/null
+git -C "$surface_worktree" reset --hard main >/dev/null
+
+if git_workflow_assert_worktree_merge_safe \
+        "$main_worktree" "$surface_worktree" missing-surface-ref main \
+        >/dev/null 2>&1; then
+    fail_test 'worktree safety check passed after its diff command failed'
+fi
+git -C "$main_worktree" push origin main >/dev/null 2>&1
+
+# A commit already sitting on a surface branch is scanned BEFORE it can merge
+# into main: a sensitive path blocks the merge (this gate does not depend on
+# gitleaks being installed).
+pre_scan_main="$(git -C "$main_worktree" rev-parse main)"
+printf 'PRIVATE KEY MATERIAL\n' > "$surface_worktree/deploy-key.pem"
+git -C "$surface_worktree" add deploy-key.pem
+git -C "$surface_worktree" commit -m 'test: un-scanned sensitive commit' >/dev/null
+if git_workflow_run "$main_worktree" >/dev/null 2>&1; then
+    fail_test 'an un-scanned sensitive worktree commit was merged into main'
+fi
+[[ "$(git -C "$main_worktree" rev-parse main)" == "$pre_scan_main" ]] \
+    || fail_test 'a rejected worktree merge still advanced main'
+if git -C "$main_worktree" merge-base --is-ancestor wt/client main 2>/dev/null; then
+    fail_test 'a sensitive worktree commit became an ancestor of main'
+fi
+git -C "$surface_worktree" reset --hard main >/dev/null
+
+# Incoming environment/credential file names are all classified as sensitive.
+for sensitive_name in 'prod.env' 'id_rsa' 'id_ed25519.pub' 'token.ppk' '.netrc' '.npmrc'; do
+    git_workflow_is_sensitive_path "nested/$sensitive_name" \
+        || fail_test "sensitive path not classified: $sensitive_name"
+done
+for safe_name in '.env.example' 'client.env.example' 'app.env.template'; do
+    if git_workflow_is_sensitive_path "$safe_name"; then
+        fail_test "safe template path classified as sensitive: $safe_name"
+    fi
+done
+
 grep -qF 'source "$RM_DIR/lib/git_workflow.sh"' "$STATUS_SCRIPT" \
     || fail_test 'status.sh does not load the Git workflow'
 grep -qF 'git_workflow_run "$ROOT_DIR"' "$STATUS_SCRIPT" \
     || fail_test 'status.sh does not expose the Git workflow action'
-grep -qF '5) Git workflow' "$STATUS_SCRIPT" \
-    || fail_test 'interactive status menu does not expose the Git workflow'
+grep -qF 'Full Git workflow' "$STATUS_SCRIPT" \
+    || fail_test 'interactive Git submenu does not expose the full workflow'
 grep -qF 'prepare_release_git' "$STATUS_SCRIPT" \
     || fail_test 'release cutting does not invoke Git preparation'
 grep -qF 'push --atomic origin' "$STATUS_SCRIPT" \

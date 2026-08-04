@@ -56,7 +56,7 @@ git_workflow_is_sensitive_path() {
     case "$name" in
         .env.example|.env.sample|.env.template|*.env.example|*.env.sample|*.env.template)
             return 1 ;;
-        .env|.env.*|*.pem|*.key|*.p12|*.pfx|*.jks|*.keystore|*credentials*)
+        .env|.env.*|*.env|*.pem|*.key|*.p12|*.pfx|*.jks|*.keystore|*credentials*|id_*|*.ppk|.netrc|.npmrc)
             return 0 ;;
     esac
     case "/$path/" in
@@ -129,9 +129,20 @@ git_workflow_render_file_summary() {
         | git_workflow_sanitize_terminal
 }
 
+# git_workflow_required_checks <pr-number> <repo> — echo the required-check
+# list for a PR. Returns 1 when the checks are red, and 2 when the list is
+# EMPTY: zero required checks proves nothing about the head commit, so an
+# empty list can never justify an approval or a merge.
+git_workflow_required_checks() {
+    local number="$1" repo="$2" out
+    out="$(gh pr checks "$number" --repo "$repo" --required 2>/dev/null)" || return 1
+    [[ -n "$out" ]] || return 2
+    printf '%s\n' "$out"
+}
+
 git_workflow_review_pull_requests() {
     local _main_worktree="$1" number branch author decision mergeable rows details prompt
-    local head_sha refreshed_sha current_mergeable approval_count
+    local head_sha refreshed_sha current_mergeable approval_count checks_rc
     local github_repo='tamagami-hi/boe_app'
     GIT_WORKFLOW_REVIEWED_PR_NUMBERS=()
     GIT_WORKFLOW_REVIEWED_PR_SHAS=()
@@ -174,10 +185,15 @@ git_workflow_review_pull_requests() {
             printf '   ! PR #%s is not mergeable; approval skipped\n' "$number"
             continue
         }
-        gh pr checks "$number" --repo "$github_repo" --required || {
+        checks_rc=0
+        git_workflow_required_checks "$number" "$github_repo" >/dev/null || checks_rc=$?
+        if (( checks_rc == 2 )); then
+            printf '   ! PR #%s has no required checks configured; approval skipped\n' "$number"
+            continue
+        elif (( checks_rc != 0 )); then
             printf '   ! PR #%s required checks are not green; approval skipped\n' "$number"
             continue
-        }
+        fi
         if [[ "$decision" == APPROVED ]]; then
             prompt="Accept the displayed patch for approved PR #$number at ${head_sha:0:12}?"
         else
@@ -190,7 +206,10 @@ git_workflow_review_pull_requests() {
             printf '   ✗ PR #%s changed during review; approval blocked\n' "$number" >&2
             return 1
         }
-        gh pr checks "$number" --repo "$github_repo" --required || return 1
+        git_workflow_required_checks "$number" "$github_repo" >/dev/null || {
+            printf '   ✗ PR #%s required checks are red or absent after confirmation\n' "$number" >&2
+            return 1
+        }
         gh api --method POST "repos/$github_repo/pulls/$number/reviews" \
             -f event=APPROVE \
             -f commit_id="$head_sha" \
@@ -232,7 +251,10 @@ git_workflow_merge_pull_requests() {
             printf '   ✗ PR #%s changed before merge; merge blocked\n' "$number" >&2
             return 1
         }
-        gh pr checks "$number" --repo "$github_repo" --required || return 1
+        git_workflow_required_checks "$number" "$github_repo" >/dev/null || {
+            printf '   ✗ PR #%s required checks are red or absent before merge\n' "$number" >&2
+            return 1
+        }
         approval_count="$(gh api "repos/$github_repo/pulls/$number/reviews?per_page=100" \
             --jq "[.[] | select(.state == \"APPROVED\" and .commit_id == \"$head_sha\")] | length")" \
             || return 1
@@ -280,8 +302,128 @@ git_workflow_sync_main() {
     fi
 }
 
+git_workflow_untracked_collision_path() {
+    local worktree="$1" incoming_path="$2" remainder="$2" candidate="" component
+
+    while [[ "$remainder" == */* ]]; do
+        component="${remainder%%/*}"
+        remainder="${remainder#*/}"
+        candidate="${candidate:+$candidate/}$component"
+        if ! git -C "$worktree" ls-files --error-unmatch -- "$candidate" \
+                >/dev/null 2>&1 \
+           && { [[ -L "$worktree/$candidate" ]] \
+                || { [[ -e "$worktree/$candidate" ]] && [[ ! -d "$worktree/$candidate" ]]; }; }; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    if ! git -C "$worktree" ls-files --error-unmatch -- "$incoming_path" \
+            >/dev/null 2>&1 \
+       && [[ -e "$worktree/$incoming_path" || -L "$worktree/$incoming_path" ]]; then
+        printf '%s\n' "$incoming_path"
+        return 0
+    fi
+    return 1
+}
+
+git_workflow_assert_worktree_merge_safe() {
+    local main_worktree="$1" worktree="$2" branch="$3" target_ref="${4:-main}"
+    local incoming_path collision paths_file is_safe=true
+
+    paths_file="$(mktemp)" || return 1
+    if ! git -C "$main_worktree" diff --name-only -z "$branch"..."$target_ref" \
+            > "$paths_file"; then
+        printf '   ✗ could not inspect incoming main paths for %s\n' "${branch#wt/}" >&2
+        rm -f "$paths_file"
+        return 1
+    fi
+    while IFS= read -r -d '' incoming_path; do
+        if git_workflow_is_sensitive_path "$incoming_path"; then
+            printf '   ✗ refusing to merge sensitive main path into %s: %s\n' \
+                "${branch#wt/}" "$incoming_path" >&2
+            is_safe=false
+            break
+        fi
+        collision="$(git_workflow_untracked_collision_path "$worktree" "$incoming_path")" \
+            || collision=""
+        if [[ -n "$collision" ]]; then
+            printf '   ✗ refusing to overwrite untracked or ignored path in %s: %s\n' \
+                "${branch#wt/}" "$collision" >&2
+            is_safe=false
+            break
+        fi
+    done < "$paths_file"
+    rm -f "$paths_file"
+    [[ "$is_safe" == true ]]
+}
+
+git_workflow_sync_worktrees() {
+    local repo="$1" main_worktree path branch ahead behind main_sha
+    local found=false
+
+    main_worktree="$(git_workflow_main_worktree "$repo")" || {
+        printf '   ✗ no worktree is checked out on main\n' >&2
+        return 1
+    }
+    while IFS= read -r -d '' path && IFS= read -r -d '' branch; do
+        found=true
+        main_sha="$(git -C "$main_worktree" rev-parse main)" || return 1
+        ahead="$(git -C "$main_worktree" rev-list --count "$main_sha".."$branch")"
+        behind="$(git -C "$main_worktree" rev-list --count "$branch".."$main_sha")"
+        if (( behind == 0 )); then
+            printf '   ✓ %-10s already contains main' "${branch#wt/}"
+            (( ahead > 0 )) && printf ' (%s unintegrated commit(s))' "$ahead"
+            printf '\n'
+            continue
+        fi
+        [[ -z "$(git -C "$path" status --porcelain)" ]] || {
+            printf '   ✗ %s is dirty; commit it with the full Git workflow first\n' \
+                "${branch#wt/}" >&2
+            return 1
+        }
+        git_workflow_assert_worktree_merge_safe "$main_worktree" "$path" "$branch" "$main_sha" \
+            || return 1
+        local pre_confirm_head
+        pre_confirm_head="$(git -C "$path" rev-parse HEAD)" || return 1
+        git_workflow_confirm "Merge main into ${branch#wt/} ($behind commit(s) behind)?" \
+            || return 1
+        # Revalidate the destination after confirmation: the operator may have
+        # switched the worktree to another branch, moved its HEAD, or dirtied
+        # it while the prompt was open. Merging into anything but the exact
+        # state that was reviewed is a silent branch-switch race.
+        [[ "$(git -C "$main_worktree" rev-parse main)" == "$main_sha" ]] || {
+            printf '   ✗ main changed during confirmation; synchronization cancelled\n' >&2
+            return 1
+        }
+        [[ "$(git -C "$path" symbolic-ref --short -q HEAD)" == "$branch" ]] || {
+            printf '   ✗ %s switched branches during confirmation; synchronization cancelled\n' \
+                "${branch#wt/}" >&2
+            return 1
+        }
+        [[ "$(git -C "$path" rev-parse HEAD)" == "$pre_confirm_head" ]] || {
+            printf '   ✗ %s HEAD moved during confirmation; synchronization cancelled\n' \
+                "${branch#wt/}" >&2
+            return 1
+        }
+        [[ -z "$(git -C "$path" status --porcelain)" ]] || {
+            printf '   ✗ %s became dirty during confirmation; synchronization cancelled\n' \
+                "${branch#wt/}" >&2
+            return 1
+        }
+        if (( ahead == 0 )); then
+            git -C "$path" merge --no-overwrite-ignore --ff-only "$main_sha" || return 1
+        else
+            git -C "$path" merge --no-overwrite-ignore --no-edit "$main_sha" || return 1
+        fi
+        printf '   ✓ synchronized main → %s\n' "${branch#wt/}"
+    done < <(git_workflow_surface_worktrees "$main_worktree")
+
+    [[ "$found" == true ]] || printf '   ! no wt/admin, wt/client or wt/landing worktrees found\n'
+}
+
 git_workflow_run() {
-    local repo="$1" main_worktree path branch ahead
+    local repo="$1" main_worktree path branch ahead main_sha
+    local incoming_path incoming_paths
     local -a surface_paths=() surface_branches=()
 
     main_worktree="$(git_workflow_main_worktree "$repo")" || {
@@ -306,17 +448,45 @@ git_workflow_run() {
         branch="${surface_branches[$i]}"
         ahead="$(git -C "$main_worktree" rev-list --count main.."$branch")"
         (( ahead > 0 )) || continue
+        # Scan the incoming commits BEFORE they can reach main: a sensitive
+        # path is refused outright, and a content scan runs when gitleaks is
+        # available. The operator then confirms against the actual diff stat.
+        incoming_paths="$(
+            git -C "$main_worktree" diff --name-only main.."$branch"
+        )" || return 1
+        while IFS= read -r incoming_path; do
+            [[ -n "$incoming_path" ]] || continue
+            if git_workflow_is_sensitive_path "$incoming_path"; then
+                printf '   ✗ refusing to merge %s into main: sensitive path %s\n' \
+                    "$branch" "$incoming_path" >&2
+                return 1
+            fi
+        done <<< "$incoming_paths"
+        if command -v gitleaks >/dev/null 2>&1; then
+            gitleaks git --no-banner --redact --log-opts="main..$branch" "$main_worktree" || {
+                printf '   ✗ secret scan failed for incoming commits on %s\n' "$branch" >&2
+                return 1
+            }
+        fi
+        git -C "$main_worktree" log --stat main.."$branch" || return 1
         git_workflow_confirm "Merge $branch into main ($ahead commit(s))?" || return 1
         git -C "$main_worktree" merge --no-edit "$branch" || return 1
     done
 
     git_workflow_sync_main "$main_worktree" || return 1
+    main_sha="$(git -C "$main_worktree" rev-parse main)" || return 1
 
     for i in "${!surface_paths[@]}"; do
         path="${surface_paths[$i]}"
         branch="${surface_branches[$i]}"
-        git -C "$main_worktree" merge-base --is-ancestor "$branch" main || continue
-        git -C "$path" merge --ff-only main || return 1
+        git -C "$main_worktree" merge-base --is-ancestor "$branch" "$main_sha" || {
+            printf '   ✗ %s diverged from main; run explicit worktree synchronization\n' \
+                "${branch#wt/}" >&2
+            return 1
+        }
+        git_workflow_assert_worktree_merge_safe "$main_worktree" "$path" "$branch" "$main_sha" \
+            || return 1
+        git -C "$path" merge --no-overwrite-ignore --ff-only "$main_sha" || return 1
     done
 
     [[ -z "$(git -C "$main_worktree" status --porcelain)" ]] || {
