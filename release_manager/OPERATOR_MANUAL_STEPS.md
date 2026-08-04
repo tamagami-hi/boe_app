@@ -413,12 +413,13 @@ Each is currently detected and reported rather than silently worked around.
    Without it the user and admin images build identically. `export.sh` refuses to
    proceed and prints the exact two lines to add.
 
-2. **Gradle product flavors + release signing** (`android/app/build.gradle`).
-   Today one `applicationId` means dev and prod APKs cannot be co-installed, and
-   `--prod` yields a debug-signed APK. `boe_update.sh` warns about both. Because
-   the builder only produces `assembleDebug`, production APK publishing is
-   refused outright (the sidecar records `signing: "debug"`) until a release
-   signing config exists.
+2. **Gradle product flavors** (`android/app/build.gradle`).
+   One `applicationId` means dev and prod APKs cannot be co-installed, and
+   `boe_update.sh` still warns about that. Release signing and version
+   injection are now done: the builder produces a signed, minified
+   `assembleRelease` (sidecar records `signing: "release"`) whenever the
+   gitignored `android/keystore.properties` is present, so production APK
+   publishing is no longer refused on signing grounds.
 
 3. **Backend `/metrics` endpoint.** None exists, so Prometheus has no
    application-level series. Monitoring currently covers host, container and

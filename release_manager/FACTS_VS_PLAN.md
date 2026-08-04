@@ -138,7 +138,7 @@ What it **lacks** (and the plan requires): `flock` locking, disk-space checks,
 | Backend exposes `/metrics` | **No `/metrics`.** No prom-client / OTel dependency | Monitoring must probe `/health/*` + container state, or instrumentation must be added |
 | WebSocket at `/ws/`, `wss://` | **No WebSocket anywhere.** Fastify is HTTP/JSON only; no `ws`, `socket.io`, `@fastify/websocket` | `/ws/` nginx blocks are placeholders; nothing serves them yet |
 | Postgres internal, no host binding | Current compose publishes `127.0.0.1:${POSTGRES_HOST_BIND_PORT:-5433}:5432` | Drop the host binding (plan §9.1). Also avoids clashing with the host postgres on 5432 |
-| APK dev + prod co-installable | `applicationId` fixed `com.beonedge.app`, **no product flavors**, `versionCode 1` / `versionName "1.0"` static, **no `signingConfig`**, `assembleDebug` for both modes | Cannot co-install. Needs Gradle flavors + release signing |
+| APK dev + prod co-installable | `applicationId` fixed `com.beonedge.app`, **no product flavors**. Versioning + release signing are done: `build.gradle` reads injected `boeVersionCode`/`boeVersionName` and signs `assembleRelease` (minified) from the gitignored `android/keystore.properties` | Cannot co-install. Needs Gradle flavors with `applicationIdSuffix` |
 | Admin APK (`dev_admin_apk`, `admin_apk`) | No build path exists. `scripts/check-android-dist.mjs` actively **rejects** admin chunks in an android build | Admin APK needs a new build target |
 
 Other confirmed application facts:
@@ -223,6 +223,6 @@ Ranked by whether they block deployment.
 6. UFW policy.
 
 **Application code changes (deliberately out of scope — scripts first):**
-7. Gradle product flavors + release `signingConfig` for co-installable APKs.
+7. Gradle product flavors (`applicationIdSuffix`) so dev and prod APKs are co-installable. (Release signing + injected versioning are done — see §3 APK row.)
 8. Add `/metrics` to the backend if Prometheus app-level metrics are wanted.
 9. Add WebSocket support if `/ws/` is to be used.

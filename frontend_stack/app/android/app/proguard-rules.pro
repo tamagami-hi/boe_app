@@ -1,21 +1,27 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
+# BeOnEdge (Capacitor) R8/ProGuard rules.
 #
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# capacitor-android ships CONSUMER rules (proguard-rules.pro inside
+# node_modules/@capacitor/android/capacitor) that already keep:
+#   - @CapacitorPlugin classes and their @PluginMethod/@PermissionCallback/@ActivityCallback methods
+#   - classes extending com.getcapacitor.Plugin
+#   - legacy @NativePlugin classes and org.apache.cordova.* subclasses
+# Those are NOT duplicated here. What follows is what the consumer rules miss.
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# WebView <-> JavaScript bridge: any @JavascriptInterface method is invoked by
+# name from JS, so R8 must not rename or strip it.
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+-keepattributes JavascriptInterface
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Capacitor bridge core (Bridge, JSInjector, MessageHandler, …) is reached by
+# name from the injected JS and via reflection; the consumer rules only cover
+# plugin classes, not the bridge itself.
+-keep class com.getcapacitor.** { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Keep plugin annotation metadata so runtime reflection on annotations works.
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
+
+# Readable crash stack traces from minified release builds.
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile

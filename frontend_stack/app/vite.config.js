@@ -20,6 +20,10 @@ export default defineConfig(() => {
     server: { host: true, port: 5173, open: false, strictPort: true },
     build: {
       chunkSizeWarningLimit: 600,
+      // esbuild's CSS parser warns on modern at-rules it doesn't know
+      // (@starting-style) and passes them through anyway; Lightning CSS
+      // parses them natively and minifies better.
+      cssMinify: 'lightningcss',
       rollupOptions: {
         output: {
           manualChunks(id) {

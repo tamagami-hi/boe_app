@@ -149,7 +149,7 @@
 
 .apk-splash-disc {
   position: absolute;
-  bottom: 32px;
+  bottom: calc(32px + var(--be-safe-bottom));
   font-family: var(--be-font-mono);
   font-size: var(--be-text-xs);
   color: rgba(255, 252, 246, 0.45);
@@ -176,7 +176,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: clamp(32px, 8vw, 96px) 24px;
+  padding: calc(clamp(32px, 8vw, 96px) + var(--be-safe-top)) 24px clamp(32px, 8vw, 96px);
 }
 
 .apk-compat {

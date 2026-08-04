@@ -41,15 +41,27 @@
 #   7. HEADLESS-CAPABLE. --no-install skips all emulator interaction so the
 #      release pipeline can build APKs without a device attached.
 #
-# KNOWN LIMITATION IT REPORTS BUT CANNOT FIX ALONE
-#   android/app/build.gradle has a single fixed applicationId, no product
-#   flavors, static versionCode/versionName, and no release signingConfig.
-#   Consequences, both flagged at build time:
-#     • dev and prod APKs share an applicationId, so they CANNOT be installed
-#       side by side (the deployment plan §16.1 requires that they can);
-#     • --prod still produces a debug-signed APK.
-#   Fixing these requires editing the Gradle project. See the warnings emitted
-#   at the end of a build, and FACTS_VS_PLAN.md §6 item 8.
+#   8. REAL VERSIONING + RELEASE SIGNING. build.gradle now reads the injected
+#      -PboeVersionName/-PboeVersionCode (versionCode 1 / "1.0" are only an
+#      IDE fallback), declares a release signingConfig fed by the gitignored
+#      android/keystore.properties, and minifies/shrinks release builds. When
+#      that keystore is configured this script builds assembleRelease and the
+#      sidecar records signing="release", which unblocks the prod gate in
+#      release_manager/lib/apk_ship.sh. Without it, it falls back to
+#      assembleDebug with the loud warning below.
+#      KEEP THE KEYSTORE (android/keystore/boe-release.jks) FOREVER: Android
+#      only installs an update over an existing app when the certificate
+#      matches — same cert + increasing versionCode is what makes updates
+#      install fast in place.
+#
+#   9. DISTINCT applicationId PER TARGET AND VARIANT. build.gradle now reads
+#      the injected -PboeApplicationId (default "com.beonedge.app"), and this
+#      script derives one per build:
+#          prod:         com.beonedge.app / com.beonedge.app.admin
+#          dev / local:  com.beonedge.app.dev / com.beonedge.app.dev.admin
+#      so all four APKs can be installed side by side on one device, as the
+#      deployment plan §16.1 requires. The sidecar JSON records the real
+#      applicationId of each APK.
 # ─────────────────────────────────────────────────────────────────────────────
 
 set -euo pipefail
@@ -163,6 +175,15 @@ case "$TARGET" in
         VITE_MODE="android-prod"
         ;;
 esac
+
+# applicationId base per target: prod keeps the canonical ID; dev and local
+# get a .dev suffix so dev and prod APKs can coexist on one device. The admin
+# variant appends .admin per build (see build_variant).
+if [[ "$TARGET" == "prod" ]]; then
+    APP_ID_BASE="com.beonedge.app"
+else
+    APP_ID_BASE="com.beonedge.app.dev"
+fi
 
 # A distributed APK must never fall back to cleartext HTTP.
 if [[ "$TARGET" != "local" && "$API_BASE" != https://* ]]; then
@@ -292,6 +313,25 @@ if grep -q 'boeVersionName' "$ANDROID_DIR/app/build.gradle" 2>/dev/null; then
     GRADLE_HONOURS_VERSION=true
 fi
 
+# ── release signing probe ───────────────────────────────────────────────────
+# build.gradle reads signing material from the gitignored keystore.properties.
+# When it is present and complete we build assembleRelease (signed); otherwise
+# we fall back to assembleDebug and the sidecar honestly records signing=debug.
+KEYSTORE_PROPS="$ANDROID_DIR/keystore.properties"
+RELEASE_SIGNING=false
+if [[ -f "$KEYSTORE_PROPS" ]] \
+    && grep -q '^storeFile=' "$KEYSTORE_PROPS" \
+    && grep -q '^storePassword=' "$KEYSTORE_PROPS" \
+    && grep -q '^keyAlias=' "$KEYSTORE_PROPS" \
+    && grep -q '^keyPassword=' "$KEYSTORE_PROPS"; then
+    RELEASE_SIGNING=true
+fi
+if [[ "$RELEASE_SIGNING" == true ]]; then
+    field "signing" "release (assembleRelease, minified)"
+else
+    warn "no usable android/keystore.properties — falling back to assembleDebug"
+fi
+
 # versionCode must be a monotonically increasing integer. Derive it from semver.
 IFS=. read -r _vmaj _vmin _vpat <<<"$BASE_VERSION"
 VERSION_CODE=$(( _vmaj * 10000 + _vmin * 100 + _vpat ))
@@ -304,7 +344,15 @@ build_variant() {
     local apk_name="boe.${TARGET}.${variant}.${BASE_VERSION}.apk"
     local out_apk="$OUT_DIR/$apk_name"
 
+    # applicationId: per-target base, plus .admin for the admin variant, so
+    # all four builds (client/admin × dev/prod) can coexist on one device.
+    local APP_ID="$APP_ID_BASE"
+    [[ "$variant" == "admin" ]] && APP_ID="${APP_ID}.admin"
+    # PACKAGE_NAME feeds the sidecar's applicationId and the monkey launch.
+    local PACKAGE_NAME="$APP_ID"
+
     section "BUILD · $variant" "$apk_name"
+    field "applicationId" "$APP_ID"
 
     # Vite reads these from the process environment; shell wins over .env files.
     export VITE_BEO_APP_TARGET="$variant"
@@ -333,14 +381,28 @@ build_variant() {
     # fresh one — this is the freshness guarantee, in place of a build id.
     rm -f "$GRADLE_APK_DEBUG" "$GRADLE_APK_RELEASE"
 
-    step "gradle assembleDebug"
-    ( cd "$ANDROID_DIR" && ./gradlew assembleDebug --console=plain \
-        -PboeVersionName="$BUILD_LABEL" -PboeVersionCode="$VERSION_CODE" ) \
-        || { err "gradle build failed"; return 1; }
+    local gradle_apk signing
+    if [[ "$RELEASE_SIGNING" == true ]]; then
+        signing="release"
+        step "gradle assembleRelease (signed, minified)"
+        ( cd "$ANDROID_DIR" && ./gradlew assembleRelease --console=plain \
+            -PboeVersionName="$BUILD_LABEL" -PboeVersionCode="$VERSION_CODE" \
+            -PboeApplicationId="$APP_ID" ) \
+            || { err "gradle build failed"; return 1; }
+        gradle_apk="$GRADLE_APK_RELEASE"
+    else
+        signing="debug"
+        step "gradle assembleDebug (UNSIGNED-for-release fallback)"
+        ( cd "$ANDROID_DIR" && ./gradlew assembleDebug --console=plain \
+            -PboeVersionName="$BUILD_LABEL" -PboeVersionCode="$VERSION_CODE" \
+            -PboeApplicationId="$APP_ID" ) \
+            || { err "gradle build failed"; return 1; }
+        gradle_apk="$GRADLE_APK_DEBUG"
+    fi
 
-    [[ -f "$GRADLE_APK_DEBUG" ]] || { err "APK not produced: $GRADLE_APK_DEBUG"; return 1; }
+    [[ -f "$gradle_apk" ]] || { err "APK not produced: $gradle_apk"; return 1; }
 
-    cp "$GRADLE_APK_DEBUG" "$out_apk"
+    cp "$gradle_apk" "$out_apk"
 
     local sha size
     sha="$(sha256sum "$out_apk" | cut -d' ' -f1)"
@@ -361,7 +423,7 @@ build_variant() {
         --arg gitCommit "$GIT_SHA" \
         --argjson gitDirty "$GIT_DIRTY" \
         --arg builtAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-        --arg signing "debug" \
+        --arg signing "$signing" \
         --arg sha256 "$sha" \
         --argjson sizeBytes "$size" \
         '{apk: $apk, target: $target, variant: $variant, version: $version,
@@ -410,24 +472,34 @@ if (( ${#FAILED[@]} > 0 )); then
 fi
 
 printf '\n'
-warn "This APK is DEBUG-SIGNED. android/app/build.gradle declares no release"
-warn "signingConfig, so --prod cannot yet produce a Play-Store-ready artifact."
-warn "Fine for sideloading and internal testing."
+if [[ "$RELEASE_SIGNING" == true ]]; then
+    field "signing" "release (sidecars record signing=release)"
+    warn "These APKs are signed with android/keystore/boe-release.jks."
+    warn "KEEP THAT KEYSTORE (and keystore.properties) FOREVER — Android only"
+    warn "installs an update over an existing app when the certificate matches."
+    warn "Same cert + increasing versionCode is what makes updates install fast."
+else
+    warn "This APK is DEBUG-SIGNED: no usable android/keystore.properties was"
+    warn "found, so assembleRelease was skipped. Fine for sideloading and"
+    warn "internal testing, but release_manager refuses to publish it to prod."
+    warn "Create frontend_stack/app/android/keystore.properties (storeFile,"
+    warn "storePassword, keyAlias, keyPassword) to enable signed release builds."
+fi
 
 if [[ "$GRADLE_HONOURS_VERSION" != true ]]; then
     warn ""
-    warn "Gradle ignored the injected version: build.gradle still hardcodes"
-    warn "versionCode 1 / versionName \"1.0\", so Android will report 1.0 for every"
+    warn "Gradle ignored the injected version: build.gradle does not read"
+    warn "boeVersionName/boeVersionCode, so Android will report 1.0 for every"
     warn "build. The real version is recorded in the sidecar JSON only."
     warn "To fix, in android/app/build.gradle defaultConfig:"
     warn "    versionCode  project.hasProperty('boeVersionCode') ? boeVersionCode.toInteger() : 1"
     warn "    versionName  project.hasProperty('boeVersionName') ? boeVersionName : \"1.0\""
 fi
 
-warn ""
-warn "applicationId is '$PACKAGE_NAME' for every target, so dev and prod APKs"
-warn "CANNOT be installed side by side. The deployment plan §16.1 requires that"
-warn "they can; that needs Gradle product flavors with an applicationIdSuffix."
+printf '\n'
+field "applicationIds" "prod:  com.beonedge.app / com.beonedge.app.admin"
+field "" "dev/local:  com.beonedge.app.dev / com.beonedge.app.dev.admin"
+field "" "all four can be installed side by side on one device (plan §16.1)"
 
 (( ${#FAILED[@]} == 0 )) || exit 1
 printf '\n'

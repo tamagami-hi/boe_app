@@ -266,7 +266,10 @@
     transition: none;
   }
 
-  .apk-sheet-overlay.is-exiting .apk-sheet,
+  .apk-sheet-overlay.is-exiting .apk-sheet {
+    transform: none;
+  }
+
   @starting-style {
     .apk-sheet { transform: none; }
   }

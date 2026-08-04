@@ -1,14 +1,43 @@
 apply plugin: 'com.android.application'
 
+// Release signing credentials live in android/keystore.properties, which is
+// gitignored and must never be committed (like the keystore it points to).
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+def hasReleaseKeystore = ['storeFile', 'storePassword', 'keyAlias', 'keyPassword']
+        .every { keystoreProperties[it] }
+
+// Fail fast with an actionable message if a release build is requested without
+// signing material, instead of silently producing an unsigned APK.
+gradle.taskGraph.whenReady { graph ->
+    def releaseRequested = graph.allTasks.any { it.name.toLowerCase().contains('release') }
+    if (releaseRequested && !hasReleaseKeystore) {
+        throw new GradleException(
+            "Release build requested but signing is not configured.\n" +
+            "Expected ${keystorePropertiesFile} with keys: storeFile, storePassword, keyAlias, keyPassword.\n" +
+            "Create it via emu/boe_update.sh (see its keystore bootstrap) or generate one with keytool:\n" +
+            "  keytool -genkeypair -keystore android/keystore/boe-release.jks -alias boe -keyalg RSA -keysize 2048 -validity 10000\n" +
+            "KEEP THE KEYSTORE FOREVER: Android only installs an update over an existing app when the certificate matches.")
+    }
+}
+
 android {
     namespace = "com.beonedge.app"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.beonedge.app"
+        // emu/boe_update.sh injects -PboeApplicationId so dev/prod and
+        // client/admin APKs get distinct IDs and can coexist on one device;
+        // the literal is only a fallback for bare IDE builds.
+        applicationId project.hasProperty('boeApplicationId') ? boeApplicationId : "com.beonedge.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // emu/boe_update.sh injects -PboeVersionCode/-PboeVersionName; the
+        // literals are only a fallback for bare IDE builds.
+        versionCode project.hasProperty('boeVersionCode') ? boeVersionCode.toInteger() : 1
+        versionName project.hasProperty('boeVersionName') ? boeVersionName : "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,10 +45,24 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (hasReleaseKeystore) {
+                storeFile rootProject.file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (hasReleaseKeystore) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
