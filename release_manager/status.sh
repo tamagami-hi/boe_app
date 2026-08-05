@@ -16,6 +16,10 @@
 #   ./release_manager/status.sh              interactive menu
 #   ./release_manager/status.sh --status     print the state table and exit
 #   ./release_manager/status.sh --diagnose   run the VPS readiness check and exit
+#   ./release_manager/status.sh --reload <stack>
+#                          recreate the deployed stack's containers with the
+#                          current on-VPS .env (dev|prod|monitor; nothing is
+#                          shipped and the version does not change)
 # ─────────────────────────────────────────────────────────────────────────────
 
 set -euo pipefail
@@ -335,6 +339,59 @@ action_deploy() {
     "$RM_DIR/deploy.sh" "$flag" "${extra[@]}" || deploy_rc=$?
     REMOTE_FETCHED=false
     return "$deploy_rc"
+}
+
+# action_reload [stack] — recreate the deployed containers with the CURRENT
+# on-VPS .env and the already-deployed images. Nothing is shipped, the version
+# does not change. This is the right tool after editing the stack's .env on
+# the VPS (compose re-reads it on `up -d`; a plain `restart` would not).
+action_reload() {
+    local s="${1:-}" f d project compose prefix vname reload_rc=0
+    if [[ -z "$s" ]]; then
+        s="$(pick_stack 'Reload which stack?')" || { err "invalid selection"; return 1; }
+    else
+        case "$s" in
+            dev|dev_release)          s=dev_release ;;
+            prod|prod_release)        s=prod_release ;;
+            monitor|monitor_service)  s=monitor_service ;;
+            *) err "unknown stack: $s (expected dev|prod|monitor)"; return 1 ;;
+        esac
+    fi
+    f="$(stack_paths_file "$s")"
+    d="$(paths_get "$f" .vps.stack_dir)"        || { err "cannot resolve the stack directory"; return 1; }
+    project="$(paths_get "$f" .vps.compose_project)" || { err "cannot resolve the compose project"; return 1; }
+    compose="$(paths_get "$f" .vps.compose_name)"    || { err "cannot resolve the compose file name"; return 1; }
+    prefix="$(paths_get "$f" .vps.container_prefix)" || { err "cannot resolve the container prefix"; return 1; }
+    vname="$(paths_get "$f" .vps.version_name)"      || { err "cannot resolve the version file name"; return 1; }
+
+    section "RELOAD $s" "recreate containers with the current on-VPS config; nothing is shipped"
+    if [[ "$UI_INTERACTIVE" == true ]]; then
+        confirm "Reload $s on the VPS now?" || { warn "cancelled"; return 0; }
+    fi
+    printf '\n'
+    local qd qp qc qpr qv
+    printf -v qd '%q' "$d"
+    printf -v qp '%q' "$project"
+    printf -v qc '%q' "$compose"
+    printf -v qpr '%q' "$prefix"
+    printf -v qv '%q' "$vname"
+    # The compose file interpolates ${BOE_VERSION} into image tags, so the
+    # reload must pin it to the version the VPS has actually deployed —
+    # otherwise compose would try to start tags that were never shipped.
+    boe_ssh "bash -s -- $qd $qp $qc $qpr $qv" <<'REMOTE' || reload_rc=$?
+set -euo pipefail
+d="$1"; project="$2"; compose="$3"; prefix="$4"; vname="$5"
+cd "$d"
+version="$(jq -r '.version // empty' "$vname")"
+[[ -n "$version" ]] || { echo "no deployed version recorded in $d/$vname — ship + deploy first" >&2; exit 65; }
+echo "reloading stack: version $version"
+BOE_VERSION="$version" BOE_CONTAINER_PREFIX="$prefix" \
+    docker compose --project-name "$project" -f "$compose" up -d --remove-orphans
+BOE_VERSION="$version" BOE_CONTAINER_PREFIX="$prefix" \
+    docker compose --project-name "$project" -f "$compose" ps
+REMOTE
+    REMOTE_FETCHED=false
+    return "$reload_rc"
 }
 
 action_rollback() {
@@ -722,11 +779,12 @@ ${c_bold}━━ Ship + Deploy${c_rst}
    1) Ship + deploy           upload the latest bundle and deploy it
    2) Ship only               upload for inspection; do not deploy
    3) Force redeploy          redeploy the latest bundle with --force
-   4) Roll back               select an archived VPS release
-   5) View deploy logs        tail a remote deployment log
-   6) Inspect containers      remote compose ps and recent logs
-   7) Diagnose the VPS        readiness checks and blockers
-   8) Operator manual         steps that must be run by hand
+   4) Reload deployed stack   recreate containers with the current on-VPS .env
+   5) Roll back               select an archived VPS release
+   6) View deploy logs        tail a remote deployment log
+   7) Inspect containers      remote compose ps and recent logs
+   8) Diagnose the VPS        readiness checks and blockers
+   9) Operator manual         steps that must be run by hand
    b) Back
 
 MENU
@@ -736,11 +794,12 @@ MENU
             1) action_deploy deploy || warn "deploy did not complete" ;;
             2) action_deploy ship-only || warn "shipping did not complete" ;;
             3) action_deploy force || warn "forced redeploy did not complete" ;;
-            4) action_rollback || warn "rollback did not complete" ;;
-            5) action_logs || true ;;
-            6) action_containers || true ;;
-            7) action_diagnose ;;
-            8) action_operator_guide || true ;;
+            4) action_reload || warn "reload did not complete" ;;
+            5) action_rollback || warn "rollback did not complete" ;;
+            6) action_logs || true ;;
+            7) action_containers || true ;;
+            8) action_diagnose ;;
+            9) action_operator_guide || true ;;
             b|B) return 0 ;;
             *) warn "unknown Ship + Deploy choice: $choice"; continue ;;
         esac
@@ -780,14 +839,17 @@ status_main() {
     case "${1:-}" in
         --status) show_status; return 0 ;;
         --diagnose) action_diagnose; return 0 ;;
+        --reload) action_reload "${2:-}"; return $? ;;
         --help|-h)
             cat <<'USAGE'
-Usage: ./release_manager/status.sh [--status | --diagnose]
+Usage: ./release_manager/status.sh [--status | --diagnose | --reload <stack>]
 
 With no arguments, opens the interactive control center.
 
-  --status      print the state dashboard and exit
-  --diagnose    run the VPS readiness check and exit
+  --status          print the state dashboard and exit
+  --diagnose        run the VPS readiness check and exit
+  --reload <stack>  recreate the deployed stack's containers with the current
+                    on-VPS .env (dev|prod|monitor; nothing is shipped)
 USAGE
             return 0 ;;
         "") : ;;
@@ -795,7 +857,7 @@ USAGE
     esac
 
     [[ "$UI_INTERACTIVE" == true ]] \
-        || { err "not a terminal — use --status or --diagnose"; return 1; }
+        || { err "not a terminal — use --status, --diagnose or --reload <stack>"; return 1; }
     menu_main
 }
 
