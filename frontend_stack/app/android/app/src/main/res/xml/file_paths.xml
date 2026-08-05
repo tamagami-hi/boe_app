@@ -2,4 +2,12 @@
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <external-path name="my_images" path="." />
     <cache-path name="my_cache_images" path="." />
+    <!--
+      Downloaded APK updates (AppUpdatePlugin writes to getCacheDir()/updates).
+      The system package installer runs in another process, so the file has to be
+      handed over as a FileProvider URI; this entry is what makes that URI
+      resolvable. Scoped to the single subdirectory rather than the whole cache so
+      nothing else the app caches is exposed through the provider.
+    -->
+    <cache-path name="app_updates" path="updates/" />
 </paths>

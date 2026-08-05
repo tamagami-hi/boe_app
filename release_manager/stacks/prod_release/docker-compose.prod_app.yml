@@ -119,6 +119,13 @@ x-backend-env: &backend-env
   SIGNUP_ALLOWED_ORIGIN: ${PUBLIC_LANDING_ORIGIN}
   SIGNUP_PROXY_SECRET: ${SIGNUP_PROXY_SECRET}
 
+  # In-app APK update feed. The release holder directories are mounted read-only
+  # into the backend below; nginx serves the same directories publicly at
+  # APK_DOWNLOAD_BASE_URL. Leave both blank to disable the update check — the
+  # endpoint then answers "no update" rather than failing.
+  APK_RELEASE_ROOT: ${APK_RELEASE_ROOT:-/srv/boe/apk}
+  APK_DOWNLOAD_BASE_URL: ${APK_DOWNLOAD_BASE_URL}
+
   ADMIN_USER_ID: ${ADMIN_USER_ID}
   ADMIN_LOGIN_ID: ${ADMIN_LOGIN_ID}
   ADMIN_PASSWORD: ${ADMIN_PASSWORD}
@@ -200,6 +207,13 @@ services:
     <<: *security
     restart: unless-stopped
     environment: *backend-env
+    # Published APKs, read-only. The update endpoint derives "is there a newer
+    # build?" from the sidecar JSONs the release pipeline already writes here, so
+    # shipping an APK is the only step needed to offer an update. Read-only
+    # because the backend must never be able to alter a released artifact.
+    volumes:
+      - ${APK_CLIENT_DIR:-/srv/dev_stack/BOE_APP/prod_release/prod_apk}:/srv/boe/apk/client:ro
+      - ${APK_ADMIN_DIR:-/srv/dev_stack/BOE_APP/prod_release/admin_apk}:/srv/boe/apk/admin:ro
     depends_on:
       postgres:
         condition: service_healthy

@@ -95,6 +95,14 @@ const ServerConfigSchema = z.object({
   KYC_CODE_MAX_ATTEMPTS: z.coerce.number().int().min(1).default(5),
   KYC_RESEND_COOLDOWN_MS: z.coerce.number().int().min(1).default(60 * 1000),
   KYC_VALIDITY_MS: z.coerce.number().int().min(1).default(365 * DAY_MS),
+  // In-app APK update feed. APK_RELEASE_ROOT holds one subdirectory per variant
+  // (client/, admin/) of published APKs + their sidecar JSONs, mounted read-only
+  // from the release holder directories; APK_DOWNLOAD_BASE_URL is the public
+  // prefix nginx serves those same directories at. Both optional: without them
+  // GET /v1/app/update answers "no update" instead of failing, so a deployment
+  // that has not been given the mount still boots and still serves apps.
+  APK_RELEASE_ROOT: z.string().trim().optional(),
+  APK_DOWNLOAD_BASE_URL: z.string().trim().optional(),
 })
 
 export interface ServerConfig {
@@ -144,6 +152,11 @@ export interface ServerConfig {
     readonly verificationTokenTtlMs: number
     readonly idempotencyTtlMs: number
     readonly activationInviteTtlMs: number
+  }
+  /** Source of truth for the in-app update check; see publicAppRoutes.ts. */
+  readonly appUpdate: {
+    readonly releaseRoot: string | null
+    readonly downloadBaseUrl: string | null
   }
 }
 
@@ -265,6 +278,10 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
       verificationTokenTtlMs: parsed.VERIFICATION_TOKEN_TTL_MS,
       idempotencyTtlMs: parsed.IDEMPOTENCY_TTL_MS,
       activationInviteTtlMs: parsed.ACTIVATION_INVITE_TTL_MS,
+    },
+    appUpdate: {
+      releaseRoot: nonEmpty(parsed.APK_RELEASE_ROOT)?.replace(/\/+$/u, "") ?? null,
+      downloadBaseUrl: nonEmpty(parsed.APK_DOWNLOAD_BASE_URL)?.replace(/\/+$/u, "") ?? null,
     },
   })
 }

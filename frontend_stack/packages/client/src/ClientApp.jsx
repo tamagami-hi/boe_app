@@ -29,6 +29,7 @@ import ApprovalRequired from './pages/ApprovalRequired.jsx';
 import { useSession } from './store/SessionContext.jsx';
 import { isApprovedUser } from './utils/approval.js';
 import { RouteErrorBoundary } from '@beonedge/shared/components/RouteErrorBoundary.jsx';
+import AppUpdateGate from './components/AppUpdateGate.jsx';
 import './styles/mobile/index.css';
 
 function RequireApproved({ children }) {
@@ -39,7 +40,14 @@ function RequireApproved({ children }) {
 
 export default function ClientApp() {
   return (
-    <Routes>
+    <>
+      {/*
+        Mounted above the routes so a required update can also be enforced on the
+        login screen; it renders nothing while the splash is on screen, and
+        nothing at all on the web build where there is no APK to update.
+      */}
+      <AppUpdateGate />
+      <Routes>
       <Route index element={<Navigate to="splash" replace />} />
       <Route element={<ClientLayout />}>
         <Route path="splash" element={<RouteErrorBoundary><Splash /></RouteErrorBoundary>} />
@@ -70,6 +78,7 @@ export default function ClientApp() {
         <Route path="grievance" element={<RouteErrorBoundary><GrievanceRedressal /></RouteErrorBoundary>} />
       </Route>
       <Route path="*" element={<Navigate to="splash" replace />} />
-    </Routes>
+      </Routes>
+    </>
   );
 }

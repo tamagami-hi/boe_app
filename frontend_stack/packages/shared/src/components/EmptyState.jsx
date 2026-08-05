@@ -5,7 +5,7 @@ import './EmptyState.css';
  * EmptyState — teaches the interface when there is no data.
  *
  * Props:
- *   - icon: ReactNode (e.g. a Lucide icon)
+ *   - icon: ReactNode *or* a component type (e.g. a Lucide icon like `Wallet`)
  *   - title: string
  *   - description: string
  *   - action: ReactNode (optional button/link)
@@ -20,14 +20,24 @@ export default function EmptyState({
   className = '',
   style = {},
 }) {
+  // Callers pass either an element (`icon={<Wallet size={40} />}`) or the bare
+  // component (`icon={Wallet}`). Lucide icons are forwardRef *objects*, which
+  // React cannot render as a child — that raised React error #31 in production.
+  // Accept both forms instead of letting the mistake reach a user.
+  const iconNode = React.isValidElement(icon)
+    ? icon
+    : typeof icon === 'function' || (icon && typeof icon === 'object' && icon.$$typeof)
+      ? React.createElement(icon, { size: 40, strokeWidth: 1.5 })
+      : icon;
+
   return (
     <div
       className={`be-empty-state ${className}`}
       style={style}
     >
-      {icon && (
+      {iconNode && (
         <div className="be-empty-state__icon-wrap">
-          {icon}
+          {iconNode}
         </div>
       )}
       {title && (

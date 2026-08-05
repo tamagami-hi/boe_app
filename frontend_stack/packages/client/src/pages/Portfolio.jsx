@@ -97,7 +97,7 @@ export default function Portfolio() {
     return (
       <div className="apk-screen">
         <EmptyState
-          icon={Wallet}
+          icon={<Wallet size={40} strokeWidth={1.5} />}
           title="No investments yet"
           description="Once your first SIP or lump sum is recorded, your investment appears here."
           action={

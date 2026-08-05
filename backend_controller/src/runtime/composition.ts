@@ -65,6 +65,7 @@ import { registerClientCatalogRoutes } from "../routes/clientCatalogRoutes.js"
 import { registerClientPortfolioRoutes } from "../routes/clientPortfolioRoutes.js"
 import { registerClientSipRoutes } from "../routes/clientSipRoutes.js"
 import { registerPublicContentRoutes } from "../routes/publicContentRoutes.js"
+import { registerPublicAppRoutes } from "../routes/publicAppRoutes.js"
 import { registerMandateWebhookRoutes } from "../routes/mandateWebhookRoutes.js"
 import { registerPaymentWebhookRoutes } from "../routes/paymentWebhookRoutes.js"
 import { registerNativeAuthRoutes } from "../routes/nativeAuthRoutes.js"
@@ -147,6 +148,9 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   }
 
   const checkReadiness = createReadinessCheck(database, serverConfig.emailConfigured)
+
+  // Shared by the admin content routes and the public app-config read.
+  const adminContentRepository = createAdminContentRepository()
 
   const registerRoutes = (application: FastifyInstance): void => {
     registerHealthRoutes(application, { checkReadiness })
@@ -305,6 +309,13 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
     // Compliance documents, readable without a session.
     registerPublicContentRoutes(application, { clientAccountRepository, unitOfWork })
 
+    // App configuration + APK update check, both called before login.
+    registerPublicAppRoutes(application, {
+      adminContentRepository,
+      unitOfWork,
+      appUpdate: serverConfig.appUpdate,
+    })
+
     registerWebAuthRoutes(application, { ...webAuth, unitOfWork })
 
     registerAdminIdentityRoutes(application, {
@@ -340,7 +351,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         cursorKey: serverConfig.cursorKey,
         idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
       },
-      contentRepository: createAdminContentRepository(),
+      contentRepository: adminContentRepository,
       auditRepository,
       idempotencyRepository,
     })

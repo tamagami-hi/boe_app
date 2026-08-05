@@ -41,4 +41,12 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.USE_FINGERPRINT" android:maxSdkVersion="28" />
+    <!--
+      In-app updates. BeOnEdge ships as a signed APK from the company VPS rather
+      than through the Play Store, so the app downloads its own update and hands
+      it to the system package installer (AppUpdatePlugin). From API 26 this
+      permission also requires the user to allow "install unknown apps" for this
+      app, which the plugin checks and can deep-link to.
+    -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 </manifest>
