@@ -303,8 +303,12 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       clientAccountRepository,
       investorLedgerRepository,
       auditRepository,
+      notificationRepository,
       unitOfWork,
       clock,
+      // Same release directory the public update feed reads, so the inbox and
+      // the launch dialog always agree on the newest build.
+      appUpdate: serverConfig.appUpdate,
     })
 
     // Compliance documents, readable without a session.

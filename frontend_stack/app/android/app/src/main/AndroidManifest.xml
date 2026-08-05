@@ -49,4 +49,12 @@
       app, which the plugin checks and can deep-link to.
     -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!--
+      Notification shade entries. Used only to tell the user a newer APK is
+      available (LocalNotifications via updateNotification.js) — there is no push
+      service, no token registry, and no message from a server. Android 13+ also
+      requires the user to grant this at runtime, which the app asks for lazily
+      the first time it actually has an update to announce.
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>

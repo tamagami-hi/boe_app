@@ -13,6 +13,7 @@ import { createAccessTokenService, type AccessTokenService } from "../../src/aut
 import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
+import { createNotificationRepository } from "../../src/repositories/notificationRepository.js"
 import { createClientAccountRepository } from "../../src/repositories/clientAccountRepository.js"
 import { createInvestorLedgerRepository } from "../../src/repositories/investorLedgerRepository.js"
 import {
@@ -118,6 +119,7 @@ beforeAll(async () => {
     clientAccountRepository,
     investorLedgerRepository: createInvestorLedgerRepository(),
     auditRepository: createAuditRepository(),
+    notificationRepository: createNotificationRepository(),
     unitOfWork,
     clock: () => new Date(),
   }
@@ -441,5 +443,109 @@ describe("public content (integration)", () => {
     const response = await app.inject({ method: "GET", url: "/v1/public/disclosures" })
     expect(response.statusCode).toBe(404)
     await pool.query("update content_items set state = 'published' where content_key = 'disclosures'")
+  })
+})
+
+
+/**
+ * POST /v1/client/app-version — the authenticated report that drives the update
+ * notification. Exercised against real Postgres because the whole point is which
+ * `notifications` rows exist afterwards.
+ *
+ * `latest` is resolved from the release directory, which is not mounted in this
+ * harness, so these cases cover the reconciliation contract that does not depend
+ * on it: authentication, validation, and the "nothing published" branch that must
+ * retire a stale prompt. The behind/notify/supersede matrix is covered by the
+ * unit tests in src/domain/client/reconcileAppVersion.test.ts.
+ */
+describe("client app-version report (integration)", () => {
+  const validBody = {
+    platform: "android" as const,
+    variant: "client" as const,
+    applicationId: "com.beonedge.app.dev",
+    versionName: "0.7.5",
+    versionCode: 705,
+  }
+
+  test("requires a session", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/client/app-version",
+      payload: validBody,
+    })
+    expect(response.statusCode).toBe(401)
+  })
+
+  test("rejects an unknown field instead of ignoring it", async () => {
+    const { token } = await seedUserWithSession("appver-strict@example.com", "+14155550301")
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/client/app-version",
+      headers: bearer(token),
+      payload: { ...validBody, surprise: true },
+    })
+    expect(response.statusCode).toBe(400)
+    expect(response.json()).toMatchObject({ ok: false, error: { code: "VALIDATION_FAILED" } })
+  })
+
+  test("rejects a variant outside the known set", async () => {
+    const { token } = await seedUserWithSession("appver-variant@example.com", "+14155550302")
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/client/app-version",
+      headers: bearer(token),
+      payload: { ...validBody, variant: "../../etc" },
+    })
+    expect(response.statusCode).toBe(400)
+  })
+
+  test("retires a stale update prompt when nothing is published", async () => {
+    // The release directory is unmounted here, so `latest` is null — the same
+    // state a deployment without the APK mount is in. A leftover prompt must not
+    // survive it, or the inbox would nag about a build nobody can offer.
+    const { userId, token } = await seedUserWithSession("appver-retire@example.com", "+14155550303")
+    await pool.query(
+      "insert into notifications (user_id, kind, title, body, payload) " +
+        "values ($1,'app_update_available','App update available','Version 0.7.6 is ready to install.', $2)",
+      [userId, JSON.stringify({ versionCode: 706, version: "0.7.6" })],
+    )
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/client/app-version",
+      headers: bearer(token),
+      payload: validBody,
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(dataOf<{ updateAvailable: boolean; retired: number }>(response)).toMatchObject({
+      updateAvailable: false,
+      notified: false,
+      retired: 1,
+    })
+
+    const remaining = await pool.query<{ unread: string }>(
+      "select count(*)::text as unread from notifications where user_id = $1 and kind = 'app_update_available' and read_at is null",
+      [userId],
+    )
+    expect(remaining.rows[0]?.unread).toBe("0")
+  })
+
+  test("reporting twice does not duplicate rows", async () => {
+    const { userId, token } = await seedUserWithSession("appver-idempotent@example.com", "+14155550304")
+    for (let index = 0; index < 3; index += 1) {
+      const response = await app.inject({
+        method: "POST",
+        url: "/v1/client/app-version",
+        headers: bearer(token),
+        payload: validBody,
+      })
+      expect(response.statusCode).toBe(200)
+    }
+    const rows = await pool.query<{ total: string }>(
+      "select count(*)::text as total from notifications where user_id = $1 and kind = 'app_update_available'",
+      [userId],
+    )
+    expect(rows.rows[0]?.total).toBe("0")
   })
 })

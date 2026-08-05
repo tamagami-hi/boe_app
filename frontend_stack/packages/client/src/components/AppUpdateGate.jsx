@@ -2,7 +2,12 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { App as CapacitorApp } from '@capacitor/app';
 import { ArrowDownToLine, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { useSession } from '../store/SessionContext.jsx';
 import * as updater from '../services/appUpdate.js';
+import {
+  clearUpdateNotification,
+  showUpdateNotification,
+} from '../services/updateNotification.js';
 
 /**
  * AppUpdateGate — the in-app update prompt.
@@ -26,32 +31,26 @@ import * as updater from '../services/appUpdate.js';
  * withheld while the splash route is showing. Interrupting the brand animation
  * with a system dialog looks like a crash.
  *
- * ── WHY "LATER" IS REMEMBERED PER VERSION ───────────────────────────────────
- * Dismissal is keyed to the version code in sessionStorage, so declining does
- * not nag for the rest of the session but a genuinely newer build still asks
- * again on the next launch. Mandatory updates ignore it.
+ * ── WHY "LATER" DOES NOT STICK ──────────────────────────────────────────────
+ * Declining dismisses the dialog for that launch only: the next launch asks
+ * again. A sideloaded app has no store to nag from and no push channel, so app
+ * open is the only moment an update can be surfaced at all — an update that can
+ * be permanently dismissed is an update most users never install. The
+ * notification raised alongside it stays in the inbox until the build is
+ * actually installed.
  */
 
-const DISMISS_KEY = 'boe.client.updateDismissed';
-
-function dismissedVersion() {
-  try {
-    return window.sessionStorage.getItem(DISMISS_KEY) || '';
-  } catch {
-    return '';
-  }
-}
-
-function rememberDismissal(versionCode) {
-  try {
-    window.sessionStorage.setItem(DISMISS_KEY, String(versionCode));
-  } catch {
-    // Private mode or a storage quota error: worst case the prompt reappears.
-  }
-}
+/**
+ * Dismissal is per *launch*, not per version, and is deliberately not persisted.
+ * A module-level flag dies with the JS context, so the next cold start asks
+ * again; "Later" only stops the dialog reappearing if the gate remounts during
+ * this same run.
+ */
+let dismissedThisLaunch = false;
 
 export default function AppUpdateGate() {
   const location = useLocation();
+  const { user } = useSession();
   const onSplash = location.pathname === '/app/splash';
 
   const [manifest, setManifest] = useState(null);
@@ -63,15 +62,46 @@ export default function AppUpdateGate() {
 
   useEffect(() => () => { mountedRef.current = false; }, []);
 
+  /**
+   * Report the running build whenever a session appears.
+   *
+   * The launch check fires before login, when the report would 401, so this
+   * covers the case that matters: the first moment the backend can attribute a
+   * version to a user. Re-runs on sign-in, which is also when a user who
+   * switched accounts should get their own inbox reconciled.
+   */
+  useEffect(() => {
+    if (!user) return;
+    updater.reportAppVersion().catch(() => {});
+  }, [user]);
+
   // One check per app launch.
   useEffect(() => {
     let cancelled = false;
     updater
       .checkForUpdate()
-      .then((result) => {
+      .then(async (result) => {
         if (cancelled || !mountedRef.current) return;
-        if (!result?.actionable) return;
-        if (!result.mandatory && dismissedVersion() === String(result.latest?.versionCode)) return;
+
+        /*
+         * Bookkeeping first, and regardless of whether a dialog is shown: this is
+         * what files the inbox entry when the build is behind and retires it once
+         * the user has updated. It needs a session, so it silently no-ops on the
+         * login screen and catches up on the next launch after sign-in.
+         */
+        updater.reportAppVersion().catch(() => {});
+        if (!result?.actionable) {
+          // Nothing to offer: make sure a shade entry from a previous release is
+          // not left pointing at a build that is now installed.
+          clearUpdateNotification().catch(() => {});
+          return;
+        }
+
+        // Put it in the notification shade too, so declining the dialog does not
+        // make the update disappear.
+        showUpdateNotification(result.latest).catch(() => {});
+
+        if (!result.mandatory && dismissedThisLaunch) return;
         setManifest(result);
         setPhase('prompt');
       })
@@ -135,6 +165,9 @@ export default function AppUpdateGate() {
 
   const install = useCallback(async () => {
     try {
+      // The shade entry has served its purpose; a successful install replaces
+      // this process, so clear it before handing over rather than after.
+      await clearUpdateNotification();
       await updater.installUpdate(downloaded?.path);
       // Nothing to do on success: the installer takes over the screen, and a
       // completed install restarts the app.
@@ -145,10 +178,11 @@ export default function AppUpdateGate() {
   }, [downloaded]);
 
   const dismiss = useCallback(() => {
-    if (manifest?.latest?.versionCode) rememberDismissal(manifest.latest.versionCode);
+    // Only for the rest of this launch — see the note at the top of the file.
+    dismissedThisLaunch = true;
     setPhase('idle');
     setManifest(null);
-  }, [manifest]);
+  }, []);
 
   if (phase === 'idle' || manifest === null) return null;
   // Hold everything back until the splash has handed over.

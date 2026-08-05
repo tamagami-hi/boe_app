@@ -1,5 +1,5 @@
 import { registerPlugin, Capacitor } from '@capacitor/core';
-import { apiBaseUrl, useHttpApi } from './_util.js';
+import { apiBaseUrl, apiRequest, useHttpApi } from './_util.js';
 
 /**
  * In-app APK updates.
@@ -93,6 +93,37 @@ export async function checkForUpdate() {
     return { ...data, build, actionable: true };
   } catch {
     // Offline, DNS failure, backend down: never a user-visible error here.
+    return null;
+  }
+}
+
+/**
+ * Tell the backend which build this device is running.
+ *
+ * Authenticated, and therefore the place where user-attributed bookkeeping
+ * happens: the backend files an `app_update_available` notification when the
+ * caller is behind, and retires it once the caller reports the newer build. The
+ * anonymous update feed stays anonymous.
+ *
+ * Called once per launch after a session exists. Silent on failure — it is
+ * bookkeeping, and the launch dialog does not depend on it.
+ */
+export async function reportAppVersion() {
+  if (!updatesSupported() || !useHttpApi()) return null;
+  const build = await currentBuild();
+  if (build === null) return null;
+  try {
+    return await apiRequest('/v1/client/app-version', {
+      method: 'POST',
+      body: {
+        platform: 'android',
+        variant: 'client',
+        applicationId: build.applicationId,
+        versionName: build.versionName,
+        versionCode: build.versionCode,
+      },
+    });
+  } catch {
     return null;
   }
 }

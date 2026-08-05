@@ -300,6 +300,25 @@ const publishedConfig = async (
   }
 }
 
+/**
+ * Newest published build for an applicationId, or null.
+ *
+ * Exported so the authenticated app-version report resolves "latest" through
+ * exactly the same filesystem read as the public update feed. Two independent
+ * notions of "newest" would eventually disagree, and the inbox would then argue
+ * with the launch dialog.
+ */
+export const latestPublishedBuild = async (
+  appUpdate: PublicAppDeps["appUpdate"],
+  input: Readonly<{ variant: string; applicationId: string }>,
+): Promise<Readonly<{ versionCode: number; version: string }> | null> => {
+  const root = appUpdate.releaseRoot
+  if (root === null) return null
+  const artifacts = await cachedArtifacts(join(root, input.variant), Date.now())
+  const found = newest(artifacts, input.applicationId)
+  return found === null ? null : { versionCode: found.versionCode, version: found.version }
+}
+
 export const registerPublicAppRoutes = (
   application: FastifyInstance,
   deps: PublicAppDeps,

@@ -38,17 +38,31 @@ import type {
   SupportRequestRow,
 } from "../repositories/clientAccountRepository.js"
 import type { InvestorLedgerRepository } from "../repositories/investorLedgerRepository.js"
+import type { NotificationWriteRepository } from "../repositories/notificationRepository.js"
+import { reconcileAppVersion } from "../domain/client/reconcileAppVersion.js"
+import { latestPublishedBuild } from "./publicAppRoutes.js"
 
 export interface ClientAccountDeps extends NativeRequestAuthDeps {
   readonly clientAccountRepository: ClientAccountRepository
   readonly investorLedgerRepository: InvestorLedgerRepository
   readonly auditRepository: AuditWriteRepository
+  readonly notificationRepository: NotificationWriteRepository
   readonly unitOfWork: UnitOfWork
   readonly database: Kysely<Database>
   readonly clock: () => Date
+  /**
+   * Where published APKs live, shared with the public update feed so the inbox
+   * and the launch dialog can never disagree about what "newest" is. Optional:
+   * without it the version report simply reconciles against "nothing published".
+   */
+  readonly appUpdate?: {
+    readonly releaseRoot: string | null
+    readonly downloadBaseUrl: string | null
+  }
 }
 
 const NOTIFICATIONS_ROUTE = "/v1/client/notifications"
+const APP_VERSION_ROUTE = "/v1/client/app-version"
 const PAYMENTS_ROUTE = "/v1/client/payments"
 const STATEMENTS_ROUTE = "/v1/client/statements"
 const FAQS_ROUTE = "/v1/client/support/faqs"
@@ -64,6 +78,22 @@ const DEFAULT_ITEMS = 50
 const limitSchema = z.coerce.number().int().min(1).max(MAX_ITEMS).default(DEFAULT_ITEMS)
 const listQuerySchema = z.object({ limit: limitSchema }).strict()
 const uuidParam = z.string().uuid()
+
+/**
+ * What the app reports about itself on each launch. `variant` is a closed set
+ * because it becomes a directory name; `applicationId` scopes the lookup to
+ * builds that could actually install over the caller (dev and prod APKs are
+ * signed differently).
+ */
+const appVersionSchema = z
+  .object({
+    platform: z.enum(["android"]).default("android"),
+    variant: z.enum(["client", "admin"]).default("client"),
+    applicationId: z.string().trim().min(1).max(200),
+    versionName: z.string().trim().min(1).max(64),
+    versionCode: z.coerce.number().int().min(0).max(2_000_000_000),
+  })
+  .strict()
 
 const PAYMENT_STATES = [
   "created",
@@ -173,6 +203,47 @@ const mapFaq = (row: ContentDocumentRow): Record<string, unknown> => ({
 })
 
 // --- handlers ---
+
+/**
+ * The app tells the backend which build it is running, once per launch.
+ *
+ * Authenticated on purpose: the anonymous update feed (GET /v1/app/update) stays
+ * anonymous so a build too old to log in can still learn it must update, and
+ * everything that writes a row against a specific user lives behind a session
+ * instead. The response mirrors the decision so the caller can act on it without
+ * a second round trip.
+ */
+const reportAppVersion = async (
+  deps: ClientAccountDeps,
+  request: FastifyRequest,
+  reply: FastifyReply,
+): Promise<FastifyReply> => {
+  const principal = await authenticateNativeRequest(request, deps)
+  const body = parseOrThrow(appVersionSchema, request.body)
+
+  const latest =
+    deps.appUpdate === undefined
+      ? null
+      : await latestPublishedBuild(deps.appUpdate, {
+          variant: body.variant,
+          applicationId: body.applicationId,
+        })
+
+  const result = await deps.unitOfWork.execute((tx) =>
+    reconcileAppVersion(
+      tx,
+      { notificationRepository: deps.notificationRepository, clock: deps.clock },
+      { userId: principal.userId, versionCode: body.versionCode, latest },
+    ),
+  )
+
+  return reply.sendData({
+    updateAvailable: result.updateAvailable,
+    notified: result.notified,
+    retired: result.retired,
+    latest,
+  })
+}
 
 const listNotifications = async (
   deps: ClientAccountDeps,
@@ -348,6 +419,7 @@ export const registerClientAccountRoutes = (
   application: FastifyInstance,
   deps: ClientAccountDeps,
 ): void => {
+  application.post(APP_VERSION_ROUTE, async (request, reply) => reportAppVersion(deps, request, reply))
   application.get(NOTIFICATIONS_ROUTE, async (request, reply) => listNotifications(deps, request, reply))
   application.patch(`${NOTIFICATIONS_ROUTE}/:notificationId`, async (request, reply) =>
     markNotificationRead(deps, request, reply),

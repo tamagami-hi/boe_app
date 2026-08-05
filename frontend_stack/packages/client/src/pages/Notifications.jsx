@@ -1,13 +1,33 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, Repeat, Info, Bell, BellOff } from 'lucide-react';
+import { CreditCard, Repeat, Bell, BellOff, TrendingUp, ArrowDownToLine } from 'lucide-react';
 import { EmptyState } from '@beonedge/shared';
 import AppBar from '../layout/AppBar.jsx';
 import * as notificationsApi from '../services/notificationsApi.js';
 import { fmtDate } from '../utils/format.js';
 
-const ICONS = { payment: CreditCard, mandate: Repeat, strategy: Info, system: Bell };
-const KIND_LABEL = { payment: 'Payment', mandate: 'Mandate', strategy: 'Strategy', system: 'System' };
+/**
+ * Icons and labels are keyed on the `kind` the backend actually writes.
+ *
+ * These previously used a different vocabulary entirely (`payment`, `mandate`,
+ * `strategy`, `system`) which matched none of the kinds any producer emits, so
+ * every real notification fell through to the generic bell. The keys below are
+ * the four kinds in the backend today plus the update prompt.
+ */
+const ICONS = {
+  order_booked: CreditCard,
+  redemption_settled: Repeat,
+  portfolio_updated: TrendingUp,
+  app_update_available: ArrowDownToLine,
+  system: Bell,
+};
+const KIND_LABEL = {
+  order_booked: 'Investment',
+  redemption_settled: 'Redemption',
+  portfolio_updated: 'Portfolio',
+  app_update_available: 'App update',
+  system: 'System',
+};
 
 function startOfDay(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x.getTime(); }
 
@@ -49,6 +69,12 @@ export default function Notifications() {
   async function open(n) {
     if (!n.read) await notificationsApi.markRead(n.id);
     setItems((s) => s.map((x) => x.id === n.id ? { ...x, read: true } : x));
+    if (n.kind === 'app_update_available') {
+      // No deep link for this one: the update lives in a dialog, not a route.
+      // Send the user home and let the launch gate re-offer it there.
+      navigate('/app/dashboard');
+      return;
+    }
     if (n.deepLink) navigate(n.deepLink);
   }
   function onKey(e, n) {
