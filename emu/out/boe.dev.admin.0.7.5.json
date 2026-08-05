@@ -3,16 +3,16 @@
   "target": "dev",
   "variant": "admin",
   "version": "0.7.5",
-  "buildLabel": "0.7.5-dev.1.g9fa3a1a",
+  "buildLabel": "0.7.5",
   "apiBaseUrl": "https://dev-app.beonedge.in/api",
   "onboardingUrl": "https://dev.beonedge.in/signup",
   "applicationId": "com.beonedge.app.dev.admin",
-  "versionName": "0.7.5-dev.1.g9fa3a1a",
+  "versionName": "0.7.5",
   "versionCode": 705,
-  "gitCommit": "9fa3a1a",
+  "gitCommit": "0717c58",
   "gitDirty": false,
-  "builtAt": "2026-08-05T12:50:00Z",
+  "builtAt": "2026-08-05T14:09:59Z",
   "signing": "release",
-  "sha256": "922985ad1315be64ab0894e9a72d86393bb2bffdc1c8d21918c6a22d2d445219",
-  "sizeBytes": 2552128
+  "sha256": "8a2eee93fb9cb89f171b8fee2721c6aa1e6e86b7c35afa40f9f5dee858d59974",
+  "sizeBytes": 2552604
 }
