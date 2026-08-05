@@ -65,6 +65,21 @@ export interface NativeAuthDeps {
   readonly refreshKey: Buffer
   readonly refreshKeyVersion: string
   readonly clock: () => Date
+  /**
+   * Concurrent-device policy. Optional so existing callers and tests keep the
+   * previous unlimited behaviour unless they opt in.
+   *
+   * A sideloaded investing app is used from a phone and maybe a tablet; an
+   * unbounded number of live sessions on one account is the shape of shared
+   * credentials, not of normal use. The cap evicts rather than rejects — see
+   * enforceDeviceLimit.
+   */
+  readonly deviceLimit?: {
+    /** Maximum simultaneous active native sessions per user. */
+    readonly maxDevices: number
+    /** Normalised emails exempt from the cap (the seeded dev/QA client). */
+    readonly exemptEmails: readonly string[]
+  }
 }
 
 const REFRESH_GRACE_MS = 30 * 1000
@@ -157,6 +172,48 @@ export interface NativeLoginInput {
   readonly requestId: string
 }
 
+/**
+ * Make room for one more device by revoking the oldest sessions over the cap.
+ *
+ * Evicts rather than rejects: signing in on a new phone should work, and it is
+ * the *oldest* enrolment that goes. Refusing the login instead would strand a
+ * user whose previous device is lost or wiped — they would have no way to sign in
+ * and no way to revoke the sessions holding their slots.
+ *
+ * Runs after the same-device replacement, so `existing` is already revoked and
+ * this only counts *other* devices. Returns how many were evicted, for the audit
+ * trail — a user who is silently signed out elsewhere should be explicable from
+ * the log.
+ */
+const enforceDeviceLimit = async (
+  tx: Transaction,
+  deps: NativeAuthDeps,
+  user: User,
+  now: Date,
+): Promise<number> => {
+  const policy = deps.deviceLimit
+  if (policy === undefined) return 0
+  if (policy.maxDevices <= 0) return 0
+  if (policy.exemptEmails.includes(user.email_normalized)) return 0
+
+  const active = await deps.authSessionRepository.listActiveNativeForUserOldestFirst(tx, {
+    userId: user.id as UserId,
+  })
+  // The new session is not inserted yet, so room for it means strictly fewer
+  // than the cap may remain.
+  const overBy = active.length - (policy.maxDevices - 1)
+  if (overBy <= 0) return 0
+
+  for (const session of active.slice(0, overBy)) {
+    await deps.authSessionRepository.revokeSessionFamily(tx, {
+      sessionId: session.id,
+      reason: "device_limit_exceeded",
+      now,
+    })
+  }
+  return overBy
+}
+
 export const nativeLogin = async (
   tx: Transaction,
   deps: NativeAuthDeps,
@@ -188,6 +245,10 @@ export const nativeLogin = async (
     })
   }
 
+  // Only other devices count towards the cap; this device's own prior session
+  // was just revoked above, so re-signing in never evicts anyone.
+  const evictedDevices = await enforceDeviceLimit(tx, deps, found.user, now)
+
   const result = await issueNativeSession(tx, deps, found.user, device, now)
   await deps.auditRepository.append(tx, {
     actorType: "user",
@@ -197,7 +258,7 @@ export const nativeLogin = async (
     entityId: result.sessionId,
     requestId: input.requestId,
     entityVersion: 1,
-    metadata: {},
+    metadata: evictedDevices > 0 ? { evictedDevices } : {},
   })
   return result
 }

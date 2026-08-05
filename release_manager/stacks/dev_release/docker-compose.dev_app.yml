@@ -139,6 +139,12 @@ x-backend-env: &backend-env
   SEED_ADMIN_EMAIL: ${ADMIN_LOGIN_ID}
   SEED_ADMIN_PASSWORD: ${ADMIN_PASSWORD}
   SEED_CLIENT_EMAIL: ${SEED_CLIENT_EMAIL}
+
+  # Concurrent-device policy for the client app. Signing in beyond the cap
+  # revokes the OLDEST device's session rather than refusing the login, so a user
+  # whose old phone is lost or wiped can always get back in. SEED_CLIENT_EMAIL
+  # (above) is exempt: the dev/QA account runs on many emulators at once.
+  MAX_NATIVE_DEVICES_PER_USER: ${MAX_NATIVE_DEVICES_PER_USER:-3}
   SEED_CLIENT_PASSWORD: ${SEED_CLIENT_PASSWORD}
 
 services:

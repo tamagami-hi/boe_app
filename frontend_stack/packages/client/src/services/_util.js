@@ -119,6 +119,48 @@ export function registerSessionRefresher(scope, refresher) {
   sessionRefreshers[scope] = refresher;
 }
 
+/**
+ * In-flight refresh per scope, so concurrent 401s share one rotation.
+ *
+ * This is not an optimisation — it is required for correctness. The backend
+ * rotates refresh tokens with reuse detection: presenting an already-consumed
+ * token under a different `rotationId` is treated as theft and revokes the
+ * entire session family (`nativeAuth.ts`, reason `refresh_reuse`). A cold app
+ * start fires several screens' requests at once against an expired access
+ * token, so without coalescing, request A rotates the token, request B presents
+ * the stale one, and the user is signed out and forced back to the password
+ * screen. Verified against the dev API: two parallel refreshes with the same
+ * token leave the session `SESSION_INVALID`, including for the caller that
+ * "won".
+ */
+const refreshInFlight = {};
+
+function refreshSessionOnce(scope) {
+  const refresher = sessionRefreshers[scope];
+  if (!refresher) return Promise.reject(new Error('No session refresher registered.'));
+  const pending = refreshInFlight[scope];
+  if (pending) return pending;
+
+  const attempt = Promise.resolve()
+    .then(() => refresher())
+    .finally(() => {
+      // Cleared before settling reaches the awaiters, who already hold this
+      // promise; the next 401 after this one starts a fresh rotation.
+      delete refreshInFlight[scope];
+    });
+  refreshInFlight[scope] = attempt;
+  return attempt;
+}
+
+/**
+ * Public entry point for a deliberate rotation (e.g. restoring the session at
+ * app start). Shares the single-flight slot with 401 recovery, so a boot restore
+ * and an in-flight request retry can never both rotate the same token.
+ */
+export function refreshSession(scope = 'client') {
+  return refreshSessionOnce(scope);
+}
+
 export async function apiRequest(
   path,
   {
@@ -170,11 +212,12 @@ export async function apiRequest(
     if (response.status === 401) {
       // Access tokens are short-lived. Give the scope's registered refresher one
       // chance to rotate the session and replay the request before treating the
-      // 401 as a real sign-out. `_retried` stops a refresh loop.
-      const refresher = sessionRefreshers[scope];
-      if (!retried && refresher) {
+      // 401 as a real sign-out. `_retried` stops a refresh loop, and the
+      // rotation itself is coalesced (see refreshSessionOnce) so parallel 401s
+      // cannot trip the backend's refresh-reuse detection.
+      if (!retried && sessionRefreshers[scope]) {
         try {
-          await refresher();
+          await refreshSessionOnce(scope);
           return await apiRequest(path, {
             method,
             body,

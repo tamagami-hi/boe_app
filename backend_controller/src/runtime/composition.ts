@@ -187,6 +187,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       refreshKey: serverConfig.refreshKey,
       refreshKeyVersion: serverConfig.refreshKeyVersion,
       clock,
+      deviceLimit: serverConfig.deviceLimit,
       unitOfWork,
     })
 

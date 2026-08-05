@@ -157,13 +157,38 @@ async function biometricEnroll({ userId, displayName } = {}) {
   try {
     await NativeBiometric.setCredentials({
       username: userId || 'client',
+      // The stored secret is never read for its value — possession of it is the
+      // proof. It exists only so the keystore has something to gate behind a
+      // biometric check.
       password: bytesToBase64Url(randomBytes(32)),
       server: credentialId,
+      // BIOMETRY_ANY, not BIOMETRY_CURRENT_SET: adding a fingerprint later must
+      // not silently break app unlock. Enrolment changes are a convenience
+      // concern here, not a trust boundary — the PIN is the real fallback.
       accessControl: AccessControl.BIOMETRY_ANY,
     });
+    // Confirm the credential really landed in the keystore. Without this, a
+    // silent write failure would leave the app advertising biometric unlock in
+    // settings while every unlock attempt fails.
+    const saved = await NativeBiometric.isCredentialsSaved({ server: credentialId });
+    if (!saved?.isSaved) {
+      throw platformError('BIOMETRIC_FAILED', 'The device did not store the biometric key.');
+    }
     return { ok: true, credentialId };
   } catch (error) {
+    if (error?.code === 'BIOMETRIC_FAILED') throw error;
     throw normalizeBiometricError(error);
+  }
+}
+
+/** Is a biometric credential still present for this id? */
+async function biometricEnrolled({ credentialId } = {}) {
+  if (!credentialId || !isNativeRuntime()) return false;
+  try {
+    const saved = await NativeBiometric.isCredentialsSaved({ server: credentialId });
+    return Boolean(saved?.isSaved);
+  } catch {
+    return false;
   }
 }
 
@@ -221,6 +246,7 @@ export const platformSecurity = {
   biometric: {
     availability: biometricAvailability,
     enroll: biometricEnroll,
+    enrolled: biometricEnrolled,
     authenticate: biometricAuthenticate,
     disable: biometricDisable,
   },

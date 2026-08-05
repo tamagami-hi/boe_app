@@ -1,19 +1,26 @@
 import { platformSecurity, platformStorage } from '../platform/clientPlatform.js';
 
 const SETTINGS_PREFIX = 'boe.client.security.v1';
-const UNLOCK_PREFIX = 'boe.client.security.unlock.v1';
-const DEFAULT_AUTO_LOCK_MS = 60_000;
 
-const AUTO_LOCK_OPTIONS = [
-  { label: '30 sec', value: 30_000 },
-  { label: '1 min', value: 60_000 },
-  { label: '5 min', value: 300_000 },
-  { label: '15 min', value: 900_000 },
-];
+/**
+ * ── LOCK POLICY ─────────────────────────────────────────────────────────────
+ * The app lock is not an inactivity timeout. Once signed in, a client stays
+ * signed in until they sign out (or their session is evicted by the device cap);
+ * what the PIN guards is *this device*, so the lock engages exactly twice:
+ *
+ *   • on every launch      — a cold start has a fresh JS context, so the
+ *                            in-memory unlock flag below is necessarily absent
+ *   • on every background   — cleared explicitly when the app is paused
+ *
+ * The flag is deliberately held only in memory. Persisting it (sessionStorage,
+ * secure storage, a timestamp) would mean trusting that the store is cleared
+ * when the process dies, and a stale "unlocked" record would leave the app open
+ * on a launch it should have locked. Memory gives that guarantee for free.
+ */
+const unlocked = new Set();
 
-// In-memory caches so sync helpers can read without awaiting async storage.
+// In-memory cache of persisted settings so sync helpers can read without await.
 const settingsCache = new Map();
-const unlockCache = new Map();
 
 function userKey(user) {
   return user?.id || user?.email || 'local-client';
@@ -21,10 +28,6 @@ function userKey(user) {
 
 function settingsKey(user) {
   return `${SETTINGS_PREFIX}.${userKey(user)}`;
-}
-
-function unlockKey(user) {
-  return `${UNLOCK_PREFIX}.${userKey(user)}`;
 }
 
 function defaultSettings() {
@@ -35,7 +38,6 @@ function defaultSettings() {
     biometricEnabled: false,
     biometricCredentialId: '',
     biometricSetAt: '',
-    autoLockMs: DEFAULT_AUTO_LOCK_MS,
     deviceId: platformSecurity.device.id(),
     deviceLabel: platformSecurity.device.label(),
     updatedAt: new Date().toISOString(),
@@ -47,15 +49,7 @@ async function readRaw(user) {
   const cached = settingsCache.get(key);
   if (cached) return cached;
 
-  const [stored, unlockStored] = await Promise.all([
-    platformStorage.local.get(key),
-    platformStorage.session.get(unlockKey(user)),
-  ]);
-
-  if (unlockStored) {
-    unlockCache.set(unlockKey(user), unlockStored);
-  }
-
+  const stored = await platformStorage.local.get(key);
   if (stored) {
     const merged = { ...defaultSettings(), ...stored };
     settingsCache.set(key, merged);
@@ -78,19 +72,6 @@ async function writeRaw(user, next) {
   return payload;
 }
 
-function writeRawSync(user, next) {
-  const key = settingsKey(user);
-  const payload = { ...next, updatedAt: new Date().toISOString() };
-  settingsCache.set(key, payload);
-  platformStorage.local.set(key, payload).catch(() => {});
-  window.dispatchEvent(new CustomEvent('boe:security-settings-changed', { detail: { userKey: userKey(user) } }));
-  return payload;
-}
-
-export function autoLockOptions() {
-  return AUTO_LOCK_OPTIONS;
-}
-
 export async function getSecurityState(user) {
   const settings = await readRaw(user);
   const hasPin = Boolean(settings.pinHash && settings.pinSalt);
@@ -100,7 +81,8 @@ export async function getSecurityState(user) {
     pinSetAt: settings.pinSetAt,
     biometricEnabled: hasPin && Boolean(settings.biometricEnabled && settings.biometricCredentialId),
     biometricAvailable: availability.available,
-    autoLockMs: Number(settings.autoLockMs) || DEFAULT_AUTO_LOCK_MS,
+    biometricLabel: availability.label,
+    biometricReason: availability.reason,
     deviceId: settings.deviceId || platformSecurity.device.id(),
     deviceLabel: settings.deviceLabel || platformSecurity.device.label(),
     updatedAt: settings.updatedAt,
@@ -112,7 +94,6 @@ export function getSecurityStateSync(user) {
   return {
     pinSet: Boolean(settings.pinHash && settings.pinSalt),
     biometricEnabled: Boolean(settings.biometricEnabled && settings.biometricCredentialId),
-    autoLockMs: Number(settings.autoLockMs) || DEFAULT_AUTO_LOCK_MS,
   };
 }
 
@@ -143,7 +124,9 @@ export async function setPin(user, pin) {
     deviceId: current.deviceId || platformSecurity.device.id(),
     deviceLabel: current.deviceLabel || platformSecurity.device.label(),
   });
-  markUnlocked(user, next.autoLockMs);
+  // Setting a PIN must not immediately lock the user out of the screen they are
+  // standing on.
+  markUnlocked(user);
   return getSecurityState(user);
 }
 
@@ -173,16 +156,6 @@ export async function clearPin(user, currentPin) {
   });
   clearUnlock(user);
   return getSecurityState(user);
-}
-
-export function setAutoLockMs(user, autoLockMs) {
-  const selected = AUTO_LOCK_OPTIONS.some((item) => item.value === Number(autoLockMs))
-    ? Number(autoLockMs)
-    : DEFAULT_AUTO_LOCK_MS;
-  const current = readRawSync(user);
-  writeRawSync(user, { ...current, autoLockMs: selected });
-  markUnlocked(user, selected);
-  return selected;
 }
 
 export async function enableBiometric(user) {
@@ -231,37 +204,40 @@ export async function authenticateBiometric(user) {
   if (!current.biometricEnabled || !current.biometricCredentialId) return false;
   const availability = await platformSecurity.biometric.availability();
   if (!availability.available) return false;
+  // The OS keystore is the source of truth. If the credential is gone (app data
+  // partially cleared, biometrics reset), self-heal the setting instead of
+  // failing on every unlock forever.
+  if (!(await platformSecurity.biometric.enrolled({ credentialId: current.biometricCredentialId }))) {
+    await writeRaw(user, {
+      ...current,
+      biometricEnabled: false,
+      biometricCredentialId: '',
+      biometricSetAt: '',
+    });
+    return false;
+  }
+  // Throws on cancel/failure — the caller distinguishes "declined" (fall back to
+  // the PIN) from "unavailable" (false).
   await platformSecurity.biometric.authenticate({
     credentialId: current.biometricCredentialId,
     reason: 'Unlock BeOnEdge',
   });
-  markUnlocked(user, current.autoLockMs);
+  markUnlocked(user);
   return true;
 }
 
-export function markUnlocked(user, autoLockMs) {
-  const ttl = Number(autoLockMs) || DEFAULT_AUTO_LOCK_MS;
-  const payload = { unlockedAt: Date.now(), expiresAt: Date.now() + ttl };
-  const key = unlockKey(user);
-  unlockCache.set(key, payload);
-  platformStorage.session.set(key, payload).catch(() => {});
+/** Mark this device unlocked for the current foreground run of the app. */
+export function markUnlocked(user) {
+  unlocked.add(userKey(user));
 }
 
+/** Drop the unlock, so the next render locks. Called on pause and on sign-out. */
 export function clearUnlock(user) {
-  const key = unlockKey(user);
-  unlockCache.delete(key);
-  platformStorage.session.remove(key).catch(() => {});
+  unlocked.delete(userKey(user));
 }
 
-export function hasFreshUnlock(user, autoLockMs) {
-  const cached = unlockCache.get(unlockKey(user));
-  if (!cached) return false;
-  try {
-    const payload = cached;
-    return Number(payload.expiresAt) > Date.now() && Number(payload.expiresAt) <= Date.now() + (Number(autoLockMs) || DEFAULT_AUTO_LOCK_MS);
-  } catch {
-    return false;
-  }
+export function isUnlocked(user) {
+  return unlocked.has(userKey(user));
 }
 
 export function currentSession(user) {

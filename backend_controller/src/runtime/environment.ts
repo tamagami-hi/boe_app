@@ -95,6 +95,12 @@ const ServerConfigSchema = z.object({
   KYC_CODE_MAX_ATTEMPTS: z.coerce.number().int().min(1).default(5),
   KYC_RESEND_COOLDOWN_MS: z.coerce.number().int().min(1).default(60 * 1000),
   KYC_VALIDITY_MS: z.coerce.number().int().min(1).default(365 * DAY_MS),
+  // Concurrent-device policy for native (client app) sessions. Signing in on a
+  // new device beyond the cap revokes the oldest device's session rather than
+  // refusing the login. SEED_CLIENT_EMAIL is exempt: the dev/QA account is
+  // signed in on many emulators at once and must not evict itself.
+  MAX_NATIVE_DEVICES_PER_USER: z.coerce.number().int().min(1).max(50).default(3),
+  SEED_CLIENT_EMAIL: z.string().trim().optional(),
   // In-app APK update feed. APK_RELEASE_ROOT holds one subdirectory per variant
   // (client/, admin/) of published APKs + their sidecar JSONs, mounted read-only
   // from the release holder directories; APK_DOWNLOAD_BASE_URL is the public
@@ -157,6 +163,11 @@ export interface ServerConfig {
   readonly appUpdate: {
     readonly releaseRoot: string | null
     readonly downloadBaseUrl: string | null
+  }
+  /** Concurrent native-session policy; see nativeAuth.enforceDeviceLimit. */
+  readonly deviceLimit: {
+    readonly maxDevices: number
+    readonly exemptEmails: readonly string[]
   }
 }
 
@@ -282,6 +293,16 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
     appUpdate: {
       releaseRoot: nonEmpty(parsed.APK_RELEASE_ROOT)?.replace(/\/+$/u, "") ?? null,
       downloadBaseUrl: nonEmpty(parsed.APK_DOWNLOAD_BASE_URL)?.replace(/\/+$/u, "") ?? null,
+    },
+    deviceLimit: {
+      maxDevices: parsed.MAX_NATIVE_DEVICES_PER_USER,
+      // `users.email_normalized` is stored lowercased and trimmed, so the
+      // exemption list must be normalised the same way to ever match.
+      exemptEmails: Object.freeze(
+        [nonEmpty(parsed.SEED_CLIENT_EMAIL)]
+          .filter((email): email is string => email !== null)
+          .map((email) => email.toLowerCase()),
+      ),
     },
   })
 }

@@ -68,6 +68,18 @@ export interface AuthSessionWriteRepository {
     tx: Transaction,
     input: Readonly<{ userId: UserId; deviceIdHash: Buffer }>,
   ) => Promise<AuthSession | null>
+  /**
+   * Active native sessions for a user, oldest first, locked for update.
+   *
+   * Ordered by `created_at` so a device cap evicts the least recently *signed
+   * in* device rather than the least recently used one: re-login already
+   * replaces a device's session in place, so `created_at` is the age of that
+   * device's enrolment. `auth_sessions_user_created_idx` covers the ordering.
+   */
+  listActiveNativeForUserOldestFirst: (
+    tx: Transaction,
+    input: Readonly<{ userId: UserId }>,
+  ) => Promise<readonly AuthSession[]>
   lockActiveBySid: (tx: Transaction, sessionId: string) => Promise<AuthSession | null>
   createWebSession: (tx: Transaction, input: CreateWebSessionInput) => Promise<CreatedSession>
   rotateRefresh: (tx: Transaction, input: RotateRefreshInput) => Promise<void>
@@ -184,6 +196,20 @@ export const createAuthSessionRepository = (): AuthSessionWriteRepository => ({
       .executeTakeFirst()
     return row ?? null
   },
+
+  listActiveNativeForUserOldestFirst: async (tx, input) =>
+    tx
+      .selectFrom("auth_sessions")
+      .selectAll()
+      .where("user_id", "=", input.userId)
+      .where("channel", "=", "native")
+      .where("state", "=", "active")
+      // Locked so a burst of simultaneous logins cannot each read the same
+      // under-limit count and collectively overshoot the cap.
+      .forUpdate()
+      .orderBy("created_at", "asc")
+      .orderBy("id", "asc")
+      .execute(),
 
   lockActiveBySid: async (tx, sessionId) => {
     const row = await tx

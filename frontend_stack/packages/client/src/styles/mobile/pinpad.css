@@ -1,0 +1,177 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   In-app PIN keypad (PinPad).
+
+   Replaces the device keyboard for PIN entry. The device IME resized the
+   WebView, which pushed the bottom navigation bar up over the content; an in-app
+   keypad keeps the layout static.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.apk-pinpad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--be-space-3);
+  width: 100%;
+}
+
+.apk-pinpad-label {
+  font-size: var(--be-text-sm);
+  font-weight: 600;
+  color: var(--be-fg);
+  text-align: center;
+}
+
+.apk-pinpad-hint,
+.apk-pinpad-error {
+  font-size: var(--be-text-xs);
+  text-align: center;
+  margin: 0;
+  /* Reserve the line so the keypad does not jump when an error appears. */
+  min-height: 1.1em;
+}
+
+.apk-pinpad-hint {
+  color: var(--be-fg-muted);
+}
+
+/* ── entered-digit dots ───────────────────────────────────────────────────── */
+
+.apk-pinpad-dots {
+  display: flex;
+  justify-content: center;
+  gap: var(--be-space-3);
+  padding: var(--be-space-2) 0;
+}
+
+.apk-pinpad-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1.5px solid var(--be-border);
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.apk-pinpad-dot.is-filled {
+  background: var(--be-accent);
+  border-color: var(--be-accent);
+  transform: scale(1.15);
+}
+
+/* ── keypad ───────────────────────────────────────────────────────────────── */
+
+.apk-pinpad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--be-space-3);
+  width: 100%;
+  max-width: 300px;
+}
+
+.apk-pinpad-key {
+  /* Comfortably above the 48px minimum touch target, and tall enough to hit
+     one-handed near the bottom of a phone screen. */
+  min-height: 56px;
+  border: 1px solid var(--be-border);
+  border-radius: var(--be-radius-md);
+  background: var(--be-bg-elevated);
+  color: var(--be-fg);
+  font-size: var(--be-text-xl);
+  font-weight: 600;
+  /* Tabular so every digit occupies the same width and the grid looks even. */
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  /* A long-press on a digit must not pop up a text-selection menu. */
+  user-select: none;
+  transition: background 100ms ease, transform 100ms ease;
+}
+
+.apk-pinpad-key:active:not(:disabled) {
+  background: var(--be-surface);
+  transform: scale(0.96);
+}
+
+.apk-pinpad-key:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.apk-pinpad-key--action {
+  font-size: var(--be-text-md);
+  color: var(--be-fg-muted);
+  background: transparent;
+  border-color: transparent;
+}
+
+.apk-pinpad-key--action:active:not(:disabled) {
+  background: var(--be-surface);
+}
+
+/* Inert spacer keeping 0 centred when there is no biometric key. */
+.apk-pinpad-key--empty {
+  border-color: transparent;
+  background: transparent;
+  cursor: default;
+  min-height: 56px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .apk-pinpad-key,
+  .apk-pinpad-dot {
+    transition: none;
+  }
+  .apk-pinpad-key:active:not(:disabled) {
+    transform: none;
+  }
+  .apk-pinpad-dot.is-filled {
+    transform: none;
+  }
+}
+
+/* Visually hidden but announced — used for the digit-count live region. */
+.be-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+
+/* ── lock screen while the system fingerprint dialog is up ────────────────────
+   Only a cover is shown: no keypad, because the OS dialog is already the active
+   authentication surface and a second one behind it reads as the app demanding
+   both. Centred and roomy so the little that is visible around the dialog looks
+   deliberate rather than like a half-rendered screen. */
+
+.security-lock-card--waiting {
+  align-items: center;
+  text-align: center;
+  gap: var(--be-space-4);
+  padding: var(--be-space-8) var(--be-space-6);
+}
+
+.security-lock-card--waiting .security-lock-icon {
+  /* Gentle pulse: the app is waiting on the user, and a completely static
+     screen behind a dialog looks frozen. */
+  animation: security-lock-pulse 1800ms ease-in-out infinite;
+}
+
+@keyframes security-lock-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .security-lock-card--waiting .security-lock-icon {
+    animation: none;
+  }
+}

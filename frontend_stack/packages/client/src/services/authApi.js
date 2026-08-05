@@ -4,6 +4,7 @@ import {
   clearSessionTokens,
   clone,
   delay,
+  refreshSession,
   setSessionCsrf,
   setSessionTokens,
   storedAccessToken,
@@ -290,6 +291,14 @@ export async function logout({ scope = 'client' } = {}) {
   _users[scope] = null;
 }
 
+/**
+ * Rotate the stored native session.
+ *
+ * Always reached through `refreshSession('client')` rather than called
+ * directly, so a boot-time restore and a concurrent 401 recovery share one
+ * rotation. Two rotations of the same refresh token are treated as token theft
+ * by the backend and revoke the whole session family.
+ */
 async function refreshCurrentUser(scope) {
   const refreshToken = storedRefreshToken(scope);
   if (!refreshToken) {
@@ -396,7 +405,7 @@ export async function currentUser({ scope = 'client' } = {}) {
         return null;
       }
     }
-    const refreshed = await refreshCurrentUser(scope).catch(() => null);
+    const refreshed = await refreshSession(scope).catch(() => null);
     if (refreshed) return refreshed;
     clearSessionTokens(scope);
     _users[scope] = null;
