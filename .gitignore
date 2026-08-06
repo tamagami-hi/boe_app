@@ -115,3 +115,5 @@ kimi_response*.txt
 kimi-api-key.txt
 
 .kiro/
+
+emu/out/
