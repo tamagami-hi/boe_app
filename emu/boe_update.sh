@@ -356,6 +356,42 @@ build_variant() {
     section "BUILD · $variant" "$apk_name"
     field "applicationId" "$APP_ID"
 
+    # Launcher icon and splash screen per variant: blue for the client, red for
+    # admin, so the two dev builds are told apart on the home screen and at launch
+    # rather than by their label. Both are rendered from the same brand SVG — see
+    # app/resources/launcher/generate-android-assets.mjs — with only the colour
+    # swapped, so the mark itself cannot drift between them.
+    #
+    # Copied in rather than selected by a Gradle flavour because the variant here
+    # is an injected applicationId, not a product flavour; res/ holds the client
+    # set as its committed default so a plain `gradlew` build is still correct.
+    local ASSETS="$APP_DIR/resources/launcher/$variant"
+    if [[ -d "$ASSETS" ]]; then
+        step "launcher icon + splash → $variant"
+        local RES="$APP_DIR/android/app/src/main/res"
+        cp -f "$ASSETS/values/ic_launcher_background.xml" "$RES/values/ic_launcher_background.xml"
+        local density
+        for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            cp -f "$ASSETS/mipmap-$density/ic_launcher.png" \
+                  "$ASSETS/mipmap-$density/ic_launcher_round.png" \
+                  "$ASSETS/mipmap-$density/ic_launcher_foreground.png" \
+                  "$RES/mipmap-$density/"
+        done
+        # The splash is the native launch theme's background (@drawable/splash in
+        # styles.xml), which is the only splash an admin build shows: the admin
+        # target boots BrowserRoot, so the client's React splash never renders.
+        local folder
+        for folder in drawable \
+                      drawable-port-mdpi drawable-port-hdpi drawable-port-xhdpi \
+                      drawable-port-xxhdpi drawable-port-xxxhdpi \
+                      drawable-land-mdpi drawable-land-hdpi drawable-land-xhdpi \
+                      drawable-land-xxhdpi drawable-land-xxxhdpi; do
+            cp -f "$ASSETS/$folder/splash.png" "$RES/$folder/splash.png"
+        done
+    else
+        warn "no icon/splash set for '$variant' at $ASSETS — keeping whatever res/ holds"
+    fi
+
     # Vite reads these from the process environment; shell wins over .env files.
     export VITE_BEO_APP_TARGET="$variant"
     export VITE_BEO_API_MODE="http"

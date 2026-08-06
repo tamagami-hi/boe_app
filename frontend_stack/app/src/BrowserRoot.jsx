@@ -8,6 +8,7 @@ import RootErrorBoundary from './components/RootErrorBoundary.jsx';
 
 const Admin = lazy(() => import('@beonedge/admin/pages/Admin.jsx'));
 const AdminLogin = lazy(() => import('@beonedge/admin/pages/AdminLogin.jsx'));
+const AdminSplash = lazy(() => import('@beonedge/admin/pages/AdminSplash.jsx'));
 
 function hasRole(user, role) {
   const expected = role.toLowerCase();
@@ -48,10 +49,11 @@ export default function BrowserRoot() {
       <AdminSessionProvider>
         <RootErrorBoundary>
           <Routes>
-            <Route path="/" element={<Navigate to="/admin/login" replace />} />
+            <Route path="/" element={<Navigate to="/admin/splash" replace />} />
+            <Route path="/admin/splash" element={<Page><RouteErrorBoundary><AdminSplash /></RouteErrorBoundary></Page>} />
             <Route path="/admin/login" element={<Page><RouteErrorBoundary><AdminLogin /></RouteErrorBoundary></Page>} />
             <Route path="/admin/*" element={<RequireAdmin><Page><RouteErrorBoundary><Admin /></RouteErrorBoundary></Page></RequireAdmin>} />
-            <Route path="*" element={<Navigate to="/admin/login" replace />} />
+            <Route path="*" element={<Navigate to="/admin/splash" replace />} />
           </Routes>
         </RootErrorBoundary>
       </AdminSessionProvider>

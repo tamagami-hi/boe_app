@@ -102,3 +102,46 @@
   text-transform: uppercase;
   color: var(--adm-text-muted, #64748b);
 }
+
+
+/* ── Admin launch screen ─────────────────────────────────────────────────────
+ * The admin splash reuses the client's .apk-splash* layout so both apps launch
+ * the same way. Only two things change, and both live here rather than in the
+ * client stylesheet so a client build is never affected:
+ *
+ *   1. The field is red instead of the client's #1800AD.
+ *   2. A second line, ADMIN, sits under the wordmark.
+ *
+ * #FF0000 is not a free choice: it must equal the red in the native splash
+ * images (app/resources/launcher/admin/**\/splash.png) and the launcher icon
+ * background. Android paints the native splash first and this screen replaces
+ * it, so any difference in shade would read as a flash at the handoff.
+ */
+.apk-splash.is-admin {
+  background: #ff0000;
+}
+
+/* Smaller than the 40px wordmark above it: this qualifies the brand, it is not a
+ * brand of its own. Tracked and uppercased so it reads as a label at that size
+ * rather than looking like shrunken body text. */
+.apk-splash-role {
+  display: block;
+  margin-top: var(--be-space-2, 8px);
+  font-family: var(--be-font-serif);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  /* The tracking is applied to the right of the last glyph too, which visually
+     pulls the word off-centre; this compensates. */
+  text-indent: 0.22em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--be-bone);
+  opacity: 0.92;
+  animation: apk-splash-name-in 720ms var(--be-ease-out) 680ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .apk-splash-role { animation: none; }
+}

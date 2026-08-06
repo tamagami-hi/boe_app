@@ -150,7 +150,9 @@
 .apk-splash-name {
   display: block;
   font-family: var(--be-font-serif);
-  font-size: 24px; font-weight: 600;
+  /* Sits under the 104px logo above it (.apk-splash-logo), so the mark still
+     leads the composition while the wordmark reads clearly on a phone. */
+  font-size: 40px; font-weight: 600;
   letter-spacing: 0.01em; line-height: 1;
   white-space: nowrap;
   color: var(--be-bone);
