@@ -3,11 +3,6 @@
  * RBAC permission checks; unsafe methods additionally require the synchronizer
  * CSRF token. Lists use the authenticated opaque keyset cursor.
  *
- *   GET    /v1/admin/courses            list every course version (draft + published + archived)
- *   POST   /v1/admin/courses            create the next version of a slug as a draft
- *   PATCH  /v1/admin/courses/:id        edit a draft, or flip state with `{ status }`
- *   DELETE /v1/admin/courses/:id        archive (never a row delete — history is evidence)
- *   GET/POST/PATCH/DELETE /v1/admin/plans[/:id]   same lifecycle over membership_plans
  *   GET/POST/PATCH/DELETE /v1/admin/faqs[/:id]    same lifecycle over content_items(kind='faq')
  *   GET    /v1/admin/app-config         the current (non-retired) configuration version
  *   PATCH  /v1/admin/app-config         publish a new version, retiring the current one
@@ -28,7 +23,7 @@ import type { Kysely } from "kysely"
 import { z } from "zod"
 
 import type { UnitOfWork } from "../db/database.js"
-import type { AppConfigVersion, ContentItem, Course, IdempotencyRepository, MembershipPlan } from "../db/repositories.js"
+import type { AppConfigVersion, ContentItem, IdempotencyRepository } from "../db/repositories.js"
 import type { Database } from "../db/types.js"
 import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adminAccess.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
@@ -48,7 +43,6 @@ import {
   readKeyset,
   reasonDetailSchema,
   runAdminMutation,
-  slugSchema,
   uuidParam,
 } from "./adminRouteKit.js"
 
@@ -68,53 +62,19 @@ export interface AdminContentDeps {
   readonly idempotencyRepository: IdempotencyRepository
 }
 
-const COURSES_ROUTE = "/v1/admin/courses"
-const PLANS_ROUTE = "/v1/admin/plans"
 const FAQS_ROUTE = "/v1/admin/faqs"
 const APP_CONFIG_ROUTE = "/v1/admin/app-config"
 
 /** Wire cadence -> canonical billing period. `one_time` bills once, so 1 month. */
-const CADENCE_MONTHS: Readonly<Record<string, number>> = { one_time: 1, monthly: 1, yearly: 12 }
 
 // --- schemas ---
 
 const statusEnum = z.enum(["draft", "published", "archived"])
 const listQuerySchema = z.object({ after: z.string().min(1).optional(), limit: limitSchema }).strict()
 const statusPatchSchema = z.object({ status: statusEnum }).strict()
-const paiseSchema = z.coerce.number().int().min(0).max(Number.MAX_SAFE_INTEGER)
 const sortOrderSchema = z.coerce.number().int().min(0).max(100000).default(0)
 const shortText = z.string().trim().max(200)
 const longText = z.string().trim().max(8000)
-
-const courseFieldsSchema = z
-  .object({
-    slug: slugSchema.optional(),
-    name: shortText.min(1),
-    level: shortText.default(""),
-    format: shortText.default(""),
-    outcome: longText.default(""),
-    description: longText.default(""),
-    pricePaise: paiseSchema.default(0),
-    sortOrder: sortOrderSchema,
-    durationMinutes: z.coerce.number().int().positive().max(100000).nullish(),
-  })
-  .strict()
-const createCourseSchema = courseFieldsSchema.extend({ slug: slugSchema })
-
-const planFieldsSchema = z
-  .object({
-    slug: slugSchema.optional(),
-    name: shortText.min(1),
-    tagline: longText.default(""),
-    pricePaise: paiseSchema.default(0),
-    cadence: z.enum(["one_time", "monthly", "yearly"]).default("monthly"),
-    features: z.array(shortText.min(1)).max(24).default([]),
-    ctaLabel: shortText.default("Get started"),
-    featured: z.boolean().default(false),
-    sortOrder: sortOrderSchema,
-  })
-  .strict()
-const createPlanSchema = planFieldsSchema.extend({ slug: slugSchema })
 
 const faqFieldsSchema = z
   .object({
@@ -168,55 +128,8 @@ const readPayload = (value: unknown): JsonRecord =>
 
 const text = (value: unknown, fallback = ""): string => (typeof value === "string" ? value : fallback)
 const count = (value: unknown, fallback = 0): number => (typeof value === "number" ? value : fallback)
-const flag = (value: unknown, fallback = false): boolean =>
-  typeof value === "boolean" ? value : fallback
-const list = (value: unknown): readonly string[] =>
-  Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : []
 
 // --- wire mappers (the admin console contract) ---
-
-const mapCourse = (row: Course): Record<string, unknown> => {
-  const payload = readPayload(row.payload)
-  return {
-    id: row.id,
-    slug: row.slug,
-    name: row.title,
-    level: text(payload.level),
-    format: text(payload.format),
-    outcome: text(payload.outcome),
-    description: row.summary,
-    pricePaise: String(row.price_paise),
-    durationMinutes: row.duration_minutes,
-    sortOrder: count(payload.sortOrder),
-    status: row.state,
-    version: row.version,
-    publishedAt: isoOrNull(row.published_at),
-    createdAt: iso(row.created_at),
-    updatedAt: iso(row.updated_at),
-  }
-}
-
-const mapPlan = (row: MembershipPlan): Record<string, unknown> => {
-  const payload = readPayload(row.payload)
-  return {
-    id: row.id,
-    slug: row.code,
-    name: row.name,
-    tagline: row.description,
-    pricePaise: String(row.price_paise),
-    cadence: text(payload.cadence, "monthly"),
-    features: list(payload.features),
-    ctaLabel: text(payload.ctaLabel, "Get started"),
-    featured: flag(payload.featured),
-    sortOrder: count(payload.sortOrder),
-    billingPeriodMonths: row.billing_period_months,
-    status: row.state,
-    version: row.version,
-    publishedAt: isoOrNull(row.published_at),
-    createdAt: iso(row.created_at),
-    updatedAt: iso(row.updated_at),
-  }
-}
 
 const mapFaq = (row: ContentItem): Record<string, unknown> => {
   const payload = readPayload(row.payload)
@@ -335,341 +248,6 @@ const stateFromBody = (body: unknown): ContentState | null => {
   if (keys.length !== 1 || keys[0] !== "status") return null
   return parseOrThrow(statusPatchSchema, body).status
 }
-
-// --- courses ---
-
-const createCourse = async (deps: AdminContentDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
-  requireAnyPermission(principal, ["content.publish"])
-  const body = parseOrThrow(createCourseSchema, request.body)
-
-  return mutate(
-    deps,
-    request,
-    reply,
-    COURSES_ROUTE,
-    "POST",
-    { slug: body.slug, name: body.name, pricePaise: body.pricePaise },
-    principal.userId,
-    async (tx) => {
-      const version = await deps.contentRepository.nextCourseVersion(tx, body.slug)
-      const course = await deps.contentRepository.insertCourse(tx, {
-        slug: body.slug,
-        version,
-        title: body.name,
-        summary: body.description,
-        pricePaise: String(body.pricePaise),
-        durationMinutes: body.durationMinutes ?? null,
-        payload: {
-          level: body.level,
-          format: body.format,
-          outcome: body.outcome,
-          sortOrder: body.sortOrder,
-        },
-      })
-      await deps.auditRepository.append(tx, {
-        actorType: "admin",
-        actorUserId: principal.userId,
-        command: "course.created",
-        entityType: "course",
-        entityId: course.id,
-        toState: course.state,
-        requestId: request.requestId,
-        entityVersion: course.version,
-        metadata: { slug: course.slug, version: course.version },
-      })
-      return { status: 201, body: { course: mapCourse(course) } }
-    },
-  )
-}
-
-const patchCourse = async (deps: AdminContentDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
-  requireAnyPermission(principal, ["content.publish"])
-  const courseId = parseOrThrow(uuidParam, (request.params as { courseId?: unknown }).courseId)
-  const nextState = stateFromBody(request.body)
-  const fields = nextState === null ? parseOrThrow(courseFieldsSchema, request.body) : null
-  const now = deps.clock()
-
-  return mutate(
-    deps,
-    request,
-    reply,
-    `${COURSES_ROUTE}/:courseId`,
-    "PATCH",
-    { courseId, status: nextState, name: fields?.name ?? null },
-    principal.userId,
-    async (tx) => {
-      const existing = await deps.contentRepository.lockCourse(tx, courseId)
-      if (existing === null) throw new AppError("RESOURCE_NOT_FOUND")
-
-      if (nextState !== null) {
-        if (nextState === "published") {
-          await deps.contentRepository.archivePublishedCourses(tx, existing.slug, existing.id, now)
-        }
-        const updated = await deps.contentRepository.setCourseState(tx, {
-          id: courseId,
-          state: nextState,
-          publishedByUserId: principal.userId,
-          now,
-        })
-        await deps.auditRepository.append(tx, {
-          actorType: "admin",
-          actorUserId: principal.userId,
-          command: `course.${nextState}`,
-          entityType: "course",
-          entityId: courseId,
-          fromState: existing.state,
-          toState: updated.state,
-          requestId: request.requestId,
-          entityVersion: updated.version,
-          metadata: { slug: updated.slug },
-        })
-        return { status: 200, body: { course: mapCourse(updated) } }
-      }
-
-      if (fields === null) throw new AppError("VALIDATION_FAILED")
-      // Published rows are immutable evidence of what the site showed; edit the
-      // draft, then publish it.
-      if (existing.state !== "draft") throw new AppError("STATE_CONFLICT")
-      const payload = readPayload(existing.payload)
-      const updated = await deps.contentRepository.updateCourse(tx, courseId, {
-        title: fields.name,
-        summary: fields.description,
-        pricePaise: String(fields.pricePaise),
-        durationMinutes: fields.durationMinutes ?? existing.duration_minutes,
-        payload: {
-          ...payload,
-          level: fields.level,
-          format: fields.format,
-          outcome: fields.outcome,
-          sortOrder: fields.sortOrder,
-        },
-      })
-      await deps.auditRepository.append(tx, {
-        actorType: "admin",
-        actorUserId: principal.userId,
-        command: "course.updated",
-        entityType: "course",
-        entityId: courseId,
-        fromState: existing.state,
-        toState: updated.state,
-        requestId: request.requestId,
-        entityVersion: updated.version,
-        metadata: { slug: updated.slug },
-      })
-      return { status: 200, body: { course: mapCourse(updated) } }
-    },
-  )
-}
-
-const archiveCourse = async (deps: AdminContentDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
-  requireAnyPermission(principal, ["content.publish"])
-  const courseId = parseOrThrow(uuidParam, (request.params as { courseId?: unknown }).courseId)
-  const now = deps.clock()
-
-  return mutate(
-    deps,
-    request,
-    reply,
-    `${COURSES_ROUTE}/:courseId`,
-    "DELETE",
-    { courseId },
-    principal.userId,
-    async (tx) => {
-      const existing = await deps.contentRepository.lockCourse(tx, courseId)
-      if (existing === null) throw new AppError("RESOURCE_NOT_FOUND")
-      const updated = await deps.contentRepository.setCourseState(tx, {
-        id: courseId,
-        state: "archived",
-        publishedByUserId: principal.userId,
-        now,
-      })
-      await deps.auditRepository.append(tx, {
-        actorType: "admin",
-        actorUserId: principal.userId,
-        command: "course.archived",
-        entityType: "course",
-        entityId: courseId,
-        fromState: existing.state,
-        toState: updated.state,
-        requestId: request.requestId,
-        entityVersion: updated.version,
-        metadata: { slug: updated.slug },
-      })
-      return { status: 200, body: { course: mapCourse(updated) } }
-    },
-  )
-}
-
-// --- plans ---
-
-const createPlan = async (deps: AdminContentDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
-  requireAnyPermission(principal, ["content.publish"])
-  const body = parseOrThrow(createPlanSchema, request.body)
-
-  return mutate(
-    deps,
-    request,
-    reply,
-    PLANS_ROUTE,
-    "POST",
-    { slug: body.slug, name: body.name, pricePaise: body.pricePaise },
-    principal.userId,
-    async (tx) => {
-      const version = await deps.contentRepository.nextPlanVersion(tx, body.slug)
-      const plan = await deps.contentRepository.insertPlan(tx, {
-        code: body.slug,
-        version,
-        name: body.name,
-        description: body.tagline,
-        pricePaise: String(body.pricePaise),
-        billingPeriodMonths: CADENCE_MONTHS[body.cadence] ?? 1,
-        payload: {
-          cadence: body.cadence,
-          features: body.features,
-          ctaLabel: body.ctaLabel,
-          featured: body.featured,
-          sortOrder: body.sortOrder,
-        },
-      })
-      await deps.auditRepository.append(tx, {
-        actorType: "admin",
-        actorUserId: principal.userId,
-        command: "membership_plan.created",
-        entityType: "membership_plan",
-        entityId: plan.id,
-        toState: plan.state,
-        requestId: request.requestId,
-        entityVersion: plan.version,
-        metadata: { code: plan.code, version: plan.version },
-      })
-      return { status: 201, body: { plan: mapPlan(plan) } }
-    },
-  )
-}
-
-const patchPlan = async (deps: AdminContentDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
-  requireAnyPermission(principal, ["content.publish"])
-  const planId = parseOrThrow(uuidParam, (request.params as { planId?: unknown }).planId)
-  const nextState = stateFromBody(request.body)
-  const fields = nextState === null ? parseOrThrow(planFieldsSchema, request.body) : null
-  const now = deps.clock()
-
-  return mutate(
-    deps,
-    request,
-    reply,
-    `${PLANS_ROUTE}/:planId`,
-    "PATCH",
-    { planId, status: nextState, name: fields?.name ?? null },
-    principal.userId,
-    async (tx) => {
-      const existing = await deps.contentRepository.lockPlan(tx, planId)
-      if (existing === null) throw new AppError("RESOURCE_NOT_FOUND")
-
-      if (nextState !== null) {
-        if (nextState === "published") {
-          await deps.contentRepository.archivePublishedPlans(tx, existing.code, existing.id, now)
-        }
-        const updated = await deps.contentRepository.setPlanState(tx, {
-          id: planId,
-          state: nextState,
-          publishedByUserId: principal.userId,
-          now,
-        })
-        await deps.auditRepository.append(tx, {
-          actorType: "admin",
-          actorUserId: principal.userId,
-          command: `membership_plan.${nextState}`,
-          entityType: "membership_plan",
-          entityId: planId,
-          fromState: existing.state,
-          toState: updated.state,
-          requestId: request.requestId,
-          entityVersion: updated.version,
-          metadata: { code: updated.code },
-        })
-        return { status: 200, body: { plan: mapPlan(updated) } }
-      }
-
-      if (fields === null) throw new AppError("VALIDATION_FAILED")
-      if (existing.state !== "draft") throw new AppError("STATE_CONFLICT")
-      const updated = await deps.contentRepository.updatePlan(tx, planId, {
-        name: fields.name,
-        description: fields.tagline,
-        pricePaise: String(fields.pricePaise),
-        billingPeriodMonths: CADENCE_MONTHS[fields.cadence] ?? 1,
-        payload: {
-          ...readPayload(existing.payload),
-          cadence: fields.cadence,
-          features: fields.features,
-          ctaLabel: fields.ctaLabel,
-          featured: fields.featured,
-          sortOrder: fields.sortOrder,
-        },
-      })
-      await deps.auditRepository.append(tx, {
-        actorType: "admin",
-        actorUserId: principal.userId,
-        command: "membership_plan.updated",
-        entityType: "membership_plan",
-        entityId: planId,
-        fromState: existing.state,
-        toState: updated.state,
-        requestId: request.requestId,
-        entityVersion: updated.version,
-        metadata: { code: updated.code },
-      })
-      return { status: 200, body: { plan: mapPlan(updated) } }
-    },
-  )
-}
-
-const archivePlan = async (deps: AdminContentDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
-  requireAnyPermission(principal, ["content.publish"])
-  const planId = parseOrThrow(uuidParam, (request.params as { planId?: unknown }).planId)
-  const now = deps.clock()
-
-  return mutate(
-    deps,
-    request,
-    reply,
-    `${PLANS_ROUTE}/:planId`,
-    "DELETE",
-    { planId },
-    principal.userId,
-    async (tx) => {
-      const existing = await deps.contentRepository.lockPlan(tx, planId)
-      if (existing === null) throw new AppError("RESOURCE_NOT_FOUND")
-      const updated = await deps.contentRepository.setPlanState(tx, {
-        id: planId,
-        state: "archived",
-        publishedByUserId: principal.userId,
-        now,
-      })
-      await deps.auditRepository.append(tx, {
-        actorType: "admin",
-        actorUserId: principal.userId,
-        command: "membership_plan.archived",
-        entityType: "membership_plan",
-        entityId: planId,
-        fromState: existing.state,
-        toState: updated.state,
-        requestId: request.requestId,
-        entityVersion: updated.version,
-        metadata: { code: updated.code },
-      })
-      return { status: 200, body: { plan: mapPlan(updated) } }
-    },
-  )
-}
-
-// --- FAQs (content_items kind='faq') ---
 
 const createFaq = async (deps: AdminContentDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
@@ -890,39 +468,6 @@ export const registerAdminContentRoutes = (
   application: FastifyInstance,
   deps: AdminContentDeps,
 ): void => {
-  application.get(COURSES_ROUTE, async (request, reply) =>
-    listCollection(
-      deps,
-      request,
-      reply,
-      COURSES_ROUTE,
-      ["content.read", "content.publish"],
-      async (limit, keyset) =>
-        deps.contentRepository.listCourses(deps.database, { ...keyset, limit }),
-      mapCourse,
-    ),
-  )
-  application.post(COURSES_ROUTE, async (request, reply) => createCourse(deps, request, reply))
-  application.patch(`${COURSES_ROUTE}/:courseId`, async (request, reply) => patchCourse(deps, request, reply))
-  application.delete(`${COURSES_ROUTE}/:courseId`, async (request, reply) =>
-    archiveCourse(deps, request, reply),
-  )
-
-  application.get(PLANS_ROUTE, async (request, reply) =>
-    listCollection(
-      deps,
-      request,
-      reply,
-      PLANS_ROUTE,
-      ["content.read", "content.publish"],
-      async (limit, keyset) => deps.contentRepository.listPlans(deps.database, { ...keyset, limit }),
-      mapPlan,
-    ),
-  )
-  application.post(PLANS_ROUTE, async (request, reply) => createPlan(deps, request, reply))
-  application.patch(`${PLANS_ROUTE}/:planId`, async (request, reply) => patchPlan(deps, request, reply))
-  application.delete(`${PLANS_ROUTE}/:planId`, async (request, reply) => archivePlan(deps, request, reply))
-
   application.get(FAQS_ROUTE, async (request, reply) =>
     listCollection(
       deps,

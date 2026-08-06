@@ -72,6 +72,18 @@ const ServerConfigSchema = z.object({
   PAYMENT_GATEWAY_KEY_ID: z.string().trim().optional(),
   PAYMENT_GATEWAY_KEY_SECRET: z.string().trim().optional(),
   PAYMENT_ATTEMPT_TTL_MS: z.coerce.number().int().min(1).default(15 * 60 * 1000),
+  // POST /newuser is the only unauthenticated-by-default write in the surface:
+  // the standalone marketing site (beonedge.in, on AWS) posts signups to it
+  // server-to-server. This shared secret is how that one caller is recognised —
+  // it must be presented in the `x-signup-key` header. An Origin/Referer check
+  // could not do this job: those headers are only sent by browsers and are
+  // trivially forged by any HTTP client, whereas this call has no browser in it.
+  //
+  // Optional here on purpose. A missing signup secret must degrade /newuser
+  // alone, not refuse to boot and take client logins down with it; the route
+  // fails closed on its own. The deploy scripts assert the key is present, so
+  // the failure still surfaces before containers are replaced.
+  NEWUSER_SHARED_SECRET: z.string().trim().min(32).optional(),
   // Transactional email (KYC codes). The company mailbox is both the SMTP login
   // and the `From`. When SMTP is not fully configured, a local/log sender is used
   // (dev/test). Decision 10.
@@ -121,6 +133,12 @@ export interface ServerConfig {
   readonly providerEvents: { readonly awsRegion: string | null; readonly topicArn: string | null; readonly ttlMs: number }
   readonly sesConfigurationSet: string
   readonly emailConfigured: boolean
+  /**
+   * The gate on POST /newuser. `sharedSecret` is null when the deployment has
+   * not been given one, in which case the route rejects every caller rather
+   * than accepting an unauthenticated signup.
+   */
+  readonly signup: { readonly sharedSecret: string | null }
   readonly payments: {
     readonly provider: string
     /** Mock provider: the worker auto-confirms + books. Real gateway: the webhook does. */
@@ -245,6 +263,7 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
     // not fully configured (the worker/SES adapter are out-of-band).
     sesConfigurationSet: sesConfigurationSet ?? "unconfigured",
     emailConfigured,
+    signup: { sharedSecret: nonEmpty(parsed.NEWUSER_SHARED_SECRET) },
     payments: {
       provider: parsed.PAYMENT_PROVIDER,
       autoConfirm: parsed.PAYMENT_PROVIDER === "manual",

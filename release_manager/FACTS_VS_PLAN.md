@@ -131,7 +131,7 @@ What it **lacks** (and the plan requires): `flock` locking, disk-space checks,
 
 | Plan assumption | Reality | Impact |
 | --- | --- | --- |
-| 5 services: landing, user frontend, admin frontend, backend, postgres | The exporter builds all four application images; Compose supplies PostgreSQL from its pinned upstream release line | Implemented |
+| 5 services: landing, user frontend, admin frontend, backend, postgres | The marketing site was removed from this stack (it is a separate AWS-hosted application); the exporter builds three application images — backend, user frontend, admin frontend; Compose supplies PostgreSQL from its pinned upstream release line | Implemented |
 | Separate admin + user frontend apps | **One** Vite shell `frontend_stack/app`, switched by build-time `VITE_BEO_APP_TARGET` (`client` → user, unset/`admin` → admin). `packages/admin` and `packages/client` are **libraries**, no Dockerfile | Build `frontend_stack/app` **twice** with different args |
 | App and admin images are built separately | `frontend_stack/app/Dockerfile` accepts `VITE_BEO_APP_TARGET` and serves each static bundle with digest-pinned, unprivileged nginx on container port **8080** | Implemented by the release exporter; host ports remain stack-specific |
 | Backend health at `/api/health/live`, `/api/health/ready` | Actual routes: **`/health/live`**, **`/health/ready`**, **`/v1/health`** — no `/api` prefix | See §4 decision D1 |
@@ -144,9 +144,8 @@ What it **lacks** (and the plan requires): `flock` locking, disk-space checks,
 Other confirmed application facts:
 
 - Backend: Fastify 5, Node 22-alpine, container port **47502**, runs as `USER node`.
-- Landing: Next.js 14 standalone, container port **3100**, `BEO_API_BASE` **baked at build time**.
 - Postgres `16-alpine`. Migrations are raw SQL, `backend_controller/db/migrations` (14 files), applied by `npm run migrate` → `dist/scripts/migrate.js up`, recorded with checksums in `schema_migrations` — **editing an applied migration breaks the checksum**.
-- Compose ordering contract: `postgres (healthy)` → `migrate (completed)` → `seed` → `backend` + 3 workers → `landing`.
+- Compose ordering contract: `postgres (healthy)` → `migrate (completed)` → `seed` → `backend` + 3 workers → `app_frontend` + `admin_frontend`.
 - Workers are the *same* backend image with different commands: `payments-worker`, `email-worker`, `sips-worker`. Omitting them means paid orders never confirm and SIP installments never generate.
 
 ---
@@ -190,11 +189,9 @@ them from `.env` and never rewrite VPS bindings.
 
 | Variable | Port | Service |
 | --- | --- | --- |
-| `PROD_LANDING_PORT` | 47410 | Production landing (Next.js) |
 | `PROD_APP_FRONTEND_PORT` | 47411 | Production user SPA |
 | `PROD_ADMIN_FRONTEND_PORT` | 47412 | Production admin SPA |
 | `PROD_BACKEND_PORT` | 47413 | Production backend (shared) |
-| `DEV_LANDING_PORT` | 47420 | Development landing |
 | `DEV_APP_FRONTEND_PORT` | 47421 | Development user SPA |
 | `DEV_ADMIN_FRONTEND_PORT` | 47422 | Development admin SPA |
 | `DEV_BACKEND_PORT` | 47423 | Development backend (shared) |

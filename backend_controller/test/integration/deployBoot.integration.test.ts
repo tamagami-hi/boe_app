@@ -29,6 +29,9 @@ let dispose: () => Promise<void>
 
 const base64Key = (): string => randomBytes(32).toString("base64")
 
+/** The marketing site's shared secret for POST /newuser in this deploy shape. */
+const DEPLOY_SIGNUP_SECRET = "deploy-boot-newuser-shared-secret-0123456789"
+
 beforeAll(async () => {
   container = await new PostgreSqlContainer("postgres:16-alpine")
     .withWaitStrategy(Wait.forLogMessage(/database system is ready to accept connections/u, 2))
@@ -70,6 +73,9 @@ beforeAll(async () => {
     CRYPTO_RECIPIENT_HMAC_KEY_VERSION: "rh1",
     CRYPTO_RECIPIENT_ENC_KEY: base64Key(),
     CRYPTO_RECIPIENT_ENC_KEY_VERSION: "re1",
+    // The marketing site's shared secret for POST /newuser. A deploy without it
+    // still boots; /newuser alone refuses callers.
+    NEWUSER_SHARED_SECRET: DEPLOY_SIGNUP_SECRET,
     // Intentionally NO AWS_REGION / SNS_TOPIC_ARN / SES_CONFIGURATION_SET.
   }
 
@@ -98,11 +104,32 @@ describe("deploy-shaped boot (RA-B0)", () => {
     expect(ready.json()).toEqual({ status: "ready", checks: { database: true, email: false } })
   })
 
-  test("serves the public onboarding surface (consent documents seeded)", async () => {
-    const response = await app.inject({ method: "GET", url: "/v1/public/consent-documents" })
-    expect(response.statusCode).toBe(200)
-    const body = response.json<{ data: { items: ReadonlyArray<{ kind: string }> } }>()
-    expect(body.data.items.map((item) => item.kind).sort()).toEqual(["privacy", "terms"])
+  test("serves the public signup door and resolves the seeded consent documents", async () => {
+    // The marketing site posts here with no consent version strings, so a 202
+    // proves the boot could read the seeded consent_documents rows and stamp
+    // the application with both of them. That is a stronger check than reading
+    // the documents back: it exercises the write path a real signup takes.
+    const response = await app.inject({
+      method: "POST",
+      url: "/newuser",
+      headers: { "x-signup-key": DEPLOY_SIGNUP_SECRET },
+      payload: {
+        fullName: "Deploy Boot",
+        email: "deploy-boot@example.com",
+        phone: "+14155559001",
+        acceptedConsents: true,
+      },
+    })
+    expect(response.statusCode).toBe(202)
+
+    const consents = await pool.query<{ kind: string }>(
+      "select d.kind as kind from application_consents c " +
+        "join applications a on a.id = c.application_id " +
+        "join consent_documents d on d.id = c.consent_document_id " +
+        "where a.email_normalized = $1",
+      ["deploy-boot@example.com"],
+    )
+    expect(consents.rows.map((row) => row.kind).sort()).toEqual(["privacy", "terms"])
   })
 
   test("omits the SNS provider-event ingress when AWS is not configured", async () => {

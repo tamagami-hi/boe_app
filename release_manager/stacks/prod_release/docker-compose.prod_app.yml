@@ -116,8 +116,11 @@ x-backend-env: &backend-env
 
   APP_ACTIVATION_URL: ${APP_ACTIVATION_URL}
   SUPPORT_EMAIL: ${SUPPORT_EMAIL}
-  SIGNUP_ALLOWED_ORIGIN: ${PUBLIC_LANDING_ORIGIN}
-  SIGNUP_PROXY_SECRET: ${SIGNUP_PROXY_SECRET}
+
+  # The only credential on POST /newuser. The marketing site (beonedge.in, on
+  # AWS) is a standalone project that reaches this backend server-to-server, so
+  # a shared secret is what identifies it — there is no browser Origin to trust.
+  NEWUSER_SHARED_SECRET: ${NEWUSER_SHARED_SECRET}
 
   # In-app APK update feed. The release holder directories are mounted read-only
   # into the backend below; nginx serves the same directories publicly at
@@ -206,7 +209,7 @@ services:
       - prod_internal
     restart: "no"
 
-  # ── shared backend (serves app + admin + landing) ─────────────────────────
+  # ── shared backend (serves the user SPA + admin panel) ────────────────────
   backend:
     image: boe-prod-backend:${BOE_VERSION}
     container_name: ${BOE_CONTAINER_PREFIX:-boe}-backend
@@ -281,30 +284,6 @@ services:
         condition: service_completed_successfully
     networks:
       - prod_internal
-
-  # ── public landing site (beonedge.in) ─────────────────────────────────────
-  landing:
-    image: boe-prod-landing:${BOE_VERSION}
-    container_name: ${BOE_CONTAINER_PREFIX:-boe}-landing
-    <<: *security
-    restart: unless-stopped
-    read_only: true
-    tmpfs:
-      - /tmp:rw,noexec,nosuid,nodev,size=16m
-    environment:
-      NODE_ENV: production
-      PORT: ${LANDING_PORT}
-      HOSTNAME: 0.0.0.0
-      BEO_API_BASE: http://backend:${BACKEND_PORT}
-      SIGNUP_PROXY_SECRET: ${SIGNUP_PROXY_SECRET}
-      SIGNUP_ALLOWED_ORIGIN: ${PUBLIC_LANDING_ORIGIN}
-    depends_on:
-      backend:
-        condition: service_healthy
-    ports:
-      - "127.0.0.1:${LANDING_PORT}:${LANDING_PORT}"
-    networks:
-      - prod_frontend
 
   # ── user SPA (app.beonedge.in) ────────────────────────────────────────────
   # Static nginx-served bundle. Its API origin is baked in at BUILD time, so a

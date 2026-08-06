@@ -76,7 +76,9 @@ scrape_configs:
       module: [http_2xx]
     static_configs:
       - targets:
-          - https://beonedge.in
+          # beonedge.in is intentionally absent: the marketing site is a separate
+          # application on separate infrastructure (AWS) and is not this stack's
+          # to monitor. It only posts signups to /api/newuser.
           - https://app.beonedge.in
           - https://admin.beonedge.in
           - https://dev-app.beonedge.in

@@ -14,10 +14,10 @@ GitHub origin ── only `main` ── the published, tested truth
 boe_app  (this folder)  ── branch: main ── FULL checkout
       • the ONLY place you integrate, test, and RELEASE
       • holds release_manager/ (deploy tooling) — worktrees never do
-      ▲   ▲   ▲   merge up
-      │   │   │
-  ┌───┘   │   └────────┐
-admin   client      landing      ← boe_app-admin / -client / -landing
+      ▲       ▲   merge up
+      │       │
+  ┌───┘       └────────┐
+admin              client        ← boe_app-admin / boe_app-client
   • each is a sparse worktree: sees ONLY its own surface
   • developers/agents do per-surface code here
 ```
@@ -29,17 +29,17 @@ what keeps it un-confusing.
 ## Daily development (in a surface worktree)
 
 ```bash
-cd ~/PROJECTS/boe_app-landing       # or -admin / -client
+cd ~/PROJECTS/boe_app-client        # or -admin
 git pull --rebase                    # stay current with main's base
-# ...code, commit on wt/landing...
-git checkout wt/landing && git rebase main   # periodically, to avoid drift
+# ...code, commit on wt/client...
+git checkout wt/client && git rebase main    # periodically, to avoid drift
 ```
 
 ## Integrate a surface into main (in boe_app)
 
 ```bash
 cd ~/PROJECTS/boe_app                 # always on main
-git merge wt/landing                  # bring the surface's commits in
+git merge wt/client                   # bring the surface's commits in
 # resolve, then test locally (see Release below)
 ```
 

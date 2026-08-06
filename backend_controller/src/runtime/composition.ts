@@ -164,6 +164,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         verificationTokenTtlMs: serverConfig.ttls.verificationTokenTtlMs,
         idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
         sesConfigurationSet: serverConfig.sesConfigurationSet,
+        signupSharedSecret: serverConfig.signup.sharedSecret,
       },
       applicationRepository,
       consentRepository,

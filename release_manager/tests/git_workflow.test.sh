@@ -196,10 +196,18 @@ for sensitive_name in 'prod.env' 'id_rsa' 'id_ed25519.pub' 'token.ppk' '.netrc' 
     git_workflow_is_sensitive_path "nested/$sensitive_name" \
         || fail_test "sensitive path not classified: $sensitive_name"
 done
-for safe_name in '.env.example' 'client.env.example' 'app.env.template'; do
+for safe_name in '.env.example' 'client.env.example' 'app.env.template' \
+                 '.env.production.example' '.env.staging.sample' 'app.env.production.template'; do
     if git_workflow_is_sensitive_path "$safe_name"; then
         fail_test "safe template path classified as sensitive: $safe_name"
     fi
+done
+
+# The .example suffix must not be a blanket pass: a real env file that merely
+# lives beside templates is still sensitive.
+for still_sensitive in '.env.production' '.env.local' 'production.env'; do
+    git_workflow_is_sensitive_path "$still_sensitive" \
+        || fail_test "live env file wrongly classified as safe: $still_sensitive"
 done
 
 grep -qF 'source "$RM_DIR/lib/git_workflow.sh"' "$STATUS_SCRIPT" \

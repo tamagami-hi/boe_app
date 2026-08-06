@@ -1,6 +1,6 @@
 # CI gate for `main` — the enforcement that replaces PR review in this workflow.
-# Runs the backend invariant guards + tests and the landing build, so a red
-# build means "do not push to origin/main".
+# Runs the backend invariant guards + tests, so a red build means
+# "do not push to origin/main".
 
 name: CI
 
@@ -28,20 +28,3 @@ jobs:
       - run: npm run authz:403
       # Colocated unit tests only (src/**/*.test.js).
       - run: node --test "src/**/*.test.js"
-
-  landing:
-    name: landing (test + build)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend_stack/packages/landing_page
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: npm ci
-      - run: npm test
-      - run: npm run build
-        env:
-          NEXT_TELEMETRY_DISABLED: "1"

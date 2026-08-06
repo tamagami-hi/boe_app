@@ -161,12 +161,14 @@ case "$TARGET" in
     local)
         # 10.0.2.2 is the emulator's alias for the host loopback.
         API_BASE="${BOE_API_BASE_URL:-http://10.0.2.2:47502}"
-        ONBOARDING="${BOE_ONBOARDING_URL:-http://10.0.2.2:3100/signup}"
+        # The signup page is not part of this stack — it is the AWS-hosted
+        # marketing site — so even a local build points at the real one.
+        ONBOARDING="${BOE_ONBOARDING_URL:-https://beonedge.in/signup}"
         VITE_MODE="android"
         ;;
     dev)
         API_BASE="${BOE_API_BASE_URL:-https://dev-app.beonedge.in/api}"
-        ONBOARDING="${BOE_ONBOARDING_URL:-https://dev.beonedge.in/signup}"
+        ONBOARDING="${BOE_ONBOARDING_URL:-https://beonedge.in/signup}"
         VITE_MODE="android-prod"
         ;;
     prod)

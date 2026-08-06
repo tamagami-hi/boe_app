@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, UserCheck, Users, ShieldCheck, CreditCard, Repeat,
-  GraduationCap, Tags, HelpCircle, PenSquare,
+  HelpCircle,
   Layers, PieChart, History, BookOpen, Inbox,
   LayoutGrid, Settings,
 } from 'lucide-react';
@@ -29,11 +29,8 @@ export const NAV_DOMAINS = [
   },
   {
     id: 'site',
-    label: 'Site Control',
+    label: 'Support Content',
     items: [
-      { path: '/admin/site/content', label: 'Page content', icon: PenSquare, title: 'Landing page content' },
-      { path: '/admin/site/courses', label: 'Courses', icon: GraduationCap, title: 'Courses' },
-      { path: '/admin/site/plans', label: 'Plans', icon: Tags, title: 'Plans' },
       { path: '/admin/site/faqs', label: 'FAQs', icon: HelpCircle, title: 'FAQs' },
     ],
   },

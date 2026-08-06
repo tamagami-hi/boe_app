@@ -17,10 +17,7 @@ import {
   EmailDeliveriesRoute,
   EnvironmentRoute,
 } from './legacy/legacyRoutes.jsx';
-import CoursesPage from '../features/site/CoursesPage.jsx';
-import PlansPage from '../features/site/PlansPage.jsx';
 import FaqsPage from '../features/site/FaqsPage.jsx';
-import LandingContentPage from '../features/site/LandingContentPage.jsx';
 import '../styles/desktop/admin.css';
 import '../styles/desktop/shell.css';
 import '../styles/desktop/site.css';
@@ -41,9 +38,6 @@ export default function Admin() {
         {/* Retired by canonical decision: no client risk profiling. */}
         <Route path="users/risk-profiles" element={<Navigate to="/admin/users/kyc" replace />} />
 
-        <Route path="site/content" element={<LandingContentPage />} />
-        <Route path="site/courses" element={<CoursesPage />} />
-        <Route path="site/plans" element={<PlansPage />} />
         <Route path="site/faqs" element={<FaqsPage />} />
 
         <Route path="app/builder" element={<AppBuilderRoute />} />

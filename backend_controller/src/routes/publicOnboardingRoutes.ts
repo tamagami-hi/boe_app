@@ -1,7 +1,29 @@
 /**
- * Public onboarding routes (spec 04 §3.1). Unauthenticated learner-signup
- * surface: `GET /v1/public/consent-documents` and `POST /v1/applications`.
- * `POST /v1/applications/verify-email` is added in BE-008c.
+ * Public onboarding routes (spec 04 §3.1). Unauthenticated signup surface:
+ * `POST /newuser` and `POST /newuser/verify-email`.
+ *
+ * ── /newuser ────────────────────────────────────────────────────────────────
+ * The marketing site is a separate application on separate infrastructure
+ * (beonedge.in on AWS) and posts new signups straight here, reachable publicly
+ * as `https://dev-app.beonedge.in/api/newuser`. It is the only signup door: the
+ * former `/v1/applications` pair demanded an `Idempotency-Key` header and the
+ * exact current version string of both consent documents, which would force
+ * that site to make two calls and track a contract it has no other reason to
+ * know. `/newuser` resolves the live consent versions itself and derives its
+ * own idempotency key, so the caller sends one flat body once.
+ *
+ * That site is the ONLY caller permitted to create signups, and it proves this
+ * with a shared secret in `x-signup-key` (see `assertSignupCaller`). The call is
+ * server-to-server: no browser is involved, so CORS is irrelevant to it and this
+ * API is deliberately absent from the marketing site's origin allowlist.
+ *
+ * It stays a thin adapter over the `submitApplication` command rather than a
+ * second implementation — validation, consent recording, verification-email
+ * dispatch and audit all live in one place, and the admin approvals queue sees
+ * identical rows regardless of how a signup arrived.
+ *
+ * The path is deliberately unversioned: it is a cross-team integration point,
+ * whereas `/v1` is an internal contract free to evolve.
  */
 import { createHash } from "node:crypto"
 
@@ -10,9 +32,9 @@ import type { Kysely } from "kysely"
 import { z } from "zod"
 
 import type { CryptoContext } from "../crypto/context.js"
+import { bytesEqual } from "../crypto/primitives.js"
 import type { UnitOfWork } from "../db/database.js"
 import type {
-  ConsentDocument,
   ConsentKind,
   IdempotencyRepository,
   IdempotencyScope,
@@ -34,6 +56,11 @@ export interface PublicOnboardingConfig {
   readonly verificationTokenTtlMs: number
   readonly idempotencyTtlMs: number
   readonly sesConfigurationSet: string
+  /**
+   * The secret the marketing site presents in `x-signup-key`. `null` means the
+   * deployment was never given one, and every `/newuser` call is refused.
+   */
+  readonly signupSharedSecret: string | null
 }
 
 export interface PublicOnboardingDeps {
@@ -53,36 +80,54 @@ export interface PublicOnboardingDeps {
 
 const CONSENT_KINDS: readonly ConsentKind[] = ["terms", "privacy"]
 
-interface ConsentDocumentItem {
-  readonly kind: ConsentKind
-  readonly version: string
-  readonly publicPath: string
-  readonly contentMarkdown: string
-  readonly sha256: string
-}
+/**
+ * The `/newuser` gate. Only the marketing site may create signups, and it is a
+ * server-to-server caller with no browser involved, so the only thing that can
+ * actually identify it is a secret it holds. `Origin`/`Referer` are not used:
+ * a non-browser client sets them to anything it likes, so treating them as
+ * proof of caller identity would be authentication theatre.
+ *
+ * Fails closed in both directions — an unconfigured secret refuses everyone
+ * rather than admitting everyone, and the comparison is constant-time so a
+ * caller cannot learn the secret byte-by-byte from response timing.
+ */
+const assertSignupCaller = (deps: PublicOnboardingDeps, request: FastifyRequest): void => {
+  const expected = deps.config.signupSharedSecret
+  if (expected === null) {
+    // Deliberately not AUTHENTICATION_REQUIRED: nothing the caller sends could
+    // succeed, and an operator reading the logs needs to see a misconfiguration
+    // rather than a stream of apparently-bad credentials.
+    throw new AppError("DEPENDENCY_UNAVAILABLE")
+  }
 
-const toItem = (document: ConsentDocument): ConsentDocumentItem => ({
-  kind: document.kind,
-  version: document.version,
-  publicPath: document.public_path,
-  contentMarkdown: document.content_markdown,
-  sha256: Buffer.from(document.content_sha256 as unknown as Uint8Array).toString("hex"),
-})
+  const header = request.headers["x-signup-key"]
+  const presented = Array.isArray(header) ? header[0] : header
+  if (typeof presented !== "string") throw new AppError("AUTHENTICATION_REQUIRED")
+
+  // bytesEqual is length-checked before the constant-time compare, so a wrong
+  // length is rejected without timingSafeEqual throwing on mismatched buffers.
+  if (!bytesEqual(Buffer.from(presented, "utf8"), Buffer.from(expected, "utf8"))) {
+    throw new AppError("AUTHENTICATION_REQUIRED")
+  }
+}
 
 const idempotencyKeySchema = z.string().regex(/^[A-Za-z0-9._:-]{8,128}$/u)
 
-const consentItemSchema = z
-  .object({
-    kind: z.enum(["terms", "privacy"]),
-    version: z
-      .string()
-      .trim()
-      .regex(/^[A-Za-z0-9._-]{1,40}$/u),
-    accepted: z.literal(true),
-  })
+const verifyEmailBodySchema = z
+  .object({ token: z.string().regex(/^[A-Za-z0-9_-]{43}$/u) })
   .strict()
 
-const submitApplicationBodySchema = z
+/**
+ * What the external marketing site posts. Same person-level fields as
+ * `/v1/applications`, but consent is a single boolean: the versions in force are
+ * the backend's own business, and a remote site echoing a version string back is
+ * a chance for those two to drift.
+ *
+ * `acceptedConsents` is `z.literal(true)` for the same reason the per-document
+ * flag is — a refusal is not a submission to record, it is a form that was never
+ * completed.
+ */
+const newUserBodySchema = z
   .object({
     fullName: z
       .string()
@@ -91,20 +136,14 @@ const submitApplicationBodySchema = z
       .refine((value) => !/[\u0000-\u001f\u007f-\u009f]/u.test(value), "must not contain control characters"),
     email: z.string().trim().email().max(254),
     phone: z.string().trim().min(8).max(32),
-    consents: z
-      .array(consentItemSchema)
-      .length(2)
-      .refine(
-        (items) =>
-          items.filter((item) => item.kind === "terms").length === 1 &&
-          items.filter((item) => item.kind === "privacy").length === 1,
-        "exactly one terms and one privacy consent are required",
-      ),
+    acceptedConsents: z.literal(true),
+    /**
+     * Optional caller-supplied key. When the site can generate one it gets true
+     * retry safety across differing payloads; when it cannot, the derived key
+     * below still collapses duplicate submissions of the *same* details.
+     */
+    idempotencyKey: idempotencyKeySchema.optional(),
   })
-  .strict()
-
-const verifyEmailBodySchema = z
-  .object({ token: z.string().regex(/^[A-Za-z0-9_-]{43}$/u) })
   .strict()
 
 const normalizePhone = (raw: string): string => {
@@ -115,40 +154,43 @@ const normalizePhone = (raw: string): string => {
   return candidate
 }
 
-const requireIdempotencyKey = (request: FastifyRequest): string => {
-  const header = request.headers["idempotency-key"]
-  const value = Array.isArray(header) ? header[0] : header
-  const parsed = idempotencyKeySchema.safeParse(value)
-  if (!parsed.success) {
-    throw new AppError("VALIDATION_FAILED", { fields: { "idempotency-key": ["a valid Idempotency-Key header is required"] } })
-  }
-  return parsed.data
-}
-
 const hashRequest = (canonical: Readonly<Record<string, unknown>>): Buffer =>
   createHash("sha256").update(JSON.stringify(canonical)).digest()
 
-const handleSubmission = async (
+/**
+ * Run a submission through the idempotency protocol and `submitApplication`.
+ *
+ * Shared by both doors so there is exactly one place that decides what a signup
+ * writes. `routeTemplate` differs per door on purpose: the two are separate
+ * idempotency namespaces, so a key reused across them cannot collide.
+ */
+const submitThroughIdempotency = async (
   deps: PublicOnboardingDeps,
   request: FastifyRequest,
   reply: FastifyReply,
+  input: Readonly<{
+    routeTemplate: string
+    idempotencyKey: string
+    fullName: string
+    emailNormalized: string
+    phoneE164: string
+    consents: readonly Readonly<{ kind: ConsentKind; version: string }>[]
+  }>,
 ): Promise<FastifyReply> => {
-  const idempotencyKey = requireIdempotencyKey(request)
-  const body = parseOrThrow(submitApplicationBodySchema, request.body)
-
-  const emailNormalized = body.email.toLowerCase()
-  const phoneE164 = normalizePhone(body.phone)
-  const consents = body.consents.map((consent) => ({ kind: consent.kind, version: consent.version }))
-
   const scope: IdempotencyScope = {
     actorScope: "public",
     actorScopeKeyVersion: null,
     candidateActorScopes: ["public"],
     method: "POST",
-    routeTemplate: "/v1/applications",
-    key: idempotencyKey,
+    routeTemplate: input.routeTemplate,
+    key: input.idempotencyKey,
   }
-  const requestHash = hashRequest({ fullName: body.fullName, email: emailNormalized, phone: phoneE164, consents })
+  const requestHash = hashRequest({
+    fullName: input.fullName,
+    email: input.emailNormalized,
+    phone: input.phoneE164,
+    consents: input.consents,
+  })
   const now = deps.clock()
 
   const outcome = await deps.unitOfWork.execute((tx) =>
@@ -177,10 +219,10 @@ const handleSubmission = async (
             },
           },
           {
-            fullName: body.fullName,
-            emailNormalized,
-            phoneE164,
-            consents,
+            fullName: input.fullName,
+            emailNormalized: input.emailNormalized,
+            phoneE164: input.phoneE164,
+            consents: input.consents.map((consent) => ({ ...consent })),
             requestId: request.requestId,
             clientIp: request.ip,
             userAgent: request.headers["user-agent"] ?? null,
@@ -197,18 +239,85 @@ const handleSubmission = async (
   })
 }
 
+/**
+ * `POST /newuser` — the door the external marketing site uses.
+ *
+ * Unversioned path on purpose: it is a stable integration point for a system
+ * outside this repository, and the `/v1` prefix is an internal contract that
+ * evolves with the app. Changing this path means coordinating a deploy with
+ * another team's infrastructure, so it should not move.
+ */
+const handleNewUser = async (
+  deps: PublicOnboardingDeps,
+  request: FastifyRequest,
+  reply: FastifyReply,
+): Promise<FastifyReply> => {
+  // Before validation: an unauthenticated caller learns nothing about the body
+  // contract, and a rejected request never touches the database.
+  assertSignupCaller(deps, request)
+
+  const body = parseOrThrow(newUserBodySchema, request.body)
+  const emailNormalized = body.email.toLowerCase()
+  const phoneE164 = normalizePhone(body.phone)
+
+  // Whatever is in force right now, read inside the request rather than cached:
+  // a consent version that changed between publication and signup must be the
+  // version actually recorded against this person.
+  const documents = await deps.consentRepository.findCurrentDocuments(deps.database, CONSENT_KINDS)
+  const consents = CONSENT_KINDS.map((kind) => {
+    const document = documents.find((candidate) => candidate.kind === kind)
+    if (document === undefined) {
+      // No published consent document means nobody can lawfully be onboarded.
+      // Fail loudly rather than recording a signup with no consent trail.
+      throw new AppError("DEPENDENCY_UNAVAILABLE")
+    }
+    return { kind, version: document.version }
+  })
+
+  /*
+   * Derived key when the caller supplies none: the same details submitted twice
+   * (double-tapped button, a retry after a timed-out response) collapse into one
+   * application instead of two, and the second call replays the first answer.
+   * Scoped by consent versions too, so a genuine re-signup after new terms is a
+   * distinct submission.
+   */
+  const derivedKey = createHash("sha256")
+    .update(JSON.stringify({ emailNormalized, phoneE164, fullName: body.fullName, consents }))
+    .digest("hex")
+    .slice(0, 64)
+
+  return submitThroughIdempotency(deps, request, reply, {
+    routeTemplate: "/newuser",
+    idempotencyKey: body.idempotencyKey ?? derivedKey,
+    fullName: body.fullName,
+    emailNormalized,
+    phoneE164,
+    consents,
+  })
+}
+
 export const registerPublicOnboardingRoutes = (
   application: FastifyInstance,
   deps: PublicOnboardingDeps,
 ): void => {
-  application.get("/v1/public/consent-documents", async (_request, reply) => {
-    const documents = await deps.consentRepository.findCurrentDocuments(deps.database, CONSENT_KINDS)
-    return reply.sendData({ items: documents.map(toItem) })
-  })
+  application.post("/newuser", async (request, reply) => handleNewUser(deps, request, reply))
 
-  application.post("/v1/applications", async (request, reply) => handleSubmission(deps, request, reply))
-
-  application.post("/v1/applications/verify-email", async (request, reply) => {
+  /*
+   * The token emailed to a new signup. The marketing site hosts the page the
+   * link opens and calls this to redeem the token, so it lives under the same
+   * unversioned external prefix as /newuser rather than under /v1.
+   *
+   * Deliberately NOT behind the x-signup-key gate that /newuser uses. The
+   * difference is what authenticates the request. /newuser accepts entirely
+   * attacker-chosen input, so it needs to know who is calling. Here the token
+   * IS the credential: 43 random characters, single-use, expiring, and issued by
+   * this backend to one mailbox. Requiring a shared secret on top would buy no
+   * security and would force the marketing site to redeem tokens server-side —
+   * meaning if it ever chose to redeem from the browser instead, the secret
+   * would have to ship in client JavaScript, which is strictly worse than not
+   * having one.
+   */
+  application.post("/newuser/verify-email", async (request, reply) => {
     const body = parseOrThrow(verifyEmailBodySchema, request.body)
     await deps.unitOfWork.execute((tx) =>
       verifyApplicationEmail(

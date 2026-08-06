@@ -75,9 +75,10 @@ jq -e '.apk.enabled == false and (.apk.destinations | length == 0)
 jq -e 'has("generated_at") | not' "$DEV_CONTRACT" >/dev/null \
     || fail_test 'a contract still carries the generated_at marker'
 
-# Typed readers work.
-[[ "$(paths_images "$DEV_CONTRACT" | wc -l)" == 4 ]] \
-    || fail_test 'paths_images did not return the four application images'
+# Typed readers work. Three application images: backend, user SPA, admin SPA.
+# The marketing site is a separate AWS-hosted project and ships no image here.
+[[ "$(paths_images "$DEV_CONTRACT" | wc -l)" == 3 ]] \
+    || fail_test 'paths_images did not return the three application images'
 [[ "$(paths_get "$DEV_CONTRACT" .vps.stack_dir)" == "/srv/dev_stack/BOE_APP/dev_release" ]] \
     || fail_test 'paths_get returned the wrong stack_dir'
 if paths_get "$DEV_CONTRACT" .no.such.key >/dev/null 2>&1; then

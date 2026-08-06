@@ -81,7 +81,7 @@ Flags:
 13. Load the new images.
 14. Start postgres, wait for `pg_isready`, then bring up the whole stack.
     Migrations run in-band via the `migrate` service before the backend starts.
-15. Wait for every healthcheck, then smoke-test backend, landing, app and admin.
+15. Wait for every healthcheck, then smoke-test backend, app and admin.
 16. **Only if healthy:** write `release-version.json` and update the registry.
 
 If health checks fail it automatically rolls back to the previous images and
@@ -150,7 +150,6 @@ From `.env`, all bound to `127.0.0.1`. nginx is the only public entry point.
 
 | Variable | Port |
 | --- | --- |
-| `LANDING_PORT` | 47410 |
 | `APP_FRONTEND_PORT` | 47411 |
 | `ADMIN_FRONTEND_PORT` | 47412 |
 | `BACKEND_PORT` | 47413 |

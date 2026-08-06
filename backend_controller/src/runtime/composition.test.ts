@@ -65,8 +65,15 @@ describe("composeBackend", () => {
     expect(ready.json()).toMatchObject({ status: "degraded", checks: { database: false, email: true } })
 
     // A representative canonical route is actually registered.
-    const consent = await app.inject({ method: "GET", url: "/v1/public/consent-documents" })
-    expect([200, 500, 503]).toContain(consent.statusCode) // reachable route (DB-dependent body)
+    const disclosures = await app.inject({ method: "GET", url: "/v1/public/disclosures" })
+    expect([200, 500, 503]).toContain(disclosures.statusCode) // reachable route (DB-dependent body)
+
+    // The external signup door the marketing site posts to is registered. This
+    // env supplies no NEWUSER_SHARED_SECRET, so the route fails closed with 503
+    // rather than accepting an unauthenticated signup — which also proves the
+    // rest of the app still booted without that secret.
+    const newUser = await app.inject({ method: "POST", url: "/newuser", payload: {} })
+    expect(newUser.statusCode).toBe(503)
 
     await app.close()
   })
@@ -104,5 +111,20 @@ describe("parseServerConfig", () => {
 
   test("rejects an empty origin allowlist", () => {
     expect(() => parseServerConfig({ ...validEnv(), WEB_ORIGIN_ALLOWLIST: " , " })).toThrow()
+  })
+
+  test("leaves the signup shared secret null when the deployment omits it", () => {
+    // Absent, not fatal: a missing signup secret must degrade /newuser only,
+    // never stop the backend from booting and serving the client app.
+    expect(parseServerConfig(validEnv()).signup.sharedSecret).toBeNull()
+  })
+
+  test("carries the signup shared secret when configured", () => {
+    const secret = "a".repeat(48)
+    expect(parseServerConfig({ ...validEnv(), NEWUSER_SHARED_SECRET: secret }).signup.sharedSecret).toBe(secret)
+  })
+
+  test("rejects a signup shared secret that is too short to be worth having", () => {
+    expect(() => parseServerConfig({ ...validEnv(), NEWUSER_SHARED_SECRET: "short" })).toThrow()
   })
 })

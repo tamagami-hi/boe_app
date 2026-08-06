@@ -64,11 +64,6 @@
       "container_port": 47502
     },
     {
-      "key": "landing",
-      "archive": "landing.tar.gz",
-      "container_port": 3100
-    },
-    {
       "key": "app",
       "archive": "app.tar.gz",
       "container_port": 8080

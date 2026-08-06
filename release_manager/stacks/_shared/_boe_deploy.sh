@@ -209,7 +209,7 @@ boe_deploy_assert_env() {
     if [[ "${P[has_database]}" == "true" ]]; then
         boe_assert_env_keys \
             POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB \
-            BACKEND_PORT LANDING_PORT APP_FRONTEND_PORT ADMIN_FRONTEND_PORT \
+            BACKEND_PORT APP_FRONTEND_PORT ADMIN_FRONTEND_PORT \
             PUBLIC_API_BASE_URL PUBLIC_LANDING_ORIGIN CORS_ORIGIN WEB_ORIGIN_ALLOWLIST \
             ACCESS_TOKEN_ISSUER ACCESS_TOKEN_AUDIENCE ACCESS_TOKEN_CURRENT_KID \
             ACCESS_TOKEN_SIGNING_KEY ACCESS_TOKEN_VERIFICATION_KEYS \
@@ -218,7 +218,7 @@ boe_deploy_assert_env() {
             CRYPTO_CONSENT_IP_HMAC_KEY CRYPTO_CONSENT_IP_HMAC_KEY_VERSION \
             CRYPTO_RECIPIENT_HMAC_KEY CRYPTO_RECIPIENT_HMAC_KEY_VERSION \
             CRYPTO_RECIPIENT_ENC_KEY CRYPTO_RECIPIENT_ENC_KEY_VERSION \
-            SIGNUP_PROXY_SECRET
+            NEWUSER_SHARED_SECRET
         boe_validate_app_key_material
         boe_validate_app_policy
     fi
@@ -277,7 +277,7 @@ boe_validate_app_policy() {
         value="$(env_get "$key" "$BOE_EFFECTIVE_ENV")"
         [[ "$value" == https://* ]] || die "$key must use https://"
     done
-    for key in BACKEND_PORT LANDING_PORT APP_FRONTEND_PORT ADMIN_FRONTEND_PORT; do
+    for key in BACKEND_PORT APP_FRONTEND_PORT ADMIN_FRONTEND_PORT; do
         value="$(env_get "$key" "$BOE_EFFECTIVE_ENV")"
         [[ "$value" =~ ^[0-9]+$ ]] && (( value >= 1 && value <= 65535 )) \
             || die "$key must be an integer from 1 to 65535"
@@ -359,14 +359,12 @@ boe_deploy_archive_apks() {
 # (no /api prefix). Public traffic reaches them as /api/health/... because nginx
 # strips the prefix. Probing here is direct-to-loopback, so no prefix is used.
 boe_deploy_smoke_tests() {
-    local backend_port landing_port app_port admin_port rc=0
+    local backend_port app_port admin_port rc=0
     backend_port="$(env_get BACKEND_PORT "$BOE_EFFECTIVE_ENV")"
-    landing_port="$(env_get LANDING_PORT "$BOE_EFFECTIVE_ENV")"
     app_port="$(env_get APP_FRONTEND_PORT "$BOE_EFFECTIVE_ENV")"
     admin_port="$(env_get ADMIN_FRONTEND_PORT "$BOE_EFFECTIVE_ENV")"
 
     [[ -n "$backend_port" ]] && { wait_http "http://127.0.0.1:${backend_port}/health/ready" 30 2 || rc=1; }
-    [[ -n "$landing_port" ]] && { wait_http "http://127.0.0.1:${landing_port}/"             20 2 || rc=1; }
     [[ -n "$app_port"     ]] && { wait_http "http://127.0.0.1:${app_port}/"                 20 2 || rc=1; }
     [[ -n "$admin_port"   ]] && { wait_http "http://127.0.0.1:${admin_port}/"               20 2 || rc=1; }
     return $rc

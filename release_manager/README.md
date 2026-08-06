@@ -37,8 +37,8 @@ every docker command:
 ```
 
 The interactive menu is organized as `Git → Exports → Ship + Deploy`. Under
-`Git`, the full workflow previews and commits dirty `wt/admin`, `wt/client`, and
-`wt/landing` worktrees and main; checks, reviews, and integrates approved PRs;
+`Git`, the full workflow previews and commits dirty `wt/admin` and `wt/client`
+worktrees and main; checks, reviews, and integrates approved PRs;
 synchronizes `origin/main`; pushes after confirmation; and fast-forwards main
 back into each surface worktree. `Sync local worktrees` runs only that final
 main-to-worktree synchronization. `Cut a release` offers to run the full Git

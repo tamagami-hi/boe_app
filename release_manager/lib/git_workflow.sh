@@ -44,7 +44,7 @@ git_workflow_surface_worktrees() {
         [[ "$path" != "$main_worktree" ]] || continue
         branch="$(git -C "$path" symbolic-ref --short -q HEAD 2>/dev/null || true)"
         case "$branch" in
-            wt/admin|wt/client|wt/landing) : ;;
+            wt/admin|wt/client) : ;;
             *) continue ;;
         esac
         printf '%s\0%s\0' "$path" "$branch"
@@ -54,8 +54,16 @@ git_workflow_surface_worktrees() {
 git_workflow_is_sensitive_path() {
     local path="$1" name="${1##*/}"
     case "$name" in
-        .env.example|.env.sample|.env.template|*.env.example|*.env.sample|*.env.template)
-            return 1 ;;
+        # Templates. The trusted marker is the .example/.sample/.template suffix,
+        # so it must be honoured wherever it appears — including the
+        # `.env.<environment>.example` shape. Without that middle pattern,
+        # `.env.production.example` fell through to `.env.*` below and was
+        # treated as a live secret file, which made it impossible to edit OR
+        # delete through this workflow.
+        .env.example|.env.sample|.env.template) return 1 ;;
+        .env.*.example|.env.*.sample|.env.*.template) return 1 ;;
+        *.env.example|*.env.sample|*.env.template) return 1 ;;
+        *.env.*.example|*.env.*.sample|*.env.*.template) return 1 ;;
         .env|.env.*|*.env|*.pem|*.key|*.p12|*.pfx|*.jks|*.keystore|*credentials*|id_*|*.ppk|.netrc|.npmrc)
             return 0 ;;
     esac
@@ -418,7 +426,7 @@ git_workflow_sync_worktrees() {
         printf '   ✓ synchronized main → %s\n' "${branch#wt/}"
     done < <(git_workflow_surface_worktrees "$main_worktree")
 
-    [[ "$found" == true ]] || printf '   ! no wt/admin, wt/client or wt/landing worktrees found\n'
+    [[ "$found" == true ]] || printf '   ! no wt/admin or wt/client worktrees found\n'
 }
 
 git_workflow_run() {

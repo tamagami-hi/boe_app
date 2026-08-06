@@ -4,15 +4,11 @@
   "version": "0.1.0",
   "workspaces": [
     "app",
-    "packages/*",
-    "!packages/landing_page"
+    "packages/*"
   ],
   "scripts": {
     "dev": "npm --workspace app run dev",
     "build": "npm --workspace app run build",
-    "landing:dev": "npm --prefix packages/landing_page run dev",
-    "landing:build": "npm --prefix packages/landing_page run build",
-    "landing:test": "npm --prefix packages/landing_page test",
     "build:android": "npm --workspace app run build:android",
     "android:sync": "npm --workspace app run android:sync",
     "android:open": "npm --workspace app run android:open",

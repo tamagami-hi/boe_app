@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { UserCheck, CreditCard, Globe, LifeBuoy, ArrowRight } from 'lucide-react';
+import { UserCheck, CreditCard, HelpCircle, LifeBuoy, ArrowRight } from 'lucide-react';
 import { useLegacyAdminData } from '../context/LegacyAdminDataContext.jsx';
 import { Page, ContentGrid, Section } from '../layout/primitives/index.js';
 import I from '../components/I.jsx';
@@ -12,10 +12,10 @@ const QUICK_LINKS = [
     description: 'Approve or reject learner accounts created on the public site.',
   },
   {
-    path: '/admin/site/content',
-    icon: Globe,
-    title: 'Edit the landing page',
-    description: 'Publish hero copy, courses, plans, and section content.',
+    path: '/admin/site/faqs',
+    icon: HelpCircle,
+    title: 'Update the FAQs',
+    description: 'Edit the help answers clients read inside the app.',
   },
   {
     path: '/admin/users/payments',

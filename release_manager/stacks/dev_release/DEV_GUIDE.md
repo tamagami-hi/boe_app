@@ -98,7 +98,6 @@ All bound to `127.0.0.1`.
 
 | Variable | Port |
 | --- | --- |
-| `LANDING_PORT` | 47420 |
 | `APP_FRONTEND_PORT` | 47421 |
 | `ADMIN_FRONTEND_PORT` | 47422 |
 | `BACKEND_PORT` | 47423 |

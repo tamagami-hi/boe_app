@@ -1,9 +1,10 @@
 # BeOnEdge — VPS deployment
 
-The VPS runs **only** three containers — public **landing** (Next.js), **backend_controller**
-API, and **PostgreSQL** — orchestrated from `release_manager/BOE_APP/`. The admin web
-portal and client APK are **not** deployed here; they run locally (`npm run dev` / app
-build) and connect to this same backend over the public domain.
+The VPS runs the **backend_controller** API, the **user SPA**, the **admin SPA**, and
+**PostgreSQL** — orchestrated from `release_manager/BOE_APP/`. The marketing site is
+**not** here: it is a separate application on separate infrastructure (AWS, `beonedge.in`)
+that only posts new signups to `POST /api/newuser`. The client APK connects to this same
+backend over the public domain.
 
 **One env file drives everything:** `release_manager/BOE_APP/.env`. Its defaults target
 localhost; going live means swapping the localhost URLs in its **PUBLIC SURFACE** block
@@ -15,10 +16,10 @@ for your domain. Internal container wiring uses Docker service names, so nothing
               ┌────────▼─────────┐   host nginx (TLS, NOT a container)
               │   host nginx     │   frontend_stack/deploy/nginx.single-port.example.conf
               └───┬──────────┬───┘
-            /     │          │  /v1/
+            /     │          │  /api/
         ┌─────────▼──┐   ┌───▼────────┐
-        │ landing    │   │ backend    │◄── admin (local) + client APK connect here
-        │ :3100      │   │ :47502     │
+        │ user SPA   │   │ backend    │◄── admin SPA + client APK connect here
+        │ :8080      │   │ :47502     │◄── AWS beonedge.in POSTs /api/newuser
         └────────────┘   └─────┬──────┘
                                │
                          ┌─────▼──────┐
@@ -39,15 +40,16 @@ cd release_manager/BOE_APP
 cp .env.example .env            # first time only
 #   Edit .env:
 #     - PUBLIC SURFACE block: swap localhost URLs -> https://<your-domain>
-#       PUBLIC_LANDING_ORIGIN=https://<your-domain>
+#       PUBLIC_LANDING_ORIGIN=https://beonedge.in   # AWS marketing site; verification
+#                                                  # emails link back to it
 #       PUBLIC_API_BASE_URL=https://<your-domain>
-#       CORS_ORIGIN=https://<your-domain>,http://localhost:5173,...,capacitor://localhost
+#       CORS_ORIGIN=https://<your-domain>,https://beonedge.in,capacitor://localhost,...
 #     - Fill every CHANGE_ME secret (production hard-fails on placeholders):
 #         openssl rand -hex 48   # ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET
-#         openssl rand -hex 32   # SIGNUP_PROXY_SECRET
+#         openssl rand -hex 32   # NEWUSER_SHARED_SECRET (give it to the beonedge.in site)
 #         strong values for POSTGRES_PASSWORD, ADMIN_PASSWORD, SEED_CLIENT_PASSWORD
 
-# 3. Deploy (postgres -> migrate -> seed -> backend -> landing, with health checks)
+# 3. Deploy (postgres -> migrate -> seed -> backend -> SPAs, with health checks)
 cd ../..
 ./release_manager/deploy.sh
 
@@ -72,8 +74,8 @@ sudo certbot --nginx -d <your-domain>        # provisions + wires TLS certs
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-`server_name` MUST equal the domain in `BOE_APP/.env` `PUBLIC_LANDING_ORIGIN`.
-It proxies `/v1/` → `127.0.0.1:47502` and `/` → `127.0.0.1:3100`.
+`server_name` MUST equal the domain in `BOE_APP/.env` `PUBLIC_API_BASE_URL`.
+It proxies `/api/` → the backend (the `/api` prefix is stripped) and `/` → the user SPA.
 
 ## How admin / client connect (not containerized)
 
@@ -89,8 +91,12 @@ It proxies `/v1/` → `127.0.0.1:47502` and `/` → `127.0.0.1:3100`.
 - `NODE_ENV=production` hard-fails on placeholder/weak secrets — fill real values.
 - Real secrets live only in the VPS's untracked `BOE_APP/.env`; the committed `.env.example`
   keeps `CHANGE_ME` placeholders (see `release_manager/.gitignore`).
-- Signup is gated: landing sends `x-signup-key` (= `SIGNUP_PROXY_SECRET`) + `origin`
-  (= `PUBLIC_LANDING_ORIGIN`); the backend rejects account creation from anywhere else.
+- `POST /api/newuser` is the signup door for the AWS-hosted marketing site. Only that
+  site may call it: it presents `NEWUSER_SHARED_SECRET` in the `x-signup-key` header,
+  compared in constant time, and the route fails closed if the secret is unconfigured.
+  Origin/Referer are deliberately not used — the call is server-to-server, so those
+  headers are absent or attacker-controlled. It is additionally throttled by the
+  `boe_signup` nginx zone (10r/m per address) because each accepted call queues an email.
 - Back up Postgres: `docker compose exec postgres pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"`.
 
 ## DB-safe rollback (dump on deploy, restore on rollback)
@@ -164,10 +170,10 @@ When a migration genuinely cannot be made backward-compatible, treat it as a
 Today images are built locally and shipped as tarballs over SSH. The path to scale:
 
 1. **CI builds from a tag.** Pushing a release tag (e.g. `v1.2.0`) triggers CI to build the
-   backend + landing images reproducibly from that commit — no more build-machine drift,
+   backend + frontend images reproducibly from that commit — no more build-machine drift,
    and provenance is the tag itself.
 2. **GHCR registry.** CI pushes the images to GitHub Container Registry
-   (`ghcr.io/<org>/boe-backend:<tag>`, `…/boe-landing:<tag>`) instead of producing tarballs.
+   (`ghcr.io/<org>/boe-backend:<tag>`, `…/boe-app:<tag>`) instead of producing tarballs.
 3. **`compose pull` deploy.** The VPS deploy becomes `docker compose pull && up -d` against
    the pinned tag — no `docker load`, no SSH tar upload. Rollback = pull the previous tag
    (the DB dump/restore flow above still applies).

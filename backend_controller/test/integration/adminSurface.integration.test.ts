@@ -266,169 +266,6 @@ afterAll(async () => {
 })
 
 describe("admin content group (integration)", () => {
-  test("creates, edits, publishes, and archives a course through the console contract", async () => {
-    const session = await login("content@example.com")
-
-    const created = await app.inject({
-      method: "POST",
-      url: "/v1/admin/courses",
-      headers: write(session),
-      payload: {
-        slug: "options-basics",
-        name: "Options Basics",
-        level: "Beginner",
-        format: "Self-paced",
-        outcome: "Price a simple call",
-        description: "Six modules on option mechanics.",
-        pricePaise: 499000,
-        sortOrder: 3,
-      },
-    })
-    expect(created.statusCode).toBe(201)
-    const course = dataOf<{ course: Record<string, unknown> }>(created).course
-    expect(course).toMatchObject({
-      slug: "options-basics",
-      name: "Options Basics",
-      level: "Beginner",
-      format: "Self-paced",
-      outcome: "Price a simple call",
-      description: "Six modules on option mechanics.",
-      pricePaise: "499000",
-      sortOrder: 3,
-      status: "draft",
-    })
-
-    const courseId = course.id as string
-
-    // Editing a draft keeps the presentation payload coherent.
-    const edited = await app.inject({
-      method: "PATCH",
-      url: `/v1/admin/courses/${courseId}`,
-      headers: write(session),
-      payload: {
-        name: "Options Basics II",
-        level: "Intermediate",
-        format: "Cohort",
-        outcome: "Hedge with spreads",
-        description: "Now with spreads.",
-        pricePaise: 599000,
-        sortOrder: 4,
-      },
-    })
-    expect(edited.statusCode).toBe(200)
-    expect(dataOf<{ course: Record<string, unknown> }>(edited).course).toMatchObject({
-      name: "Options Basics II",
-      level: "Intermediate",
-      pricePaise: "599000",
-      status: "draft",
-    })
-
-    const published = await app.inject({
-      method: "PATCH",
-      url: `/v1/admin/courses/${courseId}`,
-      headers: write(session),
-      payload: { status: "published" },
-    })
-    expect(published.statusCode).toBe(200)
-    expect(dataOf<{ course: Record<string, unknown> }>(published).course.status).toBe("published")
-
-    // A published row is evidence of what the site showed: no in-place edits.
-    const rejected = await app.inject({
-      method: "PATCH",
-      url: `/v1/admin/courses/${courseId}`,
-      headers: write(session),
-      payload: { name: "Sneaky rename", pricePaise: 1 },
-    })
-    expect(rejected.statusCode).toBe(409)
-
-    const archived = await app.inject({
-      method: "DELETE",
-      url: `/v1/admin/courses/${courseId}`,
-      headers: write(session),
-    })
-    expect(archived.statusCode).toBe(200)
-    expect(dataOf<{ course: Record<string, unknown> }>(archived).course.status).toBe("archived")
-  })
-
-  test("publishing a second version of a slug archives the previously published one", async () => {
-    const session = await login("content@example.com")
-    const slug = `guide-${randomUUID().slice(0, 8)}`
-
-    const first = await app.inject({
-      method: "POST",
-      url: "/v1/admin/courses",
-      headers: write(session),
-      payload: { slug, name: "Guide v1" },
-    })
-    const firstId = dataOf<{ course: { id: string } }>(first).course.id
-    await app.inject({
-      method: "PATCH",
-      url: `/v1/admin/courses/${firstId}`,
-      headers: write(session),
-      payload: { status: "published" },
-    })
-
-    const second = await app.inject({
-      method: "POST",
-      url: "/v1/admin/courses",
-      headers: write(session),
-      payload: { slug, name: "Guide v2" },
-    })
-    const secondBody = dataOf<{ course: { id: string; version: number } }>(second).course
-    expect(secondBody.version).toBe(2)
-
-    const publishSecond = await app.inject({
-      method: "PATCH",
-      url: `/v1/admin/courses/${secondBody.id}`,
-      headers: write(session),
-      payload: { status: "published" },
-    })
-    expect(publishSecond.statusCode).toBe(200)
-
-    const states = await pool.query<{ id: string; state: string }>(
-      "select id, state from courses where slug = $1 order by version",
-      [slug],
-    )
-    expect(states.rows.map((row) => row.state)).toEqual(["archived", "published"])
-  })
-
-  test("plans map the console cadence onto the canonical billing period", async () => {
-    const session = await login("content@example.com")
-    const created = await app.inject({
-      method: "POST",
-      url: "/v1/admin/plans",
-      headers: write(session),
-      payload: {
-        slug: "annual-pro",
-        name: "Annual Pro",
-        tagline: "Best value",
-        pricePaise: 2499900,
-        cadence: "yearly",
-        features: ["Weekly research", "Priority support"],
-        ctaLabel: "Go annual",
-        featured: true,
-        sortOrder: 2,
-      },
-    })
-    expect(created.statusCode).toBe(201)
-    const plan = dataOf<{ plan: Record<string, unknown> }>(created).plan
-    expect(plan).toMatchObject({
-      slug: "annual-pro",
-      tagline: "Best value",
-      cadence: "yearly",
-      features: ["Weekly research", "Priority support"],
-      ctaLabel: "Go annual",
-      featured: true,
-      billingPeriodMonths: 12,
-      status: "draft",
-    })
-
-    const listed = await app.inject({ method: "GET", url: "/v1/admin/plans", headers: read(session) })
-    expect(listed.statusCode).toBe(200)
-    const items = dataOf<{ items: { slug: string }[] }>(listed).items
-    expect(items.some((item) => item.slug === "annual-pro")).toBe(true)
-  })
-
   test("FAQs are stored as content items with a generated key and publish cleanly", async () => {
     const session = await login("content@example.com")
     const created = await app.inject({
@@ -529,14 +366,17 @@ describe("admin content group (integration)", () => {
   })
 
   test("denies a support principal the content permissions and keyset-paginates lists", async () => {
+    // Uses the FAQ collection as the vehicle: it shares listCollection, the
+    // content permissions and the keyset cursor with every other content list,
+    // and it is seeded with enough rows to page through.
     const support = await login("support@example.com")
-    const denied = await app.inject({ method: "GET", url: "/v1/admin/courses", headers: read(support) })
+    const denied = await app.inject({ method: "GET", url: "/v1/admin/faqs", headers: read(support) })
     expect(denied.statusCode).toBe(403)
 
     const session = await login("content@example.com")
     const firstPage = await app.inject({
       method: "GET",
-      url: "/v1/admin/courses?limit=1",
+      url: "/v1/admin/faqs?limit=1",
       headers: read(session),
     })
     expect(firstPage.statusCode).toBe(200)
@@ -546,7 +386,7 @@ describe("admin content group (integration)", () => {
 
     const secondPage = await app.inject({
       method: "GET",
-      url: `/v1/admin/courses?limit=1&after=${encodeURIComponent(page.nextCursor as string)}`,
+      url: `/v1/admin/faqs?limit=1&after=${encodeURIComponent(page.nextCursor as string)}`,
       headers: read(session),
     })
     expect(secondPage.statusCode).toBe(200)
@@ -556,7 +396,7 @@ describe("admin content group (integration)", () => {
 
     const badCursor = await app.inject({
       method: "GET",
-      url: "/v1/admin/courses?limit=1&after=not-a-cursor",
+      url: "/v1/admin/faqs?limit=1&after=not-a-cursor",
       headers: read(session),
     })
     expect(badCursor.statusCode).toBe(400)

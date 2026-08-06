@@ -809,83 +809,6 @@
   .ash-quicklink:active { transform: none; }
 }
 
-/* -------------------------------------------------- preview panel (deprecated — use SplitLayout primitive) */
-.ash-content-layout:has(.ash-preview-panel) {
-  grid-template-columns: var(--be-sidebar-w) minmax(0, clamp(360px, 38vw, 640px)) minmax(0, 1fr);
-}
-.ash-content-layout:has(.ash-preview-panel) .ash-content-editor {
-  max-width: clamp(360px, 38vw, 640px);
-}
-.ash-preview-panel {
-  position: sticky;
-  top: var(--be-space-4);
-  flex: 1 1 0;
-  min-width: min(320px, 100%);
-  height: calc(100dvh - var(--be-space-8));
-  display: flex;
-  flex-direction: column;
-  border: var(--be-border-1);
-  border-radius: var(--be-radius-md);
-  background: var(--be-bg-elevated);
-  overflow: hidden;
-}
-.ash-preview-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--be-space-2) var(--be-space-3);
-  border-bottom: var(--be-border-1);
-  font-size: var(--be-text-sm);
-  font-weight: 600;
-  color: var(--be-fg);
-}
-.ash-preview-header span {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--be-space-1);
-}
-.ash-preview-frame {
-  flex: 1 1 0;
-  width: 100%;
-  border: 0;
-  background: var(--be-bg-elevated);
-}
-.ash-preview-toggle {
-  position: fixed;
-  right: var(--be-space-4);
-  bottom: var(--be-space-4);
-  width: var(--be-icon-btn-md);
-  height: var(--be-icon-btn-md);
-  border-radius: 50%;
-  border: var(--be-border-1);
-  background: var(--be-bg-elevated);
-  color: var(--be-fg);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: var(--be-shadow-2);
-  z-index: var(--be-z-sticky);
-}
-.ash-preview-toggle:hover {
-  background: var(--be-surface);
-}
-
-.ash-preview-offline {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: var(--be-space-2);
-  padding: var(--be-space-6);
-  text-align: center;
-  font-size: var(--be-text-sm);
-  line-height: 1.5;
-  background: var(--be-bg-elevated);
-  z-index: 1; /* local stacking within preview panel only */
-}
-
 /* ── Retractable site navigation ──────────────────────────────────────────── */
 :root {
   --ash-sidebar-w-collapsed: var(--be-sidebar-w-rail);
@@ -983,21 +906,4 @@
   font-size: var(--be-text-xs);
   line-height: var(--be-lh-normal);
   color: var(--be-fg);
-}
-
-.ash-preview-header-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--be-space-1);
-}
-
-/* ── Landing content: preview takes the larger share ──────────────────────── */
-.be-split-layout.is-preview-wide.has-preview {
-  grid-template-columns:
-    var(--split-rail-w, 200px)
-    minmax(0, var(--split-editor-max, 440px))
-    minmax(320px, 1fr);
-}
-@media (max-width: 1100px) {
-  .be-split-layout.is-preview-wide.has-preview { grid-template-columns: 1fr; }
 }

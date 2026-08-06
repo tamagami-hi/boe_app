@@ -474,7 +474,7 @@ action_git_workflow() {
 }
 
 action_sync_worktrees() {
-    section "SYNC LOCAL WORKTREES" "merge main into wt/admin, wt/client and wt/landing"
+    section "SYNC LOCAL WORKTREES" "merge main into wt/admin and wt/client"
     git_workflow_sync_worktrees "$ROOT_DIR"
 }
 
@@ -725,7 +725,7 @@ menu_git() {
 
 ${c_bold}━━ Git${c_rst}
    1) Full Git workflow       commit, review PRs, integrate and push main
-   2) Sync local worktrees    merge main into admin, client and landing
+   2) Sync local worktrees    merge main into admin and client
    3) Cut a release           prepare Git, bump VERSION, tag and push
    b) Back
 

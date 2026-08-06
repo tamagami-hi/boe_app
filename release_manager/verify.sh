@@ -311,7 +311,6 @@ check_nginx_port() {
 pb="$(env_port prod_release BACKEND_PORT)"
 pa="$(env_port prod_release APP_FRONTEND_PORT)"
 pad="$(env_port prod_release ADMIN_FRONTEND_PORT)"
-pl="$(env_port prod_release LANDING_PORT)"
 db="$(env_port dev_release BACKEND_PORT)"
 da="$(env_port dev_release APP_FRONTEND_PORT)"
 dad="$(env_port dev_release ADMIN_FRONTEND_PORT)"
@@ -320,7 +319,6 @@ gp="$(env_port monitor_service GRAFANA_PORT)"
 check_nginx_port app.beonedge.in.conf       "$pb"  "prod backend"
 check_nginx_port app.beonedge.in.conf       "$pa"  "prod user SPA"
 check_nginx_port admin.beonedge.in.conf     "$pad" "prod admin SPA"
-check_nginx_port beonedge.in.conf           "$pl"  "prod landing"
 check_nginx_port dev-app.beonedge.in.conf   "$db"  "dev backend"
 check_nginx_port dev-app.beonedge.in.conf   "$da"  "dev user SPA"
 check_nginx_port dev-admin.beonedge.in.conf "$dad" "dev admin SPA"
@@ -330,7 +328,7 @@ check_nginx_port monitor.beonedge.in.conf   "$gp"  "grafana"
 # Only HOST-BINDING variables count. EMAIL_SMTP_PORT is an outbound destination,
 # not a listener, so it legitimately has the same value in every stack.
 section "7b uniqueness of host ports across all stacks"
-HOST_PORT_VARS='BACKEND_PORT|LANDING_PORT|APP_FRONTEND_PORT|ADMIN_FRONTEND_PORT|GRAFANA_PORT|PROMETHEUS_PORT|ALERTMANAGER_PORT|BLACKBOX_PORT'
+HOST_PORT_VARS='BACKEND_PORT|APP_FRONTEND_PORT|ADMIN_FRONTEND_PORT|GRAFANA_PORT|PROMETHEUS_PORT|ALERTMANAGER_PORT|BLACKBOX_PORT'
 raw_ports="$(for s in "${BOE_STACKS[@]}"; do
     grep -hE "^(${HOST_PORT_VARS})=" "$STACKS/$s/.env.example" 2>/dev/null
 done | tr -d '\r')"

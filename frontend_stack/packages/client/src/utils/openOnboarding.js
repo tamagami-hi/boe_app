@@ -1,6 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 
-const url = import.meta.env.VITE_BEO_ONBOARDING_URL || 'http://127.0.0.1:3100/signup';
+const url = import.meta.env.VITE_BEO_ONBOARDING_URL || 'https://beonedge.in/signup';
 
 export async function openOnboarding() {
   if (Capacitor.isNativePlatform()) {

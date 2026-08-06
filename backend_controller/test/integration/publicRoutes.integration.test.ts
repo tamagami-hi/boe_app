@@ -11,7 +11,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest"
 import { createCryptoContext, parseCryptoKeys } from "../../src/crypto/context.js"
 import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
-import { consentDigest, SEED_CONSENT_DOCUMENTS } from "../../src/db/seedCatalog.js"
+import { SEED_CONSENT_DOCUMENTS } from "../../src/db/seedCatalog.js"
 import { createApplicationRepository } from "../../src/repositories/applicationRepository.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
 import { createConsentRepository } from "../../src/repositories/consentRepository.js"
@@ -31,14 +31,6 @@ let pool: Pool
 let app: FastifyInstance
 let cryptoContext: CryptoContext
 
-interface ConsentItem {
-  kind: string
-  version: string
-  publicPath: string
-  contentMarkdown: string
-  sha256: string
-}
-
 interface SubmitEnvelope {
   ok: boolean
   data: { accepted: boolean } | null
@@ -48,15 +40,10 @@ interface SubmitEnvelope {
 
 const key = (bytes: number): string => randomBytes(bytes).toString("base64")
 
-const submitBody = (email: string, phone: string, termsVersion = "v1") => ({
-  fullName: "Ada Lovelace",
-  email,
-  phone,
-  consents: [
-    { kind: "terms", version: termsVersion, accepted: true },
-    { kind: "privacy", version: "v1", accepted: true },
-  ],
-})
+// The shared secret the marketing site presents in `x-signup-key`. Long enough
+// to satisfy the same minimum the environment schema enforces.
+const SIGNUP_SECRET = "test-only-newuser-shared-secret-0123456789"
+const signupHeaders = { "x-signup-key": SIGNUP_SECRET }
 
 const countWhere = async (query: string, values: readonly unknown[]): Promise<number> => {
   const result = await pool.query<{ c: number }>(query, values as unknown[])
@@ -106,6 +93,7 @@ beforeAll(async () => {
           verificationTokenTtlMs: 24 * 60 * 60 * 1000,
           idempotencyTtlMs: 24 * 60 * 60 * 1000,
           sesConfigurationSet: "boe-transactional",
+          signupSharedSecret: SIGNUP_SECRET,
         },
         applicationRepository: createApplicationRepository(),
         consentRepository: createConsentRepository(),
@@ -125,117 +113,6 @@ afterAll(async () => {
   await container.stop()
 })
 
-describe("GET /v1/public/consent-documents (integration)", () => {
-  test("returns the current terms and privacy documents with digests", async () => {
-    const response = await app.inject({ method: "GET", url: "/v1/public/consent-documents" })
-    expect(response.statusCode).toBe(200)
-
-    const body = response.json<{ ok: boolean; data: { items: ConsentItem[] } }>()
-    expect(body.ok).toBe(true)
-    expect(body.data.items.map((item) => item.kind).sort()).toEqual(["privacy", "terms"])
-
-    for (const seeded of SEED_CONSENT_DOCUMENTS) {
-      const item = body.data.items.find((candidate) => candidate.kind === seeded.kind)
-      expect(item?.publicPath).toBe(seeded.publicPath)
-      expect(item?.sha256).toBe(consentDigest(seeded.contentMarkdown).toString("hex"))
-    }
-  })
-})
-
-describe("POST /v1/applications (integration)", () => {
-  test("atomically creates all onboarding rows on a new submission", async () => {
-    const email = "new1@example.com"
-    const response = await app.inject({
-      method: "POST",
-      url: "/v1/applications",
-      headers: { "idempotency-key": "key-new-00000001" },
-      payload: submitBody(email, "+14155551001"),
-    })
-
-    expect(response.statusCode).toBe(202)
-    const body = response.json<SubmitEnvelope>()
-    expect(body.data).toEqual({ accepted: true })
-    expect(body.meta.idempotencyReplay).toBeUndefined()
-
-    const applicationId = (
-      await pool.query<{ id: string; state: string }>(
-        "select id, state from applications where email_normalized = $1",
-        [email],
-      )
-    ).rows[0]
-    expect(applicationId?.state).toBe("pending_email_verification")
-    const id = applicationId?.id
-    expect(await countWhere("select count(*)::int as c from application_consents where application_id = $1", [id])).toBe(2)
-    expect(await countWhere("select count(*)::int as c from verification_tokens where application_id = $1", [id])).toBe(1)
-    expect(
-      await countWhere(
-        "select count(*)::int as c from email_deliveries where application_id = $1 and template_key = 'verify_email' and state = 'queued'",
-        [id],
-      ),
-    ).toBe(1)
-    expect(await countWhere("select count(*)::int as c from outbox_events where aggregate_id = $1", [id])).toBe(1)
-    expect(await countWhere("select count(*)::int as c from audit_events where entity_id = $1", [id])).toBe(1)
-  })
-
-  test("replays the same response for a repeated idempotency key", async () => {
-    const email = "replay1@example.com"
-    const payload = submitBody(email, "+14155551002")
-    const headers = { "idempotency-key": "key-replay-0001" }
-
-    const first = await app.inject({ method: "POST", url: "/v1/applications", headers, payload })
-    const second = await app.inject({ method: "POST", url: "/v1/applications", headers, payload })
-
-    expect(first.statusCode).toBe(202)
-    expect(second.statusCode).toBe(202)
-    expect(second.json<SubmitEnvelope>().meta.idempotencyReplay).toBe(true)
-    expect(await countWhere("select count(*)::int as c from applications where email_normalized = $1", [email])).toBe(1)
-  })
-
-  test("treats a duplicate identity as a uniform no-op", async () => {
-    const email = "dup1@example.com"
-    await app.inject({
-      method: "POST",
-      url: "/v1/applications",
-      headers: { "idempotency-key": "key-dup-000001a" },
-      payload: submitBody(email, "+14155551003"),
-    })
-    const second = await app.inject({
-      method: "POST",
-      url: "/v1/applications",
-      headers: { "idempotency-key": "key-dup-000001b" },
-      payload: submitBody(email, "+14155551003"),
-    })
-
-    expect(second.statusCode).toBe(202)
-    expect(second.json<SubmitEnvelope>().data).toEqual({ accepted: true })
-    expect(await countWhere("select count(*)::int as c from applications where email_normalized = $1", [email])).toBe(1)
-  })
-
-  test("rejects a missing Idempotency-Key", async () => {
-    const response = await app.inject({
-      method: "POST",
-      url: "/v1/applications",
-      payload: submitBody("nokey@example.com", "+14155551004"),
-    })
-    expect(response.statusCode).toBe(400)
-    expect(response.json<SubmitEnvelope>().error?.code).toBe("VALIDATION_FAILED")
-  })
-
-  test("rejects a stale consent version", async () => {
-    const response = await app.inject({
-      method: "POST",
-      url: "/v1/applications",
-      headers: { "idempotency-key": "key-stale-00001" },
-      payload: submitBody("stale1@example.com", "+14155551005", "v2"),
-    })
-    expect(response.statusCode).toBe(400)
-    expect(response.json<SubmitEnvelope>().error?.code).toBe("VALIDATION_FAILED")
-    expect(
-      await countWhere("select count(*)::int as c from applications where email_normalized = $1", ["stale1@example.com"]),
-    ).toBe(0)
-  })
-})
-
 const rawTokenForApplication = async (email: string): Promise<string> => {
   const result = await pool.query<{ payload: { verificationToken: string } }>(
     "select o.payload as payload from outbox_events o " +
@@ -247,20 +124,20 @@ const rawTokenForApplication = async (email: string): Promise<string> => {
   return token
 }
 
-describe("POST /v1/applications/verify-email (integration)", () => {
+describe("POST /newuser/verify-email (integration)", () => {
   test("consumes a valid token and moves the application to submitted", async () => {
     const email = "verify1@example.com"
     await app.inject({
       method: "POST",
-      url: "/v1/applications",
-      headers: { "idempotency-key": "key-verify-0001" },
-      payload: submitBody(email, "+14155551010"),
+      url: "/newuser",
+      headers: signupHeaders,
+      payload: { fullName: "Ada Lovelace", email, phone: "+14155551010", acceptedConsents: true },
     })
     const token = await rawTokenForApplication(email)
 
     const response = await app.inject({
       method: "POST",
-      url: "/v1/applications/verify-email",
+      url: "/newuser/verify-email",
       payload: { token },
     })
     expect(response.statusCode).toBe(200)
@@ -278,7 +155,7 @@ describe("POST /v1/applications/verify-email (integration)", () => {
     // replay is TOKEN_ALREADY_USED
     const replay = await app.inject({
       method: "POST",
-      url: "/v1/applications/verify-email",
+      url: "/newuser/verify-email",
       payload: { token },
     })
     expect(replay.statusCode).toBe(409)
@@ -288,7 +165,7 @@ describe("POST /v1/applications/verify-email (integration)", () => {
   test("rejects an unknown token", async () => {
     const response = await app.inject({
       method: "POST",
-      url: "/v1/applications/verify-email",
+      url: "/newuser/verify-email",
       payload: { token: "A".repeat(43) },
     })
     expect(response.statusCode).toBe(400)
@@ -310,10 +187,236 @@ describe("POST /v1/applications/verify-email (integration)", () => {
 
     const response = await app.inject({
       method: "POST",
-      url: "/v1/applications/verify-email",
+      url: "/newuser/verify-email",
       payload: { token: expiredToken.token },
     })
     expect(response.statusCode).toBe(410)
     expect(response.json<SubmitEnvelope>().error?.code).toBe("TOKEN_EXPIRED")
+  })
+})
+
+
+/**
+ * POST /newuser — the door the externally hosted marketing site posts to
+ * (publicly `https://dev-app.beonedge.in/api/newuser`).
+ *
+ * The value of these tests is proving the adapter still writes the full
+ * onboarding row set — application, consents, verification token, queued email,
+ * outbox event, audit event — while asking the caller for far less: one flat
+ * body, no Idempotency-Key header, no consent version strings.
+ */
+describe("POST /newuser (integration)", () => {
+  const newUserBody = (email: string, phone: string) => ({
+    fullName: "Grace Hopper",
+    email,
+    phone,
+    acceptedConsents: true as const,
+  })
+
+  test("creates the full onboarding row set with no header and no consent versions", async () => {
+    const email = "newuser1@example.com"
+    const response = await app.inject({
+      method: "POST",
+      url: "/newuser",
+      headers: signupHeaders,
+      payload: newUserBody(email, "+14155552001"),
+    })
+
+    expect(response.statusCode).toBe(202)
+    expect(response.json<SubmitEnvelope>().data).toEqual({ accepted: true })
+
+    const row = (
+      await pool.query<{ id: string; state: string }>(
+        "select id, state from applications where email_normalized = $1",
+        [email],
+      )
+    ).rows[0]
+    expect(row?.state).toBe("pending_email_verification")
+    const id = row?.id
+
+    // Consent versions were resolved server-side, so both documents must still
+    // be recorded against the application exactly as the versioned route does.
+    expect(
+      await countWhere("select count(*)::int as c from application_consents where application_id = $1", [id]),
+    ).toBe(2)
+    expect(
+      await countWhere("select count(*)::int as c from verification_tokens where application_id = $1", [id]),
+    ).toBe(1)
+    expect(
+      await countWhere(
+        "select count(*)::int as c from email_deliveries where application_id = $1 and template_key = 'verify_email' and state = 'queued'",
+        [id],
+      ),
+    ).toBe(1)
+    expect(await countWhere("select count(*)::int as c from outbox_events where aggregate_id = $1", [id])).toBe(1)
+  })
+
+  test("records the consent versions currently in force", async () => {
+    const email = "newuser-consent@example.com"
+    await app.inject({ method: "POST", url: "/newuser", headers: signupHeaders, payload: newUserBody(email, "+14155552002") })
+
+    const versions = await pool.query<{ kind: string; version: string }>(
+      "select d.kind, d.version from application_consents c " +
+        "join applications a on a.id = c.application_id " +
+        "join consent_documents d on d.id = c.consent_document_id " +
+        "where a.email_normalized = $1 order by d.kind",
+      [email],
+    )
+    const seeded = new Map(SEED_CONSENT_DOCUMENTS.map((document) => [document.kind, document.version]))
+    expect(versions.rows).toHaveLength(2)
+    for (const row of versions.rows) {
+      expect(row.version).toBe(seeded.get(row.kind as "terms" | "privacy"))
+    }
+  })
+
+  test("collapses a repeated identical submission without a caller-supplied key", async () => {
+    // A double-tapped button or a retry after a timed-out response must not
+    // produce two applications; the derived key makes that safe.
+    const email = "newuser-dup@example.com"
+    const payload = newUserBody(email, "+14155552003")
+
+    const first = await app.inject({ method: "POST", url: "/newuser", headers: signupHeaders, payload })
+    const second = await app.inject({ method: "POST", url: "/newuser", headers: signupHeaders, payload })
+
+    expect(first.statusCode).toBe(202)
+    expect(second.statusCode).toBe(202)
+    expect(second.json<SubmitEnvelope>().meta.idempotencyReplay).toBe(true)
+    expect(
+      await countWhere("select count(*)::int as c from applications where email_normalized = $1", [email]),
+    ).toBe(1)
+  })
+
+  test("honours a caller-supplied idempotency key", async () => {
+    const payload = { ...newUserBody("newuser-key@example.com", "+14155552004"), idempotencyKey: "aws-lead-00000042" }
+
+    const first = await app.inject({ method: "POST", url: "/newuser", headers: signupHeaders, payload })
+    const second = await app.inject({ method: "POST", url: "/newuser", headers: signupHeaders, payload })
+
+    expect(first.statusCode).toBe(202)
+    expect(second.json<SubmitEnvelope>().meta.idempotencyReplay).toBe(true)
+  })
+
+  test("normalises the phone number and rejects one that is not E.164", async () => {
+    const spaced = await app.inject({
+      method: "POST",
+      url: "/newuser",
+      headers: signupHeaders,
+      payload: newUserBody("newuser-phone@example.com", "+1 (415) 555-2005"),
+    })
+    expect(spaced.statusCode).toBe(202)
+    expect(
+      await countWhere("select count(*)::int as c from applications where phone_e164 = $1", ["+14155552005"]),
+    ).toBe(1)
+
+    const local = await app.inject({
+      method: "POST",
+      url: "/newuser",
+      headers: signupHeaders,
+      payload: newUserBody("newuser-bad-phone@example.com", "4155552006"),
+    })
+    expect(local.statusCode).toBe(400)
+    expect(local.json()).toMatchObject({ ok: false, error: { code: "VALIDATION_FAILED" } })
+  })
+
+  test("refuses a submission that did not accept the consents", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/newuser",
+      headers: signupHeaders,
+      payload: { ...newUserBody("newuser-noconsent@example.com", "+14155552007"), acceptedConsents: false },
+    })
+    expect(response.statusCode).toBe(400)
+    expect(
+      await countWhere("select count(*)::int as c from applications where email_normalized = $1", [
+        "newuser-noconsent@example.com",
+      ]),
+    ).toBe(0)
+  })
+
+  test("rejects an unknown field rather than silently dropping it", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/newuser",
+      headers: signupHeaders,
+      payload: { ...newUserBody("newuser-strict@example.com", "+14155552008"), utmSource: "google" },
+    })
+    expect(response.statusCode).toBe(400)
+  })
+})
+
+/**
+ * The caller gate. `/newuser` accepts entirely attacker-chosen input and queues
+ * an email for every accepted call, so only the marketing site may reach it —
+ * proven by the `x-signup-key` shared secret, not by an Origin header a
+ * non-browser client could set to anything.
+ */
+describe("POST /newuser caller authentication (integration)", () => {
+  const body = (email: string, phone: string) => ({
+    fullName: "Mallory Unknown",
+    email,
+    phone,
+    acceptedConsents: true as const,
+  })
+
+  const assertNoApplication = async (email: string): Promise<void> => {
+    expect(await countWhere("select count(*)::int as c from applications where email_normalized = $1", [email])).toBe(0)
+  }
+
+  test("refuses a caller that presents no key", async () => {
+    const email = "newuser-nokey@example.com"
+    const response = await app.inject({
+      method: "POST",
+      url: "/newuser",
+      payload: body(email, "+14155553001"),
+    })
+    expect(response.statusCode).toBe(401)
+    expect(response.json<SubmitEnvelope>().error?.code).toBe("AUTHENTICATION_REQUIRED")
+    await assertNoApplication(email)
+  })
+
+  test("refuses a caller that presents the wrong key", async () => {
+    const email = "newuser-badkey@example.com"
+    const response = await app.inject({
+      method: "POST",
+      url: "/newuser",
+      headers: { "x-signup-key": `${SIGNUP_SECRET}x` },
+      payload: body(email, "+14155553002"),
+    })
+    expect(response.statusCode).toBe(401)
+    await assertNoApplication(email)
+  })
+
+  test("refuses a key that is a prefix of the real one", async () => {
+    const email = "newuser-prefix@example.com"
+    const response = await app.inject({
+      method: "POST",
+      url: "/newuser",
+      headers: { "x-signup-key": SIGNUP_SECRET.slice(0, -1) },
+      payload: body(email, "+14155553003"),
+    })
+    expect(response.statusCode).toBe(401)
+    await assertNoApplication(email)
+  })
+
+  test("rejects the caller before validating the body, so the contract stays private", async () => {
+    // A malformed body with no key must still answer 401, not 400: an
+    // unauthenticated caller should not be able to probe the schema.
+    const response = await app.inject({
+      method: "POST",
+      url: "/newuser",
+      payload: { nonsense: true },
+    })
+    expect(response.statusCode).toBe(401)
+  })
+
+  test("verify-email is reachable without the key — the token is its credential", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/newuser/verify-email",
+      payload: { token: "A".repeat(43) },
+    })
+    // 400 TOKEN_INVALID, not 401: the route ran and judged the token.
+    expect(response.statusCode).toBe(400)
+    expect(response.json<SubmitEnvelope>().error?.code).toBe("TOKEN_INVALID")
   })
 })

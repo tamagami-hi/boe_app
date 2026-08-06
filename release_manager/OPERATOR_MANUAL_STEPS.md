@@ -140,11 +140,9 @@ All bound to `127.0.0.1` only.
 
 | Stack | Variable | Port | Service |
 | --- | --- | --- | --- |
-| prod | `LANDING_PORT` | 47410 | landing (Next.js) |
 | prod | `APP_FRONTEND_PORT` | 47411 | user SPA |
 | prod | `ADMIN_FRONTEND_PORT` | 47412 | admin SPA |
 | prod | `BACKEND_PORT` | 47413 | backend |
-| dev | `LANDING_PORT` | 47420 | landing |
 | dev | `APP_FRONTEND_PORT` | 47421 | user SPA |
 | dev | `ADMIN_FRONTEND_PORT` | 47422 | admin SPA |
 | dev | `BACKEND_PORT` | 47423 | backend |
@@ -237,8 +235,8 @@ ISP is using CGNAT and inbound forwarding cannot work.
 Verify propagation before requesting certificates:
 
 ```bash
-for h in beonedge.in app.beonedge.in admin.beonedge.in dev-app.beonedge.in \
-         dev-admin.beonedge.in dev.beonedge.in monitor.beonedge.in; do
+for h in app.beonedge.in admin.beonedge.in dev-app.beonedge.in \
+         dev-admin.beonedge.in monitor.beonedge.in; do
   printf '%-26s %s\n' "$h" "$(dig +short "$h" | tr '\n' ' ')"
 done
 ```
@@ -252,7 +250,6 @@ Generated for you in `release_manager/nginx/`. Copy them up, then enable:
 scp release_manager/nginx/*.conf beonedge:/tmp/
 
 # on the VPS
-sudo cp /tmp/beonedge.in.conf        /etc/nginx/sites-available/boe-landing
 sudo cp /tmp/app.beonedge.in.conf    /etc/nginx/sites-available/boe-app
 sudo cp /tmp/admin.beonedge.in.conf  /etc/nginx/sites-available/boe-admin
 sudo cp /tmp/dev-app.beonedge.in.conf   /etc/nginx/sites-available/boe-dev-app
@@ -260,7 +257,7 @@ sudo cp /tmp/dev-admin.beonedge.in.conf /etc/nginx/sites-available/boe-dev-admin
 sudo cp /tmp/monitor.beonedge.in.conf   /etc/nginx/sites-available/boe-monitor
 sudo cp /tmp/boe-shared.conf            /etc/nginx/conf.d/boe-shared.conf
 
-for s in boe-landing boe-app boe-admin boe-dev-app boe-dev-admin boe-monitor; do
+for s in boe-app boe-admin boe-dev-app boe-dev-admin boe-monitor; do
   sudo ln -sfn /etc/nginx/sites-available/$s /etc/nginx/sites-enabled/$s
 done
 
@@ -282,10 +279,9 @@ There is currently **no** `/etc/letsencrypt` and nothing listening on `:443`.
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
 
-sudo certbot --nginx -d beonedge.in -d www.beonedge.in
 sudo certbot --nginx -d app.beonedge.in
 sudo certbot --nginx -d admin.beonedge.in
-sudo certbot --nginx -d dev.beonedge.in -d dev-app.beonedge.in -d dev-admin.beonedge.in
+sudo certbot --nginx -d dev-app.beonedge.in -d dev-admin.beonedge.in
 sudo certbot --nginx -d monitor.beonedge.in
 ```
 

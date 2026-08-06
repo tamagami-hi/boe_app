@@ -128,7 +128,6 @@ resolve_stack() {
 #
 # Verified against the real source tree:
 #   backend  → backend_controller/Dockerfile,               listens 47502
-#   landing  → frontend_stack/packages/landing_page/,       listens 3100
 #   app      → frontend_stack/app/ (VITE_BEO_APP_TARGET=client), nginx :8080
 #   admin    → frontend_stack/app/ (VITE_BEO_APP_TARGET=admin),  nginx :8080
 #
@@ -139,7 +138,6 @@ stack_images() {
     case "$1" in
         dev_release|prod_release)
             printf 'backend:backend.tar.gz:47502\n'
-            printf 'landing:landing.tar.gz:3100\n'
             printf 'app:app.tar.gz:8080\n'
             printf 'admin:admin.tar.gz:8080\n'
             ;;

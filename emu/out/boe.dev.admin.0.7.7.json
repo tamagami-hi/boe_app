@@ -1,0 +1,18 @@
+{
+  "apk": "boe.dev.admin.0.7.7.apk",
+  "target": "dev",
+  "variant": "admin",
+  "version": "0.7.7",
+  "buildLabel": "0.7.7",
+  "apiBaseUrl": "https://dev-app.beonedge.in/api",
+  "onboardingUrl": "https://dev.beonedge.in/signup",
+  "applicationId": "com.beonedge.app.dev.admin",
+  "versionName": "0.7.7",
+  "versionCode": 707,
+  "gitCommit": "79b1f20",
+  "gitDirty": false,
+  "builtAt": "2026-08-05T15:16:24Z",
+  "signing": "release",
+  "sha256": "66bba39060e471334bf9c2995b2944fcfdddf27688c645fb3ffe66773ddea5c9",
+  "sizeBytes": 2578508
+}

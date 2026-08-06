@@ -721,44 +721,6 @@ export interface MarketingLeadsTable {
   version: BigIntStringDefault
 }
 
-export interface CoursesTable {
-  id: Generated<string>
-  slug: string
-  version: number
-  title: string
-  summary: string
-  price_paise: BigIntStringDefault
-  currency: Generated<string>
-  duration_minutes: Nullable<number>
-  /** Migration 020: presentation attributes (level, format, outcome, sortOrder). */
-  payload: JsonDefault
-  state: Generated<string>
-  published_by_user_id: Nullable<string>
-  published_at: NullableTimestamp
-  archived_at: NullableTimestamp
-  created_at: TimestampDefault
-  updated_at: TimestampDefault
-}
-
-export interface MembershipPlansTable {
-  id: Generated<string>
-  code: string
-  version: number
-  name: string
-  description: string
-  price_paise: BigIntStringDefault
-  currency: Generated<string>
-  billing_period_months: number
-  /** Migration 020: presentation attributes (cadence, features, ctaLabel, featured, sortOrder). */
-  payload: JsonDefault
-  state: Generated<string>
-  published_by_user_id: Nullable<string>
-  published_at: NullableTimestamp
-  archived_at: NullableTimestamp
-  created_at: TimestampDefault
-  updated_at: TimestampDefault
-}
-
 export interface AppConfigVersionsTable {
   id: Generated<string>
   version: number
@@ -1108,8 +1070,6 @@ export interface Database {
   fund_aum_snapshots: FundAumSnapshotsTable
   finance_policy_versions: FinancePolicyVersionsTable
   marketing_leads: MarketingLeadsTable
-  courses: CoursesTable
-  membership_plans: MembershipPlansTable
   app_config_versions: AppConfigVersionsTable
   content_items: ContentItemsTable
   mandates: MandatesTable

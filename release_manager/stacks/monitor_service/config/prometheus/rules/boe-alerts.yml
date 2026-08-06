@@ -32,14 +32,6 @@ groups:
           summary: "Production backend readiness failing"
           description: "/health/ready is not returning 200. The database dependency is the usual cause."
 
-      - alert: LandingSiteDown
-        expr: probe_success{instance="https://beonedge.in"} == 0
-        for: 5m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Public landing site unreachable"
-
       - alert: DevelopmentEndpointDown
         expr: probe_success{instance=~"https://dev-(app|admin)\\.beonedge\\.in"} == 0
         for: 15m

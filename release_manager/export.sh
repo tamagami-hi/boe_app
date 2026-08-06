@@ -159,16 +159,14 @@ trap cleanup_incomplete_bundle EXIT
 # Frontend API origins are baked in at BUILD time (Vite/Next), so dev and prod
 # genuinely need separate builds — this cannot be deferred to a runtime env var.
 build_images() {
-    local api_base landing_origin
+    local api_base
 
     case "$STACK" in
         prod_release)
             api_base="${PROD_API_BASE:-https://app.beonedge.in/api}"
-            landing_origin="${PROD_LANDING_ORIGIN:-https://beonedge.in}"
             ;;
         dev_release)
             api_base="${DEV_API_BASE:-https://dev-app.beonedge.in/api}"
-            landing_origin="${DEV_LANDING_ORIGIN:-https://dev.beonedge.in}"
             ;;
     esac
 
@@ -179,7 +177,7 @@ build_images() {
     # VITE_BEO_APP_TARGET. Docker silently ignores a --build-arg the Dockerfile
     # does not declare, so without this ARG both images build identically and the
     # "user" frontend would serve the admin UI. Checked first because the backend
-    # and landing builds take minutes.
+    # and admin builds take minutes.
     local app_dockerfile="$ROOT_DIR/frontend_stack/app/Dockerfile"
     [[ -f "$app_dockerfile" ]] || { err "missing $app_dockerfile"; exit 1; }
     if ! grep -q 'ARG[[:space:]]\+VITE_BEO_APP_TARGET' "$app_dockerfile"; then
@@ -197,22 +195,13 @@ build_images() {
     fi
     ok "Dockerfile declares ARG VITE_BEO_APP_TARGET"
 
-    local backend_tag landing_tag app_tag admin_tag
+    local backend_tag app_tag admin_tag
     backend_tag="$(stack_image_tag "$STACK" backend "$VERSION")"
-    landing_tag="$(stack_image_tag "$STACK" landing "$VERSION")"
     app_tag="$(stack_image_tag "$STACK" app "$VERSION")"
     admin_tag="$(stack_image_tag "$STACK" admin "$VERSION")"
 
     step "backend → $backend_tag"
     docker build -t "$backend_tag" "$ROOT_DIR/backend_controller"
-
-    step "landing → $landing_tag"
-    # The landing image talks to the backend over the internal docker network,
-    # so it is given the service name, not a public URL.
-    docker build \
-        --build-arg "BEO_API_BASE=http://backend:47502" \
-        -t "$landing_tag" \
-        "$ROOT_DIR/frontend_stack/packages/landing_page"
 
     step "user SPA → $app_tag"
     docker build \
@@ -232,21 +221,8 @@ build_images() {
         -t "$admin_tag" \
         "$ROOT_DIR/frontend_stack"
 
-    ok "all four images built"
+    ok "all three images built"
 }
-
-audit_landing_runtime_dependencies() {
-    command -v npm >/dev/null || { err "npm is required for the landing production audit"; exit 1; }
-    section "LANDING PRODUCTION DEPENDENCY AUDIT"
-    npm --prefix "$ROOT_DIR/frontend_stack/packages/landing_page" run audit:production
-    ok "landing production dependencies have no audit findings"
-}
-
-if [[ "$STACK" != "monitor_service" ]]; then
-    # This deliberately runs even with --skip-build so a reused local image
-    # cannot bypass the current runtime advisory gate.
-    audit_landing_runtime_dependencies
-fi
 
 if [[ "$STACK" == "monitor_service" ]]; then
     section "BUILD IMAGES" "monitoring stack uses pinned upstream images — nothing to build"
@@ -260,13 +236,8 @@ fi
 # security profile. This also gates --skip-build, where an old local image could
 # otherwise be repackaged even though the source contract has changed.
 assert_frontend_runtime_images() {
-    local key tag landing_tag
+    local key tag
     section "FRONTEND RUNTIME ACCEPTANCE"
-    landing_tag="$(stack_image_tag "$STACK" landing "$VERSION")"
-    docker image inspect "$landing_tag" >/dev/null 2>&1 \
-        || { err "image not present: $landing_tag (drop --skip-build?)"; exit 1; }
-    step "landing → non-root read-only runtime"
-    BOE_LANDING_RUNTIME_IMAGE="$landing_tag" bash "$RM_DIR/tests/runtime_contract.test.sh"
 
     for key in app admin; do
         tag="$(stack_image_tag "$STACK" "$key" "$VERSION")"
