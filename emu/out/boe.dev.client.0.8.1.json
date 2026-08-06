@@ -1,0 +1,18 @@
+{
+  "apk": "boe.dev.client.0.8.1.apk",
+  "target": "dev",
+  "variant": "client",
+  "version": "0.8.1",
+  "buildLabel": "0.8.1",
+  "apiBaseUrl": "https://dev-app.beonedge.in/api",
+  "onboardingUrl": "https://beonedge.in/signup",
+  "applicationId": "com.beonedge.app.dev",
+  "versionName": "0.8.1",
+  "versionCode": 801,
+  "gitCommit": "8531f20",
+  "gitDirty": false,
+  "builtAt": "2026-08-06T13:10:27Z",
+  "signing": "release",
+  "sha256": "a71f993ec05a1066a274c2460f676000617c013d1e455c03f5dbb610f275f387",
+  "sizeBytes": 2434429
+}

@@ -121,25 +121,36 @@
   background: #ff0000;
 }
 
-/* Smaller than the 40px wordmark above it: this qualifies the brand, it is not a
- * brand of its own. Tracked and uppercased so it reads as a label at that size
- * rather than looking like shrunken body text. */
+/* The brand row stays as the client has it — mark on the left, wordmark on the
+ * right. This wraps only the text side so ADMIN can sit beneath "BeOnEdge"
+ * without the logo joining that column. align-items: flex-end is what pulls the
+ * qualifier flush with the wordmark's right edge. */
+.apk-admin-wordmark {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--be-space-1, 4px);
+}
+
+/* Much smaller than the 40px wordmark above it, and tracked so it still reads as
+ * a deliberate label at that size rather than shrunken body text. */
 .apk-splash-role {
   display: block;
-  margin-top: var(--be-space-2, 8px);
   font-family: var(--be-font-serif);
-  font-size: 22px;
+  font-size: 15px;
   font-weight: 600;
-  letter-spacing: 0.22em;
-  /* The tracking is applied to the right of the last glyph too, which visually
-     pulls the word off-centre; this compensates. */
-  text-indent: 0.22em;
   line-height: 1;
+  letter-spacing: 0.3em;
   text-transform: uppercase;
   white-space: nowrap;
+  /* Letter-spacing is applied after the final glyph too. Without this the word
+     would sit that much left of the wordmark's edge and the alignment above
+     would look accidental rather than intended. */
+  margin-right: -0.3em;
   color: var(--be-bone);
-  opacity: 0.92;
-  animation: apk-splash-name-in 720ms var(--be-ease-out) 680ms both;
+  opacity: 0.9;
+  /* Follows the wordmark's reveal, so the block resolves top-down. */
+  animation: apk-splash-name-in 720ms var(--be-ease-out) 760ms both;
 }
 
 @media (prefers-reduced-motion: reduce) {

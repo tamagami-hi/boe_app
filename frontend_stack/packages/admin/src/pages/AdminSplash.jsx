@@ -43,13 +43,15 @@ export default function AdminSplash() {
   return (
     <div className="apk-splash is-admin" role="status" aria-live="polite">
       <div className="apk-splash-brand">
-        <img className="apk-logo-img apk-splash-logo" src={logoOnRed} alt="BeOnEdge" />
-        <span className="apk-splash-name-mask">
-          <span className="apk-splash-name">BeOnEdge</span>
-        </span>
-        <span className="apk-splash-name-mask">
-          {/* Second line, smaller than the wordmark: this is a qualifier on the
-              brand, not a brand of its own. */}
+        {/* Decorative: "BeOnEdge" is stated as text beside it, so announcing the
+            mark again would just repeat it to a screen reader. */}
+        <img className="apk-logo-img apk-splash-logo" src={logoOnRed} alt="" aria-hidden="true" />
+        <span className="apk-admin-wordmark">
+          <span className="apk-splash-name-mask">
+            <span className="apk-splash-name">BeOnEdge</span>
+          </span>
+          {/* Sits under the wordmark and flush with its right edge — a small
+              qualifier on the brand, not a second brand. */}
           <span className="apk-splash-role">ADMIN</span>
         </span>
       </div>
