@@ -79,13 +79,13 @@ export default function FaqsPage() {
                     }
                   }}
                 >
-                  <td>
+                  <td data-label="Question">
                     <div className="ash-cell-main">{faq.question}</div>
                     <div className="ash-cell-sub">{String(faq.answer || '').slice(0, 90)}</div>
                   </td>
-                  <td>{faq.category}</td>
-                  <td className="ash-cell-num">{faq.order ?? 0}</td>
-                  <td><StatusBadge status={faq.status} /></td>
+                  <td data-label="Category">{faq.category}</td>
+                  <td data-label="Order" className="ash-cell-num">{faq.order ?? 0}</td>
+                  <td data-label="Status"><StatusBadge status={faq.status} /></td>
                 </tr>
               ))}
             </tbody>

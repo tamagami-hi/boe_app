@@ -72,6 +72,7 @@ action_apk() { record_action action_apk "$@"; }
 action_validate_contracts() { record_action action_validate_contracts "$@"; }
 action_deploy() { record_action action_deploy "$@"; }
 action_rollback() { record_action action_rollback "$@"; }
+action_reload() { record_action action_reload "$@"; }
 action_logs() { record_action action_logs "$@"; }
 action_containers() { record_action action_containers "$@"; }
 action_diagnose() { record_action action_diagnose "$@"; }
@@ -108,11 +109,14 @@ assert_route menu_exports 4 'action_validate_contracts'
 assert_route menu_ship_deploy 1 'action_deploy deploy'
 assert_route menu_ship_deploy 2 'action_deploy ship-only'
 assert_route menu_ship_deploy 3 'action_deploy force'
-assert_route menu_ship_deploy 4 'action_rollback'
-assert_route menu_ship_deploy 5 'action_logs'
-assert_route menu_ship_deploy 6 'action_containers'
-assert_route menu_ship_deploy 7 'action_diagnose'
-assert_route menu_ship_deploy 8 'action_operator_guide'
+# 4 is "Reload deployed stack", added after this test was written; rollback and
+# everything below it shifted down by one when it was inserted.
+assert_route menu_ship_deploy 4 'action_reload'
+assert_route menu_ship_deploy 5 'action_rollback'
+assert_route menu_ship_deploy 6 'action_logs'
+assert_route menu_ship_deploy 7 'action_containers'
+assert_route menu_ship_deploy 8 'action_diagnose'
+assert_route menu_ship_deploy 9 'action_operator_guide'
 
 for menu_function in menu_git menu_exports menu_ship_deploy; do
     assert_no_route "$menu_function" x

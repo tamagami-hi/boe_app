@@ -1,0 +1,3 @@
+# Run artefacts: the signup manifest holds the generated identities for one run,
+# which are throwaway and would only cause confusion if committed.
+.out/

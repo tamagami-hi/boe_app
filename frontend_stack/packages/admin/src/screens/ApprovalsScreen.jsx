@@ -31,9 +31,8 @@ import EmptyTableRow from '../components/EmptyTableRow.jsx';
 import ApprovalStatusBadge from '../components/ApprovalStatusBadge.jsx';
 import SkeletonTile from '../components/SkeletonTile.jsx';
 import SkeletonTableRow from '../components/SkeletonTableRow.jsx';
-import { fmtInt } from '../helpers/formatters.js';
+import { fmtDateTime, fmtInt } from '../helpers/formatters.js';
 import { initials } from '../helpers/formatters.js';
-import { displayRole } from '../helpers/formatters.js';
 
 function ApprovalsScreen({ rows = [], stats = {}, loading = false, onReview, onApprove, onUserDetail, onNavigateToUsers, busy = false }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,6 +47,14 @@ function ApprovalsScreen({ rows = [], stats = {}, loading = false, onReview, onA
 
   const visibleRows = filteredRows;
 
+  // An application can only be decided once its email is confirmed: the decision
+  // endpoint rejects a null email_verified_at with a 409. Offering Approve on
+  // those rows would produce a conflict toast and no explanation, so the action
+  // is withheld and the reason stated instead.
+  const awaitingEmail = (row) =>
+    String(row.status || '').toLowerCase() === 'pending_email_verification' || !row.emailVerifiedAt;
+  const awaitingEmailCount = rows.filter(awaitingEmail).length;
+
   return (
     <div className="adm-screen">
       <div className="adm-stats">
@@ -60,10 +67,10 @@ function ApprovalsScreen({ rows = [], stats = {}, loading = false, onReview, onA
           </>
         ) : (
           <>
-            <StatTile label="Pending approvals" value={fmtInt(stats.pendingApprovals)} icon={Clock} tone="amber" delta="+2 this week" deltaTone="adm-tone-amber" />
-            <StatTile label="Approved clients" value={fmtInt(stats.approvedThisWeek)} icon={CheckCircle2} tone="green" delta="+5 this week" deltaTone="adm-tone-green" />
-            <StatTile label="Rejected clients" value={fmtInt(stats.rejectedThisWeek)} icon={XCircle} tone="red" delta="-1 this week" deltaTone="adm-tone-red" />
-            <StatTile label="Avg. review time" value={stats.avgReviewTime || '0h'} icon={Timer} tone="slate" hint="Per approval" />
+            <StatTile label="Ready for review" value={fmtInt(stats.pendingApprovals)} icon={Clock} tone="amber" hint="Email confirmed, awaiting your decision" />
+            <StatTile label="Email not confirmed" value={fmtInt(awaitingEmailCount)} icon={Mail} tone="slate" hint="Applicant has not opened the link yet" />
+            <StatTile label="Approved clients" value={fmtInt(stats.approvedTotal)} icon={CheckCircle2} tone="green" hint="Total approved" />
+            <StatTile label="Rejected" value={fmtInt(stats.rejectedTotal)} icon={XCircle} tone="red" hint="Total rejected" />
           </>
         )}
       </div>
@@ -94,44 +101,43 @@ function ApprovalsScreen({ rows = [], stats = {}, loading = false, onReview, onA
             <I icon={Filter} size={14} />
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Filter by status">
               <option value="all">All pending</option>
-              <option value="pending_review">Pending review</option>
-              <option value="draft">Draft</option>
-              <option value="kyc_pending">KYC pending</option>
+              <option value="submitted">Ready for review</option>
+              <option value="in_review">In review</option>
+              <option value="pending_email_verification">Email not confirmed</option>
             </select>
           </div>
         </div>
 
         <div className="adm-table-scroll">
-          <table>
+          <table className="adm-table-cards">
             <thead>
               <tr>
                 <th className="adm-col-user">User</th>
                 <th className="adm-col-date">Signed up</th>
                 <th className="adm-col-status">Status</th>
-                <th className="adm-col-role">Role</th>
                 <th className="adm-col-actions"></th>
               </tr>
             </thead>
             <tbody>
               {loading && visibleRows.length === 0 && (
                 <>
-                  <SkeletonTableRow columnCount={5} />
-                  <SkeletonTableRow columnCount={5} />
-                  <SkeletonTableRow columnCount={5} />
-                  <SkeletonTableRow columnCount={5} />
-                  <SkeletonTableRow columnCount={5} />
+                  <SkeletonTableRow columnCount={4} />
+                  <SkeletonTableRow columnCount={4} />
+                  <SkeletonTableRow columnCount={4} />
+                  <SkeletonTableRow columnCount={4} />
+                  <SkeletonTableRow columnCount={4} />
                 </>
               )}
               {!loading && visibleRows.length === 0 && (
-                <EmptyTableRow colSpan={5}>
+                <EmptyTableRow colSpan={4}>
                   {rows.length === 0
-                    ? "No pending approvals. Great job!"
-                    : "No records match the current filter."}
+                    ? 'No signups are waiting. A new application appears here as soon as it is submitted on the website, even before the applicant confirms their email.'
+                    : 'No records match the current filter.'}
                 </EmptyTableRow>
               )}
               {visibleRows.map((r) => (
                 <tr key={r.id || r.email}>
-                  <td className="adm-col-user">
+                  <td className="adm-col-user" data-label="User">
                     <div className="adm-user">
                       <div className="adm-avatar adm-avatar-sm">{initials(r.name, 'CL')}</div>
                       <div className="adm-user-info">
@@ -140,17 +146,22 @@ function ApprovalsScreen({ rows = [], stats = {}, loading = false, onReview, onA
                       </div>
                     </div>
                   </td>
-                  <td className="adm-col-date">
-                    <span className="adm-cell-meta">{r.createdAt || 'Not recorded'}</span>
+                  <td className="adm-col-date" data-label="Signed up">
+                    <span className="adm-cell-meta">{fmtDateTime(r.createdAt)}</span>
                   </td>
-                  <td className="adm-col-status">
+                  <td className="adm-col-status" data-label="Status">
                     <ApprovalStatusBadge status={r.status} />
                   </td>
-                  <td className="adm-col-role">{displayRole(r)}</td>
-                  <td className="adm-col-actions">
+                  <td className="adm-col-actions" data-label="">
                     <button className="be-btn be-btn-secondary be-btn-sm" onClick={() => onReview?.(r)}>Review</button>
                     <button className="be-btn be-btn-ghost be-btn-sm" onClick={() => onUserDetail?.(r)}>View</button>
-                    <button className="be-btn be-btn-primary be-btn-sm" onClick={() => onApprove?.(r)} disabled={busy}>Approve</button>
+                    {awaitingEmail(r) ? (
+                      <span className="adm-cell-meta" title="The applicant has not opened the confirmation link in their email yet. Approval unlocks once they do.">
+                        Waiting on applicant
+                      </span>
+                    ) : (
+                      <button className="be-btn be-btn-primary be-btn-sm" onClick={() => onApprove?.(r)} disabled={busy}>Approve</button>
+                    )}
                   </td>
                 </tr>
               ))}

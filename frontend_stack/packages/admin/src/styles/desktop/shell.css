@@ -715,23 +715,128 @@
 /* -------------------------------------------------- responsive */
 
 @media (max-width: 768px) {
+  /* minmax(0, ...) rather than a bare 1fr: 1fr resolves to
+     minmax(auto, 1fr), and an auto minimum is the track's max-content size.
+     The nav below is a 1488px horizontal scroller, so with a bare 1fr the
+     column would size itself to the nav's uncompressed width and the whole
+     console would spill to 1512px. The explicit 0 floor is what lets the
+     scroller be narrower than its contents. */
   .ash-app,
-  .ash-app.is-nav-collapsed { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .ash-app.is-nav-collapsed { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+
+  /* Two rows, not one long scroller.
+     The sidebar holds three things: brand (76px), the signed-in chip (126px)
+     and the nav (1488px across 14 items). With all three in a single
+     horizontal scroller the first 202px of a 360px viewport went to identity,
+     so roughly one and a half nav items were visible at rest and the rest of
+     the console was discoverable only by guessing there was more to the right.
+     Wrapping puts identity on row 1 and gives the nav the full width on row 2,
+     where its own scroller starts at the first item. */
+  /* Identity stays pinned at the top; navigation is pinned at the bottom.
+     The sidebar row keeps only the brand and the signed-in chip. The nav itself
+     is taken out of this flow entirely (see .ash-nav below), so this no longer
+     needs to wrap.
+
+     Sticky rather than fixed: it is a grid row, so sticky keeps it in the layout
+     and the page below it starts in the right place, with no need to offset the
+     content by the bar's height. It carries the ink background already, so
+     content scrolling underneath is covered. */
   .ash-side {
-    position: static;
+    position: sticky;
+    top: 0;
+    /* Same band as the bottom nav: above the page and the sticky topbar
+       (--be-z-topbar: 10), below the drawer overlay (30) and drawer (40). */
+    z-index: 20;
     height: auto;
     min-height: 0;
+    min-width: 0;
     flex-direction: row;
+    flex-wrap: nowrap;
     align-items: center;
     gap: var(--be-space-3);
-    overflow-x: auto;
+    overflow: visible;
     padding: var(--be-space-2) var(--be-space-3);
   }
   .ash-brand { border-bottom: none; margin: 0; padding: 0 var(--be-space-2) 0 0; flex-shrink: 0; }
-  .ash-nav { flex-direction: row; align-items: center; gap: var(--be-space-1); }
-  .ash-nav-group { margin-bottom: 0; display: flex; align-items: center; }
+
+  /* Fixed bottom navigation, matching the client app's tab bar.
+     Reaching navigation meant scrolling back to the top of a long operational
+     page; anchored to the bottom it is always one thumb-reach away, and it sits
+     where a phone user already expects primary navigation to be.
+
+     Still a horizontal scroller rather than the client's 5-column grid: the
+     console has 14 destinations, which cannot be divided into fixed columns
+     without becoming unreadable.
+
+     z-index is a literal because the semantic scale has no step here. It must
+     sit above the page and the sticky topbar (--be-z-topbar: 10) but below the
+     drawer overlay (--be-z-overlay: 30) and the drawer itself (40), or the bar
+     would float on top of an open review panel. The client's --be-z-sticky (200)
+     would do exactly that, which is why it is not reused. */
+  .ash-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--be-space-1);
+    min-height: var(--be-bottomnav-h);
+    box-sizing: border-box;
+    background: var(--be-ink);
+    border-top: 1px solid color-mix(in srgb, var(--be-ivory) 12%, transparent);
+    padding: var(--be-space-2) var(--be-space-3);
+    padding-bottom: calc(var(--be-space-2) + env(safe-area-inset-bottom, 0px));
+    overflow-x: auto;
+    overflow-y: hidden;
+    /* proximity, not mandatory: a mandatory snap fights the browser's own
+       "scroll the active link into view" on route change. */
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ash-nav::-webkit-scrollbar { display: none; }
+  /* Without this the groups compress instead of overflowing, and every label
+     truncates rather than scrolling. */
+  .ash-nav-group { margin-bottom: 0; display: flex; align-items: center; flex: 0 0 auto; }
   .ash-nav-group-toggle { display: none; }
-  .ash-nav-item { white-space: nowrap; padding: var(--be-space-1) var(--be-space-2); }
+
+  /* Touch targets. Android asks for 48dp and iOS for 44pt; 40px is a
+     deliberate compromise that clears the "too small to hit" threshold on a
+     dense operational console without turning the nav bar into a third of
+     the screen. Nav items were 28px, header buttons 24px and filter chips
+     23px. */
+  .ash-nav-item {
+    white-space: nowrap;
+    padding: var(--be-space-1) var(--be-space-2);
+    min-height: 40px;
+    scroll-snap-align: start;
+  }
+  /* Active marker on the top edge, the same gold rule the client tab bar uses,
+     so the current destination is findable after the strip has been scrolled. */
+  .ash-nav-item.is-active::after {
+    content: '';
+    position: absolute;
+    top: calc(-1 * var(--be-space-2));
+    left: 50%;
+    transform: translateX(-50%);
+    width: 28px;
+    height: 2px;
+    background: var(--be-gold);
+  }
+
+  .ash-btn { min-height: 40px; }
+  .ash-chip { min-height: 40px; }
+
+  /* Breadcrumb links were 14px tall. Held to 32px rather than 40px because a
+     40px breadcrumb row would push the page title out of the header. */
+  .ash-bread { font-size: var(--be-text-sm); gap: var(--be-space-2); }
+  .ash-bread-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+  }
   .ash-side-foot { display: none; }
   .ash-side-user-mobile {
     display: inline-flex;
@@ -752,9 +857,41 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .ash-page { padding: var(--be-space-4) var(--be-space-4) var(--be-space-10); }
+  /* Clear the fixed bottom nav. Without this the last row of a table, or a
+     primary action at the end of a form, sits underneath the bar and cannot be
+     reached however far the page is scrolled. */
+  .ash-page {
+    padding: var(--be-space-4) var(--be-space-4)
+      calc(var(--be-bottomnav-h) + env(safe-area-inset-bottom, 0px) + var(--be-space-5));
+  }
   .ash-top { padding: var(--be-space-2) var(--be-space-4); position: static; }
+
+  /* .ash-top is a wrapping flex row with space-between. When the breadcrumb and
+     title are wide (three crumbs plus "AUM pools", for instance) the action
+     group wraps onto its own line, and space-between then leaves it stranded
+     against the left edge as though it belonged to the title. An auto left
+     margin keeps it right-aligned whether it wraps or not. */
+  .ash-top-actions { margin-left: auto; }
+
+  /* The drawer is a full-height panel above the bottom nav (z 40 vs 20), so its
+     own footer must clear the device's gesture area rather than the nav bar. */
+  .ash-drawer-foot {
+    padding-bottom: calc(var(--be-space-3) + env(safe-area-inset-bottom, 0px));
+  }
+
   .ash-form-row { grid-template-columns: 1fr; }
+
+  /* .ash-stat/.ash-stat-value are still live even though .ash-stat-grid is not:
+     the grid container is now ContentGrid (.be-content-grid), so the column
+     count for these cards is set in layout/primitives/ContentGrid.css. */
+  .ash-stat { padding: var(--be-space-4); }
+  .ash-stat-value { font-size: var(--be-text-xl); }
+
+  /* 11px is legible as desktop metadata but not at arm's length on a phone.
+     Only the nodes that carry real content are raised; decorative tags such as
+     .ash-brand-tag stay small on purpose. */
+  .ash-card-sub,
+  .ash-cell-sub { font-size: var(--be-text-sm); }
 
   /* Card view for ash tables on small screens */
   .ash-table-wrap { overflow-x: visible; }
@@ -782,7 +919,14 @@
     padding: var(--be-space-2) 0;
     border-bottom: 1px solid color-mix(in srgb, var(--be-slate) 6%, transparent);
     text-align: left !important;
+    /* A primary cell carries a title and a secondary line. Laid out on one
+       row by the rule above, the subtitle ends up beside its own title,
+       splitting the cell in half and squeezing both. Wrapping lets the
+       label and title share the first line and gives the subtitle a full
+       width line of its own. */
+    flex-wrap: wrap;
   }
+  .ash-table tbody td .ash-cell-sub { flex-basis: 100%; }
   .ash-table tbody td:last-child { border-bottom: none; }
   .ash-table tbody td::before {
     content: attr(data-label);

@@ -2,8 +2,12 @@
 /* Responsive — single consolidated section. Canonical breakpoints only:      */
 /*   1100px  sidebar-collapse / tablet                                        */
 /*    768px  mobile                                                           */
-/* Auto-fit grids (.adm-stats, .adm-fund-stats, metric/allocation grids) need */
-/* no overrides here — they reflow on their own.                              */
+/* Auto-fit grids (.adm-stats, .adm-fund-stats) do NOT take care of themselves */
+/* at phone widths: their minmax floor is --be-col-min-stat, which bottoms out */
+/* at 180px, and two 180px tracks do not fit in the ~328px a 360px screen      */
+/* leaves after page padding. They therefore collapse to one column and turn   */
+/* four KPI cards into ~550px of scrolling, so the mobile block below pins     */
+/* them to two columns explicitly.                                            */
 /* ========================================================================== */
 
 @media (max-width: 1100px) {
@@ -69,9 +73,21 @@
   .adm-screen {
     padding: var(--be-space-4);
     gap: var(--be-space-4);
+    /* Clear the fixed bottom nav (shell.css). The legacy operational screens
+       render inside .adm-screen rather than .ash-page, so they need the same
+       bottom clearance or their last row sits under the bar. */
+    padding-bottom: calc(var(--be-bottomnav-h) + env(safe-area-inset-bottom, 0px) + var(--be-space-5));
   }
   .adm-stat { padding: var(--be-space-4); }
   .adm-stat-value { font-size: var(--be-text-xl); }
+
+  /* See the note at the top of this file: these two are auto-fit grids whose
+     180px floor makes them fall to a single column on a phone. */
+  .adm-stats,
+  .adm-fund-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--be-space-3);
+  }
   .adm-card-head,
   .adm-table .adm-card-head {
     padding-left: var(--be-space-4);
@@ -84,6 +100,48 @@
   .adm-filter {
     width: 100%;
     max-width: none;
+    /* The bordered wrapper is what looks like the control; the input/select
+       inside it is unstyled and was only 17px tall, so most of what reads as a
+       search box was not actually hittable. Stretching the child across the
+       wrapper's cross axis (it inherits align-self: center from the wrapper's
+       align-items) turns the whole control into its own tap target. */
+    min-height: 44px;
+    padding: var(--be-space-1) var(--be-space-3);
+  }
+  .adm-search input,
+  .adm-filter select,
+  .adm-filter input {
+    align-self: stretch;
+    min-width: 0;
+  }
+
+  /* Sortable column headers are bare buttons at 14px. These tables keep their
+     desktop shape inside .adm-table-scroll (they have no data-label attributes,
+     so the card-view treatment used for .ash-table cannot be applied without
+     touching markup), which means the header row is real and needs to be
+     tappable. */
+  .adm-table-scroll thead button,
+  .adm-table thead button { min-height: 32px; }
+
+  /* .adm-fund-tabs is an inline-flex segmented control with overflow: hidden,
+     used to clip its children's corners. At 360px the four tabs need 339px
+     inside a 326px box, so "Redemptions" was clipped and unreachable — hidden
+     overflow cannot be scrolled to. Switching the horizontal axis to auto keeps
+     the corner clipping (overflow-y stays hidden) while making the tail
+     reachable. */
+  .adm-fund-tabs {
+    display: flex;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .adm-fund-tabs::-webkit-scrollbar { display: none; }
+  .adm-fund-tabs button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    min-height: 40px;
   }
   .adm-payment-filters {
     align-items: stretch;
@@ -91,6 +149,71 @@
   }
   .adm-table-scroll { overflow-x: auto; }
   .adm-table table { min-width: 100%; }
+
+  /* Card view for legacy .adm- tables that opt in with .adm-table-cards.
+     A five-column operational table inside a horizontal scroller technically
+     "works" on a phone but hides the columns that matter: on the approvals
+     screen the status badge and the approve action both sat off the right edge,
+     so the operator could not see whether a signup was actionable without
+     discovering a scroll they had no reason to suspect. Opt-in by class rather
+     than applied to every .adm- table, because the rest have no data-label
+     attributes and would render as unlabelled runs of values. */
+  .adm-table-cards,
+  .adm-table-cards thead,
+  .adm-table-cards tbody,
+  .adm-table-cards th,
+  .adm-table-cards td,
+  .adm-table-cards tr { display: block; }
+  /* admin-tables.css sets `.adm-table-scroll table { min-width: max-content }`
+     to make wide tables scroll. A card list must not inherit that or the rows
+     would still force the container wider than the screen. */
+  .adm-table-scroll .adm-table-cards { min-width: 0; width: 100%; }
+  /* Off-screen rather than display:none so the header text stays available to a
+     screen reader while the visual layout becomes a card list. */
+  .adm-table-cards thead { position: absolute; left: -9999px; }
+  .adm-table-cards tbody tr {
+    background: var(--be-bg-elevated);
+    border: var(--be-border-1);
+    border-radius: var(--be-radius-md);
+    box-shadow: var(--be-shadow-1);
+    padding: var(--be-space-3) var(--be-card-pad);
+    margin-bottom: var(--be-space-3);
+  }
+  .adm-table-cards tbody tr:last-child { margin-bottom: 0; }
+  .adm-table-cards tbody td {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--be-space-3);
+    padding: var(--be-space-2) 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--be-slate) 6%, transparent);
+    text-align: left;
+  }
+  .adm-table-cards tbody td:last-child { border-bottom: none; }
+  .adm-table-cards tbody td::before {
+    content: attr(data-label);
+    font: 500 var(--be-text-xs) var(--be-font-sans);
+    color: var(--be-slate);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  /* The identity cell and the action cell each need the full width: one holds an
+     avatar plus two lines of text, the other a row of buttons. */
+  .adm-table-cards tbody td.adm-col-user,
+  .adm-table-cards tbody td.adm-col-actions { display: block; }
+  .adm-table-cards tbody td.adm-col-user::before { display: none; }
+  .adm-table-cards tbody td.adm-col-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--be-space-2);
+    justify-content: flex-start;
+  }
+  .adm-table-cards tbody td.adm-col-actions::before { display: none; }
+  .adm-table-cards tbody td.adm-col-actions .be-btn { flex: 1 1 auto; justify-content: center; min-height: 40px; }
+  /* A colSpan'd empty/skeleton row must not inherit the label treatment. */
+  .adm-table-cards tbody td[colspan]::before { display: none; }
+  .adm-table-cards tbody td[colspan] { display: block; text-align: left; }
   .adm-review-panel { width: 100%; }
   .adm-series-row { grid-template-columns: 1fr; }
 

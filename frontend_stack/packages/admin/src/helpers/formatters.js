@@ -14,6 +14,26 @@ export function displayRole(user) {
   return role ? role.charAt(0).toUpperCase() + role.slice(1).toLowerCase() : 'Admin';
 }
 
+/**
+ * A signup timestamp in a form an operator can read at a glance.
+ *
+ * The approvals table used to print the raw ISO string the API returns
+ * ("2026-08-07T10:05:15.239Z"), which is 24 characters of mostly noise and wraps
+ * onto two lines in a phone-width column. Locale formatting is deliberately
+ * avoided in favour of a fixed short form so the column width is predictable.
+ */
+export function fmtDateTime(value) {
+  if (!value) return 'Not recorded';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = date.toLocaleString('en-GB', { month: 'short' });
+  const time = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  const year = date.getFullYear();
+  const thisYear = new Date().getFullYear();
+  return year === thisYear ? `${day} ${month}, ${time}` : `${day} ${month} ${year}`;
+}
+
 export function collectionKey(path) {
   return String(path || '').split('/').filter(Boolean).pop();
 }

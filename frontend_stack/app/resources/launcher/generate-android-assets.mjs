@@ -31,6 +31,30 @@ const HERE = dirname(new URL(import.meta.url).pathname);
 const FOREGROUND = { mdpi: 108, hdpi: 162, xhdpi: 216, xxhdpi: 324, xxxhdpi: 432 };
 const LEGACY = { mdpi: 48, hdpi: 72, xhdpi: 96, xxhdpi: 144, xxxhdpi: 192 };
 
+// ── How large the mark sits inside the icon ──────────────────────────────────
+// The artwork is a colour field with the B centred in it, and the B is 61.6% of
+// that artwork's height. So the artwork gets scaled DOWN inside a full-bleed
+// field of the same colour, which is what leaves colour around the mark instead
+// of the mark running to the edges.
+//
+// The two ratios differ because the two icon types show different amounts:
+//
+//   Adaptive: Android zooms the 108dp foreground so only the central 72dp is
+//   guaranteed visible — an effective 1.5x crop. A mark drawn at 61.6% of the
+//   full canvas therefore fills ~92% of what the launcher actually shows, which
+//   is the "touches the sides" problem. At 0.60 the mark lands at ~37% of the
+//   canvas, or ~55% of the visible circle.
+//
+//   Legacy: no zoom and no mask, so the whole square is visible, so this stays at
+//   1.5x the adaptive ratio. That puts the mark at ~55% of the icon too, matching
+//   the adaptive result rather than looking like a different logo on older
+//   devices.
+//
+// To retune: B as a share of the visible circle = ratio x 92.4. Keep
+// LEGACY = ADAPTIVE x 1.5 so the two icon types stay visually identical.
+const ADAPTIVE_ARTWORK_RATIO = 0.6;
+const LEGACY_ARTWORK_RATIO = 0.9;
+
 // Exactly the folders and dimensions Capacitor generated, so nothing is added or
 // dropped from the resource set.
 const SPLASH = {
@@ -66,21 +90,15 @@ async function svgAt(path, size) {
     .replace(/height="[\d.]+"/, `height="${size}"`);
 }
 
-/** Square render of the artwork at `size`. */
-async function renderSquare(page, svgPath, size) {
-  await page.setViewportSize({ width: size, height: size });
-  await page.setContent(
-    `<!doctype html><html><body style="margin:0;width:${size}px;height:${size}px;overflow:hidden">` +
-      `<div style="width:${size}px;height:${size}px">${await svgAt(svgPath, size)}</div>` +
-      `</body></html>`,
-    { waitUntil: 'load' },
-  );
-  return page.screenshot({ type: 'png' });
-}
-
-/** Splash: the artwork centred on a full-bleed field of the same colour. */
-async function renderSplash(page, svgPath, bg, width, height) {
-  const art = Math.round(Math.min(width, height) * SPLASH_ARTWORK_RATIO);
+/**
+ * A full-bleed field of `bg` with the artwork scaled to `ratio` of the shorter
+ * side and centred. One helper for icons and splashes alike: because the artwork
+ * carries its own matching background, dropping it onto the same colour leaves an
+ * invisible seam, so the only thing that changes between outputs is how much of
+ * the frame the mark is allowed to occupy.
+ */
+async function renderField(page, svgPath, bg, width, height, ratio) {
+  const art = Math.round(Math.min(width, height) * ratio);
   await page.setViewportSize({ width, height });
   await page.setContent(
     `<!doctype html><html><body style="margin:0;width:${width}px;height:${height}px;overflow:hidden;` +
@@ -99,13 +117,13 @@ for (const [variant, cfg] of Object.entries(VARIANTS)) {
   for (const [density, size] of Object.entries(FOREGROUND)) {
     const out = join(HERE, variant, `mipmap-${density}`, 'ic_launcher_foreground.png');
     await mkdir(dirname(out), { recursive: true });
-    await writeFile(out, await renderSquare(page, cfg.svg, size));
+    await writeFile(out, await renderField(page, cfg.svg, cfg.bg, size, size, ADAPTIVE_ARTWORK_RATIO));
   }
 
   for (const [density, size] of Object.entries(LEGACY)) {
     const dir = join(HERE, variant, `mipmap-${density}`);
     await mkdir(dir, { recursive: true });
-    const square = await renderSquare(page, cfg.svg, size);
+    const square = await renderField(page, cfg.svg, cfg.bg, size, size, LEGACY_ARTWORK_RATIO);
     // Round is masked from this same render by the caller, so the two shapes
     // cannot diverge.
     await writeFile(join(dir, 'ic_launcher.png'), square);
@@ -115,7 +133,7 @@ for (const [variant, cfg] of Object.entries(VARIANTS)) {
   for (const [folder, [w, h]] of Object.entries(SPLASH)) {
     const dir = join(HERE, variant, folder);
     await mkdir(dir, { recursive: true });
-    await writeFile(join(dir, 'splash.png'), await renderSplash(page, cfg.svg, cfg.bg, w, h));
+    await writeFile(join(dir, 'splash.png'), await renderField(page, cfg.svg, cfg.bg, w, h, SPLASH_ARTWORK_RATIO));
   }
 
   // The adaptive background is a flat colour resource, so switching variant is

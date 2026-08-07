@@ -1,4 +1,6 @@
 import { fixtureUser } from '../data/fixtureUser.js';
+import { Capacitor } from '@capacitor/core';
+
 import {
   apiRequest,
   clearSessionTokens,
@@ -16,6 +18,31 @@ import {
 
 const DEVICE_ID_KEY = 'boe.client.deviceId';
 const CLIENT_APP_VERSION = '1.0.0';
+
+/**
+ * Does the admin console have to authenticate with a bearer token rather than
+ * the HttpOnly session cookie?
+ *
+ * Inside the Android build the SPA is served from `https://localhost` while the
+ * API is on a beonedge.in subdomain. Those are different registrable domains, so
+ * every API call is cross-site: the `SameSite=Lax` session cookie is not sent,
+ * browsers may refuse to store it as a third-party cookie at all, and the
+ * backend's own Origin gate rejects `Sec-Fetch-Site: cross-site`. Cookie auth
+ * therefore cannot work there, and the console uses the same native bearer
+ * token the client app uses. The backend accepts either transport and applies
+ * identical RBAC to both — see domain/admin/adminAccess.ts.
+ *
+ * The browser console is served same-site with the API and keeps using cookies,
+ * which is the stronger option where it is available because the token stays
+ * out of reach of JavaScript.
+ */
+function adminUsesBearer() {
+  try {
+    return Boolean(Capacitor?.isNativePlatform?.());
+  } catch {
+    return false;
+  }
+}
 
 let _users = {
   client: null,
@@ -63,6 +90,21 @@ function buildDevice() {
   return {
     installationId: getOrCreateDeviceId(),
     name: 'BeOnEdge Client',
+    platform: 'android',
+    appVersion: CLIENT_APP_VERSION,
+  };
+}
+
+/**
+ * Device identity for an admin native session. The admin and client builds are
+ * separate applicationIds with separate WebView storage, so the installation UUID
+ * is naturally distinct; the name differs too so an operator reading the session
+ * list can tell an admin console session from an investor one.
+ */
+function buildAdminDevice() {
+  return {
+    installationId: getOrCreateDeviceId(),
+    name: 'BeOnEdge Admin',
     platform: 'android',
     appVersion: CLIENT_APP_VERSION,
   };
@@ -190,12 +232,50 @@ function assertScopeUser(user, scope) {
 export async function login(credentials = {}, { scope = 'client' } = {}) {
   if (useHttpApi()) {
     if (scope === 'admin') {
-      // Admin uses canonical web auth: HttpOnly cookies + synchronizer CSRF.
+      const email = credentials.identifier || credentials.email;
+
+      if (adminUsesBearer()) {
+        // Native transport. The login proves identity but says nothing about
+        // authority, so the admin principal is fetched separately; a non-admin
+        // account authenticates here and is then rejected by /v1/admin/session,
+        // which is what turns a client credential into ADMIN_REQUIRED rather
+        // than a half-open console.
+        const session = await apiRequest('/v1/auth/native/login', {
+          method: 'POST',
+          auth: false,
+          scope,
+          body: { email, password: credentials.password, device: buildAdminDevice() },
+        });
+        setSessionTokens({
+          accessToken: session.accessToken,
+          refreshToken: session.refreshToken,
+          scope,
+        });
+        try {
+          const principal = await apiRequest('/v1/admin/session', { scope });
+          const user = assertScopeUser(toAdminUser(principal), scope);
+          setSessionTokens({ user, scope });
+          _users[scope] = user;
+          return clone(user);
+        } catch (error) {
+          // Never leave a usable client token behind under the admin scope.
+          clearSessionTokens(scope);
+          _users[scope] = null;
+          if (error?.status === 403) {
+            const denied = new Error('Admin access is required.');
+            denied.code = 'ADMIN_REQUIRED';
+            throw denied;
+          }
+          throw error;
+        }
+      }
+
+      // Browser transport: canonical web auth, HttpOnly cookies + synchronizer CSRF.
       const result = await apiRequest('/v1/auth/web/login', {
         method: 'POST',
         auth: false,
         scope,
-        body: { email: credentials.identifier || credentials.email, password: credentials.password },
+        body: { email, password: credentials.password },
       });
       const user = assertScopeUser(toAdminUser(result.user), scope);
       setSessionCsrf(result.csrfToken, scope);
@@ -276,8 +356,13 @@ export async function signup(details = {}, { scope = 'client' } = {}) {
 
 export async function logout({ scope = 'client' } = {}) {
   if (useHttpApi()) {
-    const logoutPath = scope === 'admin' ? '/v1/auth/web/logout' : '/v1/auth/native/logout';
-    const logoutBody = scope === 'admin' ? undefined : { refreshToken: storedRefreshToken(scope) };
+    // An admin session on the native transport is a native session, so it must
+    // be revoked through the native door; the web logout route authenticates
+    // from the cookie this transport does not have.
+    const nativeAdmin = scope === 'admin' && adminUsesBearer();
+    const useNativeDoor = scope !== 'admin' || nativeAdmin;
+    const logoutPath = useNativeDoor ? '/v1/auth/native/logout' : '/v1/auth/web/logout';
+    const logoutBody = useNativeDoor ? { refreshToken: storedRefreshToken(scope) } : undefined;
     try {
       await apiRequest(logoutPath, { method: 'POST', scope, body: logoutBody });
     } finally {
@@ -325,6 +410,30 @@ async function refreshCurrentUser(scope) {
  * access-token TTL has elapsed.
  */
 export async function refreshAdminSession() {
+  if (adminUsesBearer()) {
+    // Native transport: rotate the stored refresh token, then re-read the
+    // principal so a permission change made while the app was backgrounded is
+    // picked up rather than trusting the cached copy.
+    const refreshToken = storedRefreshToken('admin');
+    if (!refreshToken) throw new Error('No refresh token available.');
+    const rotated = await apiRequest('/v1/auth/native/refresh', {
+      method: 'POST',
+      auth: false,
+      scope: 'admin',
+      body: { refreshToken, rotationId: localUuid() },
+    });
+    setSessionTokens({
+      accessToken: rotated.accessToken,
+      refreshToken: rotated.refreshToken,
+      scope: 'admin',
+    });
+    const principal = await apiRequest('/v1/admin/session', { scope: 'admin' });
+    const user = assertScopeUser(toAdminUser(principal), 'admin');
+    setSessionTokens({ user, scope: 'admin' });
+    _users.admin = user;
+    return clone(user);
+  }
+
   const result = await apiRequest('/v1/auth/web/refresh', {
     method: 'POST',
     auth: false,
@@ -374,6 +483,28 @@ registerSessionRefresher('client', () => refreshCurrentUser('client'));
 export async function currentUser({ scope = 'client' } = {}) {
   if (useHttpApi()) {
     if (scope === 'admin') {
+      if (adminUsesBearer()) {
+        // Native transport: no cookie to recover from, so the stored bearer is
+        // re-presented. /v1/admin/session doubles as the "is this still a valid
+        // admin session" probe; apiRequest transparently rotates the token once
+        // on 401 before this rejects.
+        if (!storedAccessToken(scope)) {
+          _users[scope] = null;
+          return null;
+        }
+        try {
+          const principal = await apiRequest('/v1/admin/session', { scope });
+          const user = assertScopeUser(toAdminUser(principal), scope);
+          setSessionTokens({ user, scope });
+          _users[scope] = user;
+          return clone(user);
+        } catch {
+          clearSessionTokens(scope);
+          _users[scope] = null;
+          return null;
+        }
+      }
+
       // Restore the admin session from the HttpOnly cookies via the CSRF
       // reload-recovery endpoint, which returns the principal + a fresh token.
       try {

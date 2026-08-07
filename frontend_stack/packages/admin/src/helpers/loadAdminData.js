@@ -12,13 +12,20 @@ export async function loadAdminOverview() {
       stats: { pendingApprovals: approvals.length },
     };
   }
-  // Derive the pending count from the canonical applications queue (there is no
+  // Derive the counts from the canonical applications queue (there is no
   // separate overview endpoint in the canonical first slice).
+  //
+  // The queue now also carries applications whose email is not yet confirmed, so
+  // the two are counted apart: "ready for review" must mean "waiting on the
+  // operator", not "waiting on the applicant", or the badge sends someone to a
+  // screen where there is nothing they can act on.
   const pending = await listPendingApplications().catch(() => []);
+  const actionable = pending.filter((row) => row.status !== 'pending_email_verification');
+  const awaitingEmail = pending.length - actionable.length;
   return {
     source: 'http',
-    counts: { approvals: pending.length },
-    stats: { pendingApprovals: pending.length },
+    counts: { approvals: actionable.length },
+    stats: { pendingApprovals: actionable.length, awaitingEmailConfirmation: awaitingEmail },
   };
 }
 

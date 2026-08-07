@@ -19,13 +19,30 @@ export async function listApplications({ status, after, limit = 100 } = {}) {
   return apiRequest(`/v1/admin/applications?${params.toString()}`, { scope: 'admin' });
 }
 
-/** The actionable review queue: submitted + in_review, newest first. */
+/**
+ * The review queue, newest first.
+ *
+ * Three states, not two. `submitted` and `in_review` are the actionable ones,
+ * but a signup arriving from the marketing site starts at
+ * `pending_email_verification` and stays there until the visitor redeems the
+ * emailed token. Fetching only the actionable two made those signups invisible:
+ * an operator told "I just signed up" saw an empty queue and had no way to tell
+ * a signup that never arrived from one waiting on its confirmation email. They
+ * are returned here so the screen can show them as awaiting confirmation, and
+ * are not actionable — the backend refuses a decision until the email is
+ * verified.
+ */
 export async function listPendingApplications() {
-  const [submitted, inReview] = await Promise.all([
+  const [awaitingEmail, submitted, inReview] = await Promise.all([
+    listApplications({ status: 'pending_email_verification' }),
     listApplications({ status: 'submitted' }),
     listApplications({ status: 'in_review' }),
   ]);
-  return [...(submitted?.items ?? []), ...(inReview?.items ?? [])];
+  return [
+    ...(submitted?.items ?? []),
+    ...(inReview?.items ?? []),
+    ...(awaitingEmail?.items ?? []),
+  ];
 }
 
 export async function getApplicationDetail(applicationId) {

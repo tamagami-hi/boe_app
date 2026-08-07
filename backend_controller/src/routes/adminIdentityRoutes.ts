@@ -62,7 +62,16 @@ export interface AdminIdentityDeps {
 const APPLICATIONS_ROUTE = "/v1/admin/applications"
 const EMAIL_DELIVERIES_ROUTE = "/v1/admin/email-deliveries"
 const MAX_QUEUE_INTERVAL_MS = 366 * 24 * 60 * 60 * 1000
+// `pending_email_verification` is included deliberately. A signup that arrives
+// from the marketing site starts in that state and only becomes `submitted` once
+// the visitor redeems the emailed token. Omitting it here meant the console had
+// no way to ask about those rows at all — `?status=pending_email_verification`
+// was a 400 — so an operator who had just been told "I signed up" saw an empty
+// approvals queue and could not tell a signup that never arrived from one that
+// arrived and is waiting on its confirmation email. Approval itself is still
+// refused for them: decideApplication requires email_verified_at to be set.
 const WIRE_STATES: readonly ApplicationState[] = [
+  "pending_email_verification",
   "submitted",
   "in_review",
   "approved",
@@ -75,7 +84,14 @@ const versionNumber = (value: unknown): number => Number(value)
 
 // --- validation schemas ---
 
-const statusEnum = z.enum(["submitted", "in_review", "approved", "rejected", "withdrawn"])
+const statusEnum = z.enum([
+  "pending_email_verification",
+  "submitted",
+  "in_review",
+  "approved",
+  "rejected",
+  "withdrawn",
+])
 const deliveryStateEnum = z.enum([
   "queued",
   "sending",
@@ -533,7 +549,45 @@ const listEmailDeliveries = async (deps: AdminIdentityDeps, request: FastifyRequ
   return reply.sendData({ items: items.map((row) => mapDeliveryAdmin(row, full)) }, { status: 200, page })
 }
 
+/**
+ * `GET /v1/admin/session` — who am I, and what may I do.
+ *
+ * The browser console recovers its principal from `GET /v1/auth/web/csrf`,
+ * which reads the HttpOnly cookies. The Android console has no usable cookie
+ * (see the note in domain/admin/adminAccess.ts), so it needs a bearer-readable
+ * equivalent to restore a session after a cold start and to establish that the
+ * signed-in user is actually an admin — a native login proves identity but says
+ * nothing about authority.
+ *
+ * No permission is required beyond holding an admin role: the response only
+ * describes the caller to itself. A user with no roles is rejected, so this
+ * cannot be used by a plain client account to probe the admin surface.
+ */
+const getSession = async (deps: AdminIdentityDeps, request: FastifyRequest, reply: FastifyReply) => {
+  const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: false })
+  if (principal.roles.length === 0) throw new AppError("AUTHORIZATION_DENIED")
+
+  const user = await deps.database
+    .selectFrom("users")
+    .select(["id", "full_name", "email_normalized"])
+    .where("id", "=", principal.userId)
+    .executeTakeFirst()
+  if (user === undefined) throw new AppError("AUTHORIZATION_DENIED")
+
+  return reply.sendData(
+    {
+      userId: principal.userId,
+      fullName: user.full_name,
+      email: user.email_normalized,
+      roles: principal.roles,
+      permissions: principal.permissions,
+    },
+    { status: 200 },
+  )
+}
+
 export const registerAdminIdentityRoutes = (application: FastifyInstance, deps: AdminIdentityDeps): void => {
+  application.get("/v1/admin/session", async (request, reply) => getSession(deps, request, reply))
   application.get(APPLICATIONS_ROUTE, async (request, reply) => listApplications(deps, request, reply))
   application.get(`${APPLICATIONS_ROUTE}/:applicationId`, async (request, reply) =>
     getApplicationDetail(deps, request, reply),
