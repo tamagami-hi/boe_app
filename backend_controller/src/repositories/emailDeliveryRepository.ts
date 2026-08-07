@@ -56,6 +56,20 @@ export interface CreateActivationInviteDeliveryInput {
   readonly templateVersion: string
 }
 
+export interface CreateAccountApprovedDeliveryInput {
+  readonly outboxEventId: string
+  readonly userId: string
+  readonly applicationId: string
+  readonly recipientCiphertext: Buffer
+  readonly recipientNonce: Buffer
+  readonly recipientHmac: Buffer
+  readonly recipientMasked: string
+  readonly recipientEncryptionKeyVersion: string
+  readonly suppressionHmacKeyVersion: string
+  readonly sesConfigurationSet: string
+  readonly templateVersion: string
+}
+
 export interface CreateRejectionDeliveryInput {
   readonly outboxEventId: string
   readonly applicationId: string
@@ -84,6 +98,15 @@ export interface EmailDeliveryWriteRepository {
   createActivationInviteDelivery: (
     tx: Transaction,
     input: CreateActivationInviteDeliveryInput,
+  ) => Promise<EmailDelivery>
+  /**
+   * "Your account is open" mail for an approval that needed no invite, because
+   * the applicant already chose their password at signup. Carries a user and an
+   * application but no redeemable reference — there is nothing to redeem.
+   */
+  createAccountApprovedDelivery: (
+    tx: Transaction,
+    input: CreateAccountApprovedDeliveryInput,
   ) => Promise<EmailDelivery>
   createRejectionDelivery: (tx: Transaction, input: CreateRejectionDeliveryInput) => Promise<EmailDelivery>
   adminList: (tx: Transaction, query: AdminEmailDeliveryQuery) => Promise<readonly EmailDelivery[]>
@@ -141,6 +164,26 @@ export const createEmailDeliveryRepository = (): EmailDeliveryWriteRepository =>
         application_id: input.applicationId,
         activation_invite_id: input.activationInviteId,
         template_key: "activation_invite",
+        template_version: input.templateVersion,
+        recipient_ciphertext: input.recipientCiphertext,
+        recipient_nonce: input.recipientNonce,
+        recipient_hmac: input.recipientHmac,
+        recipient_masked: input.recipientMasked,
+        recipient_encryption_key_version: input.recipientEncryptionKeyVersion,
+        suppression_hmac_key_version: input.suppressionHmacKeyVersion,
+        ses_configuration_set: input.sesConfigurationSet,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow(),
+
+  createAccountApprovedDelivery: async (tx, input) =>
+    tx
+      .insertInto("email_deliveries")
+      .values({
+        outbox_event_id: input.outboxEventId,
+        user_id: input.userId,
+        application_id: input.applicationId,
+        template_key: "account_approved",
         template_version: input.templateVersion,
         recipient_ciphertext: input.recipientCiphertext,
         recipient_nonce: input.recipientNonce,

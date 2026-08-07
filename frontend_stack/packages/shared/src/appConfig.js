@@ -4,6 +4,16 @@ const ACCESS_TOKEN_KEYS = {
   client: 'boe.client.accessToken',
   admin: 'boe.admin.accessToken',
 };
+/*
+ * Same localStorage keys the client package's transport writes. Duplicated rather
+ * than imported because `shared` underpins `client`, and importing the other way
+ * would invert that dependency. They must stay in step with SESSION_KEYS in
+ * packages/client/src/services/_util.js.
+ */
+const CSRF_TOKEN_KEYS = {
+  client: 'boe.client.csrfToken',
+  admin: 'boe.admin.csrfToken',
+};
 const DEFAULT_API_BASE_URL = 'http://127.0.0.1:47502';
 
 export const COMPONENT_LIBRARY = {
@@ -325,6 +335,10 @@ function accessToken(scope = 'client') {
   return storage()?.getItem(ACCESS_TOKEN_KEYS[scope] || ACCESS_TOKEN_KEYS.client) || '';
 }
 
+function csrfToken(scope = 'client') {
+  return storage()?.getItem(CSRF_TOKEN_KEYS[scope] || CSRF_TOKEN_KEYS.client) || '';
+}
+
 function dispatchConfig(config) {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(CONFIG_EVENT, { detail: config }));
@@ -339,6 +353,16 @@ function persistAppConfig(config) {
   return clone(next);
 }
 
+/*
+ * Minimal fetch for the app-config resource only.
+ *
+ * It must carry the same credentials as the main transport, because the admin
+ * surface is cookie-authenticated with a synchronizer CSRF token: without
+ * `credentials: 'include'` the session cookie never leaves the browser, and
+ * without `x-csrf-token` the PATCH is refused. Both were missing, which is why
+ * the app builder's "Publish config" failed while the read-only Environment
+ * screen — which goes through the main transport — worked.
+ */
 async function appConfigRequest(path, { method = 'GET', body, auth = false, scope = 'client' } = {}) {
   const headers = { accept: 'application/json' };
   const token = accessToken(scope);
@@ -346,9 +370,17 @@ async function appConfigRequest(path, { method = 'GET', body, auth = false, scop
   if (body !== undefined) headers['content-type'] = 'application/json';
   if (auth && token) headers.authorization = `Bearer ${token}`;
 
+  // Unsafe methods only: the backend does not require the token on reads, and
+  // sending it there would be noise.
+  if (method !== 'GET') {
+    const csrf = csrfToken(scope);
+    if (csrf) headers['x-csrf-token'] = csrf;
+  }
+
   const response = await fetch(`${apiBaseUrl()}${path}`, {
     method,
     headers,
+    credentials: 'include',
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const text = await response.text();

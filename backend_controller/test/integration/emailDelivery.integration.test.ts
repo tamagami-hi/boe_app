@@ -125,6 +125,9 @@ const seedQueuedDelivery = async (email: string, phone: string): Promise<SeededD
         fullName: "Ada Lovelace",
         emailNormalized: email,
         phoneE164: phone,
+        // This test is about the delivery row, not the credential; a signup with
+        // no password still produces the verification email being asserted here.
+        passwordHash: null,
         consents: [
           { kind: "terms", version: "v1" },
           { kind: "privacy", version: "v1" },

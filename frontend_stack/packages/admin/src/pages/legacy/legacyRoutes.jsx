@@ -61,7 +61,6 @@ export function PaymentsRoute() {
     <PaymentsScreen
       rows={ctx.adminData.payments}
       funds={ctx.adminData.funds}
-      stats={ctx.overview.stats || {}}
       onUserDetail={ctx.openUserDetail}
     />
   );
@@ -72,7 +71,6 @@ export function MandatesRoute() {
   return (
     <MandatesScreen
       rows={ctx.adminData.mandates}
-      stats={ctx.overview.stats || {}}
       onUserDetail={ctx.openUserDetail}
     />
   );

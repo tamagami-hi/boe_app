@@ -30,6 +30,7 @@
     "worker:payments:dev": "node --env-file-if-exists=.env --import=tsx src/paymentWorker.ts",
     "worker:email": "node dist/emailWorker.js",
     "worker:email:dev": "node --env-file-if-exists=.env --import=tsx src/emailWorker.ts",
+    "worker:email:watch": "sh -ec 'while true; do node --env-file-if-exists=.env --import=tsx src/emailWorker.ts; sleep ${EMAIL_WORKER_INTERVAL_SECONDS:-15}; done'",
     "worker:sips": "node dist/sipWorker.js",
     "worker:sips:dev": "node --env-file-if-exists=.env --import=tsx src/sipWorker.ts",
     "migrate": "node dist/scripts/migrate.js up",

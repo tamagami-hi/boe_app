@@ -50,6 +50,50 @@ function AumScreen({ funds = [], auditLogs = [], onCreate, onUpdate, onDelete, o
   const [capitalTransactions, setCapitalTransactions] = useState([]);
   const [redemptionRequests, setRedemptionRequests] = useState([]);
   const [aumLoading, setAumLoading] = useState(false);
+  const [copiedFundId, setCopiedFundId] = useState('');
+
+  /*
+   * Copy with a fallback and visible confirmation.
+   *
+   * `navigator.clipboard` is undefined on an insecure origin, and the previous
+   * `navigator.clipboard?.writeText(...)` therefore did nothing at all — silently,
+   * with no error and no feedback, so the operator pasted whatever was on the
+   * clipboard before. The execCommand path covers that case, and either way the
+   * button confirms what happened.
+   */
+  async function copyFundId(fundId) {
+    if (!fundId) return;
+    const confirm = (ok) => {
+      setCopiedFundId(ok ? fundId : `failed:${fundId}`);
+      setTimeout(() => setCopiedFundId(''), 2000);
+    };
+
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(fundId);
+        confirm(true);
+        return;
+      } catch {
+        // Permission refused or a non-focused document; fall through.
+      }
+    }
+
+    try {
+      const scratch = document.createElement('textarea');
+      scratch.value = fundId;
+      // Kept out of view but still selectable, which execCommand requires.
+      scratch.setAttribute('readonly', '');
+      scratch.style.position = 'fixed';
+      scratch.style.opacity = '0';
+      document.body.appendChild(scratch);
+      scratch.select();
+      const ok = document.execCommand('copy');
+      scratch.remove();
+      confirm(ok);
+    } catch {
+      confirm(false);
+    }
+  }
 
   const emptyForm = {
     name: '',
@@ -1016,7 +1060,19 @@ function AumScreen({ funds = [], auditLogs = [], onCreate, onUpdate, onDelete, o
                       <td className="adm-cell-actions">
                         <button className="be-btn be-btn-secondary be-btn-sm" onClick={() => openEdit(f)}><I icon={Pencil} size={14}/> Edit</button>
                         <button className="be-btn be-btn-ghost be-btn-sm" onClick={() => setPreviewFund(f)}><I icon={Eye} size={14}/> Preview</button>
-                        <button className="adm-icon-btn" onClick={() => navigator.clipboard?.writeText(f.id)} title="Copy ID"><I icon={Copy} size={14}/></button>
+                        <button
+                          className="adm-icon-btn"
+                          onClick={() => copyFundId(f.id)}
+                          title={
+                            copiedFundId === f.id
+                              ? 'Copied'
+                              : copiedFundId === `failed:${f.id}`
+                                ? 'Could not copy — select the ID manually'
+                                : 'Copy ID'
+                          }
+                        >
+                          <I icon={copiedFundId === f.id ? CheckCircle2 : Copy} size={14}/>
+                        </button>
                         <button className="be-btn be-btn-danger be-btn-sm" onClick={() => setDeleteConfirm({ id: f.id, name: f.name })}><I icon={Trash2} size={14}/> Delete</button>
                       </td>
                     </tr>

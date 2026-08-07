@@ -30,6 +30,7 @@ import { parseOrThrow } from "../http/validation.js"
 import type { ApplicationWriteRepository } from "../repositories/applicationRepository.js"
 import type { ApplicationReviewWriteRepository } from "../repositories/applicationReviewRepository.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
+import type { CredentialWriteRepository } from "../repositories/credentialRepository.js"
 import type { EmailDeliveryWriteRepository } from "../repositories/emailDeliveryRepository.js"
 import type { OutboxWriteRepository } from "../repositories/outboxRepository.js"
 import type { UserWriteRepository } from "../repositories/userRepository.js"
@@ -52,6 +53,7 @@ export interface AdminIdentityDeps {
   readonly applicationRepository: ApplicationWriteRepository
   readonly applicationReviewRepository: ApplicationReviewWriteRepository
   readonly userRepository: UserWriteRepository
+  readonly credentialRepository: CredentialWriteRepository
   readonly activationInviteRepository: ActivationInviteWriteRepository
   readonly outboxRepository: OutboxWriteRepository
   readonly emailDeliveryRepository: EmailDeliveryWriteRepository
@@ -101,7 +103,7 @@ const deliveryStateEnum = z.enum([
   "permanent_failed",
   "cancelled",
 ])
-const templateKeyEnum = z.enum(["verify_email", "activation_invite", "application_rejected"])
+const templateKeyEnum = z.enum(["verify_email", "activation_invite", "application_rejected", "account_approved"])
 const reasonCodeSchema = z.string().trim().min(1).max(80)
 const reasonDetailSchema = z.string().trim().min(1).max(2000)
 const limitSchema = z.coerce.number().int().min(1).max(100).default(25)
@@ -133,7 +135,16 @@ const emailDeliveriesQuerySchema = z
 
 const reviewBodySchema = z.object({ expectedVersion: z.number().int().positive() }).strict()
 const decisionBodySchema = z
-  .object({ reasonCode: reasonCodeSchema, reasonDetail: reasonDetailSchema.optional() })
+  .object({
+    reasonCode: reasonCodeSchema,
+    reasonDetail: reasonDetailSchema.optional(),
+    /**
+     * The reviewer's explicit acknowledgement that this applicant never confirmed
+     * their email address. Absent means "no", so an old client cannot approve an
+     * unconfirmed applicant by omission.
+     */
+    allowUnverifiedEmail: z.boolean().default(false),
+  })
   .strict()
 const decisionQuerySchema = z.object({ outcome: z.enum(["approved", "rejected"]) }).strict()
 const resendBodySchema = z
@@ -238,6 +249,12 @@ const mapApplicationListItem = (application: Application): Record<string, unknow
     isPiiTombstoned,
     status: application.state,
     emailVerifiedAt: application.email_verified_at === null ? null : iso(application.email_verified_at),
+    /**
+     * Whether the applicant chose a password at signup. Never the hash itself —
+     * the console only needs to know which approval shape it is about to cause:
+     * an account that can be signed into immediately, or an emailed invite.
+     */
+    hasSignupPassword: application.password_hash !== null,
     createdAt: iso(application.created_at),
     version: versionNumber(application.version),
   }
@@ -418,7 +435,7 @@ const postDecision = async (deps: AdminIdentityDeps, request: FastifyRequest, re
       repository: deps.idempotencyRepository,
       tx,
       scope: adminScope(principal.userId, `${APPLICATIONS_ROUTE}/:id/decision`, idempotencyKey),
-      requestHash: hashRequest({ applicationId, decision, expectedVersion, reasonCode: body.reasonCode, reasonDetail: body.reasonDetail ?? null }),
+      requestHash: hashRequest({ applicationId, decision, expectedVersion, reasonCode: body.reasonCode, reasonDetail: body.reasonDetail ?? null, allowUnverifiedEmail: body.allowUnverifiedEmail }),
       now: now.toISOString(),
       expiresAt: new Date(now.getTime() + deps.config.idempotencyTtlMs).toISOString(),
       execute: async () => {
@@ -428,6 +445,7 @@ const postDecision = async (deps: AdminIdentityDeps, request: FastifyRequest, re
             applicationRepository: deps.applicationRepository,
             applicationReviewRepository: deps.applicationReviewRepository,
             userRepository: deps.userRepository,
+            credentialRepository: deps.credentialRepository,
             activationInviteRepository: deps.activationInviteRepository,
             outboxRepository: deps.outboxRepository,
             emailDeliveryRepository: deps.emailDeliveryRepository,
@@ -446,6 +464,7 @@ const postDecision = async (deps: AdminIdentityDeps, request: FastifyRequest, re
             reasonCode: body.reasonCode,
             reasonDetail: body.reasonDetail ?? null,
             expectedVersion,
+            allowUnverifiedEmail: body.allowUnverifiedEmail,
             requestId: request.requestId,
             idempotencyKey,
           },
@@ -458,6 +477,9 @@ const postDecision = async (deps: AdminIdentityDeps, request: FastifyRequest, re
             version: versionNumber(decided.application.version),
             ...(decided.user === null ? {} : { userId: decided.user.id }),
             ...(decided.activationInvite === null ? {} : { activationInviteId: decided.activationInvite.id }),
+            // Tells the console which approval shape happened, so it can say
+            // "they can sign in now" instead of "an invite was sent".
+            accountActivated: decided.accountActivated,
             emailDeliveryId: decided.emailDelivery.id,
             decidedAt: iso(decided.application.decided_at ?? now),
           },

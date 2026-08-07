@@ -76,3 +76,42 @@ export const createLogEmailSender = (fromAddress: string, log?: EmailSendLog): E
     return Promise.resolve({ messageId: null })
   },
 })
+
+
+/**
+ * Thrown by {@link createUnconfiguredEmailSender} when there is no transport to
+ * hand a message to. Carries a stable code so the outbox adapter can classify it
+ * distinctly from a transport that exists and failed.
+ */
+export class EmailTransportNotConfiguredError extends Error {
+  readonly code = "EMAIL_TRANSPORT_NOT_CONFIGURED"
+
+  constructor() {
+    super("No SMTP transport is configured")
+    this.name = "EmailTransportNotConfiguredError"
+  }
+}
+
+/**
+ * The sender used by the outbox worker when no SMTP transport is configured. It
+ * *fails* rather than quietly succeeding.
+ *
+ * `createLogEmailSender` was previously used for this, and it resolves
+ * successfully — so `dispatchDueDeliveries` recorded the delivery as `sent` and
+ * settled the outbox event as `delivered` for a message that never left the
+ * process. The database then asserted that a confirmation link had been sent to
+ * someone who could not possibly have received it, `email_deliveries.state` could
+ * not be trusted to mean anything, and nothing anywhere reported a problem.
+ *
+ * Failing keeps that state honest: a delivery reaches `sent` only when a
+ * transport accepted it. The outbox classifies this as retryable, so once SMTP is
+ * configured the queued mail drains on the next pass rather than being lost — the
+ * ladder in retrySchedule.ts allows roughly 42 hours before dead-lettering.
+ *
+ * The log sender is kept for the direct KYC-code path, where a send failure
+ * surfaces to the person waiting on the code instead of being recorded as
+ * durable evidence of delivery.
+ */
+export const createUnconfiguredEmailSender = (): EmailSender => ({
+  send: () => Promise.reject(new EmailTransportNotConfiguredError()),
+})

@@ -42,6 +42,12 @@ export interface SubmitApplicationInput {
   readonly fullName: string
   readonly emailNormalized: string
   readonly phoneE164: string
+  /**
+   * Argon2id hash of the password the applicant chose, or null when the caller
+   * collects no password. Already hashed by the route: this command runs inside a
+   * transaction and Argon2id is intentionally slow, so the cost belongs outside.
+   */
+  readonly passwordHash: string | null
   readonly consents: readonly { readonly kind: "terms" | "privacy"; readonly version: string }[]
   readonly requestId: string
   readonly clientIp: string
@@ -91,6 +97,7 @@ export const submitApplication = async (
     emailNormalized: input.emailNormalized,
     phoneE164: input.phoneE164,
     fullName: input.fullName,
+    passwordHash: input.passwordHash,
   })
 
   const consentIp = deps.crypto.hmacConsentIp(input.clientIp)

@@ -47,13 +47,58 @@ function ApprovalsScreen({ rows = [], stats = {}, loading = false, onReview, onA
 
   const visibleRows = filteredRows;
 
-  // An application can only be decided once its email is confirmed: the decision
-  // endpoint rejects a null email_verified_at with a 409. Offering Approve on
-  // those rows would produce a conflict toast and no explanation, so the action
-  // is withheld and the reason stated instead.
+  /*
+   * An unconfirmed email no longer blocks approval outright — it requires the
+   * reviewer to acknowledge it, which the review panel asks for. The inline
+   * Approve button cannot collect that acknowledgement, so these rows are sent
+   * through Review instead of being given a one-click action that would fail.
+   */
   const awaitingEmail = (row) =>
     String(row.status || '').toLowerCase() === 'pending_email_verification' || !row.emailVerifiedAt;
+
+  /*
+   * Every tile counts the queue actually loaded. They previously read
+   * `stats.approvedTotal` / `stats.rejectedTotal`, which no endpoint supplies —
+   * and because the formatter renders a missing number as "0", the screen stated
+   * that there were zero approved clients, which is a claim rather than a gap.
+   */
   const awaitingEmailCount = rows.filter(awaitingEmail).length;
+  const inReviewCount = rows.filter((row) => String(row.status || '').toLowerCase() === 'in_review').length;
+  const readyCount = rows.length - awaitingEmailCount - inReviewCount;
+
+  /*
+   * Export what the operator is looking at, filters included — an export that
+   * silently differs from the table on screen is worse than none. Built and
+   * revoked in the handler so nothing is held after the download starts.
+   */
+  function exportCsv() {
+    const header = ['Name', 'Email', 'Phone', 'Status', 'Email confirmed', 'Signed up'];
+    const cell = (value) => `"${String(value ?? '').replace(/"/gu, '""')}"`;
+    const csv = [
+      header.map(cell).join(','),
+      ...visibleRows.map((row) =>
+        [
+          row.name,
+          row.email,
+          row.phone,
+          row.status,
+          row.emailVerifiedAt ? 'yes' : 'no',
+          row.createdAt,
+        ]
+          .map(cell)
+          .join(','),
+      ),
+    ].join('\r\n');
+
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `boe-approvals-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <div className="adm-screen">
@@ -67,10 +112,10 @@ function ApprovalsScreen({ rows = [], stats = {}, loading = false, onReview, onA
           </>
         ) : (
           <>
-            <StatTile label="Ready for review" value={fmtInt(stats.pendingApprovals)} icon={Clock} tone="amber" hint="Email confirmed, awaiting your decision" />
+            <StatTile label="Ready for review" value={fmtInt(readyCount)} icon={Clock} tone="amber" hint="Email confirmed, awaiting your decision" />
+            <StatTile label="In review" value={fmtInt(inReviewCount)} icon={ClipboardList} tone="slate" hint="Opened for review, not yet decided" />
             <StatTile label="Email not confirmed" value={fmtInt(awaitingEmailCount)} icon={Mail} tone="slate" hint="Applicant has not opened the link yet" />
-            <StatTile label="Approved clients" value={fmtInt(stats.approvedTotal)} icon={CheckCircle2} tone="green" hint="Total approved" />
-            <StatTile label="Rejected" value={fmtInt(stats.rejectedTotal)} icon={XCircle} tone="red" hint="Total rejected" />
+            <StatTile label="Total waiting" value={fmtInt(rows.length)} icon={Inbox} tone="slate" hint="Everything in the queue" />
           </>
         )}
       </div>
@@ -82,7 +127,14 @@ function ApprovalsScreen({ rows = [], stats = {}, loading = false, onReview, onA
             <h2 className="adm-card-title">Awaiting approval</h2>
           </div>
           <div className="adm-card-actions">
-            <button className="be-btn be-btn-secondary be-btn-sm" disabled title="Export CSV is coming soon">Export CSV</button>
+            <button
+              className="be-btn be-btn-secondary be-btn-sm"
+              onClick={exportCsv}
+              disabled={visibleRows.length === 0}
+              title={visibleRows.length === 0 ? 'Nothing to export' : 'Download the rows shown below as CSV'}
+            >
+              Export CSV
+            </button>
           </div>
         </div>
 
@@ -156,9 +208,13 @@ function ApprovalsScreen({ rows = [], stats = {}, loading = false, onReview, onA
                     <button className="be-btn be-btn-secondary be-btn-sm" onClick={() => onReview?.(r)}>Review</button>
                     <button className="be-btn be-btn-ghost be-btn-sm" onClick={() => onUserDetail?.(r)}>View</button>
                     {awaitingEmail(r) ? (
-                      <span className="adm-cell-meta" title="The applicant has not opened the confirmation link in their email yet. Approval unlocks once they do.">
-                        Waiting on applicant
-                      </span>
+                      <button
+                        className="be-btn be-btn-primary be-btn-sm"
+                        onClick={() => onReview?.(r)}
+                        title="This applicant has not confirmed their email. Open Review to approve them anyway."
+                      >
+                        Review to approve
+                      </button>
                     ) : (
                       <button className="be-btn be-btn-primary be-btn-sm" onClick={() => onApprove?.(r)} disabled={busy}>Approve</button>
                     )}

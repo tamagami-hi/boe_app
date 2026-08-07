@@ -111,6 +111,29 @@ const applicationRejected = (config: EmailTemplateConfig): TemplateRenderResult 
   return { kind: "rendered", email: { subject: "Update on your BeOnEdge application", text: lines.join("\n") } }
 }
 
+/**
+ * Approval for an applicant who already chose their password at signup.
+ *
+ * Carries no token and no code, because there is nothing to redeem: the account
+ * exists and the credential is already theirs. Deliberately does not restate the
+ * password or hint at it — the message is a notification, and an approval mail
+ * that cannot be replayed into account access is one less thing an intercepted
+ * mailbox is worth.
+ */
+const accountApproved = (config: EmailTemplateConfig): TemplateRenderResult => {
+  const lines = [
+    "Your BeOnEdge application has been approved.",
+    "",
+    "You can sign in to the BeOnEdge app now, using your email address and the",
+    "password you chose when you signed up.",
+    "",
+    "If you no longer remember that password, contact us and we will help you",
+    "regain access.",
+    ...signature(config),
+  ]
+  return { kind: "rendered", email: { subject: "Your BeOnEdge account is open", text: lines.join("\n") } }
+}
+
 /** Render the body for a queued delivery's template key and payload. */
 export const renderEmailTemplate = (
   templateKey: string,
@@ -124,6 +147,8 @@ export const renderEmailTemplate = (
       return activationInvite(templateData, config)
     case "application_rejected":
       return applicationRejected(config)
+    case "account_approved":
+      return accountApproved(config)
     default:
       return { kind: "unrenderable", errorCode: "TEMPLATE_UNKNOWN" }
   }

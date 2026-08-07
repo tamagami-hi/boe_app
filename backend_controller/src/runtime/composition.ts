@@ -30,7 +30,12 @@ import { createClientPortfolioRepository } from "../repositories/clientPortfolio
 import { createInvestorLedgerRepository } from "../repositories/investorLedgerRepository.js"
 import { createRedemptionRepository } from "../repositories/redemptionRepository.js"
 import { createKycRepository } from "../repositories/kycRepository.js"
-import { createSmtpEmailSender, createLogEmailSender, type EmailSender } from "../email/emailSender.js"
+import {
+  createSmtpEmailSender,
+  createLogEmailSender,
+  createUnconfiguredEmailSender,
+  type EmailSender,
+} from "../email/emailSender.js"
 import { createMandateRepository } from "../repositories/mandateRepository.js"
 import { createNotificationRepository } from "../repositories/notificationRepository.js"
 import { createOrderRepository } from "../repositories/orderRepository.js"
@@ -147,7 +152,11 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
     config: { cookieSecure: serverConfig.web.cookieSecure, originAllowlist: serverConfig.web.originAllowlist },
   }
 
-  const checkReadiness = createReadinessCheck(database, serverConfig.emailConfigured)
+  const checkReadiness = createReadinessCheck(
+    database,
+    serverConfig.email.smtp !== null,
+    serverConfig.emailConfigured,
+  )
 
   // Shared by the admin content routes and the public app-config read.
   const adminContentRepository = createAdminContentRepository()
@@ -160,6 +169,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       unitOfWork,
       clock,
       crypto,
+      breachChecker,
       config: {
         verificationTokenTtlMs: serverConfig.ttls.verificationTokenTtlMs,
         idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
@@ -339,6 +349,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       applicationRepository,
       applicationReviewRepository,
       userRepository,
+      credentialRepository,
       activationInviteRepository,
       outboxRepository,
       emailDeliveryRepository,
@@ -500,10 +511,16 @@ export const composeEmailDispatchWorker = (
   const crypto = createCryptoContext(parseCryptoKeys(source))
 
   const fromAddress = serverConfig.email.fromAddress ?? serverConfig.email.smtp?.user ?? "no-reply@localhost"
+  /*
+   * No log sender here. This path records durable evidence of delivery, so a
+   * sender that resolves without sending anything makes `email_deliveries.state`
+   * a lie (see createUnconfiguredEmailSender). Without SMTP the pass fails
+   * retryably and the queue drains once it is configured.
+   */
   const transport: EmailSender =
     serverConfig.email.smtp !== null
       ? createSmtpEmailSender({ ...serverConfig.email.smtp, fromAddress })
-      : createLogEmailSender(fromAddress)
+      : createUnconfiguredEmailSender()
 
   const deps = {
     unitOfWork,

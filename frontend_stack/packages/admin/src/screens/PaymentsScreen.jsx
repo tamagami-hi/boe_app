@@ -1,13 +1,10 @@
 import { useMemo, useState } from 'react';
-import { CheckCircle2, Eye, Filter, Search, XCircle } from 'lucide-react';
+import { Eye, Filter, Search } from 'lucide-react';
 import '../styles/desktop/admin.css';
 import I from '../components/I.jsx';
 import StatTile from '../components/StatTile.jsx';
 import EmptyTableRow from '../components/EmptyTableRow.jsx';
 import { fmtInt } from '../helpers/formatters.js';
-
-const APPROVABLE_STATUSES = new Set(['success', 'confirmed', 'reconciled']);
-const REJECTABLE_STATUSES = new Set(['created', 'gateway_initiated', 'pending', 'success', 'confirmed', 'reconciled']);
 
 function formatMoney(value) {
   const amount = Number(value || 0);
@@ -85,117 +82,24 @@ function fundOptions(funds, rows) {
   return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
 }
 
-function PaymentDecisionPanel({
-  action,
-  row,
-  onClose,
-  onApprove,
-  onReject,
-  busy,
-  error,
-}) {
-  const [reason, setReason] = useState(action === 'approve' ? 'Approved after bank settlement verification.' : '');
-  const [settlementReference, setSettlementReference] = useState(row?.settlementReference || '');
-  if (!row) return null;
-
-  const amount = Number(row.resolvedAmount ?? row.amount ?? 0);
-  const currentPool = Number(row.fundPoolSize || 0);
-  const nextPool = currentPool + amount;
-  const isApprove = action === 'approve';
-
-  async function submit(event) {
-    event.preventDefault();
-    if (isApprove) {
-      await onApprove?.(row, {
-        reason,
-        settlementReference,
-      });
-    } else {
-      await onReject?.(row, { reason });
-    }
-  }
-
-  return (
-    <div className="adm-review-overlay" onClick={onClose}>
-      <form
-        className="adm-review-panel adm-payment-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="payment-decision-title"
-        onSubmit={submit}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="adm-review-head">
-          <div>
-            <span className="be-eyebrow">{isApprove ? 'Payment approval' : 'Payment rejection'}</span>
-            <h2 id="payment-decision-title">{row.fundName || 'Fund pool'}</h2>
-          </div>
-          <button type="button" className="adm-icon-btn" onClick={onClose} disabled={busy}>
-            <span aria-hidden="true" className="adm-close-glyph">&times;</span>
-          </button>
-        </div>
-
-        <div className="adm-payment-summary">
-          <div>
-            <span>Payment</span>
-            <strong>{row.id}</strong>
-          </div>
-          <div>
-            <span>User</span>
-            <strong>{row.userName || row.user || row.userId || 'Client'}</strong>
-          </div>
-          <div>
-            <span>Amount</span>
-            <strong>{formatMoney(amount)}</strong>
-          </div>
-          <div>
-            <span>Status</span>
-            <strong>{String(row.status || 'unknown').replace(/_/g, ' ')}</strong>
-          </div>
-        </div>
-
-        {isApprove && (
-          <div className="adm-pool-impact">
-            <span>Fund pool impact</span>
-            <strong>{formatMoney(currentPool)} {'->'} {formatMoney(nextPool)}</strong>
-          </div>
-        )}
-
-        <label className="adm-field">
-          <span>{isApprove ? 'Approval note' : 'Rejection reason'}</span>
-          <textarea value={reason} onChange={(event) => setReason(event.target.value)} required />
-        </label>
-
-        {isApprove && (
-          <label className="adm-field">
-            <span>Settlement reference</span>
-            <input value={settlementReference} onChange={(event) => setSettlementReference(event.target.value)} />
-          </label>
-        )}
-
-        {error && <div className="adm-payment-error">{error}</div>}
-
-        <div className="adm-review-actions">
-          <button type="button" className="be-btn be-btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
-          <button type="submit" className={isApprove ? 'be-btn be-btn-primary' : 'be-btn be-btn-danger'} disabled={busy}>
-            <I icon={isApprove ? CheckCircle2 : XCircle} size={15}/>
-            {busy ? 'Saving...' : isApprove ? 'Approve payment' : 'Reject payment'}
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-}
+/*
+ * There is no payment approve/reject panel any more, and no such buttons.
+ *
+ * A payment is confirmed by the signed provider webhook
+ * (`POST /v1/provider-events/payment`) — the console has no endpoint to approve
+ * one with, and none is planned: money movement is confirmed by the party that
+ * moved it, not by an operator asserting it happened. What stood here was a
+ * fully styled Approve/Reject flow whose handler props were never supplied by the
+ * route, so submitting it closed the dialog and made no request at all. An
+ * operator could "approve" a payment all day and nothing would happen.
+ *
+ * This screen is therefore read-only oversight over payment evidence.
+ */
 
 function PaymentsScreen({
   rows = [],
   funds = [],
-  stats = {},
   onUserDetail,
-  onApprovePayment,
-  onRejectPayment,
-  busyPaymentId = '',
-  paymentActionError = '',
 }) {
   const [filters, setFilters] = useState({
     fundId: '',
@@ -204,7 +108,6 @@ function PaymentsScreen({
     to: '',
     q: '',
   });
-  const [decision, setDecision] = useState(null);
 
   const options = useMemo(() => fundOptions(funds, rows), [funds, rows]);
   const filteredRows = useMemo(() => {
@@ -232,41 +135,44 @@ function PaymentsScreen({
     setFilters((prev) => ({ ...prev, [key]: value }));
   }
 
-  async function approve(row, payload) {
-    try {
-      await onApprovePayment?.(row, payload);
-      setDecision(null);
-    } catch {
-      // Parent component owns the visible error state.
-    }
-  }
-
-  async function reject(row, payload) {
-    try {
-      await onRejectPayment?.(row, payload);
-      setDecision(null);
-    } catch {
-      // Parent component owns the visible error state.
-    }
-  }
+  /*
+   * Counted from the rows on screen. These tiles previously read
+   * `stats.paymentsProcessedToday` / `pendingPayments` / `failedPayments`, none of
+   * which any endpoint supplies — and since the integer formatter renders a
+   * missing value as "0", the screen reported zero pending and zero failed
+   * payments as fact.
+   */
+  const statusCount = (predicate) => rows.filter(predicate).length;
+  const settledCount = statusCount((row) =>
+    ['success', 'confirmed', 'reconciled', 'approved'].includes(row.status),
+  );
+  const pendingCount = statusCount((row) =>
+    ['created', 'gateway_initiated', 'pending'].includes(row.status),
+  );
+  const failedCount = statusCount((row) => ['failed', 'rejected'].includes(row.status));
 
   return (
     <div className="adm-screen">
       <div className="adm-stats">
-        <StatTile label="Today · processed" value={fmtInt(stats.paymentsProcessedToday)}/>
-        <StatTile label="Pending" value={fmtInt(stats.pendingPayments)}/>
-        <StatTile label="Failed" value={fmtInt(stats.failedPayments)}/>
-        <StatTile label="Approved" value={fmtInt(rows.filter((row) => row.status === 'approved').length)}/>
+        <StatTile label="Settled" value={fmtInt(settledCount)}/>
+        <StatTile label="In flight" value={fmtInt(pendingCount)}/>
+        <StatTile label="Failed" value={fmtInt(failedCount)}/>
+        <StatTile label="Total loaded" value={fmtInt(rows.length)}/>
       </div>
 
       <div className="adm-card adm-table">
         <div className="adm-card-head">
           <div>
             <span className="be-eyebrow">Transactions</span>
-            <h2 className="adm-card-title">Payment approval queue</h2>
+            <h2 className="adm-card-title">Payment record</h2>
           </div>
           <div className="adm-payment-count">{filteredRows.length} / {rows.length}</div>
         </div>
+
+        <p className="adm-screen-note">
+          Payments are confirmed by the payment provider, not from this console. This is the
+          evidence trail; there is nothing to approve here.
+        </p>
 
         <div className="adm-payment-filters">
           <label className="adm-search">
@@ -318,62 +224,37 @@ function PaymentsScreen({
               {filteredRows.length === 0 && (
                 <EmptyTableRow colSpan={9}>No payment records match the selected filters.</EmptyTableRow>
               )}
-              {filteredRows.map((row) => {
-                const isBusy = busyPaymentId === row.id;
-                return (
-                  <tr key={row.id}>
-                    <td><code className="adm-code">{row.id}</code></td>
-                    <td>
-                      <div className="adm-user-info">
-                        <span className="adm-user-name">{row.userName || row.user || row.userId || 'Client'}</span>
-                        {row.userEmail && <span className="adm-cell-meta">{row.userEmail}</span>}
-                      </div>
-                    </td>
-                    <td>
-                      <div className="adm-user-info">
-                        <span className="adm-user-name">{row.fundName || 'Unmapped fund'}</span>
-                        <span className="adm-cell-meta">{formatMoney(row.fundPoolSize || 0)}</span>
-                      </div>
-                    </td>
-                    <td className="be-money">{formatMoney(row.resolvedAmount ?? row.amount)}</td>
-                    <td>{row.mode || '—'}</td>
-                    <td>{row.provider || '—'}</td>
-                    <td>{statusBadge(row.status)}</td>
-                    <td className="be-num adm-cell-meta">{formatDate(row.time || row.createdAt)}</td>
-                    <td className="adm-cell-actions adm-payment-actions">
-                      <button className="be-btn be-btn-ghost be-btn-sm" onClick={() => onUserDetail?.(row)} title="View user">
-                        <I icon={Eye} size={14}/>
-                      </button>
-                      {APPROVABLE_STATUSES.has(row.status) && (
-                        <button className="be-btn be-btn-primary be-btn-sm" disabled={isBusy} onClick={() => setDecision({ action: 'approve', row })}>
-                          <I icon={CheckCircle2} size={14}/>
-                          Approve
-                        </button>
-                      )}
-                      {REJECTABLE_STATUSES.has(row.status) && (
-                        <button className="be-btn be-btn-secondary be-btn-sm" disabled={isBusy} onClick={() => setDecision({ action: 'reject', row })}>
-                          <I icon={XCircle} size={14}/>
-                          Reject
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
+              {filteredRows.map((row) => (
+                <tr key={row.id}>
+                  <td><code className="adm-code">{row.id}</code></td>
+                  <td>
+                    <div className="adm-user-info">
+                      <span className="adm-user-name">{row.userName || row.user || row.userId || 'Client'}</span>
+                      {row.userEmail && <span className="adm-cell-meta">{row.userEmail}</span>}
+                    </div>
+                  </td>
+                  <td>
+                    <div className="adm-user-info">
+                      <span className="adm-user-name">{row.fundName || 'Unmapped fund'}</span>
+                      <span className="adm-cell-meta">{formatMoney(row.fundPoolSize || 0)}</span>
+                    </div>
+                  </td>
+                  <td className="be-money">{formatMoney(row.resolvedAmount ?? row.amount)}</td>
+                  <td>{row.mode || '—'}</td>
+                  <td>{row.provider || '—'}</td>
+                  <td>{statusBadge(row.status)}</td>
+                  <td className="be-num adm-cell-meta">{formatDate(row.time || row.createdAt)}</td>
+                  <td className="adm-cell-actions adm-payment-actions">
+                    <button className="be-btn be-btn-ghost be-btn-sm" onClick={() => onUserDetail?.(row)} title="View user">
+                      <I icon={Eye} size={14}/>
+                    </button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       </div>
-
-      <PaymentDecisionPanel
-        action={decision?.action}
-        row={decision?.row}
-        onClose={() => !busyPaymentId && setDecision(null)}
-        onApprove={approve}
-        onReject={reject}
-        busy={Boolean(busyPaymentId)}
-        error={paymentActionError}
-      />
     </div>
   );
 }

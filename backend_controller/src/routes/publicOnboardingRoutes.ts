@@ -33,6 +33,8 @@ import { z } from "zod"
 
 import type { CryptoContext } from "../crypto/context.js"
 import { bytesEqual } from "../crypto/primitives.js"
+import type { BreachChecker } from "../auth/breachCheck.js"
+import { hashPassword, passwordInputSchema } from "../auth/passwordHasher.js"
 import type { UnitOfWork } from "../db/database.js"
 import type {
   ConsentKind,
@@ -68,6 +70,13 @@ export interface PublicOnboardingDeps {
   readonly unitOfWork: UnitOfWork
   readonly clock: () => Date
   readonly crypto: CryptoContext
+  /**
+   * Same breached-password check the activation command uses. Applied here
+   * because this is now where the password is chosen, and the check has to
+   * happen while the applicant is still on the form and able to pick another
+   * one — refusing at approval time would strand them.
+   */
+  readonly breachChecker: BreachChecker
   readonly config: PublicOnboardingConfig
   readonly applicationRepository: ApplicationWriteRepository
   readonly consentRepository: ConsentRepositoryImpl
@@ -126,6 +135,13 @@ const verifyEmailBodySchema = z
  * `acceptedConsents` is `z.literal(true)` for the same reason the per-document
  * flag is — a refusal is not a submission to record, it is a form that was never
  * completed.
+ *
+ * `password` is the password the applicant will later sign in to the app with.
+ * It is validated by the same `passwordInputSchema` the activation command uses,
+ * so the rule the form must satisfy and the rule the credential must satisfy
+ * cannot drift apart. There is no `confirmPassword` here: re-entry is a typo
+ * guard for the person filling the form, so it is checked where the two boxes
+ * exist and never travels over the wire.
  */
 const newUserBodySchema = z
   .object({
@@ -136,6 +152,7 @@ const newUserBodySchema = z
       .refine((value) => !/[\u0000-\u001f\u007f-\u009f]/u.test(value), "must not contain control characters"),
     email: z.string().trim().email().max(254),
     phone: z.string().trim().min(8).max(32),
+    password: passwordInputSchema,
     acceptedConsents: z.literal(true),
     /**
      * Optional caller-supplied key. When the site can generate one it gets true
@@ -174,6 +191,7 @@ const submitThroughIdempotency = async (
     fullName: string
     emailNormalized: string
     phoneE164: string
+    passwordHash: string | null
     consents: readonly Readonly<{ kind: ConsentKind; version: string }>[]
   }>,
 ): Promise<FastifyReply> => {
@@ -185,6 +203,16 @@ const submitThroughIdempotency = async (
     routeTemplate: input.routeTemplate,
     key: input.idempotencyKey,
   }
+  /*
+   * The password is deliberately absent from the request hash. Argon2id salts
+   * every hash, so including it would make two identical retries look like two
+   * different requests and turn an ordinary retry into IDEMPOTENCY_KEY_REUSED.
+   * Hashing the plaintext instead would put a second, unsalted digest of the
+   * password in the idempotency table, which is exactly the artefact this design
+   * avoids elsewhere. The identity fields already distinguish one signup from
+   * another; a retry that changes only the password replays the first answer,
+   * which is the correct behaviour for a duplicate submission.
+   */
   const requestHash = hashRequest({
     fullName: input.fullName,
     email: input.emailNormalized,
@@ -222,6 +250,7 @@ const submitThroughIdempotency = async (
             fullName: input.fullName,
             emailNormalized: input.emailNormalized,
             phoneE164: input.phoneE164,
+            passwordHash: input.passwordHash,
             consents: input.consents.map((consent) => ({ ...consent })),
             requestId: request.requestId,
             clientIp: request.ip,
@@ -279,12 +308,23 @@ const handleNewUser = async (
    * (double-tapped button, a retry after a timed-out response) collapse into one
    * application instead of two, and the second call replays the first answer.
    * Scoped by consent versions too, so a genuine re-signup after new terms is a
-   * distinct submission.
+   * distinct submission. The password is excluded for the reason given on
+   * `requestHash` above.
    */
   const derivedKey = createHash("sha256")
     .update(JSON.stringify({ emailNormalized, phoneE164, fullName: body.fullName, consents }))
     .digest("hex")
     .slice(0, 64)
+
+  /*
+   * Both of these run before the transaction opens. The breach check is a network
+   * call to a third party and Argon2id is deliberately expensive; doing either
+   * while holding a write transaction would put that latency inside the lock. A
+   * breached password fails here, so nothing is written and the applicant is
+   * still on the form and able to choose another.
+   */
+  await deps.breachChecker.check(body.password)
+  const passwordHash = await hashPassword(body.password)
 
   return submitThroughIdempotency(deps, request, reply, {
     routeTemplate: "/newuser",
@@ -292,6 +332,7 @@ const handleNewUser = async (
     fullName: body.fullName,
     emailNormalized,
     phoneE164,
+    passwordHash,
     consents,
   })
 }

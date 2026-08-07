@@ -29,20 +29,36 @@ import StatTile from '../components/StatTile.jsx';
 import EmptyTableRow from '../components/EmptyTableRow.jsx';
 import { fmtInt } from '../helpers/formatters.js';
 
-function MandatesScreen({ rows = [], stats = {}, onUserDetail }) {
+/*
+ * Read-only register.
+ *
+ * The Pause and Revoke buttons that used to sit in each row had no `onClick` and
+ * no endpoint behind them — the backend exposes no mandate mutation at all — so
+ * they were decoration that read as capability. A mandate is an authorisation the
+ * customer gave their bank; pausing or revoking it is something they or the
+ * provider does, not something an operator asserts here. The same applied to
+ * "Filter status", which had no handler either; the status column is sortable by
+ * eye and the register is small, so it is simply gone rather than faked.
+ */
+function MandatesScreen({ rows = [], onUserDetail }) {
   const sb = s => ({
     active: <span className="be-badge be-badge-active"><span className="be-badge-dot"/>Active</span>,
     pending_user_auth: <span className="be-badge be-badge-paused"><span className="be-badge-dot"/>Pending auth</span>,
     paused: <span className="be-badge be-badge-paused"><span className="be-badge-dot"/>Paused</span>,
     revoked: <span className="be-badge be-badge-failed"><span className="be-badge-dot"/>Revoked</span>,
   }[s]);
+
+  // Counted from the loaded register. The previous tiles read stats.* keys that no
+  // endpoint supplies, and the formatter turned those into a confident "0".
+  const countBy = (status) => rows.filter((row) => row.status === status).length;
+
   return (
     <div className="adm-screen">
       <div className="adm-stats">
-        <StatTile label="Active mandates" value={fmtInt(stats.activeMandates)}/>
-        <StatTile label="Pending auth" value={fmtInt(stats.pendingMandates)}/>
-        <StatTile label="Paused" value={fmtInt(stats.pausedMandates)}/>
-        <StatTile label="AutoPay success" value={stats.autopaySuccess || '0%'}/>
+        <StatTile label="Active mandates" value={fmtInt(countBy('active'))}/>
+        <StatTile label="Pending auth" value={fmtInt(countBy('pending_user_auth'))}/>
+        <StatTile label="Paused" value={fmtInt(countBy('paused'))}/>
+        <StatTile label="Revoked" value={fmtInt(countBy('revoked'))}/>
       </div>
       <div className="adm-card adm-table">
         <div className="adm-card-head">
@@ -50,10 +66,12 @@ function MandatesScreen({ rows = [], stats = {}, onUserDetail }) {
             <span className="be-eyebrow">Mandates</span>
             <h2 className="adm-card-title">Active register</h2>
           </div>
-          <div className="adm-card-actions">
-            <button className="be-btn be-btn-secondary be-btn-sm">Filter status</button>
-          </div>
+          <div className="adm-payment-count">{rows.length}</div>
         </div>
+        <p className="adm-screen-note">
+          Mandates are authorised, paused and revoked through the payment provider and the
+          customer&rsquo;s bank. This register is the record of them.
+        </p>
         <table>
           <thead><tr>
             <th>Mandate</th><th>User</th><th>Amount</th><th>Debit day</th><th>Status</th><th>Last debit</th><th>Next</th><th></th>
@@ -73,8 +91,6 @@ function MandatesScreen({ rows = [], stats = {}, onUserDetail }) {
                 <td className="adm-cell-meta">{r.next}</td>
                 <td className="adm-cell-actions">
                   <button className="be-btn be-btn-ghost be-btn-sm" onClick={() => onUserDetail?.(r)}>View</button>
-                  <button className="be-btn be-btn-secondary be-btn-sm">Pause</button>
-                  <button className="be-btn be-btn-danger be-btn-sm">Revoke</button>
                 </td>
               </tr>
             ))}

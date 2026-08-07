@@ -26,6 +26,7 @@ import { createEmailDeliveryRepository } from "../../src/repositories/emailDeliv
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
 import { createOutboxRepository } from "../../src/repositories/outboxRepository.js"
 import { createUserRepository } from "../../src/repositories/userRepository.js"
+import { createCredentialRepository } from "../../src/repositories/credentialRepository.js"
 import { registerAdminIdentityRoutes, type AdminIdentityDeps } from "../../src/routes/adminIdentityRoutes.js"
 import { registerWebAuthRoutes } from "../../src/routes/webAuthRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
@@ -187,6 +188,7 @@ beforeAll(async () => {
     applicationRepository: createApplicationRepository(),
     applicationReviewRepository: createApplicationReviewRepository(),
     userRepository: createUserRepository(),
+    credentialRepository: createCredentialRepository(),
     activationInviteRepository: createActivationInviteRepository(),
     outboxRepository: createOutboxRepository(),
     emailDeliveryRepository: createEmailDeliveryRepository(),

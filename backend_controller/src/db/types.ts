@@ -160,6 +160,13 @@ export interface ApplicationsTable {
   email_normalized: string
   phone_e164: string
   full_name: string
+  /**
+   * Argon2id hash of the password chosen on the public signup form, held until
+   * the approval decision copies it into `user_credentials`. Nullable: rows
+   * submitted before password-at-signup have none and use the activation-invite
+   * path instead.
+   */
+  password_hash: string | null
   state: Generated<ApplicationState>
   email_verified_at: NullableTimestamp
   submitted_at: NullableTimestamp

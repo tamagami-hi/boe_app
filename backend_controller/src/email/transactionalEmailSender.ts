@@ -13,7 +13,7 @@
  */
 import { randomUUID } from "node:crypto"
 
-import type { EmailSender } from "./emailSender.js"
+import { EmailTransportNotConfiguredError, type EmailSender } from "./emailSender.js"
 import { renderEmailTemplate, type EmailTemplateConfig } from "./emailTemplates.js"
 import type { SesEmailSender, SesSendRequest, SesSendResult } from "./ports.js"
 
@@ -29,6 +29,15 @@ export interface TransactionalSenderDeps {
  * throw — is treated as retryable.
  */
 const classify = (error: unknown): SesSendResult => {
+  /*
+   * A missing transport is a deployment fault, not a bad recipient. It is
+   * retryable so the queue drains once SMTP is configured, and it gets its own
+   * code so "nobody set EMAIL_SMTP_*" is distinguishable in
+   * `email_deliveries.last_error_code` from "the mail server refused us".
+   */
+  if (error instanceof EmailTransportNotConfiguredError) {
+    return { outcome: "rejected", disposition: "retryable", errorCode: error.code }
+  }
   const responseCode = (error as { responseCode?: unknown }).responseCode
   if (typeof responseCode === "number" && responseCode >= 500 && responseCode < 600) {
     return { outcome: "rejected", disposition: "permanent", errorCode: "SMTP_PERMANENT_REJECT" }

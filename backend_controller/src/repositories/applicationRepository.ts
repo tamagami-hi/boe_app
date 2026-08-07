@@ -13,6 +13,13 @@ export interface CreateSubmissionInput {
   readonly emailNormalized: string
   readonly phoneE164: string
   readonly fullName: string
+  /**
+   * Argon2id hash of the password chosen at signup, or null for a caller that
+   * does not collect one. Hashing happens before the transaction opens — Argon2id
+   * is deliberately slow, and holding a write transaction open across it would
+   * put that cost inside the lock.
+   */
+  readonly passwordHash: string | null
 }
 
 export interface ApplicationQueueQuery {
@@ -77,6 +84,7 @@ export const createApplicationRepository = (): ApplicationWriteRepository => ({
         email_normalized: input.emailNormalized,
         phone_e164: input.phoneE164,
         full_name: input.fullName,
+        password_hash: input.passwordHash,
       })
       .returningAll()
       .executeTakeFirstOrThrow(),
@@ -142,7 +150,10 @@ export const createApplicationRepository = (): ApplicationWriteRepository => ({
         updated_at: sql<Date>`now()`,
       })
       .where("id", "=", input.applicationId)
-      .where("state", "=", "submitted")
+      // Both pre-review states are accepted. See startApplicationReview for why
+      // `pending_email_verification` is reviewable: the confirmation mail is not
+      // guaranteed to arrive, and gating review on it left applications stuck.
+      .where("state", "in", ["submitted", "pending_email_verification"])
       .returningAll()
       .executeTakeFirst()
     return row ?? null
@@ -154,6 +165,12 @@ export const createApplicationRepository = (): ApplicationWriteRepository => ({
       .set({
         state: input.decision,
         decided_at: input.now,
+        // Both outcomes are terminal, so the signup hash has done its job: an
+        // approval has already copied it into `user_credentials` (read from the
+        // locked row before this update) and a rejection will never produce an
+        // account. Clearing it here keeps exactly one copy of any live credential
+        // material, in the table whose rotation and lockout columns govern it.
+        password_hash: null,
         version: sql<string>`version + 1`,
         updated_at: sql<Date>`now()`,
       })

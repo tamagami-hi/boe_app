@@ -28,27 +28,59 @@ import '../styles/desktop/admin.css';
 import I from '../components/I.jsx';
 import ApprovalStatusBadge from '../components/ApprovalStatusBadge.jsx';
 import { initials } from '../helpers/formatters.js';
-import { displayRole } from '../helpers/formatters.js';
+import { fmtDateTime } from '../helpers/formatters.js';
 
-function ApprovalReviewPanel({ row, reason, busy, error, onReasonChange, onClose, onDecision }) {
+function ApprovalReviewPanel({
+  row,
+  reason,
+  busy,
+  error,
+  allowUnverifiedEmail = false,
+  onAllowUnverifiedEmailChange,
+  onReasonChange,
+  onClose,
+  onDecision,
+}) {
   if (!row) return null;
+
+  // A decided application is history, not work: the panel shows it but offers no
+  // decision, because the backend refuses a second one and offering the button
+  // only produces a conflict the operator cannot act on.
+  const isDecided = row.status === 'approved' || row.status === 'rejected';
+  const emailConfirmed = Boolean(row.emailVerifiedAt);
+  // Approving someone who never confirmed their address is a judgement call, so
+  // it needs a deliberate tick rather than being allowed by default.
+  const approveBlocked = !emailConfirmed && !allowUnverifiedEmail;
 
   const identityDetails = [
     ['Name', row.name || 'Client'],
-    ['Role', displayRole(row)],
-    ['Approval reference', row.approvalRef || 'Not assigned'],
+    ['Phone', row.phone || 'Not provided'],
+    // Applications carry no role — a role is granted to a user, and an applicant
+    // is not one yet. `displayRole` defaults to "Admin" when it finds no role
+    // field, so this panel used to label every applicant an admin.
+    ['Applied', row.createdAt ? fmtDateTime(row.createdAt) : 'Not recorded'],
   ];
 
   const contactDetails = [
     ['Email', row.email || 'Not provided'],
-    ['Phone', row.phone || 'Not provided'],
-    ['Signed up', row.createdAt || 'Not recorded'],
+    ['Email confirmed', emailConfirmed ? fmtDateTime(row.emailVerifiedAt) : 'Not confirmed'],
+    ['Application', row.applicationId || row.id || 'Not assigned'],
   ];
 
   const statusDetails = [
-    ['Account status', row.status || 'pending_review'],
-    ['KYC status', row.kycStatus || 'pending'],
-    ['Risk profile', row.riskProfileStatus || 'pending'],
+    ['Application state', row.status || 'pending'],
+    [
+      'Password',
+      row.hasSignupPassword
+        ? 'Chosen at signup'
+        : 'Set by activation invitation',
+    ],
+    [
+      'On approval',
+      row.hasSignupPassword
+        ? 'Account opens immediately'
+        : 'Activation invitation is emailed',
+    ],
   ];
 
   return (
@@ -119,21 +151,60 @@ function ApprovalReviewPanel({ row, reason, busy, error, onReasonChange, onClose
               value={reason}
               onChange={(event) => onReasonChange(event.target.value)}
               placeholder="Record the reason, KYC observation, or admin decision note."
-              disabled={busy}
+              disabled={busy || isDecided}
             />
           </label>
+          {!emailConfirmed && !isDecided && (
+            <div className="adm-review-warning">
+              <p>
+                <I icon={AlertTriangle} size={14}/>{' '}
+                This applicant has not confirmed their email address. Approving them opens an
+                account for an address nobody has proven they can receive mail at.
+              </p>
+              <label className="adm-review-ack">
+                <input
+                  type="checkbox"
+                  checked={allowUnverifiedEmail}
+                  onChange={(event) => onAllowUnverifiedEmailChange?.(event.target.checked)}
+                  disabled={busy}
+                />
+                <span>Approve anyway — I have confirmed this applicant another way.</span>
+              </label>
+            </div>
+          )}
+          {row.hasSignupPassword === false && !isDecided && (
+            <p className="adm-review-hint">
+              This applicant signed up before passwords were collected, so approving them
+              emails an activation invitation instead of opening the account directly.
+            </p>
+          )}
         </div>
 
         {error && <div className="adm-review-error">{error}</div>}
 
         <div className="adm-review-actions">
-          <button className="be-btn be-btn-secondary" onClick={onClose} disabled={busy}>Cancel</button>
-          <button className="be-btn be-btn-danger" onClick={() => onDecision(row, 'rejected')} disabled={busy}>
-            <I icon={XCircle} size={16}/> Reject
+          <button className="be-btn be-btn-secondary" onClick={onClose} disabled={busy}>
+            {isDecided ? 'Close' : 'Cancel'}
           </button>
-          <button className="be-btn be-btn-primary" onClick={() => onDecision(row, 'approved')} disabled={busy}>
-            <I icon={CheckCircle2} size={16}/> Approve
-          </button>
+          {!isDecided && (
+            <>
+              <button
+                className="be-btn be-btn-danger"
+                onClick={() => onDecision(row, 'rejected')}
+                disabled={busy}
+              >
+                <I icon={XCircle} size={16}/> Reject
+              </button>
+              <button
+                className="be-btn be-btn-primary"
+                onClick={() => onDecision(row, 'approved')}
+                disabled={busy || approveBlocked}
+                title={approveBlocked ? 'Tick the acknowledgement above to approve an unconfirmed email' : undefined}
+              >
+                <I icon={CheckCircle2} size={16}/> Approve
+              </button>
+            </>
+          )}
         </div>
       </section>
     </div>

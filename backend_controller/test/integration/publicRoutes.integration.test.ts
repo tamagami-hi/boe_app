@@ -9,6 +9,7 @@ import { Wait } from "testcontainers"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 
 import { createCryptoContext, parseCryptoKeys } from "../../src/crypto/context.js"
+import { createBypassBreachChecker } from "../../src/auth/breachCheck.js"
 import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
 import { SEED_CONSENT_DOCUMENTS } from "../../src/db/seedCatalog.js"
@@ -89,6 +90,10 @@ beforeAll(async () => {
         unitOfWork: createUnitOfWork(database),
         clock: () => new Date(),
         crypto: cryptoContext,
+        // The signup route hashes a password now, so it needs the same breach
+        // checker activation uses. Bypassed here: these tests assert routing and
+        // persistence, and a real HIBP round-trip would make them network-bound.
+        breachChecker: createBypassBreachChecker(),
         config: {
           verificationTokenTtlMs: 24 * 60 * 60 * 1000,
           idempotencyTtlMs: 24 * 60 * 60 * 1000,

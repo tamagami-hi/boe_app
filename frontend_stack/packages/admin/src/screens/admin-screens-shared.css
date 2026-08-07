@@ -304,3 +304,16 @@
   flex: 1 1 clamp(160px, 20vw, 260px);
   min-width: 0;
 }
+
+
+/* Explains why a screen offers no actions, on the screens that are records
+   rather than workspaces (payments, mandates). Stated once at the top instead of
+   as a tooltip per row, so an operator learns it before hunting for a button. */
+.adm-screen-note {
+  margin: 0;
+  padding: var(--be-space-2) var(--be-space-4) var(--be-space-3);
+  color: var(--be-slate);
+  font-size: var(--be-text-sm);
+  line-height: 1.45;
+  border-bottom: var(--be-border-1);
+}

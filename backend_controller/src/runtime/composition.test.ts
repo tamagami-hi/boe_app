@@ -59,10 +59,15 @@ describe("composeBackend", () => {
     expect(health.json<{ ok: boolean }>().ok).toBe(true)
 
     // The dummy database is unreachable, so readiness is degraded (503) but does
-    // not leak any configuration value.
+    // not leak any configuration value. `validEnv` supplies the SES/SNS variables
+    // but no SMTP credentials, which is exactly the case the two flags exist to
+    // separate: this deployment could not send a single message.
     const ready = await app.inject({ method: "GET", url: "/health/ready" })
     expect(ready.statusCode).toBe(503)
-    expect(ready.json()).toMatchObject({ status: "degraded", checks: { database: false, email: true } })
+    expect(ready.json()).toMatchObject({
+      status: "degraded",
+      checks: { database: false, emailTransport: false, emailEventIngress: true },
+    })
 
     // A representative canonical route is actually registered.
     const disclosures = await app.inject({ method: "GET", url: "/v1/public/disclosures" })

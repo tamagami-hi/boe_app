@@ -134,6 +134,46 @@
   font-size: var(--be-text-sm);
 }
 
+/* Unconfirmed-email warning and its acknowledgement, shown in the review panel
+   when the applicant never redeemed their confirmation link. Amber rather than
+   red: this is a risk the reviewer may knowingly accept, not an error. */
+.adm-review-warning {
+  margin-top: var(--be-space-2);
+  border: 1px solid color-mix(in srgb, var(--be-amber) 30%, transparent);
+  background: var(--be-amber-soft);
+  border-radius: var(--be-radius-sm);
+  padding: var(--be-space-2) var(--be-space-3);
+}
+
+.adm-review-warning p {
+  margin: 0;
+  font-size: var(--be-text-sm);
+  line-height: 1.45;
+  color: var(--be-fg);
+}
+
+.adm-review-ack {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--be-space-2);
+  margin-top: var(--be-space-2);
+  font-size: var(--be-text-sm);
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.adm-review-ack input {
+  margin-top: 3px;
+  flex: 0 0 auto;
+}
+
+.adm-review-hint {
+  margin: var(--be-space-2) 0 0;
+  font-size: var(--be-text-sm);
+  line-height: 1.45;
+  color: var(--be-slate);
+}
+
 .adm-review-actions {
   display: flex;
   justify-content: flex-end;

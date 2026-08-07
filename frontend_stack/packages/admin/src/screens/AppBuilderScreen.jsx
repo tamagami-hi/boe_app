@@ -82,11 +82,18 @@ function AppBuilderScreen() {
     }
   }
 
+  /*
+   * Discards local edits. This is deliberately NOT a server-side revert: it
+   * clears the draft held in this browser and returns the editor to the built-in
+   * defaults. Whatever was last published stays published until Publish is
+   * pressed again, so the label and the note both say "draft" rather than
+   * implying the live config was rolled back.
+   */
   function reset() {
     const next = resetAppConfig();
     setConfig(next);
     setSelectedProductId(next.mobile.products[0]?.id || '');
-    setSaved('Reset to default app configuration.');
+    setSaved('Local draft discarded. The published configuration is unchanged.');
   }
 
   function setComponentEnabled(targetScreen, componentId, enabled) {
@@ -287,7 +294,13 @@ function AppBuilderScreen() {
         </div>
         <div className="adm-card-actions">
           {(loadingConfig || saved) && <span className="adm-save-note">{loadingConfig ? 'Loading backend config...' : saved}</span>}
-          <button className="be-btn be-btn-secondary be-btn-sm" onClick={reset}><I icon={RotateCcw} size={14}/>Reset</button>
+          <button
+            className="be-btn be-btn-secondary be-btn-sm"
+            onClick={reset}
+            title="Discard the draft in this browser. Does not change the published configuration."
+          >
+            <I icon={RotateCcw} size={14}/>Discard draft
+          </button>
           <button className="be-btn be-btn-primary be-btn-sm" onClick={publish}><I icon={Save} size={14}/>Publish config</button>
         </div>
       </div>

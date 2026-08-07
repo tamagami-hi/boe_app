@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiRequest } from '@beonedge/client/services/_util.js';
 import { resolveApplication } from '@beonedge/client/services/adminApplicationsApi.js';
-import { loadAdminCollection, loadAdminOverview } from '../helpers/loadAdminData.js';
+import { loadAdminCollection } from '../helpers/loadAdminData.js';
 import { useToast } from '../components/ToastProvider.jsx';
 import ApprovalReviewPanel from '../screens/ApprovalReviewPanel.jsx';
 import UserDetailScreen from '../screens/UserDetailScreen.jsx';
@@ -43,8 +43,9 @@ export default function LegacyAdminDataProvider({ children }) {
   const [reviewReason, setReviewReason] = useState('');
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewError, setReviewError] = useState('');
-  const [paymentBusyId, setPaymentBusyId] = useState('');
-  const [paymentActionError, setPaymentActionError] = useState('');
+  // Reviewer's acknowledgement that an applicant never confirmed their email.
+  // Reset with every panel open so it can never carry over to the next person.
+  const [allowUnverifiedEmail, setAllowUnverifiedEmail] = useState(false);
   const [detailOverlayUserId, setDetailOverlayUserId] = useState(null);
   const loadRef = useRef(0);
   const navigate = useNavigate();
@@ -66,14 +67,10 @@ export default function LegacyAdminDataProvider({ children }) {
       '/v1/admin/kyc-review',
       '/v1/admin/transactions',
     ];
-    const results = await Promise.allSettled([
-      loadAdminOverview(),
-      ...COLLECTIONS.map((path) => loadAdminCollection(path)),
-    ]);
+    const results = await Promise.allSettled(COLLECTIONS.map((path) => loadAdminCollection(path)));
     if (reqId !== loadRef.current) return; // ignore stale responses
-    const [nextOverview, approvals, funds, payments, mandates, auditLogs, kycReview, transactions] =
+    const [approvals, funds, payments, mandates, auditLogs, kycReview, transactions] =
       results.map((result) => (result.status === 'fulfilled' ? result.value : null));
-    setOverview(nextOverview || EMPTY_OVERVIEW);
     setAdminData({
       approvals: approvals || [],
       funds: funds || [],
@@ -84,7 +81,22 @@ export default function LegacyAdminDataProvider({ children }) {
       transactions: transactions || [],
     });
 
-    const labels = ['overview', ...COLLECTIONS.map((path) => path.replace('/v1/admin/', ''))];
+    /*
+     * Sidebar badge counts, derived from what was just loaded rather than fetched
+     * separately. `approvals` counts the whole queue, including applications whose
+     * email is not yet confirmed: those are reviewable now, so excluding them made
+     * the badge read 0 while the screen listed six people waiting.
+     */
+    setOverview({
+      counts: {
+        approvals: (approvals || []).length,
+        kycReview: (kycReview || []).length,
+        funds: (funds || []).length,
+      },
+      stats: {},
+    });
+
+    const labels = COLLECTIONS.map((path) => path.replace('/v1/admin/', ''));
     const failures = results
       .map((result, index) =>
         result.status === 'rejected' ? `${labels[index]}: ${result.reason?.message || 'failed'}` : '',
@@ -171,18 +183,34 @@ export default function LegacyAdminDataProvider({ children }) {
     return `Q${fiscalIndex} FY${String(fiscalYearEnd).slice(-2)}`;
   }
 
+  /**
+   * Publish the AUM opening balance and the disclosed stock list.
+   *
+   * Both are tolerant of an already-published period: the canonical routes refuse
+   * a repeat, and a refused repeat must not fail the fund save itself. What is NOT
+   * tolerated any more is silence. These calls used to end in `.catch(() => null)`,
+   * so a rejected AUM figure or stock row left the fund looking saved while its
+   * pool size and holdings were not — the operator had no way to know. Failures
+   * are now collected and reported to the caller, which surfaces them as a
+   * partial-success warning.
+   */
   async function publishFundFollowUps(fundId, payload) {
+    const warnings = [];
     const aumPaise = toPaise(payload.totalPoolSize);
     if (aumPaise > 0) {
-      await apiRequest(`/v1/admin/funds/${encodeURIComponent(fundId)}/aum-updates`, {
-        method: 'POST',
-        scope: 'admin',
-        body: {
-          periodStart: currentPeriodStart(),
-          openingAumPaise: aumPaise,
-          note: 'Opening balance set from the fund editor.',
-        },
-      }).catch(() => null);
+      try {
+        await apiRequest(`/v1/admin/funds/${encodeURIComponent(fundId)}/aum-updates`, {
+          method: 'POST',
+          scope: 'admin',
+          body: {
+            periodStart: currentPeriodStart(),
+            openingAumPaise: aumPaise,
+            note: 'Opening balance set from the fund editor.',
+          },
+        });
+      } catch (error) {
+        warnings.push(`pool size: ${error?.message || 'could not be published'}`);
+      }
     }
 
     const stocks = (payload.investments || [])
@@ -193,12 +221,28 @@ export default function LegacyAdminDataProvider({ children }) {
         sortOrder: index + 1,
       }));
     for (const stock of stocks) {
-      await apiRequest(`/v1/admin/funds/${encodeURIComponent(fundId)}/stocks`, {
-        method: 'POST',
-        scope: 'admin',
-        body: stock,
-      }).catch(() => null);
+      try {
+        await apiRequest(`/v1/admin/funds/${encodeURIComponent(fundId)}/stocks`, {
+          method: 'POST',
+          scope: 'admin',
+          body: stock,
+        });
+      } catch (error) {
+        warnings.push(`${stock.stockName}: ${error?.message || 'could not be published'}`);
+      }
     }
+    return warnings;
+  }
+
+  // Report what did not publish without claiming the whole save failed — the fund
+  // and its version did commit, and saying otherwise would send the operator to
+  // re-create a fund that already exists.
+  function warnPartialPublish(warnings) {
+    if (warnings.length === 0) return;
+    addToast(
+      `Fund saved, but some details did not publish — ${warnings.join('; ')}`,
+      'warning',
+    );
   }
 
   async function handleCreateFund(payload) {
@@ -210,7 +254,7 @@ export default function LegacyAdminDataProvider({ children }) {
     const fundId = created?.fund?.id;
     if (fundId) {
       await publishFundVersion(fundId, payload);
-      await publishFundFollowUps(fundId, payload);
+      warnPartialPublish(await publishFundFollowUps(fundId, payload));
     }
     await loadAdminData();
   }
@@ -218,7 +262,7 @@ export default function LegacyAdminDataProvider({ children }) {
   async function handleUpdateFund(fundId, payload) {
     // A published fund version is immutable, so an edit publishes the next one.
     await publishFundVersion(fundId, payload);
-    await publishFundFollowUps(fundId, payload);
+    warnPartialPublish(await publishFundFollowUps(fundId, payload));
     if (payload.status === 'paused' || payload.status === 'archived') {
       await apiRequest(`/v1/admin/funds/${encodeURIComponent(fundId)}`, {
         method: 'PATCH',
@@ -247,6 +291,7 @@ export default function LegacyAdminDataProvider({ children }) {
     setReviewRow(row);
     setReviewReason('');
     setReviewError('');
+    setAllowUnverifiedEmail(false);
   }
 
   function closeReview() {
@@ -254,6 +299,7 @@ export default function LegacyAdminDataProvider({ children }) {
     setReviewRow(null);
     setReviewReason('');
     setReviewError('');
+    setAllowUnverifiedEmail(false);
   }
 
   async function handleUserDecision(row, status) {
@@ -274,22 +320,27 @@ export default function LegacyAdminDataProvider({ children }) {
     }));
 
     try {
-      // Canonical review -> decision handshake (submitted rows are moved to
-      // in_review first; the decision uses the post-review version via If-Match).
+      /*
+       * No version or status is passed. resolveApplication re-reads the
+       * application and drives the review -> decision handshake off what the
+       * server currently holds, because anything this screen captured at mount
+       * may already be stale and the decision's If-Match would then fail with a
+       * conflict that retrying cannot clear.
+       */
       await resolveApplication({
         applicationId: row.applicationId || row.id,
-        version: row.version,
-        status: row.status,
         outcome: status,
         reasonCode: status === 'approved' ? 'approved_by_admin' : 'rejected_by_admin',
         reasonDetail: reason || undefined,
+        allowUnverifiedEmail,
       });
       setReviewRow(null);
       setReviewReason('');
+      setAllowUnverifiedEmail(false);
 
       addToast(
         status === 'approved'
-          ? `${row.name || 'User'} approved successfully.`
+          ? `${row.name || 'User'} approved. They can sign in with the password they chose at signup.`
           : `${row.name || 'User'} rejected.`,
         status === 'approved' ? 'success' : 'warning'
       );
@@ -299,11 +350,14 @@ export default function LegacyAdminDataProvider({ children }) {
     } catch (error) {
       setReviewError(error?.message || 'Review action failed.');
       addToast(error?.message || 'Action failed. Please try again.', 'error');
-      // Re-add row on error
-      setAdminData((prev) => ({
-        ...prev,
-        approvals: [row, ...prev.approvals],
-      }));
+      /*
+       * Reload rather than putting the captured row back. A failure usually means
+       * this screen's snapshot disagrees with the server — often because the
+       * review step of this very attempt committed before the decision failed —
+       * and restoring the stale row guaranteed every retry failed the same way.
+       * Refetching means the next attempt starts from the real state.
+       */
+      await loadAdminData().catch(() => {});
     } finally {
       setReviewBusy(false);
     }
@@ -337,8 +391,6 @@ export default function LegacyAdminDataProvider({ children }) {
     loadNote,
     loading,
     reviewBusy,
-    paymentBusyId,
-    paymentActionError,
     openReview,
     handleApproveUser,
     handleUserDecision,
@@ -359,6 +411,8 @@ export default function LegacyAdminDataProvider({ children }) {
         reason={reviewReason}
         busy={reviewBusy}
         error={reviewError}
+        allowUnverifiedEmail={allowUnverifiedEmail}
+        onAllowUnverifiedEmailChange={setAllowUnverifiedEmail}
         onReasonChange={setReviewReason}
         onClose={closeReview}
         onDecision={handleUserDecision}
