@@ -80,7 +80,7 @@ REMOTE_FETCHED=false
 # ── helpers ─────────────────────────────────────────────────────────────────
 
 latest_bundle() {
-    find "$BUILD_DIR/$1" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort -V | tail -n1
+    bundle_path_newest "$BUILD_DIR/$1"
 }
 
 bundle_version() {

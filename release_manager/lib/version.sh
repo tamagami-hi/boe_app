@@ -146,3 +146,55 @@ remote_release_refs_match() {
     target="${peeled:-$direct}"
     [[ "$branch" == "$expected" && "$target" == "$expected" ]]
 }
+
+
+# ── bundle directory ordering ────────────────────────────────────────────────
+#
+# Staged bundle directories are named "<version>-<YYYYmmddTHHMMSSZ>", and
+# "the newest bundle" means the most recently built one.
+#
+# `sort -V` over the whole directory name gets that wrong as soon as a
+# prerelease and its release share a base version. Version sort compares the
+# text after the shared "0.8.3-" prefix, where letters outrank digits, so:
+#
+#   0.8.3-20260807T104736Z                        <- clean, tagged, built 10:47
+#   0.8.3-dev.0.g298a141.dirty-20260807T104213Z   <- dirty, built 10:42  ← "newest"
+#
+# The dirty prerelease wins, which is also backwards from semver precedence (a
+# prerelease precedes its release). Observed consequence: `deploy.sh --dev`
+# selected the older dirty bundle over the clean tagged release built five
+# minutes later, and because that bundle carried no `apk/` directory it
+# published no APKs at all — the release's APKs silently never shipped.
+#
+# The trailing UTC stamp is the authoritative build order and, being ISO-8601
+# basic format, sorts correctly as plain text. It is therefore the sort key.
+# A directory without a recognisable stamp sorts first, so a malformed name can
+# never outrank a real bundle; the name is the tie-breaker so ordering is total
+# and stable.
+
+# bundle_dirs_oldest_first <build_dir> — bundle directory NAMES, oldest first.
+bundle_dirs_oldest_first() {
+    local dir="$1"
+    [[ -d "$dir" ]] || return 0
+    find "$dir" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null \
+        | awk '{
+              n = split($0, part, "-")
+              stamp = (part[n] ~ /^[0-9]{8}T[0-9]{6}Z$/) ? part[n] : ""
+              printf "%s\t%s\n", stamp, $0
+          }' \
+        | LC_ALL=C sort -t$'\t' -k1,1 -k2,2 \
+        | cut -f2-
+}
+
+# bundle_dir_newest <build_dir> — name of the most recently built bundle, if any.
+bundle_dir_newest() {
+    bundle_dirs_oldest_first "$1" | tail -n1
+}
+
+# bundle_path_newest <build_dir> — absolute path of the newest bundle, if any.
+bundle_path_newest() {
+    local dir="$1" name
+    name="$(bundle_dir_newest "$dir")"
+    [[ -n "$name" ]] || return 0
+    printf '%s/%s\n' "$dir" "$name"
+}

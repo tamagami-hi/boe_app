@@ -168,6 +168,11 @@ if bash "$RM_DIR/tests/repo_sync.test.sh" >/dev/null 2>&1; then
 else
     fail "repository worktree-path sync tests failed"
 fi
+if bash "$RM_DIR/tests/bundle_selection.test.sh" >/dev/null 2>&1; then
+    pass "bundle selection picks the newest build, not the highest version string"
+else
+    fail "bundle selection ordering tests failed"
+fi
 
 for s in "${BOE_STACKS[@]}"; do
     pj="$STACKS/$s/paths.json"

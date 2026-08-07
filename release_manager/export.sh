@@ -418,7 +418,9 @@ BUNDLE_COMPLETE=true
 ok "manifest.json written"
 
 # ── retention ───────────────────────────────────────────────────────────────
-mapfile -t old < <(find "$BUILD_DIR/$STACK" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null | sort -V)
+# Oldest-first by build time, so pruning cannot delete the clean tagged release
+# and keep an older dirty prerelease of the same version (see version.sh).
+mapfile -t old < <(bundle_dirs_oldest_first "$BUILD_DIR/$STACK")
 if (( ${#old[@]} > KEEP_BUNDLES )); then
     for v in "${old[@]:0:$(( ${#old[@]} - KEEP_BUNDLES ))}"; do
         rm -rf -- "$BUILD_DIR/$STACK/$v" && info "pruned old bundle $v" 2>/dev/null || true

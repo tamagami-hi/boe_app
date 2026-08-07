@@ -27,7 +27,7 @@ source "$APK_SHIP_LIB"
 
 for helper in apk_contract_destination apk_manifest_artifact \
               apk_validate_local_artifact apk_contract_lock_file \
-              apk_archive_remote_variant \
+              apk_retire_remote_variant apk_contract_keep_releases \
               apk_publish_remote_atomic apk_ship_variant apk_ship_release; do
     declare -F "$helper" >/dev/null \
         || fail_test "missing APK helper: $helper"
@@ -115,6 +115,7 @@ mkdir -p "$REMOTE_ROOT/locks"
 jq -n --arg sd "$DEV_STACK_DIR" --arg br "$DEV_BACKUP_ROOT" --arg rr "$DEV_ROLLBACK_ROOT" \
     --arg lock "$DEV_LOCK" '{
     schema: 3, stack: "dev_release", short: "dev",
+    retention: { keep_releases: 4 },
     vps: { stack_dir: $sd, lock_file: $lock },
     backup: { root: $br, rollback_root: $rr },
     apk: { enabled: true, destinations: [
@@ -128,6 +129,7 @@ jq -n --arg sd "$DEV_STACK_DIR" --arg br "$DEV_BACKUP_ROOT" --arg rr "$DEV_ROLLB
 jq -n --arg sd "$PROD_STACK_DIR" --arg br "$PROD_BACKUP_ROOT" --arg rr "$PROD_ROLLBACK_ROOT" \
     --arg lock "$PROD_LOCK" '{
     schema: 3, stack: "prod_release", short: "prod",
+    retention: { keep_releases: 3 },
     vps: { stack_dir: $sd, lock_file: $lock },
     backup: { root: $br, rollback_root: $rr },
     apk: { enabled: true, destinations: [
@@ -251,10 +253,14 @@ make_artifact "$APK_DIR" dev admin 0.6.5
 make_artifact "$APK_DIR" dev client 0.6.4
 make_artifact "$APK_DIR" dev client 0.6.6
 
-# Pre-seed the current holders with a previously published build.
+# Pre-seed the current holders with a previously published build. Publication
+# always writes an APK and its sidecar as a pair, so the fixture seeds both —
+# retirement moves the pair, and the archive's checksum manifest must cover it.
 mkdir -p "$DEV_STACK_DIR/dev_apk" "$DEV_STACK_DIR/dev_admin_apk"
 printf 'old client\n' > "$DEV_STACK_DIR/dev_apk/boe.dev.client.0.6.4.apk"
+printf '{"version":"0.6.4"}\n' > "$DEV_STACK_DIR/dev_apk/boe.dev.client.0.6.4.json"
 printf 'old admin\n'  > "$DEV_STACK_DIR/dev_admin_apk/boe.dev.admin.0.6.4.apk"
+printf '{"version":"0.6.4"}\n' > "$DEV_STACK_DIR/dev_admin_apk/boe.dev.admin.0.6.4.json"
 
 # ── case 5: exact version is required; retained artifacts are ignored ────────
 
@@ -283,22 +289,37 @@ fi
    == "$(artifact_sha "$APK_DIR/boe.dev.client.0.6.5.apk")" ]] \
     || fail_test 'the published client APK digest differs from the validated artifact'
 
-# ── case 10: archive happens before publish, into variant-specific rollbacks ─
+# ── case 10: retirement happens AFTER publish, into variant-specific rollbacks ─
 
-archive_line="$(grep -n 'DEV_APK/client' "$CALL_LOG" | head -1 | cut -d: -f1)"
+# Retirement moves artifacts out of the holder, so it must not run until the new
+# APK is verifiably in place — otherwise a failed publish leaves an empty holder,
+# which the in-app update feed reads as "no update available". The previous
+# behaviour archived first (by copying), which both left every old version in the
+# holder forever and made each snapshot copy the whole holder.
+last_transfer_line="$(grep -n '^rsync' "$CALL_LOG" | tail -1 | cut -d: -f1)"
 transfer_line="$(grep -n '^rsync' "$CALL_LOG" | head -1 | cut -d: -f1)"
-[[ -n "$archive_line" && -n "$transfer_line" && "$archive_line" -lt "$transfer_line" ]] \
-    || fail_test 'existing APKs were not archived before new artifacts were transferred'
-# BOTH variants must be archived before EITHER is published: the admin archive
-# precedes the first transfer of any new artifact.
-admin_archive_line="$(grep -n 'DEV_APK/admin' "$CALL_LOG" | head -1 | cut -d: -f1)"
-[[ -n "$admin_archive_line" && "$admin_archive_line" -lt "$transfer_line" ]] \
-    || fail_test 'existing admin APKs were not archived before the first new artifact was transferred'
-find "$DEV_ROLLBACK_ROOT/DEV_APK/client" \
-    -name 'boe.dev.client.0.6.4.apk' | grep -q . \
+client_retire_line="$(grep -n 'DEV_APK/client' "$CALL_LOG" | tail -1 | cut -d: -f1)"
+admin_retire_line="$(grep -n 'DEV_APK/admin' "$CALL_LOG" | tail -1 | cut -d: -f1)"
+[[ -n "$last_transfer_line" && -n "$client_retire_line" \
+   && "$client_retire_line" -gt "$last_transfer_line" ]] \
+    || fail_test 'client retirement did not run after the new artifacts were transferred'
+[[ -n "$admin_retire_line" && "$admin_retire_line" -gt "$last_transfer_line" ]] \
+    || fail_test 'admin retirement did not run after the new artifacts were transferred'
+
+# The superseded version moved out; the freshly published one stayed.
+[[ ! -e "$DEV_STACK_DIR/dev_apk/boe.dev.client.0.6.4.apk" ]] \
+    || fail_test 'the superseded client APK was left in the holder'
+[[ -f "$DEV_STACK_DIR/dev_apk/boe.dev.client.0.6.5.apk" ]] \
+    || fail_test 'the freshly published client APK was retired by mistake'
+[[ ! -e "$DEV_STACK_DIR/dev_admin_apk/boe.dev.admin.0.6.4.apk" ]] \
+    || fail_test 'the superseded admin APK was left in the holder'
+[[ -f "$DEV_STACK_DIR/dev_admin_apk/boe.dev.admin.0.6.5.apk" ]] \
+    || fail_test 'the freshly published admin APK was retired by mistake'
+
+# History is per-version, mirroring DEPLOY_IMAGES/<version>/ for the images.
+[[ -f "$DEV_ROLLBACK_ROOT/DEV_APK/client/0.6.4/boe.dev.client.0.6.4.apk" ]] \
     || fail_test 'previous client APK was not archived to the client rollback dir'
-find "$DEV_ROLLBACK_ROOT/DEV_APK/admin" \
-    -name 'boe.dev.admin.0.6.4.apk' | grep -q . \
+[[ -f "$DEV_ROLLBACK_ROOT/DEV_APK/admin/0.6.4/boe.dev.admin.0.6.4.apk" ]] \
     || fail_test 'previous admin APK was not archived to the admin rollback dir'
 if find "$DEV_ROLLBACK_ROOT/DEV_APK/client" -name '*admin*' | grep -q .; then
     fail_test 'an admin APK was archived into the client rollback dir'
@@ -318,6 +339,64 @@ verify_line="$(grep -n "$(artifact_sha "$APK_DIR/boe.dev.client.0.6.5.apk")" "$C
     | head -1 | cut -d: -f1)"
 [[ -n "$verify_line" && "$verify_line" -gt "$transfer_line" ]] \
     || fail_test 'the remote digest was not verified against the validated value'
+
+# ── case R1: archive retention honours retention.keep_releases ───────────────
+#
+# The old archive never pruned, and because each snapshot copied the whole
+# (ever-growing) holder, archive size grew quadratically with release count —
+# 310 MB across 16 snapshots on the dev stack. keep_releases is the declared
+# answer in paths.json, so retirement enforces it.
+
+RET_HOLDER="$REMOTE_ROOT/ret_holder"
+RET_ARCHIVE="$REMOTE_ROOT/ret_archive"
+mkdir -p "$RET_HOLDER" "$RET_ARCHIVE"
+
+# Five already-archived versions, oldest first by mtime.
+for v in 0.1.0 0.2.0 0.3.0 0.4.0 0.5.0; do
+    mkdir -p "$RET_ARCHIVE/$v"
+    printf 'old\n' > "$RET_ARCHIVE/$v/boe.dev.client.$v.apk"
+    touch -d "2026-01-0${v:2:1} 00:00:00" "$RET_ARCHIVE/$v"
+done
+# A live release plus one it supersedes.
+printf 'superseded\n' > "$RET_HOLDER/boe.dev.client.0.6.0.apk"
+printf '{}\n'         > "$RET_HOLDER/boe.dev.client.0.6.0.json"
+printf 'live\n'       > "$RET_HOLDER/boe.dev.client.0.7.0.apk"
+printf '{}\n'         > "$RET_HOLDER/boe.dev.client.0.7.0.json"
+
+apk_retire_remote_variant "$RET_HOLDER" "$RET_ARCHIVE" "$DEV_LOCK" 3 0.7.0 >/dev/null \
+    || fail_test 'retirement failed on a holder with a superseded version'
+
+# The live release stays; the superseded one is gone from the holder.
+[[ -f "$RET_HOLDER/boe.dev.client.0.7.0.apk" ]] \
+    || fail_test 'retention removed the live release from the holder'
+[[ ! -e "$RET_HOLDER/boe.dev.client.0.6.0.apk" ]] \
+    || fail_test 'retention left a superseded APK in the holder'
+[[ ! -e "$RET_HOLDER/boe.dev.client.0.6.0.json" ]] \
+    || fail_test 'retention left a superseded sidecar in the holder'
+
+# Archive trimmed to keep=3, keeping the newest — including the one just added.
+ret_kept="$(find "$RET_ARCHIVE" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | tr '\n' ' ')"
+[[ "$(find "$RET_ARCHIVE" -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 3 ]] \
+    || fail_test "archive was not trimmed to keep_releases=3, holds: $ret_kept"
+[[ -d "$RET_ARCHIVE/0.6.0" ]] \
+    || fail_test "the newly retired version was pruned, holds: $ret_kept"
+[[ ! -d "$RET_ARCHIVE/0.1.0" && ! -d "$RET_ARCHIVE/0.2.0" ]] \
+    || fail_test "the oldest archives were not pruned, holds: $ret_kept"
+
+# keep_releases comes from the contract, not a constant. The dev fixture declares
+# 4 precisely so this cannot pass via the built-in fallback of 3.
+[[ "$(apk_contract_keep_releases "$DEV_PATHS")" == 4 ]] \
+    || fail_test 'the retention count is not read from paths.json'
+NO_RETENTION="$TEST_DIR/no-retention.json"
+jq 'del(.retention)' "$DEV_PATHS" > "$NO_RETENTION"
+[[ "$(apk_contract_keep_releases "$NO_RETENTION")" == 3 ]] \
+    || fail_test 'a contract without retention did not fall back to a bounded default'
+
+# Retirement refuses to run without knowing which version is live, so it can
+# never empty the holder by moving the release it was meant to preserve.
+if apk_retire_remote_variant "$RET_HOLDER" "$RET_ARCHIVE" "$DEV_LOCK" 3 '' >/dev/null 2>&1; then
+    fail_test 'retirement ran without a live version to preserve'
+fi
 
 # ── case 15: custom fixture paths prove there is no raw /srv fallback ────────
 # The entire happy path above ran against $TEST_DIR paths only. The library
@@ -361,12 +440,20 @@ fi
 [[ "$(artifact_sha "$DEV_STACK_DIR/dev_apk/boe.dev.client.0.6.5.json")" == "$before_sc_sha" ]] \
     || fail_test 'the live sidecar was touched by a failed pair publish'
 
-# ── case M3: a mid-release publish failure still archived BOTH variants first,
-# and never touched the variant whose publish never ran ───────────────────────
+# ── case M3: a mid-release publish failure retires nothing and leaves both
+# holders exactly as they were ────────────────────────────────────────────────
+#
+# Retirement moves artifacts, so it runs only after BOTH variants are published.
+# A failed publish must therefore leave the archive untouched and both holders
+# still serving their previous release. The earlier copy-based archive ran before
+# publishing, so a failure left a snapshot behind and the holder unchanged; the
+# guarantee that matters — the holder keeps working — is now stronger, because
+# nothing is moved until the new artifacts are verifiably in place.
 
 admin_archives_before="$(find "$DEV_ROLLBACK_ROOT/DEV_APK/admin" -mindepth 1 -maxdepth 1 -type d | wc -l)"
 admin_sha_before="$(artifact_sha "$DEV_STACK_DIR/dev_admin_apk/boe.dev.admin.0.6.5.apk")"
-client_archives_before="$(find "$DEV_ROLLBACK_ROOT/DEV_APK/client" -mindepth 1 -maxdepth 1 -type d | sort)"
+client_apk_sha_before="$(artifact_sha "$DEV_STACK_DIR/dev_apk/boe.dev.client.0.6.5.apk")"
+client_archives_before="$(find "$DEV_ROLLBACK_ROOT/DEV_APK/client" -mindepth 1 -maxdepth 1 -type d | wc -l)"
 BOE_TEST_CORRUPT_UPLOAD=true
 if apk_ship_release "$DEV_PATHS" "$APK_DIR" dev 0.6.5 true >/dev/null 2>&1; then
     BOE_TEST_CORRUPT_UPLOAD=false
@@ -374,20 +461,24 @@ if apk_ship_release "$DEV_PATHS" "$APK_DIR" dev 0.6.5 true >/dev/null 2>&1; then
 fi
 BOE_TEST_CORRUPT_UPLOAD=false
 admin_archives_after="$(find "$DEV_ROLLBACK_ROOT/DEV_APK/admin" -mindepth 1 -maxdepth 1 -type d | wc -l)"
-[[ "$admin_archives_after" -gt "$admin_archives_before" ]] \
-    || fail_test 'the admin variant was not archived before the client publish failed'
+client_archives_after="$(find "$DEV_ROLLBACK_ROOT/DEV_APK/client" -mindepth 1 -maxdepth 1 -type d | wc -l)"
+[[ "$admin_archives_after" -eq "$admin_archives_before" ]] \
+    || fail_test 'a failed release retired admin artifacts anyway'
+[[ "$client_archives_after" -eq "$client_archives_before" ]] \
+    || fail_test 'a failed release retired client artifacts anyway'
 [[ "$(artifact_sha "$DEV_STACK_DIR/dev_admin_apk/boe.dev.admin.0.6.5.apk")" == "$admin_sha_before" ]] \
     || fail_test 'the admin holder was modified although only the client publish ran'
+[[ "$(artifact_sha "$DEV_STACK_DIR/dev_apk/boe.dev.client.0.6.5.apk")" == "$client_apk_sha_before" ]] \
+    || fail_test 'the client holder was modified by a failed publish'
 if find "$DEV_STACK_DIR/dev_apk" "$DEV_STACK_DIR/dev_admin_apk" -name '*.upload' -print -quit | grep -q .; then
     fail_test 'temporary upload files were left behind after the failed release ship'
 fi
-# the archive checksum manifest covers the sidecars too, not just the APKs
-new_client_archive="$(find "$DEV_ROLLBACK_ROOT/DEV_APK/client" -mindepth 1 -maxdepth 1 -type d \
-    | sort | grep -vxF "$client_archives_before" || true)"
-[[ -n "$new_client_archive" ]] || fail_test 'no new client APK archive was written'
-grep -q '\.apk' "$new_client_archive/checksums.sha256" \
+# The archive written by the successful ship earlier covers sidecars as well as
+# APKs, so a restored version is verifiable as a pair.
+archived_client="$DEV_ROLLBACK_ROOT/DEV_APK/client/0.6.4"
+grep -q '\.apk' "$archived_client/checksums.sha256" \
     || fail_test 'the APK archive checksum manifest does not cover the APKs'
-grep -q '\.json' "$new_client_archive/checksums.sha256" \
+grep -q '\.json' "$archived_client/checksums.sha256" \
     || fail_test 'the APK archive checksum manifest does not cover the sidecars'
 
 # ── case 8: remote symlink directories and files fail closed ─────────────────
@@ -626,10 +717,10 @@ if apk_publish_remote_atomic \
     kill "$lock_holder" 2>/dev/null
     fail_test 'a publish proceeded while the stack lock was held'
 fi
-if apk_archive_remote_variant "$DEV_STACK_DIR/dev_apk" \
-        "$DEV_ROLLBACK_ROOT/DEV_APK/client" "$DEV_LOCK" >/dev/null 2>&1; then
+if apk_retire_remote_variant "$DEV_STACK_DIR/dev_apk" \
+        "$DEV_ROLLBACK_ROOT/DEV_APK/client" "$DEV_LOCK" 3 >/dev/null 2>&1; then
     kill "$lock_holder" 2>/dev/null
-    fail_test 'an archive proceeded while the stack lock was held'
+    fail_test 'a retirement proceeded while the stack lock was held'
 fi
 kill "$lock_holder" 2>/dev/null
 wait "$lock_holder" 2>/dev/null || true

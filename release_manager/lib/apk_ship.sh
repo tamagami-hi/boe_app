@@ -216,6 +216,19 @@ apk_contract_lock_file() {
     printf '%s\n' "$lock_file"
 }
 
+# apk_contract_keep_releases <paths.json> — the stack's APK retention count.
+#
+# Read from the contract rather than hardcoded, because retention.keep_releases
+# is the single declared answer for the stack and paths_validate already checks
+# it agrees with lib/stacks.sh. Falls back to 3 only if the key is somehow absent,
+# so retirement still bounds the holder instead of silently doing nothing.
+apk_contract_keep_releases() {
+    local paths_file="$1" keep
+    keep="$(jq -r '.retention.keep_releases // empty' "$paths_file" 2>/dev/null)"
+    [[ "$keep" =~ ^[0-9]+$ && "$keep" -ge 1 ]] || keep=3
+    printf '%s\n' "$keep"
+}
+
 apk_ship_prepare_remote_dir() {
     local remote_dir="$1"
     assert_safe_remote_dir "$remote_dir" || return 1
@@ -230,52 +243,120 @@ apk_ship_transfer_file() {
         "$local_file" "${BOE_SSH_ALIAS}:${remote_path}"
 }
 
-# apk_archive_remote_variant <current_dir> <rollback_dir> <lock_file>
-# Archive the currently published APKs of ONE variant into a timestamped,
-# immutable directory under that variant's dedicated rollback directory, with a
-# checksum manifest. Prints nothing on success; returns non-zero on failure.
-# Takes the stack's remote deploy lock first, so a concurrent deploy or
-# rollback can never interleave with the archive.
-apk_archive_remote_variant() {
-    local current_dir="$1" rollback_dir="$2" lock_file="$3" archive_output remote_cmd
+# apk_retire_remote_variant <current_dir> <rollback_dir> <lock_file> <keep>
+#
+# Retire superseded APKs out of a variant's holder directory and enforce
+# retention on the archive. Prints nothing on success; returns non-zero on
+# failure. Takes the stack's remote deploy lock first, so a concurrent deploy or
+# rollback can never interleave.
+#
+# This replaced a whole-directory snapshot (`cp` every *.apk and *.json into a
+# fresh apk-archive-<stamp>/ dir) that had two compounding faults:
+#
+#   • It copied instead of moving, so nothing ever left the holder. dev_apk
+#     accumulated ten versions, and the in-app update feed had to sift ten
+#     sidecars to answer one question.
+#   • Because each snapshot copied the *whole* holder, and the holder only ever
+#     grew, archive size grew quadratically with release count. Measured on the
+#     dev stack: 16 snapshots holding 310 MB of near-duplicate APKs.
+#
+# The model now matches how the Docker images are handled: the holder carries
+# only the live release, and history lives per-version under the rollback
+# directory (DEPLOY_IMAGES/<version>/ for images, <rollback_dir>/<version>/ for
+# APKs), pruned to retention.keep_releases from the stack's path contract.
+#
+# Every superseded version is moved out, so after the caller publishes the
+# incoming APK the holder holds exactly that one — which also means the in-app
+# update feed reads one sidecar rather than ten. `keep` bounds the archive, not
+# the holder.
+#
+# Archive pruning is by directory mtime, not version string: APK versions can
+# carry -dev.N.gSHA prereleases, which version sort ranks above the release they
+# precede. It also applies to the legacy apk-archive-<stamp>/ and
+# pre-deploy-<version>/ directories, so the historical backlog drains instead of
+# being stranded forever.
+#
+# The move happens before pruning, and pruning never removes the last remaining
+# archive, so no failure path can leave an artifact unrecoverable.
+apk_retire_remote_variant() {
+    local current_dir="$1" rollback_dir="$2" lock_file="$3" keep="${4:-3}"
+    local live_version="${5:-}" output remote_cmd
     assert_safe_remote_dir "$current_dir" || return 1
     assert_safe_remote_dir "$rollback_dir" || return 1
     assert_safe_remote_dir "$lock_file" || return 1
+    [[ "$keep" =~ ^[0-9]+$ && "$keep" -ge 1 ]] \
+        || { err "invalid APK retention count: $keep"; return 1; }
+    [[ -n "$live_version" ]] \
+        || { err "retirement needs the live version to preserve"; return 1; }
 
     # Every argument is individually shell-quoted before it is spliced into the
     # remotely-parsed command string, so no argument can ever break out and be
     # re-interpreted by the remote shell.
-    printf -v remote_cmd 'bash -s -- %q %q %q' "$current_dir" "$rollback_dir" "$lock_file"
-    archive_output="$(boe_ssh "$remote_cmd" <<'REMOTE'
+    printf -v remote_cmd 'bash -s -- %q %q %q %q %q' \
+        "$current_dir" "$rollback_dir" "$lock_file" "$keep" "$live_version"
+    output="$(boe_ssh "$remote_cmd" <<'REMOTE'
 set -euo pipefail
 current_dir="$1"
 rollback_dir="$2"
 lock_file="$3"
-[[ ! -L "$current_dir" ]] || { printf 'APK holder is a symlink: %s\n' "$current_dir" >&2; exit 1; }
+keep="$4"
+live_version="$5"
+[[ ! -L "$current_dir" ]]  || { printf 'APK holder is a symlink: %s\n' "$current_dir" >&2; exit 1; }
 [[ ! -L "$rollback_dir" ]] || { printf 'rollback APK dir is a symlink: %s\n' "$rollback_dir" >&2; exit 1; }
+
 exec 9>"$lock_file"
 flock -n 9 || { printf 'another deploy or rollback holds the stack lock: %s\n' "$lock_file" >&2; exit 1; }
+
 if ! compgen -G "$current_dir/*.apk" >/dev/null 2>&1; then
     printf 'none\n'
     exit 0
 fi
+
 install -d -m 755 -- "$rollback_dir"
 [[ -w "$rollback_dir" ]] || { printf 'rollback APK dir is not writable: %s\n' "$rollback_dir" >&2; exit 1; }
-archive_dir="$(mktemp -d "$rollback_dir/apk-archive-$(date -u +%Y%m%dT%H%M%SZ)-XXXXXX")"
-for artifact in "$current_dir"/*.apk "$current_dir"/*.json; do
-    [[ -f "$artifact" && ! -L "$artifact" ]] || continue
-    cp -p -- "$artifact" "$archive_dir/"
+
+# Move every currently published version into its own archive directory. The
+# caller publishes the incoming APK next, so the holder ends up with just it.
+moved=0
+while IFS= read -r apk_path; do
+    [[ -f "$apk_path" && ! -L "$apk_path" ]] || continue
+    apk_name="${apk_path##*/}"
+    version="${apk_name%.apk}"
+    version="${version##*.client.}"
+    version="${version##*.admin.}"
+    [[ -n "$version" ]] || continue
+    # The release just published stays put; only what it superseded moves.
+    [[ "$version" != "$live_version" ]] || continue
+
+    dest="$rollback_dir/$version"
+    install -d -m 755 -- "$dest"
+    for artifact in "$apk_path" "${apk_path%.apk}.json"; do
+        [[ -f "$artifact" && ! -L "$artifact" ]] || continue
+        mv -f -- "$artifact" "$dest/"
+    done
+    ( cd "$dest" && find . -maxdepth 1 -type f \( -name '*.apk' -o -name '*.json' \) \
+        -exec sha256sum {} + > checksums.sha256 )
+    moved=$(( moved + 1 ))
+done < <(find "$current_dir" -maxdepth 1 -type f -name '*.apk' | LC_ALL=C sort)
+
+# Retention on the archive, oldest first, never leaving zero targets.
+pruned=0
+mapfile -t archives < <(find "$rollback_dir" -mindepth 1 -maxdepth 1 -type d -printf '%T@\t%f\n' \
+    | LC_ALL=C sort -k1,1n | cut -f2-)
+excess=$(( ${#archives[@]} - keep ))
+for (( i = 0; i < excess; i++ )); do
+    rm -rf -- "$rollback_dir/${archives[$i]}"
+    pruned=$(( pruned + 1 ))
 done
-( cd "$archive_dir" && find . -type f \( -name '*.apk' -o -name '*.json' \) -exec sha256sum {} + > checksums.sha256 )
-printf '%s\n' "$archive_dir"
+
+printf 'retired=%s pruned=%s\n' "$moved" "$pruned"
 REMOTE
 )" || return 1
 
-    if [[ "$archive_output" == none ]]; then
-        info "no previously published APKs in ${current_dir##*/} to archive"
-    else
-        ok "archived ${current_dir##*/} contents → $archive_output"
-    fi
+    case "$output" in
+        none) info "no published APKs in ${current_dir##*/} yet" ;;
+        *)    ok "${current_dir##*/}: $output (archive keep=$keep)" ;;
+    esac
 }
 
 # apk_publish_remote_atomic <apk> <sidecar> <current_dir> <expected_sha> <lock_file>
@@ -386,14 +467,19 @@ apk_ship_variant() {
     sha="$(apk_validate_local_artifact "$apk" "$target" "$variant" "$version" \
         "$expected_git" "$mode")" || return 1
 
-    if [[ "$archive" == true ]]; then
-        apk_archive_remote_variant "$current_dir" "$rollback_dir" "$lock_file" || return 1
-    fi
-
     step "publishing $target $variant APK → $current_dir"
     apk_publish_remote_atomic "$apk" "${apk%.apk}.json" "$current_dir" "$sha" \
         "$lock_file" || return 1
     ok "published $(basename "$apk") → ${current_dir##*/}"
+
+    # Retire only after the new APK is verifiably in place: retirement moves
+    # artifacts out of the holder, and the in-app update feed reads the holder,
+    # so retiring first would mean an empty holder — "no update available" to
+    # every installed app — if the publish then failed.
+    if [[ "$archive" == true ]]; then
+        apk_retire_remote_variant "$current_dir" "$rollback_dir" "$lock_file" \
+            "$(apk_contract_keep_releases "$paths_file")" "$version" || return 1
+    fi
 }
 
 # apk_ship_release <paths_file> <source_dir> <target> <version>
@@ -428,7 +514,7 @@ apk_ship_release() {
     # Phase 1: resolve, validate and archive BOTH variants before publishing.
     local dest current_dir rollback_dir apk sha lock_file
     lock_file="$(apk_contract_lock_file "$paths_file")" || return 1
-    local -a phase_variants=() phase_apks=() phase_shas=() phase_currents=()
+    local -a phase_variants=() phase_apks=() phase_shas=() phase_currents=() phase_rollbacks=() phase_versions=()
     for variant in client admin; do
         dest="$(apk_contract_destination "$paths_file" "$target" "$variant")" || return 1
         current_dir="${dest%%$'\t'*}"
@@ -441,13 +527,12 @@ apk_ship_release() {
         sha="$(apk_validate_local_artifact "$apk" "$target" "$variant" "$version" \
             "$expected_git" "$mode")" || return 1
 
-        if [[ "$archive" == true ]]; then
-            apk_archive_remote_variant "$current_dir" "$rollback_dir" "$lock_file" || return 1
-        fi
+        phase_rollbacks+=("$rollback_dir")
         phase_variants+=("$variant")
         phase_apks+=("$apk")
         phase_shas+=("$sha")
         phase_currents+=("$current_dir")
+        phase_versions+=("$version")
     done
 
     # Phase 2: publish both variants.
@@ -461,6 +546,21 @@ apk_ship_release() {
             "${phase_shas[$i]}" "$lock_file" || return 1
         ok "published $(basename "$apk") → ${current_dir##*/}"
     done
+
+    # Phase 3: retire the superseded versions, only once BOTH variants are
+    # published. Retirement moves artifacts out of the holder, so doing it
+    # earlier would leave the holder empty if a publish then failed — and the
+    # in-app update feed reads the holder, so "empty" means "no update
+    # available" to every installed app. Publishing first keeps the previous
+    # release serveable until the new one is verifiably in place.
+    if [[ "$archive" == true ]]; then
+        local keep
+        keep="$(apk_contract_keep_releases "$paths_file")"
+        for i in "${!phase_variants[@]}"; do
+            apk_retire_remote_variant "${phase_currents[$i]}" "${phase_rollbacks[$i]}" \
+                "$lock_file" "$keep" "${phase_versions[$i]}" || return 1
+        done
+    fi
 }
 
 # apk_ship_bundle <paths_file> <bundle_dir> <target> [archive=true|false] [mode=dev|prod]
@@ -490,7 +590,7 @@ apk_ship_bundle() {
 
     # Phase 1: validate the manifest-bound artifacts and archive the outgoing
     # release for BOTH variants before publishing either.
-    local -a phase_variants=() phase_apks=() phase_shas=() phase_currents=()
+    local -a phase_variants=() phase_apks=() phase_shas=() phase_currents=() phase_rollbacks=() phase_versions=()
     for variant in client admin; do
         entry="$(apk_manifest_artifact "$manifest" "$variant")" || return 1
         file="$(printf '%s' "$entry" | cut -f1)"
@@ -523,13 +623,12 @@ apk_ship_bundle() {
         current_dir="${dest%%$'\t'*}"
         rollback_dir="${dest#*$'\t'}"
 
-        if [[ "$archive" == true ]]; then
-            apk_archive_remote_variant "$current_dir" "$rollback_dir" "$lock_file" || return 1
-        fi
+        phase_rollbacks+=("$rollback_dir")
         phase_variants+=("$variant")
         phase_apks+=("$apk")
         phase_shas+=("$msha")
         phase_currents+=("$current_dir")
+        phase_versions+=("$mversion")
     done
 
     # Phase 2: publish both variants.
@@ -543,4 +642,19 @@ apk_ship_bundle() {
             "${phase_shas[$i]}" "$lock_file" || return 1
         ok "published $(basename "$apk") → ${current_dir##*/}"
     done
+
+    # Phase 3: retire the superseded versions, only once BOTH variants are
+    # published. Retirement moves artifacts out of the holder, so doing it
+    # earlier would leave the holder empty if a publish then failed — and the
+    # in-app update feed reads the holder, so "empty" means "no update
+    # available" to every installed app. Publishing first keeps the previous
+    # release serveable until the new one is verifiably in place.
+    if [[ "$archive" == true ]]; then
+        local keep
+        keep="$(apk_contract_keep_releases "$paths_file")"
+        for i in "${!phase_variants[@]}"; do
+            apk_retire_remote_variant "${phase_currents[$i]}" "${phase_rollbacks[$i]}" \
+                "$lock_file" "$keep" "${phase_versions[$i]}" || return 1
+        done
+    fi
 }

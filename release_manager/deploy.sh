@@ -122,7 +122,7 @@ section "1/7  BUNDLE"
 if [[ -n "$BUNDLE_ARG" ]]; then
     BUNDLE="$(cd "$BUNDLE_ARG" 2>/dev/null && pwd)" || { err "no such bundle: $BUNDLE_ARG"; exit 1; }
 else
-    BUNDLE="$(find "$BUILD_DIR/$STACK" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort -V | tail -n1)"
+    BUNDLE="$(bundle_path_newest "$BUILD_DIR/$STACK")"
     [[ -n "$BUNDLE" ]] || {
         stack_flag="--dev"
         case "$STACK" in
@@ -137,6 +137,20 @@ fi
 COMPOSE_NAME="$(stack_attr "$STACK" compose)"
 DEPLOY_NAME="$(stack_attr "$STACK" deploy)"
 ROLLBACK_NAME="$(stack_attr "$STACK" rollback)"
+
+# An auto-selected prerelease is worth saying out loud. Production refuses one
+# outright further down, but development accepts it, and the difference between
+# shipping "0.8.3" and "0.8.3-dev.0.gSHA.dirty" is invisible in the output
+# otherwise. It also usually means a stale bundle is still lying around: a dirty
+# export is normally superseded by a clean one built minutes later.
+if [[ -z "$BUNDLE_ARG" && -f "$BUNDLE/manifest.json" ]]; then
+    SELECTED_VERSION="$(jq -r '.version // empty' "$BUNDLE/manifest.json" 2>/dev/null || true)"
+    SELECTED_DIRTY="$(jq -r '.git_dirty // false' "$BUNDLE/manifest.json" 2>/dev/null || printf 'false')"
+    if [[ "$SELECTED_DIRTY" == "true" ]]; then
+        warn "auto-selected bundle was built from a DIRTY tree: ${SELECTED_VERSION:-unknown}"
+        warn "it is not reproducible from git; pass --bundle to choose a specific one"
+    fi
+fi
 
 for f in manifest.json paths.json "$COMPOSE_NAME" "$DEPLOY_NAME" "$ROLLBACK_NAME" \
          _boe_lib.sh _boe_deploy.sh _boe_rollback.sh; do
@@ -455,6 +469,17 @@ if (( REMOTE_RC == 0 )) && [[ -d "$BUNDLE/apk" ]]; then
     [[ "$STACK" == prod_release ]] && APK_MODE=prod
     apk_ship_bundle "$BUNDLE/paths.json" "$BUNDLE" \
         "$(stack_attr "$STACK" short)" true "$APK_MODE" || APK_RC=$?
+
+    # Clear the upload staging directory once the artifacts are live in the
+    # holders declared by paths.json. It exists only to get the bytes onto the
+    # VPS ahead of the integrity check; leaving it behind put a third copy of
+    # every APK next to dev_apk/ and dev_admin_apk/, which reads like a
+    # misrouted publish and grows with every release. --ship-only keeps it on
+    # purpose (nothing was published, so it is the only copy to inspect).
+    if (( APK_RC == 0 )); then
+        boe_ssh "test -d '$REMOTE_DIR/apk' && test ! -L '$REMOTE_DIR/apk' && rm -rf -- '$REMOTE_DIR/apk'" \
+            >/dev/null 2>&1 || true
+    fi
 fi
 
 # ── 7. reconcile ────────────────────────────────────────────────────────────
