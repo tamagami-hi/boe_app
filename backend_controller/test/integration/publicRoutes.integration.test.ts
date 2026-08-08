@@ -34,7 +34,11 @@ let cryptoContext: CryptoContext
 
 interface SubmitEnvelope {
   ok: boolean
-  data: { accepted: boolean } | null
+  data: {
+    accepted: boolean
+    outcome: "created" | "verification_resent" | "duplicate_pending" | "duplicate_account"
+    verificationEmailQueued: boolean
+  } | null
   error: { code: string } | null
   meta: { requestId: string; idempotencyReplay?: boolean }
 }
@@ -98,6 +102,10 @@ beforeAll(async () => {
           verificationTokenTtlMs: 24 * 60 * 60 * 1000,
           idempotencyTtlMs: 24 * 60 * 60 * 1000,
           sesConfigurationSet: "boe-transactional",
+          // A real cooldown, so both sides of the resend rule are reachable: the
+          // throttled case asserts against it directly, and the resend case
+          // backdates the existing delivery to step over it.
+          verificationResendCooldownMs: 15 * 60 * 1000,
           signupSharedSecret: SIGNUP_SECRET,
         },
         applicationRepository: createApplicationRepository(),
@@ -215,6 +223,11 @@ describe("POST /newuser (integration)", () => {
     fullName: "Grace Hopper",
     email,
     phone,
+    // Required since password-at-signup (migration 024). Its absence here made
+    // every /newuser case in this file answer 400 instead of exercising the
+    // route: the harness had been given a breach checker so it compiled, but the
+    // payload was never updated to carry the field the schema now demands.
+    password: "correct-horse-battery-staple",
     acceptedConsents: true as const,
   })
 
@@ -228,7 +241,11 @@ describe("POST /newuser (integration)", () => {
     })
 
     expect(response.statusCode).toBe(202)
-    expect(response.json<SubmitEnvelope>().data).toEqual({ accepted: true })
+    expect(response.json<SubmitEnvelope>().data).toEqual({
+      accepted: true,
+      outcome: "created",
+      verificationEmailQueued: true,
+    })
 
     const row = (
       await pool.query<{ id: string; state: string }>(
@@ -299,6 +316,196 @@ describe("POST /newuser (integration)", () => {
 
     expect(first.statusCode).toBe(202)
     expect(second.json<SubmitEnvelope>().meta.idempotencyReplay).toBe(true)
+  })
+
+  /*
+   * The dead end the marketing site hit. The derived key covered the identity but
+   * not how many times it had been decided, and the idempotency record outlives a
+   * same-day rejection, so reapplying replayed the rejected submission's 202 and
+   * created nothing. The password's exclusion from the key made it inescapable:
+   * the breach screen pushes the applicant to change exactly the one input the
+   * key ignores.
+   */
+  test("a resubmission after a rejection creates a new application instead of replaying", async () => {
+    const email = "newuser-rejected@example.com"
+    const phone = "+14155552010"
+    const payload = newUserBody(email, phone)
+
+    const first = await app.inject({ method: "POST", url: "/newuser", headers: signupHeaders, payload })
+    expect(first.json<SubmitEnvelope>().data?.outcome).toBe("created")
+
+    await pool.query("update applications set state = 'rejected', decided_at = now() where email_normalized = $1", [
+      email,
+    ])
+
+    // Same name, same email, same phone, same consents — everything the old key
+    // covered — and a different password, which it never covered.
+    const second = await app.inject({
+      method: "POST",
+      url: "/newuser",
+      headers: signupHeaders,
+      payload: { ...payload, password: "a-completely-different-passphrase" },
+    })
+
+    expect(second.statusCode).toBe(202)
+    expect(second.json<SubmitEnvelope>().meta.idempotencyReplay).toBeUndefined()
+    expect(second.json<SubmitEnvelope>().data).toEqual({
+      accepted: true,
+      outcome: "created",
+      verificationEmailQueued: true,
+    })
+    // The rejected row is retained; the partial unique index only constrains
+    // rows that are not rejected/withdrawn, so the new one coexists with it.
+    expect(
+      await countWhere("select count(*)::int as c from applications where email_normalized = $1", [email]),
+    ).toBe(2)
+    expect(
+      await countWhere(
+        "select count(*)::int as c from applications where email_normalized = $1 and state = 'pending_email_verification'",
+        [email],
+      ),
+    ).toBe(1)
+  })
+
+  test("a resubmission while awaiting confirmation resends the verification email once the cooldown has passed", async () => {
+    const email = "newuser-resend@example.com"
+    const phone = "+14155552011"
+
+    const first = await app.inject({
+      method: "POST",
+      url: "/newuser",
+      headers: signupHeaders,
+      payload: newUserBody(email, phone),
+    })
+    expect(first.json<SubmitEnvelope>().data?.outcome).toBe("created")
+
+    // Step over the cooldown without waiting for it.
+    await pool.query(
+      "update email_deliveries set created_at = now() - interval '20 minutes' " +
+        "where application_id = (select id from applications where email_normalized = $1)",
+      [email],
+    )
+
+    // A different name derives a different key, so this is a genuine second
+    // execution rather than a replay — which is what the marketing site saw when
+    // a visitor corrected their name and resubmitted.
+    const second = await app.inject({
+      method: "POST",
+      url: "/newuser",
+      headers: signupHeaders,
+      payload: { ...newUserBody(email, phone), fullName: "Grace B Hopper" },
+    })
+
+    expect(second.statusCode).toBe(202)
+    expect(second.json<SubmitEnvelope>().data).toEqual({
+      accepted: false,
+      outcome: "verification_resent",
+      verificationEmailQueued: true,
+    })
+
+    const applicationId = (
+      await pool.query<{ id: string }>("select id from applications where email_normalized = $1", [email])
+    ).rows[0]?.id
+    // One application, two chances to confirm it. The first token stays valid:
+    // if the delayed original mail turns up, its link must still work.
+    expect(
+      await countWhere("select count(*)::int as c from applications where email_normalized = $1", [email]),
+    ).toBe(1)
+    expect(
+      await countWhere(
+        "select count(*)::int as c from verification_tokens where application_id = $1 and consumed_at is null",
+        [applicationId],
+      ),
+    ).toBe(2)
+    expect(
+      await countWhere(
+        "select count(*)::int as c from email_deliveries where application_id = $1 and template_key = 'verify_email'",
+        [applicationId],
+      ),
+    ).toBe(2)
+    expect(
+      await countWhere(
+        "select count(*)::int as c from audit_events where entity_id = $1 and command = 'application.verification_resent'",
+        [applicationId],
+      ),
+    ).toBe(1)
+  })
+
+  test("a resubmission inside the cooldown is reported as duplicate_pending and queues no mail", async () => {
+    const email = "newuser-throttled@example.com"
+    const phone = "+14155552012"
+
+    await app.inject({ method: "POST", url: "/newuser", headers: signupHeaders, payload: newUserBody(email, phone) })
+
+    const second = await app.inject({
+      method: "POST",
+      url: "/newuser",
+      headers: signupHeaders,
+      payload: { ...newUserBody(email, phone), fullName: "Grace C Hopper" },
+    })
+
+    // 200, not 202: understood, and deliberately produced nothing.
+    expect(second.statusCode).toBe(200)
+    expect(second.json<SubmitEnvelope>().data).toEqual({
+      accepted: false,
+      outcome: "duplicate_pending",
+      verificationEmailQueued: false,
+    })
+
+    const applicationId = (
+      await pool.query<{ id: string }>("select id from applications where email_normalized = $1", [email])
+    ).rows[0]?.id
+    expect(
+      await countWhere(
+        "select count(*)::int as c from email_deliveries where application_id = $1 and template_key = 'verify_email'",
+        [applicationId],
+      ),
+    ).toBe(1)
+    // The discard leaves a trace now. Previously this path returned before the
+    // audit append, so a thrown-away submission was invisible everywhere.
+    expect(
+      await countWhere(
+        "select count(*)::int as c from audit_events where entity_id = $1 and command = 'application.submit_discarded' " +
+          "and metadata->>'throttled' = 'true'",
+        [applicationId],
+      ),
+    ).toBe(1)
+  })
+
+  test("a submission for an identity that already has an account reports duplicate_account", async () => {
+    const email = "newuser-existing-account@example.com"
+    const phone = "+14155552013"
+    await pool.query(
+      "insert into users (email_normalized, phone_e164, full_name, account_state) values ($1, $2, $3, 'active')",
+      [email, phone, "Grace Hopper"],
+    )
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/newuser",
+      headers: signupHeaders,
+      payload: newUserBody(email, phone),
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json<SubmitEnvelope>().data).toEqual({
+      accepted: false,
+      outcome: "duplicate_account",
+      verificationEmailQueued: false,
+    })
+    expect(
+      await countWhere("select count(*)::int as c from applications where email_normalized = $1", [email]),
+    ).toBe(0)
+    // Recorded against the account whose identity was reused; repeated hits here
+    // are someone probing which addresses have accounts.
+    expect(
+      await countWhere(
+        "select count(*)::int as c from audit_events a join users u on u.id = a.entity_id " +
+          "where u.email_normalized = $1 and a.command = 'application.submit_discarded' " +
+          "and a.metadata->>'reason' = 'account_exists'",
+        [email],
+      ),
+    ).toBe(1)
   })
 
   test("normalises the phone number and rejects one that is not E.164", async () => {

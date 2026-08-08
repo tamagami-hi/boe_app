@@ -84,6 +84,16 @@ const ServerConfigSchema = z.object({
   // fails closed on its own. The deploy scripts assert the key is present, so
   // the failure still surfaces before containers are replaced.
   NEWUSER_SHARED_SECRET: z.string().trim().min(32).optional(),
+  /**
+   * Cooldown before a resubmitted signup may queue another verification email
+   * for the same application. Bounds how much mail one address can be made to
+   * receive by repeated form submissions; see submitApplication.
+   */
+  SIGNUP_VERIFICATION_RESEND_COOLDOWN_MS: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .default(15 * 60 * 1000),
   // Transactional email (KYC codes). The company mailbox is both the SMTP login
   // and the `From`. When SMTP is not fully configured, a local/log sender is used
   // (dev/test). Decision 10.
@@ -138,7 +148,10 @@ export interface ServerConfig {
    * not been given one, in which case the route rejects every caller rather
    * than accepting an unauthenticated signup.
    */
-  readonly signup: { readonly sharedSecret: string | null }
+  readonly signup: {
+    readonly sharedSecret: string | null
+    readonly verificationResendCooldownMs: number
+  }
   readonly payments: {
     readonly provider: string
     /** Mock provider: the worker auto-confirms + books. Real gateway: the webhook does. */
@@ -263,7 +276,10 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
     // not fully configured (the worker/SES adapter are out-of-band).
     sesConfigurationSet: sesConfigurationSet ?? "unconfigured",
     emailConfigured,
-    signup: { sharedSecret: nonEmpty(parsed.NEWUSER_SHARED_SECRET) },
+    signup: {
+      sharedSecret: nonEmpty(parsed.NEWUSER_SHARED_SECRET),
+      verificationResendCooldownMs: parsed.SIGNUP_VERIFICATION_RESEND_COOLDOWN_MS,
+    },
     payments: {
       provider: parsed.PAYMENT_PROVIDER,
       autoConfirm: parsed.PAYMENT_PROVIDER === "manual",

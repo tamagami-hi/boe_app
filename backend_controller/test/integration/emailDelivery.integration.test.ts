@@ -119,7 +119,11 @@ const seedQueuedDelivery = async (email: string, phone: string): Promise<SeededD
         auditRepository: createAuditRepository(),
         crypto,
         clock: () => new Date(),
-        config: { verificationTokenTtlMs: 86_400_000, sesConfigurationSet: "boe-transactional" },
+        config: {
+          verificationTokenTtlMs: 86_400_000,
+          sesConfigurationSet: "boe-transactional",
+          verificationResendCooldownMs: 15 * 60 * 1000,
+        },
       },
       {
         fullName: "Ada Lovelace",

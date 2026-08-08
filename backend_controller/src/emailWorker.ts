@@ -16,6 +16,7 @@ import { createRuntimeLogger } from "./runtime/logger.js"
 
 interface PassLogger {
   info: (object: Record<string, unknown>, message: string) => void
+  warn: (object: Record<string, unknown>, message: string) => void
 }
 
 export interface RunEmailDispatchPassOptions {
@@ -27,8 +28,23 @@ export const runEmailDispatchPass = async (options: RunEmailDispatchPassOptions 
   const worker = options.worker ?? composeEmailDispatchWorker(process.env)
   const logger = options.logger ?? createRuntimeLogger({ level: parseRuntimeEnvironment(process.env).logLevel })
   try {
+    /*
+     * Said once per pass, before the work. With no transport every delivery in
+     * the pass fails retryably and retries for about 42 hours before dead-
+     * lettering, so a stack deployed without EMAIL_SMTP_* looks healthy — the
+     * worker runs, exits zero, and reports a pass — while no mail leaves the
+     * building. The per-delivery `EMAIL_TRANSPORT_NOT_CONFIGURED` code was
+     * already honest; nobody was reading it.
+     */
+    if (!worker.transportConfigured) {
+      logger.warn(
+        { errorCode: "EMAIL_TRANSPORT_NOT_CONFIGURED" },
+        "No SMTP transport is configured: every delivery this pass will fail retryably and no email will be sent. " +
+          "Set EMAIL_SMTP_HOST, EMAIL_SMTP_USER and EMAIL_SMTP_PASSWORD; queued mail drains on the next pass.",
+      )
+    }
     const summary = await worker.runOnce()
-    logger.info({ ...summary }, "Email delivery pass complete")
+    logger.info({ ...summary, transportConfigured: worker.transportConfigured }, "Email delivery pass complete")
   } finally {
     await worker.dispose()
   }

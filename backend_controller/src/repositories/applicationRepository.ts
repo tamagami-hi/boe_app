@@ -37,11 +37,59 @@ export interface ApplicationConsentDetailRow {
   readonly acceptedAt: Date
 }
 
+/** Which of the submitted identifiers the existing row was found by. */
+export type ConflictMatch = "email" | "phone" | "both"
+
+/**
+ * Why a submission cannot create a new application.
+ *
+ * This replaced a bare `hasActiveConflict: () => boolean`. A boolean could only
+ * ever produce a silent no-op: the route had no way to tell an applicant still
+ * waiting on their confirmation email (whose mail should be resent) from an
+ * identity that already owns an account (where there is nothing to resend), so
+ * both were discarded and both were answered `202 accepted: true`.
+ */
+export type ActiveConflict =
+  | {
+      readonly kind: "user"
+      readonly userId: string
+      readonly userVersion: number
+      readonly matchedOn: ConflictMatch
+    }
+  | {
+      readonly kind: "application"
+      readonly application: Application
+      readonly matchedOn: ConflictMatch
+    }
+
+export interface IdentityInput {
+  readonly emailNormalized: string
+  readonly phoneE164: string
+}
+
+/**
+ * Which submitted identifier(s) the found row shares. Pure; used only to describe
+ * a discarded submission in the audit trail, never to decide anything.
+ */
+const matchOf = (input: IdentityInput, email: string, phone: string): ConflictMatch => {
+  const byEmail = email === input.emailNormalized
+  const byPhone = phone === input.phoneE164
+  if (byEmail && byPhone) return "both"
+  return byEmail ? "email" : "phone"
+}
+
 export interface ApplicationWriteRepository {
-  hasActiveConflict: (
-    tx: Transaction,
-    input: Readonly<{ emailNormalized: string; phoneE164: string }>,
-  ) => Promise<boolean>
+  findActiveConflict: (tx: Transaction, input: IdentityInput) => Promise<ActiveConflict | null>
+  /**
+   * How many times this identity has already been through a terminal decision.
+   *
+   * Feeds the public route's derived idempotency key so a resubmission after a
+   * rejection hashes differently from the submission that was rejected. Without
+   * it, the 24-hour idempotency record outlived the decision and replayed
+   * yesterday's `202` — creating nothing, emailing nothing, and leaving the
+   * applicant with no way to reapply until the record expired.
+   */
+  countTerminalSubmissions: (tx: Transaction, input: IdentityInput) => Promise<number>
   createSubmission: (tx: Transaction, input: CreateSubmissionInput) => Promise<Application>
   markEmailVerified: (
     tx: Transaction,
@@ -60,21 +108,82 @@ export interface ApplicationWriteRepository {
 }
 
 export const createApplicationRepository = (): ApplicationWriteRepository => ({
-  hasActiveConflict: async (tx, input) => {
-    const result = await sql<{ conflict: boolean }>`
-      select (
-        exists (
-          select 1 from applications
-          where (email_normalized = ${input.emailNormalized} or phone_e164 = ${input.phoneE164})
-            and state not in ('rejected', 'withdrawn')
-        )
-        or exists (
-          select 1 from users
-          where email_normalized = ${input.emailNormalized} or phone_e164 = ${input.phoneE164}
-        )
-      ) as conflict
-    `.execute(tx)
-    return result.rows[0]?.conflict ?? false
+  /*
+   * Users are checked before applications: an identity that already owns an
+   * account is a harder stop than one with a submission in flight, and the
+   * account case has nothing to resend.
+   *
+   * `matchedOn` exists so the audit trail records *why* a submission was
+   * discarded without storing the address itself. Note a submission can collide
+   * with one row by email and a different row by phone; the email match wins,
+   * because the email is the only channel a resend could legitimately use.
+   */
+  findActiveConflict: async (tx, input) => {
+    const user = await tx
+      .selectFrom("users")
+      .select(["id", "version", "email_normalized", "phone_e164"])
+      .where((eb) =>
+        eb.or([
+          eb("email_normalized", "=", input.emailNormalized),
+          eb("phone_e164", "=", input.phoneE164),
+        ]),
+      )
+      // Deterministic when the email and the phone belong to two different
+      // accounts: the email-matching one is reported.
+      .orderBy(sql`case when email_normalized = ${input.emailNormalized} then 0 else 1 end`, "asc")
+      .limit(1)
+      .executeTakeFirst()
+
+    if (user !== undefined) {
+      return {
+        kind: "user",
+        userId: user.id,
+        userVersion: Number(user.version),
+        matchedOn: matchOf(input, user.email_normalized, user.phone_e164),
+      }
+    }
+
+    const application = await tx
+      .selectFrom("applications")
+      .selectAll()
+      .where((eb) =>
+        eb.or([
+          eb("email_normalized", "=", input.emailNormalized),
+          eb("phone_e164", "=", input.phoneE164),
+        ]),
+      )
+      .where("state", "not in", ["rejected", "withdrawn"])
+      .orderBy(sql`case when email_normalized = ${input.emailNormalized} then 0 else 1 end`, "asc")
+      .limit(1)
+      .executeTakeFirst()
+
+    if (application === undefined) return null
+    return {
+      kind: "application",
+      application,
+      matchedOn: matchOf(input, application.email_normalized, application.phone_e164),
+    }
+  },
+
+  /*
+   * Counts terminal rows only. Live rows are excluded deliberately: while one is
+   * active the count must not move, or two rapid submissions of the same details
+   * would derive different keys and defeat the duplicate collapsing the key exists
+   * for. A decision is the only thing that advances it.
+   */
+  countTerminalSubmissions: async (tx, input) => {
+    const row = await tx
+      .selectFrom("applications")
+      .select((eb) => eb.fn.countAll<string>().as("count"))
+      .where((eb) =>
+        eb.or([
+          eb("email_normalized", "=", input.emailNormalized),
+          eb("phone_e164", "=", input.phoneE164),
+        ]),
+      )
+      .where("state", "in", ["rejected", "withdrawn"])
+      .executeTakeFirst()
+    return Number(row?.count ?? 0)
   },
 
   createSubmission: async (tx, input) =>

@@ -51,13 +51,15 @@ import type { ConsentRepositoryImpl } from "../repositories/consentRepository.js
 import type { EmailDeliveryWriteRepository } from "../repositories/emailDeliveryRepository.js"
 import type { OutboxWriteRepository } from "../repositories/outboxRepository.js"
 import type { VerificationTokenWriteRepository } from "../repositories/verificationTokenRepository.js"
-import { submitApplication } from "../domain/onboarding/submitApplication.js"
+import { submitApplication, type SubmitApplicationOutcome } from "../domain/onboarding/submitApplication.js"
 import { verifyApplicationEmail } from "../domain/onboarding/verifyApplicationEmail.js"
 
 export interface PublicOnboardingConfig {
   readonly verificationTokenTtlMs: number
   readonly idempotencyTtlMs: number
   readonly sesConfigurationSet: string
+  /** Cooldown between verification mails for one application. See submitApplication. */
+  readonly verificationResendCooldownMs: number
   /**
    * The secret the marketing site presents in `x-signup-key`. `null` means the
    * deployment was never given one, and every `/newuser` call is refused.
@@ -175,6 +177,54 @@ const hashRequest = (canonical: Readonly<Record<string, unknown>>): Buffer =>
   createHash("sha256").update(JSON.stringify(canonical)).digest()
 
 /**
+ * What `/newuser` answers, derived from the submission's outcome.
+ *
+ * `accepted` keeps its original meaning — a new application was created — so a
+ * caller that only ever read that field is not silently given a new one.
+ * `outcome` is the field to branch on, and `verificationEmailQueued` is the one
+ * that decides whether to tell the visitor to check their inbox.
+ *
+ * "Queued", not "sent": this call writes an `email_deliveries` row and the outbox
+ * worker delivers it seconds later. Promising a send here would be the same lie
+ * the old unconditional `accepted: true` told.
+ */
+interface NewUserResponse {
+  readonly status: number
+  readonly body: {
+    readonly accepted: boolean
+    readonly outcome: SubmitApplicationOutcome["kind"]
+    readonly verificationEmailQueued: boolean
+  }
+}
+
+/*
+ * 202 when work was taken on (a row written, a mail queued); 200 when the request
+ * was understood and deliberately produced nothing. Both are 2xx, so a caller
+ * that only checks the status class is unaffected.
+ */
+const responseFor = (outcome: SubmitApplicationOutcome): NewUserResponse => {
+  switch (outcome.kind) {
+    case "created":
+      return { status: 202, body: { accepted: true, outcome: "created", verificationEmailQueued: true } }
+    case "verification_resent":
+      return {
+        status: 202,
+        body: { accepted: false, outcome: "verification_resent", verificationEmailQueued: true },
+      }
+    case "duplicate_pending":
+      return {
+        status: 200,
+        body: { accepted: false, outcome: "duplicate_pending", verificationEmailQueued: false },
+      }
+    case "duplicate_account":
+      return {
+        status: 200,
+        body: { accepted: false, outcome: "duplicate_account", verificationEmailQueued: false },
+      }
+  }
+}
+
+/**
  * Run a submission through the idempotency protocol and `submitApplication`.
  *
  * Shared by both doors so there is exactly one place that decides what a signup
@@ -222,7 +272,7 @@ const submitThroughIdempotency = async (
   const now = deps.clock()
 
   const outcome = await deps.unitOfWork.execute((tx) =>
-    executeIdempotent<{ accepted: true }>({
+    executeIdempotent<NewUserResponse["body"]>({
       repository: deps.idempotencyRepository,
       tx,
       scope,
@@ -230,7 +280,7 @@ const submitThroughIdempotency = async (
       now: now.toISOString(),
       expiresAt: new Date(now.getTime() + deps.config.idempotencyTtlMs).toISOString(),
       execute: async () => {
-        await submitApplication(
+        const submitted = await submitApplication(
           tx,
           {
             applicationRepository: deps.applicationRepository,
@@ -244,6 +294,7 @@ const submitThroughIdempotency = async (
             config: {
               verificationTokenTtlMs: deps.config.verificationTokenTtlMs,
               sesConfigurationSet: deps.config.sesConfigurationSet,
+              verificationResendCooldownMs: deps.config.verificationResendCooldownMs,
             },
           },
           {
@@ -257,7 +308,7 @@ const submitThroughIdempotency = async (
             userAgent: request.headers["user-agent"] ?? null,
           },
         )
-        return { status: 202, body: { accepted: true } }
+        return responseFor(submitted)
       },
     }),
   )
@@ -309,10 +360,44 @@ const handleNewUser = async (
    * application instead of two, and the second call replays the first answer.
    * Scoped by consent versions too, so a genuine re-signup after new terms is a
    * distinct submission. The password is excluded for the reason given on
-   * `requestHash` above.
+   * `requestHash`.
+   *
+   * ── WHY THE GENERATION IS IN HERE ─────────────────────────────────────────
+   * The key used to cover the identity alone, and the idempotency record lives
+   * for 24 hours — longer than it takes an admin to reject an application. So a
+   * rejected applicant who reapplied the same day hashed to the record written by
+   * the submission that had just been rejected, and got a replayed `202` with no
+   * row created, no mail sent, and nothing to show them why.
+   *
+   * The password's absence from the key made it a trap rather than a delay: the
+   * breach screen refuses a compromised password, so the natural response is to
+   * try another one — which changes nothing the key covers, and lands straight
+   * back on the replay. There was no input the applicant could vary to escape it.
+   *
+   * `countTerminalSubmissions` advances on every decision, so a post-rejection
+   * attempt derives a different key and executes properly. It counts terminal
+   * rows only, so it cannot move while a submission is in flight, which is
+   * exactly when the collapsing behaviour is wanted.
+   *
+   * Read outside the transaction, like the consent lookup above. Two concurrent
+   * submissions therefore read the same generation and collapse into one — the
+   * intended outcome.
    */
+  const submissionGeneration = await deps.applicationRepository.countTerminalSubmissions(deps.database, {
+    emailNormalized,
+    phoneE164,
+  })
+
   const derivedKey = createHash("sha256")
-    .update(JSON.stringify({ emailNormalized, phoneE164, fullName: body.fullName, consents }))
+    .update(
+      JSON.stringify({
+        emailNormalized,
+        phoneE164,
+        fullName: body.fullName,
+        consents,
+        submissionGeneration,
+      }),
+    )
     .digest("hex")
     .slice(0, 64)
 

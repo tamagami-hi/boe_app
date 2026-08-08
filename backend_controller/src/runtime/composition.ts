@@ -175,6 +175,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
         sesConfigurationSet: serverConfig.sesConfigurationSet,
         signupSharedSecret: serverConfig.signup.sharedSecret,
+        verificationResendCooldownMs: serverConfig.signup.verificationResendCooldownMs,
       },
       applicationRepository,
       consentRepository,
@@ -488,6 +489,17 @@ export const composePaymentSettlementWorker = (
 export interface EmailDispatchWorker {
   /** Run one delivery pass over the due `email` outbox events. */
   readonly runOnce: () => Promise<DispatchSummary>
+  /**
+   * Whether an SMTP transport was actually configured for this process.
+   *
+   * Exposed so the entrypoint can say so out loud. Without a transport every
+   * send fails retryably and the queue silently accumulates: the failure is
+   * recorded honestly per delivery (`EMAIL_TRANSPORT_NOT_CONFIGURED`), but
+   * nothing announced that the cause was a missing setting rather than a mail
+   * server having a bad day. A dev stack ran in that state for a day and the only
+   * symptom anyone noticed was applicants reporting no confirmation email.
+   */
+  readonly transportConfigured: boolean
   readonly dispose: () => Promise<void>
 }
 
@@ -540,6 +552,7 @@ export const composeEmailDispatchWorker = (
 
   return {
     runOnce: () => dispatchDueDeliveries(deps),
+    transportConfigured: serverConfig.email.smtp !== null,
     dispose: async () => {
       await pool.end()
     },

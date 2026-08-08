@@ -114,6 +114,19 @@ export interface EmailDeliveryWriteRepository {
     tx: Transaction,
     input: Readonly<{ applicationId: string; afterCreatedAt?: Date; afterId?: string; limit: number }>,
   ) => Promise<readonly EmailDelivery[]>
+  /**
+   * Newest delivery of one template for an application, or null if none.
+   *
+   * Backs the duplicate-submission resend cooldown. Deliberately keyed on
+   * `created_at` (when we decided to send) rather than `sent_at`: while the
+   * transport is misconfigured nothing reaches `sent`, and a cooldown that
+   * ignored unsent attempts would enqueue a fresh verification mail on every
+   * resubmission and pile up duplicates for the worker to deliver later.
+   */
+  findLatestByTemplate: (
+    tx: Transaction,
+    input: Readonly<{ applicationId: string; templateKey: string }>,
+  ) => Promise<EmailDelivery | null>
   lockByOutboxEventId: (tx: Transaction, outboxEventId: string) => Promise<EmailDelivery | null>
   lockById: (tx: Transaction, deliveryId: string) => Promise<EmailDelivery | null>
   lockBySesMessageId: (tx: Transaction, sesMessageId: string) => Promise<EmailDelivery | null>
@@ -251,6 +264,19 @@ export const createEmailDeliveryRepository = (): EmailDeliveryWriteRepository =>
       )
     }
     return builder.orderBy("created_at", "desc").orderBy("id", "desc").limit(input.limit).execute()
+  },
+
+  findLatestByTemplate: async (tx, input) => {
+    const row = await tx
+      .selectFrom("email_deliveries")
+      .selectAll()
+      .where("application_id", "=", input.applicationId)
+      .where("template_key", "=", input.templateKey)
+      .orderBy("created_at", "desc")
+      .orderBy("id", "desc")
+      .limit(1)
+      .executeTakeFirst()
+    return row ?? null
   },
 
   lockByOutboxEventId: async (tx, outboxEventId) => {
