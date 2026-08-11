@@ -1,0 +1,101 @@
+;;
+;; Domain:   beonedge.in.
+;; Purpose:  CLOUDFLARE IMPORT PAYLOAD — the five Amazon SES (ap-south-1)
+;;           records ONLY. Safe to import directly.
+;; Source:   dns-records.csv (AWS SES console export), corrected.
+;; Written:  2026-08-08
+;;
+;; Full intended end state, for review: beonedge.in.with-ses.txt
+;;
+;; ─────────────────────────────────────────────────────────────────────────────
+;; WHY THIS FILE EXISTS SEPARATELY
+;;
+;; Cloudflare's import is ADDITIVE — it creates records and does not overwrite
+;; existing ones. Importing a full zone that already matches your account would
+;; attempt to re-create all 14 records you have. For most types that is merely
+;; noise, but two of them fail dangerously:
+;;
+;;   - a second apex "v=spf1" TXT record makes SPF a permanent error; a domain
+;;     may publish exactly one;
+;;   - a second _dmarc TXT record makes DMARC not apply at all (RFC 7489
+;;     §6.6.3: policy discovery halts when it finds more than one record).
+;;
+;; This file therefore contains only what is genuinely new. Nothing here
+;; collides with an existing record name, so the import cannot duplicate
+;; anything.
+;;
+;; ─────────────────────────────────────────────────────────────────────────────
+;; TWO CORRECTIONS TO THE AWS CSV
+;;
+;; 1. AWS's "TXT _dmarc.beonedge.in  v=DMARC1; p=none;" is OMITTED. That is
+;;    AWS's starter policy for domains with no DMARC. You already publish a
+;;    stricter one (p=quarantine, with rua/ruf reporting) that is already
+;;    correct for SES: adkim=r aligns with SES Easy DKIM signing as
+;;    d=beonedge.in, and aspf=r aligns with the custom MAIL FROM subdomain.
+;;    Adding AWS's would either duplicate the record (breaking DMARC entirely)
+;;    or downgrade your policy and lose the reporting addresses.
+;;
+;; 2. Trailing periods added to all CNAME and MX targets. The CSV omits them.
+;;    Cloudflare requires fully-qualified content for CNAME/MX/NS/PTR/SRV in an
+;;    imported zone file; without the final "." the target is read as relative
+;;    to the origin and becomes e.g. "...amazonses.com.beonedge.in".
+;;
+;; ─────────────────────────────────────────────────────────────────────────────
+;; IMPORTING
+;;
+;;   Dashboard: DNS > Records > Import and Export > Import DNS records.
+;;   The "Proxy imported DNS records" checkbox does not matter here — each CNAME
+;;   below carries an explicit cf-proxied:false tag, and Cloudflare gives that
+;;   tag precedence over the checkbox.
+;;
+;;   API:
+;;     curl "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records/import" \
+;;       --request POST \
+;;       --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+;;       --form "file=@beonedge.in.ses-only.import.txt"
+;;
+;;   No SOA or NS records appear below. Cloudflare manages both itself and
+;;   skips them on import; including them only invites a parse error.
+;;
+;; TTLs are 300 so a typo is cheap to correct while SES is still verifying.
+;; Raise to 3600 (or Auto) once SES reports DKIM and MAIL FROM as verified.
+;;
+
+;; ── SES Easy DKIM — the cf-proxied:false tag is load-bearing ──────────────────
+;; A proxied DKIM CNAME answers with Cloudflare IPs instead of resolving to the
+;; amazonses.com target, so SES verification never completes and signing fails
+;; silently. The tag overrides the dashboard checkbox, so this cannot be got
+;; wrong by leaving that box ticked.
+nz6nl4l4hejyx3pavcs4ao5twkyy3hbn._domainkey.beonedge.in.	300	IN	CNAME	nz6nl4l4hejyx3pavcs4ao5twkyy3hbn.dkim.amazonses.com. ; cf_tags=cf-proxied:false
+3mjfrqlhs2ga7ocb6jnmtslvptkppno6._domainkey.beonedge.in.	300	IN	CNAME	3mjfrqlhs2ga7ocb6jnmtslvptkppno6.dkim.amazonses.com. ; cf_tags=cf-proxied:false
+5q47ycit3r7ehwwd4wakhadi6iuqd6fk._domainkey.beonedge.in.	300	IN	CNAME	5q47ycit3r7ehwwd4wakhadi6iuqd6fk.dkim.amazonses.com. ; cf_tags=cf-proxied:false
+
+;; ── SES custom MAIL FROM: support.beonedge.in ────────────────────────────────
+;; A SEPARATE DNS namespace from the support@beonedge.in mailbox. That address is
+;; routed by the apex MX records (Zoho) and is untouched by these two lines.
+;; The MX receives asynchronous bounce notifications; the TXT authorises SES for
+;; the envelope sender domain, which is what gives SPF alignment under aspf=r.
+support.beonedge.in.	300	IN	MX	10 feedback-smtp.ap-south-1.amazonses.com.
+support.beonedge.in.	300	IN	TXT	"v=spf1 include:amazonses.com ~all"
+
+;;
+;; ─────────────────────────────────────────────────────────────────────────────
+;; AFTER IMPORT — confirm each record, then confirm nothing else moved
+;;
+;;   dig +short CNAME nz6nl4l4hejyx3pavcs4ao5twkyy3hbn._domainkey.beonedge.in
+;;   dig +short CNAME 3mjfrqlhs2ga7ocb6jnmtslvptkppno6._domainkey.beonedge.in
+;;   dig +short CNAME 5q47ycit3r7ehwwd4wakhadi6iuqd6fk._domainkey.beonedge.in
+;;       -> each returns its *.dkim.amazonses.com target.
+;;          An IP address means the record got proxied anyway.
+;;
+;;   dig +short MX  support.beonedge.in   -> 10 feedback-smtp.ap-south-1.amazonses.com.
+;;   dig +short TXT support.beonedge.in   -> "v=spf1 include:amazonses.com ~all"
+;;
+;;   dig +short TXT beonedge.in           -> exactly ONE v=spf1, still zoho.in only
+;;   dig +short TXT _dmarc.beonedge.in    -> exactly ONE record, still p=quarantine
+;;   dig +short MX  beonedge.in           -> the three mx*.zoho.in, unchanged
+;;
+;; The last three are the regression check. If any of them returns two records,
+;; the import added a duplicate and mail authentication is now broken — delete
+;; the extra before sending anything.
+;; ─────────────────────────────────────────────────────────────────────────────

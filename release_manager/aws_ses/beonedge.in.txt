@@ -1,0 +1,48 @@
+;;
+;; Domain:     beonedge.in.
+;; Exported:   2026-08-08 13:15:38
+;;
+;; This file is intended for use for informational and archival
+;; purposes ONLY and MUST be edited before use on a production
+;; DNS server.  In particular, you must:
+;;   -- update the SOA record with the correct authoritative name server
+;;   -- update the SOA record with the contact e-mail address information
+;;   -- update the NS record(s) with the authoritative name servers for this domain.
+;;
+;; For further information, please consult the BIND documentation
+;; located on the following website:
+;;
+;; http://www.isc.org/
+;;
+;; And RFC 1035:
+;;
+;; http://www.ietf.org/rfc/rfc1035.txt
+;;
+;; Please note that we do NOT offer technical support for any use
+;; of this zone data, the BIND name server, or any other third-party
+;; DNS software.
+;;
+;; Use at your own risk.
+;; SOA Record
+beonedge.in	3600	IN	SOA	brenda.ns.cloudflare.com. dns.cloudflare.com. 2053786153 10000 2400 604800 3600
+
+;; NS Records
+beonedge.in.	86400	IN	NS	brenda.ns.cloudflare.com.
+beonedge.in.	86400	IN	NS	darl.ns.cloudflare.com.
+
+;; CNAME Records
+app.beonedge.in.	1	IN	CNAME	34b2f8f4-7b9b-4ff3-869e-27b145f89b75.cfargotunnel.com. ; cf_tags=cf-proxied:true
+beonedge.in.	1	IN	CNAME	34b2f8f4-7b9b-4ff3-869e-27b145f89b75.cfargotunnel.com. ; cf_tags=cf-proxied:true
+beus.beonedge.in.	1	IN	CNAME	34b2f8f4-7b9b-4ff3-869e-27b145f89b75.cfargotunnel.com. ; cf_tags=cf-proxied:true
+dev-app.beonedge.in.	1	IN	CNAME	34b2f8f4-7b9b-4ff3-869e-27b145f89b75.cfargotunnel.com. ; cf_tags=cf-proxied:true
+www.beonedge.in.	1	IN	CNAME	34b2f8f4-7b9b-4ff3-869e-27b145f89b75.cfargotunnel.com. ; cf_tags=cf-proxied:true
+
+;; MX Records
+beonedge.in.	1	IN	MX	10 mx.zoho.in.
+beonedge.in.	1	IN	MX	50 mx3.zoho.in.
+beonedge.in.	1	IN	MX	20 mx2.zoho.in.
+
+;; TXT Records
+beonedge.in.	3600	IN	TXT	"v=spf1 include:zoho.in ~all"
+_dmarc.beonedge.in.	1	IN	TXT	"v=DMARC1; p=quarantine; rua=mailto:flight.of.falcon.07@gmail.com; ruf=mailto:flight.of.falcon.07@gmail.com; sp=quarantine; adkim=r; aspf=r; pct=80"
+zohomail._domainkey.beonedge.in.	600	IN	TXT	"v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCiULH6jgiqxT6+4svkCDPrZGVoXT6yu4U1awUBBdNsNfm9w2aOwRiTNWLWtWqvJ+zRIl7c+nDwLcx3Bc+P4kR6eCIGEyx68+jK6WHD2deti9q+eKtUYSvGdcDhVGd+rQCdwVgYCJOAU0mmRTLSjLZzofhNJdy6BYwfFYecZF1YUwIDAQAB"

@@ -1,0 +1,204 @@
+;;
+;; Domain:     beonedge.in.
+;; Purpose:    TARGET DNS state — existing Cloudflare/Zoho records plus the
+;;             Amazon SES (ap-south-1) sending records.
+;; Sources:    beonedge.in.txt      (Cloudflare export, 2026-08-08 13:15:38)
+;;             dns-records.csv      (AWS SES console export)
+;; Written:    2026-08-08
+;;
+;; ─────────────────────────────────────────────────────────────────────────────
+;; WHAT THIS SETUP DOES
+;;
+;; Two mail systems share this domain and must not fight:
+;;
+;;   INBOUND  — Zoho. MX on the apex routes support@beonedge.in to the Zoho
+;;              mailbox. Untouched by anything below.
+;;   OUTBOUND — split. Zoho sends human replies typed in webmail; Amazon SES
+;;              sends the application's automated mail (verification links,
+;;              approval and rejection notices).
+;;
+;; Both sign with DKIM on this domain under different selectors, so both are
+;; authenticated and neither invalidates the other.
+;;
+;; ─────────────────────────────────────────────────────────────────────────────
+;; ONE DELIBERATE DEVIATION FROM THE AWS EXPORT — READ THIS
+;;
+;; dns-records.csv asks for:
+;;
+;;     TXT  _dmarc.beonedge.in  "v=DMARC1; p=none;"
+;;
+;; That record is NOT in this file, on purpose. It is AWS's generic starter
+;; policy for domains that have no DMARC yet. This domain already has a
+;; stricter, fully-formed one (p=quarantine with aggregate + forensic
+;; reporting), and adding AWS's alongside it would be actively harmful:
+;;
+;;   - Only one DMARC record may exist at _dmarc. Per RFC 7489 §6.6.3, when
+;;     policy discovery finds MORE THAN ONE record, DMARC is not applied to
+;;     the message at all. Two records is worse than either one alone.
+;;   - Replacing the existing record with AWS's would drop the policy from
+;;     quarantine to none and lose the rua/ruf reporting addresses.
+;;
+;; The existing DMARC is already correct for SES. It sets adkim=r and aspf=r
+;; (relaxed alignment), and:
+;;   - SES Easy DKIM signs with d=beonedge.in            -> DKIM aligns
+;;   - the custom MAIL FROM is a subdomain of beonedge.in -> SPF aligns
+;; so SES mail passes DMARC under p=quarantine without any change here.
+;;
+;; ─────────────────────────────────────────────────────────────────────────────
+;; WHY THE APEX SPF IS NOT TOUCHED
+;;
+;; The apex keeps "v=spf1 include:zoho.in ~all" with NO amazonses include.
+;; That is correct and intentional. SES is configured with a custom MAIL FROM
+;; domain (support.beonedge.in), so the envelope sender is on that subdomain and
+;; SPF is evaluated against the subdomain's own SPF record further down. Adding
+;; include:amazonses.com to the apex would be redundant and would spend one of
+;; SPF's 10 DNS-lookup budget for nothing.
+;;
+;; ─────────────────────────────────────────────────────────────────────────────
+;; CLOUDFLARE: THE NEW RECORDS MUST BE "DNS ONLY" (GREY CLOUD)
+;;
+;; Every existing CNAME here carries cf-proxied:true. The three DKIM CNAMEs
+;; below MUST NOT be proxied. A proxied CNAME resolves to Cloudflare's IPs
+;; instead of returning the amazonses.com target, so SES verification never
+;; succeeds and signing silently fails. Set each to DNS only.
+;;
+;; MX and TXT records are never proxied, so those need no action.
+;;
+;; ─────────────────────────────────────────────────────────────────────────────
+;; DO NOT IMPORT THIS FILE INTO CLOUDFLARE
+;;
+;; This is the intended END STATE, for review and for diffing against a future
+;; export. It is not an import payload. Cloudflare's import is additive — it
+;; creates records and does not overwrite existing ones — so importing this would
+;; try to re-create all 14 records you already have. A second apex SPF TXT or a
+;; second _dmarc TXT does not merge; it breaks SPF and DMARC outright.
+;;
+;; To apply the change, import the companion file instead, which contains only
+;; the five new records:
+;;
+;;     release_manager/aws_ses/beonedge.in.ses-only.import.txt
+;;
+;; New records use TTL 300 so a typo can be corrected quickly during
+;; verification. Raise them to 3600 once SES reports DKIM as verified.
+;;
+;; ─────────────────────────────────────────────────────────────────────────────
+;; named-checkzone STATUS (verified 2026-08-08)
+;;
+;; This file does not load under named-checkzone, and that is expected:
+;;
+;;     beonedge.in: CNAME and other data
+;;
+;; The apex carries a CNAME (the Cloudflare tunnel) alongside MX and TXT, which
+;; RFC 1034 forbids. It works only because Cloudflare flattens apex CNAMEs at
+;; serve time — the record is legal in Cloudflare and illegal in BIND.
+;;
+;; It is inherited, not introduced. The untouched Cloudflare export
+;; (beonedge.in.txt) produces the identical error. Removing just that one line
+;; makes this file load cleanly:
+;;
+;;     grep -vE '^beonedge\.in\.[[:space:]]+1[[:space:]]+IN[[:space:]]+CNAME' \
+;;       beonedge.in.with-ses.txt > /tmp/noapex.zone
+;;     named-checkzone beonedge.in /tmp/noapex.zone      # -> OK
+;;
+;; So: a "CNAME and other data" error on the apex is the known baseline. Any
+;; OTHER error means this file has drifted and should be fixed.
+;;
+;; The import payload (beonedge.in.ses-only.import.txt) validates OK outright,
+;; once a synthetic SOA is prepended for the checker's benefit.
+;;
+
+;; ── SOA (Cloudflare-managed — informational only) ────────────────────────────
+;; Trailing dot added to the owner name. Cloudflare's export writes this as
+;; "beonedge.in" with no final ".", which BIND reads as relative to $ORIGIN and
+;; resolves to beonedge.in.beonedge.in — hence "SOA record not at top of zone"
+;; when the raw export is fed to named-checkzone. Cosmetic here, since Cloudflare
+;; owns the real SOA and this line is never applied.
+beonedge.in.	3600	IN	SOA	brenda.ns.cloudflare.com. dns.cloudflare.com. 2053786153 10000 2400 604800 3600
+
+;; ── NS (Cloudflare-managed — informational only) ─────────────────────────────
+beonedge.in.	86400	IN	NS	brenda.ns.cloudflare.com.
+beonedge.in.	86400	IN	NS	darl.ns.cloudflare.com.
+
+;; ── Web / tunnel CNAMEs (unchanged, proxied) ─────────────────────────────────
+app.beonedge.in.	1	IN	CNAME	34b2f8f4-7b9b-4ff3-869e-27b145f89b75.cfargotunnel.com. ; cf_tags=cf-proxied:true
+beonedge.in.	1	IN	CNAME	34b2f8f4-7b9b-4ff3-869e-27b145f89b75.cfargotunnel.com. ; cf_tags=cf-proxied:true
+beus.beonedge.in.	1	IN	CNAME	34b2f8f4-7b9b-4ff3-869e-27b145f89b75.cfargotunnel.com. ; cf_tags=cf-proxied:true
+dev-app.beonedge.in.	1	IN	CNAME	34b2f8f4-7b9b-4ff3-869e-27b145f89b75.cfargotunnel.com. ; cf_tags=cf-proxied:true
+www.beonedge.in.	1	IN	CNAME	34b2f8f4-7b9b-4ff3-869e-27b145f89b75.cfargotunnel.com. ; cf_tags=cf-proxied:true
+
+;; ── Inbound mail: Zoho (unchanged) ───────────────────────────────────────────
+;; Routes support@beonedge.in. SES does not affect these.
+beonedge.in.	1	IN	MX	10 mx.zoho.in.
+beonedge.in.	1	IN	MX	20 mx2.zoho.in.
+beonedge.in.	1	IN	MX	50 mx3.zoho.in.
+
+;; ── Apex SPF (unchanged — see "WHY THE APEX SPF IS NOT TOUCHED") ─────────────
+beonedge.in.	3600	IN	TXT	"v=spf1 include:zoho.in ~all"
+
+;; ── DMARC (unchanged — see "ONE DELIBERATE DEVIATION") ───────────────────────
+_dmarc.beonedge.in.	1	IN	TXT	"v=DMARC1; p=quarantine; rua=mailto:flight.of.falcon.07@gmail.com; ruf=mailto:flight.of.falcon.07@gmail.com; sp=quarantine; adkim=r; aspf=r; pct=80"
+
+;; ── Zoho DKIM (unchanged — KEEP THIS) ────────────────────────────────────────
+;; Still required. Zoho signs the replies you type in webmail. Adopting SES does
+;; not retire it, and deleting it would unauthenticate every human reply sent
+;; from support@beonedge.in.
+zohomail._domainkey.beonedge.in.	600	IN	TXT	"v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCiULH6jgiqxT6+4svkCDPrZGVoXT6yu4U1awUBBdNsNfm9w2aOwRiTNWLWtWqvJ+zRIl7c+nDwLcx3Bc+P4kR6eCIGEyx68+jK6WHD2deti9q+eKtUYSvGdcDhVGd+rQCdwVgYCJOAU0mmRTLSjLZzofhNJdy6BYwfFYecZF1YUwIDAQAB"
+
+;;
+;; ═════════════════════════════════════════════════════════════════════════════
+;; AMAZON SES (ap-south-1) — THE FIVE RECORDS TO ADD
+;; ═════════════════════════════════════════════════════════════════════════════
+;;
+
+;; ── SES Easy DKIM (3 CNAMEs) — MUST NOT BE PROXIED ───────────────────────────
+;; Selectors are SES-generated and unrelated to Zoho's "zohomail" selector, so
+;; both signing systems coexist. These make SES sign as d=beonedge.in, which is
+;; what satisfies the existing DMARC policy's DKIM alignment.
+;;
+;; The cf-proxied:false tag is load-bearing, not decoration. Cloudflare gives it
+;; precedence over the dashboard's "Proxy imported DNS records" checkbox, so an
+;; import cannot accidentally proxy these even if that box is left ticked. A
+;; proxied DKIM CNAME resolves to Cloudflare IPs instead of the amazonses.com
+;; target, and SES verification then never succeeds.
+nz6nl4l4hejyx3pavcs4ao5twkyy3hbn._domainkey.beonedge.in.	300	IN	CNAME	nz6nl4l4hejyx3pavcs4ao5twkyy3hbn.dkim.amazonses.com. ; cf_tags=cf-proxied:false
+3mjfrqlhs2ga7ocb6jnmtslvptkppno6._domainkey.beonedge.in.	300	IN	CNAME	3mjfrqlhs2ga7ocb6jnmtslvptkppno6.dkim.amazonses.com. ; cf_tags=cf-proxied:false
+5q47ycit3r7ehwwd4wakhadi6iuqd6fk._domainkey.beonedge.in.	300	IN	CNAME	5q47ycit3r7ehwwd4wakhadi6iuqd6fk.dkim.amazonses.com. ; cf_tags=cf-proxied:false
+
+;; ── SES custom MAIL FROM: support.beonedge.in ────────────────────────────────
+;; NOTE ON THE NAME: this subdomain exists only to carry the SMTP envelope
+;; sender and to receive SES bounce notifications. It is a SEPARATE DNS
+;; namespace from the support@beonedge.in mailbox — that address is routed by
+;; the apex MX records above and is completely unaffected.
+;;
+;; "support" is a confusing choice for this role (mail./ses./bounce. are the
+;; usual names) but it is functionally correct. If you would rather rename it,
+;; change the MAIL FROM domain in the SES console and replace both records
+;; below with the new pair AWS issues.
+;;
+;; The MX here lets SES receive asynchronous bounces. The TXT authorises SES for
+;; the envelope domain, which is what gives SPF alignment under aspf=r.
+support.beonedge.in.	300	IN	MX	10 feedback-smtp.ap-south-1.amazonses.com.
+support.beonedge.in.	300	IN	TXT	"v=spf1 include:amazonses.com ~all"
+
+;;
+;; ─────────────────────────────────────────────────────────────────────────────
+;; VERIFY AFTER PROPAGATION
+;;
+;;   dig +short CNAME nz6nl4l4hejyx3pavcs4ao5twkyy3hbn._domainkey.beonedge.in
+;;   dig +short CNAME 3mjfrqlhs2ga7ocb6jnmtslvptkppno6._domainkey.beonedge.in
+;;   dig +short CNAME 5q47ycit3r7ehwwd4wakhadi6iuqd6fk._domainkey.beonedge.in
+;;       each must return the matching *.dkim.amazonses.com target.
+;;       An A record or a Cloudflare IP means the record is still proxied.
+;;
+;;   dig +short MX  support.beonedge.in     -> 10 feedback-smtp.ap-south-1.amazonses.com.
+;;   dig +short TXT support.beonedge.in     -> "v=spf1 include:amazonses.com ~all"
+;;   dig +short TXT beonedge.in             -> exactly one v=spf1, still zoho.in only
+;;   dig +short TXT _dmarc.beonedge.in      -> exactly ONE record, p=quarantine
+;;   dig +short MX  beonedge.in             -> the three mx*.zoho.in, unchanged
+;;
+;; Then confirm in the SES console that the domain identity shows DKIM
+;; "Successful" and MAIL FROM "Successful" BEFORE pointing the app at it.
+;; Sending while DKIM is still pending means SES signs with amazonses.com
+;; instead of beonedge.in, DKIM does not align, and pct=80 of that mail is
+;; quarantined by the existing DMARC policy.
+;; ─────────────────────────────────────────────────────────────────────────────

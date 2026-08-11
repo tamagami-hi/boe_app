@@ -1,0 +1,7 @@
+Type,Name,Value
+CNAME,nz6nl4l4hejyx3pavcs4ao5twkyy3hbn._domainkey.beonedge.in,nz6nl4l4hejyx3pavcs4ao5twkyy3hbn.dkim.amazonses.com
+CNAME,3mjfrqlhs2ga7ocb6jnmtslvptkppno6._domainkey.beonedge.in,3mjfrqlhs2ga7ocb6jnmtslvptkppno6.dkim.amazonses.com
+CNAME,5q47ycit3r7ehwwd4wakhadi6iuqd6fk._domainkey.beonedge.in,5q47ycit3r7ehwwd4wakhadi6iuqd6fk.dkim.amazonses.com
+MX,support.beonedge.in,10 feedback-smtp.ap-south-1.amazonses.com
+TXT,support.beonedge.in,"v=spf1 include:amazonses.com ~all"
+TXT,_dmarc.beonedge.in,"v=DMARC1; p=none;"

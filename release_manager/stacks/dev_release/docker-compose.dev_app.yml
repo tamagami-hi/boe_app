@@ -52,7 +52,6 @@ x-backend-env: &backend-env
   NODE_ENV: ${NODE_ENV:-production}
   HOST: 0.0.0.0
   PORT: ${BACKEND_PORT}
-  PROVIDER_MODE: ${PROVIDER_MODE:-live}
   LOG_LEVEL: ${LOG_LEVEL:-info}
 
   DATA_STORE: postgres
@@ -68,13 +67,18 @@ x-backend-env: &backend-env
 
   PUBLIC_API_BASE_URL: ${PUBLIC_API_BASE_URL}
   PUBLIC_LANDING_ORIGIN: ${PUBLIC_LANDING_ORIGIN}
-  CORS_ORIGIN: ${CORS_ORIGIN}
-  WEB_ORIGIN_ALLOWLIST: ${WEB_ORIGIN_ALLOWLIST:-${CORS_ORIGIN}}
+  # WEB_ORIGIN_ALLOWLIST is authoritative; CORS_ORIGIN is the legacy fallback for
+  # a deployment that only sets that older name. Both are optional here so a .env
+  # carrying just the allowlist does not warn on every compose command.
+  CORS_ORIGIN: ${CORS_ORIGIN:-}
+  WEB_ORIGIN_ALLOWLIST: ${WEB_ORIGIN_ALLOWLIST:-${CORS_ORIGIN:-}}
   WEB_COOKIE_SECURE: ${WEB_COOKIE_SECURE:-true}
 
-  ACCESS_TOKEN_SECRET: ${ACCESS_TOKEN_SECRET}
-  REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET}
-  ALLOW_DEV_AUTH: "false"
+  # Access tokens are ES256 (keypair below) and refresh tokens are HMACed with
+  # REFRESH_HMAC_KEY. The retired symmetric ACCESS_TOKEN_SECRET /
+  # REFRESH_TOKEN_SECRET / ALLOW_DEV_AUTH trio was removed here: nothing in
+  # backend_controller has read them since BE-003, and interpolating them made
+  # every compose command warn about unset variables that did not matter.
   ACCESS_TOKEN_ISSUER: ${ACCESS_TOKEN_ISSUER}
   ACCESS_TOKEN_AUDIENCE: ${ACCESS_TOKEN_AUDIENCE}
   ACCESS_TOKEN_CURRENT_KID: ${ACCESS_TOKEN_CURRENT_KID}
@@ -129,7 +133,7 @@ x-backend-env: &backend-env
   APK_RELEASE_ROOT: ${APK_RELEASE_ROOT:-/srv/boe/apk}
   APK_DOWNLOAD_BASE_URL: ${APK_DOWNLOAD_BASE_URL}
 
-  ADMIN_USER_ID: ${ADMIN_USER_ID}
+  # seedAuth.ts derives the admin's user id itself, so there is no ADMIN_USER_ID.
   ADMIN_LOGIN_ID: ${ADMIN_LOGIN_ID}
   ADMIN_PASSWORD: ${ADMIN_PASSWORD}
   ADMIN_FIRST_NAME: ${ADMIN_FIRST_NAME:-BeOnEdge}
@@ -148,7 +152,15 @@ x-backend-env: &backend-env
   # whose old phone is lost or wiped can always get back in. SEED_CLIENT_EMAIL
   # (above) is exempt: the dev/QA account runs on many emulators at once.
   MAX_NATIVE_DEVICES_PER_USER: ${MAX_NATIVE_DEVICES_PER_USER:-3}
+  # The default client (QA) login. seed:auth is the ONLY thing that creates it, and
+  # this env is its only source of truth: SEED_CLIENT_EMAIL + SEED_CLIENT_PASSWORD
+  # must be set together, and with SEED_AUTH_OVERWRITE=true the password here is
+  # reapplied on every deploy. The account gets no role grant — roles are admin
+  # permissions — and no application_id, since it did not come through signup.
   SEED_CLIENT_PASSWORD: ${SEED_CLIENT_PASSWORD}
+  SEED_CLIENT_PHONE: ${SEED_CLIENT_PHONE:-+910000000003}
+  SEED_CLIENT_FIRST_NAME: ${SEED_CLIENT_FIRST_NAME:-BeOnEdge}
+  SEED_CLIENT_LAST_NAME: ${SEED_CLIENT_LAST_NAME:-Client}
 
 services:
   # ── database ──────────────────────────────────────────────────────────────

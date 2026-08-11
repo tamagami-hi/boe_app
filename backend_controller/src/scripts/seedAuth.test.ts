@@ -16,7 +16,17 @@ const baseConfig: SeedAuthConfig = {
   adminPassword: "correct horse battery staple",
   adminPhone: "+911234567890",
   adminFullName: "BeOnEdge Admin",
+  clientEmail: null,
+  clientPassword: null,
+  clientPhone: "+910000000003",
+  clientFullName: "BeOnEdge Client",
 }
+
+const withClient = {
+  ...baseConfig,
+  clientEmail: "client@example.com",
+  clientPassword: "a different passphrase entirely",
+} satisfies SeedAuthConfig
 
 interface FakeState {
   userExists: boolean
@@ -25,15 +35,20 @@ interface FakeState {
 
 const createFakePool = (state: FakeState) => {
   const queries: string[] = []
+  const calls: { text: string; values: readonly unknown[] }[] = []
+  const idFor = (email: string): string => `user-${email}`
   const client: SeedAuthClient = {
-    query: vi.fn((text: string) => {
+    query: vi.fn((text: string, values: readonly unknown[] = []) => {
       queries.push(text)
+      calls.push({ text, values })
       if (text.startsWith("SELECT id FROM users")) {
-        return Promise.resolve({ rows: state.userExists ? [{ id: "admin-1" }] : [] })
+        return Promise.resolve({ rows: state.userExists ? [{ id: idFor(String(values[0])) }] : [] })
       }
-      if (text.startsWith("INSERT INTO users")) return Promise.resolve({ rows: [{ id: "admin-1" }] })
+      if (text.startsWith("INSERT INTO users")) {
+        return Promise.resolve({ rows: [{ id: idFor(String(values[0])) }] })
+      }
       if (text.startsWith("SELECT user_id FROM user_credentials")) {
-        return Promise.resolve({ rows: state.credentialExists ? [{ user_id: "admin-1" }] : [] })
+        return Promise.resolve({ rows: state.credentialExists ? [{ user_id: String(values[0]) }] : [] })
       }
       if (text.startsWith("SELECT id FROM roles")) return Promise.resolve({ rows: [{ id: "role-super" }] })
       if (text.startsWith("SELECT id FROM permissions")) return Promise.resolve({ rows: [{ id: "perm-x" }] })
@@ -41,7 +56,7 @@ const createFakePool = (state: FakeState) => {
     }),
     release: vi.fn(),
   }
-  return { pool: { connect: () => Promise.resolve(client) }, client, queries }
+  return { pool: { connect: () => Promise.resolve(client) }, client, queries, calls }
 }
 
 const fakeHasher = (): Promise<string> => Promise.resolve("$argon2id$v=19$fake")
@@ -128,5 +143,72 @@ describe("runSeedAuth", () => {
     await expect(
       runSeedAuth(pool, { ...baseConfig, adminPassword: null }, fakeHasher),
     ).rejects.toThrow(/admin email \+ password/u)
+  })
+})
+
+describe("runSeedAuth default client", () => {
+  test("seeds the client login from the environment, with no role grant", async () => {
+    const { pool, calls } = createFakePool({ userExists: false, credentialExists: false })
+    const result = await runSeedAuth(pool, withClient, fakeHasher)
+    expect(result).toMatchObject({ adminSeeded: true, clientSeeded: true, skipped: null })
+
+    const insertedUsers = calls
+      .filter((call) => call.text.startsWith("INSERT INTO users"))
+      .map((call) => call.values[0])
+    expect(insertedUsers).toStrictEqual(["admin@example.com", "client@example.com"])
+    // Two logins, two credential rows.
+    expect(calls.filter((c) => c.text.startsWith("INSERT INTO user_credentials"))).toHaveLength(2)
+    // Roles are admin-only: exactly one user_roles grant, for the admin.
+    const grants = calls.filter((c) => c.text.startsWith("INSERT INTO user_roles"))
+    expect(grants).toHaveLength(1)
+    expect(grants[0]?.values[0]).toBe("user-admin@example.com")
+  })
+
+  test("is skipped, not failed, when no client is configured", async () => {
+    const { pool, calls } = createFakePool({ userExists: false, credentialExists: false })
+    const result = await runSeedAuth(pool, baseConfig, fakeHasher)
+    expect(result.clientSeeded).toBe(false)
+    expect(calls.filter((c) => c.text.startsWith("INSERT INTO users"))).toHaveLength(1)
+  })
+
+  test("rejects a half-configured client rather than silently skipping it", async () => {
+    const { pool } = createFakePool({ userExists: false, credentialExists: false })
+    await expect(
+      runSeedAuth(pool, { ...withClient, clientPassword: null }, fakeHasher),
+    ).rejects.toThrow(/SEED_CLIENT_EMAIL and SEED_CLIENT_PASSWORD together/u)
+    await expect(
+      runSeedAuth(pool, { ...withClient, clientEmail: null }, fakeHasher),
+    ).rejects.toThrow(/SEED_CLIENT_EMAIL and SEED_CLIENT_PASSWORD together/u)
+  })
+
+  test("overwrite=true rotates the existing client credential too", async () => {
+    const { pool, calls } = createFakePool({ userExists: true, credentialExists: true })
+    await runSeedAuth(pool, { ...withClient, overwrite: true }, fakeHasher)
+    const updated = calls
+      .filter((c) => c.text.startsWith("UPDATE user_credentials"))
+      .map((c) => c.values[0])
+    expect(updated).toStrictEqual(["user-admin@example.com", "user-client@example.com"])
+  })
+
+  test("the production gate covers the client as well as the admin", async () => {
+    const { pool, calls } = createFakePool({ userExists: false, credentialExists: false })
+    const result = await runSeedAuth(pool, { ...withClient, isProduction: true, allowProduction: false }, fakeHasher)
+    expect(result).toMatchObject({ adminSeeded: false, clientSeeded: false, skipped: "production_not_allowed" })
+    expect(calls.some((c) => c.text.startsWith("INSERT INTO users"))).toBe(false)
+  })
+
+  test("resolves client fields from the environment with defaults", () => {
+    const config = resolveSeedAuthConfig({
+      ADMIN_LOGIN_ID: "a@x.com",
+      ADMIN_PASSWORD: "pw",
+      SEED_CLIENT_EMAIL: "Client@Boe.Local",
+      SEED_CLIENT_PASSWORD: "pw3",
+    })
+    expect(config).toMatchObject({
+      clientEmail: "client@boe.local",
+      clientPassword: "pw3",
+      clientPhone: "+910000000003",
+      clientFullName: "BeOnEdge Client",
+    })
   })
 })

@@ -32,16 +32,27 @@ export interface SeedAuthConfig {
   readonly adminPassword: string | null
   readonly adminPhone: string
   readonly adminFullName: string
+  /**
+   * The default client (QA) login. Both email and password must be supplied
+   * together or neither; see resolveSeedAuthConfig. This account is the one the
+   * mobile app signs in with, and the `.env` is its only source of truth.
+   */
+  readonly clientEmail: string | null
+  readonly clientPassword: string | null
+  readonly clientPhone: string
+  readonly clientFullName: string
 }
 
 export type SeedAuthResult = Readonly<{
   catalogStatements: number
   adminSeeded: boolean
+  clientSeeded: boolean
   skipped: "disabled" | "production_not_allowed" | null
 }>
 
 const SUPERADMIN_ROLE = "superadmin"
 const DEFAULT_ADMIN_PHONE = "+910000000001"
+const DEFAULT_CLIENT_PHONE = "+910000000003"
 
 const trimmedOrNull = (value: string | undefined): string | null => {
   if (value === undefined) return null
@@ -53,6 +64,8 @@ const trimmedOrNull = (value: string | undefined): string | null => {
 export const resolveSeedAuthConfig = (source: Readonly<Record<string, string | undefined>>): SeedAuthConfig => {
   const firstName = trimmedOrNull(source.ADMIN_FIRST_NAME) ?? "BeOnEdge"
   const lastName = trimmedOrNull(source.ADMIN_LAST_NAME) ?? "Admin"
+  const clientFirstName = trimmedOrNull(source.SEED_CLIENT_FIRST_NAME) ?? "BeOnEdge"
+  const clientLastName = trimmedOrNull(source.SEED_CLIENT_LAST_NAME) ?? "Client"
   return {
     enabled: source.SEED_AUTH_ENABLED !== "false",
     allowProduction: source.SEED_AUTH_ALLOW_PRODUCTION === "true",
@@ -62,10 +75,63 @@ export const resolveSeedAuthConfig = (source: Readonly<Record<string, string | u
     adminPassword: trimmedOrNull(source.SEED_ADMIN_PASSWORD) ?? trimmedOrNull(source.ADMIN_PASSWORD),
     adminPhone: trimmedOrNull(source.ADMIN_PHONE) ?? DEFAULT_ADMIN_PHONE,
     adminFullName: `${firstName} ${lastName}`,
+    clientEmail: trimmedOrNull(source.SEED_CLIENT_EMAIL)?.toLowerCase() ?? null,
+    clientPassword: trimmedOrNull(source.SEED_CLIENT_PASSWORD),
+    clientPhone: trimmedOrNull(source.SEED_CLIENT_PHONE) ?? DEFAULT_CLIENT_PHONE,
+    clientFullName: `${clientFirstName} ${clientLastName}`,
   }
 }
 
 const firstRow = <T>(result: { rows: readonly unknown[] }): T | undefined => result.rows[0] as T | undefined
+
+/**
+ * Idempotently ensure a login exists: an active `users` row and an Argon2id
+ * `user_credentials` row. Returns the user id. When the user already exists its
+ * demographics are left untouched — `phone_e164` is UNIQUE, so rewriting it from
+ * the environment could collide with an unrelated account — and the credential is
+ * replaced only when `overwrite` is set.
+ */
+const upsertLogin = async (
+  client: SeedAuthClient,
+  login: Readonly<{
+    email: string
+    passwordHash: string
+    phone: string
+    fullName: string
+    overwrite: boolean
+  }>,
+): Promise<string> => {
+  const existing = firstRow<{ id: string }>(
+    await client.query("SELECT id FROM users WHERE email_normalized = $1", [login.email]),
+  )
+  const userId =
+    existing?.id ??
+    firstRow<{ id: string }>(
+      await client.query(
+        "INSERT INTO users (email_normalized, phone_e164, full_name, account_state, activated_at) " +
+          "VALUES ($1, $2, $3, 'active', now()) RETURNING id",
+        [login.email, login.phone, login.fullName],
+      ),
+    )?.id
+
+  if (userId === undefined) throw new Error(`seed:auth could not resolve the user id for ${login.email}`)
+
+  const credential = firstRow<{ user_id: string }>(
+    await client.query("SELECT user_id FROM user_credentials WHERE user_id = $1", [userId]),
+  )
+  if (credential === undefined) {
+    await client.query("INSERT INTO user_credentials (user_id, password_hash) VALUES ($1, $2)", [
+      userId,
+      login.passwordHash,
+    ])
+  } else if (login.overwrite) {
+    await client.query(
+      "UPDATE user_credentials SET password_hash = $2, password_changed_at = now(), updated_at = now() WHERE user_id = $1",
+      [userId, login.passwordHash],
+    )
+  }
+  return userId
+}
 
 /**
  * Apply the catalog seed and, when enabled, the idempotent admin bootstrap in a
@@ -83,9 +149,19 @@ export const runSeedAuth = async (
       "seed:auth requires an admin email + password (ADMIN_LOGIN_ID/SEED_ADMIN_EMAIL and ADMIN_PASSWORD/SEED_ADMIN_PASSWORD)",
     )
   }
+  /*
+   * Half-configured is a mistake worth failing on rather than silently skipping:
+   * an operator who set only SEED_CLIENT_EMAIL believes a client login exists,
+   * and one who set only SEED_CLIENT_PASSWORD believes they rotated it.
+   */
+  if (config.enabled && (config.clientEmail === null) !== (config.clientPassword === null)) {
+    throw new Error("seed:auth requires SEED_CLIENT_EMAIL and SEED_CLIENT_PASSWORD together, or neither")
+  }
   const seedAdmin = config.enabled && !(config.isProduction && !config.allowProduction)
+  const seedClient = seedAdmin && config.clientEmail !== null && config.clientPassword !== null
   // Hash outside the transaction to keep it short.
   const passwordHash = seedAdmin && config.adminPassword !== null ? await hasher(config.adminPassword) : null
+  const clientPasswordHash = seedClient && config.clientPassword !== null ? await hasher(config.clientPassword) : null
 
   const client = await pool.connect()
   try {
@@ -96,42 +172,28 @@ export const runSeedAuth = async (
 
     if (!config.enabled) {
       await client.query("COMMIT")
-      return { catalogStatements: statements.length, adminSeeded: false, skipped: "disabled" }
+      return { catalogStatements: statements.length, adminSeeded: false, clientSeeded: false, skipped: "disabled" }
     }
     if (!seedAdmin) {
       await client.query("COMMIT")
-      return { catalogStatements: statements.length, adminSeeded: false, skipped: "production_not_allowed" }
+      return {
+        catalogStatements: statements.length,
+        adminSeeded: false,
+        clientSeeded: false,
+        skipped: "production_not_allowed",
+      }
     }
 
-    const existing = firstRow<{ id: string }>(
-      await client.query("SELECT id FROM users WHERE email_normalized = $1", [config.adminEmail]),
-    )
-    const adminId =
-      existing?.id ??
-      firstRow<{ id: string }>(
-        await client.query(
-          "INSERT INTO users (email_normalized, phone_e164, full_name, account_state, activated_at) " +
-            "VALUES ($1, $2, $3, 'active', now()) RETURNING id",
-          [config.adminEmail, config.adminPhone, config.adminFullName],
-        ),
-      )?.id
-
-    if (adminId === undefined) throw new Error("seed:auth could not resolve the admin user id")
-
-    const credential = firstRow<{ user_id: string }>(
-      await client.query("SELECT user_id FROM user_credentials WHERE user_id = $1", [adminId]),
-    )
-    if (credential === undefined) {
-      await client.query("INSERT INTO user_credentials (user_id, password_hash) VALUES ($1, $2)", [
-        adminId,
-        passwordHash,
-      ])
-    } else if (config.overwrite) {
-      await client.query(
-        "UPDATE user_credentials SET password_hash = $2, password_changed_at = now(), updated_at = now() WHERE user_id = $1",
-        [adminId, passwordHash],
-      )
+    if (config.adminEmail === null || passwordHash === null) {
+      throw new Error("seed:auth could not resolve the admin credential")
     }
+    const adminId = await upsertLogin(client, {
+      email: config.adminEmail,
+      passwordHash,
+      phone: config.adminPhone,
+      fullName: config.adminFullName,
+      overwrite: config.overwrite,
+    })
 
     const role = firstRow<{ id: string }>(
       await client.query("SELECT id FROM roles WHERE code = $1", [SUPERADMIN_ROLE]),
@@ -169,8 +231,25 @@ export const runSeedAuth = async (
       )
     }
 
+    /*
+     * The default client (QA) login. It deliberately gets no role grant: roles
+     * carry admin permissions, and an investor is authorised by owning its own
+     * records, not by a role. `application_id` stays NULL — this account did not
+     * come through signup, and the column is nullable and UNIQUE, so leaving it
+     * unset is both legal and honest about the account's provenance.
+     */
+    if (seedClient && config.clientEmail !== null && clientPasswordHash !== null) {
+      await upsertLogin(client, {
+        email: config.clientEmail,
+        passwordHash: clientPasswordHash,
+        phone: config.clientPhone,
+        fullName: config.clientFullName,
+        overwrite: config.overwrite,
+      })
+    }
+
     await client.query("COMMIT")
-    return { catalogStatements: statements.length, adminSeeded: true, skipped: null }
+    return { catalogStatements: statements.length, adminSeeded: true, clientSeeded: seedClient, skipped: null }
   } catch (error: unknown) {
     await client.query("ROLLBACK")
     throw error
@@ -194,7 +273,10 @@ if (isMainModule) {
         "seed:auth skipped admin bootstrap in production (set SEED_AUTH_ALLOW_PRODUCTION=true); catalog seeded\n",
       )
     } else {
-      process.stdout.write(`seed:auth applied; admin ${result.adminSeeded ? "bootstrapped" : "unchanged"}\n`)
+      process.stdout.write(
+        `seed:auth applied; admin ${result.adminSeeded ? "bootstrapped" : "unchanged"}, ` +
+          `client ${result.clientSeeded ? "bootstrapped" : "not configured (SEED_CLIENT_EMAIL/PASSWORD unset)"}\n`,
+      )
     }
   } finally {
     await pool.end()
