@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   UserCheck, ShieldCheck, LineChart, Layers, TrendingUp, PieChart,
@@ -34,8 +34,49 @@ import SkeletonTableRow from '../components/SkeletonTableRow.jsx';
 import { fmtDateTime, fmtInt } from '../helpers/formatters.js';
 import { initials } from '../helpers/formatters.js';
 
-function ApprovalsScreen({ rows = [], loading = false, onApprove, onReject, onNavigateToUsers, busy = false }) {
+const EMPTY_APPROVALS_META = { updatedAt: null, syncing: false, truncated: false, error: '' };
+
+/** "just now" / "2m ago" — enough for the operator to judge staleness at a glance. */
+function relativeTime(timestamp) {
+  if (!timestamp) return 'not yet loaded';
+  const seconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000));
+  if (seconds < 10) return 'just now';
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  return `${Math.round(minutes / 60)}h ago`;
+}
+
+function ApprovalsScreen({
+  rows = [],
+  loading = false,
+  onApprove,
+  onReject,
+  onNavigateToUsers,
+  busy = false,
+  meta = EMPTY_APPROVALS_META,
+  onRefresh,
+}) {
   const [searchQuery, setSearchQuery] = useState('');
+  /*
+   * Re-render on a timer purely so the "updated Ns ago" label keeps counting.
+   * Without it the label freezes at the value it had when the data arrived, which
+   * reads as "fresh" no matter how old it is — worse than showing nothing.
+   *
+   * Gated on there being a timestamp to age and on the tab being visible: a
+   * hidden tab has nobody reading the label, and the provider stops polling then
+   * anyway, so ticking would be pure wakeups.
+   */
+  const [, setNow] = useState(0);
+  const updatedAt = meta.updatedAt;
+  useEffect(() => {
+    if (!updatedAt || typeof document === 'undefined') return undefined;
+    const tick = () => {
+      if (document.visibilityState === 'visible') setNow((count) => count + 1);
+    };
+    const timer = setInterval(tick, 10000);
+    return () => clearInterval(timer);
+  }, [updatedAt]);
 
   const visibleRows = rows.filter((r) => {
     const q = searchQuery.trim().toLowerCase();
@@ -92,6 +133,17 @@ function ApprovalsScreen({ rows = [], loading = false, onApprove, onReject, onNa
             <h2 className="adm-card-title">Awaiting approval</h2>
           </div>
           <div className="adm-card-actions">
+            <span className="adm-muted" aria-live="polite">
+              {meta.syncing ? 'Refreshing...' : `Updated ${relativeTime(meta.updatedAt)}`}
+            </span>
+            <button
+              className="be-btn be-btn-secondary be-btn-sm"
+              onClick={() => onRefresh?.()}
+              disabled={meta.syncing || busy}
+              title={busy ? 'Finishing the current decision' : 'Re-read the pending queue now'}
+            >
+              Refresh
+            </button>
             <button
               className="be-btn be-btn-secondary be-btn-sm"
               onClick={exportCsv}
@@ -102,6 +154,18 @@ function ApprovalsScreen({ rows = [], loading = false, onApprove, onReject, onNa
             </button>
           </div>
         </div>
+
+        {meta.error && (
+          <div className="adm-inline-note" role="status">
+            Could not refresh the queue: {meta.error}
+          </div>
+        )}
+        {meta.truncated && (
+          <div className="adm-inline-note" role="status">
+            Showing the most recent {rows.length} requests. The queue is longer than one page — decide
+            some of these to see the rest.
+          </div>
+        )}
 
         <div className="adm-toolbar">
           <div className="adm-search">

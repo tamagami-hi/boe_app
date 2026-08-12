@@ -31,6 +31,42 @@ function postLoginPath(from) {
   }
 }
 
+/*
+ * Sign-in accepts an email address only.
+ *
+ * The field used to be labelled "Email or phone", but the value is sent as
+ * `email` and the backend validates it as one — there is no phone sign-in path at
+ * all. A phone number therefore came back as a validation failure and was
+ * reported as "check your password", sending people to reset a password that was
+ * never wrong. Checking here says so before the request is made.
+ */
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Say what actually went wrong.
+ *
+ * Every failure used to collapse into one "check your email, phone, or password"
+ * message, so a timeout, an unreachable server, and a genuinely wrong password
+ * were indistinguishable — which is exactly the wrong advice during the sign-in
+ * slowness this screen is most likely to show.
+ */
+function signInErrorMessage(error) {
+  const code = error?.code;
+  if (code === 'ADMIN_LOGIN_REQUIRED') return 'Use the admin login page for admin access.';
+  if (code === 'REQUEST_TIMEOUT') {
+    return 'The server took too long to respond. Check your connection and try again.';
+  }
+  if (code === 'NETWORK_UNAVAILABLE') {
+    return 'Could not reach the server. Check your connection and try again.';
+  }
+  if (code === 'FIXTURE_MODE') return 'This build is not connected to the server.';
+  if (code === 'VALIDATION_FAILED') return 'Enter a valid email address and your password.';
+  if (error?.status === 429) return 'Too many attempts. Wait a moment and try again.';
+  if (error?.status >= 500) return 'The server is having trouble. Try again in a moment.';
+  if (error?.status === 401) return "That email and password don't match. Try again.";
+  return "Couldn't sign in. Try again.";
+}
+
 export default function Login() {
   const { login } = useSession();
   const navigate = useNavigate();
@@ -43,19 +79,22 @@ export default function Login() {
 
   async function onSignIn(e) {
     e.preventDefault();
-    if (!identifier || !password) {
-      setErr('Enter your email or phone, and password.');
+    const email = identifier.trim();
+    if (!email || !password) {
+      setErr('Enter your email address and password.');
+      return;
+    }
+    if (!EMAIL_SHAPE.test(email)) {
+      setErr('Enter the email address you signed up with.');
       return;
     }
     setErr('');
     setSubmitting(true);
     try {
-      await login({ identifier, password });
+      await login({ identifier: email, password });
       navigate(postLoginPath(params.get('from')), { replace: true });
     } catch (error) {
-      setErr(error?.code === 'ADMIN_LOGIN_REQUIRED'
-        ? 'Use the admin login page for admin access.'
-        : "Couldn't sign in. Check your email, phone, or password.");
+      setErr(signInErrorMessage(error));
     } finally {
       setSubmitting(false);
     }
@@ -78,11 +117,15 @@ export default function Login() {
 
         <form className="apk-login-form" onSubmit={onSignIn} noValidate>
           <div className="be-field">
-            <label htmlFor="ident">Email or phone</label>
+            <label htmlFor="ident">Email</label>
             <input
               id="ident"
               className="be-input"
+              type="email"
+              inputMode="email"
               autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               disabled={submitting}

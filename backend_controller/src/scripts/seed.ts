@@ -1,7 +1,7 @@
 import { pathToFileURL } from "node:url"
 
 import { parseDatabaseConfig } from "../db/config.js"
-import { createPool } from "../db/pool.js"
+import { createPool, schemaToolPoolSettings } from "../db/pool.js"
 import { buildSeedStatements } from "../db/seedCatalog.js"
 
 export interface SeedClient {
@@ -40,7 +40,7 @@ const isMainModule =
   process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href
 
 if (isMainModule) {
-  const pool = createPool(parseDatabaseConfig(process.env))
+  const pool = createPool(schemaToolPoolSettings(parseDatabaseConfig(process.env)))
   try {
     const applied = await runSeed(pool)
     process.stdout.write(`seeded ${String(applied)} catalog statements\n`)

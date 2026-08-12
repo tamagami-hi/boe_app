@@ -27,6 +27,14 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=47502
+# Argon2id password verification runs on the libuv threadpool, which defaults to
+# 4 threads shared with all filesystem and DNS work. Sign-in throughput is capped
+# by that pool, and a burst of sign-ins otherwise queues behind — and delays —
+# unrelated I/O. This must be set in the environment before the process starts;
+# assigning process.env at runtime is too late. Raising it far above the host's
+# core count buys nothing for CPU-bound hashing, so this is a modest bump, and it
+# stays overridable per deployment.
+ENV UV_THREADPOOL_SIZE=8
 
 COPY --from=production-dependencies --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist

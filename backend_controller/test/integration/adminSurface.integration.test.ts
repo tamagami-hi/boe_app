@@ -28,6 +28,7 @@ import type { WebAuthDeps } from "../../src/domain/auth/webAuth.js"
 import { createAdminCatalogRepository } from "../../src/repositories/adminCatalogRepository.js"
 import { createAdminContentRepository } from "../../src/repositories/adminContentRepository.js"
 import { createAdminOversightRepository } from "../../src/repositories/adminOversightRepository.js"
+import { createLoginEventRepository } from "../../src/repositories/loginEventRepository.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
 import { createInvestorLedgerRepository } from "../../src/repositories/investorLedgerRepository.js"
 import { createRedemptionRepository } from "../../src/repositories/redemptionRepository.js"
@@ -214,7 +215,11 @@ beforeAll(async () => {
   app = createApplication({
     logger: false,
     registerRoutes: (instance) => {
-      registerWebAuthRoutes(instance, { ...webAuth, unitOfWork })
+      registerWebAuthRoutes(instance, {
+        ...webAuth,
+        unitOfWork,
+        loginEventRepository: createLoginEventRepository(),
+      })
       registerAdminContentRoutes(instance, {
         webAuth,
         unitOfWork,
@@ -244,6 +249,7 @@ beforeAll(async () => {
         clock: () => new Date(),
         config: { cursorKey, idempotencyTtlMs: 86_400_000 },
         oversightRepository: createAdminOversightRepository(),
+        loginEventRepository: createLoginEventRepository(),
         investorLedgerRepository: createInvestorLedgerRepository(),
         redemptionRepository: createRedemptionRepository(),
         notificationRepository: createNotificationRepository(),

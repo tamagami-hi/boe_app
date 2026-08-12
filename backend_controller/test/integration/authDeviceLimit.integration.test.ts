@@ -15,6 +15,7 @@ import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
 import { createAuthSessionRepository } from "../../src/repositories/authSessionRepository.js"
+import { createLoginEventRepository } from "../../src/repositories/loginEventRepository.js"
 import { createUserRepository } from "../../src/repositories/userRepository.js"
 import { registerNativeAuthRoutes, type NativeAuthRouteDeps } from "../../src/routes/nativeAuthRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
@@ -117,6 +118,7 @@ beforeAll(async () => {
     userRepository: createUserRepository(),
     authSessionRepository: createAuthSessionRepository(),
     auditRepository: createAuditRepository(),
+    loginEventRepository: createLoginEventRepository(),
     accessTokenService,
     database,
     refreshKey: randomBytes(32),
@@ -200,5 +202,23 @@ describe("native login device cap", () => {
 
     expect(await activeSessions(SEED_CLIENT_EMAIL)).toHaveLength(total)
     expect(await revocationReasons(SEED_CLIENT_EMAIL)).not.toContain("device_limit_exceeded")
+  })
+
+  test("simultaneous first logins cannot collectively overshoot the cap", async () => {
+    /*
+     * `listActiveNativeForUserOldestFirst` counts under FOR UPDATE, but FOR UPDATE
+     * locks rows that exist — so from a standing start there is nothing to lock,
+     * and without the users-row lock in the write phase every concurrent login
+     * reads a count of zero and inserts. Six at once against a cap of three is the
+     * case that exposes it.
+     */
+    const email = "burst-cap@example.com"
+    await createClient(email)
+
+    const responses = await Promise.all(
+      Array.from({ length: 6 }, () => login(email, randomUUID())),
+    )
+    expect(responses.map((response) => response.statusCode)).toEqual([200, 200, 200, 200, 200, 200])
+    expect(await activeSessions(email)).toHaveLength(MAX_DEVICES)
   })
 })

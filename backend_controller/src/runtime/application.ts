@@ -19,16 +19,24 @@ type ApplicationOptions = Readonly<{
    * emits no CORS headers — correct for tests and for same-origin deployments.
    */
   corsAllowlist?: readonly string[]
+  /**
+   * Fastify `trustProxy`. When set, `request.ip` derives from the forwarding
+   * headers, but only for requests whose immediate peer matches the allowlist —
+   * so provenance is real behind nginx and unforgeable from anywhere else.
+   */
+  trustProxy?: string | false
 }>
 
 const createFastifyInstance = ({
   destination,
   level = "info",
   logger,
+  trustProxy = false,
 }: ApplicationOptions): FastifyInstance => {
   const commonOptions = {
     exposeHeadRoutes: false,
     bodyLimit: MAX_JSON_BODY_BYTES,
+    ...(trustProxy === false ? {} : { trustProxy }),
     frameworkErrors: (error: FastifyError, request: FastifyRequest, reply: FastifyReply) =>
       renderError(error, request, reply),
     logController: new LogController({ disableRequestLogging: true }),

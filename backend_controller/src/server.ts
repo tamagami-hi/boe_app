@@ -29,6 +29,9 @@ export const startServer = async ({
     registerRoutes: backend.registerRoutes,
     // The browser clients (Capacitor WebView, admin console) are cross-origin.
     corsAllowlist: backend.corsAllowlist,
+    // Every deployment is proxied by nginx; without this, the client address
+    // recorded against a sign-in is the proxy rather than the caller.
+    trustProxy: environment.trustProxy,
   })
   // The pool is closed as part of the server's graceful drain.
   application.addHook("onClose", async () => {

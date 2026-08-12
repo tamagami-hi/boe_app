@@ -41,7 +41,13 @@ const compositionEnv = (): Record<string, string> => ({
 describe("startServer", () => {
   test("composes the backend, listens, serves health, and closes cleanly", async () => {
     const server = await startServer({
-      environment: { host: "127.0.0.1", logLevel: "silent", nodeEnvironment: "test", port: 0 },
+      environment: {
+        host: "127.0.0.1",
+        logLevel: "silent",
+        nodeEnvironment: "test",
+        port: 0,
+        trustProxy: false,
+      },
       env: compositionEnv(),
     })
 

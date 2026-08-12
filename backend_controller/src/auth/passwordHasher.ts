@@ -10,6 +10,10 @@
 import { argon2id, hash, verify } from "argon2"
 import { z } from "zod"
 
+import { AppError } from "../http/errorCatalog.js"
+
+import { passwordWorkGate } from "./passwordGate.js"
+
 const ARGON2_OPTIONS = {
   type: argon2id,
   memoryCost: 19_456,
@@ -26,12 +30,18 @@ export const passwordInputSchema = z
   }, "must be 12 to 128 characters")
   .refine((value) => !/[\u0000-\u001f\u007f-\u009f]/u.test(value), "must not contain control characters")
 
-/** Hash a password into an encoded Argon2id string. */
-export const hashPassword = (password: string): Promise<string> => hash(password, ARGON2_OPTIONS)
+/**
+ * Hash a password into an encoded Argon2id string.
+ *
+ * Gated: see `passwordGate.ts`. Under saturation this rejects with
+ * `RATE_LIMITED` rather than joining an unbounded queue.
+ */
+export const hashPassword = (password: string): Promise<string> =>
+  passwordWorkGate().run(() => hash(password, ARGON2_OPTIONS))
 
-/** Verify a password against an encoded Argon2id hash. */
+/** Verify a password against an encoded Argon2id hash. Gated, as above. */
 export const verifyPassword = (encodedHash: string, password: string): Promise<boolean> =>
-  verify(encodedHash, password)
+  passwordWorkGate().run(() => verify(encodedHash, password))
 
 let dummyHash: Promise<string> | undefined
 
@@ -39,13 +49,22 @@ let dummyHash: Promise<string> | undefined
  * Perform a bounded dummy Argon2id verification so an unknown identifier or a
  * user with no credential takes the same timing class as a real verification
  * (spec 03). Always resolves to false.
+ *
+ * Goes through the same gate as a real verification, so the equalisation holds
+ * under load as well as at rest: if the gate is saturated, both a real and a
+ * dummy verification are rejected the same way, and the rejection depends on load
+ * rather than on whether the account exists.
  */
 export const verifyDummyPassword = async (password: string): Promise<false> => {
   dummyHash ??= hash("timing-equalisation-placeholder", ARGON2_OPTIONS)
+  const encoded = await dummyHash
   try {
-    await verify(await dummyHash, password)
-  } catch {
-    // ignored; the dummy verification exists only to equalise timing
+    await passwordWorkGate().run(() => verify(encoded, password))
+  } catch (error) {
+    // A saturation rejection must propagate — swallowing it here would turn an
+    // overload into a silent INVALID_CREDENTIALS and hide the condition.
+    if (error instanceof AppError) throw error
+    // Otherwise ignored: the dummy verification exists only to equalise timing.
   }
   return false
 }

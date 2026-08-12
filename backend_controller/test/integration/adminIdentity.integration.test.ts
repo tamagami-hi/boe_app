@@ -30,6 +30,7 @@ import { createOutboxRepository } from "../../src/repositories/outboxRepository.
 import { createUserRepository } from "../../src/repositories/userRepository.js"
 import { createCredentialRepository } from "../../src/repositories/credentialRepository.js"
 import { registerAdminIdentityRoutes, type AdminIdentityDeps } from "../../src/routes/adminIdentityRoutes.js"
+import { createLoginEventRepository } from "../../src/repositories/loginEventRepository.js"
 import { registerWebAuthRoutes } from "../../src/routes/webAuthRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
 import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
@@ -233,7 +234,11 @@ beforeAll(async () => {
   app = createApplication({
     logger: false,
     registerRoutes: (instance) => {
-      registerWebAuthRoutes(instance, { ...webAuth, unitOfWork })
+      registerWebAuthRoutes(instance, {
+        ...webAuth,
+        unitOfWork,
+        loginEventRepository: createLoginEventRepository(),
+      })
       registerAdminIdentityRoutes(instance, adminDeps)
     },
   })

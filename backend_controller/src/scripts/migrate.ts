@@ -4,7 +4,7 @@ import { join } from "node:path"
 import { pathToFileURL } from "node:url"
 
 import { parseDatabaseConfig } from "../db/config.js"
-import { createPool } from "../db/pool.js"
+import { createPool, schemaToolPoolSettings } from "../db/pool.js"
 
 export type MigrationFile = Readonly<{
   version: string
@@ -107,7 +107,7 @@ const isMainModule =
 if (isMainModule) {
   const command = process.argv[2] ?? "up"
   const directory = process.env.MIGRATIONS_DIR ?? DEFAULT_MIGRATIONS_DIR
-  const pool = createPool(parseDatabaseConfig(process.env))
+  const pool = createPool(schemaToolPoolSettings(parseDatabaseConfig(process.env)))
 
   try {
     const files = await loadMigrationFiles(directory)

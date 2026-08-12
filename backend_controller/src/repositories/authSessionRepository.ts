@@ -15,6 +15,15 @@ export interface CreateNativeSessionInput {
   readonly refreshKeyVersion: string
   readonly sessionExpiresAt: Date
   readonly refreshExpiresAt: Date
+  /**
+   * Caller provenance. `auth_sessions.ip_address` and `user_agent` have existed
+   * since migration 011 but were never written, so a session could not be told
+   * apart from any other. Both must already be normalised (see
+   * `http/requestProvenance.ts`) — `auth_sessions_user_agent` rejects control
+   * characters and over-long values, and failing that CHECK would fail the login.
+   */
+  readonly ipAddress?: string | null
+  readonly userAgent?: string | null
 }
 
 export interface CreatedSession {
@@ -51,6 +60,9 @@ export interface CreateWebSessionInput {
   readonly sessionExpiresAt: Date
   readonly refreshExpiresAt: Date
   readonly csrfExpiresAt: Date
+  /** Caller provenance; must already be normalised (`http/requestProvenance.ts`). */
+  readonly ipAddress?: string | null
+  readonly userAgent?: string | null
 }
 
 export interface RotateWebRefreshInput extends RotateRefreshInput {
@@ -144,6 +156,8 @@ export const createAuthSessionRepository = (): AuthSessionWriteRepository => ({
         device_id_hash: input.deviceIdHash,
         refresh_key_version: input.refreshKeyVersion,
         expires_at: input.sessionExpiresAt,
+        ip_address: input.ipAddress ?? null,
+        user_agent: input.userAgent ?? null,
       })
       .returningAll()
       .executeTakeFirstOrThrow()
@@ -233,6 +247,8 @@ export const createAuthSessionRepository = (): AuthSessionWriteRepository => ({
         csrf_key_version: input.csrfKeyVersion,
         csrf_expires_at: input.csrfExpiresAt,
         expires_at: input.sessionExpiresAt,
+        ip_address: input.ipAddress ?? null,
+        user_agent: input.userAgent ?? null,
       })
       .returningAll()
       .executeTakeFirstOrThrow()

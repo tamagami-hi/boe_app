@@ -66,6 +66,19 @@ export type UserAccountState = "invited" | "active" | "suspended" | "closed"
 export type ApplicationDecision = "approved" | "rejected"
 export type SessionChannel = "native" | "web"
 export type AuthSessionState = "active" | "revoked" | "expired"
+/**
+ * Why a sign-in attempt ended (migration 026). `password_changed` is the narrow
+ * race the login command detects when the credential is rotated between the
+ * password verification and the session write.
+ */
+export type AuthLoginOutcome =
+  | "success"
+  | "invalid_credentials"
+  | "unknown_identity"
+  | "account_not_active"
+  | "password_changed"
+  /** Correct password, but no admin role, presented at the admin console. */
+  | "not_authorized"
 export type ApprovalState = "pending" | "approved" | "rejected" | "executed" | "stale" | "expired"
 export type ActorType = "public" | "user" | "admin" | "system" | "provider"
 export type OutboxState =
@@ -263,6 +276,27 @@ export interface AuthSessionsTable {
   created_at: TimestampDefault
   updated_at: TimestampDefault
   version: BigIntStringDefault
+}
+
+/**
+ * Append-only sign-in attempt log (migration 026).
+ *
+ * `user_id` is null for an attempt against an address with no account, and
+ * `session_id` is set only on `success` — both enforced by CHECK constraints, so
+ * a row is always interpretable after the fact.
+ */
+export interface AuthLoginEventsTable {
+  id: Generated<string>
+  occurred_at: TimestampDefault
+  user_id: Nullable<string>
+  email_normalized: string
+  channel: SessionChannel
+  outcome: AuthLoginOutcome
+  session_id: Nullable<string>
+  device_id_hash: NullableBytea
+  ip_address: Nullable<string>
+  user_agent: Nullable<string>
+  request_id: string
 }
 
 export interface AuthRefreshTokensTable {
@@ -1008,6 +1042,8 @@ export interface Database {
   application_reviews: ApplicationReviewsTable
   auth_sessions: AuthSessionsTable
   auth_refresh_tokens: AuthRefreshTokensTable
+  // Per-user sign-in attempt log (migration 026)
+  auth_login_events: AuthLoginEventsTable
   roles: RolesTable
   permissions: PermissionsTable
   role_permissions: RolePermissionsTable

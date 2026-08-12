@@ -10,6 +10,7 @@ import { z } from "zod"
 import { passwordInputSchema } from "../auth/passwordHasher.js"
 import type { UnitOfWork } from "../db/database.js"
 import { AppError } from "../http/errorCatalog.js"
+import { requestProvenance } from "../http/requestProvenance.js"
 import { parseOrThrow } from "../http/validation.js"
 import {
   authenticateNativeRequest,
@@ -17,9 +18,10 @@ import {
   nativeLogout,
   nativeRefresh,
   type NativeAuthDeps,
+  type NativeLoginDeps,
 } from "../domain/auth/nativeAuth.js"
 
-export type NativeAuthRouteDeps = NativeAuthDeps & { readonly unitOfWork: UnitOfWork }
+export type NativeAuthRouteDeps = NativeAuthDeps & NativeLoginDeps & { readonly unitOfWork: UnitOfWork }
 
 const deviceSchema = z
   .object({
@@ -43,14 +45,19 @@ const refreshSchema = z
 export const registerNativeAuthRoutes = (application: FastifyInstance, deps: NativeAuthRouteDeps): void => {
   application.post("/v1/auth/native/login", async (request, reply) => {
     const body = parseOrThrow(loginSchema, request.body)
-    const result = await deps.unitOfWork.execute((tx) =>
-      nativeLogin(tx, deps, {
-        email: body.email,
-        password: body.password,
-        device: body.device,
-        requestId: request.requestId,
-      }),
-    )
+    // No `unitOfWork.execute` here on purpose: `nativeLogin` owns its own
+    // transaction boundary so the Argon2id verification runs before any
+    // connection is taken. Wrapping this call in a transaction again would
+    // reinstate exactly the pool exhaustion it was restructured to remove.
+    const provenance = requestProvenance(request)
+    const result = await nativeLogin(deps, {
+      email: body.email,
+      password: body.password,
+      device: body.device,
+      requestId: request.requestId,
+      ipAddress: provenance.ipAddress,
+      userAgent: provenance.userAgent,
+    })
     return reply.sendData(result, { status: 200 })
   })
 

@@ -15,6 +15,7 @@ import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
 import { createAuthSessionRepository } from "../../src/repositories/authSessionRepository.js"
+import { createLoginEventRepository } from "../../src/repositories/loginEventRepository.js"
 import { createUserRepository } from "../../src/repositories/userRepository.js"
 import { registerWebAuthRoutes, type WebAuthRouteDeps } from "../../src/routes/webAuthRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
@@ -102,6 +103,7 @@ beforeAll(async () => {
     userRepository: createUserRepository(),
     authSessionRepository: createAuthSessionRepository(),
     auditRepository: createAuditRepository(),
+    loginEventRepository: createLoginEventRepository(),
     accessTokenService,
     database,
     refreshKey: randomBytes(32),
@@ -321,5 +323,28 @@ describe("web authentication (integration)", () => {
       headers: { origin: ORIGIN },
     })
     expect(res.statusCode).toBe(401)
+  })
+
+  test("admin sign-in attempts are recorded on the web channel", async () => {
+    await pool.query("delete from auth_login_events")
+    await login()
+
+    const wrong = await app.inject({
+      method: "POST",
+      url: "/v1/auth/web/login",
+      headers: { origin: ORIGIN },
+      payload: { email: "admin@example.com", password: "definitely not the password" },
+    })
+    expect(wrong.statusCode).toBe(401)
+
+    const events = await pool.query<{ outcome: string; channel: string; session_id: string | null }>(
+      "select outcome, channel, session_id from auth_login_events order by occurred_at asc, id asc",
+    )
+    expect(events.rows.map((row) => row.outcome)).toEqual(["success", "invalid_credentials"])
+    // Recorded against the web channel, so admin and client history are
+    // distinguishable in the same table.
+    expect(events.rows.every((row) => row.channel === "web")).toBe(true)
+    expect(events.rows[0]?.session_id).not.toBeNull()
+    expect(events.rows[1]?.session_id).toBeNull()
   })
 })

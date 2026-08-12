@@ -49,9 +49,27 @@ export async function loadAdminCollection(path) {
   }
   // The approvals screen is backed by the canonical applications queue.
   if (path.endsWith('/approvals')) {
-    const applications = await listPendingApplications();
-    return applications.map(toApprovalRow);
+    return (await loadApprovals()).rows;
   }
   const payload = await apiRequest(path, { scope: 'admin' });
   return normalizeAdminCollection(extractAdminCollection(payload, path), path);
+}
+
+/**
+ * The approvals queue on its own.
+ *
+ * Separate from `loadAdminCollection` because the approvals table is the one
+ * collection worth refreshing by itself: new signups arrive without the operator
+ * doing anything, so it is polled, while funds/payments/mandates change only in
+ * response to an action. It also reports `truncated`, so a queue longer than the
+ * paginated walk can be labelled rather than silently cut off.
+ */
+export async function loadApprovals({ maxPages } = {}) {
+  if (!useHttpApi()) {
+    return { rows: await listPendingApprovals(), truncated: false };
+  }
+  const { items, truncated } = await listPendingApplications(
+    maxPages === undefined ? {} : { maxPages },
+  );
+  return { rows: items.map(toApprovalRow), truncated };
 }

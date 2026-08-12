@@ -17,12 +17,14 @@ import type { AccessTokenService } from "../../auth/accessToken.js"
 import { verifyDummyPassword, verifyPassword } from "../../auth/passwordHasher.js"
 import { maskPhone } from "../../auth/phone.js"
 import { deriveRefreshToken, generateInitialRefreshToken, hashToken } from "../../auth/refreshDerivation.js"
+import type { UnitOfWork } from "../../db/database.js"
 import type { Transaction, User, UserId } from "../../db/repositories.js"
-import type { Database } from "../../db/types.js"
+import type { AuthLoginOutcome, Database } from "../../db/types.js"
 import { AppError } from "../../http/errorCatalog.js"
 import type { AuditWriteRepository } from "../../repositories/auditRepository.js"
 import type { AuthSessionWriteRepository } from "../../repositories/authSessionRepository.js"
-import type { UserWriteRepository } from "../../repositories/userRepository.js"
+import type { LoginEventRepository } from "../../repositories/loginEventRepository.js"
+import type { UserLoginIdentity, UserWriteRepository } from "../../repositories/userRepository.js"
 
 const ACCESS_TOKEN_TTL_MS = 10 * 60 * 1000
 const REFRESH_IDLE_MS = 30 * 24 * 60 * 60 * 1000
@@ -80,6 +82,25 @@ export interface NativeAuthDeps {
 
 const REFRESH_GRACE_MS = 30 * 1000
 
+/**
+ * Extra dependencies the login command needs beyond `NativeAuthDeps`.
+ *
+ * Login owns its own transaction boundary now (see `nativeLogin`), so it takes
+ * the `UnitOfWork` rather than a caller-supplied transaction handle, and it needs
+ * the sign-in attempt log.
+ */
+export interface NativeLoginDeps extends NativeAuthDeps {
+  readonly unitOfWork: UnitOfWork
+  readonly loginEventRepository: LoginEventRepository
+  /**
+   * Failure-path attempt logging is best effort — a sign-in must fail with
+   * INVALID_CREDENTIALS even if the log write fails — so a dropped write is
+   * reported here rather than swallowed. Success-path logging is inside the
+   * session transaction and therefore not best effort.
+   */
+  readonly logger?: { readonly warn: (object: Record<string, unknown>, message: string) => void }
+}
+
 const deviceIdHash = (installationId: string): Buffer =>
   createHash("sha256").update(installationId).digest()
 
@@ -97,6 +118,7 @@ const issueNativeSession = async (
   user: User,
   device: Buffer,
   now: Date,
+  provenance: LoginProvenance,
 ): Promise<NativeSessionResult> => {
   const refreshRaw = generateInitialRefreshToken()
   const created = await deps.authSessionRepository.createNativeSession(tx, {
@@ -106,6 +128,8 @@ const issueNativeSession = async (
     refreshKeyVersion: deps.refreshKeyVersion,
     sessionExpiresAt: new Date(now.getTime() + SESSION_ABSOLUTE_MS),
     refreshExpiresAt: new Date(now.getTime() + REFRESH_IDLE_MS),
+    ipAddress: provenance.ipAddress ?? null,
+    userAgent: provenance.userAgent ?? null,
   })
   const accessToken = await deps.accessTokenService.sign({ sub: user.id, sid: created.session.id })
   return {
@@ -118,7 +142,14 @@ const issueNativeSession = async (
   }
 }
 
-export interface NativeLoginInput {
+export interface LoginProvenance {
+  /** Caller address, already normalised to something `inet` accepts, or null. */
+  readonly ipAddress?: string | null
+  /** Caller User-Agent, already bounded and control-character free, or null. */
+  readonly userAgent?: string | null
+}
+
+export interface NativeLoginInput extends LoginProvenance {
   readonly email: string
   readonly password: string
   readonly device: DeviceInput
@@ -167,27 +198,155 @@ const enforceDeviceLimit = async (
   return overBy
 }
 
+/**
+ * Native login.
+ *
+ * Split into three phases so the expensive part holds nothing:
+ *
+ *   1. read the account on the pool, with no transaction and no row lock;
+ *   2. verify the password (Argon2id, ~19 MiB, tens of milliseconds) while
+ *      holding no database connection at all;
+ *   3. open a short transaction to re-check the account, then write the session.
+ *
+ * This used to be one transaction wrapping all three, opened by the route, with
+ * `SELECT … FOR UPDATE` on the `users` and `user_credentials` rows taken *before*
+ * the verification. That had two costs that showed up as "sign-in is slow and
+ * sometimes fails" under simultaneous use:
+ *
+ *   * every in-flight sign-in occupied one of `DB_POOL_MAX` (default 10)
+ *     connections for the whole Argon2 verification, so ten concurrent sign-ins
+ *     exhausted the pool and the eleventh waited out `connectionTimeoutMillis`
+ *     (3 s) and then failed;
+ *   * two sign-ins for the *same* account serialized completely on the row lock,
+ *     as did an attacker replaying one address.
+ *
+ * Login reads those rows and writes neither, so the lock bought exactly one
+ * thing at that point: the guarantee that the credential could not change between
+ * verification and session issuance. Phase 3 takes the same users-row lock, but
+ * only for the handful of primary-key statements and inserts that actually write
+ * — it re-reads `account_state` and the stored password hash, rejects if either
+ * moved, and serializes concurrent logins for one account so the device cap and
+ * the same-device unique index still hold. See `issueLoginSession`.
+ *
+ * Every outcome, success or failure, is recorded in `auth_login_events`.
+ */
 export const nativeLogin = async (
-  tx: Transaction,
-  deps: NativeAuthDeps,
+  deps: NativeLoginDeps,
   input: NativeLoginInput,
 ): Promise<NativeSessionResult> => {
-  const found = await deps.userRepository.lockByEmailWithCredential(tx, input.email.toLowerCase())
-  const passwordHash = found?.credential?.password_hash ?? null
+  const emailNormalized = input.email.trim().toLowerCase()
+  const device = deviceIdHash(input.device.installationId)
 
-  // Uniform timing + response for every pre-verification failure.
-  if (found === null || passwordHash === null || found.user.account_state !== "active") {
+  /**
+   * Record a failed attempt, then reject.
+   *
+   * Written on the pool with no transaction: a burst of wrong-password attempts
+   * against one address must not serialize on anything. Best effort — the caller
+   * gets INVALID_CREDENTIALS regardless — but a dropped write is logged rather
+   * than silently lost, because an attempt log that silently does nothing is
+   * indistinguishable from an account under no attack.
+   */
+  const rejectAndRecord = async (outcome: AuthLoginOutcome, userId: string | null): Promise<never> => {
+    try {
+      await deps.loginEventRepository.record(deps.database, {
+        userId,
+        emailNormalized,
+        channel: "native",
+        outcome,
+        deviceIdHash: device,
+        ipAddress: input.ipAddress ?? null,
+        userAgent: input.userAgent ?? null,
+        requestId: input.requestId,
+      })
+    } catch (error) {
+      deps.logger?.warn(
+        { requestId: input.requestId, outcome, error: error instanceof Error ? error.message : "unknown" },
+        "failed to record a failed sign-in attempt",
+      )
+    }
+    throw new AppError("INVALID_CREDENTIALS")
+  }
+
+  // Phase 1: non-locking read on the pool.
+  const identity = await deps.userRepository.findLoginIdentityByEmail(deps.database, emailNormalized)
+
+  // Phase 2: verification, off the connection. Every pre-verification failure
+  // still pays a dummy Argon2 verification, so an unknown address is not
+  // distinguishable by timing from a wrong password, and the response is the same
+  // INVALID_CREDENTIALS in all cases — the distinction lives only in the log.
+  if (identity === null) {
     await verifyDummyPassword(input.password)
-    throw new AppError("INVALID_CREDENTIALS")
+    return rejectAndRecord("unknown_identity", null)
   }
-  if (!(await verifyPassword(passwordHash, input.password))) {
-    throw new AppError("INVALID_CREDENTIALS")
+  if (identity.passwordHash === null) {
+    await verifyDummyPassword(input.password)
+    return rejectAndRecord("invalid_credentials", identity.user.id)
   }
+  if (identity.user.account_state !== "active") {
+    await verifyDummyPassword(input.password)
+    return rejectAndRecord("account_not_active", identity.user.id)
+  }
+  if (!(await verifyPassword(identity.passwordHash, input.password))) {
+    return rejectAndRecord("invalid_credentials", identity.user.id)
+  }
+
+  // Phase 3: short transaction. It returns an outcome rather than throwing on
+  // rejection, so the failure record is written outside the transaction that
+  // would otherwise roll it back.
+  const outcome = await deps.unitOfWork.execute(
+    async (tx): Promise<IssueOutcome> => issueLoginSession(tx, deps, input, identity, device),
+  )
+  if (outcome.kind === "rejected") return rejectAndRecord(outcome.outcome, identity.user.id)
+  return outcome.result
+}
+
+type IssueOutcome =
+  | { readonly kind: "issued"; readonly result: NativeSessionResult }
+  | { readonly kind: "rejected"; readonly outcome: AuthLoginOutcome }
+
+/**
+ * The write half of a login: re-check what phase 2 assumed, replace this device's
+ * session, apply the device cap, issue the session, and record both the audit row
+ * and the sign-in event.
+ *
+ * `lockById` takes `FOR UPDATE` on the users row, so concurrent logins for one
+ * account serialize here. That is deliberate and is not the pathology this change
+ * removed: the lock is now held for three small primary-key statements and the
+ * inserts, not across the Argon2id verification. Two things downstream need it,
+ * and both were silently broken without it:
+ *
+ *   * `lockActiveNativeByUserAndDevice` locks rows that exist, so two concurrent
+ *     logins from the *same* installationId would both find no active session,
+ *     both skip the revocation, and both insert — one then violating
+ *     `auth_sessions_active_native_device_uk` and surfacing as INTERNAL_ERROR
+ *     rather than replacing the session. The client's new 20 s request deadline
+ *     makes that reachable: an abandoned request keeps running server-side while
+ *     the user retries.
+ *   * `enforceDeviceLimit` counts active sessions under `FOR UPDATE`, which also
+ *     locks nothing when there are none, so N simultaneous first logins would each
+ *     see a count of zero and collectively overshoot the cap.
+ *
+ * The credential re-check compares the stored hash with the one just verified, so
+ * a password rotated in between cannot yield a session.
+ */
+const issueLoginSession = async (
+  tx: Transaction,
+  deps: NativeLoginDeps,
+  input: NativeLoginInput,
+  verified: UserLoginIdentity,
+  device: Buffer,
+): Promise<IssueOutcome> => {
+  const user = await deps.userRepository.lockById(tx, verified.user.id as UserId)
+  if (user === null) return { kind: "rejected", outcome: "invalid_credentials" }
+  if (user.account_state !== "active") return { kind: "rejected", outcome: "account_not_active" }
+
+  const currentHash = await deps.userRepository.findPasswordHash(tx, user.id as UserId)
+  if (currentHash === null) return { kind: "rejected", outcome: "invalid_credentials" }
+  if (currentHash !== verified.passwordHash) return { kind: "rejected", outcome: "password_changed" }
 
   const now = deps.clock()
-  const device = deviceIdHash(input.device.installationId)
   const existing = await deps.authSessionRepository.lockActiveNativeByUserAndDevice(tx, {
-    userId: found.user.id as UserId,
+    userId: user.id as UserId,
     deviceIdHash: device,
   })
   if (existing !== null) {
@@ -200,12 +359,12 @@ export const nativeLogin = async (
 
   // Only other devices count towards the cap; this device's own prior session
   // was just revoked above, so re-signing in never evicts anyone.
-  const evictedDevices = await enforceDeviceLimit(tx, deps, found.user, now)
+  const evictedDevices = await enforceDeviceLimit(tx, deps, user, now)
 
-  const result = await issueNativeSession(tx, deps, found.user, device, now)
+  const result = await issueNativeSession(tx, deps, user, device, now, input)
   await deps.auditRepository.append(tx, {
     actorType: "user",
-    actorUserId: found.user.id,
+    actorUserId: user.id,
     command: "auth.native_login",
     entityType: "auth_session",
     entityId: result.sessionId,
@@ -213,7 +372,21 @@ export const nativeLogin = async (
     entityVersion: 1,
     metadata: evictedDevices > 0 ? { evictedDevices } : {},
   })
-  return result
+  // Inside the transaction on purpose: a successful sign-in missing from the
+  // attempt log would make the log useless as a per-user history, so the session
+  // and its record commit together or not at all.
+  await deps.loginEventRepository.record(tx, {
+    userId: user.id,
+    emailNormalized: user.email_normalized.toLowerCase(),
+    channel: "native",
+    outcome: "success",
+    sessionId: result.sessionId,
+    deviceIdHash: device,
+    ipAddress: input.ipAddress ?? null,
+    userAgent: input.userAgent ?? null,
+    requestId: input.requestId,
+  })
+  return { kind: "issued", result }
 }
 
 /**

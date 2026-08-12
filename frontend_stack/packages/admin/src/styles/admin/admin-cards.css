@@ -78,3 +78,27 @@
 .adm-tone-red   { color: var(--be-red); }
 .adm-tone-slate { color: var(--be-slate); }
 
+
+
+/* Freshness label next to a card's actions ("Updated 20s ago" / "Refreshing..."). */
+.adm-muted {
+  font-size: var(--be-text-xs);
+  color: var(--be-slate);
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+/*
+ * In-card status line: a queue that could not refresh, or one longer than the
+ * page that was fetched. Amber rather than red — the table on screen is still
+ * valid, it is just not the whole story.
+ */
+.adm-inline-note {
+  margin: 0 0 var(--be-space-3);
+  padding: var(--be-space-2) var(--be-space-3);
+  border: 1px solid color-mix(in srgb, var(--be-amber) 30%, transparent);
+  background: var(--be-amber-soft);
+  color: var(--be-text-on-amber);
+  border-radius: var(--be-radius-sm);
+  font-size: var(--be-text-sm);
+}

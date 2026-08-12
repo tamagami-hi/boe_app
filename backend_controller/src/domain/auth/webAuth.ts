@@ -19,12 +19,14 @@ import {
   hashToken,
 } from "../../auth/refreshDerivation.js"
 import { bytesEqual } from "../../crypto/primitives.js"
+import type { UnitOfWork } from "../../db/database.js"
 import type { AuthSession, Transaction, UserId } from "../../db/repositories.js"
-import type { Database } from "../../db/types.js"
+import type { AuthLoginOutcome, Database } from "../../db/types.js"
 import { AppError } from "../../http/errorCatalog.js"
 import type { AuditWriteRepository } from "../../repositories/auditRepository.js"
 import type { AuthSessionWriteRepository } from "../../repositories/authSessionRepository.js"
-import type { UserWriteRepository } from "../../repositories/userRepository.js"
+import type { LoginEventRepository } from "../../repositories/loginEventRepository.js"
+import type { UserLoginIdentity, UserWriteRepository } from "../../repositories/userRepository.js"
 
 /**
  * The `__Host-` prefix is only legal on a cookie that also carries `Secure`:
@@ -179,34 +181,121 @@ export interface WebLoginInput {
   readonly email: string
   readonly password: string
   readonly requestId: string
+  /** Already normalised by `http/requestProvenance.ts`; see `LoginProvenance`. */
+  readonly ipAddress?: string | null
+  readonly userAgent?: string | null
 }
 
-export const webLogin = async (
-  tx: Transaction,
-  deps: WebAuthDeps,
-  input: WebLoginInput,
-): Promise<WebAuthResult> => {
-  const found = await deps.userRepository.lockByEmailWithCredential(tx, input.email.toLowerCase())
-  const passwordHash = found?.credential?.password_hash ?? null
-  if (found === null || passwordHash === null || found.user.account_state !== "active") {
-    await verifyDummyPassword(input.password)
-    throw new AppError("INVALID_CREDENTIALS")
-  }
-  if (!(await verifyPassword(passwordHash, input.password))) {
+/**
+ * Extra dependencies web login needs beyond `WebAuthDeps`. It owns its own
+ * transaction boundary, for the same reason native login does.
+ */
+export interface WebLoginDeps extends WebAuthDeps {
+  readonly unitOfWork: UnitOfWork
+  readonly loginEventRepository: LoginEventRepository
+  readonly logger?: { readonly warn: (object: Record<string, unknown>, message: string) => void }
+}
+
+type WebIssueOutcome =
+  | { readonly kind: "issued"; readonly result: WebAuthResult }
+  | { readonly kind: "rejected"; readonly outcome: AuthLoginOutcome }
+
+/**
+ * Admin (web) login, restructured exactly like `nativeLogin`: read without a
+ * lock, verify the password holding no database connection, then open a short
+ * transaction to re-check and write.
+ *
+ * This path had the identical pathology — the route opened the transaction and
+ * `lockByEmailWithCredential` took `FOR UPDATE` on the users row before the
+ * Argon2id verification, so every in-flight admin sign-in occupied a pooled
+ * connection for the duration of a hash. Fewer people hit it than the client app,
+ * but the shape is the same and so is the fix.
+ *
+ * Every outcome is recorded in `auth_login_events` with `channel = 'web'`, so the
+ * admin surface has the same sign-in history the client surface now has.
+ */
+export const webLogin = async (deps: WebLoginDeps, input: WebLoginInput): Promise<WebAuthResult> => {
+  const emailNormalized = input.email.trim().toLowerCase()
+
+  const rejectAndRecord = async (outcome: AuthLoginOutcome, userId: string | null): Promise<never> => {
+    try {
+      await deps.loginEventRepository.record(deps.database, {
+        userId,
+        emailNormalized,
+        channel: "web",
+        outcome,
+        ipAddress: input.ipAddress ?? null,
+        userAgent: input.userAgent ?? null,
+        requestId: input.requestId,
+      })
+    } catch (error) {
+      deps.logger?.warn(
+        { requestId: input.requestId, outcome, error: error instanceof Error ? error.message : "unknown" },
+        "failed to record a failed admin sign-in attempt",
+      )
+    }
     throw new AppError("INVALID_CREDENTIALS")
   }
 
-  const principal = await buildPrincipal(deps, tx, found.user)
+  // Phase 1: non-locking read on the pool.
+  const identity = await deps.userRepository.findLoginIdentityByEmail(deps.database, emailNormalized)
+
+  // Phase 2: verification, off the connection. Uniform response and equal Argon2
+  // cost across every failure class, as before.
+  if (identity === null) {
+    await verifyDummyPassword(input.password)
+    return rejectAndRecord("unknown_identity", null)
+  }
+  if (identity.passwordHash === null) {
+    await verifyDummyPassword(input.password)
+    return rejectAndRecord("invalid_credentials", identity.user.id)
+  }
+  if (identity.user.account_state !== "active") {
+    await verifyDummyPassword(input.password)
+    return rejectAndRecord("account_not_active", identity.user.id)
+  }
+  if (!(await verifyPassword(identity.passwordHash, input.password))) {
+    return rejectAndRecord("invalid_credentials", identity.user.id)
+  }
+
+  // Phase 3: short transaction, returning an outcome so a rejection's record is
+  // written outside the transaction that would roll it back.
+  const outcome = await deps.unitOfWork.execute(
+    async (tx): Promise<WebIssueOutcome> => issueWebLoginSession(tx, deps, input, identity),
+  )
+  if (outcome.kind === "rejected") return rejectAndRecord(outcome.outcome, identity.user.id)
+  return outcome.result
+}
+
+const issueWebLoginSession = async (
+  tx: Transaction,
+  deps: WebLoginDeps,
+  input: WebLoginInput,
+  verified: UserLoginIdentity,
+): Promise<WebIssueOutcome> => {
+  // Locked for the same reasons as the native path: it serializes concurrent
+  // logins for one account across the writes below, and re-reads the account
+  // state that phase 2 assumed.
+  const user = await deps.userRepository.lockById(tx, verified.user.id as UserId)
+  if (user === null) return { kind: "rejected", outcome: "invalid_credentials" }
+  if (user.account_state !== "active") return { kind: "rejected", outcome: "account_not_active" }
+
+  const currentHash = await deps.userRepository.findPasswordHash(tx, user.id as UserId)
+  if (currentHash === null) return { kind: "rejected", outcome: "invalid_credentials" }
+  if (currentHash !== verified.passwordHash) return { kind: "rejected", outcome: "password_changed" }
+
+  const principal = await buildPrincipal(deps, tx, user)
   if (principal.roles.length === 0) {
-    // Not an admin principal: do not reveal the difference from a bad credential.
-    throw new AppError("INVALID_CREDENTIALS")
+    // Not an admin principal. The caller still sees INVALID_CREDENTIALS, so the
+    // console does not confirm that the address is a real account.
+    return { kind: "rejected", outcome: "not_authorized" }
   }
 
   const now = deps.clock()
   const refreshRaw = generateInitialRefreshToken()
   const csrfRaw = generateInitialRefreshToken()
   const created = await deps.authSessionRepository.createWebSession(tx, {
-    userId: found.user.id as UserId,
+    userId: user.id as UserId,
     refreshTokenHash: hashToken(refreshRaw),
     refreshKeyVersion: deps.refreshKeyVersion,
     csrfTokenHash: hashToken(csrfRaw),
@@ -214,11 +303,13 @@ export const webLogin = async (
     sessionExpiresAt: new Date(now.getTime() + SESSION_ABSOLUTE_MS),
     refreshExpiresAt: new Date(now.getTime() + REFRESH_IDLE_MS),
     csrfExpiresAt: new Date(now.getTime() + ACCESS_TOKEN_TTL_MS),
+    ipAddress: input.ipAddress ?? null,
+    userAgent: input.userAgent ?? null,
   })
-  const accessToken = await deps.accessTokenService.sign({ sub: found.user.id, sid: created.session.id })
+  const accessToken = await deps.accessTokenService.sign({ sub: user.id, sid: created.session.id })
   await deps.auditRepository.append(tx, {
     actorType: "admin",
-    actorUserId: found.user.id,
+    actorUserId: user.id,
     command: "auth.web_login",
     entityType: "auth_session",
     entityId: created.session.id,
@@ -226,16 +317,31 @@ export const webLogin = async (
     entityVersion: 1,
     metadata: {},
   })
+  // Inside the transaction, like the native path: a successful admin sign-in
+  // missing from the log would make the log unreliable as a history.
+  await deps.loginEventRepository.record(tx, {
+    userId: user.id,
+    emailNormalized: user.email_normalized.toLowerCase(),
+    channel: "web",
+    outcome: "success",
+    sessionId: created.session.id,
+    ipAddress: input.ipAddress ?? null,
+    userAgent: input.userAgent ?? null,
+    requestId: input.requestId,
+  })
   return {
-    body: {
-      user: principal,
-      csrfToken: csrfRaw,
-      accessTokenExpiresAt: new Date(now.getTime() + ACCESS_TOKEN_TTL_MS).toISOString(),
-      refreshTokenExpiresAt: new Date(now.getTime() + REFRESH_IDLE_MS).toISOString(),
+    kind: "issued",
+    result: {
+      body: {
+        user: principal,
+        csrfToken: csrfRaw,
+        accessTokenExpiresAt: new Date(now.getTime() + ACCESS_TOKEN_TTL_MS).toISOString(),
+        refreshTokenExpiresAt: new Date(now.getTime() + REFRESH_IDLE_MS).toISOString(),
+      },
+      accessToken,
+      refreshToken: refreshRaw,
+      refreshMaxAgeSeconds: REFRESH_IDLE_MS / 1000,
     },
-    accessToken,
-    refreshToken: refreshRaw,
-    refreshMaxAgeSeconds: REFRESH_IDLE_MS / 1000,
   }
 }
 

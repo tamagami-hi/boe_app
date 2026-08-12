@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from "node:crypto"
+import { createHash, randomBytes, randomUUID } from "node:crypto"
 import { fileURLToPath } from "node:url"
 
 import { PostgreSqlContainer } from "@testcontainers/postgresql"
@@ -15,6 +15,7 @@ import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
 import { createAuthSessionRepository } from "../../src/repositories/authSessionRepository.js"
+import { createLoginEventRepository } from "../../src/repositories/loginEventRepository.js"
 import { createUserRepository } from "../../src/repositories/userRepository.js"
 import { registerNativeAuthRoutes, type NativeAuthRouteDeps } from "../../src/routes/nativeAuthRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
@@ -66,6 +67,7 @@ beforeAll(async () => {
     userRepository: createUserRepository(),
     authSessionRepository: createAuthSessionRepository(),
     auditRepository: createAuditRepository(),
+    loginEventRepository: createLoginEventRepository(),
     accessTokenService,
     database,
     refreshKey: randomBytes(32),
@@ -206,5 +208,145 @@ describe("native authentication (integration)", () => {
       [session.sessionId],
     )
     expect(revoked.rows[0]?.state).toBe("revoked")
+  })
+
+  test("every sign-in attempt is recorded per user, with the failure reason", async () => {
+    await pool.query("delete from auth_login_events")
+
+    const ok = await app.inject({
+      method: "POST",
+      url: "/v1/auth/native/login",
+      headers: { "user-agent": "BeOnEdge/1.2.3 (Android 14)" },
+      payload: { email: "activate@example.com", password: PASSWORD, device: DEVICE },
+    })
+    expect(ok.statusCode).toBe(200)
+    const session = dataOf<NativeResult>(ok)
+
+    await app.inject({
+      method: "POST",
+      url: "/v1/auth/native/login",
+      payload: { email: "activate@example.com", password: "wrong password value", device: DEVICE },
+    })
+    await app.inject({
+      method: "POST",
+      url: "/v1/auth/native/login",
+      payload: { email: "nobody@example.com", password: PASSWORD, device: DEVICE },
+    })
+
+    const events = await pool.query<{
+      outcome: string
+      email_normalized: string
+      user_id: string | null
+      session_id: string | null
+      user_agent: string | null
+    }>(
+      "select outcome, email_normalized, user_id, session_id, user_agent " +
+        "from auth_login_events order by occurred_at asc, id asc",
+    )
+    expect(events.rows.map((row) => row.outcome)).toEqual([
+      "success",
+      "invalid_credentials",
+      "unknown_identity",
+    ])
+
+    // A success names the session it created and carries the caller's User-Agent.
+    expect(events.rows[0]?.session_id).toBe(session.sessionId)
+    expect(events.rows[0]?.user_agent).toBe("BeOnEdge/1.2.3 (Android 14)")
+
+    // A wrong password is attributed to the account; an unknown address cannot
+    // be, but the submitted address is still recorded.
+    expect(events.rows[1]?.user_id).not.toBeNull()
+    expect(events.rows[1]?.session_id).toBeNull()
+    expect(events.rows[2]?.user_id).toBeNull()
+    expect(events.rows[2]?.email_normalized).toBe("nobody@example.com")
+  })
+
+  test("a suspended account is recorded as such but still answers INVALID_CREDENTIALS", async () => {
+    await pool.query("delete from auth_login_events")
+    const suspended = await pool.query<{ id: string }>(
+      "insert into users (email_normalized, phone_e164, full_name, account_state, activated_at, suspended_at) " +
+        "values ('suspended@example.com','+14155550199','Suspended User','suspended', now(), now()) returning id",
+    )
+    const userId = suspended.rows[0]?.id
+    await pool.query("insert into user_credentials (user_id, password_hash) values ($1, $2)", [
+      userId,
+      await hashPassword(PASSWORD),
+    ])
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/auth/native/login",
+      payload: { email: "suspended@example.com", password: PASSWORD, device: DEVICE },
+    })
+    // The response must not distinguish a suspended account from a wrong
+    // password; only the log does.
+    expect(response.statusCode).toBe(401)
+    expect(response.json<{ error: { code: string } }>().error.code).toBe("INVALID_CREDENTIALS")
+
+    const event = await pool.query<{ outcome: string; user_id: string }>(
+      "select outcome, user_id from auth_login_events where email_normalized = 'suspended@example.com'",
+    )
+    expect(event.rows[0]?.outcome).toBe("account_not_active")
+    expect(event.rows[0]?.user_id).toBe(userId)
+  })
+
+  test("concurrent sign-ins for the same account all succeed", async () => {
+    // The regression this guards: login used to hold FOR UPDATE on the user and
+    // credential rows across the Argon2 verification, inside a transaction that
+    // also held a pooled connection. Ten at once against a 5-connection pool
+    // (see createPool above) is what that could not survive.
+    const attempts = Array.from({ length: 10 }, (_, index) => ({
+      installationId: randomUUID(),
+      name: `Device ${index}`,
+      platform: "android" as const,
+      appVersion: "1.2.3",
+    }))
+    const responses = await Promise.all(
+      attempts.map((device) =>
+        app.inject({
+          method: "POST",
+          url: "/v1/auth/native/login",
+          payload: { email: "activate@example.com", password: PASSWORD, device },
+        }),
+      ),
+    )
+    expect(responses.map((response) => response.statusCode)).toEqual(Array.from({ length: 10 }, () => 200))
+  })
+
+  test("concurrent sign-ins from the SAME device leave exactly one active session", async () => {
+    /*
+     * The other side of dropping the users-row lock. `auth_sessions` has a partial
+     * unique index on (user_id, device_id_hash) for active native sessions, and a
+     * same-device login is supposed to *replace* the previous session. Without
+     * serialization in the write phase, two simultaneous logins from one
+     * installationId both see no existing session, both skip the revocation, and
+     * one insert violates the index — surfacing as INTERNAL_ERROR rather than a
+     * replacement. Phase 3 takes FOR UPDATE on the users row to prevent that.
+     */
+    const device = {
+      installationId: randomUUID(),
+      name: "Shared device",
+      platform: "android" as const,
+      appVersion: "1.2.3",
+    }
+    const deviceHash = createHash("sha256").update(device.installationId).digest()
+
+    const responses = await Promise.all(
+      Array.from({ length: 5 }, () =>
+        app.inject({
+          method: "POST",
+          url: "/v1/auth/native/login",
+          payload: { email: "activate@example.com", password: PASSWORD, device },
+        }),
+      ),
+    )
+    expect(responses.map((response) => response.statusCode)).toEqual([200, 200, 200, 200, 200])
+
+    const active = await pool.query<{ c: number }>(
+      "select count(*)::int as c from auth_sessions " +
+        "where device_id_hash = $1 and state = 'active' and channel = 'native'",
+      [deviceHash],
+    )
+    expect(active.rows[0]?.c).toBe(1)
   })
 })

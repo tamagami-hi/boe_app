@@ -161,6 +161,68 @@ export function refreshSession(scope = 'client') {
   return refreshSessionOnce(scope);
 }
 
+/**
+ * Default per-request deadline.
+ *
+ * There was none: a request that never answered left the caller awaiting `fetch`
+ * forever, which on the sign-in screen showed as a progress bar that never
+ * stopped and a button that stayed disabled. A bounded failure the user can retry
+ * is strictly better than an unbounded wait, and on a mobile network a stalled
+ * socket is normal rather than exceptional.
+ */
+const DEFAULT_TIMEOUT_MS = 20000;
+
+/** Raised when a request exceeds its deadline, distinct from a rejection. */
+export class RequestTimeoutError extends Error {
+  constructor(path, timeoutMs) {
+    super('The server took too long to respond. Check your connection and try again.');
+    this.name = 'RequestTimeoutError';
+    this.code = 'REQUEST_TIMEOUT';
+    this.path = path;
+    this.timeoutMs = timeoutMs;
+  }
+}
+
+/** Raised when the request never reached the server at all. */
+export class NetworkError extends Error {
+  constructor(path, cause) {
+    super('Could not reach the server. Check your connection and try again.');
+    this.name = 'NetworkError';
+    this.code = 'NETWORK_UNAVAILABLE';
+    this.path = path;
+    this.cause = cause;
+  }
+}
+
+export function isTransportError(error) {
+  return error?.code === 'REQUEST_TIMEOUT' || error?.code === 'NETWORK_UNAVAILABLE';
+}
+
+/**
+ * `fetch` with a deadline, and with transport failures named.
+ *
+ * Distinguishing "timed out" and "unreachable" from an HTTP status matters on the
+ * sign-in screen: reporting a timeout as bad credentials sends the user to change
+ * a password that was never wrong.
+ *
+ * The deadline covers reading the body, not just the arrival of the headers.
+ * `fetch` resolves as soon as headers are in, so clearing the timer there would
+ * leave a stalled response body unbounded — the same hang, one step later.
+ */
+async function fetchWithDeadline(url, init, path, timeoutMs) {
+  const controller = typeof AbortController === 'function' ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  try {
+    const response = await fetch(url, controller ? { ...init, signal: controller.signal } : init);
+    return { response, text: await response.text() };
+  } catch (error) {
+    if (controller?.signal.aborted) throw new RequestTimeoutError(path, timeoutMs);
+    throw new NetworkError(path, error);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 export async function apiRequest(
   path,
   {
@@ -170,6 +232,7 @@ export async function apiRequest(
     scope = 'client',
     headers: extraHeaders,
     envelope = false,
+    timeoutMs = DEFAULT_TIMEOUT_MS,
     _retried: retried = false,
   } = {},
 ) {
@@ -194,14 +257,18 @@ export async function apiRequest(
   // Per-request headers (e.g. Idempotency-Key, If-Match) win over the defaults.
   if (extraHeaders) Object.assign(headers, extraHeaders);
 
-  const response = await fetch(`${apiBaseUrl()}${path}`, {
-    method,
-    headers,
-    credentials: 'include',
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  const { response, text } = await fetchWithDeadline(
+    `${apiBaseUrl()}${path}`,
+    {
+      method,
+      headers,
+      credentials: 'include',
+      body: body === undefined ? undefined : JSON.stringify(body),
+    },
+    path,
+    timeoutMs,
+  );
 
-  const text = await response.text();
   const payload = text ? JSON.parse(text) : null;
 
   if (!response.ok || payload?.ok === false) {
@@ -215,7 +282,14 @@ export async function apiRequest(
       // 401 as a real sign-out. `_retried` stops a refresh loop, and the
       // rotation itself is coalesced (see refreshSessionOnce) so parallel 401s
       // cannot trip the backend's refresh-reuse detection.
-      if (!retried && sessionRefreshers[scope]) {
+      //
+      // `auth` gates this. A request sent without credentials — sign-in itself —
+      // cannot have failed because its access token expired, so rotating is
+      // pointless: it added a doomed network round trip to every wrong-password
+      // attempt and then cleared the stored session and fired
+      // `boe:session-invalidated`, signing out a *different*, valid session in
+      // another tab. A 401 on an unauthenticated request is just a 401.
+      if (auth && !retried && sessionRefreshers[scope]) {
         try {
           await refreshSessionOnce(scope);
           return await apiRequest(path, {
@@ -225,15 +299,18 @@ export async function apiRequest(
             scope,
             headers: extraHeaders,
             envelope,
+            timeoutMs,
             _retried: true,
           });
         } catch {
           /* fall through to invalidation below */
         }
       }
-      clearSessionTokens(scope);
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('boe:session-invalidated', { detail: { scope } }));
+      if (auth) {
+        clearSessionTokens(scope);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('boe:session-invalidated', { detail: { scope } }));
+        }
       }
     }
     throw error;

@@ -4,6 +4,7 @@
  *
  *   GET   /v1/admin/users                     directory (state/search filters)      users.read
  *   GET   /v1/admin/users/:id/detail          one user + roles/KYC/finance history  users.read
+ *   GET   /v1/admin/users/:id/login-events    per-user sign-in attempts            users.read
  *   POST  /v1/admin/users/:id/suspend         lifecycle: active -> suspended        users.suspend
  *   POST  /v1/admin/users/:id/reinstate       lifecycle: suspended -> active        users.suspend
  *   POST  /v1/admin/users/:id/close           lifecycle: -> closed (terminal)       users.close
@@ -40,6 +41,7 @@ import { AppError } from "../http/errorCatalog.js"
 import { parseOrThrow } from "../http/validation.js"
 import type { AdminOversightRepository } from "../repositories/adminOversightRepository.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
+import type { LoginEventRepository, LoginEventRow } from "../repositories/loginEventRepository.js"
 import type { InvestorLedgerRepository } from "../repositories/investorLedgerRepository.js"
 import type { RedemptionWriteRepository } from "../repositories/redemptionRepository.js"
 import type { NotificationWriteRepository } from "../repositories/notificationRepository.js"
@@ -72,6 +74,7 @@ export interface AdminOversightDeps {
   readonly clock: () => Date
   readonly config: AdminOversightConfig
   readonly oversightRepository: AdminOversightRepository
+  readonly loginEventRepository: LoginEventRepository
   readonly investorLedgerRepository: InvestorLedgerRepository
   readonly redemptionRepository: RedemptionWriteRepository
   readonly notificationRepository: NotificationWriteRepository
@@ -86,6 +89,7 @@ const MANDATES_ROUTE = "/v1/admin/mandates"
 const SIPS_ROUTE = "/v1/admin/sips"
 const REDEMPTIONS_ROUTE = "/v1/admin/redemption-requests"
 const AUDIT_ROUTE = "/v1/admin/audit-logs"
+const LOGIN_EVENTS_ROUTE = "/v1/admin/users/:userId/login-events"
 
 // --- schemas ---
 
@@ -172,6 +176,8 @@ const auditQuerySchema = z
     occurredTo: z.string().datetime({ offset: true }).optional(),
   })
   .strict()
+
+const loginEventsQuerySchema = z.object({ ...pageQuery }).strict()
 
 const decisionSchema = z
   .object({
@@ -1020,6 +1026,53 @@ const listAuditEvents = async (deps: AdminOversightDeps, request: FastifyRequest
   )
 }
 
+// --- login history ---
+
+/**
+ * Per-user sign-in attempts, newest first.
+ *
+ * Distinct from `/v1/admin/audit-logs`: the audit log records successful logins
+ * only (they are state transitions with a session to point at), whereas this
+ * shows failures too, with the address and User-Agent the attempt came from.
+ * `users.read` rather than `audit.read` — it is part of looking at one user.
+ */
+const mapLoginEvent = (row: LoginEventRow): Record<string, unknown> => ({
+  id: row.id,
+  occurredAt: iso(row.occurredAt),
+  createdAt: iso(row.createdAt),
+  userId: row.userId,
+  email: row.email,
+  channel: row.channel,
+  outcome: row.outcome,
+  succeeded: row.outcome === "success",
+  sessionId: row.sessionId,
+  ipAddress: row.ipAddress,
+  userAgent: row.userAgent,
+  requestId: row.requestId,
+})
+
+const listUserLoginEvents = async (
+  deps: AdminOversightDeps,
+  request: FastifyRequest,
+  reply: FastifyReply,
+) => {
+  const userId = parseOrThrow(uuidParam, (request.params as { userId?: unknown }).userId)
+  parseOrThrow(loginEventsQuerySchema, request.query)
+  return listWith(
+    deps,
+    request,
+    reply,
+    LOGIN_EVENTS_ROUTE,
+    ["users.read"],
+    // The user is part of the filter identity, so a cursor issued for one user is
+    // not accepted for another.
+    { userId },
+    async (limit, keyset) =>
+      deps.loginEventRepository.listForUser(deps.database, { ...keyset, limit, userId }),
+    mapLoginEvent,
+  )
+}
+
 export const registerAdminOversightRoutes = (
   application: FastifyInstance,
   deps: AdminOversightDeps,
@@ -1027,6 +1080,9 @@ export const registerAdminOversightRoutes = (
   application.get(USERS_ROUTE, async (request, reply) => listUsers(deps, request, reply))
   application.get(`${USERS_ROUTE}/:userId/detail`, async (request, reply) =>
     getUserDetail(deps, request, reply),
+  )
+  application.get(`${USERS_ROUTE}/:userId/login-events`, async (request, reply) =>
+    listUserLoginEvents(deps, request, reply),
   )
   application.post(`${USERS_ROUTE}/:userId/suspend`, async (request, reply) =>
     changeUserState(deps, request, reply, "suspended", ["users.suspend"]),

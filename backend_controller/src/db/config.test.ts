@@ -9,6 +9,18 @@ describe("parseDatabaseConfig", () => {
     expect(config.poolMax).toBe(10)
     expect(config.connectionTimeoutMs).toBe(3_000)
     expect(config.idleTimeoutMs).toBe(10_000)
+    expect(config.statementTimeoutMs).toBe(10_000)
+    expect(config.idleInTransactionTimeoutMs).toBe(15_000)
+  })
+
+  test("coerces the query and transaction bounds, and treats 0 as disabled", () => {
+    const config = parseDatabaseConfig({
+      DATABASE_URL: "postgres://h/db",
+      DB_STATEMENT_TIMEOUT_MS: "2500",
+      DB_IDLE_IN_TRANSACTION_TIMEOUT_MS: "0",
+    })
+    expect(config.statementTimeoutMs).toBe(2_500)
+    expect(config.idleInTransactionTimeoutMs).toBe(0)
   })
 
   test("coerces provided pool sizing and timeouts", () => {

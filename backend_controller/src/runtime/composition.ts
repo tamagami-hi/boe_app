@@ -13,6 +13,7 @@ import type { FastifyInstance } from "fastify"
 
 import { createAccessTokenService } from "../auth/accessToken.js"
 import { createBreachChecker, resolveBreachCheckMode } from "../auth/breachCheck.js"
+import { configurePasswordWorkGate } from "../auth/passwordGate.js"
 import { createCryptoContext, parseCryptoKeys } from "../crypto/context.js"
 import {
   dispatchDueDeliveries,
@@ -51,6 +52,7 @@ import { createEmailDeliveryRepository } from "../repositories/emailDeliveryRepo
 import { createEmailProviderEventRepository } from "../repositories/emailProviderEventRepository.js"
 import { createEmailSuppressionRepository } from "../repositories/emailSuppressionRepository.js"
 import { createIdempotencyRepository } from "../repositories/idempotencyRepository.js"
+import { createLoginEventRepository } from "../repositories/loginEventRepository.js"
 import { createOutboxRepository } from "../repositories/outboxRepository.js"
 import { createUserRepository } from "../repositories/userRepository.js"
 import { registerAdminIdentityRoutes } from "../routes/adminIdentityRoutes.js"
@@ -97,6 +99,11 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const unitOfWork = createUnitOfWork(database)
   const clock = (): Date => new Date()
 
+  // Bound Argon2id concurrency process-wide before anything can hash. Every
+  // password hash and verification goes through this gate, so overload is
+  // rejected with a retryable 429 instead of queueing behind the threadpool.
+  configurePasswordWorkGate(serverConfig.passwordHashing)
+
   const crypto = createCryptoContext(cryptoKeys)
   const accessTokenService = createAccessTokenService(serverConfig.access)
   const breachChecker = createBreachChecker(breachMode)
@@ -109,6 +116,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const credentialRepository = createCredentialRepository()
   const authSessionRepository = createAuthSessionRepository()
   const auditRepository = createAuditRepository()
+  const loginEventRepository = createLoginEventRepository()
   const outboxRepository = createOutboxRepository()
   const emailDeliveryRepository = createEmailDeliveryRepository()
   const emailProviderEventRepository = createEmailProviderEventRepository()
@@ -179,6 +187,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       userRepository,
       authSessionRepository,
       auditRepository,
+      loginEventRepository,
       accessTokenService,
       database,
       refreshKey: serverConfig.refreshKey,
@@ -186,6 +195,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       clock,
       deviceLimit: serverConfig.deviceLimit,
       unitOfWork,
+      logger: application.log,
     })
 
     registerClientPortfolioRoutes(application, {
@@ -318,7 +328,12 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       appUpdate: serverConfig.appUpdate,
     })
 
-    registerWebAuthRoutes(application, { ...webAuth, unitOfWork })
+    registerWebAuthRoutes(application, {
+      ...webAuth,
+      unitOfWork,
+      loginEventRepository,
+      logger: application.log,
+    })
 
     registerAdminIdentityRoutes(application, {
       webAuth,
@@ -384,6 +399,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
       },
       oversightRepository: createAdminOversightRepository(),
+      loginEventRepository,
       investorLedgerRepository,
       redemptionRepository,
       notificationRepository,

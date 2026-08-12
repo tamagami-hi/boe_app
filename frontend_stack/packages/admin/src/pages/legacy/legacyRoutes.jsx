@@ -35,6 +35,8 @@ export function ApprovalsRoute() {
       onReject={ctx.handleRejectUser}
       onNavigateToUsers={ctx.navigateToUsers}
       busy={ctx.decisionBusy}
+      meta={ctx.approvalsMeta}
+      onRefresh={ctx.refreshApprovals}
     />
   );
 }

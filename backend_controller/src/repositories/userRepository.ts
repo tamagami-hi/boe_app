@@ -11,6 +11,28 @@ export interface UserWithCredential {
   readonly credential: UserCredential | null
 }
 
+/**
+ * The minimum a sign-in needs about an account: the user row and the stored
+ * password hash.
+ *
+ * Deliberately narrower than `UserWithCredential` — it selects the credential
+ * material by name rather than `selectAll()`, and it is read with a single
+ * LEFT JOIN instead of two round trips.
+ *
+ * The hash doubles as the credential's identity. Re-reading it in the
+ * session-issuing transaction and comparing detects a password rotated between
+ * the verification and the write, which is the invariant the old `FOR UPDATE`
+ * held across the whole Argon2 verification to protect. Comparing the hash rather
+ * than `password_changed_at` keeps that structural: Argon2 salts each hash
+ * randomly, so any rotation necessarily changes this string, and no future
+ * password-change command can forget to bump a timestamp and silently disable the
+ * check.
+ */
+export interface UserLoginIdentity {
+  readonly user: User
+  readonly passwordHash: string | null
+}
+
 export interface RolesAndPermissions {
   readonly roles: readonly string[]
   readonly permissions: readonly string[]
@@ -34,6 +56,24 @@ export interface UserWriteRepository {
    */
   createActive: (tx: Transaction, input: CreateActiveUserInput) => Promise<User>
   lockByEmailWithCredential: (tx: Transaction, emailNormalized: string) => Promise<UserWithCredential | null>
+  /**
+   * Non-locking login lookup by email, for use *outside* a transaction.
+   *
+   * `lockByEmailWithCredential` takes `FOR UPDATE` on the user and credential
+   * rows, which the native login used to hold across the Argon2id verification —
+   * so two sign-ins for the same account serialized for the full verify, and each
+   * one occupied a pooled connection while doing pure CPU work. Login reads these
+   * rows and writes neither, so no lock is warranted; `findLoginIdentityById` is
+   * used to re-check the facts inside the short transaction that follows.
+   */
+  findLoginIdentityByEmail: (db: Transaction, emailNormalized: string) => Promise<UserLoginIdentity | null>
+  /**
+   * The stored password hash for one account, by id.
+   *
+   * Read inside the session-issuing transaction and compared with the hash that
+   * was just verified, so a credential rotated in between cannot yield a session.
+   */
+  findPasswordHash: (db: Transaction, userId: UserId) => Promise<string | null>
   findActiveRolesAndPermissions: (tx: Transaction, userId: UserId) => Promise<RolesAndPermissions>
 }
 
@@ -72,6 +112,28 @@ export const createUserRepository = (): UserWriteRepository => ({
       .forUpdate()
       .executeTakeFirst()
     return { user, credential: credential ?? null }
+  },
+
+  findLoginIdentityByEmail: async (db, emailNormalized) => {
+    const row = await db
+      .selectFrom("users")
+      .leftJoin("user_credentials", "user_credentials.user_id", "users.id")
+      .selectAll("users")
+      .select(["user_credentials.password_hash"])
+      .where("users.email_normalized", "=", emailNormalized)
+      .executeTakeFirst()
+    if (row === undefined) return null
+    const { password_hash: passwordHash, ...user } = row
+    return { user, passwordHash }
+  },
+
+  findPasswordHash: async (db, userId) => {
+    const row = await db
+      .selectFrom("user_credentials")
+      .select("password_hash")
+      .where("user_id", "=", userId)
+      .executeTakeFirst()
+    return row?.password_hash ?? null
   },
 
   findActiveRolesAndPermissions: async (tx, userId) => {

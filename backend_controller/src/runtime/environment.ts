@@ -10,6 +10,22 @@ const RuntimeEnvironmentSchema = z.object({
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().min(1).max(65535).default(DEFAULT_PORT),
+  // Which immediate peers may speak for the client address.
+  //
+  // Every deployment sits behind nginx, which proxies from the private network
+  // and sets X-Real-IP / X-Forwarded-For. Without this, `request.ip` is the proxy
+  // itself, so every recorded sign-in address is a loopback or bridge address —
+  // which makes `auth_login_events.ip_address` and `auth_sessions.ip_address`
+  // worthless for the question they exist to answer.
+  //
+  // A CIDR list rather than `true`: trusting the header unconditionally lets any
+  // direct caller claim any address. The default covers loopback and the private
+  // ranges a container bridge uses, so a request arriving from a public address
+  // can never forge its own provenance. Set to `false` to disable entirely.
+  TRUST_PROXY: z
+    .string()
+    .trim()
+    .default("127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"),
 })
 
 export type RuntimeEnvironment = Readonly<{
@@ -17,18 +33,22 @@ export type RuntimeEnvironment = Readonly<{
   logLevel: z.infer<typeof RuntimeEnvironmentSchema>["LOG_LEVEL"]
   nodeEnvironment: z.infer<typeof RuntimeEnvironmentSchema>["NODE_ENV"]
   port: number
+  /** Fastify `trustProxy`: a CIDR/address allowlist, or false when disabled. */
+  trustProxy: string | false
 }>
 
 export const parseRuntimeEnvironment = (
   source: Readonly<Record<string, string | undefined>>,
 ): RuntimeEnvironment => {
   const parsed = RuntimeEnvironmentSchema.parse(source)
+  const trustProxy = parsed.TRUST_PROXY.toLowerCase()
 
   return Object.freeze({
     host: parsed.HOST,
     logLevel: parsed.LOG_LEVEL,
     nodeEnvironment: parsed.NODE_ENV,
     port: parsed.PORT,
+    trustProxy: trustProxy === "" || trustProxy === "false" ? false : parsed.TRUST_PROXY,
   })
 }
 
@@ -106,6 +126,11 @@ const ServerConfigSchema = z.object({
   // signed in on many emulators at once and must not evict itself.
   MAX_NATIVE_DEVICES_PER_USER: z.coerce.number().int().min(1).max(50).default(3),
   SEED_CLIENT_EMAIL: z.string().trim().optional(),
+  // Bounded Argon2id concurrency; see auth/passwordGate.ts. The default tracks
+  // UV_THREADPOOL_SIZE (which is what actually runs the hashing, 8 in the
+  // container image) and falls back to libuv's own default of 4.
+  PASSWORD_HASH_MAX_CONCURRENT: z.coerce.number().int().min(1).max(64).optional(),
+  PASSWORD_HASH_MAX_QUEUED: z.coerce.number().int().min(0).max(4096).default(64),
   // In-app APK update feed. APK_RELEASE_ROOT holds one subdirectory per variant
   // (client/, admin/) of published APKs + their sidecar JSONs, mounted read-only
   // from the release holder directories; APK_DOWNLOAD_BASE_URL is the public
@@ -183,6 +208,25 @@ export interface ServerConfig {
     readonly maxDevices: number
     readonly exemptEmails: readonly string[]
   }
+  /** Bounded Argon2id concurrency; see auth/passwordGate.ts. */
+  readonly passwordHashing: {
+    readonly maxConcurrent: number
+    readonly maxQueued: number
+  }
+}
+
+/**
+ * libuv's threadpool size, which is what runs Argon2id. Not validated by the
+ * schema because it is libuv's variable rather than ours — we only read it to
+ * size the gate, and anything unparseable falls back to libuv's own default.
+ */
+const LIBUV_DEFAULT_THREADPOOL_SIZE = 4
+
+const threadpoolSize = (raw: string | undefined): number => {
+  const parsed = Number(raw)
+  return Number.isInteger(parsed) && parsed >= 1 && parsed <= 1024
+    ? parsed
+    : LIBUV_DEFAULT_THREADPOOL_SIZE
 }
 
 const decode32ByteKey = (name: string, value: string): Buffer => {
@@ -316,6 +360,15 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
           .filter((email): email is string => email !== null)
           .map((email) => email.toLowerCase()),
       ),
+    },
+    passwordHashing: {
+      // Falls back to UV_THREADPOOL_SIZE, which is what actually executes the
+      // hashing, then to libuv's default of 4. Allowing more concurrent hashes
+      // than there are threads to run them buys nothing and only raises peak
+      // memory (19 MiB each).
+      maxConcurrent:
+        parsed.PASSWORD_HASH_MAX_CONCURRENT ?? threadpoolSize(source.UV_THREADPOOL_SIZE),
+      maxQueued: parsed.PASSWORD_HASH_MAX_QUEUED,
     },
   })
 }

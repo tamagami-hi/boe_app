@@ -10,6 +10,7 @@ import { z } from "zod"
 import { passwordInputSchema } from "../auth/passwordHasher.js"
 import type { UnitOfWork } from "../db/database.js"
 import { AppError } from "../http/errorCatalog.js"
+import { requestProvenance } from "../http/requestProvenance.js"
 import { parseOrThrow } from "../http/validation.js"
 import {
   applyAuthCookies,
@@ -23,9 +24,10 @@ import {
   webRecoverCsrf,
   webRefresh,
   type WebAuthDeps,
+  type WebLoginDeps,
 } from "../domain/auth/webAuth.js"
 
-export type WebAuthRouteDeps = WebAuthDeps & { readonly unitOfWork: UnitOfWork }
+export type WebAuthRouteDeps = WebAuthDeps & WebLoginDeps & { readonly unitOfWork: UnitOfWork }
 
 const loginSchema = z
   .object({ email: z.string().trim().email().max(254), password: passwordInputSchema })
@@ -36,9 +38,17 @@ const refreshSchema = z.object({ rotationId: z.string().uuid() }).strict()
 export const registerWebAuthRoutes = (application: FastifyInstance, deps: WebAuthRouteDeps): void => {
   application.post("/v1/auth/web/login", async (request, reply) => {
     const body = parseOrThrow(loginSchema, request.body)
-    const result = await deps.unitOfWork.execute((tx) =>
-      webLogin(tx, deps, { email: body.email, password: body.password, requestId: request.requestId }),
-    )
+    // No `unitOfWork.execute` here: `webLogin` owns its transaction boundary so
+    // the Argon2id verification runs before any connection is taken. Re-wrapping
+    // this call would reinstate the pool exhaustion it was restructured to remove.
+    const provenance = requestProvenance(request)
+    const result = await webLogin(deps, {
+      email: body.email,
+      password: body.password,
+      requestId: request.requestId,
+      ipAddress: provenance.ipAddress,
+      userAgent: provenance.userAgent,
+    })
     applyAuthCookies(reply, deps, result)
     return reply.sendData(result.body, { status: 200 })
   })

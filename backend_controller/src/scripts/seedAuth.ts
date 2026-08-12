@@ -11,7 +11,7 @@ import { pathToFileURL } from "node:url"
 
 import { hashPassword, passwordInputSchema } from "../auth/passwordHasher.js"
 import { parseDatabaseConfig } from "../db/config.js"
-import { createPool } from "../db/pool.js"
+import { createPool, schemaToolPoolSettings } from "../db/pool.js"
 import { buildSeedStatements, SEED_ROLE_PERMISSIONS } from "../db/seedCatalog.js"
 
 export interface SeedAuthClient {
@@ -284,7 +284,7 @@ const isMainModule =
 
 if (isMainModule) {
   const config = resolveSeedAuthConfig(process.env)
-  const pool = createPool(parseDatabaseConfig(process.env))
+  const pool = createPool(schemaToolPoolSettings(parseDatabaseConfig(process.env)))
   try {
     const result = await runSeedAuth(pool, config)
     if (result.skipped === "disabled") {
