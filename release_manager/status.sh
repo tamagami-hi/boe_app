@@ -395,7 +395,7 @@ action_nginx_ship() {
     rsync -az --checksum --chmod=F644,D755 -e "$rsync_ssh" \
         "$staged/nginx/" "${BOE_SSH_ALIAS}:${remote}/" \
         || { err "upload failed"; return 1; }
-    ok "staged in $remote"
+    nginx_ship_verify "$staged/nginx" "$remote" || return 1
 
     nginx_ship_guide "$remote"
 }

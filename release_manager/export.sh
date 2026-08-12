@@ -419,12 +419,25 @@ jq -n \
 jq empty "$BUNDLE/manifest.json" || { err "generated invalid manifest"; exit 1; }
 
 # A flat checksum list too, so `sha256sum -c` works on the VPS without jq. It
-# covers EVERY staged file — compose, paths.json, manifest.json, all scripts,
-# .env.example, the guide, the monitor config tree, image archives and the APK
-# artifacts — so deploy.sh's remote check genuinely proves upload integrity.
-# A generation failure aborts the export; the incomplete bundle is removed by
-# the EXIT trap.
-( cd "$BUNDLE" && find . -type f ! -name 'checksums.sha256' -print0 \
+# covers every staged file that lands IN THE STACK DIRECTORY — compose,
+# paths.json, manifest.json, all scripts, .env.example, the guide, the monitor
+# config tree, image archives and the APK artifacts — so deploy.sh's remote check
+# genuinely proves upload integrity.
+#
+# `./nginx/*` is excluded, and the exclusion is load-bearing rather than tidy-up.
+# Both verifiers run `cd <stack_dir> && sha256sum -c checksums.sha256`
+# (deploy.sh, and boe_verify_checksums in stacks/_shared/_boe_lib.sh), so every
+# path in this file must resolve relative to the stack directory. The nginx
+# configs are deliberately installed OUTSIDE it, at <vps.root>/NGINX, because
+# /etc/nginx is shared by the whole box and not by one release. Listing them here
+# made both verifiers fail on files that were never meant to be there:
+#
+#   sha256sum: ./nginx/app.beonedge.in.conf: No such file or directory
+#
+# Their integrity is proven where they actually land: deploy.sh compares the
+# remote digests in <vps.root>/NGINX against the bundle copies right after the
+# upload.
+( cd "$BUNDLE" && find . -type f ! -name 'checksums.sha256' ! -path './nginx/*' -print0 \
     | sort -z | xargs -0 -r sha256sum > checksums.sha256 )
 
 # From here the bundle is coherent and may be shipped.

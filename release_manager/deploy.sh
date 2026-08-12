@@ -441,7 +441,9 @@ if [[ -d "$BUNDLE/nginx" ]] && compgen -G "$BUNDLE/nginx/*.conf" >/dev/null; the
         rsync -az --checksum --chmod=F644,D755 -e "$RSYNC_SSH" \
             "$BUNDLE/nginx/" "${BOE_SSH_ALIAS}:${NGINX_REMOTE_DIR}/" \
             || { err "failed to upload nginx configs"; exit 1; }
-        ok "nginx configs staged in $NGINX_REMOTE_DIR"
+
+        step "verifying nginx configs on the VPS"
+        nginx_ship_verify "$BUNDLE/nginx" "$NGINX_REMOTE_DIR" || exit 1
     else
         NGINX_REMOTE_DIR=""
         warn "could not resolve vps.root from the path contract — nginx configs not shipped"

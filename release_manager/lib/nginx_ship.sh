@@ -115,6 +115,40 @@ nginx_ship_stage() {
     ok "staged $staged nginx config(s)"
 }
 
+# nginx_ship_verify <local_nginx_dir> <remote_nginx_dir>
+#
+# Proves the upload arrived intact. Needed because these files are deliberately
+# NOT in checksums.sha256: that manifest is verified with `cd <stack_dir>`, and
+# these land outside it at <vps.root>/NGINX. Listing them there made the release's
+# own integrity check fail on files that were never meant to be in the stack
+# directory, so the check lives here instead — where the files actually are.
+#
+# A remote-only extra file is not an error: the folder legitimately holds retired
+# configs and the landing site's own vhost, neither of which this pipeline owns.
+# Only the files just shipped must match.
+nginx_ship_verify() {
+    local local_dir="$1" remote_dir="$2"
+    local local_sums remote_sums mismatch=""
+
+    compgen -G "$local_dir/*.conf" >/dev/null || { warn "nothing to verify"; return 0; }
+
+    local_sums="$(cd "$local_dir" && sha256sum ./*.conf | sort)"
+    remote_sums="$(boe_ssh "cd ${remote_dir@Q} && sha256sum ./*.conf 2>/dev/null | sort" || true)"
+
+    local line
+    while IFS= read -r line; do
+        [[ -n "$line" ]] || continue
+        printf '%s\n' "$remote_sums" | grep -qxF "$line" || mismatch+="${line##* }"$'\n'
+    done <<< "$local_sums"
+
+    if [[ -n "$mismatch" ]]; then
+        err "nginx config digests do not match after upload:"
+        printf '%s' "$mismatch" | sed 's/^/     /' >&2
+        return 1
+    fi
+    ok "nginx configs verified in $remote_dir"
+}
+
 # ── the guide ───────────────────────────────────────────────────────────────
 
 # nginx_ship_probe <remote_nginx_dir> — classify every mapped config.
