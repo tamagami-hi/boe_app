@@ -47,6 +47,8 @@ source "$RM_DIR/lib/paths.sh"
 source "$RM_DIR/lib/repo_sync.sh"
 # shellcheck source=lib/apk_ship.sh
 source "$RM_DIR/lib/apk_ship.sh"
+# shellcheck source=lib/nginx_ship.sh
+source "$RM_DIR/lib/nginx_ship.sh"
 
 STACK=""
 BUNDLE_ARG=""
@@ -423,6 +425,29 @@ if [[ -d "$BUNDLE/apk" ]]; then
         || { err "failed to upload the APK artifacts"; exit 1; }
 fi
 
+NGINX_REMOTE_DIR=""
+if [[ -d "$BUNDLE/nginx" ]] && compgen -G "$BUNDLE/nginx/*.conf" >/dev/null; then
+    step "uploading nginx configs"
+    # Destination is <vps.root>/NGINX, one level ABOVE the stack dir: the folder
+    # is shared by every stack on the box, because /etc/nginx is.
+    #
+    # Staging only. Nothing here touches /etc/nginx — that needs root, and a bad
+    # config there takes down every site at once, including the landing site and
+    # tenants this pipeline does not own. The guide printed at the end of the run
+    # gives the exact per-file commands.
+    if NGINX_REMOTE_DIR="$(nginx_ship_remote_dir "$BUNDLE/paths.json")"; then
+        boe_ssh "install -d -m 755 -- '$NGINX_REMOTE_DIR'" \
+            || { err "cannot create $NGINX_REMOTE_DIR on the VPS"; exit 1; }
+        rsync -az --checksum --chmod=F644,D755 -e "$RSYNC_SSH" \
+            "$BUNDLE/nginx/" "${BOE_SSH_ALIAS}:${NGINX_REMOTE_DIR}/" \
+            || { err "failed to upload nginx configs"; exit 1; }
+        ok "nginx configs staged in $NGINX_REMOTE_DIR"
+    else
+        NGINX_REMOTE_DIR=""
+        warn "could not resolve vps.root from the path contract — nginx configs not shipped"
+    fi
+fi
+
 step "verifying uploads on the VPS"
 REMOTE_VERIFY="$(boe_ssh "cd '$REMOTE_DIR' && sha256sum -c --quiet checksums.sha256 2>&1 && echo VERIFY_OK" || true)"
 if ! printf '%s' "$REMOTE_VERIFY" | grep -q VERIFY_OK; then
@@ -444,6 +469,9 @@ if [[ "$SHIP_ONLY" == true ]]; then
     field "remote"  "$REMOTE_DIR"
     printf '\n   Deploy on the VPS with:\n     ssh %s "cd %s && ./%s"\n\n' \
         "$BOE_SSH_ALIAS" "$REMOTE_DIR" "$DEPLOY_NAME"
+    # Shipping is exactly when an operator wants to know whether the nginx configs
+    # they just staged differ from what is live, so the guide runs here too.
+    [[ -n "$NGINX_REMOTE_DIR" ]] && nginx_ship_guide "$NGINX_REMOTE_DIR"
     exit 0
 fi
 
@@ -524,3 +552,8 @@ field "stack"   "$STACK"
 field "version" "$VERSION"
 field "status"  "${STATUS:-active}"
 printf '\n'
+
+# Last, deliberately: the containers are already live at this point, so an nginx
+# config that still needs installing is a discrepancy the operator must see
+# before walking away — not something buried mid-run above the deploy output.
+[[ -n "$NGINX_REMOTE_DIR" ]] && nginx_ship_guide "$NGINX_REMOTE_DIR"

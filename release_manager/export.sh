@@ -41,6 +41,8 @@ source "$RM_DIR/lib/stacks.sh"
 source "$RM_DIR/lib/paths.sh"
 # shellcheck source=lib/apk_ship.sh
 source "$RM_DIR/lib/apk_ship.sh"
+# shellcheck source=lib/nginx_ship.sh
+source "$RM_DIR/lib/nginx_ship.sh"
 
 STACK=""
 SKIP_BUILD=false
@@ -291,6 +293,19 @@ cp "$STACKS_SRC/_shared/_boe_lib.sh"      "$BUNDLE/_boe_lib.sh"
 cp "$STACKS_SRC/_shared/_boe_deploy.sh"   "$BUNDLE/_boe_deploy.sh"
 cp "$STACKS_SRC/_shared/_boe_rollback.sh" "$BUNDLE/_boe_rollback.sh"
 chmod +x "$BUNDLE/$DEPLOY_NAME" "$BUNDLE/$ROLLBACK_NAME"
+
+# The nginx site configs travel in the bundle too, so they are covered by
+# checksums.sha256 and the remote verify proves the file that arrived is the file
+# that was built. They are staged for every stack because the NGINX folder sits at
+# <vps.root> and is shared by the whole box — shipping only one stack's vhost
+# would leave the folder permanently half-current, which is how it drifted months
+# behind the repo in the first place.
+#
+# Staging is all this does. Installing into /etc/nginx needs root and can take
+# down every site at once, so deploy.sh prints per-file commands instead; see
+# lib/nginx_ship.sh.
+step "staging nginx configs"
+nginx_ship_stage "$BUNDLE"
 
 # Monitoring configuration tree (prometheus/grafana/alertmanager/blackbox).
 if [[ "$STACK" == "monitor_service" && -d "$STACKS_SRC/$STACK/config" ]]; then

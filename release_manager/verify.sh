@@ -315,19 +315,18 @@ check_nginx_port() {
 
 pb="$(env_port prod_release BACKEND_PORT)"
 pa="$(env_port prod_release APP_FRONTEND_PORT)"
-pad="$(env_port prod_release ADMIN_FRONTEND_PORT)"
 db="$(env_port dev_release BACKEND_PORT)"
 da="$(env_port dev_release APP_FRONTEND_PORT)"
-dad="$(env_port dev_release ADMIN_FRONTEND_PORT)"
-gp="$(env_port monitor_service GRAFANA_PORT)"
 
+# Only the two public app sites are checked here. There is no admin domain — the
+# admin console is reached over Tailscale (admin.tailscale.conf) and the admin
+# app ships as an APK from /downloads/admin/ on the app sites — and there is no
+# monitor domain yet, so ADMIN_FRONTEND_PORT and GRAFANA_PORT have no nginx
+# config to agree with. The port-uniqueness check in 7b still covers them.
 check_nginx_port app.beonedge.in.conf       "$pb"  "prod backend"
 check_nginx_port app.beonedge.in.conf       "$pa"  "prod user SPA"
-check_nginx_port admin.beonedge.in.conf     "$pad" "prod admin SPA"
 check_nginx_port dev-app.beonedge.in.conf   "$db"  "dev backend"
 check_nginx_port dev-app.beonedge.in.conf   "$da"  "dev user SPA"
-check_nginx_port dev-admin.beonedge.in.conf "$dad" "dev admin SPA"
-check_nginx_port monitor.beonedge.in.conf   "$gp"  "grafana"
 
 # Ports must be unique across stacks, or two stacks fight over one binding.
 # Only HOST-BINDING variables count. EMAIL_SMTP_PORT is an outbound destination,

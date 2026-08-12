@@ -250,19 +250,28 @@ Generated for you in `release_manager/nginx/`. Copy them up, then enable:
 scp release_manager/nginx/*.conf beonedge:/tmp/
 
 # on the VPS
-sudo cp /tmp/app.beonedge.in.conf    /etc/nginx/sites-available/boe-app
-sudo cp /tmp/admin.beonedge.in.conf  /etc/nginx/sites-available/boe-admin
-sudo cp /tmp/dev-app.beonedge.in.conf   /etc/nginx/sites-available/boe-dev-app
-sudo cp /tmp/dev-admin.beonedge.in.conf /etc/nginx/sites-available/boe-dev-admin
-sudo cp /tmp/monitor.beonedge.in.conf   /etc/nginx/sites-available/boe-monitor
-sudo cp /tmp/boe-shared.conf            /etc/nginx/conf.d/boe-shared.conf
+sudo cp /tmp/app.beonedge.in.conf     /etc/nginx/sites-available/boe-app
+sudo cp /tmp/dev-app.beonedge.in.conf /etc/nginx/sites-available/boe-dev-app
+sudo cp /tmp/boe-shared.conf          /etc/nginx/conf.d/boe-shared.conf
 
-for s in boe-app boe-admin boe-dev-app boe-dev-admin boe-monitor; do
+for s in boe-app boe-dev-app; do
   sudo ln -sfn /etc/nginx/sites-available/$s /etc/nginx/sites-enabled/$s
 done
 
 sudo nginx -t && sudo systemctl reload nginx
 ```
+
+There are only two public app domains: `dev-app.beonedge.in` (dev client app,
+plus the client and admin APKs under `/downloads/`) and `app.beonedge.in`
+(production, once the dev bundle is signed off). `beonedge.in` is the marketing
+site and its config lives in the separate landing repository, not here.
+
+There is **no admin domain**. The admin console is reached over Tailscale —
+`admin.tailscale.conf`, `server_name admin.boe.app.internal`, installed as
+`boe-admin-tailscale` and never exposed publicly — and the admin app itself
+ships as an APK. `admin.tailscale.conf` is deliberately not in the copy loop
+above, because the live copy is pointed at whichever stack the console should
+talk to; see the note in that file before overwriting it.
 
 `boe-shared.conf` must go in `conf.d/` — it holds the `http`-level
 `map $http_upgrade $connection_upgrade` and the rate-limit zones that the site

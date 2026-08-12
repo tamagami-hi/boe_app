@@ -46,6 +46,8 @@ source "$RM_DIR/lib/git_workflow.sh"
 source "$RM_DIR/lib/input_validation.sh"
 # shellcheck source=lib/apk_ship.sh
 source "$RM_DIR/lib/apk_ship.sh"
+# shellcheck source=lib/nginx_ship.sh
+source "$RM_DIR/lib/nginx_ship.sh"
 
 for c in jq git ssh; do
     command -v "$c" >/dev/null || { err "$c is required"; exit 1; }
@@ -345,6 +347,59 @@ action_deploy() {
 # on-VPS .env and the already-deployed images. Nothing is shipped, the version
 # does not change. This is the right tool after editing the stack's .env on
 # the VPS (compose re-reads it on `up -d`; a plain `restart` would not).
+# ── nginx configs ───────────────────────────────────────────────────────────
+# Ships release_manager/nginx/ to <vps.root>/NGINX and prints exactly what
+# /etc/nginx still needs.
+#
+# Separate from a deploy on purpose. An nginx change is often the ONLY change —
+# a rate limit, a new location — and rebuilding images and recreating containers
+# to deliver a text file is both slower and riskier than the edit itself. This
+# path ships from the working tree and touches no container.
+#
+# It still installs nothing: /etc/nginx needs root, and a bad config there takes
+# down every site on the box at once, including sites this pipeline does not own.
+action_nginx_ship() {
+    local s="${1:-}" f remote staged
+
+    if [[ -z "$s" ]]; then
+        s="$(pick_stack 'Ship nginx configs using which stack path contract?')" \
+            || { err "invalid selection"; return 1; }
+    fi
+    f="$(stack_paths_file "$s")"
+    remote="$(nginx_ship_remote_dir "$f")" || { err "cannot resolve <vps.root>/NGINX"; return 1; }
+
+    section "NGINX SHIP" "stage the vhosts on the VPS; /etc/nginx stays untouched"
+    field "source" "$(nginx_ship_source_dir)"
+    field "remote" "$remote"
+    # The contract is consulted only to resolve vps.root — the configs are not
+    # stack-specific, because /etc/nginx is not.
+    info "the NGINX folder is shared by every stack; all mapped configs are shipped"
+
+    if [[ "$UI_INTERACTIVE" == true ]]; then
+        confirm "Upload the nginx configs to $remote now?" || { warn "cancelled"; return 0; }
+    fi
+
+    staged="$(mktemp -d)" || { err "cannot create a staging directory"; return 1; }
+    # shellcheck disable=SC2064
+    trap "rm -rf -- '$staged'" RETURN
+
+    nginx_ship_stage "$staged" || { err "staging failed"; return 1; }
+    compgen -G "$staged/nginx/*.conf" >/dev/null \
+        || { err "nothing staged — check nginx_ship_map"; return 1; }
+
+    boe_ssh_opts
+    local rsync_ssh; printf -v rsync_ssh '%q ' ssh "${BOE_SSH_OPTS[@]}"
+
+    step "uploading"
+    boe_ssh "install -d -m 755 -- '$remote'" || { err "cannot create $remote"; return 1; }
+    rsync -az --checksum --chmod=F644,D755 -e "$rsync_ssh" \
+        "$staged/nginx/" "${BOE_SSH_ALIAS}:${remote}/" \
+        || { err "upload failed"; return 1; }
+    ok "staged in $remote"
+
+    nginx_ship_guide "$remote"
+}
+
 action_reload() {
     local s="${1:-}" f d project compose prefix vname reload_rc=0
     if [[ -z "$s" ]]; then
@@ -785,6 +840,7 @@ ${c_bold}━━ Ship + Deploy${c_rst}
    7) Inspect containers      remote compose ps and recent logs
    8) Diagnose the VPS        readiness checks and blockers
    9) Operator manual         steps that must be run by hand
+  10) Ship nginx configs      stage the vhosts and print what /etc/nginx needs
    b) Back
 
 MENU
@@ -800,6 +856,7 @@ MENU
             7) action_containers || true ;;
             8) action_diagnose ;;
             9) action_operator_guide || true ;;
+            10) action_nginx_ship || warn "nginx config shipping did not complete" ;;
             b|B) return 0 ;;
             *) warn "unknown Ship + Deploy choice: $choice"; continue ;;
         esac
