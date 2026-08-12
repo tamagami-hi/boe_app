@@ -107,6 +107,25 @@ for stack in dev_release prod_release; do
         fi
     done
 
+    email_block="$(service_block "$compose_file" email-worker)"
+    stack_name="${stack%%_release}"
+    egress_network="${stack_name}_egress"
+    internal_network="${stack_name}_internal"
+    grep -qE "^[[:space:]]+- ${egress_network}$" <<< "$email_block" \
+        || fail_test "$stack/email-worker has no dedicated network for SMTP delivery"
+    grep -qE "^[[:space:]]+- ${internal_network}$" <<< "$email_block" \
+        || fail_test "$stack/email-worker lost its internal database network"
+    assert_file_contains "$compose_file" "^  ${egress_network}:$" \
+        "$stack does not define the dedicated SMTP egress network"
+    egress_block="$(awk -v header="  ${egress_network}:" '
+        $0 == header { in_network=1; print; next }
+        in_network && /^  [[:alnum:]_-]+:/ { exit }
+        in_network { print }
+    ' "$compose_file")"
+    if grep -qE '^[[:space:]]+internal:[[:space:]]+true$' <<< "$egress_block"; then
+        fail_test "$stack SMTP egress network is internally isolated"
+    fi
+
     BOE_VERSION=runtime-contract docker compose \
         --env-file "$ROOT_DIR/release_manager/stacks/$stack/.env.example" \
         -f "$compose_file" config --quiet \

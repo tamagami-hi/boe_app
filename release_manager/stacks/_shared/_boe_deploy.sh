@@ -413,6 +413,22 @@ boe_deploy_fail() {
         die "deployment failed and no rollback archive exists at $rb"
     fi
 
+    if [[ "${P[has_database]}" == "true" ]] \
+        && boe_rollback_requires_database_restore "$attempted" "$previous"; then
+        # Migrations already ran before health checking. Starting the previous
+        # image here would cross the destructive migration-025 boundary without
+        # restoring its database. Stop every current consumer and leave only
+        # Postgres available for the explicit manual restore workflow.
+        local service
+        local -a consumers=()
+        while IFS= read -r service; do
+            [[ -n "$service" && "$service" != "postgres" ]] && consumers+=("$service")
+        done < <(compose config --services)
+        (( ${#consumers[@]} == 0 )) || compose stop "${consumers[@]}" >/dev/null 2>&1 || true
+        boe_write_version "$previous" "" failed "$attempted"
+        die "deployment failed ($reason) after migration 025; automatic image-only rollback to $previous is unsafe. Run the manual rollback with --restore-db"
+    fi
+
     step "AUTO-ROLLBACK to $previous"
     # Never load an archive that fails integrity verification, and never start
     # a half-loaded rollback: any load failure aborts the auto-rollback.

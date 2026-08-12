@@ -58,3 +58,21 @@ test('admin decisions use the bodyless idempotent wire contract and report queue
   assert.match(contextSource, /email[^\n]*queued/iu);
   assert.doesNotMatch(contextSource, /email[^\n]*has been sent/iu);
 });
+
+test('live SMTP smoke is guarded, bounded, and cleans up native sessions', async () => {
+  const source = await readRepoFile('test_e2e/vps-onboarding-smoke.mjs');
+
+  assert.match(source, /PUBLIC_API_BASE_URL !== 'https:\/\/dev-app\.beonedge\.in\/api'/u);
+  assert.match(source, /BOE_ALLOW_DEV_LIVE_SMOKE !== 'I_UNDERSTAND_DEV_ONLY'/u);
+  assert.match(source, /BOE_SMOKE_IMAP_USER/u);
+  assert.match(source, /BOE_SMOKE_IMAP_PASSWORD/u);
+  assert.doesNotMatch(source, /EMAIL_SMTP_(?:USER|PASSWORD)/u);
+  assert.match(source, /IMAP_CONNECT_TIMEOUT_MS/u);
+  assert.match(source, /IMAP_COMMAND_TIMEOUT_MS/u);
+  assert.match(source, /MAX_IMAP_RESPONSE_BYTES/u);
+  assert.match(source, /HTTP_REQUEST_TIMEOUT_MS/u);
+  assert.match(source, /AbortSignal\.timeout\(HTTP_REQUEST_TIMEOUT_MS\)/u);
+  assert.match(source, /\/v1\/auth\/native\/logout/u);
+  assert.match(source, /case-sensitivity test has an alphabetic OTP character/u);
+  assert.match(source, /freshOtp !== otp/u);
+});

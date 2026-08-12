@@ -61,8 +61,8 @@ Options:
   --skip-checks   pass --skip-checks to the remote script
   --help, -h      this message
 
-Application rollback (the default) only swaps container images; it is safe and
-itself reversible. Database restoration is a separate, opt-in operation.
+Application rollback only swaps images when schemas are compatible. Rolling
+back across v0.8.8 migration 025 requires --restore-db and its matching snapshot.
 USAGE
 }
 

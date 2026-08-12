@@ -60,6 +60,17 @@ require_cmds() {
     (( ${#missing[@]} == 0 )) || die "missing required commands: ${missing[*]}"
 }
 
+# Migration 025 (released in v0.8.8) destructively removed onboarding schema
+# required by older images. Any move from the v0.8.8+ schema family to a target
+# below v0.8.8 requires a matching database restoration.
+boe_rollback_requires_database_restore() {
+    local current_core="${1%%-*}" target_core="${2%%-*}" boundary="0.8.8"
+    [[ -n "$current_core" && -n "$target_core" ]] || return 1
+    [[ "$(printf '%s\n%s\n' "$boundary" "$current_core" | sort -V | tail -1)" == "$current_core" ]] \
+        && [[ "$(printf '%s\n%s\n' "$target_core" "$boundary" | sort -V | head -1)" == "$target_core" ]] \
+        && [[ "$target_core" != "$boundary" ]]
+}
+
 # ── paths.json access ───────────────────────────────────────────────────────
 # Populated by boe_load_paths. Every subsequent function reads these, never a
 # literal path.

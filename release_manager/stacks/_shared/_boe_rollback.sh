@@ -7,7 +7,8 @@
 # Implements plan §20. The load-bearing rule: APPLICATION rollback and DATABASE
 # restoration are separate operations.
 #
-#   • Application rollback swaps container images back. It is safe and routine.
+#   • Application rollback swaps compatible container images back. A rollback
+#     across a destructive schema boundary requires database restoration.
 #   • Database restoration discards transactions committed since the snapshot.
 #     It requires --restore-db plus a typed confirmation, always backs up the
 #     current database first (a failed or impossible backup aborts the whole
@@ -78,6 +79,12 @@ boe_rollback_main() {
     [[ "$found" == true ]] || die "no complete rollback archive for version: $TARGET"
     [[ "$TARGET" != "$current" ]] || die "version $TARGET is already the running version"
 
+    if [[ "${P[has_database]}" == "true" ]] \
+        && boe_rollback_requires_database_restore "$current" "$TARGET" \
+        && [[ "$RESTORE_DB" != true ]]; then
+        die "rollback from $current to $TARGET crosses migration 025; rerun with --restore-db and the matching pre-v0.8.8 snapshot"
+    fi
+
     local rb="${P[rollback_images]}/$TARGET"
 
     # ── lock and preflight ──────────────────────────────────────────────────
@@ -136,6 +143,13 @@ boe_rollback_main() {
         boe_backup_database "${P[rollback_db]}/pre-rollback" "pre-rollback" >/dev/null || true
     fi
 
+    # The current Compose file is still authoritative here. Stop every current
+    # database consumer before boe_rollback_load replaces that file; otherwise
+    # a service removed from the target release could survive the restore.
+    if [[ "$RESTORE_DB" == true && "${P[has_database]}" == "true" ]]; then
+        boe_stop_database_consumers
+    fi
+
     # ── load the target images ──────────────────────────────────────────────
     # Hook: the monitoring stack overrides this to re-pull pinned upstream tags
     # and restore its config tree instead of loading image archives.
@@ -146,19 +160,20 @@ boe_rollback_main() {
     boe_assert_images_present "$TARGET"
     boe_validate_compose
 
-    # ── start ───────────────────────────────────────────────────────────────
-    step "start rolled-back stack"
+    # ── restore/start ───────────────────────────────────────────────────────
     if [[ "${P[has_database]}" == "true" ]]; then
         compose up -d postgres || die "failed to start postgres"
         boe_wait_postgres
     fi
+
+    if [[ "$RESTORE_DB" == true ]]; then
+        boe_rollback_restore_database "$TARGET" "$ASSUME_YES" \
+            || die "database restoration was not completed; refusing to start rollback target"
+    fi
+
+    step "start rolled-back stack"
     compose up -d --remove-orphans || die "failed to start the rolled-back stack"
     compose ps
-
-    # ── optional, explicit database restoration (plan §20.2) ────────────────
-    if [[ "$RESTORE_DB" == true ]]; then
-        boe_rollback_restore_database "$TARGET" "$ASSUME_YES"
-    fi
 
     # ── health ──────────────────────────────────────────────────────────────
     step "health checks"
@@ -213,10 +228,32 @@ Roll this stack back to a previously archived release.
   --skip-checks     do not gate on health checks
   --help, -h        this message
 
-Application rollback (the default) only swaps container images and is safe.
-Database restoration is separate, opt-in, and always backs up the current
-database first.
+Application rollback (the default) only swaps container images and is safe when
+the target schema is compatible. Crossing the v0.8.8 migration-025 boundary
+requires --restore-db. Restoration always backs up the current database first.
 USAGE
+}
+
+boe_restored_schema_is_compatible() {
+    local target="$1" has_migration_025="$2"
+    if boe_rollback_requires_database_restore 0.8.8 "$target"; then
+        [[ "$has_migration_025" == "0" ]]
+        return
+    fi
+    return 0
+}
+
+# Stop every Compose service except Postgres before destructive restoration.
+# `compose config --services` keeps this generic across dev/prod layouts and
+# includes one-shot migrate/seed services if they are still running.
+boe_stop_database_consumers() {
+    local service
+    local -a consumers=()
+    while IFS= read -r service; do
+        [[ -n "$service" && "$service" != "postgres" ]] && consumers+=("$service")
+    done < <(compose config --services)
+    (( ${#consumers[@]} == 0 )) || compose stop "${consumers[@]}" \
+        || die "failed to stop database consumers before restore"
 }
 
 # boe_rollback_inventory <array_name> — fill the named array with versions that
@@ -296,15 +333,13 @@ boe_rollback_restore_database() {
         [[ -t 0 ]] || die "database restoration requires an interactive terminal"
         printf '%s  ➜ type RESTORE to proceed: %s' "$_c_bold" "$_c_rst"
         read -r reply || reply=""
-        [[ "$reply" == "RESTORE" ]] || { warn "database restoration aborted"; return 0; }
+        [[ "$reply" == "RESTORE" ]] || die "database restoration aborted; rollback target was not started"
     fi
 
     user="$(env_get POSTGRES_USER "$BOE_EFFECTIVE_ENV")"
     db="$(env_get POSTGRES_DB "$BOE_EFFECTIVE_ENV")"
 
     step "restoring database $db"
-    compose up -d postgres || die "failed to start postgres"
-    boe_wait_postgres
 
     # Drop connections, recreate the database, then restore. The heredoc is
     # quoted ('SQL') so nothing in it is expanded locally, and the database /
@@ -317,23 +352,35 @@ DROP DATABASE IF EXISTS :"db";
 CREATE DATABASE :"db" OWNER :"dbuser";
 SQL
 
-    if "$(docker_bin)" exec -i "$(pg_container)" \
-            pg_restore -U "$user" -d "$db" --no-owner --clean --if-exists < "$dump" 2>/dev/null; then
-        ok "database restored from $(basename "$dump")"
-    else
-        # pg_restore warns on benign object-exists conditions; verify instead of
-        # trusting the exit code alone.
-        local tables
-        tables="$("$(docker_bin)" exec -i "$(pg_container)" \
-            psql -tA -U "$user" -d "$db" \
-            -c "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';" 2>/dev/null | tr -dc '0-9')"
-        if [[ -n "$tables" ]] && (( tables > 0 )); then
-            warn "pg_restore reported warnings but $tables tables are present — treating as restored"
-        else
-            die "database restore failed and the database is empty — investigate before serving traffic"
-        fi
+    local restore_errors
+    restore_errors="$(mktemp)"
+    if ! "$(docker_bin)" exec -i "$(pg_container)" \
+            pg_restore -U "$user" -d "$db" --no-owner --exit-on-error < "$dump" 2>"$restore_errors"; then
+        while IFS= read -r line; do log "pg_restore: $line"; done < "$restore_errors"
+        rm -f "$restore_errors"
+        die "database restore failed; rollback target remains stopped"
     fi
+    rm -f "$restore_errors"
 
-    log "restarting application containers against the restored database"
-    compose up -d --force-recreate --remove-orphans || die "failed to restart after restore"
+    # A zero pg_restore exit is necessary but not sufficient evidence. BOE app
+    # snapshots must carry their migration ledger and the core identity tables
+    # before any API or worker is allowed to start.
+    local restored_version required_tables has_migration_025
+    restored_version="$("$(docker_bin)" exec -i "$(pg_container)" \
+        psql -tA -U "$user" -d "$db" \
+        -c "SELECT COALESCE(MAX(version), '') FROM schema_migrations;" 2>/dev/null)" \
+        || die "restored database has no readable migration ledger"
+    [[ -n "$restored_version" ]] || die "restored database migration ledger is empty"
+    has_migration_025="$("$(docker_bin)" exec -i "$(pg_container)" \
+        psql -tA -U "$user" -d "$db" \
+        -c "SELECT count(*) FROM schema_migrations WHERE version = '025_onboarding_rework';" 2>/dev/null)" \
+        || die "restored database migration-boundary verification failed"
+    boe_restored_schema_is_compatible "$version" "$has_migration_025" \
+        || die "restored snapshot contains migration 025 and is incompatible with rollback target $version"
+    required_tables="$("$(docker_bin)" exec -i "$(pg_container)" \
+        psql -tA -U "$user" -d "$db" \
+        -c "SELECT count(*) FROM (VALUES (to_regclass('public.users')), (to_regclass('public.applications'))) AS required(name) WHERE name IS NOT NULL;" 2>/dev/null)" \
+        || die "restored database core-table verification failed"
+    [[ "$required_tables" == "2" ]] || die "restored database is missing required identity tables"
+    ok "database restored from $(basename "$dump") at migration $restored_version"
 }

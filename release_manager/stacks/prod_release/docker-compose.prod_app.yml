@@ -267,6 +267,9 @@ services:
       seed:
         condition: service_completed_successfully
     networks:
+      # SMTP needs outbound access. This dedicated bridge has no frontend peers
+      # and the worker publishes no ports.
+      - prod_egress
       - prod_internal
 
   sips-worker:
@@ -326,6 +329,10 @@ networks:
   # Reachable from the host loopback via published ports; fronted by nginx.
   prod_frontend:
     name: ${COMPOSE_PROJECT_NAME:-boe_prod}_frontend
+  # Outbound-only bridge for SMTP delivery; no service other than email-worker
+  # is attached to this network.
+  prod_egress:
+    name: ${COMPOSE_PROJECT_NAME:-boe_prod}_egress
   # internal: true — no gateway, no route off-host. The database lives here.
   prod_internal:
     name: ${COMPOSE_PROJECT_NAME:-boe_prod}_internal

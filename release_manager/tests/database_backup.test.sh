@@ -10,6 +10,8 @@ source "$ROOT_DIR/release_manager/lib/ui.sh"
 source "$ROOT_DIR/release_manager/stacks/_shared/_boe_lib.sh"
 # shellcheck source=../stacks/_shared/_boe_rollback.sh
 source "$ROOT_DIR/release_manager/stacks/_shared/_boe_rollback.sh"
+# shellcheck source=../stacks/_shared/_boe_deploy.sh
+source "$ROOT_DIR/release_manager/stacks/_shared/_boe_deploy.sh"
 
 TEST_DIR="$(mktemp -d)"
 trap 'rm -rf "$TEST_DIR"' EXIT
@@ -129,6 +131,18 @@ restore_out="$( (boe_rollback_restore_database "1.0.0" true </dev/null) 2>&1 )" 
 grep -q 'interactive terminal' <<< "$restore_out" \
     || fail_test 'production --restore-db --yes did not demand the typed RESTORE confirmation'
 
+# A real pseudo-terminal refusal must abort nonzero before any database command.
+: > "$docker_log"
+restore_command="source '$ROOT_DIR/release_manager/lib/ui.sh'; source '$ROOT_DIR/release_manager/stacks/_shared/_boe_lib.sh'; source '$ROOT_DIR/release_manager/stacks/_shared/_boe_rollback.sh'; P[rollback_db]='$TEST_DIR/rollback-db'; P[has_database]=true; P[environment]=production; P[container_prefix]=boe-dev; P[docker]='$fake_docker'; BOE_EFFECTIVE_ENV='$env_file'; boe_rollback_restore_database 1.0.0 true"
+if decline_out="$(printf 'NO\n' | script -qec "bash -c \"$restore_command\"" /dev/null 2>&1)"; then
+    fail_test 'declining typed RESTORE returned success'
+fi
+grep -q 'rollback target was not started' <<< "$decline_out" \
+    || fail_test 'declining typed RESTORE did not report an aborted rollback'
+if grep -q 'pg_restore\|psql' "$docker_log"; then
+    fail_test 'declining typed RESTORE reached a database mutation command'
+fi
+
 # ── restore safety: a snapshot without verifiable provenance is refused ──────
 orphan_dir="${P[rollback_db]}/2.0.0"
 mkdir -p "$orphan_dir"
@@ -148,5 +162,35 @@ if grep -q '<<SQL' "$ROLLBACK_LIB"; then
 fi
 grep -q ':"db"' "$ROLLBACK_LIB" \
     || fail_test 'the restore SQL does not use psql identifier quoting for the database name'
+
+# ── migration 025 rollback safety ──────────────────────────────────────────
+grep -q 'boe_rollback_requires_database_restore' "$ROLLBACK_LIB" \
+    || fail_test 'rollback does not guard the migration-025 compatibility boundary'
+boe_rollback_requires_database_restore 0.8.8 0.8.7 \
+    || fail_test 'rollback guard missed the v0.8.8 to v0.8.7 boundary'
+if boe_rollback_requires_database_restore 0.8.8 0.8.8-dev.1; then
+    fail_test 'rollback guard treated the v0.8.8 schema family as incompatible'
+fi
+if boe_rollback_requires_database_restore 0.8.7 0.8.6; then
+    fail_test 'rollback guard applied migration 025 before its release boundary'
+fi
+boe_restored_schema_is_compatible 0.8.7 0 \
+    || fail_test 'pre-025 snapshot was rejected for a pre-025 target'
+if boe_restored_schema_is_compatible 0.8.7 1; then
+    fail_test 'migration-025 snapshot was accepted for a pre-025 target'
+fi
+DEPLOY_LIB="$ROOT_DIR/release_manager/stacks/_shared/_boe_deploy.sh"
+grep -q 'boe_rollback_requires_database_restore "$attempted" "$previous"' "$DEPLOY_LIB" \
+    || fail_test 'failed-deploy auto-rollback bypasses the migration-025 guard'
+guard_line="$(grep -n 'boe_rollback_requires_database_restore "$attempted" "$previous"' "$DEPLOY_LIB" | cut -d: -f1)"
+auto_start_line="$(grep -n 'BOE_VERSION_FOR_COMPOSE="$previous"' "$DEPLOY_LIB" | cut -d: -f1)"
+[[ -n "$guard_line" && -n "$auto_start_line" && "$guard_line" -lt "$auto_start_line" ]] \
+    || fail_test 'failed-deploy boundary guard runs after auto-rollback startup'
+grep -q 'boe_stop_database_consumers' "$ROLLBACK_LIB" \
+    || fail_test 'database restore does not isolate postgres from app/workers'
+restore_line="$(grep -n 'boe_rollback_restore_database "$TARGET"' "$ROLLBACK_LIB" | head -1 | cut -d: -f1)"
+start_line="$(grep -n 'compose up -d --remove-orphans' "$ROLLBACK_LIB" | head -1 | cut -d: -f1)"
+[[ -n "$restore_line" && -n "$start_line" && "$restore_line" -lt "$start_line" ]] \
+    || fail_test 'the rolled-back application starts before database restoration completes'
 
 printf 'PASS: database backup uses the plain docker exec CLI contract\n'

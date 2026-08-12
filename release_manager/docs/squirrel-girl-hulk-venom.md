@@ -1,5 +1,11 @@
 # Plan: Rebuild Client Onboarding → Approval → APK Email → OTP Verification (KYC Gate)
 
+> **Completion note (2026-08-12):** Phases 1, 2, and 3 are complete on the
+> development stack at v0.8.8. The original discovery and execution plan below
+> is retained as historical context. Current evidence, the SMTP-egress incident
+> and fix, test results, remaining operator action, and the final §26 report are
+> in `ONBOARDING_REBUILD_PHASE2_3_HANDOFF.md`.
+
 ## Current state (verified by exploration)
 
 **Backend** (`backend_controller`, Fastify 5 + Kysely/Postgres, TS ESM):
