@@ -1,11 +1,23 @@
 import { describe, expect, test, vi } from "vitest"
 
+import { SEED_PERMISSIONS } from "../db/seedCatalog.js"
 import {
   resolveSeedAuthConfig,
   runSeedAuth,
   type SeedAuthClient,
   type SeedAuthConfig,
 } from "./seedAuth.js"
+
+describe("onboarding permission catalog", () => {
+  test("does not seed permissions for removed review, invitation, or manual KYC workflows", () => {
+    const permissionCodes = SEED_PERMISSIONS.map((permission) => permission.code)
+
+    expect(permissionCodes).not.toContain("applications.review")
+    expect(permissionCodes).not.toContain("invitations.manage")
+    expect(permissionCodes).not.toContain("kyc.read")
+    expect(permissionCodes).not.toContain("kyc.review")
+  })
+})
 
 const baseConfig: SeedAuthConfig = {
   enabled: true,
@@ -195,6 +207,20 @@ describe("runSeedAuth default client", () => {
     const result = await runSeedAuth(pool, { ...withClient, isProduction: true, allowProduction: false }, fakeHasher)
     expect(result).toMatchObject({ adminSeeded: false, clientSeeded: false, skipped: "production_not_allowed" })
     expect(calls.some((c) => c.text.startsWith("INSERT INTO users"))).toBe(false)
+  })
+
+  test("refuses a password the login route would reject as too short", async () => {
+    const { pool, calls } = createFakePool({ userExists: false, credentialExists: false })
+    // 9 characters: hashes fine, but passwordInputSchema demands 12-128, so every
+    // login would fail at request validation before the hash was compared.
+    await expect(
+      runSeedAuth(pool, { ...withClient, clientPassword: "short1234" }, fakeHasher),
+    ).rejects.toThrow(/SEED_CLIENT_PASSWORD the login route would reject/u)
+    expect(calls.some((c) => c.text.startsWith("INSERT INTO user_credentials"))).toBe(false)
+
+    await expect(
+      runSeedAuth(pool, { ...withClient, adminPassword: "short1234" }, fakeHasher),
+    ).rejects.toThrow(/ADMIN_PASSWORD\/SEED_ADMIN_PASSWORD the login route would reject/u)
   })
 
   test("resolves client fields from the environment with defaults", () => {

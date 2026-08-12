@@ -34,37 +34,13 @@ import SkeletonTableRow from '../components/SkeletonTableRow.jsx';
 import { fmtDateTime, fmtInt } from '../helpers/formatters.js';
 import { initials } from '../helpers/formatters.js';
 
-function ApprovalsScreen({ rows = [], stats = {}, loading = false, onReview, onApprove, onUserDetail, onNavigateToUsers, busy = false }) {
+function ApprovalsScreen({ rows = [], loading = false, onApprove, onReject, onNavigateToUsers, busy = false }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
 
-  const filteredRows = rows.filter((r) => {
+  const visibleRows = rows.filter((r) => {
     const q = searchQuery.trim().toLowerCase();
-    const matchesSearch = !q || r.name?.toLowerCase().includes(q) || r.email?.toLowerCase().includes(q);
-    const matchesStatus = statusFilter === 'all' || String(r.status || '').toLowerCase() === statusFilter.toLowerCase();
-    return matchesSearch && matchesStatus;
+    return !q || r.name?.toLowerCase().includes(q) || r.email?.toLowerCase().includes(q);
   });
-
-  const visibleRows = filteredRows;
-
-  /*
-   * An unconfirmed email no longer blocks approval outright — it requires the
-   * reviewer to acknowledge it, which the review panel asks for. The inline
-   * Approve button cannot collect that acknowledgement, so these rows are sent
-   * through Review instead of being given a one-click action that would fail.
-   */
-  const awaitingEmail = (row) =>
-    String(row.status || '').toLowerCase() === 'pending_email_verification' || !row.emailVerifiedAt;
-
-  /*
-   * Every tile counts the queue actually loaded. They previously read
-   * `stats.approvedTotal` / `stats.rejectedTotal`, which no endpoint supplies —
-   * and because the formatter renders a missing number as "0", the screen stated
-   * that there were zero approved clients, which is a claim rather than a gap.
-   */
-  const awaitingEmailCount = rows.filter(awaitingEmail).length;
-  const inReviewCount = rows.filter((row) => String(row.status || '').toLowerCase() === 'in_review').length;
-  const readyCount = rows.length - awaitingEmailCount - inReviewCount;
 
   /*
    * Export what the operator is looking at, filters included — an export that
@@ -72,7 +48,7 @@ function ApprovalsScreen({ rows = [], stats = {}, loading = false, onReview, onA
    * revoked in the handler so nothing is held after the download starts.
    */
   function exportCsv() {
-    const header = ['Name', 'Email', 'Phone', 'Status', 'Email confirmed', 'Signed up'];
+    const header = ['Name', 'Email', 'Phone', 'Status', 'Signed up'];
     const cell = (value) => `"${String(value ?? '').replace(/"/gu, '""')}"`;
     const csv = [
       header.map(cell).join(','),
@@ -82,7 +58,6 @@ function ApprovalsScreen({ rows = [], stats = {}, loading = false, onReview, onA
           row.email,
           row.phone,
           row.status,
-          row.emailVerifiedAt ? 'yes' : 'no',
           row.createdAt,
         ]
           .map(cell)
@@ -104,19 +79,9 @@ function ApprovalsScreen({ rows = [], stats = {}, loading = false, onReview, onA
     <div className="adm-screen">
       <div className="adm-stats">
         {loading ? (
-          <>
-            <SkeletonTile />
-            <SkeletonTile />
-            <SkeletonTile />
-            <SkeletonTile />
-          </>
+          <SkeletonTile />
         ) : (
-          <>
-            <StatTile label="Ready for review" value={fmtInt(readyCount)} icon={Clock} tone="amber" hint="Email confirmed, awaiting your decision" />
-            <StatTile label="In review" value={fmtInt(inReviewCount)} icon={ClipboardList} tone="slate" hint="Opened for review, not yet decided" />
-            <StatTile label="Email not confirmed" value={fmtInt(awaitingEmailCount)} icon={Mail} tone="slate" hint="Applicant has not opened the link yet" />
-            <StatTile label="Total waiting" value={fmtInt(rows.length)} icon={Inbox} tone="slate" hint="Everything in the queue" />
-          </>
+          <StatTile label="Pending approval" value={fmtInt(rows.length)} icon={Inbox} tone="amber" hint="Submitted on the website, awaiting your decision" />
         )}
       </div>
 
@@ -149,15 +114,6 @@ function ApprovalsScreen({ rows = [], stats = {}, loading = false, onReview, onA
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <div className="adm-filter">
-            <I icon={Filter} size={14} />
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Filter by status">
-              <option value="all">All pending</option>
-              <option value="submitted">Ready for review</option>
-              <option value="in_review">In review</option>
-              <option value="pending_email_verification">Email not confirmed</option>
-            </select>
-          </div>
         </div>
 
         <div className="adm-table-scroll">
@@ -183,8 +139,8 @@ function ApprovalsScreen({ rows = [], stats = {}, loading = false, onReview, onA
               {!loading && visibleRows.length === 0 && (
                 <EmptyTableRow colSpan={4}>
                   {rows.length === 0
-                    ? 'No signups are waiting. A new application appears here as soon as it is submitted on the website, even before the applicant confirms their email.'
-                    : 'No records match the current filter.'}
+                    ? 'No signups are waiting. A new application appears here as soon as it is submitted on the website.'
+                    : 'No records match the current search.'}
                 </EmptyTableRow>
               )}
               {visibleRows.map((r) => (
@@ -205,19 +161,8 @@ function ApprovalsScreen({ rows = [], stats = {}, loading = false, onReview, onA
                     <ApprovalStatusBadge status={r.status} />
                   </td>
                   <td className="adm-col-actions" data-label="">
-                    <button className="be-btn be-btn-secondary be-btn-sm" onClick={() => onReview?.(r)}>Review</button>
-                    <button className="be-btn be-btn-ghost be-btn-sm" onClick={() => onUserDetail?.(r)}>View</button>
-                    {awaitingEmail(r) ? (
-                      <button
-                        className="be-btn be-btn-primary be-btn-sm"
-                        onClick={() => onReview?.(r)}
-                        title="This applicant has not confirmed their email. Open Review to approve them anyway."
-                      >
-                        Review to approve
-                      </button>
-                    ) : (
-                      <button className="be-btn be-btn-primary be-btn-sm" onClick={() => onApprove?.(r)} disabled={busy}>Approve</button>
-                    )}
+                    <button className="be-btn be-btn-primary be-btn-sm" onClick={() => onApprove?.(r)} disabled={busy}>Approve</button>
+                    <button className="be-btn be-btn-secondary be-btn-sm" onClick={() => onReject?.(r)} disabled={busy}>Reject</button>
                   </td>
                 </tr>
               ))}

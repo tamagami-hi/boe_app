@@ -60,9 +60,7 @@ const ServerConfigSchema = z.object({
   SNS_TOPIC_ARN: z.string().trim().optional(),
   SES_CONFIGURATION_SET: z.string().trim().optional(),
   PROVIDER_EVENT_TTL_MS: z.coerce.number().int().min(1).default(7 * DAY_MS),
-  VERIFICATION_TOKEN_TTL_MS: z.coerce.number().int().min(1).default(DAY_MS),
   IDEMPOTENCY_TTL_MS: z.coerce.number().int().min(1).default(DAY_MS),
-  ACTIVATION_INVITE_TTL_MS: z.coerce.number().int().min(1).default(7 * DAY_MS),
   // Payment gateway. `manual` is the built-in mock provider (instant success,
   // auto-settled by the worker). A real gateway (e.g. `razorpay`) supplies its
   // API credentials and a webhook signing secret; when the secret is present the
@@ -84,30 +82,15 @@ const ServerConfigSchema = z.object({
   // fails closed on its own. The deploy scripts assert the key is present, so
   // the failure still surfaces before containers are replaced.
   NEWUSER_SHARED_SECRET: z.string().trim().min(32).optional(),
-  /**
-   * Cooldown before a resubmitted signup may queue another verification email
-   * for the same application. Bounds how much mail one address can be made to
-   * receive by repeated form submissions; see submitApplication.
-   */
-  SIGNUP_VERIFICATION_RESEND_COOLDOWN_MS: z.coerce
-    .number()
-    .int()
-    .min(0)
-    .default(15 * 60 * 1000),
   // Transactional email (KYC codes). The company mailbox is both the SMTP login
-  // and the `From`. When SMTP is not fully configured, a local/log sender is used
-  // (dev/test). Decision 10.
+  // and the `From`. An incomplete SMTP configuration fails delivery closed.
   KYC_EMAIL_FROM: z.string().trim().optional(),
   EMAIL_SMTP_HOST: z.string().trim().optional(),
   EMAIL_SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
   EMAIL_SMTP_USER: z.string().trim().optional(),
   EMAIL_SMTP_PASSWORD: z.string().optional(),
   EMAIL_SMTP_SECURE: z.enum(["true", "false"]).default("false"),
-  // Where onboarding emails point. Verification continues on the public site;
-  // activation happens in the app, which has no deep-link scheme yet, so the
-  // invite carries the code as text unless an activation URL is configured.
-  PUBLIC_LANDING_ORIGIN: z.string().trim().optional(),
-  APP_ACTIVATION_URL: z.string().trim().optional(),
+  // Where onboarding emails point.
   SUPPORT_EMAIL: z.string().trim().optional(),
   // Outbox email delivery worker knobs (mirrors the payment worker).
   EMAIL_WORKER_CLAIM_LIMIT: z.coerce.number().int().min(1).max(200).default(25),
@@ -130,7 +113,12 @@ const ServerConfigSchema = z.object({
   // GET /v1/app/update answers "no update" instead of failing, so a deployment
   // that has not been given the mount still boots and still serves apps.
   APK_RELEASE_ROOT: z.string().trim().optional(),
-  APK_DOWNLOAD_BASE_URL: z.string().trim().optional(),
+  APK_DOWNLOAD_BASE_URL: z
+    .enum([
+      "https://dev-app.beonedge.in/downloads",
+      "https://app.beonedge.in/downloads",
+    ])
+    .optional(),
 })
 
 export interface ServerConfig {
@@ -150,7 +138,6 @@ export interface ServerConfig {
    */
   readonly signup: {
     readonly sharedSecret: string | null
-    readonly verificationResendCooldownMs: number
   }
   readonly payments: {
     readonly provider: string
@@ -171,10 +158,8 @@ export interface ServerConfig {
       readonly password: string
       readonly secure: boolean
     } | null
-    /** Link targets baked into onboarding email bodies. */
+    /** Addresses baked into onboarding email bodies. */
     readonly links: {
-      readonly landingOrigin: string | null
-      readonly activationUrl: string | null
       readonly supportAddress: string | null
     }
     readonly worker: { readonly claimLimit: number; readonly leaseMs: number }
@@ -186,9 +171,7 @@ export interface ServerConfig {
     readonly validityMs: number
   }
   readonly ttls: {
-    readonly verificationTokenTtlMs: number
     readonly idempotencyTtlMs: number
-    readonly activationInviteTtlMs: number
   }
   /** Source of truth for the in-app update check; see publicAppRoutes.ts. */
   readonly appUpdate: {
@@ -278,7 +261,6 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
     emailConfigured,
     signup: {
       sharedSecret: nonEmpty(parsed.NEWUSER_SHARED_SECRET),
-      verificationResendCooldownMs: parsed.SIGNUP_VERIFICATION_RESEND_COOLDOWN_MS,
     },
     payments: {
       provider: parsed.PAYMENT_PROVIDER,
@@ -305,8 +287,6 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
             }
           : null,
       links: {
-        landingOrigin: nonEmpty(parsed.PUBLIC_LANDING_ORIGIN),
-        activationUrl: nonEmpty(parsed.APP_ACTIVATION_URL),
         supportAddress: nonEmpty(parsed.SUPPORT_EMAIL),
       },
       worker: {
@@ -321,9 +301,7 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
       validityMs: parsed.KYC_VALIDITY_MS,
     },
     ttls: {
-      verificationTokenTtlMs: parsed.VERIFICATION_TOKEN_TTL_MS,
       idempotencyTtlMs: parsed.IDEMPOTENCY_TTL_MS,
-      activationInviteTtlMs: parsed.ACTIVATION_INVITE_TTL_MS,
     },
     appUpdate: {
       releaseRoot: nonEmpty(parsed.APK_RELEASE_ROOT)?.replace(/\/+$/u, "") ?? null,

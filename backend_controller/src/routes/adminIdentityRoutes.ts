@@ -2,9 +2,13 @@
  * Admin identity/compliance routes (spec 04 §3.2). Web-cookie transport with
  * RBAC permission checks (§4.5); unsafe methods additionally require the
  * synchronizer CSRF token and an Idempotency-Key. List endpoints use the
- * authenticated opaque cursor. The review/decision/resend mutations run under
- * the database idempotency protocol so a replay returns the first committed
- * result.
+ * authenticated opaque cursor. The decision mutation runs under the database
+ * idempotency protocol so a replay returns the first committed result.
+ *
+ * The application decision is a single step: `POST .../decision?outcome=`
+ * straight from `submitted`. There is no review handshake, no reason the admin
+ * has to supply, and no activation invite to resend — approval always produces
+ * an active account with the signup credential and the account-approved mail.
  */
 import { createHash } from "node:crypto"
 
@@ -19,14 +23,13 @@ import type { Database } from "../db/types.js"
 import type { ApplicationState } from "../db/types.js"
 import { resolveAdminPrincipal, requireAnyPermission, hasPermission } from "../domain/admin/adminAccess.js"
 import { decideApplication } from "../domain/admin/decideApplication.js"
-import { resendActivationInvite } from "../domain/admin/resendActivationInvite.js"
-import { startApplicationReview } from "../domain/admin/startApplicationReview.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { computeFilterHash, decodeCursor, encodeCursor } from "../http/cursor.js"
 import type { PageMeta } from "../http/envelope.js"
 import { AppError } from "../http/errorCatalog.js"
 import { executeIdempotent, idempotencyKeySchema } from "../http/idempotencyProtocol.js"
 import { parseOrThrow } from "../http/validation.js"
+import { latestPublishedApkUrl, type ReleaseFeed } from "../release/releaseFeed.js"
 import type { ApplicationWriteRepository } from "../repositories/applicationRepository.js"
 import type { ApplicationReviewWriteRepository } from "../repositories/applicationReviewRepository.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
@@ -34,12 +37,10 @@ import type { CredentialWriteRepository } from "../repositories/credentialReposi
 import type { EmailDeliveryWriteRepository } from "../repositories/emailDeliveryRepository.js"
 import type { OutboxWriteRepository } from "../repositories/outboxRepository.js"
 import type { UserWriteRepository } from "../repositories/userRepository.js"
-import type { ActivationInviteWriteRepository } from "../repositories/activationInviteRepository.js"
 
 export interface AdminIdentityConfig {
   readonly cursorKey: Buffer
   readonly idempotencyTtlMs: number
-  readonly activationInviteTtlMs: number
   readonly sesConfigurationSet: string
 }
 
@@ -50,11 +51,15 @@ export interface AdminIdentityDeps {
   readonly clock: () => Date
   readonly crypto: CryptoContext
   readonly config: AdminIdentityConfig
+  /**
+   * The published-APK feed the approval mail's download link is resolved from —
+   * the same sidecar/base-URL pair `GET /v1/app/update` serves.
+   */
+  readonly appUpdate: ReleaseFeed
   readonly applicationRepository: ApplicationWriteRepository
   readonly applicationReviewRepository: ApplicationReviewWriteRepository
   readonly userRepository: UserWriteRepository
   readonly credentialRepository: CredentialWriteRepository
-  readonly activationInviteRepository: ActivationInviteWriteRepository
   readonly outboxRepository: OutboxWriteRepository
   readonly emailDeliveryRepository: EmailDeliveryWriteRepository
   readonly auditRepository: AuditWriteRepository
@@ -64,36 +69,14 @@ export interface AdminIdentityDeps {
 const APPLICATIONS_ROUTE = "/v1/admin/applications"
 const EMAIL_DELIVERIES_ROUTE = "/v1/admin/email-deliveries"
 const MAX_QUEUE_INTERVAL_MS = 366 * 24 * 60 * 60 * 1000
-// `pending_email_verification` is included deliberately. A signup that arrives
-// from the marketing site starts in that state and only becomes `submitted` once
-// the visitor redeems the emailed token. Omitting it here meant the console had
-// no way to ask about those rows at all — `?status=pending_email_verification`
-// was a 400 — so an operator who had just been told "I signed up" saw an empty
-// approvals queue and could not tell a signup that never arrived from one that
-// arrived and is waiting on its confirmation email. Approval itself is still
-// refused for them: decideApplication requires email_verified_at to be set.
-const WIRE_STATES: readonly ApplicationState[] = [
-  "pending_email_verification",
-  "submitted",
-  "in_review",
-  "approved",
-  "rejected",
-  "withdrawn",
-]
+const WIRE_STATES: readonly ApplicationState[] = ["submitted", "approved", "rejected", "withdrawn"]
 
 const iso = (value: Date | string): string => new Date(value).toISOString()
 const versionNumber = (value: unknown): number => Number(value)
 
 // --- validation schemas ---
 
-const statusEnum = z.enum([
-  "pending_email_verification",
-  "submitted",
-  "in_review",
-  "approved",
-  "rejected",
-  "withdrawn",
-])
+const statusEnum = z.enum(["submitted", "approved", "rejected", "withdrawn"])
 const deliveryStateEnum = z.enum([
   "queued",
   "sending",
@@ -103,9 +86,7 @@ const deliveryStateEnum = z.enum([
   "permanent_failed",
   "cancelled",
 ])
-const templateKeyEnum = z.enum(["verify_email", "activation_invite", "application_rejected", "account_approved"])
-const reasonCodeSchema = z.string().trim().min(1).max(80)
-const reasonDetailSchema = z.string().trim().min(1).max(2000)
+const templateKeyEnum = z.enum(["application_rejected", "account_approved"])
 const limitSchema = z.coerce.number().int().min(1).max(100).default(25)
 
 const applicationsQuerySchema = z
@@ -133,27 +114,14 @@ const emailDeliveriesQuerySchema = z
   })
   .strict()
 
-const reviewBodySchema = z.object({ expectedVersion: z.number().int().positive() }).strict()
-const decisionBodySchema = z
-  .object({
-    reasonCode: reasonCodeSchema,
-    reasonDetail: reasonDetailSchema.optional(),
-    /**
-     * The reviewer's explicit acknowledgement that this applicant never confirmed
-     * their email address. Absent means "no", so an old client cannot approve an
-     * unconfirmed applicant by omission.
-     */
-    allowUnverifiedEmail: z.boolean().default(false),
-  })
-  .strict()
+/**
+ * The decision takes no input: the admin chooses Approve or Reject and nothing
+ * else. An empty object is accepted so a client that posts `{}` and one that
+ * posts no body behave identically; anything else is refused rather than
+ * silently dropped.
+ */
+const decisionBodySchema = z.object({}).strict()
 const decisionQuerySchema = z.object({ outcome: z.enum(["approved", "rejected"]) }).strict()
-const resendBodySchema = z
-  .object({
-    reasonCode: reasonCodeSchema,
-    reasonDetail: reasonDetailSchema.optional(),
-    expectedInviteId: z.string().uuid(),
-  })
-  .strict()
 const uuidParam = z.string().uuid()
 
 // --- helpers ---
@@ -168,16 +136,6 @@ const requireIdempotencyKey = (request: FastifyRequest): string => {
     })
   }
   return parsed.data
-}
-
-const parseIfMatchVersion = (request: FastifyRequest): number => {
-  const value = request.headers["if-match"]
-  const match = typeof value === "string" ? /^"?(\d+)"?$/u.exec(value.trim()) : null
-  const captured = match?.[1]
-  if (captured === undefined) {
-    throw new AppError("VALIDATION_FAILED", { fields: { "if-match": ["a quoted integer version is required"] } })
-  }
-  return Number(captured)
 }
 
 const hashRequest = (canonical: Readonly<Record<string, unknown>>): Buffer =>
@@ -248,11 +206,10 @@ const mapApplicationListItem = (application: Application): Record<string, unknow
     phone: isPiiTombstoned ? `tombstone:${application.id}` : application.phone_e164,
     isPiiTombstoned,
     status: application.state,
-    emailVerifiedAt: application.email_verified_at === null ? null : iso(application.email_verified_at),
     /**
      * Whether the applicant chose a password at signup. Never the hash itself —
-     * the console only needs to know which approval shape it is about to cause:
-     * an account that can be signed into immediately, or an emailed invite.
+     * the console only needs to know approval will produce a sign-in-ready
+     * account.
      */
     hasSignupPassword: application.password_hash !== null,
     createdAt: iso(application.created_at),
@@ -282,8 +239,6 @@ const mapDeliveryAdmin = (delivery: EmailDelivery, full: boolean): Record<string
     outboxEventId: delivery.outbox_event_id,
     applicationId: delivery.application_id,
     userId: delivery.user_id,
-    verificationTokenId: delivery.verification_token_id,
-    activationInviteId: delivery.activation_invite_id,
     templateVersion: delivery.template_version,
     sesConfigurationSet: delivery.ses_configuration_set,
     sesMessageId: delivery.ses_message_id,
@@ -383,59 +338,39 @@ const getApplicationDetail = async (deps: AdminIdentityDeps, request: FastifyReq
   )
 }
 
-const postReview = async (deps: AdminIdentityDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
-  requireAnyPermission(principal, ["applications.review"])
-  const applicationId = parseOrThrow(uuidParam, (request.params as { applicationId?: unknown }).applicationId)
-  const idempotencyKey = requireIdempotencyKey(request)
-  const body = parseOrThrow(reviewBodySchema, request.body)
-  const now = deps.clock()
-
-  const outcome = await deps.unitOfWork.execute((tx) =>
-    executeIdempotent<Record<string, unknown>>({
-      repository: deps.idempotencyRepository,
-      tx,
-      scope: adminScope(principal.userId, `${APPLICATIONS_ROUTE}/:id/review`, idempotencyKey),
-      requestHash: hashRequest({ applicationId, expectedVersion: body.expectedVersion }),
-      now: now.toISOString(),
-      expiresAt: new Date(now.getTime() + deps.config.idempotencyTtlMs).toISOString(),
-      execute: async () => {
-        const { application } = await startApplicationReview(
-          tx,
-          { applicationRepository: deps.applicationRepository, auditRepository: deps.auditRepository, clock: deps.clock },
-          { applicationId, reviewerUserId: principal.userId, expectedVersion: body.expectedVersion, requestId: request.requestId },
-        )
-        return {
-          status: 200,
-          body: {
-            applicationId: application.id,
-            status: "in_review",
-            version: versionNumber(application.version),
-            reviewStartedAt: iso(application.review_started_at ?? now),
-          },
-        }
-      },
-    }),
-  )
-  return reply.sendData(outcome.body, { status: outcome.status, ...(outcome.replay ? { idempotencyReplay: true } : {}) })
-}
-
 const postDecision = async (deps: AdminIdentityDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
   requireAnyPermission(principal, ["applications.decide"])
   const applicationId = parseOrThrow(uuidParam, (request.params as { applicationId?: unknown }).applicationId)
   const { outcome: decision } = parseOrThrow(decisionQuerySchema, request.query)
   const idempotencyKey = requireIdempotencyKey(request)
-  const expectedVersion = parseIfMatchVersion(request)
-  const body = parseOrThrow(decisionBodySchema, request.body)
+  parseOrThrow(decisionBodySchema, request.body ?? {})
   const now = deps.clock()
+
+  /*
+   * The approval mail carries the official client APK download link, resolved
+   * from the same release feed the app's update check reads. Resolved here,
+   * before the transaction: it is a filesystem read, not domain state, and the
+   * mail must never block the decision — with nothing published the email
+   * still goes out (without a link) and the gap is logged.
+   */
+  let apkDownloadUrl: string | null = null
+  if (decision === "approved") {
+    apkDownloadUrl = await latestPublishedApkUrl(deps.appUpdate, "client")
+    if (apkDownloadUrl === null) {
+      request.log.warn(
+        { applicationId },
+        "no published client APK found; the account-approved email will be sent without a download link",
+      )
+    }
+  }
 
   const result = await deps.unitOfWork.execute((tx) =>
     executeIdempotent<Record<string, unknown>>({
       repository: deps.idempotencyRepository,
       tx,
       scope: adminScope(principal.userId, `${APPLICATIONS_ROUTE}/:id/decision`, idempotencyKey),
-      requestHash: hashRequest({ applicationId, decision, expectedVersion, reasonCode: body.reasonCode, reasonDetail: body.reasonDetail ?? null, allowUnverifiedEmail: body.allowUnverifiedEmail }),
+      requestHash: hashRequest({ applicationId, decision }),
       now: now.toISOString(),
       expiresAt: new Date(now.getTime() + deps.config.idempotencyTtlMs).toISOString(),
       execute: async () => {
@@ -446,25 +381,18 @@ const postDecision = async (deps: AdminIdentityDeps, request: FastifyRequest, re
             applicationReviewRepository: deps.applicationReviewRepository,
             userRepository: deps.userRepository,
             credentialRepository: deps.credentialRepository,
-            activationInviteRepository: deps.activationInviteRepository,
             outboxRepository: deps.outboxRepository,
             emailDeliveryRepository: deps.emailDeliveryRepository,
             auditRepository: deps.auditRepository,
             crypto: deps.crypto,
             clock: deps.clock,
-            config: {
-              activationInviteTtlMs: deps.config.activationInviteTtlMs,
-              sesConfigurationSet: deps.config.sesConfigurationSet,
-            },
+            config: { sesConfigurationSet: deps.config.sesConfigurationSet },
           },
           {
             applicationId,
             reviewerUserId: principal.userId,
             decision,
-            reasonCode: body.reasonCode,
-            reasonDetail: body.reasonDetail ?? null,
-            expectedVersion,
-            allowUnverifiedEmail: body.allowUnverifiedEmail,
+            apkDownloadUrl,
             requestId: request.requestId,
             idempotencyKey,
           },
@@ -476,63 +404,10 @@ const postDecision = async (deps: AdminIdentityDeps, request: FastifyRequest, re
             status: decided.application.state,
             version: versionNumber(decided.application.version),
             ...(decided.user === null ? {} : { userId: decided.user.id }),
-            ...(decided.activationInvite === null ? {} : { activationInviteId: decided.activationInvite.id }),
-            // Tells the console which approval shape happened, so it can say
-            // "they can sign in now" instead of "an invite was sent".
+            // Tells the console they can sign in now with the signup password.
             accountActivated: decided.accountActivated,
             emailDeliveryId: decided.emailDelivery.id,
             decidedAt: iso(decided.application.decided_at ?? now),
-          },
-        }
-      },
-    }),
-  )
-  return reply.sendData(result.body, { status: result.status, ...(result.replay ? { idempotencyReplay: true } : {}) })
-}
-
-const postResendInvite = async (deps: AdminIdentityDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
-  requireAnyPermission(principal, ["invitations.manage"])
-  const userId = parseOrThrow(uuidParam, (request.params as { userId?: unknown }).userId)
-  const idempotencyKey = requireIdempotencyKey(request)
-  const body = parseOrThrow(resendBodySchema, request.body)
-  const now = deps.clock()
-
-  const result = await deps.unitOfWork.execute((tx) =>
-    executeIdempotent<Record<string, unknown>>({
-      repository: deps.idempotencyRepository,
-      tx,
-      scope: adminScope(principal.userId, `/v1/admin/users/:userId/activation-invites/resend`, idempotencyKey),
-      requestHash: hashRequest({ userId, expectedInviteId: body.expectedInviteId, reasonCode: body.reasonCode }),
-      now: now.toISOString(),
-      expiresAt: new Date(now.getTime() + deps.config.idempotencyTtlMs).toISOString(),
-      execute: async () => {
-        const resent = await resendActivationInvite(
-          tx,
-          {
-            userRepository: deps.userRepository,
-            activationInviteRepository: deps.activationInviteRepository,
-            outboxRepository: deps.outboxRepository,
-            emailDeliveryRepository: deps.emailDeliveryRepository,
-            auditRepository: deps.auditRepository,
-            crypto: deps.crypto,
-            clock: deps.clock,
-            config: {
-              activationInviteTtlMs: deps.config.activationInviteTtlMs,
-              sesConfigurationSet: deps.config.sesConfigurationSet,
-            },
-          },
-          { userId, actorUserId: principal.userId, expectedInviteId: body.expectedInviteId, reasonCode: body.reasonCode, requestId: request.requestId },
-        )
-        return {
-          status: 202,
-          body: {
-            userId,
-            revokedInviteId: resent.revokedInviteId,
-            activationInviteId: resent.activationInvite.id,
-            emailDeliveryId: resent.emailDelivery.id,
-            status: "queued",
-            expiresAt: iso(resent.activationInvite.expires_at),
           },
         }
       },
@@ -614,14 +489,8 @@ export const registerAdminIdentityRoutes = (application: FastifyInstance, deps: 
   application.get(`${APPLICATIONS_ROUTE}/:applicationId`, async (request, reply) =>
     getApplicationDetail(deps, request, reply),
   )
-  application.post(`${APPLICATIONS_ROUTE}/:applicationId/review`, async (request, reply) =>
-    postReview(deps, request, reply),
-  )
   application.post(`${APPLICATIONS_ROUTE}/:applicationId/decision`, async (request, reply) =>
     postDecision(deps, request, reply),
-  )
-  application.post("/v1/admin/users/:userId/activation-invites/resend", async (request, reply) =>
-    postResendInvite(deps, request, reply),
   )
   application.get(EMAIL_DELIVERIES_ROUTE, async (request, reply) => listEmailDeliveries(deps, request, reply))
 }

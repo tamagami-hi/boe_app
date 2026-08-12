@@ -132,4 +132,23 @@ describe("parseServerConfig", () => {
   test("rejects a signup shared secret that is too short to be worth having", () => {
     expect(() => parseServerConfig({ ...validEnv(), NEWUSER_SHARED_SECRET: "short" })).toThrow()
   })
+
+  test.each([
+    "http://dev-app.beonedge.in/downloads",
+    "https://evil.example/downloads",
+    "https://dev-app.beonedge.in/not-downloads",
+    "https://dev-app.beonedge.in/downloads?redirect=evil",
+  ])("rejects non-canonical APK download base %s", (downloadBaseUrl) => {
+    expect(() => parseServerConfig({ ...validEnv(), APK_DOWNLOAD_BASE_URL: downloadBaseUrl })).toThrow(
+      /APK_DOWNLOAD_BASE_URL/u,
+    )
+  })
+
+  test.each([
+    "https://dev-app.beonedge.in/downloads",
+    "https://app.beonedge.in/downloads",
+  ])("accepts canonical APK download base %s", (downloadBaseUrl) => {
+    expect(parseServerConfig({ ...validEnv(), APK_DOWNLOAD_BASE_URL: downloadBaseUrl }).appUpdate.downloadBaseUrl)
+      .toBe(downloadBaseUrl)
+  })
 })

@@ -24,7 +24,7 @@ const PRESENTATION = {
     label: 'Code sent',
     tone: 'paused',
     Icon: MailCheck,
-    summary: 'We emailed you a six-digit code. Enter it to finish verification.',
+    summary: 'We emailed you a 6-character code. Enter it exactly as shown to finish verification.',
     action: 'Enter code',
   },
   submitted: {

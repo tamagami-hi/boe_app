@@ -10,14 +10,11 @@ import { Wait } from "testcontainers"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 
 import { createAccessTokenService } from "../../src/auth/accessToken.js"
-import { createBreachChecker } from "../../src/auth/breachCheck.js"
-import { createCryptoContext, parseCryptoKeys } from "../../src/crypto/context.js"
+import { hashPassword } from "../../src/auth/passwordHasher.js"
 import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
-import { createActivationInviteRepository } from "../../src/repositories/activationInviteRepository.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
 import { createAuthSessionRepository } from "../../src/repositories/authSessionRepository.js"
-import { createCredentialRepository } from "../../src/repositories/credentialRepository.js"
 import { createUserRepository } from "../../src/repositories/userRepository.js"
 import { registerNativeAuthRoutes, type NativeAuthRouteDeps } from "../../src/routes/nativeAuthRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
@@ -27,7 +24,6 @@ import { runSeed } from "../../src/scripts/seed.js"
 let container: StartedPostgreSqlContainer
 let pool: Pool
 let app: FastifyInstance
-let activationToken: string
 
 const PASSWORD = "correct horse battery staple"
 const DEVICE = { installationId: randomUUID(), name: "Pixel", platform: "android" as const, appVersion: "1.2.3" }
@@ -40,8 +36,6 @@ interface NativeResult {
 }
 const dataOf = <T>(response: { json: () => unknown }): T =>
   (response.json() as { data: T }).data
-
-const b64 = (n: number): string => randomBytes(n).toString("base64")
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer("postgres:16-alpine")
@@ -59,18 +53,6 @@ beforeAll(async () => {
   await runSeed(pool)
 
   const database = createDatabase(pool)
-  const crypto = createCryptoContext(
-    parseCryptoKeys({
-      CRYPTO_TOKEN_HASH_KEY: b64(32),
-      CRYPTO_TOKEN_HASH_KEY_VERSION: "tk1",
-      CRYPTO_CONSENT_IP_HMAC_KEY: b64(32),
-      CRYPTO_CONSENT_IP_HMAC_KEY_VERSION: "ck1",
-      CRYPTO_RECIPIENT_HMAC_KEY: b64(32),
-      CRYPTO_RECIPIENT_HMAC_KEY_VERSION: "rk1",
-      CRYPTO_RECIPIENT_ENC_KEY: b64(32),
-      CRYPTO_RECIPIENT_ENC_KEY_VERSION: "ek1",
-    }),
-  )
   const keyPair = await generateKeyPair("ES256", { extractable: true })
   const accessTokenService = createAccessTokenService({
     issuer: "https://api.beonedge.test",
@@ -82,12 +64,8 @@ beforeAll(async () => {
 
   const deps: NativeAuthRouteDeps = {
     userRepository: createUserRepository(),
-    activationInviteRepository: createActivationInviteRepository(),
-    credentialRepository: createCredentialRepository(),
     authSessionRepository: createAuthSessionRepository(),
     auditRepository: createAuditRepository(),
-    crypto,
-    breachChecker: createBreachChecker("bypass"),
     accessTokenService,
     database,
     refreshKey: randomBytes(32),
@@ -98,24 +76,16 @@ beforeAll(async () => {
 
   app = createApplication({ logger: false, registerRoutes: (instance) => registerNativeAuthRoutes(instance, deps) })
 
-  // Seed an approved application + invited user + pending activation invite.
-  const appRow = await pool.query<{ id: string }>(
-    "insert into applications (email_normalized, phone_e164, full_name, state) values ('app@example.com','+14155550188','App User','approved') returning id",
-  )
-  const applicationId = appRow.rows[0]?.id
+  // Seed what an approval now produces: an active user with the signup password
+  // already in user_credentials. There is no activation step anymore.
   const userRow = await pool.query<{ id: string }>(
-    "insert into users (application_id, email_normalized, phone_e164, full_name, account_state) " +
-      "values ($1,'activate@example.com','+14155550123','Native User','invited') returning id",
-    [applicationId],
+    "insert into users (email_normalized, phone_e164, full_name, account_state, activated_at) " +
+      "values ('activate@example.com','+14155550123','Native User','active', now()) returning id",
   )
-  const userId = userRow.rows[0]?.id
-  const activation = crypto.generateVerificationToken()
-  activationToken = activation.token
-  await pool.query(
-    "insert into activation_invites (user_id, application_id, token_hash, token_key_version, expires_at) " +
-      "values ($1,$2,$3,$4, now() + interval '48 hours')",
-    [userId, applicationId, activation.hash, activation.keyVersion],
-  )
+  await pool.query("insert into user_credentials (user_id, password_hash) values ($1, $2)", [
+    userRow.rows[0]?.id,
+    await hashPassword(PASSWORD),
+  ])
 }, 200_000)
 
 afterAll(async () => {
@@ -125,39 +95,6 @@ afterAll(async () => {
 })
 
 describe("native authentication (integration)", () => {
-  test("activation creates an active user, credential, and session", async () => {
-    const response = await app.inject({
-      method: "POST",
-      url: "/v1/activations/complete",
-      payload: { token: activationToken, password: PASSWORD, device: DEVICE },
-    })
-    expect(response.statusCode).toBe(200)
-    const result = dataOf<NativeResult>(response)
-    expect(result.user.accountStatus).toBe("active")
-    expect(result.user.phoneMasked).toMatch(/^\+[1-9][0-9]{0,2}[*]{6}[0-9]{4}$/u)
-    expect(result.accessToken.length).toBeGreaterThan(100)
-    expect(result.refreshToken).toMatch(/^[A-Za-z0-9_-]{43}$/u)
-
-    const user = await pool.query<{ account_state: string }>(
-      "select account_state from users where email_normalized = 'activate@example.com'",
-    )
-    expect(user.rows[0]?.account_state).toBe("active")
-    const credential = await pool.query<{ c: number }>(
-      "select count(*)::int as c from user_credentials",
-    )
-    expect(credential.rows[0]?.c).toBe(1)
-  })
-
-  test("replaying activation returns TOKEN_ALREADY_USED", async () => {
-    const response = await app.inject({
-      method: "POST",
-      url: "/v1/activations/complete",
-      payload: { token: activationToken, password: PASSWORD, device: DEVICE },
-    })
-    expect(response.statusCode).toBe(409)
-    expect(response.json<{ error: { code: string } }>().error.code).toBe("TOKEN_ALREADY_USED")
-  })
-
   test("login succeeds and replaces the same-device session; wrong password is 401", async () => {
     const ok = await app.inject({
       method: "POST",
@@ -167,11 +104,15 @@ describe("native authentication (integration)", () => {
     expect(ok.statusCode).toBe(200)
     const session = dataOf<NativeResult>(ok)
     expect(session.sessionId).toBeDefined()
+    expect(session.user.accountStatus).toBe("active")
+    expect(session.user.phoneMasked).toMatch(/^\+[1-9][0-9]{0,2}[*]{6}[0-9]{4}$/u)
+    expect(session.accessToken.length).toBeGreaterThan(100)
+    expect(session.refreshToken).toMatch(/^[A-Za-z0-9_-]{43}$/u)
 
     const active = await pool.query<{ c: number }>(
       "select count(*)::int as c from auth_sessions where state = 'active' and channel = 'native'",
     )
-    expect(active.rows[0]?.c).toBe(1) // prior device session was revoked
+    expect(active.rows[0]?.c).toBe(1)
 
     const wrong = await app.inject({
       method: "POST",

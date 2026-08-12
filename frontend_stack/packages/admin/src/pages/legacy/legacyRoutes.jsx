@@ -7,7 +7,6 @@ import AuditLogScreen from '../../screens/AuditLogScreen.jsx';
 import EmailDeliveriesScreen from '../../screens/EmailDeliveriesScreen.jsx';
 import EnvironmentScreen from '../../screens/EnvironmentScreen.jsx';
 import HoldingsScreen from '../../screens/HoldingsScreen.jsx';
-import KycReviewScreen from '../../screens/KycReviewScreen.jsx';
 import MandatesScreen from '../../screens/MandatesScreen.jsx';
 import PaymentsScreen from '../../screens/PaymentsScreen.jsx';
 import TransactionsScreen from '../../screens/TransactionsScreen.jsx';
@@ -21,21 +20,21 @@ import UserDetailsListScreen from '../../screens/UserDetailsListScreen.jsx';
 // Retired here (canonical decisions, session-2 audit §C): risk profiles (no
 // client risk profiling), the reconciliation ledger and capital-transaction tab
 // (spec §8 removed the synthetic ledger), the SIP control-request queue (SIP
-// state changes are commands, not a request inbox), and support tickets
-// (out of MVP, no schema). Their screens are deleted rather than left dark.
+// state changes are commands, not a request inbox), support tickets
+// (out of MVP, no schema), and the manual KYC review queue (KYC is the
+// in-app OTP email verification, which self-approves). Their screens are
+// deleted rather than left dark.
 
 export function ApprovalsRoute() {
   const ctx = useLegacyAdminData();
   return (
     <ApprovalsScreen
       rows={ctx.adminData.approvals}
-      stats={ctx.overview.stats || {}}
       loading={ctx.loading}
-      onReview={ctx.openReview}
       onApprove={ctx.handleApproveUser}
-      onUserDetail={ctx.openUserDetail}
+      onReject={ctx.handleRejectUser}
       onNavigateToUsers={ctx.navigateToUsers}
-      busy={ctx.reviewBusy}
+      busy={ctx.decisionBusy}
     />
   );
 }
@@ -84,18 +83,6 @@ export function UserDirectoryRoute() {
 export function UserDetailRoute() {
   const { userId } = useParams();
   return <UserDetailScreen userId={userId} />;
-}
-
-export function KycRoute() {
-  const ctx = useLegacyAdminData();
-  return (
-    <KycReviewScreen
-      rows={ctx.adminData.kycReview}
-      stats={ctx.overview.stats || {}}
-      loading={ctx.loading}
-      onUserDetail={ctx.openUserDetail}
-    />
-  );
 }
 
 export function AuditLogRoute() {

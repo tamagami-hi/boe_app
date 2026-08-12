@@ -64,7 +64,7 @@ export default function OverviewPage() {
   /*
    * Counted from the collections this console actually loaded.
    *
-   * These four tiles previously read `counts.users`, `counts.payments` and
+   * These tiles previously read `counts.users`, `counts.payments` and
    * `counts.support` from an overview payload that no endpoint produces, with
    * `?? 0` as the fallback — so the landing screen of the admin console stated
    * that there were zero registered users and zero payments, as facts, forever.
@@ -73,9 +73,6 @@ export default function OverviewPage() {
    */
   const approvals = adminData.approvals || [];
   const payments = adminData.payments || [];
-  const awaitingEmail = approvals.filter(
-    (row) => String(row.status || '') === 'pending_email_verification' || !row.emailVerifiedAt,
-  ).length;
   const paymentsInFlight = payments.filter((row) =>
     ['created', 'gateway_initiated', 'pending'].includes(row.status),
   ).length;
@@ -85,11 +82,10 @@ export default function OverviewPage() {
       <Section aria-label="Key counts">
         <ContentGrid cols={4} minColWidth="200px">
           {loading ? (
-            Array.from({ length: 4 }, (_, index) => <div key={index} className="ash-stat ash-skel-block" aria-hidden="true" />)
+            Array.from({ length: 3 }, (_, index) => <div key={index} className="ash-stat ash-skel-block" aria-hidden="true" />)
           ) : (
             <>
               <StatCard label="Applications waiting" value={approvals.length} hint="Sign-ups not yet decided" />
-              <StatCard label="Email not confirmed" value={awaitingEmail} hint="Applicant has not opened the link" />
               <StatCard label="Payments in flight" value={paymentsInFlight} hint="Not yet settled by the provider" />
               <StatCard label="Fund pools" value={(adminData.funds || []).length} hint="Draft and published" />
             </>

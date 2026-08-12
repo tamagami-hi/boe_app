@@ -5,15 +5,18 @@ import AppBar from '../layout/AppBar.jsx';
 import { startKyc, resendKyc, verifyKyc } from '../services/kycApi.js';
 import { getInvestingEligibility } from '../services/eligibilityApi.js';
 
-// Email-OTP KYC — the step that turns an activated account into an eligible one.
+// Email-OTP KYC — the step that turns an approved account into an eligible one.
 //
-// Flow: `POST /v1/client/kyc/start` emails a 6-digit code from the company
+// Flow: `POST /v1/client/kyc/start` emails a 6-character code from the company
 // mailbox, `POST /v1/client/kyc/verify` approves the case, and eligibility then
-// reports `eligible`. Resend is cooldown-guarded server-side (429) and the code
-// has an attempt cap (409) and expiry (410); each is surfaced verbatim rather
-// than being flattened into one generic failure.
+// reports `eligible`. The code is case-sensitive alphanumeric (a-zA-Z0-9), so
+// the input must preserve exactly what the user typed. Resend is
+// cooldown-guarded server-side (429) and the code has an attempt cap (409) and
+// expiry (410); each is surfaced verbatim rather than being flattened into one
+// generic failure.
 
 const CODE_LENGTH = 6;
+const CODE_PATTERN = /^[A-Za-z0-9]{6}$/;
 
 export default function KycVerify() {
   const navigate = useNavigate();
@@ -35,7 +38,7 @@ export default function KycVerify() {
         return;
       }
       setPhase('code_sent');
-      setNotice(resend ? 'A new code is on its way.' : 'We emailed you a 6-digit code.');
+      setNotice(resend ? 'A new code is on its way.' : 'We emailed you a 6-character code.');
     } catch (requestError) {
       setPhase('code_sent');
       setError(requestError?.message || 'We could not send a code. Try again in a moment.');
@@ -68,15 +71,15 @@ export default function KycVerify() {
   async function onSubmit(event) {
     event.preventDefault();
     if (busy) return;
-    if (code.trim().length !== CODE_LENGTH) {
-      setError(`Enter the ${CODE_LENGTH}-digit code from your email.`);
+    if (!CODE_PATTERN.test(code)) {
+      setError(`Enter the ${CODE_LENGTH}-character code from your email — letters and numbers, exactly as shown (it is case-sensitive).`);
       return;
     }
     setBusy(true);
     setError('');
     setNotice('');
     try {
-      await verifyKyc(code.trim());
+      await verifyKyc(code);
       setPhase('approved');
     } catch (verifyError) {
       setError(verifyError?.message || 'That code was not accepted.');
@@ -120,8 +123,8 @@ export default function KycVerify() {
             <div className="be-eyebrow">One last step</div>
             <h1 className="apk-h-sm">Enter your verification code.</h1>
             <p>
-              We send a {CODE_LENGTH}-digit code to your registered email address. It expires in a few
-              minutes.
+              We send a {CODE_LENGTH}-character code (letters and numbers — it is case-sensitive)
+              to your registered email address. It expires in a few minutes.
             </p>
           </div>
         </div>
@@ -131,12 +134,15 @@ export default function KycVerify() {
             <span>Verification code</span>
             <input
               type="text"
-              inputMode="numeric"
+              inputMode="text"
               autoComplete="one-time-code"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               maxLength={CODE_LENGTH}
               value={code}
-              onChange={(event) => setCode(event.target.value.replace(/\D/g, ''))}
-              aria-label={`${CODE_LENGTH}-digit verification code`}
+              onChange={(event) => setCode(event.target.value)}
+              aria-label={`${CODE_LENGTH}-character verification code`}
             />
           </label>
 

@@ -5,18 +5,16 @@ import type { EmailTemplateConfig } from "./emailTemplates.js"
 import { createTransactionalEmailSender } from "./transactionalEmailSender.js"
 
 const TEMPLATES: EmailTemplateConfig = {
-  landingOrigin: "https://beonedge.example",
-  activationUrl: null,
   supportAddress: null,
 }
 
 const REQUEST = {
   deliveryId: "11111111-1111-4111-8111-111111111111",
   toAddress: "investor@example.com",
-  templateKey: "verify_email",
+  templateKey: "account_approved",
   templateVersion: "v1",
   configurationSet: "boe-transactional",
-  templateData: { verificationToken: "token-abc" },
+  templateData: { downloadUrl: "https://downloads.beonedge.example/client/boe.apk" },
 } as const
 
 describe("createTransactionalEmailSender", () => {
@@ -40,7 +38,7 @@ describe("createTransactionalEmailSender", () => {
     })
     expect(sent).toHaveLength(1)
     expect(sent[0]?.to).toBe("investor@example.com")
-    expect(sent[0]?.text).toContain("token-abc")
+    expect(sent[0]?.text).toContain("https://downloads.beonedge.example/client/boe.apk")
   })
 
   test("synthesises a correlation id when the transport supplies none", async () => {
@@ -84,12 +82,12 @@ describe("createTransactionalEmailSender", () => {
     const result = await createTransactionalEmailSender({
       sender: { send },
       templates: TEMPLATES,
-    }).send({ ...REQUEST, templateData: {} })
+    }).send({ ...REQUEST, templateKey: "statement_ready", templateData: {} })
 
     expect(result).toEqual({
       outcome: "rejected",
       disposition: "permanent",
-      errorCode: "TEMPLATE_DATA_MISSING",
+      errorCode: "TEMPLATE_UNKNOWN",
     })
     expect(send).not.toHaveBeenCalled()
   })

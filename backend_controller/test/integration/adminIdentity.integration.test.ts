@@ -1,4 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto"
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 import { PostgreSqlContainer } from "@testcontainers/postgresql"
@@ -17,7 +20,6 @@ import type { UnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
 import { SEED_ROLE_PERMISSIONS } from "../../src/db/seedCatalog.js"
 import type { WebAuthDeps } from "../../src/domain/auth/webAuth.js"
-import { createActivationInviteRepository } from "../../src/repositories/activationInviteRepository.js"
 import { createApplicationRepository } from "../../src/repositories/applicationRepository.js"
 import { createApplicationReviewRepository } from "../../src/repositories/applicationReviewRepository.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
@@ -40,6 +42,11 @@ let container: StartedPostgreSqlContainer
 let pool: Pool
 let app: FastifyInstance
 let unitOfWork: UnitOfWork
+let releaseRoot: string
+
+// The published client APK the account-approved email links to.
+const APK_FILENAME = "boe.dev.client.1.0.0.apk"
+const DOWNLOAD_BASE_URL = "https://dev-app.beonedge.in/downloads"
 
 const key = (bytes: number): string => randomBytes(bytes).toString("base64")
 const dataOf = <T>(response: { json: () => unknown }): T => (response.json() as { data: T }).data
@@ -106,11 +113,18 @@ const createAdmin = async (email: string, roleCode: "onboarding" | "support"): P
   return userId
 }
 
-const seedSubmittedApplication = async (email: string): Promise<{ id: string; version: number }> => {
+const seedSubmittedApplication = async (
+  email: string,
+  options: { withPassword?: boolean } = {},
+): Promise<{ id: string; version: number }> => {
+  // Approval copies the signup hash into user_credentials, so a normal seed
+  // carries one; the no-password case exists to prove such a row cannot be
+  // approved (legacy rows submitted before password-at-signup).
+  const passwordHash = options.withPassword === false ? null : await hashPassword(PASSWORD)
   const row = await pool.query<{ id: string; version: string }>(
-    "insert into applications (email_normalized, phone_e164, full_name, state, email_verified_at, submitted_at) " +
-      "values ($1, $2, 'Ada Lovelace', 'submitted', now(), now()) returning id, version",
-    [email, `+1415555${String(Math.floor(1000000 + Math.random() * 8999999))}`],
+    "insert into applications (email_normalized, phone_e164, full_name, state, submitted_at, password_hash) " +
+      "values ($1, $2, 'Ada Lovelace', 'submitted', now(), $3) returning id, version",
+    [email, `+1415555${String(Math.floor(1000000 + Math.random() * 8999999))}`, passwordHash],
   )
   const created = row.rows[0]
   if (created === undefined) throw new Error("failed to seed application")
@@ -141,6 +155,28 @@ beforeAll(async () => {
 
   const database = createDatabase(pool)
   unitOfWork = createUnitOfWork(database)
+
+  // A release feed with one published client APK: the approval mail must carry
+  // its public download link.
+  releaseRoot = await mkdtemp(join(tmpdir(), "boe-release-feed-"))
+  const clientDir = join(releaseRoot, "client")
+  await mkdir(clientDir, { recursive: true })
+  await writeFile(join(clientDir, APK_FILENAME), "fake-apk-bytes")
+  await writeFile(
+    join(clientDir, "boe.dev.client.1.0.0.json"),
+    JSON.stringify({
+      apk: APK_FILENAME,
+      target: "dev",
+      variant: "client",
+      version: "1.0.0",
+      versionName: "1.0.0",
+      versionCode: 100,
+      applicationId: "com.beonedge.app.dev",
+      sha256: "deadbeef",
+      signing: "release",
+    }),
+  )
+
   const keyPair = await generateKeyPair("ES256", { extractable: true })
   const accessTokenService = createAccessTokenService({
     issuer: "https://api.beonedge.test",
@@ -182,14 +218,13 @@ beforeAll(async () => {
     config: {
       cursorKey: randomBytes(32),
       idempotencyTtlMs: 86_400_000,
-      activationInviteTtlMs: 7 * 86_400_000,
       sesConfigurationSet: "boe-transactional",
     },
+    appUpdate: { releaseRoot, downloadBaseUrl: DOWNLOAD_BASE_URL },
     applicationRepository: createApplicationRepository(),
     applicationReviewRepository: createApplicationReviewRepository(),
     userRepository: createUserRepository(),
     credentialRepository: createCredentialRepository(),
-    activationInviteRepository: createActivationInviteRepository(),
     outboxRepository: createOutboxRepository(),
     emailDeliveryRepository: createEmailDeliveryRepository(),
     auditRepository: createAuditRepository(),
@@ -211,6 +246,7 @@ afterAll(async () => {
   await app.close()
   await pool.end()
   await container.stop()
+  await rm(releaseRoot, { recursive: true, force: true })
 })
 
 describe("admin identity RBAC (integration)", () => {
@@ -230,69 +266,75 @@ describe("admin identity RBAC (integration)", () => {
   })
 })
 
-describe("admin application review + decision (integration)", () => {
-  test("approves an application: user + invite + activation outbox + delivery", async () => {
+describe("admin application decision (integration)", () => {
+  test("approves an application in one step: active user + credential + account_approved mail with the APK link", async () => {
     const session = await login("admin@example.com")
     const application = await seedSubmittedApplication("approve-me@example.com")
-
-    const reviewed = await app.inject({
-      method: "POST",
-      url: `/v1/admin/applications/${application.id}/review`,
-      headers: authHeaders(session, { "idempotency-key": randomUUID() }),
-      payload: { expectedVersion: application.version },
-    })
-    expect(reviewed.statusCode).toBe(200)
-    const reviewedBody = dataOf<{ status: string; version: number }>(reviewed)
-    expect(reviewedBody.status).toBe("in_review")
 
     const decided = await app.inject({
       method: "POST",
       url: `/v1/admin/applications/${application.id}/decision?outcome=approved`,
-      headers: authHeaders(session, { "idempotency-key": randomUUID(), "if-match": `"${String(reviewedBody.version)}"` }),
-      payload: { reasonCode: "eligibility_confirmed" },
+      headers: authHeaders(session, { "idempotency-key": randomUUID() }),
     })
     expect(decided.statusCode).toBe(200)
-    const decidedBody = dataOf<{ status: string; userId?: string; activationInviteId?: string; emailDeliveryId: string }>(
-      decided,
-    )
+    const decidedBody = dataOf<{
+      status: string
+      userId?: string
+      accountActivated: boolean
+      emailDeliveryId: string
+    }>(decided)
     expect(decidedBody.status).toBe("approved")
     expect(decidedBody.userId).toBeDefined()
-    expect(decidedBody.activationInviteId).toBeDefined()
+    expect(decidedBody.accountActivated).toBe(true)
 
-    const user = await pool.query("select account_state from users where id = $1", [decidedBody.userId])
-    expect(user.rows[0]).toMatchObject({ account_state: "invited" })
-    const invite = await pool.query("select state from activation_invites where id = $1", [
-      decidedBody.activationInviteId,
-    ])
-    expect(invite.rows[0]).toMatchObject({ state: "pending" })
-    const outbox = await pool.query(
-      "select topic, event_type from outbox_events where aggregate_id = $1 and topic = 'email'",
+    const user = await pool.query<{ account_state: string; activated_at: Date | null }>(
+      "select account_state, activated_at from users where id = $1",
       [decidedBody.userId],
     )
-    expect(outbox.rows[0]).toMatchObject({ event_type: "user.activation_invited" })
+    expect(user.rows[0]).toMatchObject({ account_state: "active" })
+    expect(user.rows[0]?.activated_at).not.toBeNull()
+
+    // The signup password hash was copied into the credential the app login
+    // verifies against, and cleared from the application row by the decision.
+    const credential = await pool.query<{ password_hash: string }>(
+      "select password_hash from user_credentials where user_id = $1",
+      [decidedBody.userId],
+    )
+    expect(credential.rows[0]?.password_hash).toMatch(/^\$argon2id\$/u)
+    const cleared = await pool.query<{ password_hash: string | null }>(
+      "select password_hash from applications where id = $1",
+      [application.id],
+    )
+    expect(cleared.rows[0]?.password_hash).toBeNull()
+
+    const outbox = await pool.query<{ payload: { template: string; downloadUrl: string } }>(
+      "select payload from outbox_events where aggregate_id = $1 and topic = 'email'",
+      [decidedBody.userId],
+    )
+    expect(outbox.rows[0]?.payload).toEqual({
+      template: "account_approved",
+      downloadUrl: `${DOWNLOAD_BASE_URL}/client/${APK_FILENAME}`,
+    })
     const delivery = await pool.query("select template_key from email_deliveries where id = $1", [
       decidedBody.emailDeliveryId,
     ])
-    expect(delivery.rows[0]).toMatchObject({ template_key: "activation_invite" })
+    expect(delivery.rows[0]).toMatchObject({ template_key: "account_approved" })
+
+    // The fixed internal audit code replaces the admin-typed reason.
+    const review = await pool.query("select reason_code, reason_detail from application_reviews where application_id = $1", [
+      application.id,
+    ])
+    expect(review.rows[0]).toMatchObject({ reason_code: "admin_approved", reason_detail: null })
   })
 
-  test("rejects an application: review + rejection delivery, no user", async () => {
+  test("rejects an application in one step: rejection delivery, no user", async () => {
     const session = await login("admin@example.com")
     const application = await seedSubmittedApplication("reject-me@example.com")
-
-    const reviewed = await app.inject({
-      method: "POST",
-      url: `/v1/admin/applications/${application.id}/review`,
-      headers: authHeaders(session, { "idempotency-key": randomUUID() }),
-      payload: { expectedVersion: application.version },
-    })
-    const version = dataOf<{ version: number }>(reviewed).version
 
     const decided = await app.inject({
       method: "POST",
       url: `/v1/admin/applications/${application.id}/decision?outcome=rejected`,
-      headers: authHeaders(session, { "idempotency-key": randomUUID(), "if-match": `"${String(version)}"` }),
-      payload: { reasonCode: "ineligible" },
+      headers: authHeaders(session, { "idempotency-key": randomUUID() }),
     })
     expect(decided.statusCode).toBe(200)
     const body = dataOf<{ status: string; userId?: string; emailDeliveryId: string }>(decided)
@@ -300,18 +342,41 @@ describe("admin application review + decision (integration)", () => {
     expect(body.userId).toBeUndefined()
     const delivery = await pool.query("select template_key from email_deliveries where id = $1", [body.emailDeliveryId])
     expect(delivery.rows[0]).toMatchObject({ template_key: "application_rejected" })
+    expect(
+      (
+        await pool.query<{ c: number }>("select count(*)::int as c from users where application_id = $1", [
+          application.id,
+        ])
+      ).rows[0]?.c,
+    ).toBe(0)
   })
 
-  test("a stale version review is a 409 STATE_CONFLICT", async () => {
+  test("an application with no signup password on file cannot be approved", async () => {
     const session = await login("admin@example.com")
-    const application = await seedSubmittedApplication("stale@example.com")
-    const response = await app.inject({
+    const application = await seedSubmittedApplication("no-password@example.com", { withPassword: false })
+    const decided = await app.inject({
       method: "POST",
-      url: `/v1/admin/applications/${application.id}/review`,
+      url: `/v1/admin/applications/${application.id}/decision?outcome=approved`,
       headers: authHeaders(session, { "idempotency-key": randomUUID() }),
-      payload: { expectedVersion: application.version + 5 },
     })
-    expect(response.statusCode).toBe(409)
+    expect(decided.statusCode).toBe(409)
+  })
+
+  test("a decision on an already-decided application is 409", async () => {
+    const session = await login("admin@example.com")
+    const application = await seedSubmittedApplication("twice-decided@example.com")
+    const first = await app.inject({
+      method: "POST",
+      url: `/v1/admin/applications/${application.id}/decision?outcome=rejected`,
+      headers: authHeaders(session, { "idempotency-key": randomUUID() }),
+    })
+    expect(first.statusCode).toBe(200)
+    const second = await app.inject({
+      method: "POST",
+      url: `/v1/admin/applications/${application.id}/decision?outcome=approved`,
+      headers: authHeaders(session, { "idempotency-key": randomUUID() }),
+    })
+    expect(second.statusCode).toBe(409)
   })
 
   test("a decision without CSRF is rejected", async () => {
@@ -320,52 +385,9 @@ describe("admin application review + decision (integration)", () => {
     const response = await app.inject({
       method: "POST",
       url: `/v1/admin/applications/${application.id}/decision?outcome=approved`,
-      headers: { origin: ORIGIN, cookie: cookieHeader(session.jar), "idempotency-key": randomUUID(), "if-match": '"1"' },
-      payload: { reasonCode: "x" },
+      headers: { origin: ORIGIN, cookie: cookieHeader(session.jar), "idempotency-key": randomUUID() },
     })
     expect(response.statusCode).toBe(403)
-  })
-})
-
-describe("admin activation invite resend (integration)", () => {
-  test("revokes the pending invite and issues a replacement", async () => {
-    const session = await login("admin@example.com")
-    const application = await seedSubmittedApplication("resend@example.com")
-    const reviewed = await app.inject({
-      method: "POST",
-      url: `/v1/admin/applications/${application.id}/review`,
-      headers: authHeaders(session, { "idempotency-key": randomUUID() }),
-      payload: { expectedVersion: application.version },
-    })
-    const decided = await app.inject({
-      method: "POST",
-      url: `/v1/admin/applications/${application.id}/decision?outcome=approved`,
-      headers: authHeaders(session, {
-        "idempotency-key": randomUUID(),
-        "if-match": `"${String(dataOf<{ version: number }>(reviewed).version)}"`,
-      }),
-      payload: { reasonCode: "ok" },
-    })
-    const approved = dataOf<{ userId: string; activationInviteId: string }>(decided)
-
-    const resent = await app.inject({
-      method: "POST",
-      url: `/v1/admin/users/${approved.userId}/activation-invites/resend`,
-      headers: authHeaders(session, { "idempotency-key": randomUUID() }),
-      payload: { reasonCode: "user_request", expectedInviteId: approved.activationInviteId },
-    })
-    expect(resent.statusCode).toBe(202)
-    const body = dataOf<{ revokedInviteId: string; activationInviteId: string; status: string }>(resent)
-    expect(body.revokedInviteId).toBe(approved.activationInviteId)
-    expect(body.activationInviteId).not.toBe(approved.activationInviteId)
-    expect(body.status).toBe("queued")
-
-    const revoked = await pool.query("select state from activation_invites where id = $1", [approved.activationInviteId])
-    expect(revoked.rows[0]).toMatchObject({ state: "revoked" })
-    const replacement = await pool.query("select state from activation_invites where id = $1", [
-      body.activationInviteId,
-    ])
-    expect(replacement.rows[0]).toMatchObject({ state: "pending" })
   })
 })
 
@@ -421,7 +443,7 @@ describe("admin reads: queue pagination, detail, deliveries (integration)", () =
     const session = await login("admin@example.com")
     const response = await app.inject({
       method: "GET",
-      url: "/v1/admin/email-deliveries?limit=5&templateKey=activation_invite&state=queued",
+      url: "/v1/admin/email-deliveries?limit=5&templateKey=account_approved&state=queued",
       headers: { origin: ORIGIN, cookie: cookieHeader(session.jar) },
     })
     expect(response.statusCode).toBe(200)
@@ -448,22 +470,12 @@ describe("admin reads: queue pagination, detail, deliveries (integration)", () =
 describe("admin identity negative paths (integration)", () => {
   const approveFresh = async (session: Session, email: string) => {
     const application = await seedSubmittedApplication(email)
-    const reviewed = await app.inject({
-      method: "POST",
-      url: `/v1/admin/applications/${application.id}/review`,
-      headers: authHeaders(session, { "idempotency-key": randomUUID() }),
-      payload: { expectedVersion: application.version },
-    })
     const decided = await app.inject({
       method: "POST",
       url: `/v1/admin/applications/${application.id}/decision?outcome=approved`,
-      headers: authHeaders(session, {
-        "idempotency-key": randomUUID(),
-        "if-match": `"${String(dataOf<{ version: number }>(reviewed).version)}"`,
-      }),
-      payload: { reasonCode: "ok" },
+      headers: authHeaders(session, { "idempotency-key": randomUUID() }),
     })
-    return dataOf<{ userId: string; activationInviteId: string }>(decided)
+    return dataOf<{ userId: string }>(decided)
   }
 
   test("a decision on a missing application is 404", async () => {
@@ -471,116 +483,28 @@ describe("admin identity negative paths (integration)", () => {
     const response = await app.inject({
       method: "POST",
       url: `/v1/admin/applications/${randomUUID()}/decision?outcome=approved`,
-      headers: authHeaders(session, { "idempotency-key": randomUUID(), "if-match": '"1"' }),
-      payload: { reasonCode: "x" },
+      headers: authHeaders(session, { "idempotency-key": randomUUID() }),
     })
     expect(response.statusCode).toBe(404)
-  })
-
-  test("a decision with a stale If-Match version is 409", async () => {
-    const session = await login("admin@example.com")
-    const application = await seedSubmittedApplication("stale-decision@example.com")
-    await app.inject({
-      method: "POST",
-      url: `/v1/admin/applications/${application.id}/review`,
-      headers: authHeaders(session, { "idempotency-key": randomUUID() }),
-      payload: { expectedVersion: application.version },
-    })
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/admin/applications/${application.id}/decision?outcome=approved`,
-      headers: authHeaders(session, { "idempotency-key": randomUUID(), "if-match": '"99"' }),
-      payload: { reasonCode: "x" },
-    })
-    expect(response.statusCode).toBe(409)
-  })
-
-  test("a decision on an unverified in_review application is 409", async () => {
-    const session = await login("admin@example.com")
-    const row = await pool.query<{ id: string; version: string }>(
-      "insert into applications (email_normalized, phone_e164, full_name, state, submitted_at, review_started_at) " +
-        "values ('unverified@example.com', '+14155550020', 'No Verify', 'in_review', now(), now()) returning id, version",
-    )
-    const created = row.rows[0]
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/admin/applications/${created?.id ?? ""}/decision?outcome=approved`,
-      headers: authHeaders(session, {
-        "idempotency-key": randomUUID(),
-        "if-match": `"${String(created?.version ?? "1")}"`,
-      }),
-      payload: { reasonCode: "x" },
-    })
-    expect(response.statusCode).toBe(409)
-  })
-
-  test("re-reviewing an in_review application is 409", async () => {
-    const session = await login("admin@example.com")
-    const application = await seedSubmittedApplication("rereview@example.com")
-    const reviewed = await app.inject({
-      method: "POST",
-      url: `/v1/admin/applications/${application.id}/review`,
-      headers: authHeaders(session, { "idempotency-key": randomUUID() }),
-      payload: { expectedVersion: application.version },
-    })
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/admin/applications/${application.id}/review`,
-      headers: authHeaders(session, { "idempotency-key": randomUUID() }),
-      payload: { expectedVersion: dataOf<{ version: number }>(reviewed).version },
-    })
-    expect(response.statusCode).toBe(409)
   })
 
   test("replaying a decision with the same idempotency key returns the first result", async () => {
     const session = await login("admin@example.com")
     const application = await seedSubmittedApplication("idem-decision@example.com")
-    const reviewed = await app.inject({
-      method: "POST",
-      url: `/v1/admin/applications/${application.id}/review`,
-      headers: authHeaders(session, { "idempotency-key": randomUUID() }),
-      payload: { expectedVersion: application.version },
-    })
-    const ifMatch = `"${String(dataOf<{ version: number }>(reviewed).version)}"`
     const idempotencyKey = randomUUID()
     const first = await app.inject({
       method: "POST",
       url: `/v1/admin/applications/${application.id}/decision?outcome=approved`,
-      headers: authHeaders(session, { "idempotency-key": idempotencyKey, "if-match": ifMatch }),
-      payload: { reasonCode: "ok" },
+      headers: authHeaders(session, { "idempotency-key": idempotencyKey }),
     })
     const replay = await app.inject({
       method: "POST",
       url: `/v1/admin/applications/${application.id}/decision?outcome=approved`,
-      headers: authHeaders(session, { "idempotency-key": idempotencyKey, "if-match": ifMatch }),
-      payload: { reasonCode: "ok" },
+      headers: authHeaders(session, { "idempotency-key": idempotencyKey }),
     })
     expect(first.statusCode).toBe(200)
     expect(replay.statusCode).toBe(200)
     expect(dataOf<{ userId: string }>(replay).userId).toBe(dataOf<{ userId: string }>(first).userId)
-  })
-
-  test("a resend on a missing user is 404", async () => {
-    const session = await login("admin@example.com")
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/admin/users/${randomUUID()}/activation-invites/resend`,
-      headers: authHeaders(session, { "idempotency-key": randomUUID() }),
-      payload: { reasonCode: "x", expectedInviteId: randomUUID() },
-    })
-    expect(response.statusCode).toBe(404)
-  })
-
-  test("a resend with a wrong expected invite id is 409", async () => {
-    const session = await login("admin@example.com")
-    const approved = await approveFresh(session, "resend-conflict@example.com")
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/admin/users/${approved.userId}/activation-invites/resend`,
-      headers: authHeaders(session, { "idempotency-key": randomUUID() }),
-      payload: { reasonCode: "x", expectedInviteId: randomUUID() },
-    })
-    expect(response.statusCode).toBe(409)
   })
 
   test("queue accepts a valid createdFrom/createdTo range and rejects an invalid one", async () => {

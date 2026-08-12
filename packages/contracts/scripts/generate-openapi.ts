@@ -7,7 +7,6 @@ import { z } from "zod"
 import { ErrorEnvelope } from "../src/envelope.js"
 import { ERROR_DEFINITIONS } from "../src/errors.js"
 import type { ErrorCode } from "../src/errors.js"
-import { ACTIVATION_OPERATIONS } from "../src/operations/activation.js"
 import { NATIVE_AUTH_OPERATIONS } from "../src/operations/native-auth.js"
 import { PUBLIC_OPERATIONS } from "../src/operations/public.js"
 
@@ -29,7 +28,6 @@ export const OPENAPI_INFO = Object.freeze({ title: "BeOnEdge API", version: "v1"
 
 export const ALL_OPERATIONS: readonly GeneratableOperation[] = Object.freeze([
   ...PUBLIC_OPERATIONS,
-  ...ACTIVATION_OPERATIONS,
   ...NATIVE_AUTH_OPERATIONS,
 ])
 

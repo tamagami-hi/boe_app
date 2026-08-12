@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import * as authApi from '../services/authApi.js';
 
-const SessionContext = createContext({ user: null, isLoading: true, login: async () => {}, signup: async () => {}, logout: async () => {} });
+const SessionContext = createContext({ user: null, isLoading: true, login: async () => {}, logout: async () => {} });
 
 export function SessionProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -39,19 +39,13 @@ export function SessionProvider({ children }) {
     return u;
   }, []);
 
-  const signup = useCallback(async (details) => {
-    const u = await authApi.signup(details, { scope: 'client' });
-    setUser(u);
-    return u;
-  }, []);
-
   const logout = useCallback(async () => {
     await authApi.logout({ scope: 'client' });
     setUser(null);
   }, []);
 
   return (
-    <SessionContext.Provider value={{ user, isLoading, login, signup, logout }}>
+    <SessionContext.Provider value={{ user, isLoading, login, logout }}>
       {children}
     </SessionContext.Provider>
   );

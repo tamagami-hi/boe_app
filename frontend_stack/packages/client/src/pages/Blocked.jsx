@@ -1,10 +1,12 @@
 import React from 'react';
-import { Clock, XCircle, Lock } from 'lucide-react';
+import { XCircle, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSession } from '../store/SessionContext.jsx';
 
+// Terminal-account screen. Pre-approval states are unreachable here — an
+// account only exists (and can log in) after admin approval — so only the
+// terminal statuses need copy. Unknown statuses fall back to the support copy.
 const COPY = {
-  pending_review: { Icon: Clock, color: 'var(--be-slate)', headline: 'Your account is being reviewed.', body: "We'll notify you once your account is ready." },
   rejected: { Icon: XCircle, color: 'var(--be-red)', headline: 'This account needs support.', body: 'Contact support so we can help with this account.' },
   suspended: { Icon: Lock, color: 'var(--be-slate)', headline: 'Your account is currently suspended.', body: 'Investing is paused on this account. Contact support so we can help you restore access.' },
   closed: { Icon: Lock, color: 'var(--be-slate)', headline: 'This account is closed.', body: 'Reach out to support if this is unexpected.' },
@@ -13,9 +15,9 @@ const COPY = {
 export default function Blocked() {
   const navigate = useNavigate();
   const { user, logout } = useSession();
-  const cfg = COPY[user?.status] || COPY.pending_review;
+  const cfg = COPY[user?.status] || COPY.rejected;
   const Icon = cfg.Icon;
-  const statusClass = user?.status || 'pending_review';
+  const statusClass = user?.status || 'rejected';
 
   return (
     <div className="apk-blocked">

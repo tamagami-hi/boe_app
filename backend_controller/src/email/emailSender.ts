@@ -44,11 +44,17 @@ export interface SmtpEmailConfig {
   readonly fromAddress: string
 }
 
+const isLoopbackSmtp = (host: string): boolean =>
+  host === "127.0.0.1" || host === "localhost" || host === "::1"
+
 export const createSmtpEmailSender = (config: SmtpEmailConfig): EmailSender => {
   const transporter = nodemailer.createTransport({
     host: config.host,
     port: config.port,
     secure: config.secure,
+    // Production deploy policy pins implicit TLS on 465. Local Mailpit does not
+    // implement STARTTLS, so plaintext is allowed only on the loopback device.
+    requireTLS: !config.secure && !isLoopbackSmtp(config.host),
     auth: { user: config.user, pass: config.password },
   })
   return {
@@ -108,9 +114,8 @@ export class EmailTransportNotConfiguredError extends Error {
  * configured the queued mail drains on the next pass rather than being lost — the
  * ladder in retrySchedule.ts allows roughly 42 hours before dead-lettering.
  *
- * The log sender is kept for the direct KYC-code path, where a send failure
- * surfaces to the person waiting on the code instead of being recorded as
- * durable evidence of delivery.
+ * Used whenever no SMTP transport exists. Direct KYC delivery and the outbox
+ * worker both fail honestly instead of claiming an unsent message succeeded.
  */
 export const createUnconfiguredEmailSender = (): EmailSender => ({
   send: () => Promise.reject(new EmailTransportNotConfiguredError()),

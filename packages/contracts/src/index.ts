@@ -1,6 +1,5 @@
 export * from "./envelope.js"
 export * from "./errors.js"
-export * from "./operations/activation.js"
 export * from "./operations/native-auth.js"
 export * from "./operations/public.js"
 export * from "./scalars.js"

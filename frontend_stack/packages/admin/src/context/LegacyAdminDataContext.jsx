@@ -1,10 +1,9 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiRequest } from '@beonedge/client/services/_util.js';
-import { resolveApplication } from '@beonedge/client/services/adminApplicationsApi.js';
+import { decideApplication } from '@beonedge/client/services/adminApplicationsApi.js';
 import { loadAdminCollection } from '../helpers/loadAdminData.js';
 import { useToast } from '../components/ToastProvider.jsx';
-import ApprovalReviewPanel from '../screens/ApprovalReviewPanel.jsx';
 import UserDetailScreen from '../screens/UserDetailScreen.jsx';
 
 // State and handlers lifted verbatim from the pre-redesign monolithic
@@ -22,7 +21,6 @@ const EMPTY_DATA = {
   payments: [],
   mandates: [],
   auditLogs: [],
-  kycReview: [],
   transactions: [],
 };
 
@@ -39,15 +37,10 @@ export default function LegacyAdminDataProvider({ children }) {
   const [adminData, setAdminData] = useState(EMPTY_DATA);
   const [loadNote, setLoadNote] = useState('');
   const [loading, setLoading] = useState(true);
-  const [reviewRow, setReviewRow] = useState(null);
-  const [reviewReason, setReviewReason] = useState('');
-  const [reviewBusy, setReviewBusy] = useState(false);
-  const [reviewError, setReviewError] = useState('');
-  // Reviewer's acknowledgement that an applicant never confirmed their email.
-  // Reset with every panel open so it can never carry over to the next person.
-  const [allowUnverifiedEmail, setAllowUnverifiedEmail] = useState(false);
+  const [decisionBusy, setDecisionBusy] = useState(false);
   const [detailOverlayUserId, setDetailOverlayUserId] = useState(null);
   const loadRef = useRef(0);
+  const decisionOperationsRef = useRef({});
   const navigate = useNavigate();
   const { addToast } = useToast();
 
@@ -56,20 +49,20 @@ export default function LegacyAdminDataProvider({ children }) {
     setLoading(true);
     setLoadNote('');
     // Only canonical collections are fetched. Risk profiles, the reconciliation
-    // ledger, SIP control requests, and support tickets were retired by the
-    // canonical decisions (spec §8 / MVP scope), so nothing requests them.
+    // ledger, SIP control requests, support tickets, and the manual KYC review
+    // queue were retired by the canonical decisions (spec §8 / MVP scope /
+    // OTP-as-KYC onboarding), so nothing requests them.
     const COLLECTIONS = [
       '/v1/admin/approvals',
       '/v1/admin/funds',
       '/v1/admin/payments',
       '/v1/admin/mandates',
       '/v1/admin/audit-logs',
-      '/v1/admin/kyc-review',
       '/v1/admin/transactions',
     ];
     const results = await Promise.allSettled(COLLECTIONS.map((path) => loadAdminCollection(path)));
     if (reqId !== loadRef.current) return; // ignore stale responses
-    const [approvals, funds, payments, mandates, auditLogs, kycReview, transactions] =
+    const [approvals, funds, payments, mandates, auditLogs, transactions] =
       results.map((result) => (result.status === 'fulfilled' ? result.value : null));
     setAdminData({
       approvals: approvals || [],
@@ -77,20 +70,16 @@ export default function LegacyAdminDataProvider({ children }) {
       payments: payments || [],
       mandates: mandates || [],
       auditLogs: auditLogs || [],
-      kycReview: kycReview || [],
       transactions: transactions || [],
     });
 
     /*
      * Sidebar badge counts, derived from what was just loaded rather than fetched
-     * separately. `approvals` counts the whole queue, including applications whose
-     * email is not yet confirmed: those are reviewable now, so excluding them made
-     * the badge read 0 while the screen listed six people waiting.
+     * separately. `approvals` counts the whole pending queue.
      */
     setOverview({
       counts: {
         approvals: (approvals || []).length,
-        kycReview: (kycReview || []).length,
         funds: (funds || []).length,
       },
       stats: {},
@@ -287,31 +276,16 @@ export default function LegacyAdminDataProvider({ children }) {
     await loadAdminData();
   }
 
-  function openReview(row) {
-    setReviewRow(row);
-    setReviewReason('');
-    setReviewError('');
-    setAllowUnverifiedEmail(false);
-  }
-
-  function closeReview() {
-    if (reviewBusy) return;
-    setReviewRow(null);
-    setReviewReason('');
-    setReviewError('');
-    setAllowUnverifiedEmail(false);
-  }
-
   async function handleUserDecision(row, status) {
     if (!row?.id) return;
-    if (reviewBusy) return;
-    const reason = reviewReason.trim();
-    if (status === 'rejected' && !reason) {
-      setReviewError('A rejection note is required.');
-      return;
-    }
-    setReviewBusy(true);
-    setReviewError('');
+    const existingOperation = decisionOperationsRef.current[row.id];
+    if (existingOperation?.isBusy) return;
+    const idempotencyKey = existingOperation?.idempotencyKey || crypto.randomUUID();
+    decisionOperationsRef.current = {
+      ...decisionOperationsRef.current,
+      [row.id]: { idempotencyKey, isBusy: true },
+    };
+    setDecisionBusy(true);
 
     // Optimistic UI: remove row from approvals immediately
     setAdminData((prev) => ({
@@ -320,27 +294,11 @@ export default function LegacyAdminDataProvider({ children }) {
     }));
 
     try {
-      /*
-       * No version or status is passed. resolveApplication re-reads the
-       * application and drives the review -> decision handshake off what the
-       * server currently holds, because anything this screen captured at mount
-       * may already be stale and the decision's If-Match would then fail with a
-       * conflict that retrying cannot clear.
-       */
-      await resolveApplication({
-        applicationId: row.applicationId || row.id,
-        outcome: status,
-        reasonCode: status === 'approved' ? 'approved_by_admin' : 'rejected_by_admin',
-        reasonDetail: reason || undefined,
-        allowUnverifiedEmail,
-      });
-      setReviewRow(null);
-      setReviewReason('');
-      setAllowUnverifiedEmail(false);
+      await decideApplication(row.applicationId || row.id, status, idempotencyKey);
 
       addToast(
         status === 'approved'
-          ? `${row.name || 'User'} approved. They can sign in with the password they chose at signup.`
+          ? `${row.name || 'User'} approved. A welcome email with the app download link is queued — they can sign in with the password they chose at signup.`
           : `${row.name || 'User'} rejected.`,
         status === 'approved' ? 'success' : 'warning'
       );
@@ -348,24 +306,29 @@ export default function LegacyAdminDataProvider({ children }) {
       // Background refetch to reconcile
       await loadAdminData();
     } catch (error) {
-      setReviewError(error?.message || 'Review action failed.');
       addToast(error?.message || 'Action failed. Please try again.', 'error');
       /*
        * Reload rather than putting the captured row back. A failure usually means
-       * this screen's snapshot disagrees with the server — often because the
-       * review step of this very attempt committed before the decision failed —
-       * and restoring the stale row guaranteed every retry failed the same way.
-       * Refetching means the next attempt starts from the real state.
+       * this screen's snapshot disagrees with the server, and restoring the stale
+       * row guaranteed every retry failed the same way. Refetching means the next
+       * attempt starts from the real state.
        */
       await loadAdminData().catch(() => {});
     } finally {
-      setReviewBusy(false);
+      decisionOperationsRef.current = {
+        ...decisionOperationsRef.current,
+        [row.id]: { idempotencyKey, isBusy: false },
+      };
+      setDecisionBusy(false);
     }
   }
 
   async function handleApproveUser(row) {
-    setReviewReason('');
     await handleUserDecision(row, 'approved');
+  }
+
+  async function handleRejectUser(row) {
+    await handleUserDecision(row, 'rejected');
   }
 
   // Payment approve/reject is intentionally absent: confirmation is driven by the
@@ -390,9 +353,9 @@ export default function LegacyAdminDataProvider({ children }) {
     adminData,
     loadNote,
     loading,
-    reviewBusy,
-    openReview,
+    decisionBusy,
     handleApproveUser,
+    handleRejectUser,
     handleUserDecision,
     handleCreateFund,
     handleUpdateFund,
@@ -406,17 +369,6 @@ export default function LegacyAdminDataProvider({ children }) {
   return (
     <LegacyAdminDataContext.Provider value={value}>
       {children}
-      <ApprovalReviewPanel
-        row={reviewRow}
-        reason={reviewReason}
-        busy={reviewBusy}
-        error={reviewError}
-        allowUnverifiedEmail={allowUnverifiedEmail}
-        onAllowUnverifiedEmailChange={setAllowUnverifiedEmail}
-        onReasonChange={setReviewReason}
-        onClose={closeReview}
-        onDecision={handleUserDecision}
-      />
       {detailOverlayUserId && (
         <div className="adm-overlay" onClick={closeUserDetailOverlay}>
           <div className="adm-overlay-card" onClick={(e) => e.stopPropagation()}>

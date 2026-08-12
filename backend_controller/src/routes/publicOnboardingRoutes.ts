@@ -1,6 +1,6 @@
 /**
  * Public onboarding routes (spec 04 §3.1). Unauthenticated signup surface:
- * `POST /newuser` and `POST /newuser/verify-email`.
+ * `POST /newuser`.
  *
  * ── /newuser ────────────────────────────────────────────────────────────────
  * The marketing site is a separate application on separate infrastructure
@@ -18,9 +18,11 @@
  * API is deliberately absent from the marketing site's origin allowlist.
  *
  * It stays a thin adapter over the `submitApplication` command rather than a
- * second implementation — validation, consent recording, verification-email
- * dispatch and audit all live in one place, and the admin approvals queue sees
- * identical rows regardless of how a signup arrived.
+ * second implementation — validation, consent recording and audit all live in
+ * one place. A new application lands directly in `submitted`, visible in the
+ * admin approvals queue; there is no pre-approval email verification to redeem,
+ * so the former `POST /newuser/verify-email` door is gone. Email confirmation
+ * happens later, inside the app, as the KYC OTP step.
  *
  * The path is deliberately unversioned: it is a cross-team integration point,
  * whereas `/v1` is an internal contract free to evolve.
@@ -48,18 +50,10 @@ import { parseOrThrow } from "../http/validation.js"
 import type { ApplicationWriteRepository } from "../repositories/applicationRepository.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
 import type { ConsentRepositoryImpl } from "../repositories/consentRepository.js"
-import type { EmailDeliveryWriteRepository } from "../repositories/emailDeliveryRepository.js"
-import type { OutboxWriteRepository } from "../repositories/outboxRepository.js"
-import type { VerificationTokenWriteRepository } from "../repositories/verificationTokenRepository.js"
 import { submitApplication, type SubmitApplicationOutcome } from "../domain/onboarding/submitApplication.js"
-import { verifyApplicationEmail } from "../domain/onboarding/verifyApplicationEmail.js"
 
 export interface PublicOnboardingConfig {
-  readonly verificationTokenTtlMs: number
   readonly idempotencyTtlMs: number
-  readonly sesConfigurationSet: string
-  /** Cooldown between verification mails for one application. See submitApplication. */
-  readonly verificationResendCooldownMs: number
   /**
    * The secret the marketing site presents in `x-signup-key`. `null` means the
    * deployment was never given one, and every `/newuser` call is refused.
@@ -73,18 +67,15 @@ export interface PublicOnboardingDeps {
   readonly clock: () => Date
   readonly crypto: CryptoContext
   /**
-   * Same breached-password check the activation command uses. Applied here
-   * because this is now where the password is chosen, and the check has to
-   * happen while the applicant is still on the form and able to pick another
-   * one — refusing at approval time would strand them.
+   * Breached-password check. Applied here because this is where the password is
+   * chosen, and the check has to happen while the applicant is still on the
+   * form and able to pick another one — refusing at approval time would strand
+   * them.
    */
   readonly breachChecker: BreachChecker
   readonly config: PublicOnboardingConfig
   readonly applicationRepository: ApplicationWriteRepository
   readonly consentRepository: ConsentRepositoryImpl
-  readonly verificationTokenRepository: VerificationTokenWriteRepository
-  readonly emailDeliveryRepository: EmailDeliveryWriteRepository
-  readonly outboxRepository: OutboxWriteRepository
   readonly auditRepository: AuditWriteRepository
   readonly idempotencyRepository: IdempotencyRepository
 }
@@ -124,10 +115,6 @@ const assertSignupCaller = (deps: PublicOnboardingDeps, request: FastifyRequest)
 
 const idempotencyKeySchema = z.string().regex(/^[A-Za-z0-9._:-]{8,128}$/u)
 
-const verifyEmailBodySchema = z
-  .object({ token: z.string().regex(/^[A-Za-z0-9_-]{43}$/u) })
-  .strict()
-
 /**
  * What the external marketing site posts. Same person-level fields as
  * `/v1/applications`, but consent is a single boolean: the versions in force are
@@ -139,7 +126,7 @@ const verifyEmailBodySchema = z
  * completed.
  *
  * `password` is the password the applicant will later sign in to the app with.
- * It is validated by the same `passwordInputSchema` the activation command uses,
+ * It is validated by the same `passwordInputSchema` every credential satisfies,
  * so the rule the form must satisfy and the rule the credential must satisfy
  * cannot drift apart. There is no `confirmPassword` here: re-entry is a typo
  * guard for the person filling the form, so it is checked where the two boxes
@@ -180,13 +167,11 @@ const hashRequest = (canonical: Readonly<Record<string, unknown>>): Buffer =>
  * What `/newuser` answers, derived from the submission's outcome.
  *
  * `accepted` keeps its original meaning — a new application was created — so a
- * caller that only ever read that field is not silently given a new one.
- * `outcome` is the field to branch on, and `verificationEmailQueued` is the one
- * that decides whether to tell the visitor to check their inbox.
- *
- * "Queued", not "sent": this call writes an `email_deliveries` row and the outbox
- * worker delivers it seconds later. Promising a send here would be the same lie
- * the old unconditional `accepted: true` told.
+ * caller that only ever read that field is not silently given a new one, and
+ * `outcome` is the field to branch on. `verificationEmailQueued` is retained
+ * for wire compatibility and is now always false: nothing is emailed at
+ * signup. The account-approved mail arrives after the admin decision, and
+ * email confirmation happens in the app.
  */
 interface NewUserResponse {
   readonly status: number
@@ -198,19 +183,14 @@ interface NewUserResponse {
 }
 
 /*
- * 202 when work was taken on (a row written, a mail queued); 200 when the request
- * was understood and deliberately produced nothing. Both are 2xx, so a caller
- * that only checks the status class is unaffected.
+ * 202 when work was taken on (a row written); 200 when the request was
+ * understood and deliberately produced nothing. Both are 2xx, so a caller that
+ * only checks the status class is unaffected.
  */
 const responseFor = (outcome: SubmitApplicationOutcome): NewUserResponse => {
   switch (outcome.kind) {
     case "created":
-      return { status: 202, body: { accepted: true, outcome: "created", verificationEmailQueued: true } }
-    case "verification_resent":
-      return {
-        status: 202,
-        body: { accepted: false, outcome: "verification_resent", verificationEmailQueued: true },
-      }
+      return { status: 202, body: { accepted: true, outcome: "created", verificationEmailQueued: false } }
     case "duplicate_pending":
       return {
         status: 200,
@@ -226,10 +206,6 @@ const responseFor = (outcome: SubmitApplicationOutcome): NewUserResponse => {
 
 /**
  * Run a submission through the idempotency protocol and `submitApplication`.
- *
- * Shared by both doors so there is exactly one place that decides what a signup
- * writes. `routeTemplate` differs per door on purpose: the two are separate
- * idempotency namespaces, so a key reused across them cannot collide.
  */
 const submitThroughIdempotency = async (
   deps: PublicOnboardingDeps,
@@ -241,7 +217,7 @@ const submitThroughIdempotency = async (
     fullName: string
     emailNormalized: string
     phoneE164: string
-    passwordHash: string | null
+    passwordHash: string
     consents: readonly Readonly<{ kind: ConsentKind; version: string }>[]
   }>,
 ): Promise<FastifyReply> => {
@@ -285,17 +261,9 @@ const submitThroughIdempotency = async (
           {
             applicationRepository: deps.applicationRepository,
             consentRepository: deps.consentRepository,
-            verificationTokenRepository: deps.verificationTokenRepository,
-            emailDeliveryRepository: deps.emailDeliveryRepository,
-            outboxRepository: deps.outboxRepository,
             auditRepository: deps.auditRepository,
             crypto: deps.crypto,
             clock: deps.clock,
-            config: {
-              verificationTokenTtlMs: deps.config.verificationTokenTtlMs,
-              sesConfigurationSet: deps.config.sesConfigurationSet,
-              verificationResendCooldownMs: deps.config.verificationResendCooldownMs,
-            },
           },
           {
             fullName: input.fullName,
@@ -427,37 +395,4 @@ export const registerPublicOnboardingRoutes = (
   deps: PublicOnboardingDeps,
 ): void => {
   application.post("/newuser", async (request, reply) => handleNewUser(deps, request, reply))
-
-  /*
-   * The token emailed to a new signup. The marketing site hosts the page the
-   * link opens and calls this to redeem the token, so it lives under the same
-   * unversioned external prefix as /newuser rather than under /v1.
-   *
-   * Deliberately NOT behind the x-signup-key gate that /newuser uses. The
-   * difference is what authenticates the request. /newuser accepts entirely
-   * attacker-chosen input, so it needs to know who is calling. Here the token
-   * IS the credential: 43 random characters, single-use, expiring, and issued by
-   * this backend to one mailbox. Requiring a shared secret on top would buy no
-   * security and would force the marketing site to redeem tokens server-side —
-   * meaning if it ever chose to redeem from the browser instead, the secret
-   * would have to ship in client JavaScript, which is strictly worse than not
-   * having one.
-   */
-  application.post("/newuser/verify-email", async (request, reply) => {
-    const body = parseOrThrow(verifyEmailBodySchema, request.body)
-    await deps.unitOfWork.execute((tx) =>
-      verifyApplicationEmail(
-        tx,
-        {
-          applicationRepository: deps.applicationRepository,
-          verificationTokenRepository: deps.verificationTokenRepository,
-          auditRepository: deps.auditRepository,
-          crypto: deps.crypto,
-          clock: deps.clock,
-        },
-        { token: body.token, requestId: request.requestId },
-      ),
-    )
-    return reply.sendData({ verified: true }, { status: 200 })
-  })
 }

@@ -47,7 +47,7 @@ const capturingSender: EmailSender = {
 }
 const codeFor = (email: string): string => {
   const message = sentByRecipient.get(email)
-  const match = message === undefined ? null : /([0-9]{6})/u.exec(message.text)
+  const match = message === undefined ? null : /code is ([A-Za-z0-9]{6})\b/u.exec(message.text)
   if (match?.[1] === undefined) throw new Error(`no code emailed to ${email}`)
   return match[1]
 }
@@ -208,14 +208,15 @@ describe("client email-OTP KYC + eligibility (integration)", () => {
     expect(started.statusCode).toBe(200)
     expect(dataOf<{ status: string }>(started).status).toBe("code_sent")
 
-    const wrong = await verify(token, "000000")
-    // 000000 is astronomically unlikely to match; treat a match as a fluke re-run.
-    if (wrong.statusCode !== 200) {
-      expect(wrong.statusCode).toBe(400)
-      expect(errorOf(wrong)).toBe("TOKEN_INVALID")
-    }
+    const realCode = codeFor("client-a@example.com")
+    expect(realCode).toMatch(/^[A-Za-z0-9]{6}$/u)
 
-    const verified = await verify(token, codeFor("client-a@example.com"))
+    // Deterministically wrong: a valid-format code that differs from the real one.
+    const wrong = await verify(token, realCode === "AAAAAA" ? "BBBBBB" : "AAAAAA")
+    expect(wrong.statusCode).toBe(400)
+    expect(errorOf(wrong)).toBe("TOKEN_INVALID")
+
+    const verified = await verify(token, realCode)
     expect(verified.statusCode).toBe(200)
     expect(dataOf<{ status: string }>(verified).status).toBe("approved")
 
@@ -278,10 +279,72 @@ describe("client email-OTP KYC + eligibility (integration)", () => {
   test("verifying an already-approved user is an idempotent no-op success", async () => {
     const { token } = await seedActiveUser("client-b@example.com", "+14155551702")
     await kyc(token, "start")
-    await verify(token, codeFor("client-b@example.com"))
+    const code = codeFor("client-b@example.com")
+    await verify(token, code)
     // A second start returns 'approved' (no new code), and the recorded email is stale.
     const restart = await kyc(token, "start")
     expect(dataOf<{ status: string }>(restart).status).toBe("approved")
+    // A verify after approval is also a no-op success, whatever code is presented.
+    const reverify = await verify(token, code)
+    expect(reverify.statusCode).toBe(200)
+    expect(dataOf<{ status: string }>(reverify).status).toBe("approved")
+  })
+
+  test("codes are 6-character alphanumeric and the comparison is case-sensitive", async () => {
+    // Roll users until a code containing at least one letter shows up (digit-only
+    // codes are valid output; a letter is needed to exercise case sensitivity).
+    let realCode = ""
+    let token = ""
+    for (let attempt = 0; attempt < 25 && !/[A-Za-z]/u.test(realCode); attempt += 1) {
+      const seeded = await seedActiveUser(
+        `client-case-${attempt}@example.com`,
+        `+141555518${String(attempt).padStart(2, "0")}`,
+      )
+      token = seeded.token
+      const started = await kyc(token, "start")
+      expect(started.statusCode).toBe(200)
+      realCode = codeFor(`client-case-${attempt}@example.com`)
+    }
+    expect(realCode).toMatch(/^[A-Za-z0-9]{6}$/u)
+    expect(realCode).toMatch(/[A-Za-z]/u)
+
+    const swappedCase = [...realCode]
+      .map((char) => (char === char.toUpperCase() ? char.toLowerCase() : char.toUpperCase()))
+      .join("")
+    expect(swappedCase).not.toBe(realCode)
+
+    const wrongCase = await verify(token, swappedCase)
+    expect(wrongCase.statusCode).toBe(400)
+    expect(errorOf(wrongCase)).toBe("TOKEN_INVALID")
+
+    const verified = await verify(token, realCode)
+    expect(verified.statusCode).toBe(200)
+    expect(dataOf<{ status: string }>(verified).status).toBe("approved")
+  })
+
+  test("a resent code supersedes the previous one", async () => {
+    const { userId, token } = await seedActiveUser("client-resend@example.com", "+14155551712")
+    const first = await kyc(token, "start")
+    expect(first.statusCode).toBe(200)
+    const firstCode = codeFor("client-resend@example.com")
+
+    // Backdate the code so the resend cooldown no longer applies.
+    await pool.query(
+      "update kyc_verification_codes set created_at = now() - interval '2 minutes' where user_id = $1 and consumed_at is null",
+      [userId],
+    )
+    const resent = await kyc(token, "resend")
+    expect(resent.statusCode).toBe(200)
+    const secondCode = codeFor("client-resend@example.com")
+
+    // The old code no longer verifies: it was consumed by the resend.
+    const stale = await verify(token, firstCode)
+    expect(stale.statusCode).toBe(400)
+    expect(errorOf(stale)).toBe("TOKEN_INVALID")
+
+    const verified = await verify(token, secondCode)
+    expect(verified.statusCode).toBe(200)
+    expect(dataOf<{ status: string }>(verified).status).toBe("approved")
   })
 
   test("resend within the cooldown is RATE_LIMITED", async () => {

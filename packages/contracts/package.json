@@ -43,11 +43,6 @@
       "import": "./dist/operations/public.js",
       "default": "./dist/operations/public.js"
     },
-    "./activation": {
-      "types": "./dist/operations/activation.d.ts",
-      "import": "./dist/operations/activation.js",
-      "default": "./dist/operations/activation.js"
-    },
     "./native-auth": {
       "types": "./dist/operations/native-auth.d.ts",
       "import": "./dist/operations/native-auth.js",
@@ -60,7 +55,7 @@
     "lint": "eslint .",
     "test": "vitest run --config vitest.config.ts",
     "test:coverage": "vitest run --config vitest.config.ts --coverage",
-    "test:exports": "node --input-type=module -e \"const root = await import('@beonedge/contracts'); const scalars = await import('@beonedge/contracts/scalars'); const envelope = await import('@beonedge/contracts/envelope'); const errors = await import('@beonedge/contracts/errors'); const publicContracts = await import('@beonedge/contracts/public'); const activation = await import('@beonedge/contracts/activation'); const nativeAuth = await import('@beonedge/contracts/native-auth'); if (root.Uuid !== scalars.Uuid || root.ErrorEnvelope !== envelope.ErrorEnvelope || root.ErrorCode !== errors.ErrorCode || root.PUBLIC_OPERATIONS !== publicContracts.PUBLIC_OPERATIONS || root.ACTIVATION_OPERATIONS !== activation.ACTIVATION_OPERATIONS || root.NATIVE_AUTH_OPERATIONS !== nativeAuth.NATIVE_AUTH_OPERATIONS) throw new Error('Package export mismatch')\"",
+    "test:exports": "node --input-type=module -e \"const root = await import('@beonedge/contracts'); const scalars = await import('@beonedge/contracts/scalars'); const envelope = await import('@beonedge/contracts/envelope'); const errors = await import('@beonedge/contracts/errors'); const publicContracts = await import('@beonedge/contracts/public'); const nativeAuth = await import('@beonedge/contracts/native-auth'); if (root.Uuid !== scalars.Uuid || root.ErrorEnvelope !== envelope.ErrorEnvelope || root.ErrorCode !== errors.ErrorCode || root.PUBLIC_OPERATIONS !== publicContracts.PUBLIC_OPERATIONS || root.NATIVE_AUTH_OPERATIONS !== nativeAuth.NATIVE_AUTH_OPERATIONS) throw new Error('Package export mismatch')\"",
     "typecheck": "tsc -p tsconfig.json",
     "generate:openapi": "tsx scripts/generate-openapi.ts",
     "generate:types": "openapi-typescript generated/openapi-v1.json -o generated/openapi-v1.d.ts",

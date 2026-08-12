@@ -7,7 +7,7 @@
  *  @property {string} name
  *  @property {string} email
  *  @property {string} phoneMasked
- *  @property {'approved'|'pending_review'|'kyc_pending'|'rejected'|'suspended'|'closed'} status
+ *  @property {'approved'|'rejected'|'suspended'|'closed'} status
  *  @property {string} avatarInitials
  */
 

@@ -1,14 +1,8 @@
 import { z } from "zod"
 
 import { createSuccessEnvelopeSchema } from "../envelope.js"
-import {
-  EmailInput,
-  FullName,
-  IdempotencyKey,
-  PhoneInput,
-  VersionTag,
-} from "../scalars.js"
-import { defineOperation, MAX_JSON_BODY_BYTES } from "./descriptor.js"
+import { VersionTag } from "../scalars.js"
+import { defineOperation } from "./descriptor.js"
 
 export { MAX_JSON_BODY_BYTES } from "./descriptor.js"
 
@@ -53,54 +47,6 @@ export type ConsentDocumentsData = z.infer<typeof ConsentDocumentsData>
 export const ConsentDocumentsSuccessEnvelope = createSuccessEnvelopeSchema(ConsentDocumentsData)
 export type ConsentDocumentsSuccessEnvelope = z.infer<typeof ConsentDocumentsSuccessEnvelope>
 
-const createConsentEvidenceSchema = <TKind extends ConsentKind>(kind: TKind) =>
-  z.strictObject({
-    kind: z.literal(kind),
-    version: VersionTag,
-    accepted: z.literal(true),
-  })
-
-const TermsConsentEvidence = createConsentEvidenceSchema("terms")
-const PrivacyConsentEvidence = createConsentEvidenceSchema("privacy")
-const ApplicationConsentPair = z.union([
-  createExactPairSchema(TermsConsentEvidence, PrivacyConsentEvidence),
-  createExactPairSchema(PrivacyConsentEvidence, TermsConsentEvidence),
-])
-
-export const SubmitApplicationBody = z.strictObject({
-  fullName: FullName,
-  email: EmailInput,
-  phone: PhoneInput,
-  consents: ApplicationConsentPair,
-})
-export type SubmitApplicationBody = z.infer<typeof SubmitApplicationBody>
-
-export const SubmitApplicationHeaders = z.strictObject({
-  "idempotency-key": IdempotencyKey,
-})
-export type SubmitApplicationHeaders = z.infer<typeof SubmitApplicationHeaders>
-
-export const SubmitApplicationData = z.strictObject({ accepted: z.literal(true) })
-export type SubmitApplicationData = z.infer<typeof SubmitApplicationData>
-
-export const SubmitApplicationSuccessEnvelope = createSuccessEnvelopeSchema(SubmitApplicationData)
-export type SubmitApplicationSuccessEnvelope = z.infer<typeof SubmitApplicationSuccessEnvelope>
-
-export const VerifyApplicationEmailBody = z.strictObject({
-  token: z.string().regex(/^[A-Za-z0-9_-]{43}$/u),
-})
-export type VerifyApplicationEmailBody = z.infer<typeof VerifyApplicationEmailBody>
-
-export const VerifyApplicationEmailData = z.strictObject({ verified: z.literal(true) })
-export type VerifyApplicationEmailData = z.infer<typeof VerifyApplicationEmailData>
-
-export const VerifyApplicationEmailSuccessEnvelope = createSuccessEnvelopeSchema(
-  VerifyApplicationEmailData,
-)
-export type VerifyApplicationEmailSuccessEnvelope = z.infer<
-  typeof VerifyApplicationEmailSuccessEnvelope
->
-
 export const getPublicConsentDocuments = defineOperation({
   operationId: "getPublicConsentDocuments",
   method: "GET",
@@ -113,61 +59,4 @@ export const getPublicConsentDocuments = defineOperation({
   errorCodes: ["RATE_LIMITED", "INTERNAL_ERROR", "DEPENDENCY_UNAVAILABLE"],
 })
 
-export const submitApplication = defineOperation({
-  operationId: "submitApplication",
-  method: "POST",
-  path: "/v1/applications",
-  authChannel: "public",
-  credentialPolicy: "none",
-  idempotency: "required",
-  request: {
-    body: SubmitApplicationBody,
-    headers: SubmitApplicationHeaders,
-    mediaType: "application/json",
-    maxBodyBytes: MAX_JSON_BODY_BYTES,
-  },
-  success: { status: 202, schema: SubmitApplicationSuccessEnvelope },
-  errorCodes: [
-    "VALIDATION_FAILED",
-    "STATE_CONFLICT",
-    "IDEMPOTENCY_KEY_REUSED",
-    "IDEMPOTENCY_IN_PROGRESS",
-    "PAYLOAD_TOO_LARGE",
-    "UNSUPPORTED_MEDIA_TYPE",
-    "RATE_LIMITED",
-    "INTERNAL_ERROR",
-    "DEPENDENCY_UNAVAILABLE",
-  ],
-})
-
-export const verifyApplicationEmail = defineOperation({
-  operationId: "verifyApplicationEmail",
-  method: "POST",
-  path: "/v1/applications/verify-email",
-  authChannel: "public-token",
-  credentialPolicy: "public-body-token",
-  idempotency: "single-use-token",
-  request: {
-    body: VerifyApplicationEmailBody,
-    mediaType: "application/json",
-    maxBodyBytes: MAX_JSON_BODY_BYTES,
-  },
-  success: { status: 200, schema: VerifyApplicationEmailSuccessEnvelope },
-  errorCodes: [
-    "VALIDATION_FAILED",
-    "TOKEN_INVALID",
-    "TOKEN_ALREADY_USED",
-    "TOKEN_EXPIRED",
-    "PAYLOAD_TOO_LARGE",
-    "UNSUPPORTED_MEDIA_TYPE",
-    "RATE_LIMITED",
-    "INTERNAL_ERROR",
-    "DEPENDENCY_UNAVAILABLE",
-  ],
-})
-
-export const PUBLIC_OPERATIONS = Object.freeze([
-  getPublicConsentDocuments,
-  submitApplication,
-  verifyApplicationEmail,
-])
+export const PUBLIC_OPERATIONS = Object.freeze([getPublicConsentDocuments])

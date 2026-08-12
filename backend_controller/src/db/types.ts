@@ -60,17 +60,9 @@ type Nullable<T> = ColumnType<T | null, T | null | undefined, T | null>
 type Json = JSONColumnType<Record<string, unknown>>
 type JsonDefault = ColumnType<Record<string, unknown>, string | undefined, string>
 
-// Enums (closed sets from migrations 009-013)
-export type ApplicationState =
-  | "pending_email_verification"
-  | "submitted"
-  | "in_review"
-  | "approved"
-  | "rejected"
-  | "withdrawn"
-export type TokenPurpose = "application_email_verification" | "password_reset"
+// Enums (closed sets from migrations 009-013, reworked by 025)
+export type ApplicationState = "submitted" | "approved" | "rejected" | "withdrawn"
 export type UserAccountState = "invited" | "active" | "suspended" | "closed"
-export type ActivationInviteState = "pending" | "accepted" | "revoked"
 export type ApplicationDecision = "approved" | "rejected"
 export type SessionChannel = "native" | "web"
 export type AuthSessionState = "active" | "revoked" | "expired"
@@ -163,12 +155,11 @@ export interface ApplicationsTable {
   /**
    * Argon2id hash of the password chosen on the public signup form, held until
    * the approval decision copies it into `user_credentials`. Nullable: rows
-   * submitted before password-at-signup have none and use the activation-invite
-   * path instead.
+   * submitted before password-at-signup have none and cannot be approved until
+   * they are resubmitted.
    */
   password_hash: string | null
   state: Generated<ApplicationState>
-  email_verified_at: NullableTimestamp
   submitted_at: NullableTimestamp
   review_started_at: NullableTimestamp
   decided_at: NullableTimestamp
@@ -199,19 +190,6 @@ export interface ApplicationConsentsTable {
   ip_hmac: Bytea
   ip_hmac_key_version: string
   user_agent: Nullable<string>
-  created_at: TimestampDefault
-}
-
-export interface VerificationTokensTable {
-  id: Generated<string>
-  application_id: Nullable<string>
-  user_id: Nullable<string>
-  purpose: TokenPurpose
-  token_hash: Bytea
-  token_key_version: string
-  expires_at: Timestamp
-  consumed_at: NullableTimestamp
-  revoked_at: NullableTimestamp
   created_at: TimestampDefault
 }
 
@@ -253,22 +231,6 @@ export interface ApplicationReviewsTable {
   request_id: string
   idempotency_key: string
   created_at: TimestampDefault
-}
-
-export interface ActivationInvitesTable {
-  id: Generated<string>
-  user_id: string
-  application_id: string
-  token_hash: Bytea
-  token_key_version: string
-  state: Generated<ActivationInviteState>
-  expires_at: Timestamp
-  accepted_at: NullableTimestamp
-  revoked_at: NullableTimestamp
-  revocation_reason: Nullable<string>
-  created_by_user_id: Nullable<string>
-  created_at: TimestampDefault
-  version: BigIntStringDefault
 }
 
 export interface AuthSessionsTable {
@@ -462,8 +424,6 @@ export interface EmailDeliveriesTable {
   outbox_event_id: Nullable<string>
   application_id: Nullable<string>
   user_id: Nullable<string>
-  verification_token_id: Nullable<string>
-  activation_invite_id: Nullable<string>
   template_key: string
   template_version: string
   recipient_ciphertext: NullableBytea
@@ -1043,11 +1003,9 @@ export interface Database {
   applications: ApplicationsTable
   consent_documents: ConsentDocumentsTable
   application_consents: ApplicationConsentsTable
-  verification_tokens: VerificationTokensTable
   users: UsersTable
   user_credentials: UserCredentialsTable
   application_reviews: ApplicationReviewsTable
-  activation_invites: ActivationInvitesTable
   auth_sessions: AuthSessionsTable
   auth_refresh_tokens: AuthRefreshTokensTable
   roles: RolesTable

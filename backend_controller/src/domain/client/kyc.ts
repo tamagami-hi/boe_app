@@ -1,6 +1,6 @@
 /**
  * Email-OTP KYC commands (decisions 8-10). `requestKycCode` ensures the user's
- * KYC case is open, issues a fresh 6-digit code (hash stored, raw returned to the
+ * KYC case is open, issues a fresh 6-character code (hash stored, raw returned to the
  * caller for a post-commit send), and enforces a resend cooldown.
  * `verifyKyc` checks the code (constant-time, expiry + attempt-capped) and, on
  * success, approves the case with an expiry — after which the user is eligible.
@@ -35,7 +35,19 @@ export interface KycDeps {
   readonly config: KycConfig
 }
 
-const generateSixDigitCode = (): string => String(randomInt(0, 1_000_000)).padStart(6, "0")
+// 6-character, case-sensitive code over a 62-char alphabet (~35.7 bits of
+// entropy). `crypto.randomInt` is a CSPRNG with a uniform range, so there is no
+// modulo bias to correct.
+const CODE_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+const CODE_LENGTH = 6
+
+const generateVerificationCode = (): string => {
+  let code = ""
+  for (let index = 0; index < CODE_LENGTH; index += 1) {
+    code += CODE_ALPHABET[randomInt(0, CODE_ALPHABET.length)]
+  }
+  return code
+}
 
 const isApprovedAndCurrent = (kycCase: KycCase, now: Date): boolean =>
   kycCase.state === "approved" &&
@@ -79,7 +91,7 @@ export const requestKycCode = async (
   }
 
   await deps.kycRepository.consumeActiveCode(tx, { kycCaseId: kycCase.id, now })
-  const rawCode = generateSixDigitCode()
+  const rawCode = generateVerificationCode()
   const hashed = deps.crypto.hashToken(rawCode)
   const expiresAt = new Date(now.getTime() + deps.config.codeTtlMs)
   await deps.kycRepository.createCode(tx, {

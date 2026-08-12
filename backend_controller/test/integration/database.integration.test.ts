@@ -145,28 +145,7 @@ describe("canonical public-onboarding schema (BE-007a)", () => {
     )
   })
 
-  test("allows only one pending verification token per application", async () => {
-    const application = await pool.query<{ id: string }>(
-      "insert into applications (email_normalized, phone_e164, full_name) " +
-        "values ('c@example.com', '+14155550200', 'Verify User') returning id",
-    )
-    const applicationId = application.rows[0]?.id
-
-    await pool.query(
-      "insert into verification_tokens (application_id, purpose, token_hash, token_key_version, expires_at) " +
-        "values ($1, 'application_email_verification', decode(repeat('ab', 32), 'hex'), 'k1', now() + interval '1 day')",
-      [applicationId],
-    )
-    await expect(
-      pool.query(
-        "insert into verification_tokens (application_id, purpose, token_hash, token_key_version, expires_at) " +
-          "values ($1, 'application_email_verification', decode(repeat('cd', 32), 'hex'), 'k1', now() + interval '1 day')",
-        [applicationId],
-      ),
-    ).rejects.toThrow()
-  })
-
-  test("enforces identity uniqueness and credential/review/invite invariants (BE-007b)", async () => {
+  test("enforces identity uniqueness and credential/review invariants (BE-007b)", async () => {
     const application = await pool.query<{ id: string }>(
       "insert into applications (email_normalized, phone_e164, full_name) " +
         "values ('d@example.com', '+14155550300', 'Approved User') returning id",
@@ -208,29 +187,6 @@ describe("canonical public-onboarding schema (BE-007a)", () => {
         "insert into application_reviews (application_id, reviewer_user_id, decision, reason_code, request_id, idempotency_key) " +
           "values ($1, $2, 'approved', 'ok', gen_random_uuid(), 'idem-2')",
         [applicationId, userId],
-      ),
-    ).rejects.toThrow()
-
-    // one pending activation invite per user (composite ownership FK)
-    await pool.query(
-      "insert into activation_invites (user_id, application_id, token_hash, token_key_version, expires_at) " +
-        "values ($1, $2, decode(repeat('ab', 32), 'hex'), 'k1', now() + interval '2 days')",
-      [userId, applicationId],
-    )
-    await expect(
-      pool.query(
-        "insert into activation_invites (user_id, application_id, token_hash, token_key_version, expires_at) " +
-          "values ($1, $2, decode(repeat('cd', 32), 'hex'), 'k1', now() + interval '2 days')",
-        [userId, applicationId],
-      ),
-    ).rejects.toThrow()
-  })
-
-  test("rejects a password-reset verification token referencing an unknown user", async () => {
-    await expect(
-      pool.query(
-        "insert into verification_tokens (user_id, purpose, token_hash, token_key_version, expires_at) " +
-          "values (gen_random_uuid(), 'password_reset', decode(repeat('ef', 32), 'hex'), 'k1', now() + interval '1 day')",
       ),
     ).rejects.toThrow()
   })
@@ -320,7 +276,7 @@ describe("canonical public-onboarding schema (BE-007a)", () => {
     await expect(pool.query("insert into roles (code, name) values ('onboarding', 'Dup')")).rejects.toThrow()
 
     const permission = await pool.query<{ id: string }>(
-      "insert into permissions (code, description) values ('applications.review', 'Review apps') returning id",
+      "insert into permissions (code, description) values ('applications.decide', 'Decide apps') returning id",
     )
     const permissionId = permission.rows[0]?.id
 
@@ -428,32 +384,26 @@ describe("canonical public-onboarding schema (BE-007a)", () => {
         "values ('email', 'e', 1, 'application', gen_random_uuid(), now(), gen_random_uuid(), 'dedup-lease-ok', '{}'::jsonb, 'processing', now(), 'worker-1', now() + interval '30 seconds')",
     )
 
-    // subject: an application with a pending verification token for a verify_email delivery
+    // subject: an application for an account_approved delivery
     const application = await pool.query<{ id: string }>(
       "insert into applications (email_normalized, phone_e164, full_name) " +
         "values ('h@example.com', '+14155550600', 'Email User') returning id",
     )
     const applicationId = application.rows[0]?.id
-    const token = await pool.query<{ id: string }>(
-      "insert into verification_tokens (application_id, purpose, token_hash, token_key_version, expires_at) " +
-        "values ($1, 'application_email_verification', decode(repeat('66', 32), 'hex'), 'k1', now() + interval '1 day') returning id",
-      [applicationId],
-    )
-    const tokenId = token.rows[0]?.id
     const deliveryOutbox = await pool.query<{ id: string }>(
       "insert into outbox_events (topic, event_type, event_version, aggregate_type, aggregate_id, occurred_at, request_id, deduplication_key, payload) " +
-        "values ('email', 'email.verify', 1, 'email_delivery', gen_random_uuid(), now(), gen_random_uuid(), 'dedup-del-1', '{}'::jsonb) returning id",
+        "values ('email', 'email.approval', 1, 'email_delivery', gen_random_uuid(), now(), gen_random_uuid(), 'dedup-del-1', '{}'::jsonb) returning id",
     )
     const deliveryOutboxId = deliveryOutbox.rows[0]?.id
 
-    // a well-formed verify_email delivery is accepted
+    // a well-formed account_approved delivery is accepted
     await pool.query(
-      "insert into email_deliveries (outbox_event_id, application_id, verification_token_id, template_key, template_version, recipient_hmac, recipient_masked, suppression_hmac_key_version, ses_configuration_set) " +
-        "values ($1, $2, $3, 'verify_email', 'v1', decode(repeat('55', 32), 'hex'), 'h***@e***.com', 'sk1', 'cfg-set')",
-      [deliveryOutboxId, applicationId, tokenId],
+      "insert into email_deliveries (outbox_event_id, application_id, template_key, template_version, recipient_hmac, recipient_masked, suppression_hmac_key_version, ses_configuration_set) " +
+        "values ($1, $2, 'account_approved', 'v1', decode(repeat('55', 32), 'hex'), 'h***@e***.com', 'sk1', 'cfg-set')",
+      [deliveryOutboxId, applicationId],
     )
 
-    // verify_email template requires its verification token
+    // a removed onboarding template key is rejected by the template matrix
     await expect(
       pool.query(
         "insert into email_deliveries (outbox_event_id, application_id, template_key, template_version, recipient_hmac, recipient_masked, suppression_hmac_key_version, ses_configuration_set) " +
@@ -465,18 +415,18 @@ describe("canonical public-onboarding schema (BE-007a)", () => {
     // recipient HMAC must be exactly 32 bytes
     await expect(
       pool.query(
-        "insert into email_deliveries (outbox_event_id, application_id, verification_token_id, template_key, template_version, recipient_hmac, recipient_masked, suppression_hmac_key_version, ses_configuration_set) " +
-          "values ($1, $2, $3, 'verify_email', 'v1', decode(repeat('55', 16), 'hex'), 'h***@e***.com', 'sk1', 'cfg-set')",
-        [deliveryOutboxId, applicationId, tokenId],
+        "insert into email_deliveries (outbox_event_id, application_id, template_key, template_version, recipient_hmac, recipient_masked, suppression_hmac_key_version, ses_configuration_set) " +
+          "values ($1, $2, 'account_approved', 'v1', decode(repeat('55', 16), 'hex'), 'h***@e***.com', 'sk1', 'cfg-set')",
+        [deliveryOutboxId, applicationId],
       ),
     ).rejects.toThrow()
 
     // a partially-populated recipient PII envelope is rejected
     await expect(
       pool.query(
-        "insert into email_deliveries (outbox_event_id, application_id, verification_token_id, template_key, template_version, recipient_hmac, recipient_masked, recipient_ciphertext, suppression_hmac_key_version, ses_configuration_set) " +
-          "values ($1, $2, $3, 'verify_email', 'v1', decode(repeat('55', 32), 'hex'), 'h***@e***.com', decode(repeat('77', 32), 'hex'), 'sk1', 'cfg-set')",
-        [deliveryOutboxId, applicationId, tokenId],
+        "insert into email_deliveries (outbox_event_id, application_id, template_key, template_version, recipient_hmac, recipient_masked, recipient_ciphertext, suppression_hmac_key_version, ses_configuration_set) " +
+          "values ($1, $2, 'account_approved', 'v1', decode(repeat('55', 32), 'hex'), 'h***@e***.com', decode(repeat('77', 32), 'hex'), 'sk1', 'cfg-set')",
+        [deliveryOutboxId, applicationId],
       ),
     ).rejects.toThrow()
 
@@ -546,10 +496,10 @@ describe("canonical Kysely schema types (BE-007f)", () => {
       .returningAll()
       .executeTakeFirstOrThrow()
     expect(typeof application.id).toBe("string")
-    expect(application.state).toBe("pending_email_verification")
+    expect(application.state).toBe("submitted")
     expect(application.version).toBe("1")
     expect(application.created_at).toBeInstanceOf(Date)
-    expect(application.email_verified_at).toBeNull()
+    expect(application.password_hash).toBeNull()
 
     // snake_case check column round-trips.
     const role = await database

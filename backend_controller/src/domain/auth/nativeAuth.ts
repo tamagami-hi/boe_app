@@ -1,8 +1,12 @@
 /**
- * Native authentication commands (spec 04 §3.3, 03 §5-§6): activation, native
- * login (with same-device session replacement), and logout. Refresh rotation is
- * a separate command. All raw secrets exist only in memory / the response;
- * PostgreSQL stores only hashes.
+ * Native authentication commands (spec 04 §3.3, 03 §5-§6): native login (with
+ * same-device session replacement) and logout. Refresh rotation is a separate
+ * command. All raw secrets exist only in memory / the response; PostgreSQL
+ * stores only hashes.
+ *
+ * Accounts are born active: the admin approval creates the user with the signup
+ * password credential, so there is no activation-invite redemption here — the
+ * first thing a new investor does in the app is sign in.
  */
 import { createHash } from "node:crypto"
 
@@ -10,18 +14,14 @@ import type { FastifyRequest } from "fastify"
 import type { Kysely } from "kysely"
 
 import type { AccessTokenService } from "../../auth/accessToken.js"
-import type { BreachChecker } from "../../auth/breachCheck.js"
-import { hashPassword, verifyDummyPassword, verifyPassword } from "../../auth/passwordHasher.js"
+import { verifyDummyPassword, verifyPassword } from "../../auth/passwordHasher.js"
 import { maskPhone } from "../../auth/phone.js"
 import { deriveRefreshToken, generateInitialRefreshToken, hashToken } from "../../auth/refreshDerivation.js"
-import type { CryptoContext } from "../../crypto/context.js"
 import type { Transaction, User, UserId } from "../../db/repositories.js"
 import type { Database } from "../../db/types.js"
 import { AppError } from "../../http/errorCatalog.js"
-import type { ActivationInviteWriteRepository } from "../../repositories/activationInviteRepository.js"
 import type { AuditWriteRepository } from "../../repositories/auditRepository.js"
 import type { AuthSessionWriteRepository } from "../../repositories/authSessionRepository.js"
-import type { CredentialWriteRepository } from "../../repositories/credentialRepository.js"
 import type { UserWriteRepository } from "../../repositories/userRepository.js"
 
 const ACCESS_TOKEN_TTL_MS = 10 * 60 * 1000
@@ -54,12 +54,8 @@ export interface NativeSessionResult {
 
 export interface NativeAuthDeps {
   readonly userRepository: UserWriteRepository
-  readonly activationInviteRepository: ActivationInviteWriteRepository
-  readonly credentialRepository: CredentialWriteRepository
   readonly authSessionRepository: AuthSessionWriteRepository
   readonly auditRepository: AuditWriteRepository
-  readonly crypto: CryptoContext
-  readonly breachChecker: BreachChecker
   readonly accessTokenService: AccessTokenService
   readonly database: Kysely<Database>
   readonly refreshKey: Buffer
@@ -120,49 +116,6 @@ const issueNativeSession = async (
     refreshTokenExpiresAt: new Date(now.getTime() + REFRESH_IDLE_MS).toISOString(),
     sessionId: created.session.id,
   }
-}
-
-export interface ActivateUserInput {
-  readonly token: string
-  readonly password: string
-  readonly device: DeviceInput
-  readonly requestId: string
-}
-
-export const activateUser = async (
-  tx: Transaction,
-  deps: NativeAuthDeps,
-  input: ActivateUserInput,
-): Promise<NativeSessionResult> => {
-  const invite = await deps.activationInviteRepository.lockByTokenHash(tx, deps.crypto.hashToken(input.token).hash)
-  if (invite === null) throw new AppError("TOKEN_INVALID")
-  if (invite.state !== "pending") throw new AppError("TOKEN_ALREADY_USED")
-  if (new Date(invite.expires_at).getTime() <= deps.clock().getTime()) throw new AppError("TOKEN_EXPIRED")
-
-  const user = await deps.userRepository.lockById(tx, invite.user_id as UserId)
-  if (user === null || user.account_state !== "invited") throw new AppError("STATE_CONFLICT")
-  if (await deps.credentialRepository.exists(tx, user.id as UserId)) throw new AppError("STATE_CONFLICT")
-
-  await deps.breachChecker.check(input.password)
-  const now = deps.clock()
-  await deps.credentialRepository.create(tx, user.id as UserId, await hashPassword(input.password))
-  await deps.activationInviteRepository.accept(tx, invite.id, now)
-  const activated = await deps.userRepository.activate(tx, user.id as UserId, now)
-
-  const result = await issueNativeSession(tx, deps, activated, deviceIdHash(input.device.installationId), now)
-  await deps.auditRepository.append(tx, {
-    actorType: "user",
-    actorUserId: user.id,
-    command: "user.activate",
-    entityType: "user",
-    entityId: user.id,
-    fromState: "invited",
-    toState: "active",
-    requestId: input.requestId,
-    entityVersion: Number(activated.version),
-    metadata: {},
-  })
-  return result
 }
 
 export interface NativeLoginInput {

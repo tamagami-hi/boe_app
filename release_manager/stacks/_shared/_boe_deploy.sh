@@ -210,7 +210,7 @@ boe_deploy_assert_env() {
         boe_assert_env_keys \
             POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB \
             BACKEND_PORT APP_FRONTEND_PORT ADMIN_FRONTEND_PORT \
-            PUBLIC_API_BASE_URL PUBLIC_LANDING_ORIGIN CORS_ORIGIN WEB_ORIGIN_ALLOWLIST \
+            PUBLIC_API_BASE_URL CORS_ORIGIN WEB_ORIGIN_ALLOWLIST \
             ACCESS_TOKEN_ISSUER ACCESS_TOKEN_AUDIENCE ACCESS_TOKEN_CURRENT_KID \
             ACCESS_TOKEN_SIGNING_KEY ACCESS_TOKEN_VERIFICATION_KEYS \
             REFRESH_HMAC_KEY REFRESH_KEY_VERSION CSRF_KEY_VERSION CURSOR_HMAC_KEY \
@@ -218,7 +218,9 @@ boe_deploy_assert_env() {
             CRYPTO_CONSENT_IP_HMAC_KEY CRYPTO_CONSENT_IP_HMAC_KEY_VERSION \
             CRYPTO_RECIPIENT_HMAC_KEY CRYPTO_RECIPIENT_HMAC_KEY_VERSION \
             CRYPTO_RECIPIENT_ENC_KEY CRYPTO_RECIPIENT_ENC_KEY_VERSION \
-            NEWUSER_SHARED_SECRET
+            NEWUSER_SHARED_SECRET \
+            KYC_EMAIL_FROM EMAIL_SMTP_HOST EMAIL_SMTP_PORT EMAIL_SMTP_USER EMAIL_SMTP_PASSWORD EMAIL_SMTP_SECURE \
+            APK_DOWNLOAD_BASE_URL
         boe_validate_app_key_material
         boe_validate_app_policy
     fi
@@ -269,11 +271,11 @@ boe_validate_app_key_material() {
 }
 
 boe_validate_app_policy() {
-    local issuer allowlist origin provider smtp_host smtp_user smtp_password seed_enabled key value
+    local issuer allowlist origin provider smtp_host smtp_port smtp_secure smtp_user smtp_password from_address apk_base expected_apk_base seed_enabled key value
     local -a origins
     issuer="$(env_get ACCESS_TOKEN_ISSUER "$BOE_EFFECTIVE_ENV")"
     [[ "$issuer" == https://* ]] || die "ACCESS_TOKEN_ISSUER must use https://"
-    for key in PUBLIC_API_BASE_URL PUBLIC_LANDING_ORIGIN CORS_ORIGIN; do
+    for key in PUBLIC_API_BASE_URL CORS_ORIGIN; do
         value="$(env_get "$key" "$BOE_EFFECTIVE_ENV")"
         [[ "$value" == https://* ]] || die "$key must use https://"
     done
@@ -304,11 +306,25 @@ boe_validate_app_policy() {
     [[ -z "$provider" || "$provider" == "manual" ]] \
         || boe_assert_env_keys PAYMENT_WEBHOOK_SECRET PAYMENT_GATEWAY_KEY_ID PAYMENT_GATEWAY_KEY_SECRET
     smtp_host="$(env_get EMAIL_SMTP_HOST "$BOE_EFFECTIVE_ENV")"
+    smtp_port="$(env_get EMAIL_SMTP_PORT "$BOE_EFFECTIVE_ENV")"
+    smtp_secure="$(env_get EMAIL_SMTP_SECURE "$BOE_EFFECTIVE_ENV")"
     smtp_user="$(env_get EMAIL_SMTP_USER "$BOE_EFFECTIVE_ENV")"
     smtp_password="$(env_get EMAIL_SMTP_PASSWORD "$BOE_EFFECTIVE_ENV")"
-    if [[ -n "$smtp_host$smtp_user$smtp_password" ]]; then
-        boe_assert_env_keys EMAIL_SMTP_HOST EMAIL_SMTP_USER EMAIL_SMTP_PASSWORD
+    from_address="$(env_get KYC_EMAIL_FROM "$BOE_EFFECTIVE_ENV")"
+    [[ "$smtp_host" == "smtppro.zoho.in" ]] || die "EMAIL_SMTP_HOST must be smtppro.zoho.in"
+    [[ "$smtp_port" == "465" ]] || die "EMAIL_SMTP_PORT must be 465"
+    [[ "$smtp_secure" == "true" ]] || die "EMAIL_SMTP_SECURE must be true"
+    [[ "$from_address" == "$smtp_user" ]] || die "KYC_EMAIL_FROM must equal EMAIL_SMTP_USER"
+    apk_base="$(env_get APK_DOWNLOAD_BASE_URL "$BOE_EFFECTIVE_ENV")"
+    if [[ "${P[environment]}" == "production" ]]; then
+        expected_apk_base="https://app.beonedge.in/downloads"
+    else
+        expected_apk_base="https://dev-app.beonedge.in/downloads"
     fi
+    [[ "$apk_base" == "$expected_apk_base" ]] \
+        || die "APK_DOWNLOAD_BASE_URL must be $expected_apk_base"
+    [[ "$(env_get KYC_CODE_MAX_ATTEMPTS "$BOE_EFFECTIVE_ENV")" == "5" ]] \
+        || die "KYC_CODE_MAX_ATTEMPTS must be 5"
     seed_enabled="$(env_get SEED_AUTH_ENABLED "$BOE_EFFECTIVE_ENV")"
     [[ "$seed_enabled" == "false" ]] || boe_assert_env_keys ADMIN_LOGIN_ID ADMIN_PASSWORD
     if [[ "${P[environment]}" == "production" ]]; then

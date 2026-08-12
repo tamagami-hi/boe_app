@@ -34,7 +34,7 @@ export interface ClientKycDeps extends NativeRequestAuthDeps {
   readonly config: KycConfig
 }
 
-const verifyBodySchema = z.object({ code: z.string().regex(/^[0-9]{6}$/u) }).strict()
+const verifyBodySchema = z.object({ code: z.string().regex(/^[A-Za-z0-9]{6}$/u) }).strict()
 
 const domainDeps = (deps: ClientKycDeps) => ({
   kycRepository: deps.kycRepository,
@@ -60,7 +60,8 @@ const issueCode = async (deps: ClientKycDeps, request: FastifyRequest, reply: Fa
         subject: "Your BeOnEdge verification code",
         text:
           `Your BeOnEdge verification code is ${result.rawCode}.\n` +
-          `It expires in ${minutes} minutes. If you did not request this, ignore this email.`,
+          `It is a 6-character, case-sensitive code that expires in ${minutes} minutes. ` +
+          `If you did not request this, ignore this email.`,
       })
     } catch {
       throw new AppError("DEPENDENCY_UNAVAILABLE")

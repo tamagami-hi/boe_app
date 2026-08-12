@@ -9,15 +9,6 @@ import {
   getPublicConsentDocuments,
   PUBLIC_OPERATIONS,
   PublicPath,
-  SubmitApplicationBody,
-  SubmitApplicationData,
-  SubmitApplicationHeaders,
-  SubmitApplicationSuccessEnvelope,
-  submitApplication,
-  VerifyApplicationEmailBody,
-  VerifyApplicationEmailData,
-  VerifyApplicationEmailSuccessEnvelope,
-  verifyApplicationEmail,
 } from "./public.js"
 
 const REQUEST_ID = "123e4567-e89b-42d3-a456-426614174000"
@@ -32,17 +23,6 @@ const createConsentDocument = (kind: "terms" | "privacy") => ({
   contentMarkdown: `# ${kind}`,
   sha256: SHA_256,
 })
-const createConsent = (kind: "terms" | "privacy") => ({
-  kind,
-  version: `${kind}_v1`,
-  accepted: true,
-})
-const createApplicationBody = () => ({
-  fullName: "Ada Lovelace",
-  email: "ada@example.com",
-  phone: "+919876543210",
-  consents: [createConsent("terms"), createConsent("privacy")],
-})
 
 const expectRejected = (
   schema: { safeParse: (value: unknown) => { success: boolean } },
@@ -54,13 +34,9 @@ const expectRejected = (
 }
 
 describe("public operation descriptors", () => {
-  it("exports one immutable descriptor for each exact public onboarding route", () => {
-    expect(PUBLIC_OPERATIONS).toEqual([
-      getPublicConsentDocuments,
-      submitApplication,
-      verifyApplicationEmail,
-    ])
-    expect(PUBLIC_OPERATIONS).toHaveLength(3)
+  it("exports one immutable descriptor for each exact public route", () => {
+    expect(PUBLIC_OPERATIONS).toEqual([getPublicConsentDocuments])
+    expect(PUBLIC_OPERATIONS).toHaveLength(1)
 
     expect(getPublicConsentDocuments).toMatchObject({
       operationId: "getPublicConsentDocuments",
@@ -71,48 +47,6 @@ describe("public operation descriptors", () => {
       idempotency: "none",
       success: { status: 200 },
       errorCodes: ["RATE_LIMITED", "INTERNAL_ERROR", "DEPENDENCY_UNAVAILABLE"],
-    })
-    expect(submitApplication).toMatchObject({
-      operationId: "submitApplication",
-      method: "POST",
-      path: "/v1/applications",
-      authChannel: "public",
-      credentialPolicy: "none",
-      idempotency: "required",
-      request: { mediaType: "application/json", maxBodyBytes: 65_536 },
-      success: { status: 202 },
-      errorCodes: [
-        "VALIDATION_FAILED",
-        "STATE_CONFLICT",
-        "IDEMPOTENCY_KEY_REUSED",
-        "IDEMPOTENCY_IN_PROGRESS",
-        "PAYLOAD_TOO_LARGE",
-        "UNSUPPORTED_MEDIA_TYPE",
-        "RATE_LIMITED",
-        "INTERNAL_ERROR",
-        "DEPENDENCY_UNAVAILABLE",
-      ],
-    })
-    expect(verifyApplicationEmail).toMatchObject({
-      operationId: "verifyApplicationEmail",
-      method: "POST",
-      path: "/v1/applications/verify-email",
-      authChannel: "public-token",
-      credentialPolicy: "public-body-token",
-      idempotency: "single-use-token",
-      request: { mediaType: "application/json", maxBodyBytes: 65_536 },
-      success: { status: 200 },
-      errorCodes: [
-        "VALIDATION_FAILED",
-        "TOKEN_INVALID",
-        "TOKEN_ALREADY_USED",
-        "TOKEN_EXPIRED",
-        "PAYLOAD_TOO_LARGE",
-        "UNSUPPORTED_MEDIA_TYPE",
-        "RATE_LIMITED",
-        "INTERNAL_ERROR",
-        "DEPENDENCY_UNAVAILABLE",
-      ],
     })
   })
 
@@ -134,19 +68,6 @@ describe("public operation descriptors", () => {
     expectTypeOf<
       "mediaType" extends keyof typeof getPublicConsentDocuments.request ? true : false
     >().toEqualTypeOf<false>()
-    expectTypeOf<
-      "headers" extends keyof typeof verifyApplicationEmail.request ? true : false
-    >().toEqualTypeOf<false>()
-
-    const submitBodySchema: typeof SubmitApplicationBody = submitApplication.request.body
-    const submitHeaderSchema: typeof SubmitApplicationHeaders =
-      submitApplication.request.headers
-    const verificationBodySchema: typeof VerifyApplicationEmailBody =
-      verifyApplicationEmail.request.body
-
-    expect(submitBodySchema).toBe(SubmitApplicationBody)
-    expect(submitHeaderSchema).toBe(SubmitApplicationHeaders)
-    expect(verificationBodySchema).toBe(VerifyApplicationEmailBody)
   })
 
   it("publishes only canonical public error codes without duplicates", () => {
@@ -171,8 +92,8 @@ describe("public operation descriptors", () => {
       expect(Object.isFrozen(operation.errorCodes)).toBe(true)
     }
 
-    const mutableOperation = submitApplication as unknown as { operationId: string }
-    const mutableErrors = submitApplication.errorCodes as unknown as string[]
+    const mutableOperation = getPublicConsentDocuments as unknown as { operationId: string }
+    const mutableErrors = getPublicConsentDocuments.errorCodes as unknown as string[]
     expect(() => {
       mutableOperation.operationId = "changed"
     }).toThrow(TypeError)
@@ -181,8 +102,7 @@ describe("public operation descriptors", () => {
 
   it("exports identical public contracts from the package root", () => {
     expect(Contracts.PUBLIC_OPERATIONS).toBe(PUBLIC_OPERATIONS)
-    expect(Contracts.submitApplication).toBe(submitApplication)
-    expect(Contracts.VerifyApplicationEmailBody).toBe(VerifyApplicationEmailBody)
+    expect(Contracts.getPublicConsentDocuments).toBe(getPublicConsentDocuments)
   })
 })
 
@@ -270,167 +190,17 @@ describe("public consent document contract", () => {
   })
 })
 
-describe("application submission contract", () => {
-  it("accepts strict input with one accepted consent per kind in either order", () => {
-    const termsFirst = createApplicationBody()
-    const privacyFirst = { ...termsFirst, consents: [...termsFirst.consents].reverse() }
-
-    expect(SubmitApplicationBody.parse(termsFirst)).toEqual(termsFirst)
-    expect(SubmitApplicationBody.parse(privacyFirst)).toEqual(privacyFirst)
-  })
-
-  it("reuses scalar normalization at the request boundary", () => {
-    const value = {
-      ...createApplicationBody(),
-      fullName: "  Ada Lovelace  ",
-      email: "  Ada@example.com  ",
-      phone: "  +919876543210  ",
-    }
-
-    expect(SubmitApplicationBody.parse(value)).toMatchObject({
-      fullName: "Ada Lovelace",
-      email: "Ada@example.com",
-      phone: "+919876543210",
-    })
-  })
-
-  it("rejects duplicate, missing, extra, false, null, or non-strict consent evidence", () => {
-    const body = createApplicationBody()
-    const terms = createConsent("terms")
-    const privacy = createConsent("privacy")
-
-    expectRejected(SubmitApplicationBody, [
-      { ...body, consents: [terms] },
-      { ...body, consents: [terms, terms] },
-      { ...body, consents: [terms, privacy, terms] },
-      { ...body, consents: [{ ...terms, accepted: false }, privacy] },
-      { ...body, consents: [{ ...terms, accepted: null }, privacy] },
-      { ...body, consents: [{ ...terms, extra: true }, privacy] },
-      { ...body, consents: null },
-    ])
-  })
-
-  it("rejects internal, credential, compliance, and financial input fields", () => {
-    const body = createApplicationBody()
-
-    for (const forbiddenKey of [
-      "applicationId",
-      "clientTimestamp",
-      "ipAddress",
-      "password",
-      "pan",
-      "kyc",
-      "riskAnswers",
-      "investmentAmount",
-    ]) {
-      expect(SubmitApplicationBody.safeParse({ ...body, [forbiddenKey]: "forbidden" }).success).toBe(
-        false,
-      )
-    }
-  })
-
-  it("requires only the normalized idempotency header projection", () => {
-    expect(SubmitApplicationHeaders.parse({ "idempotency-key": "request1" })).toEqual({
-      "idempotency-key": "request1",
-    })
-    expectRejected(SubmitApplicationHeaders, [
-      {},
-      { "idempotency-key": "short" },
-      { "Idempotency-Key": "request1" },
-      { "idempotency-key": "request1", authorization: "forbidden" },
-    ])
-  })
-
-  it("returns only the generic enumeration-safe accepted envelope", () => {
-    const value = {
-      ok: true,
-      data: { accepted: true },
-      error: null,
-      meta: createMeta(),
-    }
-
-    expect(SubmitApplicationSuccessEnvelope.safeParse(value).success).toBe(true)
-    for (const forbiddenKey of ["applicationId", "state", "expiresAt", "duplicate", "outcome"]) {
-      expect(
-        SubmitApplicationSuccessEnvelope.safeParse({
-          ...value,
-          data: { ...value.data, [forbiddenKey]: "forbidden" },
-        }).success,
-      ).toBe(false)
-    }
-  })
-})
-
-describe("email verification contract", () => {
-  it("accepts exactly 43 untrimmed base64url characters", () => {
-    const token = "a".repeat(43)
-    expect(VerifyApplicationEmailBody.parse({ token })).toEqual({ token })
-
-    expectRejected(VerifyApplicationEmailBody, [
-      { token: "a".repeat(42) },
-      { token: "a".repeat(44) },
-      { token: `${"a".repeat(42)}=` },
-      { token: `${"a".repeat(42)}+` },
-      { token: `${"a".repeat(42)}/` },
-      { token: ` ${"a".repeat(43)}` },
-      { token: "a".repeat(43), extra: true },
-      { token: null },
-      { token: 43 },
-    ])
-  })
-
-  it("returns only the generic verified envelope without application state", () => {
-    const value = {
-      ok: true,
-      data: { verified: true },
-      error: null,
-      meta: createMeta(),
-    }
-
-    expect(VerifyApplicationEmailSuccessEnvelope.safeParse(value).success).toBe(true)
-    for (const forbiddenKey of ["applicationId", "state", "outcome"]) {
-      expect(
-        VerifyApplicationEmailSuccessEnvelope.safeParse({
-          ...value,
-          data: { ...value.data, [forbiddenKey]: "forbidden" },
-        }).success,
-      ).toBe(false)
-    }
-  })
-})
-
 describe("public contract JSON Schema", () => {
   it("keeps all public schemas representable and strict", () => {
-    for (const schema of [
-      ConsentDocumentsData,
-      ConsentDocumentsSuccessEnvelope,
-      SubmitApplicationBody,
-      SubmitApplicationHeaders,
-      SubmitApplicationData,
-      SubmitApplicationSuccessEnvelope,
-      VerifyApplicationEmailBody,
-      VerifyApplicationEmailData,
-      VerifyApplicationEmailSuccessEnvelope,
-    ]) {
+    for (const schema of [ConsentDocumentsData, ConsentDocumentsSuccessEnvelope]) {
       const jsonSchema = z.toJSONSchema(schema, { io: "output" })
-      expect(JSON.stringify(jsonSchema)).toContain('"additionalProperties":false')
-    }
-  })
-
-  it("keeps request schemas representable and strict in input mode", () => {
-    for (const schema of [
-      SubmitApplicationBody,
-      SubmitApplicationHeaders,
-      VerifyApplicationEmailBody,
-    ]) {
-      const jsonSchema = z.toJSONSchema(schema, { io: "input" })
       expect(JSON.stringify(jsonSchema)).toContain('"additionalProperties":false')
     }
   })
 
   it("preserves path safety and exact-one-kind tuple alternatives", () => {
     const pathSchema = z.toJSONSchema(PublicPath, { io: "output" }) as { pattern?: string }
-    const consentSchema = z.toJSONSchema(SubmitApplicationBody, { io: "output" })
+    const consentSchema = z.toJSONSchema(ConsentDocumentsData, { io: "output" })
     const serializedConsentSchema = JSON.stringify(consentSchema)
 
     expect(pathSchema.pattern).toBe(
@@ -444,7 +214,7 @@ describe("public contract JSON Schema", () => {
   })
 
   it("keeps public success data free of application identifiers and UUID fields", () => {
-    for (const schema of [ConsentDocumentsData, SubmitApplicationData, VerifyApplicationEmailData]) {
+    for (const schema of [ConsentDocumentsData]) {
       const serialized = JSON.stringify(z.toJSONSchema(schema, { io: "output" }))
       expect(serialized).not.toContain('"applicationId"')
       expect(serialized).not.toContain('"format":"uuid"')

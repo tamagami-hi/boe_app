@@ -1,8 +1,14 @@
 /**
  * Public application submission command (spec 04 §3.1). Runs inside a
  * caller-owned transaction: a new identifier pair atomically creates the
- * application, authoritative consent evidence, a verification token (hash only),
- * an email delivery, an outbox trigger, and an audit event.
+ * application (directly in `submitted`, visible to the admin approvals queue),
+ * authoritative consent evidence, and an audit event.
+ *
+ * There is deliberately no pre-approval email verification and no verification
+ * mail: the admin decision is the gate, and email confirmation happens later
+ * inside the app as the KYC OTP step. What used to be queued here (a
+ * verification token + `verify_email` delivery + outbox trigger) is gone, and
+ * so is the resend-cooldown machinery that bounded it.
  *
  * ── WHY THIS NO LONGER RETURNS `void` ───────────────────────────────────────
  * It used to return nothing and treat every identity conflict as a silent no-op,
@@ -14,13 +20,8 @@
  * operator looking at an empty approvals queue could not distinguish a signup
  * that never arrived from one that was thrown away on purpose.
  *
- * Every path now reports which of four things happened, and every path writes an
- * audit event.
- *
- * Deferred to BE-008b-3: the cross-match security metric, and savepoint handling
- * for the rare concurrent uniqueness race (currently a retryable failure).
- * Deferred to BE-012: hardening the transient raw token carried in the outbox
- * payload.
+ * Every path now reports which of three things happened, and every path writes
+ * an audit event.
  */
 import type { CryptoContext } from "../../crypto/context.js"
 import type { Transaction } from "../../db/repositories.js"
@@ -28,32 +29,13 @@ import { AppError } from "../../http/errorCatalog.js"
 import type { ApplicationWriteRepository } from "../../repositories/applicationRepository.js"
 import type { AuditWriteRepository } from "../../repositories/auditRepository.js"
 import type { ConsentRepositoryImpl } from "../../repositories/consentRepository.js"
-import type { EmailDeliveryWriteRepository } from "../../repositories/emailDeliveryRepository.js"
-import type { OutboxWriteRepository } from "../../repositories/outboxRepository.js"
-import type { VerificationTokenWriteRepository } from "../../repositories/verificationTokenRepository.js"
-
-export interface SubmitApplicationConfig {
-  readonly verificationTokenTtlMs: number
-  readonly sesConfigurationSet: string
-  /**
-   * How long after the last verification mail a resubmission is allowed to queue
-   * another one. Bounds the mail a caller can cause for one address: without it,
-   * a form that is submitted repeatedly (a visitor who never received the first
-   * message and keeps trying) would queue one message per attempt.
-   */
-  readonly verificationResendCooldownMs: number
-}
 
 export interface SubmitApplicationDeps {
   readonly applicationRepository: ApplicationWriteRepository
   readonly consentRepository: ConsentRepositoryImpl
-  readonly verificationTokenRepository: VerificationTokenWriteRepository
-  readonly emailDeliveryRepository: EmailDeliveryWriteRepository
-  readonly outboxRepository: OutboxWriteRepository
   readonly auditRepository: AuditWriteRepository
   readonly crypto: CryptoContext
   readonly clock: () => Date
-  readonly config: SubmitApplicationConfig
 }
 
 export interface SubmitApplicationInput {
@@ -61,11 +43,11 @@ export interface SubmitApplicationInput {
   readonly emailNormalized: string
   readonly phoneE164: string
   /**
-   * Argon2id hash of the password the applicant chose, or null when the caller
-   * collects no password. Already hashed by the route: this command runs inside a
-   * transaction and Argon2id is intentionally slow, so the cost belongs outside.
+   * Argon2id hash of the password the applicant chose. Already hashed by the
+   * route: this command runs inside a transaction and Argon2id is intentionally
+   * slow, so the cost belongs outside.
    */
-  readonly passwordHash: string | null
+  readonly passwordHash: string
   readonly consents: readonly { readonly kind: "terms" | "privacy"; readonly version: string }[]
   readonly requestId: string
   readonly clientIp: string
@@ -75,28 +57,18 @@ export interface SubmitApplicationInput {
 /**
  * What the submission actually did.
  *
- * `created` and `verification_resent` both mean a verification mail is now queued
- * and the visitor should be told to check their inbox. The two `duplicate_` cases
- * mean nothing was written and nothing was sent.
+ * `created` means the application is now sitting in the admin approvals queue.
+ * The two `duplicate_` cases mean nothing was written.
  */
 export type SubmitApplicationOutcome =
-  /** A new application exists and its verification mail is queued. */
+  /** A new application exists and is awaiting the admin decision. */
   | { readonly kind: "created"; readonly applicationId: string }
   /**
-   * The identity already had an application awaiting email confirmation, and the
-   * cooldown had elapsed, so a fresh token and mail were queued for it. This is
-   * what a person who never received the first message actually wants.
-   */
-  | { readonly kind: "verification_resent"; readonly applicationId: string }
-  /**
-   * An application for this identity is already in flight and no mail was queued
-   * — either it is past email confirmation (so it is sitting in the review queue
-   * and there is nothing to confirm), or the resend cooldown has not elapsed, or
-   * the collision was on the phone number and the submitted address is not the
-   * one on the existing row.
+   * An application for this identity is already in flight — sitting in the
+   * approvals queue — so there is nothing more to submit.
    */
   | { readonly kind: "duplicate_pending"; readonly applicationId: string }
-  /** The email or phone already belongs to a user account. Nothing to resend. */
+  /** The email or phone already belongs to a user account. */
   | { readonly kind: "duplicate_account" }
 
 const MAX_USER_AGENT_LENGTH = 512
@@ -107,59 +79,6 @@ const truncateUserAgent = (userAgent: string | null): string | null => {
   const trimmed = stripped.trim()
   if (trimmed === "") return null
   return trimmed.slice(0, MAX_USER_AGENT_LENGTH)
-}
-
-/**
- * Mint a verification token and queue its mail for `applicationId`.
- *
- * Shared by the create and resend paths so there is one definition of what a
- * verification mail consists of. Any previously issued token is deliberately left
- * valid: tokens are single-use and expiring, and if a delayed first message
- * arrives after a resend, the link in it should still work.
- */
-const queueVerificationEmail = async (
-  tx: Transaction,
-  deps: SubmitApplicationDeps,
-  input: Readonly<{ applicationId: string; emailNormalized: string; requestId: string; now: Date }>,
-): Promise<void> => {
-  const token = deps.crypto.generateVerificationToken()
-  const verificationToken = await deps.verificationTokenRepository.create(tx, {
-    applicationId: input.applicationId,
-    tokenHash: token.hash,
-    tokenKeyVersion: token.keyVersion,
-    expiresAt: new Date(input.now.getTime() + deps.config.verificationTokenTtlMs),
-  })
-
-  const outboxEvent = await deps.outboxRepository.enqueue(tx, {
-    topic: "email",
-    eventType: "application.verification_requested",
-    eventVersion: 1,
-    aggregateType: "application",
-    aggregateId: input.applicationId,
-    requestId: input.requestId,
-    // Keyed on the token, so a resend is a distinct event rather than a
-    // duplicate of the original that the outbox would collapse.
-    deduplicationKey: `verify_email:${token.hash.toString("hex")}`,
-    // The raw token is transient transport for the worker; BE-012 hardens it.
-    payload: { template: "verify_email", verificationToken: token.token },
-  })
-
-  const recipientEnvelope = deps.crypto.encryptRecipient(input.emailNormalized)
-  const recipientHmac = deps.crypto.hmacRecipient(input.emailNormalized)
-  await deps.emailDeliveryRepository.create(tx, {
-    outboxEventId: outboxEvent.id,
-    applicationId: input.applicationId,
-    verificationTokenId: verificationToken.id,
-    templateKey: "verify_email",
-    templateVersion: "v1",
-    recipientCiphertext: recipientEnvelope.ciphertext,
-    recipientNonce: recipientEnvelope.nonce,
-    recipientHmac: recipientHmac.hash,
-    recipientMasked: deps.crypto.maskEmail(input.emailNormalized),
-    recipientEncryptionKeyVersion: recipientEnvelope.keyVersion,
-    suppressionHmacKeyVersion: deps.crypto.suppressionHmacKeyVersion,
-    sesConfigurationSet: deps.config.sesConfigurationSet,
-  })
 }
 
 /** Execute the submission. Reports what happened; see SubmitApplicationOutcome. */
@@ -211,70 +130,24 @@ export const submitApplication = async (
 
   if (conflict !== null) {
     const existing = conflict.application
-    const lastVerifyMail = await deps.emailDeliveryRepository.findLatestByTemplate(tx, {
-      applicationId: existing.id,
-      templateKey: "verify_email",
-    })
-    const cooledDown =
-      lastVerifyMail === null ||
-      now.getTime() - new Date(lastVerifyMail.created_at).getTime() >=
-        deps.config.verificationResendCooldownMs
-
     /*
-     * A resend is only correct when all three hold:
-     *
-     *  - the existing row is still awaiting confirmation. Past that it is in the
-     *    review queue and there is nothing left to confirm;
-     *  - the existing row's own address is the one just submitted. A phone-only
-     *    collision means the submitted address belongs to someone else, and
-     *    mailing the row's address would both tell a stranger their details are
-     *    on file and send a confirmation nobody asked for;
-     *  - the cooldown has elapsed.
+     * Nothing is re-sent or re-created: the existing row is already in the
+     * approvals queue, and the discard is recorded so a thrown-away submission
+     * is never invisible. `matchedOn` says which identifier collided without
+     * storing the address itself.
      */
-    const resendable =
-      existing.state === "pending_email_verification" &&
-      existing.email_normalized === input.emailNormalized &&
-      cooledDown
-
-    if (!resendable) {
-      await deps.auditRepository.append(tx, {
-        actorType: "public",
-        command: "application.submit_discarded",
-        entityType: "application",
-        entityId: existing.id,
-        fromState: existing.state,
-        toState: existing.state,
-        requestId: input.requestId,
-        entityVersion: Number(existing.version),
-        metadata: {
-          reason: "application_in_flight",
-          matchedOn: conflict.matchedOn,
-          // Distinguishes "asked again too soon" from "nothing to confirm",
-          // which are different operator conversations.
-          throttled: existing.state === "pending_email_verification" && !cooledDown,
-        },
-      })
-      return { kind: "duplicate_pending", applicationId: existing.id }
-    }
-
-    await queueVerificationEmail(tx, deps, {
-      applicationId: existing.id,
-      emailNormalized: existing.email_normalized,
-      requestId: input.requestId,
-      now,
-    })
     await deps.auditRepository.append(tx, {
       actorType: "public",
-      command: "application.verification_resent",
+      command: "application.submit_discarded",
       entityType: "application",
       entityId: existing.id,
       fromState: existing.state,
       toState: existing.state,
       requestId: input.requestId,
       entityVersion: Number(existing.version),
-      metadata: { matchedOn: conflict.matchedOn },
+      metadata: { reason: "application_in_flight", matchedOn: conflict.matchedOn },
     })
-    return { kind: "verification_resent", applicationId: existing.id }
+    return { kind: "duplicate_pending", applicationId: existing.id }
   }
 
   const application = await deps.applicationRepository.createSubmission(tx, {
@@ -282,6 +155,7 @@ export const submitApplication = async (
     phoneE164: input.phoneE164,
     fullName: input.fullName,
     passwordHash: input.passwordHash,
+    submittedAt: now,
   })
 
   const consentIp = deps.crypto.hmacConsentIp(input.clientIp)
@@ -294,19 +168,12 @@ export const submitApplication = async (
     userAgent: truncateUserAgent(input.userAgent),
   })
 
-  await queueVerificationEmail(tx, deps, {
-    applicationId: application.id,
-    emailNormalized: input.emailNormalized,
-    requestId: input.requestId,
-    now,
-  })
-
   await deps.auditRepository.append(tx, {
     actorType: "public",
     command: "application.submit",
     entityType: "application",
     entityId: application.id,
-    toState: "pending_email_verification",
+    toState: "submitted",
     requestId: input.requestId,
     entityVersion: 1,
     metadata: {},

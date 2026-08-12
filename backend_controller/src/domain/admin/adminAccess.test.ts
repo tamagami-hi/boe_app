@@ -15,6 +15,8 @@
 import type { FastifyRequest } from "fastify"
 import { describe, expect, test, vi } from "vitest"
 
+import * as nativeAuthModule from "../auth/nativeAuth.js"
+import * as webAuthModule from "../auth/webAuth.js"
 import { hasPermission, requireAnyPermission, resolveAdminPrincipal, type AdminPrincipal } from "./adminAccess.js"
 
 const asRequest = (headers: Record<string, string | undefined>): FastifyRequest =>
@@ -37,7 +39,7 @@ const webActor = { userId: "user-web", sessionId: "session-web" }
 const nativeActor = { userId: "user-native", sessionId: "session-native" }
 
 vi.mock("../auth/webAuth.js", async () => {
-  const actual = await vi.importActual<typeof import("../auth/webAuth.js")>("../auth/webAuth.js")
+  const actual = await vi.importActual<typeof webAuthModule>("../auth/webAuth.js")
   return {
     ...actual,
     authenticateWebRequest: vi.fn().mockResolvedValue({ userId: "user-web", sessionId: "session-web" }),
@@ -53,8 +55,18 @@ vi.mock("../auth/nativeAuth.js", () => ({
   authenticateNativeRequest: vi.fn().mockResolvedValue({ userId: "user-native", sessionId: "session-native" }),
 }))
 
-const { authenticateWebRequest } = await import("../auth/webAuth.js")
-const { authenticateNativeRequest } = await import("../auth/nativeAuth.js")
+const { authenticateWebRequest } = webAuthModule
+const { authenticateNativeRequest } = nativeAuthModule
+
+const captureError = (operation: () => void): Error => {
+  try {
+    operation()
+  } catch (error) {
+    if (error instanceof Error) return error
+    throw error
+  }
+  throw new Error("Expected operation to throw")
+}
 
 describe("resolveAdminPrincipal transport selection", () => {
   test("uses the cookie transport when an access cookie is present", async () => {
@@ -134,15 +146,13 @@ describe("authorization is unchanged by the transport", () => {
   test("requireAnyPermission fails closed on a missing permission", () => {
     // A plain client account can obtain a native bearer token, so this is what
     // stops one from reaching the admin surface with it.
-    expect(() => requireAnyPermission(principal, ["finance.operate"])).toThrow(
-      expect.objectContaining({ code: "AUTHORIZATION_DENIED", httpStatus: 403 }),
-    )
+    const error = captureError(() => requireAnyPermission(principal, ["finance.operate"]))
+    expect(error).toMatchObject({ code: "AUTHORIZATION_DENIED", httpStatus: 403 })
   })
 
   test("a principal with no permissions is denied everything", () => {
     const none: AdminPrincipal = { userId: "u", sessionId: "s", roles: [], permissions: [] }
-    expect(() => requireAnyPermission(none, ["applications.read"])).toThrow(
-      expect.objectContaining({ code: "AUTHORIZATION_DENIED" }),
-    )
+    const error = captureError(() => requireAnyPermission(none, ["applications.read"]))
+    expect(error).toMatchObject({ code: "AUTHORIZATION_DENIED" })
   })
 })

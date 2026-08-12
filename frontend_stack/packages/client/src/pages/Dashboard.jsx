@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Repeat, Receipt, Compass, Lock, ShieldCheck, Bell, TrendingUp } from 'lucide-react';
+import { Plus, Repeat, Receipt, Compass, ShieldCheck, Bell, TrendingUp } from 'lucide-react';
 import { useSession } from '../store/SessionContext.jsx';
 import * as portfolioApi from '../services/portfolioApi.js';
 import * as ordersApi from '../services/ordersApi.js';
@@ -12,7 +12,6 @@ import { isComponentEnabled, visibleQuickActions } from '@beonedge/shared/appCon
 import { fmtMoney, fmtPct, fmtDate } from '../utils/format.js';
 import MoneyValue from '@beonedge/shared/components/MoneyValue.jsx';
 import { Skeleton, EmptyState, FadeIn } from '@beonedge/shared';
-import { isExecutionRoute, isPendingApprovalUser } from '../utils/approval.js';
 
 function greeting() {
   const h = new Date().getHours();
@@ -22,13 +21,6 @@ function greeting() {
 }
 
 const ACTION_ICONS = { Plus, Repeat, Receipt, Compass };
-const APPROVAL_REQUIRED_ROUTE = '/app/approval-required';
-const EXECUTION_ACTION_IDS = new Set(['start_sip', 'sip', 'one_time', 'lumpsum', 'invest', 'payment', 'mandate_authorize']);
-
-function isExecutionQuickAction(action) {
-  const id = String(action?.id || '').trim().toLowerCase();
-  return EXECUTION_ACTION_IDS.has(id) || isExecutionRoute(action?.route);
-}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -54,7 +46,6 @@ export default function Dashboard() {
   }, [appConfig.publishedAt]);
 
   const firstName = (user?.name || '').split(' ')[0];
-  const isPendingApproval = isPendingApprovalUser(user);
   const activeSips = orders.filter((plan) =>
     ['active', 'paused', 'pending_mandate', 'draft'].includes(plan.status),
   );
@@ -103,7 +94,7 @@ export default function Dashboard() {
               <div className="apk-h-sm">Verify your email to start investing</div>
               <p>
                 {eligibility.reason === 'kyc_required' || eligibility.kycState !== 'approved'
-                  ? 'We send a 6-digit code to your registered email address.'
+                  ? 'We send a 6-character code (case-sensitive) to your registered email address.'
                   : 'Your account needs one more check before investing unlocks.'}
               </p>
             </div>
@@ -114,20 +105,6 @@ export default function Dashboard() {
             >
               Verify now
             </button>
-          </div>
-        </FadeIn>
-      )}
-
-      {isPendingApproval && (
-        <FadeIn direction="up" distance={10} duration={400} delay={100}>
-          <div className="apk-approval-panel">
-            <div className="be-card apk-approval-card">
-              <div className="apk-approval-icon"><ShieldCheck size={20} strokeWidth={1.6} /></div>
-              <div>
-                <strong>Approval request sent to admin.</strong>
-                <p>Explore strategies and dashboard data while investment actions stay locked.</p>
-              </div>
-            </div>
           </div>
         </FadeIn>
       )}
@@ -198,24 +175,19 @@ export default function Dashboard() {
               <div className="apk-bento">
                 {quickActions.map((action, index) => {
                   const Icon = ACTION_ICONS[action.icon] || Compass;
-                  const isLocked = isPendingApproval && isExecutionQuickAction(action);
-                  const route = isLocked ? APPROVAL_REQUIRED_ROUTE : action.route;
-                  const label = isLocked ? `${action.label} - approval required` : action.label;
                   const isPrimary = index === 0;
                   return (
                     <button
                       key={action.id}
-                      className={`apk-quick-btn${isLocked ? ' apk-quick-btn-locked' : ''}${isPrimary ? ' apk-quick-btn--primary' : ''}`}
-                      onClick={() => navigate(route)}
-                      aria-label={label}
-                      title={isLocked ? 'Approval required' : action.label}
+                      className={`apk-quick-btn${isPrimary ? ' apk-quick-btn--primary' : ''}`}
+                      onClick={() => navigate(action.route)}
+                      aria-label={action.label}
+                      title={action.label}
                     >
                       <span className="apk-quick-icon-wrap">
                         <Icon size={isPrimary ? 24 : 20} strokeWidth={1.5} />
-                        {isLocked && <Lock className="apk-quick-lock" size={12} strokeWidth={2} aria-hidden="true" />}
                       </span>
                       <span>{action.label}</span>
-                      {isLocked && <span className="apk-lock-note">Approval required</span>}
                     </button>
                   );
                 })}

@@ -9,21 +9,6 @@ import { sql } from "kysely"
 
 import type { EmailDelivery, Transaction } from "../db/repositories.js"
 
-export interface CreateEmailDeliveryInput {
-  readonly outboxEventId: string
-  readonly applicationId: string
-  readonly verificationTokenId: string
-  readonly templateKey: string
-  readonly templateVersion: string
-  readonly recipientCiphertext: Buffer
-  readonly recipientNonce: Buffer
-  readonly recipientHmac: Buffer
-  readonly recipientMasked: string
-  readonly recipientEncryptionKeyVersion: string
-  readonly suppressionHmacKeyVersion: string
-  readonly sesConfigurationSet: string
-}
-
 export interface RecordSentInput {
   readonly deliveryId: string
   readonly sesMessageId: string
@@ -40,21 +25,6 @@ export interface RecordSendFailureInput {
 
 /** Monotonic evidence a provider event contributes; delivered never regresses. */
 export type DeliveryEvidence = "delivered" | "bounced" | "complained"
-
-export interface CreateActivationInviteDeliveryInput {
-  readonly outboxEventId: string
-  readonly userId: string
-  readonly applicationId: string
-  readonly activationInviteId: string
-  readonly recipientCiphertext: Buffer
-  readonly recipientNonce: Buffer
-  readonly recipientHmac: Buffer
-  readonly recipientMasked: string
-  readonly recipientEncryptionKeyVersion: string
-  readonly suppressionHmacKeyVersion: string
-  readonly sesConfigurationSet: string
-  readonly templateVersion: string
-}
 
 export interface CreateAccountApprovedDeliveryInput {
   readonly outboxEventId: string
@@ -94,15 +64,10 @@ export interface AdminEmailDeliveryQuery {
 }
 
 export interface EmailDeliveryWriteRepository {
-  create: (tx: Transaction, input: CreateEmailDeliveryInput) => Promise<EmailDelivery>
-  createActivationInviteDelivery: (
-    tx: Transaction,
-    input: CreateActivationInviteDeliveryInput,
-  ) => Promise<EmailDelivery>
   /**
-   * "Your account is open" mail for an approval that needed no invite, because
-   * the applicant already chose their password at signup. Carries a user and an
-   * application but no redeemable reference — there is nothing to redeem.
+   * "Your account is open" mail for an approval. Carries a user and an
+   * application but no redeemable reference — the credential already exists,
+   * so there is nothing for the recipient to redeem.
    */
   createAccountApprovedDelivery: (
     tx: Transaction,
@@ -114,19 +79,6 @@ export interface EmailDeliveryWriteRepository {
     tx: Transaction,
     input: Readonly<{ applicationId: string; afterCreatedAt?: Date; afterId?: string; limit: number }>,
   ) => Promise<readonly EmailDelivery[]>
-  /**
-   * Newest delivery of one template for an application, or null if none.
-   *
-   * Backs the duplicate-submission resend cooldown. Deliberately keyed on
-   * `created_at` (when we decided to send) rather than `sent_at`: while the
-   * transport is misconfigured nothing reaches `sent`, and a cooldown that
-   * ignored unsent attempts would enqueue a fresh verification mail on every
-   * resubmission and pile up duplicates for the worker to deliver later.
-   */
-  findLatestByTemplate: (
-    tx: Transaction,
-    input: Readonly<{ applicationId: string; templateKey: string }>,
-  ) => Promise<EmailDelivery | null>
   lockByOutboxEventId: (tx: Transaction, outboxEventId: string) => Promise<EmailDelivery | null>
   lockById: (tx: Transaction, deliveryId: string) => Promise<EmailDelivery | null>
   lockBySesMessageId: (tx: Transaction, sesMessageId: string) => Promise<EmailDelivery | null>
@@ -148,47 +100,6 @@ export interface EmailDeliveryWriteRepository {
 const nextVersion = sql<string>`version + 1`
 
 export const createEmailDeliveryRepository = (): EmailDeliveryWriteRepository => ({
-  create: async (tx, input) =>
-    tx
-      .insertInto("email_deliveries")
-      .values({
-        outbox_event_id: input.outboxEventId,
-        application_id: input.applicationId,
-        verification_token_id: input.verificationTokenId,
-        template_key: input.templateKey,
-        template_version: input.templateVersion,
-        recipient_ciphertext: input.recipientCiphertext,
-        recipient_nonce: input.recipientNonce,
-        recipient_hmac: input.recipientHmac,
-        recipient_masked: input.recipientMasked,
-        recipient_encryption_key_version: input.recipientEncryptionKeyVersion,
-        suppression_hmac_key_version: input.suppressionHmacKeyVersion,
-        ses_configuration_set: input.sesConfigurationSet,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow(),
-
-  createActivationInviteDelivery: async (tx, input) =>
-    tx
-      .insertInto("email_deliveries")
-      .values({
-        outbox_event_id: input.outboxEventId,
-        user_id: input.userId,
-        application_id: input.applicationId,
-        activation_invite_id: input.activationInviteId,
-        template_key: "activation_invite",
-        template_version: input.templateVersion,
-        recipient_ciphertext: input.recipientCiphertext,
-        recipient_nonce: input.recipientNonce,
-        recipient_hmac: input.recipientHmac,
-        recipient_masked: input.recipientMasked,
-        recipient_encryption_key_version: input.recipientEncryptionKeyVersion,
-        suppression_hmac_key_version: input.suppressionHmacKeyVersion,
-        ses_configuration_set: input.sesConfigurationSet,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow(),
-
   createAccountApprovedDelivery: async (tx, input) =>
     tx
       .insertInto("email_deliveries")
@@ -264,19 +175,6 @@ export const createEmailDeliveryRepository = (): EmailDeliveryWriteRepository =>
       )
     }
     return builder.orderBy("created_at", "desc").orderBy("id", "desc").limit(input.limit).execute()
-  },
-
-  findLatestByTemplate: async (tx, input) => {
-    const row = await tx
-      .selectFrom("email_deliveries")
-      .selectAll()
-      .where("application_id", "=", input.applicationId)
-      .where("template_key", "=", input.templateKey)
-      .orderBy("created_at", "desc")
-      .orderBy("id", "desc")
-      .limit(1)
-      .executeTakeFirst()
-    return row ?? null
   },
 
   lockByOutboxEventId: async (tx, outboxEventId) => {

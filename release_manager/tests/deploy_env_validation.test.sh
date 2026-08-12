@@ -24,7 +24,6 @@ BACKEND_PORT=47423
 APP_FRONTEND_PORT=47421
 ADMIN_FRONTEND_PORT=47422
 PUBLIC_API_BASE_URL=https://api.example.test
-PUBLIC_LANDING_ORIGIN=https://example.test
 CORS_ORIGIN=https://api.example.test
 ENV
 chmod 600 "$env_file"
@@ -66,9 +65,14 @@ CRYPTO_RECIPIENT_ENC_KEY=$base64_key
 CRYPTO_RECIPIENT_ENC_KEY_VERSION=ek1
 NEWUSER_SHARED_SECRET=test-only-newuser-shared-secret-0123456789
 PAYMENT_PROVIDER=manual
-EMAIL_SMTP_HOST=
-EMAIL_SMTP_USER=
-EMAIL_SMTP_PASSWORD=
+KYC_EMAIL_FROM=support@beonedge.in
+EMAIL_SMTP_HOST=smtppro.zoho.in
+EMAIL_SMTP_PORT=465
+EMAIL_SMTP_USER=support@beonedge.in
+EMAIL_SMTP_PASSWORD=test-only-smtp-password
+EMAIL_SMTP_SECURE=true
+APK_DOWNLOAD_BASE_URL=https://dev-app.beonedge.in/downloads
+KYC_CODE_MAX_ATTEMPTS=5
 SEED_AUTH_ENABLED=true
 SEED_AUTH_OVERWRITE=true
 ADMIN_LOGIN_ID=admin@example.test
@@ -78,6 +82,25 @@ P[environment]="development"
 
 boe_deploy_assert_env >/dev/null \
     || { printf 'FAIL: deploy rejected a complete valid security configuration\n' >&2; exit 1; }
+
+insecure_smtp_env="$TEST_DIR/insecure-smtp.env"
+sed 's/^EMAIL_SMTP_SECURE=.*/EMAIL_SMTP_SECURE=false/' "$env_file" > "$insecure_smtp_env"
+chmod 600 "$insecure_smtp_env"
+BOE_EFFECTIVE_ENV="$insecure_smtp_env"
+if (boe_deploy_assert_env >/dev/null 2>&1); then
+    printf 'FAIL: deploy accepted SMTP without implicit TLS\n' >&2
+    exit 1
+fi
+
+untrusted_apk_env="$TEST_DIR/untrusted-apk.env"
+sed 's#^APK_DOWNLOAD_BASE_URL=.*#APK_DOWNLOAD_BASE_URL=https://untrusted.example/downloads#' \
+    "$env_file" > "$untrusted_apk_env"
+chmod 600 "$untrusted_apk_env"
+BOE_EFFECTIVE_ENV="$untrusted_apk_env"
+if (boe_deploy_assert_env >/dev/null 2>&1); then
+    printf 'FAIL: deploy accepted an untrusted APK download origin\n' >&2
+    exit 1
+fi
 
 unsafe_database_env="$TEST_DIR/unsafe-database.env"
 sed 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=bad@password/' "$env_file" > "$unsafe_database_env"

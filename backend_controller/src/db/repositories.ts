@@ -30,11 +30,9 @@ export type Row<TableName extends keyof Database> = ReadonlyDeep<Selectable<Data
 export type Application = Row<"applications">
 export type ApplicationConsent = Row<"application_consents">
 export type ConsentDocument = Row<"consent_documents">
-export type VerificationToken = Row<"verification_tokens">
 export type ApplicationReview = Row<"application_reviews">
 export type User = Row<"users">
 export type UserCredential = Row<"user_credentials">
-export type ActivationInvite = Row<"activation_invites">
 export type AuthSession = Row<"auth_sessions">
 export type AuthRefreshToken = Row<"auth_refresh_tokens">
 export type Role = Row<"roles">
@@ -158,8 +156,6 @@ export type RetentionEntityType =
   | "mandate"
 export type CleanupRecordType =
   | RetentionEntityType
-  | "verification_token"
-  | "activation_invite"
   | "auth_session"
   | "auth_refresh_token"
   | "idempotency_record"
@@ -207,33 +203,12 @@ export type CreateApplicationInput = ReadonlyDeep<{
   ipHmacKeyVersion: string
   userAgent: string | null
 }>
-export type VerifyEmailCommand = ReadonlyDeep<
-  CommandContext & {
-    applicationId: ApplicationId
-    tokenId: string
-    verifiedAt: string
-  }
->
-export type StartReviewCommand = ReadonlyDeep<CommandContext & { applicationId: ApplicationId }>
-export type DecideApplicationCommand = ReadonlyDeep<
-  CommandContext & {
-    applicationId: ApplicationId
-    decision: "approved" | "rejected"
-  }
->
 export type WithdrawApplicationCommand = ReadonlyDeep<
   CommandContext & {
     applicationId: ApplicationId
     applicantRequestEvidence: string
   }
 >
-export type ApplicationDecisionResult = ReadonlyDeep<{
-  application: Application
-  review: ApplicationReview
-  user: User | null
-  activationInvite: ActivationInvite | null
-  emailDelivery: EmailDelivery
-}>
 export type RecordConsentAcceptancesInput = ReadonlyDeep<{
   applicationId: ApplicationId
   documentIds: readonly string[]
@@ -251,45 +226,10 @@ export type AppendApplicationReviewInput = ReadonlyDeep<{
   requestId: string
   idempotencyKey: string
 }>
-export type CreateVerificationTokenInput = ReadonlyDeep<{
-  applicationId: ApplicationId | null
-  userId: UserId | null
-  purpose: VerificationToken["purpose"]
-  tokenHash: Uint8Array
-  tokenKeyVersion: string
-  expiresAt: string
-}>
-export type ConsumeTokenCommand = ReadonlyDeep<
-  CommandContext & {
-    tokenId: string
-    consumedAt: string
-  }
->
-export type VerificationSubject = ReadonlyDeep<{
-  applicationId?: ApplicationId
-  userId?: UserId
-  purpose: VerificationToken["purpose"]
-  reason: string
-}>
 export type TransitionUserCommand = ReadonlyDeep<
   CommandContext & {
     userId: UserId
     toState: User["account_state"]
-  }
->
-export type CreateActivationInviteInput = ReadonlyDeep<{
-  userId: UserId
-  applicationId: ApplicationId
-  tokenHash: Uint8Array
-  tokenKeyVersion: string
-  expiresAt: string
-  createdByUserId: UserId | null
-}>
-export type RevokeInviteCommand = ReadonlyDeep<CommandContext & { inviteId: string }>
-export type AcceptInviteCommand = ReadonlyDeep<
-  CommandContext & {
-    inviteId: string
-    acceptedAt: string
   }
 >
 export type ReplacePasswordCommand = ReadonlyDeep<
@@ -443,10 +383,7 @@ export interface ApplicationRepository {
     tx: Transaction,
     input: Readonly<{ emailNormalized: string; phoneE164: string }>,
   ): Promise<ActiveIdentityCollision>
-  markEmailVerified(tx: Transaction, command: VerifyEmailCommand): Promise<Application>
-  startReview(tx: Transaction, command: StartReviewCommand): Promise<Application>
   withdraw(tx: Transaction, command: WithdrawApplicationCommand): Promise<Application>
-  recordDecision(tx: Transaction, command: DecideApplicationCommand): Promise<ApplicationDecisionResult>
 }
 
 export interface ConsentRepository {
@@ -468,13 +405,6 @@ export interface ApplicationReviewRepository {
   findForApplication(tx: Transaction, applicationId: ApplicationId): Promise<readonly ApplicationReview[]>
 }
 
-export interface VerificationTokenRepository {
-  create(tx: Transaction, input: CreateVerificationTokenInput): Promise<VerificationToken>
-  lockByHash(tx: Transaction, tokenHash: Uint8Array): Promise<VerificationToken | null>
-  consume(tx: Transaction, command: ConsumeTokenCommand): Promise<VerificationToken>
-  revokeOutstanding(tx: Transaction, subject: VerificationSubject): Promise<readonly VerificationToken[]>
-}
-
 export interface UserRepository {
   createFromApprovedApplication(tx: Transaction, application: Application): Promise<User>
   lockById(tx: Transaction, userId: UserId): Promise<User | null>
@@ -483,14 +413,6 @@ export interface UserRepository {
     emailNormalized: string,
   ): Promise<UserWithCredential | null>
   transitionAccount(tx: Transaction, command: TransitionUserCommand): Promise<User>
-}
-
-export interface ActivationInviteRepository {
-  lockCurrent(tx: Transaction, userId: UserId): Promise<ActivationInvite | null>
-  lockByTokenHash(tx: Transaction, tokenHash: Uint8Array): Promise<ActivationInvite | null>
-  revokeCurrent(tx: Transaction, command: RevokeInviteCommand): Promise<ActivationInvite>
-  create(tx: Transaction, input: CreateActivationInviteInput): Promise<ActivationInvite>
-  accept(tx: Transaction, command: AcceptInviteCommand): Promise<ActivationInvite>
 }
 
 export interface CredentialRepository {

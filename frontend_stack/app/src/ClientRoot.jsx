@@ -20,7 +20,6 @@ export default function ClientRoot() {
         <Routes>
           <Route path="/" element={<Navigate to="/app/splash" replace />} />
           <Route path="/login" element={<Navigate to="/app/login" replace />} />
-          <Route path="/signup" element={<Navigate to="/app/login?mode=signup" replace />} />
           <Route path="/app/*" element={<Page><RouteErrorBoundary><ClientApp /></RouteErrorBoundary></Page>} />
           <Route path="*" element={<Navigate to="/app/splash" replace />} />
         </Routes>

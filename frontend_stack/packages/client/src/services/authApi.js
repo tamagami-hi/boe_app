@@ -111,14 +111,18 @@ function buildAdminDevice() {
 }
 
 // Map the canonical native principal ({ userId, fullName, phoneMasked,
-// accountStatus }) to the app's user input shape for toClientUser.
+// accountStatus }) to the app's user input shape for toClientUser. The backend
+// account status is the source of truth: 'active' is the app's 'approved'
+// vocabulary; anything else (e.g. a future suspended/closed state) passes
+// through verbatim so terminal-account handling in ClientLayout still works.
 function fromNativeUser(nativeUser) {
+  const accountStatus = String(nativeUser?.accountStatus || '').trim().toLowerCase();
   return {
     id: nativeUser?.userId,
     name: nativeUser?.fullName,
     email: nativeUser?.email,
     phoneMasked: nativeUser?.phoneMasked,
-    status: 'approved',
+    status: accountStatus === 'active' ? 'approved' : accountStatus,
     role: 'client',
     roles: ['client'],
   };
@@ -142,27 +146,6 @@ function readLocalPendingApprovals() {
   } catch {
     return [];
   }
-}
-
-function writeLocalPendingApprovals(rows) {
-  const storage = localStorageHandle();
-  if (!storage) return;
-  storage.setItem(LOCAL_PENDING_APPROVALS_KEY, JSON.stringify(rows));
-}
-
-function rememberLocalPendingApproval(user) {
-  const row = {
-    id: user.id || user.approvalRef || localUuid(),
-    name: user.name,
-    email: user.email,
-    status: user.status,
-    role: user.role || 'client',
-    createdAt: new Date().toISOString(),
-    approvalRef: user.approvalRef || '',
-  };
-  const rows = readLocalPendingApprovals().filter((item) => item.email !== row.email);
-  rows.unshift(row);
-  writeLocalPendingApprovals(rows);
 }
 
 function toClientUser(user) {
@@ -324,36 +307,6 @@ export async function listPendingApprovals() {
   return clone(readLocalPendingApprovals());
 }
 
-export async function signup(details = {}, { scope = 'client' } = {}) {
-  if (useHttpApi()) {
-    // The canonical onboarding model has no self-service account signup: a user
-    // applies (on the website), verifies their email, is approved by an admin,
-    // and receives an activation link where they set a password. Direct API
-    // account creation is intentionally unsupported here.
-    const error = new Error(
-      'Account creation is by application and admin approval. Apply on the website to receive an activation link.',
-    );
-    error.code = 'SIGNUP_VIA_APPLICATION';
-    throw error;
-  }
-
-  await delay(280);
-  const user = assertScopeUser(toClientUser({
-    id: `local_${Date.now()}`,
-    name: details.name || details.email || 'BeOnEdge Client',
-    email: details.email || '',
-    phone: details.phone || '',
-    role: 'client',
-    status: 'pending_review',
-    approvalRef: localUuid(),
-    riskProfileStatus: 'pending',
-    kycStatus: 'pending',
-  }), scope);
-  _users[scope] = user;
-  rememberLocalPendingApproval(user);
-  return clone(user);
-}
-
 export async function logout({ scope = 'client' } = {}) {
   if (useHttpApi()) {
     // An admin session on the native transport is a native session, so it must
@@ -443,34 +396,6 @@ export async function refreshAdminSession() {
   setSessionCsrf(result.csrfToken, 'admin');
   setSessionTokens({ user, scope: 'admin' });
   _users.admin = user;
-  return clone(user);
-}
-
-/**
- * Complete an activation invite (`POST /v1/activations/complete`): the invited
- * user sets their first password with the token from the invite email and
- * receives a native session in return. This is the only self-service path into
- * an account — signup is application + admin approval.
- */
-export async function completeActivation({ token, password } = {}) {
-  if (!useHttpApi()) {
-    await delay(120);
-    throw new Error('Activation needs the backend. Set VITE_BEO_API_MODE=http.');
-  }
-  const result = await apiRequest('/v1/activations/complete', {
-    method: 'POST',
-    auth: false,
-    scope: 'client',
-    body: { token, password, device: buildDevice() },
-  });
-  const user = assertScopeUser(toClientUser(fromNativeUser(result.user)), 'client');
-  setSessionTokens({
-    user,
-    accessToken: result.accessToken,
-    refreshToken: result.refreshToken,
-    scope: 'client',
-  });
-  _users.client = user;
   return clone(user);
 }
 

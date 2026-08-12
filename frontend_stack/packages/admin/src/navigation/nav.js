@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, UserCheck, Users, ShieldCheck, CreditCard, Repeat,
+  LayoutDashboard, UserCheck, Users, CreditCard, Repeat,
   HelpCircle,
   Layers, PieChart, History, BookOpen, Inbox,
   LayoutGrid, Settings,
@@ -24,7 +24,6 @@ export const NAV_DOMAINS = [
       { path: '/admin/users/subscriptions', label: 'Subscriptions', icon: Repeat, title: 'Subscriptions' },
       { path: '/admin/users/payments', label: 'Payments', icon: CreditCard, title: 'Payments' },
       { path: '/admin/users/directory', label: 'Directory', icon: Users, title: 'User directory' },
-      { path: '/admin/users/kyc', label: 'KYC review', icon: ShieldCheck, badge: 'kyc', title: 'KYC review' },
     ],
   },
   {

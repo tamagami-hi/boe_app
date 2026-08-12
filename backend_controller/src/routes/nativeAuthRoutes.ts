@@ -1,6 +1,8 @@
 /**
- * Native authentication routes (spec 04 §3.3): activation, native login, native
- * logout. Refresh rotation registers here too once implemented.
+ * Native authentication routes (spec 04 §3.3): native login, native logout.
+ * Refresh rotation registers here too. There is no activation endpoint:
+ * approval creates the account with the signup credential, so the first thing
+ * a client does is log in.
  */
 import type { FastifyInstance } from "fastify"
 import { z } from "zod"
@@ -10,7 +12,6 @@ import type { UnitOfWork } from "../db/database.js"
 import { AppError } from "../http/errorCatalog.js"
 import { parseOrThrow } from "../http/validation.js"
 import {
-  activateUser,
   authenticateNativeRequest,
   nativeLogin,
   nativeLogout,
@@ -29,10 +30,6 @@ const deviceSchema = z
   })
   .strict()
 
-const activationSchema = z
-  .object({ token: z.string().regex(/^[A-Za-z0-9_-]{43}$/u), password: passwordInputSchema, device: deviceSchema })
-  .strict()
-
 const loginSchema = z
   .object({ email: z.string().trim().email().max(254), password: passwordInputSchema, device: deviceSchema })
   .strict()
@@ -44,19 +41,6 @@ const refreshSchema = z
   .strict()
 
 export const registerNativeAuthRoutes = (application: FastifyInstance, deps: NativeAuthRouteDeps): void => {
-  application.post("/v1/activations/complete", async (request, reply) => {
-    const body = parseOrThrow(activationSchema, request.body)
-    const result = await deps.unitOfWork.execute((tx) =>
-      activateUser(tx, deps, {
-        token: body.token,
-        password: body.password,
-        device: body.device,
-        requestId: request.requestId,
-      }),
-    )
-    return reply.sendData(result, { status: 200 })
-  })
-
   application.post("/v1/auth/native/login", async (request, reply) => {
     const body = parseOrThrow(loginSchema, request.body)
     const result = await deps.unitOfWork.execute((tx) =>

@@ -14,12 +14,17 @@ export interface CreateSubmissionInput {
   readonly phoneE164: string
   readonly fullName: string
   /**
-   * Argon2id hash of the password chosen at signup, or null for a caller that
-   * does not collect one. Hashing happens before the transaction opens — Argon2id
-   * is deliberately slow, and holding a write transaction open across it would
-   * put that cost inside the lock.
+   * Argon2id hash of the password chosen at signup. Hashing happens before the
+   * transaction opens — Argon2id is deliberately slow, and holding a write
+   * transaction open across it would put that cost inside the lock.
    */
-  readonly passwordHash: string | null
+  readonly passwordHash: string
+  /**
+   * Submission time, stamped on the row: a new application lands directly in
+   * `submitted` (there is no pre-approval email-verification state), and the
+   * approvals queue is ordered by when the signup arrived.
+   */
+  readonly submittedAt: Date
 }
 
 export interface ApplicationQueueQuery {
@@ -91,14 +96,9 @@ export interface ApplicationWriteRepository {
    */
   countTerminalSubmissions: (tx: Transaction, input: IdentityInput) => Promise<number>
   createSubmission: (tx: Transaction, input: CreateSubmissionInput) => Promise<Application>
-  markEmailVerified: (
-    tx: Transaction,
-    input: Readonly<{ applicationId: string; verifiedAt: Date }>,
-  ) => Promise<Application>
   findById: (tx: Transaction, applicationId: string) => Promise<Application | null>
   lockById: (tx: Transaction, applicationId: string) => Promise<Application | null>
   queue: (tx: Transaction, query: ApplicationQueueQuery) => Promise<readonly Application[]>
-  startReview: (tx: Transaction, input: Readonly<{ applicationId: string; now: Date }>) => Promise<Application | null>
   applyDecision: (
     tx: Transaction,
     input: Readonly<{ applicationId: string; decision: "approved" | "rejected"; now: Date }>,
@@ -194,22 +194,11 @@ export const createApplicationRepository = (): ApplicationWriteRepository => ({
         phone_e164: input.phoneE164,
         full_name: input.fullName,
         password_hash: input.passwordHash,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow(),
-
-  markEmailVerified: async (tx, input) =>
-    tx
-      .updateTable("applications")
-      .set({
+        // New signups land directly in the approvals queue; there is no
+        // pre-approval email-verification state to pass through first.
         state: "submitted",
-        email_verified_at: input.verifiedAt,
-        submitted_at: input.verifiedAt,
-        version: sql<string>`version + 1`,
-        updated_at: sql<Date>`now()`,
+        submitted_at: input.submittedAt,
       })
-      .where("id", "=", input.applicationId)
-      .where("state", "=", "pending_email_verification")
       .returningAll()
       .executeTakeFirstOrThrow(),
 
@@ -249,25 +238,6 @@ export const createApplicationRepository = (): ApplicationWriteRepository => ({
     return builder.orderBy("created_at", "desc").orderBy("id", "desc").limit(query.limit).execute()
   },
 
-  startReview: async (tx, input) => {
-    const row = await tx
-      .updateTable("applications")
-      .set({
-        state: "in_review",
-        review_started_at: input.now,
-        version: sql<string>`version + 1`,
-        updated_at: sql<Date>`now()`,
-      })
-      .where("id", "=", input.applicationId)
-      // Both pre-review states are accepted. See startApplicationReview for why
-      // `pending_email_verification` is reviewable: the confirmation mail is not
-      // guaranteed to arrive, and gating review on it left applications stuck.
-      .where("state", "in", ["submitted", "pending_email_verification"])
-      .returningAll()
-      .executeTakeFirst()
-    return row ?? null
-  },
-
   applyDecision: async (tx, input) => {
     const row = await tx
       .updateTable("applications")
@@ -284,7 +254,8 @@ export const createApplicationRepository = (): ApplicationWriteRepository => ({
         updated_at: sql<Date>`now()`,
       })
       .where("id", "=", input.applicationId)
-      .where("state", "=", "in_review")
+      // Single-step decision: the only state an admin may decide from.
+      .where("state", "=", "submitted")
       .returningAll()
       .executeTakeFirst()
     return row ?? null

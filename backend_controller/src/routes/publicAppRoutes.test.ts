@@ -9,6 +9,7 @@ import type { UnitOfWork } from "../db/database.js"
 import type { AdminContentRepository } from "../repositories/adminContentRepository.js"
 import { createApplication } from "../runtime/application.js"
 
+import { latestPublishedApkUrl } from "../release/releaseFeed.js"
 import { clearAppUpdateCache, registerPublicAppRoutes } from "./publicAppRoutes.js"
 
 /**
@@ -178,6 +179,58 @@ describe("GET /v1/app/update", () => {
     const body = await ask("applicationId=com.beonedge.app.dev&versionCode=700&version=0.7.0")
 
     expect(body.data.latest?.versionCode).toBe(703)
+  })
+
+  test("ignores a sidecar whose declared variant does not match its holder directory", async () => {
+    await publish("client", "boe.dev.admin.9.9.9", {
+      variant: "admin",
+      applicationId: "com.beonedge.admin.dev",
+      version: "9.9.9",
+      versionName: "9.9.9",
+      versionCode: 9_999,
+    })
+    await publish("client", "boe.dev.client.0.7.3")
+    app = buildApp({ releaseRoot, downloadBaseUrl: "https://dev-app.beonedge.in/downloads" })
+
+    const body = await ask("applicationId=com.beonedge.app.dev&versionCode=700&version=0.7.0")
+    const approvalUrl = await latestPublishedApkUrl(
+      { releaseRoot, downloadBaseUrl: "https://dev-app.beonedge.in/downloads" },
+      "client",
+    )
+
+    expect(body.data.latest?.versionCode).toBe(703)
+    expect(approvalUrl).toBe("https://dev-app.beonedge.in/downloads/client/boe.dev.client.0.7.3.apk")
+  })
+
+  test("approval mail ignores a higher production artifact in the dev holder", async () => {
+    await publish("client", "boe.prod.client.9.9.9", {
+      target: "prod",
+      applicationId: "com.beonedge.app",
+      versionCode: 9_999,
+    })
+    await publish("client", "boe.dev.client.0.7.3")
+
+    const approvalUrl = await latestPublishedApkUrl(
+      { releaseRoot, downloadBaseUrl: "https://dev-app.beonedge.in/downloads" },
+      "client",
+    )
+
+    expect(approvalUrl).toBe("https://dev-app.beonedge.in/downloads/client/boe.dev.client.0.7.3.apk")
+  })
+
+  test("approval mail ignores an artifact with the wrong applicationId", async () => {
+    await publish("client", "boe.dev.client.9.9.9", {
+      applicationId: "com.example.untrusted",
+      versionCode: 9_999,
+    })
+    await publish("client", "boe.dev.client.0.7.3")
+
+    const approvalUrl = await latestPublishedApkUrl(
+      { releaseRoot, downloadBaseUrl: "https://dev-app.beonedge.in/downloads" },
+      "client",
+    )
+
+    expect(approvalUrl).toBe("https://dev-app.beonedge.in/downloads/client/boe.dev.client.0.7.3.apk")
   })
 
   test("ignores a sidecar whose APK is not on disk yet", async () => {

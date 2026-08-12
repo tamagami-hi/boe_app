@@ -1,9 +1,9 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import ClientLayout from './layout/ClientLayout.jsx';
 
 import Splash from './pages/Splash.jsx';
 import Login from './pages/Login.jsx';
-import Activate from './pages/Activate.jsx';
 import KycVerify from './pages/KycVerify.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Explore from './pages/Explore.jsx';
@@ -25,17 +25,40 @@ import Support from './pages/Support.jsx';
 import Legal from './pages/Legal.jsx';
 import InvestorCharter from './pages/InvestorCharter.jsx';
 import GrievanceRedressal from './pages/GrievanceRedressal.jsx';
-import ApprovalRequired from './pages/ApprovalRequired.jsx';
 import { useSession } from './store/SessionContext.jsx';
-import { isApprovedUser } from './utils/approval.js';
+import { getInvestingEligibility } from './services/eligibilityApi.js';
 import { RouteErrorBoundary } from '@beonedge/shared/components/RouteErrorBoundary.jsx';
 import AppUpdateGate from './components/AppUpdateGate.jsx';
 import './styles/mobile/index.css';
 
+// Execution routes (invest / pay / authorize a mandate) require investing
+// eligibility. Eligibility is derived server-side on every read — never trust a
+// stored status — so this gate asks `GET /v1/client/eligibility` and sends
+// `canInvest=false` users to the email-verification (KYC OTP) step. If the
+// check itself fails we let the user through: order/SIP creation enforces the
+// same rule server-side, so a failed check must not lock the app.
 function RequireApproved({ children }) {
   const { user, isLoading } = useSession();
-  if (isLoading) return null;
-  return isApprovedUser(user) ? children : <ApprovalRequired />;
+  const [check, setCheck] = useState({ done: false, canInvest: null });
+
+  useEffect(() => {
+    if (isLoading || !user) return;
+    let cancelled = false;
+    getInvestingEligibility()
+      .then((eligibility) => {
+        if (!cancelled) setCheck({ done: true, canInvest: eligibility?.canInvest !== false });
+      })
+      .catch(() => {
+        if (!cancelled) setCheck({ done: true, canInvest: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, isLoading]);
+
+  if (isLoading || !user || !check.done) return null;
+  if (check.canInvest === false) return <Navigate to="/app/verify-email" replace />;
+  return children;
 }
 
 export default function ClientApp() {
@@ -52,10 +75,8 @@ export default function ClientApp() {
       <Route element={<ClientLayout />}>
         <Route path="splash" element={<RouteErrorBoundary><Splash /></RouteErrorBoundary>} />
         <Route path="login" element={<RouteErrorBoundary><Login /></RouteErrorBoundary>} />
-        <Route path="activate" element={<RouteErrorBoundary><Activate /></RouteErrorBoundary>} />
         <Route path="verify-email" element={<RouteErrorBoundary><KycVerify /></RouteErrorBoundary>} />
         <Route path="start" element={<Navigate to="dashboard" replace />} />
-        <Route path="approval-required" element={<RouteErrorBoundary><ApprovalRequired /></RouteErrorBoundary>} />
         <Route path="dashboard" element={<RouteErrorBoundary><Dashboard /></RouteErrorBoundary>} />
         <Route path="explore" element={<RouteErrorBoundary><Explore /></RouteErrorBoundary>} />
         <Route path="funds/:fundId" element={<RouteErrorBoundary><FundDetail /></RouteErrorBoundary>} />

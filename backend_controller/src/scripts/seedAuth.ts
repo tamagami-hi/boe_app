@@ -9,7 +9,7 @@
  */
 import { pathToFileURL } from "node:url"
 
-import { hashPassword } from "../auth/passwordHasher.js"
+import { hashPassword, passwordInputSchema } from "../auth/passwordHasher.js"
 import { parseDatabaseConfig } from "../db/config.js"
 import { createPool } from "../db/pool.js"
 import { buildSeedStatements, SEED_ROLE_PERMISSIONS } from "../db/seedCatalog.js"
@@ -156,6 +156,27 @@ export const runSeedAuth = async (
    */
   if (config.enabled && (config.clientEmail === null) !== (config.clientPassword === null)) {
     throw new Error("seed:auth requires SEED_CLIENT_EMAIL and SEED_CLIENT_PASSWORD together, or neither")
+  }
+  /*
+   * A seeded password must satisfy the same rule the login route applies to a
+   * submitted one (`passwordInputSchema`: 12-128 code points, no control
+   * characters). Nothing used to check this, so a short value hashed and stored
+   * happily and then failed every login at request validation, before the hash was
+   * ever compared — indistinguishable from a wrong password, with the seed
+   * reporting success. Fail here instead, naming the variable at fault.
+   */
+  for (const [name, password] of [
+    ["ADMIN_PASSWORD/SEED_ADMIN_PASSWORD", config.adminPassword],
+    ["SEED_CLIENT_PASSWORD", config.clientPassword],
+  ] as const) {
+    if (password === null) continue
+    const check = passwordInputSchema.safeParse(password)
+    if (!check.success) {
+      throw new Error(
+        `seed:auth refuses to store a ${name} the login route would reject: ` +
+          `${check.error.issues.map((issue) => issue.message).join("; ")}`,
+      )
+    }
   }
   const seedAdmin = config.enabled && !(config.isProduction && !config.allowProduction)
   const seedClient = seedAdmin && config.clientEmail !== null && config.clientPassword !== null

@@ -13,7 +13,7 @@
  */
 import { sql } from "kysely"
 
-import type { KycCase, Transaction, User } from "../db/repositories.js"
+import type { Transaction, User } from "../db/repositories.js"
 import type {
   KycCaseState,
   RedemptionMode,
@@ -267,34 +267,6 @@ export interface AdminOversightRepository {
     tx: Transaction,
     query: OversightPageQuery & { readonly state?: RedemptionState },
   ) => Promise<readonly RedemptionListRow[]>
-
-  listKycCases: (
-    tx: Transaction,
-    query: OversightPageQuery & { readonly state?: KycCaseState },
-  ) => Promise<readonly KycCaseListRow[]>
-  lockKycCase: (tx: Transaction, id: string) => Promise<KycCase | null>
-  decideKycCase: (
-    tx: Transaction,
-    input: {
-      readonly id: string
-      readonly state: KycCaseState
-      readonly now: Date
-      readonly expiresAt: Date | null
-    },
-  ) => Promise<KycCase>
-  insertKycReview: (
-    tx: Transaction,
-    input: {
-      readonly kycCaseId: string
-      readonly userId: string
-      readonly reviewerUserId: string
-      readonly fromState: KycCaseState
-      readonly toState: KycCaseState
-      readonly reasonCode: string | null
-      readonly reasonDetail: string | null
-      readonly requestId: string
-    },
-  ) => Promise<void>
 
   listAuditEvents: (tx: Transaction, query: AuditListQuery) => Promise<readonly AuditEventListRow[]>
 }
@@ -671,54 +643,6 @@ export const createAdminOversightRepository = (): AdminOversightRepository => ({
       limit ${query.limit}
     `.execute(tx)
     return result.rows
-  },
-
-  listKycCases: async (tx, query) => {
-    const stateClause = query.state === undefined ? sql`` : sql`and c.state = ${query.state}`
-    const result = await sql<KycCaseListRow>`
-      select ${KYC_COLUMNS} ${KYC_JOINS}
-      where true ${stateClause} ${keyset(query, "c")}
-      order by c.created_at desc, c.id desc
-      limit ${query.limit}
-    `.execute(tx)
-    return result.rows
-  },
-
-  lockKycCase: async (tx, id) => {
-    const result = await sql<KycCase>`select * from kyc_cases where id = ${id} for update`.execute(tx)
-    return result.rows[0] ?? null
-  },
-
-  decideKycCase: async (tx, input) => {
-    const result = await sql<KycCase>`
-      update kyc_cases set
-        state = ${input.state},
-        decided_at = ${input.now},
-        expires_at = ${input.expiresAt},
-        updated_at = now(),
-        version = version + 1
-      where id = ${input.id}
-      returning *
-    `.execute(tx)
-    const row = result.rows[0]
-    if (row === undefined) throw new Error("kyc_cases update returned no row")
-    return row
-  },
-
-  insertKycReview: async (tx, input) => {
-    await tx
-      .insertInto("kyc_reviews")
-      .values({
-        kyc_case_id: input.kycCaseId,
-        user_id: input.userId,
-        reviewer_user_id: input.reviewerUserId,
-        from_state: input.fromState,
-        to_state: input.toState,
-        reason_code: input.reasonCode,
-        reason_detail: input.reasonDetail,
-        request_id: input.requestId,
-      })
-      .execute()
   },
 
   listAuditEvents: async (tx, query) => {

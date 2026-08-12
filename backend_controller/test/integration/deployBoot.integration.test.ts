@@ -101,7 +101,10 @@ describe("deploy-shaped boot (RA-B0)", () => {
   test("readiness is ready with email intentionally unconfigured", async () => {
     const ready = await app.inject({ method: "GET", url: "/health/ready" })
     expect(ready.statusCode).toBe(200)
-    expect(ready.json()).toEqual({ status: "ready", checks: { database: true, email: false } })
+    expect(ready.json()).toEqual({
+      status: "ready",
+      checks: { database: true, emailTransport: false, emailEventIngress: false },
+    })
   })
 
   test("serves the public signup door and resolves the seeded consent documents", async () => {
@@ -117,6 +120,7 @@ describe("deploy-shaped boot (RA-B0)", () => {
         fullName: "Deploy Boot",
         email: "deploy-boot@example.com",
         phone: "+14155559001",
+        password: "deploy-boot signup passphrase",
         acceptedConsents: true,
       },
     })

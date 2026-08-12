@@ -14,8 +14,6 @@
  *   GET   /v1/admin/sips                      SIP plans                             finance.read
  *   GET   /v1/admin/redemption-requests       redemption queue                      finance.read
  *   PATCH /v1/admin/redemption-requests/:id   approve/reject                        finance.operate
- *   GET   /v1/admin/kyc-review                KYC cases                             kyc.read
- *   PATCH /v1/admin/kyc-review/:id            approve/reject a case                 kyc.review
  *   GET   /v1/admin/audit-logs                redacted audit log                    audit.read
  *
  * Deliberate omissions, matching canonical decisions rather than the legacy
@@ -65,8 +63,6 @@ import {
 export interface AdminOversightConfig {
   readonly cursorKey: Buffer
   readonly idempotencyTtlMs: number
-  /** How long an admin-approved KYC case stays valid. */
-  readonly kycValidityMs: number
 }
 
 export interface AdminOversightDeps {
@@ -89,7 +85,6 @@ const PAYMENTS_ROUTE = "/v1/admin/payments"
 const MANDATES_ROUTE = "/v1/admin/mandates"
 const SIPS_ROUTE = "/v1/admin/sips"
 const REDEMPTIONS_ROUTE = "/v1/admin/redemption-requests"
-const KYC_ROUTE = "/v1/admin/kyc-review"
 const AUDIT_ROUTE = "/v1/admin/audit-logs"
 
 // --- schemas ---
@@ -163,15 +158,6 @@ const redemptionsQuerySchema = z
         "rejected",
         "cancelled",
       ])
-      .optional(),
-  })
-  .strict()
-
-const kycQuerySchema = z
-  .object({
-    ...pageQuery,
-    status: z
-      .enum(["pending_submission", "submitted", "in_review", "approved", "rejected", "needs_information"])
       .optional(),
   })
   .strict()
@@ -1003,87 +989,6 @@ const decideRedemption = async (deps: AdminOversightDeps, request: FastifyReques
   )
 }
 
-// --- KYC ---
-
-const listKycCases = async (deps: AdminOversightDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const query = parseOrThrow(kycQuerySchema, request.query)
-  return listWith(
-    deps,
-    request,
-    reply,
-    KYC_ROUTE,
-    ["kyc.read", "kyc.review"],
-    { status: query.status ?? null },
-    async (limit, keyset) =>
-      deps.oversightRepository.listKycCases(deps.database, {
-        ...keyset,
-        limit,
-        ...(query.status === undefined ? {} : { state: query.status }),
-      }),
-    mapKycCase,
-  )
-}
-
-const decideKycCase = async (deps: AdminOversightDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
-  requireAnyPermission(principal, ["kyc.review"])
-  const caseId = parseOrThrow(uuidParam, (request.params as { caseId?: unknown }).caseId)
-  const body = parseOrThrow(decisionSchema, request.body)
-  const approve = isApproval(body.action)
-  const now = deps.clock()
-
-  return mutate(
-    deps,
-    request,
-    reply,
-    `${KYC_ROUTE}/:caseId`,
-    "PATCH",
-    { caseId, approve },
-    principal.userId,
-    async (tx) => {
-      const existing = await deps.oversightRepository.lockKycCase(tx, caseId)
-      if (existing === null) throw new AppError("RESOURCE_NOT_FOUND")
-      const nextState: KycCaseState = approve ? "approved" : "rejected"
-      if (existing.state === nextState) {
-        return {
-          status: 200,
-          body: { id: caseId, status: existing.state, version: Number(existing.version) },
-        }
-      }
-
-      const updated = await deps.oversightRepository.decideKycCase(tx, {
-        id: caseId,
-        state: nextState,
-        now,
-        expiresAt: approve ? new Date(now.getTime() + deps.config.kycValidityMs) : null,
-      })
-      await deps.oversightRepository.insertKycReview(tx, {
-        kycCaseId: caseId,
-        userId: existing.user_id,
-        reviewerUserId: principal.userId,
-        fromState: existing.state,
-        toState: nextState,
-        reasonCode: body.reasonCode ?? (approve ? "admin_approved" : "admin_rejected"),
-        reasonDetail: body.reason ?? null,
-        requestId: request.requestId,
-      })
-      await deps.auditRepository.append(tx, {
-        actorType: "admin",
-        actorUserId: principal.userId,
-        command: approve ? "kyc_case.approved" : "kyc_case.rejected",
-        entityType: "kyc_case",
-        entityId: caseId,
-        fromState: existing.state,
-        toState: updated.state,
-        requestId: request.requestId,
-        entityVersion: Number(updated.version),
-        metadata: { userId: existing.user_id },
-      })
-      return { status: 200, body: { id: caseId, status: updated.state, version: Number(updated.version) } }
-    },
-  )
-}
-
 // --- audit ---
 
 const listAuditEvents = async (deps: AdminOversightDeps, request: FastifyRequest, reply: FastifyReply) => {
@@ -1145,9 +1050,6 @@ export const registerAdminOversightRoutes = (
   application.patch(`${REDEMPTIONS_ROUTE}/:requestId`, async (request, reply) =>
     decideRedemption(deps, request, reply),
   )
-
-  application.get(KYC_ROUTE, async (request, reply) => listKycCases(deps, request, reply))
-  application.patch(`${KYC_ROUTE}/:caseId`, async (request, reply) => decideKycCase(deps, request, reply))
 
   application.get(AUDIT_ROUTE, async (request, reply) => listAuditEvents(deps, request, reply))
 }

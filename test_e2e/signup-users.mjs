@@ -40,6 +40,7 @@ const COUNT = Number(process.env.COUNT || 1);
 const EMAIL_DOMAIN = process.env.EMAIL_DOMAIN || 'e2e.beonedge.test';
 const OUT = resolve(process.env.OUT || 'test_e2e/.out/signups.json');
 const HEADED = process.env.HEADED === '1';
+const TEST_PASSWORD = process.env.TEST_PASSWORD || 'Onboard!2026pw';
 const IS_LOCAL = /^https?:\/\/(127\.0\.0\.1|localhost)\b/u.test(LANDING);
 
 const FIRST = ['Asha', 'Vikram', 'Neha', 'Rohit', 'Priya', 'Arjun', 'Kavya', 'Manish'];
@@ -87,6 +88,8 @@ async function fillForm(page, identity) {
       ['#signup-full-name', identity.fullName],
       ['#signup-email', identity.email],
       ['#signup-phone', identity.phone],
+      ['#signup-password', TEST_PASSWORD],
+      ['#signup-confirm-password', TEST_PASSWORD],
     ]) {
       await page.fill(selector, '');
       await page.locator(selector).pressSequentially(value, { delay: 4 });
@@ -99,12 +102,16 @@ async function fillForm(page, identity) {
       fullName: document.querySelector('#signup-full-name')?.value ?? '',
       email: document.querySelector('#signup-email')?.value ?? '',
       phone: document.querySelector('#signup-phone')?.value ?? '',
+      password: document.querySelector('#signup-password')?.value ?? '',
+      confirmPassword: document.querySelector('#signup-confirm-password')?.value ?? '',
       consents: Boolean(document.querySelector('#signup-consents')?.checked),
     }));
     if (
       state.fullName === identity.fullName &&
       state.email === identity.email &&
       state.phone === identity.phone &&
+      state.password === TEST_PASSWORD &&
+      state.confirmPassword === TEST_PASSWORD &&
       state.consents
     ) {
       return;

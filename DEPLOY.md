@@ -40,8 +40,6 @@ cd release_manager/BOE_APP
 cp .env.example .env            # first time only
 #   Edit .env:
 #     - PUBLIC SURFACE block: swap localhost URLs -> https://<your-domain>
-#       PUBLIC_LANDING_ORIGIN=https://beonedge.in   # AWS marketing site; verification
-#                                                  # emails link back to it
 #       PUBLIC_API_BASE_URL=https://<your-domain>
 #       CORS_ORIGIN=https://<your-domain>,https://beonedge.in,capacitor://localhost,...
 #     - Fill every CHANGE_ME secret (production hard-fails on placeholders):
@@ -96,7 +94,8 @@ It proxies `/api/` → the backend (the `/api` prefix is stripped) and `/` → t
   compared in constant time, and the route fails closed if the secret is unconfigured.
   Origin/Referer are deliberately not used — the call is server-to-server, so those
   headers are absent or attacker-controlled. It is additionally throttled by the
-  `boe_signup` nginx zone (10r/m per address) because each accepted call queues an email.
+  `boe_signup` nginx zone (10r/m per address). Signup creates a submitted application
+  but sends no email; approval queues the welcome/download email.
 - Back up Postgres: `docker compose exec postgres pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"`.
 
 ## DB-safe rollback (dump on deploy, restore on rollback)

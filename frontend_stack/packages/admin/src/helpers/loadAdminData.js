@@ -16,7 +16,7 @@ import { collectionKey, normalizeAdminCollection, normalizeApprovalRow } from '.
  */
 
 // Map a canonical application list item to the admin approval row shape, keeping
-// the applicationId + version needed for the review/decision handshake.
+// the applicationId + version needed for the decision's If-Match precondition.
 function toApprovalRow(application) {
   return {
     ...normalizeApprovalRow({
@@ -29,10 +29,6 @@ function toApprovalRow(application) {
     }),
     applicationId: application.applicationId,
     version: application.version,
-    emailVerifiedAt: application.emailVerifiedAt ?? null,
-    // Drives what the review panel tells the operator will happen on approval:
-    // an account they can sign into, or an emailed activation invitation.
-    hasSignupPassword: application.hasSignupPassword ?? false,
     isPiiTombstoned: application.isPiiTombstoned ?? false,
   };
 }

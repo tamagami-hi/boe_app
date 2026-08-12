@@ -11,29 +11,12 @@
  * before login, and a client that is too old to authenticate must still be able
  * to learn that it has to update.
  *
- * ── WHERE THE UPDATE ANSWER COMES FROM ──────────────────────────────────────
- * The release pipeline (`release_manager/lib/apk_ship.sh`) publishes each APK
- * into a per-variant holder directory on the VPS together with an immutable
- * sidecar JSON written by `emu/boe_update.sh`:
- *
- *   dev_apk/boe.dev.client.0.7.5.apk
- *   dev_apk/boe.dev.client.0.7.5.json   { versionName, versionCode, sha256, … }
- *
- * Those directories are mounted read-only into this container under
- * `APK_RELEASE_ROOT/<variant>/`, so the filesystem the release tooling already
- * treats as authoritative *is* the update feed. Shipping an APK is therefore the
- * only action needed to offer an update — there is no second place to remember
- * to bump, and nothing can advertise a version that was never published.
- *
- * The APK bytes themselves are served by nginx (`/downloads/<variant>/`), not by
- * this process: streaming multi-megabyte files through Fastify would tie up the
- * API for the duration of every download.
- *
- * When `APK_RELEASE_ROOT` is unset (local dev, or a deployment without the
- * mount) the endpoint answers "no update available" rather than failing. An
- * absent update feed must never break app startup.
+ * The release-feed filesystem machinery (sidecar parsing, listing cache, newest
+ * resolution, download URLs) lives in `release/releaseFeed.ts`, shared with the
+ * account-approved email. When `APK_RELEASE_ROOT` is unset (local dev, or a
+ * deployment without the mount) the endpoint answers "no update available"
+ * rather than failing. An absent update feed must never break app startup.
  */
-import { readdir, readFile, stat } from "node:fs/promises"
 import { join } from "node:path"
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
@@ -42,30 +25,33 @@ import { z } from "zod"
 import type { UnitOfWork } from "../db/database.js"
 import { parseOrThrow } from "../http/validation.js"
 import type { AdminContentRepository } from "../repositories/adminContentRepository.js"
+import {
+  baseVersion,
+  cachedArtifacts,
+  clearAppUpdateCache,
+  compareVersions,
+  downloadUrl,
+  latestPublishedBuild,
+  newest,
+  RELEASE_VARIANTS,
+  toArtifact,
+  type ReleaseArtifact,
+  type ReleaseFeed,
+  type ReleaseVariant,
+} from "../release/releaseFeed.js"
+
+export type { ReleaseFeed }
 
 export interface PublicAppDeps {
   readonly adminContentRepository: AdminContentRepository
   readonly unitOfWork: UnitOfWork
-  readonly appUpdate: {
-    /** Directory holding one subdirectory per variant, or null when unmounted. */
-    readonly releaseRoot: string | null
-    /** Public base URL nginx serves the holder directories at, no trailing slash. */
-    readonly downloadBaseUrl: string | null
-  }
+  readonly appUpdate: ReleaseFeed
 }
-
-/**
- * Variants are a closed set and become path segments, so they are validated
- * against a literal union rather than sanitised — there is no way to smuggle
- * `../` through an enum.
- */
-const VARIANTS = ["client", "admin"] as const
-type Variant = (typeof VARIANTS)[number]
 
 const updateQuerySchema = z
   .object({
     platform: z.enum(["android"]).default("android"),
-    variant: z.enum(VARIANTS).default("client"),
+    variant: z.enum(RELEASE_VARIANTS).default("client"),
     /**
      * The caller's own identity. `applicationId` matters: dev and prod APKs are
      * signed with different certificates and carry different ids, and Android
@@ -86,21 +72,6 @@ const updateQuerySchema = z
   })
   .strict()
 
-/** One published APK, as described by its sidecar. */
-interface ReleaseArtifact {
-  readonly apk: string
-  readonly variant: string
-  readonly target: string
-  readonly version: string
-  readonly versionName: string
-  readonly versionCode: number
-  readonly applicationId: string
-  readonly sha256: string
-  readonly sizeBytes: number
-  readonly signing: string
-  readonly builtAt: string | null
-}
-
 const asRecord = (value: unknown): Readonly<Record<string, unknown>> =>
   value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -109,166 +80,9 @@ const asRecord = (value: unknown): Readonly<Record<string, unknown>> =>
 const asString = (value: unknown): string | null =>
   typeof value === "string" && value.length > 0 ? value : null
 
-const asNumber = (value: unknown): number | null =>
-  typeof value === "number" && Number.isFinite(value) ? value : null
-
-/**
- * Turn a sidecar into an artifact, or null when it is not a usable release.
- *
- * Rejecting here rather than at the call site keeps every "would this install?"
- * rule in one place: unsigned/debug builds are never offered as updates, and a
- * sidecar without a version code cannot be compared against a running app.
- */
-const toArtifact = (raw: unknown): ReleaseArtifact | null => {
-  const record = asRecord(raw)
-  const apk = asString(record.apk)
-  const versionCode = asNumber(record.versionCode)
-  const applicationId = asString(record.applicationId)
-  const sha256 = asString(record.sha256)
-  const signing = asString(record.signing)
-  if (apk === null || versionCode === null || applicationId === null || sha256 === null) return null
-  // A debug-signed APK cannot upgrade a release-signed install; never offer one.
-  if (signing !== "release") return null
-  if (!apk.endsWith(".apk")) return null
-  // Defence in depth: the filename becomes part of a URL and a filesystem path.
-  if (apk.includes("/") || apk.includes("\\") || apk.includes("..")) return null
-  return {
-    apk,
-    variant: asString(record.variant) ?? "",
-    target: asString(record.target) ?? "",
-    version: asString(record.version) ?? "",
-    versionName: asString(record.versionName) ?? asString(record.version) ?? "",
-    versionCode,
-    applicationId,
-    sha256,
-    sizeBytes: asNumber(record.sizeBytes) ?? 0,
-    signing,
-    builtAt: asString(record.builtAt),
-  }
-}
-
-/**
- * Read every sidecar in a variant's holder directory and return the artifacts
- * whose APK is actually present on disk.
- *
- * The presence check is not paranoia: `apk_publish_remote_atomic` moves the APK
- * and its sidecar into place as two separate renames, so there is a window in
- * which the sidecar for a new version exists but its APK does not. Advertising
- * during that window would hand out a 404 download link.
- */
-const readVariantArtifacts = async (directory: string): Promise<readonly ReleaseArtifact[]> => {
-  let entries: readonly string[]
-  try {
-    entries = await readdir(directory)
-  } catch {
-    // Missing or unreadable holder directory: no updates, not an error.
-    return []
-  }
-
-  const artifacts: ReleaseArtifact[] = []
-  for (const entry of entries) {
-    if (!entry.endsWith(".json")) continue
-    let parsed: unknown
-    try {
-      parsed = JSON.parse(await readFile(join(directory, entry), "utf8"))
-    } catch {
-      continue
-    }
-    const artifact = toArtifact(parsed)
-    if (artifact === null) continue
-    try {
-      const apkStat = await stat(join(directory, artifact.apk))
-      if (!apkStat.isFile()) continue
-      // Trust the bytes on disk over the sidecar for the size the UI shows as a
-      // download total; they only differ if a publish was interrupted.
-      artifacts.push({ ...artifact, sizeBytes: apkStat.size })
-    } catch {
-      continue
-    }
-  }
-  return artifacts
-}
-
-/**
- * Directory listings are cached briefly. The splash screen of every app launch
- * hits this endpoint, while publishes happen a few times a day, so re-reading
- * the directory per request is pure overhead. The TTL is short enough that a
- * fresh release is offered within seconds of shipping.
- */
-const LISTING_TTL_MS = 30_000
-interface CacheEntry {
-  readonly expiresAt: number
-  readonly artifacts: readonly ReleaseArtifact[]
-}
-const listingCache = new Map<string, CacheEntry>()
-
-const cachedArtifacts = async (
-  directory: string,
-  now: number,
-): Promise<readonly ReleaseArtifact[]> => {
-  const hit = listingCache.get(directory)
-  if (hit !== undefined && hit.expiresAt > now) return hit.artifacts
-  const artifacts = await readVariantArtifacts(directory)
-  listingCache.set(directory, { expiresAt: now + LISTING_TTL_MS, artifacts })
-  return artifacts
-}
-
-/** Exposed for tests: drop memoised directory listings. */
-export const clearAppUpdateCache = (): void => {
-  listingCache.clear()
-}
-
-/**
- * Compare dotted numeric versions ("0.7.4" vs "0.10.0") segment by segment.
- * Returns a negative number when `left` is older. Non-numeric segments compare
- * as 0, which is the safe direction: a version we cannot parse is never treated
- * as newer than one we can.
- */
-const compareVersions = (left: string, right: string): number => {
-  const leftParts = left.split(".")
-  const rightParts = right.split(".")
-  const length = Math.max(leftParts.length, rightParts.length)
-  for (let index = 0; index < length; index += 1) {
-    const a = Number.parseInt(leftParts[index] ?? "0", 10)
-    const b = Number.parseInt(rightParts[index] ?? "0", 10)
-    const left0 = Number.isNaN(a) ? 0 : a
-    const right0 = Number.isNaN(b) ? 0 : b
-    if (left0 !== right0) return left0 - right0
-  }
-  return 0
-}
-
-/** The release version ("0.7.4") out of a build label ("0.7.4-dev.0.gabc123"). */
-const baseVersion = (value: string): string => {
-  const match = /^[0-9]+(?:\.[0-9]+)*/u.exec(value)
-  const leading = match?.[0]
-  return leading === undefined || leading.length === 0 ? value : leading
-}
-
-const newest = (
-  artifacts: readonly ReleaseArtifact[],
-  applicationId: string | undefined,
-): ReleaseArtifact | null => {
-  const eligible =
-    applicationId === undefined
-      ? artifacts
-      : artifacts.filter((artifact) => artifact.applicationId === applicationId)
-  return eligible.reduce<ReleaseArtifact | null>(
-    (best, artifact) =>
-      best === null || artifact.versionCode > best.versionCode ? artifact : best,
-    null,
-  )
-}
-
-const downloadUrl = (
-  base: string | null,
-  variant: Variant,
-  artifact: ReleaseArtifact,
-): string | null => (base === null ? null : `${base}/${variant}/${artifact.apk}`)
-
 const artifactBody = (
   artifact: ReleaseArtifact,
-  variant: Variant,
+  variant: ReleaseVariant,
   base: string | null,
 ): Record<string, unknown> => ({
   version: artifact.version,
@@ -298,25 +112,6 @@ const publishedConfig = async (
     config: { ...asRecord(row.payload) },
     publishedAt: new Date(row.published_at).toISOString(),
   }
-}
-
-/**
- * Newest published build for an applicationId, or null.
- *
- * Exported so the authenticated app-version report resolves "latest" through
- * exactly the same filesystem read as the public update feed. Two independent
- * notions of "newest" would eventually disagree, and the inbox would then argue
- * with the launch dialog.
- */
-export const latestPublishedBuild = async (
-  appUpdate: PublicAppDeps["appUpdate"],
-  input: Readonly<{ variant: string; applicationId: string }>,
-): Promise<Readonly<{ versionCode: number; version: string }> | null> => {
-  const root = appUpdate.releaseRoot
-  if (root === null) return null
-  const artifacts = await cachedArtifacts(join(root, input.variant), Date.now())
-  const found = newest(artifacts, input.applicationId)
-  return found === null ? null : { versionCode: found.versionCode, version: found.version }
 }
 
 export const registerPublicAppRoutes = (
@@ -390,6 +185,10 @@ export const registerPublicAppRoutes = (
     },
   )
 }
+
+// Re-exported so existing consumers (clientAccountRoutes, tests) keep a single
+// import site while the implementation lives in release/releaseFeed.ts.
+export { clearAppUpdateCache, latestPublishedBuild }
 
 /** Exposed for tests. */
 export const __testing = { compareVersions, toArtifact, baseVersion, newest }

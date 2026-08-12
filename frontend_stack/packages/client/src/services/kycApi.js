@@ -19,7 +19,7 @@ export async function resendKyc() {
   return { status: 'code_sent', expiresAt: new Date(Date.now() + 600_000).toISOString() };
 }
 
-/** Submit the 6-digit code to complete KYC. */
+/** Submit the 6-character code to complete KYC. */
 export async function verifyKyc(code) {
   if (useHttpApi()) return apiRequest('/v1/client/kyc/verify', { method: 'POST', body: { code } });
   await delay(160);

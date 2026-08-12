@@ -3,8 +3,8 @@ import { describe, expect, expectTypeOf, it } from "vitest"
 
 import * as Contracts from "../index.js"
 import { ERROR_DEFINITIONS, ErrorCode } from "../errors.js"
-import * as ActivationContracts from "./activation.js"
 import type { OperationInput, OperationSecurityPolicy } from "./descriptor.js"
+import { NativeSessionData, NativeSessionSuccessEnvelope } from "./native.js"
 import {
   NATIVE_AUTH_OPERATIONS,
   NativeAuthHeaders,
@@ -210,11 +210,7 @@ describe("native authentication operation descriptors", () => {
   })
 
   it("keeps route identities unique and package surfaces isolated", () => {
-    const operations = [
-      ...PublicContracts.PUBLIC_OPERATIONS,
-      ...ActivationContracts.ACTIVATION_OPERATIONS,
-      ...NATIVE_AUTH_OPERATIONS,
-    ]
+    const operations = [...PublicContracts.PUBLIC_OPERATIONS, ...NATIVE_AUTH_OPERATIONS]
     const operationIds = operations.map(({ operationId }) => operationId)
     const routes = operations.map(({ method, path }) => `${method} ${path}`)
 
@@ -222,7 +218,6 @@ describe("native authentication operation descriptors", () => {
     expect(new Set(routes).size).toBe(routes.length)
     expect(Contracts.NATIVE_AUTH_OPERATIONS).toBe(NATIVE_AUTH_OPERATIONS)
     expect("NATIVE_AUTH_OPERATIONS" in PublicContracts).toBe(false)
-    expect("NATIVE_AUTH_OPERATIONS" in ActivationContracts).toBe(false)
   })
 })
 
@@ -259,11 +254,9 @@ describe("native login contract", () => {
     expect(nativeLogin.errorCodes).toContain("STATE_CONFLICT")
   })
 
-  it("reuses the exact activation session result without leaking credentials", () => {
-    expect(NativeLoginData).toBe(ActivationContracts.CompleteActivationData)
-    expect(NativeLoginSuccessEnvelope).toBe(
-      ActivationContracts.CompleteActivationSuccessEnvelope,
-    )
+  it("reuses the shared native session result without leaking credentials", () => {
+    expect(NativeLoginData).toBe(NativeSessionData)
+    expect(NativeLoginSuccessEnvelope).toBe(NativeSessionSuccessEnvelope)
     const parsed = NativeLoginData.parse(createSessionData())
     expect(parsed.user.accountStatus).toBe("active")
     expectRejectedCases(NativeLoginData, [

@@ -66,7 +66,6 @@ x-backend-env: &backend-env
   MIGRATIONS_DIR: ./db/migrations
 
   PUBLIC_API_BASE_URL: ${PUBLIC_API_BASE_URL}
-  PUBLIC_LANDING_ORIGIN: ${PUBLIC_LANDING_ORIGIN}
   # WEB_ORIGIN_ALLOWLIST is authoritative; CORS_ORIGIN is the legacy fallback for
   # a deployment that only sets that older name. Both are optional here so a .env
   # carrying just the allowlist does not warn on every compose command.
@@ -106,10 +105,10 @@ x-backend-env: &backend-env
 
   KYC_EMAIL_FROM: ${KYC_EMAIL_FROM}
   EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST}
-  EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
+  EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-465}
   EMAIL_SMTP_USER: ${EMAIL_SMTP_USER}
   EMAIL_SMTP_PASSWORD: ${EMAIL_SMTP_PASSWORD}
-  EMAIL_SMTP_SECURE: ${EMAIL_SMTP_SECURE:-false}
+  EMAIL_SMTP_SECURE: ${EMAIL_SMTP_SECURE:-true}
   EMAIL_WORKER_CLAIM_LIMIT: ${EMAIL_WORKER_CLAIM_LIMIT:-25}
   EMAIL_WORKER_LEASE_MS: ${EMAIL_WORKER_LEASE_MS:-60000}
 
@@ -118,7 +117,6 @@ x-backend-env: &backend-env
   KYC_RESEND_COOLDOWN_MS: ${KYC_RESEND_COOLDOWN_MS:-60000}
   KYC_VALIDITY_MS: ${KYC_VALIDITY_MS:-31536000000}
 
-  APP_ACTIVATION_URL: ${APP_ACTIVATION_URL}
   SUPPORT_EMAIL: ${SUPPORT_EMAIL}
 
   # The only credential on POST /newuser. The marketing site (beonedge.in, on

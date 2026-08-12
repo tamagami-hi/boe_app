@@ -40,7 +40,7 @@ describe("buildOpenApiDocument", () => {
     expect(document.components?.schemas?.ErrorEnvelope).toBeDefined()
     expect(JSON.stringify(document.components?.schemas?.ErrorEnvelope)).toContain("retryable")
 
-    const pathItem = document.paths?.["/v1/applications"] as
+    const pathItem = document.paths?.["/v1/auth/native/login"] as
       | Record<string, { responses?: Record<string, unknown> }>
       | undefined
     const responses = pathItem?.post?.responses ?? {}
@@ -51,31 +51,22 @@ describe("buildOpenApiDocument", () => {
   test("documents modeled request headers as required parameters", () => {
     const document = buildOpenApiDocument()
 
-    const submit = document.paths?.["/v1/applications"] as
+    const login = document.paths?.["/v1/auth/native/login"] as
       | Record<string, { parameters?: { name: string; in: string; required?: boolean }[] }>
       | undefined
-    const idempotency = (submit?.post?.parameters ?? []).find(
-      (parameter) => parameter.name === "idempotency-key",
-    )
-    expect(idempotency).toBeDefined()
-    expect(idempotency?.in).toBe("header")
-    expect(idempotency?.required).toBe(true)
-
-    const login = document.paths?.["/v1/auth/native/login"] as
-      | Record<string, { parameters?: { name: string }[] }>
-      | undefined
-    const loginHeaderNames = (login?.post?.parameters ?? []).map((parameter) => parameter.name)
+    const loginParameters = login?.post?.parameters ?? []
+    const loginHeaderNames = loginParameters.map((parameter) => parameter.name)
     expect(loginHeaderNames).toContain("x-client-platform")
     expect(loginHeaderNames).toContain("x-app-version")
+    for (const parameter of loginParameters) {
+      expect(parameter.in).toBe("header")
+      expect(parameter.required).toBe(true)
+    }
   })
 
   test("keeps every public operation free of internal identifier fields", () => {
     const document = buildOpenApiDocument()
-    for (const path of [
-      "/v1/public/consent-documents",
-      "/v1/applications",
-      "/v1/applications/verify-email",
-    ]) {
+    for (const path of ["/v1/public/consent-documents"]) {
       const serialized = JSON.stringify(document.paths?.[path])
       expect(serialized, `${path} leaks applicationId`).not.toContain("applicationId")
       expect(serialized, `${path} leaks userId`).not.toContain("userId")

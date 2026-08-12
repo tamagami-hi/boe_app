@@ -3,10 +3,9 @@
  * due `email` outbox events and exits, so the deploy stack can schedule it the
  * same way it schedules the payment and SIP passes.
  *
- * This is the process that actually gets onboarding mail out of the database:
- * address verification at signup and the activation invite after approval. With
- * no pass running, both sit in `outbox_events` as `pending` and no investor can
- * activate an account.
+ * This is the process that gets queued onboarding decisions out of the database:
+ * the rejection notice or the approval welcome/download email. Signup itself
+ * deliberately queues no mail, and KYC codes use the direct SMTP sender.
  */
 import { pathToFileURL } from "node:url"
 

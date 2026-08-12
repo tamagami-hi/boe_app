@@ -6,7 +6,7 @@ import type { StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import type { FastifyInstance } from "fastify"
 import type { Pool } from "pg"
 import { Wait } from "testcontainers"
-import { afterAll, beforeAll, describe, expect, test, vi } from "vitest"
+import { afterAll, beforeAll, describe, expect, test } from "vitest"
 
 import { createCryptoContext, parseCryptoKeys } from "../../src/crypto/context.js"
 import type { CryptoContext } from "../../src/crypto/context.js"
@@ -14,19 +14,14 @@ import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import type { UnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
 import { dispatchDueDeliveries } from "../../src/domain/email/dispatchDueDeliveries.js"
-import { submitApplication } from "../../src/domain/onboarding/submitApplication.js"
 import type { SesEmailSender, SesSendResult } from "../../src/email/ports.js"
 import { createTransactionalEmailSender } from "../../src/email/transactionalEmailSender.js"
 import { buildCanonicalMessage } from "../../src/email/snsProvenance.js"
 import { parseSnsEnvelope } from "../../src/email/snsMessages.js"
-import { createApplicationRepository } from "../../src/repositories/applicationRepository.js"
-import { createAuditRepository } from "../../src/repositories/auditRepository.js"
-import { createConsentRepository } from "../../src/repositories/consentRepository.js"
 import { createEmailDeliveryRepository } from "../../src/repositories/emailDeliveryRepository.js"
 import { createEmailProviderEventRepository } from "../../src/repositories/emailProviderEventRepository.js"
 import { createEmailSuppressionRepository } from "../../src/repositories/emailSuppressionRepository.js"
 import { createOutboxRepository } from "../../src/repositories/outboxRepository.js"
-import { createVerificationTokenRepository } from "../../src/repositories/verificationTokenRepository.js"
 import { registerProviderEventRoutes } from "../../src/routes/providerEventRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
 import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
@@ -106,52 +101,59 @@ interface SeededDelivery {
   readonly email: string
 }
 
-const seedQueuedDelivery = async (email: string, phone: string): Promise<SeededDelivery> => {
-  await unitOfWork.execute((tx) =>
-    submitApplication(
-      tx,
-      {
-        applicationRepository: createApplicationRepository(),
-        consentRepository: createConsentRepository(),
-        verificationTokenRepository: createVerificationTokenRepository(),
-        emailDeliveryRepository,
-        outboxRepository,
-        auditRepository: createAuditRepository(),
-        crypto,
-        clock: () => new Date(),
-        config: {
-          verificationTokenTtlMs: 86_400_000,
-          sesConfigurationSet: "boe-transactional",
-          verificationResendCooldownMs: 15 * 60 * 1000,
-        },
-      },
-      {
-        fullName: "Ada Lovelace",
-        emailNormalized: email,
-        phoneE164: phone,
-        // This test is about the delivery row, not the credential; a signup with
-        // no password still produces the verification email being asserted here.
-        passwordHash: null,
-        consents: [
-          { kind: "terms", version: "v1" },
-          { kind: "privacy", version: "v1" },
-        ],
-        requestId: randomUUID(),
-        clientIp: "203.0.113.5",
-        userAgent: "integration-test",
-      },
-    ),
-  )
+// The public download link the seeded account-approved mail carries.
+const APK_URL = "https://downloads.test/client/boe.apk"
 
-  const row = (
-    await pool.query<{ delivery_id: string; outbox_id: string }>(
-      "select ed.id as delivery_id, ed.outbox_event_id as outbox_id from email_deliveries ed " +
-        "join applications a on a.id = ed.application_id where a.email_normalized = $1",
-      [email],
+/**
+ * Seed exactly what an approval now queues: an `account_approved` outbox event
+ * plus its delivery row, against an approved application and its active user.
+ * Built with the real repositories so the rows satisfy every constraint the
+ * worker relies on.
+ */
+const seedQueuedDelivery = async (email: string, phone: string): Promise<SeededDelivery> => {
+  const applicationId = (
+    await pool.query<{ id: string }>(
+      "insert into applications (email_normalized, phone_e164, full_name, state, submitted_at, decided_at) " +
+        "values ($1, $2, 'Ada Lovelace', 'approved', now(), now()) returning id",
+      [email, phone],
     )
-  ).rows[0]
-  if (row === undefined) throw new Error("seed delivery not found")
-  return { deliveryId: row.delivery_id, outboxId: row.outbox_id, email }
+  ).rows[0]?.id
+  const userId = (
+    await pool.query<{ id: string }>(
+      "insert into users (application_id, email_normalized, phone_e164, full_name, account_state, activated_at) " +
+        "values ($1, $2, $3, 'Ada Lovelace', 'active', now()) returning id",
+      [applicationId, email, phone],
+    )
+  ).rows[0]?.id
+  if (applicationId === undefined || userId === undefined) throw new Error("seed rows not created")
+
+  return unitOfWork.execute(async (tx) => {
+    const envelope = crypto.encryptRecipient(email)
+    const outbox = await outboxRepository.enqueue(tx, {
+      topic: "email",
+      eventType: "user.account_approved",
+      eventVersion: 1,
+      aggregateType: "user",
+      aggregateId: userId,
+      requestId: randomUUID(),
+      deduplicationKey: `account_approved:${userId}`,
+      payload: { template: "account_approved", downloadUrl: APK_URL },
+    })
+    const delivery = await emailDeliveryRepository.createAccountApprovedDelivery(tx, {
+      outboxEventId: outbox.id,
+      userId,
+      applicationId,
+      recipientCiphertext: envelope.ciphertext,
+      recipientNonce: envelope.nonce,
+      recipientHmac: crypto.hmacRecipient(email).hash,
+      recipientMasked: crypto.maskEmail(email),
+      recipientEncryptionKeyVersion: envelope.keyVersion,
+      suppressionHmacKeyVersion: crypto.suppressionHmacKeyVersion,
+      sesConfigurationSet: "boe-transactional",
+      templateVersion: "v1",
+    })
+    return { deliveryId: delivery.id, outboxId: outbox.id, email }
+  })
 }
 
 const acceptingSender = (sesMessageId: string): SesEmailSender => ({
@@ -273,17 +275,11 @@ describe("email delivery worker (integration)", () => {
     expect(outbox.locked_at).toBeNull()
   })
 
-  test("the transport adapter renders a usable verification email end to end", async () => {
-    // Exercises the concrete sender the deploy stack uses, not a stub: the token in
-    // the queued payload has to reach the body, or the recipient cannot continue.
+  test("the transport adapter renders a usable approval email end to end", async () => {
+    // Exercises the concrete sender the deploy stack uses, not a stub: the APK
+    // link in the queued payload has to reach the body, or the recipient cannot
+    // install the app their account was just approved for.
     const seeded = await seedQueuedDelivery("worker-render@example.com", "+14155559021")
-    const token = (
-      await pool.query<{ token: string }>(
-        "select payload->>'verificationToken' as token from outbox_events where id = $1",
-        [seeded.outboxId],
-      )
-    ).rows[0]?.token
-    expect(token).toBeTruthy()
 
     const sent: { to: string; subject: string; text: string }[] = []
     const adapter = createTransactionalEmailSender({
@@ -293,11 +289,7 @@ describe("email delivery worker (integration)", () => {
           return Promise.resolve({ messageId: "<render-1@mailbox>" })
         },
       },
-      templates: {
-        landingOrigin: "https://beonedge.example",
-        activationUrl: null,
-        supportAddress: "support@beonedge.example",
-      },
+      templates: { supportAddress: "support@beonedge.example" },
     })
 
     const summary = await dispatchDueDeliveries(workerDeps(adapter))
@@ -306,31 +298,10 @@ describe("email delivery worker (integration)", () => {
     expect(sent).toHaveLength(1)
     // The recipient is decrypted from the delivery row, and the link is complete.
     expect(sent[0]?.to).toBe("worker-render@example.com")
-    expect(sent[0]?.text).toContain(`https://beonedge.example/verify-email?token=${token ?? ""}`)
+    expect(sent[0]?.text).toContain(APK_URL)
     const delivery = await deliveryState(seeded.deliveryId)
     expect(delivery.state).toBe("sent")
     expect(delivery.ses_message_id).toBe("<render-1@mailbox>")
-  })
-
-  test("a delivery whose payload lost its token dead-letters instead of sending", async () => {
-    const seeded = await seedQueuedDelivery("worker-notoken@example.com", "+14155559022")
-    await pool.query("update outbox_events set payload = '{\"template\":\"verify_email\"}'::jsonb where id = $1", [
-      seeded.outboxId,
-    ])
-
-    const send = vi.fn()
-    const summary = await dispatchDueDeliveries(
-      workerDeps(
-        createTransactionalEmailSender({
-          sender: { send },
-          templates: { landingOrigin: null, activationUrl: null, supportAddress: null },
-        }),
-      ),
-    )
-
-    expect(summary.deadLettered).toBe(1)
-    expect(send).not.toHaveBeenCalled()
-    expect((await outboxState(seeded.outboxId)).state).toBe("dead_lettered")
   })
 
   test("reschedules a retryable SES failure with an incremented attempt", async () => {

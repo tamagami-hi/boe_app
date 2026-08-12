@@ -23,7 +23,6 @@ import { createDatabase, createUnitOfWork } from "../db/database.js"
 import { parseDatabaseConfig } from "../db/config.js"
 import { createPool } from "../db/pool.js"
 import { createCertificateFetcher } from "../email/certificateFetcher.js"
-import { createActivationInviteRepository } from "../repositories/activationInviteRepository.js"
 import { createApplicationRepository } from "../repositories/applicationRepository.js"
 import { createClientCatalogRepository } from "../repositories/clientCatalogRepository.js"
 import { createClientPortfolioRepository } from "../repositories/clientPortfolioRepository.js"
@@ -32,7 +31,6 @@ import { createRedemptionRepository } from "../repositories/redemptionRepository
 import { createKycRepository } from "../repositories/kycRepository.js"
 import {
   createSmtpEmailSender,
-  createLogEmailSender,
   createUnconfiguredEmailSender,
   type EmailSender,
 } from "../email/emailSender.js"
@@ -55,7 +53,6 @@ import { createEmailSuppressionRepository } from "../repositories/emailSuppressi
 import { createIdempotencyRepository } from "../repositories/idempotencyRepository.js"
 import { createOutboxRepository } from "../repositories/outboxRepository.js"
 import { createUserRepository } from "../repositories/userRepository.js"
-import { createVerificationTokenRepository } from "../repositories/verificationTokenRepository.js"
 import { registerAdminIdentityRoutes } from "../routes/adminIdentityRoutes.js"
 import { registerAdminCatalogRoutes } from "../routes/adminCatalogRoutes.js"
 import { registerAdminContentRoutes } from "../routes/adminContentRoutes.js"
@@ -108,10 +105,8 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const applicationRepository = createApplicationRepository()
   const applicationReviewRepository = createApplicationReviewRepository()
   const consentRepository = createConsentRepository()
-  const verificationTokenRepository = createVerificationTokenRepository()
   const userRepository = createUserRepository()
   const credentialRepository = createCredentialRepository()
-  const activationInviteRepository = createActivationInviteRepository()
   const authSessionRepository = createAuthSessionRepository()
   const auditRepository = createAuditRepository()
   const outboxRepository = createOutboxRepository()
@@ -130,14 +125,14 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const kycRepository = createKycRepository()
   const clientAccountRepository = createClientAccountRepository()
 
-  // KYC/transactional email sender: real SMTP (company mailbox) when configured,
-  // otherwise a safe local/log sender for dev/test (decision 10).
+  // KYC/transactional email sender: real SMTP when configured; otherwise fail
+  // closed so the API never reports `code_sent` for a message that did not leave.
   const emailFromAddress =
     serverConfig.email.fromAddress ?? serverConfig.email.smtp?.user ?? "no-reply@localhost"
   const emailSender: EmailSender =
     serverConfig.email.smtp !== null
       ? createSmtpEmailSender({ ...serverConfig.email.smtp, fromAddress: emailFromAddress })
-      : createLogEmailSender(emailFromAddress)
+      : createUnconfiguredEmailSender()
 
   const webAuth: WebAuthDeps = {
     userRepository,
@@ -171,29 +166,19 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       crypto,
       breachChecker,
       config: {
-        verificationTokenTtlMs: serverConfig.ttls.verificationTokenTtlMs,
         idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
-        sesConfigurationSet: serverConfig.sesConfigurationSet,
         signupSharedSecret: serverConfig.signup.sharedSecret,
-        verificationResendCooldownMs: serverConfig.signup.verificationResendCooldownMs,
       },
       applicationRepository,
       consentRepository,
-      verificationTokenRepository,
-      emailDeliveryRepository,
-      outboxRepository,
       auditRepository,
       idempotencyRepository,
     })
 
     registerNativeAuthRoutes(application, {
       userRepository,
-      activationInviteRepository,
-      credentialRepository,
       authSessionRepository,
       auditRepository,
-      crypto,
-      breachChecker,
       accessTokenService,
       database,
       refreshKey: serverConfig.refreshKey,
@@ -344,14 +329,13 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       config: {
         cursorKey: serverConfig.cursorKey,
         idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
-        activationInviteTtlMs: serverConfig.ttls.activationInviteTtlMs,
         sesConfigurationSet: serverConfig.sesConfigurationSet,
       },
+      appUpdate: serverConfig.appUpdate,
       applicationRepository,
       applicationReviewRepository,
       userRepository,
       credentialRepository,
-      activationInviteRepository,
       outboxRepository,
       emailDeliveryRepository,
       auditRepository,
@@ -398,7 +382,6 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       config: {
         cursorKey: serverConfig.cursorKey,
         idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
-        kycValidityMs: serverConfig.kyc.validityMs,
       },
       oversightRepository: createAdminOversightRepository(),
       investorLedgerRepository,
@@ -509,9 +492,8 @@ export interface EmailDispatchWorker {
  * and nobody can activate an account, so the deploy stack runs it alongside the
  * payment and SIP workers.
  *
- * The sender is the same company mailbox the KYC codes use: real SMTP when
- * configured, otherwise the metadata-only log sender, which keeps dev and test
- * runs from attempting network sends.
+ * The sender is the same company mailbox the KYC codes use. Without SMTP it
+ * fails retryably so durable delivery state never claims an unsent message.
  */
 export const composeEmailDispatchWorker = (
   source: Readonly<Record<string, string | undefined>>,

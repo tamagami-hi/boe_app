@@ -20,7 +20,6 @@ export {
 
 export {
   login,
-  signup,
   logout,
   currentUser,
   listPendingApprovals,
@@ -29,8 +28,6 @@ export {
 } from './services/authApi.js';
 
 export {
-  isApprovedUser,
-  isPendingApprovalUser,
   isTerminalAccount,
   isExecutionRoute,
   approvalRef,
@@ -50,7 +47,6 @@ export { openRazorpayCheckout } from './utils/razorpay.js';
 export { openOnboarding } from './utils/openOnboarding.js';
 
 // Pages with default exports
-export { default as ApprovalRequired } from './pages/ApprovalRequired.jsx';
 export { default as Blocked } from './pages/Blocked.jsx';
 export { default as Dashboard } from './pages/Dashboard.jsx';
 export { default as Explore } from './pages/Explore.jsx';

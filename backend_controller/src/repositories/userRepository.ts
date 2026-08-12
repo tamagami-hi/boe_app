@@ -1,6 +1,6 @@
 /**
- * User repository (spec 03 §7). Owns identity lookups and the account-state
- * transitions consumed by activation and native login.
+ * User repository (spec 03 §7). Owns identity lookups and the account creation
+ * consumed by the admin approval decision and native login.
  */
 import { sql } from "kysely"
 
@@ -16,18 +16,23 @@ export interface RolesAndPermissions {
   readonly permissions: readonly string[]
 }
 
-export interface CreateInvitedUserInput {
+export interface CreateActiveUserInput {
   readonly applicationId: string
   readonly emailNormalized: string
   readonly phoneE164: string
   readonly fullName: string
+  readonly activatedAt: Date
 }
 
 export interface UserWriteRepository {
   lockById: (tx: Transaction, userId: UserId) => Promise<User | null>
-  /** Create the invited user for an approved application (account_state defaults to invited). */
-  createInvited: (tx: Transaction, input: CreateInvitedUserInput) => Promise<User>
-  activate: (tx: Transaction, userId: UserId, now: Date) => Promise<User>
+  /**
+   * Create the active user for an approved application. Approval is the only
+   * door to an account now — the signup password is copied into
+   * `user_credentials` in the same transaction, so the account is sign-in ready
+   * the moment the decision commits. There is no invited state to pass through.
+   */
+  createActive: (tx: Transaction, input: CreateActiveUserInput) => Promise<User>
   lockByEmailWithCredential: (tx: Transaction, emailNormalized: string) => Promise<UserWithCredential | null>
   findActiveRolesAndPermissions: (tx: Transaction, userId: UserId) => Promise<RolesAndPermissions>
 }
@@ -38,7 +43,7 @@ export const createUserRepository = (): UserWriteRepository => ({
     return row ?? null
   },
 
-  createInvited: async (tx, input) =>
+  createActive: async (tx, input) =>
     tx
       .insertInto("users")
       .values({
@@ -46,21 +51,9 @@ export const createUserRepository = (): UserWriteRepository => ({
         email_normalized: input.emailNormalized,
         phone_e164: input.phoneE164,
         full_name: input.fullName,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow(),
-
-  activate: async (tx, userId, now) =>
-    tx
-      .updateTable("users")
-      .set({
         account_state: "active",
-        activated_at: now,
-        version: sql<string>`version + 1`,
-        updated_at: sql<Date>`now()`,
+        activated_at: input.activatedAt,
       })
-      .where("id", "=", userId)
-      .where("account_state", "=", "invited")
       .returningAll()
       .executeTakeFirstOrThrow(),
 

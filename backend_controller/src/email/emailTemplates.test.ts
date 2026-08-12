@@ -3,76 +3,40 @@ import { describe, expect, test } from "vitest"
 import { renderEmailTemplate, type EmailTemplateConfig } from "./emailTemplates.js"
 
 const CONFIG: EmailTemplateConfig = {
-  landingOrigin: "https://beonedge.example",
-  activationUrl: null,
   supportAddress: "support@beonedge.example",
 }
 
-const TOKEN = "aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789_-abcde"
+const APK_URL = "https://downloads.beonedge.example/client/boe.apk"
 
 describe("renderEmailTemplate", () => {
-  test("verification carries a clickable link to the public page", () => {
-    const result = renderEmailTemplate("verify_email", { verificationToken: TOKEN }, CONFIG)
+  test("approval carries the app download link when one was published", () => {
+    const result = renderEmailTemplate("account_approved", { downloadUrl: APK_URL }, CONFIG)
     expect(result.kind).toBe("rendered")
     if (result.kind !== "rendered") return
-    expect(result.email.subject).toContain("Confirm your email")
-    expect(result.email.text).toContain(`https://beonedge.example/verify-email?token=${TOKEN}`)
+    expect(result.email.subject).toContain("approved")
+    expect(result.email.text).toContain(APK_URL)
+    expect(result.email.text).toContain("email address and password")
     expect(result.email.text).toContain("support@beonedge.example")
   })
 
-  test("verification falls back to printing the code when no site is configured", () => {
-    const result = renderEmailTemplate(
-      "verify_email",
-      { verificationToken: TOKEN },
-      { ...CONFIG, landingOrigin: null },
-    )
+  test("approval still renders without a download link", () => {
+    const result = renderEmailTemplate("account_approved", {}, CONFIG)
     expect(result.kind).toBe("rendered")
     if (result.kind !== "rendered") return
-    // The recipient must still be able to finish, so the token itself is shown.
-    expect(result.email.text).toContain(TOKEN)
     expect(result.email.text).not.toContain("http")
+    expect(result.email.text).toContain("email address and password")
   })
 
-  test("a token needing escaping is url-encoded in the link", () => {
-    const result = renderEmailTemplate("verify_email", { verificationToken: "a b+c" }, CONFIG)
+  test("approval mentions the in-app verification step", () => {
+    const result = renderEmailTemplate("account_approved", { downloadUrl: APK_URL }, CONFIG)
     if (result.kind !== "rendered") throw new Error("expected a rendered email")
-    expect(result.email.text).toContain("token=a%20b%2Bc")
+    expect(result.email.text).toContain("verify your email address")
   })
 
-  test("the activation invite prints the code because the app has no deep link", () => {
-    const result = renderEmailTemplate("activation_invite", { activationToken: TOKEN }, CONFIG)
-    if (result.kind !== "rendered") throw new Error("expected a rendered email")
-    expect(result.email.subject).toContain("approved")
-    expect(result.email.text).toContain(TOKEN)
-    expect(result.email.text).toContain("Activate account")
-  })
-
-  test("the activation invite adds a link when one is configured", () => {
-    const result = renderEmailTemplate(
-      "activation_invite",
-      { activationToken: TOKEN },
-      { ...CONFIG, activationUrl: "https://beonedge.example/activate?from=email" },
-    )
-    if (result.kind !== "rendered") throw new Error("expected a rendered email")
-    // The existing query string is preserved, so the separator switches to `&`.
-    expect(result.email.text).toContain(`https://beonedge.example/activate?from=email&token=${TOKEN}`)
-  })
-
-  test("a rejection needs no token", () => {
+  test("a rejection needs no data", () => {
     const result = renderEmailTemplate("application_rejected", {}, CONFIG)
     if (result.kind !== "rendered") throw new Error("expected a rendered email")
     expect(result.email.text).toContain("not able to open an account")
-  })
-
-  test("a missing token is unrenderable rather than a broken email", () => {
-    expect(renderEmailTemplate("verify_email", {}, CONFIG)).toEqual({
-      kind: "unrenderable",
-      errorCode: "TEMPLATE_DATA_MISSING",
-    })
-    expect(renderEmailTemplate("activation_invite", { activationToken: "" }, CONFIG)).toEqual({
-      kind: "unrenderable",
-      errorCode: "TEMPLATE_DATA_MISSING",
-    })
   })
 
   test("an unknown template key is reported, not guessed", () => {
@@ -82,14 +46,18 @@ describe("renderEmailTemplate", () => {
     })
   })
 
-  test("no template leaks the raw token into the subject line", () => {
-    for (const [key, data] of [
-      ["verify_email", { verificationToken: TOKEN }],
-      ["activation_invite", { activationToken: TOKEN }],
-    ] as const) {
-      const result = renderEmailTemplate(key, data, CONFIG)
-      if (result.kind !== "rendered") throw new Error("expected a rendered email")
-      expect(result.email.subject).not.toContain(TOKEN)
+  test("removed onboarding templates are unknown now", () => {
+    for (const key of ["verify_email", "activation_invite"] as const) {
+      expect(renderEmailTemplate(key, {}, CONFIG)).toEqual({
+        kind: "unrenderable",
+        errorCode: "TEMPLATE_UNKNOWN",
+      })
     }
+  })
+
+  test("no template leaks the download link into the subject line", () => {
+    const result = renderEmailTemplate("account_approved", { downloadUrl: APK_URL }, CONFIG)
+    if (result.kind !== "rendered") throw new Error("expected a rendered email")
+    expect(result.email.subject).not.toContain(APK_URL)
   })
 })

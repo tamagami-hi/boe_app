@@ -4,7 +4,6 @@
 export const LEGACY_TAB_MAP = {
   approvals: '/admin/users/approvals',
   userDetail: '/admin/users/directory',
-  kyc: '/admin/users/kyc',
   risk: '/admin/users/risk-profiles',
   payments: '/admin/users/payments',
   mandates: '/admin/users/subscriptions',

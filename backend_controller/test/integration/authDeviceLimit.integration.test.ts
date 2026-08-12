@@ -10,15 +10,11 @@ import { Wait } from "testcontainers"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 
 import { createAccessTokenService } from "../../src/auth/accessToken.js"
-import { createBreachChecker } from "../../src/auth/breachCheck.js"
 import { hashPassword } from "../../src/auth/passwordHasher.js"
-import { createCryptoContext, parseCryptoKeys } from "../../src/crypto/context.js"
 import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
-import { createActivationInviteRepository } from "../../src/repositories/activationInviteRepository.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
 import { createAuthSessionRepository } from "../../src/repositories/authSessionRepository.js"
-import { createCredentialRepository } from "../../src/repositories/credentialRepository.js"
 import { createUserRepository } from "../../src/repositories/userRepository.js"
 import { registerNativeAuthRoutes, type NativeAuthRouteDeps } from "../../src/routes/nativeAuthRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
@@ -42,8 +38,6 @@ const MAX_DEVICES = 3
 let container: StartedPostgreSqlContainer
 let pool: Pool
 let app: FastifyInstance
-
-const b64 = (n: number): string => randomBytes(n).toString("base64")
 
 const device = (installationId: string) => ({
   installationId,
@@ -110,18 +104,6 @@ beforeAll(async () => {
   await runSeed(pool)
 
   const database = createDatabase(pool)
-  const crypto = createCryptoContext(
-    parseCryptoKeys({
-      CRYPTO_TOKEN_HASH_KEY: b64(32),
-      CRYPTO_TOKEN_HASH_KEY_VERSION: "tk1",
-      CRYPTO_CONSENT_IP_HMAC_KEY: b64(32),
-      CRYPTO_CONSENT_IP_HMAC_KEY_VERSION: "ck1",
-      CRYPTO_RECIPIENT_HMAC_KEY: b64(32),
-      CRYPTO_RECIPIENT_HMAC_KEY_VERSION: "rk1",
-      CRYPTO_RECIPIENT_ENC_KEY: b64(32),
-      CRYPTO_RECIPIENT_ENC_KEY_VERSION: "ek1",
-    }),
-  )
   const keyPair = await generateKeyPair("ES256", { extractable: true })
   const accessTokenService = createAccessTokenService({
     issuer: "https://api.beonedge.test",
@@ -133,12 +115,8 @@ beforeAll(async () => {
 
   const deps: NativeAuthRouteDeps = {
     userRepository: createUserRepository(),
-    activationInviteRepository: createActivationInviteRepository(),
-    credentialRepository: createCredentialRepository(),
     authSessionRepository: createAuthSessionRepository(),
     auditRepository: createAuditRepository(),
-    crypto,
-    breachChecker: createBreachChecker("bypass"),
     accessTokenService,
     database,
     refreshKey: randomBytes(32),

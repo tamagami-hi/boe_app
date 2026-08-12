@@ -1,28 +1,23 @@
 /**
- * Decide an application (spec 04 §3.2). Both outcomes require `in_review`, the
- * If-Match version, and no prior decision.
+ * Decide an application (spec 04 §3.2). Single step: an admin approves or
+ * rejects directly from `submitted`. There is no review handshake, no reason
+ * the admin has to type, and no unverified-email gate — the decision itself is
+ * the only gate, and the review row records a fixed internal audit code so the
+ * trail stays complete without demanding ceremony from the reviewer.
  *
- * Approval takes one of two shapes depending on whether the applicant chose a
- * password when they signed up:
- *
- *   - password on file (the current signup form) — creates the user, copies the
- *     Argon2id hash into `user_credentials`, and activates the account. The
- *     person can sign in immediately with the password they already chose, and
- *     the mail is a notification rather than something to redeem.
- *   - no password (an application submitted before password-at-signup) — creates
- *     an invited user and a single-use activation invite, and the password is
- *     chosen when that invite is redeemed.
- *
- * The second shape is the reason nothing here is deleted: rows already in the
- * queue must still be approvable, and their only route to a credential is the
- * invite.
+ * Approval always takes one shape: the applicant chose their password at
+ * signup, so the decision creates the user already `active`, copies the Argon2id
+ * hash into `user_credentials`, and queues the `account_approved` mail. That
+ * mail carries the official client APK download link (resolved by the route
+ * from the published release feed) and tells the recipient to sign in with the
+ * credentials they already chose — there is nothing left to redeem, and the
+ * legacy activation-invite branch is gone.
  *
  * Rejection atomically creates the review, audit event, rejection outbox event,
- * and a token-free rejection delivery, and creates no user, credential, or
- * invite. Onboarding decisions use no maker-checker.
+ * and a token-free rejection delivery, and creates no user or credential.
+ * Onboarding decisions use no maker-checker.
  */
 import type {
-  ActivationInvite,
   Application,
   ApplicationReview,
   EmailDelivery,
@@ -39,10 +34,8 @@ import type { CredentialWriteRepository } from "../../repositories/credentialRep
 import type { EmailDeliveryWriteRepository } from "../../repositories/emailDeliveryRepository.js"
 import type { OutboxWriteRepository } from "../../repositories/outboxRepository.js"
 import type { UserWriteRepository } from "../../repositories/userRepository.js"
-import type { ActivationInviteWriteRepository } from "../../repositories/activationInviteRepository.js"
 
 export interface DecideApplicationConfig {
-  readonly activationInviteTtlMs: number
   readonly sesConfigurationSet: string
 }
 
@@ -51,7 +44,6 @@ export interface DecideApplicationDeps {
   readonly applicationReviewRepository: ApplicationReviewWriteRepository
   readonly userRepository: UserWriteRepository
   readonly credentialRepository: CredentialWriteRepository
-  readonly activationInviteRepository: ActivationInviteWriteRepository
   readonly outboxRepository: OutboxWriteRepository
   readonly emailDeliveryRepository: EmailDeliveryWriteRepository
   readonly auditRepository: AuditWriteRepository
@@ -64,17 +56,13 @@ export interface DecideApplicationInput {
   readonly applicationId: string
   readonly reviewerUserId: string
   readonly decision: "approved" | "rejected"
-  readonly reasonCode: string
-  readonly reasonDetail: string | null
-  readonly expectedVersion: number
   /**
-   * Explicit acknowledgement that the applicant never confirmed their email
-   * address. Approving without a confirmed address is a judgement the reviewer
-   * has to make deliberately, so the caller has to say so rather than the server
-   * quietly allowing it: the admin console asks for a second confirmation and
-   * the choice is recorded in the audit event.
+   * Public download URL of the newest published client APK, resolved by the
+   * route from the release feed, or null when no APK is published. Carried into
+   * the approval mail's template data; null means the mail goes out without a
+   * link (the route logs the warning).
    */
-  readonly allowUnverifiedEmail: boolean
+  readonly apkDownloadUrl: string | null
   readonly requestId: string
   readonly idempotencyKey: string
 }
@@ -83,11 +71,18 @@ export interface DecideApplicationResult {
   readonly application: Application
   readonly review: ApplicationReview
   readonly user: User | null
-  readonly activationInvite: ActivationInvite | null
   readonly emailDelivery: EmailDelivery
   /** True when the account can be signed into right away with the signup password. */
   readonly accountActivated: boolean
 }
+
+/**
+ * The fixed internal audit code recorded on the review row. The admin no longer
+ * supplies a reason — the console offers exactly Approve/Reject — but the
+ * schema keeps `reason_code` NOT NULL, so the decision itself is the code.
+ */
+const auditReasonCode = (decision: "approved" | "rejected"): string =>
+  decision === "approved" ? "admin_approved" : "admin_rejected"
 
 export const decideApplication = async (
   tx: Transaction,
@@ -111,31 +106,17 @@ export const decideApplication = async (
   if (application.state === "withdrawn") {
     throw new AppError("STATE_CONFLICT", { message: "This application was withdrawn and can no longer be decided." })
   }
-  if (application.state !== "in_review") {
-    throw new AppError("STATE_CONFLICT", {
-      message: "This application must be moved into review before it can be decided.",
-    })
-  }
-  if (Number(application.version) !== input.expectedVersion) {
-    throw new AppError("STATE_CONFLICT", {
-      message: "This application changed while you were reviewing it. Reload the queue and decide again.",
-    })
-  }
-  /*
-   * An unconfirmed email blocks approval unless the reviewer says otherwise, and
-   * never blocks rejection — refusing to reject an application because its
-   * address is unconfirmed would leave it stuck in the queue forever.
-   */
-  if (input.decision === "approved" && application.email_verified_at === null && !input.allowUnverifiedEmail) {
-    throw new AppError("STATE_CONFLICT", {
-      message:
-        "This applicant has not confirmed their email address. Confirm that you want to approve them anyway before continuing.",
-    })
-  }
 
   // Read before applyDecision clears it: the decision update wipes the signup
   // hash, so the value has to be taken from the locked row.
   const signupPasswordHash = application.password_hash
+  if (input.decision === "approved" && signupPasswordHash === null) {
+    // Unreachable for signups that came through /newuser (password is required
+    // there); a row without one cannot produce a sign-in-ready account.
+    throw new AppError("STATE_CONFLICT", {
+      message: "This application has no signup password on file, so it cannot be approved into an account.",
+    })
+  }
 
   const now = deps.clock()
   const decided = await deps.applicationRepository.applyDecision(tx, {
@@ -145,9 +126,9 @@ export const decideApplication = async (
   })
   if (decided === null) {
     // The guarded UPDATE matched no row, so another transaction moved this
-    // application between the lock and the write.
+    // application out of `submitted` between the lock and the write.
     throw new AppError("STATE_CONFLICT", {
-      message: "This application changed while you were reviewing it. Reload the queue and decide again.",
+      message: "This application changed while you were deciding it. Reload the queue and decide again.",
     })
   }
 
@@ -155,8 +136,8 @@ export const decideApplication = async (
     applicationId: input.applicationId,
     reviewerUserId: input.reviewerUserId,
     decision: input.decision,
-    reasonCode: input.reasonCode,
-    reasonDetail: input.reasonDetail,
+    reasonCode: auditReasonCode(input.decision),
+    reasonDetail: null,
     requestId: input.requestId,
     idempotencyKey: input.idempotencyKey,
   })
@@ -173,91 +154,33 @@ export const decideApplication = async (
     sesConfigurationSet: deps.config.sesConfigurationSet,
     templateVersion: "v1",
   }
-  const auditMetadata = {
-    decision: input.decision,
-    reasonCode: input.reasonCode,
-    // Recorded on every decision so the trail answers "was the address
-    // confirmed when this was decided?" without re-deriving it from timestamps.
-    emailVerifiedAtDecision: application.email_verified_at !== null,
-  }
+  const auditMetadata = { decision: input.decision }
 
   if (input.decision === "approved") {
-    const user = await deps.userRepository.createInvited(tx, {
+    // The credential the applicant chose at signup, moved to the table that
+    // owns it. No token is issued: there is nothing left for them to set.
+    const user = await deps.userRepository.createActive(tx, {
       applicationId: input.applicationId,
       emailNormalized: application.email_normalized,
       phoneE164: application.phone_e164,
       fullName: application.full_name,
+      activatedAt: now,
     })
-
-    if (signupPasswordHash !== null) {
-      // The credential the applicant chose at signup, moved to the table that
-      // owns it. No token is issued: there is nothing left for them to set.
-      await deps.credentialRepository.create(tx, user.id as UserId, signupPasswordHash)
-      const activated = await deps.userRepository.activate(tx, user.id as UserId, now)
-      const outbox = await deps.outboxRepository.enqueue(tx, {
-        topic: "email",
-        eventType: "user.account_approved",
-        eventVersion: 1,
-        aggregateType: "user",
-        aggregateId: user.id,
-        requestId: input.requestId,
-        deduplicationKey: `account_approved:${user.id}`,
-        payload: { template: "account_approved" },
-      })
-      const emailDelivery = await deps.emailDeliveryRepository.createAccountApprovedDelivery(tx, {
-        outboxEventId: outbox.id,
-        userId: user.id,
-        applicationId: input.applicationId,
-        ...recipientEvidence,
-      })
-      await deps.auditRepository.append(tx, {
-        actorType: "admin",
-        actorUserId: input.reviewerUserId,
-        command: "application.decide",
-        entityType: "application",
-        entityId: input.applicationId,
-        fromState: "in_review",
-        toState: "approved",
-        requestId: input.requestId,
-        entityVersion: Number(decided.version),
-        metadata: { ...auditMetadata, credentialSource: "signup", accountState: "active" },
-      })
-      return {
-        application: decided,
-        review,
-        user: activated,
-        activationInvite: null,
-        emailDelivery,
-        accountActivated: true,
-      }
-    }
-
-    // Legacy path: no password on file, so the account stays invited until the
-    // emailed invite is redeemed and a password is chosen.
-    const token = deps.crypto.generateVerificationToken()
-    const invite = await deps.activationInviteRepository.create(tx, {
-      userId: user.id,
-      applicationId: input.applicationId,
-      tokenHash: token.hash,
-      tokenKeyVersion: token.keyVersion,
-      expiresAt: new Date(now.getTime() + deps.config.activationInviteTtlMs),
-      createdByUserId: input.reviewerUserId,
-    })
+    await deps.credentialRepository.create(tx, user.id as UserId, signupPasswordHash as string)
     const outbox = await deps.outboxRepository.enqueue(tx, {
       topic: "email",
-      eventType: "user.activation_invited",
+      eventType: "user.account_approved",
       eventVersion: 1,
       aggregateType: "user",
       aggregateId: user.id,
       requestId: input.requestId,
-      deduplicationKey: `activation_invite:${token.hash.toString("hex")}`,
-      payload: { template: "activation_invite", activationToken: token.token },
+      deduplicationKey: `account_approved:${user.id}`,
+      payload: { template: "account_approved", downloadUrl: input.apkDownloadUrl },
     })
-    const emailDelivery = await deps.emailDeliveryRepository.createActivationInviteDelivery(tx, {
+    const emailDelivery = await deps.emailDeliveryRepository.createAccountApprovedDelivery(tx, {
       outboxEventId: outbox.id,
       userId: user.id,
       applicationId: input.applicationId,
-      activationInviteId: invite.id,
       ...recipientEvidence,
     })
     await deps.auditRepository.append(tx, {
@@ -266,19 +189,23 @@ export const decideApplication = async (
       command: "application.decide",
       entityType: "application",
       entityId: input.applicationId,
-      fromState: "in_review",
+      fromState: "submitted",
       toState: "approved",
       requestId: input.requestId,
       entityVersion: Number(decided.version),
-      metadata: { ...auditMetadata, credentialSource: "activation_invite", accountState: "invited" },
+      metadata: {
+        ...auditMetadata,
+        credentialSource: "signup",
+        accountState: "active",
+        apkLinkIncluded: input.apkDownloadUrl !== null,
+      },
     })
     return {
       application: decided,
       review,
       user,
-      activationInvite: invite,
       emailDelivery,
-      accountActivated: false,
+      accountActivated: true,
     }
   }
 
@@ -303,7 +230,7 @@ export const decideApplication = async (
     command: "application.decide",
     entityType: "application",
     entityId: input.applicationId,
-    fromState: "in_review",
+    fromState: "submitted",
     toState: "rejected",
     requestId: input.requestId,
     entityVersion: Number(decided.version),
@@ -313,7 +240,6 @@ export const decideApplication = async (
     application: decided,
     review,
     user: null,
-    activationInvite: null,
     emailDelivery,
     accountActivated: false,
   }

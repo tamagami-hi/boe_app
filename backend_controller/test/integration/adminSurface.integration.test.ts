@@ -242,7 +242,7 @@ beforeAll(async () => {
         unitOfWork,
         database,
         clock: () => new Date(),
-        config: { cursorKey, idempotencyTtlMs: 86_400_000, kycValidityMs: 31_536_000_000 },
+        config: { cursorKey, idempotencyTtlMs: 86_400_000 },
         oversightRepository: createAdminOversightRepository(),
         investorLedgerRepository: createInvestorLedgerRepository(),
         redemptionRepository: createRedemptionRepository(),
@@ -1532,70 +1532,6 @@ describe("admin oversight group (integration)", () => {
     expect(entries.rows[0]?.c).toBe(0)
   })
 
-  test("reviews KYC cases and records the decision plus a review row", async () => {
-    const session = await login("root@example.com")
-    const clientId = await createClient(`kyc-${randomUUID().slice(0, 8)}@example.com`)
-    const kycCase = await pool.query<{ id: string }>(
-      "insert into kyc_cases (user_id, state, submitted_at) values ($1, 'submitted', now()) returning id",
-      [clientId],
-    )
-    const caseId = kycCase.rows[0]?.id as string
-
-    const queue = await app.inject({
-      method: "GET",
-      url: "/v1/admin/kyc-review?status=submitted&limit=50",
-      headers: read(session),
-    })
-    expect(queue.statusCode).toBe(200)
-    const row = dataOf<{ items: { id: string; kycReviewStatus: string; userEmail: string }[] }>(
-      queue,
-    ).items.find((item) => item.id === caseId)
-    expect(row).toMatchObject({ kycReviewStatus: "submitted" })
-
-    const approved = await app.inject({
-      method: "PATCH",
-      url: `/v1/admin/kyc-review/${caseId}`,
-      headers: write(session),
-      payload: { action: "approve", reason: "documents verified" },
-    })
-    expect(approved.statusCode).toBe(200)
-    expect(dataOf<{ status: string }>(approved).status).toBe("approved")
-
-    // Re-approving is idempotent rather than an error.
-    const repeat = await app.inject({
-      method: "PATCH",
-      url: `/v1/admin/kyc-review/${caseId}`,
-      headers: write(session),
-      payload: { action: "approve" },
-    })
-    expect(repeat.statusCode).toBe(200)
-
-    const stored = await pool.query<{ state: string; expires_at: string | null }>(
-      "select state, expires_at from kyc_cases where id = $1",
-      [caseId],
-    )
-    expect(stored.rows[0]?.state).toBe("approved")
-    expect(stored.rows[0]?.expires_at).not.toBeNull()
-
-    const reviews = await pool.query<{ to_state: string }>(
-      "select to_state from kyc_reviews where kyc_case_id = $1",
-      [caseId],
-    )
-    expect(reviews.rows.map((review) => review.to_state)).toEqual(["approved"])
-
-    const rejectCase = await pool.query<{ id: string }>(
-      "insert into kyc_cases (user_id, state, submitted_at) values ($1, 'submitted', now()) returning id",
-      [await createClient(`kyc-reject-${randomUUID().slice(0, 8)}@example.com`)],
-    )
-    const rejected = await app.inject({
-      method: "PATCH",
-      url: `/v1/admin/kyc-review/${rejectCase.rows[0]?.id as string}`,
-      headers: write(session),
-      payload: { action: "rejected", reason: "mismatch" },
-    })
-    expect(dataOf<{ status: string }>(rejected).status).toBe("rejected")
-  })
-
   test("reads back the redacted audit log with filters, and denies it without audit.read", async () => {
     const session = await login("root@example.com")
 
@@ -1622,10 +1558,14 @@ describe("admin oversight group (integration)", () => {
 
     const byCommand = await app.inject({
       method: "GET",
-      url: "/v1/admin/audit-logs?command=kyc_case.approved&limit=50",
+      url: "/v1/admin/audit-logs?command=fund.version_published&limit=50",
       headers: read(session),
     })
-    expect(dataOf<{ items: unknown[] }>(byCommand).items.length).toBeGreaterThan(0)
+    expect(
+      dataOf<{ items: { command: string }[] }>(byCommand).items.every(
+        (event) => event.command === "fund.version_published",
+      ),
+    ).toBe(true)
 
     const windowed = await app.inject({
       method: "GET",
@@ -1643,13 +1583,6 @@ describe("admin oversight group (integration)", () => {
       headers: read(support),
     })
     expect(denied.statusCode).toBe(403)
-
-    const deniedFinance = await app.inject({
-      method: "GET",
-      url: "/v1/admin/kyc-review",
-      headers: read(await login("finance@example.com")),
-    })
-    expect(deniedFinance.statusCode).toBe(403)
   })
 
   test("requires an authenticated admin session and CSRF on unsafe methods", async () => {

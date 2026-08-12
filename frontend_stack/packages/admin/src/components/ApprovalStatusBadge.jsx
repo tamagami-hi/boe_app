@@ -1,17 +1,12 @@
 /**
  * Application state, in operator language.
  *
- * The backend states are `pending_email_verification`, `submitted`,
- * `in_review`, `approved`, `rejected` and `withdrawn`. Everything except
- * approved/rejected used to collapse into a single "Pending" chip, which hid the
- * one distinction that actually decides what an operator can do: an application
- * whose email is not yet confirmed cannot be approved at all (the decision
- * endpoint refuses it), whereas a submitted one is waiting on the operator.
+ * The backend states are `submitted`, `approved`, `rejected` and `withdrawn`.
+ * A new signup lands in `submitted` and waits on the operator's decision;
+ * there is no pre-approval email confirmation and no separate review state.
  */
 const LABELS = {
-  pending_email_verification: { text: 'Email not confirmed', className: 'be-badge-neutral' },
-  submitted: { text: 'Ready for review', className: 'be-badge-gold' },
-  in_review: { text: 'In review', className: 'be-badge-paused' },
+  submitted: { text: 'Pending approval', className: 'be-badge-gold' },
   approved: { text: 'Approved', className: 'be-badge-active' },
   active: { text: 'Approved', className: 'be-badge-active' },
   rejected: { text: 'Rejected', className: 'be-badge-failed' },

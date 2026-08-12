@@ -22,8 +22,7 @@ const STATES = [
 
 const TEMPLATES = [
   { value: 'all', label: 'All templates' },
-  { value: 'verify_email', label: 'Verify email' },
-  { value: 'activation_invite', label: 'Activation invite' },
+  { value: 'account_approved', label: 'Account approved' },
   { value: 'application_rejected', label: 'Application rejected' },
 ];
 

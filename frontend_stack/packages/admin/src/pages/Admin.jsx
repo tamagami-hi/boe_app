@@ -8,7 +8,6 @@ import {
   PaymentsRoute,
   UserDirectoryRoute,
   UserDetailRoute,
-  KycRoute,
   FundsRoute,
   HoldingsRoute,
   TransactionsRoute,
@@ -34,9 +33,10 @@ export default function Admin() {
         <Route path="users/payments" element={<PaymentsRoute />} />
         <Route path="users/directory" element={<UserDirectoryRoute />} />
         <Route path="users/directory/:userId" element={<UserDetailRoute />} />
-        <Route path="users/kyc" element={<KycRoute />} />
-        {/* Retired by canonical decision: no client risk profiling. */}
-        <Route path="users/risk-profiles" element={<Navigate to="/admin/users/kyc" replace />} />
+        {/* Retired by canonical decisions: no client risk profiling, and no
+            manual KYC review — KYC is the in-app OTP email verification. */}
+        <Route path="users/kyc" element={<Navigate to="/admin/users/approvals" replace />} />
+        <Route path="users/risk-profiles" element={<Navigate to="/admin/users/approvals" replace />} />
 
         <Route path="site/faqs" element={<FaqsPage />} />
 

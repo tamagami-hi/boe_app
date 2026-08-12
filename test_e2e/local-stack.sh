@@ -12,12 +12,10 @@
 #   ./test_e2e/local-stack.sh mail     list what has been delivered to the sink
 #   ./test_e2e/local-stack.sh mail-clear   empty the sink
 #
-# Why a mail sink and not "just log it": onboarding is gated on two emailed
-# secrets — the address-confirmation token and (for pre-password applications) the
-# activation invite. Neither can be exercised locally unless a real message is
-# actually delivered somewhere you can read it. Mailpit speaks SMTP, accepts any
-# credentials, keeps everything in memory, and never forwards: nothing can escape
-# to a real mailbox from a dev run.
+# Why a mail sink and not "just log it": onboarding is gated on the in-app email
+# OTP. It cannot be exercised locally unless a real message is delivered somewhere
+# the E2E harness can read it. Mailpit speaks SMTP, accepts any credentials, keeps
+# everything in memory, and never forwards: nothing can escape to a real mailbox.
 set -euo pipefail
 
 NAME=boe-local-pg

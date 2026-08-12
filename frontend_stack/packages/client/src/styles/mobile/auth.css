@@ -364,7 +364,7 @@
 
 
 
-/* ApprovalRequired state (mobile-first) */
+/* State cards (verification / status screens, mobile-first) */
 .apk-approval-card.be-card {
   display: flex;
   flex-direction: column;

@@ -16,10 +16,7 @@ import { SEED_CONSENT_DOCUMENTS } from "../../src/db/seedCatalog.js"
 import { createApplicationRepository } from "../../src/repositories/applicationRepository.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
 import { createConsentRepository } from "../../src/repositories/consentRepository.js"
-import { createEmailDeliveryRepository } from "../../src/repositories/emailDeliveryRepository.js"
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
-import { createOutboxRepository } from "../../src/repositories/outboxRepository.js"
-import { createVerificationTokenRepository } from "../../src/repositories/verificationTokenRepository.js"
 import { registerPublicOnboardingRoutes } from "../../src/routes/publicOnboardingRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
 import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
@@ -36,7 +33,7 @@ interface SubmitEnvelope {
   ok: boolean
   data: {
     accepted: boolean
-    outcome: "created" | "verification_resent" | "duplicate_pending" | "duplicate_account"
+    outcome: "created" | "duplicate_pending" | "duplicate_account"
     verificationEmailQueued: boolean
   } | null
   error: { code: string } | null
@@ -95,24 +92,16 @@ beforeAll(async () => {
         clock: () => new Date(),
         crypto: cryptoContext,
         // The signup route hashes a password now, so it needs the same breach
-        // checker activation uses. Bypassed here: these tests assert routing and
-        // persistence, and a real HIBP round-trip would make them network-bound.
+        // checker any credential path uses. Bypassed here: these tests assert
+        // routing and persistence, and a real HIBP round-trip would make them
+        // network-bound.
         breachChecker: createBypassBreachChecker(),
         config: {
-          verificationTokenTtlMs: 24 * 60 * 60 * 1000,
           idempotencyTtlMs: 24 * 60 * 60 * 1000,
-          sesConfigurationSet: "boe-transactional",
-          // A real cooldown, so both sides of the resend rule are reachable: the
-          // throttled case asserts against it directly, and the resend case
-          // backdates the existing delivery to step over it.
-          verificationResendCooldownMs: 15 * 60 * 1000,
           signupSharedSecret: SIGNUP_SECRET,
         },
         applicationRepository: createApplicationRepository(),
         consentRepository: createConsentRepository(),
-        verificationTokenRepository: createVerificationTokenRepository(),
-        emailDeliveryRepository: createEmailDeliveryRepository(),
-        outboxRepository: createOutboxRepository(),
         auditRepository: createAuditRepository(),
         idempotencyRepository: createIdempotencyRepository(),
       })
@@ -126,107 +115,23 @@ afterAll(async () => {
   await container.stop()
 })
 
-const rawTokenForApplication = async (email: string): Promise<string> => {
-  const result = await pool.query<{ payload: { verificationToken: string } }>(
-    "select o.payload as payload from outbox_events o " +
-      "join applications a on a.id = o.aggregate_id where a.email_normalized = $1",
-    [email],
-  )
-  const token = result.rows[0]?.payload.verificationToken
-  if (token === undefined) throw new Error("no verification token found")
-  return token
-}
-
-describe("POST /newuser/verify-email (integration)", () => {
-  test("consumes a valid token and moves the application to submitted", async () => {
-    const email = "verify1@example.com"
-    await app.inject({
-      method: "POST",
-      url: "/newuser",
-      headers: signupHeaders,
-      payload: { fullName: "Ada Lovelace", email, phone: "+14155551010", acceptedConsents: true },
-    })
-    const token = await rawTokenForApplication(email)
-
-    const response = await app.inject({
-      method: "POST",
-      url: "/newuser/verify-email",
-      payload: { token },
-    })
-    expect(response.statusCode).toBe(200)
-    expect(response.json<{ data: { verified: boolean } }>().data).toEqual({ verified: true })
-
-    const state = (
-      await pool.query<{ state: string; email_verified_at: string | null }>(
-        "select state, email_verified_at from applications where email_normalized = $1",
-        [email],
-      )
-    ).rows[0]
-    expect(state?.state).toBe("submitted")
-    expect(state?.email_verified_at).not.toBeNull()
-
-    // replay is TOKEN_ALREADY_USED
-    const replay = await app.inject({
-      method: "POST",
-      url: "/newuser/verify-email",
-      payload: { token },
-    })
-    expect(replay.statusCode).toBe(409)
-    expect(replay.json<SubmitEnvelope>().error?.code).toBe("TOKEN_ALREADY_USED")
-  })
-
-  test("rejects an unknown token", async () => {
-    const response = await app.inject({
-      method: "POST",
-      url: "/newuser/verify-email",
-      payload: { token: "A".repeat(43) },
-    })
-    expect(response.statusCode).toBe(400)
-    expect(response.json<SubmitEnvelope>().error?.code).toBe("TOKEN_INVALID")
-  })
-
-  test("rejects an expired token with 410", async () => {
-    const application = await pool.query<{ id: string }>(
-      "insert into applications (email_normalized, phone_e164, full_name) " +
-        "values ('expired1@example.com', '+14155551011', 'Expired User') returning id",
-    )
-    const applicationId = application.rows[0]?.id
-    const expiredToken = cryptoContext.generateVerificationToken()
-    await pool.query(
-      "insert into verification_tokens (application_id, purpose, token_hash, token_key_version, expires_at, created_at) " +
-        "values ($1, 'application_email_verification', $2, $3, now() - interval '1 hour', now() - interval '2 hours')",
-      [applicationId, expiredToken.hash, expiredToken.keyVersion],
-    )
-
-    const response = await app.inject({
-      method: "POST",
-      url: "/newuser/verify-email",
-      payload: { token: expiredToken.token },
-    })
-    expect(response.statusCode).toBe(410)
-    expect(response.json<SubmitEnvelope>().error?.code).toBe("TOKEN_EXPIRED")
-  })
-})
-
-
 /**
  * POST /newuser — the door the externally hosted marketing site posts to
  * (publicly `https://dev-app.beonedge.in/api/newuser`).
  *
  * The value of these tests is proving the adapter still writes the full
- * onboarding row set — application, consents, verification token, queued email,
- * outbox event, audit event — while asking the caller for far less: one flat
- * body, no Idempotency-Key header, no consent version strings.
+ * onboarding row set — application, consents, audit event — while asking the
+ * caller for far less: one flat body, no Idempotency-Key header, no consent
+ * version strings. Since the onboarding rework nothing is emailed at signup:
+ * the application lands directly in `submitted`, and the only mail in the
+ * flow is the account-approved/rejected notice after the admin decision.
  */
 describe("POST /newuser (integration)", () => {
   const newUserBody = (email: string, phone: string) => ({
     fullName: "Grace Hopper",
     email,
     phone,
-    // Required since password-at-signup (migration 024). Its absence here made
-    // every /newuser case in this file answer 400 instead of exercising the
-    // route: the harness had been given a breach checker so it compiled, but the
-    // payload was never updated to carry the field the schema now demands.
+    // Required since password-at-signup (migration 024).
     password: "correct-horse-battery-staple",
     acceptedConsents: true as const,
   })
@@ -244,33 +149,30 @@ describe("POST /newuser (integration)", () => {
     expect(response.json<SubmitEnvelope>().data).toEqual({
       accepted: true,
       outcome: "created",
-      verificationEmailQueued: true,
+      verificationEmailQueued: false,
     })
 
     const row = (
-      await pool.query<{ id: string; state: string }>(
-        "select id, state from applications where email_normalized = $1",
+      await pool.query<{ id: string; state: string; submitted_at: string | null; password_hash: string | null }>(
+        "select id, state, submitted_at, password_hash from applications where email_normalized = $1",
         [email],
       )
     ).rows[0]
-    expect(row?.state).toBe("pending_email_verification")
+    expect(row?.state).toBe("submitted")
+    expect(row?.submitted_at).not.toBeNull()
+    expect(row?.password_hash).toMatch(/^\$argon2id\$/u)
     const id = row?.id
 
     // Consent versions were resolved server-side, so both documents must still
-    // be recorded against the application exactly as the versioned route does.
+    // be recorded against the application.
     expect(
       await countWhere("select count(*)::int as c from application_consents where application_id = $1", [id]),
     ).toBe(2)
+    // Nothing is emailed at signup: no delivery rows, no outbox events.
     expect(
-      await countWhere("select count(*)::int as c from verification_tokens where application_id = $1", [id]),
-    ).toBe(1)
-    expect(
-      await countWhere(
-        "select count(*)::int as c from email_deliveries where application_id = $1 and template_key = 'verify_email' and state = 'queued'",
-        [id],
-      ),
-    ).toBe(1)
-    expect(await countWhere("select count(*)::int as c from outbox_events where aggregate_id = $1", [id])).toBe(1)
+      await countWhere("select count(*)::int as c from email_deliveries where application_id = $1", [id]),
+    ).toBe(0)
+    expect(await countWhere("select count(*)::int as c from outbox_events where aggregate_id = $1", [id])).toBe(0)
   })
 
   test("records the consent versions currently in force", async () => {
@@ -352,7 +254,7 @@ describe("POST /newuser (integration)", () => {
     expect(second.json<SubmitEnvelope>().data).toEqual({
       accepted: true,
       outcome: "created",
-      verificationEmailQueued: true,
+      verificationEmailQueued: false,
     })
     // The rejected row is retained; the partial unique index only constrains
     // rows that are not rejected/withdrawn, so the new one coexists with it.
@@ -361,82 +263,21 @@ describe("POST /newuser (integration)", () => {
     ).toBe(2)
     expect(
       await countWhere(
-        "select count(*)::int as c from applications where email_normalized = $1 and state = 'pending_email_verification'",
+        "select count(*)::int as c from applications where email_normalized = $1 and state = 'submitted'",
         [email],
       ),
     ).toBe(1)
   })
 
-  test("a resubmission while awaiting confirmation resends the verification email once the cooldown has passed", async () => {
-    const email = "newuser-resend@example.com"
-    const phone = "+14155552011"
-
-    const first = await app.inject({
-      method: "POST",
-      url: "/newuser",
-      headers: signupHeaders,
-      payload: newUserBody(email, phone),
-    })
-    expect(first.json<SubmitEnvelope>().data?.outcome).toBe("created")
-
-    // Step over the cooldown without waiting for it.
-    await pool.query(
-      "update email_deliveries set created_at = now() - interval '20 minutes' " +
-        "where application_id = (select id from applications where email_normalized = $1)",
-      [email],
-    )
-
-    // A different name derives a different key, so this is a genuine second
-    // execution rather than a replay — which is what the marketing site saw when
-    // a visitor corrected their name and resubmitted.
-    const second = await app.inject({
-      method: "POST",
-      url: "/newuser",
-      headers: signupHeaders,
-      payload: { ...newUserBody(email, phone), fullName: "Grace B Hopper" },
-    })
-
-    expect(second.statusCode).toBe(202)
-    expect(second.json<SubmitEnvelope>().data).toEqual({
-      accepted: false,
-      outcome: "verification_resent",
-      verificationEmailQueued: true,
-    })
-
-    const applicationId = (
-      await pool.query<{ id: string }>("select id from applications where email_normalized = $1", [email])
-    ).rows[0]?.id
-    // One application, two chances to confirm it. The first token stays valid:
-    // if the delayed original mail turns up, its link must still work.
-    expect(
-      await countWhere("select count(*)::int as c from applications where email_normalized = $1", [email]),
-    ).toBe(1)
-    expect(
-      await countWhere(
-        "select count(*)::int as c from verification_tokens where application_id = $1 and consumed_at is null",
-        [applicationId],
-      ),
-    ).toBe(2)
-    expect(
-      await countWhere(
-        "select count(*)::int as c from email_deliveries where application_id = $1 and template_key = 'verify_email'",
-        [applicationId],
-      ),
-    ).toBe(2)
-    expect(
-      await countWhere(
-        "select count(*)::int as c from audit_events where entity_id = $1 and command = 'application.verification_resent'",
-        [applicationId],
-      ),
-    ).toBe(1)
-  })
-
-  test("a resubmission inside the cooldown is reported as duplicate_pending and queues no mail", async () => {
+  test("a resubmission while the application is in flight is reported as duplicate_pending", async () => {
     const email = "newuser-throttled@example.com"
     const phone = "+14155552012"
 
     await app.inject({ method: "POST", url: "/newuser", headers: signupHeaders, payload: newUserBody(email, phone) })
 
+    // A different name derives a different key, so this is a genuine second
+    // execution rather than a replay — which is what the marketing site saw when
+    // a visitor corrected their name and resubmitted.
     const second = await app.inject({
       method: "POST",
       url: "/newuser",
@@ -455,18 +296,11 @@ describe("POST /newuser (integration)", () => {
     const applicationId = (
       await pool.query<{ id: string }>("select id from applications where email_normalized = $1", [email])
     ).rows[0]?.id
-    expect(
-      await countWhere(
-        "select count(*)::int as c from email_deliveries where application_id = $1 and template_key = 'verify_email'",
-        [applicationId],
-      ),
-    ).toBe(1)
-    // The discard leaves a trace now. Previously this path returned before the
-    // audit append, so a thrown-away submission was invisible everywhere.
+    // The discard leaves a trace: a thrown-away submission is never invisible.
     expect(
       await countWhere(
         "select count(*)::int as c from audit_events where entity_id = $1 and command = 'application.submit_discarded' " +
-          "and metadata->>'throttled' = 'true'",
+          "and metadata->>'reason' = 'application_in_flight'",
         [applicationId],
       ),
     ).toBe(1)
@@ -476,7 +310,7 @@ describe("POST /newuser (integration)", () => {
     const email = "newuser-existing-account@example.com"
     const phone = "+14155552013"
     await pool.query(
-      "insert into users (email_normalized, phone_e164, full_name, account_state) values ($1, $2, $3, 'active')",
+      "insert into users (email_normalized, phone_e164, full_name, account_state, activated_at) values ($1, $2, $3, 'active', now())",
       [email, phone, "Grace Hopper"],
     )
 
@@ -557,10 +391,9 @@ describe("POST /newuser (integration)", () => {
 })
 
 /**
- * The caller gate. `/newuser` accepts entirely attacker-chosen input and queues
- * an email for every accepted call, so only the marketing site may reach it —
- * proven by the `x-signup-key` shared secret, not by an Origin header a
- * non-browser client could set to anything.
+ * The caller gate. `/newuser` accepts entirely attacker-chosen input, so only
+ * the marketing site may reach it — proven by the `x-signup-key` shared secret,
+ * not by an Origin header a non-browser client could set to anything.
  */
 describe("POST /newuser caller authentication (integration)", () => {
   const body = (email: string, phone: string) => ({
@@ -619,16 +452,5 @@ describe("POST /newuser caller authentication (integration)", () => {
       payload: { nonsense: true },
     })
     expect(response.statusCode).toBe(401)
-  })
-
-  test("verify-email is reachable without the key — the token is its credential", async () => {
-    const response = await app.inject({
-      method: "POST",
-      url: "/newuser/verify-email",
-      payload: { token: "A".repeat(43) },
-    })
-    // 400 TOKEN_INVALID, not 401: the route ran and judged the token.
-    expect(response.statusCode).toBe(400)
-    expect(response.json<SubmitEnvelope>().error?.code).toBe("TOKEN_INVALID")
   })
 })

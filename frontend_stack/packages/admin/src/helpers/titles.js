@@ -5,7 +5,6 @@ export const SCREEN_LABELS = {
   mandates: 'Mandates',
   appBuilder: 'App Builder',
   userDetail: 'User Detail',
-  kyc: 'KYC Review',
   risk: 'Risk Profiles',
 };
 
@@ -16,7 +15,6 @@ export const TITLES = {
   mandates: { title: 'Mandates', crumbs: ['BeOnEdge', 'Mandates'] },
   appBuilder: { title: 'App builder', crumbs: ['BeOnEdge', 'App Builder'] },
   userDetail: { title: 'User detail', crumbs: ['BeOnEdge', 'User Detail'] },
-  kyc: { title: 'KYC review', crumbs: ['BeOnEdge', 'KYC'] },
   risk: { title: 'Risk profiles', crumbs: ['BeOnEdge', 'Risk'] },
   holdings: { title: 'Holdings', crumbs: ['BeOnEdge', 'Holdings'] },
   ledger: { title: 'Ledger', crumbs: ['BeOnEdge', 'Ledger'] },

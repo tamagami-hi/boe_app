@@ -51,9 +51,7 @@ export const SEED_ROLES: readonly SeedRole[] = [
  */
 export const SEED_PERMISSIONS: readonly SeedPermission[] = [
   { code: "applications.read", description: "Read applications and the review queue" },
-  { code: "applications.review", description: "Record an application review note" },
   { code: "applications.decide", description: "Approve or reject an application" },
-  { code: "invitations.manage", description: "Resend or manage activation invitations" },
   { code: "email_deliveries.read", description: "Read the full email delivery projection" },
   { code: "email_deliveries.read_masked", description: "Read the masked email delivery projection" },
   { code: "users.read", description: "Read user records" },
@@ -73,8 +71,6 @@ export const SEED_PERMISSIONS: readonly SeedPermission[] = [
   { code: "config.read", description: "Read the published application configuration" },
   { code: "config.publish", description: "Publish a new application configuration version" },
   { code: "audit.read", description: "Read the redacted audit event log" },
-  { code: "kyc.read", description: "Read KYC cases and their review history" },
-  { code: "kyc.review", description: "Approve or reject a KYC case" },
   { code: "support.read", description: "Read support tickets" },
   { code: "support.write", description: "Respond to support tickets" },
 ]
@@ -89,13 +85,9 @@ export const SEED_ROLE_PERMISSIONS: Readonly<Record<string, readonly string[]>> 
   superadmin: ALL_PERMISSION_CODES,
   onboarding: [
     "applications.read",
-    "applications.review",
     "applications.decide",
-    "invitations.manage",
     "email_deliveries.read",
     "users.read",
-    "kyc.read",
-    "kyc.review",
   ],
   finance: [
     "funds.read",
