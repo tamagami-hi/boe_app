@@ -88,7 +88,7 @@
   gap: var(--be-space-1);
   color: color-mix(in srgb, var(--be-ivory) 55%, transparent);
   font-size: var(--be-text-xs);
-  font-family: var(--be-font-sans);
+  font-family: var(--be-font-ui);
   padding-top: var(--be-space-3);
   position: relative;
   transition: color var(--be-dur-base) var(--be-ease);
@@ -147,7 +147,7 @@
   border: none;
   cursor: pointer;
   padding: var(--be-space-2) var(--be-space-3);
-  font: 500 var(--be-text-sm) var(--be-font-sans);
+  font: 500 var(--be-text-sm) var(--be-font-ui);
   color: var(--be-slate);
   position: relative;
   flex: 0 0 auto;
@@ -178,7 +178,7 @@
 .apk-chip {
   display: inline-flex;
   align-items: center;
-  font: 500 var(--be-text-xs) var(--be-font-sans);
+  font: 500 var(--be-text-xs) var(--be-font-ui);
   padding: var(--be-space-2) var(--be-space-3);
   border-radius: var(--be-radius-pill);
   border: var(--be-border-1);
@@ -453,4 +453,43 @@
 
 .apk-tx-amt {
   overflow-wrap: anywhere;
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* Stretched link                                                             */
+/* -------------------------------------------------------------------------- */
+
+/* One real anchor whose hit area covers its positioned ancestor. Used where a card
+   is tappable AND contains its own control, which rules out wrapping the card in an
+   anchor (nesting interactive elements is invalid and breaks AT navigation).
+   The link keeps the accessible name; the card keeps the tap target. */
+.apk-stretched-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+}
+
+/* The positioned ancestor the stretched link resolves against. */
+.apk-fc,
+.apk-featured-card {
+  position: relative;
+}
+
+/* Any sibling control must sit above the stretched link to stay tappable. The
+   previous implementation used onClick + stopPropagation on the card instead, which
+   does nothing for keyboard or AT users. */
+.apk-fc-notify-btn {
+  position: relative;
+  z-index: 1;
+}
+
+/* Focus lands on the anchor but the card is what the user sees, so the ring is
+   drawn on the card. */
+.apk-fc:focus-within,
+.apk-featured-card:focus-within {
+  outline: 2px solid var(--be-ink);
+  outline-offset: 2px;
 }

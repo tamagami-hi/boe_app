@@ -46,6 +46,13 @@
   background: var(--be-ivory-2);
   color: var(--be-ink);
 }
+/* The visible circle stays 28px; the hit area grows to --be-target-min via a
+   pseudo-element, so the target is thumb-sized without moving the icon. */
+.apk-search-clear::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+}
 
 /* Strategy grid */
 .apk-strategy-grid {
@@ -87,7 +94,7 @@
   gap: 10px;
 }
 .apk-fund-header h3 {
-  font-family: var(--be-font-serif);
+  font-family: var(--be-font-ui);
   font-size: 17px;
   font-weight: 600;
   margin: 0;
@@ -165,7 +172,7 @@
   min-width: 0;
 }
 .apk-fund-name {
-  font-family: var(--be-font-serif);
+  font-family: var(--be-font-ui);
   font-size: 17px;
   font-weight: 600;
 }
@@ -395,7 +402,9 @@
   font-size: 26px;
   font-weight: 600;
   color: var(--be-green);
-  font-family: var(--be-font-serif);
+  font-family: var(--be-font-ui);
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 .apk-featured-cagr-label {
   font-size: 11px;

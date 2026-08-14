@@ -131,7 +131,7 @@
   gap: 4px;
 }
 .apk-portfolio-tabs button {
-  min-height: 36px;
+  min-height: var(--be-target-comfortable);
   display: inline-flex;
   align-items: center;
   flex: 1 0 auto;
@@ -284,7 +284,7 @@
 .apk-withdrawal-card { margin-bottom: var(--be-space-3); }
 .apk-withdrawal-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--be-space-3); margin-bottom: var(--be-space-3); }
 .apk-withdrawal-card-head > div { min-width: 0; }
-.apk-withdrawal-fund { font-family: var(--be-font-serif); font-size: var(--be-text-base); font-weight: 600; overflow-wrap: anywhere; }
+.apk-withdrawal-fund { font-family: var(--be-font-ui); font-size: var(--be-text-base); font-weight: 600; overflow-wrap: anywhere; }
 .apk-withdrawal-date { font-size: var(--be-text-xs); color: var(--be-fg-muted); margin-top: var(--be-space-1); }
 .apk-status-pill { display: inline-flex; align-items: center; gap: var(--be-space-1); padding: 3px 10px; border-radius: var(--be-radius-pill); font-size: var(--be-text-xs); font-weight: 500; flex-shrink: 0; }
 .apk-status-pill--pending { background: var(--be-amber-soft); color: var(--be-amber); }
@@ -294,6 +294,10 @@
 .apk-withdrawal-amount { font-size: var(--be-text-lg); font-weight: 600; }
 .apk-withdrawal-type { text-align: right; }
 .apk-withdrawal-type-value { font-size: var(--be-text-sm); text-transform: capitalize; }
+/* The returns/principal breakdown line under a withdrawal request. Was undefined,
+   so it rendered at body size and read as a second heading. */
+.apk-withdrawal-split { margin-top: var(--be-space-2); font-size: var(--be-text-xs); color: var(--be-fg-muted); }
+
 .apk-withdrawal-note { margin-top: var(--be-space-3); padding: var(--be-space-2); background: var(--be-bg-elevated); border-radius: var(--be-radius-sm); font-size: var(--be-text-xs); color: var(--be-fg-muted); overflow-wrap: anywhere; }
 
 /* Gain bar tints */
@@ -377,6 +381,59 @@
   flex-direction: column;
   gap: var(--be-space-3);
 }
+/* Sheet header. `.apk-sheet-head`, `.apk-sheet-sub` and `.apk-sheet-close` were
+   used by the redemption and statement sheets and defined nowhere, so the title row
+   had no layout and the close control was a bare "×" glyph at whatever size the
+   browser gives an unstyled button. */
+.apk-sheet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--be-space-3);
+  padding: var(--be-space-4) var(--be-space-5) 0;
+}
+
+.apk-sheet-head h2 {
+  margin: 0;
+  font-family: var(--be-font-ui);
+  font-size: var(--be-text-lg);
+  font-weight: 600;
+}
+
+.apk-sheet-sub {
+  margin: var(--be-space-1) 0 0;
+  font-size: var(--be-text-sm);
+  color: var(--be-slate);
+}
+
+.apk-sheet-close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--be-target-min);
+  height: var(--be-target-min);
+  margin: calc(-1 * var(--be-space-2)) calc(-1 * var(--be-space-2)) 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--be-radius-pill);
+  background: transparent;
+  color: var(--be-slate);
+  font-size: var(--be-text-xl);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.apk-sheet-close:focus-visible {
+  outline: 2px solid var(--be-accent);
+  outline-offset: 2px;
+}
+
+.apk-sheet-close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .apk-sheet-body {
   padding: var(--be-space-4) var(--be-space-5);
   display: flex;

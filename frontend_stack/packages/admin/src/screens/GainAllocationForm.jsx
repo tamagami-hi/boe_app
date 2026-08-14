@@ -77,7 +77,7 @@ export default function GainAllocationForm({ userId, positions = [], onAllocated
   }
 
   return (
-    <div className="adm-card adm-gain-form">
+    <div className="adm-card">
       <div className="adm-card-head">
         <div>
           <h3 className="adm-card-title">
@@ -177,7 +177,7 @@ export default function GainAllocationForm({ userId, positions = [], onAllocated
           )}
 
           <div className="adm-field--wide">
-            <button type="submit" className="adm-btn adm-btn-primary" disabled={busy}>
+            <button type="submit" className="be-btn be-btn-primary" disabled={busy}>
               {busy ? 'Allocating…' : 'Allocate'}
             </button>
           </div>

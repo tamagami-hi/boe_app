@@ -35,7 +35,7 @@
 }
 
 .apk-login-title {
-  font-family: var(--be-font-serif);
+  font-family: var(--be-font-brand);
   font-size: 28px;
   font-weight: 600;
   line-height: 1.1;
@@ -121,7 +121,7 @@
 .auth-copy h1 {
   max-width: 760px;
   margin: 12px 0 16px;
-  font-family: var(--be-font-serif);
+  font-family: var(--be-font-brand);
   font-size: 56px;
   font-weight: 600;
   line-height: 1.05;
@@ -176,12 +176,12 @@
   margin-bottom: 28px;
 }
 .auth-tabs button {
-  min-height: 40px;
+  min-height: var(--be-target-comfortable);
   border: 0;
   border-radius: var(--be-r-4);
   background: transparent;
   color: var(--be-slate);
-  font: 600 13px/1 var(--be-font-sans);
+  font: 600 13px/1 var(--be-font-ui);
   cursor: pointer;
 }
 .auth-tabs button.is-active {
@@ -195,7 +195,7 @@
 }
 .auth-form h2 {
   margin: 0 0 6px;
-  font-family: var(--be-font-serif);
+  font-family: var(--be-font-ui);
   font-size: 32px;
   font-weight: 600;
   line-height: 1.15;
@@ -245,7 +245,7 @@
 .apk-splash-logo { height: 104px; max-width: 104px; }
 
 
-.apk-login-title { font-family: var(--be-font-serif); font-size: 32px; font-weight: 600; line-height: 1.1; margin: 0; }
+.apk-login-title { font-family: var(--be-font-brand); font-size: 32px; font-weight: 600; line-height: 1.1; margin: 0; }
 .apk-login-sub { font-size: 15px; color: var(--be-slate); margin: 0; }
 .apk-login-form { display: flex; flex-direction: column; gap: 14px; }
 .apk-login-foot { display: flex; gap: 16px; justify-content: space-between; font-size: 13px; }
@@ -301,7 +301,7 @@
 .auth-copy h1 {
   max-width: 760px;
   margin: 12px 0 16px;
-  font-family: var(--be-font-serif);
+  font-family: var(--be-font-brand);
   font-size: 34px;
   font-weight: 600;
   line-height: 1.05;
@@ -450,12 +450,12 @@
 }
 
 .auth-tabs button {
-  min-height: 42px;
+  min-height: var(--be-target-comfortable);
   border: 0;
   border-radius: var(--be-radius-sm);
   background: transparent;
   color: var(--be-slate);
-  font: 600 13px/1 var(--be-font-sans);
+  font: 600 13px/1 var(--be-font-ui);
   cursor: pointer;
   position: relative;
   transition:
@@ -602,6 +602,13 @@
     color var(--be-dur-base) var(--be-ease),
     background var(--be-dur-base) var(--be-ease);
 }
+/* Visible box stays 36px; hit area reaches --be-target-min without shifting the
+   icon inside the field. */
+.auth-password-toggle::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+}
 
 .auth-password-toggle:hover {
   color: var(--be-ink);
@@ -641,7 +648,7 @@
 
 .auth-form h2 {
   margin: 0 0 6px;
-  font-family: var(--be-font-serif);
+  font-family: var(--be-font-ui);
   font-size: 32px;
   font-weight: 600;
   line-height: 1.15;

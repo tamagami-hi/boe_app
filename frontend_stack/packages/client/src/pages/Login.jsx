@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { HOME_PATH, buildPath, resolveInternalPath } from '../navigation/routes.js';
 import { useSession } from '../store/SessionContext.jsx';
 import { openOnboarding } from '../utils/openOnboarding.js';
 
@@ -21,13 +22,25 @@ function EyeIcon({ open }) {
   );
 }
 
+const LOGIN_PATH = buildPath('login');
+
+/**
+ * Where to land after signing in.
+ *
+ * `from` arrives in the URL, so it is treated as untrusted input: the target must
+ * resolve to a REAL route in the manifest. The old check only required an `/app/`
+ * prefix, so `?from=/app/nonsense` signed the user in and dropped them on Not
+ * Found. `resolveInternalPath` re-derives the path from the manifest, which also
+ * strips any query or hash that rode along.
+ */
 function postLoginPath(from) {
-  if (!from) return '/app/dashboard';
+  if (!from) return HOME_PATH;
   try {
     const decoded = decodeURIComponent(from);
-    return decoded.startsWith('/app/') && decoded !== '/app/login' ? decoded : '/app/dashboard';
+    if (decoded === LOGIN_PATH) return HOME_PATH;
+    return resolveInternalPath(decoded) || HOME_PATH;
   } catch {
-    return '/app/dashboard';
+    return HOME_PATH;
   }
 }
 
@@ -68,7 +81,7 @@ function signInErrorMessage(error) {
 }
 
 export default function Login() {
-  const { login } = useSession();
+  const { login, endedReason } = useSession();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [identifier, setIdentifier] = useState('');
@@ -108,6 +121,14 @@ export default function Login() {
           <h1 className="apk-login-title">Sign in</h1>
           <p className="apk-login-sub">Enter your credentials to continue.</p>
         </div>
+
+        {/* Why the sign-in screen appeared. Without it a session that expired
+            mid-use looks like the app forgetting the user for no reason. */}
+        {!err && endedReason === 'expired' && (
+          <div className="apk-banner" role="status">
+            You were signed out because your session expired. Sign in to continue.
+          </div>
+        )}
 
         {err && (
           <div className="apk-login-error" role="alert" aria-live="assertive">
@@ -160,7 +181,7 @@ export default function Login() {
         </form>
 
         <div className="apk-login-foot">
-          <span className="apk-login-foot-text">New to BeOnEdge?</span>
+          <span>New to BeOnEdge?</span>
           <button type="button" className="apk-login-link" onClick={openOnboarding}>
             Sign up
           </button>

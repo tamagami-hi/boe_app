@@ -26,7 +26,7 @@ export default function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div aria-live="polite" aria-atomic="false" className="adm-toast-live-region">
+      <div aria-live="polite" aria-atomic="false">
         <Toast toasts={toasts} onDismiss={dismissToast} />
       </div>
     </ToastContext.Provider>

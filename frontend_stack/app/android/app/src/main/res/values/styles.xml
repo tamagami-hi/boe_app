@@ -12,7 +12,12 @@
     <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.Light.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
-        <item name="android:background">@null</item>
+        <!-- Pixel-matches index.html's inline background and #root in
+             app/src/index.css, so the native splash -> WebView -> React handoff
+             shows no flash of another color. This was `@null`, which let the
+             platform's default (white on light, near-black on dark) show through
+             for a frame. -->
+        <item name="android:windowBackground">@color/launchBackground</item>
         <!-- Never let the system/WebView algorithmically darken the UI:
              brand colors are designed for light rendering and must look
              identical on devices with dark mode enabled. -->
@@ -22,5 +27,13 @@
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
+        <!--
+          Without this the activity KEEPS Theme.SplashScreen for its whole life:
+          AppTheme.NoActionBar was orphaned, so `forceDarkAllowed=false` and the
+          matched window background above never applied to the running app. This
+          is the handoff Android 12+ expects, and it is what makes the splash a
+          real splash rather than the app's permanent theme.
+        -->
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>

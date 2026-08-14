@@ -4,25 +4,17 @@
    ========================================================================== */
 
 :root {
-  --be-r-2: var(--be-radius-xs);
-  --be-r-4: var(--be-radius-sm);
-  --be-r-8: var(--be-radius-md);
-  --be-r-12: var(--be-radius-lg);
-  --be-r-pill: var(--be-radius-pill);
-  --be-d-1: var(--be-dur-fast);
-  --be-d-2: var(--be-dur-base);
-  --be-d-3: var(--be-dur-slow);
-  --be-d-4: var(--be-dur-chart);
+  /* The --be-r-* / --be-d-* aliases these sheets use now live in
+     @beonedge/design-tokens tokens-core.css. They were redeclared here, so the
+     scale had two sources of truth and tokens-core's copy was incomplete. */
 
-  /* Safe-area insets — consumed by shell, app bar, bottom nav, and sheets. */
-  --be-safe-top: env(safe-area-inset-top, 0px);
-  --be-safe-right: env(safe-area-inset-right, 0px);
-  --be-safe-bottom: env(safe-area-inset-bottom, 0px);
-  --be-safe-left: env(safe-area-inset-left, 0px);
+  /* Safe-area insets are defined once, authoritatively, in
+     @beonedge/design-tokens tokens-core.css — which loads before this sheet.
+     They used to be redeclared here with a raw `env()` value, which silently
+     ignored the `--safe-area-inset-*` variables Capacitor injects to correct
+     Android WebViews where `env()` is wrong. Do not reintroduce them. */
 
   /* Mobile page rhythm */
-  --be-page-header-gap: var(--be-space-2);
-  --be-section-gap: var(--be-space-6);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -74,7 +66,7 @@
 .apk-pad { padding: var(--be-space-5) var(--be-space-4); }
 
 .apk-h {
-  font-family: var(--be-font-serif);
+  font-family: var(--be-font-ui);
   font-size: var(--be-text-2xl);
   font-weight: 600;
   line-height: var(--be-lh-snug);
@@ -84,7 +76,7 @@
 }
 
 .apk-h-sm {
-  font-family: var(--be-font-serif);
+  font-family: var(--be-font-ui);
   font-size: var(--be-text-xl);
   font-weight: 600;
   line-height: var(--be-lh-snug);
@@ -100,6 +92,11 @@
 }
 
 .apk-link {
+  /* Always a real anchor now. One of these was `<a onClick>` with no href, so it
+     was neither focusable nor keyboard-activatable. */
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--be-target-inline);
   font-size: var(--be-text-sm);
   color: var(--be-ink);
   text-decoration: underline;
@@ -123,9 +120,9 @@
 
 /* Splash */
 .apk-splash {
-  /* Sized with viewport units instead of inset: the animated PageTransition
-     wrapper (will-change: transform) becomes the containing block for fixed
-     descendants and can be shorter than the viewport, collapsing inset:0. */
+  /* Sized with viewport units rather than inset:0. PageTransition no longer sets
+     will-change, so it is no longer a containing block for fixed descendants, but
+     viewport units are still the more robust way to fill the screen here. */
   position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
   background: #1800ad;
   color: var(--be-bone);
@@ -149,7 +146,7 @@
 
 .apk-splash-name {
   display: block;
-  font-family: var(--be-font-serif);
+  font-family: var(--be-font-brand);
   /* Sits under the 104px logo above it (.apk-splash-logo), so the mark still
      leads the composition while the wordmark reads clearly on a phone. */
   font-size: 40px; font-weight: 600;
@@ -244,7 +241,7 @@ button {
 .apk-compat h1 {
   max-width: 620px;
   margin: 0;
-  font-family: var(--be-font-serif);
+  font-family: var(--be-font-brand);
   font-size: clamp(34px, 5vw, 58px);
   font-weight: 600;
   line-height: 1.02;

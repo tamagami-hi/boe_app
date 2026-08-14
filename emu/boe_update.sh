@@ -159,8 +159,13 @@ fi
 # files, so the target fully determines the baked origin.
 case "$TARGET" in
     local)
-        # 10.0.2.2 is the emulator's alias for the host loopback.
-        API_BASE="${BOE_API_BASE_URL:-http://10.0.2.2:47502}"
+        # No cleartext default. The APKs carry one network policy for every
+        # target (android/app/src/main/res/xml/network_security_config.xml denies
+        # cleartext outright, and capacitor.config.json sets
+        # allowMixedContent:false), so an http:// origin would build fine and then
+        # fail every request at runtime. Point --local at an HTTPS backend:
+        #   BOE_API_BASE_URL=https://dev-app.beonedge.in/api ./emu/boe_update.sh --local
+        API_BASE="${BOE_API_BASE_URL:-https://dev-app.beonedge.in/api}"
         # The signup page is not part of this stack — it is the AWS-hosted
         # marketing site — so even a local build points at the real one.
         ONBOARDING="${BOE_ONBOARDING_URL:-https://beonedge.in/signup}"
@@ -187,12 +192,15 @@ else
     APP_ID_BASE="com.beonedge.app.dev"
 fi
 
-# A distributed APK must never fall back to cleartext HTTP.
-if [[ "$TARGET" != "local" && "$API_BASE" != https://* ]]; then
+# Every APK carries the same strict network policy, so every target — including
+# --local — must use an https origin. A cleartext origin would build and then fail
+# every request at runtime, which is far more confusing than failing here.
+if [[ "$API_BASE" != https://* ]]; then
     err "target '$TARGET' requires an https API origin, got: $API_BASE"
+    err "the APK denies cleartext for all builds; there is no development exception"
     exit 1
 fi
-if [[ "$TARGET" != "local" && "$ONBOARDING" != https://* ]]; then
+if [[ "$ONBOARDING" != https://* ]]; then
     err "target '$TARGET' requires an https onboarding URL, got: $ONBOARDING"
     exit 1
 fi
@@ -356,41 +364,13 @@ build_variant() {
     section "BUILD · $variant" "$apk_name"
     field "applicationId" "$APP_ID"
 
-    # Launcher icon and splash screen per variant: blue for the client, red for
-    # admin, so the two dev builds are told apart on the home screen and at launch
-    # rather than by their label. Both are rendered from the same brand SVG — see
-    # app/resources/launcher/generate-android-assets.mjs — with only the colour
-    # swapped, so the mark itself cannot drift between them.
-    #
-    # Copied in rather than selected by a Gradle flavour because the variant here
-    # is an injected applicationId, not a product flavour; res/ holds the client
-    # set as its committed default so a plain `gradlew` build is still correct.
+    # Launcher icon and splash come from app/resources/launcher/$variant, selected
+    # by -PboeVariant below. Nothing is copied into the tracked res/ any more: that
+    # left the last-built variant's branding in the worktree, so a --both run ended
+    # with admin assets committed and a later bare Gradle build inherited them.
     local ASSETS="$APP_DIR/resources/launcher/$variant"
-    if [[ -d "$ASSETS" ]]; then
-        step "launcher icon + splash → $variant"
-        local RES="$APP_DIR/android/app/src/main/res"
-        cp -f "$ASSETS/values/ic_launcher_background.xml" "$RES/values/ic_launcher_background.xml"
-        local density
-        for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
-            cp -f "$ASSETS/mipmap-$density/ic_launcher.png" \
-                  "$ASSETS/mipmap-$density/ic_launcher_round.png" \
-                  "$ASSETS/mipmap-$density/ic_launcher_foreground.png" \
-                  "$RES/mipmap-$density/"
-        done
-        # The splash is the native launch theme's background (@drawable/splash in
-        # styles.xml), which is the only splash an admin build shows: the admin
-        # target boots BrowserRoot, so the client's React splash never renders.
-        local folder
-        for folder in drawable \
-                      drawable-port-mdpi drawable-port-hdpi drawable-port-xhdpi \
-                      drawable-port-xxhdpi drawable-port-xxxhdpi \
-                      drawable-land-mdpi drawable-land-hdpi drawable-land-xhdpi \
-                      drawable-land-xxhdpi drawable-land-xxxhdpi; do
-            cp -f "$ASSETS/$folder/splash.png" "$RES/$folder/splash.png"
-        done
-    else
-        warn "no icon/splash set for '$variant' at $ASSETS — keeping whatever res/ holds"
-    fi
+    [[ -d "$ASSETS" ]] || { err "no icon/splash set for '$variant' at $ASSETS"; return 1; }
+    field "branding" "$ASSETS"
 
     # Vite reads these from the process environment; shell wins over .env files.
     export VITE_BEO_APP_TARGET="$variant"
@@ -425,7 +405,7 @@ build_variant() {
         step "gradle assembleRelease (signed, minified)"
         ( cd "$ANDROID_DIR" && ./gradlew assembleRelease --console=plain \
             -PboeVersionName="$BUILD_LABEL" -PboeVersionCode="$VERSION_CODE" \
-            -PboeApplicationId="$APP_ID" ) \
+            -PboeApplicationId="$APP_ID" -PboeVariant="$variant" ) \
             || { err "gradle build failed"; return 1; }
         gradle_apk="$GRADLE_APK_RELEASE"
     else
@@ -433,12 +413,34 @@ build_variant() {
         step "gradle assembleDebug (UNSIGNED-for-release fallback)"
         ( cd "$ANDROID_DIR" && ./gradlew assembleDebug --console=plain \
             -PboeVersionName="$BUILD_LABEL" -PboeVersionCode="$VERSION_CODE" \
-            -PboeApplicationId="$APP_ID" ) \
+            -PboeApplicationId="$APP_ID" -PboeVariant="$variant" ) \
             || { err "gradle build failed"; return 1; }
         gradle_apk="$GRADLE_APK_DEBUG"
     fi
 
     [[ -f "$gradle_apk" ]] || { err "APK not produced: $gradle_apk"; return 1; }
+
+    # Check the FINAL artifact, not the dist folder that fed it: the bundle guard
+    # reads filenames in dist/, which says nothing about what Gradle packaged. A
+    # client APK carrying an admin chunk is the failure this catches.
+    if command -v unzip >/dev/null 2>&1; then
+        step "verifying packaged assets for $variant"
+        local packaged
+        packaged="$(unzip -Z1 "$gradle_apk" 'assets/public/assets/*' 2>/dev/null || true)"
+        if [[ -z "$packaged" ]]; then
+            err "APK contains no web assets under assets/public/assets"
+            return 1
+        fi
+        if [[ "$variant" == "client" ]] \
+           && printf '%s\n' "$packaged" | grep -Eqi '/(admin|browserroot)[-.]'; then
+            err "client APK packages admin assets:"
+            printf '%s\n' "$packaged" | grep -Ei '/(admin|browserroot)[-.]' >&2
+            return 1
+        fi
+        ok "packaged assets are $variant-only"
+    else
+        warn "unzip not found — skipping the packaged-asset check"
+    fi
 
     cp "$gradle_apk" "$out_apk"
 

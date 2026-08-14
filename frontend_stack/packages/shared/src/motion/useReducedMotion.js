@@ -9,12 +9,22 @@ export function useReducedMotion() {
   const [reduced, setReduced] = useState(false);
 
   useEffect(() => {
-    const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setReduced(mql.matches);
+    // Guarded: a missing matchMedia used to throw inside the effect, which unmounts
+    // the whole subtree. Not animating is the safe fallback.
+    const mql = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)')
+      : null;
+    if (!mql) return undefined;
 
+    setReduced(mql.matches);
     const handler = (e) => setReduced(e.matches);
-    mql.addEventListener('change', handler);
-    return () => mql.removeEventListener('change', handler);
+    // Safari < 14 and some WebViews only have the deprecated listener API.
+    if (mql.addEventListener) {
+      mql.addEventListener('change', handler);
+      return () => mql.removeEventListener('change', handler);
+    }
+    mql.addListener(handler);
+    return () => mql.removeListener(handler);
   }, []);
 
   return reduced;

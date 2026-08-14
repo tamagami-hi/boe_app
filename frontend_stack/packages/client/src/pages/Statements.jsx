@@ -1,8 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowDownRight, ArrowUpRight, FileText, FolderOpen, TrendingUp } from 'lucide-react';
+import { ErrorState } from '@beonedge/shared';
 import AppBar from '../layout/AppBar.jsx';
 import * as statementsApi from '../services/statementsApi.js';
 import { fmtDate, fmtMoney } from '../utils/format.js';
+import PageSheet from '../layout/PageSheet.jsx';
 
 // A statement is derived from the investor's own transaction history, one per
 // month in which something moved. There is no generated document: the figures
@@ -28,14 +30,21 @@ export default function Statements() {
   const [items, setItems] = useState([]);
   const [open, setOpen] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoadError(null);
     statementsApi
       .listStatements()
-      .then(setItems)
-      .catch(() => setItems([]))
+      .then((rows) => { setItems(rows); setLoadError(null); })
+      // Was `.catch(() => setItems([]))`, which rendered "Statements appear here
+      // once your account has activity." — telling an investor with a year of
+      // history that they have none, whenever the read failed.
+      .catch((error) => setLoadError(error))
       .finally(() => setLoaded(true));
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const latest = items[0] ?? null;
   const totalReturns = useMemo(
@@ -47,23 +56,36 @@ export default function Statements() {
     <>
       <AppBar title="Statements" />
       <div className="apk-screen apk-statements-screen">
+        {loadError && (
+          <ErrorState
+            title="We could not load your statements"
+            description="Your documents are unaffected. This screen could not reach the server."
+            onRetry={load}
+          />
+        )}
+
         <header className="apk-statements-head">
           <div className="apk-statements-head-copy">
             <span className="be-eyebrow">Documents</span>
             <h1 className="apk-h">Statements</h1>
             <p className="apk-statements-sub">
-              {items.length > 0
-                ? `A statement for every month your account moved. ${items.length} on file.`
-                : 'Statements appear here once your account has activity.'}
+              {/* An unknown count is not zero. When the read failed the subtitle
+                  used to assert the account had no activity. */}
+              {loadError
+                ? 'We could not read your statement history.'
+                : items.length > 0
+                  ? `A statement for every month your account moved. ${items.length} on file.`
+                  : 'Statements appear here once your account has activity.'}
             </p>
           </div>
           <dl className="apk-statements-summary" aria-label="Statement summary">
             <div>
-              <dt className="be-num">{items.length}</dt>
+              <dt className="be-num">{loadError ? '—' : items.length}</dt>
               <dd>Months</dd>
             </div>
             <div>
-              <dt className="be-num be-money">{fmtMoney(totalReturns)}</dt>
+              {/* '—' rather than ₹0: a failed read must not state a figure. */}
+              <dt className="be-num be-money">{loadError ? '—' : fmtMoney(totalReturns)}</dt>
               <dd>Returns to date</dd>
             </div>
           </dl>
@@ -131,15 +153,16 @@ export default function Statements() {
         )}
       </div>
 
-      {open !== null && (
-        <div
-          className="apk-sheet-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-label={`Statement for ${MONTH_LABEL(open.period)}`}
-          onClick={() => setOpen(null)}
-        >
-          <div className="apk-sheet" onClick={(event) => event.stopPropagation()}>
+      {/* Shared PageSheet wrapper: portal, focus trap and restore, ref-counted body
+          lock, and overlay-stack registration so Android Back closes the statement
+          rather than navigating the list behind it. */}
+      <PageSheet
+        open={open !== null}
+        onClose={() => setOpen(null)}
+        label={open ? `Statement for ${MONTH_LABEL(open.period)}` : 'Statement'}
+      >
+        {open !== null && (
+          <>
             <header className="apk-sheet-head">
               <h2 className="apk-h-sm">{MONTH_LABEL(open.period)}</h2>
               <p className="be-tnum apk-sheet-sub">
@@ -187,9 +210,9 @@ export default function Statements() {
             <button type="button" className="be-btn be-btn-primary" onClick={() => setOpen(null)}>
               Close
             </button>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </PageSheet>
     </>
   );
 }

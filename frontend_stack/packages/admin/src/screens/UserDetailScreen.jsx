@@ -1,48 +1,55 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  User, PieChart, Briefcase, CreditCard, Repeat, RotateCcw, Inbox,
-  LifeBuoy, Bell, History, LayoutGrid, TrendingUp, X, CheckCircle2, AlertTriangle,
+  User, PieChart, Briefcase, CreditCard, Repeat, LayoutGrid, TrendingUp,
+  CheckCircle2, AlertTriangle, RefreshCw,
 } from 'lucide-react';
 import { apiRequest } from '@beonedge/client/services/_util.js';
-import '../styles/desktop/admin.css';
 import './admin-screens-shared.css';
 import I from '../components/I.jsx';
 import EmptyState from '@beonedge/shared/components/EmptyState.jsx';
+import Skeleton from '@beonedge/shared/components/Skeleton.jsx';
 import GainAllocationForm from './GainAllocationForm.jsx';
-import { initials } from '../helpers/formatters.js';
+import StateBadge from '../components/StateBadge.jsx';
+import { fmtDateTime, fmtPaise as rupees, fmtPaiseSigned as signedRupees, humanizeState, initials } from '../helpers/formatters.js';
 
-// The canonical admin projection sends money as paise strings and units/share as
-// numeric strings; format for display without pretending these are floats in the
-// data model.
-function rupees(paise) {
-  if (paise === null || paise === undefined || paise === '') return '—';
-  return `₹${(Number(paise) / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+// Money goes through the one shared formatter (see helpers/formatters.js): paise in,
+// an INR string out, and '—' for a missing value. Every table here used
+// `₹{(row.amount || 0)}` against a payload that carries `amountPaise`, so every
+// payment, mandate and plan was reported as ₹0.
+function date(value) {
+  return value ? fmtDateTime(value) : '—';
 }
 
-function signedRupees(paise) {
-  if (paise === null || paise === undefined || paise === '') return '—';
-  const value = Number(paise) / 100;
-  return `${value > 0 ? '+' : ''}₹${value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
-}
+const TABS = [
+  { id: 'overview', label: 'Overview', icon: LayoutGrid },
+  { id: 'investments', label: 'Investments', icon: TrendingUp },
+  { id: 'payments', label: 'Payments', icon: CreditCard },
+];
 
-function units(value) {
-  if (value === null || value === undefined) return '—';
-  return Number(value).toLocaleString('en-IN', { maximumFractionDigits: 4 });
-}
-
-function sharePercent(fraction) {
-  if (fraction === null || fraction === undefined) return '—';
-  return `${(Number(fraction) * 100).toFixed(2)}%`;
-}
-
-function UserDetailScreen({ userId, onClose }) {
+/*
+ * `GET /v1/admin/users/:id/detail` returns user, roles, the latest KYC case, recent
+ * orders, payments, mandates and SIP plans, plus derived positions and portfolio
+ * totals. That is the whole payload.
+ *
+ * Four tables and two lists here were fed from hardcoded `[]`: redemption requests,
+ * SIP control requests, support tickets, notifications and per-user audit logs. Each
+ * rendered "No redemption requests." / "No support tickets." on every user, which is
+ * a statement about that person's record that nothing had ever asked the server for.
+ * Two of them (support tickets, SIP control requests) are retired features with no
+ * schema at all. They are gone, and with them the Support tab that held them.
+ *
+ * `orders` was in the payload and rendered nowhere — the investor's actual activity,
+ * including redemptions, was the one thing missing. It now has a table.
+ */
+function UserDetailScreen({ userId }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
+  const tablistRef = useRef(null);
   // Bumped after an allocation so the derived figures refetch.
   const [refreshToken, setRefreshToken] = useState(0);
-  const reload = () => setRefreshToken((token) => token + 1);
+  const reload = useCallback(() => setRefreshToken((token) => token + 1), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,55 +68,42 @@ function UserDetailScreen({ userId, onClose }) {
     return () => { cancelled = true; };
   }, [userId, refreshToken]);
 
-  // Canonical `GET /v1/admin/users/:id/detail` returns user + roles + latest KYC
-  // case + recent orders/payments/mandates/SIPs + holdings. Sections with no
-  // canonical source (support tickets, SIP control requests, notifications) were
-  // retired by the canonical decisions and render their empty state.
   const user = data?.user || {};
-  const roles = data?.roles || [];
   const kyc = data?.kyc || null;
-  const blockingReasons = kyc !== null && kyc.status !== 'approved' ? ['KYC is not approved'] : [];
-  const investmentPlans = data?.sips || [];
+  const sipPlans = data?.sips || [];
   const orders = data?.orders || [];
   const payments = data?.payments || [];
   const mandates = data?.mandates || [];
   const positions = data?.positions || [];
-  const portfolioTotals = data?.portfolio || null;
-  const redemptionRequests = [];
-  const sipControlRequests = [];
-  const supportTickets = [];
-  const notifications = [];
-  const auditLogsList = [];
-  const portfolio = portfolioTotals;
+  const portfolio = data?.portfolio || null;
 
+  /*
+   * A user with no KYC case at all used to be reported as having "No blocking
+   * reasons", because the check only looked at a case that was present. Account
+   * state was not considered either, so a suspended account read as clear.
+   */
+  const blockingReasons = [];
+  if (kyc === null) blockingReasons.push('No KYC case on record');
+  else if (kyc.status !== 'approved') blockingReasons.push(`KYC is ${humanizeState(kyc.status).toLowerCase()}`);
+  if (user.status && user.status !== 'active') blockingReasons.push(`Account is ${user.status}`);
   const hasBlocking = blockingReasons.length > 0;
 
-  const TABS = [
-    { id: 'overview', label: 'Overview', icon: LayoutGrid },
-    { id: 'investments', label: 'Investments', icon: TrendingUp },
-    { id: 'payments', label: 'Payments & Mandates', icon: CreditCard },
-    { id: 'support', label: 'Support & Activity', icon: LifeBuoy },
-  ];
-
-  function detailStatusBadge(status) {
-    const map = {
-      pending: 'Pending',
-      approved: 'Approved',
-      active: 'Active',
-      success: 'Success',
-      completed: 'Completed',
-      rejected: 'Rejected',
-      failed: 'Failed',
-      revoked: 'Revoked',
-      paused: 'Paused',
-      pending_user_auth: 'Pending Auth',
-      open: 'Open',
-      closed: 'Closed',
-      reconciled: 'Reconciled',
-    };
-    const normalized = String(status).toLowerCase();
-    const label = map[normalized] || status || '—';
-    return <span className={`adm-status-badge adm-status-badge--${normalized}`}>{label}</span>;
+  /*
+   * Arrow-key navigation is what makes a roving tabindex usable. Inactive tabs carry
+   * tabIndex -1, so without this a keyboard user could reach the active tab and had
+   * no way to move off it: the tab strip was unoperable by keyboard entirely.
+   */
+  function onTabKeyDown(event) {
+    const keys = { ArrowRight: 1, ArrowLeft: -1 };
+    const index = TABS.findIndex((tab) => tab.id === activeTab);
+    let nextIndex = null;
+    if (event.key in keys) nextIndex = (index + keys[event.key] + TABS.length) % TABS.length;
+    if (event.key === 'Home') nextIndex = 0;
+    if (event.key === 'End') nextIndex = TABS.length - 1;
+    if (nextIndex === null) return;
+    event.preventDefault();
+    setActiveTab(TABS[nextIndex].id);
+    tablistRef.current?.querySelector(`#user-detail-tab-${TABS[nextIndex].id}`)?.focus();
   }
 
   function renderInfoCard(title, icon, fields) {
@@ -130,7 +124,12 @@ function UserDetailScreen({ userId, onClose }) {
     );
   }
 
-  function renderTable(title, icon, columns, rows, renderRow, emptyMsg) {
+  /*
+   * Cells are returned as an array so each one is emitted with the `data-label` of
+   * its own column. The card view on a phone reads those labels; hand-written rows
+   * drift from their headers, and these tables are five and six columns wide.
+   */
+  function renderTable(title, icon, columns, rows, cellsFor, emptyMsg, keyFor) {
     return (
       <div className="adm-card adm-table">
         <div className="adm-card-head">
@@ -140,9 +139,23 @@ function UserDetailScreen({ userId, onClose }) {
           <EmptyState description={emptyMsg} />
         ) : (
           <div className="adm-table-scroll">
-            <table>
+            <table className="adm-table-cards">
               <thead><tr>{columns.map((c) => <th key={c}>{c}</th>)}</tr></thead>
-              <tbody>{rows.map(renderRow)}</tbody>
+              <tbody>
+                {rows.map((row, index) => (
+                  <tr key={keyFor?.(row, index) ?? row.id ?? index}>
+                    {cellsFor(row).map((cell, cellIndex) => (
+                      <td
+                        key={columns[cellIndex]}
+                        data-label={columns[cellIndex]}
+                        className={cell?.className}
+                      >
+                        {cell?.node ?? cell}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
             </table>
           </div>
         )}
@@ -150,47 +163,34 @@ function UserDetailScreen({ userId, onClose }) {
     );
   }
 
-  function renderList(title, icon, items, renderItem, emptyMsg) {
-    return (
-      <div className="adm-card">
-        <div className="adm-card-head">
-          <h2 className="adm-card-title"><I icon={icon} size={16} /> {title}</h2>
-        </div>
-        {items.length === 0 ? (
-          <EmptyState description={emptyMsg} />
-        ) : (
-          <div className="be-pad-5 be-stack-2">
-            {items.map(renderItem)}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  const content = (
-    <>
-      {onClose && (
-        <div className="adm-review-head">
-          <h2 id="user-detail-title" className="adm-review-panel-title">User details</h2>
-          <button className="adm-icon-btn" onClick={onClose} aria-label="Close"><I icon={X}/></button>
+  return (
+    <div className="adm-screen adm-screen--narrow">
+      {loading && !data && (
+        <div className="adm-card be-pad-5 be-stack-2">
+          <Skeleton width="40%" height="1.5rem" />
+          <Skeleton width="100%" height="4rem" />
+          <Skeleton width="100%" height="4rem" />
         </div>
       )}
 
-      {loading && (
-        <EmptyState description="Loading user details..." />
-      )}
       {error && (
-        <div className="adm-validation-banner adm-validation-banner--error">
+        <div className="ash-load-note" role="alert">
           <span>{error}</span>
+          <button type="button" className="ash-btn ash-btn-secondary ash-btn-sm" disabled={loading} onClick={reload}>
+            <I icon={RefreshCw} size={13} />
+            {loading ? 'Retrying…' : 'Try again'}
+          </button>
         </div>
       )}
 
       {!loading && !error && data && (
         <>
           <div
+            ref={tablistRef}
             role="tablist"
             aria-label="User detail sections"
             className="adm-sticky-tabs"
+            onKeyDown={onTabKeyDown}
           >
             <div className="adm-chip-row">
               {TABS.map((tab) => {
@@ -206,12 +206,6 @@ function UserDetailScreen({ userId, onClose }) {
                     tabIndex={isActive ? 0 : -1}
                     className={`adm-chip ${isActive ? 'is-active' : ''}`}
                     onClick={() => setActiveTab(tab.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setActiveTab(tab.id);
-                      }
-                    }}
                   >
                     <I icon={tab.icon} size={14} /> {tab.label}
                   </button>
@@ -234,7 +228,6 @@ function UserDetailScreen({ userId, onClose }) {
                     <div className="adm-user">
                       <div className="adm-avatar adm-avatar-lg">{initials(user.name, 'CL')}</div>
                       <div>
-                        <span className="be-eyebrow">User Detail</span>
                         <h2>{user.name || 'Client'}</h2>
                         <div className="adm-review-email">{user.email}</div>
                       </div>
@@ -253,15 +246,20 @@ function UserDetailScreen({ userId, onClose }) {
                     </div>
                   )}
 
-                  {renderInfoCard('Basic Info', User, [
+                  {/* Risk profile was retired with the risk-profiling feature; the
+                      field it read does not exist in the projection, so it always
+                      printed a dash. */}
+                  {renderInfoCard('Basic info', User, [
                     { label: 'Name', value: user.name || '—' },
                     { label: 'Email', value: user.email || '—' },
-                    { label: 'Status', value: user.status || '—' },
-                    { label: 'KYC Status', value: user.kycStatus || '—' },
-                    { label: 'Risk Profile', value: user.riskProfileStatus || '—' },
+                    { label: 'Phone', value: user.phone || '—' },
+                    { label: 'Account', value: user.status ? <StateBadge state={user.status} /> : '—' },
+                    { label: 'KYC', value: kyc ? <StateBadge state={kyc.status} /> : 'No case' },
+                    { label: 'Signed up', value: date(user.createdAt) },
+                    { label: 'Approved', value: date(user.activatedAt) },
                   ])}
 
-                  {portfolio && renderInfoCard('Portfolio Summary', PieChart, [
+                  {portfolio && renderInfoCard('Portfolio summary', PieChart, [
                     { label: 'Pools held', value: portfolio.poolCount ?? '—' },
                     {
                       label: 'Total investment (SIP + lump sum)',
@@ -301,146 +299,149 @@ function UserDetailScreen({ userId, onClose }) {
                     PieChart,
                     ['Pool', 'Total investment', 'Current value', 'Return', 'SIP / lump sum', 'Last activity'],
                     positions,
-                    (position, i) => (
-                      <tr key={position.fundId || i}>
-                        <td>
-                          <div className="adm-cell-main">{position.fundName || position.fundSlug || '—'}</div>
-                          {position.firstInvestmentDate && (
-                            <div className="adm-cell-sub">since {position.firstInvestmentDate}</div>
-                          )}
-                        </td>
-                        <td className="be-money">{rupees(position.totalInvestmentPaise)}</td>
-                        <td className="be-money">{rupees(position.currentValuePaise)}</td>
-                        <td className="be-money">
-                          {signedRupees(position.totalReturnPaise)}
-                          {position.returnPercent === null || position.returnPercent === undefined
-                            ? ''
-                            : ` (${position.returnPercent.toFixed(2)}%)`}
-                        </td>
-                        <td className="be-num">
-                          {position.sipInstallmentCount ?? 0} / {position.lumpSumCount ?? 0}
-                        </td>
-                        <td className="adm-cell-meta">{position.lastActivityDate || '—'}</td>
-                      </tr>
-                    ),
+                    (position) => [
+                      {
+                        node: (
+                          <>
+                            <div className="adm-cell-main">{position.fundName || position.fundSlug || '—'}</div>
+                            {position.firstInvestmentDate && (
+                              <div className="adm-cell-sub">since {position.firstInvestmentDate}</div>
+                            )}
+                          </>
+                        ),
+                      },
+                      { node: rupees(position.totalInvestmentPaise), className: 'be-money' },
+                      { node: rupees(position.currentValuePaise), className: 'be-money' },
+                      {
+                        node: (
+                          <>
+                            {signedRupees(position.totalReturnPaise)}
+                            {position.returnPercent === null || position.returnPercent === undefined
+                              ? ''
+                              : ` (${position.returnPercent.toFixed(2)}%)`}
+                          </>
+                        ),
+                        className: 'be-money',
+                      },
+                      {
+                        node: `${position.sipInstallmentCount ?? 0} / ${position.lumpSumCount ?? 0}`,
+                        className: 'be-num',
+                      },
+                      { node: position.lastActivityDate || '—', className: 'adm-cell-meta' },
+                    ],
                     'No pool positions yet.',
+                    (position, index) => position.fundId || index,
                   )}
 
                   <GainAllocationForm userId={userId} positions={positions} onAllocated={reload} />
 
-                  {renderTable('Investment Plans', Briefcase, ['Fund', 'Amount', 'Type', 'Status', 'Started'], investmentPlans, (plan, i) => (
-                    <tr key={i}>
-                      <td>{plan.fundName || plan.fundId || '—'}</td>
-                      <td className="be-money">₹{(plan.amount || 0).toLocaleString()}</td>
-                      <td>{plan.type || '—'}</td>
-                      <td>{detailStatusBadge(plan.status)}</td>
-                      <td className="adm-cell-meta">{plan.startedAt || '—'}</td>
-                    </tr>
-                  ), 'No investment plans.')}
+                  {renderTable(
+                    'SIP plans',
+                    Briefcase,
+                    ['Pool', 'Installment', 'Debit day', 'Status', 'Next due', 'Paid'],
+                    sipPlans,
+                    (plan) => [
+                      plan.fundSlug || plan.fundId || '—',
+                      { node: rupees(plan.amountPaise), className: 'be-money' },
+                      { node: plan.debitDay ?? '—', className: 'be-num' },
+                      { node: <StateBadge state={plan.status} /> },
+                      { node: plan.nextDueDate || '—', className: 'adm-cell-meta' },
+                      { node: plan.installments ?? 0, className: 'be-num' },
+                    ],
+                    'No SIP plans.',
+                  )}
+
+                  {/* Orders are the investor's actual activity, redemptions included.
+                      They were fetched and then never rendered. */}
+                  {renderTable(
+                    'Order activity',
+                    TrendingUp,
+                    ['Pool', 'Type', 'Amount', 'Status', 'Requested', 'Booked'],
+                    orders,
+                    (order) => [
+                      order.fundName || order.fundSlug || '—',
+                      humanizeState(order.type),
+                      { node: rupees(order.amountPaise), className: 'be-money' },
+                      {
+                        node: (
+                          <>
+                            <StateBadge state={order.status} />
+                            {order.failureCode && (
+                              <div className="adm-cell-sub">{order.failureCode}</div>
+                            )}
+                          </>
+                        ),
+                      },
+                      { node: date(order.requestedAt || order.createdAt), className: 'adm-cell-meta' },
+                      { node: date(order.bookedAt), className: 'adm-cell-meta' },
+                    ],
+                    'No orders yet.',
+                  )}
                 </div>
               )}
 
               {tab.id === 'payments' && (
                 <div className="be-stack-4">
-                  {renderTable('Payments', CreditCard, ['Reference', 'Amount', 'Mode', 'Provider', 'Status', 'Time'], payments, (p, i) => (
-                    <tr key={i}>
-                      <td><code className="adm-code">{p.id?.slice(0, 12) || '—'}</code></td>
-                      <td className="be-money">₹{(p.amount || 0).toLocaleString()}</td>
-                      <td>{p.mode || '—'}</td>
-                      <td>{p.provider || '—'}</td>
-                      <td>{detailStatusBadge(p.status)}</td>
-                      <td className="adm-cell-meta">{p.time || p.createdAt || '—'}</td>
-                    </tr>
-                  ), 'No payments.')}
+                  {renderTable(
+                    'Payments',
+                    CreditCard,
+                    ['Reference', 'Amount', 'Provider', 'Status', 'Created', 'Settled'],
+                    payments,
+                    (p) => [
+                      { node: <code className="adm-code">{p.id || '—'}</code> },
+                      { node: rupees(p.amountPaise), className: 'be-money' },
+                      {
+                        node: (
+                          <>
+                            <div>{p.provider || '—'}</div>
+                            {p.providerReference && (
+                              <div className="adm-cell-sub">{p.providerReference}</div>
+                            )}
+                          </>
+                        ),
+                      },
+                      {
+                        node: (
+                          <>
+                            <StateBadge state={p.status} />
+                            {p.attemptCount > 1 && (
+                              <div className="adm-cell-sub">{p.attemptCount} attempts</div>
+                            )}
+                          </>
+                        ),
+                      },
+                      { node: date(p.createdAt), className: 'adm-cell-meta' },
+                      { node: date(p.succeededAt || p.failedAt), className: 'adm-cell-meta' },
+                    ],
+                    'No payments.',
+                  )}
 
-                  {renderTable('Mandates', Repeat, ['ID', 'Amount', 'Debit Day', 'Status', 'Last Debit', 'Next'], mandates, (m, i) => (
-                    <tr key={i}>
-                      <td><code className="adm-code">{m.id?.slice(0, 12) || '—'}</code></td>
-                      <td className="be-money">₹{(m.amount || 0).toLocaleString()}</td>
-                      <td className="be-num">{m.day || '—'}</td>
-                      <td>{detailStatusBadge(m.status)}</td>
-                      <td className="adm-cell-meta">{m.last || '—'}</td>
-                      <td className="adm-cell-meta">{m.next || '—'}</td>
-                    </tr>
-                  ), 'No mandates.')}
-
-                  {renderTable('Redemption Requests', RotateCcw, ['Fund', 'Amount', 'Type', 'Status', 'Requested'], redemptionRequests, (r, i) => (
-                    <tr key={i}>
-                      <td>{r.fundName || r.fundId?.slice(0, 8) || '—'}</td>
-                      <td className="be-money">₹{(r.amount || 0).toLocaleString()}</td>
-                      <td className="adm-capitalize">{r.type || '—'}</td>
-                      <td>{detailStatusBadge(r.status)}</td>
-                      <td className="adm-cell-meta">{r.requestedAt ? new Date(r.requestedAt).toLocaleDateString() : '—'}</td>
-                    </tr>
-                  ), 'No redemption requests.')}
-
-                  {renderTable('SIP Control Requests', Inbox, ['Type', 'Fund', 'Amount', 'Status', 'Requested'], sipControlRequests, (r, i) => (
-                    <tr key={i}>
-                      <td>{r.type || '—'}</td>
-                      <td>{r.fundName || r.fundId?.slice(0, 8) || '—'}</td>
-                      <td className="be-money">₹{(r.amount || 0).toLocaleString()}</td>
-                      <td>{detailStatusBadge(r.status)}</td>
-                      <td className="adm-cell-meta">{r.requestedAt ? new Date(r.requestedAt).toLocaleDateString() : '—'}</td>
-                    </tr>
-                  ), 'No SIP control requests.')}
-                </div>
-              )}
-
-              {tab.id === 'support' && (
-                <div className="be-stack-4">
-                  {renderTable('Support Tickets', LifeBuoy, ['ID', 'Subject', 'Status', 'Priority', 'Created'], supportTickets, (t, i) => (
-                    <tr key={i}>
-                      <td><code className="adm-code">{t.id?.slice(0, 12) || '—'}</code></td>
-                      <td>{t.subject || '—'}</td>
-                      <td>{detailStatusBadge(t.status)}</td>
-                      <td>{t.priority || '—'}</td>
-                      <td className="adm-cell-meta">{t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '—'}</td>
-                    </tr>
-                  ), 'No support tickets.')}
-
-                  {renderList('Notifications (Last 20)', Bell, notifications, (n, i) => (
-                    <div key={i} className="adm-list-item">
-                      <div className="adm-list-item__title">{n.title || 'Notification'}</div>
-                      <div className="adm-list-item__body">{n.body || n.message || '—'}</div>
-                      <div className="adm-list-item__meta adm-cell-meta">{n.createdAt ? new Date(n.createdAt).toLocaleString() : '—'}</div>
-                    </div>
-                  ), 'No notifications.')}
-
-                  {renderList('Audit Logs (Last 20)', History, auditLogsList, (log, i) => (
-                    <div key={i} className="adm-list-item">
-                      <div className="adm-list-item__header">
-                        <span className="adm-code adm-text-xs">{log.action || '—'}</span>
-                        <span className="adm-cell-meta">{log.timestamp || log.createdAt || '—'}</span>
-                      </div>
-                      <div className="adm-list-item__body">{log.changesSummary || log.details || '—'}</div>
-                    </div>
-                  ), 'No audit logs.')}
+                  {/* Was `m.amount` / `m.day` / `m.last` / `m.next`: four columns of
+                      nothing on every mandate. There is no last-debit or next-debit
+                      field in the projection, so the validity window stands in. */}
+                  {renderTable(
+                    'Mandates',
+                    Repeat,
+                    ['Reference', 'Max debit', 'Debit day', 'Status', 'Valid from', 'Valid to'],
+                    mandates,
+                    (m) => [
+                      { node: <code className="adm-code">{m.providerMandateId || m.id || '—'}</code> },
+                      { node: rupees(m.maxAmountPaise), className: 'be-money' },
+                      { node: m.debitDay ?? '—', className: 'be-num' },
+                      { node: <StateBadge state={m.status} /> },
+                      { node: date(m.validFrom), className: 'adm-cell-meta' },
+                      { node: date(m.validTo), className: 'adm-cell-meta' },
+                    ],
+                    'No mandates.',
+                  )}
                 </div>
               )}
             </div>
           ))}
         </>
       )}
-    </>
+    </div>
   );
-
-  if (onClose) {
-    return (
-      <div className="adm-review-overlay" role="presentation" onMouseDown={onClose}>
-        <section
-          className="adm-review-panel adm-review-panel--user-detail"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="user-detail-title"
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          {content}
-        </section>
-      </div>
-    );
-  }
-
-  return <div className="adm-screen adm-screen--narrow">{content}</div>;
 }
 
 export default UserDetailScreen;

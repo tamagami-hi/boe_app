@@ -1,7 +1,7 @@
 /* CurrencyCell — scoped money table cell. */
 
 .be-currency-cell {
-  font-family: var(--be-font-sans);
+  font-family: var(--be-font-ui);
   font-feature-settings: 'tnum' 1, 'lnum' 1, 'zero' 1;
   font-variant-numeric: tabular-nums lining-nums;
   font-weight: 500;

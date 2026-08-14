@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Layers } from 'lucide-react';
 import { apiRequest } from '@beonedge/client/services/_util.js';
 import I from '../components/I.jsx';
+import { fmtPaise as rupees } from '../helpers/formatters.js';
 
 // Monthly AUM update (Option B module 5).
 //
@@ -14,10 +15,6 @@ import I from '../components/I.jsx';
 //
 // POST /v1/admin/funds/:fundId/aum-updates
 
-const rupees = (paise) =>
-  paise === null || paise === undefined
-    ? '—'
-    : `₹${(Number(paise) / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 
 /** First day of the current month, the period an update usually closes. */
 function currentPeriod() {
@@ -184,7 +181,7 @@ export default function FundAumPanel({ fundId }) {
         )}
 
         <div className="adm-field--wide">
-          <button type="submit" className="adm-btn adm-btn-primary" disabled={busy}>
+          <button type="submit" className="be-btn be-btn-primary" disabled={busy}>
             {busy ? 'Publishing…' : 'Publish AUM update'}
           </button>
         </div>

@@ -15,7 +15,10 @@ export default function useBreakpoint(breakpoint = 768) {
   const [matches, setMatches] = useState(false);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
+    // Guarded: a missing matchMedia used to throw inside the effect, which unmounts
+    // the whole subtree. Treating the viewport as wide is the safe fallback — the
+    // desktop layout works at any width, a phone-only layout does not.
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
 
     const query = window.matchMedia(`(max-width: ${breakpoint}px)`);
     const update = () => setMatches(query.matches);

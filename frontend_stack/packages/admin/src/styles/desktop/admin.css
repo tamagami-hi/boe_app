@@ -136,7 +136,7 @@
  * a deliberate label at that size rather than shrunken body text. */
 .apk-splash-role {
   display: block;
-  font-family: var(--be-font-serif);
+  font-family: var(--be-font-brand);
   font-size: 15px;
   font-weight: 600;
   line-height: 1;

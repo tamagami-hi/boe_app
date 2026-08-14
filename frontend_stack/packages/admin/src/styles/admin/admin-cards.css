@@ -8,7 +8,7 @@
 
 .adm-card { background: var(--be-bg-elevated); border: var(--be-border-1); border-radius: var(--be-radius-md); padding: var(--be-card-pad); box-shadow: var(--be-shadow-1), var(--be-shadow-card-bevel); display: flex; flex-direction: column; }
 .adm-card-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--be-space-3); gap: var(--be-space-3); flex-wrap: wrap; row-gap: var(--be-space-2); }
-.adm-card-title { font-family: var(--be-font-serif); font-size: var(--be-text-lg); font-weight: 600; margin: 4px 0 0; letter-spacing: 0; }
+.adm-card-title { font-family: var(--be-font-ui); font-size: var(--be-text-lg); font-weight: 600; margin: 4px 0 0; letter-spacing: 0; }
 .adm-card-actions { display: flex; gap: var(--be-space-1); align-items: center; }
 .adm-card-divider { height: 1px; background: var(--be-border); margin: var(--be-space-3) 0; }
 
@@ -101,4 +101,15 @@
   color: var(--be-text-on-amber);
   border-radius: var(--be-radius-sm);
   font-size: var(--be-text-sm);
+}
+
+/* Card subtitle: the line under a card title that says what the card is for.
+   Four panels used it and it was never defined, so the explanation rendered at the
+   same weight and size as the content below it. */
+.adm-card-sub {
+  margin-top: var(--be-space-1);
+  font-size: var(--be-text-sm);
+  line-height: 1.45;
+  color: var(--be-slate);
+  max-width: 68ch;
 }

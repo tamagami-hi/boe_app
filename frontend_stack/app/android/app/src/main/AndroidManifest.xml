@@ -1,8 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Backup, IME and privacy policy notes for the BeOnEdge APKs.
+
+  android:allowBackup="false"
+    This app holds an authenticated financial session. Backup is off because
+    cloud/adb backup would copy the WebView data directory — which is where the
+    session vault's persisted material lives — off the device and onto an account
+    an attacker may separately control, and restore it onto a different device.
+    Standard for banking and investing apps. The two rule files below are belt and
+    braces: they keep the exclusions in place if backup is ever turned on.
+
+  android:windowSoftInputMode="adjustResize"
+    Without this the keyboard behaviour is whatever the platform picks, and Android
+    12+ defaults can leave a focused input behind the bottom chrome (the bottom nav
+    or a sticky action bar) with no way to scroll to it. `adjustResize` shrinks the
+    WebView so the layout — which is already `100dvh`-based — reflows above the IME.
+    Capacitor's SystemBars inset listener explicitly corrects for a shown IME, so
+    this is the mode it is written against.
+
+  Screenshots are deliberately NOT blocked.
+    FLAG_SECURE would also blank the recents preview, but it stops users
+    screenshotting their own portfolio and statements and makes support ("send me
+    what you see") impossible. The narrower privacy win — keeping the task
+    switcher from showing balances — is handled in MainActivity via
+    setRecentsScreenshotEnabled(false), which costs the user nothing.
+-->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -16,6 +44,7 @@
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize"
             android:exported="true">
 
             <intent-filter>

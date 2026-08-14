@@ -24,7 +24,7 @@
   border: none;
   background: transparent;
   color: var(--be-fg);
-  font: 400 var(--be-text-sm) var(--be-font-sans);
+  font: 400 var(--be-text-sm) var(--be-font-ui);
   outline: none;
 }
 .adm-payment-actions {

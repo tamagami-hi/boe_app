@@ -2,16 +2,42 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <!--
+    `viewport-fit=cover` is load-bearing twice over: it lets `env(safe-area-inset-*)`
+    resolve to real values, and Capacitor's SystemBars plugin only injects its
+    `--safe-area-inset-*` correction when it finds this exact token in the viewport
+    meta. Removing it silently disables inset handling on Android 15+.
+
+    Page zoom is disabled through `android.zoomEnabled: false` in
+    capacitor.config.json rather than `user-scalable=no` here, so the browser builds
+    keep pinch-zoom and OS text scaling is unaffected on both.
+  -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="description" content="BeOnEdge — Trade edge, not emotion." />
-  <meta name="theme-color" content="#0E1116" />
+  <!--
+    Must match the app background, not the brand ink. This was `#0E1116` (near
+    black) while `color-scheme` is light and every surface is ivory, so the system
+    painted dark chrome around a light app.
+  -->
+  <meta name="theme-color" content="#F7F7F5" />
   <meta name="color-scheme" content="light" />
   <title>BeOnEdge</title>
+  <style>
+    /*
+      Paint the launch color before any stylesheet loads, so the native splash →
+      WebView → React handoff never shows a white or black frame. Same literal as
+      the native splash background and #root's background in src/index.css.
+    */
+    html, body { margin: 0; background: #F7F7F5; }
+  </style>
 </head>
 <body>
-  <div id="root" role="main"></div>
+  <!--
+    No `role="main"`: the client shell renders a real <main> element inside this
+    node, and two main landmarks is an assistive-technology bug.
+  -->
+  <div id="root"></div>
   <noscript>You need to enable JavaScript to run BeOnEdge.</noscript>
   <script type="module" src="/src/main.jsx"></script>
-  <script src="https://checkout.razorpay.com/v1/checkout.js" async></script>
 </body>
 </html>

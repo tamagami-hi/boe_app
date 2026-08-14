@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CreditCard, Repeat, Bell, BellOff, TrendingUp, ArrowDownToLine } from 'lucide-react';
-import { EmptyState } from '@beonedge/shared';
+import { EmptyState, ErrorState } from '@beonedge/shared';
 import AppBar from '../layout/AppBar.jsx';
 import * as notificationsApi from '../services/notificationsApi.js';
 import { fmtDate } from '../utils/format.js';
+import { HOME_PATH } from '../navigation/routes.js';
 
 /**
  * Icons and labels are keyed on the `kind` the backend actually writes.
@@ -64,7 +65,17 @@ function fmtRelative(iso) {
 export default function Notifications() {
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
-  useEffect(() => { notificationsApi.listNotifications().then(setItems).catch(() => setItems([])); }, []);
+  const [loadError, setLoadError] = useState(null);
+  // `.catch(() => setItems([]))` made a failed read indistinguishable from an
+  // empty inbox, so a backend hiccup told the user they had no notifications.
+  const load = useCallback(() => {
+    setLoadError(null);
+    notificationsApi.listNotifications()
+      .then((rows) => { setItems(rows); setLoadError(null); })
+      .catch((error) => setLoadError(error));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   async function open(n) {
     if (!n.read) await notificationsApi.markRead(n.id);
@@ -72,13 +83,10 @@ export default function Notifications() {
     if (n.kind === 'app_update_available') {
       // No deep link for this one: the update lives in a dialog, not a route.
       // Send the user home and let the launch gate re-offer it there.
-      navigate('/app/dashboard');
+      navigate(HOME_PATH);
       return;
     }
     if (n.deepLink) navigate(n.deepLink);
-  }
-  function onKey(e, n) {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(n); }
   }
   async function readAll() {
     await notificationsApi.markAllRead();
@@ -109,7 +117,13 @@ export default function Notifications() {
             Mark all read
           </button>
         </div>
-        {items.length === 0 ? (
+        {loadError ? (
+          <ErrorState
+            title="We could not load your notifications"
+            description="This screen could not reach the server."
+            onRetry={load}
+          />
+        ) : items.length === 0 ? (
           <EmptyState
             icon={<BellOff size={24} strokeWidth={1.4} />}
             title="You're all caught up"
@@ -124,14 +138,15 @@ export default function Notifications() {
                   const Icon = ICONS[n.kind] || Bell;
                   const label = KIND_LABEL[n.kind] || 'Notification';
                   return (
-                    <div
+                    /* A real button. It was a `div role="button" tabIndex` with a
+                       hand-rolled Enter/Space handler — the element gives that for
+                       free, and correctly. */
+                    <button
                       key={n.id}
+                      type="button"
                       className={'apk-notif' + (n.read ? '' : ' is-unread')}
-                      role="button"
-                      tabIndex={0}
                       aria-label={`${label}: ${n.title}${n.read ? '' : ', unread'}`}
                       onClick={() => open(n)}
-                      onKeyDown={(e) => onKey(e, n)}
                     >
                       <div className="apk-notif-icon" aria-hidden="true">
                         <Icon size={16} strokeWidth={1.5} />
@@ -149,7 +164,7 @@ export default function Notifications() {
                           {!n.read && <span className="apk-notif-dot" aria-hidden="true" />}
                         </div>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>

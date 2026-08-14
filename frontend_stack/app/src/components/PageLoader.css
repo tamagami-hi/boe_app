@@ -7,7 +7,7 @@
   gap: var(--be-space-4);
   background: var(--be-bg);
   color: var(--be-fg-muted);
-  font-family: var(--be-font-sans);
+  font-family: var(--be-font-ui);
   font-size: var(--be-text-sm);
 }
 

@@ -105,7 +105,7 @@
   padding: var(--be-space-2) var(--be-space-4);
   min-height: var(--be-icon-btn-md);
   min-width: var(--be-icon-btn-md);
-  font: 500 var(--be-text-xs) var(--be-font-sans);
+  font: 500 var(--be-text-xs) var(--be-font-ui);
   color: var(--be-slate);
   cursor: pointer;
   display: inline-flex;
@@ -156,7 +156,7 @@
   min-height: var(--be-icon-btn-md);
   min-width: var(--be-icon-btn-md);
   border-radius: var(--be-radius-sm);
-  font: 500 var(--be-text-xs) var(--be-font-sans);
+  font: 500 var(--be-text-xs) var(--be-font-ui);
   cursor: pointer;
   transition: background var(--be-dur-fast) var(--be-ease), color var(--be-dur-fast) var(--be-ease), border-color var(--be-dur-fast) var(--be-ease), box-shadow var(--be-dur-fast) var(--be-ease), transform var(--be-dur-fast) var(--be-ease);
 }
@@ -295,7 +295,7 @@
 }
 
 .adm-fund-count {
-  font: 500 var(--be-text-sm) var(--be-font-sans);
+  font: 500 var(--be-text-sm) var(--be-font-ui);
   color: var(--be-slate);
   margin-left: auto;
 }
@@ -335,7 +335,7 @@
 }
 
 .adm-fund-editor-header-title {
-  font-family: var(--be-font-serif);
+  font-family: var(--be-font-ui);
   font-size: var(--be-text-xl);
   font-weight: 600;
   margin: 0;
@@ -383,7 +383,7 @@
   display: flex;
   align-items: center;
   gap: var(--be-space-2);
-  font-family: var(--be-font-serif);
+  font-family: var(--be-font-ui);
   font-size: var(--be-text-base);
   font-weight: 600;
   color: var(--be-fg);
@@ -402,7 +402,7 @@
   display: flex;
   align-items: center;
   gap: var(--be-space-2);
-  font-family: var(--be-font-serif);
+  font-family: var(--be-font-ui);
   font-size: var(--be-text-sm);
   font-weight: 600;
   color: var(--be-fg);
@@ -422,7 +422,7 @@
 .adm-fund-editor-subnav {
   position: sticky;
   top: 64px;
-  z-index: 9; /* secondary sticky nav; intentionally below editor header */
+  z-index: var(--be-z-subnav);
   display: flex;
   align-items: center;
   gap: var(--be-space-2);
@@ -443,7 +443,7 @@
   background: var(--be-bg-elevated);
   border-radius: var(--be-radius-sm);
   color: var(--be-slate);
-  font: 500 var(--be-text-xs) var(--be-font-sans);
+  font: 500 var(--be-text-xs) var(--be-font-ui);
   cursor: pointer;
   transition: background var(--be-dur-fast) var(--be-ease), color var(--be-dur-fast) var(--be-ease), border-color var(--be-dur-fast) var(--be-ease);
 }
@@ -533,7 +533,7 @@
 }
 
 .adm-fund-name {
-  font-family: var(--be-font-serif);
+  font-family: var(--be-font-ui);
   font-size: var(--be-text-base);
   font-weight: 600;
   color: var(--be-fg);
@@ -677,7 +677,7 @@
 }
 
 .adm-fund-preview__title {
-  font-family: var(--be-font-serif);
+  font-family: var(--be-font-ui);
   font-size: var(--be-text-base);
   font-weight: 600;
   margin: 0;

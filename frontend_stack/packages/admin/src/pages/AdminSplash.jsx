@@ -1,8 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdminSession } from '@beonedge/client/store/AdminSessionContext.jsx';
+import { SESSION_STATUS } from '@beonedge/client/store/sessionState.js';
 import logoOnRed from '@beonedge/shared/assets/logo-on-red.svg';
-import '@beonedge/client/styles/mobile/index.css';
+// Only the two client stylesheets these screens use. The barrel pulled all
+// fifteen, so the admin build shipped 122 kB of client screen CSS for two
+// auth screens.
+import '@beonedge/client/styles/mobile/base.css';
+import '@beonedge/client/styles/mobile/auth.css';
 import '../styles/desktop/admin.css';
 
 // The admin launch screen. Deliberately mirrors the client splash
@@ -17,28 +22,35 @@ import '../styles/desktop/admin.css';
 
 // Held for the same duration as the client splash, so a fast backend does not
 // produce a screen that flickers past unread.
+//
+// INTENTIONAL PRODUCT CONSTRAINT — do not shorten or make conditional. The hold is
+// measured from mount, so the session restore running underneath it is free: on any
+// healthy start it finishes well inside this window and the hold is the only thing
+// the operator waits for.
 const SPLASH_MIN_VISIBLE_MS = 1600;
 
 export default function AdminSplash() {
   const navigate = useNavigate();
-  const { user, isLoading } = useAdminSession();
+  const { user, status } = useAdminSession();
   const mountedAtRef = useRef(Date.now());
   const [held, setHeld] = useState(false);
 
   useEffect(() => {
     // Wait for the session probe to settle before deciding where to go, so an
     // already-signed-in admin is not bounced through the login screen.
-    if (isLoading) return undefined;
+    if (status === SESSION_STATUS.RESTORING) return undefined;
 
     const elapsed = Date.now() - mountedAtRef.current;
     const holdMs = Math.max(SPLASH_MIN_VISIBLE_MS - elapsed, 0);
+    let cancelled = false;
     const timer = setTimeout(() => {
+      if (cancelled) return;
       setHeld(true);
       navigate(user ? '/admin/overview' : '/admin/login', { replace: true });
     }, holdMs);
 
-    return () => clearTimeout(timer);
-  }, [navigate, user, isLoading]);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [navigate, user, status]);
 
   return (
     <div className="apk-splash is-admin" role="status" aria-live="polite">

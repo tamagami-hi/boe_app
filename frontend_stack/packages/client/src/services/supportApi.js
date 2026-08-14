@@ -35,7 +35,16 @@ export async function createTicket({ subject, body, category }) {
 
   await delay(220);
   const id = `tkt_${String(nextTkt++).padStart(3, '0')}`;
-  const t = { id, subject, status: 'open', updatedAt: new Date().toISOString() };
+  // Shape matches the real endpoint, reference included — the UI shows it, so the
+  // fixture must not be the one path where it is missing.
+  const t = {
+    id,
+    reference: `BOE-${id.slice(-3).padStart(8, '0').toUpperCase()}`,
+    category,
+    subject,
+    status: 'open',
+    updatedAt: new Date().toISOString(),
+  };
   tickets = [t, ...tickets];
   return clone(t);
 }

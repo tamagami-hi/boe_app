@@ -1,5 +1,6 @@
-// Run: node src/components/chartMath.test.js
-// Pure chart geometry math, tested with the project's node:assert harness.
+// Run: npm test (vitest) from frontend_stack/
+// Pure chart geometry math, tested with the project's node:assert style.
+import { test } from 'vitest';
 import { strict as assert } from 'node:assert';
 import {
   lineChartGeometry,
@@ -8,18 +9,6 @@ import {
   describeDonutSlice,
   computeDonutSlices,
 } from './chartMath.js';
-
-let passed = 0;
-function test(name, fn) {
-  try {
-    fn();
-    passed += 1;
-    console.log(`✓ ${name}`);
-  } catch (err) {
-    console.error(`✗ ${name}: ${err.message}`);
-    process.exitCode = 1;
-  }
-}
 
 const round = (n) => Math.round(n * 100) / 100;
 
@@ -123,5 +112,3 @@ test('describeDonutSlice returns a closed path', () => {
   assert.ok(d.startsWith('M'));
   assert.ok(d.trim().endsWith('Z'));
 });
-
-console.log(`\n${passed} checks passed`);

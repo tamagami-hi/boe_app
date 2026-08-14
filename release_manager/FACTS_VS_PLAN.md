@@ -138,8 +138,8 @@ What it **lacks** (and the plan requires): `flock` locking, disk-space checks,
 | Backend exposes `/metrics` | **No `/metrics`.** No prom-client / OTel dependency | Monitoring must probe `/health/*` + container state, or instrumentation must be added |
 | WebSocket at `/ws/`, `wss://` | **No WebSocket anywhere.** Fastify is HTTP/JSON only; no `ws`, `socket.io`, `@fastify/websocket` | `/ws/` nginx blocks are placeholders; nothing serves them yet |
 | Postgres internal, no host binding | Current compose publishes `127.0.0.1:${POSTGRES_HOST_BIND_PORT:-5433}:5432` | Drop the host binding (plan §9.1). Also avoids clashing with the host postgres on 5432 |
-| APK dev + prod co-installable | `applicationId` fixed `com.beonedge.app`, **no product flavors**. Versioning + release signing are done: `build.gradle` reads injected `boeVersionCode`/`boeVersionName` and signs `assembleRelease` (minified) from the gitignored `android/keystore.properties` | Cannot co-install. Needs Gradle flavors with `applicationIdSuffix` |
-| Admin APK (`dev_admin_apk`, `admin_apk`) | No build path exists. `scripts/check-android-dist.mjs` actively **rejects** admin chunks in an android build | Admin APK needs a new build target |
+| APK dev + prod co-installable | Done at script level, not via Gradle flavors: `emu/boe_update.sh` injects a distinct `applicationId` per target/variant (`-PboeApplicationId`), producing `com.beonedge.app.dev` and `com.beonedge.app.dev.admin` — verified in the sidecars under `emu/out/`. Versioning + release signing are done: `build.gradle` reads injected `boeVersionCode`/`boeVersionName` and signs `assembleRelease` (minified) from the gitignored `android/keystore.properties` | Co-installable today, and hermetic: launcher/splash assets are no longer copied into `src/main/res`. `build.gradle` adds `app/resources/launcher/<variant>` as a resource source directory selected by `-PboeVariant` (default `client`), so a build mutates no tracked file and a bare `gradlew` build gets client branding. applicationId and signing are unchanged — still the injected `-PboeApplicationId`, because those decide update compatibility. Covered by `release_manager/tests/hermetic_branding.test.sh` |
+| Admin APK (`dev_admin_apk`, `admin_apk`) | Build path exists: `emu/boe_update.sh --admin` / `--both`, driven by `export.sh`. `scripts/check-android-dist.mjs` guards the **client** build only and is skipped for admin | Guard is filename-based and case-sensitive; it should assert the final APK's contents against the target manifest |
 
 Other confirmed application facts:
 
@@ -220,6 +220,5 @@ Ranked by whether they block deployment.
 6. UFW policy.
 
 **Application code changes (deliberately out of scope — scripts first):**
-7. Gradle product flavors (`applicationIdSuffix`) so dev and prod APKs are co-installable. (Release signing + injected versioning are done — see §3 APK row.)
-8. Add `/metrics` to the backend if Prometheus app-level metrics are wanted.
-9. Add WebSocket support if `/ws/` is to be used.
+7. Add `/metrics` to the backend if Prometheus app-level metrics are wanted.
+8. Add WebSocket support if `/ws/` is to be used.

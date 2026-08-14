@@ -76,7 +76,7 @@
     /* Clear the fixed bottom nav (shell.css). The legacy operational screens
        render inside .adm-screen rather than .ash-page, so they need the same
        bottom clearance or their last row sits under the bar. */
-    padding-bottom: calc(var(--be-bottomnav-h) + env(safe-area-inset-bottom, 0px) + var(--be-space-5));
+    padding-bottom: calc(var(--be-bottomnav-h) + var(--be-safe-bottom) + var(--be-space-5));
   }
   .adm-stat { padding: var(--be-space-4); }
   .adm-stat-value { font-size: var(--be-text-xl); }
@@ -121,7 +121,7 @@
      touching markup), which means the header row is real and needs to be
      tappable. */
   .adm-table-scroll thead button,
-  .adm-table thead button { min-height: 32px; }
+  .adm-table thead button { min-height: var(--be-target-compact); }
 
   /* .adm-fund-tabs is an inline-flex segmented control with overflow: hidden,
      used to clip its children's corners. At 360px the four tabs need 339px
@@ -141,7 +141,7 @@
   .adm-fund-tabs button {
     flex: 0 0 auto;
     white-space: nowrap;
-    min-height: 40px;
+    min-height: var(--be-target-compact);
   }
   .adm-payment-filters {
     align-items: stretch;
@@ -193,7 +193,7 @@
   .adm-table-cards tbody td:last-child { border-bottom: none; }
   .adm-table-cards tbody td::before {
     content: attr(data-label);
-    font: 500 var(--be-text-xs) var(--be-font-sans);
+    font: 500 var(--be-text-xs) var(--be-font-ui);
     color: var(--be-slate);
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -210,7 +210,7 @@
     justify-content: flex-start;
   }
   .adm-table-cards tbody td.adm-col-actions::before { display: none; }
-  .adm-table-cards tbody td.adm-col-actions .be-btn { flex: 1 1 auto; justify-content: center; min-height: 40px; }
+  .adm-table-cards tbody td.adm-col-actions .be-btn { flex: 1 1 auto; justify-content: center; min-height: var(--be-target-compact); }
   /* A colSpan'd empty/skeleton row must not inherit the label treatment. */
   .adm-table-cards tbody td[colspan]::before { display: none; }
   .adm-table-cards tbody td[colspan] { display: block; text-align: left; }
@@ -223,7 +223,7 @@
   .adm-fund-editor-subnav {
     position: sticky;
     top: 0;
-    z-index: 11; /* secondary sticky nav; intentionally below editor header */
+    z-index: var(--be-z-subnav-mobile);
     padding: var(--be-space-2) var(--be-space-4);
   }
   .adm-fund-editor-subnav-link {

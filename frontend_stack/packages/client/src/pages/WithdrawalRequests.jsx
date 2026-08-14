@@ -1,20 +1,41 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { RotateCcw, Clock, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
-import { EmptyState, Skeleton } from '@beonedge/shared';
+import { EmptyState, ErrorState, Skeleton } from '@beonedge/shared';
 import * as fundsApi from '../services/fundsApi.js';
 import { fmtMoney, fmtDate } from '../utils/format.js';
+import { HOME_PATH, buildPath, parentPathOf } from '../navigation/routes.js';
+
+const PORTFOLIO_PATH = buildPath('portfolio');
 
 export default function WithdrawalRequests() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
-  useEffect(() => {
+  // Pop when there is somewhere to pop to, otherwise the declared parent. A raw
+  // navigate(-1) is dead on a deep link — the same fix AppBar carries.
+  const onBack = useCallback(() => {
+    const idx = window.history.state?.idx;
+    if (typeof idx === 'number' && idx > 0) {
+      navigate(-1);
+      return;
+    }
+    navigate(parentPathOf(location.pathname) || HOME_PATH, { replace: true });
+  }, [navigate, location.pathname]);
+
+  const load = useCallback(() => {
+    setLoadError(null);
     fundsApi.listRedemptionRequests()
       .then((data) => { setRequests(data); setLoading(false); })
-      .catch(() => { setRequests([]); setLoading(false); });
+      // Was `.catch(() => setRequests([]))`, which showed "No withdrawal requests
+      // yet" to someone whose redemption was pending.
+      .catch((error) => { setLoadError(error); setLoading(false); });
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const statusConfig = {
     pending: { icon: Clock, label: 'Pending' },
@@ -24,8 +45,11 @@ export default function WithdrawalRequests() {
 
   return (
     <div className="apk-screen">
-      <button className="apk-back-link apk-withdrawal-back" onClick={() => navigate(-1)}>
-        <ArrowLeft size={16} strokeWidth={1.5} />
+      {/* This screen has no AppBar, so its own Back stays — but a raw
+          `navigate(-1)` is dead on a deep link, so it goes to the declared parent
+          the same way AppBar does. */}
+      <button type="button" className="apk-back-link apk-withdrawal-back" onClick={onBack}>
+        <ArrowLeft size={16} strokeWidth={1.5} aria-hidden="true" />
         <span>Back</span>
       </button>
       <span className="be-eyebrow">Manage funds</span>
@@ -40,15 +64,23 @@ export default function WithdrawalRequests() {
         </div>
       )}
 
-      {!loading && requests.length === 0 && (
+      {!loading && loadError && (
+        <ErrorState
+          title="We could not load your withdrawal requests"
+          description="Your redemptions are unaffected. This screen could not reach the server."
+          onRetry={load}
+        />
+      )}
+
+      {!loading && !loadError && requests.length === 0 && (
         <EmptyState
           icon={<RotateCcw size={40} strokeWidth={1.5} />}
           title="No withdrawal requests yet"
           description="Track your redemption requests here once you submit one."
           action={
-            <button className="be-btn be-btn-secondary be-btn-sm" onClick={() => navigate('/app/portfolio')}>
+            <Link className="be-btn be-btn-secondary be-btn-sm" to={PORTFOLIO_PATH}>
               Go to Portfolio
-            </button>
+            </Link>
           }
         />
       )}
@@ -89,8 +121,8 @@ export default function WithdrawalRequests() {
             </div>
             {(req.returnsComponent !== null || req.principalComponent !== null) && (
               <div className="apk-withdrawal-split">
-                From returns {fmtMoney(req.returnsComponent ?? 0, { decimals: 2 })} · From principal
-                {fmtMoney(req.principalComponent ?? 0, { decimals: 2 })}
+                From returns {fmtMoney(req.returnsComponent ?? 0, { decimals: 2 })} · From
+                principal {fmtMoney(req.principalComponent ?? 0, { decimals: 2 })}
               </div>
             )}
             {req.adminReason && (

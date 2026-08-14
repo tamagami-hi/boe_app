@@ -408,15 +408,25 @@ function normalizeScreen(screenId, screen = {}) {
 }
 
 export function normalizeAppConfig(config) {
+  /*
+   * A canonical payload (featureFlags + presentation, no `mobile`) is expanded back
+   * into the builder document first, so the merge below sees published values rather
+   * than only the defaults. Both readers go through here: `/v1/app-config` on the
+   * client and `/v1/admin/app-config` in the console.
+   */
+  const source = config?.mobile === undefined && (config?.featureFlags || config?.presentation)
+    ? { ...config, ...fromCanonicalAppConfig(config) }
+    : config;
+
   const merged = {
     ...clone(DEFAULT_APP_CONFIG),
-    ...config,
+    ...source,
     mobile: {
       ...clone(DEFAULT_APP_CONFIG.mobile),
-      ...(config?.mobile || {}),
+      ...(source?.mobile || {}),
       screens: {
         ...clone(DEFAULT_APP_CONFIG.mobile.screens),
-        ...(config?.mobile?.screens || {}),
+        ...(source?.mobile?.screens || {}),
       },
     },
   };
@@ -424,33 +434,33 @@ export function normalizeAppConfig(config) {
   for (const key of ['dashboard', 'explore', 'fundDetail']) {
     merged.mobile.screens[key] = {
       ...clone(DEFAULT_APP_CONFIG.mobile.screens[key]),
-      ...(config?.mobile?.screens?.[key] || {}),
+      ...(source?.mobile?.screens?.[key] || {}),
       copy: {
         ...clone(DEFAULT_APP_CONFIG.mobile.screens[key].copy || {}),
-        ...(config?.mobile?.screens?.[key]?.copy || {}),
+        ...(source?.mobile?.screens?.[key]?.copy || {}),
       },
     };
   }
 
   merged.mobile.screens.invest = {
     ...clone(DEFAULT_APP_CONFIG.mobile.screens.invest),
-    ...(config?.mobile?.screens?.invest || {}),
+    ...(source?.mobile?.screens?.invest || {}),
     sip: {
       ...clone(DEFAULT_APP_CONFIG.mobile.screens.invest.sip),
-      ...(config?.mobile?.screens?.invest?.sip || {}),
+      ...(source?.mobile?.screens?.invest?.sip || {}),
       disclosures: {
         ...clone(DEFAULT_APP_CONFIG.mobile.screens.invest.sip.disclosures),
-        ...(config?.mobile?.screens?.invest?.sip?.disclosures || {}),
+        ...(source?.mobile?.screens?.invest?.sip?.disclosures || {}),
       },
     },
     oneTime: {
       ...clone(DEFAULT_APP_CONFIG.mobile.screens.invest.oneTime),
-      ...(config?.mobile?.screens?.invest?.oneTime || {}),
+      ...(source?.mobile?.screens?.invest?.oneTime || {}),
     },
   };
 
-  merged.mobile.products = clone(config?.mobile?.products || DEFAULT_APP_CONFIG.mobile.products);
-  merged.mobile.researchContext = clone(config?.mobile?.researchContext || DEFAULT_APP_CONFIG.mobile.researchContext);
+  merged.mobile.products = clone(source?.mobile?.products || DEFAULT_APP_CONFIG.mobile.products);
+  merged.mobile.researchContext = clone(source?.mobile?.researchContext || DEFAULT_APP_CONFIG.mobile.researchContext);
   merged.mobile.screens.dashboard = normalizeScreen('dashboard', merged.mobile.screens.dashboard);
   merged.mobile.screens.explore = normalizeScreen('explore', merged.mobile.screens.explore);
   merged.mobile.screens.fundDetail = normalizeScreen('fundDetail', merged.mobile.screens.fundDetail);
@@ -490,13 +500,175 @@ export async function loadRemoteAppConfig({ admin = false, persist = true } = {}
   return persist ? persistAppConfig(next) : clone(next);
 }
 
+/*
+ * The flat key scheme that carries the builder's editable presentation onto the
+ * canonical payload.
+ *
+ * `app_config_versions.presentation` is `Record<string(<=80), string(<=500) | number
+ * | boolean>` and `.strict()`, so anything published has to be flattened into
+ * scalars. These prefixes are that flattening, and `fromCanonicalPresentation`
+ * below is its exact inverse — the pair is what makes a publish survive a reload.
+ *
+ * Screen copy and dashboard shortcuts used to be edited in the App Builder and then
+ * dropped on the floor: `toCanonicalAppConfig` mapped component toggles and passed
+ * `presentation` through, and nothing else in the builder document had anywhere to
+ * go. The operator changed a label, pressed Publish, saw "Published to active data
+ * store", and no device ever saw it.
+ */
+const COPY_PREFIX = 'copy.';
+const QUICK_ACTION_PREFIX = 'qa.';
+const CHART_PREFIX = 'charts.';
+const INVEST_PREFIX = 'invest.';
+const COPY_SCREENS = ['dashboard', 'explore', 'fundDetail'];
+const MAX_PRESENTATION_VALUE = 500;
+const MAX_QUICK_ACTIONS = 8;
+
+const csvOf = (values) => (Array.isArray(values) ? values.join(',') : '');
+
+const numbersFrom = (value) => String(value ?? '')
+  .split(',')
+  .map((part) => part.trim())
+  // Without this, an empty string split on ',' yields [''] and Number('') is 0 —
+  // so a missing preset list became the list [0].
+  .filter((part) => part !== '')
+  .map(Number)
+  .filter(Number.isFinite);
+
+function toCanonicalPresentation(config) {
+  const presentation = { ...(config?.presentation || {}) };
+  const screens = config?.mobile?.screens || {};
+
+  for (const screenId of COPY_SCREENS) {
+    for (const [key, value] of Object.entries(screens[screenId]?.copy || {})) {
+      if (typeof value !== 'string') continue;
+      presentation[`${COPY_PREFIX}${screenId}.${key}`.slice(0, 80)] = value.slice(0, MAX_PRESENTATION_VALUE);
+    }
+  }
+
+  const actions = (screens.dashboard?.quickActions || []).slice(0, MAX_QUICK_ACTIONS);
+  presentation[`${QUICK_ACTION_PREFIX}count`] = actions.length;
+  actions.forEach((action, index) => {
+    const at = `${QUICK_ACTION_PREFIX}${index}.`;
+    presentation[`${at}id`] = String(action.id || `action_${index}`).slice(0, MAX_PRESENTATION_VALUE);
+    presentation[`${at}label`] = String(action.label || '').slice(0, MAX_PRESENTATION_VALUE);
+    presentation[`${at}icon`] = String(action.icon || '').slice(0, MAX_PRESENTATION_VALUE);
+    presentation[`${at}route`] = String(action.route || '').slice(0, MAX_PRESENTATION_VALUE);
+    presentation[`${at}on`] = action.enabled !== false;
+  });
+
+  const fundDetailCharts = screens.fundDetail?.charts || {};
+  presentation[`${CHART_PREFIX}fundDetail.periods`] = csvOf(fundDetailCharts.periods);
+  presentation[`${CHART_PREFIX}fundDetail.default`] = String(fundDetailCharts.defaultPeriod || '');
+
+  const sip = screens.invest?.sip || {};
+  const oneTime = screens.invest?.oneTime || {};
+  presentation[`${INVEST_PREFIX}sip.presets`] = csvOf(sip.amountPresets);
+  presentation[`${INVEST_PREFIX}sip.durations`] = csvOf(sip.durationMonths);
+  presentation[`${INVEST_PREFIX}sip.debitDays`] = csvOf(sip.debitDays);
+  presentation[`${INVEST_PREFIX}oneTime.presets`] = csvOf(oneTime.amountPresets);
+
+  return presentation;
+}
+
+/**
+ * Rebuild the builder document's published half from a canonical payload.
+ *
+ * Without this, `featureFlags` was a one-way trip: the flag was written to the
+ * server and read by nobody. `normalizeAppConfig` merged the canonical payload over
+ * the defaults, `mobile.screens[].components` therefore came from the defaults, and
+ * `isComponentEnabled` answered `true` for every component on every screen — so all
+ * nineteen toggles in the App Builder had no effect on the client, and the editor
+ * itself reset them to "on" on its next load.
+ */
+export function fromCanonicalAppConfig(payload) {
+  const flags = payload?.featureFlags || {};
+  const presentation = payload?.presentation || {};
+  const screens = {};
+
+  for (const [screenId, library] of Object.entries(COMPONENT_LIBRARY)) {
+    const components = library.map((item) => {
+      const flag = flags[`${screenId}_${item.id}`];
+      return { id: item.id, enabled: flag === undefined ? true : flag !== false };
+    });
+    screens[screenId] = { components };
+  }
+
+  for (const screenId of COPY_SCREENS) {
+    const copy = {};
+    const prefix = `${COPY_PREFIX}${screenId}.`;
+    for (const [key, value] of Object.entries(presentation)) {
+      if (key.startsWith(prefix) && typeof value === 'string') copy[key.slice(prefix.length)] = value;
+    }
+    if (Object.keys(copy).length > 0) {
+      screens[screenId] = { ...(screens[screenId] || {}), copy };
+    }
+  }
+
+  const count = Number(presentation[`${QUICK_ACTION_PREFIX}count`]);
+  if (Number.isFinite(count) && count > 0) {
+    const quickActions = [];
+    for (let index = 0; index < Math.min(count, MAX_QUICK_ACTIONS); index += 1) {
+      const at = `${QUICK_ACTION_PREFIX}${index}.`;
+      const route = presentation[`${at}route`];
+      if (typeof route !== 'string' || route === '') continue;
+      quickActions.push({
+        id: String(presentation[`${at}id`] || `action_${index}`),
+        label: String(presentation[`${at}label`] || ''),
+        icon: String(presentation[`${at}icon`] || 'Compass'),
+        route,
+        enabled: presentation[`${at}on`] !== false,
+      });
+    }
+    if (quickActions.length > 0) {
+      screens.dashboard = { ...(screens.dashboard || {}), quickActions };
+    }
+  }
+
+  const periods = String(presentation[`${CHART_PREFIX}fundDetail.periods`] || '')
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const defaultPeriod = presentation[`${CHART_PREFIX}fundDetail.default`];
+  if (periods.length > 0 || defaultPeriod) {
+    screens.fundDetail = {
+      ...(screens.fundDetail || {}),
+      charts: {
+        ...(periods.length > 0 ? { periods } : {}),
+        ...(defaultPeriod ? { defaultPeriod: String(defaultPeriod) } : {}),
+      },
+    };
+  }
+
+  const sipPresets = numbersFrom(presentation[`${INVEST_PREFIX}sip.presets`]);
+  const sipDurations = numbersFrom(presentation[`${INVEST_PREFIX}sip.durations`]);
+  const debitDays = numbersFrom(presentation[`${INVEST_PREFIX}sip.debitDays`]);
+  const oneTimePresets = numbersFrom(presentation[`${INVEST_PREFIX}oneTime.presets`]);
+  if (sipPresets.length || sipDurations.length || debitDays.length || oneTimePresets.length) {
+    screens.invest = {
+      sip: {
+        ...(sipPresets.length ? { amountPresets: sipPresets } : {}),
+        ...(sipDurations.length ? { durationMonths: sipDurations } : {}),
+        ...(debitDays.length ? { debitDays } : {}),
+      },
+      oneTime: oneTimePresets.length ? { amountPresets: oneTimePresets } : {},
+    };
+  }
+
+  return { mobile: { screens } };
+}
+
 /**
  * Project the local app-builder document onto the canonical
  * `app_config_versions` payload. The canonical contract is presentation and
  * feature-flag data only: fund/product catalogue data lives in `funds` and
  * monetary policy in `finance_policy_versions`, so the backend schema is strict
- * and rejects them. Component toggles become flat feature flags; the rich
- * builder document stays in local storage for editing.
+ * and rejects them.
+ *
+ * NOT published, and not publishable: `mobile.products` and
+ * `mobile.researchContext`. Those are the offline fixture catalogue that
+ * `fundsApi`/`researchApi` fall back to when `VITE_BEO_API_MODE` is not `http`;
+ * with a backend they are irrelevant, because the client reads funds from
+ * `/v1/client/funds`.
  */
 export function toCanonicalAppConfig(config) {
   const featureFlags = {};
@@ -512,7 +684,7 @@ export function toCanonicalAppConfig(config) {
     minimumSupportedVersion: config?.minimumSupportedVersion || {},
     downloads: config?.downloads || {},
     maintenance: config?.maintenance || { enabled: false },
-    presentation: config?.presentation || {},
+    presentation: toCanonicalPresentation(config),
   };
 }
 

@@ -61,7 +61,7 @@
 
 .adm-review-head h2 {
   margin: 4px 0 0;
-  font-family: var(--be-font-serif);
+  font-family: var(--be-font-ui);
   font-size: var(--be-text-xl);
   line-height: 1.15;
   font-weight: 600;
@@ -244,7 +244,7 @@
   padding: var(--be-space-2) var(--be-space-3);
   min-height: var(--be-icon-btn-md);
   min-width: var(--be-icon-btn-md);
-  font: 500 var(--be-text-xs) var(--be-font-sans);
+  font: 500 var(--be-text-xs) var(--be-font-ui);
   color: var(--be-slate);
   cursor: pointer;
 }
@@ -281,7 +281,7 @@
   border-radius: var(--be-radius-sm);
   background: var(--be-bg-elevated);
   color: var(--be-fg);
-  font: 400 var(--be-text-sm) var(--be-font-sans);
+  font: 400 var(--be-text-sm) var(--be-font-ui);
   padding: var(--be-space-2) var(--be-space-3);
 }
 .adm-field textarea { min-height: 74px; resize: vertical; line-height: 1.4; }

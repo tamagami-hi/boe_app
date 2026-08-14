@@ -33,7 +33,7 @@
   grid-template-columns: var(--be-sidebar-w) minmax(0, 1fr);
   min-height: 100dvh;
   background: var(--be-bg);
-  font-family: var(--be-font-sans);
+  font-family: var(--be-font-ui);
 }
 
 .ash-main {
@@ -54,7 +54,7 @@
 }
 
 .ash-section-title {
-  font-family: var(--be-font-sans);
+  font-family: var(--be-font-ui);
   font-size: var(--be-text-sm);
   font-weight: 600;
   color: var(--be-fg);
@@ -108,7 +108,7 @@
   border: none;
   cursor: pointer;
   padding: var(--be-space-1) var(--be-space-2) var(--be-space-1);
-  font: 500 var(--be-text-xs) var(--be-font-sans);
+  font: 500 var(--be-text-xs) var(--be-font-ui);
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: color-mix(in srgb, var(--be-ivory) 55%, transparent);
@@ -181,7 +181,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font: 600 var(--be-text-xs) var(--be-font-sans);
+  font: 600 var(--be-text-xs) var(--be-font-ui);
   flex-shrink: 0;
 }
 
@@ -189,7 +189,6 @@
 .ash-side-user-name { font-size: var(--be-text-xs); color: var(--be-ivory); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ash-side-user-role { font-size: var(--be-text-xs); color: color-mix(in srgb, var(--be-ivory) 50%, transparent); }
 
-.ash-side-user-mobile { display: none; }
 
 /* -------------------------------------------------- top bar */
 
@@ -230,7 +229,7 @@
 .ash-bread-link:focus-visible { outline: 2px solid var(--be-fg); outline-offset: 1px; }
 
 .ash-top-title {
-  font-family: var(--be-font-sans);
+  font-family: var(--be-font-ui);
   font-size: var(--be-text-xl);
   font-weight: 600;
   letter-spacing: var(--be-tracking-tight);
@@ -248,6 +247,12 @@
   color: var(--be-red);
   border-radius: var(--be-radius-sm);
   font-size: var(--be-text-sm);
+  /* Now carries a retry button next to the message. */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--be-space-2);
 }
 
 /* -------------------------------------------------- buttons */
@@ -257,7 +262,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--be-space-2);
-  font: 500 var(--be-text-sm) var(--be-font-sans);
+  font: 500 var(--be-text-sm) var(--be-font-ui);
   border-radius: var(--be-radius-sm);
   border: 1px solid transparent;
   padding: var(--be-space-2) var(--be-space-3);
@@ -377,7 +382,7 @@
 .ash-input,
 .ash-select,
 .ash-textarea {
-  font: 400 var(--be-text-sm) var(--be-font-sans);
+  font: 400 var(--be-text-sm) var(--be-font-ui);
   color: var(--be-fg);
   background: var(--be-bg-elevated);
   border: var(--be-border-1-strong);
@@ -424,7 +429,7 @@
 .ash-chip-row { display: flex; gap: var(--be-space-1); flex-wrap: wrap; }
 
 .ash-chip {
-  font: 500 var(--be-text-xs) var(--be-font-sans);
+  font: 500 var(--be-text-xs) var(--be-font-ui);
   padding: var(--be-space-1) var(--be-space-3);
   border-radius: var(--be-radius-pill);
   border: var(--be-border-1-strong);
@@ -449,7 +454,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--be-space-1);
-  font: 500 var(--be-text-xs) var(--be-font-sans);
+  font: 500 var(--be-text-xs) var(--be-font-ui);
   padding: var(--be-space-1) var(--be-space-2);
   border-radius: var(--be-radius-pill);
   border: 1px solid transparent;
@@ -485,7 +490,7 @@
 }
 
 .ash-card-title {
-  font-family: var(--be-font-sans);
+  font-family: var(--be-font-ui);
   font-size: var(--be-text-base);
   font-weight: 600;
   margin: 0;
@@ -503,7 +508,7 @@
 
 .ash-table thead th {
   text-align: left;
-  font: 500 var(--be-text-xs) var(--be-font-sans);
+  font: 500 var(--be-text-xs) var(--be-font-ui);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--be-slate);
@@ -547,7 +552,7 @@
 }
 
 .ash-stat-label {
-  font: 500 var(--be-text-xs) var(--be-font-sans);
+  font: 500 var(--be-text-xs) var(--be-font-ui);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--be-slate);
@@ -682,7 +687,7 @@
 }
 
 .ash-drawer-title {
-  font-family: var(--be-font-sans);
+  font-family: var(--be-font-ui);
   font-size: var(--be-text-md);
   font-weight: 600;
   margin: 0;
@@ -715,110 +720,64 @@
 /* -------------------------------------------------- responsive */
 
 @media (max-width: 768px) {
-  /* minmax(0, ...) rather than a bare 1fr: 1fr resolves to
-     minmax(auto, 1fr), and an auto minimum is the track's max-content size.
-     The nav below is a 1488px horizontal scroller, so with a bare 1fr the
-     column would size itself to the nav's uncompressed width and the whole
-     console would spill to 1512px. The explicit 0 floor is what lets the
-     scroller be narrower than its contents. */
+  /* PHONE INFORMATION ARCHITECTURE.
+     The sidebar is not rendered at this width at all — AdminShell mounts
+     AdminMobileNav and AdminDomainStrip instead. What used to be here squeezed the
+     desktop sidebar into one 1488px horizontal scroller holding all 13
+     destinations plus the brand and the signed-in chip, at 40px targets: on a
+     360px viewport the first 202px went to identity, so about one and a half nav
+     items were visible and the rest of the console was discoverable only by
+     guessing there was more to the right. */
   .ash-app,
-  .ash-app.is-nav-collapsed { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .ash-app.is-nav-collapsed { grid-template-columns: minmax(0, 1fr); grid-template-rows: 1fr; }
 
-  /* Two rows, not one long scroller.
-     The sidebar holds three things: brand (76px), the signed-in chip (126px)
-     and the nav (1488px across 14 items). With all three in a single
-     horizontal scroller the first 202px of a 360px viewport went to identity,
-     so roughly one and a half nav items were visible at rest and the rest of
-     the console was discoverable only by guessing there was more to the right.
-     Wrapping puts identity on row 1 and gives the nav the full width on row 2,
-     where its own scroller starts at the first item. */
-  /* Identity stays pinned at the top; navigation is pinned at the bottom.
-     The sidebar row keeps only the brand and the signed-in chip. The nav itself
-     is taken out of this flow entirely (see .ash-nav below), so this no longer
-     needs to wrap.
-
-     Sticky rather than fixed: it is a grid row, so sticky keeps it in the layout
-     and the page below it starts in the right place, with no need to offset the
-     content by the bar's height. It carries the ink background already, so
-     content scrolling underneath is covered. */
-  .ash-side {
-    position: sticky;
-    top: 0;
-    /* Same band as the bottom nav: above the page and the sticky topbar
-       (--be-z-topbar: 10), below the drawer overlay (30) and drawer (40). */
-    z-index: 20;
-    height: auto;
-    min-height: 0;
-    min-width: 0;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: var(--be-space-3);
-    overflow: visible;
-    padding: var(--be-space-2) var(--be-space-3);
-  }
-  .ash-brand { border-bottom: none; margin: 0; padding: 0 var(--be-space-2) 0 0; flex-shrink: 0; }
-
-  /* Fixed bottom navigation, matching the client app's tab bar.
-     Reaching navigation meant scrolling back to the top of a long operational
-     page; anchored to the bottom it is always one thumb-reach away, and it sits
-     where a phone user already expects primary navigation to be.
-
-     Still a horizontal scroller rather than the client's 5-column grid: the
-     console has 14 destinations, which cannot be divided into fixed columns
-     without becoming unreadable.
-
-     z-index is a literal because the semantic scale has no step here. It must
-     sit above the page and the sticky topbar (--be-z-topbar: 10) but below the
-     drawer overlay (--be-z-overlay: 30) and the drawer itself (40), or the bar
-     would float on top of an open review panel. The client's --be-z-sticky (200)
-     would do exactly that, which is why it is not reused. */
-  .ash-nav {
+  /* ---- bottom bar: three domains + More ---------------------------------- */
+  .ash-mnav {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    z-index: 20;
-    flex-direction: row;
-    align-items: center;
-    gap: var(--be-space-1);
+    /* Below the drawer (40) so a full-height panel covers it, above page content. */
+    z-index: var(--be-z-sticky-bar);
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    align-items: stretch;
     min-height: var(--be-bottomnav-h);
-    box-sizing: border-box;
     background: var(--be-ink);
     border-top: 1px solid color-mix(in srgb, var(--be-ivory) 12%, transparent);
-    padding: var(--be-space-2) var(--be-space-3);
-    padding-bottom: calc(var(--be-space-2) + env(safe-area-inset-bottom, 0px));
-    overflow-x: auto;
-    overflow-y: hidden;
-    /* proximity, not mandatory: a mandatory snap fights the browser's own
-       "scroll the active link into view" on route change. */
-    scroll-snap-type: x proximity;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
+    padding-bottom: var(--be-safe-bottom);
+    padding-left: var(--be-safe-left);
+    padding-right: var(--be-safe-right);
   }
-  .ash-nav::-webkit-scrollbar { display: none; }
-  /* Without this the groups compress instead of overflowing, and every label
-     truncates rather than scrolling. */
-  .ash-nav-group { margin-bottom: 0; display: flex; align-items: center; flex: 0 0 auto; }
-  .ash-nav-group-toggle { display: none; }
 
-  /* Touch targets. Android asks for 48dp and iOS for 44pt; 40px is a
-     deliberate compromise that clears the "too small to hit" threshold on a
-     dense operational console without turning the nav bar into a third of
-     the screen. Nav items were 28px, header buttons 24px and filter chips
-     23px. */
-  .ash-nav-item {
-    white-space: nowrap;
-    padding: var(--be-space-1) var(--be-space-2);
-    min-height: 40px;
-    scroll-snap-align: start;
+  /* A full comfortable target: four items fit at this width, so the 40px
+     compromise the old scrolling strip needed is gone. */
+  .ash-mnav-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: var(--be-target-comfortable);
+    padding: var(--be-space-2) var(--be-space-1);
+    border: 0;
+    background: transparent;
+    color: color-mix(in srgb, var(--be-ivory) 64%, transparent);
+    font: 500 var(--be-text-xs) var(--be-font-ui);
+    text-decoration: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
   }
-  /* Active marker on the top edge, the same gold rule the client tab bar uses,
-     so the current destination is findable after the strip has been scrolled. */
-  .ash-nav-item.is-active::after {
+
+  .ash-mnav-item.is-active { color: var(--be-ivory); }
+
+  /* Active marker on the top edge, matching the client tab bar. */
+  .ash-mnav-item.is-active::before {
     content: '';
     position: absolute;
-    top: calc(-1 * var(--be-space-2));
+    top: 0;
     left: 50%;
     transform: translateX(-50%);
     width: 28px;
@@ -826,45 +785,111 @@
     background: var(--be-gold);
   }
 
-  .ash-btn { min-height: 40px; }
-  .ash-chip { min-height: 40px; }
+  .ash-mnav-item:focus-visible {
+    outline: 2px solid var(--be-gold);
+    outline-offset: -2px;
+  }
 
-  /* Breadcrumb links were 14px tall. Held to 32px rather than 40px because a
-     40px breadcrumb row would push the page title out of the header. */
-  .ash-bread { font-size: var(--be-text-sm); gap: var(--be-space-2); }
-  .ash-bread-link {
-    display: inline-flex;
-    align-items: center;
-    min-height: 32px;
-  }
-  .ash-side-foot { display: none; }
-  .ash-side-user-mobile {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--be-space-2);
-    flex-shrink: 0;
-    padding: var(--be-space-1) var(--be-space-2) var(--be-space-1) var(--be-space-1);
-    background: color-mix(in srgb, var(--be-ivory) 8%, transparent);
+  .ash-mnav-icon { display: inline-flex; }
+  .ash-mnav-label { line-height: 1; }
+
+  .ash-mnav-count {
+    position: absolute;
+    top: var(--be-space-1);
+    right: 50%;
+    transform: translateX(18px);
+    min-width: 16px;
+    padding: 0 4px;
     border-radius: var(--be-radius-pill);
-    margin-right: var(--be-space-2);
+    background: var(--be-gold);
+    color: var(--be-text-on-gold);
+    font-size: 10px;
+    line-height: 16px;
+    text-align: center;
   }
-  .ash-side-user-mobile .ash-avatar { width: var(--be-avatar-sm); height: var(--be-avatar-sm); font-size: var(--be-text-xs); }
-  .ash-side-user-mobile-name {
-    font-size: var(--be-text-xs);
-    color: var(--be-ivory);
-    max-width: 80px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+
+  /* ---- the active domain's siblings -------------------------------------- */
+  .ash-dstrip {
+    display: flex;
+    gap: var(--be-space-1);
+    padding: var(--be-space-2) var(--be-space-4);
+    padding-left: calc(var(--be-space-4) + var(--be-safe-left));
+    padding-right: calc(var(--be-space-4) + var(--be-safe-right));
+    border-bottom: 1px solid var(--be-border-color);
+    /* No domain has more than four items, so this fits without scrolling. The
+       overflow is a safety net for a long label, not the layout. */
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .ash-dstrip::-webkit-scrollbar { display: none; }
+
+  .ash-dstrip-item {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--be-target-compact);
+    padding: 0 var(--be-space-3);
+    border-radius: var(--be-radius-pill);
     white-space: nowrap;
+    color: var(--be-fg-muted);
+    font: 500 var(--be-text-sm) var(--be-font-ui);
+    text-decoration: none;
   }
+
+  .ash-dstrip-item.is-active {
+    background: var(--be-ink);
+    color: var(--be-ivory);
+  }
+
+  .ash-dstrip-item:focus-visible {
+    outline: 2px solid var(--be-ink);
+    outline-offset: 2px;
+  }
+
+  /* ---- the More hub ------------------------------------------------------ */
+  .ash-hub { display: flex; flex-direction: column; gap: var(--be-space-5); }
+  .ash-hub-group { display: flex; flex-direction: column; }
+
+  .ash-hub-group-label {
+    margin: 0 0 var(--be-space-2);
+    font: 600 var(--be-text-xs) var(--be-font-ui);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--be-fg-muted);
+  }
+
+  .ash-hub-item {
+    display: flex;
+    align-items: center;
+    gap: var(--be-space-3);
+    min-height: var(--be-target-comfortable);
+    padding: 0 var(--be-space-2);
+    border-radius: var(--be-radius-sm);
+    color: var(--be-fg);
+    font: 500 var(--be-text-base) var(--be-font-ui);
+    text-decoration: none;
+  }
+
+  .ash-hub-item.is-active { background: var(--be-ivory-2, transparent); font-weight: 600; }
+  .ash-hub-item:focus-visible { outline: 2px solid var(--be-ink); outline-offset: -2px; }
+
   /* Clear the fixed bottom nav. Without this the last row of a table, or a
      primary action at the end of a form, sits underneath the bar and cannot be
      reached however far the page is scrolled. */
   .ash-page {
     padding: var(--be-space-4) var(--be-space-4)
-      calc(var(--be-bottomnav-h) + env(safe-area-inset-bottom, 0px) + var(--be-space-5));
+      calc(var(--be-bottomnav-h) + var(--be-safe-bottom) + var(--be-space-5));
   }
-  .ash-top { padding: var(--be-space-2) var(--be-space-4); position: static; }
+  .ash-top {
+    padding: var(--be-space-2) var(--be-space-4);
+    position: static;
+    /* Admin compensated only for the bottom inset. Under targetSdk 36 the app is
+       edge-to-edge, so without this the identity/title row draws underneath the
+       status bar or a display cutout. Left/right matter in landscape and on
+       curved displays. */
+    padding-top: calc(var(--be-space-2) + var(--be-safe-top));
+    padding-left: calc(var(--be-space-4) + var(--be-safe-left));
+    padding-right: calc(var(--be-space-4) + var(--be-safe-right));
+  }
 
   /* .ash-top is a wrapping flex row with space-between. When the breadcrumb and
      title are wide (three crumbs plus "AUM pools", for instance) the action
@@ -876,7 +901,7 @@
   /* The drawer is a full-height panel above the bottom nav (z 40 vs 20), so its
      own footer must clear the device's gesture area rather than the nav bar. */
   .ash-drawer-foot {
-    padding-bottom: calc(var(--be-space-3) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--be-space-3) + var(--be-safe-bottom));
   }
 
   .ash-form-row { grid-template-columns: 1fr; }
@@ -930,7 +955,7 @@
   .ash-table tbody td:last-child { border-bottom: none; }
   .ash-table tbody td::before {
     content: attr(data-label);
-    font: 500 var(--be-text-xs) var(--be-font-sans);
+    font: 500 var(--be-text-xs) var(--be-font-ui);
     color: var(--be-slate);
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -1005,7 +1030,7 @@
   left: calc(var(--be-sidebar-w) - 13px);
   top: 50%;
   transform: translateY(-50%);
-  z-index: 60; /* floating sidebar toggle; not in semantic z-scale */
+  z-index: var(--be-z-nav-toggle);
   width: 26px;
   height: 26px;
   display: inline-flex;
@@ -1017,6 +1042,14 @@
   color: var(--be-fg);
   cursor: pointer;
   transition: left var(--be-dur-fast) var(--be-ease);
+}
+/* The visible pill stays 26px so it does not intrude on the sidebar rule; the
+   hit area reaches --be-target-min via a pseudo-element. */
+.ash-nav-collapse::after {
+  content: '';
+  position: absolute;
+  inset: -9px;
+  border-radius: 50%;
 }
 .ash-app.is-nav-collapsed .ash-nav-collapse { left: calc(var(--ash-sidebar-w-collapsed) - 13px); }
 
@@ -1049,5 +1082,64 @@
   margin: 0;
   font-size: var(--be-text-xs);
   line-height: var(--be-lh-normal);
+  color: var(--be-fg);
+}
+
+
+/* HelpTooltip. None of these three classes existed, so the trigger was an unstyled
+   button and the "tooltip" was inline text that pushed the form around when it
+   opened. `position: absolute` needs the wrap to be the containing block. */
+.ash-tooltip-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.ash-tooltip-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--be-target-inline);
+  height: var(--be-target-inline);
+  padding: 0;
+  border: 0;
+  border-radius: var(--be-radius-pill);
+  background: transparent;
+  color: var(--be-slate);
+  cursor: pointer;
+}
+
+/* 32px is below the minimum target, so the hit area is expanded past the icon. */
+.ash-tooltip-trigger::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+}
+
+.ash-tooltip-trigger:hover,
+.ash-tooltip-trigger:focus-visible {
+  color: var(--be-fg);
+}
+
+.ash-tooltip-trigger:focus-visible {
+  outline: 2px solid var(--be-accent);
+  outline-offset: 2px;
+}
+
+.ash-tooltip {
+  position: absolute;
+  bottom: calc(100% + var(--be-space-2));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--be-z-tooltip);
+  width: max-content;
+  max-width: 16rem;
+  padding: var(--be-space-2) var(--be-space-3);
+  border: var(--be-border-1);
+  border-radius: var(--be-radius-sm);
+  background: var(--be-bg-elevated);
+  box-shadow: var(--be-shadow-2);
+  font-size: var(--be-text-xs);
+  line-height: 1.45;
   color: var(--be-fg);
 }

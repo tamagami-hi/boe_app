@@ -167,8 +167,8 @@ apk_validate_local_artifact() {
         jq -e '.signing == "release" and ((.buildType // "release") == "release")' \
             "$sidecar" >/dev/null || {
             err "production APK must be release-signed, but the sidecar records signing=$signing"
-            err "the Android builder currently only produces assembleDebug; production APK"
-            err "publishing stays blocked until a release signing config exists (build.gradle)"
+            err "emu/boe_update.sh runs assembleRelease when android/keystore.properties is"
+            err "present and falls back to assembleDebug when it is not — check the keystore"
             return 1
         }
     fi

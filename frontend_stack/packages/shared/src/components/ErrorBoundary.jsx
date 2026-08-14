@@ -99,7 +99,7 @@ export class ErrorBoundary extends Component {
             <p style={MESSAGE_STYLE}>
               We encountered an unexpected error. Please try refreshing the page or contact support if the problem persists.
             </p>
-            <button
+            <button type="button"
               onClick={() => window.location.reload()}
               style={BUTTON_STYLE}
             >

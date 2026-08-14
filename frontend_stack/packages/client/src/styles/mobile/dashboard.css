@@ -15,7 +15,7 @@
 }
 
 .apk-greet-name {
-  font-family: var(--be-font-serif);
+  font-family: var(--be-font-brand);
   font-size: 32px;
   font-weight: 600;
   margin: 6px 0 0;
@@ -61,7 +61,7 @@
 }
 
 .apk-portfolio-num {
-  font-family: var(--be-font-sans);
+  font-family: var(--be-font-ui);
   font-size: clamp(34px, 9vw, 48px);
   font-weight: 600;
   letter-spacing: var(--be-tracking-tight);
@@ -128,7 +128,7 @@
 }
 
 .apk-sip-name {
-  font-family: var(--be-font-serif);
+  font-family: var(--be-font-ui);
   font-size: var(--be-text-base);
   font-weight: 600;
   overflow-wrap: anywhere;
@@ -176,6 +176,10 @@
   flex-direction: column;
   align-items: center;
   gap: 6px;
+  /* These are links now, not buttons. */
+  min-height: var(--be-target-comfortable);
+  text-align: center;
+  text-decoration: none;
   font-size: 11px;
   color: var(--be-ink);
   box-shadow: var(--be-shadow-card-bevel);
@@ -186,6 +190,11 @@
     transform 160ms var(--be-ease-out),
     box-shadow 200ms var(--be-ease);
   -webkit-tap-highlight-color: transparent;
+}
+
+.apk-quick-btn:focus-visible {
+  outline: 2px solid var(--be-ink);
+  outline-offset: 2px;
 }
 
 .apk-quick-btn:active { transform: scale(0.97); }

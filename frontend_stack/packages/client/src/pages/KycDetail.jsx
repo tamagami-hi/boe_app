@@ -5,6 +5,7 @@ import AppBar from '../layout/AppBar.jsx';
 import Skeleton from '@beonedge/shared/components/Skeleton.jsx';
 import { fetchKycStatus } from '../services/kycApi.js';
 import { fmtDate } from '../utils/format.js';
+import { buildPath } from '../navigation/routes.js';
 
 // KYC on BeOnEdge is an email one-time code: requesting it and entering it is the
 // whole flow, after which the account can invest. This screen reports where that
@@ -137,7 +138,7 @@ export default function KycDetail() {
             <button
               type="button"
               className="be-btn be-btn-primary"
-              onClick={() => navigate('/app/verify-email')}
+              onClick={() => navigate(buildPath('verify_email'))}
             >
               {expired ? 'Verify again' : view.action}
             </button>

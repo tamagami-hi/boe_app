@@ -1,38 +1,13 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import {
-  UserCheck, ShieldCheck, LineChart, Layers, TrendingUp, PieChart,
-  CreditCard, Repeat, BookOpen, Inbox, LifeBuoy, History, Settings,
-  Search, Bell, Plus, MoreHorizontal, LayoutGrid, Trash2, Save, RotateCcw, LogOut,
-  X, CheckCircle2, XCircle, Clock, Timer, TrendingDown, Filter, User, Mail, Phone, Shield, FileText,
-  BarChart3, Activity, Eye, EyeOff, AlertTriangle, Pencil, Gauge, Percent, Briefcase, Archive, ChevronRight, ClipboardList, ArrowLeft,
-  Copy,
-} from 'lucide-react';
-import {
-  RiskBadge, LifecycleBadge, StatusBadge,
-} from '@beonedge/shared/components/Badges.jsx';
-import { SectorMiniBar } from '@beonedge/shared/components/SectorMiniBar.jsx';
-
-import logo from '@beonedge/shared/assets/logo.svg';
-import {
-  COMPONENT_LIBRARY,
-  loadRemoteAppConfig,
-  loadAppConfig,
-  publishAppConfig,
-  resetAppConfig,
-} from '@beonedge/shared/appConfig.js';
-import { useAdminSession } from '@beonedge/client/store/AdminSessionContext.jsx';
-import { apiRequest, listFromPayload, useHttpApi } from '@beonedge/client/services/_util.js';
-import { listPendingApprovals } from '@beonedge/client/services/authApi.js';
-import '../styles/desktop/admin.css';
+import { useEffect, useRef, useState } from 'react';
+import { Inbox, Search } from 'lucide-react';
 import I from '../components/I.jsx';
 import StatTile from '../components/StatTile.jsx';
 import EmptyTableRow from '../components/EmptyTableRow.jsx';
 import ApprovalStatusBadge from '../components/ApprovalStatusBadge.jsx';
 import SkeletonTile from '../components/SkeletonTile.jsx';
 import SkeletonTableRow from '../components/SkeletonTableRow.jsx';
-import { fmtDateTime, fmtInt } from '../helpers/formatters.js';
-import { initials } from '../helpers/formatters.js';
+import { fmtDateTime, fmtInt, initials } from '../helpers/formatters.js';
+import './admin-screens-shared.css';
 
 const EMPTY_APPROVALS_META = { updatedAt: null, syncing: false, truncated: false, error: '' };
 
@@ -59,6 +34,20 @@ function ApprovalsScreen({
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   /*
+   * The decision opens in place, under the row it belongs to.
+   *
+   * Approving a signup is irreversible and grants a stranger access to the app, and
+   * on a phone the row collapses to a card where Approve and Reject sat side by side
+   * under a truncated email. Expanding the row puts the applicant's full identity
+   * directly above two full-size targets, makes it unambiguous WHICH application is
+   * being decided, and keeps the rest of the queue on screen. Deciding IS the job of
+   * this screen, so it does not belong behind an overlay.
+   */
+  const [openId, setOpenId] = useState('');
+  const [pending, setPending] = useState('');
+  const decisionLockRef = useRef(false);
+
+  /*
    * Re-render on a timer purely so the "updated Ns ago" label keeps counting.
    * Without it the label freezes at the value it had when the data arrived, which
    * reads as "fresh" no matter how old it is — worse than showing nothing.
@@ -82,6 +71,25 @@ function ApprovalsScreen({
     const q = searchQuery.trim().toLowerCase();
     return !q || r.name?.toLowerCase().includes(q) || r.email?.toLowerCase().includes(q);
   });
+
+  /*
+   * A synchronous ref lock, not `disabled={pending}`: setState is async, so a fast
+   * double tap re-enters this handler before the re-render disables the button and
+   * decides the application twice. Released on the way out so a failed decision can
+   * be retried, and the panel stays open on failure so the retry keeps its context.
+   */
+  async function decide(row, decision) {
+    if (decisionLockRef.current) return;
+    decisionLockRef.current = true;
+    setPending(decision);
+    try {
+      const accepted = decision === 'approved' ? await onApprove?.(row) : await onReject?.(row);
+      if (accepted !== false) setOpenId('');
+    } finally {
+      decisionLockRef.current = false;
+      setPending('');
+    }
+  }
 
   /*
    * Export what the operator is looking at, filters included — an export that
@@ -137,6 +145,7 @@ function ApprovalsScreen({
               {meta.syncing ? 'Refreshing...' : `Updated ${relativeTime(meta.updatedAt)}`}
             </span>
             <button
+              type="button"
               className="be-btn be-btn-secondary be-btn-sm"
               onClick={() => onRefresh?.()}
               disabled={meta.syncing || busy}
@@ -145,6 +154,7 @@ function ApprovalsScreen({
               Refresh
             </button>
             <button
+              type="button"
               className="be-btn be-btn-secondary be-btn-sm"
               onClick={exportCsv}
               disabled={visibleRows.length === 0}
@@ -196,8 +206,6 @@ function ApprovalsScreen({
                   <SkeletonTableRow columnCount={4} />
                   <SkeletonTableRow columnCount={4} />
                   <SkeletonTableRow columnCount={4} />
-                  <SkeletonTableRow columnCount={4} />
-                  <SkeletonTableRow columnCount={4} />
                 </>
               )}
               {!loading && visibleRows.length === 0 && (
@@ -207,37 +215,99 @@ function ApprovalsScreen({
                     : 'No records match the current search.'}
                 </EmptyTableRow>
               )}
-              {visibleRows.map((r) => (
-                <tr key={r.id || r.email}>
-                  <td className="adm-col-user" data-label="User">
-                    <div className="adm-user">
-                      <div className="adm-avatar adm-avatar-sm">{initials(r.name, 'CL')}</div>
-                      <div className="adm-user-info">
-                        <div className="adm-user-name">{r.name}</div>
-                        <div className="adm-cell-meta">{r.email}</div>
+              {visibleRows.map((r) => {
+                const rowId = r.id || r.email;
+                const isOpen = openId === rowId;
+                const panelId = `approval-decision-${rowId}`;
+                return [
+                  <tr key={rowId} className={isOpen ? 'is-expanded' : ''}>
+                    <td className="adm-col-user" data-label="User">
+                      <div className="adm-user">
+                        <div className="adm-avatar adm-avatar-sm">{initials(r.name, 'CL')}</div>
+                        <div className="adm-user-info">
+                          <div className="adm-user-name">{r.name}</div>
+                          <div className="adm-cell-meta">{r.email}</div>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="adm-col-date" data-label="Signed up">
-                    <span className="adm-cell-meta">{fmtDateTime(r.createdAt)}</span>
-                  </td>
-                  <td className="adm-col-status" data-label="Status">
-                    <ApprovalStatusBadge status={r.status} />
-                  </td>
-                  <td className="adm-col-actions" data-label="">
-                    <button className="be-btn be-btn-primary be-btn-sm" onClick={() => onApprove?.(r)} disabled={busy}>Approve</button>
-                    <button className="be-btn be-btn-secondary be-btn-sm" onClick={() => onReject?.(r)} disabled={busy}>Reject</button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="adm-col-date" data-label="Signed up">
+                      <span className="adm-cell-meta">{fmtDateTime(r.createdAt)}</span>
+                    </td>
+                    <td className="adm-col-status" data-label="Status">
+                      <ApprovalStatusBadge status={r.status} />
+                    </td>
+                    <td className="adm-col-actions" data-label="">
+                      <button
+                        type="button"
+                        className="be-btn be-btn-primary be-btn-sm"
+                        aria-expanded={isOpen}
+                        aria-controls={panelId}
+                        onClick={() => setOpenId(isOpen ? '' : rowId)}
+                        disabled={busy && !isOpen}
+                      >
+                        {isOpen ? 'Close' : 'Review'}
+                      </button>
+                    </td>
+                  </tr>,
+                  isOpen ? (
+                    <tr key={`${rowId}-decision`} className="adm-decision-row">
+                      <td colSpan={4} id={panelId}>
+                        <div className="adm-decision">
+                          <dl className="adm-decision-facts">
+                            <div>
+                              <dt>Name</dt>
+                              <dd>{r.name || 'Not recorded'}</dd>
+                            </div>
+                            <div>
+                              <dt>Email</dt>
+                              <dd>{r.email || 'Not recorded'}</dd>
+                            </div>
+                            <div>
+                              <dt>Phone</dt>
+                              <dd>{r.phone || 'Not recorded'}</dd>
+                            </div>
+                            <div>
+                              <dt>Submitted</dt>
+                              <dd>{fmtDateTime(r.createdAt)}</dd>
+                            </div>
+                          </dl>
+                          <p className="adm-decision-note">
+                            Approving grants this person access to the app and queues their welcome
+                            email. It cannot be undone from here.
+                          </p>
+                          <div className="adm-decision-actions">
+                            <button
+                              type="button"
+                              className="be-btn be-btn-secondary adm-decision-btn"
+                              onClick={() => decide(r, 'rejected')}
+                              disabled={Boolean(pending)}
+                            >
+                              {pending === 'rejected' ? 'Rejecting…' : 'Reject'}
+                            </button>
+                            <button
+                              type="button"
+                              className="be-btn be-btn-primary adm-decision-btn"
+                              onClick={() => decide(r, 'approved')}
+                              disabled={Boolean(pending)}
+                            >
+                              {pending === 'approved' ? 'Approving…' : 'Approve'}
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null,
+                ];
+              })}
             </tbody>
           </table>
         </div>
       </div>
+
       {rows.length === 0 && !loading && (
         <div className="adm-empty-hint">
           Looking for approved users?{' '}
-          <button type="button" className="ash-btn ash-btn-primary" onClick={onNavigateToUsers}>
+          <button type="button" className="be-btn be-btn-secondary be-btn-sm" onClick={onNavigateToUsers}>
             View User Details
           </button>
         </div>

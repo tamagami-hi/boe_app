@@ -29,12 +29,12 @@ export default function Blocked() {
         <p className="apk-blocked-body">{cfg.body}</p>
         <div className="apk-blocked-actions">
           {user?.status === 'rejected' && (
-            <button className="be-btn be-btn-primary be-btn-block" onClick={() => navigate('/app/profile/support')}>Contact support</button>
+            <button type="button" className="be-btn be-btn-primary be-btn-block" onClick={() => navigate('/app/profile/support')}>Contact support</button>
           )}
           {(user?.status === 'suspended' || user?.status === 'closed') && (
-            <button className="be-btn be-btn-primary be-btn-block" onClick={() => navigate('/app/profile/support')}>Contact support</button>
+            <button type="button" className="be-btn be-btn-primary be-btn-block" onClick={() => navigate('/app/profile/support')}>Contact support</button>
           )}
-          <button className="be-btn be-btn-ghost be-btn-block" onClick={async () => { await logout(); navigate('/app/login'); }}>Sign out</button>
+          <button type="button" className="be-btn be-btn-ghost be-btn-block" onClick={async () => { await logout(); navigate('/app/login'); }}>Sign out</button>
         </div>
       </div>
     </div>

@@ -43,7 +43,7 @@
 }
 
 .be-page-header-title {
-  font-family: var(--be-font-sans);
+  font-family: var(--be-font-ui);
   font-size: var(--be-text-xl);        /* 22px — authoritative, not decorative */
   font-weight: 600;
   letter-spacing: var(--be-tracking-tight);

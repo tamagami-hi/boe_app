@@ -23,7 +23,7 @@
 }
 
 .be-sticky-action-bar__count {
-  font: 500 var(--be-text-sm) var(--be-font-sans);
+  font: 500 var(--be-text-sm) var(--be-font-ui);
   color: var(--be-fg);
 }
 

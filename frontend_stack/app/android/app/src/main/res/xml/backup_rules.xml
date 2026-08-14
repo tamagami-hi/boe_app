@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Legacy (API 23–30) full-backup rules.
+
+  `android:allowBackup="false"` already disables backup entirely, so nothing here
+  runs today. It exists so that if backup is ever enabled — for crash-recovery
+  convenience, say — the authenticated session cannot be the thing that gets copied
+  off the device by default.
+
+  Excluded:
+    - the whole WebView data directory, which is where localStorage and the
+      Capacitor Secure Storage bridge keep session material
+    - shared preferences, for the same reason
+-->
+<full-backup-content>
+    <exclude domain="database" path="." />
+    <exclude domain="sharedpref" path="." />
+    <exclude domain="file" path="app_webview" />
+    <exclude domain="file" path="app_textures" />
+</full-backup-content>

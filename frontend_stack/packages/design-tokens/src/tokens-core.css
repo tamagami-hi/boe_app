@@ -9,6 +9,32 @@
 /* -------------------------------------------------------------------------- */
 
 :root {
+  /* Safe-area insets — the single source of truth ---------------------------
+   *
+   * Two mechanisms cover different devices, so both are read, in this order:
+   *
+   *   1. `--safe-area-inset-*` is injected on <html> by Capacitor 8's SystemBars
+   *      plugin (verified in @capacitor/android .../plugin/SystemBars.java). It
+   *      exists only on Android 15+, where it works around a Chromium bug that
+   *      makes `env()` report wrong values, and only when the viewport meta
+   *      carries `viewport-fit=cover`.
+   *   2. `env(safe-area-inset-*)` is the platform value everywhere else,
+   *      including iOS and the browser builds.
+   *   3. `0px` for any surface with no insets at all.
+   *
+   * Reading only one would be wrong on some real device, which is why this is a
+   * nested fallback rather than a choice. Nothing else in the codebase may read
+   * `env(safe-area-inset-*)` directly — page and component CSS consumes these
+   * four variables so there is one place to fix.
+   *
+   * Consumed by: client shell/app bar/bottom nav/sheets/toast, admin top bar and
+   * mobile nav. Left/right matter in landscape and on curved displays.
+   */
+  --be-safe-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --be-safe-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+  --be-safe-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --be-safe-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+
   /* Core palette ----------------------------------------------------------- */
   --be-ink:        #0E1116;
   --be-ink-2:      #1A1F27;
@@ -63,6 +89,13 @@
   --be-font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   --be-num:          var(--be-font-body);
 
+  /* Type ROLES. Stylesheets must reference these, not a family — the audit's
+     rule is that Fraunces stays a selective brand voice while task, navigation
+     and data UI is stable sans. Enforced by cssContract.test.js. */
+  --be-font-brand:   var(--be-font-display);  /* splash, auth hero, greeting, legal titles */
+  --be-font-ui:      var(--be-font-body);     /* everything task/nav/data, all of admin */
+  --be-font-code:    var(--be-font-mono);     /* identifiers and references only */
+
   /* Type scale (web) ------------------------------------------------------- */
   --be-text-xs:    11px;
   --be-text-sm:    13px;
@@ -108,9 +141,13 @@
   --be-radius-md:  8px;
   --be-radius-lg:  12px;
   --be-radius-pill: 999px;
-
-  /* Convenience aliases (used heavily in client mobile CSS) ----------------- */
-  --be-r-8: var(--be-radius-md);
+  /* Short aliases used throughout the client mobile sheets. Defined here, not
+     in client base.css, so there is one source of truth for the scale. */
+  --be-r-2:  var(--be-radius-xs);
+  --be-r-4:  var(--be-radius-sm);
+  --be-r-8:  var(--be-radius-md);
+  --be-r-12: var(--be-radius-lg);
+  --be-r-pill: var(--be-radius-pill);
 
   /* Borders ---------------------------------------------------------------- */
   --be-border-1: 1px solid var(--be-border-color);
@@ -134,10 +171,11 @@
   --be-dur-slow:    400ms;
   --be-dur-chart:   600ms;
 
-  /* Convenience aliases (used heavily in client mobile CSS) ----------------- */
+  /* Short aliases used throughout the client mobile sheets. */
   --be-d-1: var(--be-dur-fast);
   --be-d-2: var(--be-dur-base);
   --be-d-3: var(--be-dur-slow);
+  --be-d-4: var(--be-dur-chart);
 
   /* Layout ----------------------------------------------------------------- */
   --be-container-marketing: 1200px;
@@ -149,6 +187,7 @@
   --be-page-pad-y:       var(--be-space-6);   /* 24px */
   --be-page-pad-b:       var(--be-space-10);  /* 40px */
   --be-section-gap:      var(--be-space-6);   /* 24px */
+  --be-page-header-gap:  var(--be-space-2);
   --be-card-pad:         var(--be-space-5);   /* 20px */
   --be-card-gap:         var(--be-space-4);   /* 16px */
   --be-content-max:      var(--be-container-reading);
@@ -157,10 +196,24 @@
   --be-appbar-h:         52px;
   --be-bottomnav-h:      64px;
 
+  /* Touch targets. Declared once so each surface's compromise is stated rather
+     than re-decided per rule. Android asks 48dp, iOS 44pt. */
+  --be-target-comfortable: 48px; /* client touch UI and any primary action */
+  --be-target-min:         44px; /* icon buttons sitting inside a field */
+  --be-target-compact:     40px; /* dense admin console: a 48px nav strip would
+                                    eat a third of a phone screen */
+  --be-target-inline:      32px; /* inline text affordances (breadcrumbs) that
+                                    cannot grow without displacing the title */
+
   /* Z-index scale (semantic) ----------------------------------------------- */
+  --be-z-table-header:   4;    /* sticky table head; below the shell header */
+  --be-z-subnav:         9;    /* secondary sticky nav; below the shell header */
   --be-z-topbar:         10;   /* admin shell sticky header */
+  --be-z-subnav-mobile:  11;   /* secondary sticky nav where no topbar competes */
+  --be-z-sticky-bar:     20;   /* sticky editor/action bars inside a page */
   --be-z-overlay:        30;   /* admin drawer overlay */
   --be-z-drawer:         40;   /* admin drawer panel */
+  --be-z-nav-toggle:     60;   /* floating sidebar collapse control */
   --be-z-dropdown:       100;
   --be-z-sticky:         200;
   --be-z-modal-backdrop: 300;

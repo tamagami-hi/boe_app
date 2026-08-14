@@ -1,14 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { CreditCard } from 'lucide-react';
 import AppBar from '../layout/AppBar.jsx';
 import Skeleton from '@beonedge/shared/components/Skeleton.jsx';
+import ErrorState from '@beonedge/shared/components/ErrorState.jsx';
 import * as fundsApi from '../services/fundsApi.js';
 import * as ordersApi from '../services/ordersApi.js';
 import { useAppConfig } from '../hooks/useAppConfig.js';
 import { fmtMoney } from '../utils/format.js';
 import { openRazorpayCheckout } from '../utils/razorpay.js';
 import { useSession } from '../store/SessionContext.jsx';
+import { HOME_PATH, buildPath } from '../navigation/routes.js';
 
 const RISK_DISCLOSURE = 'Investments are subject to market risk. Please read all scheme-related documents carefully before investing.';
 
@@ -23,8 +25,36 @@ export default function LumpsumSheet() {
   const [riskConsent, setRiskConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState('');
+  // The disabled prop is not a lock: setSubmitting is async, so a fast double tap
+  // enters onContinue twice and creates two orders.
+  const submitLockRef = useRef(false);
 
-  useEffect(() => { fundsApi.getFund(fundId).then(setFund).catch(() => setFund(null)); }, [fundId, appConfig.publishedAt]);
+  // A failed fund read used to set `fund` to null, and `if (!fund)` renders a
+  // skeleton — so a dropped request left this money screen loading forever.
+  const [loadError, setLoadError] = useState('');
+  const loadFund = useCallback(() => {
+    setLoadError('');
+    fundsApi.getFund(fundId)
+      .then(setFund)
+      .catch((error) => setLoadError(error?.message || 'Could not load this pool.'));
+  }, [fundId]);
+
+  useEffect(() => { loadFund(); }, [loadFund, appConfig.publishedAt]);
+
+  if (loadError) {
+    return (
+      <>
+        <AppBar title="One-time" />
+        <div className="apk-screen">
+          <ErrorState
+            title="We could not load this pool"
+            description={loadError}
+            onRetry={loadFund}
+          />
+        </div>
+      </>
+    );
+  }
 
   if (!fund) return (<><AppBar title="One-time" /><div className="apk-screen"><Skeleton variant="card" height={200} /></div></>);
 
@@ -38,6 +68,8 @@ export default function LumpsumSheet() {
   }
 
   async function onContinue() {
+    if (submitLockRef.current) return;
+    submitLockRef.current = true;
     setErr('');
     setSubmitting(true);
     try {
@@ -45,10 +77,12 @@ export default function LumpsumSheet() {
       if (!order.paymentId) {
         setErr("Couldn't start investment. Try again.");
         setSubmitting(false);
+        submitLockRef.current = false;
         return;
       }
+      const paymentPath = buildPath('payment_status', { paymentId: order.paymentId });
       if (order.providerName === 'razorpay' && order.providerOrderId && order.providerKeyId) {
-        openRazorpayCheckout({
+        await openRazorpayCheckout({
           keyId: order.providerKeyId,
           orderId: order.providerOrderId,
           amount: order.amount,
@@ -58,20 +92,29 @@ export default function LumpsumSheet() {
           userEmail: user?.email || '',
           userContact: user?.phone || '',
           onSuccess: async (response) => {
-            await ordersApi.confirmRazorpayPayment(order.paymentId, response);
-            navigate('/app/dashboard');
+            try {
+              await ordersApi.confirmRazorpayPayment(order.paymentId, response);
+              // `replace`: a completed payment must not be re-enterable by Back.
+              navigate(HOME_PATH, { replace: true });
+            } catch {
+              // Money may already have moved. Show the authoritative payment state
+              // rather than claiming success or stranding the user here.
+              navigate(paymentPath, { replace: true });
+            }
           },
+          // Also fires on sheet dismissal; the order exists either way.
           onFailure: () => {
-            navigate(`/app/payment/${order.paymentId}`);
+            navigate(paymentPath, { replace: true });
           },
         });
       } else {
-        navigate(`/app/payment/${order.paymentId}`);
+        navigate(paymentPath, { replace: true });
       }
     } catch (e) {
       const message = e?.message || e?.code || "Couldn't start investment. Try again.";
       setErr(message);
       setSubmitting(false);
+      submitLockRef.current = false;
     }
   }
 
@@ -83,17 +126,33 @@ export default function LumpsumSheet() {
         <h1 className="apk-h-sm">{fund.name}</h1>
 
         <div className="be-field">
-          <label>Amount</label>
+          {/* The label was a bare <label> with no `for`, so the amount input was
+              unlabelled and the presets were an unnamed pile of buttons. */}
+          <label className="be-field__label" htmlFor="lumpsum-amount">Amount</label>
           <div className="apk-amount-row">
-            <span className="apk-amount-prefix">₹</span>
-            <input className="apk-amount-input be-money" type="number" inputMode="numeric" min={minLumpsum || 0} step="500" value={amount} onChange={onAmountChange} placeholder="0" />
+            <span className="apk-amount-prefix" aria-hidden="true">₹</span>
+            <input
+              id="lumpsum-amount"
+              className="apk-amount-input be-money"
+              type="number"
+              inputMode="numeric"
+              min={minLumpsum || 0}
+              step="500"
+              value={amount}
+              onChange={onAmountChange}
+              placeholder="0"
+              aria-invalid={!valid}
+              aria-describedby="lumpsum-amount-min"
+            />
           </div>
-          <div className="apk-chip-row apk-mt-2">
+          <div className="apk-chip-row apk-mt-2" role="group" aria-label="Amount presets">
             {settings.amountPresets.map((v) => (
-              <button key={v} className={'apk-chip' + (amount === v ? ' is-active' : '')} onClick={() => setAmount(v)}>{fmtMoney(v)}</button>
+              <button type="button" key={v} className={'apk-chip' + (amount === v ? ' is-active' : '')} onClick={() => setAmount(v)}>{fmtMoney(v)}</button>
             ))}
           </div>
-          {!valid && <div className="be-field-error">Minimum is {fmtMoney(minLumpsum)}.</div>}
+          <div className="be-field-error" id="lumpsum-amount-min" hidden={valid}>
+            Minimum is {fmtMoney(minLumpsum)}.
+          </div>
         </div>
 
         <div className="apk-sheet-summary">
@@ -109,7 +168,7 @@ export default function LumpsumSheet() {
 
         {err && <div className="apk-banner apk-banner-red">{err}</div>}
 
-        <button className="be-btn be-btn-primary be-btn-block be-btn-lg" disabled={!valid || !riskConsent || submitting} onClick={onContinue}>
+        <button type="button" className="be-btn be-btn-primary be-btn-block be-btn-lg" disabled={!valid || !riskConsent || submitting} onClick={onContinue}>
           {submitting ? 'Setting up investment...' : (
             <>
               <CreditCard size={18} strokeWidth={2} /> Pay {fmtMoney(amountNumber)}

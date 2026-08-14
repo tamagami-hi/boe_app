@@ -14,18 +14,14 @@ import './DataTable.css';
  * `renderCell` is the preferred column renderer; `render` is kept for
  * backward compatibility.
  *
- * Example:
- *   <DataTable
- *     columns={[
- *       { key: 'name', title: 'Course', renderCell: (c) => <UserCell name={c.name} /> },
- *       { key: 'price', title: 'Price', renderCell: (c) => <CurrencyCell amount={c.pricePaise / 100} />, align: 'right' },
- *       { key: 'updated', title: 'Updated', renderCell: (c) => <DateCell date={c.updatedAt} /> },
- *     ]}
- *     rows={courses}
- *     loading={loading}
- *     empty="No courses yet"
- *     onRowClick={(c) => setEditing(c)}
- *   />
+ * ROW ACTIONS ARE EXPLICIT. Passing `onRowClick` adds a trailing action cell with
+ * a real button; it does not turn the `<tr>` into one. The row used to carry
+ * `role="button"` with `aria-label={`Open row ${index + 1}`}`, which announces a
+ * position rather than a thing, and put a whole table row in the tab order. Name
+ * the action with `rowAction`:
+ *
+ *   onRowClick={(faq) => edit(faq)}
+ *   rowAction={{ label: 'Edit', describe: (faq) => faq.question }}
  */
 
 function alignClass(align) {
@@ -45,6 +41,7 @@ export default function DataTable({
   skeletonRows = 4,
   keyExtractor = (row, index) => row?.id ?? index,
   onRowClick,
+  rowAction,
   getRowProps,
   selectedIds,
   onSelectRow,
@@ -57,20 +54,22 @@ export default function DataTable({
   const allSelected = rows.length > 0 && rows.every((row, index) => selectedSet.has(keyExtractor(row, index)));
   const someSelected = rows.some((row, index) => selectedSet.has(keyExtractor(row, index)));
 
+  const actionsEnabled = Boolean(onRowClick);
+  const actionLabel = rowAction?.label || 'Open';
+  const describeRow = rowAction?.describe;
+
   const selectColumn = { key: '__select', title: '', className: 'adm-col-checkbox', render: () => null };
-  const displayColumns = selectionEnabled ? [selectColumn, ...columns] : columns;
+  const actionColumn = { key: '__action', title: '', className: 'adm-col-actions', render: () => null };
+  const displayColumns = [
+    ...(selectionEnabled ? [selectColumn] : []),
+    ...columns,
+    ...(actionsEnabled ? [actionColumn] : []),
+  ];
 
   const labels = useMemo(() => displayColumns.map((c) => c.title ?? ''), [displayColumns]);
 
   const selectedCount = selectedSet.size;
   const showEmptyNode = !loading && rows.length === 0 && empty && typeof empty !== 'string';
-
-  function handleRowKeyDown(event, row) {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      onRowClick?.(row);
-    }
-  }
 
   return (
     <div className="ash-table-wrap">
@@ -100,6 +99,7 @@ export default function DataTable({
                 {col.title}
               </th>
             ))}
+            {actionsEnabled && <th className="adm-col-actions" />}
           </tr>
         </thead>
         <tbody>
@@ -123,22 +123,15 @@ export default function DataTable({
           {rows.map((row, rowIndex) => {
             const rowProps = getRowProps?.(row, rowIndex) || {};
             const id = keyExtractor(row, rowIndex);
-            const clickable = Boolean(onRowClick);
-            const rowAccessible = clickable && !selectionEnabled;
+            const described = describeRow?.(row);
             return (
               <tr
                 key={id}
                 {...rowProps}
                 className={[
-                  clickable ? 'is-clickable' : '',
                   selectedSet.has(id) ? 'is-selected' : '',
                   rowProps.className || '',
                 ].filter(Boolean).join(' ')}
-                tabIndex={clickable ? 0 : undefined}
-                role={rowAccessible ? 'button' : undefined}
-                aria-label={rowAccessible ? `Open row ${rowIndex + 1}` : undefined}
-                onClick={clickable ? () => onRowClick(row) : undefined}
-                onKeyDown={clickable ? (event) => handleRowKeyDown(event, row) : undefined}
               >
                 {selectionEnabled && (
                   <td className="adm-col-checkbox" data-label="">
@@ -146,8 +139,7 @@ export default function DataTable({
                       type="checkbox"
                       checked={selectedSet.has(id)}
                       onChange={(event) => onSelectRow?.(id, event.target.checked)}
-                      onClick={(event) => event.stopPropagation()}
-                      aria-label="Select row"
+                      aria-label={described ? `Select ${described}` : 'Select row'}
                     />
                   </td>
                 )}
@@ -164,6 +156,18 @@ export default function DataTable({
                     </td>
                   );
                 })}
+                {actionsEnabled && (
+                  <td className="adm-col-actions" data-label="">
+                    <button
+                      type="button"
+                      className="be-btn be-btn-ghost be-btn-sm"
+                      onClick={() => onRowClick(row)}
+                    >
+                      {actionLabel}
+                      {described && <span className="adm-sr-only"> {described}</span>}
+                    </button>
+                  </td>
+                )}
               </tr>
             );
           })}

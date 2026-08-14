@@ -1,0 +1,86 @@
+/*
+ * Root crash surface. Previously all of this was inline `style` objects, which
+ * meant it could not respect safe areas or reduced motion and duplicated token
+ * values by hand.
+ */
+
+.be-crash {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--be-bg, #F7F7F5);
+  box-sizing: border-box;
+  /* A crash screen still has to clear the status bar and the gesture area. */
+  padding: calc(var(--be-space-6) + var(--be-safe-top))
+           calc(var(--be-space-4) + var(--be-safe-right))
+           calc(var(--be-space-6) + var(--be-safe-bottom))
+           calc(var(--be-space-4) + var(--be-safe-left));
+}
+
+.be-crash__card {
+  width: 100%;
+  max-width: var(--be-container-reading, 40rem);
+  background: var(--be-surface, #FFFFFF);
+  color: var(--be-fg, #0E1116);
+  border: var(--be-border-1, 1px solid rgba(92, 100, 112, 0.16));
+  border-radius: var(--be-radius-lg, 12px);
+  padding: var(--be-space-8, 32px);
+  text-align: center;
+  box-shadow: var(--be-shadow-2, 0 8px 24px rgba(14, 17, 22, 0.08));
+  box-sizing: border-box;
+}
+
+/* Sans, not the display serif: this is a task message, not a brand moment. */
+.be-crash__title {
+  margin: 0 0 var(--be-space-2, 8px);
+  font-family: var(--be-font-ui);
+  font-size: var(--be-text-xl, 1.25rem);
+  font-weight: 600;
+}
+
+.be-crash__body {
+  margin: 0 0 var(--be-space-6, 24px);
+  font-size: var(--be-text-base, 1rem);
+  line-height: var(--be-lh-relaxed, 1.6);
+  color: var(--be-fg-muted, #5C6470);
+  /* Keeps a single word off the last line. */
+  text-wrap: pretty;
+}
+
+.be-crash__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--be-space-2, 8px);
+}
+
+.be-crash__btn {
+  /* 48px comfortable Android target. The old inline button computed to ~38px. */
+  min-height: 48px;
+  padding: var(--be-space-3, 12px) var(--be-space-6, 24px);
+  border-radius: var(--be-radius-md, 8px);
+  border: 1px solid var(--be-border-strong, rgba(92, 100, 112, 0.28));
+  background: transparent;
+  color: var(--be-fg, #0E1116);
+  font-family: var(--be-font-ui);
+  font-size: var(--be-text-sm, 0.875rem);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.be-crash__btn--primary {
+  background: var(--be-ink, #0E1116);
+  border-color: var(--be-ink, #0E1116);
+  color: var(--be-ivory, #F7F7F5);
+}
+
+.be-crash__btn:active { transform: scale(0.98); }
+
+.be-crash__btn:focus-visible {
+  outline: 2px solid var(--be-ink, #0E1116);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .be-crash__btn:active { transform: none; }
+}

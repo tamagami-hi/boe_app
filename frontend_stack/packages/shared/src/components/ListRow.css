@@ -1,0 +1,85 @@
+.be-row {
+  display: flex;
+  align-items: center;
+  gap: var(--be-space-3);
+  width: 100%;
+  min-height: var(--be-target-comfortable);
+  padding: var(--be-space-3) var(--be-space-4);
+  border: 0;
+  border-bottom: 1px solid var(--be-border-color);
+  background: transparent;
+  color: var(--be-fg);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+}
+
+.be-row:last-child { border-bottom: 0; }
+
+.be-row--interactive {
+  cursor: pointer;
+  /* No hover-only affordance: the row is already visibly a row. Hover and
+     active are reinforcement, and active is what a touch device actually gets. */
+  transition: background var(--be-dur-fast) var(--be-ease);
+}
+
+.be-row--interactive:hover { background: var(--be-ivory-2, transparent); }
+.be-row--interactive:active { background: var(--be-ivory-2, transparent); }
+.be-row--interactive:focus-visible {
+  outline: 2px solid var(--be-ink);
+  outline-offset: -2px;
+}
+
+.be-row.is-disabled,
+.be-row:disabled {
+  opacity: var(--be-opacity-disabled);
+  cursor: default;
+}
+
+.be-row.is-selected { background: var(--be-ivory-2, transparent); }
+
+.be-row__leading {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  color: var(--be-fg-muted);
+}
+
+.be-row__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.be-row__title {
+  font-family: var(--be-font-ui);
+  font-size: var(--be-text-base);
+  font-weight: 600;
+  line-height: var(--be-lh-snug);
+  overflow-wrap: anywhere;
+}
+
+.be-row__meta {
+  font-size: var(--be-text-xs);
+  color: var(--be-fg-muted);
+  line-height: var(--be-lh-normal);
+}
+
+.be-row__trailing {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--be-space-2);
+  color: var(--be-fg-muted);
+}
+
+.be-row__value {
+  font-family: var(--be-font-ui);
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 500;
+  color: var(--be-fg);
+}

@@ -15,6 +15,7 @@ import {
   validatePin,
   verifyPin,
 } from '../services/securitySettings.js';
+import PageSheet from '../layout/PageSheet.jsx';
 
 function resolveBiometricLabel(availability, pinSet) {
   if (!pinSet) return 'Set an app PIN first';
@@ -299,13 +300,26 @@ export default function Security() {
           </button>
         </section>
 
-        {error && <div className="apk-banner apk-banner-red">{error}</div>}
+        {/* role=alert so a failure that appears after an action is announced, not
+            only drawn. */}
+        {error && <div className="apk-banner apk-banner-red" role="alert">{error}</div>}
         <div className="be-disclosure">App PIN settings are stored locally on this device. Biometric unlock uses your device's secure authenticator when available; we never receive your fingerprint or face data.</div>
       </div>
 
-      {pinMode && (
-        <div className="apk-sheet-overlay" role="dialog" aria-modal="true" aria-label="App PIN setup" onClick={() => !busy && setPinMode(null)}>
-          <div className="apk-sheet security-pin-sheet" onClick={(e) => e.stopPropagation()}>
+      {/* Shared PageSheet wrapper. `dismissible={!busy}` preserves the existing
+          `!busy &&` guard as a real contract: while a PIN change is being applied,
+          a backdrop tap, Escape AND Android Back are all absorbed, so the user
+          cannot half-abandon a credential change. Previously only the backdrop
+          click was guarded and Back was not handled at all. */}
+      <PageSheet
+        open={Boolean(pinMode)}
+        onClose={() => setPinMode(null)}
+        dismissible={!busy}
+        label="App PIN setup"
+        className="security-pin-sheet"
+      >
+        {pinMode && (
+          <>
             <div className="apk-sheet-handle" />
             <h2 className="apk-h-sm">{pinMode === 'remove' ? 'Remove app PIN' : state?.pinSet ? 'Change app PIN' : 'Set app PIN'}</h2>
             <p className="security-sheet-copy">
@@ -337,9 +351,9 @@ export default function Security() {
             <button className="be-btn be-btn-ghost be-btn-block" type="button" onClick={() => setPinMode(null)} disabled={busy}>
               Cancel
             </button>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </PageSheet>
 
       {toast && <div className="apk-toast" role="status">{toast}</div>}
     </>

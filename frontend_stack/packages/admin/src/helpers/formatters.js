@@ -1,3 +1,7 @@
+// Admin display formatters. Money goes through the shared formatter so the console
+// and the client never disagree about how a rupee figure looks.
+import { fmtMoney } from '@beonedge/shared/format.js';
+
 export function fmtInt(value) {
   return Number.isFinite(Number(value)) ? String(Number(value)) : '0';
 }
@@ -36,6 +40,88 @@ export function fmtDateTime(value) {
 
 export function collectionKey(path) {
   return String(path || '').split('/').filter(Boolean).pop();
+}
+
+/**
+ * Paise (a bigint serialised as a string) to rupees.
+ *
+ * Returns null for a missing value rather than 0. On these screens a zero is read
+ * as "this payment was for nothing", so the absence has to stay visible.
+ */
+export function paiseToRupees(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const paise = Number(value);
+  return Number.isFinite(paise) ? paise / 100 : null;
+}
+
+/** Rupees to an INR string, via the shared formatter. Kept as one call so paise
+ * can never reach a cell unconverted, and a missing value can never read as ₹0. */
+export function fmtPaise(value, decimals = 2) {
+  return fmtMoney(paiseToRupees(value), { decimals });
+}
+
+/** Signed variant, for a return that can be negative. */
+export function fmtPaiseSigned(value, decimals = 2) {
+  return fmtMoney(paiseToRupees(value), { decimals, sign: true });
+}
+
+/** A backend state token in operator language: `provider_pending` -> `Provider pending`. */
+export function humanizeState(value) {
+  const text = String(value || '').replace(/[_-]+/gu, ' ').trim();
+  if (!text) return 'Unknown';
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/*
+ * `GET /v1/admin/payments` emits the canonical payment shape
+ * (`amountPaise`/`state`->`status`/`providerReference`/`succeededAt`). The screen was
+ * written against a legacy mock shape — `amount`, `resolvedAmount`, `mode`, `time`,
+ * `fundId`, `fundName`, `userName` — none of which the endpoint sends, so every
+ * amount rendered as ₹0 and every pool as "Unmapped fund". Map once here.
+ */
+export function normalizePaymentRow(row = {}) {
+  return {
+    ...row,
+    id: row.id || '',
+    orderId: row.orderId || '',
+    userId: row.userId || '',
+    userEmail: row.userEmail || '',
+    status: row.status || row.state || 'unknown',
+    amount: paiseToRupees(row.amountPaise),
+    provider: row.provider || '',
+    providerReference: row.providerReference || '',
+    attemptCount: Number.isFinite(Number(row.attemptCount)) ? Number(row.attemptCount) : 0,
+    succeededAt: row.succeededAt || null,
+    failedAt: row.failedAt || null,
+    createdAt: row.createdAt || '',
+    // The moment the payment reached its outcome, if it has one.
+    settledAt: row.succeededAt || row.failedAt || null,
+  };
+}
+
+/*
+ * Same story for `GET /v1/admin/mandates`. The register read `user`, `amount`,
+ * `day`, `last` and `next`; the endpoint sends `userEmail`, `maxAmountPaise`,
+ * `debitDay`, `validFrom` and `validTo`, so five of the eight columns were blank on
+ * every row. There is no last-debit or next-debit field to map — see the screen.
+ */
+export function normalizeMandateRow(row = {}) {
+  return {
+    ...row,
+    id: row.id || '',
+    userId: row.userId || '',
+    userEmail: row.userEmail || '',
+    provider: row.provider || '',
+    providerMandateId: row.providerMandateId || '',
+    status: row.status || row.state || 'unknown',
+    maxAmount: paiseToRupees(row.maxAmountPaise),
+    frequency: row.frequency || '',
+    debitDay: Number.isFinite(Number(row.debitDay)) ? Number(row.debitDay) : null,
+    sipCount: Number.isFinite(Number(row.sipCount)) ? Number(row.sipCount) : 0,
+    validFrom: row.validFrom || null,
+    validTo: row.validTo || null,
+    createdAt: row.createdAt || '',
+  };
 }
 
 export function normalizeApprovalRow(row = {}) {
@@ -108,6 +194,8 @@ export function normalizeAdminCollection(rows, path) {
   if (key === 'approvals') return rows.map(normalizeApprovalRow);
   if (key === 'funds') return rows.map(normalizeFundRow);
   if (key === 'audit-logs') return rows.map(normalizeAuditRow);
+  if (key === 'payments') return rows.map(normalizePaymentRow);
+  if (key === 'mandates') return rows.map(normalizeMandateRow);
   return rows;
 }
 

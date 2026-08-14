@@ -1,40 +1,20 @@
-import React, { useRef, useLayoutEffect } from 'react';
-import { useLocation } from 'react-router-dom';
-import gsap from 'gsap';
+import React from 'react';
 import './PageTransition.css';
-import { useReducedMotion } from './useReducedMotion.js';
 
-/**
- * PageTransition — wraps route content and animates on location change.
- *
- * Uses GSAP for a fade + slight vertical shift on every route change.
- * Respects prefers-reduced-motion (instant switch).
- *
- * Usage: wrap the <Routes> output or individual route elements.
- */
+// Deliberately does not animate.
+//
+// It used to run a GSAP fade + 12px rise on every location change, starting the
+// route at opacity 0. Three consequences: the screen was blank for the first
+// frames of every navigation, so a tap looked like it had done nothing and then
+// the page assembled itself like a web page; `will-change: transform` made the
+// wrapper the containing block for `position: fixed` descendants (the splash still
+// carries a viewport-unit workaround for that); and it was the only importer of
+// gsap in the whole app.
+//
+// Kept as a component rather than deleted so route content still has one
+// full-height wrapper and the two call sites in ClientLayout do not need to change
+// shape. If a route transition is ever wanted, it must not hide content: cross-fade
+// between two rendered trees, never fade one in from zero.
 export default function PageTransition({ children }) {
-  const location = useLocation();
-  const containerRef = useRef(null);
-  const reduced = useReducedMotion();
-
-  useLayoutEffect(() => {
-    if (reduced) return;
-    const el = containerRef.current;
-    if (!el) return;
-
-    gsap.fromTo(
-      el,
-      { opacity: 0, y: 12 },
-      { opacity: 1, y: 0, duration: 0.35, ease: 'power3.out', clearProps: 'transform' }
-    );
-  }, [location.pathname, reduced]);
-
-  return (
-    <div
-      ref={containerRef}
-      className={`be-page-transition ${reduced ? '' : 'be-page-transition--animated'}`}
-    >
-      {children}
-    </div>
-  );
+  return <div className="be-page-transition">{children}</div>;
 }

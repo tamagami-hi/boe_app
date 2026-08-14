@@ -2,6 +2,7 @@
   "name": "beonedge-design-system",
   "private": true,
   "version": "0.1.0",
+  "type": "module",
   "workspaces": [
     "app",
     "packages/*"
@@ -13,6 +14,13 @@
     "android:sync": "npm --workspace app run android:sync",
     "android:open": "npm --workspace app run android:open",
     "android:run": "npm --workspace app run android:run",
-    "preview": "npm --workspace app run preview"
+    "preview": "npm --workspace app run preview",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^14.3.1",
+    "jsdom": "^25.0.1",
+    "vitest": "^2.1.9"
   }
 }

@@ -1,0 +1,58 @@
+/* Docked under the status bar rather than over the bottom nav, which on the client
+   is where the primary tabs live and on the admin console is the mobile nav. */
+.be-netbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--be-z-toast);
+  display: flex;
+  align-items: center;
+  gap: var(--be-space-3);
+  padding: calc(var(--be-safe-top) + var(--be-space-3)) var(--be-space-4) var(--be-space-3);
+  background: var(--be-amber-soft);
+  border-bottom: 1px solid color-mix(in srgb, var(--be-amber) 32%, transparent);
+  color: var(--be-fg);
+}
+
+.be-netbar__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.be-netbar__title {
+  font-size: var(--be-text-sm);
+  font-weight: 600;
+}
+
+.be-netbar__body {
+  font-size: var(--be-text-xs);
+  line-height: 1.4;
+  color: var(--be-slate);
+}
+
+.be-netbar__retry {
+  flex: 0 0 auto;
+  min-height: var(--be-target-min);
+  padding: 0 var(--be-space-4);
+  border: var(--be-border-1);
+  border-radius: var(--be-radius-pill);
+  background: var(--be-bg-elevated);
+  font-size: var(--be-text-sm);
+  font-weight: 600;
+  color: var(--be-fg);
+  cursor: pointer;
+}
+
+.be-netbar__retry:focus-visible {
+  outline: 2px solid var(--be-accent);
+  outline-offset: 2px;
+}
+
+.be-netbar__retry:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

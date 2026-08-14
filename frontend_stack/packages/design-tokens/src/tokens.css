@@ -3,8 +3,5 @@
  * For browser previews, use frontend_stack/colors_and_type.css instead.
  */
 
-@import '@fontsource-variable/instrument-sans';
-@import '@fontsource-variable/fraunces';
-@import '@fontsource/jetbrains-mono/400.css';
-@import '@fontsource/jetbrains-mono/500.css';
+@import './fonts.css';
 @import './tokens-core.css';

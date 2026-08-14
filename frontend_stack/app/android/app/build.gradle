@@ -27,6 +27,28 @@ gradle.taskGraph.whenReady { graph ->
 android {
     namespace = "com.beonedge.app"
     compileSdk = rootProject.ext.compileSdkVersion
+
+    // Launcher icon and splash come from a per-variant resource directory instead of
+    // being copied into src/main/res before each build. The old copy step mutated
+    // tracked files, so a `--both` run left admin branding behind and the next bare
+    // Gradle build inherited it — the committed background colour was in fact the
+    // admin red. Nothing here touches applicationId or signing: those stay exactly
+    // as boe_update.sh injects them, because they decide update compatibility.
+    def boeVariant = project.hasProperty('boeVariant') ? project.boeVariant : 'client'
+    if (!['client', 'admin'].contains(boeVariant)) {
+        throw new GradleException("-PboeVariant must be 'client' or 'admin', got '${boeVariant}'")
+    }
+    def brandingDir = file("../../resources/launcher/${boeVariant}")
+    if (!brandingDir.isDirectory()) {
+        throw new GradleException("Missing branding resources for '${boeVariant}': ${brandingDir}")
+    }
+
+    sourceSets {
+        main {
+            res.srcDirs += brandingDir
+        }
+    }
+
     defaultConfig {
         // emu/boe_update.sh injects -PboeApplicationId so dev/prod and
         // client/admin APKs get distinct IDs and can coexist on one device;

@@ -34,7 +34,7 @@
   background: var(--be-green-soft); color: var(--be-green); font-weight: 700; font-size: 13px; letter-spacing: .3px;
 }
 .apk-fc-id { flex: 1 1 auto; min-width: 0; }
-.apk-fc-name { font-family: var(--be-font-serif); font-size: 15px; font-weight: 600; line-height: 1.25; margin: 0; }
+.apk-fc-name { font-family: var(--be-font-ui); font-size: 15px; font-weight: 600; line-height: 1.25; margin: 0; }
 .apk-fc-meta { font-size: 11.5px; color: var(--be-slate); margin-top: 3px; line-height: 1.3; }
 .apk-fc-tagline { font-size: 12.5px; color: var(--be-slate); margin: 0; }
 
@@ -91,7 +91,7 @@
    ========================================================================== */
 .apk-ha { display: flex; flex-direction: column; gap: 18px; }
 .apk-ha-block { display: flex; flex-direction: column; gap: 12px; align-items: center; text-align: center; }
-.apk-ha-title { font-family: var(--be-font-serif); font-size: 15px; font-weight: 600; margin: 0; }
+.apk-ha-title { font-family: var(--be-font-ui); font-size: 15px; font-weight: 600; margin: 0; }
 .apk-ha-legend {
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px;
   width: 100%; max-width: 360px;

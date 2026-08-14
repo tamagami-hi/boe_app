@@ -1,35 +1,18 @@
 // Common helpers for service adapters.
+import { reportTransportOutcome } from '@beonedge/shared/net/connectivity.js';
+import {
+  accessTokenOf,
+  clearSession,
+  csrfOf,
+  refreshTokenOf,
+  setSession,
+  userOf,
+} from '../auth/sessionVault.js';
+
 export const delay = (ms = 120) => new Promise((r) => setTimeout(r, ms));
 export const clone = (v) => (typeof structuredClone === 'function' ? structuredClone(v) : JSON.parse(JSON.stringify(v)));
 
-const SESSION_KEYS = {
-  client: {
-    accessToken: 'boe.client.accessToken',
-    refreshToken: 'boe.client.refreshToken',
-    user: 'boe.client.user',
-    csrfToken: 'boe.client.csrfToken',
-  },
-  admin: {
-    accessToken: 'boe.admin.accessToken',
-    refreshToken: 'boe.admin.refreshToken',
-    user: 'boe.admin.user',
-    csrfToken: 'boe.admin.csrfToken',
-  },
-};
 const DEFAULT_API_BASE_URL = 'http://127.0.0.1:47502';
-
-function sessionKeys(scope = 'client') {
-  return SESSION_KEYS[scope] || SESSION_KEYS.client;
-}
-
-function localStorageHandle() {
-  if (typeof window === 'undefined') return null;
-  try {
-    return window.localStorage;
-  } catch {
-    return null;
-  }
-}
 
 export function serviceMode() {
   return import.meta.env.VITE_BEO_API_MODE === 'http' ? 'http' : 'fixture';
@@ -43,53 +26,55 @@ export function apiBaseUrl() {
   return (import.meta.env.VITE_BEO_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/$/, '');
 }
 
+/*
+ * Session accessors.
+ *
+ * These names and signatures are unchanged, but the storage behind them is now
+ * `auth/sessionVault.js` rather than `window.localStorage` directly. On native the
+ * vault persists to Capacitor Secure Storage and keeps an in-memory copy for the
+ * synchronous read path; on web it still uses localStorage, where the real admin
+ * credential is an HttpOnly cookie the browser owns.
+ *
+ * Reads stay synchronous on purpose: `apiRequest` builds the Authorization header
+ * inline, and making that async would ripple through every service. The vault is
+ * hydrated once during bootstrap instead — see `hydrateSessionVault`.
+ */
+
 export function setSessionTokens({ user, accessToken, refreshToken, scope = 'client' }) {
-  const storage = localStorageHandle();
-  if (!storage) return;
-  const keys = sessionKeys(scope);
-  if (user) storage.setItem(keys.user, JSON.stringify(user));
-  if (accessToken) storage.setItem(keys.accessToken, accessToken);
-  if (refreshToken) storage.setItem(keys.refreshToken, refreshToken);
+  // Only forward the fields actually supplied. Callers rely on this: a token
+  // rotation passes tokens without a user and must not erase the cached principal.
+  const patch = {};
+  if (user) patch.user = user;
+  if (accessToken) patch.accessToken = accessToken;
+  if (refreshToken) patch.refreshToken = refreshToken;
+  return setSession(patch, scope);
 }
 
 export function clearSessionTokens(scope = 'client') {
-  const storage = localStorageHandle();
-  if (!storage) return;
-  const keys = sessionKeys(scope);
-  storage.removeItem(keys.accessToken);
-  storage.removeItem(keys.refreshToken);
-  storage.removeItem(keys.user);
-  storage.removeItem(keys.csrfToken);
+  return clearSession(scope);
 }
 
 // Web (admin) auth is cookie-based; the synchronizer CSRF token is held here and
 // sent on unsafe requests. Native (client) auth does not use this.
 export function setSessionCsrf(csrfToken, scope = 'client') {
-  const storage = localStorageHandle();
-  if (!storage || !csrfToken) return;
-  storage.setItem(sessionKeys(scope).csrfToken, csrfToken);
+  if (!csrfToken) return Promise.resolve();
+  return setSession({ csrfToken }, scope);
 }
 
 export function storedCsrf(scope = 'client') {
-  return localStorageHandle()?.getItem(sessionKeys(scope).csrfToken) || '';
+  return csrfOf(scope);
 }
 
 export function storedAccessToken(scope = 'client') {
-  return localStorageHandle()?.getItem(sessionKeys(scope).accessToken) || '';
+  return accessTokenOf(scope);
 }
 
 export function storedRefreshToken(scope = 'client') {
-  return localStorageHandle()?.getItem(sessionKeys(scope).refreshToken) || '';
+  return refreshTokenOf(scope);
 }
 
 export function storedUser(scope = 'client') {
-  const raw = localStorageHandle()?.getItem(sessionKeys(scope).user);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
+  return userOf(scope);
 }
 
 // Raised instead of performing a network request when the app runs in fixture
@@ -209,17 +194,39 @@ export function isTransportError(error) {
  * `fetch` resolves as soon as headers are in, so clearing the timer there would
  * leave a stalled response body unbounded — the same hang, one step later.
  */
+// Retry idempotent reads only. A GET that never arrived is normal on a mobile
+// network; a write is never replayed, because the app cannot know whether it landed
+// and a duplicated payment costs real money. Writes carry an Idempotency-Key so the
+// USER can retry safely instead.
+const READ_RETRY_DELAYS_MS = [300, 900];
+
 async function fetchWithDeadline(url, init, path, timeoutMs) {
   const controller = typeof AbortController === 'function' ? new AbortController() : null;
   const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
   try {
     const response = await fetch(url, controller ? { ...init, signal: controller.signal } : init);
-    return { response, text: await response.text() };
+    const text = await response.text();
+    reportTransportOutcome(true);
+    return { response, text };
   } catch (error) {
+    reportTransportOutcome(false);
     if (controller?.signal.aborted) throw new RequestTimeoutError(path, timeoutMs);
     throw new NetworkError(path, error);
   } finally {
     if (timer) clearTimeout(timer);
+  }
+}
+
+async function fetchRead(url, init, path, timeoutMs, retryable) {
+  let attempt = 0;
+  for (;;) {
+    try {
+      return await fetchWithDeadline(url, init, path, timeoutMs);
+    } catch (error) {
+      if (!retryable || !isTransportError(error) || attempt >= READ_RETRY_DELAYS_MS.length) throw error;
+      await delay(READ_RETRY_DELAYS_MS[attempt]);
+      attempt += 1;
+    }
   }
 }
 
@@ -257,7 +264,7 @@ export async function apiRequest(
   // Per-request headers (e.g. Idempotency-Key, If-Match) win over the defaults.
   if (extraHeaders) Object.assign(headers, extraHeaders);
 
-  const { response, text } = await fetchWithDeadline(
+  const { response, text } = await fetchRead(
     `${apiBaseUrl()}${path}`,
     {
       method,
@@ -267,6 +274,8 @@ export async function apiRequest(
     },
     path,
     timeoutMs,
+    // Only a GET is replayed, and only when it never reached the server.
+    method === 'GET',
   );
 
   const payload = text ? JSON.parse(text) : null;

@@ -156,7 +156,7 @@ export default function FundStockListPanel({ fundId }) {
         </label>
         <div className="adm-field">
           <span className="adm-sr-only">Add</span>
-          <button type="submit" className="adm-btn adm-btn-primary" disabled={busy}>
+          <button type="submit" className="be-btn be-btn-primary" disabled={busy}>
             <I icon={Plus} size={14} /> Add stock
           </button>
         </div>
@@ -201,7 +201,7 @@ export default function FundStockListPanel({ fundId }) {
                 <td className="adm-cell-actions">
                   <button
                     type="button"
-                    className={`adm-btn adm-btn-sm ${confirmExit === stock.id ? 'adm-btn-danger' : 'adm-btn-secondary'}`}
+                    className={`be-btn be-btn-sm ${confirmExit === stock.id ? 'be-btn-danger' : 'be-btn-secondary'}`}
                     onClick={() => onExit(stock)}
                     disabled={busy}
                   >

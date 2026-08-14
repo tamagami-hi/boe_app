@@ -302,6 +302,19 @@ boe_validate_app_policy() {
         [[ "$origin" == https://* && "$origin" != *' '* ]] \
             || die "every WEB_ORIGIN_ALLOWLIST entry must be an unspaced https:// origin"
     done
+    # `https://localhost` is the Android APK's own content origin: Capacitor
+    # serves the bundle over androidScheme=https, so every request from the
+    # client and admin APKs carries `Origin: https://localhost`. CORS reflects
+    # only explicitly listed origins, so omitting it makes the entire APK appear
+    # offline against a backend that is otherwise healthy.
+    #
+    # A warning rather than a hard failure: a backend that serves no APK has no
+    # reason to allow it. An equivalent check existed in the retired deploy
+    # script and was lost in this rewrite.
+    case ",$allowlist," in
+        *,https://localhost,*) : ;;
+        *) warn "WEB_ORIGIN_ALLOWLIST does not include https://localhost — APK requests will be blocked by CORS" ;;
+    esac
     provider="$(env_get PAYMENT_PROVIDER "$BOE_EFFECTIVE_ENV")"
     [[ -z "$provider" || "$provider" == "manual" ]] \
         || boe_assert_env_keys PAYMENT_WEBHOOK_SECRET PAYMENT_GATEWAY_KEY_ID PAYMENT_GATEWAY_KEY_SECRET

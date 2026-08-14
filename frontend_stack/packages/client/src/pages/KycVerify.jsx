@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MailCheck, ShieldCheck } from 'lucide-react';
 import AppBar from '../layout/AppBar.jsx';
+import { buildPath } from '../navigation/routes.js';
 import { startKyc, resendKyc, verifyKyc } from '../services/kycApi.js';
 import { getInvestingEligibility } from '../services/eligibilityApi.js';
 
@@ -92,7 +93,7 @@ export default function KycVerify() {
     return (
       <>
         <AppBar title="Verification complete" />
-        <div className="apk-screen apk-state-screen">
+        <div className="apk-screen">
           <div className="be-card apk-approval-card">
             <div className="apk-approval-icon"><ShieldCheck size={22} strokeWidth={1.6} /></div>
             <div>
@@ -104,7 +105,7 @@ export default function KycVerify() {
           <button
             type="button"
             className="be-btn be-btn-primary be-btn-block be-btn-lg"
-            onClick={() => navigate('/app/explore', { replace: true })}
+            onClick={() => navigate(buildPath('explore'), { replace: true })}
           >
             Browse strategies
           </button>
@@ -116,7 +117,7 @@ export default function KycVerify() {
   return (
     <>
       <AppBar title="Verify your email" />
-      <div className="apk-screen apk-state-screen">
+      <div className="apk-screen">
         <div className="be-card apk-approval-card">
           <div className="apk-approval-icon"><MailCheck size={22} strokeWidth={1.6} /></div>
           <div>
@@ -142,12 +143,17 @@ export default function KycVerify() {
               maxLength={CODE_LENGTH}
               value={code}
               onChange={(event) => setCode(event.target.value)}
-              aria-label={`${CODE_LENGTH}-character verification code`}
+              /* No aria-label: it OVERRODE the visible "Verification code" caption
+                 this label already provides. The length hint is describedby. */
+              aria-describedby="kyc-code-hint"
             />
+            <span className="be-disclosure" id="kyc-code-hint">
+              {CODE_LENGTH} characters, letters and numbers, case-sensitive.
+            </span>
           </label>
 
-          {notice && <div className="apk-alert" role="status">{notice}</div>}
-          {error && <div className="apk-alert apk-alert-error" role="alert">{error}</div>}
+          {notice && <div className="apk-banner" role="status">{notice}</div>}
+          {error && <div className="apk-banner apk-banner-red" role="alert">{error}</div>}
 
           <button type="submit" className="be-btn be-btn-primary be-btn-block be-btn-lg" disabled={busy}>
             {busy ? 'Verifying…' : 'Verify email'}

@@ -56,29 +56,17 @@ export default function FaqsPage() {
                 <th>Category</th>
                 <th>Order</th>
                 <th>Status</th>
+                <th className="adm-col-actions" />
               </tr>
             </thead>
             <tbody>
               {loading && Array.from({ length: 3 }, (_, index) => (
                 <tr key={index} aria-hidden="true">
-                  <td colSpan={4}><div className="ash-skel" /></td>
+                  <td colSpan={5}><div className="ash-skel" /></td>
                 </tr>
               ))}
               {!loading && visible.map((faq) => (
-                <tr
-                  key={faq.id}
-                  className="is-clickable"
-                  tabIndex={0}
-                  role="button"
-                  aria-label={`Edit FAQ ${faq.question}`}
-                  onClick={() => setEditing(faq)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      setEditing(faq);
-                    }
-                  }}
-                >
+                <tr key={faq.id}>
                   <td data-label="Question">
                     <div className="ash-cell-main">{faq.question}</div>
                     <div className="ash-cell-sub">{String(faq.answer || '').slice(0, 90)}</div>
@@ -86,6 +74,18 @@ export default function FaqsPage() {
                   <td data-label="Category">{faq.category}</td>
                   <td data-label="Order" className="ash-cell-num">{faq.order ?? 0}</td>
                   <td data-label="Status"><StatusBadge status={faq.status} /></td>
+                  {/* The row itself used to be the control: `<tr role="button"
+                      tabIndex={0} onKeyDown>`, which puts a whole table row in the
+                      tab order and reimplements Enter/Space by hand. */}
+                  <td data-label="" className="adm-col-actions">
+                    <button
+                      type="button"
+                      className="be-btn be-btn-ghost be-btn-sm"
+                      onClick={() => setEditing(faq)}
+                    >
+                      Edit<span className="adm-sr-only"> {faq.question}</span>
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

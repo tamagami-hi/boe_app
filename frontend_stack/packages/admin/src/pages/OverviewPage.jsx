@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import { UserCheck, CreditCard, HelpCircle, History, Layers, Users, ArrowRight } from 'lucide-react';
-import { useLegacyAdminData } from '../context/LegacyAdminDataContext.jsx';
+import { useApprovalsQueue } from '../data/ApprovalsQueueProvider.jsx';
+import { useAdminFunds, useAdminPayments } from '../data/adminResources.js';
+import AdminReadError from '../data/AdminReadError.jsx';
 import { Page, ContentGrid, Section } from '../layout/primitives/index.js';
 import I from '../components/I.jsx';
 
@@ -59,35 +61,34 @@ function StatCard({ label, value, hint }) {
 }
 
 export default function OverviewPage() {
-  const { adminData, loading } = useLegacyAdminData();
+  const queue = useApprovalsQueue();
+  const payments = useAdminPayments();
+  const funds = useAdminFunds();
 
-  /*
-   * Counted from the collections this console actually loaded.
-   *
-   * These tiles previously read `counts.users`, `counts.payments` and
-   * `counts.support` from an overview payload that no endpoint produces, with
-   * `?? 0` as the fallback — so the landing screen of the admin console stated
-   * that there were zero registered users and zero payments, as facts, forever.
-   * "Open support tickets" was worse: support tickets have no schema at all, so
-   * that number could never be anything but zero.
-   */
-  const approvals = adminData.approvals || [];
-  const payments = adminData.payments || [];
-  const paymentsInFlight = payments.filter((row) =>
+  // Counted from what this console actually loaded. These tiles used to read
+  // counts.users / counts.payments / counts.support from an overview payload no
+  // endpoint produces, with `?? 0` — so the landing screen stated, as fact and
+  // forever, that there were zero users and zero payments.
+  const paymentsInFlight = payments.rows.filter((row) =>
     ['created', 'gateway_initiated', 'pending'].includes(row.status),
   ).length;
+  const loading = queue.loading || payments.isLoading || funds.isLoading;
 
   return (
     <Page>
+      <AdminReadError resources={[
+        { label: 'payments', ...payments },
+        { label: 'fund pools', ...funds },
+      ]} />
       <Section aria-label="Key counts">
         <ContentGrid cols={4} minColWidth="200px">
           {loading ? (
             Array.from({ length: 3 }, (_, index) => <div key={index} className="ash-stat ash-skel-block" aria-hidden="true" />)
           ) : (
             <>
-              <StatCard label="Applications waiting" value={approvals.length} hint="Sign-ups not yet decided" />
+              <StatCard label="Applications waiting" value={queue.approvals.length} hint="Sign-ups not yet decided" />
               <StatCard label="Payments in flight" value={paymentsInFlight} hint="Not yet settled by the provider" />
-              <StatCard label="Fund pools" value={(adminData.funds || []).length} hint="Draft and published" />
+              <StatCard label="Fund pools" value={funds.rows.length} hint="Draft and published" />
             </>
           )}
         </ContentGrid>

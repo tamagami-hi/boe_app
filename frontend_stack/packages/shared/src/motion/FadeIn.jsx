@@ -2,23 +2,16 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useReducedMotion } from './useReducedMotion.js';
 
 /**
- * FadeIn — scroll-triggered reveal component.
+ * FadeIn — a scroll-triggered reveal, for RARE purposeful use.
  *
- * Uses IntersectionObserver to detect when the element enters the viewport,
- * then applies a CSS transition for transform + opacity entrance.
- * Respects prefers-reduced-motion (falls back to instant opacity).
+ * Not for staged page reveals. Dashboard, Explore and FundDetail wrapped 34 blocks
+ * in this, each starting at opacity 0 with delays up to 400ms, so a primary tab
+ * rendered empty and then assembled itself. Those call sites are gone.
  *
- * Props:
- *   - children
- *   - direction: 'up' | 'down' | 'left' | 'right' | 'none' (default 'up')
- *   - distance: number (px, default 16)
- *   - duration: number (ms, default 400)
- *   - delay: number (ms, default 0)
- *   - threshold: number (0–1, default 0.15)
- *   - once: boolean (default true)
- *   - as: string (wrapper element, default 'div')
- *   - className: string
- *   - style: object
+ * Two behavioural fixes kept here for whatever uses it next:
+ *   - `will-change` is set only while the reveal is pending, not permanently. 34
+ *     promoted layers sitting on a scroll container is a frame-rate problem.
+ *   - reduced motion renders visible immediately with no transition at all.
  */
 export default function FadeIn({
   children,
@@ -34,12 +27,20 @@ export default function FadeIn({
   ...rest
 }) {
   const ref = useRef(null);
-  const [isVisible, setIsVisible] = useState(false);
   const reduced = useReducedMotion();
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+    if (reduced) return undefined;
     const el = ref.current;
-    if (!el) return;
+    if (!el) return undefined;
+
+    // No IntersectionObserver (older WebView, jsdom): show the content rather than
+    // leaving it invisible forever.
+    if (typeof IntersectionObserver === 'undefined') {
+      setIsVisible(true);
+      return undefined;
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -50,43 +51,33 @@ export default function FadeIn({
           setIsVisible(false);
         }
       },
-      { threshold }
+      { threshold },
     );
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [threshold, once]);
+  }, [threshold, once, reduced]);
 
-  const getTransform = () => {
-    if (reduced || direction === 'none') return 'none';
-    switch (direction) {
-      case 'up':    return `translateY(${distance}px)`;
-      case 'down':  return `translateY(-${distance}px)`;
-      case 'left':  return `translateX(${distance}px)`;
-      case 'right': return `translateX(-${distance}px)`;
-      default:      return 'none';
-    }
-  };
+  if (reduced) {
+    return <Tag ref={ref} className={className} style={style} {...rest}>{children}</Tag>;
+  }
+
+  const offset = {
+    up: `translateY(${distance}px)`,
+    down: `translateY(-${distance}px)`,
+    left: `translateX(${distance}px)`,
+    right: `translateX(-${distance}px)`,
+  }[direction] || 'none';
 
   const computedStyle = {
-    opacity: isVisible ? 1 : (reduced ? 1 : 0),
-    transform: isVisible ? 'none' : getTransform(),
-    transition: reduced
-      ? `opacity ${duration}ms ease`
-      : `opacity ${duration}ms cubic-bezier(0.23, 1, 0.32, 1), transform ${duration}ms cubic-bezier(0.23, 1, 0.32, 1)`,
+    opacity: isVisible ? 1 : 0,
+    transform: isVisible ? 'none' : offset,
+    transition: `opacity ${duration}ms cubic-bezier(0.23, 1, 0.32, 1), transform ${duration}ms cubic-bezier(0.23, 1, 0.32, 1)`,
     transitionDelay: `${delay}ms`,
-    willChange: 'opacity, transform',
+    // Dropped once the reveal has run.
+    willChange: isVisible ? undefined : 'opacity, transform',
     ...style,
   };
 
-  return (
-    <Tag
-      ref={ref}
-      className={className}
-      style={computedStyle}
-      {...rest}
-    >
-      {children}
-    </Tag>
-  );
+  return <Tag ref={ref} className={className} style={computedStyle} {...rest}>{children}</Tag>;
 }

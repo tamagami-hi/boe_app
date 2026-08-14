@@ -2,7 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAdminSession } from '@beonedge/client/store/AdminSessionContext.jsx';
 import logo from '@beonedge/shared/assets/logo.svg';
-import '@beonedge/client/styles/mobile/index.css';
+// Only the two client stylesheets these screens use. The barrel pulled all
+// fifteen, so the admin build shipped 122 kB of client screen CSS for two
+// auth screens.
+import '@beonedge/client/styles/mobile/base.css';
+import '@beonedge/client/styles/mobile/auth.css';
 import '../styles/desktop/admin.css';
 
 function safeAdminPath(value) {

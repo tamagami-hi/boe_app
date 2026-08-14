@@ -1,14 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
-import { useBreakpoint } from '@beonedge/shared';
 import logo from '@beonedge/shared/assets/logo.svg';
-import { NAV_DOMAINS } from '../navigation/nav.js';
+import { visibleNavDomains } from '../navigation/nav.js';
 import { initials, displayRole } from '../helpers/formatters.js';
 import I from '../components/I.jsx';
 
 const OPEN_GROUPS_KEY = 'boe.admin.nav.openGroups';
-const MOBILE_BREAKPOINT = 768;
 
 function readOpenGroups() {
   try {
@@ -29,17 +27,11 @@ function persistOpenGroups(next) {
   }
 }
 
-function AdminUserChip({ user, collapsed = false, mobile = false, className = '' }) {
+// Desktop only. AdminShell does not mount the sidebar on a phone at all, so the
+// former `mobile` variant of this chip (a pill that shared the horizontal nav
+// scroller with the destinations) is gone.
+function AdminUserChip({ user, collapsed = false, className = '' }) {
   const displayName = user?.name || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'Admin';
-
-  if (mobile) {
-    return (
-      <div className={`ash-side-user-mobile ${className}`} aria-label="Signed in as">
-        <div className="ash-avatar">{user?.avatarInitials || initials(displayName)}</div>
-        <span className="ash-side-user-mobile-name">{displayName}</span>
-      </div>
-    );
-  }
 
   return (
     <div className={`ash-side-user ${collapsed ? 'is-collapsed' : ''} ${className}`} aria-label="Signed in as">
@@ -54,7 +46,7 @@ function AdminUserChip({ user, collapsed = false, mobile = false, className = ''
   );
 }
 
-function SidebarGroup({ domain, counts, isOpen, onToggle, isMobile, isCollapsed }) {
+function SidebarGroup({ domain, counts, isOpen, onToggle, isCollapsed }) {
   const isSingleItem = domain.items.length === 1;
 
   if (isSingleItem) {
@@ -68,7 +60,7 @@ function SidebarGroup({ domain, counts, isOpen, onToggle, isMobile, isCollapsed 
 
   return (
     <div className="ash-nav-group">
-      {!isMobile && !isCollapsed && (
+      {!isCollapsed && (
         <button
           type="button"
           className="ash-nav-group-toggle"
@@ -79,7 +71,7 @@ function SidebarGroup({ domain, counts, isOpen, onToggle, isMobile, isCollapsed 
           <I icon={ChevronDown} size={13} className={`ash-nav-chevron ${isOpen ? 'is-open' : 'is-collapsed'}`} />
         </button>
       )}
-      {(isOpen || isMobile || isCollapsed) && domain.items.map((item) => (
+      {(isOpen || isCollapsed) && domain.items.map((item) => (
         <SidebarItem key={item.path} item={item} counts={counts} />
       ))}
     </div>
@@ -102,8 +94,16 @@ function SidebarItem({ item, counts }) {
 
 export default function Sidebar({ user, counts = {}, collapsed = false }) {
   const [openGroups, setOpenGroups] = useState(readOpenGroups);
-  const isMobile = useBreakpoint(MOBILE_BREAKPOINT);
-  const isCollapsed = collapsed && !isMobile;
+  const isCollapsed = collapsed;
+
+  // Only destinations this principal can actually use, and only domains that
+  // still have items. The sidebar previously rendered all 13 destinations to
+  // every admin, so a limited role was invited into screens whose every request
+  // returns 403 — the operator learns their permissions by hitting errors.
+  //
+  // Presentation only: the backend enforces the same codes and remains the
+  // authority. Direct URLs are handled by the route gate, which renders Forbidden.
+  const domains = useMemo(() => visibleNavDomains(user), [user]);
 
   function toggleGroup(domainId) {
     setOpenGroups((prev) => {
@@ -119,16 +119,14 @@ export default function Sidebar({ user, counts = {}, collapsed = false }) {
         <img src={logo} height="22" alt="BeOnEdge" />
         <span className="ash-brand-tag">ADMIN</span>
       </div>
-      <AdminUserChip user={user} mobile />
       <nav className="ash-nav" aria-label="Admin sections">
-        {NAV_DOMAINS.map((domain) => (
+        {domains.map((domain) => (
           <SidebarGroup
             key={domain.id}
             domain={domain}
             counts={counts}
             isOpen={openGroups[domain.id] !== false}
             onToggle={() => toggleGroup(domain.id)}
-            isMobile={isMobile}
             isCollapsed={isCollapsed}
           />
         ))}

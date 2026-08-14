@@ -41,7 +41,11 @@ cp .env.example .env            # first time only
 #   Edit .env:
 #     - PUBLIC SURFACE block: swap localhost URLs -> https://<your-domain>
 #       PUBLIC_API_BASE_URL=https://<your-domain>
-#       CORS_ORIGIN=https://<your-domain>,https://beonedge.in,capacitor://localhost,...
+#       CORS_ORIGIN=https://<your-domain>,https://beonedge.in,https://localhost
+#       WEB_ORIGIN_ALLOWLIST=https://<your-domain>,https://localhost
+#       (WEB_ORIGIN_ALLOWLIST is authoritative; CORS_ORIGIN is the legacy fallback.
+#        `https://localhost` is the APK's own content origin — see the client note
+#        below. Never use `*`.)
 #     - Fill every CHANGE_ME secret (production hard-fails on placeholders):
 #         openssl rand -hex 48   # ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET
 #         openssl rand -hex 32   # NEWUSER_SHARED_SECRET (give it to the beonedge.in site)
@@ -78,10 +82,15 @@ It proxies `/api/` → the backend (the `/api` prefix is stripped) and `/` → t
 ## How admin / client connect (not containerized)
 
 - **Admin** (local `npm run dev` or app build): point its API base at `https://<your-domain>`
-  (calls hit `/v1/...`). Its dev origin (`http://localhost:5173`) is already in the
-  `CORS_ORIGIN` default — keep it there.
-- **Client APK**: build with the API base = `https://<your-domain>`. `capacitor://localhost`
-  / `http://localhost` are already in `CORS_ORIGIN`.
+  (calls hit `/v1/...`). Its dev origin (`http://localhost:5173`) is only in the local
+  `backend_controller/.env` allowlist — do not add a cleartext origin to a deployed stack.
+- **Client / Admin APK**: build with the API base = `https://<your-domain>`. The APK's own
+  content origin is **`https://localhost`** (Capacitor serves the bundle over
+  `androidScheme=https`), so every request it makes carries `Origin: https://localhost`.
+  That exact string must be in `WEB_ORIGIN_ALLOWLIST` on any backend serving an APK, or
+  CORS drops every reply and the app looks entirely offline. It is not present by default
+  in a fresh `.env` — check it. `capacitor://localhost` and `http://localhost` are **not**
+  the current origins and should not be added.
 
 ## Security checklist (enforced)
 

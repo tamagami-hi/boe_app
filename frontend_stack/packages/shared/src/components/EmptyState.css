@@ -21,7 +21,7 @@
 }
 
 .be-empty-state__title {
-  font-family: var(--be-font-sans);
+  font-family: var(--be-font-ui);
   font-size: var(--be-text-lg);
   font-weight: 600;
   line-height: var(--be-lh-snug);

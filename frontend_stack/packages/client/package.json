@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.js",
     "./ClientApp.jsx": "./src/ClientApp.jsx",
+    "./navigation/*": "./src/navigation/*",
     "./pages/*": "./src/pages/*",
     "./layout/*": "./src/layout/*",
     "./services/*": "./src/services/*",

@@ -17,7 +17,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font: 600 var(--be-text-xs) var(--be-font-serif);
+  font: 600 var(--be-text-xs) var(--be-font-ui);
 }
 
 .be-user-cell__avatar--sm {

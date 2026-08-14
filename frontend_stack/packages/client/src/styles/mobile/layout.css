@@ -50,7 +50,7 @@
 }
 
 .be-page-header__title {
-  font-family: var(--be-font-serif);
+  font-family: var(--be-font-ui);
   font-size: var(--be-text-2xl);
   font-weight: 600;
   line-height: var(--be-lh-snug);
@@ -95,6 +95,23 @@
   border: var(--be-border-1);
   border-radius: var(--be-radius-md);
   box-shadow: var(--be-shadow-card-bevel), var(--be-shadow-1);
+}
+
+/* A whole card that navigates. These were `<div onClick>`: not focusable, not
+   keyboard-operable, and announced as plain text. As an anchor the card keeps its
+   appearance and gains a real href, focus ring and Enter activation. Must contain
+   no other interactive element — see .apk-fc for the stretched-link pattern used
+   where a card also has its own button. */
+a.be-card {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+a.be-card:focus-visible {
+  outline: 2px solid var(--be-ink);
+  outline-offset: 2px;
 }
 
 .be-card--padded {
@@ -175,7 +192,7 @@
 }
 
 .be-metric__value {
-  font-family: var(--be-font-sans);
+  font-family: var(--be-font-ui);
   font-size: var(--be-text-lg);
   font-weight: 600;
   line-height: var(--be-lh-snug);
@@ -263,8 +280,8 @@
   position: absolute;
   top: var(--be-space-3);
   right: var(--be-space-3);
-  width: 36px;
-  height: 36px;
+  width: var(--be-target-comfortable);
+  height: var(--be-target-comfortable);
   display: inline-flex;
   align-items: center;
   justify-content: center;

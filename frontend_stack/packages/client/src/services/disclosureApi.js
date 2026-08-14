@@ -1,4 +1,5 @@
 import { apiRequest, clone, delay, useHttpApi } from './_util.js';
+import { DESTINATION_KIND, resolveDestination } from '../navigation/routes.js';
 
 const DEFAULT_DISCLOSURES = {
   riskometer: {
@@ -11,8 +12,8 @@ const DEFAULT_DISCLOSURES = {
   expenseRatio: '1.25%',
   exitLoad: '1% if redeemed within 12 months',
   schemeCategory: 'Equity - Large Cap',
-  investorCharterUrl: '/investor-charter',
-  grievanceUrl: '/grievance',
+  investorCharterUrl: '/app/investor-charter',
+  grievanceUrl: '/app/grievance',
 };
 
 const DEFAULT_CHARTER = {
@@ -109,16 +110,77 @@ const DEFAULT_GRIEVANCE = {
   },
 };
 
+/**
+ * Normalize the two destination fields a disclosure document carries.
+ *
+ * `GET /v1/public/disclosures` is an unauthenticated endpoint whose content is
+ * editable operationally, and both fields were previously rendered straight into
+ * `<Link to={...}>`. That accepted any string: an unprefixed path (which is
+ * exactly how `/investor-charter` shipped and made the app look like it was
+ * relaunching), a cross-scope `/admin/...` path, or a `javascript:` URL.
+ *
+ * Each field becomes a typed descriptor: `{kind, path}` for an internal route,
+ * `{kind, url}` for external HTTPS, or `{kind: 'unsafe', reason}`. The raw
+ * `*Url` strings are deliberately dropped from the returned object so no
+ * consumer can bypass this. A regulator-hosted charter is a legitimate external
+ * target, so external is allowed — but it must be classified, not guessed.
+ */
+function normalizeDisclosures(raw) {
+  const source = raw && typeof raw === 'object' ? raw : {};
+  const { investorCharterUrl, grievanceUrl, ...rest } = source;
+
+  return {
+    ...rest,
+    investorCharter: resolveDestination(
+      investorCharterUrl ?? DEFAULT_DISCLOSURES.investorCharterUrl,
+    ),
+    grievance: resolveDestination(grievanceUrl ?? DEFAULT_DISCLOSURES.grievanceUrl),
+  };
+}
+
+/**
+ * Normalize the escalation steps of the grievance document.
+ * A step may offer an internal route, an email, or an external portal; each is
+ * classified so the page renders the right affordance instead of trusting the
+ * field name it happened to arrive under.
+ */
+function normalizeGrievanceContent(raw) {
+  const source = raw && typeof raw === 'object' ? raw : {};
+  const steps = Array.isArray(source.steps) ? source.steps : [];
+
+  return {
+    ...source,
+    steps: steps.map((step) => {
+      const { actionRoute, contactEmail, externalUrl, ...restStep } = step || {};
+      const destination = actionRoute
+        ? resolveDestination(actionRoute)
+        : contactEmail
+          ? resolveDestination(`mailto:${contactEmail}`)
+          : externalUrl
+            ? resolveDestination(externalUrl)
+            : null;
+      return {
+        ...restStep,
+        // `contactEmail` is kept: the page displays it as text as well as using
+        // it as an action, and an address that fails validation should still be
+        // readable so a user can contact support by other means.
+        contactEmail: contactEmail ?? null,
+        destination,
+      };
+    }),
+  };
+}
+
 export async function getDisclosures() {
   if (useHttpApi()) {
     try {
-      return await apiRequest('/v1/public/disclosures', { auth: false });
+      return normalizeDisclosures(await apiRequest('/v1/public/disclosures', { auth: false }));
     } catch {
-      return clone(DEFAULT_DISCLOSURES);
+      return normalizeDisclosures(clone(DEFAULT_DISCLOSURES));
     }
   }
   await delay(80);
-  return clone(DEFAULT_DISCLOSURES);
+  return normalizeDisclosures(clone(DEFAULT_DISCLOSURES));
 }
 
 export async function getInvestorCharter() {
@@ -136,11 +198,13 @@ export async function getInvestorCharter() {
 export async function getGrievanceContent() {
   if (useHttpApi()) {
     try {
-      return await apiRequest('/v1/public/grievance', { auth: false });
+      return normalizeGrievanceContent(await apiRequest('/v1/public/grievance', { auth: false }));
     } catch {
-      return clone(DEFAULT_GRIEVANCE);
+      return normalizeGrievanceContent(clone(DEFAULT_GRIEVANCE));
     }
   }
   await delay(80);
-  return clone(DEFAULT_GRIEVANCE);
+  return normalizeGrievanceContent(clone(DEFAULT_GRIEVANCE));
 }
+
+export { DESTINATION_KIND };

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { CreditCard } from 'lucide-react';
 import AppBar from '../layout/AppBar.jsx';
@@ -10,6 +10,7 @@ import { fmtMoney } from '../utils/format.js';
 import { openRazorpayCheckout } from '../utils/razorpay.js';
 import { useSession } from '../store/SessionContext.jsx';
 import MoneyValue from '@beonedge/shared/components/MoneyValue.jsx';
+import { HOME_PATH, buildPath } from '../navigation/routes.js';
 
 export default function StartSipSheet() {
   const { fundId } = useParams();
@@ -29,6 +30,10 @@ export default function StartSipSheet() {
   const [reviewConsent, setReviewConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState('');
+  // `disabled={!canConfirm}` is not enough: setSubmitting is async, so a fast
+  // double tap can enter onConfirm twice before the re-render disables the button —
+  // and that would create two SIP plans.
+  const submitLockRef = useRef(false);
 
   useEffect(() => { fundsApi.getFund(fundId).then(setFund).catch(() => setFund(null)); }, [fundId, appConfig.publishedAt]);
 
@@ -98,6 +103,8 @@ export default function StartSipSheet() {
   }
 
   async function onConfirm() {
+    if (submitLockRef.current) return;
+    submitLockRef.current = true;
     setErr('');
     setSubmitting(true);
     try {
@@ -114,10 +121,12 @@ export default function StartSipSheet() {
       if (!order.paymentId) {
         setErr("Couldn't create SIP. Try again.");
         setSubmitting(false);
+        submitLockRef.current = false;
         return;
       }
+      const paymentPath = buildPath('payment_status', { paymentId: order.paymentId });
       if (order.providerName === 'razorpay' && order.providerOrderId && order.providerKeyId) {
-        openRazorpayCheckout({
+        await openRazorpayCheckout({
           keyId: order.providerKeyId,
           orderId: order.providerOrderId,
           amount: order.amount,
@@ -127,20 +136,32 @@ export default function StartSipSheet() {
           userEmail: user?.email || '',
           userContact: user?.phone || '',
           onSuccess: async (response) => {
-            await ordersApi.confirmRazorpayPayment(order.paymentId, response);
-            navigate('/app/dashboard');
+            try {
+              await ordersApi.confirmRazorpayPayment(order.paymentId, response);
+              // `replace`: the flow is finished. Without it, one Back press
+              // re-entered this review screen with its Confirm button still live.
+              navigate(HOME_PATH, { replace: true });
+            } catch {
+              // Money may already have moved, so the app must not claim success
+              // and must not strand the user on a dead review screen. The payment
+              // route polls the authoritative server state.
+              navigate(paymentPath, { replace: true });
+            }
           },
+          // Also fires when the user dismisses the Razorpay sheet. The order
+          // exists either way, so its status page is the honest destination.
           onFailure: () => {
-            navigate(`/app/payment/${order.paymentId}`);
+            navigate(paymentPath, { replace: true });
           },
         });
       } else {
-        navigate(`/app/payment/${order.paymentId}`);
+        navigate(paymentPath, { replace: true });
       }
     } catch (e) {
       const message = e?.message || e?.code || "Couldn't create SIP. Try again.";
       setErr(message);
       setSubmitting(false);
+      submitLockRef.current = false;
     }
   }
 
@@ -171,14 +192,14 @@ export default function StartSipSheet() {
           {err && <div className="apk-banner apk-banner-red apk-mt-2">{err}</div>}
 
         <div className="apk-review-actions">
-            <button className="be-btn be-btn-primary be-btn-block be-btn-lg" disabled={!canConfirm} onClick={onConfirm}>
+            <button type="button" className="be-btn be-btn-primary be-btn-block be-btn-lg" disabled={!canConfirm} onClick={onConfirm}>
               {submitting ? 'Setting up SIP…' : (
                 <>
                   <CreditCard size={18} strokeWidth={2} /> Continue to Razorpay
                 </>
               )}
             </button>
-            <button className="be-btn be-btn-secondary be-btn-block be-btn-lg" onClick={onBack} disabled={submitting}>
+            <button type="button" className="be-btn be-btn-secondary be-btn-block be-btn-lg" onClick={onBack} disabled={submitting}>
               Back
             </button>
           </div>
@@ -221,9 +242,9 @@ export default function StartSipSheet() {
               aria-describedby="sip-amount-help"
             />
           </div>
-          <div className="apk-chip-row sip-amount-presets">
+          <div className="apk-chip-row sip-amount-presets" role="group" aria-label="Amount presets">
             {amountPresets.map((v) => (
-              <button key={v} className={'apk-chip' + (amount === v ? ' is-active' : '')} onClick={() => setAmount(v)}>{fmtMoney(v)}</button>
+              <button type="button" key={v} className={'apk-chip' + (amount === v ? ' is-active' : '')} onClick={() => setAmount(v)}>{fmtMoney(v)}</button>
             ))}
           </div>
           {amount !== '' && !validAmt && <div className="be-field-error">Minimum is {fmtMoney(minSip)}.</div>}
@@ -232,39 +253,49 @@ export default function StartSipSheet() {
 
         <div className="sip-setup-grid">
           <div className="be-field sip-setup-field">
-            <label>Duration</label>
-            <div className="apk-chip-row">
+            {/* A chip row is a set of buttons, not a form control, so the caption
+                labels a group rather than pretending to be a <label>. */}
+            <span className="be-field__label" id="sip-duration-label">Duration</span>
+            <div className="apk-chip-row" role="group" aria-labelledby="sip-duration-label">
               {durationOptions.map((m) => (
-                <button key={m} className={'apk-chip' + (months === m ? ' is-active' : '')} onClick={() => setMonths(m)}>{m} mo</button>
+                <button type="button" key={m} className={'apk-chip' + (months === m ? ' is-active' : '')} onClick={() => setMonths(m)}>{m} mo</button>
               ))}
             </div>
             {months !== '' && !validDur && <div className="be-field-error">Minimum SIP duration is {minDurationMonths} months.</div>}
           </div>
 
           <div className="be-field sip-setup-field">
-            <label>Monthly debit date</label>
-            <div className="apk-chip-row">
+            <span className="be-field__label" id="sip-debit-day-label">Monthly debit date</span>
+            <div className="apk-chip-row" role="group" aria-labelledby="sip-debit-day-label">
               {debitDayOptions.map((d) => (
-                <button key={d} className={'apk-chip' + (day === d ? ' is-active' : '')} onClick={() => setDay(d)}>{d}</button>
+                <button type="button" key={d} className={'apk-chip' + (day === d ? ' is-active' : '')} onClick={() => setDay(d)}>{d}</button>
               ))}
             </div>
           </div>
         </div>
 
+        {/* The step-up switch was a `<div role="button" aria-pressed>` with an
+            onClick and no tabIndex or key handler, so the role was a promise the
+            element could not keep. A real button with aria-pressed is the switch. */}
         {settings.stepUpEnabled && (
-          <div className="apk-stepup-toggle" onClick={() => setStepUpOn((v) => !v)} role="button" aria-pressed={stepUpOn}>
-            <div>
-              <div className="apk-toggle-label">{disclosures.stepUpTitle}</div>
-              <div className="apk-toggle-hint">{disclosures.stepUpBody}</div>
-            </div>
-            <div className={'apk-toggle' + (stepUpOn ? ' is-on' : '')} />
-          </div>
+          <button
+            type="button"
+            className="apk-stepup-toggle"
+            onClick={() => setStepUpOn((v) => !v)}
+            aria-pressed={stepUpOn}
+          >
+            <span className="apk-stepup-toggle-text">
+              <span className="apk-toggle-label">{disclosures.stepUpTitle}</span>
+              <span className="apk-toggle-hint">{disclosures.stepUpBody}</span>
+            </span>
+            <span className={'apk-toggle' + (stepUpOn ? ' is-on' : '')} aria-hidden="true" />
+          </button>
         )}
         {settings.stepUpEnabled && stepUpOn && (
           <div>
-            <div className="apk-chip-row">
+            <div className="apk-chip-row" role="group" aria-label="Annual step-up percentage">
               {normalizeOptions(settings.stepUpPercents, [5, 10, 15]).map((p) => (
-                <button key={p} className={'apk-chip' + (stepUpPct === p ? ' is-active' : '')} onClick={() => setStepUpPct(p)}>{p}%</button>
+                <button type="button" key={p} className={'apk-chip' + (stepUpPct === p ? ' is-active' : '')} onClick={() => setStepUpPct(p)}>{p}%</button>
               ))}
             </div>
             <div className="be-disclosure apk-mt-2">Your SIP amount will increase by {stepUpPct}% every 12 months. You can change or cancel this from Profile → Mandates.</div>
@@ -293,7 +324,7 @@ export default function StartSipSheet() {
 
         {err && <div className="apk-banner apk-banner-red">{err}</div>}
 
-        <button className="be-btn be-btn-primary be-btn-block be-btn-lg" disabled={!canReview} onClick={onContinue}>
+        <button type="button" className="be-btn be-btn-primary be-btn-block be-btn-lg" disabled={!canReview} onClick={onContinue}>
           Review SIP details
         </button>
       </div>

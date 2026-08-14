@@ -51,12 +51,20 @@
   align-items: center;
   gap: var(--be-space-1);
   padding: var(--be-space-2) var(--be-space-3);
+  /* The tab strip on the user record. At its natural height it was around 34px,
+     under the minimum target on a phone. */
+  min-height: var(--be-target-min);
   border: var(--be-border-1);
   border-radius: var(--be-radius-pill);
   background: var(--be-bone);
   color: var(--be-slate);
   font-size: var(--be-text-sm);
   cursor: pointer;
+}
+
+.adm-chip:focus-visible {
+  outline: 2px solid var(--be-accent);
+  outline-offset: 2px;
 }
 
 .adm-chip.is-active {
@@ -315,4 +323,252 @@
   font-size: var(--be-text-sm);
   line-height: 1.45;
   border-bottom: var(--be-border-1);
+}
+
+
+/* Inline decision panel (approvals). Opens under the row it belongs to rather than
+   in an overlay: deciding is this screen's job, not an interruption of it. */
+.adm-decision-row > td {
+  padding: 0 var(--be-card-pad) var(--be-space-4);
+  background: var(--be-bone);
+}
+
+.adm-decision {
+  display: grid;
+  gap: var(--be-space-4);
+  padding: var(--be-space-4);
+  border: var(--be-border-1);
+  border-radius: var(--be-radius-md);
+  background: var(--be-bg-elevated);
+}
+
+.adm-decision-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--be-space-3) var(--be-space-5);
+  margin: 0;
+}
+
+.adm-decision-facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--be-space-1);
+  min-width: 0;
+}
+
+.adm-decision-facts dt {
+  font: 500 var(--be-text-xs) var(--be-font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--be-slate);
+}
+
+.adm-decision-facts dd {
+  margin: 0;
+  font-size: var(--be-text-sm);
+  font-weight: 600;
+  color: var(--be-fg);
+  overflow-wrap: anywhere;
+}
+
+.adm-decision-note {
+  margin: 0;
+  font-size: var(--be-text-sm);
+  line-height: 1.45;
+  color: var(--be-slate);
+  max-width: 68ch;
+}
+
+.adm-decision-actions {
+  display: flex;
+  gap: var(--be-space-3);
+}
+
+.adm-decision-btn {
+  flex: 0 1 14rem;
+  justify-content: center;
+  min-height: var(--be-target-comfortable);
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  /* In card view each row is its own card. The decision panel belongs to the card
+     above it, so it closes the gap and drops its top corners instead of floating
+     free as a second, unattached card. */
+  .adm-table-cards tbody tr.adm-decision-row {
+    margin-top: calc(-1 * var(--be-space-3));
+    border-top: 0;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    box-shadow: none;
+    padding-top: 0;
+  }
+
+  .adm-table-cards tbody tr.adm-decision-row > td {
+    padding: 0;
+    background: transparent;
+    display: block;
+  }
+
+  .adm-table-cards tbody tr.adm-decision-row > td::before { display: none; }
+
+  .adm-decision-actions { flex-direction: column-reverse; }
+
+  .adm-decision-btn { flex: 1 1 auto; }
+}
+
+
+
+/* -------------------------------------------------------------------------- */
+/* Classes the ops screens referenced but that were never written             */
+/* -------------------------------------------------------------------------- */
+
+/* Two-line table cell: the value, then its qualifier. Used by holdings, the
+   transaction list and the user record. `.adm-cell-sub` in particular was doing
+   nothing, so the qualifier rendered at full weight and read as a second value. */
+.adm-cell-main {
+  font-weight: 600;
+  font-size: var(--be-text-sm);
+  color: var(--be-fg);
+}
+
+.adm-cell-sub {
+  margin-top: 2px;
+  font-size: var(--be-text-xs);
+  color: var(--be-slate);
+}
+
+/* Detail row revealed under the row it belongs to. Shares the decision panel's
+   geometry so an expanded row looks the same everywhere in the console. */
+.adm-detail-row > td {
+  padding: 0 var(--be-card-pad) var(--be-space-4);
+  background: var(--be-bone);
+}
+
+.adm-detail-panel {
+  padding: var(--be-space-4);
+  border: var(--be-border-1);
+  border-radius: var(--be-radius-md);
+  background: var(--be-bg-elevated);
+}
+
+.adm-detail-title {
+  margin: 0 0 var(--be-space-3);
+  font-size: var(--be-text-sm);
+  font-weight: 600;
+}
+
+.adm-detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--be-space-2);
+}
+
+/* Audit stream: entries grouped under the day they happened. */
+.adm-daygroup + .adm-daygroup { margin-top: var(--be-space-5); }
+
+.adm-daygroup__date {
+  position: sticky;
+  top: 0;
+  z-index: var(--be-z-table-header);
+  padding: var(--be-space-2) 0;
+  background: var(--be-bg-elevated);
+  font: 500 var(--be-text-xs) var(--be-font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--be-slate);
+}
+
+.adm-stream {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--be-space-2);
+}
+
+.adm-event__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--be-space-2) var(--be-space-3);
+}
+
+.adm-event__time {
+  font: 500 var(--be-text-xs) var(--be-font-mono);
+  color: var(--be-slate);
+}
+
+.adm-event__transition {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--be-space-1);
+  font-size: var(--be-text-xs);
+  color: var(--be-slate);
+}
+
+.adm-event__toggle {
+  margin-left: auto;
+  min-height: var(--be-target-compact);
+  cursor: pointer;
+}
+
+.adm-event__detail {
+  margin-top: var(--be-space-3);
+}
+
+@media (max-width: 768px) {
+  .adm-table-cards tbody tr.adm-detail-row {
+    margin-top: calc(-1 * var(--be-space-3));
+    border-top: 0;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    box-shadow: none;
+    padding-top: 0;
+  }
+
+  .adm-table-cards tbody tr.adm-detail-row > td {
+    padding: 0;
+    background: transparent;
+    display: block;
+  }
+
+  .adm-table-cards tbody tr.adm-detail-row > td::before { display: none; }
+
+  .adm-event__toggle { margin-left: 0; }
+}
+
+
+/* A flagged config fact carries a one-line explanation under it. `.adm-health-check`
+   is a single flex row, so the note needs its own line. */
+.adm-health-check { flex-wrap: wrap; }
+.adm-health-check .adm-cell-sub { flex: 1 0 100%; margin-top: 0; }
+
+/* Disclosure summaries are controls: they need a target and a focus ring. */
+.adm-screen details > summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--be-target-min);
+  cursor: pointer;
+}
+
+.adm-screen details > summary:focus-visible {
+  outline: 2px solid var(--be-accent);
+  outline-offset: 2px;
+}
+
+
+
+/* Inline confirmation inside a card, where an overlay used to open. */
+.adm-decision--inline {
+  margin: 0 var(--be-card-pad) var(--be-space-4);
+}
+
+/* Field-level validation message. The forms had no per-field error slot at all: a
+   rejected save showed one banner at the top and left the operator to guess which
+   of a dozen inputs it meant. */
+.adm-field-error {
+  color: var(--be-red);
+  font-size: var(--be-text-xs);
+  line-height: 1.4;
 }

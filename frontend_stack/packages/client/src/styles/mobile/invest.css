@@ -88,7 +88,29 @@
   border: 1px solid var(--be-border);
   border-radius: var(--be-r-8);
   background: var(--be-bone);
+  /* A real <button> now, not a div with role="button". */
+  width: 100%;
+  min-height: var(--be-target-comfortable);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
+
+.apk-stepup-toggle:focus-visible {
+  outline: 2px solid var(--be-ink);
+  outline-offset: 2px;
+}
+
+.apk-stepup-toggle-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+/* Rendered as a real <button role="switch"> on the Security screen. The visible
+   switch must stay 38x22, so the hit area is expanded with ::before — ::after is
+   already the knob. */
 .apk-toggle {
   width: 38px;
   height: 22px;
@@ -97,7 +119,21 @@
   position: relative;
   transition: background var(--be-d-1) var(--be-ease);
   flex-shrink: 0;
+  border: 0;
+  padding: 0;
+  appearance: none;
+  cursor: pointer;
 }
+.apk-toggle::before {
+  content: '';
+  position: absolute;
+  inset: -13px -5px;
+}
+.apk-toggle:focus-visible {
+  outline: 2px solid var(--be-ink);
+  outline-offset: 4px;
+}
+.apk-toggle:disabled { cursor: default; opacity: var(--be-opacity-disabled); }
 .apk-toggle::after {
   content: '';
   position: absolute;
@@ -166,7 +202,7 @@
   align-items: center;
   justify-content: center;
 }
-.apk-payment-state-line { font-family: var(--be-font-serif); font-size: 20px; font-weight: 600; }
+.apk-payment-state-line { font-family: var(--be-font-ui); font-size: 20px; font-weight: 600; }
 .apk-payment-amount { font-size: 28px; font-weight: 600; margin-top: 4px; }
 .apk-payment-method { font-size: 13px; color: var(--be-slate); }
 .apk-spin { animation: apk-spin 1s linear infinite; }

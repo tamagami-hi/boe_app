@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, Clock3, Download, Receipt, Repeat, ShieldCheck } from 'lucide-react';
 import { EmptyState, Skeleton } from '@beonedge/shared';
-import * as transactionsApi from '../services/transactionsApi.js';
-import * as ordersApi from '../services/ordersApi.js';
+import { usePaymentQueue, useTransactions } from '../data/clientResources.js';
+import { buildPath } from '../navigation/routes.js';
 import { fmtMoney, fmtDate, fmtUnits } from '../utils/format.js';
+import PageSheet from '../layout/PageSheet.jsx';
 
 const TABS = [
   ['all', 'All'],
@@ -39,28 +40,32 @@ function paymentTypeLabel(value) {
 }
 
 export default function Transactions() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const initialTab = searchParams.get('tab');
-  const [tab, setTab] = useState(TAB_KEYS.has(initialTab) ? initialTab : 'all');
-  const [items, setItems] = useState(null);
-  const [payments, setPayments] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  // The filter IS the URL. It used to be read from `?tab=` once on mount and then
+  // held in local state, so the address bar went stale the moment a tab was
+  // tapped: the screen could not be linked to, shared, or restored, and Back did
+  // not undo a tab change.
+  const requested = searchParams.get('tab');
+  const tab = TAB_KEYS.has(requested) ? requested : 'all';
+  const selectTab = (next) => {
+    // `replace` so the tab strip does not build a history trail; Back should leave
+    // the screen, which is what the native Back policy expects of a primary tab.
+    setSearchParams(next === 'all' ? {} : { tab: next }, { replace: true });
+    setOpen(null);
+  };
   const [open, setOpen] = useState(null);
 
-  useEffect(() => {
-    setItems(null);
-    setPayments(null);
-    if (PAYMENT_TABS.has(tab)) {
-      const loader = tab === 'pending'
-        ? ordersApi.listPendingPayments
-        : tab === 'failed'
-          ? ordersApi.listFailedPayments
-          : ordersApi.listApprovalPayments;
-      loader().then(setPayments).catch(() => setPayments([]));
-    } else {
-      transactionsApi.listTransactions({ filter: tab }).then(setItems).catch(() => setItems([]));
-    }
-  }, [tab]);
+  // One cache entry per tab, and only the active kind is enabled — so switching
+  // away and back shows the list you already loaded instead of clearing it to a
+  // skeleton, which is what the old `setItems(null)` on every tab change did.
+  const isPaymentTab = PAYMENT_TABS.has(tab);
+  const transactionsResource = useTransactions(tab, { enabled: !isPaymentTab });
+  const paymentsResource = usePaymentQueue(tab, { enabled: isPaymentTab });
+
+  // `null` still means "not known yet" for the skeletons below. A failed read
+  // resolves to an empty list, as the old `.catch(() => setItems([]))` did.
+  const items = transactionsResource.data ?? (transactionsResource.error ? [] : null);
+  const payments = paymentsResource.data ?? (paymentsResource.error ? [] : null);
 
   function statusBadgeClass(status) {
     if (['success', 'confirmed', 'reconciled', 'approved'].includes(status)) return 'be-badge-active';
@@ -142,13 +147,12 @@ export default function Transactions() {
                 <div className="apk-cell-meta">Portfolio and fund pool update after admin approval.</div>
               )}
             </div>
-            <button
+            <Link
               className="be-btn be-btn-secondary be-btn-sm apk-payment-link-btn"
-              type="button"
-              onClick={() => navigate(`/app/payment/${payment.paymentId || payment.id}`)}
+              to={buildPath('payment_status', { paymentId: payment.paymentId || payment.id })}
             >
               View payment
-            </button>
+            </Link>
           </div>
         </div>
       );
@@ -158,15 +162,17 @@ export default function Transactions() {
   return (
     <div className="apk-screen">
       <h1 className="apk-h">Transactions</h1>
-      <div className="apk-tabs" role="tablist" aria-label="Transaction filters">
+      {/* Not a tablist: there is no arrow-key navigation, no aria-controls and no
+          tabpanel. These are filter toggles over one list, which is what
+          aria-pressed says. */}
+      <div className="apk-tabs" role="group" aria-label="Transaction filters">
         {TABS.map(([k, l]) => (
           <button
             key={k}
             type="button"
-            role="tab"
-            aria-selected={tab === k}
+            aria-pressed={tab === k}
             className={tab === k ? 'is-active' : ''}
-            onClick={() => setTab(k)}
+            onClick={() => selectTab(k)}
           >
             {l}
           </button>
@@ -186,13 +192,15 @@ export default function Transactions() {
           <div className="be-card apk-tx-list apk-list-card">
             <div className="apk-tx-list-mobile">
               {items.map((t) => (
-                <div
+                /* A real button. The hand-rolled `div role="button" tabIndex
+                   onKeyDown` reimplemented what the element gives for free, and
+                   only for Enter and Space on keydown — not the full activation
+                   behaviour AT and browsers expect. */
+                <button
                   key={t.id}
+                  type="button"
                   className="apk-tx"
-                  role="button"
-                  tabIndex={0}
                   onClick={() => setOpen(t)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(t); } }}
                 >
                   <div className="apk-tx-main">
                     <div className="apk-tx-l">
@@ -208,7 +216,7 @@ export default function Transactions() {
                       <span className="be-badge-dot" />{statusLabel(t.status)}
                     </span>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -223,9 +231,13 @@ export default function Transactions() {
             : 'Showing last 90 days. Older history is available in Statements. Investment values reflect market pricing.'}
       </div>
 
-      {open && (
-        <div className={`apk-sheet-overlay ${open ? 'is-open' : ''}`} onClick={() => setOpen(null)} role="dialog" aria-modal="true" aria-label="Transaction details">
-          <div className="apk-sheet" onClick={(e) => e.stopPropagation()}>
+      {/* Wrapper is now the shared PageSheet: portal, focus trap and restore,
+          ref-counted body lock, and registration with the overlay stack so Android
+          Back closes the sheet instead of navigating the list underneath it. This
+          markup previously put role="dialog" on the backdrop. */}
+      <PageSheet open={Boolean(open)} onClose={() => setOpen(null)} label="Transaction details">
+        {open && (
+          <>
             <div className="apk-sheet-handle" />
             <h2 className="apk-h-sm apk-tx-sheet-title">{fundDisplayName(open)}</h2>
             <div className="apk-cell-meta apk-sheet-meta">{open.type.toUpperCase()} · {fmtDate(open.date, { withTime: true })}</div>
@@ -243,12 +255,12 @@ export default function Transactions() {
               </div>
             </div>
             {open.failureReason && <div className="apk-banner apk-banner-red apk-sheet-gap">{open.failureReason}</div>}
-            <button className="be-btn be-btn-secondary be-btn-block apk-sheet-gap" disabled={!open.receiptUrl}>
+            <button type="button" className="be-btn be-btn-secondary be-btn-block apk-sheet-gap" disabled={!open.receiptUrl}>
               <Download size={16} strokeWidth={1.5} /> Download receipt
             </button>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </PageSheet>
     </div>
   );
 }

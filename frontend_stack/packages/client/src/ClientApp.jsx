@@ -1,5 +1,4 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
 import ClientLayout from './layout/ClientLayout.jsx';
 
 import Splash from './pages/Splash.jsx';
@@ -25,9 +24,13 @@ import Support from './pages/Support.jsx';
 import Legal from './pages/Legal.jsx';
 import InvestorCharter from './pages/InvestorCharter.jsx';
 import GrievanceRedressal from './pages/GrievanceRedressal.jsx';
+import NotFound from './pages/NotFound.jsx';
 import { useSession } from './store/SessionContext.jsx';
-import { getInvestingEligibility } from './services/eligibilityApi.js';
+import { SESSION_STATUS } from './store/sessionState.js';
 import { RouteErrorBoundary } from '@beonedge/shared/components/RouteErrorBoundary.jsx';
+import BootstrapShell from '@beonedge/shared/components/BootstrapShell.jsx';
+import { RESOURCE_STATUS } from '@beonedge/shared/data/ResourceCacheProvider.jsx';
+import { useEligibility } from './data/clientResources.js';
 import AppUpdateGate from './components/AppUpdateGate.jsx';
 import './styles/mobile/index.css';
 
@@ -37,27 +40,35 @@ import './styles/mobile/index.css';
 // `canInvest=false` users to the email-verification (KYC OTP) step. If the
 // check itself fails we let the user through: order/SIP creation enforces the
 // same rule server-side, so a failed check must not lock the app.
+//
+// The result is cached for ELIGIBILITY (60s) rather than re-fetched per mount. It
+// used to run on every entry into every guarded route, so tapping between a fund
+// and its SIP form re-asked the same question repeatedly. The cache is a UX
+// measure ONLY: the server re-derives eligibility on every write, so a stale
+// `true` here cannot authorise anything — it can at most let a user reach a form
+// whose submit is then refused.
 function RequireApproved({ children }) {
-  const { user, isLoading } = useSession();
-  const [check, setCheck] = useState({ done: false, canInvest: null });
+  const { user, status } = useSession();
+  const {
+    data: eligibility,
+    status: resourceStatus,
+    error,
+  } = useEligibility(user?.id);
 
-  useEffect(() => {
-    if (isLoading || !user) return;
-    let cancelled = false;
-    getInvestingEligibility()
-      .then((eligibility) => {
-        if (!cancelled) setCheck({ done: true, canInvest: eligibility?.canInvest !== false });
-      })
-      .catch(() => {
-        if (!cancelled) setCheck({ done: true, canInvest: null });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [user, isLoading]);
+  // Was `return null` for all of these, so entering an investment flow blanked the
+  // screen while the request was in flight — the tap appeared to do nothing, then
+  // the form appeared from nowhere. ClientLayout has already handled the
+  // unauthenticated case by the time this renders.
+  const settled = resourceStatus === RESOURCE_STATUS.SUCCESS || resourceStatus === RESOURCE_STATUS.ERROR;
+  if (status === SESSION_STATUS.RESTORING || !user || !settled) {
+    return <BootstrapShell label="Checking your account" />;
+  }
 
-  if (isLoading || !user || !check.done) return null;
-  if (check.canInvest === false) return <Navigate to="/app/verify-email" replace />;
+  // A failed check lets the user through, as before: the server is the authority and
+  // a backend hiccup must not lock the app.
+  if (!error && eligibility?.canInvest === false) {
+    return <Navigate to="/app/verify-email" replace />;
+  }
   return children;
 }
 
@@ -76,7 +87,7 @@ export default function ClientApp() {
         <Route path="splash" element={<RouteErrorBoundary><Splash /></RouteErrorBoundary>} />
         <Route path="login" element={<RouteErrorBoundary><Login /></RouteErrorBoundary>} />
         <Route path="verify-email" element={<RouteErrorBoundary><KycVerify /></RouteErrorBoundary>} />
-        <Route path="start" element={<Navigate to="dashboard" replace />} />
+        <Route path="start" element={<Navigate to="/app/dashboard" replace />} />
         <Route path="dashboard" element={<RouteErrorBoundary><Dashboard /></RouteErrorBoundary>} />
         <Route path="explore" element={<RouteErrorBoundary><Explore /></RouteErrorBoundary>} />
         <Route path="funds/:fundId" element={<RouteErrorBoundary><FundDetail /></RouteErrorBoundary>} />
@@ -97,8 +108,18 @@ export default function ClientApp() {
         <Route path="profile/legal" element={<RouteErrorBoundary><Legal /></RouteErrorBoundary>} />
         <Route path="investor-charter" element={<RouteErrorBoundary><InvestorCharter /></RouteErrorBoundary>} />
         <Route path="grievance" element={<RouteErrorBoundary><GrievanceRedressal /></RouteErrorBoundary>} />
+        {/*
+          Unknown `/app/*` paths render a recoverable Not Found *inside* the
+          shell rather than redirecting to splash, which looked like the app
+          relaunching and hid the broken link entirely.
+
+          Deliberately inside the ClientLayout block: the layout's guards still
+          run for an unmatched path, so an unauthenticated visitor is still sent
+          to login and a terminal account still sees Blocked. Only an
+          authenticated client reaches Not Found.
+        */}
+        <Route path="*" element={<RouteErrorBoundary><NotFound /></RouteErrorBoundary>} />
       </Route>
-      <Route path="*" element={<Navigate to="splash" replace />} />
       </Routes>
     </>
   );

@@ -21,7 +21,7 @@
 .apk-payment-action .be-btn { width: 100%; }
 .apk-row-amount { font-size: 20px; font-weight: 700; line-height: 1.2; }
 .apk-payment-link-btn {
-  min-height: 36px;
+  min-height: var(--be-target-comfortable);
   padding: 8px 16px;
   font-weight: 600;
   letter-spacing: 0;
@@ -36,6 +36,14 @@
   align-items: center;
   border-radius: var(--be-r-4);
   transition: background var(--be-d-1) var(--be-ease);
+  /* Button resets: this is a real <button> now, not a div with role="button". */
+  width: 100%;
+  min-height: var(--be-target-comfortable);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
 }
 .apk-tx + .apk-tx { border-top: 1px solid var(--be-border); border-radius: 0; }
 .apk-tx:focus-visible { outline: 2px solid var(--be-ink); outline-offset: 2px; }
@@ -56,7 +64,23 @@
 .apk-tx-list-mobile { display: block; }
 
 /* Notification row */
-.apk-notif { padding: 14px 16px; display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: flex-start; cursor: pointer; }
+/* A real <button> now, not a div with role="button". */
+.apk-notif {
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: flex-start;
+  cursor: pointer;
+  width: 100%;
+  min-height: var(--be-target-comfortable);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.apk-notif:focus-visible { outline: 2px solid var(--be-ink); outline-offset: -2px; }
 .apk-notif + .apk-notif { border-top: 1px solid var(--be-border); }
 .apk-notif.is-unread { background: var(--be-gold-soft); }
 .apk-notif-title { font-size: 14px; font-weight: 500; }
@@ -221,7 +245,7 @@
   padding: 0 6px 4px 56px;
 }
 .apk-statements-action {
-  min-height: 38px;
+  min-height: var(--be-target-comfortable);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -418,4 +442,12 @@
 .apk-kyc-facts dd {
   margin: 0;
   font-weight: 600;
+}
+
+/* Secondary line inside a payment card (fund name, qualifier). Used four times in
+   Transactions and defined nowhere, so each one rendered at body size and weight. */
+.apk-cell-meta {
+  font-size: var(--be-text-xs);
+  color: var(--be-fg-muted);
+  line-height: 1.4;
 }

@@ -3,6 +3,7 @@ import { Percent, TrendingUp, Users } from 'lucide-react';
 import { apiRequest } from '@beonedge/client/services/_util.js';
 import I from '../components/I.jsx';
 import GainAllocationForm from './GainAllocationForm.jsx';
+import { fmtPaise as rupees } from '../helpers/formatters.js';
 
 // Who holds money in a pool, and how a period's growth is credited to them
 // (Option B module 2).
@@ -21,10 +22,6 @@ import GainAllocationForm from './GainAllocationForm.jsx';
 // GET  /v1/admin/funds/:fundId/investors
 // POST /v1/admin/funds/:fundId/gain-allocations
 
-const rupees = (paise) =>
-  paise === null || paise === undefined
-    ? '—'
-    : `₹${(Number(paise) / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 
 const percent = (value) =>
   value === null || value === undefined ? '—' : `${Number(value).toFixed(2)}%`;
@@ -212,7 +209,7 @@ export default function FundInvestorsPanel({ fundId }) {
                     <td>
                       <button
                         type="button"
-                        className="adm-btn"
+                        className="be-btn"
                         onClick={() =>
                           setPerInvestor(perInvestor === investor.userId ? null : investor.userId)
                         }
@@ -265,7 +262,7 @@ export default function FundInvestorsPanel({ fundId }) {
           <>
             <label className="adm-field">
               <span className="adm-field-label">How</span>
-              <select className="adm-input" value={mode} onChange={(event) => setMode(event.target.value)}>
+              <select value={mode} onChange={(event) => setMode(event.target.value)}>
                 <option value="percent">Pool grew by a percentage</option>
                 <option value="amount">Distribute a total amount</option>
               </select>
@@ -274,7 +271,6 @@ export default function FundInvestorsPanel({ fundId }) {
             <label className="adm-field">
               <span className="adm-field-label">Direction</span>
               <select
-                className="adm-input"
                 value={direction}
                 onChange={(event) => setDirection(event.target.value)}
               >
@@ -289,7 +285,6 @@ export default function FundInvestorsPanel({ fundId }) {
                   <I icon={Percent} size={12} /> Growth %
                 </span>
                 <input
-                  className="adm-input"
                   type="number"
                   step="0.01"
                   min="0"
@@ -303,7 +298,6 @@ export default function FundInvestorsPanel({ fundId }) {
               <label className="adm-field">
                 <span className="adm-field-label">Total amount (₹)</span>
                 <input
-                  className="adm-input"
                   type="number"
                   step="0.01"
                   min="0"
@@ -320,7 +314,6 @@ export default function FundInvestorsPanel({ fundId }) {
             <label className="adm-field">
               <span className="adm-field-label">Effective date</span>
               <input
-                className="adm-input"
                 type="date"
                 value={effectiveDate}
                 onChange={(event) => setEffectiveDate(event.target.value)}
@@ -329,7 +322,6 @@ export default function FundInvestorsPanel({ fundId }) {
             <label className="adm-field">
               <span className="adm-field-label">Reason code</span>
               <input
-                className="adm-input"
                 value={reasonCode}
                 onChange={(event) => setReasonCode(event.target.value)}
                 placeholder="monthly_growth"
@@ -338,7 +330,6 @@ export default function FundInvestorsPanel({ fundId }) {
             <label className="adm-field adm-field--wide">
               <span className="adm-field-label">Note (optional)</span>
               <input
-                className="adm-input"
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
                 placeholder="Shown on the investor's transaction"
@@ -347,7 +338,7 @@ export default function FundInvestorsPanel({ fundId }) {
           </>
 
           <div className="adm-field--wide adm-form-actions">
-            <button type="submit" className="adm-btn" disabled={busy || investors.length === 0}>
+            <button type="submit" className="be-btn" disabled={busy || investors.length === 0}>
               {busy ? 'Working…' : 'Preview split'}
             </button>
           </div>
@@ -380,10 +371,10 @@ export default function FundInvestorsPanel({ fundId }) {
               </table>
             </div>
             <div className="adm-field--wide adm-form-actions">
-              <button type="button" className="adm-btn" onClick={() => setPreview(null)}>
+              <button type="button" className="be-btn" onClick={() => setPreview(null)}>
                 Discard
               </button>
-              <button type="button" className="adm-btn adm-btn-primary" onClick={onCommit} disabled={busy}>
+              <button type="button" className="be-btn be-btn-primary" onClick={onCommit} disabled={busy}>
                 {busy ? 'Crediting…' : 'Credit the pool'}
               </button>
             </div>

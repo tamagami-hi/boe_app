@@ -53,7 +53,7 @@
 .adm-search input {
   border: none;
   background: transparent;
-  font: 400 var(--be-text-sm) var(--be-font-sans);
+  font: 400 var(--be-text-sm) var(--be-font-ui);
   color: var(--be-fg);
   outline: none;
   width: 100%;
@@ -70,7 +70,7 @@
 .adm-filter select {
   border: none;
   background: transparent;
-  font: 400 var(--be-text-sm) var(--be-font-sans);
+  font: 400 var(--be-text-sm) var(--be-font-ui);
   color: var(--be-fg);
   outline: none;
   cursor: pointer;
@@ -86,7 +86,7 @@
   flex-wrap: wrap;
 }
 .adm-bulk-count {
-  font: 500 var(--be-text-sm) var(--be-font-sans);
+  font: 500 var(--be-text-sm) var(--be-font-ui);
   color: var(--be-fg);
 }
 .adm-bulk-actions {
@@ -104,7 +104,7 @@
 .adm-table thead th {
   position: sticky;
   top: 0;
-  z-index: 4; /* sticky table header; intentionally below topbar */
+  z-index: var(--be-z-table-header);
 }
 .adm-table tbody tr {
   transition: background var(--be-dur-fast) var(--be-ease);

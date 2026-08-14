@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import AppBar from '../layout/AppBar.jsx';
+import { buildPath } from '../navigation/routes.js';
 import Skeleton from '@beonedge/shared/components/Skeleton.jsx';
 import * as ordersApi from '../services/ordersApi.js';
 import { fmtMoney, fmtDate } from '../utils/format.js';
+import PageSheet from '../layout/PageSheet.jsx';
 
 // A mandate is the standing debit authority behind one or more SIP plans. The
 // plans are what can be paused, resumed or cancelled, and those controls apply
@@ -75,7 +77,7 @@ export default function MandateDetail() {
           <div className="be-card apk-empty">
             <h2 className="apk-h-sm">Mandate unavailable</h2>
             <p>{error || 'This mandate is no longer available on your account.'}</p>
-            <button type="button" className="be-btn be-btn-secondary" onClick={() => navigate('/app/orders')}>
+            <button type="button" className="be-btn be-btn-secondary" onClick={() => navigate(buildPath('portfolio'))}>
               Back to plans
             </button>
           </div>
@@ -141,7 +143,7 @@ export default function MandateDetail() {
             <button
               type="button"
               className="be-btn be-btn-primary"
-              onClick={() => navigate(`/app/mandates/${mandateId}/authorize`)}
+              onClick={() => navigate(buildPath('mandate_authorize', { mandateId }))}
             >
               Approve mandate
             </button>
@@ -210,9 +212,20 @@ export default function MandateDetail() {
         </p>
       </div>
 
-      {confirm !== null && (
-        <div className="apk-sheet-backdrop" role="dialog" aria-modal="true" onClick={() => setConfirm(null)}>
-          <div className="apk-sheet" onClick={(event) => event.stopPropagation()}>
+      {/* Shared PageSheet wrapper. `dismissible={!busy}` matters here: this is a
+          destructive confirmation for a money action, and while it is applying a
+          backdrop tap, Escape or Android Back must NOT dismiss it — the request is
+          already in flight and the user would be left not knowing whether it
+          landed. The overlay stack absorbs Back in that state. The previous
+          hand-rolled wrapper also had no accessible name at all. */}
+      <PageSheet
+        open={confirm !== null}
+        onClose={() => setConfirm(null)}
+        dismissible={!busy}
+        label="Confirm plan change"
+      >
+        {confirm !== null && (
+          <>
             <h2 className="apk-h-sm">
               {confirm.action === 'pause' && 'Pause this plan?'}
               {confirm.action === 'resume' && 'Resume this plan?'}
@@ -242,9 +255,9 @@ export default function MandateDetail() {
                 {busy ? 'Applying…' : 'Confirm'}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </PageSheet>
     </>
   );
 }

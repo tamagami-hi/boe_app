@@ -1,30 +1,45 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Search } from 'lucide-react';
-import '../styles/desktop/admin.css';
+import { RefreshCw, Search } from 'lucide-react';
 import I from '../components/I.jsx';
 import StatTile from '../components/StatTile.jsx';
 import EmptyTableRow from '../components/EmptyTableRow.jsx';
 import SkeletonTableRow from '../components/SkeletonTableRow.jsx';
+import StateBadge from '../components/StateBadge.jsx';
 import useAdminList from '../hooks/useAdminList.js';
-import { fmtInt } from '../helpers/formatters.js';
+import { fmtDateTime, fmtInt, fmtPaise, humanizeState } from '../helpers/formatters.js';
 import { fmtMoney } from '@beonedge/shared/format.js';
 import './admin-screens-shared.css';
 
-const TXN_TYPES = {
-  sip: 'SIP',
-  sip_installment: 'SIP',
-  lumpsum: 'Lumpsum',
-  one_time: 'Lumpsum',
-};
+/*
+ * `GET /v1/admin/transactions` is the ORDER stream, and its query schema is
+ * `.strict()` with enums. The filters here sent values that are not in those
+ * enums, so the request came back 400 and the screen showed a validation error
+ * instead of a filtered table:
+ *   status: awaiting_approval, approved, approval_rejected  <- none exist
+ *   type:   sip, lumpsum                                     <- neither exists
+ * Both dropdowns now offer exactly the canonical order_type / order_state values,
+ * which is also why they are declared here rather than written inline.
+ */
+const ORDER_STATES = [
+  'submitted',
+  'payment_pending',
+  'payment_confirmed',
+  'booked',
+  'payment_failed',
+  'cancelled',
+  'rejected',
+  'refunded',
+  'reversed',
+];
 
-const TXN_STATUS_BADGES = {
-  submitted: <span className="be-badge be-badge-paused"><span className="be-badge-dot"/>Submitted</span>,
-  payment_confirmed: <span className="be-badge be-badge-active"><span className="be-badge-dot"/>Confirmed</span>,
-  awaiting_approval: <span className="be-badge be-badge-paused"><span className="be-badge-dot"/>Awaiting approval</span>,
-  approved: <span className="be-badge be-badge-active"><span className="be-badge-dot"/>Approved</span>,
-  payment_failed: <span className="be-badge be-badge-failed"><span className="be-badge-dot"/>Failed</span>,
-  approval_rejected: <span className="be-badge be-badge-failed"><span className="be-badge-dot"/>Approval rejected</span>,
-};
+const ORDER_TYPES = ['purchase', 'sip_installment', 'redemption', 'refund', 'adjustment'];
+
+// `humanizeState` would render this one as "Sip installment".
+const TYPE_LABELS = { sip_installment: 'SIP installment' };
+const typeLabel = (type) => TYPE_LABELS[type] || humanizeState(type);
+
+const SETTLED = ['payment_confirmed', 'booked'];
+const UNSUCCESSFUL = ['payment_failed', 'rejected', 'reversed'];
 
 function TransactionsScreen({ funds = [] }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,7 +55,7 @@ function TransactionsScreen({ funds = [] }) {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const { items: rows, loading, error, hasMore, loadMore } = useAdminList(
+  const { items: rows, loading, error, hasMore, loadMore, reload } = useAdminList(
     '/v1/admin/transactions',
     { fundId: fundFilter, status: statusFilter, type: typeFilter, q: search },
     { limit: 25 },
@@ -49,97 +64,139 @@ function TransactionsScreen({ funds = [] }) {
   const stats = useMemo(() => {
     // `amountPaise` is a string from the canonical projection: rupees for display.
     const totalAmount = rows.reduce((sum, r) => sum + Number(r.amountPaise || 0) / 100, 0);
-    const confirmed = rows.filter((r) => r.status === 'payment_confirmed' || r.status === 'booked').length;
-    const failed = rows.filter((r) => r.status === 'payment_failed' || r.status === 'rejected').length;
-    return { totalAmount, confirmed, failed };
+    return {
+      totalAmount,
+      confirmed: rows.filter((r) => SETTLED.includes(r.status)).length,
+      failed: rows.filter((r) => UNSUCCESSFUL.includes(r.status)).length,
+    };
   }, [rows]);
+
+  // Skeletons only replace an EMPTY table. `loading` goes true on every fetch,
+  // including Load more, so the old `{!loading && rows.map(...)}` wiped every row
+  // the operator was reading and put three placeholders in their place.
+  const showSkeleton = loading && rows.length === 0;
 
   return (
     <div className="adm-screen">
       <div className="adm-stats">
-        <StatTile label="Loaded transactions" value={fmtInt(rows.length)} />
-        <StatTile label="Total amount" value={`${fmtMoney(stats.totalAmount)}`} />
-        <StatTile label="Confirmed" value={fmtInt(stats.confirmed)} />
+        <StatTile label="Loaded orders" value={fmtInt(rows.length)} />
+        <StatTile label="Total amount" value={fmtMoney(stats.totalAmount)} />
+        <StatTile label="Confirmed or booked" value={fmtInt(stats.confirmed)} />
         <StatTile label="Failed" value={fmtInt(stats.failed)} />
       </div>
 
-      {error && <div className="adm-load-note" role="alert">{error}</div>}
+      {error && (
+        <div className="ash-load-note" role="alert">
+          <span>{error}</span>
+          <button type="button" className="ash-btn ash-btn-secondary ash-btn-sm" disabled={loading} onClick={reload}>
+            <I icon={RefreshCw} size={13} />
+            {loading ? 'Retrying…' : 'Try again'}
+          </button>
+        </div>
+      )}
 
       <div className="adm-card adm-table">
         <div className="adm-card-head">
           <div>
             <span className="be-eyebrow">Transactions</span>
-            <h2 className="adm-card-title">All client transactions</h2>
+            <h2 className="adm-card-title">Client order stream</h2>
           </div>
-          <div className="adm-card-actions adm-card-actions--responsive">
-            <div className="adm-search">
-              <I icon={Search} size={14} />
-              <input
-                type="text"
-                placeholder="Search user, fund, ID..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <select className="be-select be-select-sm" value={fundFilter} onChange={(e) => setFundFilter(e.target.value)}>
+        </div>
+
+        {/* Was a row of bare `.be-select` controls — a class no stylesheet defines,
+            so five unstyled native selects with no labels. `.adm-filter` is the
+            console's select wrapper and carries the phone target height. */}
+        <div className="adm-payment-filters">
+          <label className="adm-search">
+            <I icon={Search} size={14} />
+            <span className="adm-sr-only">Search orders</span>
+            <input
+              type="text"
+              placeholder="Search order id or email"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </label>
+          <label className="adm-filter">
+            <span className="adm-sr-only">Fund pool</span>
+            <select value={fundFilter} onChange={(e) => setFundFilter(e.target.value)}>
               <option value="all">All fund pools</option>
               {funds.map((f) => (
                 <option key={f.id} value={f.id}>{f.name || f.id}</option>
               ))}
             </select>
-            <select className="be-select be-select-sm" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          </label>
+          <label className="adm-filter">
+            <span className="adm-sr-only">Order status</span>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
               <option value="all">All statuses</option>
-              <option value="submitted">Submitted</option>
-              <option value="awaiting_approval">Awaiting approval</option>
-              <option value="payment_confirmed">Confirmed</option>
-              <option value="approved">Approved</option>
-              <option value="payment_failed">Failed</option>
-              <option value="approval_rejected">Approval rejected</option>
+              {ORDER_STATES.map((state) => (
+                <option key={state} value={state}>{humanizeState(state)}</option>
+              ))}
             </select>
-            <select className="be-select be-select-sm" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+          </label>
+          <label className="adm-filter">
+            <span className="adm-sr-only">Order type</span>
+            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
               <option value="all">All types</option>
-              <option value="sip">SIP</option>
-              <option value="lumpsum">Lumpsum</option>
+              {ORDER_TYPES.map((type) => (
+                <option key={type} value={type}>{typeLabel(type)}</option>
+              ))}
             </select>
-          </div>
+          </label>
         </div>
 
-        <table>
-          <thead><tr>
-            <th>ID</th><th>User</th><th>Fund</th><th>Type</th><th>Amount</th><th>Status</th><th>Date</th>
-          </tr></thead>
-          <tbody>
-            {loading && (
-              <>
-                <SkeletonTableRow colSpan={7} />
-                <SkeletonTableRow colSpan={7} />
-                <SkeletonTableRow colSpan={7} />
-              </>
-            )}
-            {!loading && rows.length === 0 && (
-              <EmptyTableRow colSpan={7}>No transactions found.</EmptyTableRow>
-            )}
-            {!loading && rows.map((r) => (
-              <tr key={r.id}>
-                <td><code className="adm-code">{String(r.id).slice(0, 8)}...</code></td>
-                <td>
-                  <div>{r.userName || r.userEmail || '—'}</div>
-                  {r.userEmail && <div className="adm-cell-meta">{r.userEmail}</div>}
-                </td>
-                <td>{r.fundName || '—'}</td>
-                <td>{TXN_TYPES[r.type] || r.type || '—'}</td>
-                <td className="be-money">{fmtMoney(Number(r.amountPaise || 0) / 100)}</td>
-                <td>{TXN_STATUS_BADGES[r.status] || r.status || '—'}</td>
-                <td className="be-num adm-cell-meta">{String(r.createdAt || '').slice(0, 19).replace('T', ' ')}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="adm-table-scroll">
+          <table className="adm-table-cards">
+            <thead><tr>
+              <th>Order</th><th>User</th><th>Fund</th><th>Type</th><th>Amount</th>
+              <th className="adm-col-status">Status</th><th>Requested</th>
+            </tr></thead>
+            <tbody>
+              {showSkeleton && (
+                <>
+                  <SkeletonTableRow columnCount={7} />
+                  <SkeletonTableRow columnCount={7} />
+                  <SkeletonTableRow columnCount={7} />
+                </>
+              )}
+              {!loading && !error && rows.length === 0 && (
+                <EmptyTableRow colSpan={7}>
+                  No orders match these filters. An order appears here as soon as a client starts an
+                  investment.
+                </EmptyTableRow>
+              )}
+              {rows.map((r) => (
+                <tr key={r.id}>
+                  {/* The id was sliced to 8 characters. An order reference exists to
+                      be quoted against a payment or a support request, and 8 of 36
+                      characters cannot be. */}
+                  <td data-label="Order"><code className="adm-code">{r.id}</code></td>
+                  <td data-label="User">
+                    <div className="adm-cell-main">{r.userEmail || r.userId || '—'}</div>
+                    {r.failureCode && <div className="adm-cell-sub">{r.failureCode}</div>}
+                  </td>
+                  <td data-label="Fund">{r.fundName || r.fundSlug || '—'}</td>
+                  <td data-label="Type">{typeLabel(r.type)}</td>
+                  <td className="be-money" data-label="Amount">
+                    {r.amountPaise === null || r.amountPaise === undefined
+                      ? '—'
+                      : fmtPaise(r.amountPaise)}
+                  </td>
+                  <td className="adm-col-status" data-label="Status"><StateBadge state={r.status} /></td>
+                  <td className="be-num adm-cell-meta" data-label="Requested">
+                    {fmtDateTime(r.requestedAt || r.createdAt)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         {hasMore && (
-          <div className="adm-pagination">
-            <button className="be-btn be-btn-ghost be-btn-sm" disabled={loading} onClick={loadMore}>
-              Load more
+          <div className="adm-toolbar adm-toolbar--center adm-toolbar--bordered adm-toolbar--gap-2">
+            <button type="button" className="be-btn be-btn-secondary be-btn-sm" disabled={loading} onClick={loadMore}>
+              {loading ? 'Loading…' : 'Load more'}
             </button>
           </div>
         )}
