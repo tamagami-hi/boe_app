@@ -16,6 +16,7 @@ import {
 import AsyncState from '@beonedge/shared/components/AsyncState.jsx';
 import NetworkStatusProvider, { useNetworkStatus } from './NetworkStatusProvider.jsx';
 import ConnectivityBanner from './ConnectivityBanner.jsx';
+import { useLaunchGate } from '@beonedge/shared/net/launchGate.js';
 
 let onLine = true;
 
@@ -114,6 +115,49 @@ describe('the provider', () => {
     reportTransportOutcome(false);
     render(<Probe />);
     expect(screen.getByTestId('status').textContent).toBe('unreachable:true');
+  });
+});
+
+describe('the banner defers to the splash during launch', () => {
+  function LaunchGate() {
+    useLaunchGate({ probe: () => new Promise(() => {}), sessionSettled: false });
+    return null;
+  }
+
+  test('stays hidden while the launch gate owns the screen, so the two do not both report the outage', () => {
+    const view = render(
+      <NetworkStatusProvider>
+        <LaunchGate />
+        <ConnectivityBanner />
+      </NetworkStatusProvider>,
+    );
+    act(() => { setConnectivity(CONNECTIVITY.UNREACHABLE); });
+
+    expect(screen.queryByRole('status')).toBeNull();
+
+    view.unmount();
+  });
+
+  test('appears once the launch is over and the app is still degraded', () => {
+    render(
+      <NetworkStatusProvider>
+        <ConnectivityBanner />
+      </NetworkStatusProvider>,
+    );
+    act(() => { setConnectivity(CONNECTIVITY.UNREACHABLE); });
+
+    expect(screen.getByRole('status').textContent).toContain('Cannot reach BeOnEdge');
+  });
+
+  test('does not claim the connection is working, which is false when the device is offline', () => {
+    render(
+      <NetworkStatusProvider>
+        <ConnectivityBanner />
+      </NetworkStatusProvider>,
+    );
+    act(() => { setConnectivity(CONNECTIVITY.UNREACHABLE); });
+
+    expect(screen.getByRole('status').textContent).not.toContain('connection is working');
   });
 });
 

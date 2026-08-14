@@ -240,6 +240,7 @@ export async function apiRequest(
     headers: extraHeaders,
     envelope = false,
     timeoutMs = DEFAULT_TIMEOUT_MS,
+    retry,
     _retried: retried = false,
   } = {},
 ) {
@@ -274,8 +275,7 @@ export async function apiRequest(
     },
     path,
     timeoutMs,
-    // Only a GET is replayed, and only when it never reached the server.
-    method === 'GET',
+    retry === undefined ? method === 'GET' : Boolean(retry),
   );
 
   const payload = text ? JSON.parse(text) : null;

@@ -472,15 +472,17 @@ export async function currentUser({ scope = 'client' } = {}) {
   return _users[scope] ? clone(_users[scope]) : null;
 }
 
-export async function checkReachability() {
+export const REACHABILITY_TIMEOUT_MS = 6000;
+
+export async function checkReachability({ timeoutMs = REACHABILITY_TIMEOUT_MS } = {}) {
   if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('simulate') === 'offline') {
     await delay(180);
     return { ok: false, minVersion: '1.0.0' };
   }
 
   if (useHttpApi()) {
-    // Canonical health envelope: { status: 'ok' }. Map to the reachability shape.
-    const health = await apiRequest('/v1/health', { auth: false }).catch(() => null);
+    const health = await apiRequest('/v1/health', { auth: false, timeoutMs, retry: false })
+      .catch(() => null);
     return { ok: health?.status === 'ok', minVersion: '1.0.0' };
   }
 

@@ -1,13 +1,8 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { isLaunchInProgress, subscribeToLaunch } from '@beonedge/shared/net/launchGate.js';
 import { CONNECTIVITY, useNetworkStatus } from './NetworkStatusProvider.jsx';
 import './ConnectivityBanner.css';
 
-// The one place the app tells the user it cannot reach BeOnEdge. Nothing read the
-// connectivity provider before this: every screen decided for itself, and most
-// rendered a dropped connection as an empty list.
-//
-// Wording separates the two cases, because the fix differs: offline is the user's
-// network, unreachable is ours.
 const COPY = {
   [CONNECTIVITY.OFFLINE]: {
     title: 'No connection',
@@ -15,14 +10,20 @@ const COPY = {
   },
   [CONNECTIVITY.UNREACHABLE]: {
     title: 'Cannot reach BeOnEdge',
-    body: 'Your connection is working but our service did not answer. Values shown may be out of date.',
+    body: 'Your connection may be down, or our service is not answering. Values shown may be out of date.',
   },
 };
 
 export default function ConnectivityBanner() {
   const { status, isDegraded, recheck } = useNetworkStatus();
   const [checking, setChecking] = useState(false);
+  const [launching, setLaunching] = useState(isLaunchInProgress);
   const lockRef = useRef(false);
+
+  useEffect(() => {
+    setLaunching(isLaunchInProgress());
+    return subscribeToLaunch(setLaunching);
+  }, []);
 
   async function onRetry() {
     if (lockRef.current) return;
@@ -36,7 +37,7 @@ export default function ConnectivityBanner() {
     }
   }
 
-  if (!isDegraded) return null;
+  if (launching || !isDegraded) return null;
   const copy = COPY[status] || COPY[CONNECTIVITY.UNREACHABLE];
 
   return (

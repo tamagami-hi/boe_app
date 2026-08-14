@@ -264,13 +264,29 @@ button {
   margin-top: var(--be-space-2);
 }
 
-.apk-splash-error {
+.apk-splash-status {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--be-space-4);
+  gap: var(--be-space-3);
   max-width: 280px;
   text-align: center;
   font-size: var(--be-text-sm);
   line-height: var(--be-lh-normal);
+}
+
+.apk-splash-status-title {
+  margin: 0;
+  font-weight: 600;
+  color: var(--be-ivory);
+}
+
+.apk-splash-status-body {
+  margin: 0;
+  color: var(--be-ivory);
+  opacity: 0.78;
+}
+
+.apk-splash-status[data-phase='unreachable'] {
+  gap: var(--be-space-4);
 }
