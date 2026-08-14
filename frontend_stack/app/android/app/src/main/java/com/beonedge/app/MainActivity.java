@@ -12,6 +12,10 @@ public class MainActivity extends BridgeActivity {
         // web layer sees an unimplemented plugin. AppUpdate backs the in-app
         // APK updater (see AppUpdatePlugin).
         registerPlugin(AppUpdatePlugin.class);
+        registerPlugin(SystemChromePlugin.class);
+
+        setTheme(R.style.AppTheme_NoActionBar);
+
         super.onCreate(savedInstanceState);
 
         // Keep balances and holdings out of the task switcher.

@@ -22,6 +22,9 @@
              brand colors are designed for light rendering and must look
              identical on devices with dark mode enabled. -->
         <item name="android:forceDarkAllowed">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 
 
