@@ -15,6 +15,7 @@
  * without logging in. Nothing user-specific is exposed and only `published` rows
  * are visible, so admin drafts stay private.
  */
+import { CACHE_KEYS, type Cache } from "../cache/cache.js"
 import type { FastifyInstance, FastifyReply } from "fastify"
 
 import type { UnitOfWork } from "../db/database.js"
@@ -27,6 +28,8 @@ import type {
 export interface PublicContentDeps {
   readonly clientAccountRepository: ClientAccountRepository
   readonly unitOfWork: UnitOfWork
+  readonly cache: Cache
+  readonly config: { readonly publicContentTtlMs: number }
 }
 
 /** Route path -> content key. */
@@ -54,8 +57,10 @@ export const registerPublicContentRoutes = (
 ): void => {
   for (const [route, contentKey] of Object.entries(DOCUMENTS)) {
     application.get(route, async (_request, reply): Promise<FastifyReply> => {
-      const document = await deps.unitOfWork.execute((tx) =>
-        deps.clientAccountRepository.findDocument(tx, contentKey),
+      const document = await deps.cache.readOrLoad(
+        CACHE_KEYS.publicContent(contentKey),
+        deps.config.publicContentTtlMs,
+        () => deps.unitOfWork.execute((tx) => deps.clientAccountRepository.findDocument(tx, contentKey)),
       )
       // An unpublished document is a 404 rather than an empty shell; the client
       // falls back to its bundled copy so the screen is never blank.

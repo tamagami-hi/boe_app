@@ -7,6 +7,7 @@
  * oversight read projections, the user/KYC/redemption decision writes, and that
  * every mutation lands an audit event the audit-log endpoint can read back.
  */
+import { createUncachedCache } from "../../src/cache/cache.js"
 import { randomBytes, randomUUID } from "node:crypto"
 import { fileURLToPath } from "node:url"
 
@@ -221,6 +222,7 @@ beforeAll(async () => {
         loginEventRepository: createLoginEventRepository(),
       })
       registerAdminContentRoutes(instance, {
+          cache: createUncachedCache(),
         webAuth,
         unitOfWork,
         database,

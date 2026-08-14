@@ -137,6 +137,14 @@ const ServerConfigSchema = z.object({
   // prefix nginx serves those same directories at. Both optional: without them
   // GET /v1/app/update answers "no update" instead of failing, so a deployment
   // that has not been given the mount still boots and still serves apps.
+  REDIS_URL: z.string().trim().optional(),
+  REDIS_CONNECT_TIMEOUT_MS: z.coerce.number().int().min(1).default(2_000),
+  REDIS_COMMAND_TIMEOUT_MS: z.coerce.number().int().min(1).default(1_000),
+  REDIS_MAX_RETRIES_PER_REQUEST: z.coerce.number().int().min(0).max(10).default(1),
+  REDIS_KEY_NAMESPACE: z.string().trim().min(1).default("boe"),
+  CACHE_APP_CONFIG_TTL_MS: z.coerce.number().int().min(0).default(30_000),
+  CACHE_CATALOG_TTL_MS: z.coerce.number().int().min(0).default(30_000),
+  CACHE_PUBLIC_CONTENT_TTL_MS: z.coerce.number().int().min(0).default(60_000),
   APK_RELEASE_ROOT: z.string().trim().optional(),
   APK_DOWNLOAD_BASE_URL: z
     .enum([
@@ -197,6 +205,17 @@ export interface ServerConfig {
   }
   readonly ttls: {
     readonly idempotencyTtlMs: number
+  }
+  readonly cache: {
+    readonly redisUrl: string | null
+    readonly configured: boolean
+    readonly namespace: string
+    readonly connectTimeoutMs: number
+    readonly commandTimeoutMs: number
+    readonly maxRetriesPerRequest: number
+    readonly appConfigTtlMs: number
+    readonly catalogTtlMs: number
+    readonly publicContentTtlMs: number
   }
   /** Source of truth for the in-app update check; see publicAppRoutes.ts. */
   readonly appUpdate: {
@@ -276,6 +295,7 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
 
   const nonEmpty = (value: string | undefined): string | null =>
     value !== undefined && value.length > 0 ? value : null
+  const redisUrl = nonEmpty(parsed.REDIS_URL)
   const awsRegion = nonEmpty(parsed.AWS_REGION)
   const topicArn = nonEmpty(parsed.SNS_TOPIC_ARN)
   const sesConfigurationSet = nonEmpty(parsed.SES_CONFIGURATION_SET)
@@ -346,6 +366,17 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
     },
     ttls: {
       idempotencyTtlMs: parsed.IDEMPOTENCY_TTL_MS,
+    },
+    cache: {
+      redisUrl: redisUrl,
+      configured: redisUrl !== null,
+      namespace: parsed.REDIS_KEY_NAMESPACE,
+      connectTimeoutMs: parsed.REDIS_CONNECT_TIMEOUT_MS,
+      commandTimeoutMs: parsed.REDIS_COMMAND_TIMEOUT_MS,
+      maxRetriesPerRequest: parsed.REDIS_MAX_RETRIES_PER_REQUEST,
+      appConfigTtlMs: parsed.CACHE_APP_CONFIG_TTL_MS,
+      catalogTtlMs: parsed.CACHE_CATALOG_TTL_MS,
+      publicContentTtlMs: parsed.CACHE_PUBLIC_CONTENT_TTL_MS,
     },
     appUpdate: {
       releaseRoot: nonEmpty(parsed.APK_RELEASE_ROOT)?.replace(/\/+$/u, "") ?? null,

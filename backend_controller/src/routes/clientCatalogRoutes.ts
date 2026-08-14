@@ -12,6 +12,7 @@
  * tagged by the quarter each entry was added. Growth reaches the investor as an
  * administrator-allocated gain on their own ledger, not through a price here.
  */
+import { CACHE_KEYS, type Cache } from "../cache/cache.js"
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
 import type { Kysely } from "kysely"
 import { z } from "zod"
@@ -29,11 +30,13 @@ import type {
 
 export interface ClientCatalogConfig {
   readonly cursorKey: Buffer
+  readonly catalogTtlMs: number
 }
 
 export interface ClientCatalogDeps extends NativeRequestAuthDeps {
   readonly database: Kysely<Database>
   readonly clock: () => Date
+  readonly cache: Cache
   readonly config: ClientCatalogConfig
   readonly clientCatalogRepository: ClientCatalogRepository
 }
@@ -134,31 +137,37 @@ const getFund = async (deps: ClientCatalogDeps, request: FastifyRequest, reply: 
   await authenticateNativeRequest(request, deps)
   const fundId = parseOrThrow(uuidParam, (request.params as { fundId?: unknown }).fundId)
 
-  const fund = await deps.clientCatalogRepository.findPublished(deps.database, fundId)
-  if (fund === null) throw new AppError("RESOURCE_NOT_FOUND")
+  const body = await deps.cache.readOrLoad(
+    CACHE_KEYS.fundDetail(fundId),
+    deps.config.catalogTtlMs,
+    async () => {
+      const fund = await deps.clientCatalogRepository.findPublished(deps.database, fundId)
+      if (fund === null) return null
 
-  const [stocks, disclosure] = await Promise.all([
-    deps.clientCatalogRepository.listStocks(deps.database, fundId),
-    deps.clientCatalogRepository.findDisclosure(deps.database, fundId),
-  ])
+      const [stocks, disclosure] = await Promise.all([
+        deps.clientCatalogRepository.listStocks(deps.database, fundId),
+        deps.clientCatalogRepository.findDisclosure(deps.database, fundId),
+      ])
 
-  return reply.sendData(
-    {
-      fund: mapFund(fund),
-      // Module 6: what the pool owns and when each holding entered.
-      stocks,
-      disclosure:
-        disclosure === null
-          ? null
-          : {
-              version: disclosure.version,
-              title: disclosure.title,
-              body: disclosure.body,
-              effectiveFrom: iso(disclosure.effectiveFrom),
-            },
+      return {
+        fund: mapFund(fund),
+        stocks,
+        disclosure:
+          disclosure === null
+            ? null
+            : {
+                version: disclosure.version,
+                title: disclosure.title,
+                body: disclosure.body,
+                effectiveFrom: iso(disclosure.effectiveFrom),
+              },
+      }
     },
-    { status: 200 },
   )
+
+  if (body === null) throw new AppError("RESOURCE_NOT_FOUND")
+
+  return reply.sendData(body, { status: 200 })
 }
 
 export const registerClientCatalogRoutes = (

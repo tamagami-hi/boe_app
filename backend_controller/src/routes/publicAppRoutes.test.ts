@@ -1,3 +1,4 @@
+import { createUncachedCache } from "../cache/cache.js"
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -102,6 +103,8 @@ const buildApp = (
     logger: false,
     registerRoutes: (instance) =>
       registerPublicAppRoutes(instance, {
+        cache: createUncachedCache(),
+        config: { appConfigTtlMs: 0 },
         adminContentRepository,
         unitOfWork,
         appUpdate: { releaseRoot: options.releaseRoot, downloadBaseUrl: options.downloadBaseUrl },

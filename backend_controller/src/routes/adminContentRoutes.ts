@@ -16,6 +16,7 @@
  * and product catalogues in app config is rejected rather than silently stored —
  * monetary policy lives in `finance_policy_versions`, catalogue data in `funds`.
  */
+import { CACHE_KEYS, type Cache } from "../cache/cache.js"
 import { createHash } from "node:crypto"
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
@@ -60,6 +61,7 @@ export interface AdminContentDeps {
   readonly contentRepository: AdminContentRepository
   readonly auditRepository: AuditWriteRepository
   readonly idempotencyRepository: IdempotencyRepository
+  readonly cache: Cache
 }
 
 const FAQS_ROUTE = "/v1/admin/faqs"
@@ -482,8 +484,16 @@ export const registerAdminContentRoutes = (
   )
   application.post(FAQS_ROUTE, async (request, reply) => createFaq(deps, request, reply))
   application.patch(`${FAQS_ROUTE}/:faqId`, async (request, reply) => patchFaq(deps, request, reply))
-  application.delete(`${FAQS_ROUTE}/:faqId`, async (request, reply) => archiveFaq(deps, request, reply))
+  application.delete(`${FAQS_ROUTE}/:faqId`, async (request, reply) => {
+    const result = await archiveFaq(deps, request, reply)
+    await deps.cache.invalidate([CACHE_KEYS.supportFaqs])
+    return result
+  })
 
   application.get(APP_CONFIG_ROUTE, async (request, reply) => getAppConfig(deps, request, reply))
-  application.patch(APP_CONFIG_ROUTE, async (request, reply) => publishAppConfig(deps, request, reply))
+  application.patch(APP_CONFIG_ROUTE, async (request, reply) => {
+    const result = await publishAppConfig(deps, request, reply)
+    await deps.cache.invalidate([CACHE_KEYS.appConfig])
+    return result
+  })
 }

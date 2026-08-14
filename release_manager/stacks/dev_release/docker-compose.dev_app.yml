@@ -128,6 +128,15 @@ x-backend-env: &backend-env
   # into the backend below; nginx serves the same directories publicly at
   # APK_DOWNLOAD_BASE_URL. Leave both blank to disable the update check — the
   # endpoint then answers "no update" rather than failing.
+  # Shared read cache. Optional: with REDIS_URL unset the backend serves every
+  # read from PostgreSQL, which is correct but puts the whole browse load on the
+  # connection pool.
+  REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+  REDIS_KEY_NAMESPACE: ${REDIS_KEY_NAMESPACE:-boe-dev}
+  CACHE_APP_CONFIG_TTL_MS: ${CACHE_APP_CONFIG_TTL_MS:-30000}
+  CACHE_CATALOG_TTL_MS: ${CACHE_CATALOG_TTL_MS:-30000}
+  CACHE_PUBLIC_CONTENT_TTL_MS: ${CACHE_PUBLIC_CONTENT_TTL_MS:-60000}
+
   APK_RELEASE_ROOT: ${APK_RELEASE_ROOT:-/srv/boe/apk}
   APK_DOWNLOAD_BASE_URL: ${APK_DOWNLOAD_BASE_URL}
 
@@ -164,6 +173,39 @@ services:
   # ── database ──────────────────────────────────────────────────────────────
   # No `ports:` on purpose. Reachable only as `postgres:5432` on dev_internal.
   # Not read_only: postgres requires writable storage.
+  redis:
+    image: redis:7.4-alpine
+    container_name: ${BOE_CONTAINER_PREFIX:-boe-dev}-redis
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+      - --maxmemory
+      - ${REDIS_MAXMEMORY:-256mb}
+      - --maxmemory-policy
+      - allkeys-lru
+    volumes:
+      - dev_redis_data:/data
+    networks:
+      - dev_internal
+    security_opt:
+      - no-new-privileges:true
+    init: true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
   postgres:
     image: postgres:16-alpine
     container_name: ${BOE_CONTAINER_PREFIX:-boe-dev}-postgres
@@ -234,6 +276,8 @@ services:
       - ${APK_CLIENT_DIR:-/srv/dev_stack/BOE_APP/dev_release/dev_apk}:/srv/boe/apk/client:ro
       - ${APK_ADMIN_DIR:-/srv/dev_stack/BOE_APP/dev_release/dev_admin_apk}:/srv/boe/apk/admin:ro
     depends_on:
+      redis:
+        condition: service_healthy
       postgres:
         condition: service_healthy
       migrate:
@@ -351,6 +395,7 @@ networks:
     internal: true
 
 volumes:
+  dev_redis_data:
   dev_postgres_data:
     name: ${COMPOSE_PROJECT_NAME:-boe_dev}_postgres_data
     driver: local

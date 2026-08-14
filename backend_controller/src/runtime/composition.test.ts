@@ -152,3 +152,35 @@ describe("parseServerConfig", () => {
       .toBe(downloadBaseUrl)
   })
 })
+
+describe("the read cache is optional", () => {
+  test("is disabled when REDIS_URL is absent, and the backend still composes", () => {
+    const config = parseServerConfig(validEnv())
+
+    expect(config.cache.configured).toBe(false)
+    expect(config.cache.redisUrl).toBeNull()
+  })
+
+  test("is enabled by REDIS_URL alone, with usable TTL defaults", () => {
+    const config = parseServerConfig({ ...validEnv(), REDIS_URL: "redis://redis:6379" })
+
+    expect(config.cache.configured).toBe(true)
+    expect(config.cache.redisUrl).toBe("redis://redis:6379")
+    expect(config.cache.appConfigTtlMs).toBeGreaterThan(0)
+    expect(config.cache.catalogTtlMs).toBeGreaterThan(0)
+    expect(config.cache.publicContentTtlMs).toBeGreaterThan(0)
+  })
+
+  test("a blank REDIS_URL is treated as absent rather than as a bad host", () => {
+    const config = parseServerConfig({ ...validEnv(), REDIS_URL: "   " })
+
+    expect(config.cache.configured).toBe(false)
+  })
+
+  test("composing with a cache configured does not require Redis to be reachable", async () => {
+    const composed = await composeBackend({ ...validEnv(), REDIS_URL: "redis://127.0.0.1:1" })
+
+    expect(typeof composed.registerRoutes).toBe("function")
+    await composed.dispose()
+  })
+})

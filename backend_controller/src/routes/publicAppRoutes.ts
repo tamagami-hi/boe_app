@@ -17,6 +17,7 @@
  * deployment without the mount) the endpoint answers "no update available"
  * rather than failing. An absent update feed must never break app startup.
  */
+import { CACHE_KEYS, type Cache } from "../cache/cache.js"
 import { join } from "node:path"
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
@@ -46,6 +47,8 @@ export interface PublicAppDeps {
   readonly adminContentRepository: AdminContentRepository
   readonly unitOfWork: UnitOfWork
   readonly appUpdate: ReleaseFeed
+  readonly cache: Cache
+  readonly config: { readonly appConfigTtlMs: number }
 }
 
 const updateQuerySchema = z
@@ -103,8 +106,10 @@ const artifactBody = (
 const publishedConfig = async (
   deps: PublicAppDeps,
 ): Promise<{ version: number | null; config: Record<string, unknown> | null; publishedAt: string | null }> => {
-  const row = await deps.unitOfWork.execute((tx) =>
-    deps.adminContentRepository.findCurrentAppConfig(tx),
+  const row = await deps.cache.readOrLoad(
+    CACHE_KEYS.appConfig,
+    deps.config.appConfigTtlMs,
+    () => deps.unitOfWork.execute((tx) => deps.adminContentRepository.findCurrentAppConfig(tx)),
   )
   if (row === null) return { version: null, config: null, publishedAt: null }
   return {

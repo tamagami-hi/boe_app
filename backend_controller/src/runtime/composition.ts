@@ -70,6 +70,8 @@ import { registerClientPortfolioRoutes } from "../routes/clientPortfolioRoutes.j
 import { registerClientSipRoutes } from "../routes/clientSipRoutes.js"
 import { registerPublicContentRoutes } from "../routes/publicContentRoutes.js"
 import { registerPublicAppRoutes } from "../routes/publicAppRoutes.js"
+import { createRedisCache, createUncachedCache } from "../cache/cache.js"
+import { createRedisClient } from "../cache/redisClient.js"
 import { registerMandateWebhookRoutes } from "../routes/mandateWebhookRoutes.js"
 import { registerPaymentWebhookRoutes } from "../routes/paymentWebhookRoutes.js"
 import { registerNativeAuthRoutes } from "../routes/nativeAuthRoutes.js"
@@ -94,6 +96,16 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const serverConfig = parseServerConfig(source)
   const breachMode = resolveBreachCheckMode(source)
 
+  let cacheDegradedLogged = false
+  const reportCacheDegraded = (error: unknown, operation?: string): void => {
+    if (cacheDegradedLogged) return
+    cacheDegradedLogged = true
+    const detail = operation === undefined ? "" : ` during ${operation}`
+    console.warn(
+      `cache unavailable${detail}; serving every read from PostgreSQL: ${String(error)}`,
+    )
+  }
+
   const pool = createPool(databaseConfig)
   const database = createDatabase(pool)
   const unitOfWork = createUnitOfWork(database)
@@ -103,6 +115,27 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   // password hash and verification goes through this gate, so overload is
   // rejected with a retryable 429 instead of queueing behind the threadpool.
   configurePasswordWorkGate(serverConfig.passwordHashing)
+
+  const cache =
+    serverConfig.cache.configured && serverConfig.cache.redisUrl !== null
+      ? createRedisCache({
+          namespace: serverConfig.cache.namespace,
+          client: createRedisClient({
+            config: {
+              url: serverConfig.cache.redisUrl,
+              connectTimeoutMs: serverConfig.cache.connectTimeoutMs,
+              commandTimeoutMs: serverConfig.cache.commandTimeoutMs,
+              maxRetriesPerRequest: serverConfig.cache.maxRetriesPerRequest,
+            },
+            onConnectionError: (error) => {
+              reportCacheDegraded(error)
+            },
+          }),
+          onError: (error, operation) => {
+            reportCacheDegraded(error, operation)
+          },
+        })
+      : createUncachedCache()
 
   const crypto = createCryptoContext(cryptoKeys)
   const accessTokenService = createAccessTokenService(serverConfig.access)
@@ -215,7 +248,8 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       accessTokenService,
       database,
       clock,
-      config: { cursorKey: serverConfig.cursorKey },
+      cache,
+      config: { cursorKey: serverConfig.cursorKey, catalogTtlMs: serverConfig.cache.catalogTtlMs },
       clientCatalogRepository: createClientCatalogRepository(),
     })
 
@@ -319,13 +353,20 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
     })
 
     // Compliance documents, readable without a session.
-    registerPublicContentRoutes(application, { clientAccountRepository, unitOfWork })
+    registerPublicContentRoutes(application, {
+      clientAccountRepository,
+      unitOfWork,
+      cache,
+      config: { publicContentTtlMs: serverConfig.cache.publicContentTtlMs },
+    })
 
     // App configuration + APK update check, both called before login.
     registerPublicAppRoutes(application, {
       adminContentRepository,
       unitOfWork,
+      cache,
       appUpdate: serverConfig.appUpdate,
+      config: { appConfigTtlMs: serverConfig.cache.appConfigTtlMs },
     })
 
     registerWebAuthRoutes(application, {
@@ -360,6 +401,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
     // Admin content/catalog/oversight groups: the console's site content, fund
     // catalogue, and supervision reads over authoritative evidence.
     registerAdminContentRoutes(application, {
+      cache,
       webAuth,
       unitOfWork,
       database,
@@ -430,6 +472,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
     corsAllowlist: serverConfig.web.originAllowlist,
     checkReadiness,
     dispose: async () => {
+      await cache.close()
       await pool.end()
     },
   }

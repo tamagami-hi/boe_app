@@ -6,6 +6,7 @@
  * quarter, and the owner-scoped order and payment detail. There is no per-unit
  * price anywhere in these projections — Option B has none.
  */
+import { createUncachedCache } from "../../src/cache/cache.js"
 import { randomBytes, randomUUID } from "node:crypto"
 import { fileURLToPath } from "node:url"
 
@@ -140,7 +141,8 @@ beforeAll(async () => {
         accessTokenService,
         database,
         clock: () => new Date(),
-        config: { cursorKey: randomBytes(32) },
+        cache: createUncachedCache(),
+        config: { cursorKey: randomBytes(32), catalogTtlMs: 0 },
         clientCatalogRepository: createClientCatalogRepository(),
       })
     },

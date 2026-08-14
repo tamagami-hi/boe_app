@@ -1,3 +1,4 @@
+import { createUncachedCache } from "../../src/cache/cache.js"
 import { randomUUID } from "node:crypto"
 import { fileURLToPath } from "node:url"
 
@@ -127,7 +128,12 @@ beforeAll(async () => {
     logger: false,
     registerRoutes: (instance) => {
       registerClientAccountRoutes(instance, deps)
-      registerPublicContentRoutes(instance, { clientAccountRepository, unitOfWork })
+      registerPublicContentRoutes(instance, {
+          clientAccountRepository,
+          unitOfWork,
+          cache: createUncachedCache(),
+          config: { publicContentTtlMs: 0 },
+        })
     },
   })
 
