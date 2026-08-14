@@ -3,9 +3,6 @@ import { XCircle, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSession } from '../store/SessionContext.jsx';
 
-// Terminal-account screen. Pre-approval states are unreachable here — an
-// account only exists (and can log in) after admin approval — so only the
-// terminal statuses need copy. Unknown statuses fall back to the support copy.
 const COPY = {
   rejected: { Icon: XCircle, color: 'var(--be-red)', headline: 'This account needs support.', body: 'Contact support so we can help with this account.' },
   suspended: { Icon: Lock, color: 'var(--be-slate)', headline: 'Your account is currently suspended.', body: 'Investing is paused on this account. Contact support so we can help you restore access.' },
@@ -24,9 +21,13 @@ export default function Blocked() {
       <div className="be-card apk-blocked-card">
         <div className={`apk-blocked-icon is-${statusClass}`}>
           <Icon size={28} strokeWidth={1.5} />
+
         </div>
+
         <h2 className="apk-h-sm apk-blocked-title">{cfg.headline}</h2>
+
         <p className="apk-blocked-body">{cfg.body}</p>
+
         <div className="apk-blocked-actions">
           {user?.status === 'rejected' && (
             <button type="button" className="be-btn be-btn-primary be-btn-block" onClick={() => navigate('/app/profile/support')}>Contact support</button>
@@ -35,8 +36,11 @@ export default function Blocked() {
             <button type="button" className="be-btn be-btn-primary be-btn-block" onClick={() => navigate('/app/profile/support')}>Contact support</button>
           )}
           <button type="button" className="be-btn be-btn-ghost be-btn-block" onClick={async () => { await logout(); navigate('/app/login'); }}>Sign out</button>
+
         </div>
+
       </div>
+
     </div>
   );
 }

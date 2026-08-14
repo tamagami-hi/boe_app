@@ -10,10 +10,6 @@ const CATEGORIES = [
   ['kyc', 'KYC'], ['sip', 'SIP'], ['withdrawal', 'Withdrawal'], ['mandate', 'Mandate'],
 ];
 
-/**
- * One FAQ. A real disclosure button rather than a `<div onClick>`: the heading was
- * unfocusable, unreachable by keyboard, and gave AT no indication it expanded.
- */
 function Faq({ question, answer, open, onToggle }) {
   const panelId = useId();
   return (
@@ -26,15 +22,19 @@ function Faq({ question, answer, open, onToggle }) {
         onClick={onToggle}
       >
         <span>{question}</span>
+
         <ChevronDown
           size={16}
           strokeWidth={1.5}
           aria-hidden="true"
           className={`apk-faq-chevron ${open ? 'is-open' : ''}`}
         />
+
       </button>
-      {/* Kept mounted but hidden so aria-controls always resolves to a real node. */}
+
+
       <div className="apk-faq-a" id={panelId} hidden={!open}>{answer}</div>
+
     </div>
   );
 }
@@ -53,8 +53,6 @@ export default function Support() {
 
   const [loadError, setLoadError] = useState('');
 
-  // A failed read used to set both lists to [], so an outage looked like "you have
-  // no tickets" — on the screen an investor opens to check a request they filed.
   const load = useCallback(() => {
     setLoadError('');
     Promise.all([supportApi.listFaqs(), supportApi.listTickets()])
@@ -85,8 +83,6 @@ export default function Support() {
       setSubject('');
       setBody('');
     } catch (error) {
-      // The request failed, so the form stays filled in and says so. It used to
-      // close and prepend an `undefined` ticket on failure.
       setSubmitError(error?.message || 'We could not send that. Please try again.');
     } finally {
       setSubmitting(false);
@@ -106,6 +102,7 @@ export default function Support() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
+
         </div>
 
         <div className="be-card apk-faq-card">
@@ -124,42 +121,50 @@ export default function Support() {
 
         <div className="be-card apk-help-card">
           <div className="apk-help-title">Still need help?</div>
-          {/* Was "We respond within 1 business day." There is no operator queue
-              behind this yet, so the app must not commit to a response time it
-              cannot keep. What IS true: the request is recorded with a reference. */}
+
+
           <div className="apk-help-subtitle">
             We record your request with a reference you can quote.
           </div>
+
           <div className="apk-help-actions">
             <button type="button" className="be-btn be-btn-primary" onClick={() => setShowForm(true)}>
               Open a ticket
             </button>
+
             <a className="be-btn be-btn-secondary" href="mailto:support@beonedge.example">Email us</a>
+
           </div>
+
         </div>
 
         {showForm && (
           <div className="be-card apk-ticket-form">
-            {/* Every control is now labelled through FormField. The labels were
-                bare `<label>` elements with no `for`, so a screen reader announced
-                three unlabelled inputs. */}
+
             <FormField label="Subject" required>
               <input className="be-input" value={subject} onChange={(e) => setSubject(e.target.value)} />
+
             </FormField>
+
             <FormField label="Category">
               <select className="be-input" value={category} onChange={(e) => setCategory(e.target.value)}>
                 {CATEGORIES.map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
                 ))}
               </select>
+
             </FormField>
+
             <FormField label="Describe the issue" required error={submitError || undefined}>
               <textarea className="be-input" rows={4} value={body} onChange={(e) => setBody(e.target.value)} />
+
             </FormField>
+
             <div className="apk-ticket-actions">
               <button type="button" className="be-btn be-btn-secondary" onClick={() => setShowForm(false)}>
                 Cancel
               </button>
+
               <button
                 type="button"
                 className="be-btn be-btn-primary"
@@ -168,11 +173,14 @@ export default function Support() {
               >
                 {submitting ? 'Sending…' : 'Submit'}
               </button>
+
             </div>
+
           </div>
         )}
 
         <div className="be-eyebrow">My tickets</div>
+
         <div className="be-card be-card--flush">
           {loadError ? (
             <ErrorState
@@ -186,8 +194,6 @@ export default function Support() {
             <ListRow
               key={t.id}
               title={t.subject}
-              // The backend mints a short quotable handle (BOE-XXXXXXXX) precisely
-              // so the investor can cite it. The UI used to discard it.
               meta={[t.reference, t.updatedAt && `Updated ${fmtDate(t.updatedAt)}`].filter(Boolean).join(' · ')}
               trailing={
                 <span className={'be-badge ' + (t.status === 'open' ? 'be-badge-paused' : 'be-badge-active')}>
@@ -197,7 +203,9 @@ export default function Support() {
             />
           ))}
         </div>
+
       </div>
+
     </>
   );
 }

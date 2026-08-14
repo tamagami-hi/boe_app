@@ -25,12 +25,8 @@ export default function LumpsumSheet() {
   const [riskConsent, setRiskConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState('');
-  // The disabled prop is not a lock: setSubmitting is async, so a fast double tap
-  // enters onContinue twice and creates two orders.
   const submitLockRef = useRef(false);
 
-  // A failed fund read used to set `fund` to null, and `if (!fund)` renders a
-  // skeleton — so a dropped request left this money screen loading forever.
   const [loadError, setLoadError] = useState('');
   const loadFund = useCallback(() => {
     setLoadError('');
@@ -51,7 +47,9 @@ export default function LumpsumSheet() {
             description={loadError}
             onRetry={loadFund}
           />
+
         </div>
+
       </>
     );
   }
@@ -94,15 +92,11 @@ export default function LumpsumSheet() {
           onSuccess: async (response) => {
             try {
               await ordersApi.confirmRazorpayPayment(order.paymentId, response);
-              // `replace`: a completed payment must not be re-enterable by Back.
               navigate(HOME_PATH, { replace: true });
             } catch {
-              // Money may already have moved. Show the authoritative payment state
-              // rather than claiming success or stranding the user here.
               navigate(paymentPath, { replace: true });
             }
           },
-          // Also fires on sheet dismissal; the order exists either way.
           onFailure: () => {
             navigate(paymentPath, { replace: true });
           },
@@ -123,14 +117,16 @@ export default function LumpsumSheet() {
       <AppBar title="One-time" />
       <div className="apk-screen">
         <div className="be-eyebrow">One-time investment</div>
+
         <h1 className="apk-h-sm">{fund.name}</h1>
 
         <div className="be-field">
-          {/* The label was a bare <label> with no `for`, so the amount input was
-              unlabelled and the presets were an unnamed pile of buttons. */}
+
           <label className="be-field__label" htmlFor="lumpsum-amount">Amount</label>
+
           <div className="apk-amount-row">
             <span className="apk-amount-prefix" aria-hidden="true">₹</span>
+
             <input
               id="lumpsum-amount"
               className="apk-amount-input be-money"
@@ -145,25 +141,33 @@ export default function LumpsumSheet() {
               aria-describedby="lumpsum-amount-min"
             />
           </div>
+
           <div className="apk-chip-row apk-mt-2" role="group" aria-label="Amount presets">
             {settings.amountPresets.map((v) => (
               <button type="button" key={v} className={'apk-chip' + (amount === v ? ' is-active' : '')} onClick={() => setAmount(v)}>{fmtMoney(v)}</button>
             ))}
           </div>
+
           <div className="be-field-error" id="lumpsum-amount-min" hidden={valid}>
             Minimum is {fmtMoney(minLumpsum)}.
           </div>
+
         </div>
 
         <div className="apk-sheet-summary">
           <div className="apk-sheet-summary-row"><span>One-time investment</span><strong className="be-money">{fmtMoney(amountNumber)}</strong></div>
+
           <div className="be-disclosure apk-mt-1">{settings.paymentDisclosure}</div>
+
           <div className="be-disclosure apk-mt-1">{RISK_DISCLOSURE}</div>
+
         </div>
 
         <label className="apk-consent-row">
           <input type="checkbox" checked={riskConsent} onChange={(e) => setRiskConsent(e.target.checked)} />
+
           <span>I understand that investments are subject to market risks and have read the scheme-related documents.</span>
+
         </label>
 
         {err && <div className="apk-banner apk-banner-red">{err}</div>}
@@ -172,10 +176,13 @@ export default function LumpsumSheet() {
           {submitting ? 'Setting up investment...' : (
             <>
               <CreditCard size={18} strokeWidth={2} /> Pay {fmtMoney(amountNumber)}
+
             </>
           )}
         </button>
+
       </div>
+
     </>
   );
 }

@@ -41,29 +41,18 @@ function paymentTypeLabel(value) {
 
 export default function Transactions() {
   const [searchParams, setSearchParams] = useSearchParams();
-  // The filter IS the URL. It used to be read from `?tab=` once on mount and then
-  // held in local state, so the address bar went stale the moment a tab was
-  // tapped: the screen could not be linked to, shared, or restored, and Back did
-  // not undo a tab change.
   const requested = searchParams.get('tab');
   const tab = TAB_KEYS.has(requested) ? requested : 'all';
   const selectTab = (next) => {
-    // `replace` so the tab strip does not build a history trail; Back should leave
-    // the screen, which is what the native Back policy expects of a primary tab.
     setSearchParams(next === 'all' ? {} : { tab: next }, { replace: true });
     setOpen(null);
   };
   const [open, setOpen] = useState(null);
 
-  // One cache entry per tab, and only the active kind is enabled — so switching
-  // away and back shows the list you already loaded instead of clearing it to a
-  // skeleton, which is what the old `setItems(null)` on every tab change did.
   const isPaymentTab = PAYMENT_TABS.has(tab);
   const transactionsResource = useTransactions(tab, { enabled: !isPaymentTab });
   const paymentsResource = usePaymentQueue(tab, { enabled: isPaymentTab });
 
-  // `null` still means "not known yet" for the skeletons below. A failed read
-  // resolves to an empty list, as the old `.catch(() => setItems([]))` did.
   const items = transactionsResource.data ?? (transactionsResource.error ? [] : null);
   const payments = paymentsResource.data ?? (paymentsResource.error ? [] : null);
 
@@ -110,6 +99,7 @@ export default function Transactions() {
       return (
         <div className="be-card apk-list-card apk-tx-skeleton--mobile">
           <Skeleton variant="text" height="56px" count={3} />
+
         </div>
       );
     }
@@ -133,27 +123,37 @@ export default function Transactions() {
           <div className="apk-row-head">
             <div>
               <div className="apk-fund-name">{title}</div>
+
               <div className="apk-cell-meta">{fundName}</div>
+
               {meta && <div className="apk-cell-meta">{meta}</div>}
+
             </div>
+
             <span className={`be-badge ${statusBadgeClass(payment.status)}`}>
               <span className="be-badge-dot" />{statusLabel(payment.status)}
             </span>
+
           </div>
+
           <div className="apk-payment-action">
             <div>
               <div className="apk-row-amount be-money">{fmtMoney(amount)}</div>
+
               {tab === 'approval' && (
                 <div className="apk-cell-meta">Portfolio and fund pool update after admin approval.</div>
               )}
             </div>
+
             <Link
               className="be-btn be-btn-secondary be-btn-sm apk-payment-link-btn"
               to={buildPath('payment_status', { paymentId: payment.paymentId || payment.id })}
             >
               View payment
             </Link>
+
           </div>
+
         </div>
       );
     });
@@ -162,9 +162,8 @@ export default function Transactions() {
   return (
     <div className="apk-screen">
       <h1 className="apk-h">Transactions</h1>
-      {/* Not a tablist: there is no arrow-key navigation, no aria-controls and no
-          tabpanel. These are filter toggles over one list, which is what
-          aria-pressed says. */}
+
+
       <div className="apk-tabs" role="group" aria-label="Transaction filters">
         {TABS.map(([k, l]) => (
           <button
@@ -185,6 +184,7 @@ export default function Transactions() {
         items === null ? (
           <div className="be-card apk-list-card apk-tx-skeleton--mobile">
             <Skeleton variant="text" height="56px" count={5} />
+
           </div>
         ) : items.length === 0 ? (
           <TxEmptyState tabKey={tab} />
@@ -192,10 +192,6 @@ export default function Transactions() {
           <div className="be-card apk-tx-list apk-list-card">
             <div className="apk-tx-list-mobile">
               {items.map((t) => (
-                /* A real button. The hand-rolled `div role="button" tabIndex
-                   onKeyDown` reimplemented what the element gives for free, and
-                   only for Enter and Space on keydown — not the full activation
-                   behaviour AT and browsers expect. */
                 <button
                   key={t.id}
                   type="button"
@@ -205,20 +201,29 @@ export default function Transactions() {
                   <div className="apk-tx-main">
                     <div className="apk-tx-l">
                       <span className={`apk-tx-dot ${typeDotClass(t.type)}`} />
+
                       {t.type === 'sip' ? 'SIP' : t.type === 'lumpsum' ? 'Lumpsum' : t.type}
                     </div>
+
                     <div className="apk-tx-name">{fundDisplayName(t)}</div>
+
                     <div className="apk-tx-date">{fmtDate(t.date)}</div>
+
                   </div>
+
                   <div className="apk-tx-right">
                     <div className="apk-tx-amt be-money">{fmtMoney(t.amount)}</div>
+
                     <span className={`be-badge apk-tx-status ${statusBadgeClass(t.status)}`}>
                       <span className="be-badge-dot" />{statusLabel(t.status)}
                     </span>
+
                   </div>
+
                 </button>
               ))}
             </div>
+
           </div>
         )
       )}
@@ -231,36 +236,49 @@ export default function Transactions() {
             : 'Showing last 90 days. Older history is available in Statements. Investment values reflect market pricing.'}
       </div>
 
-      {/* Wrapper is now the shared PageSheet: portal, focus trap and restore,
-          ref-counted body lock, and registration with the overlay stack so Android
-          Back closes the sheet instead of navigating the list underneath it. This
-          markup previously put role="dialog" on the backdrop. */}
+
       <PageSheet open={Boolean(open)} onClose={() => setOpen(null)} label="Transaction details">
         {open && (
           <>
             <div className="apk-sheet-handle" />
             <h2 className="apk-h-sm apk-tx-sheet-title">{fundDisplayName(open)}</h2>
+
             <div className="apk-cell-meta apk-sheet-meta">{open.type.toUpperCase()} · {fmtDate(open.date, { withTime: true })}</div>
+
             <div className="apk-sheet-summary">
               <div className="apk-sheet-summary-row"><span>Amount</span><strong className="be-money">{fmtMoney(open.amount)}</strong></div>
+
               <div className="apk-sheet-summary-row"><span>Units</span><strong className="be-num">{open.units ? fmtUnits(open.units) : '—'}</strong></div>
+
               <div className="apk-sheet-summary-row"><span>Mode</span><strong>{open.mode || open.paymentMode || '—'}</strong></div>
+
               <div className="apk-sheet-summary-row"><span>Payment type</span><strong>{paymentTypeLabel(open.paymentType)}</strong></div>
+
               <div className="apk-sheet-summary-row"><span>Fund ID</span><strong className="be-mono apk-reference">{open.fund?.trackingId || open.fund?.fundCode || open.fundId || '—'}</strong></div>
+
               <div className="apk-sheet-summary-row"><span>Reference</span><strong className="be-mono apk-reference">{open.reference || open.referenceId || '—'}</strong></div>
+
               <div className="apk-sheet-summary-row"><span>Status</span>
+
                 <span className={`be-badge ${statusBadgeClass(open.status)}`}>
                   <span className="be-badge-dot" />{statusLabel(open.status)}
                 </span>
+
               </div>
+
             </div>
+
             {open.failureReason && <div className="apk-banner apk-banner-red apk-sheet-gap">{open.failureReason}</div>}
+
             <button type="button" className="be-btn be-btn-secondary be-btn-block apk-sheet-gap" disabled={!open.receiptUrl}>
               <Download size={16} strokeWidth={1.5} /> Download receipt
+
             </button>
+
           </>
         )}
       </PageSheet>
+
     </div>
   );
 }

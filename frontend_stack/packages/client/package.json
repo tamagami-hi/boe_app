@@ -14,7 +14,10 @@
     "./utils/*": "./src/utils/*",
     "./styles/*": "./src/styles/*",
     "./data/*": "./src/data/*",
-    "./hooks/*": "./src/hooks/*"
+    "./hooks/*": "./src/hooks/*",
+    "./platform/*": "./src/platform/*",
+    "./auth/*": "./src/auth/*",
+    "./components/*": "./src/components/*"
   },
   "dependencies": {
     "@beonedge/shared": "0.1.0"
