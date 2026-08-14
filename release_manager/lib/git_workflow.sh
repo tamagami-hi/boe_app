@@ -88,6 +88,77 @@ git_workflow_check_sensitive_changes() {
     [[ "$found" == false ]]
 }
 
+git_workflow_commit_candidates() {
+    local worktree="$1"
+    {
+        git -C "$worktree" diff --name-only --diff-filter=d -z
+        git -C "$worktree" diff --cached --name-only --diff-filter=d -z
+        git -C "$worktree" ls-files --others --exclude-standard -z
+    } | tr '\0' '\n' | sort -u
+}
+
+git_workflow_is_text_path() {
+    case "${1##*/}" in
+        *.png|*.jpg|*.jpeg|*.gif|*.webp|*.ico|*.woff|*.woff2|*.ttf|*.otf|*.eot) return 1 ;;
+        *.apk|*.aab|*.jar|*.zip|*.gz|*.tgz|*.bz2|*.xz|*.7z|*.pdf|*.so|*.dex|*.class|*.keystore) return 1 ;;
+    esac
+    return 0
+}
+
+git_workflow_check_worktree_hygiene() {
+    local worktree="$1" path clean=true size lines
+    local max_bytes=$((5 * 1024 * 1024))
+
+    if ! git -C "$worktree" diff HEAD --check; then
+        printf '   ✗ the changes above introduce whitespace errors\n' >&2
+        clean=false
+    fi
+
+    while IFS= read -r path; do
+        [[ -n "$path" ]] || continue
+        [[ -f "$worktree/$path" ]] || continue
+
+        size=$(wc -c <"$worktree/$path" 2>/dev/null || echo 0)
+        if [[ "$size" -gt "$max_bytes" ]]; then
+            printf '   ✗ %s is %s MB; commit large artifacts deliberately, not through this workflow\n' \
+                "$path" "$((size / 1024 / 1024))" >&2
+            clean=false
+        fi
+
+        git_workflow_is_text_path "$path" || continue
+
+        if grep -qIE '^(<{7}|={7}|>{7})( |$)' "$worktree/$path" 2>/dev/null; then
+            printf '   ✗ %s still contains merge conflict markers\n' "$path" >&2
+            clean=false
+        fi
+    done < <(git_workflow_commit_candidates "$worktree")
+
+    while IFS= read -r path; do
+        [[ -n "$path" ]] || continue
+        [[ -f "$worktree/$path" ]] || continue
+        git_workflow_is_text_path "$path" || continue
+
+        lines="$(grep -nIE '[ \t]+$' "$worktree/$path" 2>/dev/null | cut -d: -f1 | tr '\n' ',' | sed 's/,$//')"
+        if [[ -n "$lines" ]]; then
+            printf '   ✗ new file %s has trailing whitespace on: %s\n' "$path" "$lines" >&2
+            clean=false
+        fi
+
+        if [[ -s "$worktree/$path" ]] && [[ -n "$(tail -c 1 "$worktree/$path")" ]]; then
+            printf '   ✗ new file %s has no newline at end of file\n' "$path" >&2
+            clean=false
+        fi
+    done < <(git -C "$worktree" ls-files --others --exclude-standard)
+
+    if [[ "$clean" != true ]]; then
+        printf '   nothing was staged. Fix the files above, then run this again.\n' >&2
+        printf '   to strip trailing whitespace across the pending files:\n' >&2
+        printf "     git -C %s ls-files -m -o --exclude-standard | xargs -r sed -i 's/[ \\t]*\$//'\n" \
+            "$worktree" >&2
+        return 1
+    fi
+}
+
 git_workflow_commit_dirty() {
     local worktree="$1" label="$2" message
     [[ -n "$(git -C "$worktree" status --porcelain)" ]] || return 0
@@ -95,6 +166,7 @@ git_workflow_commit_dirty() {
     printf '\n   changes in %s (%s):\n' "$label" "$worktree"
     git -C "$worktree" status --short
     git_workflow_check_sensitive_changes "$worktree" || return 1
+    git_workflow_check_worktree_hygiene "$worktree" || return 1
     git_workflow_confirm "Commit all listed changes in $label?" || {
         printf '   ! commit skipped for %s\n' "$label" >&2
         return 1

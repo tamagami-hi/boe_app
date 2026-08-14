@@ -271,4 +271,47 @@ fi
 [[ "$(git -C "$main_worktree" rev-parse origin/main)" == "$before_failed_push" ]] \
     || fail_test 'commit-hook failure pushed main'
 
+rm -f "$hook"
+git -C "$main_worktree" reset -q --hard HEAD
+git -C "$main_worktree" clean -qfd
+
+# Pre-stage hygiene: a worktree with trailing whitespace, a missing EOF newline
+# or a leftover conflict marker must be refused BEFORE anything is staged.
+before_hygiene_head="$(git -C "$main_worktree" rev-parse HEAD)"
+
+printf 'let a = 1;   \n' > "$main_worktree/trailing.js"
+if git_workflow_check_worktree_hygiene "$main_worktree" >/dev/null 2>&1; then
+    fail_test 'hygiene check accepted trailing whitespace'
+fi
+[[ -z "$(git -C "$main_worktree" diff --cached --name-only)" ]] \
+    || fail_test 'hygiene failure left files staged'
+rm -f "$main_worktree/trailing.js"
+
+printf 'no newline' > "$main_worktree/eof.js"
+if git_workflow_check_worktree_hygiene "$main_worktree" >/dev/null 2>&1; then
+    fail_test 'hygiene check accepted a missing newline at end of file'
+fi
+rm -f "$main_worktree/eof.js"
+
+printf '<<<<<<< HEAD\na\n=======\nb\n>>>>>>> other\n' > "$main_worktree/conflict.js"
+if git_workflow_check_worktree_hygiene "$main_worktree" >/dev/null 2>&1; then
+    fail_test 'hygiene check accepted merge conflict markers'
+fi
+rm -f "$main_worktree/conflict.js"
+
+# A binary asset is exempt from the text checks rather than being rejected.
+printf '\211PNG\r\n\032\n no trailing newline here' > "$main_worktree/logo.png"
+git_workflow_check_worktree_hygiene "$main_worktree" >/dev/null 2>&1 \
+    || fail_test 'hygiene check rejected a binary asset'
+rm -f "$main_worktree/logo.png"
+
+printf 'clean = true\n' > "$main_worktree/clean.js"
+git_workflow_check_worktree_hygiene "$main_worktree" >/dev/null 2>&1 \
+    || fail_test 'hygiene check rejected a clean worktree'
+rm -f "$main_worktree/clean.js"
+
+[[ "$(git -C "$main_worktree" rev-parse HEAD)" == "$before_hygiene_head" ]] \
+    || fail_test 'hygiene checks advanced main'
+
 printf 'PASS: dirty main and surface work are committed, integrated and pushed before release\n'
+printf 'PASS: pre-stage hygiene refuses trailing whitespace, missing EOF newlines and conflict markers\n'
