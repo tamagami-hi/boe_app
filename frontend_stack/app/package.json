@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "build:android": "VITE_BEO_APP_TARGET=client vite build --mode android && node scripts/check-android-dist.mjs",
-    "build:android:prod": "VITE_BEO_APP_TARGET=client vite build --mode android-prod && node scripts/check-android-dist.mjs",
+    "build": "vite build && node scripts/check-bundle-boots.mjs",
+    "build:android": "VITE_BEO_APP_TARGET=client vite build --mode android && node scripts/check-android-dist.mjs --variant=client && node scripts/check-bundle-boots.mjs",
+    "build:android:prod": "VITE_BEO_APP_TARGET=client vite build --mode android-prod && node scripts/check-android-dist.mjs --variant=client && node scripts/check-bundle-boots.mjs",
     "preview": "vite preview",
     "android:sync": "npm run build:android && cap sync android",
     "android:sync:prod": "npm run build:android:prod && cap sync android",

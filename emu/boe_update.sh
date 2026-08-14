@@ -382,13 +382,18 @@ build_variant() {
     ( cd "$APP_DIR" && npx --no-install vite build --mode "$VITE_MODE" ) \
         || { err "vite build failed for $variant"; return 1; }
 
-    # The client-only bundle guard exists to keep admin code out of the user
-    # app. It is correct for client builds and wrong for admin builds.
-    if [[ "$variant" == "client" && -f "$APP_DIR/scripts/check-android-dist.mjs" ]]; then
-        step "verifying the client bundle contains no admin chunks"
-        ( cd "$APP_DIR" && node scripts/check-android-dist.mjs ) \
-            || { err "client bundle guard failed"; return 1; }
+    if [[ -f "$APP_DIR/scripts/check-android-dist.mjs" ]]; then
+        step "verifying the $variant bundle (chunk graph, budgets, fonts)"
+        ( cd "$APP_DIR" && node scripts/check-android-dist.mjs --variant="$variant" ) \
+            || { err "bundle guard failed for $variant"; return 1; }
         ok "bundle guard passed"
+    fi
+
+    if [[ -f "$APP_DIR/scripts/check-bundle-boots.mjs" ]]; then
+        step "executing the $variant bundle to prove it boots"
+        ( cd "$APP_DIR" && node scripts/check-bundle-boots.mjs ) \
+            || { err "the $variant bundle does not boot; refusing to package it"; return 1; }
+        ok "bundle boots"
     fi
 
     step "capacitor sync"
