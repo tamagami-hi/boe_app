@@ -73,11 +73,10 @@ export function humanizeState(value) {
 }
 
 /*
- * `GET /v1/admin/payments` emits the canonical payment shape
- * (`amountPaise`/`state`->`status`/`providerReference`/`succeededAt`). The screen was
- * written against a legacy mock shape — `amount`, `resolvedAmount`, `mode`, `time`,
- * `fundId`, `fundName`, `userName` — none of which the endpoint sends, so every
- * amount rendered as ₹0 and every pool as "Unmapped fund". Map once here.
+ * Same story for `GET /v1/admin/payments`: the screens were written against a
+ * legacy mock shape — `amount`, `resolvedAmount`, `mode`, `time`, `fundId`,
+ * `fundName`, `userName` — none of which the endpoint sends, so every amount
+ * rendered as ₹0 and every pool as "Unmapped fund". Map once here.
  */
 export function normalizePaymentRow(row = {}) {
   return {
@@ -99,29 +98,13 @@ export function normalizePaymentRow(row = {}) {
   };
 }
 
-/*
- * Same story for `GET /v1/admin/mandates`. The register read `user`, `amount`,
- * `day`, `last` and `next`; the endpoint sends `userEmail`, `maxAmountPaise`,
- * `debitDay`, `validFrom` and `validTo`, so five of the eight columns were blank on
- * every row. There is no last-debit or next-debit field to map — see the screen.
- */
-export function normalizeMandateRow(row = {}) {
-  return {
-    ...row,
-    id: row.id || '',
-    userId: row.userId || '',
-    userEmail: row.userEmail || '',
-    provider: row.provider || '',
-    providerMandateId: row.providerMandateId || '',
-    status: row.status || row.state || 'unknown',
-    maxAmount: paiseToRupees(row.maxAmountPaise),
-    frequency: row.frequency || '',
-    debitDay: Number.isFinite(Number(row.debitDay)) ? Number(row.debitDay) : null,
-    sipCount: Number.isFinite(Number(row.sipCount)) ? Number(row.sipCount) : 0,
-    validFrom: row.validFrom || null,
-    validTo: row.validTo || null,
-    createdAt: row.createdAt || '',
-  };
+export function normalizeAdminCollection(rows, path) {
+  const key = collectionKey(path);
+  if (key === 'approvals') return rows.map(normalizeApprovalRow);
+  if (key === 'funds') return rows.map(normalizeFundRow);
+  if (key === 'audit-logs') return rows.map(normalizeAuditRow);
+  if (key === 'payments') return rows.map(normalizePaymentRow);
+  return rows;
 }
 
 export function normalizeApprovalRow(row = {}) {
@@ -140,14 +123,12 @@ export function normalizeApprovalRow(row = {}) {
 }
 
 // The canonical `/v1/admin/funds` projection is catalogue-shaped (slug + current
-// published version + latest NAV/AUM snapshots). The AUM screens were written
-// against the legacy fund document, so map once here instead of rewriting them:
-// paise -> rupees for the pool size, the published state as the lifecycle stage,
-// and the version's minimums/risk band as flat fields.
+// published version + latest published AUM snapshot). AUM is an absolute snapshot
+// (`aumPaise` + `asOfDate`); there is no NAV, no unit price, and no
+// opening/investment/redemption roll-forward in this model.
 export function normalizeFundRow(row = {}) {
-  // Option B: a pool's size is the latest published monthly closing AUM. There is
-  // no NAV and no unit price to surface.
-  const aumPaise = Number(row.aum?.closingPaise ?? 0);
+  const aumPaise = row.aum?.aumPaise ?? null;
+  const aumNumber = Number(aumPaise);
   return {
     ...row,
     id: row.id || '',
@@ -159,8 +140,11 @@ export function normalizeFundRow(row = {}) {
     category: row.category || '',
     riskLabel: row.riskLevel || '',
     returnTier: row.returnTier || null,
-    totalPoolSize: Number.isFinite(aumPaise) ? aumPaise / 100 : 0,
-    aumPeriodStart: row.aum?.periodStart ?? null,
+    aumPaise,
+    // Rupees for tiles that aggregate across funds; null when unpublished so a
+    // missing figure can never read as ₹0.
+    totalPoolSize: aumPaise === null || !Number.isFinite(aumNumber) ? null : aumNumber / 100,
+    aumAsOfDate: row.aum?.asOfDate ?? null,
     aumUpdatedAt: row.aum?.updatedAt ?? null,
     stockCount: row.stockCount ?? 0,
     minSip: row.minimumSipPaise === null || row.minimumSipPaise === undefined
@@ -187,16 +171,6 @@ export function normalizeAuditRow(row = {}) {
     reason: row.reasonCode || '',
     createdAt: row.createdAt || row.occurredAt || '',
   };
-}
-
-export function normalizeAdminCollection(rows, path) {
-  const key = collectionKey(path);
-  if (key === 'approvals') return rows.map(normalizeApprovalRow);
-  if (key === 'funds') return rows.map(normalizeFundRow);
-  if (key === 'audit-logs') return rows.map(normalizeAuditRow);
-  if (key === 'payments') return rows.map(normalizePaymentRow);
-  if (key === 'mandates') return rows.map(normalizeMandateRow);
-  return rows;
 }
 
 export function clone(value) {

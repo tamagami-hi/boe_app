@@ -96,6 +96,28 @@
   overflow-wrap: anywhere;
 }
 
+/* Checkbox attestation inside a decision panel (bank-evidence confirmation).
+   `.adm-field` stacks its children; the attestation needs box and text inline. */
+.adm-checkbox-field {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: var(--be-space-2);
+}
+
+.adm-checkbox-field input[type='checkbox'] {
+  width: auto;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.adm-checkbox-field span {
+  font-size: var(--be-text-sm);
+  line-height: 1.5;
+  color: var(--be-fg);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 /* Status badge (pills) */
 .adm-status-badge {
   display: inline-flex;

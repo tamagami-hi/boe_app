@@ -13,17 +13,18 @@ import FundProfileForm from './FundProfileForm.jsx';
 import '../admin-screens-shared.css';
 
 /*
- * The pool list, and creating one.
+ * The issued fund catalogue, and creating one.
  *
  * This was tab 2 of a four-tab screen whose other tabs were an overview, a
  * pool-picker hosting three panels, and the redemption queue — 1,304 lines in one
- * file with five hand-rolled modals. Each of those is now its own destination:
- * a pool has a routed workspace (`/admin/ops/funds/:fundId`), and redemptions have
- * their own screen, because a withdrawal queue is not a fund-editing task.
+ * file with five hand-rolled modals. A fund now has a routed workspace
+ * (`/admin/funds/:fundId`) for its terms, stock list and version history. AUM
+ * lives under the AUM area and client growth under Client values: a funds.read
+ * surface never lists investors or their balances.
  *
- * Creating a pool is two writes the backend keeps separate: a draft (slug only),
+ * Creating a fund is two writes the backend keeps separate: a draft (slug only),
  * then its first published version. The form does both and then opens the new
- * pool's workspace, which is where AUM, stocks and investors live.
+ * fund's workspace.
  */
 export default function FundsListScreen({
   funds = [],
@@ -44,7 +45,6 @@ export default function FundsListScreen({
     });
   }, [funds, stateFilter, query]);
 
-  const totalAum = funds.reduce((sum, fund) => sum + (Number(fund.totalPoolSize) || 0), 0);
   const countIn = (states) => funds.filter((fund) => states.includes(fund.status)).length;
 
   async function create(payload, profile) {
@@ -63,9 +63,6 @@ export default function FundsListScreen({
     <div className="adm-screen">
       <div className="adm-stats">
         <StatTile label="Fund pools" value={fmtInt(funds.length)} icon={Layers} tone="slate" />
-        {/* Was `₹${(totalAum / 1e7).toFixed(2)}Cr` — which prints "₹0.00Cr" for any
-            pool under a crore, i.e. for every pool at launch. */}
-        <StatTile label="Published AUM" value={fmtMoney(totalAum)} />
         <StatTile label="Published pools" value={fmtInt(countIn(['published']))} />
         <StatTile label="Draft or in review" value={fmtInt(countIn(['draft', 'review_pending']))} />
       </div>
@@ -160,7 +157,7 @@ export default function FundsListScreen({
                         currency and no grouping, in a column headed "Pool Size". */}
                     <td className="be-money" data-label="Published AUM">{fmtMoney(fund.totalPoolSize)}</td>
                     <td className="adm-cell-meta" data-label="As of">
-                      {fund.aumPeriodStart ? String(fund.aumPeriodStart).slice(0, 7) : 'Not published'}
+                      {fund.aumAsOfDate || 'Not published'}
                     </td>
                     <td className="be-num" data-label="Stocks">{fmtInt(fund.stockCount)}</td>
                     <td className="be-num adm-cell-meta" data-label="Version">
@@ -170,7 +167,7 @@ export default function FundsListScreen({
                       )}
                     </td>
                     <td className="adm-col-actions" data-label="">
-                      <Link className="be-btn be-btn-secondary be-btn-sm" to={`/admin/ops/funds/${fund.id}`}>
+                      <Link className="be-btn be-btn-secondary be-btn-sm" to={`/admin/funds/${fund.id}`}>
                         Open<span className="adm-sr-only"> {fund.name}</span>
                       </Link>
                     </td>

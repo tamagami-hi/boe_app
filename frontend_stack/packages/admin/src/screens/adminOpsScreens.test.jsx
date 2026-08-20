@@ -1,23 +1,13 @@
-// Admin ops screens. The defects these cover: filter values the backend's strict
-// enums reject (so choosing a filter 400s the screen), a "Load more" that wiped the
-// rows it was adding to, holdings and AUM read from fields the projection does not
-// send, and an audit detail panel that printed an empty object.
+// Admin ops-side screens. The defects these cover: an audit detail panel that
+// printed an empty object, and an email log whose load/read failures rendered as
+// "nothing has ever been queued". The transactions register and the holdings
+// screen are retired (payments is the evidence trail; AUM lives under /admin/aum).
 import React from 'react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
-import TransactionsScreen from './TransactionsScreen.jsx';
-import HoldingsScreen from './HoldingsScreen.jsx';
 import AuditLogScreen from './AuditLogScreen.jsx';
 import EmailDeliveriesScreen from './EmailDeliveriesScreen.jsx';
-import { normalizeAuditRow, normalizeFundRow } from '../helpers/formatters.js';
-
-// The canonical enums, copied from backend_controller/src/db/types.ts. A filter that
-// sends anything outside these is rejected by the route's `.strict()` schema.
-const ORDER_STATES = [
-  'submitted', 'payment_pending', 'payment_confirmed', 'booked',
-  'payment_failed', 'cancelled', 'rejected', 'refunded', 'reversed',
-];
-const ORDER_TYPES = ['purchase', 'sip_installment', 'redemption', 'refund', 'adjustment'];
+import { normalizeAuditRow } from '../helpers/formatters.js';
 
 const listState = {};
 const listCalls = [];
@@ -28,11 +18,6 @@ vi.mock('../hooks/useAdminList.js', () => ({
   },
 }));
 
-const request = vi.fn();
-vi.mock('@beonedge/client/services/_util.js', () => ({
-  apiRequest: (...args) => request(...args),
-}));
-
 function setList(next, path = 'default') {
   listState[path] = {
     items: [], loading: false, error: '', hasMore: false,
@@ -40,151 +25,9 @@ function setList(next, path = 'default') {
   };
 }
 
-const ORDER = {
-  id: '4f1c2d3e-1111-2222-3333-444455556666',
-  userEmail: 'asha@example.com',
-  fundName: 'Edge Growth',
-  type: 'sip_installment',
-  status: 'booked',
-  amountPaise: '500000',
-  requestedAt: '2026-08-01T10:00:00.000Z',
-  createdAt: '2026-08-01T10:00:00.000Z',
-};
-
 beforeEach(() => {
   listCalls.length = 0;
   setList({});
-  request.mockReset();
-  request.mockResolvedValue({ items: [] });
-});
-
-describe('TransactionsScreen filters match the backend enums', () => {
-  test('every status option is a real order state', () => {
-    setList({ items: [ORDER] });
-    render(<TransactionsScreen />);
-    const values = Array.from(screen.getByLabelText('Order status').querySelectorAll('option'))
-      .map((o) => o.value)
-      .filter((v) => v !== 'all');
-    expect(values).toEqual(ORDER_STATES);
-    // The old list offered these three, which no order is ever in.
-    for (const bogus of ['awaiting_approval', 'approved', 'approval_rejected']) {
-      expect(values).not.toContain(bogus);
-    }
-  });
-
-  test('every type option is a real order type', () => {
-    setList({ items: [ORDER] });
-    render(<TransactionsScreen />);
-    const values = Array.from(screen.getByLabelText('Order type').querySelectorAll('option'))
-      .map((o) => o.value)
-      .filter((v) => v !== 'all');
-    expect(values).toEqual(ORDER_TYPES);
-    // Both of the old options were rejected by the route, so the type filter
-    // could only ever produce a validation error.
-    expect(values).not.toContain('sip');
-    expect(values).not.toContain('lumpsum');
-  });
-
-  test('the chosen status reaches the query', () => {
-    setList({ items: [ORDER] });
-    render(<TransactionsScreen />);
-    fireEvent.change(screen.getByLabelText('Order status'), { target: { value: 'booked' } });
-    expect(listCalls.at(-1).filters.status).toBe('booked');
-  });
-});
-
-describe('TransactionsScreen state', () => {
-  // `loading` goes true on every fetch, Load more included, and the rows were
-  // rendered behind `!loading`.
-  test('a further page does not blank the rows already on screen', () => {
-    setList({ items: [ORDER], loading: true, hasMore: true });
-    const { container } = render(<TransactionsScreen />);
-    expect(screen.getByText('Edge Growth')).toBeTruthy();
-    expect(container.querySelectorAll('.adm-skeleton, .skeleton-table-row__bar').length).toBe(0);
-  });
-
-  test('a failed read is announced with a retry and does not read as empty', () => {
-    const reload = vi.fn();
-    setList({ error: 'Could not load data.', reload });
-    render(<TransactionsScreen />);
-    expect(screen.getByRole('alert').textContent).toContain('Could not load data.');
-    expect(screen.queryByText(/No orders match these filters/u)).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: /Try again/u }));
-    expect(reload).toHaveBeenCalledTimes(1);
-  });
-
-  test('the order reference is rendered in full', () => {
-    setList({ items: [ORDER] });
-    render(<TransactionsScreen />);
-    expect(screen.getByText(ORDER.id)).toBeTruthy();
-  });
-
-  test('a SIP installment is labelled as one', () => {
-    setList({ items: [ORDER] });
-    render(<TransactionsScreen />);
-    expect(screen.getAllByText('SIP installment').length).toBeGreaterThan(0);
-  });
-});
-
-describe('HoldingsScreen reads the fields the projection sends', () => {
-  const fund = normalizeFundRow({
-    id: 'f1',
-    slug: 'edge-growth',
-    name: 'Edge Growth',
-    status: 'published',
-    objective: 'Long-term compounding',
-    stockCount: 12,
-    aum: { closingPaise: '250000000', periodStart: '2026-08-01', updatedAt: '2026-08-05T00:00:00.000Z' },
-  });
-
-  test('the pool size comes from the published AUM, not a field that does not exist', () => {
-    const { container } = render(<HoldingsScreen funds={[fund]} />);
-    // 250000000 paise = ₹25,00,000.
-    expect(container.textContent).toContain('25,00,000');
-    expect(container.textContent).not.toContain('₹0');
-  });
-
-  test('the disclosed stock count is shown', () => {
-    render(<HoldingsScreen funds={[fund]} />);
-    expect(screen.getByText('12')).toBeTruthy();
-  });
-
-  test('a load in progress does not claim there are no pools', () => {
-    render(<HoldingsScreen funds={[]} loading />);
-    expect(screen.queryByText(/No fund pools exist yet/u)).toBeNull();
-  });
-
-  test('expanding a pool reads its real stock list', async () => {
-    request.mockResolvedValue({
-      items: [
-        { id: 's1', stockName: 'SJS Enterprises', quarterLabel: 'Q1 FY27', weightPercent: 4.5, state: 'active' },
-        { id: 's2', stockName: 'Old Holding', quarterLabel: 'Q4 FY26', state: 'exited' },
-      ],
-    });
-    render(<HoldingsScreen funds={[fund]} />);
-    const toggle = screen.getByRole('button', { name: 'View holdings' });
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    fireEvent.click(toggle);
-    expect(await screen.findByText('SJS Enterprises')).toBeTruthy();
-    expect(request).toHaveBeenCalledWith('/v1/admin/funds/f1/stocks', { scope: 'admin' });
-    // An exited holding is counted, not listed as current.
-    expect(screen.queryByText('Old Holding')).toBeNull();
-    expect(screen.getByText(/exited holding/u)).toBeTruthy();
-  });
-
-  test('a failed stock read is announced, not shown as an empty pool', async () => {
-    request.mockRejectedValue(new Error('Read failed'));
-    render(<HoldingsScreen funds={[fund]} />);
-    fireEvent.click(screen.getByRole('button', { name: 'View holdings' }));
-    const alert = await screen.findByRole('alert');
-    expect(alert.textContent).toContain('Read failed');
-    expect(screen.queryByText(/No stocks disclosed/u)).toBeNull();
-  });
-
-  test('the stage badge names the real fund state', () => {
-    render(<HoldingsScreen funds={[fund]} />);
-    expect(screen.getByText('Published')).toBeTruthy();
-  });
 });
 
 describe('AuditLogScreen', () => {

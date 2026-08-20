@@ -1,6 +1,5 @@
-// Admin list/action screens. The defects these cover: three of the four screens
-// were wired to a legacy mock row shape, so the payment register showed ₹0 for every
-// payment and the mandate register left five of eight columns blank; a load in
+// Admin list/action screens. The defects these cover: the payment register showed
+// ₹0 for every payment because it was wired to a legacy mock row shape; a load in
 // progress and a failed read both rendered as "there is nothing here"; and the
 // irreversible approve/reject decision was a small button in a dense row.
 import React from 'react';
@@ -12,7 +11,6 @@ import {
   paiseToRupees,
 } from '../helpers/formatters.js';
 import ApprovalsScreen from './ApprovalsScreen.jsx';
-import MandatesScreen from './MandatesScreen.jsx';
 import PaymentsScreen from './PaymentsScreen.jsx';
 import UserDetailsListScreen from './UserDetailsListScreen.jsx';
 
@@ -39,31 +37,14 @@ const PAYMENT = {
   currency: 'INR',
   status: 'succeeded',
   attemptCount: 2,
-  provider: 'razorpay',
-  providerReference: 'pay_RZP123',
+  provider: 'phonepe',
+  providerReference: 'pay_PP123',
   succeededAt: '2026-08-01T10:00:00.000Z',
   failedAt: null,
   createdAt: '2026-08-01T09:59:00.000Z',
 };
 
-const MANDATE = {
-  id: 'mnd_1',
-  userId: 'u1',
-  userEmail: 'asha@example.com',
-  provider: 'razorpay',
-  providerMandateId: 'rzp_mandate_1',
-  maxAmountPaise: '500000',
-  frequency: 'monthly',
-  debitDay: 5,
-  status: 'pending_user_authorization',
-  validFrom: '2026-08-01T00:00:00.000Z',
-  validTo: null,
-  sipCount: 1,
-  createdAt: '2026-07-31T00:00:00.000Z',
-};
-
 const payments = (overrides = {}) => normalizeAdminCollection([{ ...PAYMENT, ...overrides }], '/v1/admin/payments');
-const mandates = (overrides = {}) => normalizeAdminCollection([{ ...MANDATE, ...overrides }], '/v1/admin/mandates');
 
 describe('canonical row shapes', () => {
   test('paise become rupees, and a missing amount stays missing', () => {
@@ -86,20 +67,12 @@ describe('canonical row shapes', () => {
     const [row] = payments();
     expect(row.amount).toBe(25000);
     expect(row.settledAt).toBe(PAYMENT.succeededAt);
-    expect(row.providerReference).toBe('pay_RZP123');
+    expect(row.providerReference).toBe('pay_PP123');
   });
 
   test('a failed payment settles at its failure time', () => {
     const [row] = payments({ status: 'failed', succeededAt: null, failedAt: '2026-08-02T00:00:00.000Z' });
     expect(row.settledAt).toBe('2026-08-02T00:00:00.000Z');
-  });
-
-  test('a mandate row exposes the fields the endpoint really sends', () => {
-    const [row] = mandates();
-    expect(row.maxAmount).toBe(5000);
-    expect(row.debitDay).toBe(5);
-    expect(row.userEmail).toBe('asha@example.com');
-    expect(row.sipCount).toBe(1);
   });
 });
 
@@ -115,7 +88,8 @@ describe('PaymentsScreen', () => {
     const select = screen.getByLabelText('Payment status');
     const values = Array.from(select.querySelectorAll('option')).map((option) => option.value);
     expect(values).toEqual([
-      '', 'created', 'provider_pending', 'succeeded', 'failed', 'expired', 'refunded',
+      '', 'created', 'provider_pending', 'succeeded', 'failed', 'expired',
+      'refund_pending', 'refunded', 'refund_failed',
     ]);
     // The old list offered success/confirmed/reconciled/approved/rejected/pending —
     // none of which any payment is ever in, so choosing one emptied the table.
@@ -132,7 +106,7 @@ describe('PaymentsScreen', () => {
 
   test('search matches the provider reference', () => {
     render(<PaymentsScreen rows={payments()} />);
-    fireEvent.change(screen.getByLabelText('Search payments'), { target: { value: 'RZP123' } });
+    fireEvent.change(screen.getByLabelText('Search payments'), { target: { value: 'PP123' } });
     expect(screen.getByText('pay_1')).toBeTruthy();
     fireEvent.change(screen.getByLabelText('Search payments'), { target: { value: 'nothing' } });
     expect(screen.getByText(/match the selected filters/u)).toBeTruthy();
@@ -161,49 +135,15 @@ describe('PaymentsScreen', () => {
     fireEvent.click(screen.getByRole('button', { name: 'View user' }));
     expect(onUserDetail).toHaveBeenCalledTimes(1);
   });
-});
 
-describe('MandatesScreen', () => {
-  test('renders the user, amount and debit day that used to be blank', () => {
-    render(<MandatesScreen rows={mandates()} />);
-    expect(screen.getByText('asha@example.com')).toBeTruthy();
-    expect(screen.getByText(/5,000/u)).toBeTruthy();
-    expect(screen.getByText(/day 5/u)).toBeTruthy();
-  });
-
-  // The screen mapped `pending_user_auth`; the real state is
-  // `pending_user_authorization`, so the badge rendered undefined — an empty cell.
-  test('the pending-authorisation state has a badge and a tile', () => {
-    const { container } = render(<MandatesScreen rows={mandates()} />);
-    expect(container.querySelector('.be-badge').textContent).toContain('Pending auth');
-    const tile = Array.from(container.querySelectorAll('.adm-stat'))
-      .find((node) => node.textContent.startsWith('Pending auth'));
-    expect(tile.querySelector('.adm-stat-value').textContent).toBe('1');
-  });
-
-  test('an unrecognised state is labelled, never left blank', () => {
-    render(<MandatesScreen rows={mandates({ status: 'some_new_state' })} />);
-    expect(screen.getByText('Some new state')).toBeTruthy();
-  });
-
-  test('a load in progress does not claim there are no mandates', () => {
-    render(<MandatesScreen rows={[]} loading />);
-    expect(screen.queryByText(/No mandates have been created/u)).toBeNull();
-  });
-
-  test('there are no last-debit or next-debit columns, because no field carries them', () => {
-    render(<MandatesScreen rows={mandates()} />);
-    expect(screen.queryByText('Last debit')).toBeNull();
-    expect(screen.queryByText('Next')).toBeNull();
-  });
-
-  test('the row action is a typed button that opens the user', () => {
-    const onUserDetail = vi.fn();
-    render(<MandatesScreen rows={mandates()} onUserDetail={onUserDetail} />);
-    const view = screen.getByRole('button', { name: 'View user' });
-    expect(view.getAttribute('type')).toBe('button');
-    fireEvent.click(view);
-    expect(onUserDetail).toHaveBeenCalledWith(expect.objectContaining({ id: 'mnd_1' }));
+  test('there are no approval buttons — acceptance happens under Investment reviews', () => {
+    render(<PaymentsScreen rows={payments()} />);
+    expect(screen.queryByRole('button', { name: /Approve/u })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Reject/u })).toBeNull();
+    // The note points operators at the real decision surface…
+    expect(screen.getByText(/Investment reviews/u)).toBeTruthy();
+    // …and the old "nothing to approve" copy is gone.
+    expect(screen.queryByText(/nothing to approve/iu)).toBeNull();
   });
 });
 

@@ -1,6 +1,8 @@
 // Fund operations. The 1,304-line editor this replaces collected fifteen groups of
 // fields that no endpoint accepts and no client payload carries, offered six
-// lifecycle stages of which the route accepts three, and crashed on open.
+// lifecycle stages of which the route accepts three, and crashed on open. The
+// redemptions queue it used to sit beside is retired — acceptance is an Investment
+// reviews task, and AUM management lives under /admin/aum.
 import React from 'react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
@@ -10,7 +12,6 @@ import {
 } from './fundOpsModel.js';
 import FundsListScreen from './FundsListScreen.jsx';
 import FundWorkspace from './FundWorkspace.jsx';
-import RedemptionsScreen from '../RedemptionsScreen.jsx';
 import { normalizeFundRow } from '../../helpers/formatters.js';
 
 const request = vi.fn();
@@ -21,10 +22,8 @@ vi.mock('@beonedge/client/services/_util.js', () => ({
   isFixtureModeError: () => false,
 }));
 
-// The three panels the workspace hosts each own their own reads; this suite is about
-// the workspace, so they are stubbed out.
-vi.mock('../FundAumPanel.jsx', () => ({ default: () => <div data-testid="aum-panel" /> }));
-vi.mock('../FundInvestorsPanel.jsx', () => ({ default: () => <div data-testid="investors-panel" /> }));
+// The stock panel owns its own reads; this suite is about the workspace, so it is
+// stubbed out. The profile form and the version history stay real.
 vi.mock('../FundStockListPanel.jsx', () => ({ default: () => <div data-testid="stocks-panel" /> }));
 
 const PROFILE = {
@@ -119,10 +118,10 @@ const fund = normalizeFundRow({
   status: 'published',
   stockCount: 4,
   currentVersion: 2,
-  aum: { closingPaise: '250000000', periodStart: '2026-08-01', updatedAt: '2026-08-05T00:00:00.000Z' },
+  aum: { aumPaise: '250000000', asOfDate: '2026-08-01', updatedAt: '2026-08-05T00:00:00.000Z' },
 });
 
-const renderAt = (ui, path = '/admin/ops/funds') => render(
+const renderAt = (ui, path = '/admin/funds') => render(
   <MemoryRouter initialEntries={[path]}>{ui}</MemoryRouter>,
 );
 
@@ -144,7 +143,7 @@ describe('FundsListScreen', () => {
 
   test('a pool links to its own workspace', () => {
     renderAt(<FundsListScreen funds={[fund]} />);
-    expect(screen.getByRole('link', { name: /Open/u }).getAttribute('href')).toBe('/admin/ops/funds/f1');
+    expect(screen.getByRole('link', { name: /Open/u }).getAttribute('href')).toBe('/admin/funds/f1');
   });
 
   test('a load in progress does not claim there are no pools', () => {
@@ -192,11 +191,10 @@ const DETAIL = {
     minimumSipPaise: '500000',
     minimumPurchasePaise: '2500000',
     currentVersion: 2,
-    aum: { closingPaise: '250000000', periodStart: '2026-08-01' },
+    aum: { aumPaise: '250000000', asOfDate: '2026-08-01' },
   },
   versions: [{ id: 'v2', version: 2, name: 'Edge Growth', riskLevel: 'high', createdAt: '2026-08-01T00:00:00.000Z' }],
   disclosures: [{ title: 'Edge disclosure', body: 'Markets carry risk.' }],
-  investors: { count: 3, currentValuePaise: '260000000' },
 };
 
 function Probe() {
@@ -207,9 +205,9 @@ function Probe() {
 function renderWorkspace(props = {}) {
   request.mockResolvedValue(DETAIL);
   return render(
-    <MemoryRouter initialEntries={['/admin/ops/funds/f1']}>
+    <MemoryRouter initialEntries={['/admin/funds/f1']}>
       <Routes>
-        <Route path="/admin/ops/funds/:fundId" element={<><FundWorkspace {...props} /><Probe /></>} />
+        <Route path="/admin/funds/:fundId" element={<><FundWorkspace {...props} /><Probe /></>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -222,11 +220,13 @@ describe('FundWorkspace', () => {
     expect(request).toHaveBeenCalledWith('/v1/admin/funds/f1', { scope: 'admin' });
   });
 
-  test('the header states the pool size and investor value', async () => {
+  test('the header states the published AUM — and no investor figure', async () => {
     const { container } = renderWorkspace();
     await screen.findByText('Edge Growth');
     expect(container.textContent).toContain('25,00,000');
-    expect(container.textContent).toContain('26,00,000');
+    // The investor facts row was retired: funds.read must never reveal client money.
+    expect(container.textContent).not.toContain('26,00,000');
+    expect(container.textContent).not.toContain('Investor');
   });
 
   test('only the reachable states are offered, and not the current one', async () => {
@@ -266,10 +266,10 @@ describe('FundWorkspace', () => {
   test('sections are addressable and do not stack history', async () => {
     renderWorkspace();
     await screen.findByText('Edge Growth');
-    fireEvent.click(screen.getByRole('button', { name: 'Fund size' }));
-    expect(screen.getByTestId('search').textContent).toBe('?section=aum');
-    expect(screen.getByTestId('aum-panel')).toBeTruthy();
+    // The "Fund size" section is gone — AUM is managed under /admin/aum, not here.
+    expect(screen.queryByRole('button', { name: 'Fund size' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Stock list' }));
+    expect(screen.getByTestId('search').textContent).toBe('?section=stocks');
     expect(screen.getByTestId('stocks-panel')).toBeTruthy();
   });
 
@@ -290,108 +290,14 @@ describe('FundWorkspace', () => {
   test('a failed read is announced with a retry', async () => {
     request.mockRejectedValue(new Error('Read failed'));
     render(
-      <MemoryRouter initialEntries={['/admin/ops/funds/f1']}>
+      <MemoryRouter initialEntries={['/admin/funds/f1']}>
         <Routes>
-          <Route path="/admin/ops/funds/:fundId" element={<FundWorkspace />} />
+          <Route path="/admin/funds/:fundId" element={<FundWorkspace />} />
         </Routes>
       </MemoryRouter>,
     );
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toContain('Read failed');
     expect(screen.getByRole('button', { name: /Try again/u })).toBeTruthy();
-  });
-});
-
-const REQUEST_ROW = {
-  id: 'r1',
-  userEmail: 'asha@example.com',
-  fundSlug: 'edge-growth',
-  mode: 'full',
-  status: 'submitted',
-  requestedAmountPaise: '1500000',
-  returnsComponentPaise: '500000',
-  principalComponentPaise: '1000000',
-  submittedAt: '2026-08-01T00:00:00.000Z',
-};
-
-describe('RedemptionsScreen', () => {
-  test('the decision panel states the real payout', async () => {
-    request.mockResolvedValue({ items: [REQUEST_ROW] });
-    render(<RedemptionsScreen />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Decide' }));
-    const panel = document.getElementById('redemption-decision-r1');
-    // The old overlay read `actionRequest.amount`, which the projection never sends,
-    // so the operator confirmed a payout against ₹0.
-    expect(panel.textContent).toContain('15,000');
-    expect(panel.textContent).toContain('5,000');
-    expect(panel.textContent).toContain('10,000');
-    expect(panel.textContent).not.toContain('₹0.00');
-  });
-
-  test('an approval with no note omits the reason instead of sending an empty one', async () => {
-    request.mockResolvedValue({ items: [REQUEST_ROW] });
-    render(<RedemptionsScreen />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Decide' }));
-    fireEvent.click(screen.getByRole('button', { name: /Approve/u }));
-    await Promise.resolve();
-    const patch = request.mock.calls.find(([, options]) => options?.method === 'PATCH');
-    expect(patch[0]).toBe('/v1/admin/redemption-requests/r1');
-    // `reason` is `min(1)` when present, so `reason: ''` was a validation error.
-    expect(patch[1].body).toEqual({ action: 'approved' });
-  });
-
-  test('a rejection without a reason never reaches the route', async () => {
-    request.mockResolvedValue({ items: [REQUEST_ROW] });
-    render(<RedemptionsScreen />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Decide' }));
-    const before = request.mock.calls.length;
-    fireEvent.click(screen.getByRole('button', { name: 'Reject' }));
-    expect(request.mock.calls.length).toBe(before);
-    expect(screen.getByRole('alert').textContent).toContain('reason');
-  });
-
-  test('a rejection with a reason sends it', async () => {
-    request.mockResolvedValue({ items: [REQUEST_ROW] });
-    render(<RedemptionsScreen />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Decide' }));
-    fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'Insufficient units' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Reject' }));
-    await Promise.resolve();
-    const patch = request.mock.calls.find(([, options]) => options?.method === 'PATCH');
-    expect(patch[1].body).toEqual({ action: 'rejected', reason: 'Insufficient units' });
-  });
-
-  test('a double tap approves once', async () => {
-    request.mockResolvedValueOnce({ items: [REQUEST_ROW] });
-    let resolve;
-    render(<RedemptionsScreen />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Decide' }));
-    request.mockImplementation(() => new Promise((r) => { resolve = r; }));
-    const approve = screen.getByRole('button', { name: /Approve/u });
-    fireEvent.click(approve);
-    fireEvent.click(approve);
-    expect(request.mock.calls.filter(([, o]) => o?.method === 'PATCH')).toHaveLength(1);
-    resolve({});
-  });
-
-  test('a failed read is announced and never reads as an empty queue', async () => {
-    request.mockRejectedValue(new Error('Queue unavailable'));
-    render(<RedemptionsScreen />);
-    const alert = await screen.findByRole('alert');
-    expect(alert.textContent).toContain('Queue unavailable');
-    expect(screen.queryByText(/No redemption requests with this status/u)).toBeNull();
-  });
-
-  test('nothing calls window.alert', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-    request.mockResolvedValue({ items: [REQUEST_ROW] });
-    render(<RedemptionsScreen />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Decide' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Reject' }));
-    request.mockRejectedValue(new Error('nope'));
-    fireEvent.click(screen.getByRole('button', { name: /Approve/u }));
-    await Promise.resolve();
-    expect(alertSpy).not.toHaveBeenCalled();
-    alertSpy.mockRestore();
   });
 });

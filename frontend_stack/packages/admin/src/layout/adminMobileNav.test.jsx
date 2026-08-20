@@ -65,10 +65,11 @@ describe('the mobile model', () => {
   });
 
   test('a principal who can reach nothing in a primary domain does not get its tab', () => {
-    // users -> applications.read | finance.read | users.read; ops -> funds/finance.
+    // users -> applications.read | users.read; funds -> funds.read; reviews -> investments.review.read.
     const { primary } = mobileNavModel(admin(['audit.read']));
     expect(primary.map((d) => d.id)).not.toContain('users');
-    expect(primary.map((d) => d.id)).not.toContain('ops');
+    expect(primary.map((d) => d.id)).not.toContain('funds');
+    expect(primary.map((d) => d.id)).not.toContain('reviews');
     // Overview is ungated, so it survives and the operator keeps an entry point.
     expect(primary.map((d) => d.id)).toContain('overview');
   });
@@ -92,10 +93,10 @@ describe('AdminMobileNav', () => {
   });
 
   test('a tab is current for any destination inside its domain, not just the entry', () => {
-    // The old strip marked only the exact path, so on Holdings nothing was active.
-    renderAt(<AdminMobileNav user={admin()} />, '/admin/ops/holdings');
-    const opsTab = screen.getByRole('link', { name: /Ops/ });
-    expect(opsTab).toHaveAttribute('aria-current', 'page');
+    // The old strip marked only the exact path, so on a workspace route nothing was active.
+    renderAt(<AdminMobileNav user={admin()} />, '/admin/funds/f1');
+    const fundsTab = screen.getByRole('link', { name: /Funds/ });
+    expect(fundsTab).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: /Users/ })).not.toHaveAttribute('aria-current');
   });
 
@@ -127,7 +128,7 @@ describe('AdminMobileNav', () => {
   });
 
   test('More is marked active while one of its domains is on screen', () => {
-    renderAt(<AdminMobileNav user={admin()} />, '/admin/system/audit-log');
+    renderAt(<AdminMobileNav user={admin()} />, '/admin/audit');
     expect(screen.getByRole('button', { name: /More/ }).className).toMatch(/is-active/);
   });
 
@@ -147,11 +148,11 @@ describe('AdminMobileNav', () => {
 
 describe('AdminDomainStrip', () => {
   test('shows the active domain siblings and marks the current one', () => {
-    renderAt(<AdminDomainStrip user={admin()} />, '/admin/ops/holdings');
-    const strip = screen.getByRole('navigation', { name: 'Operations sections' });
+    renderAt(<AdminDomainStrip user={admin()} />, '/admin/aum/current');
+    const strip = screen.getByRole('navigation', { name: 'AUM sections' });
     expect(strip).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Holdings' })).toHaveClass('is-active');
-    expect(screen.getByRole('link', { name: 'AUM pools' })).toHaveAttribute('href', '/admin/ops/funds');
+    expect(screen.getByRole('link', { name: 'Current published AUM' })).toHaveClass('is-active');
+    expect(screen.getByRole('link', { name: 'Initialize or adjust one fund' })).toHaveAttribute('href', '/admin/aum/manage');
   });
 
   test('renders nothing for a single-destination domain', () => {
@@ -165,10 +166,11 @@ describe('AdminDomainStrip', () => {
   });
 
   test('it only offers destinations the principal may reach', () => {
-    // users.read gates Directory; the others in that domain need finance/applications.
+    // Approvals needs applications.read; Directory needs users.read. With both held
+    // the users domain strip is exactly those two destinations — nothing else.
     renderAt(<AdminDomainStrip user={admin(['users.read', 'applications.read'])} />, '/admin/users/approvals');
     expect(screen.getByRole('link', { name: 'Approvals' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Directory' })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Payments' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('link')).toHaveLength(2);
   });
 });

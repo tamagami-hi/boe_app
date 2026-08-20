@@ -8,11 +8,11 @@ import StateBadge from '../components/StateBadge.jsx';
 import { fmtDateTime, fmtInt, fmtPaise } from '../helpers/formatters.js';
 import './admin-screens-shared.css';
 
-// The canonical payment_state enum. The dropdown used to offer success, confirmed,
-// reconciled, approved, rejected, pending, created and failed — six of which are not
-// payment states at all, so choosing one filtered every row away on a screen full of
-// payments. Only these six exist.
-const PAYMENT_STATES = ['created', 'provider_pending', 'succeeded', 'failed', 'expired', 'refunded'];
+// The canonical payment_state enum (spec §5.2), including the refund lifecycle.
+const PAYMENT_STATES = [
+  'created', 'provider_pending', 'succeeded', 'failed', 'expired',
+  'refund_pending', 'refunded', 'refund_failed',
+];
 const SETTLED = ['succeeded'];
 const IN_FLIGHT = ['created', 'provider_pending'];
 const UNSUCCESSFUL = ['failed', 'expired'];
@@ -38,19 +38,16 @@ function isWithinDate(row, from, to) {
 }
 
 /*
- * There is no payment approve/reject panel any more, and no such buttons.
+ * Read-only PhonePe gateway evidence (spec §11.1).
  *
- * A payment is confirmed by the signed provider webhook
- * (`POST /v1/provider-events/payment`) — the console has no endpoint to approve
- * one with, and none is planned: money movement is confirmed by the party that
- * moved it, not by an operator asserting it happened. What stood here was a
- * fully styled Approve/Reject flow whose handler props were never supplied by the
- * route, so submitting it closed the dialog and made no request at all.
+ * PhonePe confirms money movement; accepting or rejecting the INVESTMENT is a
+ * separate, private decision made under Investment reviews — never here. This
+ * screen deliberately has no approval buttons: a payment record is evidence, not
+ * a decision surface.
  *
- * The fund-pool column and its filter are also gone. A payment settles an order;
- * `GET /v1/admin/payments` carries the order reference and no fund at all, so every
- * row read "Unmapped fund" with a pool size of ₹0, and filtering by pool could
- * never match anything. The order reference is the link to the fund.
+ * There is no fund-pool column or filter: a payment settles an order, and the
+ * order reference is the link to the fund. `GET /v1/admin/payments` carries no
+ * fund fields.
  */
 
 function PaymentsScreen({ rows = [], loading = false, onUserDetail }) {
@@ -100,8 +97,9 @@ function PaymentsScreen({ rows = [], loading = false, onUserDetail }) {
         </div>
 
         <p className="adm-screen-note">
-          Payments are confirmed by the payment provider, not from this console. This is the
-          evidence trail, most recent first; there is nothing to approve here.
+          PhonePe confirms each payment; this is the gateway evidence trail, most recent first.
+          Verifying bank evidence and accepting or rejecting an investment happens under{' '}
+          Investment reviews — a succeeded payment is not yet an accepted investment.
         </p>
 
         <div className="adm-payment-filters">

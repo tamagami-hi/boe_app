@@ -31,7 +31,7 @@ const {
   useAdminAuditLogs,
   useAdminCacheActions,
   useAdminFunds,
-  useAdminMandates,
+  useAdminInvestmentReviews,
   useAdminPayments,
 } = await import('./adminResources.js');
 const { useFundMutations, slugify } = await import('./useFundMutations.js');
@@ -57,17 +57,22 @@ describe('cache keys', () => {
 
   test('there is no transactions collection key', () => {
     // The old provider fetched /v1/admin/transactions on every admin route and no
-    // screen read it — TransactionsScreen paginates through useAdminList.
+    // screen read it — list screens paginate through useAdminList.
     expect(Object.keys(ADMIN_KEYS)).not.toContain('transactions');
+  });
+
+  test('there is no mandates collection key', () => {
+    // E-mandates are retired; the review queue replaced them.
+    expect(Object.keys(ADMIN_KEYS)).not.toContain('mandates');
   });
 });
 
 describe('per-screen reads', () => {
-  test('a screen that needs mandates does not fetch funds, payments or audit logs', async () => {
-    function MandatesShape() { useAdminMandates(); return null; }
-    render(<Wrap><MandatesShape /></Wrap>);
+  test('a screen that needs the review queue does not fetch funds, payments or audit logs', async () => {
+    function ReviewsShape() { useAdminInvestmentReviews('pending'); return null; }
+    render(<Wrap><ReviewsShape /></Wrap>);
     await settle();
-    expect(pathsCalled()).toEqual(['/v1/admin/mandates']);
+    expect(pathsCalled()).toEqual(['/v1/admin/investment-reviews?state=pending']);
   });
 
   test('a screen that needs nothing fetches nothing', async () => {
@@ -120,7 +125,7 @@ describe('fund mutations invalidate only what they changed', () => {
     useAdminFunds();
     useAdminAuditLogs();
     useAdminPayments();
-    useAdminMandates();
+    useAdminInvestmentReviews('pending');
     return null;
   }
 
@@ -179,6 +184,54 @@ describe('fund mutations invalidate only what they changed', () => {
     expect(options.body).toEqual(version);
   });
 
+});
+
+describe('AUM and client-growth invalidation boundaries (spec §12.2)', () => {
+  function FundsAndFriends() {
+    useAdminFunds();
+    useAdminAuditLogs();
+    useAdminPayments();
+    useAdminInvestmentReviews('pending');
+    return null;
+  }
+
+  let actions;
+  function Actions() { actions = useAdminCacheActions(); return null; }
+
+  async function invalidateAndRemount(view, act_) {
+    await settle();
+    const before = loadAdminCollection.mock.calls.length;
+    act(act_);
+    view.rerender(<Wrap><div /></Wrap>);
+    view.rerender(<Wrap><FundsAndFriends /><Actions /></Wrap>);
+    await settle();
+    return pathsCalled().slice(before);
+  }
+
+  test('an AUM commit re-reads the catalogue and the audit log — never payments or reviews', async () => {
+    const view = render(<Wrap><FundsAndFriends /><Actions /></Wrap>);
+    const refetched = await invalidateAndRemount(view, () => actions.invalidateAum());
+    expect(refetched.sort()).toEqual(['/v1/admin/audit-logs', '/v1/admin/funds']);
+    expect(refetched.some((path) => path.includes('payments'))).toBe(false);
+    expect(refetched.some((path) => path.includes('investment-reviews'))).toBe(false);
+  });
+
+  test('a client-growth commit re-reads the audit log only — never the catalogue', async () => {
+    const view = render(<Wrap><FundsAndFriends /><Actions /></Wrap>);
+    const refetched = await invalidateAndRemount(view, () => actions.invalidateClientGrowth());
+    expect(refetched).toEqual(['/v1/admin/audit-logs']);
+  });
+
+  test('a review decision re-reads reviews, refunds, payments and the audit log', async () => {
+    const view = render(<Wrap><FundsAndFriends /><Actions /></Wrap>);
+    const refetched = await invalidateAndRemount(view, () => actions.invalidateReviews());
+    expect(refetched.sort()).toEqual([
+      '/v1/admin/audit-logs',
+      '/v1/admin/investment-reviews?state=pending',
+      '/v1/admin/payments',
+    ]);
+    expect(refetched.some((path) => path.endsWith('/funds'))).toBe(false);
+  });
 });
 
 describe('sign-out clears', () => {

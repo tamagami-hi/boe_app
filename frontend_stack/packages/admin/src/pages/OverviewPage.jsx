@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { UserCheck, CreditCard, HelpCircle, History, Layers, Users, ArrowRight } from 'lucide-react';
+import { UserCheck, CreditCard, HelpCircle, History, Layers, ShieldCheck, Users, ArrowRight } from 'lucide-react';
 import { useApprovalsQueue } from '../data/ApprovalsQueueProvider.jsx';
 import { useAdminFunds, useAdminPayments } from '../data/adminResources.js';
 import AdminReadError from '../data/AdminReadError.jsx';
@@ -20,7 +20,13 @@ const QUICK_LINKS = [
     description: 'Edit the help answers clients read inside the app.',
   },
   {
-    path: '/admin/users/payments',
+    path: '/admin/reviews/awaiting',
+    icon: ShieldCheck,
+    title: 'Review investments',
+    description: 'Accept or reject paid orders after confirming the bank credit.',
+  },
+  {
+    path: '/admin/payments',
     icon: CreditCard,
     title: 'Check payments',
     // Not "approve": payments are confirmed by the provider webhook, and this
@@ -29,13 +35,13 @@ const QUICK_LINKS = [
     description: 'Inspect the payment record and settlement evidence.',
   },
   {
-    path: '/admin/ops/funds',
+    path: '/admin/funds',
     icon: Layers,
     title: 'Manage fund pools',
-    description: 'Publish pool sizes, stock lists and gain allocations.',
+    description: 'Issue funds, publish terms and stock lists.',
   },
   {
-    path: '/admin/system/audit-log',
+    path: '/admin/audit',
     icon: History,
     title: 'Read the audit log',
     // Replaces an "Answer support" card that pointed at /admin/system/support —
@@ -70,7 +76,7 @@ export default function OverviewPage() {
   // endpoint produces, with `?? 0` — so the landing screen stated, as fact and
   // forever, that there were zero users and zero payments.
   const paymentsInFlight = payments.rows.filter((row) =>
-    ['created', 'gateway_initiated', 'pending'].includes(row.status),
+    ['created', 'provider_pending'].includes(row.status),
   ).length;
   const loading = queue.loading || payments.isLoading || funds.isLoading;
 

@@ -2,9 +2,12 @@
 // from fields the projection does not send (so every figure was ₹0), five sections fed
 // from a hardcoded empty array (so every user "had no redemptions, tickets or
 // notifications"), and a tab strip that a keyboard could enter but not move within.
+// Mandates and the gain-allocation form are retired: growth moves through Client
+// values, and the accepted stamp on an order is set by the investment review.
 import React from 'react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import UserDetailScreen from './UserDetailScreen.jsx';
 
 const detail = {
@@ -23,30 +26,21 @@ const detail = {
     id: 'ord_1',
     fundName: 'Edge Growth',
     type: 'sip_installment',
-    status: 'booked',
+    status: 'accepted',
     amountPaise: '500000',
     requestedAt: '2026-08-01T00:00:00.000Z',
-    bookedAt: '2026-08-02T00:00:00.000Z',
+    acceptedAt: '2026-08-02T00:00:00.000Z',
     createdAt: '2026-08-01T00:00:00.000Z',
   }],
   payments: [{
     id: 'pay_1',
     amountPaise: '500000',
     status: 'succeeded',
-    provider: 'razorpay',
-    providerReference: 'pay_RZP1',
+    provider: 'phonepe',
+    providerReference: 'pay_PP1',
     attemptCount: 1,
     succeededAt: '2026-08-01T00:00:00.000Z',
     createdAt: '2026-08-01T00:00:00.000Z',
-  }],
-  mandates: [{
-    id: 'mnd_1',
-    providerMandateId: 'rzp_m1',
-    maxAmountPaise: '1000000',
-    debitDay: 5,
-    status: 'active',
-    validFrom: '2026-07-05T00:00:00.000Z',
-    validTo: null,
   }],
   sips: [{
     id: 'sip_1',
@@ -64,7 +58,6 @@ const detail = {
     currentValuePaise: '1100000',
     totalReturnPaise: '100000',
     returnPercent: 10,
-    allocatedGainPaise: '100000',
     sipInstallmentCount: 2,
     lumpSumCount: 0,
   },
@@ -80,8 +73,9 @@ beforeEach(() => {
   request.mockResolvedValue(detail);
 });
 
+// The screen links into Client values, so it needs a router context.
 async function open(tab) {
-  render(<UserDetailScreen userId="u1" />);
+  render(<MemoryRouter><UserDetailScreen userId="u1" /></MemoryRouter>);
   await screen.findByRole('tablist');
   if (tab) fireEvent.click(screen.getByRole('tab', { name: new RegExp(tab, 'u') }));
 }
@@ -97,10 +91,10 @@ describe('money on the user record', () => {
     expect(textIn('payments')).not.toContain('₹0');
   });
 
-  test('a mandate shows the authorised maximum and its debit day', async () => {
+  test('a payment names PhonePe and its reference', async () => {
     await open('Payments');
-    expect(textIn('payments')).toContain('₹10,000');
-    expect(textIn('payments')).toContain('rzp_m1');
+    expect(textIn('payments')).toContain('phonepe');
+    expect(textIn('payments')).toContain('pay_PP1');
   });
 
   test('a SIP plan shows its installment amount', async () => {
@@ -110,11 +104,33 @@ describe('money on the user record', () => {
   });
 
   // The payload carried orders all along and nothing rendered them.
-  test('order activity is on screen', async () => {
+  test('order activity is on screen, stamped with its acceptance time', async () => {
     await open('Investments');
     expect(screen.getByText('Order activity')).toBeTruthy();
     expect(textIn('investments')).toContain('Edge Growth');
     expect(textIn('investments')).toContain('Sip installment');
+    // The "Accepted" column reads acceptedAt, set by the admin review.
+    expect(screen.getByRole('columnheader', { name: 'Accepted' })).toBeTruthy();
+    expect(textIn('investments')).toContain('02 Aug');
+  });
+});
+
+describe('retired surfaces stay retired', () => {
+  test('there is no mandate register and no gain-allocation form', async () => {
+    await open();
+    expect(screen.queryByText(/Allocate return/u)).toBeNull();
+    expect(screen.queryByText(/Mandates/u)).toBeNull();
+    expect(screen.queryByText(/allocated gain/iu)).toBeNull();
+  });
+
+  test('growth moves through a link into Client values, prefilled with the user', async () => {
+    await open('Investments');
+    const link = screen.getByRole('link', { name: /Adjust growth/u });
+    expect(link.getAttribute('href')).toBe('/admin/client-values/individual?userId=u1');
+    // The boundary sentence travels with the link (spec §11.1).
+    expect(textIn('investments')).toContain(
+      'This changes client displayed values only. It does not change published AUM.',
+    );
   });
 });
 
@@ -178,7 +194,7 @@ describe('keyboard and failure handling', () => {
 
   test('a failed read is announced and offers a retry', async () => {
     request.mockRejectedValue(new Error('Network request failed'));
-    render(<UserDetailScreen userId="u1" />);
+    render(<MemoryRouter><UserDetailScreen userId="u1" /></MemoryRouter>);
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toContain('Network request failed');
     request.mockResolvedValue(detail);

@@ -43,17 +43,14 @@ vi.mock('@beonedge/client/store/AdminSessionContext.jsx', () => ({
 
 vi.mock('./legacy/legacyRoutes.jsx', () => ({
   ApprovalsRoute: () => <div data-testid="page-approvals" />,
-  MandatesRoute: () => <div data-testid="page-mandates" />,
   PaymentsRoute: () => <div data-testid="page-payments" />,
   UserDirectoryRoute: () => <div data-testid="page-user-directory" />,
   UserDetailRoute: () => <div data-testid="page-user-detail" />,
   FundsRoute: () => <div data-testid="page-funds" />,
   FundWorkspaceRoute: () => <div data-testid="page-fund-workspace" />,
-  RedemptionsRoute: () => <div data-testid="page-redemptions" />,
-  FundWorkspaceRoute: () => <div data-testid="page-fund-workspace" />,
-  RedemptionsRoute: () => <div data-testid="page-redemptions" />,
-  HoldingsRoute: () => <div data-testid="page-holdings" />,
-  TransactionsRoute: () => <div data-testid="page-transactions" />,
+  InvestmentReviewsRoute: ({ tab }) => <div data-testid={`page-investment-reviews-${tab}`} />,
+  ClientValuesRoute: ({ tab }) => <div data-testid={`page-client-values-${tab}`} />,
+  AumRoute: ({ tab }) => <div data-testid={`page-aum-${tab}`} />,
   AppBuilderRoute: () => <div data-testid="page-app-builder" />,
   AuditLogRoute: () => <div data-testid="page-audit-log" />,
   EmailDeliveriesRoute: () => <div data-testid="page-email-deliveries" />,
@@ -80,20 +77,24 @@ describe('Admin route table', () => {
   const routeCases = [
     ['/admin/overview', 'page-overview'],
     ['/admin/users/approvals', 'page-approvals'],
-    ['/admin/users/subscriptions', 'page-mandates'],
-    ['/admin/users/payments', 'page-payments'],
     ['/admin/users/directory', 'page-user-directory'],
     ['/admin/users/directory/u1', 'page-user-detail'],
     ['/admin/site/faqs', 'page-faqs'],
     ['/admin/app/builder', 'page-app-builder'],
-    ['/admin/ops/funds', 'page-funds'],
-    ['/admin/ops/funds/f1', 'page-fund-workspace'],
-    ['/admin/ops/redemptions', 'page-redemptions'],
-    ['/admin/ops/funds/f1', 'page-fund-workspace'],
-    ['/admin/ops/redemptions', 'page-redemptions'],
-    ['/admin/ops/holdings', 'page-holdings'],
-    ['/admin/ops/transactions', 'page-transactions'],
-    ['/admin/system/audit-log', 'page-audit-log'],
+    ['/admin/funds', 'page-funds'],
+    ['/admin/funds/f1', 'page-fund-workspace'],
+    ['/admin/reviews/awaiting', 'page-investment-reviews-awaiting'],
+    ['/admin/reviews/accepted', 'page-investment-reviews-accepted'],
+    ['/admin/reviews/refunds', 'page-investment-reviews-refunds'],
+    ['/admin/client-values/detail', 'page-client-values-detail'],
+    ['/admin/client-values/individual', 'page-client-values-individual'],
+    ['/admin/client-values/collective', 'page-client-values-collective'],
+    ['/admin/aum/current', 'page-aum-current'],
+    ['/admin/aum/manage', 'page-aum-manage'],
+    ['/admin/aum/collective', 'page-aum-collective'],
+    ['/admin/aum/history', 'page-aum-history'],
+    ['/admin/payments', 'page-payments'],
+    ['/admin/audit', 'page-audit-log'],
     ['/admin/system/emails', 'page-email-deliveries'],
     ['/admin/system/environment', 'page-environment'],
   ];
@@ -125,9 +126,21 @@ describe('Admin retired-route redirects', () => {
   const redirectCases = [
     ['/admin/users/kyc', 'page-approvals'],
     ['/admin/users/risk-profiles', 'page-approvals'],
-    ['/admin/ops/ledger', 'page-transactions'],
-    ['/admin/ops/sip-control', 'page-transactions'],
+    ['/admin/users/subscriptions', 'page-investment-reviews-awaiting'],
+    ['/admin/users/payments', 'page-payments'],
+    ['/admin/ops/funds', 'page-funds'],
+    ['/admin/ops/funds/f1', 'page-fund-workspace'],
+    ['/admin/ops/redemptions', 'page-payments'],
+    ['/admin/ops/transactions', 'page-payments'],
+    ['/admin/ops/ledger', 'page-payments'],
+    ['/admin/ops/sip-control', 'page-payments'],
+    ['/admin/ops/holdings', 'page-aum-current'],
     ['/admin/system/support', 'page-audit-log'],
+    ['/admin/system/audit-log', 'page-audit-log'],
+    // Tab-shell index paths land on their first tab.
+    ['/admin/reviews', 'page-investment-reviews-awaiting'],
+    ['/admin/client-values', 'page-client-values-detail'],
+    ['/admin/aum', 'page-aum-current'],
   ];
 
   for (const [path, testId] of redirectCases) {
@@ -204,7 +217,7 @@ describe('Admin permission gating', () => {
 
   test('Forbidden is distinct from Not Found', async () => {
     mockAdminUser = { id: 'a1', role: 'admin', roles: ['admin'], permissions: [] };
-    renderAt('/admin/system/audit-log');
+    renderAt('/admin/audit');
     expect(await screen.findByTestId('page-forbidden')).toBeInTheDocument();
     expect(screen.queryByTestId('page-not-found')).not.toBeInTheDocument();
   });

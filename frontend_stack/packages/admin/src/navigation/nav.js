@@ -1,7 +1,7 @@
 import {
-  LayoutDashboard, UserCheck, Users, CreditCard, Repeat,
+  LayoutDashboard, UserCheck, Users, CreditCard,
   HelpCircle,
-  Layers, PieChart, History, BookOpen, Inbox, RotateCcw,
+  Layers, PieChart, History, Inbox, TrendingUp, ShieldCheck,
   LayoutGrid, Settings,
 } from 'lucide-react';
 
@@ -45,7 +45,7 @@ export const NAV_DOMAINS = [
   {
     id: 'users',
     label: 'Users',
-    mobile: { primary: true, order: 2, shortLabel: 'Users', icon: Users },
+    mobile: { primary: true, order: 3, shortLabel: 'Users', icon: Users },
     items: [
       {
         path: '/admin/users/approvals',
@@ -58,25 +58,153 @@ export const NAV_DOMAINS = [
         permissions: ['applications.read'],
       },
       {
-        path: '/admin/users/subscriptions',
-        label: 'Subscriptions',
-        icon: Repeat,
-        title: 'Subscriptions',
-        permissions: ['finance.read'],
-      },
-      {
-        path: '/admin/users/payments',
-        label: 'Payments',
-        icon: CreditCard,
-        title: 'Payments',
-        permissions: ['finance.read'],
-      },
-      {
         path: '/admin/users/directory',
         label: 'Directory',
         icon: Users,
         title: 'User directory',
         permissions: ['users.read', 'users.read_limited'],
+      },
+    ],
+  },
+  {
+    id: 'funds',
+    label: 'Funds',
+    // The issued catalogue. Fund details/terms are the child workspace route
+    // (`/admin/funds/:fundId`), which prefix-matches the catalogue item.
+    mobile: { primary: true, order: 4, shortLabel: 'Funds', icon: Layers },
+    items: [
+      {
+        path: '/admin/funds',
+        label: 'Issued catalogue',
+        icon: Layers,
+        title: 'Issued fund catalogue',
+        // funds.read must never reveal client names, payments or balances; the
+        // catalogue carries terms and the latest published AUM only.
+        permissions: ['funds.read'],
+      },
+    ],
+  },
+  {
+    id: 'reviews',
+    label: 'Investment reviews',
+    // PhonePe confirms a payment; this is where an admin privately verifies the
+    // bank evidence and accepts (allocating to the client's selected fund) or
+    // rejects into a refund. Approval buttons live here, never on a payment row.
+    mobile: { primary: true, order: 2, shortLabel: 'Reviews', icon: ShieldCheck },
+    items: [
+      {
+        path: '/admin/reviews/awaiting',
+        label: 'Awaiting review',
+        icon: ShieldCheck,
+        title: 'Awaiting review',
+        permissions: ['investments.review.read'],
+      },
+      {
+        path: '/admin/reviews/accepted',
+        label: 'Accepted',
+        icon: UserCheck,
+        title: 'Accepted investments',
+        permissions: ['investments.review.read'],
+      },
+      {
+        path: '/admin/reviews/refunds',
+        label: 'Refunds and exceptions',
+        icon: CreditCard,
+        title: 'Refunds and exceptions',
+        permissions: ['investments.review.read', 'refunds.write'],
+      },
+    ],
+  },
+  {
+    id: 'client-values',
+    label: 'Client values',
+    mobile: { primary: false, shortLabel: 'Values', icon: TrendingUp },
+    items: [
+      {
+        path: '/admin/client-values/detail',
+        label: 'Client detail',
+        icon: Users,
+        title: 'Client values — client detail',
+        permissions: ['client_values.read', 'users.read', 'users.read_limited'],
+      },
+      {
+        path: '/admin/client-values/individual',
+        label: 'Individual growth',
+        icon: TrendingUp,
+        title: 'Individual client growth',
+        permissions: ['client_growth.write'],
+      },
+      {
+        path: '/admin/client-values/collective',
+        label: 'Collective growth by fund',
+        icon: Layers,
+        title: 'Collective client growth by fund',
+        permissions: ['client_growth.write'],
+      },
+    ],
+  },
+  {
+    id: 'aum',
+    label: 'AUM',
+    mobile: { primary: false, shortLabel: 'AUM', icon: PieChart },
+    items: [
+      {
+        path: '/admin/aum/current',
+        label: 'Current published AUM',
+        icon: PieChart,
+        title: 'Current published AUM',
+        permissions: ['aum.read'],
+      },
+      {
+        path: '/admin/aum/manage',
+        label: 'Initialize or adjust one fund',
+        icon: TrendingUp,
+        title: 'Initialize or adjust one fund',
+        permissions: ['aum.write'],
+      },
+      {
+        path: '/admin/aum/collective',
+        label: 'Collective fund growth',
+        icon: Layers,
+        title: 'Collective fund AUM growth',
+        permissions: ['aum.write'],
+      },
+      {
+        path: '/admin/aum/history',
+        label: 'History and corrections',
+        icon: History,
+        title: 'AUM history and corrections',
+        permissions: ['aum.read'],
+      },
+    ],
+  },
+  {
+    id: 'payments',
+    label: 'Payments',
+    // Read-only PhonePe gateway evidence. Acceptance is an Investment reviews
+    // task; no approval buttons live on a payment record.
+    mobile: { primary: false, shortLabel: 'Payments', icon: CreditCard },
+    items: [
+      {
+        path: '/admin/payments',
+        label: 'PhonePe evidence',
+        icon: CreditCard,
+        title: 'Payments — PhonePe evidence',
+        permissions: ['payments.read'],
+      },
+    ],
+  },
+  {
+    id: 'audit',
+    label: 'Audit',
+    mobile: { primary: false, shortLabel: 'Audit', icon: History },
+    items: [
+      {
+        path: '/admin/audit',
+        label: 'Audit log',
+        icon: History,
+        title: 'Audit log',
+        permissions: ['audit.read'],
       },
     ],
   },
@@ -109,54 +237,10 @@ export const NAV_DOMAINS = [
     ],
   },
   {
-    id: 'ops',
-    label: 'Operations',
-    mobile: { primary: true, order: 3, shortLabel: 'Ops', icon: Layers },
-    items: [
-      {
-        path: '/admin/ops/funds',
-        label: 'AUM pools',
-        icon: Layers,
-        title: 'AUM pools',
-        permissions: ['funds.read', 'finance.read'],
-      },
-      {
-        path: '/admin/ops/holdings',
-        label: 'Holdings',
-        icon: PieChart,
-        title: 'Holdings',
-        permissions: ['funds.read', 'finance.read'],
-      },
-      {
-        path: '/admin/ops/transactions',
-        label: 'Transactions',
-        icon: BookOpen,
-        title: 'Transactions',
-        permissions: ['finance.read'],
-      },
-      {
-        // Was a tab inside the fund editor. Releasing money is its own task, and
-        // burying it three levels down is why it was hard to find.
-        path: '/admin/ops/redemptions',
-        label: 'Withdrawals',
-        icon: RotateCcw,
-        title: 'Redemption requests',
-        permissions: ['finance.read'],
-      },
-    ],
-  },
-  {
     id: 'system',
     label: 'System',
     mobile: { primary: false, shortLabel: 'System', icon: Settings },
     items: [
-      {
-        path: '/admin/system/audit-log',
-        label: 'Audit log',
-        icon: History,
-        title: 'Audit log',
-        permissions: ['audit.read'],
-      },
       {
         path: '/admin/system/emails',
         label: 'Email log',

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
-  User, PieChart, Briefcase, CreditCard, Repeat, LayoutGrid, TrendingUp,
+  User, PieChart, Briefcase, CreditCard, LayoutGrid, TrendingUp,
   CheckCircle2, AlertTriangle, RefreshCw,
 } from 'lucide-react';
 import { apiRequest } from '@beonedge/client/services/_util.js';
@@ -8,7 +9,6 @@ import './admin-screens-shared.css';
 import I from '../components/I.jsx';
 import EmptyState from '@beonedge/shared/components/EmptyState.jsx';
 import Skeleton from '@beonedge/shared/components/Skeleton.jsx';
-import GainAllocationForm from './GainAllocationForm.jsx';
 import StateBadge from '../components/StateBadge.jsx';
 import { fmtDateTime, fmtPaise as rupees, fmtPaiseSigned as signedRupees, humanizeState, initials } from '../helpers/formatters.js';
 
@@ -28,8 +28,9 @@ const TABS = [
 
 /*
  * `GET /v1/admin/users/:id/detail` returns user, roles, the latest KYC case, recent
- * orders, payments, mandates and SIP plans, plus derived positions and portfolio
- * totals. That is the whole payload.
+ * orders, payments and SIP plans, plus derived positions and portfolio totals. That
+ * is the whole payload — e-mandates are retired; payment collection is PhonePe
+ * collect requests on each order.
  *
  * Four tables and two lists here were fed from hardcoded `[]`: redemption requests,
  * SIP control requests, support tickets, notifications and per-user audit logs. Each
@@ -73,7 +74,6 @@ function UserDetailScreen({ userId }) {
   const sipPlans = data?.sips || [];
   const orders = data?.orders || [];
   const payments = data?.payments || [];
-  const mandates = data?.mandates || [];
   const positions = data?.positions || [];
   const portfolio = data?.portfolio || null;
 
@@ -280,10 +280,6 @@ function UserDetailScreen({ userId }) {
                         </span>
                       ),
                     },
-                    {
-                      label: 'Returns allocated to date',
-                      value: <span className="be-money">{rupees(portfolio.allocatedGainPaise)}</span>,
-                    },
                     { label: 'SIP installments paid', value: portfolio.sipInstallmentCount ?? 0 },
                     { label: 'Lump sums', value: portfolio.lumpSumCount ?? 0 },
                   ])}
@@ -333,7 +329,26 @@ function UserDetailScreen({ userId }) {
                     (position, index) => position.fundId || index,
                   )}
 
-                  <GainAllocationForm userId={userId} positions={positions} onAllocated={reload} />
+                  {/* Client growth is a Client values task, not part of this
+                      record. The link carries the user id so the form is prefilled. */}
+                  <div className="adm-card">
+                    <div className="adm-card-head">
+                      <div>
+                        <h2 className="adm-card-title"><I icon={TrendingUp} size={16} /> Growth adjustments</h2>
+                        <div className="adm-card-sub">
+                          This changes client displayed values only. It does not change published AUM.
+                        </div>
+                      </div>
+                      <div className="adm-card-actions">
+                        <Link
+                          className="be-btn be-btn-secondary be-btn-sm"
+                          to={`/admin/client-values/individual?userId=${encodeURIComponent(userId)}`}
+                        >
+                          Adjust growth
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
 
                   {renderTable(
                     'SIP plans',
@@ -351,12 +366,12 @@ function UserDetailScreen({ userId }) {
                     'No SIP plans.',
                   )}
 
-                  {/* Orders are the investor's actual activity, redemptions included.
-                      They were fetched and then never rendered. */}
+                  {/* Orders are the investor's actual activity. The accepted stamp
+                      is set by the admin review, not by the payment provider. */}
                   {renderTable(
                     'Order activity',
                     TrendingUp,
-                    ['Pool', 'Type', 'Amount', 'Status', 'Requested', 'Booked'],
+                    ['Pool', 'Type', 'Amount', 'Status', 'Requested', 'Accepted'],
                     orders,
                     (order) => [
                       order.fundName || order.fundSlug || '—',
@@ -373,7 +388,7 @@ function UserDetailScreen({ userId }) {
                         ),
                       },
                       { node: date(order.requestedAt || order.createdAt), className: 'adm-cell-meta' },
-                      { node: date(order.bookedAt), className: 'adm-cell-meta' },
+                      { node: date(order.acceptedAt), className: 'adm-cell-meta' },
                     ],
                     'No orders yet.',
                   )}
@@ -414,25 +429,6 @@ function UserDetailScreen({ userId }) {
                       { node: date(p.succeededAt || p.failedAt), className: 'adm-cell-meta' },
                     ],
                     'No payments.',
-                  )}
-
-                  {/* Was `m.amount` / `m.day` / `m.last` / `m.next`: four columns of
-                      nothing on every mandate. There is no last-debit or next-debit
-                      field in the projection, so the validity window stands in. */}
-                  {renderTable(
-                    'Mandates',
-                    Repeat,
-                    ['Reference', 'Max debit', 'Debit day', 'Status', 'Valid from', 'Valid to'],
-                    mandates,
-                    (m) => [
-                      { node: <code className="adm-code">{m.providerMandateId || m.id || '—'}</code> },
-                      { node: rupees(m.maxAmountPaise), className: 'be-money' },
-                      { node: m.debitDay ?? '—', className: 'be-num' },
-                      { node: <StateBadge state={m.status} /> },
-                      { node: date(m.validFrom), className: 'adm-cell-meta' },
-                      { node: date(m.validTo), className: 'adm-cell-meta' },
-                    ],
-                    'No mandates.',
                   )}
                 </div>
               )}

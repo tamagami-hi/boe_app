@@ -6,8 +6,6 @@ import Skeleton from '@beonedge/shared/components/Skeleton.jsx';
 import I from '../../components/I.jsx';
 import StateBadge from '../../components/StateBadge.jsx';
 import { fmtDateTime, fmtPaise, humanizeState } from '../../helpers/formatters.js';
-import FundAumPanel from '../FundAumPanel.jsx';
-import FundInvestorsPanel from '../FundInvestorsPanel.jsx';
 import FundStockListPanel from '../FundStockListPanel.jsx';
 import FundProfileForm from './FundProfileForm.jsx';
 import {
@@ -30,8 +28,6 @@ import '../admin-screens-shared.css';
  */
 const SECTIONS = [
   { id: 'profile', label: 'Published terms' },
-  { id: 'aum', label: 'Fund size' },
-  { id: 'investors', label: 'Investors' },
   { id: 'stocks', label: 'Stock list' },
   { id: 'history', label: 'History' },
 ];
@@ -69,7 +65,6 @@ export default function FundWorkspace({ onPublishVersion, onLifecycle, onDelete 
 
   const fund = detail?.fund || null;
   const versions = detail?.versions || [];
-  const investors = detail?.investors || null;
 
   function selectSection(next) {
     const nextParams = new URLSearchParams(params);
@@ -110,7 +105,7 @@ export default function FundWorkspace({ onPublishVersion, onLifecycle, onDelete 
 
   const remove = () => run(async () => {
     await onDelete?.(fundId);
-    navigate('/admin/ops/funds', { replace: true });
+    navigate('/admin/funds', { replace: true });
   });
 
   if (loading && !detail) {
@@ -133,7 +128,7 @@ export default function FundWorkspace({ onPublishVersion, onLifecycle, onDelete 
             <I icon={RefreshCw} size={13} /> Try again
           </button>
         </div>
-        <Link className="be-btn be-btn-secondary be-btn-sm" to="/admin/ops/funds">
+        <Link className="be-btn be-btn-secondary be-btn-sm" to="/admin/funds">
           <I icon={ArrowLeft} size={14} /> Back to pools
         </Link>
       </div>
@@ -142,7 +137,7 @@ export default function FundWorkspace({ onPublishVersion, onLifecycle, onDelete 
 
   return (
     <div className="adm-screen">
-      <Link className="be-btn be-btn-ghost be-btn-sm" to="/admin/ops/funds">
+      <Link className="be-btn be-btn-ghost be-btn-sm" to="/admin/funds">
         <I icon={ArrowLeft} size={14} /> Back to pools
       </Link>
 
@@ -161,19 +156,11 @@ export default function FundWorkspace({ onPublishVersion, onLifecycle, onDelete 
         <dl className="adm-decision-facts be-pad-5">
           <div>
             <dt>Published AUM</dt>
-            <dd className="be-money">{fmtPaise(fund?.aum?.closingPaise)}</dd>
+            <dd className="be-money">{fmtPaise(fund?.aum?.aumPaise)}</dd>
           </div>
           <div>
             <dt>As of</dt>
-            <dd>{fund?.aum?.periodStart ? String(fund.aum.periodStart).slice(0, 7) : 'Not published'}</dd>
-          </div>
-          <div>
-            <dt>Investor value</dt>
-            <dd className="be-money">{fmtPaise(investors?.currentValuePaise)}</dd>
-          </div>
-          <div>
-            <dt>Investors</dt>
-            <dd>{investors?.count ?? '—'}</dd>
+            <dd>{fund?.aum?.asOfDate || 'Not published'}</dd>
           </div>
           <div>
             <dt>Version</dt>
@@ -271,8 +258,6 @@ export default function FundWorkspace({ onPublishVersion, onLifecycle, onDelete 
         />
       )}
 
-      {section === 'aum' && <FundAumPanel fundId={fundId} />}
-      {section === 'investors' && <FundInvestorsPanel fundId={fundId} />}
       {section === 'stocks' && <FundStockListPanel fundId={fundId} />}
 
       {section === 'history' && (

@@ -29,9 +29,9 @@ describe('findNavMeta on canonical paths', () => {
   });
 
   test('builds breadcrumbs with a linkable domain entry outside Overview', () => {
-    const meta = findNavMeta('/admin/ops/holdings');
-    expect(meta.crumbs).toEqual(['BeOnEdge', 'Operations', 'Holdings']);
-    expect(meta.crumbPaths).toEqual(['/admin/overview', '/admin/ops/funds', '/admin/ops/holdings']);
+    const meta = findNavMeta('/admin/reviews/accepted');
+    expect(meta.crumbs).toEqual(['BeOnEdge', 'Investment reviews', 'Accepted']);
+    expect(meta.crumbPaths).toEqual(['/admin/overview', '/admin/reviews/awaiting', '/admin/reviews/accepted']);
   });
 });
 
@@ -89,7 +89,11 @@ describe('nav permission metadata', () => {
       'applications.read', 'applications.decide',
       'email_deliveries.read', 'email_deliveries.read_masked',
       'users.read', 'users.read_limited', 'users.suspend', 'users.close',
-      'finance.read', 'finance.operate',
+      'payments.read',
+      'investments.review.read', 'investments.review.write',
+      'refunds.write',
+      'client_values.read', 'client_growth.write',
+      'aum.read', 'aum.write',
       'funds.read', 'funds.write',
       'audit.read',
       'content.read', 'content.publish',
@@ -104,8 +108,8 @@ describe('nav permission metadata', () => {
 
 describe('hasAnyPermission mirrors requireAnyPermission', () => {
   test('is an OR across the list, not an AND', () => {
-    expect(hasAnyPermission({ permissions: ['finance.read'] }, ['finance.read', 'funds.read'])).toBe(true);
-    expect(hasAnyPermission({ permissions: ['funds.read'] }, ['finance.read', 'funds.read'])).toBe(true);
+    expect(hasAnyPermission({ permissions: ['payments.read'] }, ['payments.read', 'funds.read'])).toBe(true);
+    expect(hasAnyPermission({ permissions: ['funds.read'] }, ['payments.read', 'funds.read'])).toBe(true);
   });
 
   test('an empty requirement means any admin', () => {
@@ -127,8 +131,8 @@ describe('hasAnyPermission mirrors requireAnyPermission', () => {
 
 describe('canAccessPath', () => {
   test('gates a known destination on its own codes', () => {
-    expect(canAccessPath({ permissions: ['audit.read'] }, '/admin/system/audit-log')).toBe(true);
-    expect(canAccessPath({ permissions: ['finance.read'] }, '/admin/system/audit-log')).toBe(false);
+    expect(canAccessPath({ permissions: ['audit.read'] }, '/admin/audit')).toBe(true);
+    expect(canAccessPath({ permissions: ['payments.read'] }, '/admin/audit')).toBe(false);
   });
 
   test('covers a child path via its parent item', () => {
@@ -144,14 +148,13 @@ describe('canAccessPath', () => {
 });
 
 describe('visibleNavDomains', () => {
-  test('a finance-only principal sees finance destinations and Overview', () => {
-    const domains = visibleNavDomains({ permissions: ['finance.read'] });
+  test('a payments-only principal sees the payments ledger and Overview', () => {
+    const domains = visibleNavDomains({ permissions: ['payments.read'] });
     const paths = domains.flatMap((d) => d.items.map((i) => i.path));
 
     expect(paths).toContain('/admin/overview');
-    expect(paths).toContain('/admin/users/payments');
-    expect(paths).toContain('/admin/ops/transactions');
-    expect(paths).not.toContain('/admin/system/audit-log');
+    expect(paths).toContain('/admin/payments');
+    expect(paths).not.toContain('/admin/audit');
     expect(paths).not.toContain('/admin/site/faqs');
   });
 
@@ -159,9 +162,9 @@ describe('visibleNavDomains', () => {
     const domains = visibleNavDomains({ permissions: ['audit.read'] });
     const ids = domains.map((d) => d.id);
 
-    expect(ids).toContain('system');
+    expect(ids).toContain('audit');
     expect(ids).not.toContain('site');
-    expect(ids).not.toContain('ops');
+    expect(ids).not.toContain('funds');
   });
 
   test('a principal with no permissions still gets Overview', () => {

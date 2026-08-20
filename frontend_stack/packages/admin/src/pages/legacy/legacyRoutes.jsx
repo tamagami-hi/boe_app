@@ -6,32 +6,31 @@ import AdminReadError from '../../data/AdminReadError.jsx';
 import {
   useAdminAuditLogs,
   useAdminFunds,
-  useAdminMandates,
   useAdminPayments,
 } from '../../data/adminResources.js';
 import { useFundMutations } from '../../data/useFundMutations.js';
 import { useAdminNavigation } from '../../navigation/useAdminNavigation.js';
 import ApprovalsScreen from '../../screens/ApprovalsScreen.jsx';
 import AppBuilderScreen from '../../screens/appBuilder/AppBuilderScreen.jsx';
+import AumScreen from '../../screens/AumScreen.jsx';
+import ClientValuesScreen from '../../screens/ClientValuesScreen.jsx';
 import FundsListScreen from '../../screens/fundOps/FundsListScreen.jsx';
 import FundWorkspace from '../../screens/fundOps/FundWorkspace.jsx';
-import RedemptionsScreen from '../../screens/RedemptionsScreen.jsx';
+import InvestmentReviewScreen from '../../screens/InvestmentReviewScreen.jsx';
 import AuditLogScreen from '../../screens/AuditLogScreen.jsx';
 import EmailDeliveriesScreen from '../../screens/EmailDeliveriesScreen.jsx';
 import EnvironmentScreen from '../../screens/EnvironmentScreen.jsx';
-import HoldingsScreen from '../../screens/HoldingsScreen.jsx';
-import MandatesScreen from '../../screens/MandatesScreen.jsx';
 import PaymentsScreen from '../../screens/PaymentsScreen.jsx';
-import TransactionsScreen from '../../screens/TransactionsScreen.jsx';
 import UserDetailScreen from '../../screens/UserDetailScreen.jsx';
 import UserDetailsListScreen from '../../screens/UserDetailsListScreen.jsx';
 
 // Thin route wrappers. Each now reads only the domains its screen shows, instead of
 // pulling slices out of one shell-wide six-collection provider.
 //
-// Retired here (canonical decisions, session-2 audit §C): risk profiles, the
-// reconciliation ledger and capital-transaction tab, the SIP control-request queue,
-// support tickets, and the manual KYC review queue.
+// Retired here: mandates/redemptions (the investment-review queue replaces both),
+// holdings (published AUM lives under /admin/aum), transactions/ledger (payments is
+// the evidence trail), SIP control requests, support tickets, and the manual KYC
+// review queue.
 
 export function ApprovalsRoute() {
   const queue = useApprovalsQueue();
@@ -74,9 +73,16 @@ export function FundWorkspaceRoute() {
   );
 }
 
-export function RedemptionsRoute() {
-  const { openUserDetail } = useAdminNavigation();
-  return <RedemptionsScreen onUserDetail={openUserDetail} />;
+export function InvestmentReviewsRoute({ tab }) {
+  return <InvestmentReviewScreen tab={tab} />;
+}
+
+export function ClientValuesRoute({ tab }) {
+  return <ClientValuesScreen tab={tab} />;
+}
+
+export function AumRoute({ tab }) {
+  return <AumScreen tab={tab} />;
 }
 
 export function PaymentsRoute() {
@@ -88,17 +94,6 @@ export function PaymentsRoute() {
         { label: 'payments', ...payments },
       ]} />
       <PaymentsScreen rows={payments.rows} loading={payments.isLoading} onUserDetail={openUserDetail} />
-    </>
-  );
-}
-
-export function MandatesRoute() {
-  const mandates = useAdminMandates();
-  const { openUserDetail } = useAdminNavigation();
-  return (
-    <>
-      <AdminReadError resources={[{ label: 'mandates', ...mandates }]} />
-      <MandatesScreen rows={mandates.rows} loading={mandates.isLoading} onUserDetail={openUserDetail} />
     </>
   );
 }
@@ -143,28 +138,6 @@ export function AuditLogRoute() {
 
 export function EmailDeliveriesRoute() {
   return <EmailDeliveriesScreen />;
-}
-
-export function HoldingsRoute() {
-  const funds = useAdminFunds();
-  return (
-    <>
-      <AdminReadError resources={[{ label: 'fund pools', ...funds }]} />
-      <HoldingsScreen funds={funds.rows} loading={funds.isLoading} />
-    </>
-  );
-}
-
-export function TransactionsRoute() {
-  // The screen paginates transactions itself via useAdminList; it only needs funds
-  // for the pool filter.
-  const funds = useAdminFunds();
-  return (
-    <>
-      <AdminReadError resources={[{ label: 'fund pools', ...funds }]} />
-      <TransactionsScreen funds={funds.rows} />
-    </>
-  );
 }
 
 export function AppBuilderRoute() {

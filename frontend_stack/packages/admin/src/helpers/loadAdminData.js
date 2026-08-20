@@ -60,7 +60,7 @@ export async function loadAdminCollection(path) {
  *
  * Separate from `loadAdminCollection` because the approvals table is the one
  * collection worth refreshing by itself: new signups arrive without the operator
- * doing anything, so it is polled, while funds/payments/mandates change only in
+ * doing anything, so it is polled, while funds/payments/reviews change only in
  * response to an action. It also reports `truncated`, so a queue longer than the
  * paginated walk can be labelled rather than silently cut off.
  */
