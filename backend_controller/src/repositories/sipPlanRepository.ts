@@ -14,13 +14,20 @@ export interface CreateSipPlanInput {
 export interface SipPlanRepository {
   create: (tx: Transaction, input: CreateSipPlanInput) => Promise<SipPlan>
   listByUser: (tx: Transaction, userId: string) => Promise<readonly SipPlan[]>
+  listDue: (tx: Transaction, input: Readonly<{ asOf: string; limit: number }>) => Promise<readonly SipPlan[]>
   lockById: (
     tx: Transaction,
     input: Readonly<{ sipPlanId: string; userId: string }>,
   ) => Promise<SipPlan | null>
+  lockByIdUnscoped: (tx: Transaction, sipPlanId: string) => Promise<SipPlan | null>
   markPaused: (tx: Transaction, sipPlanId: string, now: Date) => Promise<SipPlan | null>
   markResumed: (tx: Transaction, sipPlanId: string, now: Date) => Promise<SipPlan | null>
   markCancelled: (tx: Transaction, sipPlanId: string, now: Date) => Promise<SipPlan | null>
+  markCompleted: (tx: Transaction, sipPlanId: string, now: Date) => Promise<SipPlan | null>
+  advanceNextDueDate: (
+    tx: Transaction,
+    input: Readonly<{ sipPlanId: string; nextDueDate: string; now: Date }>,
+  ) => Promise<SipPlan | null>
 }
 
 export const createSipPlanRepository = (): SipPlanRepository => ({
@@ -35,6 +42,7 @@ export const createSipPlanRepository = (): SipPlanRepository => ({
         duration_months: input.durationMonths,
         state: "active",
         start_date: input.now.toISOString().slice(0, 10),
+        next_due_date: input.now.toISOString().slice(0, 10),
       })
       .returningAll()
       .executeTakeFirstOrThrow(),
@@ -47,12 +55,36 @@ export const createSipPlanRepository = (): SipPlanRepository => ({
       .orderBy("created_at", "desc")
       .execute(),
 
+  listDue: async (tx, input) =>
+    tx
+      .selectFrom("sip_plans")
+      .selectAll()
+      .where("state", "=", "active")
+      .where("next_due_date", "is not", null)
+      .where(sql<boolean>`next_due_date <= ${input.asOf}`)
+      .orderBy("next_due_date")
+      .orderBy("id")
+      .limit(input.limit)
+      .forUpdate()
+      .skipLocked()
+      .execute(),
+
   lockById: async (tx, input) => {
     const row = await tx
       .selectFrom("sip_plans")
       .selectAll()
       .where("id", "=", input.sipPlanId)
       .where("user_id", "=", input.userId)
+      .forUpdate()
+      .executeTakeFirst()
+    return row ?? null
+  },
+
+  lockByIdUnscoped: async (tx, sipPlanId) => {
+    const row = await tx
+      .selectFrom("sip_plans")
+      .selectAll()
+      .where("id", "=", sipPlanId)
       .forUpdate()
       .executeTakeFirst()
     return row ?? null
@@ -86,6 +118,34 @@ export const createSipPlanRepository = (): SipPlanRepository => ({
       .set({ state: "cancelled", cancelled_at: now, updated_at: now, version: sql<string>`version + 1` })
       .where("id", "=", sipPlanId)
       .where("state", "in", ["active", "paused"])
+      .returningAll()
+      .executeTakeFirst()
+    return row ?? null
+  },
+
+  markCompleted: async (tx, sipPlanId, now) => {
+    const row = await tx
+      .updateTable("sip_plans")
+      .set({
+        state: "completed",
+        completed_at: now,
+        next_due_date: null,
+        updated_at: now,
+        version: sql<string>`version + 1`,
+      })
+      .where("id", "=", sipPlanId)
+      .where("state", "=", "active")
+      .returningAll()
+      .executeTakeFirst()
+    return row ?? null
+  },
+
+  advanceNextDueDate: async (tx, input) => {
+    const row = await tx
+      .updateTable("sip_plans")
+      .set({ next_due_date: input.nextDueDate, updated_at: input.now, version: sql<string>`version + 1` })
+      .where("id", "=", input.sipPlanId)
+      .where("state", "=", "active")
       .returningAll()
       .executeTakeFirst()
     return row ?? null

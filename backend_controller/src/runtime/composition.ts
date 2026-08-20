@@ -43,6 +43,7 @@ import { createProviderEventInboxRepository } from "../repositories/providerEven
 import { createPhonePeCheckoutGateway } from "../providers/phonepe/phonePeCheckoutGateway.js"
 import type { PaymentGateway } from "../providers/phonepe/paymentGateway.js"
 import { runReconciliationPass, type ReconciliationSummary } from "../paymentReconciliationWorker.js"
+import { runSipSchedulePass, type SipScheduleSummary } from "../sipScheduleWorker.js"
 import { createApplicationReviewRepository } from "../repositories/applicationReviewRepository.js"
 import { createAuditRepository } from "../repositories/auditRepository.js"
 import { createAuthSessionRepository } from "../repositories/authSessionRepository.js"
@@ -287,6 +288,8 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       sipPlanRepository: createSipPlanRepository(),
       orderRepository,
       userRepository,
+      auditRepository,
+      notificationRepository,
     })
 
     registerClientKycRoutes(application, {
@@ -620,3 +623,37 @@ export const composePaymentReconciliationWorker = (
     },
   }
 }
+
+export interface SipScheduleWorker {
+  readonly runOnce: () => Promise<SipScheduleSummary>
+  readonly dispose: () => Promise<void>
+}
+
+export const composeSipScheduleWorker = (
+  source: Readonly<Record<string, string | undefined>>,
+): SipScheduleWorker => {
+  const pool = createPool(parseDatabaseConfig(source))
+  const database = createDatabase(pool)
+  const unitOfWork = createUnitOfWork(database)
+
+  return {
+    runOnce: () =>
+      runSipSchedulePass({
+        unitOfWork,
+        clock: (): Date => new Date(),
+        sipPlanRepository: createSipPlanRepository(),
+        orderRepository: createOrderRepository(),
+        userRepository: createUserRepository(),
+        auditRepository: createAuditRepository(),
+        notificationRepository: createNotificationRepository(),
+        config: {
+          claimLimit: 200,
+          maxPeriodsPerPlan: 24,
+        },
+      }),
+    dispose: async () => {
+      await pool.end()
+    },
+  }
+}
+

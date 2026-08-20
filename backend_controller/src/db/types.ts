@@ -782,6 +782,7 @@ export interface InvestmentOrdersTable {
   state: Generated<OrderState>
   amount_paise: BigIntString
   currency: Generated<string>
+  due_period: NullableDateColumn
   requested_at: TimestampDefault
   payment_confirmed_at: NullableTimestamp
   accepted_at: NullableTimestamp

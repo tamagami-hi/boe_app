@@ -18,6 +18,17 @@ export interface CreateOrderInput {
   readonly now: Date
 }
 
+export interface CreateSipInstallmentInput {
+  readonly userId: string
+  readonly fundId: string
+  readonly fundVersionId: string
+  readonly sipPlanId: string
+  readonly amountPaise: string
+  readonly currency: string
+  readonly duePeriod: string
+  readonly now: Date
+}
+
 export interface FundOrderTermsRow {
   readonly fundState: FundState
   readonly currency: string
@@ -37,6 +48,12 @@ export interface OrderWriteRepository {
   findFundOrderTerms: (tx: Transaction, fundId: string) => Promise<FundOrderTermsRow | null>
   latestCompliance: (tx: Transaction, userId: string) => Promise<LatestComplianceRow>
   createPurchase: (tx: Transaction, input: CreateOrderInput) => Promise<InvestmentOrder>
+  createSipInstallment: (tx: Transaction, input: CreateSipInstallmentInput) => Promise<InvestmentOrder | null>
+  findOpenInstallment: (tx: Transaction, sipPlanId: string) => Promise<InvestmentOrder | null>
+  findInstallmentByPeriod: (
+    tx: Transaction,
+    input: Readonly<{ sipPlanId: string; duePeriod: string }>,
+  ) => Promise<InvestmentOrder | null>
   lockById: (
     tx: Transaction,
     input: Readonly<{ orderId: string; userId: string }>,
@@ -92,6 +109,50 @@ export const createOrderRepository = (): OrderWriteRepository => ({
       })
       .returningAll()
       .executeTakeFirstOrThrow(),
+
+  createSipInstallment: async (tx, input) => {
+    const row = await tx
+      .insertInto("investment_orders")
+      .values({
+        user_id: input.userId,
+        fund_id: input.fundId,
+        fund_version_id: input.fundVersionId,
+        sip_plan_id: input.sipPlanId,
+        type: "sip_installment",
+        amount_paise: input.amountPaise,
+        currency: input.currency,
+        due_period: input.duePeriod,
+        requested_at: input.now,
+      })
+      .onConflict((builder) => builder.columns(["sip_plan_id", "due_period"]).doNothing())
+      .returningAll()
+      .executeTakeFirst()
+    return row ?? null
+  },
+
+  findOpenInstallment: async (tx, sipPlanId) => {
+    const row = await tx
+      .selectFrom("investment_orders")
+      .selectAll()
+      .where("sip_plan_id", "=", sipPlanId)
+      .where("type", "=", "sip_installment")
+      .where("state", "in", ["submitted", "payment_pending", "review_pending"])
+      .orderBy("due_period", "desc")
+      .limit(1)
+      .executeTakeFirst()
+    return row ?? null
+  },
+
+  findInstallmentByPeriod: async (tx, input) => {
+    const row = await tx
+      .selectFrom("investment_orders")
+      .selectAll()
+      .where("sip_plan_id", "=", input.sipPlanId)
+      .where("type", "=", "sip_installment")
+      .where(sql<boolean>`due_period = ${input.duePeriod}`)
+      .executeTakeFirst()
+    return row ?? null
+  },
 
   lockById: async (tx, input) => {
     const row = await tx

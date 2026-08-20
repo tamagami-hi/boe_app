@@ -4,9 +4,12 @@ import { z } from "zod"
 import type { UnitOfWork } from "../db/database.js"
 import type { SipPlan, UserId } from "../db/repositories.js"
 import { authenticateNativeRequest, type NativeRequestAuthDeps } from "../domain/auth/nativeAuth.js"
+import { createSipInstallmentOrder } from "../domain/client/createSipInstallmentOrder.js"
 import { deriveInvestingEligibility } from "../domain/client/investingEligibility.js"
 import { AppError } from "../http/errorCatalog.js"
 import { parseOrThrow } from "../http/validation.js"
+import type { AuditWriteRepository } from "../repositories/auditRepository.js"
+import type { NotificationWriteRepository } from "../repositories/notificationRepository.js"
 import type { OrderWriteRepository } from "../repositories/orderRepository.js"
 import type { SipPlanRepository } from "../repositories/sipPlanRepository.js"
 import type { UserWriteRepository } from "../repositories/userRepository.js"
@@ -17,6 +20,8 @@ export interface ClientSipDeps extends NativeRequestAuthDeps {
   readonly sipPlanRepository: SipPlanRepository
   readonly orderRepository: OrderWriteRepository
   readonly userRepository: UserWriteRepository
+  readonly auditRepository: AuditWriteRepository
+  readonly notificationRepository: NotificationWriteRepository
 }
 
 const SIPS_ROUTE = "/v1/client/sips"
@@ -48,6 +53,11 @@ const mapSip = (plan: SipPlan): Record<string, unknown> => ({
   cancelledAt: isoOrNull(plan.cancelled_at),
   createdAt: iso(plan.created_at),
 })
+
+const firstOfMonth = (date: Date): string => {
+  const iso = date.toISOString().slice(0, 7)
+  return `${iso}-01`
+}
 
 const createSip = async (deps: ClientSipDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await authenticateNativeRequest(request, deps)
@@ -83,7 +93,7 @@ const createSip = async (deps: ClientSipDeps, request: FastifyRequest, reply: Fa
       })
     }
 
-    return deps.sipPlanRepository.create(tx, {
+    const created = await deps.sipPlanRepository.create(tx, {
       userId: principal.userId,
       fundId: body.fundId,
       amountPaise: body.amountPaise,
@@ -91,6 +101,20 @@ const createSip = async (deps: ClientSipDeps, request: FastifyRequest, reply: Fa
       durationMonths: body.durationMonths ?? null,
       now,
     })
+
+    await createSipInstallmentOrder(
+      tx,
+      {
+        orderRepository: deps.orderRepository,
+        userRepository: deps.userRepository,
+        auditRepository: deps.auditRepository,
+        notificationRepository: deps.notificationRepository,
+        clock: deps.clock,
+      },
+      { plan: created, duePeriod: firstOfMonth(now), requestId: request.requestId },
+    )
+
+    return created
   })
 
   return reply.sendData(mapSip(plan), { status: 201 })
