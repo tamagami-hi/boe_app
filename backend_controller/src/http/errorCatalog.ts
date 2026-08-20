@@ -18,6 +18,7 @@ export type ErrorCode =
   | "INVALID_CREDENTIALS"
   | "SESSION_INVALID"
   | "SNS_SIGNATURE_INVALID"
+  | "PROVIDER_CALLBACK_UNVERIFIED"
   | "AUTHORIZATION_DENIED"
   | "ACCOUNT_NOT_ACTIVE"
   | "CSRF_INVALID"
@@ -42,6 +43,7 @@ export const ERROR_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = {
   INVALID_CREDENTIALS: 401,
   SESSION_INVALID: 401,
   SNS_SIGNATURE_INVALID: 401,
+  PROVIDER_CALLBACK_UNVERIFIED: 401,
   AUTHORIZATION_DENIED: 403,
   ACCOUNT_NOT_ACTIVE: 403,
   CSRF_INVALID: 403,
@@ -67,6 +69,7 @@ export const ERROR_RETRYABLE: Readonly<Record<ErrorCode, boolean>> = {
   INVALID_CREDENTIALS: false,
   SESSION_INVALID: false,
   SNS_SIGNATURE_INVALID: false,
+  PROVIDER_CALLBACK_UNVERIFIED: false,
   AUTHORIZATION_DENIED: false,
   ACCOUNT_NOT_ACTIVE: false,
   CSRF_INVALID: false,
@@ -93,6 +96,7 @@ export const ERROR_DEFAULT_MESSAGE: Readonly<Record<ErrorCode, string>> = {
   INVALID_CREDENTIALS: "The credentials are invalid",
   SESSION_INVALID: "The session is no longer valid",
   SNS_SIGNATURE_INVALID: "The notification could not be verified",
+  PROVIDER_CALLBACK_UNVERIFIED: "The callback could not be verified",
   AUTHORIZATION_DENIED: "You do not have permission to perform this action",
   ACCOUNT_NOT_ACTIVE: "The account is not active",
   CSRF_INVALID: "The request failed a cross-site protection check",

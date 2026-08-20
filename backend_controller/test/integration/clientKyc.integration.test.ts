@@ -15,14 +15,12 @@ import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
 import type { EmailMessage, EmailSender } from "../../src/email/emailSender.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
-import { createInvestorLedgerRepository } from "../../src/repositories/investorLedgerRepository.js"
-import { createRedemptionRepository } from "../../src/repositories/redemptionRepository.js"
+import { createClientValueEntryRepository } from "../../src/repositories/clientValueEntryRepository.js"
 import { createClientPortfolioRepository } from "../../src/repositories/clientPortfolioRepository.js"
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
 import { createKycRepository } from "../../src/repositories/kycRepository.js"
 import { createOrderRepository } from "../../src/repositories/orderRepository.js"
-import { createOutboxRepository } from "../../src/repositories/outboxRepository.js"
-import { createPaymentRepository } from "../../src/repositories/paymentRepository.js"
+import { createPaymentsRepository } from "../../src/repositories/paymentsRepository.js"
 import { createUserRepository } from "../../src/repositories/userRepository.js"
 import { registerClientKycRoutes } from "../../src/routes/clientKycRoutes.js"
 import { registerClientOrderRoutes } from "../../src/routes/clientOrderRoutes.js"
@@ -141,9 +139,7 @@ beforeAll(async () => {
         accessTokenService,
         database,
         clientPortfolioRepository: createClientPortfolioRepository(),
-        investorLedgerRepository: createInvestorLedgerRepository(),
-        redemptionRepository: createRedemptionRepository(),
-        auditRepository: createAuditRepository(),
+        clientValueEntryRepository: createClientValueEntryRepository(),
         unitOfWork: createUnitOfWork(database),
         clock,
         config: { cursorKey: randomBytes(32) },
@@ -154,12 +150,12 @@ beforeAll(async () => {
         unitOfWork,
         clock,
         orderRepository: createOrderRepository(),
-        paymentRepository: createPaymentRepository(),
         userRepository: createUserRepository(),
-        outboxRepository: createOutboxRepository(),
         auditRepository: createAuditRepository(),
         idempotencyRepository: createIdempotencyRepository(),
-        config: { idempotencyTtlMs: 86_400_000, paymentProvider: "manual", attemptTtlMs: 900_000 },
+        paymentsRepository: createPaymentsRepository(),
+        paymentGateway: null,
+        config: { idempotencyTtlMs: 86_400_000, attemptTtlMs: 900_000 },
       })
     },
   })
@@ -176,15 +172,10 @@ beforeAll(async () => {
       "values ($1,1,'D','b',$2, now(), $3) returning id",
     [fundId, randomBytes(32), anyUser.userId],
   )
-  const nav = await pool.query<{ id: string }>(
-    "insert into fund_nav_prices (fund_id, nav, as_of_date, revision, published_by_user_id) " +
-      "values ($1, 20.00000000, current_date, 1, $2) returning id",
-    [fundId, anyUser.userId],
-  )
   const version = await pool.query<{ id: string }>(
-    "insert into fund_versions (fund_id, version, name, category, objective, risk_level, minimum_sip_paise, minimum_purchase_paise, disclosure_version_id, initial_nav_price_id, terms_sha256, created_by_user_id) " +
-      "values ($1,1,'KYC Fund','equity','grow','moderate', 50000, 100000, $2, $3, $4, $5) returning id",
-    [fundId, disclosure.rows[0]!.id, nav.rows[0]!.id, randomBytes(32), anyUser.userId],
+    "insert into fund_versions (fund_id, version, name, category, objective, risk_level, minimum_sip_paise, minimum_purchase_paise, disclosure_version_id, terms_sha256, created_by_user_id) " +
+      "values ($1,1,'KYC Fund','equity','grow','moderate', 50000, 100000, $2, $3, $4) returning id",
+    [fundId, disclosure.rows[0]!.id, randomBytes(32), anyUser.userId],
   )
   await pool.query("update funds set current_published_version_id = $1 where id = $2", [version.rows[0]!.id, fundId])
 }, 200_000)
@@ -230,10 +221,11 @@ describe("client email-OTP KYC + eligibility (integration)", () => {
       method: "POST",
       url: "/v1/client/orders",
       headers: bearer(token, randomUUID()),
-      payload: { fundId, amountPaise: 500_000 },
+      payload: { fundId, amountPaise: "500000" },
     })
     expect(order.statusCode).toBe(201)
-    expect(dataOf<{ status: string }>(order).status).toBe("submitted")
+    // Client-safe projection (spec §9.2): a new order is awaiting payment.
+    expect(dataOf<{ status: string }>(order).status).toBe("payment_in_progress")
   })
 
   test("kyc-status reports not_started, then the open case, then approval", async () => {
