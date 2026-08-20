@@ -94,9 +94,14 @@ x-backend-env: &backend-env
   CRYPTO_RECIPIENT_ENC_KEY_VERSION: ${CRYPTO_RECIPIENT_ENC_KEY_VERSION:-ek1}
 
   PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-manual}
-  PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET}
-  PAYMENT_GATEWAY_KEY_ID: ${PAYMENT_GATEWAY_KEY_ID}
-  PAYMENT_GATEWAY_KEY_SECRET: ${PAYMENT_GATEWAY_KEY_SECRET}
+  PHONEPE_CLIENT_ID: ${PHONEPE_CLIENT_ID}
+  PHONEPE_CLIENT_SECRET: ${PHONEPE_CLIENT_SECRET}
+  PHONEPE_CLIENT_VERSION: ${PHONEPE_CLIENT_VERSION:-1}
+  PHONEPE_ENV: ${PHONEPE_ENV:-production}
+  PHONEPE_CALLBACK_USERNAME: ${PHONEPE_CALLBACK_USERNAME}
+  PHONEPE_CALLBACK_PASSWORD: ${PHONEPE_CALLBACK_PASSWORD}
+  PHONEPE_REDIRECT_URL: ${PHONEPE_REDIRECT_URL}
+  PHONEPE_CALLBACK_URL: ${PHONEPE_CALLBACK_URL}
   PAYMENT_ATTEMPT_TTL_MS: ${PAYMENT_ATTEMPT_TTL_MS:-900000}
 
   KYC_EMAIL_FROM: ${KYC_EMAIL_FROM}
@@ -290,7 +295,7 @@ services:
     container_name: ${BOE_CONTAINER_PREFIX:-boe}-payments-worker
     <<: *security
     restart: unless-stopped
-    command: ["sh", "-ec", "rm -f /tmp/boe-worker-ready; while true; do node dist/paymentWorker.js; touch /tmp/boe-worker-ready; sleep ${PAYMENT_WORKER_INTERVAL_SECONDS:-20}; done"]
+    command: ["sh", "-ec", "rm -f /tmp/boe-worker-ready; while true; do node dist/paymentReconciliationEntrypoint.js; touch /tmp/boe-worker-ready; sleep ${PAYMENT_WORKER_INTERVAL_SECONDS:-20}; done"]
     environment: *backend-env
     healthcheck: *worker-health
     depends_on:
@@ -321,7 +326,7 @@ services:
     container_name: ${BOE_CONTAINER_PREFIX:-boe}-sips-worker
     <<: *security
     restart: unless-stopped
-    command: ["sh", "-ec", "rm -f /tmp/boe-worker-ready; while true; do node dist/sipWorker.js; touch /tmp/boe-worker-ready; sleep ${SIP_WORKER_INTERVAL_SECONDS:-300}; done"]
+    command: ["sh", "-ec", "rm -f /tmp/boe-worker-ready; while true; do node dist/sipScheduleEntrypoint.js; touch /tmp/boe-worker-ready; sleep ${SIP_WORKER_INTERVAL_SECONDS:-300}; done"]
     environment: *backend-env
     healthcheck: *worker-health
     depends_on:

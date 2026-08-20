@@ -317,7 +317,8 @@ boe_validate_app_policy() {
     esac
     provider="$(env_get PAYMENT_PROVIDER "$BOE_EFFECTIVE_ENV")"
     [[ -z "$provider" || "$provider" == "manual" ]] \
-        || boe_assert_env_keys PAYMENT_WEBHOOK_SECRET PAYMENT_GATEWAY_KEY_ID PAYMENT_GATEWAY_KEY_SECRET
+        || boe_assert_env_keys PHONEPE_CLIENT_ID PHONEPE_CLIENT_SECRET PHONEPE_CLIENT_VERSION \
+            PHONEPE_ENV PHONEPE_CALLBACK_USERNAME PHONEPE_CALLBACK_PASSWORD
     smtp_host="$(env_get EMAIL_SMTP_HOST "$BOE_EFFECTIVE_ENV")"
     smtp_port="$(env_get EMAIL_SMTP_PORT "$BOE_EFFECTIVE_ENV")"
     smtp_secure="$(env_get EMAIL_SMTP_SECURE "$BOE_EFFECTIVE_ENV")"
