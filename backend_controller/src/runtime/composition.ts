@@ -27,21 +27,22 @@ import { createCertificateFetcher } from "../email/certificateFetcher.js"
 import { createApplicationRepository } from "../repositories/applicationRepository.js"
 import { createClientCatalogRepository } from "../repositories/clientCatalogRepository.js"
 import { createClientPortfolioRepository } from "../repositories/clientPortfolioRepository.js"
-import { createInvestorLedgerRepository } from "../repositories/investorLedgerRepository.js"
-import { createRedemptionRepository } from "../repositories/redemptionRepository.js"
+import { createClientValueEntryRepository } from "../repositories/clientValueEntryRepository.js"
 import { createKycRepository } from "../repositories/kycRepository.js"
 import {
   createSmtpEmailSender,
   createUnconfiguredEmailSender,
   type EmailSender,
 } from "../email/emailSender.js"
-import { createMandateRepository } from "../repositories/mandateRepository.js"
 import { createNotificationRepository } from "../repositories/notificationRepository.js"
 import { createOrderRepository } from "../repositories/orderRepository.js"
-import { createPaymentRepository } from "../repositories/paymentRepository.js"
-import { createSipRepository } from "../repositories/sipRepository.js"
-import { settleDuePayments, type SettleSummary } from "../domain/client/settlePayment.js"
-import { generateSipInstallments, type GenerateSipInstallmentsSummary } from "../domain/client/generateSipInstallments.js"
+import { createPaymentsRepository } from "../repositories/paymentsRepository.js"
+import { createRefundRepository } from "../repositories/refundRepository.js"
+import { createInvestmentReviewRepository } from "../repositories/investmentReviewRepository.js"
+import { createProviderEventInboxRepository } from "../repositories/providerEventInboxRepository.js"
+import { createPhonePeCheckoutGateway } from "../providers/phonepe/phonePeCheckoutGateway.js"
+import type { PaymentGateway } from "../providers/phonepe/paymentGateway.js"
+import { runReconciliationPass, type ReconciliationSummary } from "../paymentReconciliationWorker.js"
 import { createApplicationReviewRepository } from "../repositories/applicationReviewRepository.js"
 import { createAuditRepository } from "../repositories/auditRepository.js"
 import { createAuthSessionRepository } from "../repositories/authSessionRepository.js"
@@ -56,26 +57,32 @@ import { createLoginEventRepository } from "../repositories/loginEventRepository
 import { createOutboxRepository } from "../repositories/outboxRepository.js"
 import { createUserRepository } from "../repositories/userRepository.js"
 import { registerAdminIdentityRoutes } from "../routes/adminIdentityRoutes.js"
+import { registerAdminAumRoutes } from "../routes/adminAumRoutes.js"
+import { registerAdminFundGrowthPreviewRoutes } from "../routes/adminFundGrowthPreviewRoutes.js"
+import { registerAdminInvestmentReviewRoutes } from "../routes/adminInvestmentReviewRoutes.js"
 import { registerAdminCatalogRoutes } from "../routes/adminCatalogRoutes.js"
+import { registerAdminClientGrowthRoutes } from "../routes/adminClientGrowthRoutes.js"
 import { registerAdminContentRoutes } from "../routes/adminContentRoutes.js"
 import { registerAdminOversightRoutes } from "../routes/adminOversightRoutes.js"
 import { createAdminCatalogRepository } from "../repositories/adminCatalogRepository.js"
+import { createFundAumRepository } from "../repositories/fundAumRepository.js"
 import { createAdminContentRepository } from "../repositories/adminContentRepository.js"
 import { createAdminOversightRepository } from "../repositories/adminOversightRepository.js"
+import { createClientGrowthRepository } from "../repositories/clientGrowthRepository.js"
 import { registerClientAccountRoutes } from "../routes/clientAccountRoutes.js"
 import { registerClientKycRoutes } from "../routes/clientKycRoutes.js"
 import { registerClientOrderRoutes } from "../routes/clientOrderRoutes.js"
+import { registerClientSipPlanRoutes } from "../routes/clientSipPlanRoutes.js"
+import { createSipPlanRepository } from "../repositories/sipPlanRepository.js"
 import { registerClientCatalogRoutes } from "../routes/clientCatalogRoutes.js"
 import { registerClientPortfolioRoutes } from "../routes/clientPortfolioRoutes.js"
-import { registerClientSipRoutes } from "../routes/clientSipRoutes.js"
 import { registerPublicContentRoutes } from "../routes/publicContentRoutes.js"
 import { registerPublicAppRoutes } from "../routes/publicAppRoutes.js"
 import { createRedisCache, createUncachedCache } from "../cache/cache.js"
 import { createRedisClient } from "../cache/redisClient.js"
-import { registerMandateWebhookRoutes } from "../routes/mandateWebhookRoutes.js"
-import { registerPaymentWebhookRoutes } from "../routes/paymentWebhookRoutes.js"
 import { registerNativeAuthRoutes } from "../routes/nativeAuthRoutes.js"
 import { registerProviderEventRoutes } from "../routes/providerEventRoutes.js"
+import { registerPhonePeProviderEventRoutes } from "../routes/phonePeProviderEventRoutes.js"
 import { registerPublicOnboardingRoutes } from "../routes/publicOnboardingRoutes.js"
 import { registerWebAuthRoutes } from "../routes/webAuthRoutes.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
@@ -141,6 +148,10 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const accessTokenService = createAccessTokenService(serverConfig.access)
   const breachChecker = createBreachChecker(breachMode)
   const certificateFetcher = createCertificateFetcher()
+  const paymentGateway: PaymentGateway | null =
+    serverConfig.payments.phonepe !== null
+      ? createPhonePeCheckoutGateway({ config: serverConfig.payments.phonepe })
+      : null
 
   const applicationRepository = createApplicationRepository()
   const applicationReviewRepository = createApplicationReviewRepository()
@@ -156,13 +167,13 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const emailSuppressionRepository = createEmailSuppressionRepository()
   const idempotencyRepository = createIdempotencyRepository()
   const clientPortfolioRepository = createClientPortfolioRepository()
+  const clientValueEntryRepository = createClientValueEntryRepository()
   const orderRepository = createOrderRepository()
-  const paymentRepository = createPaymentRepository()
-  const investorLedgerRepository = createInvestorLedgerRepository()
-  const redemptionRepository = createRedemptionRepository()
+  const paymentsRepository = createPaymentsRepository()
+  const refundRepository = createRefundRepository()
+  const investmentReviewRepository = createInvestmentReviewRepository()
+  const providerEventInboxRepository = createProviderEventInboxRepository()
   const notificationRepository = createNotificationRepository()
-  const sipRepository = createSipRepository()
-  const mandateRepository = createMandateRepository()
   const kycRepository = createKycRepository()
   const clientAccountRepository = createClientAccountRepository()
 
@@ -235,9 +246,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       accessTokenService,
       database,
       clientPortfolioRepository,
-      investorLedgerRepository,
-      redemptionRepository,
-      auditRepository,
+      clientValueEntryRepository,
       unitOfWork,
       clock,
       config: { cursorKey: serverConfig.cursorKey },
@@ -259,64 +268,25 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       unitOfWork,
       clock,
       orderRepository,
-      paymentRepository,
       userRepository,
-      outboxRepository,
       auditRepository,
       idempotencyRepository,
+      paymentsRepository,
+      paymentGateway,
       config: {
         idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
-        // Provider + attempt window come from the environment; the provider-call
-        // outbox event is the durable trigger the settlement worker consumes.
-        paymentProvider: serverConfig.payments.provider,
         attemptTtlMs: serverConfig.payments.attemptTtlMs,
       },
     })
 
-    // The signed payment webhook (real-gateway paid/failed confirmation) is only
-    // wired when a webhook secret is configured; the mock provider is auto-settled
-    // by the payment worker instead.
-    if (serverConfig.payments.webhookConfigured && serverConfig.payments.webhookSecret !== null) {
-      registerPaymentWebhookRoutes(application, {
-        unitOfWork,
-        clock,
-        paymentRepository,
-        orderRepository,
-        investorLedgerRepository,
-        notificationRepository,
-        auditRepository,
-        config: {
-          paymentProvider: serverConfig.payments.provider,
-          webhookSecret: serverConfig.payments.webhookSecret,
-        },
-      })
-      registerMandateWebhookRoutes(application, {
-        unitOfWork,
-        clock,
-        mandateRepository,
-        sipRepository,
-        auditRepository,
-        config: { webhookSecret: serverConfig.payments.webhookSecret },
-      })
-    }
-
-    registerClientSipRoutes(application, {
+    registerClientSipPlanRoutes(application, {
       accessTokenService,
       database,
       unitOfWork,
       clock,
-      sipRepository,
-      mandateRepository,
+      sipPlanRepository: createSipPlanRepository(),
       orderRepository,
       userRepository,
-      outboxRepository,
-      auditRepository,
-      idempotencyRepository,
-      config: {
-        idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
-        paymentProvider: serverConfig.payments.provider,
-        mandateFrequency: "monthly",
-      },
     })
 
     registerClientKycRoutes(application, {
@@ -342,7 +312,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       accessTokenService,
       database,
       clientAccountRepository,
-      investorLedgerRepository,
+      clientValueEntryRepository,
       auditRepository,
       notificationRepository,
       unitOfWork,
@@ -417,7 +387,6 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
 
     registerAdminCatalogRoutes(application, {
       webAuth,
-      notificationRepository,
       unitOfWork,
       database,
       clock,
@@ -426,10 +395,24 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
       },
       catalogRepository: createAdminCatalogRepository(),
-      investorLedgerRepository,
       auditRepository,
       idempotencyRepository,
     })
+
+    // Fund AUM publication (spec §9.5): absolute snapshots, growth commands,
+    // corrections, history, and the read-only collective planning call.
+    const adminAumDeps = {
+      webAuth,
+      unitOfWork,
+      database,
+      clock,
+      config: { idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
+      aumRepository: createFundAumRepository(),
+      auditRepository,
+      idempotencyRepository,
+    }
+    registerAdminAumRoutes(application, adminAumDeps)
+    registerAdminFundGrowthPreviewRoutes(application, adminAumDeps)
 
     registerAdminOversightRoutes(application, {
       webAuth,
@@ -442,12 +425,42 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       },
       oversightRepository: createAdminOversightRepository(),
       loginEventRepository,
-      investorLedgerRepository,
-      redemptionRepository,
-      notificationRepository,
       auditRepository,
       idempotencyRepository,
     })
+
+    // Client growth commands (spec §8.1/§8.2/§8.5): client-displayed values
+    // only; deliberately wired without any AUM dependency.
+    registerAdminClientGrowthRoutes(application, {
+      webAuth,
+      unitOfWork,
+      database,
+      clock,
+      config: {
+        idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
+        maxBasisPoints: serverConfig.clientGrowth.maxBasisPoints,
+      },
+      clientGrowthRepository: createClientGrowthRepository(),
+      auditRepository,
+      idempotencyRepository,
+      notificationRepository,
+    })
+
+    if (paymentGateway !== null) {
+      registerAdminInvestmentReviewRoutes(application, {
+        webAuth,
+        unitOfWork,
+        database,
+        clock,
+        config: { idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
+        reviewRepository: investmentReviewRepository,
+        paymentsRepository,
+        refundRepository,
+        paymentGateway,
+        auditRepository,
+        idempotencyRepository,
+      })
+    }
     // configured; a deployment without AWS boots without it (email degraded).
     const { awsRegion, topicArn, ttlMs } = serverConfig.providerEvents
     if (awsRegion !== null && topicArn !== null) {
@@ -465,6 +478,21 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         emailSuppressionRepository,
       })
     }
+
+    if (paymentGateway !== null) {
+      registerPhonePeProviderEventRoutes(application, {
+        unitOfWork,
+        clock,
+        paymentGateway,
+        config: {
+          payloadEncryptionKey: cryptoKeys.recipientEncryptionKey,
+          payloadKeyVersion: cryptoKeys.recipientEncryptionKeyVersion,
+        },
+        providerEventInboxRepository,
+        paymentsRepository,
+        refundRepository,
+      })
+    }
   }
 
   return {
@@ -473,56 +501,6 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
     checkReadiness,
     dispose: async () => {
       await cache.close()
-      await pool.end()
-    },
-  }
-}
-
-export interface PaymentSettlementWorker {
-  /** Run one settlement pass over the due `payment` provider-call outbox events. */
-  readonly runOnce: () => Promise<SettleSummary>
-  readonly dispose: () => Promise<void>
-}
-
-/**
- * Compose the payment settlement worker (spec 03 §5.2, §6). A separate entrypoint
- * from the HTTP server: it owns its own pool and drains the `payment`
- * provider-call outbox, driving each payment `send -> confirm -> book` with the
- * placeholder "manual" provider (instant success). A real gateway swaps in a
- * genuine dispatch + signed webhook without changing the claim/lease/retry loop.
- */
-export const composePaymentSettlementWorker = (
-  source: Readonly<Record<string, string | undefined>>,
-): PaymentSettlementWorker => {
-  const databaseConfig = parseDatabaseConfig(source)
-  const pool = createPool(databaseConfig)
-  const database = createDatabase(pool)
-  const unitOfWork = createUnitOfWork(database)
-  const clock = (): Date => new Date()
-
-  const workerId = source.WORKER_ID ?? "payment-worker"
-  const claimLimit = Math.min(Math.max(Number(source.PAYMENT_WORKER_CLAIM_LIMIT ?? 50), 1), 100)
-  const leaseMs = Math.max(Number(source.PAYMENT_WORKER_LEASE_MS ?? 60_000), 1_000)
-  const paymentProvider = source.PAYMENT_PROVIDER ?? "manual"
-
-  const deps = {
-    unitOfWork,
-    outboxRepository: createOutboxRepository(),
-    paymentRepository: createPaymentRepository(),
-    orderRepository: createOrderRepository(),
-    investorLedgerRepository: createInvestorLedgerRepository(),
-    notificationRepository: createNotificationRepository(),
-    auditRepository: createAuditRepository(),
-    clock,
-    config: { paymentProvider },
-    // The mock provider is auto-settled to booked in the pass; a real gateway is
-    // only dispatched here and confirmed later via the signed webhook.
-    settleConfig: { topic: "payment", workerId, leaseMs, claimLimit, autoConfirm: paymentProvider === "manual" },
-  }
-
-  return {
-    runOnce: () => settleDuePayments(deps),
-    dispose: async () => {
       await pool.end()
     },
   }
@@ -549,7 +527,7 @@ export interface EmailDispatchWorker {
  * Composes the outbox email delivery worker. Without this process the onboarding
  * emails — address verification and the activation invite — stay queued forever
  * and nobody can activate an account, so the deploy stack runs it alongside the
- * payment and SIP workers.
+ * HTTP server.
  *
  * The sender is the same company mailbox the KYC codes use. Without SMTP it
  * fails retryably so durable delivery state never claims an unsent message.
@@ -600,43 +578,43 @@ export const composeEmailDispatchWorker = (
   }
 }
 
-export interface SipInstallmentWorker {
-  /** Run one pass generating installment orders for due active SIPs. */
-  readonly runOnce: () => Promise<GenerateSipInstallmentsSummary>
+export interface PaymentReconciliationWorker {
+  readonly runOnce: () => Promise<ReconciliationSummary>
+  readonly gatewayConfigured: boolean
   readonly dispose: () => Promise<void>
 }
 
-/**
- * Compose the SIP installment scheduler (spec 03 §5.2). A separate entrypoint
- * that, per pass, creates a `sip_installment` order for each due active SIP and
- * begins its payment; the payment worker + webhook then settle and book it.
- */
-export const composeSipInstallmentWorker = (
+export const composePaymentReconciliationWorker = (
   source: Readonly<Record<string, string | undefined>>,
-): SipInstallmentWorker => {
+): PaymentReconciliationWorker => {
   const pool = createPool(parseDatabaseConfig(source))
   const database = createDatabase(pool)
   const unitOfWork = createUnitOfWork(database)
-  const clock = (): Date => new Date()
+  const serverConfig = parseServerConfig(source)
 
-  const limit = Math.min(Math.max(Number(source.SIP_WORKER_CLAIM_LIMIT ?? 50), 1), 100)
-  const paymentProvider = source.PAYMENT_PROVIDER ?? "manual"
-  const attemptTtlMs = Math.max(Number(source.PAYMENT_ATTEMPT_TTL_MS ?? 900_000), 1_000)
-
-  const deps = {
-    unitOfWork,
-    sipRepository: createSipRepository(),
-    orderRepository: createOrderRepository(),
-    userRepository: createUserRepository(),
-    paymentRepository: createPaymentRepository(),
-    outboxRepository: createOutboxRepository(),
-    auditRepository: createAuditRepository(),
-    clock,
-    config: { limit, paymentProvider, attemptTtlMs },
-  }
+  const gateway =
+    serverConfig.payments.phonepe !== null
+      ? createPhonePeCheckoutGateway({ config: serverConfig.payments.phonepe })
+      : null
 
   return {
-    runOnce: () => generateSipInstallments(deps),
+    runOnce: async () => {
+      if (gateway === null) {
+        return { attemptsChecked: 0, attemptsResolved: 0, refundsChecked: 0, refundsResolved: 0 }
+      }
+      return runReconciliationPass({
+        unitOfWork,
+        clock: (): Date => new Date(),
+        paymentGateway: gateway,
+        paymentsRepository: createPaymentsRepository(),
+        refundRepository: createRefundRepository(),
+        config: {
+          claimLimit: 25,
+          staleAfterMs: serverConfig.payments.attemptTtlMs,
+        },
+      })
+    },
+    gatewayConfigured: gateway !== null,
     dispose: async () => {
       await pool.end()
     },

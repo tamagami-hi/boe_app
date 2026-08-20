@@ -22,9 +22,7 @@ import { createAccessTokenService, type AccessTokenService } from "../../src/aut
 import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
 import { createClientCatalogRepository } from "../../src/repositories/clientCatalogRepository.js"
-import { createInvestorLedgerRepository } from "../../src/repositories/investorLedgerRepository.js"
-import { createRedemptionRepository } from "../../src/repositories/redemptionRepository.js"
-import { createAuditRepository } from "../../src/repositories/auditRepository.js"
+import { createClientValueEntryRepository } from "../../src/repositories/clientValueEntryRepository.js"
 import { createClientPortfolioRepository } from "../../src/repositories/clientPortfolioRepository.js"
 import { registerClientCatalogRoutes } from "../../src/routes/clientCatalogRoutes.js"
 import { registerClientPortfolioRoutes } from "../../src/routes/clientPortfolioRoutes.js"
@@ -69,12 +67,12 @@ const seedUser = async (email: string): Promise<{ userId: string; token: string 
   return { userId, token }
 }
 
-/** Publish a fund with a version, disclosure, and initial NAV. */
+/** Publish a fund with a version and disclosure; returns the fund + version ids. */
 const seedPublishedFund = async (
   slug: string,
   actorId: string,
   returnTier: "low" | "moderate" | "high" | null,
-): Promise<string> => {
+): Promise<{ fundId: string; versionId: string }> => {
   const fund = await pool.query<{ id: string }>(
     "insert into funds (slug, state, published_at, created_by_user_id) values ($1,'published', now(), $2) returning id",
     [slug, actorId],
@@ -92,11 +90,12 @@ const seedPublishedFund = async (
       "values ($1, 1, $2, 'hybrid', 'Balanced growth.', 'moderate', $3, 50000, 500000, 6, $4, $5, $6) returning id",
     [fundId, `Fund ${slug}`, returnTier, disclosure.rows[0]!.id, randomBytes(32), actorId],
   )
+  const versionId = version.rows[0]!.id
   await pool.query("update funds set current_published_version_id = $1 where id = $2", [
-    version.rows[0]!.id,
+    versionId,
     fundId,
   ])
-  return fundId
+  return { fundId, versionId }
 }
 
 beforeAll(async () => {
@@ -130,9 +129,7 @@ beforeAll(async () => {
         accessTokenService,
         database,
         clientPortfolioRepository: createClientPortfolioRepository(),
-        investorLedgerRepository: createInvestorLedgerRepository(),
-        redemptionRepository: createRedemptionRepository(),
-        auditRepository: createAuditRepository(),
+        clientValueEntryRepository: createClientValueEntryRepository(),
         unitOfWork: createUnitOfWork(database),
         clock: () => new Date(),
         config: { cursorKey: randomBytes(32) },
@@ -154,8 +151,10 @@ beforeAll(async () => {
   const other = await seedUser("other@example.com")
   otherToken = other.token
 
-  pooledFundId = await seedPublishedFund("pooled-fund", holderId, "moderate")
-  noAumFundId = await seedPublishedFund("no-aum-fund", holderId, null)
+  const pooled = await seedPublishedFund("pooled-fund", holderId, "moderate")
+  pooledFundId = pooled.fundId
+  const noAum = await seedPublishedFund("no-aum-fund", holderId, null)
+  noAumFundId = noAum.fundId
 
   const draft = await pool.query<{ id: string }>(
     "insert into funds (slug, state, created_by_user_id) values ('draft-fund','draft',$1) returning id",
@@ -163,11 +162,10 @@ beforeAll(async () => {
   )
   draftFundId = draft.rows[0]!.id
 
-  // "Fund Size (AUM)": July closes at ₹1,00,000 (10,000,000 paise).
+  // "Fund Size (AUM)": the latest published snapshot is ₹1,00,000 (10,000,000 paise).
   await pool.query(
-    "insert into fund_aum_updates (fund_id, period_start, opening_aum_paise, new_investments_paise, " +
-      "redemptions_paise, portfolio_gain_paise, closing_aum_paise, published_by_user_id, request_id) " +
-      "values ($1, '2026-07-01', 9000000, 1000000, 0, 0, 10000000, $2, $3)",
+    "insert into fund_aum_snapshots (fund_id, as_of_date, aum_paise, reason_code, published_by_user_id, request_id) " +
+      "values ($1, '2026-07-31', 10000000, 'monthly_publication', $2, $3)",
     [pooledFundId, holderId, randomUUID()],
   )
 
@@ -183,18 +181,10 @@ beforeAll(async () => {
     [pooledFundId, holderId],
   )
 
-  // A ledger position for the holder, so the portfolio reads have something.
-  await pool.query(
-    "insert into investor_ledger_entries (user_id, fund_id, entry_type, principal_delta_paise, " +
-      "value_delta_paise, amount_paise, effective_date, request_id) " +
-      "values ($1,$2,'lump_sum',7000000,7000000,7000000, current_date, $3)",
-    [holderId, pooledFundId, randomUUID()],
-  )
-
   const order = await pool.query<{ id: string }>(
-    "insert into investment_orders (user_id, fund_id, type, state, amount_paise, requested_at) " +
-      "values ($1,$2,'purchase','payment_pending', 500000, now()) returning id",
-    [holderId, pooledFundId],
+    "insert into investment_orders (user_id, fund_id, fund_version_id, type, state, amount_paise, requested_at) " +
+      "values ($1,$2,$3,'lump_sum','payment_pending', 500000, now()) returning id",
+    [holderId, pooledFundId, pooled.versionId],
   )
   orderId = order.rows[0]!.id
   const payment = await pool.query<{ id: string }>(
@@ -203,8 +193,8 @@ beforeAll(async () => {
   )
   paymentId = payment.rows[0]!.id
   await pool.query(
-    "insert into payment_attempts (payment_id, user_id, attempt_number, provider, provider_payment_id, state, expires_at) " +
-      "values ($1,$2, 1, 'manual', 'pay_mock_123', 'provider_pending', now() + interval '15 minutes')",
+    "insert into payment_attempts (payment_id, user_id, attempt_number, provider, merchant_order_id, provider_order_id, state, checkout_expires_at) " +
+      "values ($1,$2, 1, 'phonepe', 'boe_test_123', 'pay_mock_123', 'provider_pending', now() + interval '15 minutes')",
     [paymentId, holderId],
   )
 }, 200_000)
@@ -240,9 +230,9 @@ describe("client fund catalogue (integration)", () => {
       minimumPurchasePaise: "500000",
       minimumDurationMonths: 6,
     })
-    // Fund Size is the latest published monthly closing, with the month it closed
+    // Fund Size is the latest published AUM snapshot, with its effective date
     // and when the administrator entered it. No price is exposed — there is none.
-    expect(pooled?.fundSize).toMatchObject({ aumPaise: "10000000", periodStart: "2026-07-01" })
+    expect(pooled?.fundSize).toMatchObject({ aumPaise: "10000000", asOfDate: "2026-07-31" })
     expect((pooled?.fundSize as { lastUpdatedAt: string }).lastUpdatedAt).not.toBeNull()
     expect(pooled).not.toHaveProperty("price")
     expect(pooled?.stockCount).toBe(2)
@@ -313,8 +303,9 @@ describe("client order and payment detail (integration)", () => {
     expect(dataOf<{ order: Record<string, unknown> }>(mine).order).toMatchObject({
       orderId,
       fundId: pooledFundId,
-      type: "purchase",
-      status: "payment_pending",
+      type: "lump_sum",
+      // Client-safe projection (spec §9.2): the raw internal state never crosses.
+      status: "payment_in_progress",
       amountPaise: "500000",
     })
 
@@ -338,9 +329,8 @@ describe("client order and payment detail (integration)", () => {
       orderId,
       fundId: pooledFundId,
       amountPaise: "500000",
-      status: "provider_pending",
-      provider: "manual",
-      providerPaymentId: "pay_mock_123",
+      status: "payment_in_progress",
+      provider: "phonepe",
       attemptStatus: "provider_pending",
     })
 

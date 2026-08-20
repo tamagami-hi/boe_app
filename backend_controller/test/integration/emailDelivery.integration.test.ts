@@ -28,6 +28,9 @@ import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
 import { runSeed } from "../../src/scripts/seed.js"
 
 // Static self-signed RSA fixture (valid 2026-07-20 .. 2036), matched to FIXED_NOW.
+// FIXED_NOW must stay ahead of real wall-clock time: the repository stamps
+// received_at with the database's now() while expires_at derives from this
+// clock, and email_provider_events_expiry requires expires_at > received_at.
 const CERT_PEM = `-----BEGIN CERTIFICATE-----
 MIIDFDCCAfygAwIBAgIJawIxHeB8Z80nMA0GCSqGSIb3DQEBCwUAMCYxJDAiBgNV
 BAMTG3Nucy51cy1lYXN0LTEuYW1hem9uYXdzLmNvbTAeFw0yNjA3MjAxNzUyMzJa
@@ -81,7 +84,7 @@ jw+0IzR0akwb1JMKvEQnDTHwETx5HxD5GpLzLjwFU0hwR8/R5Qs=
 const REGION = "us-east-1"
 const TOPIC_ARN = "arn:aws:sns:us-east-1:123456789012:boe-ses"
 const CERT_URL = "https://sns.us-east-1.amazonaws.com/SimpleNotificationService-abc.pem"
-const FIXED_NOW = new Date("2026-08-01T00:00:00.000Z")
+const FIXED_NOW = new Date("2035-01-01T00:00:00.000Z")
 
 let container: StartedPostgreSqlContainer
 let pool: Pool

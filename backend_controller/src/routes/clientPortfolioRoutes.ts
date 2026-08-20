@@ -1,20 +1,19 @@
 /**
- * Client portfolio routes — Option B (model document sections A, B, E).
- * Native bearer transport; every handler re-resolves the principal, so a
- * suspended or closed account cannot read or redeem.
+ * Client portfolio routes. Native bearer transport; every handler re-resolves
+ * the principal, so a suspended or closed account cannot read.
  *
- *   GET  /v1/client/portfolio      "My Investment" + "Investment Summary"
- *   GET  /v1/client/transactions   the dated ledger behind those figures
- *   GET  /v1/client/redemptions    the investor's redemption requests
- *   POST /v1/client/redemptions    submit one (full / returns only / half / custom)
+ *   GET  /v1/client/portfolio      "My Investment" + per-fund breakdown
+ *   GET  /v1/client/transactions   the dated value ledger behind those figures
+ *   GET  /v1/client/orders         the client's order history
+ *   GET  /v1/client/payments/:id   owner-scoped payment status
  *
- * Every figure is derived from the investor's ledger on each read — Total
- * Investment, Current Value, Total Return, Return %, SIP count and total,
- * lump-sum count and total. Nothing is cached and no balance is stored, so the
- * dashboard cannot drift from the events that produced it.
+ * Every figure is derived from the client's value ledger on each read — Total
+ * Investment, Current Value, Total Growth, Return %. Nothing is cached and no
+ * balance is stored, so the dashboard cannot drift from the events that
+ * produced it.
  *
- * `/v1/client/holdings` is gone: there are no units to hold. A pool position is
- * money in and money currently attributed, which `/portfolio` reports per pool.
+ * Order and payment responses expose only the client-safe status projection
+ * (spec §9.2), never the raw internal state enums.
  */
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
 import type { Kysely } from "kysely"
@@ -24,29 +23,28 @@ import type { UnitOfWork } from "../db/database.js"
 import type { Database } from "../db/types.js"
 import { authenticateNativeRequest, type NativeRequestAuthDeps } from "../domain/auth/nativeAuth.js"
 import {
+  projectOrderStatus,
+  projectPaymentStatus,
+} from "../domain/client/clientStatus.js"
+import {
   deriveInvestingEligibility,
   type EligibilityInputs,
 } from "../domain/client/investingEligibility.js"
 import { derivePortfolio } from "../domain/client/portfolioLedger.js"
 import { toLedgerEntries } from "../domain/client/portfolioProjection.js"
-import { requestRedemption } from "../domain/client/requestRedemption.js"
 import { computeFilterHash, decodeCursor, encodeCursor } from "../http/cursor.js"
 import type { PageMeta } from "../http/envelope.js"
 import { AppError } from "../http/errorCatalog.js"
 import { parseOrThrow } from "../http/validation.js"
-import type { AuditWriteRepository } from "../repositories/auditRepository.js"
 import type {
   ClientPortfolioReadRepository,
   OrderRow,
+  PaymentDetailRow,
 } from "../repositories/clientPortfolioRepository.js"
 import type {
-  InvestorLedgerRepository,
-  LedgerEntryRow,
-} from "../repositories/investorLedgerRepository.js"
-import type {
-  RedemptionRequestRow,
-  RedemptionWriteRepository,
-} from "../repositories/redemptionRepository.js"
+  ClientValueEntryRepository,
+  ClientValueEntryRow,
+} from "../repositories/clientValueEntryRepository.js"
 
 export interface ClientPortfolioConfig {
   readonly cursorKey: Buffer
@@ -54,9 +52,7 @@ export interface ClientPortfolioConfig {
 
 export interface ClientPortfolioDeps extends NativeRequestAuthDeps {
   readonly clientPortfolioRepository: ClientPortfolioReadRepository
-  readonly investorLedgerRepository: InvestorLedgerRepository
-  readonly redemptionRepository: RedemptionWriteRepository
-  readonly auditRepository: AuditWriteRepository
+  readonly clientValueEntryRepository: ClientValueEntryRepository
   readonly unitOfWork: UnitOfWork
   readonly database: Kysely<Database>
   readonly clock: () => Date
@@ -66,7 +62,6 @@ export interface ClientPortfolioDeps extends NativeRequestAuthDeps {
 const ORDERS_ROUTE = "/v1/client/orders"
 const PORTFOLIO_ROUTE = "/v1/client/portfolio"
 const TRANSACTIONS_ROUTE = "/v1/client/transactions"
-const REDEMPTIONS_ROUTE = "/v1/client/redemptions"
 const MAX_TRANSACTIONS = 200
 
 const historyQuerySchema = z
@@ -75,15 +70,6 @@ const historyQuerySchema = z
 
 const transactionsQuerySchema = z
   .object({ limit: z.coerce.number().int().min(1).max(MAX_TRANSACTIONS).default(50) })
-  .strict()
-
-const redemptionSchema = z
-  .object({
-    fundId: z.string().uuid(),
-    mode: z.enum(["full", "returns_only", "half", "custom"]),
-    /** Required for `custom`; rupees are never accepted, only paise. */
-    amountPaise: z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER).optional(),
-  })
   .strict()
 
 const uuidParam = z.string().uuid()
@@ -96,12 +82,12 @@ const mapOrder = (row: OrderRow): Record<string, unknown> => ({
   fundId: row.fundId,
   sipPlanId: row.sipPlanId,
   type: row.type,
-  status: row.state,
+  status: projectOrderStatus(row.state),
   amountPaise: row.amountPaise,
   currency: row.currency,
-  requestedAt: isoOrNull(row.requestedAt),
+  requestedAt: iso(row.requestedAt),
   paymentConfirmedAt: isoOrNull(row.paymentConfirmedAt),
-  bookedAt: isoOrNull(row.bookedAt),
+  acceptedAt: isoOrNull(row.acceptedAt),
   cancelledAt: isoOrNull(row.cancelledAt),
   failureCode: row.failureCode,
   createdAt: iso(row.createdAt),
@@ -110,35 +96,34 @@ const mapOrder = (row: OrderRow): Record<string, unknown> => ({
 })
 
 /** One ledger row as the investor's transaction list shows it. */
-const mapTransaction = (row: LedgerEntryRow): Record<string, unknown> => ({
+const mapTransaction = (row: ClientValueEntryRow): Record<string, unknown> => ({
   id: row.id,
   fundId: row.fundId,
   type: row.entryType,
-  amountPaise: row.amountPaise,
   // Signed deltas explain how the row moved each headline figure.
   principalDeltaPaise: row.principalDeltaPaise,
   valueDeltaPaise: row.valueDeltaPaise,
   date: row.effectiveDate,
   orderId: row.orderId,
-  note: row.note,
   createdAt: iso(row.createdAt),
 })
 
-const mapRedemption = (row: RedemptionRequestRow): Record<string, unknown> => ({
-  id: row.id,
-  fundId: row.fundId,
-  fundSlug: row.fundSlug,
-  status: row.state,
-  mode: row.mode,
-  requestedAmountPaise: row.requestedAmountPaise,
-  principalComponentPaise: row.principalComponentPaise,
-  returnsComponentPaise: row.returnsComponentPaise,
-  settledAmountPaise: row.settledAmountPaise,
-  reasonCode: row.reasonCode,
-  submittedAt: isoOrNull(row.submittedAt),
-  approvedAt: isoOrNull(row.approvedAt),
-  settledAt: isoOrNull(row.settledAt),
-  createdAt: iso(row.createdAt),
+const mapPayment = (payment: PaymentDetailRow): Record<string, unknown> => ({
+  paymentId: payment.id,
+  orderId: payment.orderId,
+  fundId: payment.fundId,
+  amountPaise: payment.amountPaise,
+  currency: payment.currency,
+  status: projectPaymentStatus(payment.state),
+  provider: payment.provider,
+  attemptStatus: payment.attemptState,
+  failureCode: payment.failureCode,
+  expiresAt: isoOrNull(payment.expiresAt),
+  succeededAt: isoOrNull(payment.succeededAt),
+  failedAt: isoOrNull(payment.failedAt),
+  refundedAt: isoOrNull(payment.refundedAt),
+  createdAt: iso(payment.createdAt),
+  updatedAt: iso(payment.updatedAt),
 })
 
 const getEligibility = async (deps: ClientPortfolioDeps, request: FastifyRequest, reply: FastifyReply) => {
@@ -169,55 +154,47 @@ const getEligibility = async (deps: ClientPortfolioDeps, request: FastifyRequest
 }
 
 /**
- * "My Investment" and "Investment Summary" in one read: the whole-portfolio
- * headline plus a per-pool breakdown, all folded from the ledger.
+ * "My Investment" headline plus a per-fund breakdown, all folded from the
+ * client value ledger.
  */
 const getPortfolio = async (deps: ClientPortfolioDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await authenticateNativeRequest(request, deps)
-  const rows = await deps.investorLedgerRepository.listByUser(deps.database, principal.userId)
+  const rows = await deps.clientValueEntryRepository.listByUser(deps.database, principal.userId)
   const entries = toLedgerEntries(rows)
   const summary = derivePortfolio(entries)
 
   const fundIds = [...new Set(entries.map((entry) => entry.fundId))]
-  const pools = fundIds.map((fundId) => {
+  const funds = fundIds.map((fundId) => {
     const perFund = derivePortfolio(entries.filter((entry) => entry.fundId === fundId))
     return {
       fundId,
       totalInvestmentPaise: perFund.totalInvestmentPaise.toString(),
       currentValuePaise: perFund.currentValuePaise.toString(),
-      totalReturnPaise: perFund.totalReturnPaise.toString(),
+      totalGrowthPaise: perFund.totalGrowthPaise.toString(),
       returnPercent: perFund.returnPercent,
-      sipInstallmentCount: perFund.sipInstallmentCount,
-      sipTotalPaise: perFund.sipTotalPaise.toString(),
-      lumpSumCount: perFund.lumpSumCount,
-      lumpSumTotalPaise: perFund.lumpSumTotalPaise.toString(),
-      redeemedTotalPaise: perFund.redeemedTotalPaise.toString(),
-      allocatedGainPaise: perFund.allocatedGainPaise.toString(),
-      firstInvestmentDate: perFund.firstInvestmentDate,
+      contributionCount: perFund.contributionCount,
+      contributionTotalPaise: perFund.contributionTotalPaise.toString(),
+      growthAdjustmentTotalPaise: perFund.growthAdjustmentTotalPaise.toString(),
+      firstContributionDate: perFund.firstContributionDate,
       lastActivityDate: perFund.lastActivityDate,
     }
   })
 
   return reply.sendData(
     {
-      // Section A — My Investment.
       currentValuePaise: summary.currentValuePaise.toString(),
       totalInvestmentPaise: summary.totalInvestmentPaise.toString(),
-      totalReturnPaise: summary.totalReturnPaise.toString(),
+      totalGrowthPaise: summary.totalGrowthPaise.toString(),
       returnPercent: summary.returnPercent,
-      returnSince: summary.firstInvestmentDate,
+      returnSince: summary.firstContributionDate,
       lastUpdated: summary.lastActivityDate,
-      // Section B — Investment Summary.
       summary: {
-        sipInstallmentCount: summary.sipInstallmentCount,
-        sipTotalPaise: summary.sipTotalPaise.toString(),
-        lumpSumCount: summary.lumpSumCount,
-        lumpSumTotalPaise: summary.lumpSumTotalPaise.toString(),
-        redemptionCount: summary.redemptionCount,
-        redeemedTotalPaise: summary.redeemedTotalPaise.toString(),
-        allocatedGainPaise: summary.allocatedGainPaise.toString(),
+        contributionCount: summary.contributionCount,
+        contributionTotalPaise: summary.contributionTotalPaise.toString(),
+        growthAdjustmentTotalPaise: summary.growthAdjustmentTotalPaise.toString(),
+        reversalCount: summary.reversalCount,
       },
-      pools,
+      funds,
     },
     { status: 200 },
   )
@@ -226,7 +203,7 @@ const getPortfolio = async (deps: ClientPortfolioDeps, request: FastifyRequest, 
 const listTransactions = async (deps: ClientPortfolioDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await authenticateNativeRequest(request, deps)
   const query = parseOrThrow(transactionsQuerySchema, request.query)
-  const rows = await deps.investorLedgerRepository.listRecentByUser(
+  const rows = await deps.clientValueEntryRepository.listRecentByUser(
     deps.database,
     principal.userId,
     query.limit,
@@ -297,72 +274,7 @@ const getPayment = async (deps: ClientPortfolioDeps, request: FastifyRequest, re
     paymentId,
   )
   if (payment === null) throw new AppError("RESOURCE_NOT_FOUND")
-
-  return reply.sendData(
-    {
-      payment: {
-        paymentId: payment.id,
-        orderId: payment.orderId,
-        fundId: payment.fundId,
-        amountPaise: payment.amountPaise,
-        currency: payment.currency,
-        status: payment.state,
-        provider: payment.provider,
-        providerPaymentId: payment.providerPaymentId,
-        attemptStatus: payment.attemptState,
-        failureCode: payment.failureCode,
-        expiresAt: isoOrNull(payment.expiresAt),
-        succeededAt: isoOrNull(payment.succeededAt),
-        failedAt: isoOrNull(payment.failedAt),
-        createdAt: iso(payment.createdAt),
-        updatedAt: iso(payment.updatedAt),
-      },
-    },
-    { status: 200 },
-  )
-}
-
-const listRedemptions = async (deps: ClientPortfolioDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await authenticateNativeRequest(request, deps)
-  const rows = await deps.redemptionRepository.listByUser(deps.database, principal.userId, 50)
-  return reply.sendData({ items: rows.map(mapRedemption) }, { status: 200 })
-}
-
-const postRedemption = async (deps: ClientPortfolioDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await authenticateNativeRequest(request, deps)
-  const body = parseOrThrow(redemptionSchema, request.body)
-  if (body.mode === "custom" && body.amountPaise === undefined) {
-    throw new AppError("VALIDATION_FAILED", {
-      fields: { amountPaise: ["a custom redemption needs an amount"] },
-    })
-  }
-
-  const outcome = await deps.unitOfWork.execute((tx) =>
-    requestRedemption(
-      tx,
-      {
-        investorLedgerRepository: deps.investorLedgerRepository,
-        redemptionRepository: deps.redemptionRepository,
-        auditRepository: deps.auditRepository,
-        clock: deps.clock,
-      },
-      {
-        userId: principal.userId,
-        fundId: body.fundId,
-        mode: body.mode,
-        ...(body.amountPaise === undefined ? {} : { customAmountPaise: BigInt(body.amountPaise) }),
-        requestId: request.requestId,
-      },
-    ),
-  )
-
-  return reply.sendData(
-    {
-      redemption: mapRedemption(outcome.request),
-      availableValuePaise: outcome.availableValuePaise.toString(),
-    },
-    { status: 201 },
-  )
+  return reply.sendData({ payment: mapPayment(payment) }, { status: 200 })
 }
 
 export const registerClientPortfolioRoutes = (
@@ -377,6 +289,4 @@ export const registerClientPortfolioRoutes = (
   application.get("/v1/client/payments/:paymentId", async (request, reply) =>
     getPayment(deps, request, reply),
   )
-  application.get(REDEMPTIONS_ROUTE, async (request, reply) => listRedemptions(deps, request, reply))
-  application.post(REDEMPTIONS_ROUTE, async (request, reply) => postRedemption(deps, request, reply))
 }

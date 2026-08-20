@@ -71,14 +71,14 @@ const mapFund = (row: ClientFundRow): Record<string, unknown> => ({
   minimumDurationMonths: row.minimumDurationMonths,
   recommendedHoldingMonths: row.recommendedHoldingMonths,
   version: row.currentVersion,
-  // "Fund Size (AUM)" as last published, with its month and last-updated date.
-  // Null until the administrator publishes the pool's first monthly update.
+  // "Fund Size (AUM)" as of the latest published snapshot.
+  // Null until the administrator publishes the pool's first snapshot.
   fundSize:
     row.aumPaise === null
       ? null
       : {
           aumPaise: row.aumPaise,
-          periodStart: row.aumPeriodStart,
+          asOfDate: row.aumAsOfDate,
           lastUpdatedAt: isoOrNull(row.aumUpdatedAt),
         },
   stockCount: row.stockCount,

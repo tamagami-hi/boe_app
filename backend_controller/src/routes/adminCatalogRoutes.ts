@@ -1,13 +1,11 @@
 /**
- * Admin fund routes — Option B (spec 04 §3.2; model document modules 5-6).
- * Web-cookie transport, RBAC (`funds.read` to read, `funds.write` to change),
- * CSRF on unsafe methods.
+ * Admin fund routes. Web-cookie transport, RBAC (`funds.read` to read,
+ * `funds.write` to change), CSRF on unsafe methods.
  *
  *   GET    /v1/admin/funds                     pools with their current AUM + stock count
- *   GET    /v1/admin/funds/:id                 detail: versions, AUM history, stock list
+ *   GET    /v1/admin/funds/:id                 detail: versions, stock list
  *   POST   /v1/admin/funds                     create a draft pool (slug only)
  *   POST   /v1/admin/funds/:id/versions        publish a version (terms + disclosure; no price)
- *   POST   /v1/admin/funds/:id/aum-updates     publish the month's AUM
  *   GET    /v1/admin/funds/:id/stocks          the disclosed stock list
  *   POST   /v1/admin/funds/:id/stocks          add a stock, tagged with its quarter
  *   PATCH  /v1/admin/funds/:id/stocks/:stockId edit a stock
@@ -15,16 +13,10 @@
  *   PATCH  /v1/admin/funds/:id                 lifecycle: published | paused | archived
  *   DELETE /v1/admin/funds/:id                 archive
  *
- * Deliberately absent: NAV publication and unit-priced position percentages. This
- * model has no per-unit price — a pool's size is the monthly AUM figure and its
- * composition is the administrator-curated stock list. Investor growth is
- * allocated per investor (see the gain-allocation route), not derived from a price.
- *
- * The monthly AUM figure is *derived*, never typed: the opening balance comes from
- * the previous month's closing, and the closing balance is computed as
- * `opening + new investments - redemptions +/- portfolio gain`. A second update
- * for the same month is refused rather than silently overwriting published
- * history.
+ * Deliberately absent: NAV publication and unit-priced position percentages.
+ * This model has no per-unit price — a pool's size is the latest published
+ * `fund_aum_snapshots` row (written by the AUM instruction flow, not here) and
+ * its composition is the administrator-curated stock list.
  */
 import { createHash } from "node:crypto"
 
@@ -36,24 +28,11 @@ import type { UnitOfWork } from "../db/database.js"
 import type { IdempotencyRepository } from "../db/repositories.js"
 import type { Database } from "../db/types.js"
 import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adminAccess.js"
-import {
-  splitPoolGainByAmount,
-  splitPoolGainByPercent,
-  type PoolMember,
-} from "../domain/admin/poolGainDistribution.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
-import { allocateGain } from "../domain/client/allocateGain.js"
-import { deriveClosingAum, derivePortfolio } from "../domain/client/portfolioLedger.js"
-import { toLedgerEntries } from "../domain/client/portfolioProjection.js"
 import { AppError } from "../http/errorCatalog.js"
 import { parseOrThrow } from "../http/validation.js"
 import type { AdminCatalogRepository, FundListRow } from "../repositories/adminCatalogRepository.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
-import type {
-  FundInvestorLedgerRow,
-  InvestorLedgerRepository,
-} from "../repositories/investorLedgerRepository.js"
-import type { NotificationWriteRepository } from "../repositories/notificationRepository.js"
 import {
   adminIdempotencyScope,
   computeFilterHash,
@@ -64,7 +43,6 @@ import {
   optionalIdempotencyKey,
   paginate,
   readKeyset,
-  reasonCodeSchema,
   runAdminMutation,
   slugSchema,
   uuidParam,
@@ -82,31 +60,18 @@ export interface AdminCatalogDeps {
   readonly clock: () => Date
   readonly config: AdminCatalogConfig
   readonly catalogRepository: AdminCatalogRepository
-  readonly investorLedgerRepository: InvestorLedgerRepository
-  readonly notificationRepository: NotificationWriteRepository
   readonly auditRepository: AuditWriteRepository
   readonly idempotencyRepository: IdempotencyRepository
 }
 
 const FUNDS_ROUTE = "/v1/admin/funds"
-const HISTORY_LIMIT = 36
 
 // --- schemas ---
 
 const listQuerySchema = z.object({ after: z.string().min(1).optional(), limit: limitSchema }).strict()
 const paiseSchema = z.coerce.number().int().min(0).max(Number.MAX_SAFE_INTEGER)
-const signedPaiseSchema = z.coerce
-  .number()
-  .int()
-  .min(-Number.MAX_SAFE_INTEGER)
-  .max(Number.MAX_SAFE_INTEGER)
 const shortText = z.string().trim().max(200)
 const longText = z.string().trim().max(20000)
-/** First day of a month, e.g. 2026-07-01. */
-const monthStart = z
-  .string()
-  .trim()
-  .regex(/^\d{4}-\d{2}-01$/u, "must be the first day of a month (YYYY-MM-01)")
 /** Reporting quarter label, e.g. Q1 FY27. */
 const quarterLabel = z
   .string()
@@ -130,19 +95,6 @@ const publishVersionSchema = z
   })
   .strict()
 
-const aumUpdateSchema = z
-  .object({
-    periodStart: monthStart,
-    newInvestmentsPaise: paiseSchema.default(0),
-    redemptionsPaise: paiseSchema.default(0),
-    /** Signed: a loss is negative. */
-    portfolioGainPaise: signedPaiseSchema.default(0),
-    /** Required only for the very first period, when there is no previous closing. */
-    openingAumPaise: paiseSchema.optional(),
-    note: longText.optional(),
-  })
-  .strict()
-
 const stockSchema = z
   .object({
     stockName: shortText.min(1),
@@ -153,34 +105,6 @@ const stockSchema = z
   .strict()
 
 const lifecycleSchema = z.object({ status: z.enum(["published", "paused", "archived"]) }).strict()
-
-/**
- * Distribute a period's growth across a pool. The instruction is either a total
- * amount to hand out or a percentage each investor's own value grew by; exactly
- * one must be given, so an ambiguous request is refused rather than guessed at.
- *
- * `dryRun` returns the split without writing, which is what the admin panel's
- * preview uses before anyone commits money movements.
- */
-const poolAllocationSchema = z
-  .object({
-    effectiveDate: z
-      .string()
-      .trim()
-      .regex(/^\d{4}-\d{2}-\d{2}$/u, "must be an ISO calendar date (YYYY-MM-DD)"),
-    reasonCode: reasonCodeSchema,
-    note: z.string().trim().max(2000).optional(),
-    /** Signed paise: negative distributes a loss. */
-    totalGainPaise: signedPaiseSchema.optional(),
-    /** Signed basis points: 350 is 3.50%. */
-    growthBasisPoints: z.coerce.number().int().min(-1_000_000).max(1_000_000).optional(),
-    dryRun: z.coerce.boolean().default(false),
-  })
-  .strict()
-  .refine(
-    (value) => (value.totalGainPaise === undefined) !== (value.growthBasisPoints === undefined),
-    { message: "give either totalGainPaise or growthBasisPoints, not both" },
-  )
 
 // --- mappers ---
 
@@ -198,13 +122,13 @@ const mapFund = (row: FundListRow): Record<string, unknown> => ({
   minimumPurchasePaise: row.minimumPurchasePaise,
   currentVersion: row.currentVersion,
   currentVersionId: row.currentVersionId,
-  // Pool size as last published, with the month it closed and when it was entered.
+  // Pool size as of the latest published AUM snapshot.
   aum:
     row.aumPaise === null
       ? null
       : {
-          closingPaise: row.aumPaise,
-          periodStart: row.aumPeriodStart,
+          aumPaise: row.aumPaise,
+          asOfDate: row.aumAsOfDate,
           updatedAt: isoOrNull(row.aumUpdatedAt),
         },
   stockCount: row.stockCount,
@@ -280,19 +204,16 @@ const getFund = async (deps: AdminCatalogDeps, request: FastifyRequest, reply: F
   const fund = await deps.catalogRepository.findOne(deps.database, fundId)
   if (fund === null) throw new AppError("RESOURCE_NOT_FOUND")
 
-  const [versions, aumHistory, stocks, disclosures, ledgerTotals] = await Promise.all([
+  const [versions, stocks, disclosures] = await Promise.all([
     deps.catalogRepository.listVersions(deps.database, fundId),
-    deps.catalogRepository.listAumUpdates(deps.database, fundId, HISTORY_LIMIT),
     deps.catalogRepository.listStocks(deps.database, fundId),
     deps.catalogRepository.listDisclosures(deps.database, fundId),
-    deps.investorLedgerRepository.fundTotals(deps.database, fundId),
   ])
 
   return reply.sendData(
     {
       fund: mapFund(fund),
       versions: versions.map((version) => ({ ...version, createdAt: iso(version.createdAt) })),
-      aumHistory: aumHistory.map((update) => ({ ...update, createdAt: iso(update.createdAt) })),
       stocks: stocks.map((stock) => ({
         ...stock,
         exitedAt: isoOrNull(stock.exitedAt),
@@ -304,14 +225,6 @@ const getFund = async (deps: AdminCatalogDeps, request: FastifyRequest, reply: F
         effectiveFrom: iso(disclosure.effectiveFrom),
         createdAt: iso(disclosure.createdAt),
       })),
-      // What investors actually hold in this pool, summed from their ledgers.
-      investors: {
-        count: ledgerTotals.investorCount,
-        contributionsPaise: ledgerTotals.contributionsPaise,
-        redemptionsPaise: ledgerTotals.redemptionsPaise,
-        allocatedGainPaise: ledgerTotals.allocatedGainPaise,
-        currentValuePaise: ledgerTotals.currentValuePaise,
-      },
     },
     { status: 200 },
   )
@@ -440,76 +353,6 @@ const publishVersion = async (deps: AdminCatalogDeps, request: FastifyRequest, r
           disclosureVersionId: disclosure.id,
         },
       }
-    },
-  )
-}
-
-const publishAumUpdate = async (deps: AdminCatalogDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
-  requireAnyPermission(principal, ["funds.write"])
-  const fundId = fundIdOf(request)
-  const body = parseOrThrow(aumUpdateSchema, request.body)
-
-  return mutate(
-    deps,
-    request,
-    reply,
-    `${FUNDS_ROUTE}/:fundId/aum-updates`,
-    "POST",
-    { fundId, periodStart: body.periodStart },
-    principal.userId,
-    async (tx) => {
-      const fund = await deps.catalogRepository.lock(tx, fundId)
-      if (fund === null) throw new AppError("RESOURCE_NOT_FOUND")
-
-      const previous = await deps.catalogRepository.latestAumUpdate(tx, fundId)
-      // Publishing an earlier or repeated period would rewrite history.
-      if (previous !== null && body.periodStart <= previous.periodStart) {
-        throw new AppError("STATE_CONFLICT")
-      }
-      // The opening balance is the previous closing; only the first period may
-      // state one explicitly.
-      const openingAumPaise =
-        previous !== null
-          ? BigInt(previous.closingAumPaise)
-          : BigInt(body.openingAumPaise ?? 0)
-
-      const closing = deriveClosingAum({
-        openingAumPaise,
-        newInvestmentsPaise: BigInt(body.newInvestmentsPaise),
-        redemptionsPaise: BigInt(body.redemptionsPaise),
-        portfolioGainPaise: BigInt(body.portfolioGainPaise),
-      })
-
-      const update = await deps.catalogRepository.insertAumUpdate(tx, {
-        fundId,
-        periodStart: body.periodStart,
-        openingAumPaise: openingAumPaise.toString(),
-        newInvestmentsPaise: String(body.newInvestmentsPaise),
-        redemptionsPaise: String(body.redemptionsPaise),
-        portfolioGainPaise: String(body.portfolioGainPaise),
-        closingAumPaise: closing.toString(),
-        note: body.note ?? null,
-        publishedByUserId: principal.userId,
-        requestId: request.requestId,
-      })
-
-      await deps.auditRepository.append(tx, {
-        actorType: "admin",
-        actorUserId: principal.userId,
-        command: "fund.aum_updated",
-        entityType: "fund_aum_update",
-        entityId: update.id,
-        requestId: request.requestId,
-        entityVersion: 1,
-        metadata: {
-          fundId,
-          periodStart: update.periodStart,
-          closingAumPaise: update.closingAumPaise,
-        },
-      })
-
-      return { status: 201, body: { fundId, aumUpdate: { ...update, createdAt: iso(update.createdAt) } } }
     },
   )
 }
@@ -717,250 +560,6 @@ const patchFundState = async (
   )
 }
 
-interface PoolSplitShare extends PoolMember {
-  readonly name: string
-  readonly gainPaise: bigint
-}
-
-interface PoolSplitSummary {
-  readonly basisPaise: string
-  readonly allocatedPaise: string
-  readonly shares: readonly PoolSplitShare[]
-}
-
-/**
- * Turn a pool's ledger into the per-investor amounts a distribution would write.
- * Positions are derived with the same function the investor's dashboard uses, so a
- * preview and the investor's own view agree.
- */
-const poolSplit = (
-  rows: readonly FundInvestorLedgerRow[],
-  body: Readonly<{ totalGainPaise?: number | undefined; growthBasisPoints?: number | undefined }>,
-): PoolSplitSummary => {
-  const grouped = new Map<string, { readonly name: string; readonly rows: FundInvestorLedgerRow[] }>()
-  for (const row of rows) {
-    const bucket = grouped.get(row.userId)
-    if (bucket === undefined) grouped.set(row.userId, { name: row.investorName, rows: [row] })
-    else bucket.rows.push(row)
-  }
-
-  const members = [...grouped.entries()].map(([userId, bucket]) => ({
-    userId,
-    name: bucket.name,
-    currentValuePaise: derivePortfolio(toLedgerEntries(bucket.rows)).currentValuePaise,
-  }))
-
-  const split =
-    body.growthBasisPoints === undefined
-      ? splitPoolGainByAmount(members, BigInt(body.totalGainPaise ?? 0))
-      : splitPoolGainByPercent(members, body.growthBasisPoints)
-
-  const nameOf = new Map(members.map((member) => [member.userId, member.name]))
-  return {
-    basisPaise: split.basisPaise.toString(),
-    allocatedPaise: split.allocatedPaise.toString(),
-    shares: split.shares.map((share) => ({
-      userId: share.userId,
-      name: nameOf.get(share.userId) ?? "",
-      currentValuePaise: share.currentValuePaise,
-      gainPaise: share.gainPaise,
-    })),
-  }
-}
-
-/**
- * Everyone holding money in a pool, with the position derived from the ledger.
- * This is the admin's working view for the pool: who is in it, what each investor
- * put in, what they are worth now, and what the pool totals to. The figures come
- * from the same pure derivation the investor's own dashboard uses.
- */
-const listFundInvestors = async (deps: AdminCatalogDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: false })
-  requireAnyPermission(principal, ["funds.read", "finance.read"])
-  const fundId = fundIdOf(request)
-
-  const { fund, rows } = await deps.unitOfWork.execute(async (tx) => ({
-    fund: await deps.catalogRepository.findOne(tx, fundId),
-    rows: await deps.investorLedgerRepository.listByFundWithInvestors(tx, fundId),
-  }))
-  if (fund === null) throw new AppError("RESOURCE_NOT_FOUND")
-
-  const byInvestor = new Map<string, { readonly rows: FundInvestorLedgerRow[] }>()
-  for (const row of rows) {
-    const bucket = byInvestor.get(row.userId)
-    if (bucket === undefined) byInvestor.set(row.userId, { rows: [row] })
-    else bucket.rows.push(row)
-  }
-
-  const investors = [...byInvestor.entries()].map(([userId, bucket]) => {
-    const first = bucket.rows[0] as FundInvestorLedgerRow
-    const position = derivePortfolio(toLedgerEntries(bucket.rows))
-    return {
-      userId,
-      name: first.investorName,
-      email: first.investorEmail,
-      accountState: first.accountState,
-      totalInvestmentPaise: position.totalInvestmentPaise.toString(),
-      currentValuePaise: position.currentValuePaise.toString(),
-      totalReturnPaise: position.totalReturnPaise.toString(),
-      returnPercent: position.returnPercent,
-      allocatedGainPaise: position.allocatedGainPaise.toString(),
-      redeemedTotalPaise: position.redeemedTotalPaise.toString(),
-      lastEntryAt: iso((bucket.rows.at(-1) as FundInvestorLedgerRow).createdAt),
-    }
-  })
-
-  // Sorted by size so the admin sees the largest positions first.
-  investors.sort((left, right) =>
-    BigInt(right.currentValuePaise) === BigInt(left.currentValuePaise)
-      ? left.name.localeCompare(right.name)
-      : BigInt(right.currentValuePaise) > BigInt(left.currentValuePaise)
-        ? 1
-        : -1,
-  )
-
-  const totals = investors.reduce(
-    (accumulator, investor) => ({
-      totalInvestmentPaise: accumulator.totalInvestmentPaise + BigInt(investor.totalInvestmentPaise),
-      currentValuePaise: accumulator.currentValuePaise + BigInt(investor.currentValuePaise),
-      totalReturnPaise: accumulator.totalReturnPaise + BigInt(investor.totalReturnPaise),
-    }),
-    { totalInvestmentPaise: 0n, currentValuePaise: 0n, totalReturnPaise: 0n },
-  )
-
-  return reply.sendData({
-    fundId,
-    investorCount: investors.length,
-    // What investors actually hold, which is the basis any distribution uses.
-    investedTotalPaise: totals.totalInvestmentPaise.toString(),
-    currentValueTotalPaise: totals.currentValuePaise.toString(),
-    returnTotalPaise: totals.totalReturnPaise.toString(),
-    investors,
-  })
-}
-
-/**
- * Allocate a period's growth across the whole pool in one action: the amount (or
- * percentage) is split by each investor's current value and written as one
- * `gain_allocation` per investor, inside a single transaction. Either every
- * investor is credited or none is.
- */
-const allocatePoolGain = async (deps: AdminCatalogDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
-  requireAnyPermission(principal, ["finance.operate"])
-  const fundId = fundIdOf(request)
-  const body = parseOrThrow(poolAllocationSchema, request.body)
-
-  // A preview writes nothing, so it needs no idempotency key and takes no lock.
-  if (body.dryRun) {
-    const preview = await deps.unitOfWork.execute(async (tx) => {
-      const fund = await deps.catalogRepository.findOne(tx, fundId)
-      if (fund === null) throw new AppError("RESOURCE_NOT_FOUND")
-      const rows = await deps.investorLedgerRepository.listByFundWithInvestors(tx, fundId)
-      return poolSplit(rows, body)
-    })
-    return reply.sendData({
-      fundId,
-      dryRun: true,
-      basisPaise: preview.basisPaise,
-      allocatedPaise: preview.allocatedPaise,
-      // Paise cross the wire as strings; a bigint is not JSON-serialisable.
-      shares: preview.shares.map((share) => ({
-        userId: share.userId,
-        name: share.name,
-        currentValuePaise: share.currentValuePaise.toString(),
-        gainPaise: share.gainPaise.toString(),
-      })),
-    })
-  }
-
-  return mutate(
-    deps,
-    request,
-    reply,
-    `${FUNDS_ROUTE}/:fundId/gain-allocations`,
-    "POST",
-    {
-      fundId,
-      effectiveDate: body.effectiveDate,
-      totalGainPaise: body.totalGainPaise ?? null,
-      growthBasisPoints: body.growthBasisPoints ?? null,
-    },
-    principal.userId,
-    async (tx) => {
-      const fund = await deps.catalogRepository.lock(tx, fundId)
-      if (fund === null) throw new AppError("RESOURCE_NOT_FOUND")
-
-      const rows = await deps.investorLedgerRepository.listByFundWithInvestors(tx, fundId)
-      const split = poolSplit(rows, body)
-      if (split.shares.length === 0) throw new AppError("STATE_CONFLICT")
-
-      const allocations: Record<string, unknown>[] = []
-      for (const share of split.shares) {
-        // Zero shares are skipped: an investor with no value has nothing to earn,
-        // and the ledger refuses a zero-value allocation anyway.
-        if (share.gainPaise === 0n) continue
-        const result = await allocateGain(
-          tx,
-          {
-            investorLedgerRepository: deps.investorLedgerRepository,
-            notificationRepository: deps.notificationRepository,
-            auditRepository: deps.auditRepository,
-            clock: deps.clock,
-          },
-          {
-            userId: share.userId,
-            fundId,
-            gainPaise: share.gainPaise,
-            effectiveDate: body.effectiveDate,
-            allocatedByUserId: principal.userId,
-            reasonCode: body.reasonCode,
-            note: body.note ?? null,
-            requestId: request.requestId,
-          },
-        )
-        allocations.push({
-          userId: share.userId,
-          name: share.name,
-          gainPaise: share.gainPaise.toString(),
-          currentValuePaise: result.currentValuePaise.toString(),
-          totalInvestmentPaise: result.totalInvestmentPaise.toString(),
-          returnPercent: result.returnPercent,
-        })
-      }
-
-      await deps.auditRepository.append(tx, {
-        actorType: "admin",
-        actorUserId: principal.userId,
-        command: "fund.pool_gain_allocated",
-        entityType: "fund",
-        entityId: fundId,
-        requestId: request.requestId,
-        entityVersion: 1,
-        metadata: {
-          effectiveDate: body.effectiveDate,
-          basisPaise: split.basisPaise,
-          allocatedPaise: split.allocatedPaise,
-          investorCount: allocations.length,
-          reasonCode: body.reasonCode,
-        },
-      })
-
-      return {
-        status: 201,
-        body: {
-          fundId,
-          effectiveDate: body.effectiveDate,
-          basisPaise: split.basisPaise,
-          allocatedPaise: split.allocatedPaise,
-          investorCount: allocations.length,
-          allocations,
-        },
-      }
-    },
-  )
-}
-
 export const registerAdminCatalogRoutes = (
   application: FastifyInstance,
   deps: AdminCatalogDeps,
@@ -970,15 +569,6 @@ export const registerAdminCatalogRoutes = (
   application.post(FUNDS_ROUTE, async (request, reply) => createFund(deps, request, reply))
   application.post(`${FUNDS_ROUTE}/:fundId/versions`, async (request, reply) =>
     publishVersion(deps, request, reply),
-  )
-  application.post(`${FUNDS_ROUTE}/:fundId/aum-updates`, async (request, reply) =>
-    publishAumUpdate(deps, request, reply),
-  )
-  application.get(`${FUNDS_ROUTE}/:fundId/investors`, async (request, reply) =>
-    listFundInvestors(deps, request, reply),
-  )
-  application.post(`${FUNDS_ROUTE}/:fundId/gain-allocations`, async (request, reply) =>
-    allocatePoolGain(deps, request, reply),
   )
   application.get(`${FUNDS_ROUTE}/:fundId/stocks`, async (request, reply) =>
     listStocks(deps, request, reply),

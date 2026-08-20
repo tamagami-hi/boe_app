@@ -12,8 +12,8 @@
  *   POST  /v1/client/support/tickets      raise one
  *   GET   /v1/client/research-context     published research/market context
  *
- * Statements are derived per read from the investor ledger rather than stored, for
- * the same reason the dashboard is: one source of truth means a statement can
+ * Statements are derived per read from the client value ledger rather than stored,
+ * for the same reason the dashboard is: one source of truth means a statement can
  * never disagree with the live figures.
  */
 import { randomUUID } from "node:crypto"
@@ -25,6 +25,7 @@ import { z } from "zod"
 import type { UnitOfWork } from "../db/database.js"
 import type { Database, PaymentState } from "../db/types.js"
 import { authenticateNativeRequest, type NativeRequestAuthDeps } from "../domain/auth/nativeAuth.js"
+import { projectPaymentStatus } from "../domain/client/clientStatus.js"
 import { toLedgerEntries } from "../domain/client/portfolioProjection.js"
 import { deriveStatements } from "../domain/client/statements.js"
 import { AppError } from "../http/errorCatalog.js"
@@ -37,14 +38,14 @@ import type {
   NotificationRow,
   SupportRequestRow,
 } from "../repositories/clientAccountRepository.js"
-import type { InvestorLedgerRepository } from "../repositories/investorLedgerRepository.js"
+import type { ClientValueEntryRepository } from "../repositories/clientValueEntryRepository.js"
 import type { NotificationWriteRepository } from "../repositories/notificationRepository.js"
 import { reconcileAppVersion } from "../domain/client/reconcileAppVersion.js"
 import { latestPublishedBuild } from "./publicAppRoutes.js"
 
 export interface ClientAccountDeps extends NativeRequestAuthDeps {
   readonly clientAccountRepository: ClientAccountRepository
-  readonly investorLedgerRepository: InvestorLedgerRepository
+  readonly clientValueEntryRepository: ClientValueEntryRepository
   readonly auditRepository: AuditWriteRepository
   readonly notificationRepository: NotificationWriteRepository
   readonly unitOfWork: UnitOfWork
@@ -101,6 +102,8 @@ const PAYMENT_STATES = [
   "succeeded",
   "failed",
   "expired",
+  "refund_pending",
+  "refund_failed",
   "refunded",
 ] as const satisfies readonly PaymentState[]
 
@@ -116,14 +119,18 @@ const STATE_ALIASES: Readonly<Record<string, readonly PaymentState[]>> = {
   confirmed: ["succeeded"],
   reconciled: ["succeeded"],
   rejected: ["failed"],
+  refund_in_progress: ["refund_pending"],
+  support_required: ["refund_failed"],
+  payment_in_progress: ["created", "provider_pending"],
+  processing: ["succeeded"],
+  payment_failed: ["failed", "expired"],
+  refunded: ["refunded"],
 }
 
-const parsePaymentStates = (raw: string | undefined): readonly PaymentState[] => {
-  if (raw === undefined || raw.trim() === "") return []
-  const requested = raw
-    .split(",")
-    .map((part) => part.trim().toLowerCase())
-    .filter((part) => part !== "")
+export const parsePaymentStates = (raw: string | readonly string[] | undefined): readonly PaymentState[] => {
+  if (raw === undefined) return []
+  const tokens: readonly string[] = typeof raw === "string" ? raw.split(",") : raw
+  const requested = tokens.map((part) => part.trim().toLowerCase()).filter((part) => part !== "")
   const resolved = new Set<PaymentState>()
   for (const token of requested) {
     const alias = STATE_ALIASES[token]
@@ -140,7 +147,9 @@ const parsePaymentStates = (raw: string | undefined): readonly PaymentState[] =>
   return [...resolved]
 }
 
-const paymentsQuerySchema = z.object({ status: z.string().optional(), limit: limitSchema }).strict()
+const paymentsQuerySchema = z
+  .object({ status: z.union([z.string(), z.array(z.string())]).optional(), limit: limitSchema })
+  .strict()
 const markReadSchema = z.object({ read: z.literal(true) }).strict()
 const createTicketSchema = z
   .object({
@@ -171,7 +180,7 @@ const mapPayment = (row: ClientPaymentRow): Record<string, unknown> => ({
   id: row.id,
   orderId: row.orderId,
   fundId: row.fundId,
-  status: row.state,
+  status: projectPaymentStatus(row.state),
   amountPaise: row.amountPaise,
   currency: row.currency,
   provider: row.provider,
@@ -303,7 +312,7 @@ const listStatements = async (
 ): Promise<FastifyReply> => {
   const principal = await authenticateNativeRequest(request, deps)
   const entries = await deps.unitOfWork.execute((tx) =>
-    deps.investorLedgerRepository.listByUser(tx, principal.userId),
+    deps.clientValueEntryRepository.listByUser(tx, principal.userId),
   )
   const periods = deriveStatements(toLedgerEntries(entries))
 
@@ -319,8 +328,8 @@ const listStatements = async (
         periodEnd: period.periodEnd,
         openingValuePaise: period.openingValuePaise.toString(),
         contributionsPaise: period.contributionsPaise.toString(),
-        returnsPaise: period.returnsPaise.toString(),
-        withdrawalsPaise: period.withdrawalsPaise.toString(),
+        growthPaise: period.growthPaise.toString(),
+        reversalsPaise: period.reversalsPaise.toString(),
         closingValuePaise: period.closingValuePaise.toString(),
         totalInvestmentPaise: period.totalInvestmentPaise.toString(),
         entryCount: period.entryCount,

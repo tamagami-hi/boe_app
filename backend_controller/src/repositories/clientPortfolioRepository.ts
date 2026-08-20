@@ -1,12 +1,11 @@
 /**
- * Client portfolio read repository (spec 03 §2.3, §4.3, §7). Native-authenticated
- * read slice: derived investing-eligibility inputs, authoritative holdings valued
- * at the current published NAV, and the client's order history. Every query is
- * scoped by `user_id` so a row can never expose another user's data, uses the
- * `(user_id, created_at DESC, id DESC)` history keyset with a validated limit,
- * and exposes paise (bigint) and units/NAV (numeric) as strings — never a
- * JavaScript number. Reads never derive `eligible`; the pure decision function
- * consumes these inputs and the investing command re-derives under lock.
+ * Client portfolio read repository. Native-authenticated read slice: derived
+ * investing-eligibility inputs and the client's order/payment history. Every
+ * query is scoped by `user_id` so a row can never expose another user's data,
+ * uses the `(user_id, created_at DESC, id DESC)` history keyset with a validated
+ * limit, and exposes paise (bigint) as strings — never a JavaScript number.
+ * Reads never derive `eligible`; the pure decision function consumes these
+ * inputs and the investing command re-derives under lock.
  */
 import { sql } from "kysely"
 
@@ -15,6 +14,7 @@ import type {
   KycCaseState,
   OrderState,
   OrderType,
+  PaymentState,
   RiskAssessmentState,
   UserAccountState,
 } from "../db/types.js"
@@ -29,15 +29,15 @@ export interface EligibilityInputsRow {
 export interface OrderRow {
   readonly id: string
   readonly fundId: string
+  readonly fundVersionId: string
   readonly sipPlanId: string | null
   readonly type: OrderType
   readonly state: OrderState
-  readonly amountPaise: string | null
-  readonly requestedUnits: string | null
+  readonly amountPaise: string
   readonly currency: string
-  readonly requestedAt: Date | null
+  readonly requestedAt: Date
   readonly paymentConfirmedAt: Date | null
-  readonly bookedAt: Date | null
+  readonly acceptedAt: Date | null
   readonly cancelledAt: Date | null
   readonly failureCode: string | null
   readonly createdAt: Date
@@ -59,14 +59,16 @@ export interface PaymentDetailRow {
   readonly fundId: string
   readonly amountPaise: string
   readonly currency: string
-  readonly state: string
+  readonly state: PaymentState
   readonly provider: string | null
-  readonly providerPaymentId: string | null
-  readonly attemptState: string | null
+  readonly merchantOrderId: string | null
+  readonly providerOrderId: string | null
+  readonly attemptState: PaymentState | null
   readonly failureCode: string | null
   readonly expiresAt: Date | null
   readonly succeededAt: Date | null
   readonly failedAt: Date | null
+  readonly refundedAt: Date | null
   readonly createdAt: Date
   readonly updatedAt: Date
 }
@@ -79,6 +81,25 @@ export interface ClientPortfolioReadRepository {
   /** Owner-scoped payment with its latest attempt (provider + failure detail). */
   findPayment: (tx: Transaction, userId: string, paymentId: string) => Promise<PaymentDetailRow | null>
 }
+
+const ORDER_COLUMNS = sql`
+  id as "id",
+  fund_id as "fundId",
+  fund_version_id as "fundVersionId",
+  sip_plan_id as "sipPlanId",
+  type as "type",
+  state as "state",
+  amount_paise::text as "amountPaise",
+  currency as "currency",
+  requested_at as "requestedAt",
+  payment_confirmed_at as "paymentConfirmedAt",
+  accepted_at as "acceptedAt",
+  cancelled_at as "cancelledAt",
+  failure_code as "failureCode",
+  created_at as "createdAt",
+  updated_at as "updatedAt",
+  version::text as "version"
+`
 
 export const createClientPortfolioRepository = (): ClientPortfolioReadRepository => ({
   eligibilityInputs: async (tx, userId) => {
@@ -109,23 +130,7 @@ export const createClientPortfolioRepository = (): ClientPortfolioReadRepository
               or (created_at = ${query.afterCreatedAt} and id < ${query.afterId}))`
         : sql``
     const result = await sql<OrderRow>`
-      select
-        id as "id",
-        fund_id as "fundId",
-        sip_plan_id as "sipPlanId",
-        type as "type",
-        state as "state",
-        amount_paise::text as "amountPaise",
-        requested_units::text as "requestedUnits",
-        currency as "currency",
-        requested_at as "requestedAt",
-        payment_confirmed_at as "paymentConfirmedAt",
-        booked_at as "bookedAt",
-        cancelled_at as "cancelledAt",
-        failure_code as "failureCode",
-        created_at as "createdAt",
-        updated_at as "updatedAt",
-        version::text as "version"
+      select ${ORDER_COLUMNS}
       from investment_orders
       where user_id = ${query.userId}
       ${keyset}
@@ -137,23 +142,7 @@ export const createClientPortfolioRepository = (): ClientPortfolioReadRepository
 
   findOrder: async (tx, userId, orderId) => {
     const result = await sql<OrderRow>`
-      select
-        id as "id",
-        fund_id as "fundId",
-        sip_plan_id as "sipPlanId",
-        type as "type",
-        state as "state",
-        amount_paise::text as "amountPaise",
-        requested_units::text as "requestedUnits",
-        currency as "currency",
-        requested_at as "requestedAt",
-        payment_confirmed_at as "paymentConfirmedAt",
-        booked_at as "bookedAt",
-        cancelled_at as "cancelledAt",
-        failure_code as "failureCode",
-        created_at as "createdAt",
-        updated_at as "updatedAt",
-        version::text as "version"
+      select ${ORDER_COLUMNS}
       from investment_orders
       where id = ${orderId} and user_id = ${userId}
     `.execute(tx)
@@ -172,18 +161,20 @@ export const createClientPortfolioRepository = (): ClientPortfolioReadRepository
         p.currency as "currency",
         p.state as "state",
         a.provider as "provider",
-        a.provider_payment_id as "providerPaymentId",
+        a.merchant_order_id as "merchantOrderId",
+        a.provider_order_id as "providerOrderId",
         a.state as "attemptState",
         a.failure_code as "failureCode",
-        a.expires_at as "expiresAt",
+        a.checkout_expires_at as "expiresAt",
         p.succeeded_at as "succeededAt",
         p.failed_at as "failedAt",
+        p.refunded_at as "refundedAt",
         p.created_at as "createdAt",
         p.updated_at as "updatedAt"
       from payments p
       join investment_orders o on o.id = p.order_id
       left join lateral (
-        select provider, provider_payment_id, state, failure_code, expires_at
+        select provider, merchant_order_id, provider_order_id, state, failure_code, checkout_expires_at
         from payment_attempts
         where payment_id = p.id
         order by attempt_number desc limit 1
