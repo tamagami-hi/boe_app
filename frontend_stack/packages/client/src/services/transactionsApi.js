@@ -51,7 +51,8 @@ function mapLedgerRow(row) {
     createdAt: row.createdAt,
     // Ledger entries are settled facts; the list has no pending state.
     status: 'completed',
-    note: row.note,
+    // No `note`: ledger notes are admin-private (spec §5.7). The client label
+    // above comes from a strict public allowlist instead.
   };
 }
 

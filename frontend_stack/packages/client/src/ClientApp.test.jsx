@@ -46,7 +46,6 @@ vi.mock('./pages/FundDetail.jsx', () => ({ default: () => <div data-testid="page
 vi.mock('./pages/StartSipSheet.jsx', () => ({ default: () => <div data-testid="page-start-sip" /> }));
 vi.mock('./pages/LumpsumSheet.jsx', () => ({ default: () => <div data-testid="page-lumpsum" /> }));
 vi.mock('./pages/PaymentStatus.jsx', () => ({ default: () => <div data-testid="page-payment-status" /> }));
-vi.mock('./pages/MandateAuth.jsx', () => ({ default: () => <div data-testid="page-mandate-auth" /> }));
 vi.mock('./pages/MandateDetail.jsx', () => ({ default: () => <div data-testid="page-mandate-detail" /> }));
 vi.mock('./pages/Portfolio.jsx', () => ({ default: () => <div data-testid="page-portfolio" /> }));
 vi.mock('./pages/WithdrawalRequests.jsx', () => ({ default: () => <div data-testid="page-withdrawals" /> }));
@@ -89,7 +88,6 @@ describe('ClientApp route table', () => {
     ['/app/invest/sip/f1', 'page-start-sip'],
     ['/app/invest/lumpsum/f1', 'page-lumpsum'],
     ['/app/payment/p1', 'page-payment-status'],
-    ['/app/mandates/m1/authorize', 'page-mandate-auth'],
     ['/app/mandates/m1', 'page-mandate-detail'],
     ['/app/portfolio', 'page-portfolio'],
     ['/app/withdrawals', 'page-withdrawals'],

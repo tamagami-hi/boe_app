@@ -1,29 +1,30 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { CreditCard } from 'lucide-react';
+import { CalendarClock } from 'lucide-react';
 import AppBar from '../layout/AppBar.jsx';
 import Skeleton from '@beonedge/shared/components/Skeleton.jsx';
 import * as fundsApi from '../services/fundsApi.js';
 import * as ordersApi from '../services/ordersApi.js';
 import { useAppConfig } from '../hooks/useAppConfig.js';
 import { fmtMoney } from '../utils/format.js';
-import { openRazorpayCheckout } from '../utils/razorpay.js';
-import { useSession } from '../store/SessionContext.jsx';
 import MoneyValue from '@beonedge/shared/components/MoneyValue.jsx';
-import { HOME_PATH, buildPath } from '../navigation/routes.js';
+import { buildPath } from '../navigation/routes.js';
 
+/**
+ * Start a SIP. In the current product a SIP is a schedule/reminder (spec §6.2
+ * fallback): there is no automatic debit and no mandate to authorise. Each due
+ * installment is paid by the client through a fresh PhonePe checkout using the
+ * same order/pay flow as a one-time investment.
+ */
 export default function StartSipSheet() {
   const { fundId } = useParams();
   const navigate = useNavigate();
-  const { user } = useSession();
   const appConfig = useAppConfig();
   const settings = appConfig.mobile.screens.invest.sip;
   const [fund, setFund] = useState(null);
   const [amount, setAmount] = useState(settings.defaultAmount ?? '');
   const [months, setMonths] = useState(settings.defaultMonths ?? '');
   const [day, setDay] = useState(settings.defaultDebitDay ?? '');
-  const [stepUpOn, setStepUpOn] = useState(false);
-  const [stepUpPct, setStepUpPct] = useState(settings.defaultStepUpPct);
   const [c1, setC1] = useState(false);
   const [c2, setC2] = useState(false);
   const [reviewMode, setReviewMode] = useState(false);
@@ -50,11 +51,11 @@ export default function StartSipSheet() {
   const canConfirm = reviewConsent && !submitting;
   const disclosures = {
     minimumPrefix: 'Minimum',
-    stepUpTitle: 'Increase SIP every year',
-    stepUpBody: 'Optional step-up. Default off.',
     riskConsent: 'I have read the Risk disclosure and understand market risk.',
-    mandateConsent: 'I authorize BeOnEdge to set up a UPI AutoPay mandate for the recurring debits described above.',
-    paymentDisclosure: 'Razorpay checkout opens after review for the first SIP payment and mandate setup.',
+    scheduleConsent: 'I understand this SIP is a monthly schedule. Each installment is paid by me through a fresh checkout — no automatic debit is set up.',
+    // A new key on purpose: legacy published configs carry provider-branded
+    // `paymentDisclosure` copy that must not override the neutral fallback text.
+    scheduleDisclosure: 'Each due installment is paid by you through a fresh PhonePe checkout. Nothing is debited automatically.',
     reviewRiskText: '',
     ...(settings.disclosures || {}),
   };
@@ -63,7 +64,6 @@ export default function StartSipSheet() {
   const durationOptions = normalizeOptions(settings.durationMonths, [12, 24, 36, 60, 120]);
   const debitDayOptions = normalizeOptions(settings.debitDays, [1, 5, 10, 15, 20]);
 
-  const mandateCap = Math.round(amountNumber * 1.5);
   const durationYears = Math.floor(monthsNumber / 12);
   const durationRemainingMonths = monthsNumber % 12;
   const durationText = durationYears > 0
@@ -108,57 +108,24 @@ export default function StartSipSheet() {
     setErr('');
     setSubmitting(true);
     try {
-      const order = await ordersApi.createSip({
+      const plan = await ordersApi.createSip({
         fundId,
         amount: amountNumber,
-        frequency: 'monthly',
         durationMonths: monthsNumber,
         debitDay: day,
-        stepUp: stepUpOn ? { amount: 0, percent: stepUpPct, frequencyMonths: 12, nextDate: '' } : null,
-        consentTextVersion: 'v1.0-2026-05-05',
-        consentedAt: new Date().toISOString(),
       });
-      if (!order.paymentId) {
+      if (!plan?.id) {
         setErr("Couldn't create SIP. Try again.");
         setSubmitting(false);
         submitLockRef.current = false;
         return;
       }
-      const paymentPath = buildPath('payment_status', { paymentId: order.paymentId });
-      if (order.providerName === 'razorpay' && order.providerOrderId && order.providerKeyId) {
-        await openRazorpayCheckout({
-          keyId: order.providerKeyId,
-          orderId: order.providerOrderId,
-          amount: order.amount,
-          currency: order.currency,
-          name: fund.name,
-          description: 'SIP Setup',
-          userEmail: user?.email || '',
-          userContact: user?.phone || '',
-          onSuccess: async (response) => {
-            try {
-              await ordersApi.confirmRazorpayPayment(order.paymentId, response);
-              // `replace`: the flow is finished. Without it, one Back press
-              // re-entered this review screen with its Confirm button still live.
-              navigate(HOME_PATH, { replace: true });
-            } catch {
-              // Money may already have moved, so the app must not claim success
-              // and must not strand the user on a dead review screen. The payment
-              // route polls the authoritative server state.
-              navigate(paymentPath, { replace: true });
-            }
-          },
-          // Also fires when the user dismisses the Razorpay sheet. The order
-          // exists either way, so its status page is the honest destination.
-          onFailure: () => {
-            navigate(paymentPath, { replace: true });
-          },
-        });
-      } else {
-        navigate(paymentPath, { replace: true });
-      }
+      // `replace`: the flow is finished. Without it, one Back press re-entered
+      // this review screen with its Confirm button still live. The plan detail
+      // is where due installments are paid, one fresh checkout at a time.
+      navigate(buildPath('mandate_detail', { mandateId: plan.id }), { replace: true });
     } catch (e) {
-      const message = e?.message || e?.code || "Couldn't create SIP. Try again.";
+      const message = e?.message || "Couldn't create SIP. Try again.";
       setErr(message);
       setSubmitting(false);
       submitLockRef.current = false;
@@ -178,11 +145,11 @@ export default function StartSipSheet() {
             <div className="apk-sheet-summary-row"><span>Amount per month</span><strong className="be-money"><MoneyValue amount={amountNumber} source="derived" asOf={new Date().toISOString()} showBadge={false} /></strong></div>
             <div className="apk-sheet-summary-row"><span>Duration</span><strong>{durationText}</strong></div>
             <div className="apk-sheet-summary-row"><span>Debit day</span><strong>{debitDayText}</strong></div>
-            {stepUpOn && <div className="apk-sheet-summary-row"><span>Step-up</span><strong>+{stepUpPct}% every 12 months</strong></div>}
-            <div className="apk-sheet-summary-row"><span>Mandate cap</span><strong className="be-money"><MoneyValue amount={mandateCap} source="derived" asOf={new Date().toISOString()} showBadge={false} /></strong></div>
           </div>
 
-          <div className="be-disclosure apk-mt-4">{riskDisclosure}</div>
+          <div className="be-disclosure apk-mt-2">{disclosures.scheduleDisclosure}</div>
+
+          <div className="be-disclosure apk-mt-2">{riskDisclosure}</div>
 
           <label className="apk-consent-row apk-mt-2">
             <input type="checkbox" checked={reviewConsent} onChange={(e) => setReviewConsent(e.target.checked)} />
@@ -193,9 +160,9 @@ export default function StartSipSheet() {
 
         <div className="apk-review-actions">
             <button type="button" className="be-btn be-btn-primary be-btn-block be-btn-lg" disabled={!canConfirm} onClick={onConfirm}>
-              {submitting ? 'Setting up SIP…' : (
+              {submitting ? 'Creating SIP…' : (
                 <>
-                  <CreditCard size={18} strokeWidth={2} /> Continue to Razorpay
+                  <CalendarClock size={18} strokeWidth={2} /> Create SIP
                 </>
               )}
             </button>
@@ -218,7 +185,7 @@ export default function StartSipSheet() {
             <h1 className="apk-h-sm">Choose monthly amount</h1>
             <p>{fund.name}</p>
           </div>
-          <span className="be-badge be-badge-neutral">Razorpay next</span>
+          <span className="be-badge be-badge-neutral">Schedule only</span>
         </div>
 
         <section className="sip-amount-panel" aria-labelledby="sip-amount-label">
@@ -248,7 +215,7 @@ export default function StartSipSheet() {
             ))}
           </div>
           {amount !== '' && !validAmt && <div className="be-field-error">Minimum is {fmtMoney(minSip)}.</div>}
-          <div className="be-disclosure" id="sip-amount-help">Enter the amount you want debited every month.</div>
+          <div className="be-disclosure" id="sip-amount-help">Enter the amount you want to invest every month.</div>
         </section>
 
         <div className="sip-setup-grid">
@@ -274,34 +241,6 @@ export default function StartSipSheet() {
           </div>
         </div>
 
-        {/* The step-up switch was a `<div role="button" aria-pressed>` with an
-            onClick and no tabIndex or key handler, so the role was a promise the
-            element could not keep. A real button with aria-pressed is the switch. */}
-        {settings.stepUpEnabled && (
-          <button
-            type="button"
-            className="apk-stepup-toggle"
-            onClick={() => setStepUpOn((v) => !v)}
-            aria-pressed={stepUpOn}
-          >
-            <span className="apk-stepup-toggle-text">
-              <span className="apk-toggle-label">{disclosures.stepUpTitle}</span>
-              <span className="apk-toggle-hint">{disclosures.stepUpBody}</span>
-            </span>
-            <span className={'apk-toggle' + (stepUpOn ? ' is-on' : '')} aria-hidden="true" />
-          </button>
-        )}
-        {settings.stepUpEnabled && stepUpOn && (
-          <div>
-            <div className="apk-chip-row" role="group" aria-label="Annual step-up percentage">
-              {normalizeOptions(settings.stepUpPercents, [5, 10, 15]).map((p) => (
-                <button type="button" key={p} className={'apk-chip' + (stepUpPct === p ? ' is-active' : '')} onClick={() => setStepUpPct(p)}>{p}%</button>
-              ))}
-            </div>
-            <div className="be-disclosure apk-mt-2">Your SIP amount will increase by {stepUpPct}% every 12 months. You can change or cancel this from Profile → Mandates.</div>
-          </div>
-        )}
-
         <hr className="be-rule" />
 
         <label className="apk-consent-row">
@@ -310,16 +249,14 @@ export default function StartSipSheet() {
         </label>
         <label className="apk-consent-row">
           <input type="checkbox" checked={c2} onChange={(e) => setC2(e.target.checked)} />
-          <span>{disclosures.mandateConsent}</span>
+          <span>{disclosures.scheduleConsent}</span>
         </label>
 
         <div className="apk-sheet-summary sip-setup-summary">
           <div className="apk-sheet-summary-row"><span>Monthly SIP</span><strong className="be-money"><MoneyValue amount={amountNumber} source="derived" asOf={new Date().toISOString()} showBadge={false} /></strong></div>
           <div className="apk-sheet-summary-row"><span>Debit schedule</span><strong>{day || 'Configured debit day'} of every month</strong></div>
           <div className="apk-sheet-summary-row"><span>Total over {months || 'configured'} mo</span><strong className="be-money"><MoneyValue amount={amountNumber * monthsNumber} source="derived" asOf={new Date().toISOString()} showBadge={false} /></strong></div>
-          <div className="apk-sheet-summary-row"><span>Mandate cap preview</span><strong className="be-money"><MoneyValue amount={mandateCap} source="derived" asOf={new Date().toISOString()} showBadge={false} /></strong></div>
-          {stepUpOn && <div className="apk-sheet-summary-row"><span>Step-up</span><strong>+{stepUpPct}% every 12 mo</strong></div>}
-          <div className="be-disclosure apk-mt-1">{disclosures.paymentDisclosure}</div>
+          <div className="be-disclosure apk-mt-1">{disclosures.scheduleDisclosure}</div>
         </div>
 
         {err && <div className="apk-banner apk-banner-red">{err}</div>}

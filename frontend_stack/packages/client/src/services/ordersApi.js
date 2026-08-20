@@ -1,139 +1,124 @@
 import { apiRequest, clone, delay, listFromPayload, useHttpApi } from './_util.js';
 
-// Canonical order states (spec 03 §2.1) grouped for the UI's coarse filter.
-const ACTIVE_ORDER_STATES = new Set(['submitted', 'payment_pending', 'payment_confirmed', 'booked']);
-const CANCELLED_ORDER_STATES = new Set(['cancelled', 'rejected', 'refunded', 'reversed']);
+// Client-safe order/payment projection (spec §9.2). The backend never returns
+// raw internal order/payment/review enums to the browser; the UI groups the
+// client-safe values for its coarse filters.
+const ACTIVE_STATES = new Set([
+  'payment_in_progress', 'processing', 'refund_in_progress',
+  // Raw order states, tolerated if an older payload still carries them.
+  'submitted', 'payment_pending', 'review_pending',
+]);
+const CLOSED_STATES = new Set([
+  'payment_failed', 'support_required', 'refunded',
+  'cancelled', 'refund_pending', 'refund_failed',
+]);
 
 function idempotencyKey() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
   return `idem-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-// Map a canonical GET /v1/client/orders item to the UI order shape. Money is
-// integer paise (string) on the wire and rupees in the UI.
+function paiseToRupees(value) {
+  return value === null || value === undefined ? null : Number(value) / 100;
+}
+
+// Money enters HTTP APIs as a decimal string (spec §9). The UI works in whole
+// rupees; convert once here and refuse anything that is not a safe positive
+// integer amount in paise.
+function rupeesToPaiseString(amount) {
+  const paise = Math.round(Number(amount) * 100);
+  if (!Number.isSafeInteger(paise) || paise <= 0) {
+    throw new Error('Enter a valid amount.');
+  }
+  return String(paise);
+}
+
+// Map a GET /v1/client/orders item to the UI order shape. Positive allowlist:
+// allocation, review and operator fields must never reach the client bundle.
 function mapOrder(item) {
+  if (!item) return null;
   return {
     id: item.orderId,
     fundId: item.fundId,
-    sipPlanId: item.sipPlanId,
+    sipPlanId: item.sipPlanId ?? null,
     type: item.type,
     status: item.status,
-    amount: item.amountPaise === null || item.amountPaise === undefined ? null : Number(item.amountPaise) / 100,
-    requestedUnits: item.requestedUnits === null ? null : Number(item.requestedUnits),
+    amount: paiseToRupees(item.amountPaise),
     currency: item.currency,
     requestedAt: item.requestedAt,
-    bookedAt: item.bookedAt,
-    cancelledAt: item.cancelledAt,
-    failureCode: item.failureCode,
     createdAt: item.createdAt,
     source: 'canonical',
   };
 }
 
 function matchesOrderFilter(order, filter) {
-  if (filter === 'active') return ACTIVE_ORDER_STATES.has(order.status);
-  if (filter === 'cancelled') return CANCELLED_ORDER_STATES.has(order.status);
+  if (filter === 'active') return ACTIVE_STATES.has(order.status);
+  if (filter === 'cancelled') return CLOSED_STATES.has(order.status);
   if (filter === 'paused') return false; // SIP pause lives on sip_plans, not orders
   return true;
 }
 
+/* ---- fixture-mode state (offline demo only; never a production fallback) ---- */
+
 let orders = [];
-let mandates = [];
-let pendingPayments = [];
 let sipRequests = [];
 const payments = new Map();
 
 let oId = 1;
 let pId = 1;
-let mId = 1;
 let rId = 1;
 
 function nextId(prefix, n) { return `${prefix}_${String(n).padStart(3, '0')}`; }
 
-// Map a canonical SIP (POST /v1/client/sips) to the UI shape. Money is paise on
-// the wire and rupees in the UI.
+// Map a SIP plan (POST /v1/client/sips) to the UI shape. Money is paise on the
+// wire and rupees in the UI. There is no mandate: a SIP is a schedule/reminder
+// and each due installment is paid through a fresh client-initiated checkout
+// (spec §6.2 fallback).
 function mapSip(sip) {
+  if (!sip) return null;
   return {
     id: sip.sipId,
     type: 'sip',
     status: sip.status,
     fundId: sip.fundId,
-    amount: sip.amountPaise === null || sip.amountPaise === undefined ? null : Number(sip.amountPaise) / 100,
+    amount: paiseToRupees(sip.amountPaise),
     debitDay: sip.debitDay,
     durationMonths: sip.durationMonths ?? null,
-    mandateId: sip.mandateId ?? null,
-    mandateStatus: sip.mandateStatus ?? null,
     nextDueDate: sip.nextDueDate ?? null,
     source: 'canonical',
   };
 }
 
-export async function createSip({ fundId, amount, frequency = 'monthly', durationMonths, debitDay, stepUp, consentTextVersion, consentedAt }) {
+export async function createSip({ fundId, amount, durationMonths, debitDay }) {
   if (useHttpApi()) {
-    // Canonical: POST /v1/client/sips creates a draft SIP. The client then
-    // requests the debit mandate (requestSipMandate); the mandate is activated
-    // by the signed provider webhook, after which the scheduler generates
-    // installment orders that flow through the payment/booking pipeline.
     const created = await apiRequest('/v1/client/sips', {
       method: 'POST',
       headers: { 'idempotency-key': idempotencyKey() },
       body: {
         fundId,
-        amountPaise: Math.round(amount * 100),
+        amountPaise: rupeesToPaiseString(amount),
         debitDay: debitDay ?? 1,
         ...(durationMonths ? { durationMonths } : {}),
       },
     });
     return mapSip(created);
   }
-  void frequency;
-  void stepUp;
-  void consentTextVersion;
-  void consentedAt;
 
   await delay(180);
-  const orderId = nextId('ord_sip', oId++);
-  const paymentId = nextId('pay', pId++);
-  const mandateId = nextId('mnd', mId++);
-  const providerOrderId = nextId('rzp_order', oId++);
-  const order = {
-    id: orderId,
+  const plan = {
+    id: nextId('sip', oId++),
     type: 'sip',
     fundId,
     amount,
     durationMonths,
     debitDay,
+    status: 'active',
+    nextDueDate: null,
     createdAt: new Date().toISOString(),
-    status: 'pending_first_payment',
-    paymentId,
-    mandateId,
-    stepUp: stepUp || null,
-    nextDueDate: '',
-    consentTextVersion: consentTextVersion || '',
-    consentedAt: consentedAt || '',
     source: 'mock',
-    asOf: new Date().toISOString(),
-    providerOrderId,
-    providerKeyId: 'rzp_test_mock',
-    providerName: 'mock',
-    currency: 'INR',
   };
-  orders.unshift(order);
-  payments.set(paymentId, {
-    id: paymentId, orderId, amount, status: 'created', method: 'upi',
-    createdAt: new Date().toISOString(), upiHandle: '',
-    providerOrderId,
-    providerKeyId: 'rzp_test_mock',
-    provider: 'mock',
-    currency: 'INR',
-  });
-  mandates.push({
-    id: mandateId, orderId, fundId, maxAmount: amount ?? null,
-    bank: '', upiHandle: '', status: 'setup_required',
-    validFrom: new Date().toISOString().slice(0, 10),
-    validTo: '',
-  });
-  return clone(order);
+  orders.unshift(plan);
+  return clone(plan);
 }
 
 /** The investor's SIP plans. */
@@ -144,19 +129,6 @@ export async function listSips() {
 
   await delay();
   return clone(orders.filter((order) => order.type === 'sip'));
-}
-
-/** Request the debit mandate for a draft SIP (spec 03 §5.2). Returns { mandateId, status }. */
-export async function requestSipMandate(sipId) {
-  if (useHttpApi()) {
-    const sip = await apiRequest(`/v1/client/sips/${encodeURIComponent(sipId)}/mandate`, {
-      method: 'POST',
-      headers: { 'idempotency-key': idempotencyKey() },
-    });
-    return mapSip(sip);
-  }
-  await delay(160);
-  return { id: sipId, status: 'pending_mandate', mandateId: null };
 }
 
 const sipControl = (action) => async (sipId) => {
@@ -178,106 +150,91 @@ export const cancelSip = sipControl('cancel');
 
 export async function createLumpsum({ fundId, amount }) {
   if (useHttpApi()) {
-    // Canonical: POST /v1/client/orders creates a one-time purchase order in
-    // `submitted`. Money is integer paise on the wire; the UI works in rupees.
+    // POST /v1/client/orders creates a one-time order in `submitted`. It does
+    // NOT return a payment: beginOrderPayment() is a separate call (spec §9.1).
     const created = await apiRequest('/v1/client/orders', {
       method: 'POST',
       headers: { 'idempotency-key': idempotencyKey() },
-      body: { fundId, amountPaise: Math.round(amount * 100) },
+      body: { fundId, amountPaise: rupeesToPaiseString(amount) },
     });
     return mapOrder(created);
   }
 
   await delay(180);
-  const orderId = nextId('ord_lump', oId++);
-  const paymentId = nextId('pay', pId++);
-  const providerOrderId = nextId('rzp_order', oId++);
   const order = {
-    id: orderId, type: 'lumpsum', fundId, amount,
+    id: nextId('ord_lump', oId++),
+    type: 'lump_sum',
+    fundId,
+    amount,
+    status: 'payment_in_progress',
     createdAt: new Date().toISOString(),
-    status: 'pending_first_payment',
-    paymentId, nextDueDate: '',
     source: 'mock',
-    asOf: new Date().toISOString(),
-    providerOrderId,
-    providerKeyId: 'rzp_test_mock',
-    providerName: 'mock',
     currency: 'INR',
   };
   orders.unshift(order);
-  payments.set(paymentId, {
-    id: paymentId, orderId, amount, status: 'created', method: 'upi',
-    createdAt: new Date().toISOString(), upiHandle: '',
-    providerOrderId,
-    providerKeyId: 'rzp_test_mock',
-    provider: 'mock',
-    currency: 'INR',
-  });
   return clone(order);
 }
 
 /**
- * Begin payment for a submitted order (spec 03 §5.2 `beginPayment`). Moves the
- * order to `payment_pending` and returns the payment/attempt identifiers; the
- * provider call itself is driven by the backend worker.
+ * Begin payment for a submitted order: POST /v1/client/orders/:orderId/pay.
+ * Returns `{ orderId, paymentId, provider, checkout: { type, url }, expiresAt }`
+ * (spec §9.1). The browser's only job is to redirect to `checkout.url`; the
+ * provider callback — never the browser — moves the payment forward.
  */
 export async function beginOrderPayment(orderId) {
   if (useHttpApi()) {
-    return apiRequest(`/v1/client/orders/${encodeURIComponent(orderId)}/pay`, {
+    const payload = await apiRequest(`/v1/client/orders/${encodeURIComponent(orderId)}/pay`, {
       method: 'POST',
       headers: { 'idempotency-key': idempotencyKey() },
     });
+    const row = payload?.payment ?? payload;
+    return {
+      orderId: row?.orderId ?? orderId,
+      paymentId: row?.paymentId ?? null,
+      provider: row?.provider ?? null,
+      checkout: row?.checkout && row.checkout.url
+        ? { type: row.checkout.type ?? 'redirect', url: row.checkout.url }
+        : null,
+      expiresAt: row?.expiresAt ?? null,
+    };
   }
 
   await delay(160);
-  const found = payments.get(orders.find((o) => o.id === orderId)?.paymentId);
-  return clone(found ?? { orderId, status: 'payment_pending' });
+  const paymentId = nextId('pay', pId++);
+  payments.set(paymentId, {
+    id: paymentId,
+    orderId,
+    amount: orders.find((o) => o.id === orderId)?.amount ?? null,
+    status: 'payment_in_progress',
+    provider: 'phonepe',
+    createdAt: new Date().toISOString(),
+  });
+  // No checkout in offline demo mode: the caller lands on the status route,
+  // which keeps polling and never asserts success locally.
+  return { orderId, paymentId, provider: 'phonepe', checkout: null, expiresAt: null };
 }
 
-// The canonical detail endpoints wrap their row (`{ order }` / `{ payment }`) and
-// report money in paise as strings. The screens were written against a legacy
-// rupee-denominated shape, so translate once here.
 function mapOrderDetail(payload) {
   const row = payload?.order ?? payload;
-  if (!row) return null;
-  return {
-    ...mapOrder(row),
-    id: row.orderId,
-    fundId: row.fundId,
-    status: row.status,
-    amount: row.amountPaise === null || row.amountPaise === undefined ? null : Number(row.amountPaise) / 100,
-  };
+  return mapOrder(row);
 }
 
-// `succeeded` is the canonical terminal success state; the status screen keys off
-// the legacy `success`. Failure/expiry map straight through.
-const PAYMENT_STATUS_WIRE = {
-  created: 'created',
-  provider_pending: 'pending',
-  succeeded: 'success',
-  failed: 'failed',
-  expired: 'expired',
-  refunded: 'refunded',
-};
-
+// The payment detail read returns the client-safe status projection (§9.2):
+// payment_in_progress | processing | confirmed | refund_in_progress |
+// support_required | refunded | payment_failed. It is passed through verbatim —
+// there is no browser-side mapping of gateway internals.
 function mapPaymentDetail(payload) {
   const row = payload?.payment ?? payload;
   if (!row) return null;
   return {
     id: row.paymentId,
     orderId: row.orderId,
-    fundId: row.fundId,
-    amount: Number(row.amountPaise) / 100,
+    amount: paiseToRupees(row.amountPaise),
     currency: row.currency,
-    status: PAYMENT_STATUS_WIRE[row.status] || row.status,
-    provider: row.provider,
-    providerPaymentId: row.providerPaymentId,
-    // No gateway key is ever returned to the client, so the SDK launch path stays
-    // disabled until a real gateway is configured server-side.
-    providerKeyId: null,
-    failureReason: row.failureCode,
-    expiresAt: row.expiresAt,
-    confirmedAt: row.succeededAt,
+    status: row.status,
+    provider: row.provider ?? null,
+    expiresAt: row.expiresAt ?? null,
+    confirmedAt: row.confirmedAt ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -289,13 +246,13 @@ export async function getOrder(orderId) {
   }
 
   await delay(80);
-  return clone(orders.find((o) => o.id === orderId));
+  return clone(orders.find((o) => o.id === orderId) ?? null);
 }
 
 export async function listOrders({ filter = 'all' } = {}) {
   if (useHttpApi()) {
-    // The canonical endpoint returns the full owner-scoped history via an opaque
-    // keyset cursor; the coarse UI filter is applied client-side over the page.
+    // Owner-scoped history via an opaque keyset cursor; the coarse UI filter is
+    // applied client-side over the page.
     const payload = await apiRequest('/v1/client/orders?limit=100');
     const mapped = listFromPayload(payload).map(mapOrder);
     return mapped.filter((order) => matchesOrderFilter(order, filter));
@@ -303,65 +260,66 @@ export async function listOrders({ filter = 'all' } = {}) {
 
   await delay();
   let out = orders;
-  if (filter === 'active') out = out.filter((o) => o.status === 'active' || o.status === 'pending_first_payment');
-  if (filter === 'paused') out = out.filter((o) => o.status === 'paused');
-  if (filter === 'cancelled') out = out.filter((o) => o.status === 'cancelled' || o.status === 'closed');
+  if (filter !== 'all') out = out.filter((order) => matchesOrderFilter(order, filter));
   return clone(out);
 }
 
-// The payments list carries the same fields as the detail read, so the screens can
-// show a row and its detail sheet from one mapper.
+// The payments list carries the same client-safe fields as the detail read, so
+// the screens can show a row and its detail sheet from one mapper.
 function mapPaymentRow(row) {
   return {
-    id: row.id,
+    id: row.paymentId ?? row.id,
     orderId: row.orderId,
     fundId: row.fundId ?? null,
-    amount: row.amountPaise === null || row.amountPaise === undefined ? null : Number(row.amountPaise) / 100,
+    amount: paiseToRupees(row.amountPaise),
     status: row.status,
     provider: row.provider ?? null,
-    method: row.provider ?? '',
-    failureCode: row.failureCode ?? null,
-    confirmedAt: row.succeededAt ?? null,
+    confirmedAt: row.confirmedAt ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
 }
 
+// Repeatable canonical status params (spec §9.1) — never comma-packed values.
+function paymentsQuery(statuses) {
+  const params = new URLSearchParams();
+  for (const status of statuses) params.append('status', status);
+  params.set('limit', '100');
+  return `/v1/client/payments?${params.toString()}`;
+}
+
 export async function listPendingPayments() {
   if (useHttpApi()) {
-    return listFromPayload(await apiRequest('/v1/client/payments?status=pending')).map(mapPaymentRow);
+    return listFromPayload(await apiRequest(paymentsQuery(['payment_in_progress']))).map(mapPaymentRow);
   }
 
   await delay();
-  const pendingStatuses = new Set(['created', 'gateway_initiated', 'pending']);
-  const fromPayments = Array.from(payments.values()).filter((payment) => pendingStatuses.has(payment.status));
-  return clone([...pendingPayments, ...fromPayments]);
+  return clone(Array.from(payments.values()).filter((payment) => payment.status === 'payment_in_progress'));
 }
 
 export async function listFailedPayments() {
   if (useHttpApi()) {
-    return listFromPayload(await apiRequest('/v1/client/payments?status=failed,expired')).map(mapPaymentRow);
+    return listFromPayload(await apiRequest(paymentsQuery(['payment_failed']))).map(mapPaymentRow);
   }
 
   await delay();
-  const failedStatuses = new Set(['failed', 'expired', 'rejected']);
-  return clone(Array.from(payments.values()).filter((payment) => failedStatuses.has(payment.status)));
+  return clone(Array.from(payments.values()).filter((payment) => payment.status === 'payment_failed'));
 }
 
+/** Payments received and being processed (the old "approval" queue). */
 export async function listApprovalPayments() {
   if (useHttpApi()) {
-    return listFromPayload(await apiRequest('/v1/client/payments?status=succeeded')).map(mapPaymentRow);
+    return listFromPayload(await apiRequest(paymentsQuery(['processing']))).map(mapPaymentRow);
   }
 
   await delay();
-  const approvalStatuses = new Set(['success', 'confirmed', 'reconciled']);
-  return clone(Array.from(payments.values()).filter((payment) => approvalStatuses.has(payment.status)));
+  return clone(Array.from(payments.values()).filter((payment) => payment.status === 'processing'));
 }
 
 /**
- * Apply a plan control. Pause, resume and cancel act on the plan directly — there
- * is no approval queue in between, so the caller sees the new plan state rather
- * than a pending request.
+ * Apply a plan control. Pause, resume and cancel act on the plan directly —
+ * there is no approval queue in between, so the caller sees the new plan state
+ * rather than a pending request.
  */
 export async function requestSipControl({ orderId, requestType, requestedValue, effectiveDate, reason }) {
   if (useHttpApi()) {
@@ -401,68 +359,5 @@ export async function getPayment(paymentId) {
   await delay(80);
   const found = payments.get(paymentId);
   if (found) return clone(found);
-  return { id: paymentId, orderId: '', amount: null, status: 'pending', method: '', createdAt: '' };
-}
-
-/**
- * Confirm a gateway checkout. A live gateway confirms server-side on its signed
- * webhook, and the mock provider is settled by the payment worker — in both cases
- * the client's job is to read the resulting state, not to assert it. So against a
- * real backend this reads the payment back instead of posting a confirmation.
- */
-export async function confirmRazorpayPayment(paymentId) {
-  if (useHttpApi()) {
-    return mapPaymentDetail(await apiRequest(`/v1/client/payments/${encodeURIComponent(paymentId)}`));
-  }
-
-  const found = payments.get(paymentId);
-  if (found) {
-    found.status = 'success';
-    found.confirmedAt = new Date().toISOString();
-  }
-  return clone(found);
-}
-
-// Simulates a full lifecycle: created -> gateway_initiated -> pending -> success.
-const _pollState = new Map();
-export async function pollPaymentStatus(paymentId) {
-  if (useHttpApi()) {
-    return mapPaymentDetail(await apiRequest(`/v1/client/payments/${encodeURIComponent(paymentId)}`));
-  }
-
-  await delay(800);
-  const p = payments.get(paymentId);
-  if (!p) return { id: paymentId, status: 'pending', amount: null, method: '', orderId: '', createdAt: '' };
-  const tick = (_pollState.get(paymentId) || 0) + 1;
-  _pollState.set(paymentId, tick);
-  const path = ['gateway_initiated', 'pending', 'pending', 'success'];
-  p.status = path[Math.min(tick - 1, path.length - 1)];
-  if (p.status === 'success') p.confirmedAt = new Date().toISOString();
-  return clone(p);
-}
-
-export async function getMandate(mandateId) {
-  if (useHttpApi()) return apiRequest(`/v1/client/mandates/${encodeURIComponent(mandateId)}`);
-
-  await delay(80);
-  return clone(mandates.find((m) => m.id === mandateId));
-}
-
-export async function authorizeMandate(mandateId) {
-  if (useHttpApi()) {
-    return apiRequest(`/v1/client/mandates/${encodeURIComponent(mandateId)}/authorize`, {
-      method: 'POST',
-      headers: { 'idempotency-key': idempotencyKey() },
-    });
-  }
-
-  await delay(900);
-  const m = mandates.find((x) => x.id === mandateId);
-  if (m) m.status = 'active';
-  // Also flip the linked order to active.
-  if (m) {
-    const ord = orders.find((o) => o.mandateId === mandateId);
-    if (ord) ord.status = 'active';
-  }
-  return clone(m);
+  return { id: paymentId, orderId: '', amount: null, status: 'payment_in_progress', provider: 'phonepe', createdAt: '' };
 }

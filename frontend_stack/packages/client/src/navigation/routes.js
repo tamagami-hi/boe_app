@@ -177,6 +177,9 @@ export const CLIENT_ROUTES = [
     isTransactional: false,
     backPolicy: BACK_POLICY.PARENT,
   },
+  // SIP plan detail. The path keeps its historical name for links already in
+  // the wild, but the parameter is a SIP plan id and the screen is the
+  // schedule/reminder plan view (spec §6.2 fallback — there is no mandate).
   {
     path: '/app/mandates/:mandateId',
     destinationId: 'mandate_detail',
@@ -314,18 +317,6 @@ export const CLIENT_ROUTES = [
     parent: '/app/transactions',
     appBarMode: APP_BAR_MODE.BACK,
     primaryNavItem: 'activity',
-    showsBottomNav: false,
-    permissions: [],
-    isTransactional: true,
-    backPolicy: BACK_POLICY.TRANSACTIONAL,
-    requiresEligibility: true,
-  },
-  {
-    path: '/app/mandates/:mandateId/authorize',
-    destinationId: 'mandate_authorize',
-    parent: '/app/mandates/:mandateId',
-    appBarMode: APP_BAR_MODE.BACK,
-    primaryNavItem: 'portfolio',
     showsBottomNav: false,
     permissions: [],
     isTransactional: true,

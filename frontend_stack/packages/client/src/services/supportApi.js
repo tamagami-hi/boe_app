@@ -1,8 +1,8 @@
 import { apiRequest, clone, delay, listFromPayload, useHttpApi } from './_util.js';
 
 const faqs = [
-  { q: 'How does a BeOnEdge SIP work?', a: 'Your first payment runs over UPI; recurring debits run via a UPI AutoPay mandate you authorise. Units allocate at the next published NAV.' },
-  { q: 'What if my AutoPay debit fails?', a: 'BeOnEdge does not double-charge. The installment moves to Transactions where you can track its latest payment status.' },
+  { q: 'How does a BeOnEdge SIP work?', a: 'A SIP is a monthly schedule. Each due installment is paid by you through a fresh secure checkout — no automatic debit is set up.' },
+  { q: 'What if an installment payment fails?', a: 'BeOnEdge does not double-charge. The installment moves to Transactions where you can track its latest payment status.' },
   { q: 'Can I pause or cancel a SIP?', a: 'Yes. Open a support ticket and BeOnEdge support will help with the request.' },
   { q: 'When are statements generated?', a: 'Monthly statements are generated on the first of the following month. FY and capital-gains statements are generated after the financial year closes.' },
   { q: 'Is BeOnEdge licensed?', a: 'Yes. BeOnEdge is licensed to operate this strategy. See Legal & disclosures for details.' },

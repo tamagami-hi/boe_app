@@ -187,13 +187,14 @@ describe('transactional routes', () => {
   });
 
   test('a completed flow is never re-entered by Back', async () => {
-    currentPathname = '/app/mandates/m1/authorize';
+    currentPathname = '/app/payment/p1';
     await act(async () => { renderCoordinator(); });
 
     await pressBack({ canGoBack: true });
 
-    // Goes to the mandate, NOT back into history where the authorize step sits.
-    expect(navigateMock).toHaveBeenCalledWith('/app/mandates/m1', { replace: true });
+    // Goes to the payment status screen's declared parent (transaction history),
+    // NOT back into history where the finished checkout sits.
+    expect(navigateMock).toHaveBeenCalledWith('/app/transactions', { replace: true });
   });
 });
 

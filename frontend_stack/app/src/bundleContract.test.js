@@ -19,15 +19,25 @@ describe('dependencies', () => {
     expect(shared.dependencies ?? {}).toEqual({});
   });
 
-  test('the razorpay checkout script is not in the HTML shell', () => {
-    expect(read('app/index.html')).not.toContain('checkout.razorpay.com');
-    expect(code('packages/client/src/utils/razorpay.js')).toContain('checkout.razorpay.com');
-  });
+  test('no payment-gateway script is loaded by the HTML shell or the client package', () => {
+    // Payment is a full-page redirect to the provider URL the backend returns;
+    // the bundle must never inject a gateway SDK (spec §11.2).
+    const html = read('app/index.html');
+    expect(html).not.toMatch(/razorpay|phonepe/iu);
+    expect(html).not.toMatch(/<script[^>]+src="https?:/iu);
 
-  test('the checkout loader reports failure instead of calling alert', () => {
-    const source = code('packages/client/src/utils/razorpay.js');
-    expect(source).not.toContain('alert(');
-    expect(source).toContain('checkout_unavailable');
+    expect(fs.existsSync(path.join(root, 'packages/client/src/utils/razorpay.js'))).toBe(false);
+
+    const clientSrc = path.join(root, 'packages/client/src');
+    const gatewayRefs = [];
+    for (const entry of fs.readdirSync(clientSrc, { recursive: true })) {
+      const name = entry.toString();
+      if (!/\.[jt]sx?$/u.test(name)) continue;
+      const file = path.join(clientSrc, name);
+      if (!fs.statSync(file).isFile()) continue;
+      if (/checkout\.razorpay\.com/iu.test(fs.readFileSync(file, 'utf8'))) gatewayRefs.push(name);
+    }
+    expect(gatewayRefs).toEqual([]);
   });
 });
 

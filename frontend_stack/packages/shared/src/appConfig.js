@@ -254,7 +254,6 @@ export const DEFAULT_APP_CONFIG = {
           minSipLabel: 'Min SIP',
           minLumpsumLabel: 'Min lumpsum',
           lockInLabel: 'Lock-in',
-          navLabel: 'NAV',
           performanceDisclosure: 'Past performance does not guarantee future returns. Published by BeOnEdge.',
           projectionTitle: 'SIP projection',
           projectionValueLabel: 'Projected value',
@@ -288,22 +287,24 @@ export const DEFAULT_APP_CONFIG = {
           durationMonths: [],
           debitDays: [],
           minDurationMonths: null,
-          stepUpEnabled: true,
-          stepUpPercents: [],
-          defaultStepUpPct: null,
           disclosures: {
             minimumPrefix: 'Minimum',
             stepUpTitle: 'Increase SIP every year',
             stepUpBody: 'Optional step-up. Default off.',
             riskConsent: 'I have read the Risk disclosure and understand market risk.',
-            mandateConsent: 'I authorize BeOnEdge to set up a UPI AutoPay mandate for the recurring debits described above.',
-            paymentDisclosure: 'Razorpay checkout opens after review for the first SIP payment and mandate setup.',
+            // Spec §6.2 fallback: the SIP is a schedule/reminder — each installment
+            // is a fresh client-initiated PhonePe checkout; there is no mandate and
+            // no automatic debit.
+            scheduleConsent: 'I understand this SIP is a monthly schedule. Each installment is paid by me through a fresh checkout — no automatic debit is set up.',
+            scheduleDisclosure: 'Each due installment is paid by you through a fresh PhonePe checkout. Nothing is debited automatically.',
           },
         },
         oneTime: {
           defaultAmount: null,
           amountPresets: [],
-          paymentDisclosure: 'Payment runs through UPI. Units allocate at the next published NAV.',
+          // Spec §11.2: neutral processing status only — no NAV/units language and
+          // no bank-verification/review/allocation concepts in client copy.
+          paymentDisclosure: 'Payment runs through a secure PhonePe checkout. Once PhonePe confirms the payment, your investment is processed.',
         },
       },
     },

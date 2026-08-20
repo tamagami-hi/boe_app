@@ -114,10 +114,11 @@ describe('matchClientRoute', () => {
     expect(matchClientRoute('/app/transactions?tab=sip#top').route.destinationId).toBe('activity');
   });
 
-  test('the authorize route wins over the mandate-detail template', () => {
-    expect(matchClientRoute('/app/mandates/m1/authorize').route.destinationId)
-      .toBe('mandate_authorize');
+  test('the plan detail template matches a plan id', () => {
     expect(matchClientRoute('/app/mandates/m1').route.destinationId).toBe('mandate_detail');
+    // There is no mandate-authorization route: the SIP fallback (spec §6.2) has
+    // no mandate to authorize, so this historical path resolves nowhere.
+    expect(matchClientRoute('/app/mandates/m1/authorize')).toBeNull();
   });
 
   test('rejects non-strings', () => {
@@ -177,7 +178,7 @@ describe('parentPathOf', () => {
 
   test('a parameterised parent keeps the concrete id', () => {
     expect(parentPathOf('/app/invest/sip/f1')).toBe('/app/funds/f1');
-    expect(parentPathOf('/app/mandates/m1/authorize')).toBe('/app/mandates/m1');
+    expect(parentPathOf('/app/mandates/m1')).toBe('/app/portfolio');
   });
 });
 
@@ -205,7 +206,7 @@ describe('showsBottomNav', () => {
   test('false for secondary and transactional screens', () => {
     for (const path of [
       '/app/statements', '/app/notifications', '/app/funds/f1', '/app/withdrawals',
-      '/app/invest/sip/f1', '/app/payment/p1', '/app/mandates/m1/authorize',
+      '/app/invest/sip/f1', '/app/payment/p1', '/app/mandates/m1',
     ]) {
       expect(showsBottomNav(path)).toBe(false);
     }

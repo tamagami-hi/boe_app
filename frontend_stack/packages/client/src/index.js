@@ -43,8 +43,8 @@ export {
   relativeDay,
 } from './utils/format.js';
 
-export { openRazorpayCheckout } from './utils/razorpay.js';
 export { openOnboarding } from './utils/openOnboarding.js';
+export { redirectToCheckout } from './utils/checkoutRedirect.js';
 
 // Pages with default exports
 export { default as Blocked } from './pages/Blocked.jsx';
@@ -57,7 +57,6 @@ export { default as KycDetail } from './pages/KycDetail.jsx';
 export { default as Legal } from './pages/Legal.jsx';
 export { default as Login } from './pages/Login.jsx';
 export { default as LumpsumSheet } from './pages/LumpsumSheet.jsx';
-export { default as MandateAuth } from './pages/MandateAuth.jsx';
 export { default as MandateDetail } from './pages/MandateDetail.jsx';
 export { default as Notifications } from './pages/Notifications.jsx';
 export { default as PaymentStatus } from './pages/PaymentStatus.jsx';

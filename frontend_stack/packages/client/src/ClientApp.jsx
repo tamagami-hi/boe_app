@@ -10,7 +10,6 @@ import FundDetail from './pages/FundDetail.jsx';
 import StartSipSheet from './pages/StartSipSheet.jsx';
 import LumpsumSheet from './pages/LumpsumSheet.jsx';
 import PaymentStatus from './pages/PaymentStatus.jsx';
-import MandateAuth from './pages/MandateAuth.jsx';
 import MandateDetail from './pages/MandateDetail.jsx';
 import Portfolio from './pages/Portfolio.jsx';
 import WithdrawalRequests from './pages/WithdrawalRequests.jsx';
@@ -34,7 +33,7 @@ import { useEligibility } from './data/clientResources.js';
 import AppUpdateGate from './components/AppUpdateGate.jsx';
 import './styles/mobile/index.css';
 
-// Execution routes (invest / pay / authorize a mandate) require investing
+// Execution routes (invest / pay) require investing
 // eligibility. Eligibility is derived server-side on every read — never trust a
 // stored status — so this gate asks `GET /v1/client/eligibility` and sends
 // `canInvest=false` users to the email-verification (KYC OTP) step. If the
@@ -94,7 +93,6 @@ export default function ClientApp() {
         <Route path="invest/sip/:fundId" element={<RequireApproved><RouteErrorBoundary><StartSipSheet /></RouteErrorBoundary></RequireApproved>} />
         <Route path="invest/lumpsum/:fundId" element={<RequireApproved><RouteErrorBoundary><LumpsumSheet /></RouteErrorBoundary></RequireApproved>} />
         <Route path="payment/:paymentId" element={<RequireApproved><RouteErrorBoundary><PaymentStatus /></RouteErrorBoundary></RequireApproved>} />
-        <Route path="mandates/:mandateId/authorize" element={<RequireApproved><RouteErrorBoundary><MandateAuth /></RouteErrorBoundary></RequireApproved>} />
         <Route path="mandates/:mandateId" element={<RouteErrorBoundary><MandateDetail /></RouteErrorBoundary>} />
         <Route path="portfolio" element={<RouteErrorBoundary><Portfolio /></RouteErrorBoundary>} />
         <Route path="withdrawals" element={<RouteErrorBoundary><WithdrawalRequests /></RouteErrorBoundary>} />

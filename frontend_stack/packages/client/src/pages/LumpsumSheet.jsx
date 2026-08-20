@@ -8,16 +8,14 @@ import * as fundsApi from '../services/fundsApi.js';
 import * as ordersApi from '../services/ordersApi.js';
 import { useAppConfig } from '../hooks/useAppConfig.js';
 import { fmtMoney } from '../utils/format.js';
-import { openRazorpayCheckout } from '../utils/razorpay.js';
-import { useSession } from '../store/SessionContext.jsx';
-import { HOME_PATH, buildPath } from '../navigation/routes.js';
+import { redirectToCheckout } from '../utils/checkoutRedirect.js';
+import { buildPath } from '../navigation/routes.js';
 
 const RISK_DISCLOSURE = 'Investments are subject to market risk. Please read all scheme-related documents carefully before investing.';
 
 export default function LumpsumSheet() {
   const { fundId } = useParams();
   const navigate = useNavigate();
-  const { user } = useSession();
   const appConfig = useAppConfig();
   const settings = appConfig.mobile.screens.invest.oneTime;
   const [fund, setFund] = useState(null);
@@ -65,6 +63,9 @@ export default function LumpsumSheet() {
     setAmount(next === '' ? '' : Math.max(0, Math.floor(Number(next))));
   }
 
+  // Create the order, then begin its PhonePe checkout and hand the browser to
+  // the returned redirect URL. The browser never asserts payment success: the
+  // return URL re-opens the payment status route, which polls the backend.
   async function onContinue() {
     if (submitLockRef.current) return;
     submitLockRef.current = true;
@@ -72,40 +73,25 @@ export default function LumpsumSheet() {
     setSubmitting(true);
     try {
       const order = await ordersApi.createLumpsum({ fundId, amount: amountNumber });
-      if (!order.paymentId) {
-        setErr("Couldn't start investment. Try again.");
-        setSubmitting(false);
-        submitLockRef.current = false;
+      const begun = await ordersApi.beginOrderPayment(order.id);
+      if (begun?.checkout?.type === 'redirect' && begun.checkout.url && redirectToCheckout(begun.checkout.url).ok) {
+        // The browser is leaving for PhonePe. Keep the lock held: if the user
+        // comes back without paying, the status route shows the real state.
         return;
       }
-      const paymentPath = buildPath('payment_status', { paymentId: order.paymentId });
-      if (order.providerName === 'razorpay' && order.providerOrderId && order.providerKeyId) {
-        await openRazorpayCheckout({
-          keyId: order.providerKeyId,
-          orderId: order.providerOrderId,
-          amount: order.amount,
-          currency: order.currency,
-          name: fund.name,
-          description: 'One-time Investment',
-          userEmail: user?.email || '',
-          userContact: user?.phone || '',
-          onSuccess: async (response) => {
-            try {
-              await ordersApi.confirmRazorpayPayment(order.paymentId, response);
-              navigate(HOME_PATH, { replace: true });
-            } catch {
-              navigate(paymentPath, { replace: true });
-            }
-          },
-          onFailure: () => {
-            navigate(paymentPath, { replace: true });
-          },
-        });
-      } else {
-        navigate(paymentPath, { replace: true });
+      // No usable checkout redirect (offline demo, blocked navigation): land on
+      // the authoritative status route instead of claiming anything locally.
+      if (begun?.paymentId) {
+        navigate(buildPath('payment_status', { paymentId: begun.paymentId }), { replace: true });
+        return;
       }
+      setErr("Couldn't start the payment. Try again.");
+      setSubmitting(false);
+      submitLockRef.current = false;
     } catch (e) {
-      const message = e?.message || e?.code || "Couldn't start investment. Try again.";
+      // Server envelope messages are client-safe; anything else gets the
+      // generic line. Internals (codes, stack, provider detail) stay hidden.
+      const message = e?.message || "Couldn't start investment. Try again.";
       setErr(message);
       setSubmitting(false);
       submitLockRef.current = false;
@@ -173,7 +159,7 @@ export default function LumpsumSheet() {
         {err && <div className="apk-banner apk-banner-red">{err}</div>}
 
         <button type="button" className="be-btn be-btn-primary be-btn-block be-btn-lg" disabled={!valid || !riskConsent || submitting} onClick={onContinue}>
-          {submitting ? 'Setting up investment...' : (
+          {submitting ? 'Opening secure checkout…' : (
             <>
               <CreditCard size={18} strokeWidth={2} /> Pay {fmtMoney(amountNumber)}
 

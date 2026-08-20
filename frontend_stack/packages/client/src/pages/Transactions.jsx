@@ -4,7 +4,7 @@ import { AlertTriangle, Clock3, Download, Receipt, Repeat, ShieldCheck } from 'l
 import { EmptyState, Skeleton } from '@beonedge/shared';
 import { usePaymentQueue, useTransactions } from '../data/clientResources.js';
 import { buildPath } from '../navigation/routes.js';
-import { fmtMoney, fmtDate, fmtUnits } from '../utils/format.js';
+import { fmtMoney, fmtDate } from '../utils/format.js';
 import PageSheet from '../layout/PageSheet.jsx';
 
 const TABS = [
@@ -12,7 +12,7 @@ const TABS = [
   ['sip', 'SIP'],
   ['lumpsum', 'Lumpsum'],
   ['pending', 'Pending'],
-  ['approval', 'Approval'],
+  ['approval', 'Processing'],
   ['failed', 'Failed'],
 ];
 
@@ -25,7 +25,7 @@ const EMPTY_STATE = {
   lumpsum: { icon: Receipt,       title: 'No lumpsum transactions yet', description: 'Make a one-time investment to see it here.' },
   pending: { icon: Clock3,        title: 'No pending payments', description: 'All your payments are up to date.' },
   failed:  { icon: AlertTriangle, title: 'No failed payments', description: 'All your payments went through.' },
-  approval:{ icon: ShieldCheck,   title: 'No approvals pending', description: 'No payments are waiting for admin approval.' },
+  approval:{ icon: ShieldCheck,   title: 'Nothing being processed', description: 'No received payments are waiting to be processed.' },
 };
 
 function fundDisplayName(item) {
@@ -58,27 +58,27 @@ export default function Transactions() {
 
   function statusBadgeClass(status) {
     if (['success', 'confirmed', 'reconciled', 'approved'].includes(status)) return 'be-badge-active';
-    if (['failed', 'expired', 'rejected', 'payment_failed', 'approval_rejected'].includes(status)) return 'be-badge-failed';
+    if (['failed', 'expired', 'rejected', 'payment_failed', 'approval_rejected', 'support_required'].includes(status)) return 'be-badge-failed';
     return 'be-badge-paused';
   }
 
   function statusLabel(status) {
+    // Client-safe projection labels (spec §9.2). Bank-verification, review and
+    // allocation concepts never appear here.
     const labels = {
-      payment_pending: 'Payment pending',
+      payment_in_progress: 'Payment in progress',
+      processing: 'Processing',
+      confirmed: 'Confirmed',
+      refund_in_progress: 'Refund in progress',
+      support_required: 'Support required',
+      refunded: 'Refunded',
       payment_failed: 'Payment failed',
-      awaiting_approval: 'Awaiting approval',
-      approval_rejected: 'Approval rejected',
-      pending_admin_approval: 'Awaiting approval',
       success: 'Payment received',
-      confirmed: 'Payment confirmed',
       reconciled: 'Reconciled',
-      approved: 'Approved',
       created: 'Payment created',
-      gateway_initiated: 'Gateway started',
       pending: 'Payment pending',
       failed: 'Payment failed',
       expired: 'Payment expired',
-      rejected: 'Rejected',
       submitted: 'Submitted',
     };
     return labels[status] || String(status || 'Unknown').replaceAll('_', ' ');
@@ -110,12 +110,14 @@ export default function Transactions() {
       const amount = payment.amount ?? payment.paymentAmount ?? 0;
       const date = payment.date || payment.createdAt || payment.dueDate;
       const fundName = fundDisplayName(payment);
-      const title = tab === 'approval' ? 'Waiting for admin approval' : fundName;
+      const title = tab === 'approval' ? 'Payment received — being processed' : fundName;
       const meta = [
         payment.type ? payment.type.toUpperCase() : null,
         payment.paymentType ? paymentTypeLabel(payment.paymentType) : null,
         date ? fmtDate(date) : null,
-        payment.reason || payment.failureReason || null,
+        // Never `payment.reason`: internal reason/investigation text is not
+        // client-safe. A public failure code is the only extra allowed.
+        payment.failureReason || null,
       ].filter(Boolean).join(' · ');
 
       return (
@@ -141,7 +143,7 @@ export default function Transactions() {
               <div className="apk-row-amount be-money">{fmtMoney(amount)}</div>
 
               {tab === 'approval' && (
-                <div className="apk-cell-meta">Portfolio and fund pool update after admin approval.</div>
+                <div className="apk-cell-meta">Your investment appears once processing completes.</div>
               )}
             </div>
 
@@ -230,7 +232,7 @@ export default function Transactions() {
 
       <div className="be-disclosure">
         {tab === 'approval'
-          ? 'Payment has been received. Portfolio and fund pool values update after admin approval.'
+          ? 'Payment received — investment is being processed. Your portfolio updates once processing completes.'
           : PAYMENT_TABS.has(tab)
             ? 'Payment status reflects the latest gateway or admin decision available to the app.'
             : 'Showing last 90 days. Older history is available in Statements. Investment values reflect market pricing.'}
@@ -247,8 +249,6 @@ export default function Transactions() {
 
             <div className="apk-sheet-summary">
               <div className="apk-sheet-summary-row"><span>Amount</span><strong className="be-money">{fmtMoney(open.amount)}</strong></div>
-
-              <div className="apk-sheet-summary-row"><span>Units</span><strong className="be-num">{open.units ? fmtUnits(open.units) : '—'}</strong></div>
 
               <div className="apk-sheet-summary-row"><span>Mode</span><strong>{open.mode || open.paymentMode || '—'}</strong></div>
 

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, X, TrendingUp, ArrowRight, SlidersHorizontal, Bell, BarChart3, Layers } from 'lucide-react';
+import { Search, X, TrendingUp, ArrowRight, SlidersHorizontal, Bell, Layers } from 'lucide-react';
 import { useFundList, useResearchContext } from '../data/clientResources.js';
 import { buildPath } from '../navigation/routes.js';
 import { useAppConfig } from '../hooks/useAppConfig.js';
@@ -10,13 +10,14 @@ import { RiskBadge } from '@beonedge/shared/components/Badges.jsx';
 import { SectorMiniBar } from '@beonedge/shared/components/SectorMiniBar.jsx';
 import { LineComparisonChart } from '../components/Charts.jsx';
 import { fundMonogram, formatReturnPct, formatNavDate, returnTone } from '../utils/fundDisplay.js';
-import { Skeleton, EmptyState } from '@beonedge/shared';
+import { Skeleton, EmptyState, ErrorState } from '@beonedge/shared';
 
 const RISK_CHIP_ORDER = ['Growth', 'Balanced', 'Conservative'];
 
+// No cross-fund AUM ranking ("Trending by AUM" / "Highest AUM") and no aggregate
+// "Total AUM" (spec §11.1): funds are never ordered or summed by pool size.
 const SORT_OPTIONS = [
   { key: 'trending', label: 'Trending' },
-  { key: 'aum_desc', label: 'Highest AUM' },
   { key: 'risk_asc', label: 'Lowest Risk' },
   { key: 'newest', label: 'Newest' },
 ];
@@ -112,12 +113,14 @@ function FundCard({ fund, onNotify }) {
 
         </div>
 
-        <div>
-          <span className="apk-fc-grid-l">Fund size</span>
+        {fund.totalPoolSize != null && (
+          <div>
+            <span className="apk-fc-grid-l">Fund size</span>
 
-          <span className="apk-fc-grid-v be-money">{fmtMoney(fund.totalPoolSize)}</span>
+            <span className="apk-fc-grid-v be-money">{fmtMoney(fund.totalPoolSize)}</span>
 
-        </div>
+          </div>
+        )}
 
       </div>
 
@@ -166,7 +169,7 @@ function FeaturedCard({ fund }) {
       </div>
 
       <div className="apk-fund-metrics">
-        <span className="apk-fund-pool">{fmtMoney(fund.totalPoolSize)}</span>
+        {fund.totalPoolSize != null && <span className="apk-fund-pool">{fmtMoney(fund.totalPoolSize)}</span>}
 
         <span className="apk-fund-sectors">{(fund.sectors?.length || 0)} sectors</span>
 
@@ -191,7 +194,10 @@ export default function Explore() {
   const copy = screen.copy;
   const fundsResource = useFundList();
   const researchResource = useResearchContext();
-  const funds = fundsResource.data ?? (fundsResource.error ? [] : null);
+  const funds = fundsResource.data ?? null;
+  // A catalogue or eligibility failure is an error state, never a disguised
+  // empty list (no fixture products or invented AUM as a fallback).
+  const fundsError = fundsResource.error && !funds ? fundsResource.error : null;
   const research = researchResource.data ?? (researchResource.error ? [] : null);
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -216,9 +222,6 @@ export default function Explore() {
     }
     const sorted = [...result];
     switch (sortKey) {
-      case 'aum_desc':
-        sorted.sort((a, b) => (b.totalPoolSize ?? 0) - (a.totalPoolSize ?? 0));
-        break;
       case 'risk_asc': {
         const riskOrder = { low: 0, low_moderate: 1, moderate: 2, moderate_high: 3, high: 4 };
         sorted.sort((a, b) => (riskOrder[a.riskLabel] ?? 99) - (riskOrder[b.riskLabel] ?? 99));
@@ -229,11 +232,12 @@ export default function Explore() {
         break;
       case 'trending':
       default:
+        // Active funds first, then catalogue order — deliberately NOT AUM-ranked.
         sorted.sort((a, b) => {
           const aActive = a.status === 'active' ? 1 : 0;
           const bActive = b.status === 'active' ? 1 : 0;
           if (aActive !== bActive) return bActive - aActive;
-          return (b.totalPoolSize ?? 0) - (a.totalPoolSize ?? 0);
+          return String(a.name).localeCompare(String(b.name));
         });
         break;
     }
@@ -242,19 +246,14 @@ export default function Explore() {
 
   const trending = useMemo(() => {
     if (!funds) return [];
-    return funds
-      .filter((f) => f.status === 'active')
-      .slice()
-      .sort((a, b) => (b.totalPoolSize ?? 0) - (a.totalPoolSize ?? 0))
-      .slice(0, 3);
+    return funds.filter((f) => f.status === 'active').slice(0, 3);
   }, [funds]);
 
   const stats = useMemo(() => {
     if (!funds) return null;
     const totalFunds = funds.length;
-    const totalAum = funds.reduce((s, f) => s + (Number(f.totalPoolSize) || 0), 0);
     const activeFunds = funds.filter((f) => f.status === 'active').length;
-    return { totalFunds, totalAum, activeFunds };
+    return { totalFunds, activeFunds };
   }, [funds]);
 
   return (
@@ -347,15 +346,6 @@ export default function Explore() {
           </div>
 
           <div className="apk-stat-tile">
-            <BarChart3 size={14} strokeWidth={2} />
-
-            <span className="apk-stat-tile-v">{fmtMoney(stats.totalAum)}</span>
-
-            <span className="apk-stat-tile-l">Total AUM</span>
-
-          </div>
-
-          <div className="apk-stat-tile">
             <TrendingUp size={14} strokeWidth={2} />
 
             <span className="apk-stat-tile-v">{stats.activeFunds}</span>
@@ -389,7 +379,13 @@ export default function Explore() {
 
       {isComponentEnabled(appConfig, 'explore', 'product_catalog') && (
         <>
-          {!filtered ? (
+          {fundsError ? (
+            <ErrorState
+              title="We could not load the fund catalogue"
+              description="This screen could not reach the server. Your investments are unaffected."
+              onRetry={() => fundsResource.refresh?.()}
+            />
+          ) : !filtered ? (
             <div className="apk-strategy-grid">
               {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="be-card apk-fc-skeleton">

@@ -28,8 +28,8 @@ function mapFund(row) {
     horizon: row.recommendedHoldingMonths ? `${row.recommendedHoldingMonths} months+` : '',
     lockInText: 'None',
     // "Fund Size (AUM)" plus its period and last-updated stamp; null until the
-    // administrator publishes the pool's first monthly update.
-    totalPoolSize: paiseToRupees(fundSize.aumPaise) ?? 0,
+    // administrator publishes the fund's first snapshot. Never invent a value.
+    totalPoolSize: paiseToRupees(fundSize.aumPaise),
     fundSizeAsOfPeriod: fundSize.periodStart ?? null,
     fundSizeUpdatedAt: fundSize.lastUpdatedAt ?? null,
     stockCount: row.stockCount ?? 0,
@@ -58,12 +58,9 @@ function mapStocks(stocks = []) {
 
 export async function listFunds() {
   if (useHttpApi()) {
-    try {
-      return listFromPayload(await apiRequest('/v1/client/funds?limit=100')).map(mapFund);
-    } catch (error) {
-      if (error?.code !== 'USER_NOT_APPROVED') throw error;
-      return clone(loadAppConfig().mobile.products);
-    }
+    // No fixture fallback in HTTP mode: a catalogue or eligibility error must
+    // surface as an error, never as hard-coded products or invented AUM.
+    return listFromPayload(await apiRequest('/v1/client/funds?limit=100')).map(mapFund);
   }
 
   await delay();
@@ -72,23 +69,18 @@ export async function listFunds() {
 
 export async function getFund(fundId) {
   if (useHttpApi()) {
-    try {
-      const payload = await apiRequest(`/v1/client/funds/${encodeURIComponent(fundId)}`);
-      const fund = mapFund(payload?.fund);
-      if (!fund) return null;
-      return {
-        ...fund,
-        ...mapStocks(payload?.stocks),
-        investments: [],
-        disclosureVersion: payload?.disclosure?.version ?? null,
-        methodology: payload?.disclosure?.body ?? '',
-        fees: [],
-        chartConfig: { showSectorDistribution: true, showInvestmentBreakdown: false, showCompanyNames: true },
-      };
-    } catch (error) {
-      if (error?.code !== 'USER_NOT_APPROVED') throw error;
-      return clone(strategyById(loadAppConfig(), fundId));
-    }
+    const payload = await apiRequest(`/v1/client/funds/${encodeURIComponent(fundId)}`);
+    const fund = mapFund(payload?.fund);
+    if (!fund) return null;
+    return {
+      ...fund,
+      ...mapStocks(payload?.stocks),
+      investments: [],
+      disclosureVersion: payload?.disclosure?.version ?? null,
+      methodology: payload?.disclosure?.body ?? '',
+      fees: [],
+      chartConfig: { showSectorDistribution: true, showInvestmentBreakdown: false, showCompanyNames: true },
+    };
   }
 
   await delay();
