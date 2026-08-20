@@ -1,15 +1,15 @@
 /**
- * Admin catalog repository — Option B (spec 03 §4.2; model document modules 5-6).
+ * Admin catalog repository.
  *
  * A fund is a pool of money, not a priced instrument. So this repository handles:
- *   - the fund and its published version (terms + disclosure, no price);
- *   - the monthly AUM ledger, where each row derives its closing figure from the
- *     previous closing plus the period's flows; and
+ *   - the fund and its published version (terms + disclosure, no price); and
  *   - the administrator-curated stock list investors see, tagged by quarter.
  *
- * There is no NAV, no unit quantity, and no per-unit arithmetic anywhere here.
+ * The pool's size is read from `fund_aum_snapshots` (the latest published
+ * snapshot wins); writing snapshots belongs to the AUM instruction flow.
+ *
  * Money is `bigint` paise crossing the boundary as strings. Published versions,
- * disclosures, and AUM updates are append-only; only the fund's lifecycle state,
+ * disclosures, and AUM snapshots are append-only; only the fund's lifecycle state,
  * its current-version pointer, and a stock's own row are ever updated.
  */
 import { sql } from "kysely"
@@ -31,9 +31,9 @@ export interface FundListRow {
   readonly minimumSipPaise: string | null
   readonly minimumPurchasePaise: string | null
   readonly currentVersion: number | null
-  /** Latest published closing AUM, and the period it closed. */
+  /** Latest published AUM snapshot, and the date it is effective as of. */
   readonly aumPaise: string | null
-  readonly aumPeriodStart: string | null
+  readonly aumAsOfDate: string | null
   readonly aumUpdatedAt: Date | null
   /** Count of active stocks on the disclosed list. */
   readonly stockCount: number
@@ -57,19 +57,6 @@ export interface FundVersionRow {
   readonly minimumDurationMonths: number | null
   readonly recommendedHoldingMonths: number | null
   readonly disclosureVersionId: string
-  readonly createdAt: Date
-}
-
-export interface AumUpdateRow {
-  readonly id: string
-  readonly periodStart: string
-  readonly openingAumPaise: string
-  readonly newInvestmentsPaise: string
-  readonly redemptionsPaise: string
-  readonly portfolioGainPaise: string
-  readonly closingAumPaise: string
-  readonly note: string | null
-  readonly publishedByUserId: string
   readonly createdAt: Date
 }
 
@@ -131,19 +118,6 @@ export interface InsertFundVersionInput {
   readonly createdByUserId: string
 }
 
-export interface InsertAumUpdateInput {
-  readonly fundId: string
-  readonly periodStart: string
-  readonly openingAumPaise: string
-  readonly newInvestmentsPaise: string
-  readonly redemptionsPaise: string
-  readonly portfolioGainPaise: string
-  readonly closingAumPaise: string
-  readonly note: string | null
-  readonly publishedByUserId: string
-  readonly requestId: string
-}
-
 export interface InsertStockInput {
   readonly fundId: string
   readonly stockName: string
@@ -185,11 +159,6 @@ export interface AdminCatalogRepository {
   listVersions: (tx: Transaction, fundId: string) => Promise<readonly FundVersionRow[]>
   listDisclosures: (tx: Transaction, fundId: string) => Promise<readonly DisclosureRow[]>
 
-  /** Latest published AUM update, i.e. the pool's current size. */
-  latestAumUpdate: (tx: Transaction, fundId: string) => Promise<AumUpdateRow | null>
-  listAumUpdates: (tx: Transaction, fundId: string, limit: number) => Promise<readonly AumUpdateRow[]>
-  insertAumUpdate: (tx: Transaction, input: InsertAumUpdateInput) => Promise<AumUpdateRow>
-
   listStocks: (tx: Transaction, fundId: string) => Promise<readonly StockDisclosureRow[]>
   findStock: (tx: Transaction, fundId: string, stockId: string) => Promise<StockDisclosureRow | null>
   insertStock: (tx: Transaction, input: InsertStockInput) => Promise<StockDisclosureRow>
@@ -217,8 +186,8 @@ const FUND_SELECT = sql`
     fv.minimum_sip_paise::text as "minimumSipPaise",
     fv.minimum_purchase_paise::text as "minimumPurchasePaise",
     fv.version as "currentVersion",
-    aum.closing_aum_paise::text as "aumPaise",
-    aum.period_start::text as "aumPeriodStart",
+    aum.aum_paise::text as "aumPaise",
+    aum.as_of_date::text as "aumAsOfDate",
     aum.created_at as "aumUpdatedAt",
     coalesce(stocks.count, 0)::int as "stockCount",
     f.published_at as "publishedAt",
@@ -228,8 +197,9 @@ const FUND_SELECT = sql`
   from funds f
   left join fund_versions fv on fv.id = f.current_published_version_id
   left join lateral (
-    select closing_aum_paise, period_start, created_at from fund_aum_updates
-    where fund_id = f.id order by period_start desc limit 1
+    select aum_paise, as_of_date, created_at from fund_aum_snapshots
+    where fund_id = f.id
+    order by as_of_date desc, revision desc, created_at desc, id desc limit 1
   ) aum on true
   left join lateral (
     select count(*) as count from fund_stock_disclosures
@@ -247,19 +217,6 @@ const STOCK_COLUMNS = sql`
   exited_at as "exitedAt",
   created_at as "createdAt",
   updated_at as "updatedAt"
-`
-
-const AUM_COLUMNS = sql`
-  id as "id",
-  period_start::text as "periodStart",
-  opening_aum_paise::text as "openingAumPaise",
-  new_investments_paise::text as "newInvestmentsPaise",
-  redemptions_paise::text as "redemptionsPaise",
-  portfolio_gain_paise::text as "portfolioGainPaise",
-  closing_aum_paise::text as "closingAumPaise",
-  note as "note",
-  published_by_user_id as "publishedByUserId",
-  created_at as "createdAt"
 `
 
 export const createAdminCatalogRepository = (): AdminCatalogRepository => ({
@@ -373,8 +330,6 @@ export const createAdminCatalogRepository = (): AdminCatalogRepository => ({
         minimum_duration_months: input.minimumDurationMonths,
         recommended_holding_months: input.recommendedHoldingMonths,
         disclosure_version_id: input.disclosureVersionId,
-        // Option B: a version is published without a price.
-        initial_nav_price_id: null,
         terms_sha256: input.termsSha256,
         created_by_user_id: input.createdByUserId,
       })
@@ -405,40 +360,6 @@ export const createAdminCatalogRepository = (): AdminCatalogRepository => ({
       order by version desc
     `.execute(tx)
     return result.rows
-  },
-
-  latestAumUpdate: async (tx, fundId) => {
-    const result = await sql<AumUpdateRow>`
-      select ${AUM_COLUMNS} from fund_aum_updates
-      where fund_id = ${fundId} order by period_start desc limit 1
-    `.execute(tx)
-    return result.rows[0] ?? null
-  },
-
-  listAumUpdates: async (tx, fundId, limit) => {
-    const result = await sql<AumUpdateRow>`
-      select ${AUM_COLUMNS} from fund_aum_updates
-      where fund_id = ${fundId} order by period_start desc limit ${limit}
-    `.execute(tx)
-    return result.rows
-  },
-
-  insertAumUpdate: async (tx, input) => {
-    const result = await sql<AumUpdateRow>`
-      insert into fund_aum_updates (
-        fund_id, period_start, opening_aum_paise, new_investments_paise, redemptions_paise,
-        portfolio_gain_paise, closing_aum_paise, note, published_by_user_id, request_id
-      ) values (
-        ${input.fundId}, ${input.periodStart}::date, ${input.openingAumPaise}::bigint,
-        ${input.newInvestmentsPaise}::bigint, ${input.redemptionsPaise}::bigint,
-        ${input.portfolioGainPaise}::bigint, ${input.closingAumPaise}::bigint,
-        ${input.note}, ${input.publishedByUserId}, ${input.requestId}
-      )
-      returning ${AUM_COLUMNS}
-    `.execute(tx)
-    const row = result.rows[0]
-    if (row === undefined) throw new Error("fund_aum_updates insert returned no row")
-    return row
   },
 
   listStocks: async (tx, fundId) => {

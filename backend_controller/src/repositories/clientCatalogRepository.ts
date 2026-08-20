@@ -31,10 +31,10 @@ export interface ClientFundRow {
   readonly recommendedHoldingMonths: number | null
   readonly currentVersionId: string
   readonly currentVersion: number
-  /** Latest published closing AUM ("Fund Size"), null before the first update. */
+  /** Latest published AUM snapshot ("Fund Size"), null before the first snapshot. */
   readonly aumPaise: string | null
-  /** The month that AUM closed, and when the administrator published it. */
-  readonly aumPeriodStart: string | null
+  /** The date the AUM snapshot is effective as of, and when it was published. */
+  readonly aumAsOfDate: string | null
   readonly aumUpdatedAt: Date | null
   readonly stockCount: number
   readonly publishedAt: Date | null
@@ -82,8 +82,8 @@ const FUND_SELECT = sql`
     fv.recommended_holding_months as "recommendedHoldingMonths",
     fv.id as "currentVersionId",
     fv.version as "currentVersion",
-    aum.closing_aum_paise::text as "aumPaise",
-    aum.period_start::text as "aumPeriodStart",
+    aum.aum_paise::text as "aumPaise",
+    aum.as_of_date::text as "aumAsOfDate",
     aum.created_at as "aumUpdatedAt",
     coalesce(stocks.count, 0)::int as "stockCount",
     f.published_at as "publishedAt",
@@ -91,8 +91,9 @@ const FUND_SELECT = sql`
   from funds f
   join fund_versions fv on fv.id = f.current_published_version_id
   left join lateral (
-    select closing_aum_paise, period_start, created_at from fund_aum_updates
-    where fund_id = f.id order by period_start desc limit 1
+    select aum_paise, as_of_date, created_at from fund_aum_snapshots
+    where fund_id = f.id
+    order by as_of_date desc, revision desc, created_at desc, id desc limit 1
   ) aum on true
   left join lateral (
     select count(*) as count from fund_stock_disclosures
