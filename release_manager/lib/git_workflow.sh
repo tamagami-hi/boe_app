@@ -138,7 +138,9 @@ git_workflow_check_worktree_hygiene() {
         [[ -f "$worktree/$path" ]] || continue
         git_workflow_is_text_path "$path" || continue
 
-        lines="$(grep -nIE '[ \t]+$' "$worktree/$path" 2>/dev/null | cut -d: -f1 | tr '\n' ',' | sed 's/,$//')"
+        lines="$(git diff --no-index --check -- /dev/null "$worktree/$path" 2>/dev/null \
+            | grep -E ':[0-9]+: (trailing whitespace|space before tab|indent with non-tab)\.' \
+            | sed -E 's/^[^:]*:([0-9]+):.*/\1/' | tr '\n' ',' | sed 's/,$//')"
         if [[ -n "$lines" ]]; then
             printf '   ✗ new file %s has trailing whitespace on: %s\n' "$path" "$lines" >&2
             clean=false
