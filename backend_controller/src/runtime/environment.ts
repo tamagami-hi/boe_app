@@ -81,14 +81,25 @@ const ServerConfigSchema = z.object({
   SES_CONFIGURATION_SET: z.string().trim().optional(),
   PROVIDER_EVENT_TTL_MS: z.coerce.number().int().min(1).default(7 * DAY_MS),
   IDEMPOTENCY_TTL_MS: z.coerce.number().int().min(1).default(DAY_MS),
-  // Payment gateway. `manual` is the built-in mock provider (instant success,
-  // auto-settled by the worker). A real gateway (e.g. `razorpay`) supplies its
-  // API credentials and a webhook signing secret; when the secret is present the
-  // signed payment webhook is enabled and drives the paid/failed confirmation.
-  PAYMENT_PROVIDER: z.string().trim().min(1).default("manual"),
-  PAYMENT_WEBHOOK_SECRET: z.string().trim().optional(),
-  PAYMENT_GATEWAY_KEY_ID: z.string().trim().optional(),
-  PAYMENT_GATEWAY_KEY_SECRET: z.string().trim().optional(),
+  // Client growth business cap: the largest positive rate an admin may post
+  // (spec §8.1; default +1000.00%). The -100.00% floor is not configurable.
+  CLIENT_GROWTH_MAX_BASIS_POINTS: z.coerce.number().int().min(1).max(10_000_000).default(100_000),
+  // PhonePe payment gateway. The provider callback (the payment confirmation
+  // channel) is basic-auth protected by credentials issued in the PhonePe
+  // dashboard; the API client credentials drive status checks and refunds.
+  // The config is complete only when every credential is present; in production
+  // an incomplete set refuses to boot.
+  PAYMENT_PROVIDER: z.literal("phonepe").default("phonepe"),
+  PHONEPE_CLIENT_ID: z.string().trim().optional(),
+  PHONEPE_CLIENT_SECRET: z.string().optional(),
+  PHONEPE_CLIENT_VERSION: z.string().trim().optional(),
+  PHONEPE_ENV: z.enum(["sandbox", "production"]).optional(),
+  PHONEPE_CALLBACK_USERNAME: z.string().trim().optional(),
+  PHONEPE_CALLBACK_PASSWORD: z.string().optional(),
+  // Where the app returns after checkout and where the provider posts the
+  // callback; both are deployment wiring, optional at boot.
+  PHONEPE_REDIRECT_URL: z.string().trim().optional(),
+  PHONEPE_CALLBACK_URL: z.string().trim().optional(),
   PAYMENT_ATTEMPT_TTL_MS: z.coerce.number().int().min(1).default(15 * 60 * 1000),
   // POST /newuser is the only unauthenticated-by-default write in the surface:
   // the standalone marketing site (beonedge.in, on AWS) posts signups to it
@@ -173,13 +184,22 @@ export interface ServerConfig {
     readonly sharedSecret: string | null
   }
   readonly payments: {
-    readonly provider: string
-    /** Mock provider: the worker auto-confirms + books. Real gateway: the webhook does. */
-    readonly autoConfirm: boolean
-    readonly webhookSecret: string | null
-    readonly webhookConfigured: boolean
-    readonly gatewayKeyId: string | null
-    readonly gatewayKeySecret: string | null
+    readonly provider: "phonepe"
+    /**
+     * The PhonePe integration, or null when unconfigured. Present iff every
+     * client credential and both callback credentials are set; in production an
+     * incomplete set fails the boot rather than half-wiring money movement.
+     */
+    readonly phonepe: {
+      readonly clientId: string
+      readonly clientSecret: string
+      readonly clientVersion: string
+      readonly env: "sandbox" | "production"
+      readonly callbackUsername: string
+      readonly callbackPassword: string
+      readonly redirectUrl: string | null
+      readonly callbackUrl: string | null
+    } | null
     readonly attemptTtlMs: number
   }
   readonly email: {
@@ -205,6 +225,13 @@ export interface ServerConfig {
   }
   readonly ttls: {
     readonly idempotencyTtlMs: number
+  }
+  readonly clientGrowth: {
+    /**
+     * Positive business maximum for a signed client growth rate in basis
+     * points (spec §8.1; the lower bound is fixed at -10,000 = -100.00%).
+     */
+    readonly maxBasisPoints: number
   }
   readonly cache: {
     readonly redisUrl: string | null
@@ -273,6 +300,50 @@ const parseVerificationKeys = (raw: string): Record<string, string> => {
   return keys
 }
 
+/**
+ * The PhonePe integration is configured iff every client credential and both
+ * callback credentials are present. A partial set is a misconfiguration: in
+ * production it refuses the boot, elsewhere it degrades to "unconfigured" so a
+ * dev stack can run without real money movement. Redirect/callback URLs are
+ * deployment wiring and stay optional either way.
+ */
+const parsePhonePeConfig = (
+  parsed: z.infer<typeof ServerConfigSchema>,
+  source: Readonly<Record<string, string | undefined>>,
+): ServerConfig["payments"]["phonepe"] => {
+  const present = (value: string | undefined): value is string =>
+    value !== undefined && value.trim().length > 0
+  const credentials = [
+    parsed.PHONEPE_CLIENT_ID,
+    parsed.PHONEPE_CLIENT_SECRET,
+    parsed.PHONEPE_CLIENT_VERSION,
+    parsed.PHONEPE_ENV,
+    parsed.PHONEPE_CALLBACK_USERNAME,
+    parsed.PHONEPE_CALLBACK_PASSWORD,
+  ]
+  const configuredCount = credentials.filter(present).length
+  if (configuredCount === 0) return null
+  if (configuredCount < credentials.length) {
+    if (source.NODE_ENV === "production") {
+      throw new Error(
+        "PHONEPE_* configuration is incomplete: set PHONEPE_CLIENT_ID, PHONEPE_CLIENT_SECRET, " +
+          "PHONEPE_CLIENT_VERSION, PHONEPE_ENV, PHONEPE_CALLBACK_USERNAME and PHONEPE_CALLBACK_PASSWORD together",
+      )
+    }
+    return null
+  }
+  return Object.freeze({
+    clientId: parsed.PHONEPE_CLIENT_ID as string,
+    clientSecret: parsed.PHONEPE_CLIENT_SECRET as string,
+    clientVersion: parsed.PHONEPE_CLIENT_VERSION as string,
+    env: parsed.PHONEPE_ENV as "sandbox" | "production",
+    callbackUsername: parsed.PHONEPE_CALLBACK_USERNAME as string,
+    callbackPassword: parsed.PHONEPE_CALLBACK_PASSWORD as string,
+    redirectUrl: present(parsed.PHONEPE_REDIRECT_URL) ? parsed.PHONEPE_REDIRECT_URL : null,
+    callbackUrl: present(parsed.PHONEPE_CALLBACK_URL) ? parsed.PHONEPE_CALLBACK_URL : null,
+  })
+}
+
 export const parseServerConfig = (source: Readonly<Record<string, string | undefined>>): ServerConfig => {
   const parsed = ServerConfigSchema.parse(source)
   const verificationKeysSpki = parseVerificationKeys(parsed.ACCESS_TOKEN_VERIFICATION_KEYS)
@@ -328,11 +399,7 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
     },
     payments: {
       provider: parsed.PAYMENT_PROVIDER,
-      autoConfirm: parsed.PAYMENT_PROVIDER === "manual",
-      webhookSecret: nonEmpty(parsed.PAYMENT_WEBHOOK_SECRET),
-      webhookConfigured: nonEmpty(parsed.PAYMENT_WEBHOOK_SECRET) !== null,
-      gatewayKeyId: nonEmpty(parsed.PAYMENT_GATEWAY_KEY_ID),
-      gatewayKeySecret: nonEmpty(parsed.PAYMENT_GATEWAY_KEY_SECRET),
+      phonepe: parsePhonePeConfig(parsed, source),
       attemptTtlMs: parsed.PAYMENT_ATTEMPT_TTL_MS,
     },
     email: {
@@ -366,6 +433,9 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
     },
     ttls: {
       idempotencyTtlMs: parsed.IDEMPOTENCY_TTL_MS,
+    },
+    clientGrowth: {
+      maxBasisPoints: parsed.CLIENT_GROWTH_MAX_BASIS_POINTS,
     },
     cache: {
       redisUrl: redisUrl,

@@ -1,11 +1,8 @@
 /**
- * Investment-order write repository (spec 03 §4.3, §5.2, §6, §7). Owns order-row
- * creation and the guarded state transitions of the client order lifecycle. Every
- * query is scoped by `user_id`; transitions use guarded
- * `UPDATE ... WHERE id = ? AND user_id = ? AND state IN (...) AND version = ?
- * RETURNING *` so exactly one concurrent transition can win. Also exposes the
- * order-guard reads (published fund terms, latest compliance state) the
- * createOrder command needs under lock.
+ * Investment-order write repository. Owns order-row creation and the guarded
+ * reads the createOrder command needs under lock (published fund terms, latest
+ * compliance state). Every query is scoped by `user_id`; the created order pins
+ * the fund's current published version (`fund_version_id`) at creation time.
  */
 import { sql } from "kysely"
 
@@ -15,6 +12,7 @@ import type { FundState, KycCaseState, RiskAssessmentState } from "../db/types.j
 export interface CreateOrderInput {
   readonly userId: string
   readonly fundId: string
+  readonly fundVersionId: string
   readonly amountPaise: string
   readonly currency: string
   readonly now: Date
@@ -24,6 +22,7 @@ export interface FundOrderTermsRow {
   readonly fundState: FundState
   readonly currency: string
   /** null when the fund has never had a published version. */
+  readonly fundVersionId: string | null
   readonly minimumPurchasePaise: string | null
   readonly minimumSipPaise: string | null
 }
@@ -38,34 +37,9 @@ export interface OrderWriteRepository {
   findFundOrderTerms: (tx: Transaction, fundId: string) => Promise<FundOrderTermsRow | null>
   latestCompliance: (tx: Transaction, userId: string) => Promise<LatestComplianceRow>
   createPurchase: (tx: Transaction, input: CreateOrderInput) => Promise<InvestmentOrder>
-  createSipInstallment: (
-    tx: Transaction,
-    input: Readonly<{ userId: string; fundId: string; sipPlanId: string; amountPaise: string; currency: string; now: Date }>,
-  ) => Promise<InvestmentOrder>
-  countBySipPlan: (tx: Transaction, sipPlanId: string) => Promise<number>
   lockById: (
     tx: Transaction,
     input: Readonly<{ orderId: string; userId: string }>,
-  ) => Promise<InvestmentOrder | null>
-  /** submitted -> payment_pending for a purchase/SIP order; null when the guard fails. */
-  beginPayment: (
-    tx: Transaction,
-    input: Readonly<{ orderId: string; userId: string; now: Date }>,
-  ) => Promise<InvestmentOrder | null>
-  /** payment_pending -> payment_confirmed; null when the guard fails. */
-  confirmPayment: (
-    tx: Transaction,
-    input: Readonly<{ orderId: string; userId: string; now: Date }>,
-  ) => Promise<InvestmentOrder | null>
-  /** payment_confirmed -> booked; null when the guard fails. */
-  book: (
-    tx: Transaction,
-    input: Readonly<{ orderId: string; userId: string; now: Date }>,
-  ) => Promise<InvestmentOrder | null>
-  /** payment_pending -> payment_failed; null when the guard fails. */
-  failPayment: (
-    tx: Transaction,
-    input: Readonly<{ orderId: string; userId: string; failureCode: string; now: Date }>,
   ) => Promise<InvestmentOrder | null>
 }
 
@@ -75,6 +49,7 @@ export const createOrderRepository = (): OrderWriteRepository => ({
       select
         f.state as "fundState",
         coalesce(fv.currency, 'INR') as "currency",
+        f.current_published_version_id as "fundVersionId",
         fv.minimum_purchase_paise::text as "minimumPurchasePaise",
         fv.minimum_sip_paise::text as "minimumSipPaise"
       from funds f
@@ -109,35 +84,14 @@ export const createOrderRepository = (): OrderWriteRepository => ({
       .values({
         user_id: input.userId,
         fund_id: input.fundId,
-        type: "purchase",
+        fund_version_id: input.fundVersionId,
+        type: "lump_sum",
         amount_paise: input.amountPaise,
         currency: input.currency,
         requested_at: input.now,
       })
       .returningAll()
       .executeTakeFirstOrThrow(),
-
-  createSipInstallment: async (tx, input) =>
-    tx
-      .insertInto("investment_orders")
-      .values({
-        user_id: input.userId,
-        fund_id: input.fundId,
-        sip_plan_id: input.sipPlanId,
-        type: "sip_installment",
-        amount_paise: input.amountPaise,
-        currency: input.currency,
-        requested_at: input.now,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow(),
-
-  countBySipPlan: async (tx, sipPlanId) => {
-    const result = await sql<{ count: string }>`
-      select count(*)::text as count from investment_orders where sip_plan_id = ${sipPlanId}
-    `.execute(tx)
-    return Number(result.rows[0]?.count ?? "0")
-  },
 
   lockById: async (tx, input) => {
     const row = await tx
@@ -146,74 +100,6 @@ export const createOrderRepository = (): OrderWriteRepository => ({
       .where("id", "=", input.orderId)
       .where("user_id", "=", input.userId)
       .forUpdate()
-      .executeTakeFirst()
-    return row ?? null
-  },
-
-  beginPayment: async (tx, input) => {
-    const row = await tx
-      .updateTable("investment_orders")
-      .set({
-        state: "payment_pending",
-        version: sql<string>`version + 1`,
-        updated_at: sql<Date>`now()`,
-      })
-      .where("id", "=", input.orderId)
-      .where("user_id", "=", input.userId)
-      .where("state", "=", "submitted")
-      .where("type", "in", ["purchase", "sip_installment"])
-      .returningAll()
-      .executeTakeFirst()
-    return row ?? null
-  },
-
-  confirmPayment: async (tx, input) => {
-    const row = await tx
-      .updateTable("investment_orders")
-      .set({
-        state: "payment_confirmed",
-        payment_confirmed_at: input.now,
-        version: sql<string>`version + 1`,
-        updated_at: sql<Date>`now()`,
-      })
-      .where("id", "=", input.orderId)
-      .where("user_id", "=", input.userId)
-      .where("state", "=", "payment_pending")
-      .returningAll()
-      .executeTakeFirst()
-    return row ?? null
-  },
-
-  book: async (tx, input) => {
-    const row = await tx
-      .updateTable("investment_orders")
-      .set({
-        state: "booked",
-        booked_at: input.now,
-        version: sql<string>`version + 1`,
-        updated_at: sql<Date>`now()`,
-      })
-      .where("id", "=", input.orderId)
-      .where("user_id", "=", input.userId)
-      .where("state", "=", "payment_confirmed")
-      .returningAll()
-      .executeTakeFirst()
-    return row ?? null
-  },
-
-  failPayment: async (tx, input) => {
-    const row = await tx
-      .updateTable("investment_orders")
-      .set({
-        state: "payment_failed",
-        failure_code: input.failureCode,
-        version: sql<string>`version + 1`,
-        updated_at: sql<Date>`now()`,
-      })
-      .where("id", "=", input.orderId)
-      .where("user_id", "=", input.userId)
-      .where("state", "=", "payment_pending")
-      .returningAll()
       .executeTakeFirst()
     return row ?? null
   },

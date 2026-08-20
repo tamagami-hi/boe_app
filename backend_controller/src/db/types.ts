@@ -1,6 +1,6 @@
 /**
- * Canonical first-slice Kysely database schema. Table interfaces mirror the
- * additive migrations `009`-`013` exactly (column names, nullability, defaults).
+ * Canonical Kysely database schema. Table interfaces mirror the migrations
+ * exactly (column names, nullability, defaults).
  *
  * Column-type conventions:
  * - `Generated<T>` marks a column that has a database default and is therefore
@@ -45,8 +45,6 @@ type NullableBigIntString = ColumnType<
 // numeric/decimal (node-postgres returns text); persisted at scale 8 for
 // NAV/units/allocation, so selects are strings and writes accept string | number.
 type Numeric = ColumnType<string, string | number, string | number>
-type NumericDefault = ColumnType<string, string | number | undefined, string | number>
-type NullableNumeric = ColumnType<string | null, string | number | null | undefined, string | number | null>
 
 // date (node-postgres returns a Date for the `date` type; time component is
 // midnight). Writes accept a Date or an ISO/`YYYY-MM-DD` string.
@@ -114,34 +112,17 @@ export type FundState = "draft" | "review_pending" | "published" | "paused" | "a
 export type FundRiskLevel = "low" | "moderate" | "high" | "very_high"
 /** Expected-return band shown beside `risk_level` on client fund cards (020). */
 export type FundReturnTier = "low" | "moderate" | "high"
-export type MandateState =
-  | "created"
-  | "pending_user_authorization"
-  | "active"
-  | "paused"
-  | "revoked"
-  | "failed"
-  | "expired"
 export type SipState = "draft" | "pending_mandate" | "active" | "paused" | "cancelled" | "completed"
-export type OrderType = "purchase" | "sip_installment" | "redemption" | "refund" | "adjustment"
+export type OrderType = "lump_sum" | "sip_installment"
 export type OrderState =
   | "submitted"
   | "payment_pending"
-  | "payment_confirmed"
-  | "booked"
-  | "payment_failed"
-  | "cancelled"
-  | "rejected"
+  | "review_pending"
+  | "accepted"
+  | "refund_pending"
   | "refunded"
-  | "reversed"
-export type ExecutionType = "allotment" | "redemption" | "refund" | "reversal" | "adjustment"
-export type RedemptionState =
-  | "submitted"
-  | "units_reserved"
-  | "approved"
-  | "settlement_pending"
-  | "settled"
-  | "rejected"
+  | "refund_failed"
+  | "payment_failed"
   | "cancelled"
 export type PaymentState =
   | "created"
@@ -149,16 +130,18 @@ export type PaymentState =
   | "succeeded"
   | "failed"
   | "expired"
+  | "refund_pending"
   | "refunded"
+  | "refund_failed"
 export type ProviderEventState = "received" | "processing" | "processed" | "dead_lettered"
-// Option B money model (migration 021): no units, no NAV.
-export type LedgerEntryType =
-  | "sip_installment"
-  | "lump_sum"
-  | "redemption"
-  | "gain_allocation"
-  | "adjustment"
-export type RedemptionMode = "full" | "returns_only" | "half" | "custom"
+export type RefundState = "pending" | "provider_pending" | "refunded" | "failed"
+export type ReviewState = "pending" | "accepted" | "rejected"
+/** Append-only client value ledger entry kinds (spec §5.7). */
+export type ClientValueEntryType = "contribution" | "growth_adjustment" | "reversal"
+export type LedgerActorType = "admin" | "system"
+/** Shared growth batch header fields (spec §5.9). */
+export type GrowthScope = "individual" | "collective"
+export type GrowthInstructionType = "amount" | "percentage" | "explicit_deltas"
 
 export interface ApplicationsTable {
   id: Generated<string>
@@ -633,8 +616,6 @@ export interface FundVersionsTable {
   minimum_duration_months: Nullable<number>
   recommended_holding_months: Nullable<number>
   disclosure_version_id: string
-  /** Nullable since migration 021: Option B publishes versions without a price. */
-  initial_nav_price_id: Nullable<string>
   terms_sha256: Bytea
   created_by_user_id: string
   created_at: TimestampDefault
@@ -648,18 +629,6 @@ export interface FundDisclosureVersionsTable {
   body: string
   content_sha256: Bytea
   effective_from: Timestamp
-  published_by_user_id: string
-  created_at: TimestampDefault
-  updated_at: TimestampDefault
-}
-
-export interface FundNavPricesTable {
-  id: Generated<string>
-  fund_id: string
-  nav: Numeric
-  as_of_date: DateColumn
-  revision: Generated<number>
-  source: Nullable<string>
   published_by_user_id: string
   created_at: TimestampDefault
   updated_at: TimestampDefault
@@ -680,14 +649,49 @@ export interface FundPositionsTable {
   updated_at: TimestampDefault
 }
 
+/** Absolute admin-published AUM snapshot (spec §5.8); append-only revisions. */
 export interface FundAumSnapshotsTable {
   id: Generated<string>
   fund_id: string
   as_of_date: DateColumn
-  aum_paise: BigIntString
   revision: Generated<number>
-  source: Nullable<string>
+  aum_paise: BigIntString
+  aum_growth_batch_id: Nullable<string>
+  reason_code: string
+  note: Nullable<string>
   published_by_user_id: string
+  request_id: string
+  created_at: TimestampDefault
+}
+
+/** AUM growth batch header (spec §5.9); referenced only by fund_aum_snapshots. */
+export interface AumGrowthBatchesTable {
+  id: Generated<string>
+  scope: GrowthScope
+  instruction_type: GrowthInstructionType
+  effective_date: DateColumn
+  reason_code: string
+  note: Nullable<string>
+  basis_hash: string
+  actor_user_id: string
+  request_id: string
+  idempotency_record_id: Nullable<string>
+  target_count: number
+  total_delta_paise: BigIntString
+  created_at: TimestampDefault
+}
+
+/** Administrator-curated stock list shown to investors, tagged by quarter. */
+export interface FundStockDisclosuresTable {
+  id: Generated<string>
+  fund_id: string
+  stock_name: string
+  quarter_label: string
+  weight_percent: Nullable<Numeric>
+  state: Generated<string>
+  sort_order: Generated<number>
+  added_by_user_id: string
+  exited_at: NullableTimestamp
   created_at: TimestampDefault
   updated_at: TimestampDefault
 }
@@ -749,22 +753,6 @@ export interface ContentItemsTable {
   updated_at: TimestampDefault
 }
 
-export interface MandatesTable {
-  id: Generated<string>
-  user_id: string
-  provider: string
-  provider_mandate_id: Nullable<string>
-  max_amount_paise: BigIntString
-  frequency: string
-  debit_day: Nullable<number>
-  state: Generated<MandateState>
-  valid_from: NullableTimestamp
-  valid_to: NullableTimestamp
-  created_at: TimestampDefault
-  updated_at: TimestampDefault
-  version: BigIntStringDefault
-}
-
 export interface SipPlansTable {
   id: Generated<string>
   user_id: string
@@ -773,7 +761,6 @@ export interface SipPlansTable {
   debit_day: number
   duration_months: Nullable<number>
   state: Generated<SipState>
-  mandate_id: Nullable<string>
   start_date: NullableDateColumn
   next_due_date: NullableDateColumn
   paused_at: NullableTimestamp
@@ -784,19 +771,20 @@ export interface SipPlansTable {
   version: BigIntStringDefault
 }
 
+/** Client investment intent (spec §5.1); stores the issued version selected. */
 export interface InvestmentOrdersTable {
   id: Generated<string>
   user_id: string
   fund_id: string
+  fund_version_id: string
   sip_plan_id: Nullable<string>
   type: OrderType
   state: Generated<OrderState>
-  amount_paise: NullableBigIntString
-  requested_units: NullableNumeric
+  amount_paise: BigIntString
   currency: Generated<string>
-  requested_at: NullableTimestamp
+  requested_at: TimestampDefault
   payment_confirmed_at: NullableTimestamp
-  booked_at: NullableTimestamp
+  accepted_at: NullableTimestamp
   cancelled_at: NullableTimestamp
   failure_code: Nullable<string>
   created_at: TimestampDefault
@@ -804,83 +792,49 @@ export interface InvestmentOrdersTable {
   version: BigIntStringDefault
 }
 
-export interface InvestmentExecutionsTable {
+/** Admin-only one-to-one review of a succeeded payment (spec §5.5). */
+export interface InvestmentReviewsTable {
   id: Generated<string>
   order_id: string
-  user_id: string
-  fund_id: string
-  type: ExecutionType
-  amount_paise: BigIntString
-  nav: NullableNumeric
-  units: NullableNumeric
-  executed_at: TimestampDefault
-  reverses_execution_id: Nullable<string>
-  provider_reference: Nullable<string>
-  created_at: TimestampDefault
-}
-
-export interface HoldingsTable {
-  id: Generated<string>
-  user_id: string
-  fund_id: string
-  total_units: NumericDefault
-  reserved_units: NumericDefault
-  cost_basis_paise: BigIntStringDefault
-  created_at: TimestampDefault
-  updated_at: TimestampDefault
-  version: BigIntStringDefault
-}
-
-export interface HoldingLotsTable {
-  id: Generated<string>
-  holding_id: string
-  user_id: string
-  fund_id: string
-  source_execution_id: string
-  acquired_on: DateColumn
-  cost_basis_paise: BigIntString
-  original_units: Numeric
-  remaining_units: Numeric
-  reserved_units: NumericDefault
-  created_at: TimestampDefault
-  updated_at: TimestampDefault
-  version: BigIntStringDefault
-}
-
-export interface HoldingLotMovementsTable {
-  id: Generated<string>
-  holding_lot_id: string
-  holding_id: string
-  user_id: string
-  fund_id: string
-  execution_id: string
-  movement_type: string
-  units_delta: Numeric
-  cost_basis_delta_paise: BigIntString
-  occurred_at: TimestampDefault
-  created_at: TimestampDefault
-}
-
-export interface RedemptionRequestsTable {
-  id: Generated<string>
-  order_id: string
-  user_id: string
-  fund_id: string
-  state: Generated<RedemptionState>
-  requested_units: Numeric
-  reserved_units: NumericDefault
-  estimated_value_paise: BigIntString
-  finance_policy_version: number
-  requires_dual_approval: boolean
-  submitted_at: NullableTimestamp
-  reserved_at: NullableTimestamp
-  approved_at: NullableTimestamp
-  settled_at: NullableTimestamp
-  cancelled_at: NullableTimestamp
+  state: Generated<ReviewState>
+  bank_verified: Generated<boolean>
+  reviewed_by_user_id: Nullable<string>
   reason_code: Nullable<string>
+  private_note: Nullable<string>
+  reviewed_at: NullableTimestamp
   created_at: TimestampDefault
   updated_at: TimestampDefault
   version: BigIntStringDefault
+}
+
+/** Admin-only private allocation of an accepted payment (spec §5.6). */
+export interface InvestmentAllocationsTable {
+  id: Generated<string>
+  order_id: string
+  user_id: string
+  fund_id: string
+  amount_paise: BigIntString
+  allocated_by_user_id: string
+  allocated_at: TimestampDefault
+  request_id: string
+  created_at: TimestampDefault
+}
+
+/** Client growth batch header (spec §5.9); referenced only by client_value_entries. */
+export interface ClientGrowthBatchesTable {
+  id: Generated<string>
+  scope: GrowthScope
+  instruction_type: GrowthInstructionType
+  effective_date: DateColumn
+  reason_code: string
+  note: Nullable<string>
+  basis_hash: string
+  actor_user_id: string
+  request_id: string
+  idempotency_record_id: Nullable<string>
+  target_count: number
+  total_delta_paise: BigIntString
+  created_at: TimestampDefault
 }
 
 export interface PaymentsTable {
@@ -904,20 +858,55 @@ export interface PaymentAttemptsTable {
   user_id: string
   attempt_number: number
   provider: string
-  provider_payment_id: Nullable<string>
+  merchant_order_id: string
+  provider_order_id: Nullable<string>
   state: Generated<PaymentState>
   failure_code: Nullable<string>
-  expires_at: NullableTimestamp
+  checkout_expires_at: NullableTimestamp
+  last_status_checked_at: NullableTimestamp
+  provider_state: Nullable<string>
   created_at: TimestampDefault
   updated_at: TimestampDefault
   version: BigIntStringDefault
 }
 
+/** Normalized PhonePe `paymentDetails[]` rows, keyed by attempt + transaction (spec §5.2). */
+export interface ProviderPaymentDetailsTable {
+  id: Generated<string>
+  payment_attempt_id: string
+  user_id: string
+  provider_transaction_id: string
+  provider_reference: Nullable<string>
+  instrument_type: Nullable<string>
+  state: Nullable<string>
+  amount_paise: NullableBigIntString
+  created_at: TimestampDefault
+}
+
+/** First-class refund record for a rejected succeeded payment (spec §5.3). */
+export interface RefundOperationsTable {
+  id: Generated<string>
+  payment_id: string
+  order_id: string
+  merchant_refund_id: string
+  provider_refund_id: Nullable<string>
+  amount_paise: BigIntString
+  state: Generated<RefundState>
+  failure_code: Nullable<string>
+  attempt_count: Generated<number>
+  last_status_checked_at: NullableTimestamp
+  created_by_user_id: string
+  request_id: string
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+}
+
+/** Durable PhonePe callback inbox with semantic dedup + encrypted payload (spec §5.4). */
 export interface ProviderEventsTable {
   id: Generated<string>
   provider: string
-  provider_event_id: string
   event_type: string
+  dedup_key: string
   state: Generated<ProviderEventState>
   signature_valid: boolean
   payload_ciphertext: NullableBytea
@@ -925,8 +914,8 @@ export interface ProviderEventsTable {
   payload_key_version: Nullable<string>
   payload_sha256: Bytea
   erased_at: NullableTimestamp
+  merchant_order_id: Nullable<string>
   payment_id: Nullable<string>
-  mandate_id: Nullable<string>
   user_id: Nullable<string>
   attempt_count: Generated<number>
   available_at: TimestampDefault
@@ -937,6 +926,28 @@ export interface ProviderEventsTable {
   created_at: TimestampDefault
   updated_at: TimestampDefault
   version: BigIntStringDefault
+}
+
+/** Append-only client value ledger (spec §5.7); corrections are reversals. */
+export interface ClientValueEntriesTable {
+  id: Generated<string>
+  user_id: string
+  fund_id: string
+  allocation_id: Nullable<string>
+  entry_type: ClientValueEntryType
+  principal_delta_paise: BigIntString
+  value_delta_paise: BigIntString
+  effective_date: DateColumn
+  order_id: Nullable<string>
+  payment_id: Nullable<string>
+  growth_batch_id: Nullable<string>
+  reason_code: string
+  note: Nullable<string>
+  reverses_entry_id: Nullable<string>
+  actor_type: LedgerActorType
+  created_by_user_id: Nullable<string>
+  request_id: string
+  created_at: TimestampDefault
 }
 
 export interface NotificationsTable {
@@ -973,66 +984,8 @@ export interface SupportRequestsTable {
 /**
  * The full canonical schema map consumed by the typed Kysely instance,
  * repositories, and command services. First-slice tables (009-013) plus the
- * later-domain tables (014-018).
+ * later-domain tables (014-020+; target persistence model, spec §5).
  */
-/**
- * Option B per-investor transaction ledger (migration 021). Append-only: every
- * contribution, redemption, and admin-allocated gain is one dated row, and all
- * dashboard figures are derived from these rows rather than a stored balance.
- * `principal_delta_paise` moves Total Investment; `value_delta_paise` moves
- * Current Portfolio Value.
- */
-export interface InvestorLedgerEntriesTable {
-  id: Generated<string>
-  user_id: string
-  fund_id: string
-  entry_type: LedgerEntryType
-  principal_delta_paise: BigIntString
-  value_delta_paise: BigIntString
-  amount_paise: BigIntString
-  effective_date: DateColumn
-  order_id: Nullable<string>
-  payment_id: Nullable<string>
-  redemption_request_id: Nullable<string>
-  allocated_by_user_id: Nullable<string>
-  reason_code: Nullable<string>
-  note: Nullable<string>
-  request_id: string
-  metadata: JsonDefault
-  created_at: TimestampDefault
-}
-
-/** Monthly AUM ledger: opening + new investments - redemptions +/- gain = closing. */
-export interface FundAumUpdatesTable {
-  id: Generated<string>
-  fund_id: string
-  period_start: DateColumn
-  opening_aum_paise: BigIntString
-  new_investments_paise: BigIntStringDefault
-  redemptions_paise: BigIntStringDefault
-  portfolio_gain_paise: BigIntStringDefault
-  closing_aum_paise: BigIntString
-  note: Nullable<string>
-  published_by_user_id: string
-  request_id: string
-  created_at: TimestampDefault
-}
-
-/** Administrator-curated stock list shown to investors, tagged by quarter. */
-export interface FundStockDisclosuresTable {
-  id: Generated<string>
-  fund_id: string
-  stock_name: string
-  quarter_label: string
-  weight_percent: Nullable<Numeric>
-  state: Generated<string>
-  sort_order: Generated<number>
-  added_by_user_id: string
-  exited_at: NullableTimestamp
-  created_at: TimestampDefault
-  updated_at: TimestampDefault
-}
-
 export interface Database {
   applications: ApplicationsTable
   consent_documents: ConsentDocumentsTable
@@ -1066,31 +1019,28 @@ export interface Database {
   funds: FundsTable
   fund_versions: FundVersionsTable
   fund_disclosure_versions: FundDisclosureVersionsTable
-  fund_nav_prices: FundNavPricesTable
   fund_positions: FundPositionsTable
   fund_aum_snapshots: FundAumSnapshotsTable
+  aum_growth_batches: AumGrowthBatchesTable
+  fund_stock_disclosures: FundStockDisclosuresTable
   finance_policy_versions: FinancePolicyVersionsTable
   marketing_leads: MarketingLeadsTable
   app_config_versions: AppConfigVersionsTable
   content_items: ContentItemsTable
-  mandates: MandatesTable
   sip_plans: SipPlansTable
   investment_orders: InvestmentOrdersTable
-  investment_executions: InvestmentExecutionsTable
-  holdings: HoldingsTable
-  holding_lots: HoldingLotsTable
-  holding_lot_movements: HoldingLotMovementsTable
-  redemption_requests: RedemptionRequestsTable
+  investment_reviews: InvestmentReviewsTable
+  investment_allocations: InvestmentAllocationsTable
+  client_growth_batches: ClientGrowthBatchesTable
   payments: PaymentsTable
   payment_attempts: PaymentAttemptsTable
+  provider_payment_details: ProviderPaymentDetailsTable
+  refund_operations: RefundOperationsTable
   provider_events: ProviderEventsTable
+  client_value_entries: ClientValueEntriesTable
   notifications: NotificationsTable
   // Compliance email-OTP KYC (migration 019)
   kyc_verification_codes: KycVerificationCodesTable
-  // Option B investment model (migration 021)
-  investor_ledger_entries: InvestorLedgerEntriesTable
-  fund_aum_updates: FundAumUpdatesTable
   // Investor support requests (migration 022)
   support_requests: SupportRequestsTable
-  fund_stock_disclosures: FundStockDisclosuresTable
 }

@@ -237,10 +237,9 @@ export const runSeedAuth = async (
       [adminId, role.id, adminId],
     )
 
-    // A finance policy version must exist before any redemption can reference it
-    // (`redemption_requests.finance_policy_version` is a foreign key). Version 1
-    // carries the schema's default dual-approval threshold; changing thresholds is
-    // an administrative act that publishes a new version.
+    // Seed the initial finance policy version. Version 1 carries the schema's
+    // default dual-approval threshold; changing thresholds is an administrative
+    // act that publishes a new version.
     const policy = firstRow<{ version: number }>(
       await client.query("SELECT version FROM finance_policy_versions WHERE retired_at IS NULL"),
     )

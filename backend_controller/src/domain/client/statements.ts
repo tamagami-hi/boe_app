@@ -1,6 +1,5 @@
 /**
- * Monthly investor statements, derived from the ledger (Option B model document
- * sections A, B, E).
+ * Monthly investor statements, derived from the client value ledger.
  *
  * There is no statements table and no generation job: a statement is a view over
  * the same entries the dashboard reads, cut by calendar month. That keeps a
@@ -11,10 +10,10 @@
  * Each period reports what moved and where it left the investor:
  *
  *   opening value  closing value of the previous period (0 for the first)
- *   contributions  SIP installments + lump sums (principal in)
- *   returns        gains allocated by the admin, net of any loss
- *   withdrawals    payouts settled in the period (value out)
- *   closing value  opening + contributions + returns − withdrawals
+ *   contributions  accepted contribution value in
+ *   growth         admin-posted growth adjustments, net of any loss
+ *   reversals      corrections reversing earlier entries (signed)
+ *   closing value  opening + contributions + growth + reversals
  *
  * The identity above is the statement's own arithmetic check: it holds because
  * every entry moves value by exactly `value_delta`.
@@ -29,8 +28,9 @@ export interface StatementPeriod {
   readonly periodEnd: string
   readonly openingValuePaise: bigint
   readonly contributionsPaise: bigint
-  readonly returnsPaise: bigint
-  readonly withdrawalsPaise: bigint
+  readonly growthPaise: bigint
+  /** Signed: negative when a reversal removes value. */
+  readonly reversalsPaise: bigint
   readonly closingValuePaise: bigint
   /** Total principal the investor has put in, as at the end of the period. */
   readonly totalInvestmentPaise: bigint
@@ -68,41 +68,35 @@ export const deriveStatements = (entries: readonly LedgerEntry[]): readonly Stat
   for (const period of [...byPeriod.keys()].sort()) {
     const bucket = byPeriod.get(period) ?? []
     let contributions = 0n
-    let returns = 0n
-    let withdrawals = 0n
+    let growth = 0n
+    let reversals = 0n
 
     for (const entry of bucket) {
       switch (entry.entryType) {
-        case "sip_installment":
-        case "lump_sum":
+        case "contribution":
           contributions += entry.valueDeltaPaise
           break
-        case "gain_allocation":
-          // A loss allocation is a negative gain; it nets down the period's return
-          // rather than being reported as a withdrawal.
-          returns += entry.valueDeltaPaise
+        case "growth_adjustment":
+          // A loss adjustment is negative; it nets down the period's growth.
+          growth += entry.valueDeltaPaise
           break
-        case "redemption":
-          // Payouts are stored as negative value movements; report them positive.
-          withdrawals -= entry.valueDeltaPaise
-          break
-        case "adjustment":
-          // A correction is reported with the returns it restates.
-          returns += entry.valueDeltaPaise
+        case "reversal":
+          // A correction is its own signed bucket so reversals stay visible.
+          reversals += entry.valueDeltaPaise
           break
       }
       totalInvestment += entry.principalDeltaPaise
     }
 
-    const closingValue = openingValue + contributions + returns - withdrawals
+    const closingValue = openingValue + contributions + growth + reversals
     periods.push({
       period,
       periodStart: `${period}-01`,
       periodEnd: lastDayOf(period),
       openingValuePaise: openingValue,
       contributionsPaise: contributions,
-      returnsPaise: returns,
-      withdrawalsPaise: withdrawals,
+      growthPaise: growth,
+      reversalsPaise: reversals,
       closingValuePaise: closingValue,
       totalInvestmentPaise: totalInvestment,
       entryCount: bucket.length,

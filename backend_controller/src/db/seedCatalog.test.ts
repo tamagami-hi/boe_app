@@ -13,7 +13,7 @@ import {
 import { SEED_CONTENT_DOCUMENTS } from "./seedContent.js"
 
 const ROLE_CODE = /^[a-z][a-z0-9_]*$/u
-const PERMISSION_CODE = /^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/u
+const PERMISSION_CODE = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*){1,2}$/u
 
 describe("bootstrap catalog", () => {
   test("seeds the five canonical roles with snake_case codes", () => {
@@ -30,7 +30,7 @@ describe("bootstrap catalog", () => {
     }
   })
 
-  test("permission codes are unique single-dot domain.action labels", () => {
+  test("permission codes are unique dot-separated domain.action labels", () => {
     const codes = SEED_PERMISSIONS.map((permission) => permission.code)
     expect(new Set(codes).size).toBe(codes.length)
     for (const permission of SEED_PERMISSIONS) {

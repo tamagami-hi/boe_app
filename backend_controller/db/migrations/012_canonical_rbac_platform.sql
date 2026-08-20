@@ -28,7 +28,7 @@ CREATE TABLE permissions (
   description text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT permissions_code_uk UNIQUE (code),
-  CONSTRAINT permissions_code_check CHECK (code ~ '^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$'),
+  CONSTRAINT permissions_code_check CHECK (code ~ '^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*){1,2}$'),
   CONSTRAINT permissions_description_check CHECK (btrim(description) <> '')
 );
 

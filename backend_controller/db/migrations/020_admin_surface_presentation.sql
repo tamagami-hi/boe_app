@@ -46,5 +46,5 @@ CREATE INDEX IF NOT EXISTS funds_admin_queue_idx ON funds (created_at DESC, id D
 CREATE INDEX IF NOT EXISTS audit_events_admin_queue_idx ON audit_events (occurred_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS users_admin_queue_idx ON users (created_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS kyc_cases_admin_queue_idx ON kyc_cases (state, created_at DESC, id DESC);
-CREATE INDEX IF NOT EXISTS redemption_requests_admin_queue_idx
-  ON redemption_requests (state, created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS investment_orders_admin_queue_idx
+  ON investment_orders (state, created_at DESC, id DESC);

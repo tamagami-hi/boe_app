@@ -58,24 +58,25 @@ export type RiskAssessment = Row<"risk_assessments">
 export type Fund = Row<"funds">
 export type FundVersion = Row<"fund_versions">
 export type FundDisclosureVersion = Row<"fund_disclosure_versions">
-export type FundNavPrice = Row<"fund_nav_prices">
 export type FundPosition = Row<"fund_positions">
 export type FundAumSnapshot = Row<"fund_aum_snapshots">
+export type AumGrowthBatch = Row<"aum_growth_batches">
+export type FundStockDisclosure = Row<"fund_stock_disclosures">
 export type FinancePolicyVersion = Row<"finance_policy_versions">
 export type MarketingLead = Row<"marketing_leads">
 export type AppConfigVersion = Row<"app_config_versions">
 export type ContentItem = Row<"content_items">
-export type Mandate = Row<"mandates">
 export type SipPlan = Row<"sip_plans">
 export type InvestmentOrder = Row<"investment_orders">
-export type InvestmentExecution = Row<"investment_executions">
-export type Holding = Row<"holdings">
-export type HoldingLot = Row<"holding_lots">
-export type HoldingLotMovement = Row<"holding_lot_movements">
-export type RedemptionRequest = Row<"redemption_requests">
+export type InvestmentReview = Row<"investment_reviews">
+export type InvestmentAllocation = Row<"investment_allocations">
+export type ClientGrowthBatch = Row<"client_growth_batches">
 export type Payment = Row<"payments">
 export type PaymentAttempt = Row<"payment_attempts">
+export type ProviderPaymentDetail = Row<"provider_payment_details">
+export type RefundOperation = Row<"refund_operations">
 export type ProviderEvent = Row<"provider_events">
+export type ClientValueEntry = Row<"client_value_entries">
 export type Notification = Row<"notifications">
 
 export type CursorInput = ReadonlyDeep<{
@@ -153,7 +154,6 @@ export type RetentionEntityType =
   | "marketing_lead"
   | "investment_order"
   | "payment"
-  | "mandate"
 export type CleanupRecordType =
   | RetentionEntityType
   | "auth_session"
