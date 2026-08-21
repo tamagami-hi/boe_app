@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useAdminSession } from '@beonedge/client/store/AdminSessionContext.jsx';
 import { useBreakpoint } from '@beonedge/shared';
+import Skeleton from '@beonedge/shared/components/Skeleton.jsx';
 import Sidebar from './Sidebar.jsx';
 import TopBar from './TopBar.jsx';
 import AdminMobileNav from './AdminMobileNav.jsx';
@@ -15,6 +16,17 @@ import { findNavMeta } from '../navigation/nav.js';
 import I from '../components/I.jsx';
 
 const MOBILE_BREAKPOINT = 768;
+
+function RouteFallback() {
+  return (
+    <div className="be-page is-padded" role="status" aria-label="Loading">
+      <div className="adm-card be-pad-5 be-stack-2">
+        <Skeleton width="30%" height="1.25rem" />
+        <Skeleton width="100%" height="3rem" count={3} />
+      </div>
+    </div>
+  );
+}
 
 function ShellFrame() {
   const location = useLocation();

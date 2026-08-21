@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiRequest } from '@beonedge/client/services/_util.js';
+import { parseAumSnapshot } from '../data/fundContracts.js';
 
 const PAGE_LIMIT = 100;
 
 function readPage(payload) {
   const data = payload?.data ?? payload ?? {};
   const page = payload?.meta?.page ?? {};
-  const items = Array.isArray(data) ? data : data.items ?? [];
+  const raw = Array.isArray(data) ? data : data.items ?? [];
+  const items = Array.isArray(raw) ? raw : [];
+  for (const snapshot of items) parseAumSnapshot(snapshot);
   return {
-    items: Array.isArray(items) ? items : [],
+    items,
     nextCursor: page.nextCursor ?? null,
     hasMore: page.hasMore === true,
   };

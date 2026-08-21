@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
-import useAdminCollection from '../../hooks/useAdminCollection.js';
+import { useAdminFaqs } from '../../data/adminResources.js';
 import { StatusBadge, StatusFilterChips } from './fields.jsx';
 import FaqEditorDrawer from './FaqEditorDrawer.jsx';
 import I from '../../components/I.jsx';
@@ -14,7 +14,9 @@ const STATUS_FILTERS = [
 const NEW_FAQ = {};
 
 export default function FaqsPage() {
-  const { items, loading, error, reload } = useAdminCollection('/v1/admin/faqs');
+  const faqs = useAdminFaqs();
+  const { rows: items, isLoading: loading, refresh: reload } = faqs;
+  const error = faqs.error ? faqs.error.message || 'Could not load data.' : '';
   const [statusFilter, setStatusFilter] = useState('all');
   const [editing, setEditing] = useState(null);
 
@@ -74,9 +76,7 @@ export default function FaqsPage() {
                   <td data-label="Category">{faq.category}</td>
                   <td data-label="Order" className="ash-cell-num">{faq.order ?? 0}</td>
                   <td data-label="Status"><StatusBadge status={faq.status} /></td>
-                  {/* The row itself used to be the control: `<tr role="button"
-                      tabIndex={0} onKeyDown>`, which puts a whole table row in the
-                      tab order and reimplements Enter/Space by hand. */}
+                  {}
                   <td data-label="" className="adm-col-actions">
                     <button
                       type="button"

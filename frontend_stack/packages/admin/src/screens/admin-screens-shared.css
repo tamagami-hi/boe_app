@@ -262,16 +262,6 @@
   margin-top: var(--be-space-1);
 }
 
-.adm-stub-card {
-  padding: var(--be-space-10);
-  text-align: center;
-}
-
-.adm-stub-desc {
-  color: var(--be-slate);
-  margin-top: var(--be-space-2);
-}
-
 .adm-health-check-icon--ok { color: var(--be-green); }
 .adm-health-check-icon--warn { color: var(--be-amber); }
 
@@ -284,9 +274,6 @@
     width: 100%;
   }
 
-  .adm-stub-card {
-    padding: var(--be-space-6);
-  }
 }
 
 .be-table-wrap {
@@ -539,7 +526,6 @@
   font-size: var(--be-text-xs);
   line-height: 1.4;
 }
-
 
 .adm-read-failure {
   display: flex;

@@ -286,6 +286,11 @@ const growAum = async (deps: AdminAumDeps, request: FastifyRequest, reply: Fasti
       await lockWritableFund(deps, tx, fundId)
       const latest = await deps.aumRepository.findLatestSnapshot(tx, fundId)
       if (latest === null) throw new AppError("STATE_CONFLICT")
+      if (body.asOfDate < latest.asOfDate) {
+        throw new AppError("STATE_CONFLICT", {
+          fields: { asOfDate: ["cannot be earlier than the basis snapshot it grows from"] },
+        })
+      }
 
       const instruction: AumGrowthInstruction =
         body.growthPaise !== undefined
@@ -479,6 +484,11 @@ const commitCollectiveGrowth = async (deps: AdminAumDeps, request: FastifyReques
       const latestRows = await deps.aumRepository.findLatestSnapshots(tx, targets.fundIds)
       if (latestRows.length !== targets.fundIds.length) {
         throw new AppError("STATE_CONFLICT")
+      }
+      if (latestRows.some((row) => body.asOfDate < row.asOfDate)) {
+        throw new AppError("STATE_CONFLICT", {
+          fields: { asOfDate: ["cannot be earlier than a basis snapshot it grows from"] },
+        })
       }
       const bases = latestRows.map(basisOf)
 

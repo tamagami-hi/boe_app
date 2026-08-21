@@ -74,7 +74,7 @@ export type KycCaseState =
   | "needs_information"
 export type RiskAssessmentState = "not_started" | "submitted" | "assessed"
 export type RiskCategory = "conservative" | "balanced" | "growth" | "aggressive"
-export type FundState = "draft" | "review_pending" | "published" | "paused" | "archived"
+export type FundState = "draft" | "published" | "paused" | "archived"
 export type FundRiskLevel = "low" | "moderate" | "high" | "very_high"
 export type FundReturnTier = "low" | "moderate" | "high"
 export type SipState = "draft" | "pending_mandate" | "active" | "paused" | "cancelled" | "completed"
@@ -600,7 +600,6 @@ export interface FundStockDisclosuresTable {
 export interface FinancePolicyVersionsTable {
   id: Generated<string>
   version: number
-  redemption_dual_approval_threshold_paise: BigIntStringDefault
   effective_from: Timestamp
   retired_at: NullableTimestamp
   published_by_user_id: string

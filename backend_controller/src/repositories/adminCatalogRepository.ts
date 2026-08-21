@@ -1,5 +1,11 @@
 import { sql } from "kysely"
 
+import {
+  ACTIVE_STOCK_COUNT_LATERAL,
+  FUND_AUM_PROJECTION,
+  FUND_TERMS_PROJECTION,
+  LATEST_SNAPSHOT_LATERAL,
+} from "./fundAumOrdering.js"
 import type { Fund, FundVersion, Transaction } from "../db/repositories.js"
 import type { FundReturnTier, FundRiskLevel, FundState } from "../db/types.js"
 
@@ -170,34 +176,16 @@ const FUND_SELECT = sql`
     f.slug as "slug",
     f.state as "state",
     f.current_published_version_id as "currentVersionId",
-    fv.name as "name",
-    fv.category as "category",
-    fv.objective as "objective",
-    fv.risk_level as "riskLevel",
-    fv.return_tier as "returnTier",
-    fv.currency as "currency",
-    fv.minimum_sip_paise::text as "minimumSipPaise",
-    fv.minimum_purchase_paise::text as "minimumPurchasePaise",
-    fv.version as "currentVersion",
-    aum.aum_paise::text as "aumPaise",
-    aum.as_of_date::text as "aumAsOfDate",
-    aum.created_at as "aumUpdatedAt",
-    coalesce(stocks.count, 0)::int as "stockCount",
+    ${FUND_TERMS_PROJECTION},
+    ${FUND_AUM_PROJECTION},
     f.published_at as "publishedAt",
     f.created_at as "createdAt",
     f.updated_at as "updatedAt",
     f.version::text as "version"
   from funds f
   left join fund_versions fv on fv.id = f.current_published_version_id
-  left join lateral (
-    select aum_paise, as_of_date, created_at from fund_aum_snapshots
-    where fund_id = f.id
-    order by as_of_date desc, revision desc, created_at desc, id desc limit 1
-  ) aum on true
-  left join lateral (
-    select count(*) as count from fund_stock_disclosures
-    where fund_id = f.id and state = 'active'
-  ) stocks on true
+  ${LATEST_SNAPSHOT_LATERAL}
+  ${ACTIVE_STOCK_COUNT_LATERAL}
 `
 
 const STOCK_COLUMNS = sql`
@@ -240,7 +228,6 @@ export const createAdminCatalogRepository = (): AdminCatalogRepository => ({
     `.execute(tx)
     const byState: Record<FundState, number> = {
       draft: 0,
-      review_pending: 0,
       published: 0,
       paused: 0,
       archived: 0,

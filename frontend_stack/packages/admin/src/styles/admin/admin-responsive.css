@@ -71,8 +71,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--be-space-3);
   }
-  .adm-stats--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .adm-stats--3 .adm-stat { padding: var(--be-space-3); }
   .adm-aum-current { text-align: left; }
   .adm-card-head,
   .adm-table .adm-card-head {

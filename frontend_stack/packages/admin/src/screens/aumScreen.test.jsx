@@ -174,7 +174,7 @@ describe('FundAumPanel', () => {
 
 describe('CollectiveAumTab', () => {
   const PREVIEW = {
-    basisHash: 'bh_aum',
+    basisHash: 'a'.repeat(64),
     items: [
       { fundId: 'f1', beforeAumPaise: '250000000', deltaPaise: '5000000', afterAumPaise: '255000000' },
     ],
@@ -239,13 +239,13 @@ describe('CollectiveAumTab', () => {
     await Promise.resolve();
     const [path, options] = request.mock.calls[1];
     expect(path).toBe('/v1/admin/aum/growth/collective');
-    expect(options.body.basisHash).toBe('bh_aum');
+    expect(options.body.basisHash).toBe('a'.repeat(64));
     expect(options.headers['Idempotency-Key']).toBeTruthy();
     expect(invalidateAum).toHaveBeenCalled();
   });
 
   test('explicit mode sends a signed delta per fund, never one shared total', async () => {
-    request.mockResolvedValue({ basisHash: 'bh_x', items: [] });
+    request.mockResolvedValue({ basisHash: 'b'.repeat(64), items: [] });
     renderAt(<CollectiveAumTab />);
     fireEvent.click(screen.getByLabelText(/Edge Growth/u));
     fireEvent.change(screen.getByLabelText(/Mode/u), { target: { value: 'explicit' } });

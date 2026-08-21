@@ -4,7 +4,9 @@ import { AlertTriangle, ArrowLeft, RefreshCw } from 'lucide-react';
 import { apiRequest } from '@beonedge/client/services/_util.js';
 import Skeleton from '@beonedge/shared/components/Skeleton.jsx';
 import I from '../../components/I.jsx';
+import { Page } from '../../layout/primitives/index.js';
 import StateBadge from '../../components/StateBadge.jsx';
+import { parseFundDetail } from '../../data/fundContracts.js';
 import { useSetPageHeading } from '../../layout/PageHeading.jsx';
 import { fmtDateTime, fmtPaise, humanizeState } from '../../helpers/formatters.js';
 import FundStockListPanel from '../FundStockListPanel.jsx';
@@ -46,7 +48,7 @@ export default function FundWorkspace({ onPublishVersion, onLifecycle, canWrite 
     setError('');
     try {
       const payload = await apiRequest(`/v1/admin/funds/${encodeURIComponent(fundId)}`, { scope: 'admin' });
-      setDetail(payload?.data ?? payload ?? null);
+      setDetail(parseFundDetail(payload));
     } catch (readError) {
       setError(readError?.message || 'Could not read this fund.');
     } finally {
@@ -98,18 +100,18 @@ export default function FundWorkspace({ onPublishVersion, onLifecycle, canWrite 
 
   if (loading && !detail) {
     return (
-      <div className="adm-screen adm-screen--narrow">
+      <Page maxWidth="960px">
         <div className="adm-card be-pad-5 be-stack-2">
           <Skeleton width="40%" height="1.5rem" />
           <Skeleton width="100%" height="3rem" count={3} />
         </div>
-      </div>
+      </Page>
     );
   }
 
   if (error && !detail) {
     return (
-      <div className="adm-screen adm-screen--narrow">
+      <Page maxWidth="960px">
         <div className="adm-validation-banner adm-validation-banner--error adm-validation-banner--start" role="alert">
           <I icon={AlertTriangle} size={14} /> {error}
         </div>
@@ -121,12 +123,12 @@ export default function FundWorkspace({ onPublishVersion, onLifecycle, canWrite 
         <Link className="be-btn be-btn-secondary be-btn-sm adm-back-link" to="/admin/funds">
           <I icon={ArrowLeft} size={14} /> Back to funds
         </Link>
-      </div>
+      </Page>
     );
   }
 
   return (
-    <div className="adm-screen">
+    <Page>
       <Link className="be-btn be-btn-ghost be-btn-sm adm-back-link" to="/admin/funds">
         <I icon={ArrowLeft} size={14} /> Back to funds
       </Link>
@@ -307,6 +309,6 @@ export default function FundWorkspace({ onPublishVersion, onLifecycle, canWrite 
           </div>
         </div>
       )}
-    </div>
+    </Page>
   );
 }

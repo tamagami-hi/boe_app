@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useAdminSession } from '@beonedge/client/store/AdminSessionContext.jsx';
@@ -13,20 +13,21 @@ import {
 import { useFundMutations } from '../../data/useFundMutations.js';
 import { hasAnyPermission } from '../../navigation/nav.js';
 import { useAdminNavigation } from '../../navigation/useAdminNavigation.js';
-import ApprovalsScreen from '../../screens/ApprovalsScreen.jsx';
-import AppBuilderScreen from '../../screens/appBuilder/AppBuilderScreen.jsx';
-import AumScreen from '../../screens/AumScreen.jsx';
-import ClientValuesScreen from '../../screens/ClientValuesScreen.jsx';
-import FundCreateScreen from '../../screens/fundOps/FundCreateScreen.jsx';
-import FundsListScreen from '../../screens/fundOps/FundsListScreen.jsx';
-import FundWorkspace from '../../screens/fundOps/FundWorkspace.jsx';
-import InvestmentReviewScreen from '../../screens/InvestmentReviewScreen.jsx';
-import AuditLogScreen from '../../screens/AuditLogScreen.jsx';
-import EmailDeliveriesScreen from '../../screens/EmailDeliveriesScreen.jsx';
-import EnvironmentScreen from '../../screens/EnvironmentScreen.jsx';
-import PaymentsScreen from '../../screens/PaymentsScreen.jsx';
-import UserDetailScreen from '../../screens/UserDetailScreen.jsx';
-import UserDetailsListScreen from '../../screens/UserDetailsListScreen.jsx';
+
+const ApprovalsScreen = lazy(() => import('../../screens/ApprovalsScreen.jsx'));
+const AppBuilderScreen = lazy(() => import('../../screens/appBuilder/AppBuilderScreen.jsx'));
+const AumScreen = lazy(() => import('../../screens/AumScreen.jsx'));
+const ClientValuesScreen = lazy(() => import('../../screens/ClientValuesScreen.jsx'));
+const FundCreateScreen = lazy(() => import('../../screens/fundOps/FundCreateScreen.jsx'));
+const FundsListScreen = lazy(() => import('../../screens/fundOps/FundsListScreen.jsx'));
+const FundWorkspace = lazy(() => import('../../screens/fundOps/FundWorkspace.jsx'));
+const InvestmentReviewScreen = lazy(() => import('../../screens/InvestmentReviewScreen.jsx'));
+const AuditLogScreen = lazy(() => import('../../screens/AuditLogScreen.jsx'));
+const EmailDeliveriesScreen = lazy(() => import('../../screens/EmailDeliveriesScreen.jsx'));
+const EnvironmentScreen = lazy(() => import('../../screens/EnvironmentScreen.jsx'));
+const PaymentsScreen = lazy(() => import('../../screens/PaymentsScreen.jsx'));
+const UserDetailScreen = lazy(() => import('../../screens/UserDetailScreen.jsx'));
+const UserDetailsListScreen = lazy(() => import('../../screens/UserDetailsListScreen.jsx'));
 
 export function ApprovalsRoute() {
   const queue = useApprovalsQueue();

@@ -10,6 +10,7 @@ import { loadAdminCollection, loadAdminFundPage } from '../helpers/loadAdminData
 export const ADMIN_CACHE_PREFIX = 'admin:';
 
 export const ADMIN_KEYS = {
+  faqs: () => 'admin:faqs',
   funds: () => 'admin:funds',
   payments: () => 'admin:payments',
   investmentReviews: (state = 'pending') => `admin:investmentReviews:${state}`,
@@ -18,6 +19,7 @@ export const ADMIN_KEYS = {
 };
 
 export const ADMIN_DOMAINS = {
+  FAQS: 'admin:faqs',
   FUNDS: 'admin:funds',
   PAYMENTS: 'admin:payments',
   INVESTMENT_REVIEWS: 'admin:investmentReviews',
@@ -26,6 +28,7 @@ export const ADMIN_DOMAINS = {
 };
 
 const ADMIN_PATHS = {
+  faqs: '/v1/admin/faqs',
   payments: '/v1/admin/payments',
   auditLogs: '/v1/admin/audit-logs',
 };
@@ -39,7 +42,7 @@ export const FUND_PAGE_LIMIT = 100;
 
 const EMPTY_SUMMARY = {
   total: 0,
-  byState: { draft: 0, review_pending: 0, published: 0, paused: 0, archived: 0 },
+  byState: { draft: 0, published: 0, paused: 0, archived: 0 },
 };
 
 export function useAdminFunds({ state = 'all', search = '' } = {}) {
@@ -103,6 +106,13 @@ export function useAdminFunds({ state = 'all', search = '' } = {}) {
   };
 }
 
+export function useAdminFaqs(options) {
+  return useAdminCollection(ADMIN_KEYS.faqs(), ADMIN_PATHS.faqs, {
+    staleTime: STALE_TIME.STATIC,
+    ...options,
+  });
+}
+
 export function useAdminPayments(options) {
   return useAdminCollection(ADMIN_KEYS.payments(), ADMIN_PATHS.payments, {
     staleTime: STALE_TIME.MONEY,
@@ -159,10 +169,15 @@ export function useAdminCacheActions() {
     cache.invalidate(ADMIN_DOMAINS.AUDIT_LOGS);
   }, [cache]);
 
+  const invalidateFaqs = useCallback(() => {
+    cache.invalidate(ADMIN_DOMAINS.FAQS);
+  }, [cache]);
+
   const clearAll = useCallback(() => cache.clear(ADMIN_CACHE_PREFIX), [cache]);
 
   return {
     invalidate,
+    invalidateFaqs,
     invalidateFunds,
     invalidateReviews,
     invalidateAum,

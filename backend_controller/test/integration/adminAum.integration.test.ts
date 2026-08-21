@@ -337,6 +337,20 @@ describe("initialize (integration)", () => {
 })
 
 describe("individual growth (integration)", () => {
+  test("growth cannot be dated before the basis it grows from", async () => {
+    const fundId = await seedFund("aum-grow-backdate")
+    await initialize(fundId, "10000000", `bd0-${randomUUID()}`, "2026-07-31")
+
+    const backdated = asInjected(await postAum(`/v1/admin/aum/funds/${fundId}/growth`, adminToken, {
+      growthPaise: "500000",
+      asOfDate: "2026-06-30",
+      reasonCode: "manual_adjustment",
+    }, `bd1-${randomUUID()}`))
+    expect(backdated.statusCode).toBe(409)
+    expect(errorOf(backdated)).toBe("STATE_CONFLICT")
+    expect(await snapshotCount(fundId)).toBe(1)
+  })
+
   test("amount and percentage growth compute from the latest snapshot", async () => {
     const fundId = await seedFund("aum-grow")
     await initialize(fundId, "10000000", `g0-${randomUUID()}`)

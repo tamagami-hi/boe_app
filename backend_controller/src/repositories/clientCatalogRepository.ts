@@ -1,17 +1,11 @@
-/**
- * Client fund-catalog read repository — Option B (model document sections C/D).
- *
- * A pool is described to investors by:
- *   - its terms (name, category, objective, risk level, return tier, minimums);
- *   - its **Fund Size (AUM)**: the latest published monthly closing figure, plus
- *     the date it was last updated; and
- *   - its **Fund Portfolio**: the administrator-curated stock list, each entry
- *     tagged with the quarter it was added.
- *
- * There is no per-unit price, so nothing here reads `fund_nav_prices`. Only funds
- * in state `published` are visible. Money is `bigint` paise crossing as strings.
- */
 import { sql } from "kysely"
+
+import {
+  ACTIVE_STOCK_COUNT_LATERAL,
+  FUND_AUM_PROJECTION,
+  FUND_TERMS_PROJECTION,
+  LATEST_SNAPSHOT_LATERAL,
+} from "./fundAumOrdering.js"
 
 import type { Transaction } from "../db/repositories.js"
 import type { FundReturnTier, FundRiskLevel } from "../db/types.js"
@@ -31,9 +25,7 @@ export interface ClientFundRow {
   readonly recommendedHoldingMonths: number | null
   readonly currentVersionId: string
   readonly currentVersion: number
-  /** Latest published AUM snapshot ("Fund Size"), null before the first snapshot. */
   readonly aumPaise: string | null
-  /** The date the AUM snapshot is effective as of, and when it was published. */
   readonly aumAsOfDate: string | null
   readonly aumUpdatedAt: Date | null
   readonly stockCount: number
@@ -61,7 +53,6 @@ export interface ClientCatalogRepository {
     query: { readonly afterCreatedAt?: Date; readonly afterId?: string; readonly limit: number },
   ) => Promise<readonly ClientFundRow[]>
   findPublished: (tx: Transaction, fundId: string) => Promise<ClientFundRow | null>
-  /** Active stock list only: exited positions are admin history, not disclosure. */
   listStocks: (tx: Transaction, fundId: string) => Promise<readonly ClientFundStockRow[]>
   findDisclosure: (tx: Transaction, fundId: string) => Promise<ClientFundDisclosureRow | null>
 }
@@ -70,35 +61,17 @@ const FUND_SELECT = sql`
   select
     f.id as "id",
     f.slug as "slug",
-    fv.name as "name",
-    fv.category as "category",
-    fv.objective as "objective",
-    fv.risk_level as "riskLevel",
-    fv.return_tier as "returnTier",
-    fv.currency as "currency",
-    fv.minimum_sip_paise::text as "minimumSipPaise",
-    fv.minimum_purchase_paise::text as "minimumPurchasePaise",
+    ${FUND_TERMS_PROJECTION},
     fv.minimum_duration_months as "minimumDurationMonths",
     fv.recommended_holding_months as "recommendedHoldingMonths",
     fv.id as "currentVersionId",
-    fv.version as "currentVersion",
-    aum.aum_paise::text as "aumPaise",
-    aum.as_of_date::text as "aumAsOfDate",
-    aum.created_at as "aumUpdatedAt",
-    coalesce(stocks.count, 0)::int as "stockCount",
+    ${FUND_AUM_PROJECTION},
     f.published_at as "publishedAt",
     f.created_at as "createdAt"
   from funds f
   join fund_versions fv on fv.id = f.current_published_version_id
-  left join lateral (
-    select aum_paise, as_of_date, created_at from fund_aum_snapshots
-    where fund_id = f.id
-    order by as_of_date desc, revision desc, created_at desc, id desc limit 1
-  ) aum on true
-  left join lateral (
-    select count(*) as count from fund_stock_disclosures
-    where fund_id = f.id and state = 'active'
-  ) stocks on true
+  ${LATEST_SNAPSHOT_LATERAL}
+  ${ACTIVE_STOCK_COUNT_LATERAL}
   where f.state = 'published'
 `
 

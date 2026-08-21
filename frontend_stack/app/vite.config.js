@@ -31,7 +31,17 @@ export default defineConfig(() => {
             if (id.includes('node_modules')) {
               return 'vendor';
             }
-            if (id.includes('/packages/admin/')) return 'admin';
+            if (id.includes('/packages/admin/')) {
+              if (id.includes('/screens/fundOps/') || id.includes('FundStockListPanel')) {
+                return 'admin-funds';
+              }
+              if (id.includes('Aum') || id.includes('useAumHistory')) return 'admin-aum';
+              if (id.includes('/screens/appBuilder/')) return 'admin-appbuilder';
+              if (id.includes('ClientValuesScreen')) return 'admin-client-values';
+              if (id.includes('InvestmentReviewScreen')) return 'admin-reviews';
+              if (id.includes('UserDetail')) return 'admin-users';
+              return 'admin';
+            }
             if (id.includes('/packages/client/')) return 'client';
           },
         },

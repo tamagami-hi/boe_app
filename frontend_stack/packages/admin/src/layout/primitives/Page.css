@@ -10,23 +10,18 @@
   min-width: 0;
 }
 
-/* Full-bleed variant (no max-width) */
 .be-page.is-bleed {
   max-width: none;
 }
 
-/* Compact variant (tighter gaps for dense data screens) */
 .be-page.is-compact {
   --page-gap: var(--be-space-4);
 }
 
-/* Unpadded variant */
 .be-page.is-unpadded {
   padding: 0;
 }
 
-/* Padding scales fluidly via --be-page-pad-* (clamp), so breakpoints only
- * tighten vertical rhythm — horizontal space is handled by the clamp. */
 @media (max-width: 768px) {
   .be-page:not(.is-compact) {
     gap: var(--be-space-4);
@@ -34,5 +29,25 @@
 
   .be-page.is-compact {
     --page-gap: var(--be-space-3);
+  }
+
+  .be-page.is-padded {
+    padding-bottom: calc(var(--be-bottomnav-h) + var(--be-safe-bottom) + var(--be-space-5));
+  }
+}
+
+.be-page {
+  animation: be-page-in var(--be-dur-base) var(--be-ease-out) both;
+}
+
+@keyframes be-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

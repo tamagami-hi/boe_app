@@ -15,6 +15,7 @@ import { parseOrThrow } from "../http/validation.js"
 import type { AdminCatalogRepository, FundListRow } from "../repositories/adminCatalogRepository.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
 import type { FundAumRepository } from "../repositories/fundAumRepository.js"
+import { mapFundSize, mapFundTerms } from "./fundProjection.js"
 import {
   adminIdempotencyScope,
   computeFilterHash,
@@ -51,11 +52,10 @@ export interface AdminCatalogDeps {
 
 const FUNDS_ROUTE = "/v1/admin/funds"
 
-const FUND_STATES = ["draft", "review_pending", "published", "paused", "archived"] as const
+const FUND_STATES = ["draft", "published", "paused", "archived"] as const
 
 const ALLOWED_TRANSITIONS: Readonly<Record<FundState, readonly FundState[]>> = {
   draft: ["published", "archived"],
-  review_pending: ["published", "archived"],
   published: ["paused", "archived"],
   paused: ["published", "archived"],
   archived: [],
@@ -126,24 +126,10 @@ const mapFund = (row: FundListRow): Record<string, unknown> => ({
   id: row.id,
   slug: row.slug,
   status: row.state,
-  name: row.name,
-  category: row.category,
-  objective: row.objective,
-  riskLevel: row.riskLevel,
-  returnTier: row.returnTier,
-  currency: row.currency ?? "INR",
-  minimumSipPaise: row.minimumSipPaise,
-  minimumPurchasePaise: row.minimumPurchasePaise,
+  ...mapFundTerms(row),
   currentVersion: row.currentVersion,
   currentVersionId: row.currentVersionId,
-  aum:
-    row.aumPaise === null
-      ? null
-      : {
-          aumPaise: row.aumPaise,
-          asOfDate: row.aumAsOfDate,
-          updatedAt: isoOrNull(row.aumUpdatedAt),
-        },
+  aum: mapFundSize(row),
   stockCount: row.stockCount,
   publishedAt: isoOrNull(row.publishedAt),
   createdAt: iso(row.createdAt),

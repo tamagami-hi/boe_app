@@ -3,11 +3,13 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Layers, PieChart, TrendingUp } from 'lucide-react';
 import { apiRequest } from '@beonedge/client/services/_util.js';
 import I from '../components/I.jsx';
+import { Page } from '../layout/primitives/index.js';
 import EmptyTableRow from '../components/EmptyTableRow.jsx';
 import SkeletonTableRow from '../components/SkeletonTableRow.jsx';
 import StateBadge from '../components/StateBadge.jsx';
 import AdminReadError from '../data/AdminReadError.jsx';
 import { useAdminCacheActions, useAdminFunds } from '../data/adminResources.js';
+import { parseAumPreview } from '../data/fundContracts.js';
 import { useIdempotencyKeys } from '../helpers/idempotencyKeys.js';
 import { AUM_ADJUSTMENT_REASONS, todayInIndia } from '../helpers/aumReasons.js';
 import {
@@ -291,7 +293,7 @@ function CollectiveAumTab() {
         scope: 'admin',
         body,
       });
-      setPreview({ ...payload, requestBody: body });
+      setPreview({ ...parseAumPreview(payload), requestBody: body });
     } catch (previewError) {
       setError(previewError?.message || 'The preview was not computed.');
     } finally {
@@ -550,12 +552,12 @@ function HistoryTab() {
 
 export default function AumScreen({ tab = 'current' }) {
   return (
-    <div className="adm-screen">
+    <Page>
       {tab === 'manage' && <ManageOneFundTab />}
       {tab === 'collective' && <CollectiveAumTab />}
       {tab === 'history' && <HistoryTab />}
       {tab !== 'manage' && tab !== 'collective' && tab !== 'history' && <CurrentAumTab />}
-    </div>
+    </Page>
   );
 }
 

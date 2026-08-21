@@ -1,12 +1,11 @@
 import { AUM_OPENING_REASONS, todayInIndia } from '../../helpers/aumReasons.js';
 
-export const FUND_STATES = ['draft', 'review_pending', 'published', 'paused', 'archived'];
+export const FUND_STATES = ['draft', 'published', 'paused', 'archived'];
 
 export const LIFECYCLE_ACTIONS = ['published', 'paused', 'archived'];
 
 export const ALLOWED_TRANSITIONS = {
   draft: ['published', 'archived'],
-  review_pending: ['published', 'archived'],
   published: ['paused', 'archived'],
   paused: ['published', 'archived'],
   archived: [],
@@ -18,7 +17,6 @@ export function lifecycleActionsFor(state) {
 
 export const STATE_DESCRIPTIONS = {
   draft: 'Not visible to clients. Publish the fund when its terms and stock list are ready.',
-  review_pending: 'Awaiting review. Not visible to clients.',
   published: 'Visible to clients and open to new investment.',
   paused: 'Visible to clients, closed to new investment.',
   archived: 'Hidden from clients and permanently closed to further changes.',

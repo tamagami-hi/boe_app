@@ -2,6 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { apiRequest } from '@beonedge/client/services/_util.js';
 import { useToast } from '../components/ToastProvider.jsx';
 import { useIdempotencyKeys } from '../helpers/idempotencyKeys.js';
+import { parseCreatedFund } from './fundContracts.js';
 import { useAdminCacheActions } from './adminResources.js';
 
 export function useFundMutations() {
@@ -16,9 +17,10 @@ export function useFundMutations() {
       body,
       headers: { 'Idempotency-Key': idempotencyKeyFor('fund-create', body) },
     });
+    const parsed = parseCreatedFund(created);
     invalidateFunds();
     addToast('Fund created as a draft with version 1 and its opening AUM.', 'success');
-    return created?.fund?.id ?? null;
+    return parsed.fund.id;
   }, [addToast, idempotencyKeyFor, invalidateFunds]);
 
   const handlePublishVersion = useCallback(async (fundId, version) => {

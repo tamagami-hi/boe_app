@@ -1,15 +1,11 @@
-// The FAQ list. Its rows were the control: `<tr role="button" tabIndex={0}>` with a
-// hand-rolled Enter/Space handler, which puts a whole table row in the tab order and
-// announces a row as a button.
 import React from 'react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import FaqsPage from './FaqsPage.jsx';
 
-const collection = { items: [], loading: false, error: '', reload: vi.fn(), source: 'http' };
-vi.mock('../../hooks/useAdminCollection.js', () => ({ default: () => collection }));
+const collection = { rows: [], isLoading: false, error: null, refresh: vi.fn() };
+vi.mock('../../data/adminResources.js', () => ({ useAdminFaqs: () => collection }));
 
-// The editor drawer opens on its own route-less state and is not what this covers.
 vi.mock('./FaqEditorDrawer.jsx', () => ({
   default: ({ open }) => (open ? <div data-testid="faq-editor" /> : null),
 }));
@@ -24,7 +20,7 @@ const FAQ = {
 };
 
 beforeEach(() => {
-  Object.assign(collection, { items: [FAQ], loading: false, error: '', reload: vi.fn() });
+  Object.assign(collection, { rows: [FAQ], isLoading: false, error: null, refresh: vi.fn() });
 });
 
 describe('FaqsPage rows', () => {
@@ -43,17 +39,17 @@ describe('FaqsPage rows', () => {
   });
 
   test('a failed read is announced and does not read as an empty list', () => {
-    const reload = vi.fn();
-    Object.assign(collection, { items: [], error: 'Read failed', reload });
+    const refresh = vi.fn();
+    Object.assign(collection, { rows: [], error: new Error('Read failed'), refresh });
     render(<FaqsPage />);
     expect(screen.getByRole('alert').textContent).toContain('Read failed');
     expect(screen.queryByText('No FAQs yet')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
-    expect(reload).toHaveBeenCalledTimes(1);
+    expect(refresh).toHaveBeenCalledTimes(1);
   });
 
   test('an empty list teaches the workflow', () => {
-    Object.assign(collection, { items: [] });
+    Object.assign(collection, { rows: [], error: null });
     render(<FaqsPage />);
     expect(screen.getByText('No FAQs yet')).toBeTruthy();
     expect(screen.getByText(/FAQs start as drafts/u)).toBeTruthy();

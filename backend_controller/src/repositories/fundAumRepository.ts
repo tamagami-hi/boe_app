@@ -2,6 +2,7 @@ import { sql } from "kysely"
 
 import type { Transaction } from "../db/repositories.js"
 import type { FundState, GrowthInstructionType, GrowthScope } from "../db/types.js"
+import { LATEST_SNAPSHOT_ORDER, LATEST_SNAPSHOT_PER_FUND_ORDER } from "./fundAumOrdering.js"
 
 export interface FundAumSnapshotRow {
   readonly id: string
@@ -133,7 +134,7 @@ export const createFundAumRepository = (): FundAumRepository => ({
     const result = await sql<FundAumSnapshotRow>`
       select ${SNAPSHOT_COLUMNS} from fund_aum_snapshots
       where fund_id = ${fundId}
-      order by as_of_date desc, revision desc, created_at desc, id desc
+      order by ${LATEST_SNAPSHOT_ORDER}
       limit 1
     `.execute(tx)
     return result.rows[0] ?? null
@@ -143,7 +144,7 @@ export const createFundAumRepository = (): FundAumRepository => ({
     const result = await sql<FundAumSnapshotRow>`
       select distinct on (fund_id) ${SNAPSHOT_COLUMNS} from fund_aum_snapshots
       where fund_id = any(${[...fundIds]})
-      order by fund_id asc, as_of_date desc, revision desc, created_at desc, id desc
+      order by ${LATEST_SNAPSHOT_PER_FUND_ORDER}
     `.execute(tx)
     return result.rows
   },
@@ -217,7 +218,7 @@ export const createFundAumRepository = (): FundAumRepository => ({
     const result = await sql<FundAumSnapshotRow>`
       select ${SNAPSHOT_COLUMNS} from fund_aum_snapshots
       where fund_id = ${fundId} ${keyset}
-      order by as_of_date desc, revision desc, created_at desc, id desc
+      order by ${LATEST_SNAPSHOT_ORDER}
       limit ${query.limit}
     `.execute(tx)
     return result.rows

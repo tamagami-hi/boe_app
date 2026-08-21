@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Layers, Plus, Search } from 'lucide-react';
 import I from '../../components/I.jsx';
+import { ContentGrid, Page } from '../../layout/primitives/index.js';
 import StatTile from '../../components/StatTile.jsx';
 import StateBadge from '../../components/StateBadge.jsx';
 import EmptyTableRow from '../../components/EmptyTableRow.jsx';
@@ -37,8 +38,8 @@ export default function FundsListScreen({
   const filtered = stateFilter !== 'all' || search.trim() !== '';
 
   return (
-    <div className="adm-screen">
-      <div className="adm-stats adm-stats--3">
+    <Page>
+      <ContentGrid cols={3}>
         <StatTile
           label="Funds"
           value={summary ? fmtInt(summary.total) : '—'}
@@ -51,11 +52,11 @@ export default function FundsListScreen({
           icon={Layers}
         />
         <StatTile
-          label="Draft or in review"
-          value={byState ? fmtInt(byState.draft + byState.review_pending) : '—'}
+          label="Draft"
+          value={byState ? fmtInt(byState.draft) : '—'}
           icon={Layers}
         />
-      </div>
+      </ContentGrid>
 
       <div className="adm-card adm-table">
         <div className="adm-card-head">
@@ -179,6 +180,6 @@ export default function FundsListScreen({
           )}
         </div>
       </div>
-    </div>
+    </Page>
   );
 }

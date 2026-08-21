@@ -1,6 +1,8 @@
 import { apiRequest, useHttpApi } from '@beonedge/client/services/_util.js';
 import { listPendingApprovals } from '@beonedge/client/services/authApi.js';
 import { listPendingApplications } from '@beonedge/client/services/adminApplicationsApi.js';
+import { fixtureCollection } from '../fixtures/adminCollections.js';
+import { parseFundRow, parseFundSummary } from '../data/fundContracts.js';
 import { collectionKey, normalizeAdminCollection, normalizeApprovalRow } from './formatters.js';
 
 function toApprovalRow(application) {
@@ -31,7 +33,10 @@ function extractAdminCollection(payload, path) {
 
 export async function loadAdminCollection(path) {
   if (!useHttpApi()) {
-    return path.endsWith('/approvals') ? listPendingApprovals() : [];
+    if (path.endsWith('/approvals')) return listPendingApprovals();
+    const rows = fixtureCollection(path);
+    if (rows === null) return [];
+    return normalizeAdminCollection(rows, path);
   }
   if (path.endsWith('/approvals')) {
     return (await loadApprovals()).rows;
@@ -42,7 +47,7 @@ export async function loadAdminCollection(path) {
 
 const EMPTY_FUND_SUMMARY = {
   total: 0,
-  byState: { draft: 0, review_pending: 0, published: 0, paused: 0, archived: 0 },
+  byState: { draft: 0, published: 0, paused: 0, archived: 0 },
 };
 
 export async function loadAdminFundPage(query = {}) {
@@ -61,11 +66,13 @@ export async function loadAdminFundPage(query = {}) {
   });
   const data = payload?.data ?? payload ?? {};
   const page = payload?.meta?.page ?? {};
+  const items = Array.isArray(data.items) ? data.items : [];
+  for (const item of items) parseFundRow(item);
   return {
-    rows: normalizeAdminCollection(Array.isArray(data.items) ? data.items : [], '/v1/admin/funds'),
+    rows: normalizeAdminCollection(items, '/v1/admin/funds'),
     nextCursor: page.nextCursor ?? null,
     hasMore: page.hasMore === true,
-    summary: data.summary ?? EMPTY_FUND_SUMMARY,
+    summary: parseFundSummary(data.summary) ?? EMPTY_FUND_SUMMARY,
   };
 }
 

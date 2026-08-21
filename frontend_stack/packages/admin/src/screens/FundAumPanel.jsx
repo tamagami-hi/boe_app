@@ -23,9 +23,13 @@ export const AUM_BOUNDARY_NOTE =
   'This changes published fund AUM only. It does not change any client investment value.';
 
 function previewDelta(basisPaise, mode, signed) {
-  if (mode === 'amount') return Number(signed);
-  const magnitude = Math.floor((Math.abs(Number(basisPaise) * signed) + 5000) / 10000);
-  return Math.sign(signed) * magnitude;
+  const signedBig = BigInt(signed);
+  if (mode === 'amount') return signedBig;
+  const basis = BigInt(basisPaise);
+  const product = basis * signedBig;
+  const magnitude = (product < 0n ? -product : product);
+  const rounded = (magnitude + 5000n) / 10000n;
+  return product < 0n ? -rounded : rounded;
 }
 
 export default function FundAumPanel({ fundId, fundName }) {
@@ -53,11 +57,11 @@ export default function FundAumPanel({ fundId, fundName }) {
   const preview = useMemo(() => {
     if (isOpening || !latest) return null;
     const signed = mode === 'amount'
-      ? Number(toSignedPaise(direction, magnitude))
+      ? toSignedPaise(direction, magnitude)
       : toSignedBasisPoints(direction, magnitude);
-    if (!signed) return null;
-    const delta = previewDelta(latest.aumPaise ?? 0, mode, signed);
-    return { delta, after: Number(latest.aumPaise ?? 0) + delta };
+    if (signed === null) return null;
+    const delta = previewDelta(latest.aumPaise ?? '0', mode, signed);
+    return { delta, after: BigInt(latest.aumPaise ?? '0') + delta };
   }, [isOpening, latest, mode, direction, magnitude]);
 
   async function onSubmit(event) {
@@ -269,9 +273,11 @@ export default function FundAumPanel({ fundId, fundName }) {
           {preview && (
             <div className="adm-field--wide adm-aum-projection">
               Preview only — the server recalculates on commit: AUM will be{' '}
-              <strong className="be-money">{rupees(String(preview.after))}</strong>{' '}
-              ({preview.delta >= 0 ? '+' : '−'}
-              <span className="be-money">{rupees(String(Math.abs(preview.delta)))}</span>).
+              <strong className="be-money">{rupees(preview.after.toString())}</strong>{' '}
+              ({preview.delta >= 0n ? '+' : '−'}
+              <span className="be-money">
+                {rupees((preview.delta < 0n ? -preview.delta : preview.delta).toString())}
+              </span>).
             </div>
           )}
 

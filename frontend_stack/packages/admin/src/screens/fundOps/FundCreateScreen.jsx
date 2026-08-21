@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import I from '../../components/I.jsx';
+import { Page } from '../../layout/primitives/index.js';
 import FundProfileForm from './FundProfileForm.jsx';
 import { EMPTY_PROFILE } from './fundOpsModel.js';
 import '../admin-screens-shared.css';
@@ -29,7 +30,7 @@ export default function FundCreateScreen({ onCreate }) {
   }
 
   return (
-    <div className="adm-screen adm-screen--narrow">
+    <Page maxWidth="960px">
       <Link className="be-btn be-btn-ghost be-btn-sm adm-back-link" to="/admin/funds">
         <I icon={ArrowLeft} size={14} /> Back to funds
       </Link>
@@ -42,6 +43,6 @@ export default function FundCreateScreen({ onCreate }) {
         onSubmit={create}
         onCancel={() => navigate('/admin/funds')}
       />
-    </div>
+    </Page>
   );
 }

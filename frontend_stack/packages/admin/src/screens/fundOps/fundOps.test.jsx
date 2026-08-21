@@ -43,7 +43,8 @@ beforeEach(() => {
 
 describe('the canonical fund model', () => {
   test('the states are the ones the database has', () => {
-    expect(FUND_STATES).toEqual(['draft', 'review_pending', 'published', 'paused', 'archived']);
+    expect(FUND_STATES).toEqual(['draft', 'published', 'paused', 'archived']);
+    expect(FUND_STATES).not.toContain('review_pending');
     expect(FUND_STATES).not.toContain('active');
     expect(FUND_STATES).not.toContain('closed');
   });
@@ -215,6 +216,7 @@ const DETAIL = {
     aum: { aumPaise: '250000000', asOfDate: '2026-08-01' },
   },
   versions: [{ id: 'v2', version: 2, name: 'Edge Growth', riskLevel: 'high', createdAt: '2026-08-01T00:00:00.000Z' }],
+  stocks: [],
   disclosures: [{ title: 'Edge disclosure', body: 'Markets carry risk.' }],
 };
 

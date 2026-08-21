@@ -1,17 +1,3 @@
-/**
- * Client fund-catalog read routes (spec 03 §4.2; spec 04 §3/§4.5). Native bearer
- * transport, same principal re-check as the rest of the `/v1/client/*` slice, so
- * a suspended or closed account cannot browse the catalogue.
- *
- *   GET /v1/client/funds             published pools, keyset-paginated
- *   GET /v1/client/funds/:fundId     one pool + its published allocation + disclosure
- *
- * Option B: a pool has no per-unit price. What an investor sees is its **Fund
- * Size (AUM)** — the latest published monthly closing figure with the date it was
- * last updated — and its **Fund Portfolio**, the administrator-curated stock list
- * tagged by the quarter each entry was added. Growth reaches the investor as an
- * administrator-allocated gain on their own ledger, not through a price here.
- */
 import { CACHE_KEYS, type Cache } from "../cache/cache.js"
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
 import type { Kysely } from "kysely"
@@ -23,6 +9,7 @@ import { computeFilterHash, decodeCursor, encodeCursor } from "../http/cursor.js
 import type { PageMeta } from "../http/envelope.js"
 import { AppError } from "../http/errorCatalog.js"
 import { parseOrThrow } from "../http/validation.js"
+import { mapFundSize, mapFundTerms } from "./fundProjection.js"
 import type {
   ClientCatalogRepository,
   ClientFundRow,
@@ -56,31 +43,22 @@ const iso = (value: Date | string): string => new Date(value).toISOString()
 const isoOrNull = (value: Date | string | null): string | null =>
   value === null ? null : iso(value)
 
+const clientFundSize = (row: ClientFundRow): Record<string, unknown> | null => {
+  const size = mapFundSize(row)
+  return size === null
+    ? null
+    : { aumPaise: size.aumPaise, asOfDate: size.asOfDate, lastUpdatedAt: size.updatedAt }
+}
+
 const mapFund = (row: ClientFundRow): Record<string, unknown> => ({
   id: row.id,
   slug: row.slug,
-  name: row.name,
-  category: row.category,
-  objective: row.objective,
-  riskLevel: row.riskLevel,
-  returnTier: row.returnTier,
-  currency: row.currency,
+  ...mapFundTerms(row),
   status: "published",
-  minimumSipPaise: row.minimumSipPaise,
-  minimumPurchasePaise: row.minimumPurchasePaise,
   minimumDurationMonths: row.minimumDurationMonths,
   recommendedHoldingMonths: row.recommendedHoldingMonths,
   version: row.currentVersion,
-  // "Fund Size (AUM)" as of the latest published snapshot.
-  // Null until the administrator publishes the pool's first snapshot.
-  fundSize:
-    row.aumPaise === null
-      ? null
-      : {
-          aumPaise: row.aumPaise,
-          asOfDate: row.aumAsOfDate,
-          lastUpdatedAt: isoOrNull(row.aumUpdatedAt),
-        },
+  fundSize: clientFundSize(row),
   stockCount: row.stockCount,
   publishedAt: isoOrNull(row.publishedAt),
   createdAt: iso(row.createdAt),

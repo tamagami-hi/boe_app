@@ -135,6 +135,17 @@ describe("investment architecture guard", () => {
     expect(offenders).toEqual([])
   })
 
+  test("both batch-growth orchestrations keep the same commit invariants", async () => {
+    const modules = ["routes/adminAumRoutes.ts", "routes/adminClientGrowthRoutes.ts"]
+    for (const file of modules) {
+      const code = await codeOf(file)
+      expect(code, `${file} must recompute the basis hash under lock`).toMatch(/computeAum\w*BasisHash|compute\w*BasisHash/u)
+      expect(code, `${file} must compare the recomputed hash to the caller's`).toMatch(/basisHash !== body\.basisHash/u)
+      expect(code, `${file} must require an Idempotency-Key`).toMatch(/requireIdempotencyKey/u)
+      expect(code, `${file} must commit inside one transaction`).toMatch(/runAdminMutation|unitOfWork\.execute/u)
+    }
+  })
+
   test("the portfolio derivation is the only source of an investor's balances", async () => {
     const code = await codeOf("domain/client/portfolioLedger.ts")
     expect(code).not.toMatch(/\bnav\b/iu)
