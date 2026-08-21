@@ -161,7 +161,7 @@ trap cleanup_incomplete_bundle EXIT
 # Frontend API origins are baked in at BUILD time (Vite/Next), so dev and prod
 # genuinely need separate builds — this cannot be deferred to a runtime env var.
 build_images() {
-    local api_base
+    local api_base admin_api_base
 
     case "$STACK" in
         prod_release)
@@ -172,7 +172,28 @@ build_images() {
             ;;
     esac
 
-    section "BUILD IMAGES" "api base baked in: $api_base"
+    # The admin console is served from a DIFFERENT host than the user SPA
+    # (admin.boe.app.internal over Tailscale, not dev-app.beonedge.in), and its
+    # nginx vhost proxies /api/ to the backend on that same host. Baking the user
+    # SPA's absolute origin into the admin bundle made every admin API call
+    # cross-origin, which fails three ways at once: CORS returns no
+    # Access-Control-Allow-Origin for an unlisted origin, validateWebOrigin()
+    # rejects `Sec-Fetch-Site: cross-site` outright, and Secure/__Host- session
+    # cookies are not sent cross-site. The visible symptom was the admin splash
+    # never releasing, because its reachability probe (GET /v1/health) was
+    # discarded by the browser.
+    #
+    # A RELATIVE base is what the vhost's same-origin contract requires: the
+    # bundle then calls whichever host served it, so one image works behind any
+    # admin hostname without a rebuild. Override only if the admin console is
+    # ever served from an origin that does NOT proxy /api/ itself.
+    #
+    # The APKs are NOT built here (see emu/boe_update.sh); they keep an absolute
+    # https origin, which they need — a Capacitor WebView has no server to be
+    # same-origin with.
+    admin_api_base="${ADMIN_API_BASE:-/api}"
+
+    section "BUILD IMAGES" "api base baked in: $api_base (admin: $admin_api_base)"
 
     # ── fail fast on the known Dockerfile gap, BEFORE any expensive build ────
     # app and admin are two builds of the SAME Dockerfile, differentiated only by
@@ -218,7 +239,7 @@ build_images() {
     docker build \
         --build-arg "VITE_BEO_APP_TARGET=admin" \
         --build-arg "VITE_BEO_API_MODE=http" \
-        --build-arg "VITE_BEO_API_BASE_URL=$api_base" \
+        --build-arg "VITE_BEO_API_BASE_URL=$admin_api_base" \
         -f "$app_dockerfile" \
         -t "$admin_tag" \
         "$ROOT_DIR/frontend_stack"
