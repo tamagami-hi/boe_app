@@ -1,15 +1,19 @@
-# Admin Panel → Fund Page: Current-State Forensic Audit
+# Admin Panel → Funds and AUM: Current-State Forensic Audit
 
 Audit date: 2026-08-21
 Repository root: `/home/nethunter07/PROJECTS/boe_app`
-Scope: inspection only; no application, schema, migration, configuration, test, or database changes were made.
+Scope: `/admin/funds`, `/admin/funds/:fundId`, and every page under `/admin/aum/*`; inspection only; no application, schema, migration, configuration, test, or database changes were made.
 
 ## 1. Executive Summary
 
-The current Admin Fund surface is a routed React implementation with two canonical URLs:
+The current Admin Fund and AUM surfaces are routed React implementations with six canonical URLs:
 
 - `/admin/funds` renders the issued-fund catalogue and create form.
 - `/admin/funds/:fundId` renders a routed workspace for published terms, lifecycle, stock disclosures, and version history.
+- `/admin/aum/current` renders the latest published AUM projection for the Fund catalogue.
+- `/admin/aum/manage` selects one fund and initializes or grows its AUM.
+- `/admin/aum/collective` previews and commits one growth command across selected funds.
+- `/admin/aum/history` reads snapshot history and conditionally exposes append-only correction controls.
 
 The active frontend starts at `frontend_stack/app/src/main.jsx`, selects the admin `BrowserRoot` whenever `VITE_BEO_APP_TARGET !== 'client'`, restores an admin session, mounts the admin shell, then routes through `Admin.jsx` to wrappers in the misleadingly named but **ACTIVE** `pages/legacy/legacyRoutes.jsx`. The Fund list uses a shared resource cache; the detail workspace and stock panel use direct `apiRequest` calls.
 
@@ -32,7 +36,17 @@ Material current-state findings:
 11. **A separate AUM contract is broken:** `FundAumPanel` sends `amountPaise` for initialization, while the strict backend schema requires `aumPaise`. This is outside the Fund route proper but is a Fund-related frontend/backend conflict.
 12. **The generated OpenAPI/contracts package contains no admin Fund contract.** Runtime schemas are the backend Zod definitions plus handwritten frontend objects and optional-property access.
 13. **Successful create does not refresh the still-mounted catalogue.** Cache invalidation only nulls `updatedAt`; the mounted `useResource` effect does not rerun. Because create also does not navigate, the new fund can remain absent until remount or manual refresh.
-14. **The Fund shell always loads the approvals queue without checking `applications.read`.** A principal with `funds.read` but without application access gets a hidden background 403 and a zero badge while the Fund page itself remains usable.
+14. **The Fund/AUM shell always loads the approvals queue without checking `applications.read`.** A principal with Fund/AUM access but without application access gets a hidden background 403 and a zero badge while the requested page itself remains usable.
+15. **Two visible AUM write paths are non-functional.** Initialize and correction both send `amountPaise`; their strict backend schemas require `aumPaise`, so every submission reaches validation and returns 400.
+16. **The 25-fund catalogue cap propagates across AUM.** Current shows at most 25 funds; Manage and History can select at most 25; Collective can target at most 25 even though its backend supports 100.
+17. **AUM history is also truncated.** Both history consumers send no `limit`; the endpoint defaults to the newest 25 snapshots and provides no cursor, while the UI claims to show every publication.
+18. **Collective explicit-delta mode is non-functional.** The frontend sends both `fundIds` and `items`; the backend's XOR refinement requires `items` with no `fundIds`, so every explicit preview returns 400.
+19. **Real collective previews lose Before/After values in the UI.** The backend returns `beforeAumPaise`/`afterAumPaise`; the frontend only checks incompatible aliases, so those cells format undefined values.
+20. **The frontend is not one design system.** A redesigned `.ash-*` shell surrounds legacy `.adm-*` operational pages that use `.be-*` kit controls; newer `.be-page`/section/grid primitives exist but Fund/AUM do not use them.
+21. **Three active table treatments produce visibly different pages.** Fund catalogue and Current AUM use the intended responsive contract; Fund stocks and AUM history are effectively browser-default tables; collective preview applies the table class at the wrong DOM level.
+22. **Dark-mode and status contrast are materially broken.** The active Fund state-badge family fails AA for several light states and all dark states; AUM result/error colors also fail; the collective nested preview can place ivory text on a hardcoded near-white surface.
+23. **Keyboard/mobile affordances are inconsistent.** Fund search/filter explicitly remove focus outlines without replacement, many controls are below the repository's 44 px target, and the Fund workspace tab strip competes with the sticky shell header.
+24. **AUM navigation and visual hierarchy are duplicated.** Its four in-page chips repeat desktop navigation and the mobile domain strip; headings repeat shell titles, while the same Fund entity changes noun, form-label style, badge family, and action hierarchy across adjacent views.
 
 The configured local frontend uses `http://127.0.0.1:47502`; the local backend resolves PostgreSQL at `127.0.0.1:5433`, database `boe_local` (credentials redacted). Neither endpoint was listening during this audit. Therefore the configured local target is proven, but current row contents, physical schema state, and applied migration versions are **UNKNOWN**. Tracked release configuration instead builds the admin with relative `/api` and routes it through nginx to the selected dev/prod backend and its isolated PostgreSQL container.
 
@@ -342,7 +356,7 @@ Relative to this page (not necessarily globally obsolete), the current UI does n
 - `investment_orders`, `investment_reviews`, `investment_allocations`, and `client_value_entries` belong to the conditional review/allocation flow, not the Fund page.
 - `approval_actions` includes legacy enum values such as `fund_nav.correct`, `fund_aum.correct`, redemption approval, and fund maker-checker actions, but has no production repository/caller. **STALE / LEGACY schema capability**.
 
-## 12. Current Database Reads
+## 12. Current Database Reads — Fund Routes
 
 | Operation | Tables/fields read |
 |---|---|
@@ -357,7 +371,7 @@ Relative to this page (not necessarily globally obsolete), the current UI does n
 
 Actual current rows/values/counts are **UNKNOWN** because the configured database was unavailable. No statement in this report infers row contents from seeds or fixtures.
 
-## 13. Current Database Writes / Updates / Deletes
+## 13. Current Database Writes / Updates / Deletes — Fund Routes
 
 | API | Writes | Derived/transformed values |
 |---|---|---|
@@ -456,6 +470,9 @@ No second active admin Fund CRUD controller/service/repository was found. The pr
 | Write permissions | all controls visible after `funds.read` gate | writes require `funds.write` | read-only UI actions fail 403 |
 | Response schemas | handwritten optional access and compatibility unwraps | runtime Zod only validates requests | malformed/drifted successes can silently default |
 | AUM initialize (adjacent) | sends `{amountPaise}` | strict schema requires `{aumPaise}` | initialization always validation-fails |
+| AUM correction | sends `{amountPaise}` | strict schema requires `{aumPaise}` | correction always validation-fails |
+| AUM explicit collective | sends both `fundIds` and `items` | strict XOR requires exactly one mode | explicit preview always validation-fails |
+| AUM collective preview | expects `beforePaise/currentAumPaise` and `afterPaise/newAumPaise` | returns `beforeAumPaise` and `afterAumPaise` | real Before/After cells render missing values |
 | Admin/client Fund object | `aum`, `currentVersion` | client uses `fundSize`, `version` | two live shapes for same persisted fund |
 | Validation bounds | frontend checks core required/nonnegative fields | backend additionally caps objective/body at 20,000, title at 200, durations at 1200 | some inputs pass UI validation then receive 400 |
 
@@ -500,18 +517,18 @@ The active routed Fund page has no handlerless controls. Functional gaps/mislead
 - both “Move to archived” and “Archive and remove” are rendered and reach the same archive update; repeating archive increments the row version and emits another audit event;
 - read-only principals see write controls that will 403;
 - the shell makes a hidden approvals request that can 403 for a valid Fund-only principal;
-- AUM initialization on the separate AUM page sends the wrong field name.
+- AUM initialization and correction send the wrong field name; explicit collective sends both mutually exclusive request modes; real collective preview Before/After fields are mapped under the wrong names.
 
 The unreachable UI-kit prototype contains genuinely dead Upload NAV, Publish, New fund, and Edit controls.
 
-## 24. Backend Capabilities Not Used by the Current UI
+## 24. Backend Capabilities Not Used by the Current Fund UI
 
 - `PATCH /v1/admin/funds/:fundId/stocks/:stockId`.
 - Cursor pagination after page 1 for `GET /v1/admin/funds`.
 - Optional idempotency replay for Fund/stock mutations.
 - Returned `stocks` in `GET /v1/admin/funds/:fundId` (payload and database query are unused by the workspace).
 - Conditional allocation/refund capabilities under investment review are not Fund-page controls.
-- AUM initialize/growth/correction/collective/history routes are separate `/admin/aum` capabilities.
+- AUM initialize/growth/correction/collective/history routes are not used by `/admin/funds`; they are actively wired by the expanded `/admin/aum/*` scope. Initialize and correction are contract-broken, and explicit collective is shape-broken, as detailed in sections 34–47.
 
 Allocation is registered only when the full PhonePe gateway is configured (`runtime/composition.ts:452-466`); the inspected local environment lacks those credentials, so that local route group would not be registered. Production registration is **UNKNOWN**. No unallocation route exists. No redemption route/model/table exists in the current backend; separately reachable client redemption UI still calls `GET/POST /v1/client/redemptions`, for which repository route search found no backend registration. That is a dead client contract, not a current Admin Fund-page element.
 
@@ -595,6 +612,33 @@ Create form
   → invalidate admin:funds/admin:auditLogs
 ```
 
+```text
+/admin/aum/current
+  → AumScreen::CurrentAumTab
+  → useAdminFunds → GET /v1/admin/funds
+  → same capped Fund projection and latest-AUM lateral read
+  → normalized AUM table → optional link to /admin/funds/:id
+
+/admin/aum/manage
+  → useAdminFunds → local FundPicker
+  → GET /v1/admin/aum/funds/:id/history
+  ├─ empty → POST initialize → batch + absolute snapshot + audit + idempotency
+  └─ nonempty → POST growth → bigint domain calculation → batch + snapshot + audit + idempotency
+
+/admin/aum/collective
+  → useAdminFunds → select funds
+  → POST collective/preview → read latest bases → plan + basisHash (no writes)
+  → POST collective with basisHash + Idempotency-Key
+  → lock funds in ID order → reload/re-hash/re-plan
+  → one batch + N absolute snapshots + one audit + idempotency record
+
+/admin/aum/history
+  → useAdminFunds → local FundPicker
+  → GET history (newest 25 by default)
+  → optional POST correction
+  → append next same-date revision + audit + idempotency record
+```
+
 ## 29. Current-State Architecture Diagram
 
 ```text
@@ -603,12 +647,17 @@ Admin SPA (one Vite shell, admin target)
 ├─ ResourceCacheProvider
 ├─ AdminShell
 │  └─ global applications-queue polling
-└─ Fund routes
-   ├─ cached catalogue list
-   └─ direct-request workspace
-      ├─ terms/version form
-      ├─ stock disclosure panel
-      └─ history
+├─ Fund routes
+│  ├─ cached catalogue list
+│  └─ direct-request workspace
+│     ├─ terms/version form
+│     ├─ stock disclosure panel
+│     └─ history
+└─ AUM routes
+   ├─ current catalogue projection
+   ├─ manage-one → FundAumPanel
+   ├─ collective preview/commit
+   └─ history → FundAumHistoryPanel
            │
            ▼
 apiRequest (base URL, cookie/bearer, CSRF, retries)
@@ -621,16 +670,21 @@ Fastify
 ├─ HTTP boundary/CORS
 ├─ admin authentication + live RBAC
 ├─ adminCatalogRoutes (Zod request schemas)
-└─ AdminCatalogRepository (no service layer)
+├─ adminAumRoutes + adminFundGrowthPreviewRoutes
+├─ Fund AUM bigint arithmetic / basis hashing
+├─ AdminCatalogRepository (no service layer)
+└─ FundAumRepository (no service layer)
            │
            ▼
 Kysely + pg Pool
            │
            ▼
 PostgreSQL
-├─ Fund catalogue/history/stock/AUM-read tables
+├─ Fund catalogue/history/stock tables
+├─ aum_growth_batches 1 → N fund_aum_snapshots
+│  └─ correction snapshots have no batch
 ├─ audit_events
-└─ optional idempotency_records
+└─ idempotency_records (required for AUM writes)
 ```
 
 ## 30. Potential Architectural Problems or Inconsistencies
@@ -645,6 +699,11 @@ Severity here describes current operational risk, not a redesign prescription.
 | HIGH | Two-request create can persist a partial draft |
 | HIGH | Successful create can leave the mounted catalogue stale because invalidation does not refetch |
 | HIGH | Separate AUM initialize UI sends a field rejected by strict backend schema |
+| HIGH | AUM correction sends the same rejected `amountPaise` field |
+| HIGH | Explicit collective mode sends mutually exclusive `fundIds` and `items` |
+| HIGH | Collective preview displays no real Before/After values because response fields diverge |
+| HIGH | All AUM pages and AUM history inherit silent 25-row truncation |
+| HIGH | Stale collective previews can commit old values after visible inputs change |
 | MEDIUM | First-version publication contradicts draft workflow copy |
 | MEDIUM | Write controls exposed to principals lacking `funds.write` |
 | MEDIUM | Shell approvals polling is not permission-gated and can generate hidden 403s on a valid Fund page |
@@ -676,6 +735,14 @@ No modifications are made now. Based on proven ownership, likely future touch po
 - `packages/contracts` generated/source definitions if admin contracts become shared
 - migrations only if persistence semantics genuinely change; current DDL should not be edited retroactively
 - adjacent `FundAumPanel.jsx` / `adminAumRoutes.ts` for the proven initialize-name conflict
+- `frontend_stack/packages/admin/src/screens/AumScreen.jsx`
+- `frontend_stack/packages/admin/src/screens/FundAumHistoryPanel.jsx`
+- `frontend_stack/packages/admin/src/helpers/idempotencyKeys.js`
+- `backend_controller/src/routes/adminFundGrowthPreviewRoutes.ts`
+- `backend_controller/src/repositories/fundAumRepository.ts`
+- `backend_controller/src/domain/admin/fundAumGrowth.ts`
+- `frontend_stack/packages/admin/src/screens/aumScreen.test.jsx`
+- `backend_controller/test/integration/adminAum.integration.test.ts`
 
 ## 32. Likely Consolidation / Cleanup Candidates
 
@@ -692,6 +759,10 @@ Candidates, not authorized changes:
 - centralize shared admin/client Fund projection primitives without erasing audience-specific authorization/visibility;
 - remove orphaned `fund_positions` and `approval_actions` only after physical-data/deployment verification and a forward migration;
 - expose/use cursor pagination and stock edit only if product requirements retain those capabilities.
+- consolidate duplicated AUM money/date/history helpers while preserving the AUM/client-value ledger boundary;
+- align AUM request/response contracts and cross-stack tests before removing compatibility aliases;
+- either populate or prospectively remove the AUM batch idempotency FK, after physical-data verification;
+- reconcile direct AUM correction with the schema-only maker-checker capability.
 
 ## 33. Final Current-State Architecture Summary
 
@@ -701,11 +772,757 @@ The implementation is operationally split in important ways: list data is cached
 
 The most important pre-redesign facts to preserve are the actual route ownership, the absence of a Fund service layer, append-only version/disclosure history, audit writes in the same mutation transaction, the latest-AUM lateral read, live-per-request RBAC, and the distinction between archiving and deletion. The most urgent inconsistencies to resolve in a future change are pagination loss, disclosure-body omission, non-atomic creation, archive semantics/copy, authorization-aware controls, stock cache invalidation, and the AUM initialize field mismatch.
 
+## 34. Admin AUM Route and Page Inventory
+
+`Admin.jsx:88-92` registers four canonical AUM pages and one redirect. The wrappers in `pages/legacy/legacyRoutes.jsx:84-86` are **ACTIVE**.
+
+| Browser route | Active component | Frontend route permission | Purpose / initial request |
+|---|---|---|---|
+| `/admin/aum` | `<Navigate replace>` | destination-dependent | redirects to `/admin/aum/current` |
+| `/admin/aum/current` | `AumRoute` → `AumScreen('current')` → `CurrentAumTab` | `aum.read` | cached GET `/v1/admin/funds`; read-only current projection |
+| `/admin/aum/manage` | `AumScreen('manage')` → `ManageOneFundTab` → conditional `FundAumPanel` | `aum.write` | GET funds; selected fund triggers GET AUM history, then initialize or growth |
+| `/admin/aum/collective` | `AumScreen('collective')` → `CollectiveAumTab` | `aum.write` | GET funds; preview then hash-checked collective commit |
+| `/admin/aum/history` | `AumScreen('history')` → `HistoryTab` → conditional `FundAumHistoryPanel` | `aum.read` | GET funds; selected fund triggers GET history; correction requires `aum.write` |
+
+Nav ownership is `navigation/nav.js:146-179`. `/admin/ops/holdings` and legacy `?tab=holdings` redirect to `/admin/aum/current` (`Admin.jsx:101-111`; `legacyTabMap.js:15-17`); they are **CONDITIONAL compatibility**, not duplicate pages.
+
+`AumScreen.jsx:484-504` always renders all four internal route links. Those links are not permission-filtered, although `Permitted` rejects the destination. This differs from `AdminDomainStrip`, which filters sibling links. A read-only AUM user therefore sees write-page links that terminate at Forbidden; a write-only user sees read-page links that do the same. `/admin/aum` always redirects to the read page, so an `aum.write`-only principal is redirected to Forbidden instead of an authorized write page.
+
+## 35. AUM Frontend Component and Dependency Tree
+
+```text
+BrowserRoot / session / ResourceCacheProvider / AdminShell
+└─ Admin → Permitted → AumRoute
+   └─ AumScreen
+      ├─ four route links
+      ├─ CurrentAumTab
+      │  └─ useAdminFunds → current table → Open fund link
+      ├─ ManageOneFundTab
+      │  ├─ useAdminFunds → FundPicker
+      │  └─ FundAumPanel (selected fund only)
+      │     ├─ direct history loader
+      │     ├─ initialize form, conditional on empty history
+      │     └─ amount/percentage growth form, conditional on nonempty history
+      ├─ CollectiveAumTab
+      │  ├─ useAdminFunds → checkboxes
+      │  ├─ percentage / explicit-delta form
+      │  └─ preview → discard or idempotent commit
+      └─ HistoryTab
+         ├─ useAdminFunds → FundPicker
+         └─ FundAumHistoryPanel (selected fund only)
+            ├─ direct history loader
+            └─ correction form when principal also has aum.write
+```
+
+Direct AUM frontend artifacts are `screens/AumScreen.jsx`, `screens/FundAumPanel.jsx`, `screens/FundAumHistoryPanel.jsx`, `helpers/idempotencyKeys.js`, `data/adminResources.js::{useAdminFunds,useAdminCacheActions}`, `helpers/formatters.js`, `data/AdminReadError.jsx`, and the shared API/session/cache/navigation/display infrastructure already catalogued in sections 3–4 and 14–15. There is no shared generated AUM DTO or response parser.
+
+## 36. AUM Runtime Load Sequences
+
+All four pages first execute the session/shell sequence in section 5, including unconditional Approvals Queue polling. Each then calls `useAdminFunds()` (`AumScreen.jsx:60-61,131-133,160-163,457-459`). Thus every page depends on backend `funds.read` even though its route metadata declares only `aum.read` or `aum.write`.
+
+### Current
+
+`CurrentAumTab` → `useAdminFunds` → cached GET `/v1/admin/funds` → `normalizeFundRow` → render name/slug/state/`aumPaise`/as-of date (`AumScreen.jsx:60-125`). It makes no AUM-specific request and has no search, sort, filter, or pagination.
+
+### Manage one fund
+
+GET funds → local `FundPicker` → select ID → keyed `FundAumPanel` mounts → GET `/v1/admin/aum/funds/:id/history` (`FundAumPanel.jsx:84-105`). `history[0]` is treated as latest. Empty response selects initialize; nonempty selects growth.
+
+A history failure leaves `history=[]`, records an error, and sets loading false. The derived `isInitialize` then becomes true, so the page shows both the read error and an active Initialize form. A failed read is therefore incorrectly treated as proof that no basis exists. There is no history Retry control.
+
+### Collective
+
+GET funds → local selection/mode/inputs → POST preview → store the exact submitted request as `preview.requestBody` alongside returned `basisHash` → optional POST commit using that stored request and an Idempotency-Key (`AumScreen.jsx:217-281`). Preview is read-only at the database layer but uses POST and therefore receives CSRF protection.
+
+### History
+
+GET funds → local picker → selected panel GETs history (`FundAumHistoryPanel.jsx:50-68`). The panel renders the result and only shows Correct to principals with `aum.write` (`:30-35,152,179-190`). There is no explicit retry after a history read failure.
+
+## 37. AUM User Action → Code Execution Mapping
+
+| Page / UI element | Event/function | API request | Backend chain | Database effect |
+|---|---|---|---|---|
+| Any AUM tab link | React Router `Link` | none | destination `Permitted` | none |
+| Current: Open fund | link `/admin/funds/:id` | Fund workspace GET after navigation | admin catalogue detail | reads Fund projection/version/stock/disclosure |
+| Current read-error retry | resource `refresh` | GET `/v1/admin/funds` | catalogue list | read only |
+| Manage/History fund picker | local `setFundId` | selected panel GETs history | `listHistory` → `findExistingFundIds` + `listSnapshots` | reads `funds`, `fund_aum_snapshots` |
+| Manage initialize inputs | local state | none | none | none |
+| Publish initial AUM | `FundAumPanel.onSubmit` | POST `/initialize`, but wrong `{amountPaise}` | strict validation stops before handler body | **none; DEAD/NON-FUNCTIONAL UI** |
+| Growth mode/direction/magnitude/date/reason/note | local state; local preview | none | none | none |
+| Publish AUM adjustment | `FundAumPanel.onSubmit` | POST `/growth` + Idempotency-Key | lock fund → latest basis → bigint growth → batch/snapshot/audit/idempotency | inserts batch, snapshot, audit, idempotency record |
+| Collective fund checkbox | immutable toggle; clears preview | none | none | none |
+| Collective mode | local setter; clears preview | none | none | none |
+| Collective other inputs | local setters; do **not** clear preview | none | none | none |
+| Preview growth | `CollectiveAumTab.onPreview` | POST `/growth/collective/preview` | existence/latest reads → plan/hash | read only |
+| Discard preview | `setPreview(null)` | none | none | none |
+| Commit growth | `onCommit` | POST `/growth/collective` + hash/key | ordered locks → re-read/re-hash → one batch + N snapshots + audit/idempotency | atomic inserts |
+| Correct / Close | open prefilled inline form / clear ID | none | none | none |
+| Publish correction | `FundAumHistoryPanel.onCorrect` | POST `/corrections`, but wrong `{amountPaise}` | strict validation stops before handler body | **none; DEAD/NON-FUNCTIONAL UI** |
+
+Blank Initialize input is converted by `Number('')` to zero and then `'0'`; the input is not `required` (`FundAumPanel.jsx:34-39,221-234`). The correction converter has the same behavior, although correction opens prefilled. Zero is valid, but blank and explicit zero are indistinguishable.
+
+In explicit collective mode, `buildBody` starts with `fundIds:selected` and then adds `items` without deleting `fundIds` (`AumScreen.jsx:189-215`). The strict backend XOR rejects that request before preview reads. Therefore the explicit Preview button is **DEAD / NON-FUNCTIONAL** in its current branch, and explicit Commit cannot become visible through a real successful preview.
+
+## 38. AUM Frontend Requests and Actual Wire Shapes
+
+| Trigger | Method/path | Body actually built by current frontend | Key |
+|---|---|---|---|
+| Every page | GET `/v1/admin/funds` | none | none |
+| Selected Manage/History fund | GET `/v1/admin/aum/funds/:fundId/history` | no query, therefore backend default limit | none |
+| Initialize | POST `/v1/admin/aum/funds/:fundId/initialize` | `{amountPaise,asOfDate,reasonCode,note?}` | required key supplied |
+| Individual amount growth | POST `/v1/admin/aum/funds/:fundId/growth` | `{growthPaise,asOfDate,reasonCode,note?}` | required key supplied |
+| Individual percentage growth | same | `{growthBasisPoints,asOfDate,reasonCode,note?}` | required key supplied |
+| Collective preview | POST `/v1/admin/aum/growth/collective/preview` | percentage `{fundIds,growthBasisPoints,...}` or explicit `{items:[{fundId,growthPaise}],...}` | intentionally none |
+| Collective commit | POST `/v1/admin/aum/growth/collective` | exact stored preview request + `basisHash` | required key supplied |
+| Correction | POST `/v1/admin/aum/snapshots/:snapshotId/corrections` | `{amountPaise,asOfDate,reasonCode,note?}` | required key supplied |
+
+`useIdempotencyKeys` stores `{JSON.stringify(body),key}` by component-local logical scope. Identical retries reuse a key; a body change mints a new UUID (`helpers/idempotencyKeys.js:17-29`). Unmount/remount loses the map. Shared `apiRequest` supplies JSON, credentials/bearer, and CSRF on all POSTs; write requests are not automatically retried.
+
+The backend requires keys matching `^[A-Za-z0-9._:-]{8,128}$` (`http/idempotencyProtocol.ts:22-23`). `IDEMPOTENCY_TTL_MS` controls replay lifetime and defaults to one day (`runtime/environment.ts:83,435`).
+
+The two history consumers accept either a bare array or `{items}`. Single-fund success accepts `{snapshot}` or a direct snapshot. Collective display accepts `items` or `targets`; however, its Before/After aliases are `beforePaise ?? currentAumPaise` and `afterPaise ?? newAumPaise` (`AumScreen.jsx:284,419-425`), while the real backend returns `beforeAumPaise` and `afterAumPaise`. The real preview therefore renders missing Before/After values; only `deltaPaise` matches. These compatibility branches are handwritten; the generated contracts package contains none of these endpoints.
+
+## 39. AUM Backend Routes, Schemas, and Responses
+
+`runtime/composition.ts:405-418` always constructs one `adminAumDeps`, registers `adminAumRoutes.ts`, and separately registers `adminFundGrowthPreviewRoutes.ts`. The split preview module is **ACTIVE**, not legacy; its comment explains that the literal substring in “preview” would trip the repository's path-based dependency-wall guard (`adminFundGrowthPreviewRoutes.ts:10-16`).
+
+| Method/path | Runtime handler | Permission / boundary | Request schema | Success `data` |
+|---|---|---|---|---|
+| POST `/v1/admin/aum/funds/:fundId/initialize` | `initializeAum` (`adminAumRoutes.ts:228-297`) | `aum.write`, CSRF, required key | strict `{aumPaise: nonnegative decimal string,asOfDate:ISO date,reasonCode,note?}` | `{snapshot,growthBatchId}` |
+| POST `/v1/admin/aum/funds/:fundId/growth` | `growAum` (`:299-386`) | same | strict XOR `growthPaise` signed decimal string / integer `growthBasisPoints` -10000..100000, plus date/reason/note | `{snapshot,growthBatchId,deltaPaise}` |
+| POST `/v1/admin/aum/snapshots/:snapshotId/corrections` | `correctSnapshot` (`:388-449`) | same | strict `{aumPaise,asOfDate,reasonCode,note?}` | `{snapshot}` |
+| GET `/v1/admin/aum/funds/:fundId/history` | `listHistory` (`:451-461`) | `aum.read`, no CSRF | strict `{limit?: integer 1..100 = 25}` | `{items:Snapshot[]}` |
+| POST `/v1/admin/aum/growth/collective/preview` | `planCollectiveGrowth` (`adminFundGrowthPreviewRoutes.ts:33-74`) | `aum.write`, CSRF, no key | strict percentage mode `{fundIds[1..100],growthBasisPoints,...}` XOR explicit mode `{items[1..100],...}`; unique funds | `{basisHash,items:[before/delta/after+basis identity]}` |
+| POST `/v1/admin/aum/growth/collective` | `commitCollectiveGrowth` (`adminAumRoutes.ts:463-574`) | `aum.write`, CSRF, required key | preview schema + 64-lowercase-hex `basisHash` | `{growthBatchId,targetCount,totalDeltaPaise,basisHash,items}` |
+
+Paise schemas permit up to 19 digits; reason code is trimmed/nonempty and capped at 80 by `adminRouteKit.ts`; note is trimmed 1..2000 if present. The runtime AUM maximum is the fallback 100,000 basis points (+1000%) because composition supplies no `maxGrowthBasisPoints`. The -10,000 basis-point floor prevents a percentage loss over 100%.
+
+`CLIENT_GROWTH_MAX_BASIS_POINTS` is parsed only for the separate client-growth domain (`runtime/environment.ts:86,438`); it does not configure Fund AUM. There is no AUM-specific environment variable for this cap in the active composition.
+
+Responses use the same canonical envelope documented in section 8. `mapSnapshot` deliberately exposes only `id`, `fundId`, `asOfDate`, `revision`, `aumPaise`, `reasonCode`, and `createdAt` (`adminAumRoutes.ts:213-221`). Private note, publisher, request ID, and growth-batch ID are selected by the repository but discarded at the handler boundary.
+
+## 40. AUM Service, Calculation, and Repository Flow
+
+There is no AUM service class. The active flow is:
+
+```text
+Fastify handler
+→ live admin authentication/RBAC + strict Zod
+→ runAdminMutation / UnitOfWork (writes)
+→ domain/admin/fundAumGrowth.ts (growth arithmetic and basis hash)
+→ repositories/fundAumRepository.ts
+→ parameterized SQL / PostgreSQL
+```
+
+`aumGrowthDelta` returns an explicit signed delta verbatim or uses shared `symmetricHalfUpBasisPoints` (`fundAumGrowth.ts:25-36`). `planAumGrowth` sorts by fund ID, calculates each fund from its own latest basis, rejects any negative result, and accumulates total delta (`:63-106`). `computeAumBasisHash` SHA-256 hashes the canonical command plus sorted fund ID/latest snapshot ID/AUM/revision (`:108-150`).
+
+Collective preview reads without locks. Commit locks `funds` rows in ascending UUID order, reloads current bases, recomputes and compares the hash, replans, then inserts all outputs in one transaction. Any missing basis, stale hash, nonexistent target, or negative result aborts the entire command.
+
+Individual growth also uses the latest authoritative snapshot, rejects no basis and negative after-value, then creates a new snapshot for the submitted date. Corrections require the submitted date to equal the target row and the target to remain the highest revision for that fund/date; they append revision + 1 and never update the target.
+
+No AUM write validates Fund lifecycle or chronological consistency. Growth may use the latest current basis but write an earlier or future as-of date; a past-dated result may not become the latest projection because date is the primary ordering key.
+
+The initialize handler does **not** verify that the fund has no existing snapshot. It only locks the fund, calculates the next revision for the submitted date, and inserts. “First publication” semantics therefore depend on caller discipline; direct/repeated initialized commands with fresh keys are accepted.
+
+## 41. AUM Database Schema, Reads, and Writes
+
+Migration `015_canonical_catalog.sql:80-131` is authoritative for the two AUM-owned tables; `db/types.ts:652-682` mirrors it.
+
+### `aum_growth_batches`
+
+UUID PK; enum `scope` (`individual|collective`); enum instruction type; effective date; nonblank reason; nullable note; nonblank basis-hash text; actor-user FK RESTRICT; request ID text; nullable idempotency-record FK RESTRICT with uniqueness; nonnegative target count; signed bigint total delta; created timestamp. Index on request ID.
+
+### `fund_aum_snapshots`
+
+UUID PK; fund FK RESTRICT; as-of date; positive revision default 1; nonnegative bigint absolute AUM; nullable growth-batch FK RESTRICT; nonblank reason; nullable note; publisher-user FK RESTRICT; request ID text; created timestamp. Unique `(fund_id,as_of_date,revision)`; partial unique `(aum_growth_batch_id,fund_id)` for non-null batches; request index; authoritative-latest index `(fund_id,as_of_date DESC,revision DESC,created_at DESC,id DESC)`.
+
+Reads use `funds` for existence/row locks and `fund_aum_snapshots` for latest bases, by-ID correction target, maximum revision, and limited history. The repository always uses the full latest ordering (`fundAumRepository.ts:140-170,215-222`).
+
+| Operation | `aum_growth_batches` | `fund_aum_snapshots` | Other writes |
+|---|---|---|---|
+| Initialize | one individual/amount row | one absolute row linked to batch | one audit + idempotency record |
+| Individual growth | one individual amount/percentage row | one calculated absolute row linked to batch | one audit + idempotency record |
+| Correction | none | one same-date next revision with null batch | one audit + idempotency record |
+| Collective preview/history | none | reads only | none |
+| Collective commit | one collective row | one row per target linked to batch | one batch-level audit + idempotency record |
+
+The DDL comment says `aum_growth_batches.idempotency_record_id` ties a batch to its idempotency result, but `InsertAumGrowthBatchInput` has no such field and `insertBatch` omits the column (`fundAumRepository.ts:65-76,188-212`). Current AUM batches therefore leave it null even though `runAdminMutation` separately persists an idempotency record. The field is **ACTIVE schema but UNUSED/UNPOPULATED**, contradicting its migration comment. Client-growth code has explicit link logic; AUM does not.
+
+Fund catalogue list/detail and client catalogue independently read the latest snapshot. That is how an AUM write returns to `/admin/funds` and client Fund size; AUM mutations never update a Fund AUM column because none exists.
+
+## 42. AUM Authentication, Authorization, and Effective Permissions
+
+Cookie/native auth, live database RBAC, CORS, envelopes, and CSRF are the same as section 14. All AUM POSTs require CSRF, including read-only preview. Every mutating endpoint requires an Idempotency-Key and `aum.write`; history requires `aum.read`.
+
+Actual page dependencies are broader than nav metadata:
+
+| Page/action | Declared route permission | Additional runtime permission required |
+|---|---|---|
+| Current | `aum.read` | `funds.read` for its only data request |
+| Manage | `aum.write` | `funds.read` for picker; `aum.read` for basis/history detection |
+| Collective | `aum.write` | `funds.read` for target picker |
+| History | `aum.read` | `funds.read` for picker |
+| Correction | history dependencies | additionally `aum.write` |
+
+Seeded `finance` and `superadmin` receive all relevant permissions, so the standard roles hide this mismatch. Custom role grants can expose it. `FundAumHistoryPanel` correctly hides correction without `aum.write`, unlike Fund workspace write controls. Current's Open Fund links are unconditional and lead to Forbidden for an AUM reader lacking `funds.read`.
+
+Manage's missing `aum.read` gate is materially unsafe at the presentation layer: a writer without read permission gets a history 403, then sees an initialize form because the failed read is treated as empty history.
+
+The global JSON body limit is 65,536 bytes (`http/boundary.ts:15`; `runtime/application.ts:30-52`). Neither the global application registration nor either AUM route module registers an AUM rate limiter. CORS allows the configured origin set and the Authorization, Idempotency-Key, and CSRF headers used here.
+
+## 43. AUM Duplicate Code Inventory
+
+| Layer | File / Symbol A | File / Symbol B | Type | Active usage / difference | Risk |
+|---|---|---|---|---|---|
+| Frontend | `FundAumPanel.jsx::toAbsolutePaise` | `FundAumHistoryPanel.jsx::toAbsolutePaise` | Exact duplicate | both active; both callers send the same wrong field name | Medium |
+| Frontend | `AumScreen.jsx::today` | `FundAumPanel.jsx::today`; `ClientValuesScreen.jsx::today` | Exact duplicate | UTC date default in active pages | Low/Medium timezone drift |
+| Frontend | `FundAumPanel::{toSignedPaise,toSignedBasisPoints}` | conversions in `CollectiveAumTab` and `ClientValuesScreen` | Near duplicate | validation and zero-rounding behavior differs | High |
+| Frontend | `FundAumPanel.load` | `FundAumHistoryPanel.load` | Near/exact duplicate loader | same history endpoint/extraction; separate states/errors | Medium |
+| Frontend | `CollectiveAumTab` | `ClientValuesScreen::CollectiveGrowthTab` | Large near-duplicate workflow | both active preview/hash/idempotent-commit state machines; distinct AUM/client-value boundaries | High drift; domain separation must remain |
+| Frontend | `CurrentAumTab` | `FundsListScreen` | Partial overlapping view | same cache and fund/AUM/state/open-link projection; different task scope | Low/Medium |
+| Backend | `fundAumRepository` latest reads | admin/client catalogue lateral latest reads | Near-duplicate SQL rule | same four-column ordering in three active repositories | High drift |
+| Backend | AUM preview/commit orchestration | `adminClientGrowthRoutes` preview/commit | Parallel independent implementation | same hash/recheck/idempotent batch pattern over intentionally distinct ledgers | Medium/High maintenance risk |
+| Backend/schema | direct `correctSnapshot` | unused `approval_actions` type `fund_aum.correct` | Superseded/conflicting control model | direct single-actor correction is active; maker-checker table has no runtime caller | High governance ambiguity |
+
+The separate `adminFundGrowthPreviewRoutes.ts` module is not a superseded AUM implementation. No old AUM route version was found. Old UI-kit NAV/allocation/AUM content and unreferenced allocation/fund-preview/redemption CSS remain stale as catalogued in sections 20 and 43; current `.adm-aum-*`, nested-card, and form-action CSS is active.
+
+## 44. AUM Frontend–Backend Conflicts and Dead UI
+
+| Severity | Finding | Evidence / result |
+|---|---|---|
+| CRITICAL | Initialize sends `amountPaise`; backend requires `aumPaise` | `FundAumPanel.jsx:127-133` vs `adminAumRoutes.ts:96-103`; strict validation returns 400 before DB |
+| CRITICAL | Correction sends `amountPaise`; backend requires `aumPaise` | `FundAumHistoryPanel.jsx:82,95-110` vs `adminAumRoutes.ts:120-127`; every correction returns 400 |
+| CRITICAL | Explicit collective sends both mutually exclusive modes | frontend retains `fundIds` when adding `items`; backend refinement requires exactly one shape; every explicit preview returns 400 |
+| HIGH | Collective preview maps the wrong Before/After fields | backend returns `beforeAumPaise`/`afterAumPaise`; frontend checks other aliases and displays missing values |
+| HIGH | AUM catalogue/pickers inherit first 25 funds | every tab uses bare `useAdminFunds`; cursor/meta are discarded |
+| HIGH | “Every published snapshot” is false | history defaults to 25, UI sends no limit and has no pagination; backend has no cursor |
+| HIGH | Stale preview can commit old visible values | only selection/mode clears preview; edits to direction, amounts, date, reason, or note do not; commit uses stored `preview.requestBody` |
+| HIGH | Route permissions omit Fund/history prerequisites | page can pass `Permitted` then 403 on its data request |
+| HIGH | History failure becomes initialize state | `isInitialize = !loading && history.length===0` despite `readError` |
+| MEDIUM | All fund states are eligible | picker uses unfiltered admin catalogue; backend only locks IDs, so draft/paused/archived AUM writes are accepted |
+| MEDIUM | Current copy overstates client visibility | page lists all states; client catalogue exposes published funds only |
+| MEDIUM | Correction date looks editable but must remain identical | any date change gets 409, whose UI message incorrectly says already corrected |
+| MEDIUM | Frontend bounds are weaker | no reason-code max; no percentage max; backend may return validation 400 |
+| MEDIUM | Small collective inputs can round to zero | raw nonzero input rounds to 0 basis points/paise; backend schemas permit zero and append zero-delta publications |
+| MEDIUM | Individual local preview can lose precision | converts up-to-19-digit paise string to JS Number; server bigint commit remains authoritative |
+| LOW/MEDIUM | UTC “today” differs from India local day before 05:30 | Manage and Collective default `toISOString().slice(0,10)` |
+
+Frontend tests currently encode the wrong initialize/correction field names (`aumScreen.test.jsx:92-108,230-247`), while backend integration helpers use `aumPaise` (`adminAum.integration.test.ts:136-139,448-453`). Both suites can pass independently while the real boundary is broken.
+
+Frontend collective tests also mock frontend-only Before/After aliases and check that explicit `items` exist without asserting that forbidden `fundIds` is absent. Backend integration tests use the strict correct explicit shape. This is a second boundary-test divergence.
+
+No AUM control performs allocation, unallocation, redemption, payment, or client-value mutation. All active AUM database writes are absolute snapshot publications. The two wrong-field submit buttons are the only currently visible AUM controls proven to have no successful backend execution path.
+
+## 45. AUM Pagination, State, and Cache Consequences
+
+- Fund-list truncation means Current, Manage, Collective, and History only know the first 25 Fund rows. The collective backend accepts 100, but the UI cannot select rows 26–100.
+- History default is 25 and maximum is 100, with no cursor. The current UI cannot request beyond 25; even a direct request cannot paginate beyond the newest 100.
+- All AUM selectors include draft, review-pending, published, paused, and archived rows. AUM handlers have no lifecycle guard.
+- Successful AUM writes call `invalidateAum()`, which invalidates only `admin:funds` and `admin:auditLogs` (`adminResources.js:121-126`). It intentionally does not invalidate client-value/payment/review caches.
+- Single-fund growth and correction also reload their local history. Collective commit performs no follow-up read.
+- Resource invalidation does not itself refetch a still-mounted `useAdminFunds` consumer, as documented for Fund create. Navigating to another routed AUM/Fund page remounts and observes the invalidation; the current mounted projection can retain stale catalogue data until then.
+- Manage/History fund selection is component-local, absent from the URL, non-bookmarkable, and lost on refresh or tab navigation.
+
+## 46. AUM Active, Conditional, Stale, and Unknown Inventory
+
+**ACTIVE:** AUM route entries/nav metadata/wrapper; `AumScreen` and all four tabs; both panels; Fund catalogue resource/normalizer; AUM cache invalidation; idempotency-key helper; transport/session/auth; `adminAumRoutes`; preview route; `fundAumGrowth`; shared bigint rounding; `fundAumRepository`; migrations/types for AUM batches and snapshots; audit/idempotency plumbing.
+
+**INDIRECTLY ACTIVE:** the full admin shell, global approval polling, responsive navigation, generic UI/display/CSS, catalogue repository's latest-AUM projection, auth and RBAC repositories.
+
+**CONDITIONAL:** selected-fund panels; initialize versus growth; amount versus percentage; collective percentage versus explicit; preview/result/error/409 branches; correction visibility; cookie versus bearer; fixture mode; idempotency replay.
+
+**STALE / LEGACY:** old UI-kit NAV/allocation/AUM prototype; verified-unreferenced legacy Fund allocation/preview/redemption CSS; schema-only `approval_actions.fund_aum.correct` maker-checker capability with no runtime caller; documentation references to deleted `AumDisplayFields`, `AumRedemptionsTab`, `GainAllocationForm`, and `FundInvestorsPanel` are stale documentation, not extant code.
+
+**DUPLICATE / OVERLAPPING:** the conversion, loader, collective-workflow, current-table, latest-SQL, and parallel client-growth implementations in section 43.
+
+**UNUSED / UNREACHABLE:** `aum_growth_batches.idempotency_record_id` in the current AUM repository flow; older-than-25 history through the UI; funds after catalogue row 25; initialize/correction success branches from the current UI request shapes; explicit collective preview/commit from the current UI request shape.
+
+**UNKNOWN:** live AUM rows/applied migrations; deployed environment; external callers; whether custom roles grant AUM permissions without prerequisites; whether policy intends AUM publication for non-published funds. The code's current acceptance of those states is proven even though desired policy is unknown.
+
+## 47. Expanded Funds ↔ AUM Current-State Summary
+
+`/admin/funds` owns Fund identity, terms/disclosure versions, lifecycle, and stock disclosures. It reads—but never writes—the latest absolute AUM. `/admin/aum/*` owns AUM publication/history over the same Fund identities. AUM writes append batches/snapshots and return to both admin and client catalogues through latest-snapshot reads; they never change client investment-value ledgers.
+
+The two surfaces are coupled through the cached, paginated Fund catalogue, permissions, and latest-AUM projection. That coupling currently hides funds after row 25 across both domains. AUM has working individual growth, percentage collective preview/commit, and history reads; initialization and correction are broken by a request-field mismatch, and explicit collective mode is broken by a mutually exclusive shape violation. Its history is truncated, preview display maps two wrong fields, route permissions underdeclare runtime dependencies, and its batch-to-idempotency FK is never populated. These facts should be treated as current architecture, not intended design.
+
+## 48. Frontend View and Design Audit — Scope and Method
+
+This section extends the current-state audit to the rendered frontend of `/admin/funds`, `/admin/funds/:fundId`, and every `/admin/aum/*` page. It is an inspection of the active JSX, resolved stylesheet imports, selector cascade, responsive rules, design tokens, interaction states, and compiled CSS artifact. It does not propose or apply a redesign.
+
+The view audit distinguishes:
+
+- **code-proven rendered structure** — elements and classes present on active route/component paths;
+- **code-proven CSS result** — selectors that do or do not match that structure, import-order overrides, dimensions, breakpoints, and color values;
+- **reasonable visual inference** — the likely rendered consequence of those rules where an authenticated populated browser session was unavailable;
+- **UNKNOWN** — content-dependent geometry and any deployment-specific stylesheet or browser override not present in the repository.
+
+The active routes could not be visually captured with live Fund/AUM data: the configured backend/database were unavailable, and the offline fixture principal has no Fund/AUM permissions. A headless browser correctly redirected an anonymous visit to Admin login and then rendered Forbidden after fixture login. The findings below therefore do not claim pixel-screenshot validation; they are derived from the exact active DOM/CSS paths and, where stated, computed token contrast.
+
+### Impeccable audit score
+
+| Dimension | Score | Evidence-based assessment |
+|---|---:|---|
+| Accessibility | 1/4 | Good semantic foundations are offset by invisible Fund-filter focus, multiple contrast failures, weak AUM field-error association, sub-token touch targets, and permission-inaccurate affordances. |
+| Performance | 3/4 | No heavy page media/charts and route shell is lazy, but all Admin screens and a 101 KB minified Admin CSS chunk load together. |
+| Theming | 1/4 | Semantic light/dark tokens exist, but active badge, result, error, danger, and nested-preview rules bypass them and fail contrast or invert incorrectly. |
+| Responsive | 2/4 | Mobile shell and opt-in card tables are strong; raw/partial tables, duplicated AUM navigation, 640/768 breakpoint drift, and undersized controls remain. |
+| Anti-patterns / consistency | 1/4 | Three style vocabularies, three table treatments, three badge families, nested cards, duplicate page navigation, and import-order-dependent duplicate selectors are active. |
+| **Total** | **8/20** | **Needs significant improvement.** The token/shell foundation is sound, but these Fund/AUM views only partially use it. |
+
+The score is an audit aid, not a runtime classification. Functional contract failures already proven elsewhere in this report remain higher priority than visual cleanup.
+
+## 49. Active Frontend Style and Cascade Map
+
+```text
+frontend_stack/app/src/main.jsx:4-6
+├─ @beonedge/design-tokens/tokens.css
+│  ├─ design-tokens/src/fonts.css
+│  └─ design-tokens/src/tokens-core.css
+├─ @beonedge/design-tokens/kit.css
+│  └─ design-tokens/src/kit-core.css
+└─ app/src/index.css
+
+frontend_stack/packages/admin/src/pages/Admin.jsx:25-27
+├─ styles/desktop/admin.css
+│  ├─ styles/admin/admin-base.css
+│  ├─ styles/admin/admin-cards.css
+│  ├─ styles/admin/admin-tables.css
+│  ├─ styles/admin/admin-overlays.css
+│  ├─ styles/admin/admin-payments.css
+│  ├─ styles/admin/admin-funds.css
+│  └─ styles/admin/admin-responsive.css
+├─ styles/desktop/shell.css
+└─ styles/desktop/site.css
+
+FundsListScreen.jsx:13
+FundWorkspace.jsx:14
+FundProfileForm.jsx:7
+AumScreen.jsx:16
+└─ screens/admin-screens-shared.css
+
+SkeletonTableRow.jsx:1
+└─ components/SkeletonTableRow.css
+```
+
+Three simultaneously active visual vocabularies result:
+
+| Namespace | Current responsibility | Fund/AUM usage | Status |
+|---|---|---|---|
+| `.ash-*` | Redesigned Admin shell, top bar, sidebar, mobile nav/domain strip, retry banner | Shell around every page; `AdminReadError`; Fund fatal-read Retry | **ACTIVE / INDIRECTLY ACTIVE** |
+| `.adm-*` | Legacy operational-page cards, forms, tables, screens, decision regions | Most Fund/AUM page markup | **ACTIVE**, despite the “legacy” designation |
+| `.be-*` | Shared tokens/kit buttons, badges, money, numeric and utility classes | All Fund/AUM buttons, `StateBadge`, money, eyebrow, padding/stack utilities | **ACTIVE / INDIRECTLY ACTIVE** |
+| `.be-page`, `.be-section`, `.be-content-grid` primitives | New unified replacements for `.ash-page`, `.adm-screen`, old grids | Used by `OverviewPage`, not by Fund/AUM | **DUPLICATE / SUPERSEDING SYSTEM**, not yet active on these pages |
+
+`styles/desktop/shell.css:1-8` explicitly states that the redesigned `.ash-*` shell coexists with legacy `.adm-*` screens while those screens await rebuild. The newer primitives make the same ownership explicit: `layout/primitives/Page.jsx:5-13` says it replaces `.ash-page` and `.adm-screen`; `ContentGrid.jsx:5-9` says it replaces `.adm-stats` and `.adm-grid-2`. The current Fund/AUM pages have not migrated to those primitives.
+
+### Core active design tokens
+
+The canonical source is `frontend_stack/packages/design-tokens/src/tokens-core.css:11-271`.
+
+| Role | Current value |
+|---|---|
+| Ink / elevated ink | `#0E1116` / `#1A1F27` |
+| Ivory / bone | `#F7F7F5` / `#FAF9F6` |
+| Slate / faint slate | `#5C6470` / `#8A929D` |
+| Accent gold | `#B5894A` |
+| Financial green / red / amber | `#1F7A4D` / `#B43A2E` / `#A8741C` |
+| Admin UI / metadata type | Instrument Sans / JetBrains Mono |
+| UI sizes used here | 11, 13, 16, 18, 22, 28 px |
+| Spacing | 4 px base scale |
+| Radii | 2, 4, 8, 12 px, pill |
+| Motion | 120, 200, 400, 600 ms |
+| Touch targets | 48 comfortable, 44 minimum, 40 compact, 32 inline px |
+| Admin max/layout | fluid full-width inside a 208–256 px sidebar |
+| Breakpoints | 1100 px shell/tablet; 768 px mobile; Fund/AUM form collapse separately at 640 px |
+
+The token palette supports OS dark preference and explicit `data-theme="dark"` (`tokens-core.css:393-477`). This makes the active hardcoded light fallbacks below a real runtime problem, not a hypothetical unused theme concern.
+
+## 50. Rendered Element and Visual-State Inventory
+
+### `/admin/funds`
+
+`FundsListScreen.jsx:62-181` renders:
+
+1. The shell H1, breadcrumbs, sidebar/mobile navigation, and logout controls.
+2. A three-card `.adm-stats` row:
+   - Fund pools, with a Layers icon;
+   - Published pools, without an icon;
+   - Draft or in review, without an icon.
+3. In normal state, one `.adm-card.adm-table` containing:
+   - eyebrow “Fund operations”;
+   - H2 “AUM pools”;
+   - small primary “New pool” button;
+   - search icon/text input and native state select;
+   - seven-column table: identity/slug, StateBadge, AUM, as-of date, stock count, version/update time, Open link.
+4. Loading state: three `SkeletonTableRow` instances.
+5. Empty states: instructional no-pool copy or no-filter-match copy.
+6. Creating state: the stats remain, while the complete catalogue card is replaced by `FundProfileForm`.
+
+The table opts into `.adm-table-cards` and supplies `data-label`, so at `<=768px` it becomes labelled row cards rather than a wide scroller (`admin-responsive.css:153-216`). This is the strongest responsive table implementation in the audited scope.
+
+### Fund create / publish form
+
+`FundProfileForm.jsx:82-198` renders one card-form with:
+
+- H3 and immutable-version explanation;
+- optional form-level validation banner;
+- two-column grid of pool name, category, objective, risk, return band, minimum SIP, minimum one-time amount, minimum duration, recommended holding, disclosure title, and disclosure body;
+- field hints or field errors, connected with `htmlFor`, `aria-describedby`, and `aria-invalid`;
+- optional workflow note supplied by create;
+- Cancel when creating and primary publish/create submit.
+
+At `<=640px` the form becomes one column (`desktop/admin.css:73-77`). The two disclosure fields do span both columns because `.adm-field-wide` exists at `admin-overlays.css:288`; however, their JSX redundantly nests an outer `.adm-field.adm-field-wide` around the inner `.adm-field` returned by `field()` (`FundProfileForm.jsx:60-80,173-182`).
+
+### `/admin/funds/:fundId`
+
+`FundWorkspace.jsx:111-294` renders these states/elements:
+
+- initial narrow skeleton card;
+- fatal read alert with Retry and Back;
+- full-width Back link in loaded state;
+- identity card with slug eyebrow, fund H2, status explanation, and badge;
+- four-column auto-fit definition grid for AUM, date, version, and risk;
+- conditional status and error banners;
+- wrapping lifecycle toolbar with secondary transitions and danger archive/remove;
+- inline confirmation region with consequence copy and Cancel/Confirm;
+- sticky three-chip section control: Published terms, Stock list, History;
+- the shared profile form, stock panel, or version-history card.
+
+The detail route’s shell H1 remains the prefix-matched catalogue title while the actual Fund name appears only as a card H2. This is code-accurate hierarchy, not a route-specific page header.
+
+### Fund stock section
+
+`FundStockListPanel.jsx:114-230` renders:
+
+- icon H3 and explanatory subtitle;
+- three-field add form plus primary Add stock;
+- global error alert;
+- active-stock table with name, quarter, weight, and two-click exit action;
+- conditional native `<details>` disclosure containing exited holdings.
+
+The exit button changes from secondary “Mark exited” to danger “Confirm exit” on first click, but no adjacent Cancel action is provided; cancellation requires clicking elsewhere/another row or completing the action.
+
+### Fund version history section
+
+`FundWorkspace.jsx:263-292` renders an H3/subtitle plus either an empty paragraph or an immutable version stream. Each version is another bordered `.adm-list-item` inside the enclosing card, with version/date header and terms summary.
+
+### `/admin/aum/current`
+
+`AumScreen.jsx:60-125,484-505` renders:
+
+- the shell H1;
+- a four-link in-page AUM chip strip;
+- contextual retry alert when the catalogue fails;
+- one `.adm-card.adm-table` with eyebrow, H2, Fund count badge, explanatory boundary note, and five-column table;
+- table fields: Fund identity, state, published AUM, as-of date, Open fund;
+- skeleton and instructional empty rows.
+
+This table uses the same successful mobile card pattern as the Fund catalogue.
+
+### `/admin/aum/manage`
+
+`AumScreen.jsx:131-154` and `FundAumPanel.jsx:194-320` render:
+
+- in-page AUM tabs and catalogue-read error;
+- picker card with H2/subtitle and Fund select;
+- after selection, a sibling AUM card with icon H3, explanatory copy, optional right-aligned current AUM/date, strong boundary note, read error, and conditional form;
+- initialization form: amount, as-of date, reason, note;
+- adjustment form: instruction mode, direction, amount/percentage, date, reason, note, local projection, error/success, publish action.
+
+During history loading, the card shell shows “Adjust published AUM” but no progress indicator or form. After history failure, it simultaneously displays the read error and an initialization form because the empty history array is treated as authoritative no-history state.
+
+### `/admin/aum/collective`
+
+`AumScreen.jsx:286-450` renders:
+
+- in-page tabs;
+- one outer card containing catalogue error, icon H2/subtitle, strong boundary note;
+- wide fieldset of Fund checkbox chips;
+- mode, direction/percentage or generated per-Fund delta inputs, date, reason, note;
+- Preview growth action;
+- conditional nested preview card with Before/Delta/After table, Discard, and primary Commit;
+- result status or error alert.
+
+The same `.adm-chip` visual grammar is used for page navigation, workspace pressed tabs, and checkbox selections. Selected Fund labels do not receive `.is-active`; their only selected indicator is the checkbox itself.
+
+### `/admin/aum/history`
+
+`AumScreen.jsx:457-505` and `FundAumHistoryPanel.jsx:128-250` render:
+
+- in-page tabs and picker card;
+- after selection, sibling Snapshot history card with H3/subtitle, error/result feedback, and five- or six-column table;
+- row fields: date, revision plus first-row “authoritative”, AUM, reason, publication time, conditional Correct action;
+- two skeleton rows or an instructional empty row;
+- permission-conditional inline correction row containing amount, editable date, reason, note, global error, and primary submit.
+
+`aria-expanded` exists on Correct, but it has no `aria-controls`, the inserted region has no ID/labelled region, and focus is not moved into or announced for the newly inserted form.
+
+## 51. Design Consistency, Hierarchy, and Symmetry Findings
+
+### Severity-ranked design findings
+
+| Severity | Finding | Exact evidence | Current consequence |
+|---|---|---|---|
+| P0 | Two primary AUM publish actions are visually enabled but cannot succeed | initialize and correction send `amountPaise`; strict backend requires `aumPaise` | “Publish initial AUM” and “Publish correction” are active-looking dead-end controls. |
+| P1 | Destructive/create copy presents false consequences | `FundsListScreen.jsx:73-80`; `FundWorkspace.jsx:202,208-228` | High-risk confirmations assert removal/terminal archive and draft behavior that runtime does not implement. |
+| P1 | Fund search and state filter have no code-defined keyboard focus | `admin-tables.css:53-60,70-76`; no wrapper `:focus-within` | More-specific `outline:none` defeats the global focus rule. |
+| P1 | Collective preview is effectively unreadable in dark mode | `.adm-card--nested` hardcoded fallback at `desktop/admin.css:82-86` | Ivory inherited text can sit on `#f8fafc`, approximately 1.04:1. |
+| P1 | State/result/error/danger treatments fail contrast, especially in dark mode | `kit-core.css:41,125-134`; `desktop/admin.css:45-50`; `admin-funds.css:261-278` | Status and response meaning becomes difficult to read at the actual 11–14 px sizes. |
+| P1 | Fund workspace sticky tabs compete with the sticky shell top bar | `shell.css:195-207` and `admin-screens-shared.css:33-40` both use `top:0` and `--be-z-topbar` | On desktop scroll, the later workspace strip occupies the same sticky plane rather than offsetting below the shell header. |
+| P1 | Permission and visual affordance are unsynchronized | Fund routes require read but show all writes; AUM tabs expose destinations irrespective of permission | Read-only or dependency-incomplete operators see controls/links that predictably end at 403/Forbidden. |
+| P1 | Stock and AUM history tables bypass the table system | bare tables at `FundStockListPanel.jsx:171-214` and `FundAumHistoryPanel.jsx:143-248` | Browser-default table typography/cells remain inside only a max-content scroller. |
+| P1 | Collective Fund checkbox CSS collides with broad field-input CSS | fieldset `.adm-field`; descendant rule `.adm-field input { width:100%; padding... }` | Checkbox inputs inherit full-width text-control styling; native fieldset border/padding is also never reset. |
+| P1 | Partial results are presented as complete headline facts | Fund stat cards, Current AUM Fund count, “Every published snapshot” | First-25 datasets are elevated as global totals/history with no visual pagination disclosure. |
+| P2 | “Fund” and “pool” name the same entity inconsistently | Funds catalogue/workspace vs every AUM page | Cross-navigation sounds like a domain change when it is the same Fund identity. |
+| P2 | AUM route hierarchy is repeated | sidebar/mobile domain strip plus `AumScreen` four-chip strip | Mobile renders two AUM section switchers; internal strip additionally contains unauthorized destinations. |
+| P2 | Shell and content headings repeat instead of forming one hierarchy | route H1 immediately followed by near-identical card H2 | The card frame, not route content, carries the operative title; detail H1 does not identify the current Fund. |
+| P2 | Equivalent forms use different label systems | AUM `.adm-field span` = 11 px uppercase mono; Fund `.adm-field-label` = 12 px UI sans | Adjacent financial forms visibly belong to different generations. |
+| P2 | Three table treatments exist in one domain | correct ancestor contract, bare table, `.adm-table` on `<table>` | Width, collapse, font, padding, mobile response, and row treatment differ by tab. |
+| P2 | Three badge systems coexist | `.be-badge`, `.adm-status-badge`, `.ash-badge` | Active Fund/AUM `StateBadge` uses the least contrast-safe family. |
+| P2 | Collective preview nests a framed card in another framed card | `AumScreen.jsx:405-438`; `desktop/admin.css:79-86` | Extra border/shadow/padding weakens hierarchy and caused the dark-theme fault. |
+| P2 | A three-stat layout is forced into a two-column phone grid | three tiles; `admin-responsive.css:84-90` | Third KPI remains a half-width orphan; only the first tile also has an icon. |
+| P2 | Back links stretch as screen flex children | `.adm-screen` column flex; `FundWorkspace.jsx:124-142`; no self-alignment | The inline-flex button/link can span the content width, unlike compact Back affordances elsewhere. |
+| P2 | Action hierarchy varies across equivalent AUM tasks | bare `.be-btn` Preview/Discard, primary Commit, left-aligned individual/correction submit | Secondary/primary semantics and alignment change between closely related workflows. |
+| P2 | Loading/error visuals are inconsistent | skeletons, shared Skeleton card, literal “Loading…”, blank panel, unstyled `.be-error` | Equivalent data waits/failures have materially different weight and recovery affordance. |
+| P3 | Workspace retry mixes `.ash-btn` and `.be-btn` in one error state | `FundWorkspace.jsx:122-134` | Minor shell/page control mismatch. |
+| P3 | Wrapped current-AUM metric retains right alignment | `.adm-aum-current { text-align:right }`; card head wraps | At narrow widths the wrapped metric is likely visually detached from left-aligned content; browser confirmation remains unavailable. |
+
+### Positive consistency to preserve
+
+- Palette, type, spacing, radius, shadows, safe areas, and motion largely originate in one token source.
+- The 4 px rhythm, restrained 8 px cards, subtle shadows, sans task typography, and tabular financial numerals fit an institutional Admin register.
+- `StateBadge` always includes text and an indicator, so status is not communicated by color alone and unknown states do not disappear.
+- `I.jsx` makes decorative icons non-focusable/hidden from assistive technology unless intentionally labelled.
+- Fund field-level validation is unusually complete: explicit labels, hint/error associations, invalid state, and error messages.
+- Inline confirmations retain record context and avoid the retired hand-rolled modal/focus-trap problems.
+- Opt-in card tables preserve header text off-screen and label every mobile value.
+- Empty states explain a next step rather than merely saying “No data”.
+- Mobile shell navigation, safe-area compensation, and bottom clearance are deliberately implemented.
+- Global reduced-motion handling is comprehensive.
+
+## 52. Table, Form, and Control CSS Contract Audit
+
+### Table contract mismatch
+
+The intended legacy structure is a container with `.adm-table` and a descendant `<table>`:
+
+```jsx
+<div className="adm-card adm-table">
+  <div className="adm-table-scroll">
+    <table>...</table>
+  </div>
+</div>
+```
+
+`admin-tables.css:2-14,98-127` applies width, border collapse, base font, header/cell padding, borders, sticky headers, hover, and column minimums only through this ancestor relationship.
+
+| Surface | Markup | Matched result | Classification |
+|---|---|---|---|
+| Fund catalogue | parent `.adm-card.adm-table`, descendant `.adm-table-cards` | Full desktop table + mobile cards | **ACTIVE / correct contract** |
+| Current AUM | parent `.adm-card.adm-table`, descendant `.adm-table-cards` | Full desktop table + mobile cards | **ACTIVE / correct contract** |
+| Fund stocks | parent `.adm-card`, bare descendant `<table>` | Only `.adm-table-scroll table { min-width:max-content }`; browser-default table styling | **ACTIVE / CSS CONTRACT MISMATCH** |
+| AUM history | parent `.adm-card`, bare descendant `<table>` | Same browser-default result; no mobile card conversion | **ACTIVE / CSS CONTRACT MISMATCH** |
+| Collective preview | `<table className="adm-table">` | Descendant th/td rules match, but `.adm-table table` width/collapse/font rule does not; padding is applied to the table itself | **ACTIVE / PARTIAL MISMATCH** |
+
+The AUM history rows already carry `data-label`, so the missing `.adm-table-cards`/ancestor contract—not missing data—is what prevents the established mobile treatment. Its inline correction-row joining rules also require `.adm-table-cards` (`admin-screens-shared.css:416-439`) and therefore never activate.
+
+### Form contract differences
+
+| Form family | Labelling/error behavior | CSS behavior |
+|---|---|---|
+| Fund profile | explicit label IDs, `aria-describedby`, `aria-invalid`, field errors/hints | `.adm-field-label` UI sans at 12 px; two-column grid; wide disclosures |
+| Fund stock | wrapper labels, one global error | generic `.adm-field span` 11 px uppercase mono; raw controls |
+| Individual AUM | wrapper labels, global alerts only | same generic AUM field style; no required/invalid linkage |
+| Collective AUM | fieldset/legend plus wrapper labels; global alert | broad `.adm-field input` also styles nested checkboxes; fieldset default retained |
+| AUM correction | wrapper labels; one global alert in inserted table row | same generic style; no `aria-controls` from Correct toggle |
+
+`.be-error` is used throughout active AUM markup (`FundAumPanel.jsx:217-218,305-307`; `FundAumHistoryPanel.jsx:140,233-235`; `AumScreen.jsx:448`) but no `.be-error` CSS selector exists anywhere in the repository. These nodes retain `role="alert"`, but visually inherit ordinary paragraph/div styling. Fund errors use the styled `.adm-validation-banner` and `.adm-field-error` systems instead.
+
+### Target-size matrix
+
+| Control | Approximate active height | Repository target | Result |
+|---|---:|---:|---|
+| `.adm-chip` | at least 44 px | 44 px | Meets |
+| Default `.be-btn` | about 39 px | 44 px minimum | Below project target; above WCAG 24 px minimum |
+| `.be-btn-sm` | about 29 px | 40 px compact / 44 px minimum | Below project target |
+| Generic `.adm-field` controls | mid-30 px | 44 px minimum | Below project target |
+| Mobile Fund search/filter wrappers | at least 44 px | 44 px | Meets |
+| Mobile card-table actions | at least 40 px | 40 px compact | Meets only in opted-in card tables |
+| Mobile shell bottom items | at least 48 px | 48 px comfortable | Meets |
+
+Lifecycle, Back, form submit, stock, history, and top-bar small controls do not receive the mobile table target override.
+
+## 53. Theming and Measured Contrast
+
+Contrast calculations use WCAG relative luminance and sRGB compositing over the actual token surfaces.
+
+### Baseline token pairs
+
+| Pair | Ratio | Result for normal text |
+|---|---:|---|
+| Ink / ivory | 17.63:1 | Pass |
+| Ink / bone | 17.96:1 | Pass |
+| Slate / ivory | 5.57:1 | Pass |
+| Slate / bone | 5.68:1 | Pass |
+| Faint slate / ivory | 2.93:1 | Fail |
+| Green / ivory | 4.96:1 | Pass |
+| Red / ivory | 5.46:1 | Pass |
+| Amber / ivory | 3.78:1 | Fail |
+| Gold / ivory | 2.95:1 | Fail for normal text; just below the 3:1 non-text threshold |
+| Ivory / dark ink | 17.63:1 | Pass |
+| Slate-2 / dark elevated ink | 5.26:1 | Pass |
+| Gold / dark elevated ink | 5.23:1 | Pass |
+
+### Active state badge contrast
+
+`StateBadge.jsx:73-80` emits `.be-badge-active|paused|failed|neutral`. `kit-core.css:125-134` uses each raw signal color as 11 px text over its own translucent soft background instead of `--be-text-on-*`.
+
+| Badge | Light elevated | Dark elevated | AA result at 11 px |
+|---|---:|---:|---|
+| Published/active green | ~4.41:1 | ~2.85:1 | Fails both; light narrowly |
+| Review/paused amber | ~3.36:1 | ~3.58:1 | Fails both |
+| Failed red | ~4.81:1 | ~2.65:1 | Pass light, fail dark |
+| Neutral slate | ~4.97:1 | ~2.54:1 | Pass light, fail dark |
+
+Two duplicate, safer families already use semantic text tokens: `.adm-status-badge*` (`admin-screens-shared.css:121-167`) and `.ash-badge*` (`shell.css:451-467`). Current Fund/AUM uses the inferior third family.
+
+### Other active contrast/theme faults
+
+- `.adm-gain-result` (`desktop/admin.css:45-51`) is ~4.41:1 light and ~2.85:1 dark. It renders AUM publication/correction/collective success feedback.
+- Fund error text/banner and danger buttons use raw red. Light generally passes; dark is approximately 2.65–2.83:1.
+- `.adm-card--nested` uses undefined `--adm-surface-muted`/`--adm-border`; its `#f8fafc/#e2e8f0` fallback remains light under dark tokens. Inherited ivory on `#f8fafc` is approximately 1.04:1.
+- `.adm-field-label` falls back to fixed `#64748b` through another undefined legacy variable.
+- The global 2 px gold focus outline (`tokens-core.css:384-388`) is 2.95:1 against page ivory and approximately 3.00:1 against bone: marginal/below WCAG 2.2 non-text contrast in light mode, strong in dark mode.
+- `kit-core.css:41` hardcodes the danger border as `rgba(180,58,46,.3)` rather than a semantic theme token.
+
+## 54. Responsive, Reflow, and Motion Audit
+
+### Active breakpoint behavior
+
+| Width | Active behavior |
+|---|---|
+| `<=1100px` | Several old Fund/editor/review grids collapse; shell is still desktop until the JS breakpoint at 768. |
+| `<=768px` | Admin switches to bottom navigation/domain strip; `.adm-screen` gets 16 px padding and bottom-nav clearance; Fund/current tables become cards; search/filter reaches 44 px. |
+| `641–768px` | Page is in mobile shell/table mode, but Fund/AUM forms remain two columns. |
+| `<=640px` | `.adm-form-grid` finally becomes one column. |
+
+### Page-specific responsive results
+
+- Fund and Current AUM tables reflow into labelled cards and do not require horizontal discovery.
+- Stock and AUM-history tables remain max-content horizontal scrollers; their important action columns may initially sit off-screen.
+- Collective preview remains a horizontal/partial table because of its class placement.
+- Fund’s three KPI cards are forced to two equal columns on phone, producing a 2+1 composition with an empty second track on the last row.
+- The AUM in-page chip row wraps, while mobile also renders the domain strip containing substantially the same four destinations.
+- At 400% zoom, stock/history/preview depend on horizontal table scrolling instead of the card reflow used by adjacent pages.
+- `.adm-card-head` wraps, but the current-AUM summary retains `text-align:right` and has no mobile realignment rule.
+
+### Motion
+
+Active motion is restrained:
+
+- 200 ms page translate/fade (`admin-base.css:83,298-301`);
+- about 1.6 s skeleton pulse;
+- 120 ms row/side transitions;
+- 120/200 ms shell drawer transitions and 1.4 s shimmer.
+
+`tokens-core.css:479-488` globally collapses animation/transition duration and iteration under `prefers-reduced-motion`. Admin and shell add explicit removals (`admin-base.css:303-312`; `shell.css:969-979`). No unresolved reduced-motion defect was found in the active Fund/AUM view.
+
+## 55. Frontend CSS Duplicate, Superseded, and Stale Inventory
+
+| Layer | File / selector A | File / selector B | Type | Active implementation / proof | Important difference / risk |
+|---|---|---|---|---|---|
+| Page system | `.adm-screen` / `.ash-page` | `layout/primitives/Page.jsx::.be-page` | Superseding system | Fund/AUM still use `.adm-screen`; Overview uses new primitive | Parallel layout contracts and breakpoints. |
+| Grid | `admin-overlays.css:264::.adm-form-grid` | `desktop/admin.css:17-23::.adm-form-grid` | Same-selector override | Later desktop rule wins | Different gap, margins, and `align-items`; appearance depends on import order. |
+| Wide field | `admin-overlays.css:288::.adm-field-wide` | `desktop/admin.css:25-27::.adm-field--wide` | Duplicate naming | Fund form uses first; AUM uses second | Same responsibility encoded two ways. |
+| Accessible hidden | `admin-base.css:323-333::.adm-sr-only` | `desktop/admin.css:64-71::.adm-sr-only` | Near duplicate | Combined cascade is active | Later partial recipe relies on earlier reset declarations. |
+| Badge | `kit-core.css::.be-badge*` | `shared.css::.adm-status-badge*`; `shell.css::.ash-badge*` | Independently implemented versions | Fund/AUM `StateBadge` uses `.be-badge*` | Active version has inferior light/dark contrast. |
+| Table | `.adm-table*` | `.ash-table*` | Parallel system | Fund/AUM pages use `.adm-*`; shell/new pages use `.ash-*` | Two responsive contracts; current pages also create bare third variants. |
+| Detail panel | `admin-overlays.css:304-335` | `admin-screens-shared.css:470-487` | Same selectors, overlapping | Build order makes later Admin barrel copy win | Background/border differences; no cascade layer defines ownership. |
+| Table hover | `admin-tables.css:11` | `admin-tables.css:112-114` | Same-selector duplicate | Later 5% rule wins | 4% rule is superseded noise. |
+| Old Fund editor | `admin-funds.css:302-304::.adm-fund-editor-panel` | same file `:458-460` | Exact duplicate, deprecated | No production JSX caller | Explicitly deprecated selector is emitted twice. |
+| Old Fund page | `admin-funds.css` legacy layout/editor/lifecycle/allocation/preview families | current routed Fund/AUM JSX and generic styles | Superseded / stale | Current routes use generic card/form/table classes | 118 of 126 lexical class selectors have no literal production source reference; dynamic modifiers make this a likely-dead count, not proof for every selector. |
+| Error | active `.be-error` markup | no CSS definition | Missing implementation | Used by all AUM forms | Semantic alerts render without intentional visual design. |
+
+Additional same-specificity overlaps include `.adm-review-panel`, `.adm-review-actions`, `.adm-detail-title`, `.adm-detail-tags`, and `.adm-m-t-2`. No CSS `@layer` contract defines which file owns these symbols; current behavior depends on emitted import order.
+
+### Stale selector families still shipped
+
+The following old Fund-control-center families have no current production base-symbol reference and are still imported through `desktop/admin.css:11`:
+
+- `.adm-fund-layout`, `.adm-fund-dashboard`, `.adm-fund-tabs`, `.adm-fund-form`, `.adm-fund-section`;
+- `.adm-fund-editor-*`, `.adm-lifecycle-*`;
+- `.adm-diversification-*`, `.adm-concentration-*`, `.adm-metric-*`;
+- `.adm-distribution-preview*`, `.adm-fund-preview*`;
+- `.adm-allocation-stats`, `.adm-capital-stats`;
+- old investment/sector/series row families.
+
+The legacy file cannot simply be removed as-is: current Fund validation/help styling still lives in small active islands within it, including `.adm-validation-banner` and `.adm-help-text` (`admin-funds.css:261-288,503-511`). It is therefore **mostly STALE / LEGACY with INDIRECTLY ACTIVE selectors**, not wholly unreachable.
+
+## 56. CSS and Frontend Bundle Cost
+
+The current built artifact contains:
+
+| Artifact | Size |
+|---|---:|
+| `frontend_stack/app/dist/assets/admin-C4KlvGkC.css` | 101,106 bytes minified; 15,466 bytes gzip |
+| Shared `index-B-n7yCQX.css` | 21,221 bytes |
+| Source `shell.css` | 34,201 bytes |
+| Source `admin-funds.css` | 18,313 bytes / 823 lines |
+| Source `admin-base.css` | 14,151 bytes |
+| Source `admin-screens-shared.css` | 14,017 bytes |
+| Source `admin-overlays.css` | 10,789 bytes |
+| Source `admin-responsive.css` | 9,429 bytes |
+
+`Admin.jsx:5-19` statically imports every wrapper from `legacyRoutes.jsx`, and that wrapper statically imports all operational screens. `Admin.jsx:25` loads the complete legacy CSS barrel for every Admin route. Vite’s Admin manual chunk policy further groups Admin modules. Consequently, opening Funds/AUM—or any authenticated Admin route—loads broad Admin UI/CSS rather than a Fund/AUM route-level slice.
+
+This is a measurable bundle/parse-maintenance concern, but no evidence establishes that it presently causes user-visible latency; classification is **ACTIVE PERFORMANCE OVERHEAD / P2**, not a proven runtime performance failure.
+
+## 57. Design-Specific Future Redesign and Cleanup Candidates
+
+No files were changed as part of this audit. If a later redesign is authorized, the design evidence points to these files:
+
+| Priority | File(s) | Why likely to change |
+|---:|---|---|
+| 1 | `screens/FundAumPanel.jsx`, `screens/FundAumHistoryPanel.jsx`, `screens/AumScreen.jsx` | Repair dead primary interactions first; then align errors, field semantics, preview state, permission-aware navigation, and table markup. |
+| 1 | `screens/fundOps/FundsListScreen.jsx`, `FundWorkspace.jsx`, `FundProfileForm.jsx`, `FundStockListPanel.jsx` | Truthful copy/consequences, write affordances, canonical Fund noun, sticky tabs, table contract, action hierarchy, form consolidation. |
+| 1 | `design-tokens/src/kit-core.css`, `components/StateBadge.jsx` | Theme-safe badge/danger colors, control targets, consistent button variants. |
+| 1 | `styles/desktop/admin.css` | Remove undefined legacy variables/hardcoded light nested card; unify AUM result/projection styling. |
+| 1 | `styles/admin/admin-tables.css`, `admin-responsive.css` | One table contract, focus-within for search/filter, consistent reflow and targets. |
+| 2 | `styles/admin/admin-overlays.css` | Narrow the overbroad `.adm-field input` rule so checkbox/radio descendants are not text controls; align field labels/errors. |
+| 2 | `screens/admin-screens-shared.css` | Separate navigation tabs from selection chips; resolve sticky offset; centralize decision/list/error states. |
+| 2 | `layout/primitives/{Page,PageHeader,Section,ContentGrid}` | Already-declared successor primitives for page/layout/hierarchy, if adopted by Fund/AUM. |
+| 2 | `styles/admin/admin-funds.css` | Extract the small active validation/help islands before consolidating/removing stale editor/control-center rules. |
+| 3 | `pages/legacy/legacyRoutes.jsx`, `pages/Admin.jsx`, `app/vite.config.js` | Route-level component/CSS splitting and removal of static legacy breadth after behavior is stabilized. |
+
+### Design consolidation order supported by current evidence
+
+1. Functional truth and safety: working AUM submit contracts, truthful destructive/create copy, and permission-accurate affordances.
+2. Accessibility hardening: Fund-filter focus, contrast-safe status/error/result/danger styles, field-level AUM errors, and consistent targets.
+3. Responsive structure: one table markup contract, one mobile treatment, sticky header offset, and removal of duplicate AUM navigation.
+4. Visual consistency: canonical “Fund” terminology, one page/title hierarchy, one field-label system, one badge system, and intentional action variants.
+5. CSS architecture: migrate or consolidate page primitives, extract active legacy islands, remove proven stale selectors, then revisit chunk boundaries.
+
+## 58. Frontend Design Current-State Summary
+
+The Funds and AUM pages sit inside a well-considered responsive `.ash-*` shell and inherit a strong semantic token foundation, but their page bodies remain predominantly `.adm-*` legacy operational screens using `.be-*` kit controls. This partial migration is visible in the runtime architecture: route headings and retry controls use the new shell language, while cards/forms/tables use an older language and shared buttons/badges use a third.
+
+The current Fund catalogue and Current AUM table are the most internally coherent views: both use the same card/table structure, responsive mobile-card conversion, status component, money formatting, loading rows, and explanatory empty states. FundProfileForm is the strongest accessible form. The mobile Admin shell, safe-area handling, inline confirmations, reduced-motion support, and tabular financial typography are also sound patterns.
+
+The inconsistencies are nevertheless material. Stock/history/preview tables implement three incompatible CSS contracts; AUM errors have no matching selector; two AUM publish controls are visually available but functionally dead; state and result colors fail in dark mode; the collective preview can become almost unreadable; Fund filters lose visible focus; many phone controls miss the repository’s own 44 px target; workspace tabs share the shell’s sticky plane; AUM navigation is duplicated; and the same entity, form labels, badges, and action variants change vocabulary between adjacent tasks.
+
+The compiled Admin stylesheet also carries substantial superseded Fund-editor CSS and same-selector overrides whose ownership is defined only by import order. Those artifacts should not be removed until their small active validation/help islands are extracted and all dynamic callers are rechecked. The code-proven current state is therefore a strong shell/token foundation wrapped around fragmented legacy page implementations—not one unified Fund/AUM design system.
+
 ## Verification Performed
 
 - Exhaustive `rg` reference/import/route/table searches across `frontend_stack/packages/admin`, `frontend_stack/packages/ui-kits`, `backend_controller/src`, `backend_controller/db/migrations`, `packages/contracts`, and tracked release configuration.
 - Line-by-line tracing of route registration, handler calls, repository SQL, auth, HTTP envelope, database configuration, frontend request transport, route wrappers, UI handlers, and form transforms.
 - Frontend focused tests: `fundOps.test.jsx`, `adminResources.test.jsx`, and `Admin.test.jsx`: **125/125 tests passed**.
+- AUM frontend route/screen/navigation tests: **116/116 tests passed**. The focused `aumScreen.test.jsx` suite also passed 13/13 in an independent run.
+- Backend pure AUM calculation tests: `fundAumGrowth.test.ts`: **11/11 tests passed**.
+- Design-token CSS contract suites (`classContract`, `componentContract`, `cssContract`, `importContract`, `interactionContract`, `safeArea`): **33/33 tests passed**. These tests validate repository contracts but do not cover the page-specific selector/markup mismatches documented above.
+- CSS import/cascade inspection, current compiled CSS size inspection, active JSX class-to-selector mapping, breakpoint/reflow tracing, reduced-motion tracing, and WCAG relative-luminance calculations were performed for both light and dark token surfaces.
+- A local headless-browser smoke attempt reached the expected login/Forbidden boundaries, but populated Funds/AUM visual capture was unavailable without a live authorized backend principal; no screenshot-based pixel claims are made.
+- The AUM backend integration suite was inspected line by line for request/response and persistence assertions but not executed because live/container database startup was outside this inspection run. Its correct `aumPaise` fixtures conflict with the frontend tests' `amountPaise` fixtures.
 - Backend test search found no dedicated `adminCatalogRoutes` behavioral suite; `adminAum.integration.test.ts:867` exercises the Fund-detail GET only incidentally. Create/version/lifecycle/stock behavior is therefore established from registered code paths, not dedicated backend test coverage.
 - Local listener/database readiness check: configured backend/PostgreSQL endpoints unavailable; no database mutations or application startup performed.
 
