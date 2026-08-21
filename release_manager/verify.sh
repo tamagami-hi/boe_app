@@ -186,11 +186,19 @@ done
 
 for s in "${BOE_STACKS[@]}"; do
     cf="$STACKS/$s/$(stack_attr "$s" compose)"
+    # The three exempt names are injected into compose's process environment by
+    # the compose() wrapper in stacks/_shared/_boe_lib.sh, not read from .env —
+    # it explicitly `env -u`s every key in the env file and then sets these. They
+    # must therefore NOT appear in .env.example: a hand-set BOE_VERSION is
+    # silently overridden during a deploy, and a stale one deploys the wrong
+    # images on a manual `docker compose` run. BOE_VERSION was missing from this
+    # list while its two siblings were present, which is why dev_release failed
+    # this check for documenting it in a comment instead of a KEY= line.
     missing_vars="$(
         grep -oE '\$\{[A-Z0-9_]+' "$cf" \
             | sed 's/^${//' \
             | sort -u \
-            | grep -vE '^(BOE_CONTAINER_PREFIX|COMPOSE_PROJECT_NAME)$' \
+            | grep -vE '^(BOE_VERSION|BOE_CONTAINER_PREFIX|COMPOSE_PROJECT_NAME)$' \
             | while read -r key; do
                 grep -qE "^${key}=" "$STACKS/$s/.env.example" || printf '%s\n' "$key"
             done
@@ -376,6 +384,12 @@ for s in "${BOE_STACKS[@]}"; do
     while read -r line; do
         k="${line%%=*}"; v="${line#*=}"
         case "$k" in
+            # Not a secret, despite matching *_KEY_* below: this is the Redis key
+            # *namespace* prefix — a deliberately-known constant that differs per
+            # stack so dev and prod cannot collide on a shared cache. It must stay
+            # populated in the template; blanking it to satisfy a pattern match
+            # would erase the isolation it exists to provide.
+            REDIS_KEY_NAMESPACE) ;;
             *PASSWORD*|*SECRET*|*_KEY|*_KEY_*|*DSN*|*TOKEN*)
                 if [[ -n "$v" ]]; then
                     fail "$s/.env.example has a non-empty value for $k"
