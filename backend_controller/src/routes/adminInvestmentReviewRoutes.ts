@@ -13,7 +13,7 @@ import { parseOrThrow } from "../http/validation.js"
 import type { PaymentGateway } from "../providers/phonepe/paymentGateway.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
 import type { InvestmentReviewRepository, ReviewQueueRow } from "../repositories/investmentReviewRepository.js"
-import type { PaymentsRepository } from "../repositories/paymentsRepository.js"
+import type { PaymentsRepository, PaymentListRow } from "../repositories/paymentsRepository.js"
 import type { RefundRepository, RefundListRow } from "../repositories/refundRepository.js"
 import {
   adminIdempotencyScope,
@@ -30,6 +30,7 @@ import {
 
 const REVIEWS_ROUTE = "/v1/admin/investment-reviews"
 const REFUNDS_ROUTE = "/v1/admin/refunds"
+const PAYMENTS_ROUTE = "/v1/admin/payments"
 
 export interface AdminInvestmentReviewConfig {
   readonly idempotencyTtlMs: number
@@ -76,6 +77,8 @@ const refundsQuerySchema = z
   })
   .strict()
 
+const paymentsQuerySchema = z.object({ limit: limitSchema }).strict()
+
 const mapQueueRow = (row: ReviewQueueRow): Record<string, unknown> => ({
   orderId: row.orderId,
   client: { id: row.userId, name: row.clientName, email: row.clientEmail },
@@ -115,6 +118,21 @@ const mapRefundRow = (row: RefundListRow): Record<string, unknown> => ({
   updatedAt: iso(row.updatedAt),
 })
 
+const mapPaymentRow = (row: PaymentListRow): Record<string, unknown> => ({
+  id: row.id,
+  orderId: row.orderId,
+  userId: row.userId,
+  userEmail: row.userEmail,
+  amountPaise: row.amountPaise,
+  status: row.status,
+  provider: row.provider,
+  providerReference: row.providerReference,
+  attemptCount: row.attemptCount,
+  succeededAt: isoOrNull(row.succeededAt),
+  failedAt: isoOrNull(row.failedAt),
+  createdAt: iso(row.createdAt),
+})
+
 const listQueue = async (deps: AdminInvestmentReviewDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: false })
   requireAnyPermission(principal, ["investments.review.read", "investments.review.write"])
@@ -124,7 +142,7 @@ const listQueue = async (deps: AdminInvestmentReviewDeps, request: FastifyReques
     state: query.state,
     limit: query.limit,
   })
-  return reply.sendData({ rows: rows.map(mapQueueRow) }, { status: 200 })
+  return reply.sendData({ items: rows.map(mapQueueRow) }, { status: 200 })
 }
 
 const getDetail = async (deps: AdminInvestmentReviewDeps, request: FastifyRequest, reply: FastifyReply) => {
@@ -304,7 +322,16 @@ const listRefunds = async (deps: AdminInvestmentReviewDeps, request: FastifyRequ
     states: query.state === "all" ? [] : [query.state],
     limit: query.limit,
   })
-  return reply.sendData({ rows: rows.map(mapRefundRow) }, { status: 200 })
+  return reply.sendData({ items: rows.map(mapRefundRow) }, { status: 200 })
+}
+
+const listPayments = async (deps: AdminInvestmentReviewDeps, request: FastifyRequest, reply: FastifyReply) => {
+  const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: false })
+  requireAnyPermission(principal, ["payments.read", "investments.review.read"])
+  const query = parseOrThrow(paymentsQuerySchema, request.query)
+
+  const rows = await deps.paymentsRepository.listPage(deps.database, { limit: query.limit })
+  return reply.sendData({ items: rows.map(mapPaymentRow) }, { status: 200 })
 }
 
 const retryRefund = async (deps: AdminInvestmentReviewDeps, request: FastifyRequest, reply: FastifyReply) => {
@@ -430,4 +457,5 @@ export const registerAdminInvestmentReviewRoutes = (
   application.get(REFUNDS_ROUTE, (request, reply) => listRefunds(deps, request, reply))
   application.post(`${REFUNDS_ROUTE}/:refundId/retry`, (request, reply) => retryRefund(deps, request, reply))
   application.post(`${REFUNDS_ROUTE}/:refundId/reconcile`, (request, reply) => reconcileRefund(deps, request, reply))
+  application.get(PAYMENTS_ROUTE, (request, reply) => listPayments(deps, request, reply))
 }

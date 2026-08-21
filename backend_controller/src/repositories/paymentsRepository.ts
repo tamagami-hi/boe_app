@@ -53,6 +53,22 @@ const ATTEMPT_OPEN_STATES = ["created", "provider_pending"] as const
 /** Payment states from which a success/failure outcome may be applied. */
 const PAYMENT_OPEN_STATES = ["created", "provider_pending"] as const
 
+/** One admin payment-ledger row: payment + order + client + latest attempt. */
+export interface PaymentListRow {
+  readonly id: string
+  readonly orderId: string
+  readonly userId: string
+  readonly userEmail: string
+  readonly amountPaise: string
+  readonly status: Payment["state"]
+  readonly provider: string | null
+  readonly providerReference: string | null
+  readonly attemptCount: number
+  readonly succeededAt: Date | null
+  readonly failedAt: Date | null
+  readonly createdAt: Date
+}
+
 export interface PaymentsRepository {
   findFundState: (tx: Transaction, fundId: string) => Promise<FundState | null>
   lockOrderForPayment: (
@@ -149,6 +165,11 @@ export interface PaymentsRepository {
     tx: Transaction,
     input: Readonly<{ limit: number }>,
   ) => Promise<readonly PaymentAttempt[]>
+  /** Admin oversight read: the gateway evidence trail, most recent first. */
+  listPage: (
+    tx: Transaction,
+    input: Readonly<{ afterCreatedAt?: Date; afterId?: string; limit: number }>,
+  ) => Promise<readonly PaymentListRow[]>
 }
 
 export const createPaymentsRepository = (): PaymentsRepository => ({
@@ -526,4 +547,41 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
       .forUpdate()
       .skipLocked()
       .execute(),
+
+  listPage: async (tx, input) => {
+    const result = await sql<PaymentListRow>`
+      select
+        p.id,
+        p.order_id as "orderId",
+        p.user_id as "userId",
+        u.email_normalized as "userEmail",
+        p.amount_paise::text as "amountPaise",
+        p.state as "status",
+        a.provider as "provider",
+        a.provider_order_id as "providerReference",
+        coalesce(ac.attempt_count, 0)::int as "attemptCount",
+        p.succeeded_at as "succeededAt",
+        p.failed_at as "failedAt",
+        p.created_at as "createdAt"
+      from payments p
+      join users u on u.id = p.user_id
+      left join lateral (
+        select provider, provider_order_id
+        from payment_attempts pa
+        where pa.payment_id = p.id
+        order by pa.attempt_number desc
+        limit 1
+      ) a on true
+      left join lateral (
+        select count(*) as attempt_count
+        from payment_attempts pa
+        where pa.payment_id = p.id
+      ) ac on true
+      where (${input.afterCreatedAt ?? null}::timestamptz is null
+             or (p.created_at, p.id) < (${input.afterCreatedAt ?? null}, ${input.afterId ?? null}))
+      order by p.created_at desc, p.id desc
+      limit ${input.limit}
+    `.execute(tx)
+    return result.rows
+  },
 })
