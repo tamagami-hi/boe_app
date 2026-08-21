@@ -8,7 +8,7 @@
 }
 
 .adm-review-panel {
-  width: min(520px, 100%);
+  width: min(600px, 100%);
   height: 100dvh;
   overflow-y: auto;
   background: var(--be-bg);
@@ -21,7 +21,6 @@
   gap: var(--be-space-5);
 }
 
-/* Centered overlay card used by KYC review and user detail overlays */
 .adm-overlay {
   position: fixed;
   inset: 0;
@@ -134,9 +133,6 @@
   font-size: var(--be-text-sm);
 }
 
-/* Unconfirmed-email warning and its acknowledgement, shown in the review panel
-   when the applicant never redeemed their confirmation link. Amber rather than
-   red: this is a risk the reviewer may knowingly accept, not an error. */
 .adm-review-warning {
   margin-top: var(--be-space-2);
   border: 1px solid color-mix(in srgb, var(--be-amber) 30%, transparent);
@@ -174,18 +170,6 @@
   color: var(--be-slate);
 }
 
-.adm-review-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--be-space-2);
-  padding-top: var(--be-space-1);
-}
-
-/* ===== Review panel enhanced =============================== */
-.adm-review-panel {
-  width: min(600px, 100%);
-}
-
 .adm-review-panel--narrow {
   width: min(480px, 100%);
 }
@@ -219,6 +203,7 @@
   gap: var(--be-space-3);
   padding-top: var(--be-space-2);
 }
+
 .adm-review-actions .be-btn {
   min-width: 120px;
   justify-content: center;
@@ -261,7 +246,6 @@
 }
 .adm-component-row:last-child { border-bottom: none; }
 .adm-component-name { font-size: var(--be-text-sm); font-weight: 600; color: var(--be-fg); }
-.adm-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--be-space-3); margin-top: var(--be-space-3); }
 .adm-form-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .adm-field { display: flex; flex-direction: column; gap: var(--be-space-1); min-width: 0; }
 .adm-field span {
@@ -270,13 +254,14 @@
   text-transform: uppercase;
   color: var(--be-slate);
 }
-.adm-field input,
+.adm-field input:not([type="checkbox"]):not([type="radio"]),
 .adm-field select,
 .adm-field textarea,
 .adm-select,
-.adm-editor-row input,
+.adm-editor-row input:not([type="checkbox"]):not([type="radio"]),
 .adm-editor-row select {
   width: 100%;
+  min-height: var(--be-target-min);
   border: var(--be-border-1);
   border-radius: var(--be-radius-sm);
   background: var(--be-bg-elevated);
@@ -285,7 +270,7 @@
   padding: var(--be-space-2) var(--be-space-3);
 }
 .adm-field textarea { min-height: 74px; resize: vertical; line-height: 1.4; }
-.adm-field-wide { grid-column: 1 / -1; }
+.adm-field--wide { grid-column: 1 / -1; }
 .adm-editor-list { display: flex; flex-direction: column; gap: var(--be-space-2); margin: var(--be-space-3) 0; }
 .adm-editor-row {
   display: grid;
@@ -297,24 +282,11 @@
 .adm-check { display: inline-flex; align-items: center; gap: var(--be-space-1); font-size: var(--be-text-xs); color: var(--be-slate); }
 .adm-check input { accent-color: var(--be-fg); }
 .adm-card-head-tight { margin: 0 0 var(--be-space-2); align-items: center; }
-/* -------------------------------------------------------------------------- */
-/* Theming & Contrast — utility classes replacing raw inline styles           */
-/* -------------------------------------------------------------------------- */
-
-.adm-detail-panel {
-  padding: var(--be-space-4);
-  background: var(--be-surface);
-  border-radius: var(--be-radius-md);
-}
 
 .adm-detail-panel-stack {
   display: flex;
   flex-direction: column;
   gap: var(--be-space-4);
-}
-
-.adm-detail-title {
-  margin: 0 0 var(--be-space-3);
 }
 
 .adm-detail-section {
@@ -326,12 +298,6 @@
   font-size: var(--be-text-xs);
   text-transform: uppercase;
   color: var(--be-slate);
-}
-
-.adm-detail-tags {
-  display: flex;
-  gap: var(--be-space-2);
-  flex-wrap: wrap;
 }
 
 .adm-detail-meta {
@@ -410,7 +376,6 @@
   gap: var(--be-space-2);
 }
 
-.adm-m-t-2 { margin-top: var(--be-space-2); }
 .adm-m-b-2 { margin-bottom: var(--be-space-2); }
 .adm-m-b-3 { margin-bottom: var(--be-space-3); }
 .adm-m-b-4 { margin-bottom: var(--be-space-4); }

@@ -1,20 +1,7 @@
-/**
- * Project repository interfaces (spec 03 §7). These are project-defined
- * contracts, not claims about Kysely or any third-party API. Inputs and outputs
- * are readonly; implementations return new objects and never mutate arguments or
- * cached values. Repositories receive a caller-owned transaction handle and
- * never begin, commit, or roll back transactions, and never call providers.
- *
- * This module is the type-only contract. Implementations land with the consuming
- * command/route batches (BE-008+), where they are exercised by behavioral
- * integration tests. Numeric ceilings referenced in comments (MAX_QUERY_LIMIT,
- * MAX_OUTBOX_CLAIM, ...) are defined in `./limits.ts`.
- */
 import type { Kysely, Selectable } from "kysely"
 
 import type { Database } from "./types.js"
 
-/** The project alias for a caller-owned Kysely transaction handle. */
 export type Transaction = Kysely<Database>
 
 export type ReadonlyDeep<T> = T extends (...args: never[]) => unknown
@@ -39,7 +26,6 @@ export type Role = Row<"roles">
 export type Permission = Row<"permissions">
 export type RolePermission = Row<"role_permissions">
 export type UserRole = Row<"user_roles">
-export type ApprovalAction = Row<"approval_actions">
 export type AuditEvent = Row<"audit_events">
 export type IdempotencyRecord = Row<"idempotency_records">
 export type RateLimitWindow = Row<"rate_limit_windows">
@@ -48,7 +34,6 @@ export type OutboxEvent = Row<"outbox_events">
 export type EmailDelivery = Row<"email_deliveries">
 export type EmailProviderEvent = Row<"email_provider_events">
 export type EmailSuppression = Row<"email_suppressions">
-// Later domain (migrations 014-018; spec 03 §4)
 export type InvestorProfile = Row<"investor_profiles">
 export type KycCase = Row<"kyc_cases">
 export type KycVerificationCode = Row<"kyc_verification_codes">
@@ -58,7 +43,6 @@ export type RiskAssessment = Row<"risk_assessments">
 export type Fund = Row<"funds">
 export type FundVersion = Row<"fund_versions">
 export type FundDisclosureVersion = Row<"fund_disclosure_versions">
-export type FundPosition = Row<"fund_positions">
 export type FundAumSnapshot = Row<"fund_aum_snapshots">
 export type AumGrowthBatch = Row<"aum_growth_batches">
 export type FundStockDisclosure = Row<"fund_stock_disclosures">
@@ -81,7 +65,6 @@ export type Notification = Row<"notifications">
 
 export type CursorInput = ReadonlyDeep<{
   after?: string
-  /** validated integer 1..MAX_QUERY_LIMIT */
   limit: number
 }>
 export type CursorPage<Item> = ReadonlyDeep<{
@@ -168,7 +151,6 @@ export type CleanupCandidateQuery = ReadonlyDeep<{
   action: "tombstone" | "erase" | "delete"
   before: string
   after?: string
-  /** validated integer 1..MAX_QUERY_LIMIT */
   limit: number
 }>
 export type CleanupCandidate = ReadonlyDeep<{
@@ -329,7 +311,6 @@ export type NewOutboxEvent = ReadonlyDeep<Omit<OutboxEvent, "id" | "created_at" 
 export type ClaimOutboxBatchCommand = ReadonlyDeep<{
   workerId: string
   now: string
-  /** validated integer 1..MAX_OUTBOX_CLAIM */
   limit: number
 }>
 export type RecordOutboxResultCommand = ReadonlyDeep<{
@@ -392,7 +373,6 @@ export interface ConsentRepository {
     tx: Transaction,
     input: Readonly<RecordConsentAcceptancesInput>,
   ): Promise<readonly ApplicationConsent[]>
-  /** joins each immutable referenced document; hard maximum MAX_APPLICATION_CONSENTS */
   findForApplication(
     tx: Transaction,
     applicationId: ApplicationId,
@@ -401,7 +381,6 @@ export interface ConsentRepository {
 
 export interface ApplicationReviewRepository {
   append(tx: Transaction, input: Readonly<AppendApplicationReviewInput>): Promise<ApplicationReview>
-  /** hard maximum MAX_APPLICATION_REVIEWS */
   findForApplication(tx: Transaction, applicationId: ApplicationId): Promise<readonly ApplicationReview[]>
 }
 
@@ -468,7 +447,6 @@ export interface LegalHoldRepository {
   ): Promise<Readonly<{ exists: boolean; isAlreadyPurged: boolean }>>
   place(tx: Transaction, command: PlaceLegalHoldCommand): Promise<PlaceLegalHoldResult>
   release(tx: Transaction, command: ReleaseLegalHoldCommand): Promise<LegalHold>
-  /** hard maximum MAX_QUERY_LIMIT */
   findActiveForEntities(
     tx: Transaction,
     entities: readonly Readonly<{ entityType: RetentionEntityType; entityId: string }>[],
@@ -498,7 +476,6 @@ export interface EmailDeliveryRepository {
   lockById(tx: Transaction, deliveryId: EmailDeliveryId): Promise<EmailDelivery | null>
   transition(tx: Transaction, command: Readonly<TransitionEmailDeliveryCommand>): Promise<EmailDelivery>
   findPage(tx: Transaction, query: EmailDeliveryQuery): Promise<CursorPage<EmailDelivery>>
-  /** limit capped at MAX_EMAIL_DELIVERIES_PER_APPLICATION */
   findPageForApplication(
     tx: Transaction,
     input: Readonly<{ applicationId: ApplicationId; page: CursorInput }>,
@@ -510,12 +487,10 @@ export interface EmailProviderEventRepository {
     tx: Transaction,
     event: Readonly<VerifiedSnsInboxInput>,
   ): Promise<Readonly<{ eventId: string; isDuplicate: boolean }>>
-  /** limit 1..MAX_PROVIDER_EVENT_CLAIM */
   lockReceivedBatch(
     tx: Transaction,
     input: Readonly<{ limit: number; now: string }>,
   ): Promise<readonly EmailProviderEvent[]>
-  /** limit 1..MAX_PROVIDER_EVENT_CLAIM */
   lockUnmatchedBatch(
     tx: Transaction,
     input: Readonly<{ limit: number; now: string }>,

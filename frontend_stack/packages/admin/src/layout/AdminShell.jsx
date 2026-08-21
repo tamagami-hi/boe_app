@@ -7,6 +7,7 @@ import Sidebar from './Sidebar.jsx';
 import TopBar from './TopBar.jsx';
 import AdminMobileNav from './AdminMobileNav.jsx';
 import AdminDomainStrip from './AdminDomainStrip.jsx';
+import PageHeadingProvider, { usePageHeading } from './PageHeading.jsx';
 import ToastProvider from '../components/ToastProvider.jsx';
 import ApprovalsQueueProvider, { useApprovalsQueue } from '../data/ApprovalsQueueProvider.jsx';
 import AdminCacheEvictor from '../data/AdminCacheEvictor.jsx';
@@ -19,17 +20,15 @@ function ShellFrame() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAdminSession();
-  /*
-   * The only shell-wide data left: the sidebar badge, so an operator on any screen
-   * sees a new sign-up arrive. What used to be here fetched six collections on
-   * mount of every admin route.
-   */
   const { approvals } = useApprovalsQueue();
   const [navCollapsed, setNavCollapsed] = useState(false);
   const meta = findNavMeta(location.pathname);
-  // The phone gets a different information architecture, not a squeezed sidebar:
-  // see AdminMobileNav. Rendering both and hiding one in CSS is what produced the
-  // 13-destination scrolling strip, so the choice is made here instead.
+  const pageHeading = usePageHeading();
+  const title = pageHeading?.title || meta.title;
+  const crumbs = pageHeading?.crumb ? [...meta.crumbs, pageHeading.crumb] : meta.crumbs;
+  const crumbPaths = pageHeading?.crumb
+    ? [...meta.crumbPaths, location.pathname]
+    : meta.crumbPaths;
   const isMobile = useBreakpoint(MOBILE_BREAKPOINT);
   const counts = { approvals: approvals.length };
 
@@ -58,10 +57,9 @@ function ShellFrame() {
         </>
       )}
       <main className="ash-main">
-        <TopBar title={meta.title} breadcrumbs={meta.crumbs} crumbPaths={meta.crumbPaths} onLogout={handleLogout} />
+        <TopBar title={title} breadcrumbs={crumbs} crumbPaths={crumbPaths} onLogout={handleLogout} />
         {isMobile && <AdminDomainStrip user={user} />}
-        {/* The global loadNote banner is gone with the provider that produced it;
-            each screen now reports its own read failure via AdminReadError. */}
+        {}
         <Outlet />
       </main>
       {isMobile && <AdminMobileNav user={user} counts={counts} />}
@@ -73,9 +71,11 @@ export default function AdminShell() {
   return (
     <ToastProvider>
       <ApprovalsQueueProvider>
-        {/* Clears cached admin collections when the operator changes or signs out. */}
+        {}
         <AdminCacheEvictor />
-        <ShellFrame />
+        <PageHeadingProvider>
+          <ShellFrame />
+        </PageHeadingProvider>
       </ApprovalsQueueProvider>
     </ToastProvider>
   );

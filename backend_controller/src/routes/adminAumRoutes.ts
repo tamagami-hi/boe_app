@@ -1,31 +1,9 @@
-/**
- * Admin Fund AUM routes (core mechanism spec §8.3/§8.4/§8.5/§9.5).
- *
- *   POST /v1/admin/aum/funds/:fundId/initialize     first absolute publication
- *   POST /v1/admin/aum/funds/:fundId/growth         amount XOR percentage growth
- *   POST /v1/admin/aum/snapshots/:snapshotId/corrections   append-only revision
- *   GET  /v1/admin/aum/funds/:fundId/history        latest-first snapshot list
- *   POST /v1/admin/aum/growth/collective            locked, hash-checked commit
- *
- * The collective pre-commit read endpoint (`.../collective/preview`) lives in
- * `adminFundGrowthPreviewRoutes.ts`, which imports the shared schemas and the
- * dependency type from here.
- *
- * Every mutation requires `aum.write`, CSRF, and an `Idempotency-Key`; history
- * requires `aum.read`. No AUM request carries user/order/payment/contribution/
- * redemption fields (§9.5) — the schemas are strict, so any such field fails
- * validation. AUM commands never touch client value state; audit metadata says
- * so explicitly (`propagatedToClients: false`).
- *
- * Money crosses the HTTP boundary as decimal strings and is `bigint` inside.
- * Corrections never mutate a prior snapshot and never recalculate other dates.
- */
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
 import type { Kysely } from "kysely"
 import { z } from "zod"
 
 import type { UnitOfWork } from "../db/database.js"
-import type { IdempotencyRepository } from "../db/repositories.js"
+import type { IdempotencyRepository, Transaction } from "../db/repositories.js"
 import type { Database } from "../db/types.js"
 import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adminAccess.js"
 import {
@@ -44,10 +22,13 @@ import type { AuditWriteRepository } from "../repositories/auditRepository.js"
 import type { FundAumRepository, FundAumSnapshotRow } from "../repositories/fundAumRepository.js"
 import {
   adminIdempotencyScope,
+  computeFilterHash,
   hashRequest,
   iso,
   limitSchema,
+  paginate,
   reasonCodeSchema,
+  readKeysetValues,
   requireIdempotencyKey,
   runAdminMutation,
   uuidParam,
@@ -55,15 +36,11 @@ import {
 
 export const AUM_ROUTE = "/v1/admin/aum"
 
-/** A collective AUM instruction spans at most 100 funds (spec §8.4). */
 export const MAX_COLLECTIVE_FUND_COUNT = 100
-/**
- * Named positive business maximum for signed basis-point instructions
- * (spec §8.1's configurable cap); -10,000 (-100.00%) is the floor.
- */
 export const DEFAULT_MAX_GROWTH_BASIS_POINTS = 100_000
 
 export interface AdminAumConfig {
+  readonly cursorKey: Buffer
   readonly idempotencyTtlMs: number
   readonly maxGrowthBasisPoints?: number
 }
@@ -79,9 +56,6 @@ export interface AdminAumDeps {
   readonly idempotencyRepository: IdempotencyRepository
 }
 
-// --- schemas (§9.5: amounts as decimal strings; strict — no foreign fields) ---
-
-/** Signed integer paise as a decimal string; 18 digits stays well inside int8. */
 const signedPaiseSchema = z
   .string()
   .trim()
@@ -120,7 +94,6 @@ const growthBodySchema = (maxBasisPoints: number) =>
 const correctionBodySchema = z
   .object({
     aumPaise: nonNegativePaiseSchema,
-    asOfDate: asOfDateSchema,
     reasonCode: reasonCodeSchema,
     note: noteSchema,
   })
@@ -150,8 +123,6 @@ const collectiveFields = (maxBasisPoints: number) => ({
 
 const withCollectiveRefinements = <S extends z.ZodType<CollectiveShape>>(schema: S): S =>
   schema
-    // One common rate over `fundIds` XOR explicit per-fund deltas. A shared
-    // currency total is not an accepted input shape at all (spec §8.4).
     .refine(
       (body) =>
         (body.growthBasisPoints !== undefined && body.fundIds !== undefined && body.items === undefined) ||
@@ -163,11 +134,9 @@ const withCollectiveRefinements = <S extends z.ZodType<CollectiveShape>>(schema:
       return new Set(ids).size === ids.length
     }, "Each fund may appear at most once.") as S
 
-/** Pre-commit read body (no hash — it produces the hash). */
 export const collectivePlanBodySchema = (maxBasisPoints: number) =>
   withCollectiveRefinements(z.object(collectiveFields(maxBasisPoints)).strict())
 
-/** Commit body: the same instruction plus the hash it must still match. */
 export const collectiveCommitBodySchema = (maxBasisPoints: number) =>
   withCollectiveRefinements(
     z
@@ -178,12 +147,11 @@ export const collectiveCommitBodySchema = (maxBasisPoints: number) =>
       .strict(),
   )
 
-const historyQuerySchema = z.object({ limit: limitSchema }).strict()
-
-// --- shared instruction/target mapping (also used by the planning route) ---
+const historyQuerySchema = z
+  .object({ limit: limitSchema, after: z.string().min(1).optional() })
+  .strict()
 
 export interface CollectiveTargets {
-  /** Ascending, unique — the deterministic lock order. */
   readonly fundIds: readonly string[]
   readonly instruction: CollectiveAumInstruction
 }
@@ -208,8 +176,6 @@ export const basisOf = (snapshot: FundAumSnapshotRow): AumFundBasis => ({
   revision: snapshot.revision,
 })
 
-// --- mappers ---
-
 const mapSnapshot = (row: FundAumSnapshotRow): Record<string, unknown> => ({
   id: row.id,
   fundId: row.fundId,
@@ -223,7 +189,11 @@ const mapSnapshot = (row: FundAumSnapshotRow): Record<string, unknown> => ({
 const maxBasisPointsOf = (deps: AdminAumDeps): number =>
   deps.config.maxGrowthBasisPoints ?? DEFAULT_MAX_GROWTH_BASIS_POINTS
 
-// --- handlers ---
+const lockWritableFund = async (deps: AdminAumDeps, tx: Transaction, fundId: string): Promise<void> => {
+  const fund = await deps.aumRepository.lockFund(tx, fundId)
+  if (fund === null) throw new AppError("RESOURCE_NOT_FOUND")
+  if (fund.state === "archived") throw new AppError("STATE_CONFLICT")
+}
 
 const initializeAum = async (deps: AdminAumDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
@@ -240,7 +210,10 @@ const initializeAum = async (deps: AdminAumDeps, request: FastifyRequest, reply:
     scope: adminIdempotencyScope(principal.userId, `${AUM_ROUTE}/funds/:fundId/initialize`, key),
     requestHash: hashRequest({ fundId, ...body }),
     execute: async (tx) => {
-      if (!(await deps.aumRepository.lockFund(tx, fundId))) throw new AppError("RESOURCE_NOT_FOUND")
+      await lockWritableFund(deps, tx, fundId)
+      if ((await deps.aumRepository.findLatestSnapshot(tx, fundId)) !== null) {
+        throw new AppError("STATE_CONFLICT")
+      }
       const revision = ((await deps.aumRepository.findHighestRevision(tx, fundId, body.asOfDate)) ?? 0) + 1
       const batch = await deps.aumRepository.insertBatch(tx, {
         scope: "individual",
@@ -248,7 +221,6 @@ const initializeAum = async (deps: AdminAumDeps, request: FastifyRequest, reply:
         effectiveDate: body.asOfDate,
         reasonCode: body.reasonCode,
         note: body.note ?? null,
-        // No prior basis exists (§8.3): the hash covers the command alone.
         basisHash: computeAumBasisHash(
           { command: "initialize", asOfDate: body.asOfDate, aumPaise: body.aumPaise },
           [],
@@ -311,9 +283,8 @@ const growAum = async (deps: AdminAumDeps, request: FastifyRequest, reply: Fasti
     scope: adminIdempotencyScope(principal.userId, `${AUM_ROUTE}/funds/:fundId/growth`, key),
     requestHash: hashRequest({ fundId, ...body }),
     execute: async (tx) => {
-      if (!(await deps.aumRepository.lockFund(tx, fundId))) throw new AppError("RESOURCE_NOT_FOUND")
+      await lockWritableFund(deps, tx, fundId)
       const latest = await deps.aumRepository.findLatestSnapshot(tx, fundId)
-      // No basis: an initial absolute publication is the separate command (§8.3).
       if (latest === null) throw new AppError("STATE_CONFLICT")
 
       const instruction: AumGrowthInstruction =
@@ -402,11 +373,7 @@ const correctSnapshot = async (deps: AdminAumDeps, request: FastifyRequest, repl
     execute: async (tx) => {
       const target = await deps.aumRepository.findSnapshotById(tx, snapshotId)
       if (target === null) throw new AppError("RESOURCE_NOT_FOUND")
-      // A correction replaces an erroneous same-date value (§8.3): the date is
-      // fixed by the corrected row and is echoed only to catch caller drift.
-      if (target.asOfDate !== body.asOfDate) throw new AppError("STATE_CONFLICT")
-      // Locks the fund (and thereby the fund/date) for the revision append.
-      await deps.aumRepository.lockFund(tx, target.fundId)
+      await lockWritableFund(deps, tx, target.fundId)
       const highest = await deps.aumRepository.findHighestRevision(tx, target.fundId, target.asOfDate)
       if (highest !== target.revision) throw new AppError("STATE_CONFLICT")
 
@@ -456,8 +423,39 @@ const listHistory = async (deps: AdminAumDeps, request: FastifyRequest, reply: F
 
   const existing = await deps.aumRepository.findExistingFundIds(deps.database, [fundId])
   if (existing.length === 0) throw new AppError("RESOURCE_NOT_FOUND")
-  const rows = await deps.aumRepository.listSnapshots(deps.database, fundId, query.limit)
-  return reply.sendData({ items: rows.map(mapSnapshot) }, { status: 200 })
+
+  const now = deps.clock()
+  const route = `${AUM_ROUTE}/funds/:fundId/history`
+  const filterHash = computeFilterHash({ fundId })
+  const cursor = readKeysetValues(deps.config.cursorKey, query.after, route, filterHash, now)
+  const [afterAsOfDate, afterRevision, afterCreatedAt, afterId] = cursor
+  const position =
+    afterAsOfDate !== undefined
+    && afterRevision !== undefined
+    && afterCreatedAt !== undefined
+    && afterId !== undefined
+      ? {
+          afterAsOfDate,
+          afterRevision: Number(afterRevision),
+          afterCreatedAt,
+          afterId,
+        }
+      : {}
+
+  const rows = await deps.aumRepository.listSnapshots(deps.database, fundId, {
+    ...position,
+    limit: query.limit + 1,
+  })
+  const { items, page } = paginate(
+    deps.config.cursorKey,
+    rows,
+    query.limit,
+    route,
+    filterHash,
+    now,
+    (row) => [row.asOfDate, String(row.revision), iso(row.createdAt), row.id],
+  )
+  return reply.sendData({ items: items.map(mapSnapshot) }, { status: 200, page })
 }
 
 const commitCollectiveGrowth = async (deps: AdminAumDeps, request: FastifyRequest, reply: FastifyReply) => {
@@ -475,22 +473,19 @@ const commitCollectiveGrowth = async (deps: AdminAumDeps, request: FastifyReques
     scope: adminIdempotencyScope(principal.userId, `${AUM_ROUTE}/growth/collective`, key),
     requestHash: hashRequest({ ...body }),
     execute: async (tx) => {
-      // Deterministic lock order: fund rows in ascending id order (§8.4/§8.5).
       const locked = await deps.aumRepository.lockFunds(tx, targets.fundIds)
       if (locked.length !== targets.fundIds.length) throw new AppError("RESOURCE_NOT_FOUND")
+      if (locked.some((fund) => fund.state === "archived")) throw new AppError("STATE_CONFLICT")
       const latestRows = await deps.aumRepository.findLatestSnapshots(tx, targets.fundIds)
       if (latestRows.length !== targets.fundIds.length) {
-        // A fund without any snapshot has no basis to grow from (§8.3).
         throw new AppError("STATE_CONFLICT")
       }
       const bases = latestRows.map(basisOf)
 
-      // Stale-basis check: reload under lock, recompute, compare (§8.5).
       const command = canonicalCollectiveAumCommand(body.asOfDate, targets.instruction)
       const basisHash = computeAumBasisHash(command, bases)
       if (basisHash !== body.basisHash) throw new AppError("STATE_CONFLICT")
 
-      // Deltas are always recomputed on the server from the locked bases.
       const plan = planAumGrowth(bases, targets.instruction)
       if (!plan.ok) {
         throw new AppError("STATE_CONFLICT", {
@@ -528,7 +523,6 @@ const commitCollectiveGrowth = async (deps: AdminAumDeps, request: FastifyReques
         written.push({ fundId: item.fundId, snapshot, deltaPaise: item.deltaPaise, beforeAumPaise: item.beforeAumPaise })
       }
 
-      // One audit record for the whole batch (§10).
       await deps.auditRepository.append(tx, {
         actorType: "admin",
         actorUserId: principal.userId,

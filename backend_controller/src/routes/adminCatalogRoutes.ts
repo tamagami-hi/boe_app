@@ -1,23 +1,3 @@
-/**
- * Admin fund routes. Web-cookie transport, RBAC (`funds.read` to read,
- * `funds.write` to change), CSRF on unsafe methods.
- *
- *   GET    /v1/admin/funds                     pools with their current AUM + stock count
- *   GET    /v1/admin/funds/:id                 detail: versions, stock list
- *   POST   /v1/admin/funds                     create a draft pool (slug only)
- *   POST   /v1/admin/funds/:id/versions        publish a version (terms + disclosure; no price)
- *   GET    /v1/admin/funds/:id/stocks          the disclosed stock list
- *   POST   /v1/admin/funds/:id/stocks          add a stock, tagged with its quarter
- *   PATCH  /v1/admin/funds/:id/stocks/:stockId edit a stock
- *   DELETE /v1/admin/funds/:id/stocks/:stockId mark a stock exited (never deleted)
- *   PATCH  /v1/admin/funds/:id                 lifecycle: published | paused | archived
- *   DELETE /v1/admin/funds/:id                 archive
- *
- * Deliberately absent: NAV publication and unit-priced position percentages.
- * This model has no per-unit price — a pool's size is the latest published
- * `fund_aum_snapshots` row (written by the AUM instruction flow, not here) and
- * its composition is the administrator-curated stock list.
- */
 import { createHash } from "node:crypto"
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
@@ -26,13 +6,15 @@ import { z } from "zod"
 
 import type { UnitOfWork } from "../db/database.js"
 import type { IdempotencyRepository } from "../db/repositories.js"
-import type { Database } from "../db/types.js"
+import type { Database, FundState } from "../db/types.js"
 import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adminAccess.js"
+import { computeAumBasisHash } from "../domain/admin/fundAumGrowth.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { AppError } from "../http/errorCatalog.js"
 import { parseOrThrow } from "../http/validation.js"
 import type { AdminCatalogRepository, FundListRow } from "../repositories/adminCatalogRepository.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
+import type { FundAumRepository } from "../repositories/fundAumRepository.js"
 import {
   adminIdempotencyScope,
   computeFilterHash,
@@ -43,7 +25,9 @@ import {
   optionalIdempotencyKey,
   paginate,
   readKeyset,
+  reasonCodeSchema,
   runAdminMutation,
+  searchSchema,
   slugSchema,
   uuidParam,
 } from "./adminRouteKit.js"
@@ -60,27 +44,44 @@ export interface AdminCatalogDeps {
   readonly clock: () => Date
   readonly config: AdminCatalogConfig
   readonly catalogRepository: AdminCatalogRepository
+  readonly aumRepository: FundAumRepository
   readonly auditRepository: AuditWriteRepository
   readonly idempotencyRepository: IdempotencyRepository
 }
 
 const FUNDS_ROUTE = "/v1/admin/funds"
 
-// --- schemas ---
+const FUND_STATES = ["draft", "review_pending", "published", "paused", "archived"] as const
 
-const listQuerySchema = z.object({ after: z.string().min(1).optional(), limit: limitSchema }).strict()
+const ALLOWED_TRANSITIONS: Readonly<Record<FundState, readonly FundState[]>> = {
+  draft: ["published", "archived"],
+  review_pending: ["published", "archived"],
+  published: ["paused", "archived"],
+  paused: ["published", "archived"],
+  archived: [],
+}
+
+const listQuerySchema = z
+  .object({
+    after: z.string().min(1).optional(),
+    limit: limitSchema,
+    state: z.enum(FUND_STATES).optional(),
+    search: searchSchema.optional(),
+  })
+  .strict()
 const paiseSchema = z.coerce.number().int().min(0).max(Number.MAX_SAFE_INTEGER)
+const nonNegativePaiseStringSchema = z
+  .string()
+  .trim()
+  .regex(/^(0|[1-9]\d{0,18})$/u, "must be a non-negative decimal paise string")
 const shortText = z.string().trim().max(200)
 const longText = z.string().trim().max(20000)
-/** Reporting quarter label, e.g. Q1 FY27. */
 const quarterLabel = z
   .string()
   .trim()
   .regex(/^Q[1-4] FY\d{2}$/u, "must look like 'Q1 FY27'")
 
-const createFundSchema = z.object({ slug: slugSchema }).strict()
-
-const publishVersionSchema = z
+const versionTermsSchema = z
   .object({
     name: shortText.min(1),
     category: shortText.min(1),
@@ -95,6 +96,21 @@ const publishVersionSchema = z
   })
   .strict()
 
+const openingAumSchema = z
+  .object({
+    aumPaise: nonNegativePaiseStringSchema,
+    asOfDate: z.iso.date(),
+    reasonCode: reasonCodeSchema,
+    note: z.string().trim().min(1).max(2000).optional(),
+  })
+  .strict()
+
+const createFundSchema = z
+  .object({ slug: slugSchema, terms: versionTermsSchema, openingAum: openingAumSchema })
+  .strict()
+
+const publishVersionSchema = versionTermsSchema
+
 const stockSchema = z
   .object({
     stockName: shortText.min(1),
@@ -105,8 +121,6 @@ const stockSchema = z
   .strict()
 
 const lifecycleSchema = z.object({ status: z.enum(["published", "paused", "archived"]) }).strict()
-
-// --- mappers ---
 
 const mapFund = (row: FundListRow): Record<string, unknown> => ({
   id: row.id,
@@ -122,7 +136,6 @@ const mapFund = (row: FundListRow): Record<string, unknown> => ({
   minimumPurchasePaise: row.minimumPurchasePaise,
   currentVersion: row.currentVersion,
   currentVersionId: row.currentVersionId,
-  // Pool size as of the latest published AUM snapshot.
   aum:
     row.aumPaise === null
       ? null
@@ -137,8 +150,6 @@ const mapFund = (row: FundListRow): Record<string, unknown> => ({
   updatedAt: iso(row.updatedAt),
   version: Number(row.version),
 })
-
-// --- shared mutation plumbing ---
 
 const mutate = async <TBody extends Record<string, unknown>>(
   deps: AdminCatalogDeps,
@@ -173,17 +184,24 @@ const mutate = async <TBody extends Record<string, unknown>>(
 const fundIdOf = (request: FastifyRequest): string =>
   parseOrThrow(uuidParam, (request.params as { fundId?: unknown }).fundId)
 
-// --- handlers ---
-
 const listFunds = async (deps: AdminCatalogDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: false })
   requireAnyPermission(principal, ["funds.read"])
   const query = parseOrThrow(listQuerySchema, request.query)
   const now = deps.clock()
-  const filterHash = computeFilterHash({})
+  const filters = { state: query.state ?? null, search: query.search ?? null }
+  const filterHash = computeFilterHash(filters)
   const keyset = readKeyset(deps.config.cursorKey, query.after, FUNDS_ROUTE, filterHash, now)
 
-  const rows = await deps.catalogRepository.list(deps.database, { ...keyset, limit: query.limit + 1 })
+  const [rows, summary] = await Promise.all([
+    deps.catalogRepository.list(deps.database, {
+      ...keyset,
+      limit: query.limit + 1,
+      ...(query.state === undefined ? {} : { state: query.state }),
+      ...(query.search === undefined ? {} : { search: query.search }),
+    }),
+    deps.catalogRepository.countByState(deps.database),
+  ])
   const { items, page } = paginate(
     deps.config.cursorKey,
     rows,
@@ -193,7 +211,7 @@ const listFunds = async (deps: AdminCatalogDeps, request: FastifyRequest, reply:
     now,
     (row) => [iso(row.createdAt), row.id],
   )
-  return reply.sendData({ items: items.map(mapFund) }, { status: 200, page })
+  return reply.sendData({ items: items.map(mapFund), summary }, { status: 200, page })
 }
 
 const getFund = async (deps: AdminCatalogDeps, request: FastifyRequest, reply: FastifyReply) => {
@@ -230,33 +248,184 @@ const getFund = async (deps: AdminCatalogDeps, request: FastifyRequest, reply: F
   )
 }
 
+interface VersionWriteInput {
+  readonly fundId: string
+  readonly principalUserId: string
+  readonly body: z.infer<typeof versionTermsSchema>
+  readonly now: Date
+}
+
+interface VersionWriteResult {
+  readonly fundVersionId: string
+  readonly version: number
+  readonly disclosureVersionId: string
+}
+
+const writeFundVersion = async (
+  deps: AdminCatalogDeps,
+  tx: Parameters<Parameters<UnitOfWork["execute"]>[0]>[0],
+  input: VersionWriteInput,
+): Promise<VersionWriteResult> => {
+  const disclosureVersion = await deps.catalogRepository.nextDisclosureVersion(tx, input.fundId)
+  const disclosure = await deps.catalogRepository.insertDisclosure(tx, {
+    fundId: input.fundId,
+    version: disclosureVersion,
+    title: input.body.disclosure.title,
+    body: input.body.disclosure.body,
+    contentSha256: createHash("sha256").update(input.body.disclosure.body, "utf8").digest(),
+    effectiveFrom: input.now,
+    publishedByUserId: input.principalUserId,
+  })
+
+  const version = await deps.catalogRepository.nextVersion(tx, input.fundId)
+  const termsSha256 = createHash("sha256")
+    .update(
+      JSON.stringify({
+        name: input.body.name,
+        category: input.body.category,
+        objective: input.body.objective,
+        riskLevel: input.body.riskLevel,
+        returnTier: input.body.returnTier ?? null,
+        minimumSipPaise: input.body.minimumSipPaise,
+        minimumPurchasePaise: input.body.minimumPurchasePaise,
+        disclosureVersionId: disclosure.id,
+      }),
+      "utf8",
+    )
+    .digest()
+
+  const created = await deps.catalogRepository.insertVersion(tx, {
+    fundId: input.fundId,
+    version,
+    name: input.body.name,
+    category: input.body.category,
+    objective: input.body.objective,
+    riskLevel: input.body.riskLevel,
+    returnTier: input.body.returnTier ?? null,
+    minimumSipPaise: String(input.body.minimumSipPaise),
+    minimumPurchasePaise: String(input.body.minimumPurchasePaise),
+    minimumDurationMonths: input.body.minimumDurationMonths ?? null,
+    recommendedHoldingMonths: input.body.recommendedHoldingMonths ?? null,
+    disclosureVersionId: disclosure.id,
+    termsSha256,
+    createdByUserId: input.principalUserId,
+  })
+
+  return { fundVersionId: created.id, version, disclosureVersionId: disclosure.id }
+}
+
 const createFund = async (deps: AdminCatalogDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
   requireAnyPermission(principal, ["funds.write"])
+  requireAnyPermission(principal, ["aum.write"])
   const body = parseOrThrow(createFundSchema, request.body)
+  const now = deps.clock()
 
-  return mutate(deps, request, reply, FUNDS_ROUTE, "POST", { slug: body.slug }, principal.userId, async (tx) => {
-    if (await deps.catalogRepository.slugExists(tx, body.slug)) throw new AppError("STATE_CONFLICT")
-    const fund = await deps.catalogRepository.insertFund(tx, {
-      slug: body.slug,
-      createdByUserId: principal.userId,
-    })
-    await deps.auditRepository.append(tx, {
-      actorType: "admin",
-      actorUserId: principal.userId,
-      command: "fund.created",
-      entityType: "fund",
-      entityId: fund.id,
-      toState: fund.state,
-      requestId: request.requestId,
-      entityVersion: Number(fund.version),
-      metadata: { slug: fund.slug },
-    })
-    return {
-      status: 201,
-      body: { fund: { id: fund.id, slug: fund.slug, status: fund.state, createdAt: iso(fund.created_at) } },
-    }
-  })
+  return mutate(
+    deps,
+    request,
+    reply,
+    FUNDS_ROUTE,
+    "POST",
+    { slug: body.slug, name: body.terms.name, aumPaise: body.openingAum.aumPaise },
+    principal.userId,
+    async (tx) => {
+      if (await deps.catalogRepository.slugExists(tx, body.slug)) throw new AppError("STATE_CONFLICT")
+      const fund = await deps.catalogRepository.insertFund(tx, {
+        slug: body.slug,
+        createdByUserId: principal.userId,
+      })
+
+      const written = await writeFundVersion(deps, tx, {
+        fundId: fund.id,
+        principalUserId: principal.userId,
+        body: body.terms,
+        now,
+      })
+      const pointed = await deps.catalogRepository.setCurrentVersion(tx, {
+        fundId: fund.id,
+        versionId: written.fundVersionId,
+      })
+
+      const batch = await deps.aumRepository.insertBatch(tx, {
+        scope: "individual",
+        instructionType: "amount",
+        effectiveDate: body.openingAum.asOfDate,
+        reasonCode: body.openingAum.reasonCode,
+        note: body.openingAum.note ?? null,
+        basisHash: computeAumBasisHash(
+          { command: "initialize", asOfDate: body.openingAum.asOfDate, aumPaise: body.openingAum.aumPaise },
+          [],
+        ),
+        actorUserId: principal.userId,
+        requestId: request.requestId,
+        targetCount: 1,
+        totalDeltaPaise: body.openingAum.aumPaise,
+      })
+      const snapshot = await deps.aumRepository.insertSnapshot(tx, {
+        fundId: fund.id,
+        asOfDate: body.openingAum.asOfDate,
+        revision: 1,
+        aumPaise: body.openingAum.aumPaise,
+        growthBatchId: batch.id,
+        reasonCode: body.openingAum.reasonCode,
+        note: body.openingAum.note ?? null,
+        publishedByUserId: principal.userId,
+        requestId: request.requestId,
+      })
+
+      await deps.auditRepository.append(tx, {
+        actorType: "admin",
+        actorUserId: principal.userId,
+        command: "fund.created",
+        entityType: "fund",
+        entityId: fund.id,
+        toState: pointed.state,
+        requestId: request.requestId,
+        entityVersion: Number(pointed.version),
+        metadata: {
+          slug: fund.slug,
+          fundVersionId: written.fundVersionId,
+          version: written.version,
+          disclosureVersionId: written.disclosureVersionId,
+          openingAumPaise: body.openingAum.aumPaise,
+          openingAumSnapshotId: snapshot.id,
+        },
+      })
+      await deps.auditRepository.append(tx, {
+        actorType: "admin",
+        actorUserId: principal.userId,
+        command: "fund_aum.initialized",
+        entityType: "fund_aum_snapshot",
+        entityId: snapshot.id,
+        toState: snapshot.aumPaise,
+        requestId: request.requestId,
+        entityVersion: snapshot.revision,
+        metadata: {
+          fundId: fund.id,
+          asOfDate: snapshot.asOfDate,
+          aumPaise: snapshot.aumPaise,
+          reasonCode: snapshot.reasonCode,
+          growthBatchId: batch.id,
+          propagatedToClients: false,
+        },
+      })
+
+      return {
+        status: 201,
+        body: {
+          fund: {
+            id: fund.id,
+            slug: fund.slug,
+            status: pointed.state,
+            currentVersion: written.version,
+            createdAt: iso(fund.created_at),
+          },
+          aum: { snapshotId: snapshot.id, aumPaise: snapshot.aumPaise, asOfDate: snapshot.asOfDate },
+        },
+      }
+    },
+  )
 }
 
 const publishVersion = async (deps: AdminCatalogDeps, request: FastifyRequest, reply: FastifyReply) => {
@@ -279,55 +448,15 @@ const publishVersion = async (deps: AdminCatalogDeps, request: FastifyRequest, r
       if (fund === null) throw new AppError("RESOURCE_NOT_FOUND")
       if (fund.state === "archived") throw new AppError("STATE_CONFLICT")
 
-      const disclosureVersion = await deps.catalogRepository.nextDisclosureVersion(tx, fundId)
-      const disclosure = await deps.catalogRepository.insertDisclosure(tx, {
+      const written = await writeFundVersion(deps, tx, {
         fundId,
-        version: disclosureVersion,
-        title: body.disclosure.title,
-        body: body.disclosure.body,
-        contentSha256: createHash("sha256").update(body.disclosure.body, "utf8").digest(),
-        effectiveFrom: now,
-        publishedByUserId: principal.userId,
+        principalUserId: principal.userId,
+        body,
+        now,
       })
-
-      const version = await deps.catalogRepository.nextVersion(tx, fundId)
-      const termsSha256 = createHash("sha256")
-        .update(
-          JSON.stringify({
-            name: body.name,
-            category: body.category,
-            objective: body.objective,
-            riskLevel: body.riskLevel,
-            returnTier: body.returnTier ?? null,
-            minimumSipPaise: body.minimumSipPaise,
-            minimumPurchasePaise: body.minimumPurchasePaise,
-            disclosureVersionId: disclosure.id,
-          }),
-          "utf8",
-        )
-        .digest()
-
-      const created = await deps.catalogRepository.insertVersion(tx, {
-        fundId,
-        version,
-        name: body.name,
-        category: body.category,
-        objective: body.objective,
-        riskLevel: body.riskLevel,
-        returnTier: body.returnTier ?? null,
-        minimumSipPaise: String(body.minimumSipPaise),
-        minimumPurchasePaise: String(body.minimumPurchasePaise),
-        minimumDurationMonths: body.minimumDurationMonths ?? null,
-        recommendedHoldingMonths: body.recommendedHoldingMonths ?? null,
-        disclosureVersionId: disclosure.id,
-        termsSha256,
-        createdByUserId: principal.userId,
-      })
-
       const published = await deps.catalogRepository.setCurrentVersion(tx, {
         fundId,
-        versionId: created.id,
-        now,
+        versionId: written.fundVersionId,
       })
 
       await deps.auditRepository.append(tx, {
@@ -340,7 +469,11 @@ const publishVersion = async (deps: AdminCatalogDeps, request: FastifyRequest, r
         toState: published.state,
         requestId: request.requestId,
         entityVersion: Number(published.version),
-        metadata: { fundVersionId: created.id, version, disclosureVersionId: disclosure.id },
+        metadata: {
+          fundVersionId: written.fundVersionId,
+          version: written.version,
+          disclosureVersionId: written.disclosureVersionId,
+        },
       })
 
       return {
@@ -348,9 +481,9 @@ const publishVersion = async (deps: AdminCatalogDeps, request: FastifyRequest, r
         body: {
           fundId,
           status: published.state,
-          fundVersionId: created.id,
-          version,
-          disclosureVersionId: disclosure.id,
+          fundVersionId: written.fundVersionId,
+          version: written.version,
+          disclosureVersionId: written.disclosureVersionId,
         },
       }
     },
@@ -392,6 +525,7 @@ const addStock = async (deps: AdminCatalogDeps, request: FastifyRequest, reply: 
     async (tx) => {
       const fund = await deps.catalogRepository.lock(tx, fundId)
       if (fund === null) throw new AppError("RESOURCE_NOT_FOUND")
+      if (fund.state === "archived") throw new AppError("STATE_CONFLICT")
       const stock = await deps.catalogRepository.insertStock(tx, {
         fundId,
         stockName: body.stockName,
@@ -496,7 +630,6 @@ const exitStock = async (deps: AdminCatalogDeps, request: FastifyRequest, reply:
     async (tx) => {
       const existing = await deps.catalogRepository.findStock(tx, fundId, stockId)
       if (existing === null) throw new AppError("RESOURCE_NOT_FOUND")
-      // Exited, not deleted: the list is disclosure history.
       const stock = await deps.catalogRepository.markStockExited(tx, fundId, stockId, now)
       await deps.auditRepository.append(tx, {
         actorType: "admin",
@@ -515,16 +648,11 @@ const exitStock = async (deps: AdminCatalogDeps, request: FastifyRequest, reply:
   )
 }
 
-const patchFundState = async (
-  deps: AdminCatalogDeps,
-  request: FastifyRequest,
-  reply: FastifyReply,
-  forcedState: "archived" | null,
-) => {
+const patchFundState = async (deps: AdminCatalogDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
   requireAnyPermission(principal, ["funds.write"])
   const fundId = fundIdOf(request)
-  const nextState = forcedState ?? parseOrThrow(lifecycleSchema, request.body).status
+  const nextState: FundState = parseOrThrow(lifecycleSchema, request.body).status
   const now = deps.clock()
 
   return mutate(
@@ -532,13 +660,13 @@ const patchFundState = async (
     request,
     reply,
     `${FUNDS_ROUTE}/:fundId`,
-    forcedState === null ? "PATCH" : "DELETE",
+    "PATCH",
     { fundId, status: nextState },
     principal.userId,
     async (tx) => {
       const fund = await deps.catalogRepository.lock(tx, fundId)
       if (fund === null) throw new AppError("RESOURCE_NOT_FOUND")
-      // A pool cannot be published without a version describing its terms.
+      if (!ALLOWED_TRANSITIONS[fund.state].includes(nextState)) throw new AppError("STATE_CONFLICT")
       if (nextState === "published" && fund.current_published_version_id === null) {
         throw new AppError("STATE_CONFLICT")
       }
@@ -581,9 +709,6 @@ export const registerAdminCatalogRoutes = (
     exitStock(deps, request, reply),
   )
   application.patch(`${FUNDS_ROUTE}/:fundId`, async (request, reply) =>
-    patchFundState(deps, request, reply, null),
-  )
-  application.delete(`${FUNDS_ROUTE}/:fundId`, async (request, reply) =>
-    patchFundState(deps, request, reply, "archived"),
+    patchFundState(deps, request, reply),
   )
 }

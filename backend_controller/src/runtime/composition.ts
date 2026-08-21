@@ -1,14 +1,3 @@
-/**
- * Backend composition root. Parses the environment, constructs the shared
- * singletons (pool, database, unit of work, crypto, access-token service,
- * repositories, and the SNS certificate fetcher), and returns a `registerRoutes`
- * function that wires every canonical first-slice route onto a Fastify instance,
- * plus a readiness check and a `dispose` that closes the pool.
- *
- * The email delivery *worker* (which needs a concrete Amazon SES sender) runs as
- * a separate background entrypoint and is intentionally not part of the HTTP
- * server composition.
- */
 import type { FastifyInstance } from "fastify"
 
 import { createAccessTokenService } from "../auth/accessToken.js"
@@ -92,7 +81,6 @@ import { parseServerConfig } from "./environment.js"
 
 export interface BackendServices {
   readonly registerRoutes: (application: FastifyInstance) => void
-  /** Browser origins allowed to call this API cross-origin (drives CORS). */
   readonly corsAllowlist: readonly string[]
   readonly checkReadiness: () => Promise<ReadinessReport>
   readonly dispose: () => Promise<void>
@@ -119,9 +107,6 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const unitOfWork = createUnitOfWork(database)
   const clock = (): Date => new Date()
 
-  // Bound Argon2id concurrency process-wide before anything can hash. Every
-  // password hash and verification goes through this gate, so overload is
-  // rejected with a retryable 429 instead of queueing behind the threadpool.
   configurePasswordWorkGate(serverConfig.passwordHashing)
 
   const cache =
@@ -178,8 +163,6 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const kycRepository = createKycRepository()
   const clientAccountRepository = createClientAccountRepository()
 
-  // KYC/transactional email sender: real SMTP when configured; otherwise fail
-  // closed so the API never reports `code_sent` for a message that did not leave.
   const emailFromAddress =
     serverConfig.email.fromAddress ?? serverConfig.email.smtp?.user ?? "no-reply@localhost"
   const emailSender: EmailSender =
@@ -206,7 +189,6 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
     serverConfig.emailConfigured,
   )
 
-  // Shared by the admin content routes and the public app-config read.
   const adminContentRepository = createAdminContentRepository()
 
   const registerRoutes = (application: FastifyInstance): void => {
@@ -253,7 +235,6 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       config: { cursorKey: serverConfig.cursorKey },
     })
 
-    // Published fund catalogue for the client app (AUM-proportional pool view).
     registerClientCatalogRoutes(application, {
       accessTokenService,
       database,
@@ -310,7 +291,6 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       },
     })
 
-    // Inbox, payment history, derived statements, support and research context.
     registerClientAccountRoutes(application, {
       accessTokenService,
       database,
@@ -320,12 +300,9 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       notificationRepository,
       unitOfWork,
       clock,
-      // Same release directory the public update feed reads, so the inbox and
-      // the launch dialog always agree on the newest build.
       appUpdate: serverConfig.appUpdate,
     })
 
-    // Compliance documents, readable without a session.
     registerPublicContentRoutes(application, {
       clientAccountRepository,
       unitOfWork,
@@ -333,7 +310,6 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       config: { publicContentTtlMs: serverConfig.cache.publicContentTtlMs },
     })
 
-    // App configuration + APK update check, both called before login.
     registerPublicAppRoutes(application, {
       adminContentRepository,
       unitOfWork,
@@ -371,8 +347,6 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       idempotencyRepository,
     })
 
-    // Admin content/catalog/oversight groups: the console's site content, fund
-    // catalogue, and supervision reads over authoritative evidence.
     registerAdminContentRoutes(application, {
       cache,
       webAuth,
@@ -388,6 +362,8 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       idempotencyRepository,
     })
 
+    const fundAumRepository = createFundAumRepository()
+
     registerAdminCatalogRoutes(application, {
       webAuth,
       unitOfWork,
@@ -398,19 +374,21 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
       },
       catalogRepository: createAdminCatalogRepository(),
+      aumRepository: fundAumRepository,
       auditRepository,
       idempotencyRepository,
     })
 
-    // Fund AUM publication (spec §9.5): absolute snapshots, growth commands,
-    // corrections, history, and the read-only collective planning call.
     const adminAumDeps = {
       webAuth,
       unitOfWork,
       database,
       clock,
-      config: { idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
-      aumRepository: createFundAumRepository(),
+      config: {
+        cursorKey: serverConfig.cursorKey,
+        idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
+      },
+      aumRepository: fundAumRepository,
       auditRepository,
       idempotencyRepository,
     }
@@ -432,8 +410,6 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       idempotencyRepository,
     })
 
-    // Client growth commands (spec §8.1/§8.2/§8.5): client-displayed values
-    // only; deliberately wired without any AUM dependency.
     registerAdminClientGrowthRoutes(application, {
       webAuth,
       unitOfWork,
@@ -464,7 +440,6 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         idempotencyRepository,
       })
     }
-    // configured; a deployment without AWS boots without it (email degraded).
     const { awsRegion, topicArn, ttlMs } = serverConfig.providerEvents
     if (awsRegion !== null && topicArn !== null) {
       registerProviderEventRoutes(application, {
@@ -510,31 +485,11 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
 }
 
 export interface EmailDispatchWorker {
-  /** Run one delivery pass over the due `email` outbox events. */
   readonly runOnce: () => Promise<DispatchSummary>
-  /**
-   * Whether an SMTP transport was actually configured for this process.
-   *
-   * Exposed so the entrypoint can say so out loud. Without a transport every
-   * send fails retryably and the queue silently accumulates: the failure is
-   * recorded honestly per delivery (`EMAIL_TRANSPORT_NOT_CONFIGURED`), but
-   * nothing announced that the cause was a missing setting rather than a mail
-   * server having a bad day. A dev stack ran in that state for a day and the only
-   * symptom anyone noticed was applicants reporting no confirmation email.
-   */
   readonly transportConfigured: boolean
   readonly dispose: () => Promise<void>
 }
 
-/**
- * Composes the outbox email delivery worker. Without this process the onboarding
- * emails — address verification and the activation invite — stay queued forever
- * and nobody can activate an account, so the deploy stack runs it alongside the
- * HTTP server.
- *
- * The sender is the same company mailbox the KYC codes use. Without SMTP it
- * fails retryably so durable delivery state never claims an unsent message.
- */
 export const composeEmailDispatchWorker = (
   source: Readonly<Record<string, string | undefined>>,
 ): EmailDispatchWorker => {
@@ -545,12 +500,6 @@ export const composeEmailDispatchWorker = (
   const crypto = createCryptoContext(parseCryptoKeys(source))
 
   const fromAddress = serverConfig.email.fromAddress ?? serverConfig.email.smtp?.user ?? "no-reply@localhost"
-  /*
-   * No log sender here. This path records durable evidence of delivery, so a
-   * sender that resolves without sending anything makes `email_deliveries.state`
-   * a lie (see createUnconfiguredEmailSender). Without SMTP the pass fails
-   * retryably and the queue drains once it is configured.
-   */
   const transport: EmailSender =
     serverConfig.email.smtp !== null
       ? createSmtpEmailSender({ ...serverConfig.email.smtp, fromAddress })

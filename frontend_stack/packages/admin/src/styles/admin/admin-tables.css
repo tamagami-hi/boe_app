@@ -1,4 +1,3 @@
-/* ===== Tables =============================================== */
 .adm-table { padding: var(--be-space-5) 0 var(--be-space-1); }
 .adm-table .adm-card-head { padding: 0 var(--be-space-5) var(--be-space-4); margin-bottom: 0; border-bottom: 1px solid var(--be-border); }
 .adm-table table { width: 100%; border-collapse: collapse; font-size: var(--be-text-sm); }
@@ -8,7 +7,6 @@
 }
 .adm-table tbody td { padding: var(--be-table-cell-pad-y) var(--be-table-cell-pad-x); border-bottom: 1px solid color-mix(in srgb, var(--be-slate) 8%, transparent); vertical-align: middle; }
 .adm-table tbody tr:last-child td { border-bottom: none; }
-.adm-table tbody tr:hover { background: color-mix(in srgb, var(--be-slate) 4%, transparent); }
 .adm-table th:first-child, .adm-table td:first-child { padding-left: var(--be-space-5); }
 .adm-table th:last-child, .adm-table td:last-child { padding-right: var(--be-space-5); }
 .adm-table tbody tr.adm-empty-row:hover { background: transparent; }
@@ -29,7 +27,6 @@
   font-size: var(--be-text-sm);
   text-align: center;
 }
-/* ===== Toolbar / Search / Filter =========================== */
 .adm-toolbar {
   display: flex;
   gap: var(--be-space-3);
@@ -57,6 +54,12 @@
   color: var(--be-fg);
   outline: none;
   width: 100%;
+}
+.adm-search:focus-within,
+.adm-filter:focus-within {
+  outline: 2px solid var(--be-accent);
+  outline-offset: 2px;
+  border-color: var(--be-fg);
 }
 .adm-filter {
   display: flex;
@@ -94,7 +97,6 @@
   gap: var(--be-space-2);
 }
 
-/* ===== Table enhancements ================================== */
 .adm-table-scroll {
   overflow: auto;
   -webkit-overflow-scrolling: touch;
@@ -169,7 +171,6 @@
 .adm-audit-log tbody tr:last-child td {
   border-bottom: none;
 }
-/* Sortable table headers rendered as buttons */
 .adm-table th button {
   all: unset;
   display: inline-flex;
@@ -189,7 +190,6 @@
   outline-offset: 2px;
   border-radius: var(--be-radius-xs);
 }
-/* Session 4: performance period table in the fund editor */
 .adm-mini-table { width: 100%; border-collapse: collapse; margin-top: var(--be-space-2); }
 .adm-mini-table th {
   text-align: left; font-size: var(--be-text-xs); font-weight: 600; color: var(--be-slate);

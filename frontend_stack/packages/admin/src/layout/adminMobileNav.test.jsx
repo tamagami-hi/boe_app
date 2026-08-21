@@ -1,6 +1,3 @@
-// The phone information architecture. The defect this replaces: all 13
-// destinations in ONE horizontally scrolling strip at 40px targets, sharing the
-// scroller with the brand and the signed-in chip.
 import React from 'react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
@@ -18,8 +15,6 @@ import AdminDomainStrip from './AdminDomainStrip.jsx';
 const ALL = allNavPermissions();
 const admin = (permissions = ALL) => ({ id: 'a1', permissions });
 
-// AdaptiveDialog reads useBreakpoint. jsdom has no matchMedia, and a phone
-// viewport is what these tests are about.
 beforeEach(() => {
   window.matchMedia = (query) => ({
     matches: true,
@@ -42,10 +37,8 @@ describe('the mobile model', () => {
 
   test('the bar holds a handful of domains, not thirteen destinations', () => {
     const { primary, more } = mobileNavModel(admin());
-    // The audit asks for 4-5 entry points. Primary domains plus More is the count.
     expect(primary.length).toBeGreaterThanOrEqual(2);
     expect(primary.length + 1).toBeLessThanOrEqual(5);
-    // Nothing is lost: every domain is reachable from one list or the other.
     const covered = [...primary, ...more].map((d) => d.id).sort();
     expect(covered).toEqual(NAV_DOMAINS.map((d) => d.id).sort());
   });
@@ -65,12 +58,10 @@ describe('the mobile model', () => {
   });
 
   test('a principal who can reach nothing in a primary domain does not get its tab', () => {
-    // users -> applications.read | users.read; funds -> funds.read; reviews -> investments.review.read.
     const { primary } = mobileNavModel(admin(['audit.read']));
     expect(primary.map((d) => d.id)).not.toContain('users');
     expect(primary.map((d) => d.id)).not.toContain('funds');
     expect(primary.map((d) => d.id)).not.toContain('reviews');
-    // Overview is ungated, so it survives and the operator keeps an entry point.
     expect(primary.map((d) => d.id)).toContain('overview');
   });
 
@@ -93,7 +84,6 @@ describe('AdminMobileNav', () => {
   });
 
   test('a tab is current for any destination inside its domain, not just the entry', () => {
-    // The old strip marked only the exact path, so on a workspace route nothing was active.
     renderAt(<AdminMobileNav user={admin()} />, '/admin/funds/f1');
     const fundsTab = screen.getByRole('link', { name: /Funds/ });
     expect(fundsTab).toHaveAttribute('aria-current', 'page');
@@ -140,7 +130,6 @@ describe('AdminMobileNav', () => {
   });
 
   test('with nothing behind More the button is not rendered', () => {
-    // Overview alone: every other domain is filtered out by permissions.
     renderAt(<AdminMobileNav user={admin([])} />, '/admin/overview');
     expect(screen.queryByRole('button', { name: /More/ })).not.toBeInTheDocument();
   });
@@ -152,7 +141,7 @@ describe('AdminDomainStrip', () => {
     const strip = screen.getByRole('navigation', { name: 'AUM sections' });
     expect(strip).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Current published AUM' })).toHaveClass('is-active');
-    expect(screen.getByRole('link', { name: 'Initialize or adjust one fund' })).toHaveAttribute('href', '/admin/aum/manage');
+    expect(screen.getByRole('link', { name: 'Adjust one fund' })).toHaveAttribute('href', '/admin/aum/manage');
   });
 
   test('renders nothing for a single-destination domain', () => {
@@ -166,8 +155,6 @@ describe('AdminDomainStrip', () => {
   });
 
   test('it only offers destinations the principal may reach', () => {
-    // Approvals needs applications.read; Directory needs users.read. With both held
-    // the users domain strip is exactly those two destinations — nothing else.
     renderAt(<AdminDomainStrip user={admin(['users.read', 'applications.read'])} />, '/admin/users/approvals');
     expect(screen.getByRole('link', { name: 'Approvals' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Directory' })).toBeInTheDocument();

@@ -1,18 +1,3 @@
-/**
- * Shared plumbing for the `/v1/admin/*` route groups (spec 04 §3.2/§4.5).
- *
- * The admin identity slice grew these helpers inline; the catalog, content, and
- * oversight groups need the identical transport contract, so they live here once:
- *
- *   - authenticated opaque keyset cursors bound to route + filter hash;
- *   - `Idempotency-Key` and `If-Match` header extraction with canonical errors;
- *   - the request-hash + idempotency-scope shape for admin mutations; and
- *   - the `executeIdempotent` wrapper so a replayed mutation returns the first
- *     committed result rather than acting twice.
- *
- * Nothing here reads or writes domain state: route groups keep their own
- * repositories and commands.
- */
 import { createHash } from "node:crypto"
 
 import type { FastifyRequest } from "fastify"
@@ -25,14 +10,12 @@ import type { PageMeta } from "../http/envelope.js"
 import { AppError } from "../http/errorCatalog.js"
 import { executeIdempotent, idempotencyKeySchema } from "../http/idempotencyProtocol.js"
 
-/** Largest page any admin list will serve, mirroring the client read slice. */
 export const MAX_ADMIN_LIMIT = 100
 
 export const limitSchema = z.coerce.number().int().min(1).max(MAX_ADMIN_LIMIT).default(25)
 export const uuidParam = z.string().uuid()
 export const reasonCodeSchema = z.string().trim().min(1).max(80)
 export const reasonDetailSchema = z.string().trim().min(1).max(2000)
-/** Free-text search term; bounded so a query can never become a scan bomb. */
 export const searchSchema = z.string().trim().min(1).max(120)
 export const slugSchema = z
   .string()
@@ -44,7 +27,6 @@ export const slugSchema = z
 export const iso = (value: Date | string): string => new Date(value).toISOString()
 export const isoOrNull = (value: Date | string | null): string | null =>
   value === null ? null : iso(value)
-/** `bigint`/`numeric` columns arrive as strings; never coerce money to a number. */
 export const numberOrNull = (value: number | string | null): number | null =>
   value === null ? null : Number(value)
 
@@ -64,11 +46,6 @@ export const requireIdempotencyKey = (request: FastifyRequest): string => {
   return parsed.data
 }
 
-/**
- * Optional `Idempotency-Key`: the admin console does not send one on simple
- * content edits. When absent the caller derives a deterministic key from the
- * request so a double-click still collapses into one write.
- */
 export const optionalIdempotencyKey = (request: FastifyRequest): string | null => {
   const header = request.headers["idempotency-key"]
   const value = Array.isArray(header) ? header[0] : header
@@ -102,6 +79,17 @@ export interface KeysetPosition {
   readonly afterId?: string
 }
 
+export const readKeysetValues = (
+  cursorKey: Buffer,
+  after: string | undefined,
+  route: string,
+  filterHash: string,
+  now: Date,
+): readonly string[] => {
+  if (after === undefined) return []
+  return decodeCursor(cursorKey, after, { route, filterHash, now })
+}
+
 export const readKeyset = (
   cursorKey: Buffer,
   after: string | undefined,
@@ -122,10 +110,6 @@ export interface Paginated<Row> {
   readonly page: PageMeta
 }
 
-/**
- * Trim the `limit + 1` probe row, and mint the next cursor from the last kept
- * row's sort values. Callers always query one extra row.
- */
 export const paginate = <Row>(
   cursorKey: Buffer,
   rows: readonly Row[],
@@ -175,7 +159,6 @@ export interface AdminMutationResult<TBody> {
   readonly replay: boolean
 }
 
-/** One transaction, one idempotency record, one committed outcome. */
 export const runAdminMutation = async <TBody extends Record<string, unknown>>(
   options: AdminMutationOptions<TBody>,
 ): Promise<AdminMutationResult<TBody>> =>

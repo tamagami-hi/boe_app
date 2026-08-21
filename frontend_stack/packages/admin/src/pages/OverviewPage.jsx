@@ -29,9 +29,6 @@ const QUICK_LINKS = [
     path: '/admin/payments',
     icon: CreditCard,
     title: 'Check payments',
-    // Not "approve": payments are confirmed by the provider webhook, and this
-    // screen is the evidence trail. The old copy promised an action that has no
-    // endpoint behind it.
     description: 'Inspect the payment record and settlement evidence.',
   },
   {
@@ -44,8 +41,6 @@ const QUICK_LINKS = [
     path: '/admin/audit',
     icon: History,
     title: 'Read the audit log',
-    // Replaces an "Answer support" card that pointed at /admin/system/support —
-    // a route that only redirects here, because support tickets have no schema.
     description: 'Every admin action, with actor and reason.',
   },
   {
@@ -71,10 +66,6 @@ export default function OverviewPage() {
   const payments = useAdminPayments();
   const funds = useAdminFunds();
 
-  // Counted from what this console actually loaded. These tiles used to read
-  // counts.users / counts.payments / counts.support from an overview payload no
-  // endpoint produces, with `?? 0` — so the landing screen stated, as fact and
-  // forever, that there were zero users and zero payments.
   const paymentsInFlight = payments.rows.filter((row) =>
     ['created', 'provider_pending'].includes(row.status),
   ).length;
@@ -84,7 +75,7 @@ export default function OverviewPage() {
     <Page>
       <AdminReadError resources={[
         { label: 'payments', ...payments },
-        { label: 'fund pools', ...funds },
+        { label: 'fund catalogue', ...funds },
       ]} />
       <Section aria-label="Key counts">
         <ContentGrid cols={4} minColWidth="200px">
@@ -94,7 +85,7 @@ export default function OverviewPage() {
             <>
               <StatCard label="Applications waiting" value={queue.approvals.length} hint="Sign-ups not yet decided" />
               <StatCard label="Payments in flight" value={paymentsInFlight} hint="Not yet settled by the provider" />
-              <StatCard label="Fund pools" value={funds.rows.length} hint="Draft and published" />
+              <StatCard label="Funds" value={funds.summary ? funds.summary.total : funds.rows.length} hint="Draft and published" />
             </>
           )}
         </ContentGrid>

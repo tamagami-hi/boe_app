@@ -1,27 +1,9 @@
-/**
- * Canonical Kysely database schema. Table interfaces mirror the migrations
- * exactly (column names, nullability, defaults).
- *
- * Column-type conventions:
- * - `Generated<T>` marks a column that has a database default and is therefore
- *   optional on insert.
- * - Timestamps select as `Date` and accept `Date | string` on write.
- * - `bytea` selects as `Buffer` and accepts `Buffer | Uint8Array` on write.
- * - `jsonb` selects as an object and is written as a serialized string.
- * - `bigint` selects as a string (node-postgres default) and accepts
- *   `string | number | bigint` on write.
- *
- * Repositories and the project repository interfaces build on these types; see
- * `repositories.ts`.
- */
 import type { ColumnType, Generated, JSONColumnType } from "kysely"
 
-// Timestamps
 type Timestamp = ColumnType<Date, Date | string, Date | string>
 type TimestampDefault = ColumnType<Date, Date | string | undefined, Date | string>
 type NullableTimestamp = ColumnType<Date | null, Date | string | null | undefined, Date | string | null>
 
-// bytea
 type Bytea = ColumnType<Buffer, Buffer | Uint8Array, Buffer | Uint8Array>
 type NullableBytea = ColumnType<
   Buffer | null,
@@ -29,7 +11,6 @@ type NullableBytea = ColumnType<
   Buffer | Uint8Array | null
 >
 
-// bigint (node-postgres returns text)
 type BigIntString = ColumnType<string, string | number | bigint, string | number | bigint>
 type BigIntStringDefault = ColumnType<
   string,
@@ -42,42 +23,28 @@ type NullableBigIntString = ColumnType<
   string | number | bigint | null
 >
 
-// numeric/decimal (node-postgres returns text); persisted at scale 8 for
-// NAV/units/allocation, so selects are strings and writes accept string | number.
 type Numeric = ColumnType<string, string | number, string | number>
 
-// date (node-postgres returns a Date for the `date` type; time component is
-// midnight). Writes accept a Date or an ISO/`YYYY-MM-DD` string.
 type DateColumn = ColumnType<Date, Date | string, Date | string>
 type NullableDateColumn = ColumnType<Date | null, Date | string | null | undefined, Date | string | null>
 
-// nullable scalar that is optional on insert
 type Nullable<T> = ColumnType<T | null, T | null | undefined, T | null>
 
-// jsonb
 type Json = JSONColumnType<Record<string, unknown>>
 type JsonDefault = ColumnType<Record<string, unknown>, string | undefined, string>
 
-// Enums (closed sets from migrations 009-013, reworked by 025)
 export type ApplicationState = "submitted" | "approved" | "rejected" | "withdrawn"
 export type UserAccountState = "invited" | "active" | "suspended" | "closed"
 export type ApplicationDecision = "approved" | "rejected"
 export type SessionChannel = "native" | "web"
 export type AuthSessionState = "active" | "revoked" | "expired"
-/**
- * Why a sign-in attempt ended (migration 026). `password_changed` is the narrow
- * race the login command detects when the credential is rotated between the
- * password verification and the session write.
- */
 export type AuthLoginOutcome =
   | "success"
   | "invalid_credentials"
   | "unknown_identity"
   | "account_not_active"
   | "password_changed"
-  /** Correct password, but no admin role, presented at the admin console. */
   | "not_authorized"
-export type ApprovalState = "pending" | "approved" | "rejected" | "executed" | "stale" | "expired"
 export type ActorType = "public" | "user" | "admin" | "system" | "provider"
 export type OutboxState =
   | "pending"
@@ -98,7 +65,6 @@ export type EmailDeliveryState =
 export type EmailProviderEventState = "received" | "processed" | "ignored" | "unmatched"
 export type ConsentKind = "terms" | "privacy"
 
-// Later-domain enums (closed sets from migrations 014-018; spec 03 §2.1/§2.2).
 export type KycCaseState =
   | "pending_submission"
   | "submitted"
@@ -110,7 +76,6 @@ export type RiskAssessmentState = "not_started" | "submitted" | "assessed"
 export type RiskCategory = "conservative" | "balanced" | "growth" | "aggressive"
 export type FundState = "draft" | "review_pending" | "published" | "paused" | "archived"
 export type FundRiskLevel = "low" | "moderate" | "high" | "very_high"
-/** Expected-return band shown beside `risk_level` on client fund cards (020). */
 export type FundReturnTier = "low" | "moderate" | "high"
 export type SipState = "draft" | "pending_mandate" | "active" | "paused" | "cancelled" | "completed"
 export type OrderType = "lump_sum" | "sip_installment"
@@ -136,10 +101,8 @@ export type PaymentState =
 export type ProviderEventState = "received" | "processing" | "processed" | "dead_lettered"
 export type RefundState = "pending" | "provider_pending" | "refunded" | "failed"
 export type ReviewState = "pending" | "accepted" | "rejected"
-/** Append-only client value ledger entry kinds (spec §5.7). */
 export type ClientValueEntryType = "contribution" | "growth_adjustment" | "reversal"
 export type LedgerActorType = "admin" | "system"
-/** Shared growth batch header fields (spec §5.9). */
 export type GrowthScope = "individual" | "collective"
 export type GrowthInstructionType = "amount" | "percentage" | "explicit_deltas"
 
@@ -148,12 +111,6 @@ export interface ApplicationsTable {
   email_normalized: string
   phone_e164: string
   full_name: string
-  /**
-   * Argon2id hash of the password chosen on the public signup form, held until
-   * the approval decision copies it into `user_credentials`. Nullable: rows
-   * submitted before password-at-signup have none and cannot be approved until
-   * they are resubmitted.
-   */
   password_hash: string | null
   state: Generated<ApplicationState>
   submitted_at: NullableTimestamp
@@ -261,13 +218,6 @@ export interface AuthSessionsTable {
   version: BigIntStringDefault
 }
 
-/**
- * Append-only sign-in attempt log (migration 026).
- *
- * `user_id` is null for an attempt against an address with no account, and
- * `session_id` is set only on `success` — both enforced by CHECK constraints, so
- * a row is always interpretable after the fact.
- */
 export interface AuthLoginEventsTable {
   id: Generated<string>
   occurred_at: TimestampDefault
@@ -328,30 +278,6 @@ export interface UserRolesTable {
   granted_at: TimestampDefault
   revoked_by_user_id: Nullable<string>
   revoked_at: NullableTimestamp
-}
-
-export interface ApprovalActionsTable {
-  id: Generated<string>
-  action_type: string
-  target_type: string
-  target_id: string
-  target_version: BigIntString
-  canonical_payload: Json
-  payload_hash: Bytea
-  state: Generated<ApprovalState>
-  maker_user_id: string
-  maker_reason: string
-  checker_user_id: Nullable<string>
-  checker_reason: Nullable<string>
-  created_at: TimestampDefault
-  approved_at: NullableTimestamp
-  rejected_at: NullableTimestamp
-  executed_at: NullableTimestamp
-  stale_at: NullableTimestamp
-  expired_at: NullableTimestamp
-  expires_at: Timestamp
-  updated_at: TimestampDefault
-  version: BigIntStringDefault
 }
 
 export interface AuditEventsTable {
@@ -501,11 +427,6 @@ export interface EmailSuppressionsTable {
   lift_reason: Nullable<string>
 }
 
-// ---------------------------------------------------------------------------
-// Later-domain tables (migrations 014-018; spec 03 §4). Compliance, catalog,
-// platform/policy/content, investing/ownership, and payments/provider inbox.
-// ---------------------------------------------------------------------------
-
 export interface InvestorProfilesTable {
   user_id: string
   date_of_birth_ciphertext: NullableBytea
@@ -608,7 +529,6 @@ export interface FundVersionsTable {
   category: string
   objective: string
   risk_level: FundRiskLevel
-  /** Migration 020: expected-return band, null on versions published before it. */
   return_tier: Nullable<FundReturnTier>
   currency: Generated<string>
   minimum_sip_paise: BigIntString
@@ -634,22 +554,6 @@ export interface FundDisclosureVersionsTable {
   updated_at: TimestampDefault
 }
 
-export interface FundPositionsTable {
-  id: Generated<string>
-  fund_id: string
-  as_of_date: DateColumn
-  revision: Generated<number>
-  asset_key: string
-  asset_name: string
-  asset_class: Nullable<string>
-  sector: Nullable<string>
-  allocation_percent: Numeric
-  source: Nullable<string>
-  created_at: TimestampDefault
-  updated_at: TimestampDefault
-}
-
-/** Absolute admin-published AUM snapshot (spec §5.8); append-only revisions. */
 export interface FundAumSnapshotsTable {
   id: Generated<string>
   fund_id: string
@@ -664,7 +568,6 @@ export interface FundAumSnapshotsTable {
   created_at: TimestampDefault
 }
 
-/** AUM growth batch header (spec §5.9); referenced only by fund_aum_snapshots. */
 export interface AumGrowthBatchesTable {
   id: Generated<string>
   scope: GrowthScope
@@ -675,13 +578,11 @@ export interface AumGrowthBatchesTable {
   basis_hash: string
   actor_user_id: string
   request_id: string
-  idempotency_record_id: Nullable<string>
   target_count: number
   total_delta_paise: BigIntString
   created_at: TimestampDefault
 }
 
-/** Administrator-curated stock list shown to investors, tagged by quarter. */
 export interface FundStockDisclosuresTable {
   id: Generated<string>
   fund_id: string
@@ -771,7 +672,6 @@ export interface SipPlansTable {
   version: BigIntStringDefault
 }
 
-/** Client investment intent (spec §5.1); stores the issued version selected. */
 export interface InvestmentOrdersTable {
   id: Generated<string>
   user_id: string
@@ -793,7 +693,6 @@ export interface InvestmentOrdersTable {
   version: BigIntStringDefault
 }
 
-/** Admin-only one-to-one review of a succeeded payment (spec §5.5). */
 export interface InvestmentReviewsTable {
   id: Generated<string>
   order_id: string
@@ -808,7 +707,6 @@ export interface InvestmentReviewsTable {
   version: BigIntStringDefault
 }
 
-/** Admin-only private allocation of an accepted payment (spec §5.6). */
 export interface InvestmentAllocationsTable {
   id: Generated<string>
   order_id: string
@@ -821,7 +719,6 @@ export interface InvestmentAllocationsTable {
   created_at: TimestampDefault
 }
 
-/** Client growth batch header (spec §5.9); referenced only by client_value_entries. */
 export interface ClientGrowthBatchesTable {
   id: Generated<string>
   scope: GrowthScope
@@ -871,7 +768,6 @@ export interface PaymentAttemptsTable {
   version: BigIntStringDefault
 }
 
-/** Normalized PhonePe `paymentDetails[]` rows, keyed by attempt + transaction (spec §5.2). */
 export interface ProviderPaymentDetailsTable {
   id: Generated<string>
   payment_attempt_id: string
@@ -884,7 +780,6 @@ export interface ProviderPaymentDetailsTable {
   created_at: TimestampDefault
 }
 
-/** First-class refund record for a rejected succeeded payment (spec §5.3). */
 export interface RefundOperationsTable {
   id: Generated<string>
   payment_id: string
@@ -902,7 +797,6 @@ export interface RefundOperationsTable {
   updated_at: TimestampDefault
 }
 
-/** Durable PhonePe callback inbox with semantic dedup + encrypted payload (spec §5.4). */
 export interface ProviderEventsTable {
   id: Generated<string>
   provider: string
@@ -929,7 +823,6 @@ export interface ProviderEventsTable {
   version: BigIntStringDefault
 }
 
-/** Append-only client value ledger (spec §5.7); corrections are reversals. */
 export interface ClientValueEntriesTable {
   id: Generated<string>
   user_id: string
@@ -963,7 +856,6 @@ export interface NotificationsTable {
   updated_at: TimestampDefault
 }
 
-/** Investor support requests (migration 022). */
 export type SupportRequestState = "open" | "in_progress" | "resolved" | "closed"
 
 export interface SupportRequestsTable {
@@ -982,11 +874,6 @@ export interface SupportRequestsTable {
   version: Generated<string>
 }
 
-/**
- * The full canonical schema map consumed by the typed Kysely instance,
- * repositories, and command services. First-slice tables (009-013) plus the
- * later-domain tables (014-020+; target persistence model, spec §5).
- */
 export interface Database {
   applications: ApplicationsTable
   consent_documents: ConsentDocumentsTable
@@ -996,13 +883,11 @@ export interface Database {
   application_reviews: ApplicationReviewsTable
   auth_sessions: AuthSessionsTable
   auth_refresh_tokens: AuthRefreshTokensTable
-  // Per-user sign-in attempt log (migration 026)
   auth_login_events: AuthLoginEventsTable
   roles: RolesTable
   permissions: PermissionsTable
   role_permissions: RolePermissionsTable
   user_roles: UserRolesTable
-  approval_actions: ApprovalActionsTable
   audit_events: AuditEventsTable
   idempotency_records: IdempotencyRecordsTable
   rate_limit_windows: RateLimitWindowsTable
@@ -1011,7 +896,6 @@ export interface Database {
   email_deliveries: EmailDeliveriesTable
   email_provider_events: EmailProviderEventsTable
   email_suppressions: EmailSuppressionsTable
-  // Later domain (014-018)
   investor_profiles: InvestorProfilesTable
   kyc_cases: KycCasesTable
   kyc_documents: KycDocumentsTable
@@ -1020,7 +904,6 @@ export interface Database {
   funds: FundsTable
   fund_versions: FundVersionsTable
   fund_disclosure_versions: FundDisclosureVersionsTable
-  fund_positions: FundPositionsTable
   fund_aum_snapshots: FundAumSnapshotsTable
   aum_growth_batches: AumGrowthBatchesTable
   fund_stock_disclosures: FundStockDisclosuresTable
@@ -1040,8 +923,6 @@ export interface Database {
   provider_events: ProviderEventsTable
   client_value_entries: ClientValueEntriesTable
   notifications: NotificationsTable
-  // Compliance email-OTP KYC (migration 019)
   kyc_verification_codes: KycVerificationCodesTable
-  // Investor support requests (migration 022)
   support_requests: SupportRequestsTable
 }

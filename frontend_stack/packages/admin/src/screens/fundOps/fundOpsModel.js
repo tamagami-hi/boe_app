@@ -1,31 +1,34 @@
-// The fund catalogue as the backend actually models it (Option B, spec 04 §3.2).
-//
-// The old editor invented a six-stage lifecycle — draft, published, active, paused,
-// closed, archived — and a second "user status" field derived from it. Neither
-// exists. `fund_state` is the five values below, `PATCH /v1/admin/funds/:id` accepts
-// exactly three of them, and there is no separate user-facing status: a published
-// pool is visible, a paused one is visible but closed to new money, an archived one
-// is hidden. Offering `active` and `closed` meant two of the six stages were
-// rejected by the route, and the editor's own save path never sent the change at all.
+import { AUM_OPENING_REASONS, todayInIndia } from '../../helpers/aumReasons.js';
 
 export const FUND_STATES = ['draft', 'review_pending', 'published', 'paused', 'archived'];
 
-// What the operator can move a pool TO. `draft` and `review_pending` are entry
-// states the pool starts in; there is no route back to them.
 export const LIFECYCLE_ACTIONS = ['published', 'paused', 'archived'];
 
+export const ALLOWED_TRANSITIONS = {
+  draft: ['published', 'archived'],
+  review_pending: ['published', 'archived'],
+  published: ['paused', 'archived'],
+  paused: ['published', 'archived'],
+  archived: [],
+};
+
+export function lifecycleActionsFor(state) {
+  return ALLOWED_TRANSITIONS[state] ?? [];
+}
+
 export const STATE_DESCRIPTIONS = {
-  draft: 'Not visible to clients. Publish a version, then publish the pool.',
+  draft: 'Not visible to clients. Publish the fund when its terms and stock list are ready.',
   review_pending: 'Awaiting review. Not visible to clients.',
   published: 'Visible to clients and open to new investment.',
   paused: 'Visible to clients, closed to new investment.',
-  archived: 'Hidden from clients. Existing positions are unaffected.',
+  archived: 'Hidden from clients and permanently closed to further changes.',
 };
 
 export const LIFECYCLE_CONSEQUENCES = {
-  published: 'Clients will see this pool and be able to invest in it.',
-  paused: 'Clients keep seeing the pool and their holdings, but cannot add money.',
-  archived: 'Clients will no longer see the pool. Existing positions are unaffected.',
+  published: 'Clients will see this fund and be able to invest in it.',
+  paused: 'Clients keep seeing the fund and their holdings, but cannot add money.',
+  archived:
+    'Clients will no longer see the fund. This is final: an archived fund cannot be published, paused, edited, or given new AUM. Its records stay in the catalogue and in history.',
 };
 
 export const RISK_LEVELS = [
@@ -42,9 +45,19 @@ export const RETURN_TIERS = [
   { value: 'high', label: 'High' },
 ];
 
+export const FUND_CATEGORIES = [
+  { value: 'equity', label: 'Equity' },
+  { value: 'debt', label: 'Debt' },
+  { value: 'hybrid', label: 'Hybrid' },
+  { value: 'multi_asset', label: 'Multi asset' },
+  { value: 'index', label: 'Index' },
+  { value: 'liquid', label: 'Liquid' },
+  { value: 'thematic', label: 'Thematic' },
+];
+
 export const EMPTY_PROFILE = {
   name: '',
-  category: '',
+  category: 'equity',
   objective: '',
   riskLevel: 'moderate',
   returnTier: '',
@@ -54,6 +67,10 @@ export const EMPTY_PROFILE = {
   recommendedHoldingMonths: '',
   disclosureTitle: '',
   disclosureBody: '',
+  openingAum: '',
+  openingAumAsOfDate: todayInIndia(),
+  openingAumReasonCode: AUM_OPENING_REASONS[0].value,
+  openingAumNote: '',
 };
 
 const paise = (rupees) => {
@@ -72,14 +89,20 @@ const positiveInt = (value) => {
   return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : null;
 };
 
-/** Prefill from the admin fund detail: `{ fund, disclosures, versions }`. */
+export function toPaiseString(value) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount < 0) return null;
+  return String(Math.round(amount * 100));
+}
+
 export function profileFromDetail(detail) {
   const fund = detail?.fund || {};
   const disclosure = (detail?.disclosures || [])[0] || {};
   const version = (detail?.versions || [])[0] || {};
   return {
+    ...EMPTY_PROFILE,
     name: fund.name || '',
-    category: fund.category || '',
+    category: fund.category || 'equity',
     objective: fund.objective || '',
     riskLevel: fund.riskLevel || 'moderate',
     returnTier: fund.returnTier || '',
@@ -92,21 +115,10 @@ export function profileFromDetail(detail) {
   };
 }
 
-/**
- * The body of `POST /v1/admin/funds/:id/versions`, and nothing else.
- *
- * That route's schema is `.strict()`. The old editor collected initial investment,
- * current value, launch date, NAV, a star rating, a performance summary, a
- * performance series, performance periods, an asset allocation, six advanced ratios,
- * six chart toggles, sectors and per-company investment amounts — then sent name,
- * category, objective, riskLevel, the two minimums and the disclosure. Everything
- * else was collected, acknowledged with a success toast, and dropped. The client
- * payload has no field for any of it either.
- */
 export function versionPayloadFromProfile(profile) {
   const body = {
     name: profile.name.trim(),
-    category: profile.category.trim() || 'general',
+    category: profile.category.trim() || 'equity',
     objective: profile.objective.trim(),
     riskLevel: profile.riskLevel,
     minimumSipPaise: paise(profile.minSip),
@@ -124,23 +136,65 @@ export function versionPayloadFromProfile(profile) {
   return body;
 }
 
-/** Field-level validation, matching the route's schema so a save is not a guess. */
-export function validateProfile(profile) {
+export function createPayloadFromProfile(profile) {
+  const note = profile.openingAumNote.trim();
+  return {
+    slug: slugify(profile.name),
+    terms: versionPayloadFromProfile(profile),
+    openingAum: {
+      aumPaise: toPaiseString(profile.openingAum) ?? '0',
+      asOfDate: profile.openingAumAsOfDate,
+      reasonCode: profile.openingAumReasonCode,
+      ...(note ? { note } : {}),
+    },
+  };
+}
+
+export function validateProfile(profile, { requireOpeningAum = false } = {}) {
   const errors = {};
-  if (!profile.name.trim()) errors.name = 'A pool needs a name.';
+  if (!profile.name.trim()) errors.name = 'A fund needs a name.';
   else if (profile.name.trim().length > 200) errors.name = 'Keep the name under 200 characters.';
-  if (profile.category.trim().length > 200) errors.category = 'Keep the category under 200 characters.';
+  if (!FUND_CATEGORIES.some((category) => category.value === profile.category)) {
+    errors.category = 'Choose a category.';
+  }
+  if (profile.objective.trim().length > 20000) {
+    errors.objective = 'Keep the objective under 20,000 characters.';
+  }
   if (!RISK_LEVELS.some((level) => level.value === profile.riskLevel)) {
     errors.riskLevel = 'Choose a risk level.';
   }
-  // The route requires a non-empty disclosure body; a blank one is rejected with a
-  // validation error the operator cannot interpret.
+  if (profile.disclosureTitle.trim().length > 200) {
+    errors.disclosureTitle = 'Keep the title under 200 characters.';
+  }
   if (!profile.disclosureBody.trim()) {
     errors.disclosureBody = 'The disclosure clients read cannot be empty.';
+  } else if (profile.disclosureBody.trim().length > 20000) {
+    errors.disclosureBody = 'Keep the disclosure under 20,000 characters.';
   }
   for (const key of ['minSip', 'minLumpsum']) {
     if (profile[key] !== '' && !(Number(profile[key]) >= 0)) {
       errors[key] = 'Enter an amount in rupees, or leave it blank.';
+    }
+  }
+  for (const key of ['minimumDurationMonths', 'recommendedHoldingMonths']) {
+    if (profile[key] === '') continue;
+    const months = Number(profile[key]);
+    if (!Number.isInteger(months) || months < 1 || months > 1200) {
+      errors[key] = 'Enter a whole number of months between 1 and 1200.';
+    }
+  }
+  if (requireOpeningAum) {
+    if (toPaiseString(profile.openingAum) === null || profile.openingAum === '') {
+      errors.openingAum = 'Enter the opening fund size in rupees. Zero is allowed; negative is not.';
+    }
+    if (!profile.openingAumAsOfDate) {
+      errors.openingAumAsOfDate = 'Choose the date this figure is effective from.';
+    }
+    if (!AUM_OPENING_REASONS.some((reason) => reason.value === profile.openingAumReasonCode)) {
+      errors.openingAumReasonCode = 'Choose a reason.';
+    }
+    if (profile.openingAumNote.trim().length > 2000) {
+      errors.openingAumNote = 'Keep the note under 2,000 characters.';
     }
   }
   return errors;

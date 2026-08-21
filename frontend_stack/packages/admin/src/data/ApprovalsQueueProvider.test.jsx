@@ -1,12 +1,8 @@
-// The approvals queue's concurrency rules, which exist because of a reproducible
-// defect: approve an application, the row disappears, then a poll that started
-// moments earlier lands and puts it back.
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-/** Deferred loader: each call parks until the test resolves it. */
 let pending = [];
 const loadApprovals = vi.fn((options) => new Promise((resolve, reject) => {
   pending.push({ options, resolve, reject });
@@ -25,6 +21,11 @@ const addToast = vi.fn();
 vi.mock('../components/ToastProvider.jsx', () => ({
   default: ({ children }) => children,
   useToast: () => ({ addToast }),
+}));
+
+let mockUser = { id: 'admin-1', permissions: ['applications.read', 'applications.decide'] };
+vi.mock('@beonedge/client/store/AdminSessionContext.jsx', () => ({
+  useAdminSession: () => ({ user: mockUser }),
 }));
 
 const { default: ApprovalsQueueProvider, useApprovalsQueue } = await import('./ApprovalsQueueProvider.jsx');
@@ -82,7 +83,6 @@ describe('first read', () => {
     mountAt();
     await flush();
     expect(loadApprovals).toHaveBeenCalledTimes(1);
-    // `{}` not `{maxPages: 2}`: the mount read is not a quiet poll.
     expect(pending[0].options).toEqual({});
   });
 
@@ -133,21 +133,15 @@ describe('a decision', () => {
     expect(decideApplication).toHaveBeenCalledWith('app-a', 'approved', expect.any(String));
   });
 
-  // The defect this whole file exists for.
   test('a read already in flight cannot reinstate the decided row', async () => {
     await mountWithRows();
-    // A read starts (explicit, so the quiet throttle is not in the way — the guard
-    // under test is identical for both).
     act(() => { queue.refreshApprovals(); });
     const inFlightIndex = pending.length - 1;
 
-    // ...then the operator approves. The decision is held open so nothing else can
-    // write the rows while the late read lands.
     decideApplication.mockReturnValue(new Promise(() => {}));
     act(() => { queue.handleApproveUser(ROW_A); });
     expect(screen.getByTestId('ids')).toHaveTextContent('b');
 
-    // The earlier read lands late, still carrying the decided row.
     await resolveCall(inFlightIndex, [ROW_A, ROW_B]);
     expect(screen.getByTestId('ids')).toHaveTextContent('b');
   });
@@ -161,7 +155,6 @@ describe('a decision', () => {
 
   test('refreshApprovals is refused outright while a decision is in flight', async () => {
     await mountWithRows();
-    // Held open, so the only thing that could issue a read is the refresh itself.
     decideApplication.mockReturnValue(new Promise(() => {}));
     act(() => { queue.handleApproveUser(ROW_A); });
     const before = loadApprovals.mock.calls.length;
@@ -208,7 +201,6 @@ describe('a decision', () => {
     let attempt;
     act(() => { attempt = queue.handleApproveUser(ROW_A); });
     await flush();
-    // The re-read is what puts the row back, from the server's state.
     await resolveCall(pending.length - 1, [ROW_A, ROW_B]);
     await act(async () => { await attempt; });
     expect(screen.getByTestId('ids')).toHaveTextContent('a,b');
@@ -221,7 +213,6 @@ describe('superseded reads', () => {
     await flush();
     await resolveCall(0, [ROW_A]);
 
-    // Two explicit refreshes; resolve them out of order.
     act(() => { queue.refreshApprovals(); });
     const firstIndex = pending.length - 1;
     act(() => { queue.refreshApprovals(); });

@@ -1,16 +1,15 @@
-/* Shared UI kit base — extends tokens-core.css */
-
 * { box-sizing: border-box; }
 
-/* Buttons ------------------------------------------------------------------ */
 .be-btn {
   font: 500 var(--be-text-sm)/1 var(--be-font-sans);
   padding: var(--be-space-3) var(--be-space-4);
+  min-height: var(--be-target-min);
   border-radius: var(--be-radius-md);
   border: 1px solid transparent;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--be-space-2);
   transition:
     background 200ms var(--be-ease),
@@ -38,7 +37,12 @@
 .be-btn-ghost { background: transparent; color: var(--be-fg); }
 .be-btn-ghost:hover { background: var(--be-slate-soft); }
 
-.be-btn-danger { background: transparent; color: var(--be-red); border: 1px solid rgba(180,58,46,0.3); }
+.be-btn-danger {
+  background: transparent;
+  color: var(--be-red);
+  border: 1px solid color-mix(in srgb, var(--be-red) 45%, transparent);
+}
+.be-btn-danger:hover { background: var(--be-red-soft); color: var(--be-text-on-red); }
 
 .be-btn[disabled],
 .be-btn.is-disabled {
@@ -63,11 +67,14 @@
   animation: be-spin 600ms linear infinite;
 }
 
-.be-btn-sm { font-size: var(--be-text-xs); padding: var(--be-space-2) var(--be-space-3); }
+.be-btn-sm {
+  font-size: var(--be-text-xs);
+  padding: var(--be-space-2) var(--be-space-3);
+  min-height: var(--be-target-compact);
+}
 .be-btn-lg { font-size: var(--be-text-base); padding: var(--be-space-4) var(--be-space-5); }
 .be-btn-block { width: 100%; justify-content: center; }
 
-/* Input ------------------------------------------------------------------ */
 .be-input {
   font: 400 var(--be-text-sm) var(--be-font-sans);
   padding: var(--be-space-3);
@@ -87,7 +94,6 @@
 .be-field label { font-size: var(--be-text-xs); color: var(--be-slate); }
 .be-field .be-field-error { font-size: var(--be-text-xs); color: var(--be-red); margin-top: 2px; }
 
-/* Card ------------------------------------------------------------------- */
 .be-card {
   background: var(--be-bone);
   border: var(--be-border-1);
@@ -110,7 +116,6 @@
   padding: var(--be-card-pad);
 }
 
-/* Badges ----------------------------------------------------------------- */
 .be-badge {
   font: 500 var(--be-text-xs)/1 var(--be-font-sans);
   letter-spacing: var(--be-tracking-eyebrow);
@@ -123,17 +128,26 @@
   white-space: nowrap;
 }
 .be-badge-dot { width: 6px; height: 6px; border-radius: 50%; }
-.be-badge-active { background: var(--be-green-soft); color: var(--be-green); }
+.be-badge-active { background: var(--be-green-soft); color: var(--be-text-on-green); }
 .be-badge-active .be-badge-dot { background: var(--be-green); }
-.be-badge-paused { background: var(--be-amber-soft); color: var(--be-amber); }
+.be-badge-paused { background: var(--be-amber-soft); color: var(--be-text-on-amber); }
 .be-badge-paused .be-badge-dot { background: var(--be-amber); }
-.be-badge-failed { background: var(--be-red-soft); color: var(--be-red); }
+.be-badge-failed { background: var(--be-red-soft); color: var(--be-text-on-red); }
 .be-badge-failed .be-badge-dot { background: var(--be-red); }
-.be-badge-neutral { background: rgba(92,100,112,0.12); color: var(--be-slate); }
+.be-badge-neutral { background: var(--be-slate-soft); color: var(--be-text-on-slate); }
 .be-badge-neutral .be-badge-dot { background: var(--be-slate); }
-.be-badge-gold { background: var(--be-gold-soft); color: var(--be-gold-2); }
+.be-badge-gold { background: var(--be-gold-soft); color: var(--be-text-on-gold); }
 
-/* Eyebrow ---------------------------------------------------------------- */
+.be-error {
+  display: block;
+  padding: var(--be-space-2) var(--be-space-3);
+  border-radius: var(--be-radius-sm);
+  border-left: 3px solid var(--be-red);
+  background: var(--be-red-soft);
+  color: var(--be-text-on-red);
+  font: 400 var(--be-text-sm) var(--be-font-ui);
+}
+
 .be-eyebrow {
   font: 500 var(--be-text-xs)/1 var(--be-font-sans);
   letter-spacing: var(--be-tracking-eyebrow);
@@ -141,7 +155,6 @@
   color: var(--be-slate);
 }
 
-/* Disclosure ------------------------------------------------------------- */
 .be-disclosure {
   font-size: var(--be-text-xs);
   color: var(--be-slate);
@@ -149,7 +162,6 @@
   font-family: var(--be-font-mono);
 }
 
-/* Tabular ---------------------------------------------------------------- */
 .be-num, .be-money {
   font-feature-settings: 'tnum' 1, 'lnum' 1;
   font-variant-numeric: tabular-nums lining-nums;
@@ -159,10 +171,8 @@
 .be-loss { color: var(--be-red); }
 .be-pending { color: var(--be-amber); }
 
-/* Divider ---------------------------------------------------------------- */
 .be-rule { height: 1px; background: var(--be-border); border: none; margin: 0; }
 
-/* Spin keyframe (used by button loading) --------------------------------- */
 @keyframes be-spin {
   to { transform: rotate(360deg); }
 }

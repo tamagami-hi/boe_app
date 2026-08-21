@@ -1,8 +1,3 @@
-// Fund AUM management (spec §9.5, §11.1). Locks the boundary the other way: the
-// banner states AUM writes never touch client values, every commit is an absolute
-// snapshot command with an Idempotency-Key, no request body carries a user, order,
-// payment, new-investment or redemption field, and a collective command is a common
-// percentage or per-fund deltas — never a shared total.
 import React from 'react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
@@ -17,16 +12,22 @@ vi.mock('@beonedge/client/services/_util.js', () => ({
 }));
 
 const invalidateAum = vi.fn();
+const invalidateFunds = vi.fn();
 vi.mock('../data/adminResources.js', () => ({
   useAdminFunds: () => ({
     rows: [
       { id: 'f1', name: 'Edge Growth', slug: 'edge-growth', status: 'published', aumPaise: '250000000', aumAsOfDate: '2026-08-01' },
       { id: 'f2', name: 'Steady Income', slug: 'steady-income', status: 'published', aumPaise: null, aumAsOfDate: null },
+      { id: 'f3', name: 'Retired Fund', slug: 'retired-fund', status: 'archived', aumPaise: '100', aumAsOfDate: '2026-01-01' },
     ],
+    summary: { total: 3, byState: { draft: 0, review_pending: 0, published: 2, paused: 0, archived: 1 } },
     isLoading: false,
     error: null,
+    hasMore: false,
+    loadingMore: false,
+    loadMore: () => {},
   }),
-  useAdminCacheActions: () => ({ invalidateAum }),
+  useAdminCacheActions: () => ({ invalidateAum, invalidateFunds }),
 }));
 
 let mockUser = { id: 'a1', permissions: ['aum.write'] };
@@ -62,13 +63,19 @@ const lastPost = () => {
   return call;
 };
 
-describe('the tab shell', () => {
-  test('tabs are route links with the active one marked', () => {
+describe('the screen shell', () => {
+  test('AUM navigation is not duplicated inside the page', () => {
     renderAt(<AumScreen tab="collective" />, '/admin/aum/collective');
-    expect(screen.getByRole('link', { name: 'Collective fund growth' }))
-      .toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('link', { name: 'Current published AUM' }))
-      .toHaveAttribute('href', '/admin/aum/current');
+    for (const label of ['Current published AUM', 'Collective fund growth', 'History and corrections']) {
+      expect(screen.queryByRole('link', { name: label })).toBeNull();
+    }
+    expect(screen.getByRole('heading', { name: /Collective fund growth/u })).toBeTruthy();
+  });
+
+  test('each route renders only its own task', () => {
+    renderAt(<AumScreen tab="current" />, '/admin/aum/current');
+    expect(screen.getByRole('heading', { name: /Current published AUM/u })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: /Collective fund growth/u })).toBeNull();
   });
 });
 
@@ -79,7 +86,8 @@ describe('CurrentAumTab', () => {
     expect(screen.getByText('2026-08-01')).toBeTruthy();
     expect(screen.getByText('Not published')).toBeTruthy();
     const links = screen.getAllByRole('link', { name: /Open fund/u });
-    expect(links.map((link) => link.getAttribute('href'))).toEqual(['/admin/funds/f1', '/admin/funds/f2']);
+    expect(links.map((link) => link.getAttribute('href')))
+      .toEqual(['/admin/funds/f1', '/admin/funds/f2', '/admin/funds/f3']);
   });
 });
 
@@ -89,22 +97,32 @@ describe('FundAumPanel', () => {
     expect(screen.getByText(AUM_BOUNDARY_NOTE)).toBeTruthy();
   });
 
-  test('a fund with no snapshots is initialized with an absolute figure', async () => {
+  test('a fund with no snapshot publishes an opening figure the route accepts', async () => {
     request.mockResolvedValue({ items: [] });
     render(<FundAumPanel fundId="f2" />);
-    const input = await screen.findByLabelText(/Initial AUM/u);
+    const input = await screen.findByLabelText(/Opening AUM/u);
     fireEvent.change(input, { target: { value: '100000' } });
-    fireEvent.change(screen.getByLabelText(/Reason code/u), { target: { value: 'initial_seed' } });
-    fireEvent.click(screen.getByRole('button', { name: /Publish initial AUM/u }));
+    fireEvent.change(screen.getByLabelText(/Reason/u), { target: { value: 'initial_publication' } });
+    fireEvent.click(screen.getByRole('button', { name: /Publish opening AUM/u }));
     await Promise.resolve();
     await Promise.resolve();
     const [path, options] = lastPost();
     expect(path).toBe('/v1/admin/aum/funds/f2/initialize');
-    expect(options.body.amountPaise).toBe('10000000');
-    expect(options.body.reasonCode).toBe('initial_seed');
+    expect(options.body.aumPaise).toBe('10000000');
+    expect(options.body).not.toHaveProperty('amountPaise');
+    expect(options.body.reasonCode).toBe('initial_publication');
     expect(options.body.asOfDate).toMatch(/^\d{4}-\d{2}-\d{2}$/u);
     expect(options.headers['Idempotency-Key']).toBeTruthy();
     expect(invalidateAum).toHaveBeenCalled();
+  });
+
+  test('a failed history read is never treated as an empty history', async () => {
+    request.mockRejectedValue(new Error('Read failed'));
+    render(<FundAumPanel fundId="f2" />);
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain('Read failed');
+    expect(screen.queryByLabelText(/Opening AUM/u)).toBeNull();
+    expect(screen.getByRole('button', { name: /Try again/u })).toBeTruthy();
   });
 
   test('a growth commit sends one signed instruction, string paise, and no movement fields', async () => {
@@ -112,7 +130,7 @@ describe('FundAumPanel', () => {
     render(<FundAumPanel fundId="f1" />);
     const input = await screen.findByLabelText(/Amount \(₹\)/u);
     fireEvent.change(input, { target: { value: '5000' } });
-    fireEvent.change(screen.getByLabelText(/Reason code/u), { target: { value: 'monthly_valuation' } });
+    fireEvent.change(screen.getByLabelText(/Reason/u), { target: { value: 'monthly_valuation' } });
     fireEvent.click(screen.getByRole('button', { name: /Publish AUM adjustment/u }));
     await Promise.resolve();
     await Promise.resolve();
@@ -120,7 +138,6 @@ describe('FundAumPanel', () => {
     expect(path).toBe('/v1/admin/aum/funds/f1/growth');
     expect(options.body.growthPaise).toBe('500000');
     expect(options.body).not.toHaveProperty('growthBasisPoints');
-    // The retired roll-forward fields must never come back.
     for (const ghost of ['newInvestmentsPaise', 'redemptionsPaise', 'portfolioGainPaise', 'userId', 'orderId', 'paymentId']) {
       expect(options.body, ghost).not.toHaveProperty(ghost);
     }
@@ -134,7 +151,7 @@ describe('FundAumPanel', () => {
     fireEvent.change(screen.getByLabelText(/Instruction/u), { target: { value: 'percentage' } });
     fireEvent.change(screen.getByLabelText(/Direction/u), { target: { value: 'decrease' } });
     fireEvent.change(screen.getByLabelText(/Percentage \(%\)/u), { target: { value: '1.5' } });
-    fireEvent.change(screen.getByLabelText(/Reason code/u), { target: { value: 'correction' } });
+    fireEvent.change(screen.getByLabelText(/Reason/u), { target: { value: 'market_movement' } });
     fireEvent.click(screen.getByRole('button', { name: /Publish AUM adjustment/u }));
     await Promise.resolve();
     await Promise.resolve();
@@ -151,7 +168,7 @@ describe('FundAumPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /Publish AUM adjustment/u }));
     await Promise.resolve();
     expect(lastPost()).toBeUndefined();
-    expect(screen.getByRole('alert').textContent).toContain('reason code');
+    expect(screen.getByRole('alert').textContent).toContain('Choose a reason');
   });
 });
 
@@ -159,15 +176,40 @@ describe('CollectiveAumTab', () => {
   const PREVIEW = {
     basisHash: 'bh_aum',
     items: [
-      { fundId: 'f1', fundName: 'Edge Growth', beforePaise: '250000000', deltaPaise: '5000000', afterPaise: '255000000' },
+      { fundId: 'f1', beforeAumPaise: '250000000', deltaPaise: '5000000', afterAumPaise: '255000000' },
     ],
   };
 
   function selectAndFill() {
     fireEvent.click(screen.getByLabelText(/Edge Growth/u));
     fireEvent.change(screen.getByLabelText(/Percentage \(%\)/u), { target: { value: '2' } });
-    fireEvent.change(screen.getByLabelText(/Reason code/u), { target: { value: 'monthly_valuation' } });
+    fireEvent.change(screen.getByLabelText(/Reason/u), { target: { value: 'monthly_valuation' } });
   }
+
+  test('an archived fund is not offered as a growth target', () => {
+    renderAt(<CollectiveAumTab />);
+    expect(screen.queryByLabelText(/Retired Fund/u)).toBeNull();
+  });
+
+  test('the preview renders the before and after values the route returns', async () => {
+    request.mockResolvedValue(PREVIEW);
+    renderAt(<CollectiveAumTab />);
+    selectAndFill();
+    fireEvent.click(screen.getByRole('button', { name: /Preview growth/u }));
+    const table = await screen.findByRole('table');
+    expect(table.textContent).toContain('25,00,000');
+    expect(table.textContent).toContain('25,50,000');
+  });
+
+  test('editing an input after a preview discards it, so a stale basis cannot be committed', async () => {
+    request.mockResolvedValue(PREVIEW);
+    renderAt(<CollectiveAumTab />);
+    selectAndFill();
+    fireEvent.click(screen.getByRole('button', { name: /Preview growth/u }));
+    expect(await screen.findByRole('button', { name: /Commit growth/u })).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(/Percentage \(%\)/u), { target: { value: '9' } });
+    expect(screen.queryByRole('button', { name: /Commit growth/u })).toBeNull();
+  });
 
   test('the banner is on screen and the preview sends no Idempotency-Key or basisHash', async () => {
     request.mockResolvedValue(PREVIEW);
@@ -208,13 +250,14 @@ describe('CollectiveAumTab', () => {
     fireEvent.click(screen.getByLabelText(/Edge Growth/u));
     fireEvent.change(screen.getByLabelText(/Mode/u), { target: { value: 'explicit' } });
     fireEvent.change(screen.getByLabelText('Edge Growth', { selector: 'input[type="number"]' }), { target: { value: '-100000' } });
-    fireEvent.change(screen.getByLabelText(/Reason code/u), { target: { value: 'monthly_valuation' } });
+    fireEvent.change(screen.getByLabelText(/Reason/u), { target: { value: 'monthly_valuation' } });
     fireEvent.click(screen.getByRole('button', { name: /Preview growth/u }));
     await Promise.resolve();
     const [, options] = request.mock.calls[0];
     expect(options.body.items).toEqual([{ fundId: 'f1', growthPaise: '-10000000' }]);
     expect(options.body).not.toHaveProperty('totalPaise');
     expect(options.body).not.toHaveProperty('growthBasisPoints');
+    expect(options.body).not.toHaveProperty('fundIds');
   });
 });
 
@@ -233,17 +276,18 @@ describe('FundAumHistoryPanel', () => {
     const [correct] = await screen.findAllByRole('button', { name: 'Correct' });
     fireEvent.click(correct);
     fireEvent.change(screen.getByLabelText(/Corrected AUM/u), { target: { value: '2510000' } });
-    fireEvent.change(screen.getByLabelText(/Reason code/u), { target: { value: 'valuation_error' } });
+    fireEvent.change(screen.getByLabelText(/Reason/u), { target: { value: 'valuation_error' } });
     fireEvent.click(screen.getByRole('button', { name: /Publish correction/u }));
     await Promise.resolve();
     await Promise.resolve();
     const [path, options] = lastPost();
     expect(path).toBe('/v1/admin/aum/snapshots/snap_2/corrections');
     expect(options.body).toMatchObject({
-      amountPaise: '251000000',
-      asOfDate: '2026-08-01',
+      aumPaise: '251000000',
       reasonCode: 'valuation_error',
     });
+    expect(options.body).not.toHaveProperty('amountPaise');
+    expect(options.body).not.toHaveProperty('asOfDate');
     expect(options.headers['Idempotency-Key']).toBeTruthy();
     expect(invalidateAum).toHaveBeenCalled();
   });

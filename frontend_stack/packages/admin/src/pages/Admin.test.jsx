@@ -1,9 +1,3 @@
-// Route tests for the Admin build target (Task 4).
-//
-// Locks the canonical route table, the intentional compatibility redirects, and
-// the unknown-path behavior that Task 4 changed from a silent
-// `Navigate to="/admin/overview"` into an explicit Not Found. Screens are mocked
-// to markers; routing and the shell wiring are the real modules under test.
 import React from 'react';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
@@ -13,10 +7,6 @@ import { NAV_DOMAINS, allNavPermissions } from '../navigation/nav.js';
 
 const ALL_PERMISSIONS = allNavPermissions();
 
-/* ---- collaborator mocks ---------------------------------------------------- */
-
-// The real AdminShell mounts ApprovalsQueueProvider, which fetches the approvals
-// queue and polls it. Routing does not need any of that.
 vi.mock('../layout/AdminShell.jsx', () => ({
   default: () => (
     <div data-testid="admin-shell">
@@ -33,9 +23,6 @@ vi.mock('../features/site/FaqsPage.jsx', () => ({ default: () => <div data-testi
 vi.mock('./NotFound.jsx', () => ({ default: () => <div data-testid="page-not-found" /> }));
 vi.mock('./Forbidden.jsx', () => ({ default: () => <div data-testid="page-forbidden" /> }));
 
-// A principal holding every permission the nav declares, so the canonical route
-// tests below exercise routing rather than the permission gate. Gating itself is
-// covered in its own describe block.
 let mockAdminUser = { id: 'a1', role: 'admin', roles: ['admin'], permissions: ALL_PERMISSIONS };
 vi.mock('@beonedge/client/store/AdminSessionContext.jsx', () => ({
   useAdminSession: () => ({ user: mockAdminUser, status: 'authenticated' }),
@@ -47,6 +34,7 @@ vi.mock('./legacy/legacyRoutes.jsx', () => ({
   UserDirectoryRoute: () => <div data-testid="page-user-directory" />,
   UserDetailRoute: () => <div data-testid="page-user-detail" />,
   FundsRoute: () => <div data-testid="page-funds" />,
+  FundCreateRoute: () => <div data-testid="page-fund-create" />,
   FundWorkspaceRoute: () => <div data-testid="page-fund-workspace" />,
   InvestmentReviewsRoute: ({ tab }) => <div data-testid={`page-investment-reviews-${tab}`} />,
   ClientValuesRoute: ({ tab }) => <div data-testid={`page-client-values-${tab}`} />,
@@ -57,10 +45,6 @@ vi.mock('./legacy/legacyRoutes.jsx', () => ({
   EnvironmentRoute: () => <div data-testid="page-environment" />,
 }));
 
-/* ---- helpers -------------------------------------------------------------- */
-
-// Admin is mounted under `/admin/*` by the app shell (BrowserRoot), exactly as
-// in production.
 function renderAt(path) {
   return render(
     <MemoryRouter initialEntries={[path]}>
@@ -70,8 +54,6 @@ function renderAt(path) {
     </MemoryRouter>,
   );
 }
-
-/* ---- canonical routes ----------------------------------------------------- */
 
 describe('Admin route table', () => {
   const routeCases = [
@@ -117,12 +99,7 @@ describe('Admin route table', () => {
   });
 });
 
-/* ---- deliberate compatibility redirects ---------------------------------- */
-
 describe('Admin retired-route redirects', () => {
-  // These are intentional: the features were retired by canonical decisions, so
-  // the paths must keep resolving somewhere sensible rather than becoming dead
-  // links. They are the reason the wildcard could be narrowed safely.
   const redirectCases = [
     ['/admin/users/kyc', 'page-approvals'],
     ['/admin/users/risk-profiles', 'page-approvals'],
@@ -137,7 +114,6 @@ describe('Admin retired-route redirects', () => {
     ['/admin/ops/holdings', 'page-aum-current'],
     ['/admin/system/support', 'page-audit-log'],
     ['/admin/system/audit-log', 'page-audit-log'],
-    // Tab-shell index paths land on their first tab.
     ['/admin/reviews', 'page-investment-reviews-awaiting'],
     ['/admin/client-values', 'page-client-values-detail'],
     ['/admin/aum', 'page-aum-current'],
@@ -150,8 +126,6 @@ describe('Admin retired-route redirects', () => {
     });
   }
 });
-
-/* ---- unknown paths ------------------------------------------------------- */
 
 describe('Admin unknown-route handling', () => {
   test('unknown /admin/* path renders Not Found, not Overview', async () => {
@@ -171,15 +145,11 @@ describe('Admin unknown-route handling', () => {
   });
 });
 
-/* ---- permission gating (Task 15) ------------------------------------------ */
-
 describe('Admin permission gating', () => {
   afterEach(() => {
     mockAdminUser = { id: 'a1', role: 'admin', roles: ['admin'], permissions: ALL_PERMISSIONS };
   });
 
-  // Every gated destination, driven from the manifest so a new route cannot be
-  // added without a permission decision being made for it.
   const gated = NAV_DOMAINS
     .flatMap((domain) => domain.items)
     .filter((item) => item.permissions.length > 0);
@@ -190,25 +160,44 @@ describe('Admin permission gating', () => {
 
   for (const item of gated) {
     test(`${item.path} renders Forbidden without ${item.permissions.join(' or ')}`, async () => {
-      // Holds a real permission, just not one this destination accepts.
       mockAdminUser = { id: 'a1', role: 'admin', roles: ['admin'], permissions: ['nothing.useful'] };
       renderAt(item.path);
 
       expect(await screen.findByTestId('page-forbidden')).toBeInTheDocument();
     });
 
-    test(`${item.path} renders its screen with only ${item.permissions[0]}`, async () => {
-      // Required-ANY: one matching code is enough, mirroring the backend.
-      mockAdminUser = { id: 'a1', role: 'admin', roles: ['admin'], permissions: [item.permissions[0]] };
+    test(`${item.path} renders its screen with ${item.permissions[0]} plus its prerequisites`, async () => {
+      mockAdminUser = {
+        id: 'a1',
+        role: 'admin',
+        roles: ['admin'],
+        permissions: [item.permissions[0], ...(item.requiresAll ?? [])],
+      };
       renderAt(item.path);
 
       expect(await screen.findByTestId(/^page-/)).toBeInTheDocument();
       expect(screen.queryByTestId('page-forbidden')).not.toBeInTheDocument();
     });
+
+    for (const prerequisite of item.requiresAll ?? []) {
+      test(`${item.path} renders Forbidden without its ${prerequisite} prerequisite`, async () => {
+        mockAdminUser = {
+          id: 'a1',
+          role: 'admin',
+          roles: ['admin'],
+          permissions: [
+            item.permissions[0],
+            ...(item.requiresAll ?? []).filter((code) => code !== prerequisite),
+          ],
+        };
+        renderAt(item.path);
+
+        expect(await screen.findByTestId('page-forbidden')).toBeInTheDocument();
+      });
+    }
   }
 
   test('Overview stays reachable for a principal with no permissions at all', async () => {
-    // Hiding it would leave a limited admin with no entry point.
     mockAdminUser = { id: 'a1', role: 'admin', roles: ['admin'], permissions: [] };
     renderAt('/admin/overview');
 
@@ -223,7 +212,6 @@ describe('Admin permission gating', () => {
   });
 
   test('an unknown path is Not Found, not Forbidden, even with no permissions', async () => {
-    // A path that does not exist is a different fact from one that is withheld.
     mockAdminUser = { id: 'a1', role: 'admin', roles: ['admin'], permissions: [] };
     renderAt('/admin/no-such-page');
     expect(await screen.findByTestId('page-not-found')).toBeInTheDocument();

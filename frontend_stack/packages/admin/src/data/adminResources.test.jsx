@@ -1,6 +1,3 @@
-// Request-count tests for the admin domain split. The claim is that opening an
-// admin route no longer fetches six collections, and that a fund write invalidates
-// only what it changed.
 import React from 'react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { act, render } from '@testing-library/react';
@@ -10,8 +7,10 @@ import {
 } from '@beonedge/shared/data/ResourceCacheProvider.jsx';
 
 const loadAdminCollection = vi.fn();
+const loadAdminFundPage = vi.fn();
 vi.mock('../helpers/loadAdminData.js', () => ({
   loadAdminCollection: (...a) => loadAdminCollection(...a),
+  loadAdminFundPage: (...a) => loadAdminFundPage(...a),
   loadApprovals: async () => ({ rows: [], truncated: false }),
 }));
 
@@ -34,16 +33,34 @@ const {
   useAdminInvestmentReviews,
   useAdminPayments,
 } = await import('./adminResources.js');
-const { useFundMutations, slugify } = await import('./useFundMutations.js');
+const { useFundMutations } = await import('./useFundMutations.js');
+const { slugify } = await import('../screens/fundOps/fundOpsModel.js');
 
 const settle = () => act(async () => { await Promise.resolve(); await Promise.resolve(); });
 const Wrap = ({ children }) => <ResourceCacheProvider>{children}</ResourceCacheProvider>;
 
-const pathsCalled = () => loadAdminCollection.mock.calls.map(([path]) => path);
+const EMPTY_PAGE = {
+  rows: [],
+  nextCursor: null,
+  hasMore: false,
+  summary: { total: 0, byState: { draft: 0, review_pending: 0, published: 0, paused: 0, archived: 0 } },
+};
+
+const pathsCalled = () => [
+  ...loadAdminCollection.mock.calls.map((call, index) => ({
+    order: loadAdminCollection.mock.invocationCallOrder[index],
+    path: call[0],
+  })),
+  ...loadAdminFundPage.mock.calls.map((call, index) => ({
+    order: loadAdminFundPage.mock.invocationCallOrder[index],
+    path: '/v1/admin/funds',
+  })),
+].sort((left, right) => left.order - right.order).map((entry) => entry.path);
 
 beforeEach(() => {
   __resetFallbackResourceStore();
   loadAdminCollection.mockReset().mockResolvedValue([]);
+  loadAdminFundPage.mockReset().mockResolvedValue(EMPTY_PAGE);
   apiRequest.mockReset().mockResolvedValue({ fund: { id: 'f1' } });
   addToast.mockReset();
 });
@@ -56,13 +73,10 @@ describe('cache keys', () => {
   });
 
   test('there is no transactions collection key', () => {
-    // The old provider fetched /v1/admin/transactions on every admin route and no
-    // screen read it — list screens paginate through useAdminList.
     expect(Object.keys(ADMIN_KEYS)).not.toContain('transactions');
   });
 
   test('there is no mandates collection key', () => {
-    // E-mandates are retired; the review queue replaced them.
     expect(Object.keys(ADMIN_KEYS)).not.toContain('mandates');
   });
 });
@@ -79,6 +93,7 @@ describe('per-screen reads', () => {
     render(<Wrap><div /></Wrap>);
     await settle();
     expect(loadAdminCollection).not.toHaveBeenCalled();
+    expect(loadAdminFundPage).not.toHaveBeenCalled();
   });
 
   test('two screens needing funds share one request', async () => {
@@ -96,7 +111,16 @@ describe('per-screen reads', () => {
     view.rerender(<Wrap><div /></Wrap>);
     view.rerender(<Wrap><Funds /></Wrap>);
     await settle();
-    expect(loadAdminCollection).toHaveBeenCalledTimes(1);
+    expect(loadAdminFundPage).toHaveBeenCalledTimes(1);
+  });
+
+  test('a state filter and a search are separate cached reads, sent to the server', async () => {
+    function Filtered() { useAdminFunds({ state: 'paused', search: 'edge' }); return null; }
+    render(<Wrap><Filtered /></Wrap>);
+    await settle();
+    expect(loadAdminFundPage).toHaveBeenCalledWith(
+      expect.objectContaining({ state: 'paused', search: 'edge' }),
+    );
   });
 
   test('rows is always an array, even before the read lands', () => {
@@ -129,61 +153,74 @@ describe('fund mutations invalidate only what they changed', () => {
     return null;
   }
 
-  async function mutateAndRemount(view, mutate) {
+  let mutations;
+  function Mutator() { mutations = useFundMutations(); return null; }
+
+  async function mutateInPlace(mutate) {
     await settle();
-    const before = loadAdminCollection.mock.calls.length;
+    const before = pathsCalled().length;
     await act(async () => { await mutate(); });
-    view.rerender(<Wrap><div /></Wrap>);
-    view.rerender(<Wrap><FundsAndFriends /><Mutator /></Wrap>);
     await settle();
     return pathsCalled().slice(before);
   }
 
-  let mutations;
-  function Mutator() { mutations = useFundMutations(); return null; }
-
   test('a fund publish re-reads funds and the audit log only', async () => {
-    const view = render(<Wrap><FundsAndFriends /><Mutator /></Wrap>);
-    const refetched = await mutateAndRemount(view, () => mutations.handlePublishVersion('f1', { name: 'A' }));
+    render(<Wrap><FundsAndFriends /><Mutator /></Wrap>);
+    const refetched = await mutateInPlace(() => mutations.handlePublishVersion('f1', { name: 'A' }));
     expect(refetched.sort()).toEqual(['/v1/admin/audit-logs', '/v1/admin/funds']);
   });
 
   test('a lifecycle change re-reads the same two', async () => {
-    const view = render(<Wrap><FundsAndFriends /><Mutator /></Wrap>);
-    const refetched = await mutateAndRemount(view, () => mutations.handleFundLifecycle('f1', 'paused'));
+    render(<Wrap><FundsAndFriends /><Mutator /></Wrap>);
+    const refetched = await mutateInPlace(() => mutations.handleFundLifecycle('f1', 'paused'));
     expect(refetched.sort()).toEqual(['/v1/admin/audit-logs', '/v1/admin/funds']);
   });
 
-  test('a delete re-reads the same two', async () => {
-    const view = render(<Wrap><FundsAndFriends /><Mutator /></Wrap>);
-    const refetched = await mutateAndRemount(view, () => mutations.handleDeleteFund('f1'));
-    expect(refetched.sort()).toEqual(['/v1/admin/audit-logs', '/v1/admin/funds']);
+  test('there is no fund delete: archiving is a lifecycle change', () => {
+    render(<Wrap><Mutator /></Wrap>);
+    expect(mutations.handleDeleteFund).toBeUndefined();
   });
 
-  // One owner per write: creating a pool is a draft plus its first version, and
-  // nothing else. It used to also post an AUM opening balance and a stock per
-  // company row, so a create could half-succeed.
-  test('a create publishes a draft and its first version, and nothing else', async () => {
+  test('a create is a single atomic request', async () => {
     render(<Wrap><Mutator /></Wrap>);
     await settle();
     await act(async () => {
-      await mutations.handleCreateFund({ slug: 'alpha-pool', name: 'Alpha Pool', category: 'general' });
+      await mutations.handleCreateFund({
+        slug: 'alpha-fund',
+        terms: { name: 'Alpha Fund' },
+        openingAum: { aumPaise: '1000', asOfDate: '2026-08-21', reasonCode: 'fund_launch' },
+      });
     });
     const calls = apiRequest.mock.calls.map(([path]) => path);
-    expect(calls).toEqual(['/v1/admin/funds', '/v1/admin/funds/f1/versions']);
-    expect(calls.some((path) => path.endsWith('/aum-updates'))).toBe(false);
+    expect(calls).toEqual(['/v1/admin/funds']);
+    expect(calls.some((path) => path.endsWith('/versions'))).toBe(false);
+    expect(calls.some((path) => path.endsWith('/initialize'))).toBe(false);
     expect(calls.some((path) => path.endsWith('/stocks'))).toBe(false);
+  });
+
+  test('a create carries an Idempotency-Key, so a retried submit cannot double-write', async () => {
+    render(<Wrap><Mutator /></Wrap>);
+    await settle();
+    const payload = {
+      slug: 'alpha-fund',
+      terms: { name: 'Alpha Fund' },
+      openingAum: { aumPaise: '1000', asOfDate: '2026-08-21', reasonCode: 'fund_launch' },
+    };
+    await act(async () => { await mutations.handleCreateFund(payload); });
+    await act(async () => { await mutations.handleCreateFund(payload); });
+    const keys = apiRequest.mock.calls.map(([, options]) => options.headers['Idempotency-Key']);
+    expect(keys[0]).toBeTruthy();
+    expect(keys[1]).toBe(keys[0]);
   });
 
   test('the version body is passed through untouched', async () => {
     render(<Wrap><Mutator /></Wrap>);
     await settle();
     const version = { name: 'Alpha', category: 'equity', riskLevel: 'high' };
-    await act(async () => { await mutations.handleCreateFund({ slug: 'alpha', ...version }); });
+    await act(async () => { await mutations.handlePublishVersion('f1', version); });
     const [, options] = apiRequest.mock.calls.find(([path]) => path.endsWith('/versions'));
     expect(options.body).toEqual(version);
   });
-
 });
 
 describe('AUM and client-growth invalidation boundaries (spec §12.2)', () => {
@@ -198,33 +235,31 @@ describe('AUM and client-growth invalidation boundaries (spec §12.2)', () => {
   let actions;
   function Actions() { actions = useAdminCacheActions(); return null; }
 
-  async function invalidateAndRemount(view, act_) {
+  async function invalidateInPlace(invalidate) {
     await settle();
-    const before = loadAdminCollection.mock.calls.length;
-    act(act_);
-    view.rerender(<Wrap><div /></Wrap>);
-    view.rerender(<Wrap><FundsAndFriends /><Actions /></Wrap>);
+    const before = pathsCalled().length;
+    act(invalidate);
     await settle();
     return pathsCalled().slice(before);
   }
 
   test('an AUM commit re-reads the catalogue and the audit log — never payments or reviews', async () => {
-    const view = render(<Wrap><FundsAndFriends /><Actions /></Wrap>);
-    const refetched = await invalidateAndRemount(view, () => actions.invalidateAum());
+    render(<Wrap><FundsAndFriends /><Actions /></Wrap>);
+    const refetched = await invalidateInPlace(() => actions.invalidateAum());
     expect(refetched.sort()).toEqual(['/v1/admin/audit-logs', '/v1/admin/funds']);
     expect(refetched.some((path) => path.includes('payments'))).toBe(false);
     expect(refetched.some((path) => path.includes('investment-reviews'))).toBe(false);
   });
 
   test('a client-growth commit re-reads the audit log only — never the catalogue', async () => {
-    const view = render(<Wrap><FundsAndFriends /><Actions /></Wrap>);
-    const refetched = await invalidateAndRemount(view, () => actions.invalidateClientGrowth());
+    render(<Wrap><FundsAndFriends /><Actions /></Wrap>);
+    const refetched = await invalidateInPlace(() => actions.invalidateClientGrowth());
     expect(refetched).toEqual(['/v1/admin/audit-logs']);
   });
 
   test('a review decision re-reads reviews, refunds, payments and the audit log', async () => {
-    const view = render(<Wrap><FundsAndFriends /><Actions /></Wrap>);
-    const refetched = await invalidateAndRemount(view, () => actions.invalidateReviews());
+    render(<Wrap><FundsAndFriends /><Actions /></Wrap>);
+    const refetched = await invalidateInPlace(() => actions.invalidateReviews());
     expect(refetched.sort()).toEqual([
       '/v1/admin/audit-logs',
       '/v1/admin/investment-reviews?state=pending',
@@ -243,7 +278,7 @@ describe('sign-out clears', () => {
       actions = useAdminCacheActions();
       return null;
     }
-    loadAdminCollection.mockResolvedValue([{ id: 'f1' }]);
+    loadAdminFundPage.mockResolvedValue({ ...EMPTY_PAGE, rows: [{ id: 'f1' }] });
     render(<Wrap><Probe /></Wrap>);
     await settle();
     expect(funds.rows).toHaveLength(1);
@@ -254,7 +289,7 @@ describe('sign-out clears', () => {
 
 describe('fund payload adapters', () => {
   test('slugs are lowercase, hyphenated and bounded', () => {
-    expect(slugify('  Alpha Growth Pool! ')).toBe('alpha-growth-pool');
+    expect(slugify('  Alpha Growth Fund! ')).toBe('alpha-growth-fund');
     expect(slugify('x'.repeat(80))).toHaveLength(60);
   });
 });

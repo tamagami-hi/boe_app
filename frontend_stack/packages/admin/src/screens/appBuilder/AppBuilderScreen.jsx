@@ -17,19 +17,6 @@ import {
 } from './appBuilderModel.js';
 import '../admin-screens-shared.css';
 
-/*
- * One task per section, and an honest line about what leaves this browser.
- *
- * This was a 552-line single page holding every editor at once: nineteen component
- * toggles, thirty-seven copy strings, the shortcut list, the research rows, six
- * amount-preset fields and a full strategy-catalogue editor, in two columns that
- * become one very long column on a phone. Sections are `?section=` so a deep link
- * opens the task the operator meant.
- *
- * The important repair is not the layout, it is that a publish now round-trips —
- * see `fromCanonicalAppConfig` in shared/src/appConfig.js. Before it, every toggle
- * and every copy edit was written to the server and read back by nobody.
- */
 export default function AppBuilderScreen() {
   const [config, setConfig] = useState(() => loadAppConfig());
   const [params, setParams] = useSearchParams();
@@ -79,8 +66,6 @@ export default function AppBuilderScreen() {
     setParams(nextParams, { replace: true });
   }
 
-  // A ref lock, not `disabled={publishing}`: setState is async, and a double tap
-  // would otherwise publish two versions, each retiring the last.
   async function publish() {
     if (publishLockRef.current) return;
     const found = validateBuilderConfig(config);
@@ -104,11 +89,6 @@ export default function AppBuilderScreen() {
     }
   }
 
-  /*
-   * Discards local edits. Deliberately NOT a server-side revert: it clears the draft
-   * held in this browser and returns the editor to the built-in defaults. Whatever
-   * was last published stays published until Publish is pressed again.
-   */
   function discard() {
     setConfig(resetAppConfig());
     setProblems([]);
@@ -286,8 +266,7 @@ export default function AppBuilderScreen() {
                     <div className="adm-component-name">{component.label}</div>
                     <div className="adm-cell-meta">{component.description}</div>
                   </div>
-                  {/* Was a Remove/Add button pair whose label described the action but
-                      never the state, so the row read as a command, not a setting. */}
+                  {}
                   <button
                     type="button"
                     role="switch"
@@ -325,7 +304,7 @@ export default function AppBuilderScreen() {
           </div>
           <div className="adm-form-grid">
             {Object.entries(screens[screenId].copy || {}).map(([key, value]) => (
-              <div className="adm-field adm-field-wide" key={key}>
+              <div className="adm-field adm-field--wide" key={key}>
                 <label className="adm-field-label" htmlFor={`copy-${screenId}-${key}`}>
                   {copyLabel(key)}
                 </label>
@@ -368,9 +347,7 @@ export default function AppBuilderScreen() {
                     value={action.route}
                     onChange={(event) => updateAction(index, 'route', event.target.value)}
                   >
-                    {/* A previously published value that is no longer valid stays
-                        visible and marked, rather than being silently rewritten to
-                        whatever happens to be first in the list. */}
+                    {}
                     {!isValidDestination(action.route) && (
                       <option value={action.route}>{action.route || '—'} (not a destination)</option>
                     )}
@@ -491,15 +468,7 @@ export default function AppBuilderScreen() {
             </div>
           </div>
           <div className="be-pad-5 be-stack-3">
-            {/*
-              The old screen presented this as "Strategy content" beside the publish
-              button — a full editor for name, tagline, objective, risk, minimums,
-              allocation rows and exposure rows. None of it is publishable: the
-              canonical config schema is strict and rejects catalogue data, and the
-              client reads funds from `/v1/client/funds`. Its only real use is the
-              fixture path in `fundsApi`, which serves these rows when the app runs
-              without a backend.
-            */}
+            {}
             <p className="adm-screen-note">
               These {config.mobile.products.length} strategy fixtures and{' '}
               {config.mobile.researchContext.length} research rows are what the app shows when it runs

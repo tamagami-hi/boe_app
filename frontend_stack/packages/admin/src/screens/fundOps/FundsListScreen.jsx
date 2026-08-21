@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Layers, Plus, Search } from 'lucide-react';
 import I from '../../components/I.jsx';
@@ -6,178 +6,179 @@ import StatTile from '../../components/StatTile.jsx';
 import StateBadge from '../../components/StateBadge.jsx';
 import EmptyTableRow from '../../components/EmptyTableRow.jsx';
 import SkeletonTableRow from '../../components/SkeletonTableRow.jsx';
-import { fmtDateTime, fmtInt } from '../../helpers/formatters.js';
-import { fmtMoney } from '@beonedge/shared/format.js';
-import { FUND_STATES, EMPTY_PROFILE, slugify } from './fundOpsModel.js';
-import FundProfileForm from './FundProfileForm.jsx';
+import { fmtDateTime, fmtInt, fmtPaise, humanizeState } from '../../helpers/formatters.js';
+import { FUND_STATES } from './fundOpsModel.js';
 import '../admin-screens-shared.css';
 
-/*
- * The issued fund catalogue, and creating one.
- *
- * This was tab 2 of a four-tab screen whose other tabs were an overview, a
- * pool-picker hosting three panels, and the redemption queue — 1,304 lines in one
- * file with five hand-rolled modals. A fund now has a routed workspace
- * (`/admin/funds/:fundId`) for its terms, stock list and version history. AUM
- * lives under the AUM area and client growth under Client values: a funds.read
- * surface never lists investors or their balances.
- *
- * Creating a fund is two writes the backend keeps separate: a draft (slug only),
- * then its first published version. The form does both and then opens the new
- * fund's workspace.
- */
+const COLUMN_COUNT = 7;
+
 export default function FundsListScreen({
   funds = [],
+  summary = null,
   loading = false,
-  onCreate,
+  stateFilter = 'all',
+  onStateFilterChange,
+  search = '',
+  onSearchChange,
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore,
+  canWrite = false,
 }) {
-  const [stateFilter, setStateFilter] = useState('all');
-  const [query, setQuery] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [draftSearch, setDraftSearch] = useState(search);
 
-  const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return funds.filter((fund) => {
-      if (stateFilter !== 'all' && (fund.status || 'draft') !== stateFilter) return false;
-      if (!q) return true;
-      return `${fund.name || ''} ${fund.slug || ''}`.toLowerCase().includes(q);
-    });
-  }, [funds, stateFilter, query]);
+  useEffect(() => {
+    if (draftSearch === search) return undefined;
+    const timer = setTimeout(() => onSearchChange?.(draftSearch), 300);
+    return () => clearTimeout(timer);
+  }, [draftSearch, search, onSearchChange]);
 
-  const countIn = (states) => funds.filter((fund) => states.includes(fund.status)).length;
-
-  async function create(payload, profile) {
-    setBusy(true);
-    try {
-      // The list is a cached read; onCreate invalidates it and returns the new id so
-      // the operator lands in the workspace rather than hunting for the pool.
-      await onCreate?.({ ...payload, slug: slugify(profile.name) });
-      setCreating(false);
-    } finally {
-      setBusy(false);
-    }
-  }
+  const byState = summary?.byState ?? null;
+  const filtered = stateFilter !== 'all' || search.trim() !== '';
 
   return (
     <div className="adm-screen">
-      <div className="adm-stats">
-        <StatTile label="Fund pools" value={fmtInt(funds.length)} icon={Layers} tone="slate" />
-        <StatTile label="Published pools" value={fmtInt(countIn(['published']))} />
-        <StatTile label="Draft or in review" value={fmtInt(countIn(['draft', 'review_pending']))} />
+      <div className="adm-stats adm-stats--3">
+        <StatTile
+          label="Funds"
+          value={summary ? fmtInt(summary.total) : '—'}
+          icon={Layers}
+          tone="slate"
+        />
+        <StatTile
+          label="Published"
+          value={byState ? fmtInt(byState.published) : '—'}
+          icon={Layers}
+        />
+        <StatTile
+          label="Draft or in review"
+          value={byState ? fmtInt(byState.draft + byState.review_pending) : '—'}
+          icon={Layers}
+        />
       </div>
 
-      {creating ? (
-        <FundProfileForm
-          initial={EMPTY_PROFILE}
-          submitLabel="Create pool and publish version 1"
-          busy={busy}
-          onSubmit={create}
-          onCancel={() => setCreating(false)}
-        >
-          <p className="adm-screen-note">
-            The pool is created as a draft. Publish it to clients from its workspace, once its fund
-            size and stock list are in place.
-          </p>
-        </FundProfileForm>
-      ) : (
-        <div className="adm-card adm-table">
-          <div className="adm-card-head">
-            <div>
-              <span className="be-eyebrow">Fund operations</span>
-              <h2 className="adm-card-title">AUM pools</h2>
+      <div className="adm-card adm-table">
+        <div className="adm-card-head">
+          <div>
+            <span className="be-eyebrow">Fund operations</span>
+            <h2 className="adm-card-title">Issued funds</h2>
+            <div className="adm-card-sub">
+              Terms, lifecycle and the latest published AUM for every fund in the catalogue.
             </div>
+          </div>
+          {canWrite && (
             <div className="adm-card-actions">
-              <button type="button" className="be-btn be-btn-primary be-btn-sm" onClick={() => setCreating(true)}>
-                <I icon={Plus} size={14} /> New pool
-              </button>
+              <Link className="be-btn be-btn-primary be-btn-sm" to="/admin/funds/new">
+                <I icon={Plus} size={14} /> New fund
+              </Link>
             </div>
-          </div>
-
-          <div className="adm-payment-filters">
-            <label className="adm-search adm-search--grow">
-              <I icon={Search} size={14} />
-              <span className="adm-sr-only">Search pools</span>
-              <input
-                type="text"
-                placeholder="Search by name or slug"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-              />
-            </label>
-            <label className="adm-filter">
-              <span className="adm-sr-only">Pool state</span>
-              <select value={stateFilter} onChange={(event) => setStateFilter(event.target.value)}>
-                <option value="all">All states</option>
-                {FUND_STATES.map((state) => (
-                  <option key={state} value={state}>{state.replace(/_/gu, ' ')}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <div className="adm-table-scroll">
-            <table className="adm-table-cards">
-              <thead>
-                <tr>
-                  <th>Pool</th>
-                  <th className="adm-col-status">State</th>
-                  <th>Published AUM</th>
-                  <th>As of</th>
-                  <th>Stocks</th>
-                  <th>Version</th>
-                  <th className="adm-col-actions"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading && funds.length === 0 && (
-                  <>
-                    <SkeletonTableRow columnCount={7} />
-                    <SkeletonTableRow columnCount={7} />
-                    <SkeletonTableRow columnCount={7} />
-                  </>
-                )}
-                {!loading && visible.length === 0 && (
-                  <EmptyTableRow colSpan={7}>
-                    {funds.length === 0
-                      ? 'No fund pools yet. Create one to publish its first version.'
-                      : 'No pools match this filter.'}
-                  </EmptyTableRow>
-                )}
-                {visible.map((fund) => (
-                  <tr key={fund.id}>
-                    <td data-label="Pool">
-                      <div className="adm-cell-main">{fund.name}</div>
-                      <div className="adm-cell-sub">{fund.slug}</div>
-                    </td>
-                    <td className="adm-col-status" data-label="State">
-                      <StateBadge state={fund.status} />
-                    </td>
-                    {/* Was `{f.totalPoolSize ?? f.aum ?? 0}` — a bare number with no
-                        currency and no grouping, in a column headed "Pool Size". */}
-                    <td className="be-money" data-label="Published AUM">{fmtMoney(fund.totalPoolSize)}</td>
-                    <td className="adm-cell-meta" data-label="As of">
-                      {fund.aumAsOfDate || 'Not published'}
-                    </td>
-                    <td className="be-num" data-label="Stocks">{fmtInt(fund.stockCount)}</td>
-                    <td className="be-num adm-cell-meta" data-label="Version">
-                      {fund.currentVersion ?? '—'}
-                      {fund.aumUpdatedAt && (
-                        <div className="adm-cell-sub">AUM {fmtDateTime(fund.aumUpdatedAt)}</div>
-                      )}
-                    </td>
-                    <td className="adm-col-actions" data-label="">
-                      <Link className="be-btn be-btn-secondary be-btn-sm" to={`/admin/funds/${fund.id}`}>
-                        Open<span className="adm-sr-only"> {fund.name}</span>
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          )}
         </div>
-      )}
+
+        <div className="adm-payment-filters">
+          <label className="adm-search adm-search--grow">
+            <I icon={Search} size={14} />
+            <span className="adm-sr-only">Search funds</span>
+            <input
+              type="text"
+              placeholder="Search by name or slug"
+              value={draftSearch}
+              onChange={(event) => setDraftSearch(event.target.value)}
+            />
+          </label>
+          <label className="adm-filter">
+            <span className="adm-sr-only">Fund state</span>
+            <select
+              value={stateFilter}
+              onChange={(event) => onStateFilterChange?.(event.target.value)}
+            >
+              <option value="all">All states</option>
+              {FUND_STATES.map((state) => (
+                <option key={state} value={state}>{humanizeState(state)}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="adm-table-scroll">
+          <table className="adm-table-cards">
+            <thead>
+              <tr>
+                <th scope="col">Fund</th>
+                <th scope="col" className="adm-col-status">State</th>
+                <th scope="col">Published AUM</th>
+                <th scope="col">As of</th>
+                <th scope="col">Stocks</th>
+                <th scope="col">Version</th>
+                <th scope="col" className="adm-col-actions"><span className="adm-sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading && funds.length === 0 && (
+                <>
+                  <SkeletonTableRow columnCount={COLUMN_COUNT} />
+                  <SkeletonTableRow columnCount={COLUMN_COUNT} />
+                  <SkeletonTableRow columnCount={COLUMN_COUNT} />
+                </>
+              )}
+              {!loading && funds.length === 0 && (
+                <EmptyTableRow colSpan={COLUMN_COUNT}>
+                  {filtered
+                    ? 'No funds match this search or state.'
+                    : 'No funds yet. Create one to publish its terms and opening AUM.'}
+                </EmptyTableRow>
+              )}
+              {funds.map((fund) => (
+                <tr key={fund.id}>
+                  <td data-label="Fund">
+                    <div className="adm-cell-main">{fund.name}</div>
+                    <div className="adm-cell-sub">{fund.slug}</div>
+                  </td>
+                  <td className="adm-col-status" data-label="State">
+                    <StateBadge state={fund.status} />
+                  </td>
+                  <td className="be-money" data-label="Published AUM">
+                    {fund.aumPaise === null ? 'Not published' : fmtPaise(fund.aumPaise)}
+                  </td>
+                  <td className="adm-cell-meta" data-label="As of">
+                    {fund.aumAsOfDate || 'Not published'}
+                  </td>
+                  <td className="be-num" data-label="Stocks">{fmtInt(fund.stockCount)}</td>
+                  <td className="be-num adm-cell-meta" data-label="Version">
+                    {fund.currentVersion ?? '—'}
+                    {fund.aumUpdatedAt && (
+                      <div className="adm-cell-sub">AUM {fmtDateTime(fund.aumUpdatedAt)}</div>
+                    )}
+                  </td>
+                  <td className="adm-col-actions" data-label="">
+                    <Link className="be-btn be-btn-secondary be-btn-sm" to={`/admin/funds/${fund.id}`}>
+                      Open<span className="adm-sr-only"> {fund.name}</span>
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="adm-table-foot">
+          <span className="adm-cell-meta">
+            {!summary ? '' : filtered
+              ? `Showing ${fmtInt(funds.length)} matching fund${funds.length === 1 ? '' : 's'}${hasMore ? ' so far' : ''}`
+              : `Showing ${fmtInt(funds.length)} of ${fmtInt(summary.total)} funds`}
+          </span>
+          {hasMore && (
+            <button
+              type="button"
+              className="be-btn be-btn-secondary be-btn-sm"
+              onClick={() => onLoadMore?.()}
+              disabled={loadingMore}
+            >
+              {loadingMore ? 'Loading…' : 'Load more'}
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

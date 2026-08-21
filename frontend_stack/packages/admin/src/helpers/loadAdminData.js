@@ -3,20 +3,6 @@ import { listPendingApprovals } from '@beonedge/client/services/authApi.js';
 import { listPendingApplications } from '@beonedge/client/services/adminApplicationsApi.js';
 import { collectionKey, normalizeAdminCollection, normalizeApprovalRow } from './formatters.js';
 
-/*
- * There is no `/v1/admin/overview` endpoint, and there is no longer a function
- * pretending to stand in for one.
- *
- * `loadAdminOverview` used to re-fetch the applications queue — three more
- * requests, on every admin page load, duplicating what the `/v1/admin/approvals`
- * collection below already fetches — purely to produce counts. The counts are now
- * derived in the context from the collections it already has, which is both
- * cheaper and impossible to get out of step with the table the operator is
- * looking at.
- */
-
-// Map a canonical application list item to the admin approval row shape, keeping
-// the applicationId + version needed for the decision's If-Match precondition.
 function toApprovalRow(application) {
   return {
     ...normalizeApprovalRow({
@@ -47,7 +33,6 @@ export async function loadAdminCollection(path) {
   if (!useHttpApi()) {
     return path.endsWith('/approvals') ? listPendingApprovals() : [];
   }
-  // The approvals screen is backed by the canonical applications queue.
   if (path.endsWith('/approvals')) {
     return (await loadApprovals()).rows;
   }
@@ -55,15 +40,35 @@ export async function loadAdminCollection(path) {
   return normalizeAdminCollection(extractAdminCollection(payload, path), path);
 }
 
-/**
- * The approvals queue on its own.
- *
- * Separate from `loadAdminCollection` because the approvals table is the one
- * collection worth refreshing by itself: new signups arrive without the operator
- * doing anything, so it is polled, while funds/payments/reviews change only in
- * response to an action. It also reports `truncated`, so a queue longer than the
- * paginated walk can be labelled rather than silently cut off.
- */
+const EMPTY_FUND_SUMMARY = {
+  total: 0,
+  byState: { draft: 0, review_pending: 0, published: 0, paused: 0, archived: 0 },
+};
+
+export async function loadAdminFundPage(query = {}) {
+  if (!useHttpApi()) {
+    return { rows: [], nextCursor: null, hasMore: false, summary: EMPTY_FUND_SUMMARY };
+  }
+  const params = new URLSearchParams();
+  params.set('limit', String(query.limit ?? 100));
+  if (query.state) params.set('state', query.state);
+  if (query.search) params.set('search', query.search);
+  if (query.after) params.set('after', query.after);
+
+  const payload = await apiRequest(`/v1/admin/funds?${params.toString()}`, {
+    scope: 'admin',
+    envelope: true,
+  });
+  const data = payload?.data ?? payload ?? {};
+  const page = payload?.meta?.page ?? {};
+  return {
+    rows: normalizeAdminCollection(Array.isArray(data.items) ? data.items : [], '/v1/admin/funds'),
+    nextCursor: page.nextCursor ?? null,
+    hasMore: page.hasMore === true,
+    summary: data.summary ?? EMPTY_FUND_SUMMARY,
+  };
+}
+
 export async function loadApprovals({ maxPages } = {}) {
   if (!useHttpApi()) {
     return { rows: await listPendingApprovals(), truncated: false };

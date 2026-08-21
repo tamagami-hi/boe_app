@@ -11,23 +11,8 @@ import { useAdminCacheActions, useAdminFunds } from '../data/adminResources.js';
 import useAdminList from '../hooks/useAdminList.js';
 import { useIdempotencyKeys } from '../helpers/idempotencyKeys.js';
 import { fmtDateTime, fmtInt, fmtPaise, fmtPaiseSigned } from '../helpers/formatters.js';
+import { todayInIndia as today } from '../helpers/aumReasons.js';
 import './admin-screens-shared.css';
-
-/*
- * Client value management (spec §8.1, §8.2, §9.4, §11.1).
- *
- * This area adjusts CLIENT DISPLAYED VALUES ONLY. It never reads or writes fund
- * AUM, and the commit endpoints it calls are not allowed to. The banner stating
- * that boundary is part of the contract, not decoration.
- *
- *   POST /v1/admin/client-growth/individual
- *   POST /v1/admin/client-growth/collective/preview   (no Idempotency-Key)
- *   POST /v1/admin/client-growth/collective           (basisHash + Idempotency-Key)
- *
- * Collective growth is either one signed percentage applied independently to each
- * eligible client in ONE fund, or an explicit signed amount per client. There is
- * deliberately no "distribute one total" mode — that mechanism was retired.
- */
 
 const VALUE_BOUNDARY_NOTE =
   'This changes client displayed values only. It does not change published AUM.';
@@ -38,11 +23,6 @@ const TABS = [
   { id: 'collective', label: 'Collective growth by fund', path: '/admin/client-values/collective' },
 ];
 
-function today() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-/** Rupees the operator typed -> signed integer paise string for the wire. */
 function toSignedPaise(direction, rupees) {
   const value = Number(rupees);
   if (!Number.isFinite(value) || value <= 0) return null;
@@ -50,7 +30,6 @@ function toSignedPaise(direction, rupees) {
   return String(direction === 'loss' ? -magnitude : magnitude);
 }
 
-/** Percent the operator typed -> signed integer basis points. */
 function toSignedBasisPoints(direction, percent) {
   const value = Number(percent);
   if (!Number.isFinite(value) || value <= 0) return null;
@@ -58,8 +37,6 @@ function toSignedBasisPoints(direction, percent) {
   return direction === 'loss' ? -points : points;
 }
 
-// The preview mirror of the server rule (spec §8.1). Non-authoritative: the commit
-// recalculates from the current server basis and its response is the truth.
 function previewDelta(currentValuePaise, mode, signedInput) {
   if (mode === 'amount') return Number(signedInput);
   const magnitude = Math.floor((Math.abs(Number(currentValuePaise) * signedInput) + 5000) / 10000);
@@ -69,10 +46,6 @@ function previewDelta(currentValuePaise, mode, signedInput) {
 function BoundaryNote() {
   return <p className="adm-screen-note"><strong>{VALUE_BOUNDARY_NOTE}</strong></p>;
 }
-
-/* -------------------------------------------------------------------------- */
-/* Client detail                                                              */
-/* -------------------------------------------------------------------------- */
 
 function ClientDetailTab() {
   const [query, setQuery] = useState('');
@@ -177,10 +150,6 @@ function ClientDetailTab() {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Individual growth                                                          */
-/* -------------------------------------------------------------------------- */
-
 function IndividualGrowthTab() {
   const [params] = useSearchParams();
   const funds = useAdminFunds();
@@ -189,8 +158,8 @@ function IndividualGrowthTab() {
 
   const [userId, setUserId] = useState(params.get('userId') || '');
   const [fundId, setFundId] = useState('');
-  const [mode, setMode] = useState('amount'); // 'amount' | 'percentage'
-  const [direction, setDirection] = useState('growth'); // 'growth' | 'loss'
+  const [mode, setMode] = useState('amount');
+  const [direction, setDirection] = useState('growth');
   const [magnitude, setMagnitude] = useState('');
   const [effectiveDate, setEffectiveDate] = useState(today());
   const [reasonCode, setReasonCode] = useState('');
@@ -201,8 +170,6 @@ function IndividualGrowthTab() {
   const [result, setResult] = useState(null);
   const lockRef = useRef(false);
 
-  // The local preview needs the position's current value. Read it once both
-  // identifiers are set; the commit never trusts this figure.
   useEffect(() => {
     if (!userId.trim() || !fundId) {
       setPosition(null);
@@ -246,7 +213,6 @@ function IndividualGrowthTab() {
       reasonCode: reasonCode.trim(),
       ...(note.trim() ? { note: note.trim() } : {}),
     };
-    // Exactly one instruction, signed; a loss is negative.
     const instruction = mode === 'amount'
       ? { growthPaise: toSignedPaise(direction, magnitude) }
       : { growthBasisPoints: toSignedBasisPoints(direction, magnitude) };
@@ -270,7 +236,6 @@ function IndividualGrowthTab() {
         body,
         headers: { 'Idempotency-Key': idempotencyKeyFor('individual', body) },
       });
-      // The commit response is authoritative; the local preview never was.
       setResult(payload);
       setMagnitude('');
       setNote('');
@@ -419,17 +384,13 @@ function IndividualGrowthTab() {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Collective growth by fund                                                  */
-/* -------------------------------------------------------------------------- */
-
 function CollectiveGrowthTab() {
   const funds = useAdminFunds();
   const { invalidateClientGrowth } = useAdminCacheActions();
   const idempotencyKeyFor = useIdempotencyKeys();
 
   const [fundId, setFundId] = useState('');
-  const [mode, setMode] = useState('percentage'); // 'percentage' | 'explicit'
+  const [mode, setMode] = useState('percentage');
   const [direction, setDirection] = useState('growth');
   const [percent, setPercent] = useState('');
   const [items, setItems] = useState([{ userId: '', amount: '' }]);
@@ -462,7 +423,6 @@ function CollectiveGrowthTab() {
     if (rows.some((item) => !item.userId || !Number.isFinite(item.amount) || item.amount === 0)) {
       return { body: null, problem: 'Every row needs a client user ID and a non-zero amount.' };
     }
-    // Explicit signed deltas, one per client. Never a shared total to distribute.
     body.items = rows.map((item) => ({ userId: item.userId, growthPaise: String(Math.round(item.amount * 100)) }));
     return { body };
   }, [fundId, mode, direction, percent, items, effectiveDate, reasonCode, note]);
@@ -487,7 +447,6 @@ function CollectiveGrowthTab() {
     setBusy(true);
     setError('');
     try {
-      // Preview writes nothing and needs no Idempotency-Key.
       const payload = await apiRequest('/v1/admin/client-growth/collective/preview', {
         method: 'POST',
         scope: 'admin',
@@ -519,8 +478,6 @@ function CollectiveGrowthTab() {
       invalidateClientGrowth();
     } catch (commitError) {
       if (commitError?.status === 409) {
-        // Stale basisHash: the positions moved since the preview. Discard it —
-        // the operator must preview again rather than commit against old figures.
         setPreview(null);
         setError('Client values changed since this preview. Preview again before committing.');
       } else {
@@ -737,8 +694,6 @@ function CollectiveGrowthTab() {
     </div>
   );
 }
-
-/* -------------------------------------------------------------------------- */
 
 export default function ClientValuesScreen({ tab = 'detail' }) {
   const active = TABS.some((item) => item.id === tab) ? tab : 'detail';

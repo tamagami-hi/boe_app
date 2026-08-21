@@ -167,103 +167,6 @@ function ApprovalsScreen() {
   );
 }
 
-function FundsScreen() {
-  const funds = [
-    { name: 'BeOnEdge Growth Fund', type: 'fund_style_product', status: 'published', minSip: '₹500', minLump: '₹5,000', aum: '₹148.2 Cr', risk: 'Moderate-High' },
-    { name: 'BeOnEdge Static Fund', type: 'fund_style_product', status: 'coming_soon', minSip: '₹500', minLump: '₹10,000', aum: '—', risk: 'Conservative' },
-    { name: 'BeOnEdge Algo-Trade Fund', type: 'fund_style_product', status: 'draft', minSip: '₹1,000', minLump: '₹25,000', aum: '—', risk: 'High' },
-  ];
-  const statusBadge = s => {
-    if (s === 'published') return <span className="be-badge be-badge-active"><span className="be-badge-dot"/>Published</span>;
-    if (s === 'coming_soon') return <span className="be-badge be-badge-gold">Coming soon</span>;
-    return <span className="be-badge be-badge-neutral"><span className="be-badge-dot"/>Draft</span>;
-  };
-  return (
-    <div className="adm-screen">
-      <div className="adm-grid-2">
-        <div className="adm-card">
-          <div className="adm-card-head">
-            <div>
-              <span className="be-eyebrow">BeOnEdge Growth Fund · 5Y</span>
-              <h3 className="adm-card-title">Performance preview</h3>
-            </div>
-            <div className="adm-card-actions">
-              <button className="be-btn be-btn-secondary be-btn-sm">Upload NAV</button>
-              <button className="be-btn be-btn-primary be-btn-sm">Publish update</button>
-            </div>
-          </div>
-          <svg viewBox="0 0 600 200" width="100%" height="200">
-            <line x1="0" y1="50" x2="600" y2="50" stroke="#5C6470" strokeOpacity="0.15"/>
-            <line x1="0" y1="100" x2="600" y2="100" stroke="#5C6470" strokeOpacity="0.15"/>
-            <line x1="0" y1="150" x2="600" y2="150" stroke="#5C6470" strokeOpacity="0.15"/>
-            <path d="M 0 140 L 60 130 L 120 150 L 180 168 L 240 154 L 300 120 L 360 100 L 420 130 L 480 105 L 540 78 L 600 56 L 600 200 L 0 200 Z" fill="#B43A2E" fillOpacity="0.06"/>
-            <polyline fill="none" stroke="#5C6470" strokeWidth="1" strokeDasharray="4 4" points="0,150 60,144 120,156 180,170 240,160 300,134 360,118 420,142 480,120 540,98 600,82"/>
-            <polyline fill="none" stroke="#0E1116" strokeWidth="1.5" strokeLinejoin="round" points="0,148 60,138 120,156 180,170 240,154 300,118 360,98 420,128 480,104 540,72 600,48"/>
-          </svg>
-          <div className="adm-stats" style={{marginTop: 8}}>
-            <StatTile label="Latest NAV" value="₹128.42" hint="As of 28 Apr 2026"/>
-            <StatTile label="5Y CAGR" value="+18.4%" deltaTone="be-gain"/>
-            <StatTile label="Max drawdown" value="−14.2%"/>
-            <StatTile label="Sharpe" value="0.84"/>
-          </div>
-        </div>
-        <div className="adm-card">
-          <span className="be-eyebrow">Allocation · As of 28 Apr 2026</span>
-          <h3 className="adm-card-title">Asset breakdown</h3>
-          <div style={{display:'flex',gap:24,alignItems:'center',marginTop:12}}>
-            <svg viewBox="0 0 100 100" width="120" height="120">
-              <circle cx="50" cy="50" r="40" fill="none" stroke="var(--be-ivory-2)" strokeWidth="12"/>
-              <circle cx="50" cy="50" r="40" fill="none" stroke="#0E1116" strokeWidth="12" strokeDasharray="237 251" strokeDashoffset="62" transform="rotate(-90 50 50)"/>
-              <circle cx="50" cy="50" r="40" fill="none" stroke="#B5894A" strokeWidth="12" strokeDasharray="11 251" strokeDashoffset="-180" transform="rotate(-90 50 50)"/>
-            </svg>
-            <div style={{flex:1}}>
-              <div className="adm-alloc"><span className="adm-sw" style={{background:'#0E1116'}}/><span>Equity</span><span className="be-money">95.0%</span></div>
-              <div className="adm-alloc"><span className="adm-sw" style={{background:'#B5894A'}}/><span>Cash & equivalents</span><span className="be-money">5.0%</span></div>
-            </div>
-          </div>
-          <div className="adm-card-divider"/>
-          <span className="be-eyebrow">Top holdings</span>
-          {[['TCS','8.4%'],['HDFCBANK','7.8%'],['INFY','6.2%'],['RELIANCE','5.9%']].map(([s,p]) => (
-            <div className="adm-list-row" key={s}><span className="be-mono" style={{fontFamily:'var(--be-font-mono)',fontSize:12}}>{s}</span><span className="be-money">{p}</span></div>
-          ))}
-        </div>
-      </div>
-      <div className="adm-card adm-table">
-        <div className="adm-card-head">
-          <div>
-            <span className="be-eyebrow">Catalog</span>
-            <h3 className="adm-card-title">Fund CMS</h3>
-          </div>
-          <div className="adm-card-actions">
-            <button className="be-btn be-btn-primary be-btn-sm"><i data-lucide="plus" style={{width:14,height:14}}/>New product</button>
-          </div>
-        </div>
-        <table>
-          <thead><tr>
-            <th>Fund</th><th>Type</th><th>Status</th><th>Min SIP</th><th>Min lumpsum</th><th>Risk</th><th>AUM</th><th></th>
-          </tr></thead>
-          <tbody>
-            {funds.map(f => (
-              <tr key={f.name}>
-                <td><span style={{fontFamily:'var(--be-font-serif)',fontSize:15,fontWeight:600}}>{f.name}</span></td>
-                <td><code className="adm-code">{f.type}</code></td>
-                <td>{statusBadge(f.status)}</td>
-                <td className="be-money">{f.minSip}</td>
-                <td className="be-money">{f.minLump}</td>
-                <td>{f.risk}</td>
-                <td className="be-money">{f.aum}</td>
-                <td className="adm-cell-actions">
-                  <button className="be-btn be-btn-secondary be-btn-sm">Edit</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
 function PaymentsScreen() {
   const rows = [
     { id: 'PAY-2026-04-2891', user: 'Aanya Sharma', amount: '₹5,000', mode: 'UPI AutoPay', provider: 'Razorpay', status: 'success', time: '28 Apr · 09:01' },
@@ -383,5 +286,5 @@ function MandatesScreen() {
 
 export {
   AdminSidebar, AdminTopBar, StatTile,
-  ApprovalsScreen, FundsScreen, PaymentsScreen, MandatesScreen,
+  ApprovalsScreen, PaymentsScreen, MandatesScreen,
 };

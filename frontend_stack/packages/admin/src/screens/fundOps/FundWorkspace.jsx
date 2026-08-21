@@ -1,31 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft, RefreshCw } from 'lucide-react';
 import { apiRequest } from '@beonedge/client/services/_util.js';
 import Skeleton from '@beonedge/shared/components/Skeleton.jsx';
 import I from '../../components/I.jsx';
 import StateBadge from '../../components/StateBadge.jsx';
+import { useSetPageHeading } from '../../layout/PageHeading.jsx';
 import { fmtDateTime, fmtPaise, humanizeState } from '../../helpers/formatters.js';
 import FundStockListPanel from '../FundStockListPanel.jsx';
 import FundProfileForm from './FundProfileForm.jsx';
 import {
-  LIFECYCLE_ACTIONS, LIFECYCLE_CONSEQUENCES, STATE_DESCRIPTIONS, profileFromDetail,
+  LIFECYCLE_CONSEQUENCES, STATE_DESCRIPTIONS, lifecycleActionsFor, profileFromDetail,
 } from './fundOpsModel.js';
 import '../admin-screens-shared.css';
 
-/*
- * One pool, one URL, one task at a time.
- *
- * The editor this replaces was a page-within-a-page: `editorOpen` state swapped the
- * whole screen, so the pool being edited had no address, Back left the console
- * rather than the editor, and a refresh dropped the operator back on the list. Its
- * five overlays (delete twice, lifecycle twice, preview once) were hand-rolled with
- * `onMouseDown` dismissal and no focus trap, body lock or Back registration.
- *
- * Sections are `?section=`, so a deep link opens the task the operator meant. The
- * two irreversible actions confirm INLINE, where the pool's name and state are
- * already on screen.
- */
 const SECTIONS = [
   { id: 'profile', label: 'Published terms' },
   { id: 'stocks', label: 'Stock list' },
@@ -34,9 +22,14 @@ const SECTIONS = [
 
 const SECTION_IDS = SECTIONS.map((section) => section.id);
 
-export default function FundWorkspace({ onPublishVersion, onLifecycle, onDelete }) {
+const LIFECYCLE_LABELS = {
+  published: 'Publish to clients',
+  paused: 'Pause new investment',
+  archived: 'Archive fund',
+};
+
+export default function FundWorkspace({ onPublishVersion, onLifecycle, canWrite = true }) {
   const { fundId } = useParams();
-  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const section = SECTION_IDS.includes(params.get('section')) ? params.get('section') : 'profile';
 
@@ -55,7 +48,7 @@ export default function FundWorkspace({ onPublishVersion, onLifecycle, onDelete 
       const payload = await apiRequest(`/v1/admin/funds/${encodeURIComponent(fundId)}`, { scope: 'admin' });
       setDetail(payload?.data ?? payload ?? null);
     } catch (readError) {
-      setError(readError?.message || 'Could not read this pool.');
+      setError(readError?.message || 'Could not read this fund.');
     } finally {
       setLoading(false);
     }
@@ -65,16 +58,16 @@ export default function FundWorkspace({ onPublishVersion, onLifecycle, onDelete 
 
   const fund = detail?.fund || null;
   const versions = detail?.versions || [];
+  const isArchived = fund?.status === 'archived';
+
+  useSetPageHeading(fund?.name || '', fund?.name || '');
 
   function selectSection(next) {
     const nextParams = new URLSearchParams(params);
     nextParams.set('section', next);
-    // No history entry per tab: Back should leave the pool, not walk its sections.
     setParams(nextParams, { replace: true });
   }
 
-  // A ref lock, not `disabled={busy}`: setState is async, and both of these actions
-  // are irreversible from here.
   async function run(action) {
     if (actionLockRef.current) return;
     actionLockRef.current = true;
@@ -92,20 +85,15 @@ export default function FundWorkspace({ onPublishVersion, onLifecycle, onDelete 
 
   const publish = (payload) => run(async () => {
     await onPublishVersion?.(fundId, payload);
-    setNotice('A new version is published. Clients see these terms now.');
+    setNotice('A new version is published. Clients on this fund see these terms now.');
     await load();
   });
 
   const changeState = (status) => run(async () => {
     await onLifecycle?.(fundId, status);
     setConfirming('');
-    setNotice(`This pool is now ${status}.`);
+    setNotice(`This fund is now ${humanizeState(status).toLowerCase()}.`);
     await load();
-  });
-
-  const remove = () => run(async () => {
-    await onDelete?.(fundId);
-    navigate('/admin/funds', { replace: true });
   });
 
   if (loading && !detail) {
@@ -122,14 +110,16 @@ export default function FundWorkspace({ onPublishVersion, onLifecycle, onDelete 
   if (error && !detail) {
     return (
       <div className="adm-screen adm-screen--narrow">
-        <div className="ash-load-note" role="alert">
-          <span>{error}</span>
-          <button type="button" className="ash-btn ash-btn-secondary ash-btn-sm" onClick={load}>
+        <div className="adm-validation-banner adm-validation-banner--error adm-validation-banner--start" role="alert">
+          <I icon={AlertTriangle} size={14} /> {error}
+        </div>
+        <div className="adm-toolbar adm-toolbar--gap-2">
+          <button type="button" className="be-btn be-btn-secondary be-btn-sm" onClick={load}>
             <I icon={RefreshCw} size={13} /> Try again
           </button>
         </div>
-        <Link className="be-btn be-btn-secondary be-btn-sm" to="/admin/funds">
-          <I icon={ArrowLeft} size={14} /> Back to pools
+        <Link className="be-btn be-btn-secondary be-btn-sm adm-back-link" to="/admin/funds">
+          <I icon={ArrowLeft} size={14} /> Back to funds
         </Link>
       </div>
     );
@@ -137,15 +127,15 @@ export default function FundWorkspace({ onPublishVersion, onLifecycle, onDelete 
 
   return (
     <div className="adm-screen">
-      <Link className="be-btn be-btn-ghost be-btn-sm" to="/admin/funds">
-        <I icon={ArrowLeft} size={14} /> Back to pools
+      <Link className="be-btn be-btn-ghost be-btn-sm adm-back-link" to="/admin/funds">
+        <I icon={ArrowLeft} size={14} /> Back to funds
       </Link>
 
       <div className="adm-card">
         <div className="adm-card-head">
           <div>
             <span className="be-eyebrow">{fund?.slug}</span>
-            <h2 className="adm-card-title">{fund?.name || 'Fund pool'}</h2>
+            <h2 className="adm-card-title">{fund?.name || 'Fund'}</h2>
             <div className="adm-card-sub">{STATE_DESCRIPTIONS[fund?.status] || ''}</div>
           </div>
           <div className="adm-card-actions">
@@ -156,7 +146,9 @@ export default function FundWorkspace({ onPublishVersion, onLifecycle, onDelete 
         <dl className="adm-decision-facts be-pad-5">
           <div>
             <dt>Published AUM</dt>
-            <dd className="be-money">{fmtPaise(fund?.aum?.aumPaise)}</dd>
+            <dd className="be-money">
+              {fund?.aum?.aumPaise == null ? 'Not published' : fmtPaise(fund.aum.aumPaise)}
+            </dd>
           </div>
           <div>
             <dt>As of</dt>
@@ -179,37 +171,32 @@ export default function FundWorkspace({ onPublishVersion, onLifecycle, onDelete 
           </div>
         )}
 
-        {/* Lifecycle. Only the three states `PATCH /v1/admin/funds/:id` accepts are
-            offered; the old strip offered six, two of which the route rejects. */}
-        <div className="adm-toolbar adm-toolbar--bordered adm-toolbar--gap-2">
-          {LIFECYCLE_ACTIONS.filter((status) => status !== fund?.status).map((status) => (
-            <button
-              key={status}
-              type="button"
-              className="be-btn be-btn-secondary be-btn-sm"
-              onClick={() => setConfirming(status)}
-              disabled={busy}
-            >
-              {status === 'published' ? 'Publish to clients' : `Move to ${status}`}
-            </button>
-          ))}
-          <button
-            type="button"
-            className="be-btn be-btn-danger be-btn-sm"
-            onClick={() => setConfirming('delete')}
-            disabled={busy}
-          >
-            Archive and remove
-          </button>
-        </div>
+        {canWrite && !isArchived && (
+          <div className="adm-toolbar adm-toolbar--bordered adm-toolbar--gap-2">
+            {lifecycleActionsFor(fund?.status).map((status) => (
+              <button
+                key={status}
+                type="button"
+                className={`be-btn be-btn-sm ${status === 'archived' ? 'be-btn-danger' : 'be-btn-secondary'}`}
+                onClick={() => setConfirming(status)}
+                disabled={busy}
+              >
+                {LIFECYCLE_LABELS[status]}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {isArchived && (
+          <div className="adm-inline-note" role="note">
+            This fund is archived. Archiving is final: its terms, stock list and AUM can no longer
+            change.
+          </div>
+        )}
 
         {confirming && (
           <div className="adm-decision adm-decision--inline" role="group" aria-label="Confirm the change">
-            <p className="adm-decision-note">
-              {confirming === 'delete'
-                ? 'This removes the pool from the console. Investor positions and history are kept, but the pool cannot be published again.'
-                : LIFECYCLE_CONSEQUENCES[confirming]}
-            </p>
+            <p className="adm-decision-note">{LIFECYCLE_CONSEQUENCES[confirming]}</p>
             <div className="adm-decision-actions">
               <button
                 type="button"
@@ -221,11 +208,11 @@ export default function FundWorkspace({ onPublishVersion, onLifecycle, onDelete 
               </button>
               <button
                 type="button"
-                className={`be-btn adm-decision-btn ${confirming === 'delete' ? 'be-btn-danger' : 'be-btn-primary'}`}
-                onClick={() => (confirming === 'delete' ? remove() : changeState(confirming))}
+                className={`be-btn adm-decision-btn ${confirming === 'archived' ? 'be-btn-danger' : 'be-btn-primary'}`}
+                onClick={() => changeState(confirming)}
                 disabled={busy}
               >
-                {busy ? 'Applying…' : confirming === 'delete' ? 'Remove this pool' : `Confirm ${confirming}`}
+                {busy ? 'Applying…' : LIFECYCLE_LABELS[confirming]}
               </button>
             </div>
           </div>
@@ -233,7 +220,7 @@ export default function FundWorkspace({ onPublishVersion, onLifecycle, onDelete 
       </div>
 
       <div className="adm-sticky-tabs">
-        <div className="adm-chip-row" role="group" aria-label="Pool sections">
+        <div className="adm-chip-row" role="group" aria-label="Fund sections">
           {SECTIONS.map((item) => (
             <button
               key={item.id}
@@ -249,19 +236,48 @@ export default function FundWorkspace({ onPublishVersion, onLifecycle, onDelete 
       </div>
 
       {section === 'profile' && (
-        <FundProfileForm
-          key={fund?.currentVersion ?? 'v0'}
-          initial={profileFromDetail(detail)}
-          submitLabel="Publish new version"
-          busy={busy}
-          onSubmit={(payload) => publish(payload)}
+        canWrite && !isArchived ? (
+          <FundProfileForm
+            key={fund?.currentVersion ?? 'v0'}
+            initial={profileFromDetail(detail)}
+            mode="version"
+            submitLabel="Publish new version"
+            busy={busy}
+            onSubmit={(payload) => publish(payload)}
+          />
+        ) : (
+          <div className="adm-card">
+            <div className="adm-card-head">
+              <div>
+                <h3 className="adm-card-title">Published terms</h3>
+                <div className="adm-card-sub">
+                  {isArchived
+                    ? 'This fund is archived, so its terms are read-only.'
+                    : 'You have read access to this fund. Publishing a version needs funds.write.'}
+                </div>
+              </div>
+            </div>
+            <dl className="adm-decision-facts be-pad-5">
+              <div><dt>Name</dt><dd>{fund?.name || '—'}</dd></div>
+              <div><dt>Category</dt><dd>{fund?.category ? humanizeState(fund.category) : '—'}</dd></div>
+              <div><dt>Minimum SIP</dt><dd className="be-money">{fmtPaise(fund?.minimumSipPaise, 0)}</dd></div>
+              <div><dt>Minimum one-time</dt><dd className="be-money">{fmtPaise(fund?.minimumPurchasePaise, 0)}</dd></div>
+            </dl>
+            {fund?.objective && <p className="be-pad-5 adm-text-sm">{fund.objective}</p>}
+          </div>
+        )
+      )}
+
+      {section === 'stocks' && (
+        <FundStockListPanel
+          fundId={fundId}
+          initialStocks={detail?.stocks ?? []}
+          canWrite={canWrite && !isArchived}
         />
       )}
 
-      {section === 'stocks' && <FundStockListPanel fundId={fundId} />}
-
       {section === 'history' && (
-        <div className="adm-card">
+        <div className="adm-card adm-table">
           <div className="adm-card-head">
             <div>
               <h3 className="adm-card-title">Published versions</h3>

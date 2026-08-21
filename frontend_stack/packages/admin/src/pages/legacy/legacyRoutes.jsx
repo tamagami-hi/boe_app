@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { useAdminSession } from '@beonedge/client/store/AdminSessionContext.jsx';
 import I from '../../components/I.jsx';
 import { useApprovalsQueue } from '../../data/ApprovalsQueueProvider.jsx';
 import AdminReadError from '../../data/AdminReadError.jsx';
@@ -9,11 +11,13 @@ import {
   useAdminPayments,
 } from '../../data/adminResources.js';
 import { useFundMutations } from '../../data/useFundMutations.js';
+import { hasAnyPermission } from '../../navigation/nav.js';
 import { useAdminNavigation } from '../../navigation/useAdminNavigation.js';
 import ApprovalsScreen from '../../screens/ApprovalsScreen.jsx';
 import AppBuilderScreen from '../../screens/appBuilder/AppBuilderScreen.jsx';
 import AumScreen from '../../screens/AumScreen.jsx';
 import ClientValuesScreen from '../../screens/ClientValuesScreen.jsx';
+import FundCreateScreen from '../../screens/fundOps/FundCreateScreen.jsx';
 import FundsListScreen from '../../screens/fundOps/FundsListScreen.jsx';
 import FundWorkspace from '../../screens/fundOps/FundWorkspace.jsx';
 import InvestmentReviewScreen from '../../screens/InvestmentReviewScreen.jsx';
@@ -23,14 +27,6 @@ import EnvironmentScreen from '../../screens/EnvironmentScreen.jsx';
 import PaymentsScreen from '../../screens/PaymentsScreen.jsx';
 import UserDetailScreen from '../../screens/UserDetailScreen.jsx';
 import UserDetailsListScreen from '../../screens/UserDetailsListScreen.jsx';
-
-// Thin route wrappers. Each now reads only the domains its screen shows, instead of
-// pulling slices out of one shell-wide six-collection provider.
-//
-// Retired here: mandates/redemptions (the investment-review queue replaces both),
-// holdings (published AUM lives under /admin/aum), transactions/ledger (payments is
-// the evidence trail), SIP control requests, support tickets, and the manual KYC
-// review queue.
 
 export function ApprovalsRoute() {
   const queue = useApprovalsQueue();
@@ -50,25 +46,44 @@ export function ApprovalsRoute() {
 }
 
 export function FundsRoute() {
-  const funds = useAdminFunds();
-  const { handleCreateFund } = useFundMutations();
+  const [stateFilter, setStateFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const funds = useAdminFunds({ state: stateFilter, search });
+  const { user } = useAdminSession();
+  const canWrite = hasAnyPermission(user, ['funds.write']);
   return (
     <>
-      <AdminReadError resources={[{ label: 'fund pools', ...funds }]} />
-      <FundsListScreen funds={funds.rows} loading={funds.isLoading} onCreate={handleCreateFund} />
+      <AdminReadError resources={[{ label: 'fund catalogue', ...funds }]} />
+      <FundsListScreen
+        funds={funds.rows}
+        summary={funds.summary}
+        loading={funds.isLoading}
+        stateFilter={stateFilter}
+        onStateFilterChange={setStateFilter}
+        search={search}
+        onSearchChange={setSearch}
+        hasMore={funds.hasMore}
+        loadingMore={funds.loadingMore}
+        onLoadMore={funds.loadMore}
+        canWrite={canWrite}
+      />
     </>
   );
 }
 
-// The pool workspace owns its own read (`GET /v1/admin/funds/:id`), because the list
-// projection carries no disclosure, no version history and no investor totals.
+export function FundCreateRoute() {
+  const { handleCreateFund } = useFundMutations();
+  return <FundCreateScreen onCreate={handleCreateFund} />;
+}
+
 export function FundWorkspaceRoute() {
-  const { handlePublishVersion, handleFundLifecycle, handleDeleteFund } = useFundMutations();
+  const { handlePublishVersion, handleFundLifecycle } = useFundMutations();
+  const { user } = useAdminSession();
   return (
     <FundWorkspace
       onPublishVersion={handlePublishVersion}
       onLifecycle={handleFundLifecycle}
-      onDelete={handleDeleteFund}
+      canWrite={hasAnyPermission(user, ['funds.write'])}
     />
   );
 }
@@ -107,10 +122,6 @@ export function UserDetailRoute() {
   const { userId } = useParams();
   const navigate = useNavigate();
 
-  // Deliberately NOT passing `onClose`: UserDetailScreen used to switch into a
-  // hand-rolled modal presentation when given one, which is wrong for a screen that
-  // owns a URL and contradicted the canonical overlay contract. That branch is gone.
-  // `replace` keeps directory <-> detail trips out of the back stack.
   return (
     <div className="adm-screen adm-screen--narrow">
       <button

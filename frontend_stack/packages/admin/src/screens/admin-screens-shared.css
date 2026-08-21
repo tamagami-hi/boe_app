@@ -1,8 +1,3 @@
-/* Admin operational screens — token-backed helpers replacing inline styles.
- * Imported locally by screens in this directory only.
- */
-
-/* Text helpers */
 .adm-text-center { text-align: center; }
 .adm-capitalize { text-transform: capitalize; }
 .adm-font-medium { font-weight: 500; }
@@ -11,12 +6,10 @@
 .adm-text-lg { font-size: var(--be-text-lg); }
 .adm-text-xl { font-size: var(--be-text-xl); }
 
-/* Spacing helpers */
 .adm-m-t-0 { margin-top: 0; }
 .adm-m-t-2 { margin-top: var(--be-space-2); }
 .adm-m-t-4 { margin-top: var(--be-space-4); }
 
-/* Layout helpers */
 .adm-title-bar {
   display: flex;
   justify-content: space-between;
@@ -31,15 +24,20 @@
 }
 
 .adm-sticky-tabs {
-  position: sticky;
-  top: 0;
-  z-index: var(--be-z-topbar);
+  position: static;
   background: var(--be-bg);
   padding: var(--be-space-3) 0;
   border-bottom: var(--be-border-1);
 }
 
-/* Chips (tab-like filters) */
+@media (max-width: 48rem) {
+  .adm-sticky-tabs {
+    position: sticky;
+    top: 0;
+    z-index: var(--be-z-subnav-mobile);
+  }
+}
+
 .adm-chip-row {
   display: flex;
   flex-wrap: wrap;
@@ -51,8 +49,6 @@
   align-items: center;
   gap: var(--be-space-1);
   padding: var(--be-space-2) var(--be-space-3);
-  /* The tab strip on the user record. At its natural height it was around 34px,
-     under the minimum target on a phone. */
   min-height: var(--be-target-min);
   border: var(--be-border-1);
   border-radius: var(--be-radius-pill);
@@ -73,7 +69,6 @@
   border-color: var(--be-ink);
 }
 
-/* Read-only field (info cards) */
 .adm-field-readonly {
   min-width: 0;
   display: flex;
@@ -96,8 +91,6 @@
   overflow-wrap: anywhere;
 }
 
-/* Checkbox attestation inside a decision panel (bank-evidence confirmation).
-   `.adm-field` stacks its children; the attestation needs box and text inline. */
 .adm-checkbox-field {
   flex-direction: row;
   align-items: flex-start;
@@ -118,7 +111,6 @@
   letter-spacing: 0;
 }
 
-/* Status badge (pills) */
 .adm-status-badge {
   display: inline-flex;
   align-items: center;
@@ -166,7 +158,6 @@
   color: var(--be-text-on-slate);
 }
 
-/* Transaction / capital type labels */
 .adm-tx-type {
   font-weight: 500;
   font-size: var(--be-text-xs);
@@ -178,7 +169,6 @@
 .adm-tx-type--outflow { color: var(--be-red); }
 .adm-tx-type--default { color: var(--be-slate); }
 
-/* Data-driven swatch via CSS custom property */
 .adm-swatch {
   width: 8px;
   height: 8px;
@@ -187,12 +177,10 @@
   background: var(--adm-swatch-color, var(--be-slate));
 }
 
-/* Stat negative state */
 .adm-stat--negative {
   border-color: var(--be-red);
 }
 
-/* Validation banner variants */
 .adm-validation-banner--success {
   background: var(--be-green-soft);
   color: var(--be-green);
@@ -203,7 +191,6 @@
   margin: var(--be-space-3) var(--be-space-4) 0;
 }
 
-/* Toolbar / card actions variants */
 .adm-toolbar--center {
   justify-content: center;
 }
@@ -217,6 +204,10 @@
   gap: var(--be-space-2);
 }
 
+.adm-toolbar--end {
+  justify-content: flex-end;
+}
+
 .adm-search--grow {
   flex: 1;
 }
@@ -226,7 +217,6 @@
   flex-wrap: wrap;
 }
 
-/* Review panel / screen sizing */
 .adm-review-panel--user-detail {
   width: 90vw;
   max-width: 900px;
@@ -238,12 +228,10 @@
   max-width: 960px;
 }
 
-/* Code block scroll limit */
 .adm-code-block--scroll {
   max-height: 400px;
 }
 
-/* List item cards (notifications / audit logs) */
 .adm-list-item {
   padding: var(--be-space-3);
   background: var(--be-bone);
@@ -274,7 +262,6 @@
   margin-top: var(--be-space-1);
 }
 
-/* Stub card */
 .adm-stub-card {
   padding: var(--be-space-10);
   text-align: center;
@@ -285,11 +272,9 @@
   margin-top: var(--be-space-2);
 }
 
-/* Health check icon */
 .adm-health-check-icon--ok { color: var(--be-green); }
 .adm-health-check-icon--warn { color: var(--be-amber); }
 
-/* Responsive helpers */
 @media (max-width: 768px) {
   .adm-info-grid {
     grid-template-columns: 1fr;
@@ -304,12 +289,6 @@
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Standard responsive patterns — use these instead of per-screen hacks       */
-/* -------------------------------------------------------------------------- */
-
-/* Scroll wrapper for wide tables: table keeps its natural width and scrolls
- * horizontally inside the page at any viewport. Pair with .adm-table/.ash-table. */
 .be-table-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -321,8 +300,6 @@
   min-width: max-content;
 }
 
-/* Filter/search rows: children share the row fluidly and wrap on narrow
- * viewports — replaces per-screen width:100% overrides. */
 .be-filter-bar {
   display: flex;
   flex-wrap: wrap;
@@ -334,10 +311,6 @@
   min-width: 0;
 }
 
-
-/* Explains why a screen offers no actions, on the screens that are records
-   rather than workspaces (payments, mandates). Stated once at the top instead of
-   as a tooltip per row, so an operator learns it before hunting for a button. */
 .adm-screen-note {
   margin: 0;
   padding: var(--be-space-2) var(--be-space-4) var(--be-space-3);
@@ -347,9 +320,6 @@
   border-bottom: var(--be-border-1);
 }
 
-
-/* Inline decision panel (approvals). Opens under the row it belongs to rather than
-   in an overlay: deciding is this screen's job, not an interruption of it. */
 .adm-decision-row > td {
   padding: 0 var(--be-card-pad) var(--be-space-4);
   background: var(--be-bone);
@@ -414,9 +384,6 @@
 }
 
 @media (max-width: 768px) {
-  /* In card view each row is its own card. The decision panel belongs to the card
-     above it, so it closes the gap and drops its top corners instead of floating
-     free as a second, unattached card. */
   .adm-table-cards tbody tr.adm-decision-row {
     margin-top: calc(-1 * var(--be-space-3));
     border-top: 0;
@@ -439,15 +406,6 @@
   .adm-decision-btn { flex: 1 1 auto; }
 }
 
-
-
-/* -------------------------------------------------------------------------- */
-/* Classes the ops screens referenced but that were never written             */
-/* -------------------------------------------------------------------------- */
-
-/* Two-line table cell: the value, then its qualifier. Used by holdings, the
-   transaction list and the user record. `.adm-cell-sub` in particular was doing
-   nothing, so the qualifier rendered at full weight and read as a second value. */
 .adm-cell-main {
   font-weight: 600;
   font-size: var(--be-text-sm);
@@ -460,8 +418,6 @@
   color: var(--be-slate);
 }
 
-/* Detail row revealed under the row it belongs to. Shares the decision panel's
-   geometry so an expanded row looks the same everywhere in the console. */
 .adm-detail-row > td {
   padding: 0 var(--be-card-pad) var(--be-space-4);
   background: var(--be-bone);
@@ -486,7 +442,6 @@
   gap: var(--be-space-2);
 }
 
-/* Audit stream: entries grouped under the day they happened. */
 .adm-daygroup + .adm-daygroup { margin-top: var(--be-space-5); }
 
 .adm-daygroup__date {
@@ -560,13 +515,9 @@
   .adm-event__toggle { margin-left: 0; }
 }
 
-
-/* A flagged config fact carries a one-line explanation under it. `.adm-health-check`
-   is a single flex row, so the note needs its own line. */
 .adm-health-check { flex-wrap: wrap; }
 .adm-health-check .adm-cell-sub { flex: 1 0 100%; margin-top: 0; }
 
-/* Disclosure summaries are controls: they need a target and a focus ring. */
 .adm-screen details > summary {
   display: flex;
   align-items: center;
@@ -579,18 +530,26 @@
   outline-offset: 2px;
 }
 
-
-
-/* Inline confirmation inside a card, where an overlay used to open. */
 .adm-decision--inline {
   margin: 0 var(--be-card-pad) var(--be-space-4);
 }
 
-/* Field-level validation message. The forms had no per-field error slot at all: a
-   rejected save showed one banner at the top and left the operator to guess which
-   of a dozen inputs it meant. */
 .adm-field-error {
   color: var(--be-red);
   font-size: var(--be-text-xs);
   line-height: 1.4;
+}
+
+
+.adm-read-failure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--be-space-3);
+  padding: 0 var(--be-space-5);
+}
+
+.adm-read-failure .adm-validation-banner {
+  flex: 1 1 220px;
+  margin-bottom: 0;
 }

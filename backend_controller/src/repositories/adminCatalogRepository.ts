@@ -1,17 +1,3 @@
-/**
- * Admin catalog repository.
- *
- * A fund is a pool of money, not a priced instrument. So this repository handles:
- *   - the fund and its published version (terms + disclosure, no price); and
- *   - the administrator-curated stock list investors see, tagged by quarter.
- *
- * The pool's size is read from `fund_aum_snapshots` (the latest published
- * snapshot wins); writing snapshots belongs to the AUM instruction flow.
- *
- * Money is `bigint` paise crossing the boundary as strings. Published versions,
- * disclosures, and AUM snapshots are append-only; only the fund's lifecycle state,
- * its current-version pointer, and a stock's own row are ever updated.
- */
 import { sql } from "kysely"
 
 import type { Fund, FundVersion, Transaction } from "../db/repositories.js"
@@ -31,11 +17,9 @@ export interface FundListRow {
   readonly minimumSipPaise: string | null
   readonly minimumPurchasePaise: string | null
   readonly currentVersion: number | null
-  /** Latest published AUM snapshot, and the date it is effective as of. */
   readonly aumPaise: string | null
   readonly aumAsOfDate: string | null
   readonly aumUpdatedAt: Date | null
-  /** Count of active stocks on the disclosed list. */
   readonly stockCount: number
   readonly publishedAt: Date | null
   readonly createdAt: Date
@@ -76,6 +60,7 @@ export interface DisclosureRow {
   readonly id: string
   readonly version: number
   readonly title: string
+  readonly body: string
   readonly effectiveFrom: Date
   readonly createdAt: Date
 }
@@ -84,6 +69,13 @@ export interface FundPageQuery {
   readonly afterCreatedAt?: Date
   readonly afterId?: string
   readonly limit: number
+  readonly state?: FundState
+  readonly search?: string
+}
+
+export interface FundStateSummary {
+  readonly total: number
+  readonly byState: Readonly<Record<FundState, number>>
 }
 
 export interface InsertFundInput {
@@ -142,6 +134,7 @@ export interface SetFundStateInput {
 
 export interface AdminCatalogRepository {
   list: (tx: Transaction, query: FundPageQuery) => Promise<readonly FundListRow[]>
+  countByState: (tx: Transaction) => Promise<FundStateSummary>
   findOne: (tx: Transaction, fundId: string) => Promise<FundListRow | null>
   lock: (tx: Transaction, fundId: string) => Promise<Fund | null>
   slugExists: (tx: Transaction, slug: string) => Promise<boolean>
@@ -149,7 +142,7 @@ export interface AdminCatalogRepository {
   setState: (tx: Transaction, input: SetFundStateInput) => Promise<Fund>
   setCurrentVersion: (
     tx: Transaction,
-    input: { readonly fundId: string; readonly versionId: string; readonly now: Date },
+    input: { readonly fundId: string; readonly versionId: string },
   ) => Promise<Fund>
 
   nextVersion: (tx: Transaction, fundId: string) => Promise<number>
@@ -221,17 +214,44 @@ const STOCK_COLUMNS = sql`
 
 export const createAdminCatalogRepository = (): AdminCatalogRepository => ({
   list: async (tx, query) => {
-    const keyset =
+    const conditions = [
       query.afterCreatedAt !== undefined && query.afterId !== undefined
-        ? sql`where (f.created_at < ${query.afterCreatedAt}
-            or (f.created_at = ${query.afterCreatedAt} and f.id < ${query.afterId}))`
-        : sql``
+        ? sql`(f.created_at, f.id) < (${query.afterCreatedAt}, ${query.afterId}::uuid)`
+        : null,
+      query.state === undefined ? null : sql`f.state = ${query.state}::fund_state`,
+      query.search === undefined
+        ? null
+        : sql`(f.slug ilike ${`%${query.search}%`} or fv.name ilike ${`%${query.search}%`})`,
+    ].filter((condition) => condition !== null)
+    const where = conditions.length === 0
+      ? sql``
+      : sql`where ${sql.join(conditions, sql` and `)}`
     const result = await sql<FundListRow>`
-      ${FUND_SELECT} ${keyset}
+      ${FUND_SELECT} ${where}
       order by f.created_at desc, f.id desc
       limit ${query.limit}
     `.execute(tx)
     return result.rows
+  },
+
+  countByState: async (tx) => {
+    const result = await sql<{ state: FundState; count: string }>`
+      select state as "state", count(*)::text as "count" from funds group by state
+    `.execute(tx)
+    const byState: Record<FundState, number> = {
+      draft: 0,
+      review_pending: 0,
+      published: 0,
+      paused: 0,
+      archived: 0,
+    }
+    let total = 0
+    for (const row of result.rows) {
+      const count = Number(row.count)
+      byState[row.state] = count
+      total += count
+    }
+    return { total, byState }
   },
 
   findOne: async (tx, fundId) => {
@@ -261,7 +281,9 @@ export const createAdminCatalogRepository = (): AdminCatalogRepository => ({
       .updateTable("funds")
       .set({
         state: input.state,
-        ...(input.state === "published" ? { published_at: input.now } : {}),
+        ...(input.state === "published"
+          ? { published_at: sql`coalesce(published_at, ${input.now})` }
+          : {}),
         ...(input.state === "paused" ? { paused_at: input.now } : {}),
         ...(input.state === "archived" ? { archived_at: input.now } : {}),
         updated_at: sql`now()`,
@@ -276,8 +298,6 @@ export const createAdminCatalogRepository = (): AdminCatalogRepository => ({
       .updateTable("funds")
       .set({
         current_published_version_id: input.versionId,
-        state: "published",
-        published_at: sql`coalesce(published_at, ${input.now})`,
         updated_at: sql`now()`,
         version: sql`version + 1`,
       })
@@ -306,7 +326,7 @@ export const createAdminCatalogRepository = (): AdminCatalogRepository => ({
         (fund_id, version, title, body, content_sha256, effective_from, published_by_user_id)
       values (${input.fundId}, ${input.version}, ${input.title}, ${input.body},
               ${input.contentSha256}, ${input.effectiveFrom}, ${input.publishedByUserId})
-      returning id as "id", version as "version", title as "title",
+      returning id as "id", version as "version", title as "title", body as "body",
                 effective_from as "effectiveFrom", created_at as "createdAt"
     `.execute(tx)
     const row = result.rows[0]
@@ -354,7 +374,7 @@ export const createAdminCatalogRepository = (): AdminCatalogRepository => ({
 
   listDisclosures: async (tx, fundId) => {
     const result = await sql<DisclosureRow>`
-      select id as "id", version as "version", title as "title",
+      select id as "id", version as "version", title as "title", body as "body",
              effective_from as "effectiveFrom", created_at as "createdAt"
       from fund_disclosure_versions where fund_id = ${fundId}
       order by version desc

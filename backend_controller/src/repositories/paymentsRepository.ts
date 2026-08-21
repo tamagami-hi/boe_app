@@ -1,18 +1,3 @@
-/**
- * Payments write/read repository (spec §5.1/§5.2/§5.5). Owns the payment
- * lifecycle tables — `payments`, `payment_attempts`, `provider_payment_details`
- * — and the order-side transitions that payment evidence drives
- * (`payment_pending`, `review_pending`, `payment_failed`, `refunded`, ...).
- *
- * Every transition is a guarded UPDATE: the WHERE clause names the states the
- * transition is legal from, so a replayed or out-of-order provider outcome
- * against an already-moved row is a no-op rather than a second effect. Money
- * columns are bigint and travel as decimal strings; nothing here coerces them
- * to numbers.
- *
- * Boundary rule (spec §4.1): this module never touches client value entries,
- * growth batches, or AUM snapshots; the admin accept command owns those writes.
- */
 import { sql } from "kysely"
 
 import type {
@@ -21,7 +6,6 @@ import type {
   PaymentAttempt,
   Transaction,
 } from "../db/repositories.js"
-import type { FundState } from "../db/types.js"
 
 export interface CreatePaymentInput {
   readonly orderId: string
@@ -48,12 +32,9 @@ export interface RecordPaymentDetailInput {
   readonly amountPaise: string | null
 }
 
-/** Attempt states from which provider evidence may still move the attempt. */
 const ATTEMPT_OPEN_STATES = ["created", "provider_pending"] as const
-/** Payment states from which a success/failure outcome may be applied. */
 const PAYMENT_OPEN_STATES = ["created", "provider_pending"] as const
 
-/** One admin payment-ledger row: payment + order + client + latest attempt. */
 export interface PaymentListRow {
   readonly id: string
   readonly orderId: string
@@ -70,7 +51,6 @@ export interface PaymentListRow {
 }
 
 export interface PaymentsRepository {
-  findFundState: (tx: Transaction, fundId: string) => Promise<FundState | null>
   lockOrderForPayment: (
     tx: Transaction,
     input: Readonly<{ orderId: string; userId: string }>,
@@ -86,7 +66,6 @@ export interface PaymentsRepository {
     merchantOrderId: string,
   ) => Promise<PaymentAttempt | null>
   createAttempt: (tx: Transaction, input: CreateAttemptInput) => Promise<PaymentAttempt>
-  /** created -> provider_pending after the provider handed back a checkout. */
   markAttemptDispatched: (
     tx: Transaction,
     input: Readonly<{
@@ -122,7 +101,6 @@ export interface PaymentsRepository {
     tx: Transaction,
     input: Readonly<{ attemptId: string; now: Date }>,
   ) => Promise<void>
-  /** created|provider_pending -> provider_pending (payment is at the provider). */
   markPaymentProviderPending: (tx: Transaction, paymentId: string, now: Date) => Promise<Payment | null>
   markPaymentSucceeded: (tx: Transaction, paymentId: string, now: Date) => Promise<Payment | null>
   markPaymentFailed: (
@@ -130,42 +108,26 @@ export interface PaymentsRepository {
     input: Readonly<{ paymentId: string; failureCode: string; now: Date }>,
   ) => Promise<Payment | null>
   markPaymentExpired: (tx: Transaction, paymentId: string, now: Date) => Promise<Payment | null>
-  /** succeeded -> refund_pending (reject path). */
   markPaymentRefundPending: (tx: Transaction, paymentId: string, now: Date) => Promise<Payment | null>
-  /** refund_pending -> refunded on verified refund evidence. */
   markPaymentRefunded: (tx: Transaction, paymentId: string, now: Date) => Promise<Payment | null>
-  /** refund_pending -> refund_failed on exhausted terminal refund failure. */
   markPaymentRefundFailed: (tx: Transaction, paymentId: string, now: Date) => Promise<Payment | null>
-  /** submitted|payment_pending|payment_failed -> payment_pending (checkout begins). */
   markOrderPaymentPending: (tx: Transaction, orderId: string, now: Date) => Promise<InvestmentOrder | null>
-  /** payment_pending -> review_pending on verified provider success. */
   markOrderReviewPending: (tx: Transaction, orderId: string, now: Date) => Promise<InvestmentOrder | null>
   markOrderPaymentFailed: (
     tx: Transaction,
     input: Readonly<{ orderId: string; failureCode: string; now: Date }>,
   ) => Promise<InvestmentOrder | null>
-  /** refund_pending -> refunded | refund_failed. */
   markOrderRefunded: (tx: Transaction, orderId: string, now: Date) => Promise<InvestmentOrder | null>
   markOrderRefundFailed: (
     tx: Transaction,
     input: Readonly<{ orderId: string; failureCode: string; now: Date }>,
   ) => Promise<InvestmentOrder | null>
-  /**
-   * Insert the pending admin review for a succeeded payment (spec §5.5).
-   * Idempotent: one review per order, `ON CONFLICT DO NOTHING`.
-   */
   createPendingReview: (tx: Transaction, orderId: string) => Promise<void>
-  /**
-   * Normalize one provider `paymentDetails[]` entry (spec §5.2). Append-only:
-   * keyed by (attempt, provider transaction); conflicts keep the first row.
-   */
   recordPaymentDetail: (tx: Transaction, input: RecordPaymentDetailInput) => Promise<void>
-  /** Worker claim: open attempts, oldest first, locked SKIP LOCKED. */
   lockAttemptsForReconciliation: (
     tx: Transaction,
     input: Readonly<{ limit: number }>,
   ) => Promise<readonly PaymentAttempt[]>
-  /** Admin oversight read: the gateway evidence trail, most recent first. */
   listPage: (
     tx: Transaction,
     input: Readonly<{ afterCreatedAt?: Date; afterId?: string; limit: number }>,
@@ -173,15 +135,6 @@ export interface PaymentsRepository {
 }
 
 export const createPaymentsRepository = (): PaymentsRepository => ({
-  findFundState: async (tx, fundId) => {
-    const row = await tx
-      .selectFrom("funds")
-      .select("state")
-      .where("id", "=", fundId)
-      .executeTakeFirst()
-    return row?.state ?? null
-  },
-
   lockOrderForPayment: async (tx, input) => {
     const row = await tx
       .selectFrom("investment_orders")

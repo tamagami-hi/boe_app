@@ -1,13 +1,3 @@
-/**
- * Fund AUM admin routes integration tests (core mechanism spec §5.8/§8.3/§8.4/
- * §8.5/§9.5/§10, required tests §14 "Fund AUM").
- *
- * Covers: initialize/growth/correction commands with idempotent replay,
- * revision semantics, latest-snapshot selection, collective planning + locked
- * commit with stale-hash 409 and all-or-none rollback, least-privilege
- * permissions, the strict no-client-fields input contract, audit metadata with
- * `propagatedToClients: false`, and the catalogue AUM read projections.
- */
 import { randomBytes, randomUUID } from "node:crypto"
 import { fileURLToPath } from "node:url"
 
@@ -76,8 +66,6 @@ const makeUser = async (
 }
 
 const grantRole = async (userId: string, roleCode: string): Promise<void> => {
-  // The seed creates roles and permissions but leaves grants to the admin
-  // identity flow; tests grant the reference mapping directly.
   for (const permission of SEED_ROLE_PERMISSIONS[roleCode] ?? []) {
     await pool.query(
       "insert into role_permissions (role_id, permission_id, granted_by_user_id) " +
@@ -180,13 +168,14 @@ beforeAll(async () => {
     clock,
     config: { cookieSecure: false, originAllowlist: [] },
   }
+  const fundAumRepository = createFundAumRepository()
   const aumDeps: AdminAumDeps = {
     webAuth,
     unitOfWork,
     database,
     clock,
-    config: { idempotencyTtlMs: 86_400_000 },
-    aumRepository: createFundAumRepository(),
+    config: { cursorKey: randomBytes(32), idempotencyTtlMs: 86_400_000 },
+    aumRepository: fundAumRepository,
     auditRepository,
     idempotencyRepository,
   }
@@ -203,6 +192,7 @@ beforeAll(async () => {
         clock,
         config: { cursorKey: randomBytes(32), idempotencyTtlMs: 86_400_000 },
         catalogRepository: createAdminCatalogRepository(),
+        aumRepository: fundAumRepository,
         auditRepository,
         idempotencyRepository,
       })
@@ -319,6 +309,17 @@ describe("initialize (integration)", () => {
     expect(await snapshotCount(fundId)).toBe(1)
   })
 
+  test("refuses a second publication: initialize is the first snapshot only", async () => {
+    const fundId = await seedFund("aum-init-once")
+    const first = await initialize(fundId, "100", `once-a-${randomUUID()}`)
+    expect(first.statusCode).toBe(201)
+
+    const again = await initialize(fundId, "200", `once-b-${randomUUID()}`, "2026-08-31")
+    expect(again.statusCode).toBe(409)
+    expect(errorOf(again)).toBe("STATE_CONFLICT")
+    expect(await snapshotCount(fundId)).toBe(1)
+  })
+
   test("rejects client-accounting fields outright (§9.5 strict schemas)", async () => {
     const fundId = await seedFund("aum-init-strict")
     for (const foreign of ["userId", "orderId", "paymentId", "contributionPaise", "redemptionPaise"]) {
@@ -351,7 +352,6 @@ describe("individual growth (integration)", () => {
       deltaPaise: "500000",
     })
 
-    // +2.50% of 10,500,000 = 262,500.
     const percentage = asInjected(await postAum(`/v1/admin/aum/funds/${fundId}/growth`, adminToken, {
       growthBasisPoints: 250,
       asOfDate: "2026-08-31",
@@ -378,7 +378,6 @@ describe("individual growth (integration)", () => {
     expect(errorOf(response)).toBe("STATE_CONFLICT")
     expect(await snapshotCount(fundId)).toBe(before)
 
-    // Exactly -100% is allowed and lands on zero.
     const toZero = asInjected(await postAum(`/v1/admin/aum/funds/${fundId}/growth`, adminToken, {
       growthBasisPoints: -10000,
       asOfDate: "2026-08-31",
@@ -437,7 +436,6 @@ describe("corrections and history (integration)", () => {
     const fundId = await seedFund("aum-correct")
     const july = await initialize(fundId, "900000", `c0-${randomUUID()}`, "2026-07-31")
     const julyId = dataOf<{ snapshot: { id: string } }>(july).snapshot.id
-    // A later date exists; correcting July must not touch it.
     const august = asInjected(await postAum(`/v1/admin/aum/funds/${fundId}/growth`, adminToken, {
       growthPaise: "100000",
       asOfDate: "2026-08-31",
@@ -447,7 +445,6 @@ describe("corrections and history (integration)", () => {
 
     const correction = asInjected(await postAum(`/v1/admin/aum/snapshots/${julyId}/corrections`, adminToken, {
       aumPaise: "950000",
-      asOfDate: "2026-07-31",
       reasonCode: "typo_fix",
     }, `c2-${randomUUID()}`))
     expect(correction.statusCode).toBe(201)
@@ -463,7 +460,6 @@ describe("corrections and history (integration)", () => {
       { revision: 2, aum_paise: "950000" },
     ])
 
-    // Latest-snapshot selection still lands on August, unchanged.
     const augustRows = await pool.query<{ aum_paise: string }>(
       "select aum_paise::text from fund_aum_snapshots where fund_id = $1 and as_of_date = '2026-08-31'",
       [fundId],
@@ -471,33 +467,29 @@ describe("corrections and history (integration)", () => {
     expect(augustRows.rows).toEqual([{ aum_paise: "1000000" }])
   })
 
-  test("only the authoritative revision may be corrected; the date must match", async () => {
+  test("only the authoritative revision may be corrected; the date is never a caller input", async () => {
     const fundId = await seedFund("aum-correct-superseded")
     const first = await initialize(fundId, "100", `s0-${randomUUID()}`, "2026-07-31")
     const firstId = dataOf<{ snapshot: { id: string } }>(first).snapshot.id
     const second = asInjected(await postAum(`/v1/admin/aum/snapshots/${firstId}/corrections`, adminToken, {
       aumPaise: "200",
-      asOfDate: "2026-07-31",
       reasonCode: "typo_fix",
     }, `s1-${randomUUID()}`))
     expect(second.statusCode).toBe(201)
 
-    // The superseded revision 1 can no longer be corrected.
     const stale = asInjected(await postAum(`/v1/admin/aum/snapshots/${firstId}/corrections`, adminToken, {
       aumPaise: "300",
-      asOfDate: "2026-07-31",
       reasonCode: "typo_fix",
     }, `s2-${randomUUID()}`))
     expect(stale.statusCode).toBe(409)
 
-    // Date drift between the body and the corrected row is a conflict.
     const secondId = dataOf<{ snapshot: { id: string } }>(second).snapshot.id
     const drift = asInjected(await postAum(`/v1/admin/aum/snapshots/${secondId}/corrections`, adminToken, {
       aumPaise: "300",
       asOfDate: "2026-08-01",
       reasonCode: "typo_fix",
     }, `s3-${randomUUID()}`))
-    expect(drift.statusCode).toBe(409)
+    expect(drift.statusCode).toBe(400)
   })
 
   test("history returns snapshots latest-first in the §9.5 shape", async () => {
@@ -528,7 +520,6 @@ describe("corrections and history (integration)", () => {
         createdAt: expect.any(String),
       }),
     )
-    // Admin-private notes never appear in the history projection.
     expect(items[0]).not.toHaveProperty("note")
 
     const forbidden = asInjected(await app.inject({
@@ -568,7 +559,6 @@ describe("collective growth (integration)", () => {
     expect(response.statusCode).toBe(200)
     const body = dataOf<{ basisHash: string; items: Record<string, unknown>[] }>(response)
     expect(body.basisHash).toMatch(/^[0-9a-f]{64}$/u)
-    // Items come back in deterministic ascending fund-id order.
     const byFund = new Map(body.items.map((item) => [item.fundId, item]))
     expect(byFund.get(a)).toMatchObject({
       beforeAumPaise: "1000000",
@@ -664,7 +654,6 @@ describe("collective growth (integration)", () => {
     })
     const { basisHash } = dataOf<{ basisHash: string }>(planned)
 
-    // Another command moves fund A's basis before the commit lands.
     const moved = asInjected(await postAum(`/v1/admin/aum/funds/${a}/growth`, adminToken, {
       growthPaise: "1",
       asOfDate: "2026-08-15",
@@ -697,12 +686,8 @@ describe("collective growth (integration)", () => {
       asOfDate: "2026-08-31",
       reasonCode: "manual_adjustment",
     })
-    // The invalid target is already refused at planning time.
     expect(planned.statusCode).toBe(409)
 
-    // Prove the commit path rolls back too, with a plan computed before B lost
-    // its room: shrink B, then replay the commit with a now-stale hash... the
-    // hash mismatch fires first, so drive the negative through a fresh pair.
     const c = await seedFund(`col-c-${randomUUID().slice(0, 8)}`)
     const d = await seedFund(`col-d-${randomUUID().slice(0, 8)}`)
     await initialize(c, "1000", `ci-${randomUUID()}`)
@@ -716,8 +701,6 @@ describe("collective growth (integration)", () => {
       reasonCode: "manual_adjustment",
     })
     const { basisHash } = dataOf<{ basisHash: string }>(plannedCd)
-    // Between plan and commit, change the instruction the hash binds to:
-    // same funds, same date, but a deeper loss on D — recomputed server-side.
     const snapshotsBefore = (await snapshotCount(c)) + (await snapshotCount(d))
     const batchesBefore = await batchCount()
     const response = await commit({
@@ -729,8 +712,6 @@ describe("collective growth (integration)", () => {
       reasonCode: "manual_adjustment",
       basisHash,
     }, `cb-${randomUUID()}`)
-    // The hash binds the command, so the altered instruction conflicts; either
-    // way not one row may survive.
     expect(response.statusCode).toBe(409)
     expect((await snapshotCount(c)) + (await snapshotCount(d))).toBe(snapshotsBefore)
     expect(await batchCount()).toBe(batchesBefore)
@@ -821,7 +802,6 @@ describe("collective growth (integration)", () => {
 
 describe("catalogue AUM projections (integration)", () => {
   test("admin fund detail and client fund size serve the latest authoritative snapshot", async () => {
-    // Published fund visible to both catalogue projections.
     const fund = await pool.query<{ id: string }>(
       "insert into funds (slug, state, published_at, created_by_user_id) values ($1,'published', now(), $2) returning id",
       [`proj-${randomUUID().slice(0, 8)}`, adminId],
@@ -847,7 +827,6 @@ describe("catalogue AUM projections (integration)", () => {
       reasonCode: "monthly_mark",
     }, `p1-${randomUUID()}`))
     expect(grown.statusCode).toBe(201)
-    // A historical correction must not displace the newer date.
     const juneId = dataOf<{ items: { asOfDate: string; id: string }[] }>(
       asInjected(await app.inject({
         method: "GET",
@@ -857,7 +836,6 @@ describe("catalogue AUM projections (integration)", () => {
     ).items.find((item) => item.asOfDate === "2026-06-30")!.id
     const corrected = asInjected(await postAum(`/v1/admin/aum/snapshots/${juneId}/corrections`, adminToken, {
       aumPaise: "1100",
-      asOfDate: "2026-06-30",
       reasonCode: "typo_fix",
     }, `p2-${randomUUID()}`))
     expect(corrected.statusCode).toBe(201)

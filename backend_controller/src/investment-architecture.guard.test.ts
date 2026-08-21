@@ -4,46 +4,24 @@ import { fileURLToPath } from "node:url"
 
 import { describe, expect, test } from "vitest"
 
-/**
- * Guards the greenfield investment-fund architecture (core mechanism spec §4.1,
- * §9.2, §12.3).
- *
- * The unit/NAV era is gone: ownership is dated client value entries, payments
- * settle through PhonePe into an admin review, and growth is posted by batch.
- * Reintroducing a deleted module, letting a client serializer leak admin-only
- * review fields, or crossing the payment/AUM/growth dependency walls would
- * silently fork the money model, so this fails the build rather than letting
- * that happen.
- */
-
-/** Modules removed by the reset, with their replacements. */
 const DELETED_MODULES: readonly string[] = [
-  // Order/payment lifecycle replaced by the PhonePe checkout + review flow:
-  // routes/clientOrderRoutes.ts keeps only order creation; later waves rebuild
-  // begin/confirm on payment_attempts + provider_events.
   "domain/client/beginPayment.ts",
   "domain/client/bookOrder.ts",
   "domain/client/confirmPayment.ts",
   "domain/client/settlePayment.ts",
-  // Pool-gain allocation replaced by client_growth_batches (017) writing
-  // client_value_entries growth adjustments (018).
   "domain/client/allocateGain.ts",
   "domain/admin/poolGainDistribution.ts",
   "domain/admin/poolGainDistribution.test.ts",
-  // Redemptions are out of the model; so are mandates and the SIP scheduler.
   "domain/client/requestRedemption.ts",
   "domain/client/settleRedemption.ts",
   "domain/client/sip.ts",
   "domain/client/activateMandate.ts",
   "domain/client/generateSipInstallments.ts",
-  // Repositories whose tables no longer exist.
   "repositories/investorLedgerRepository.ts",
   "repositories/redemptionRepository.ts",
   "repositories/mandateRepository.ts",
   "repositories/sipRepository.ts",
   "repositories/paymentRepository.ts",
-  // Routes/workers for the retired flows; the PhonePe callback route is rebuilt
-  // against provider_events by a later wave.
   "routes/paymentWebhookRoutes.ts",
   "routes/mandateWebhookRoutes.ts",
   "routes/clientSipRoutes.ts",
@@ -53,11 +31,6 @@ const DELETED_MODULES: readonly string[] = [
   "sipWorker.test.ts",
 ]
 
-/**
- * Dropped tables. Nothing in `src/` may name them — not even `db/types.ts`,
- * which no longer declares them. (This file lists them in literals, which is
- * why the scan below skips test files.)
- */
 const DROPPED_TABLES: readonly string[] = [
   "fund_aum_updates",
   "investor_ledger_entries",
@@ -66,9 +39,10 @@ const DROPPED_TABLES: readonly string[] = [
   "holding_lots",
   "holding_lot_movements",
   "investment_executions",
+  "fund_positions",
+  "approval_actions",
 ]
 
-/** Client responses never carry admin-only review/allocation fields (§9.2). */
 const CLIENT_FORBIDDEN_FIELDS: readonly string[] = [
   "allocationId",
   "bankVerified",
@@ -84,7 +58,6 @@ const listSourceFiles = async (): Promise<readonly string[]> => {
     .map((entry) => `${entry.parentPath.slice(root.length)}/${entry.name}`.replace(/^\//u, ""))
 }
 
-/** Compare code only: a doc comment explaining a retirement is not a reference. */
 const codeOf = async (relativePath: string): Promise<string> =>
   (await readFile(fileURLToPath(new URL(`./${relativePath}`, import.meta.url)), "utf8"))
     .replace(/\/\*[\s\S]*?\*\//gu, "")
@@ -117,8 +90,6 @@ describe("investment architecture guard", () => {
       for (const table of DROPPED_TABLES) {
         if (code.includes(table)) offenders.push(`${file}: ${table}`)
       }
-      // `mandates`/`holdings` as bare table names (word-boundary, snake plural).
-      // db/seedContent.ts is marketing copy ("portfolio holdings"), not SQL.
       if (file === "db/seedContent.ts") continue
       if (/\bholdings\b/u.test(code)) offenders.push(`${file}: holdings`)
       if (/\bmandates\b/u.test(code)) offenders.push(`${file}: mandates`)
@@ -151,15 +122,12 @@ describe("investment architecture guard", () => {
       if (file.endsWith(".test.ts")) continue
       const code = await codeOf(file)
       if (isPaymentModule(file)) {
-        // Payment code never reaches into the value/AUM side of the model.
         if (/aum|clientValue|client_value|growth/iu.test(code)) offenders.push(`${file}: payment -> aum/value/growth`)
       } else if (isAumModule(file)) {
-        // AUM code never reaches into payments, reviews, or client values.
         if (/payment|review|allocation|clientValue|client_value/iu.test(code)) {
           offenders.push(`${file}: aum -> payment/review/allocation/client_value`)
         }
       } else if (isClientGrowthModule(file)) {
-        // Client growth never reads AUM repositories.
         if (/aum/iu.test(code)) offenders.push(`${file}: client growth -> aum`)
       }
     }

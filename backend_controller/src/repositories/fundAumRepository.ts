@@ -1,31 +1,13 @@
-/**
- * Fund AUM repository (core mechanism spec §5.8/§5.9).
- *
- * Owns the two AUM persistence structures: the append-only absolute
- * `fund_aum_snapshots` publications (unique `(fund_id, as_of_date, revision)`;
- * the highest revision per fund/date is authoritative) and the
- * `aum_growth_batches` command headers. Everything here is a caller-owned
- * transaction participant — no transaction control, no other financial
- * module's tables.
- *
- * The latest authoritative snapshot per §5.8 orders by
- * `as_of_date DESC, revision DESC, created_at DESC, id DESC`; that ordering is
- * written out in full at every read site rather than assumed from insertion
- * order. Money crosses as decimal strings (`bigint` at rest). Dates cross as
- * `YYYY-MM-DD` text.
- */
 import { sql } from "kysely"
 
 import type { Transaction } from "../db/repositories.js"
-import type { GrowthInstructionType, GrowthScope } from "../db/types.js"
+import type { FundState, GrowthInstructionType, GrowthScope } from "../db/types.js"
 
 export interface FundAumSnapshotRow {
   readonly id: string
   readonly fundId: string
-  /** `YYYY-MM-DD` — the date the published value is effective as of. */
   readonly asOfDate: string
   readonly revision: number
-  /** Absolute published value, decimal string paise. */
   readonly aumPaise: string
   readonly growthBatchId: string | null
   readonly reasonCode: string
@@ -75,24 +57,34 @@ export interface InsertAumGrowthBatchInput {
   readonly totalDeltaPaise: string
 }
 
+export interface FundAumLockRow {
+  readonly id: string
+  readonly state: FundState
+}
+
+export interface SnapshotPageQuery {
+  readonly limit: number
+  readonly afterAsOfDate?: string
+  readonly afterRevision?: number
+  readonly afterCreatedAt?: string
+  readonly afterId?: string
+}
+
 export interface FundAumRepository {
-  /** Lock one fund row `FOR UPDATE`; serializes all AUM writes for the fund. */
-  lockFund: (tx: Transaction, fundId: string) => Promise<boolean>
-  /** Lock many fund rows in ascending id order (deadlock-safe fan-in). */
-  lockFunds: (tx: Transaction, fundIds: readonly string[]) => Promise<readonly string[]>
-  /** Non-locking existence check for read-only planning. */
+  lockFund: (tx: Transaction, fundId: string) => Promise<FundAumLockRow | null>
+  lockFunds: (tx: Transaction, fundIds: readonly string[]) => Promise<readonly FundAumLockRow[]>
   findExistingFundIds: (tx: Transaction, fundIds: readonly string[]) => Promise<readonly string[]>
-  /** Latest authoritative snapshot per the §5.8 ordering. */
   findLatestSnapshot: (tx: Transaction, fundId: string) => Promise<FundAumSnapshotRow | null>
-  /** One latest authoritative snapshot per fund, in ascending fund id order. */
   findLatestSnapshots: (tx: Transaction, fundIds: readonly string[]) => Promise<readonly FundAumSnapshotRow[]>
   findSnapshotById: (tx: Transaction, snapshotId: string) => Promise<FundAumSnapshotRow | null>
-  /** Highest revision published for one `(fund, date)`, null when none. */
   findHighestRevision: (tx: Transaction, fundId: string, asOfDate: string) => Promise<number | null>
   insertSnapshot: (tx: Transaction, input: InsertAumSnapshotInput) => Promise<FundAumSnapshotRow>
   insertBatch: (tx: Transaction, input: InsertAumGrowthBatchInput) => Promise<AumGrowthBatchRow>
-  /** Snapshot history for one fund, latest-first per the §5.8 ordering. */
-  listSnapshots: (tx: Transaction, fundId: string, limit: number) => Promise<readonly FundAumSnapshotRow[]>
+  listSnapshots: (
+    tx: Transaction,
+    fundId: string,
+    query: SnapshotPageQuery,
+  ) => Promise<readonly FundAumSnapshotRow[]>
 }
 
 const SNAPSHOT_COLUMNS = sql`
@@ -117,17 +109,17 @@ const firstRow = <Row>(rows: readonly Row[]): Row => {
 
 export const createFundAumRepository = (): FundAumRepository => ({
   lockFund: async (tx, fundId) => {
-    const result = await sql<{ id: string }>`
-      select id from funds where id = ${fundId} for update
+    const result = await sql<FundAumLockRow>`
+      select id, state from funds where id = ${fundId} for update
     `.execute(tx)
-    return result.rows[0] !== undefined
+    return result.rows[0] ?? null
   },
 
   lockFunds: async (tx, fundIds) => {
-    const result = await sql<{ id: string }>`
-      select id from funds where id = any(${[...fundIds]}) order by id asc for update
+    const result = await sql<FundAumLockRow>`
+      select id, state from funds where id = any(${[...fundIds]}) order by id asc for update
     `.execute(tx)
-    return result.rows.map((row) => row.id)
+    return result.rows
   },
 
   findExistingFundIds: async (tx, fundIds) => {
@@ -212,12 +204,21 @@ export const createFundAumRepository = (): FundAumRepository => ({
     return firstRow(result.rows)
   },
 
-  listSnapshots: async (tx, fundId, limit) => {
+  listSnapshots: async (tx, fundId, query) => {
+    const keyset =
+      query.afterAsOfDate !== undefined
+      && query.afterRevision !== undefined
+      && query.afterCreatedAt !== undefined
+      && query.afterId !== undefined
+        ? sql`and (as_of_date, revision, created_at, id)
+              < (${query.afterAsOfDate}::date, ${query.afterRevision},
+                 ${query.afterCreatedAt}::timestamptz, ${query.afterId}::uuid)`
+        : sql``
     const result = await sql<FundAumSnapshotRow>`
       select ${SNAPSHOT_COLUMNS} from fund_aum_snapshots
-      where fund_id = ${fundId}
+      where fund_id = ${fundId} ${keyset}
       order by as_of_date desc, revision desc, created_at desc, id desc
-      limit ${limit}
+      limit ${query.limit}
     `.execute(tx)
     return result.rows
   },

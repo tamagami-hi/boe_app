@@ -5,29 +5,10 @@ import {
   LayoutGrid, Settings,
 } from 'lucide-react';
 
-// Single source of truth for the admin information architecture.
-// Sidebar groups, breadcrumbs, page titles and permission gating all derive from
-// this tree.
-//
-// `permissions` is a REQUIRED-ANY list, mirroring the backend's
-// `requireAnyPermission(principal, [...])`. The codes are copied from the actual
-// route handlers in backend_controller/src/routes/admin*Routes.ts — not invented —
-// so a destination is hidden exactly when every call it would make returns 403.
-//
-// THIS GATING IS PRESENTATION ONLY. The backend is the authority and enforces the
-// same codes on every request. Hiding a nav entry is a courtesy so an operator is
-// not sent to a screen that can only fail; it is not a security boundary, and
-// nothing here may ever be treated as one. An empty list means "any admin".
-
 export const NAV_DOMAINS = [
   {
     id: 'overview',
     label: 'Overview',
-    // `mobile` drives the phone information architecture. Four domain entries sit
-    // on the bottom bar; everything else is reached through More. The console used
-    // to put all 13 destinations in ONE horizontally scrolling strip at 40px
-    // targets, so finding a screen meant scrolling a bar you could not see the end
-    // of. See AdminMobileNav.
     mobile: { primary: true, order: 1, shortLabel: 'Overview', icon: LayoutDashboard },
     items: [
       {
@@ -35,9 +16,6 @@ export const NAV_DOMAINS = [
         label: 'Overview',
         icon: LayoutDashboard,
         title: 'Overview',
-        // The landing page. It aggregates whatever counts the principal is allowed
-        // to read and degrades per widget, so it must never be hidden — hiding it
-        // would leave a limited admin with no entry point at all.
         permissions: [],
       },
     ],
@@ -53,8 +31,6 @@ export const NAV_DOMAINS = [
         icon: UserCheck,
         badge: 'approvals',
         title: 'User approvals',
-        // Reading the queue needs applications.read; deciding needs
-        // applications.decide, which the screen's own actions check.
         permissions: ['applications.read'],
       },
       {
@@ -69,8 +45,6 @@ export const NAV_DOMAINS = [
   {
     id: 'funds',
     label: 'Funds',
-    // The issued catalogue. Fund details/terms are the child workspace route
-    // (`/admin/funds/:fundId`), which prefix-matches the catalogue item.
     mobile: { primary: true, order: 4, shortLabel: 'Funds', icon: Layers },
     items: [
       {
@@ -78,8 +52,6 @@ export const NAV_DOMAINS = [
         label: 'Issued catalogue',
         icon: Layers,
         title: 'Issued fund catalogue',
-        // funds.read must never reveal client names, payments or balances; the
-        // catalogue carries terms and the latest published AUM only.
         permissions: ['funds.read'],
       },
     ],
@@ -87,9 +59,6 @@ export const NAV_DOMAINS = [
   {
     id: 'reviews',
     label: 'Investment reviews',
-    // PhonePe confirms a payment; this is where an admin privately verifies the
-    // bank evidence and accepts (allocating to the client's selected fund) or
-    // rejects into a refund. Approval buttons live here, never on a payment row.
     mobile: { primary: true, order: 2, shortLabel: 'Reviews', icon: ShieldCheck },
     items: [
       {
@@ -154,13 +123,15 @@ export const NAV_DOMAINS = [
         icon: PieChart,
         title: 'Current published AUM',
         permissions: ['aum.read'],
+        requiresAll: ['funds.read'],
       },
       {
         path: '/admin/aum/manage',
-        label: 'Initialize or adjust one fund',
+        label: 'Adjust one fund',
         icon: TrendingUp,
-        title: 'Initialize or adjust one fund',
+        title: 'Adjust one fund',
         permissions: ['aum.write'],
+        requiresAll: ['funds.read', 'aum.read'],
       },
       {
         path: '/admin/aum/collective',
@@ -168,6 +139,7 @@ export const NAV_DOMAINS = [
         icon: Layers,
         title: 'Collective fund AUM growth',
         permissions: ['aum.write'],
+        requiresAll: ['funds.read'],
       },
       {
         path: '/admin/aum/history',
@@ -175,14 +147,13 @@ export const NAV_DOMAINS = [
         icon: History,
         title: 'AUM history and corrections',
         permissions: ['aum.read'],
+        requiresAll: ['funds.read'],
       },
     ],
   },
   {
     id: 'payments',
     label: 'Payments',
-    // Read-only PhonePe gateway evidence. Acceptance is an Investment reviews
-    // task; no approval buttons live on a payment record.
     mobile: { primary: false, shortLabel: 'Payments', icon: CreditCard },
     items: [
       {
@@ -259,11 +230,6 @@ export const NAV_DOMAINS = [
   },
 ];
 
-// Fallback for a pathname that matches no nav item. It must NOT claim to be
-// Overview: the shell renders Not Found for unknown paths, and a TopBar reading
-// "Overview" over a Not Found body is the same silent-redirect confusion in a
-// different place. `/admin` itself lands here for the one render before
-// LegacyTabRedirect resolves, so the copy stays neutral rather than alarming.
 const DEFAULT_META = {
   title: 'Admin console',
   crumbs: ['BeOnEdge'],
@@ -288,21 +254,6 @@ export function findNavMeta(pathname) {
   return DEFAULT_META;
 }
 
-/* -------------------------------------------------------------------------- */
-/* permissions                                                                */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Does this principal hold at least one of `codes`?
- *
- * Mirrors the backend's `requireAnyPermission` semantics exactly: OR across the
- * list, and FAIL CLOSED on a missing or malformed permissions array. An empty
- * `codes` means the destination has no permission requirement.
- *
- * Note the role check cannot substitute for this: `authApi.toAdminUser` injects
- * `'admin'` into `roles` unconditionally, so every admin principal passes a role
- * test. Permissions are the only meaningful distinction on the frontend.
- */
 export function hasAnyPermission(user, codes) {
   if (!Array.isArray(codes) || codes.length === 0) return true;
   const held = Array.isArray(user?.permissions) ? user.permissions : [];
@@ -310,36 +261,44 @@ export function hasAnyPermission(user, codes) {
   return codes.some((code) => held.includes(code));
 }
 
-/** Can this principal reach the destination that owns `pathname`? */
-export function canAccessPath(user, pathname) {
-  const meta = findNavMeta(pathname);
-  // An unmatched path has no permission requirement to check — it is Not Found,
-  // which is a different answer from Forbidden and must not be conflated.
-  if (!meta.item) return true;
-  return hasAnyPermission(user, meta.item.permissions);
+export function hasAllPermissions(user, codes) {
+  if (!Array.isArray(codes) || codes.length === 0) return true;
+  const held = Array.isArray(user?.permissions) ? user.permissions : [];
+  if (held.length === 0) return false;
+  return codes.every((code) => held.includes(code));
 }
 
-/**
- * The nav tree with unauthorised items removed, and domains that end up empty
- * dropped entirely — an expandable group containing nothing is worse than no
- * group.
- */
+export function canAccessItem(user, item) {
+  if (!item) return true;
+  return hasAnyPermission(user, item.permissions) && hasAllPermissions(user, item.requiresAll);
+}
+
+const ROUTE_PERMISSION_OVERRIDES = [
+  {
+    path: '/admin/funds/new',
+    permissions: ['funds.write'],
+    requiresAll: ['funds.write', 'aum.write'],
+  },
+];
+
+export function canAccessPath(user, pathname) {
+  const override = ROUTE_PERMISSION_OVERRIDES.find((entry) => entry.path === pathname);
+  if (override) return canAccessItem(user, override);
+  const meta = findNavMeta(pathname);
+  if (!meta.item) return true;
+  return canAccessItem(user, meta.item);
+}
+
 export function visibleNavDomains(user) {
   return NAV_DOMAINS
-    .map((domain) => ({ ...domain, items: domain.items.filter((item) => hasAnyPermission(user, item.permissions)) }))
+    .map((domain) => ({ ...domain, items: domain.items.filter((item) => canAccessItem(user, item)) }))
     .filter((domain) => domain.items.length > 0);
 }
 
-/** Every permission code referenced by the tree. Used by tests and tooling. */
 export function allNavPermissions() {
   return [...new Set(NAV_DOMAINS.flatMap((d) => d.items.flatMap((i) => i.permissions)))].sort();
 }
 
-/* -------------------------------------------------------------------------- */
-/* mobile information architecture                                            */
-/* -------------------------------------------------------------------------- */
-
-/** The domain that owns `pathname`, or null. */
 export function findNavDomain(pathname) {
   for (const domain of NAV_DOMAINS) {
     for (const item of domain.items) {
@@ -349,17 +308,6 @@ export function findNavDomain(pathname) {
   return null;
 }
 
-/**
- * The phone navigation model: a few primary domains plus everything else behind
- * More.
- *
- * Both lists are permission-filtered, so an operator never sees a tab whose every
- * destination would 403. A primary domain with no visible items is DEMOTED rather
- * than shown empty, and `more` therefore holds whatever is left — including a
- * primary domain that lost all its items.
- *
- * @returns {{ primary: object[], more: object[] }}
- */
 export function mobileNavModel(user) {
   const visible = visibleNavDomains(user);
   const primary = visible
@@ -370,7 +318,12 @@ export function mobileNavModel(user) {
   return { primary, more };
 }
 
-/** Where a domain tab lands: its first destination the principal may reach. */
 export function domainEntryPath(domain) {
   return domain?.items?.[0]?.path ?? '/admin/overview';
+}
+
+export function aumEntryPathFor(user) {
+  const domain = NAV_DOMAINS.find((entry) => entry.id === 'aum');
+  const permitted = (domain?.items ?? []).find((item) => canAccessItem(user, item));
+  return permitted?.path ?? '/admin/aum/current';
 }

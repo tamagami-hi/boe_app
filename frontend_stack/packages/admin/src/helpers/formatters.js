@@ -1,5 +1,3 @@
-// Admin display formatters. Money goes through the shared formatter so the console
-// and the client never disagree about how a rupee figure looks.
 import { fmtMoney } from '@beonedge/shared/format.js';
 
 export function fmtInt(value) {
@@ -18,14 +16,6 @@ export function displayRole(user) {
   return role ? role.charAt(0).toUpperCase() + role.slice(1).toLowerCase() : 'Admin';
 }
 
-/**
- * A signup timestamp in a form an operator can read at a glance.
- *
- * The approvals table used to print the raw ISO string the API returns
- * ("2026-08-07T10:05:15.239Z"), which is 24 characters of mostly noise and wraps
- * onto two lines in a phone-width column. Locale formatting is deliberately
- * avoided in favour of a fixed short form so the column width is predictable.
- */
 export function fmtDateTime(value) {
   if (!value) return 'Not recorded';
   const date = new Date(value);
@@ -42,42 +32,26 @@ export function collectionKey(path) {
   return String(path || '').split('/').filter(Boolean).pop();
 }
 
-/**
- * Paise (a bigint serialised as a string) to rupees.
- *
- * Returns null for a missing value rather than 0. On these screens a zero is read
- * as "this payment was for nothing", so the absence has to stay visible.
- */
 export function paiseToRupees(value) {
   if (value === null || value === undefined || value === '') return null;
   const paise = Number(value);
   return Number.isFinite(paise) ? paise / 100 : null;
 }
 
-/** Rupees to an INR string, via the shared formatter. Kept as one call so paise
- * can never reach a cell unconverted, and a missing value can never read as ₹0. */
 export function fmtPaise(value, decimals = 2) {
   return fmtMoney(paiseToRupees(value), { decimals });
 }
 
-/** Signed variant, for a return that can be negative. */
 export function fmtPaiseSigned(value, decimals = 2) {
   return fmtMoney(paiseToRupees(value), { decimals, sign: true });
 }
 
-/** A backend state token in operator language: `provider_pending` -> `Provider pending`. */
 export function humanizeState(value) {
   const text = String(value || '').replace(/[_-]+/gu, ' ').trim();
   if (!text) return 'Unknown';
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-/*
- * Same story for `GET /v1/admin/payments`: the screens were written against a
- * legacy mock shape — `amount`, `resolvedAmount`, `mode`, `time`, `fundId`,
- * `fundName`, `userName` — none of which the endpoint sends, so every amount
- * rendered as ₹0 and every pool as "Unmapped fund". Map once here.
- */
 export function normalizePaymentRow(row = {}) {
   return {
     ...row,
@@ -93,7 +67,6 @@ export function normalizePaymentRow(row = {}) {
     succeededAt: row.succeededAt || null,
     failedAt: row.failedAt || null,
     createdAt: row.createdAt || '',
-    // The moment the payment reached its outcome, if it has one.
     settledAt: row.succeededAt || row.failedAt || null,
   };
 }
@@ -122,47 +95,26 @@ export function normalizeApprovalRow(row = {}) {
   };
 }
 
-// The canonical `/v1/admin/funds` projection is catalogue-shaped (slug + current
-// published version + latest published AUM snapshot). AUM is an absolute snapshot
-// (`aumPaise` + `asOfDate`); there is no NAV, no unit price, and no
-// opening/investment/redemption roll-forward in this model.
 export function normalizeFundRow(row = {}) {
   const aumPaise = row.aum?.aumPaise ?? null;
-  const aumNumber = Number(aumPaise);
   return {
     ...row,
     id: row.id || '',
     slug: row.slug || '',
     name: row.name || row.slug || 'Untitled fund',
     status: row.status || 'draft',
-    lifecycleStage: row.status || 'draft',
-    tagline: row.objective || '',
     category: row.category || '',
-    riskLabel: row.riskLevel || '',
+    objective: row.objective || '',
+    riskLevel: row.riskLevel || '',
     returnTier: row.returnTier || null,
     aumPaise,
-    // Rupees for tiles that aggregate across funds; null when unpublished so a
-    // missing figure can never read as ₹0.
-    totalPoolSize: aumPaise === null || !Number.isFinite(aumNumber) ? null : aumNumber / 100,
     aumAsOfDate: row.aum?.asOfDate ?? null,
     aumUpdatedAt: row.aum?.updatedAt ?? null,
     stockCount: row.stockCount ?? 0,
-    minSip: row.minimumSipPaise === null || row.minimumSipPaise === undefined
-      ? null
-      : Number(row.minimumSipPaise) / 100,
-    minLumpsum: row.minimumPurchasePaise === null || row.minimumPurchasePaise === undefined
-      ? null
-      : Number(row.minimumPurchasePaise) / 100,
     currentVersion: row.currentVersion ?? null,
-    analytics: { totalInvested: 0 },
-    sectors: [],
-    investments: [],
   };
 }
 
-// `GET /v1/admin/audit-logs` emits the canonical event shape. The audit screen
-// filters on `action`/`adminId`/`reason`, so alias them here rather than in the
-// backend projection, which stays faithful to `audit_events`.
 export function normalizeAuditRow(row = {}) {
   return {
     ...row,
@@ -181,5 +133,4 @@ export function csvNumbers(value) {
   if (!value) return [];
   return String(value).split(',').map((s) => Number(s.trim())).filter(Number.isFinite);
 }
-
 
