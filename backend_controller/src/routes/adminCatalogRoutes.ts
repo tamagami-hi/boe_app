@@ -170,6 +170,21 @@ const mutate = async <TBody extends Record<string, unknown>>(
 const fundIdOf = (request: FastifyRequest): string =>
   parseOrThrow(uuidParam, (request.params as { fundId?: unknown }).fundId)
 
+const lockWritableFund = async (
+  deps: AdminCatalogDeps,
+  tx: Parameters<Parameters<UnitOfWork["execute"]>[0]>[0],
+  fundId: string,
+) => {
+  const fund = await deps.catalogRepository.lock(tx, fundId)
+  if (fund === null) throw new AppError("RESOURCE_NOT_FOUND")
+  if (fund.state === "archived") {
+    throw new AppError("STATE_CONFLICT", {
+      fields: { fundId: ["an archived fund cannot be modified"] },
+    })
+  }
+  return fund
+}
+
 const listFunds = async (deps: AdminCatalogDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: false })
   requireAnyPermission(principal, ["funds.read"])
@@ -313,7 +328,7 @@ const createFund = async (deps: AdminCatalogDeps, request: FastifyRequest, reply
     reply,
     FUNDS_ROUTE,
     "POST",
-    { slug: body.slug, name: body.terms.name, aumPaise: body.openingAum.aumPaise },
+    { slug: body.slug, terms: body.terms, openingAum: body.openingAum },
     principal.userId,
     async (tx) => {
       if (await deps.catalogRepository.slugExists(tx, body.slug)) throw new AppError("STATE_CONFLICT")
@@ -427,12 +442,10 @@ const publishVersion = async (deps: AdminCatalogDeps, request: FastifyRequest, r
     reply,
     `${FUNDS_ROUTE}/:fundId/versions`,
     "POST",
-    { fundId, name: body.name, category: body.category },
+    { fundId, ...body },
     principal.userId,
     async (tx) => {
-      const fund = await deps.catalogRepository.lock(tx, fundId)
-      if (fund === null) throw new AppError("RESOURCE_NOT_FOUND")
-      if (fund.state === "archived") throw new AppError("STATE_CONFLICT")
+      const fund = await lockWritableFund(deps, tx, fundId)
 
       const written = await writeFundVersion(deps, tx, {
         fundId,
@@ -506,12 +519,10 @@ const addStock = async (deps: AdminCatalogDeps, request: FastifyRequest, reply: 
     reply,
     `${FUNDS_ROUTE}/:fundId/stocks`,
     "POST",
-    { fundId, stockName: body.stockName, quarterLabel: body.quarterLabel },
+    { fundId, ...body },
     principal.userId,
     async (tx) => {
-      const fund = await deps.catalogRepository.lock(tx, fundId)
-      if (fund === null) throw new AppError("RESOURCE_NOT_FOUND")
-      if (fund.state === "archived") throw new AppError("STATE_CONFLICT")
+      await lockWritableFund(deps, tx, fundId)
       const stock = await deps.catalogRepository.insertStock(tx, {
         fundId,
         stockName: body.stockName,
@@ -560,11 +571,17 @@ const editStock = async (deps: AdminCatalogDeps, request: FastifyRequest, reply:
     reply,
     `${FUNDS_ROUTE}/:fundId/stocks/:stockId`,
     "PATCH",
-    { fundId, stockId, stockName: body.stockName },
+    { fundId, stockId, ...body },
     principal.userId,
     async (tx) => {
+      await lockWritableFund(deps, tx, fundId)
       const existing = await deps.catalogRepository.findStock(tx, fundId, stockId)
       if (existing === null) throw new AppError("RESOURCE_NOT_FOUND")
+      if (existing.state !== "active") {
+        throw new AppError("STATE_CONFLICT", {
+          fields: { stockId: ["an exited holding is a historical disclosure and cannot be edited"] },
+        })
+      }
       const stock = await deps.catalogRepository.updateStock(tx, fundId, stockId, {
         stockName: body.stockName,
         quarterLabel: body.quarterLabel,
@@ -614,8 +631,14 @@ const exitStock = async (deps: AdminCatalogDeps, request: FastifyRequest, reply:
     { fundId, stockId },
     principal.userId,
     async (tx) => {
+      await lockWritableFund(deps, tx, fundId)
       const existing = await deps.catalogRepository.findStock(tx, fundId, stockId)
       if (existing === null) throw new AppError("RESOURCE_NOT_FOUND")
+      if (existing.state !== "active") {
+        throw new AppError("STATE_CONFLICT", {
+          fields: { stockId: ["this holding has already been marked exited"] },
+        })
+      }
       const stock = await deps.catalogRepository.markStockExited(tx, fundId, stockId, now)
       await deps.auditRepository.append(tx, {
         actorType: "admin",
