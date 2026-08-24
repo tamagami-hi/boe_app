@@ -32,6 +32,7 @@ export default defineConfig(() => {
               return 'vendor';
             }
             if (id.includes('/packages/admin/')) {
+              if (id.endsWith('.css')) return undefined;
               if (id.includes('/screens/fundOps/') || id.includes('FundStockListPanel')) {
                 return 'admin-funds';
               }

@@ -5,21 +5,6 @@
   .adm-review-grid { grid-template-columns: 1fr; }
   .adm-review-actions { flex-direction: column-reverse; }
   .adm-review-actions .be-btn { width: 100%; justify-content: center; }
-
-  .adm-fund-layout { grid-template-columns: 1fr; }
-  .adm-sector-row { grid-template-columns: 1fr 60px 80px 36px; }
-  .adm-investment-row { grid-template-columns: 1fr 100px 120px 36px; }
-  .adm-fund-editor-panel { width: 100%; }
-
-  .adm-fund-editor-layout { grid-template-columns: 1fr; }
-  .adm-fund-editor-header-title {
-    font-size: var(--be-text-lg);
-    text-align: left;
-    flex: none;
-    width: 100%;
-    order: 3;
-  }
-  .adm-fund-editor-section[id] { scroll-margin-top: 96px; }
 }
 
 @media (max-width: 768px) {
@@ -66,12 +51,10 @@
   .adm-stat { padding: var(--be-space-4); }
   .adm-stat-value { font-size: var(--be-text-xl); }
 
-  .adm-stats,
-  .adm-fund-stats {
+  .adm-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--be-space-3);
   }
-  .adm-aum-current { text-align: left; }
   .adm-card-head,
   .adm-table .adm-card-head {
     padding-left: var(--be-space-4);
@@ -97,20 +80,6 @@
   .adm-table-scroll thead button,
   .adm-table thead button { min-height: var(--be-target-compact); }
 
-  .adm-fund-tabs {
-    display: flex;
-    width: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-  .adm-fund-tabs::-webkit-scrollbar { display: none; }
-  .adm-fund-tabs button {
-    flex: 0 0 auto;
-    white-space: nowrap;
-    min-height: var(--be-target-compact);
-  }
   .adm-payment-filters {
     align-items: stretch;
     padding: var(--be-space-3) var(--be-space-4);
@@ -167,24 +136,6 @@
   .adm-table-cards tbody td[colspan]::before { display: none; }
   .adm-table-cards tbody td[colspan] { display: block; text-align: left; }
   .adm-review-panel { width: 100%; }
-  .adm-series-row { grid-template-columns: 1fr; }
-
-  .adm-fund-layout--equal { grid-template-columns: 1fr; }
-
-  .adm-fund-editor-header { position: relative; }
-  .adm-fund-editor-subnav {
-    position: sticky;
-    top: 0;
-    z-index: var(--be-z-subnav-mobile);
-    padding: var(--be-space-2) var(--be-space-4);
-  }
-  .adm-fund-editor-subnav-link {
-    padding: var(--be-space-1) var(--be-space-2);
-    font-size: var(--be-text-xs);
-  }
-  .adm-fund-editor-section[id] { scroll-margin-top: 56px; }
-  .adm-sector-row,
-  .adm-investment-row { min-width: max-content; }
 
   .adm-toast-container {
     left: var(--be-space-4);

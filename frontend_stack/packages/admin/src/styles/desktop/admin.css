@@ -18,42 +18,6 @@
   grid-column: 1 / -1;
 }
 
-.adm-aum-current {
-  text-align: right;
-}
-
-.adm-aum-value {
-  font-size: 1.25rem;
-  font-weight: 600;
-}
-
-.adm-aum-projection {
-  padding: 0.625rem 0.75rem;
-  border-radius: 0.5rem;
-  background: var(--be-surface);
-  font-size: 0.875rem;
-  color: var(--be-fg);
-}
-
-.adm-gain-result {
-  padding: 0.625rem 0.75rem;
-  border-radius: 0.5rem;
-  background: var(--be-green-soft);
-  color: var(--be-text-on-green);
-  font-size: 0.875rem;
-}
-
-.adm-exited-stocks {
-  margin-top: 0.75rem;
-  font-size: 0.8125rem;
-  opacity: 0.8;
-}
-
-.adm-exited-stocks ul {
-  margin: 0.5rem 0 0;
-  padding-left: 1.1rem;
-}
-
 @media (max-width: 40rem) {
   .adm-form-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -126,14 +90,6 @@
   border-top: var(--be-border-1);
 }
 
-.adm-picker-more {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--be-space-3);
-  padding: 0 var(--be-space-5) var(--be-space-3);
-}
-
 .adm-inline-error {
   margin: 0 var(--be-space-5) var(--be-space-3);
 }
@@ -144,60 +100,6 @@
 
 .adm-field--action {
   align-self: end;
-}
-
-.adm-check-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--be-space-2);
-  margin-top: var(--be-space-2);
-}
-
-.adm-check-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--be-space-2);
-  min-height: var(--be-target-min);
-  padding: var(--be-space-2) var(--be-space-3);
-  border: var(--be-border-1);
-  border-radius: var(--be-radius-pill);
-  background: var(--be-bg-elevated);
-  color: var(--be-fg);
-  font-size: var(--be-text-sm);
-  cursor: pointer;
-}
-
-.adm-check-chip.is-active {
-  border-color: var(--be-fg);
-  background: var(--be-slate-soft);
-  font-weight: 500;
-}
-
-.adm-check-chip:focus-within {
-  outline: 2px solid var(--be-accent);
-  outline-offset: 2px;
-}
-
-.adm-check-chip input[type="checkbox"] {
-  width: auto;
-  min-height: 0;
-  padding: 0;
-  margin: 0;
-  accent-color: var(--be-fg);
-}
-
-.adm-correction-panel {
-  margin: var(--be-space-4) var(--be-space-5) var(--be-space-5);
-  padding: var(--be-space-4);
-  border: var(--be-border-1);
-  border-radius: var(--be-radius-md);
-  background: var(--be-surface);
-}
-
-.adm-correction-title {
-  margin: 0;
-  font: 600 var(--be-text-sm) var(--be-font-ui);
-  color: var(--be-fg);
 }
 
 .apk-splash.is-admin {
