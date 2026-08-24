@@ -12,6 +12,7 @@
  */
 import { createHash } from "node:crypto"
 
+import { AppError } from "../../http/errorCatalog.js"
 import { symmetricHalfUpBasisPoints } from "../shared/moneyRounding.js"
 
 /** One fund's latest authoritative snapshot state — the basis for growth. */
@@ -34,6 +35,14 @@ export const aumGrowthDelta = (basisAumPaise: bigint, instruction: AumGrowthInst
   instruction.kind === "amount"
     ? instruction.growthPaise
     : symmetricHalfUpBasisPoints(basisAumPaise, instruction.growthBasisPoints)
+
+export const assertAumDeltaNonZero = (deltaPaise: bigint): void => {
+  if (deltaPaise === 0n) {
+    throw new AppError("VALIDATION_FAILED", {
+      fields: { growthBasisPoints: ["The rate rounds to a zero adjustment for this value."] },
+    })
+  }
+}
 
 /** Collective instruction: one common rate XOR an explicit signed delta per fund. */
 export type CollectiveAumInstruction =
@@ -86,6 +95,7 @@ export const planAumGrowth = (
         ? symmetricHalfUpBasisPoints(basis.aumPaise, BigInt(instruction.growthBasisPoints))
         : explicit?.get(basis.fundId)
     if (delta === undefined) throw new Error(`collective instruction has no delta for ${basis.fundId}`)
+    assertAumDeltaNonZero(delta)
     const after = basis.aumPaise + delta
     if (after < 0n) {
       invalidFundIds.push(basis.fundId)

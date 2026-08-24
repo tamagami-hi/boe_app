@@ -4,9 +4,10 @@ import { z } from "zod"
 
 import type { UnitOfWork } from "../db/database.js"
 import type { IdempotencyRepository, Transaction } from "../db/repositories.js"
-import type { Database } from "../db/types.js"
+import type { Database, FundState } from "../db/types.js"
 import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adminAccess.js"
 import {
+  assertAumDeltaNonZero,
   aumGrowthDelta,
   canonicalCollectiveAumCommand,
   computeAumBasisHash,
@@ -17,6 +18,7 @@ import {
 } from "../domain/admin/fundAumGrowth.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { AppError } from "../http/errorCatalog.js"
+import type { FixedWindowRateLimiter } from "../http/rateLimit.js"
 import { parseOrThrow } from "../http/validation.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
 import type { FundAumRepository, FundAumSnapshotRow } from "../repositories/fundAumRepository.js"
@@ -54,12 +56,24 @@ export interface AdminAumDeps {
   readonly aumRepository: FundAumRepository
   readonly auditRepository: AuditWriteRepository
   readonly idempotencyRepository: IdempotencyRepository
+  readonly rateLimiter: FixedWindowRateLimiter
 }
 
 const signedPaiseSchema = z
   .string()
   .trim()
   .regex(/^-?(0|[1-9]\d{0,18})$/u, "must be a signed decimal paise string")
+const nonZeroSignedPaiseSchema = signedPaiseSchema.refine(
+  (value) => !/^-?0$/u.test(value),
+  "must not be zero — a growth command has to change the figure",
+)
+const nonZeroBasisPointsSchema = (maxBasisPoints: number) =>
+  z
+    .number()
+    .int()
+    .min(-10_000)
+    .max(maxBasisPoints)
+    .refine((value) => value !== 0, "must not be zero — a growth command has to change the figure")
 const nonNegativePaiseSchema = z
   .string()
   .trim()
@@ -79,8 +93,8 @@ const initializeBodySchema = z
 const growthBodySchema = (maxBasisPoints: number) =>
   z
     .object({
-      growthPaise: signedPaiseSchema.optional(),
-      growthBasisPoints: z.number().int().min(-10_000).max(maxBasisPoints).optional(),
+      growthPaise: nonZeroSignedPaiseSchema.optional(),
+      growthBasisPoints: nonZeroBasisPointsSchema(maxBasisPoints).optional(),
       asOfDate: asOfDateSchema,
       reasonCode: reasonCodeSchema,
       note: noteSchema,
@@ -113,9 +127,9 @@ const collectiveFields = (maxBasisPoints: number) => ({
   reasonCode: reasonCodeSchema,
   note: noteSchema,
   fundIds: z.array(uuidParam).min(1).max(MAX_COLLECTIVE_FUND_COUNT).optional(),
-  growthBasisPoints: z.number().int().min(-10_000).max(maxBasisPoints).optional(),
+  growthBasisPoints: nonZeroBasisPointsSchema(maxBasisPoints).optional(),
   items: z
-    .array(z.object({ fundId: uuidParam, growthPaise: signedPaiseSchema }).strict())
+    .array(z.object({ fundId: uuidParam, growthPaise: nonZeroSignedPaiseSchema }).strict())
     .min(1)
     .max(MAX_COLLECTIVE_FUND_COUNT)
     .optional(),
@@ -176,6 +190,23 @@ export const basisOf = (snapshot: FundAumSnapshotRow): AumFundBasis => ({
   revision: snapshot.revision,
 })
 
+export const AUM_ELIGIBLE_FUND_STATES = ["draft", "published", "paused"] as const
+
+export const isAumEligible = (state: FundState): boolean =>
+  (AUM_ELIGIBLE_FUND_STATES as readonly FundState[]).includes(state)
+
+export const assertAumEligible = (
+  requested: readonly string[],
+  found: readonly { readonly id: string; readonly state: FundState }[],
+): void => {
+  if (found.length !== requested.length) throw new AppError("RESOURCE_NOT_FOUND")
+  if (found.some((fund) => !isAumEligible(fund.state))) {
+    throw new AppError("STATE_CONFLICT", {
+      fields: { fundIds: ["an archived fund cannot receive an AUM publication"] },
+    })
+  }
+}
+
 const mapSnapshot = (row: FundAumSnapshotRow): Record<string, unknown> => ({
   id: row.id,
   fundId: row.fundId,
@@ -183,6 +214,10 @@ const mapSnapshot = (row: FundAumSnapshotRow): Record<string, unknown> => ({
   revision: row.revision,
   aumPaise: row.aumPaise,
   reasonCode: row.reasonCode,
+  note: row.note,
+  growthBatchId: row.growthBatchId,
+  publishedByUserId: row.publishedByUserId,
+  requestId: row.requestId,
   createdAt: iso(row.createdAt),
 })
 
@@ -192,12 +227,17 @@ const maxBasisPointsOf = (deps: AdminAumDeps): number =>
 const lockWritableFund = async (deps: AdminAumDeps, tx: Transaction, fundId: string): Promise<void> => {
   const fund = await deps.aumRepository.lockFund(tx, fundId)
   if (fund === null) throw new AppError("RESOURCE_NOT_FOUND")
-  if (fund.state === "archived") throw new AppError("STATE_CONFLICT")
+  if (!isAumEligible(fund.state)) {
+    throw new AppError("STATE_CONFLICT", {
+      fields: { fundId: ["an archived fund cannot receive an AUM publication"] },
+    })
+  }
 }
 
 const initializeAum = async (deps: AdminAumDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
   requireAnyPermission(principal, ["aum.write"])
+  deps.rateLimiter.hit(principal.userId || request.ip)
   const fundId = parseOrThrow(uuidParam, (request.params as { fundId?: unknown }).fundId)
   const body = parseOrThrow(initializeBodySchema, request.body)
   const key = requireIdempotencyKey(request)
@@ -271,6 +311,7 @@ const initializeAum = async (deps: AdminAumDeps, request: FastifyRequest, reply:
 const growAum = async (deps: AdminAumDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
   requireAnyPermission(principal, ["aum.write"])
+  deps.rateLimiter.hit(principal.userId || request.ip)
   const fundId = parseOrThrow(uuidParam, (request.params as { fundId?: unknown }).fundId)
   const body = parseOrThrow(growthBodySchema(maxBasisPointsOf(deps)), request.body)
   const key = requireIdempotencyKey(request)
@@ -298,6 +339,7 @@ const growAum = async (deps: AdminAumDeps, request: FastifyRequest, reply: Fasti
           : { kind: "percentage", growthBasisPoints: BigInt(body.growthBasisPoints ?? 0) }
       const before = BigInt(latest.aumPaise)
       const delta = aumGrowthDelta(before, instruction)
+      assertAumDeltaNonZero(delta)
       const after = before + delta
       if (after < 0n) throw new AppError("STATE_CONFLICT")
 
@@ -364,6 +406,7 @@ const growAum = async (deps: AdminAumDeps, request: FastifyRequest, reply: Fasti
 const correctSnapshot = async (deps: AdminAumDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
   requireAnyPermission(principal, ["aum.write"])
+  deps.rateLimiter.hit(principal.userId || request.ip)
   const snapshotId = parseOrThrow(uuidParam, (request.params as { snapshotId?: unknown }).snapshotId)
   const body = parseOrThrow(correctionBodySchema, request.body)
   const key = requireIdempotencyKey(request)
@@ -466,6 +509,7 @@ const listHistory = async (deps: AdminAumDeps, request: FastifyRequest, reply: F
 const commitCollectiveGrowth = async (deps: AdminAumDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
   requireAnyPermission(principal, ["aum.write"])
+  deps.rateLimiter.hit(principal.userId || request.ip)
   const body = parseOrThrow(collectiveCommitBodySchema(maxBasisPointsOf(deps)), request.body)
   const key = requireIdempotencyKey(request)
   const targets = collectiveTargets(body)
@@ -479,8 +523,7 @@ const commitCollectiveGrowth = async (deps: AdminAumDeps, request: FastifyReques
     requestHash: hashRequest({ ...body }),
     execute: async (tx) => {
       const locked = await deps.aumRepository.lockFunds(tx, targets.fundIds)
-      if (locked.length !== targets.fundIds.length) throw new AppError("RESOURCE_NOT_FOUND")
-      if (locked.some((fund) => fund.state === "archived")) throw new AppError("STATE_CONFLICT")
+      assertAumEligible(targets.fundIds, locked)
       const latestRows = await deps.aumRepository.findLatestSnapshots(tx, targets.fundIds)
       if (latestRows.length !== targets.fundIds.length) {
         throw new AppError("STATE_CONFLICT")

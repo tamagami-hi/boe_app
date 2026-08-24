@@ -84,6 +84,9 @@ const ServerConfigSchema = z.object({
   // Client growth business cap: the largest positive rate an admin may post
   // (spec §8.1; default +1000.00%). The -100.00% floor is not configurable.
   CLIENT_GROWTH_MAX_BASIS_POINTS: z.coerce.number().int().min(1).max(10_000_000).default(100_000),
+  FUND_AUM_MAX_GROWTH_BASIS_POINTS: z.coerce.number().int().min(1).max(10_000_000).default(100_000),
+  FUND_AUM_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().min(1_000).default(60_000),
+  FUND_AUM_RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().min(1).default(30),
   // PhonePe payment gateway. The provider callback (the payment confirmation
   // channel) is basic-auth protected by credentials issued in the PhonePe
   // dashboard; the API client credentials drive status checks and refunds.
@@ -232,6 +235,11 @@ export interface ServerConfig {
      * points (spec §8.1; the lower bound is fixed at -10,000 = -100.00%).
      */
     readonly maxBasisPoints: number
+  }
+  readonly fundAum: {
+    readonly maxGrowthBasisPoints: number
+    readonly rateLimitWindowMs: number
+    readonly rateLimitMaxRequests: number
   }
   readonly cache: {
     readonly redisUrl: string | null
@@ -436,6 +444,11 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
     },
     clientGrowth: {
       maxBasisPoints: parsed.CLIENT_GROWTH_MAX_BASIS_POINTS,
+    },
+    fundAum: {
+      maxGrowthBasisPoints: parsed.FUND_AUM_MAX_GROWTH_BASIS_POINTS,
+      rateLimitWindowMs: parsed.FUND_AUM_RATE_LIMIT_WINDOW_MS,
+      rateLimitMaxRequests: parsed.FUND_AUM_RATE_LIMIT_MAX_REQUESTS,
     },
     cache: {
       redisUrl: redisUrl,

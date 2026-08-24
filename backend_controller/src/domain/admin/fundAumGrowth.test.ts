@@ -6,7 +6,9 @@
  */
 import { describe, expect, test } from "vitest"
 
+import { AppError } from "../../http/errorCatalog.js"
 import {
+  assertAumDeltaNonZero,
   aumGrowthDelta,
   canonicalCollectiveAumCommand,
   computeAumBasisHash,
@@ -118,6 +120,33 @@ describe("planAumGrowth", () => {
     expect(overflowing.ok).toBe(false)
     if (overflowing.ok) return
     expect(overflowing.invalidFundIds).toEqual(["fund-b"])
+  })
+
+  test("a rate that rounds to a zero delta rejects the whole plan as a validation error", () => {
+    let thrown: unknown
+    try {
+      planAumGrowth([basis("fund-a", 99n)], { type: "percentage", growthBasisPoints: 50 })
+    } catch (error) {
+      thrown = error
+    }
+    expect(thrown).toBeInstanceOf(AppError)
+    expect((thrown as AppError).code).toBe("VALIDATION_FAILED")
+  })
+})
+
+describe("assertAumDeltaNonZero", () => {
+  test("accepts any non-zero delta and rejects zero", () => {
+    expect(() => assertAumDeltaNonZero(1n)).not.toThrow()
+    expect(() => assertAumDeltaNonZero(-1n)).not.toThrow()
+
+    let thrown: unknown
+    try {
+      assertAumDeltaNonZero(0n)
+    } catch (error) {
+      thrown = error
+    }
+    expect(thrown).toBeInstanceOf(AppError)
+    expect((thrown as AppError).code).toBe("VALIDATION_FAILED")
   })
 })
 

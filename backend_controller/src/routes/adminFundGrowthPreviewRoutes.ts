@@ -22,6 +22,7 @@ import { canonicalCollectiveAumCommand, computeAumBasisHash, planAumGrowth } fro
 import { AppError } from "../http/errorCatalog.js"
 import { parseOrThrow } from "../http/validation.js"
 import {
+  assertAumEligible,
   AUM_ROUTE,
   basisOf,
   collectivePlanBodySchema,
@@ -39,12 +40,17 @@ const planCollectiveGrowth = async (deps: AdminAumDeps, request: FastifyRequest,
   )
   const targets = collectiveTargets(body)
 
-  const existing = await deps.aumRepository.findExistingFundIds(deps.database, targets.fundIds)
-  if (existing.length !== targets.fundIds.length) throw new AppError("RESOURCE_NOT_FOUND")
+  const existing = await deps.aumRepository.findFundStates(deps.database, targets.fundIds)
+  assertAumEligible(targets.fundIds, existing)
   const latestRows = await deps.aumRepository.findLatestSnapshots(deps.database, targets.fundIds)
   if (latestRows.length !== targets.fundIds.length) {
     // A fund without any snapshot has no basis to grow from (§8.3).
     throw new AppError("STATE_CONFLICT")
+  }
+  if (latestRows.some((row) => body.asOfDate < row.asOfDate)) {
+    throw new AppError("STATE_CONFLICT", {
+      fields: { asOfDate: ["cannot be earlier than a basis snapshot it grows from"] },
+    })
   }
   const bases = latestRows.map(basisOf)
 

@@ -71,8 +71,21 @@ export const parseIfMatchVersion = (request: FastifyRequest): number => {
   return Number(captured)
 }
 
+const canonicalize = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(canonicalize)
+  if (typeof value === "bigint") return value.toString()
+  if (value === null || typeof value !== "object") return value
+  const source = value as Record<string, unknown>
+  const sorted: Record<string, unknown> = {}
+  for (const key of Object.keys(source).sort()) {
+    if (source[key] === undefined) continue
+    sorted[key] = canonicalize(source[key])
+  }
+  return sorted
+}
+
 export const hashRequest = (canonical: Readonly<Record<string, unknown>>): Buffer =>
-  createHash("sha256").update(JSON.stringify(canonical)).digest()
+  createHash("sha256").update(JSON.stringify(canonicalize(canonical))).digest()
 
 export interface KeysetPosition {
   readonly afterCreatedAt?: Date

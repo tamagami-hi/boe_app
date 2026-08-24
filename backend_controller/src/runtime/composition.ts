@@ -46,6 +46,7 @@ import { createIdempotencyRepository } from "../repositories/idempotencyReposito
 import { createLoginEventRepository } from "../repositories/loginEventRepository.js"
 import { createOutboxRepository } from "../repositories/outboxRepository.js"
 import { createUserRepository } from "../repositories/userRepository.js"
+import { createFixedWindowRateLimiter } from "../http/rateLimit.js"
 import { registerAdminIdentityRoutes } from "../routes/adminIdentityRoutes.js"
 import { registerAdminAumRoutes } from "../routes/adminAumRoutes.js"
 import { registerAdminFundGrowthPreviewRoutes } from "../routes/adminFundGrowthPreviewRoutes.js"
@@ -387,10 +388,18 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       config: {
         cursorKey: serverConfig.cursorKey,
         idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
+        maxGrowthBasisPoints: serverConfig.fundAum.maxGrowthBasisPoints,
       },
       aumRepository: fundAumRepository,
       auditRepository,
       idempotencyRepository,
+      rateLimiter: createFixedWindowRateLimiter(
+        {
+          windowMs: serverConfig.fundAum.rateLimitWindowMs,
+          maxRequests: serverConfig.fundAum.rateLimitMaxRequests,
+        },
+        clock,
+      ),
     }
     registerAdminAumRoutes(application, adminAumDeps)
     registerAdminFundGrowthPreviewRoutes(application, adminAumDeps)

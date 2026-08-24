@@ -20,6 +20,7 @@ import { createAuthSessionRepository } from "../../src/repositories/authSessionR
 import { createClientCatalogRepository } from "../../src/repositories/clientCatalogRepository.js"
 import { createFundAumRepository } from "../../src/repositories/fundAumRepository.js"
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
+import { createFixedWindowRateLimiter } from "../../src/http/rateLimit.js"
 import { createUserRepository } from "../../src/repositories/userRepository.js"
 import { registerAdminAumRoutes, type AdminAumDeps } from "../../src/routes/adminAumRoutes.js"
 import { registerAdminCatalogRoutes } from "../../src/routes/adminCatalogRoutes.js"
@@ -178,6 +179,7 @@ beforeAll(async () => {
     aumRepository: fundAumRepository,
     auditRepository,
     idempotencyRepository,
+    rateLimiter: createFixedWindowRateLimiter({ windowMs: 60_000, maxRequests: 10_000 }, clock),
   }
 
   app = createApplication({

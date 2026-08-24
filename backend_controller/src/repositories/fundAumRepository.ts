@@ -75,6 +75,7 @@ export interface FundAumRepository {
   lockFund: (tx: Transaction, fundId: string) => Promise<FundAumLockRow | null>
   lockFunds: (tx: Transaction, fundIds: readonly string[]) => Promise<readonly FundAumLockRow[]>
   findExistingFundIds: (tx: Transaction, fundIds: readonly string[]) => Promise<readonly string[]>
+  findFundStates: (tx: Transaction, fundIds: readonly string[]) => Promise<readonly FundAumLockRow[]>
   findLatestSnapshot: (tx: Transaction, fundId: string) => Promise<FundAumSnapshotRow | null>
   findLatestSnapshots: (tx: Transaction, fundIds: readonly string[]) => Promise<readonly FundAumSnapshotRow[]>
   findSnapshotById: (tx: Transaction, snapshotId: string) => Promise<FundAumSnapshotRow | null>
@@ -128,6 +129,13 @@ export const createFundAumRepository = (): FundAumRepository => ({
       select id from funds where id = any(${[...fundIds]}) order by id asc
     `.execute(tx)
     return result.rows.map((row) => row.id)
+  },
+
+  findFundStates: async (tx, fundIds) => {
+    const result = await sql<FundAumLockRow>`
+      select id, state from funds where id = any(${[...fundIds]}) order by id asc
+    `.execute(tx)
+    return result.rows
   },
 
   findLatestSnapshot: async (tx, fundId) => {
