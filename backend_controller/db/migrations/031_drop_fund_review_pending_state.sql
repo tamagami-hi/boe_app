@@ -18,10 +18,12 @@ ALTER TABLE funds ALTER COLUMN state SET DEFAULT 'draft';
 DROP TYPE fund_state_legacy;
 
 ALTER TABLE funds
-  ADD CONSTRAINT funds_published_ts CHECK (state = 'draft' OR published_at IS NOT NULL);
+  ADD CONSTRAINT funds_published_ts
+  CHECK (state IN ('draft', 'archived') OR published_at IS NOT NULL);
 
 ALTER TABLE funds
   ADD CONSTRAINT funds_paused_ts CHECK (state <> 'paused' OR paused_at IS NOT NULL);
 
 ALTER TABLE funds
   ADD CONSTRAINT funds_archived_ts CHECK (state <> 'archived' OR archived_at IS NOT NULL);
+

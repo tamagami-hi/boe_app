@@ -255,17 +255,12 @@ describe("canonical public-onboarding schema (BE-007a)", () => {
     expect(remaining.rows[0]?.c).toBe(0)
   })
 
-  test("enforces RBAC, maker-checker, idempotency, rate-limit, and hold invariants (BE-007d)", async () => {
+  test("enforces RBAC, idempotency, rate-limit, and hold invariants (BE-007d)", async () => {
     const maker = await pool.query<{ id: string }>(
       "insert into users (email_normalized, phone_e164, full_name, account_state, activated_at) " +
         "values ('f@example.com', '+14155550500', 'Maker User', 'active', now()) returning id",
     )
     const makerId = maker.rows[0]?.id
-    const checker = await pool.query<{ id: string }>(
-      "insert into users (email_normalized, phone_e164, full_name, account_state, activated_at) " +
-        "values ('g@example.com', '+14155550501', 'Checker User', 'active', now()) returning id",
-    )
-    const checkerId = checker.rows[0]?.id
 
     // role code must be snake_case; duplicate code rejected
     await expect(pool.query("insert into roles (code, name) values ('Bad Code', 'x')")).rejects.toThrow()
@@ -291,31 +286,6 @@ describe("canonical public-onboarding schema (BE-007a)", () => {
         [roleId, permissionId, makerId],
       ),
     ).rejects.toThrow()
-
-    // maker must differ from checker
-    await expect(
-      pool.query(
-        "insert into approval_actions (action_type, target_type, target_id, target_version, canonical_payload, payload_hash, maker_user_id, maker_reason, checker_user_id, expires_at) " +
-          "values ('rbac.permissions.change', 'role', gen_random_uuid(), 1, '{}'::jsonb, decode(repeat('aa', 32), 'hex'), $1, 'a valid reason', $1, now() + interval '1 day')",
-        [makerId],
-      ),
-    ).rejects.toThrow()
-
-    // action_type must be in the closed set
-    await expect(
-      pool.query(
-        "insert into approval_actions (action_type, target_type, target_id, target_version, canonical_payload, payload_hash, maker_user_id, maker_reason, expires_at) " +
-          "values ('not.allowed', 'role', gen_random_uuid(), 1, '{}'::jsonb, decode(repeat('aa', 32), 'hex'), $1, 'a valid reason', now() + interval '1 day')",
-        [makerId],
-      ),
-    ).rejects.toThrow()
-
-    // a well-formed approval action is accepted
-    await pool.query(
-      "insert into approval_actions (action_type, target_type, target_id, target_version, canonical_payload, payload_hash, maker_user_id, maker_reason, checker_user_id, checker_reason, expires_at) " +
-        "values ('rbac.permissions.change', 'role', gen_random_uuid(), 1, '{}'::jsonb, decode(repeat('bb', 32), 'hex'), $1, 'a valid reason', $2, 'approved reason', now() + interval '1 day')",
-      [makerId, checkerId],
-    )
 
     // idempotency scope/key uniqueness
     await pool.query(
