@@ -41,22 +41,30 @@ export type OperationSecurityPolicy =
       idempotency: "naturally-idempotent"
       responseCacheControl: "no-store"
     }>
+  | Readonly<{
+      authChannel: "admin-web"
+      credentialPolicy: "admin-session-cookie-and-csrf"
+      idempotency: "none" | "optional-key" | "required-key"
+      responseCacheControl?: never
+    }>
 
 export type AuthChannel = OperationSecurityPolicy["authChannel"]
 export type CredentialPolicy = OperationSecurityPolicy["credentialPolicy"]
 
 type OperationBase = Readonly<{
   operationId: string
-  method: "GET" | "POST"
+  method: "GET" | "POST" | "PATCH" | "DELETE"
   path: string
   request: Readonly<{
     body?: z.ZodType
+    params?: z.ZodType
+    query?: z.ZodType
     headers?: z.ZodType
     mediaType?: "application/json"
     maxBodyBytes?: number
   }>
   success: Readonly<{
-    status: 200 | 202
+    status: 200 | 201 | 202
     schema: z.ZodType
   }>
   errorCodes: readonly ErrorCode[]

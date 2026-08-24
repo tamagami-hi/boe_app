@@ -7,20 +7,23 @@ import { z } from "zod"
 import { ErrorEnvelope } from "../src/envelope.js"
 import { ERROR_DEFINITIONS } from "../src/errors.js"
 import type { ErrorCode } from "../src/errors.js"
+import { ADMIN_FUND_AUM_OPERATIONS } from "../src/operations/admin-fund-aum.js"
 import { NATIVE_AUTH_OPERATIONS } from "../src/operations/native-auth.js"
 import { PUBLIC_OPERATIONS } from "../src/operations/public.js"
 
 type GeneratableOperation = Readonly<{
   operationId: string
-  method: "GET" | "POST"
+  method: "GET" | "POST" | "PATCH" | "DELETE"
   path: string
   request: Readonly<{
     body?: z.ZodType
+    params?: z.ZodType
+    query?: z.ZodType
     headers?: z.ZodType
     mediaType?: "application/json"
     maxBodyBytes?: number
   }>
-  success: Readonly<{ status: 200 | 202; schema: z.ZodType }>
+  success: Readonly<{ status: 200 | 201 | 202; schema: z.ZodType }>
   errorCodes: readonly ErrorCode[]
 }>
 
@@ -29,10 +32,12 @@ export const OPENAPI_INFO = Object.freeze({ title: "BeOnEdge API", version: "v1"
 export const ALL_OPERATIONS: readonly GeneratableOperation[] = Object.freeze([
   ...PUBLIC_OPERATIONS,
   ...NATIVE_AUTH_OPERATIONS,
+  ...ADMIN_FUND_AUM_OPERATIONS,
 ])
 
 type RouteConfig = Parameters<OpenAPIRegistry["registerPath"]>[0]
 type ResponsesConfig = RouteConfig["responses"]
+type RouteParameter = NonNullable<NonNullable<RouteConfig["request"]>["params"]>
 
 type HeaderParameter = Readonly<{
   name: string
@@ -83,18 +88,24 @@ export const buildOpenApiDocument = () => {
       }
     }
 
-    const method = operation.method === "GET" ? "get" : "post"
+    const method = operation.method.toLowerCase() as "get" | "post" | "patch" | "delete"
     const body = operation.request.body
+    const params = operation.request.params
+    const query = operation.request.query
 
     registry.registerPath({
       method,
       path: operation.path,
       operationId: operation.operationId,
-      ...(body === undefined
+      ...(body === undefined && params === undefined && query === undefined
         ? {}
         : {
             request: {
-              body: { required: true, content: { "application/json": { schema: body } } },
+              ...(body === undefined
+                ? {}
+                : { body: { required: true, content: { "application/json": { schema: body } } } }),
+              ...(params === undefined ? {} : { params: params as RouteParameter }),
+              ...(query === undefined ? {} : { query: query as RouteParameter }),
             },
           }),
       responses,
@@ -109,7 +120,7 @@ export const buildOpenApiDocument = () => {
     const headerParameters = toHeaderParameters(operation.request.headers)
     if (headerParameters.length === 0) continue
 
-    const method = operation.method === "GET" ? "get" : "post"
+    const method = operation.method.toLowerCase() as "get" | "post" | "patch" | "delete"
     const operationObject = paths[operation.path]?.[method]
     if (operationObject === undefined) continue
 

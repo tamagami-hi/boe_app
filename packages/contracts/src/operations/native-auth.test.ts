@@ -144,6 +144,7 @@ describe("native authentication operation descriptors", () => {
       | "native-login"
       | "native-refresh"
       | "native-bearer"
+      | "admin-web"
     >()
     expectTypeOf<OperationInput["idempotency"]>().toEqualTypeOf<
       | "none"
@@ -151,6 +152,8 @@ describe("native authentication operation descriptors", () => {
       | "single-use-token"
       | "deterministic-rotation"
       | "naturally-idempotent"
+      | "optional-key"
+      | "required-key"
     >()
     expectTypeOf<
       Extract<

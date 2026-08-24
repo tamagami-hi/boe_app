@@ -47,6 +47,11 @@
       "types": "./dist/operations/native-auth.d.ts",
       "import": "./dist/operations/native-auth.js",
       "default": "./dist/operations/native-auth.js"
+    },
+    "./admin-fund-aum": {
+      "types": "./dist/operations/admin-fund-aum.d.ts",
+      "import": "./dist/operations/admin-fund-aum.js",
+      "default": "./dist/operations/admin-fund-aum.js"
     }
   },
   "scripts": {
@@ -55,7 +60,7 @@
     "lint": "eslint .",
     "test": "vitest run --config vitest.config.ts",
     "test:coverage": "vitest run --config vitest.config.ts --coverage",
-    "test:exports": "node --input-type=module -e \"const root = await import('@beonedge/contracts'); const scalars = await import('@beonedge/contracts/scalars'); const envelope = await import('@beonedge/contracts/envelope'); const errors = await import('@beonedge/contracts/errors'); const publicContracts = await import('@beonedge/contracts/public'); const nativeAuth = await import('@beonedge/contracts/native-auth'); if (root.Uuid !== scalars.Uuid || root.ErrorEnvelope !== envelope.ErrorEnvelope || root.ErrorCode !== errors.ErrorCode || root.PUBLIC_OPERATIONS !== publicContracts.PUBLIC_OPERATIONS || root.NATIVE_AUTH_OPERATIONS !== nativeAuth.NATIVE_AUTH_OPERATIONS) throw new Error('Package export mismatch')\"",
+    "test:exports": "node --input-type=module -e \"const root = await import('@beonedge/contracts'); const scalars = await import('@beonedge/contracts/scalars'); const envelope = await import('@beonedge/contracts/envelope'); const errors = await import('@beonedge/contracts/errors'); const publicContracts = await import('@beonedge/contracts/public'); const nativeAuth = await import('@beonedge/contracts/native-auth'); const adminFundAum = await import('@beonedge/contracts/admin-fund-aum'); if (root.Uuid !== scalars.Uuid || root.ErrorEnvelope !== envelope.ErrorEnvelope || root.ErrorCode !== errors.ErrorCode || root.PUBLIC_OPERATIONS !== publicContracts.PUBLIC_OPERATIONS || root.NATIVE_AUTH_OPERATIONS !== nativeAuth.NATIVE_AUTH_OPERATIONS || root.ADMIN_FUND_AUM_OPERATIONS !== adminFundAum.ADMIN_FUND_AUM_OPERATIONS) throw new Error('Package export mismatch')\"",
     "typecheck": "tsc -p tsconfig.json",
     "generate:openapi": "tsx scripts/generate-openapi.ts",
     "generate:types": "openapi-typescript generated/openapi-v1.json -o generated/openapi-v1.d.ts",
