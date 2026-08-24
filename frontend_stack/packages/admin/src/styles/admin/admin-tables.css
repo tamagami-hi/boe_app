@@ -197,4 +197,3 @@
 }
 .adm-mini-table td { padding: var(--be-space-1) var(--be-space-2); border-bottom: 1px solid var(--be-border); }
 .adm-mini-table input[type="number"] { width: 100%; }
-.adm-series-row input { width: 100%; }

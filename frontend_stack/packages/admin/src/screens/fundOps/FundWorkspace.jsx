@@ -15,6 +15,7 @@ import {
   LIFECYCLE_CONSEQUENCES, STATE_DESCRIPTIONS, lifecycleActionsFor, profileFromDetail,
 } from './fundOpsModel.js';
 import '../admin-screens-shared.css';
+import '../admin-aum.css';
 
 const SECTIONS = [
   { id: 'profile', label: 'Published terms' },
@@ -273,7 +274,7 @@ export default function FundWorkspace({ onPublishVersion, onLifecycle, canWrite 
       {section === 'stocks' && (
         <FundStockListPanel
           fundId={fundId}
-          initialStocks={detail?.stocks ?? []}
+          initialStocks={Array.isArray(detail?.stocks) ? detail.stocks : null}
           canWrite={canWrite && !isArchived}
         />
       )}

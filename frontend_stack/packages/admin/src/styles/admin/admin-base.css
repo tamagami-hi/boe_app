@@ -83,9 +83,9 @@
 .adm-screen { padding: var(--be-page-pad-y) var(--be-page-pad-x) var(--be-page-pad-b); display: flex; flex-direction: column; gap: var(--be-space-5); max-width: var(--be-content-max); width: 100%; margin: 0 auto; box-sizing: border-box; animation: adm-screen-in var(--be-dur-base) var(--be-ease-out) both; }
 .adm-load-note {
   margin: var(--be-space-4) var(--be-page-pad-x) 0;
-  border: 1px solid color-mix(in srgb, var(--be-red) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--be-red-fg) 22%, transparent);
   background: var(--be-red-soft);
-  color: var(--be-red);
+  color: var(--be-text-on-red);
   border-radius: var(--be-radius-md);
   padding: var(--be-space-2) var(--be-space-3);
   font-size: var(--be-text-sm);
@@ -334,8 +334,7 @@
 /* Focus-visible styles for legacy interactive elements */
 .adm-side-item:focus-visible,
 .adm-icon-btn:focus-visible,
-.adm-builder-tabs button:focus-visible,
-.adm-fund-tabs button:focus-visible {
+.adm-builder-tabs button:focus-visible {
   outline: 2px solid var(--be-gold);
   outline-offset: 2px;
 }

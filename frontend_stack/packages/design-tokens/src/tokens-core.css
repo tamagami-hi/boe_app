@@ -81,6 +81,11 @@
   --be-text-on-red:   var(--be-ink);
   --be-text-on-slate: var(--be-ink);
 
+  /* Signal colors as text on a page or card surface ------------------------ */
+  --be-green-fg: var(--be-green);
+  --be-red-fg:   var(--be-red);
+  --be-amber-fg: var(--be-amber);
+
   /* Typography ------------------------------------------------------------- */
   --be-font-display: 'Fraunces', 'Source Serif 4', Georgia, 'Times New Roman', serif;
   --be-font-body:    'Instrument Sans', 'Aptos', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
@@ -367,9 +372,9 @@ small, .be-caption {
 }
 
 /* Financial state ---------------------------------------------------------- */
-.be-gain    { color: var(--be-green); }
-.be-loss    { color: var(--be-red); }
-.be-pending { color: var(--be-amber); }
+.be-gain    { color: var(--be-green-fg); }
+.be-loss    { color: var(--be-red-fg); }
+.be-pending { color: var(--be-amber-fg); }
 
 /* Links -------------------------------------------------------------------- */
 a {
@@ -433,6 +438,11 @@ a:hover { text-decoration-color: var(--be-fg); }
     --be-text-on-green: var(--be-ivory);
     --be-text-on-red:   var(--be-ivory);
     --be-text-on-slate: var(--be-ivory);
+
+    /* Signal text lightened to clear AA on the dark surfaces */
+    --be-green-fg: #63BE8E;
+    --be-red-fg:   #E8776A;
+    --be-amber-fg: #D9A648;
   }
 }
 
@@ -474,6 +484,11 @@ html[data-theme="dark"] {
   --be-text-on-green: var(--be-ivory);
   --be-text-on-red:   var(--be-ivory);
   --be-text-on-slate: var(--be-ivory);
+
+  /* Signal text lightened to clear AA on the dark surfaces */
+  --be-green-fg: #63BE8E;
+  --be-red-fg:   #E8776A;
+  --be-amber-fg: #D9A648;
 }
 
 /* Reduced motion — crossfade instead of zero motion ------------------------ */

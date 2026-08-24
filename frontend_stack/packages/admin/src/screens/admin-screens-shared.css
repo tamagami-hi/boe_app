@@ -111,53 +111,6 @@
   letter-spacing: 0;
 }
 
-.adm-status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--be-space-1);
-  padding: 2px 10px;
-  border-radius: var(--be-radius-pill);
-  font-size: var(--be-text-xs);
-  font-weight: 500;
-}
-
-.adm-status-badge--pending,
-.adm-status-badge--paused,
-.adm-status-badge--needs_more_information,
-.adm-status-badge--pending_user_auth,
-.adm-status-badge--created,
-.adm-status-badge--gateway_initiated,
-.adm-status-badge--submitted,
-.adm-status-badge--awaiting_approval {
-  background: var(--be-amber-soft);
-  color: var(--be-text-on-amber);
-}
-
-.adm-status-badge--approved,
-.adm-status-badge--active,
-.adm-status-badge--success,
-.adm-status-badge--completed,
-.adm-status-badge--open,
-.adm-status-badge--payment_confirmed {
-  background: var(--be-green-soft);
-  color: var(--be-text-on-green);
-}
-
-.adm-status-badge--rejected,
-.adm-status-badge--failed,
-.adm-status-badge--revoked,
-.adm-status-badge--approval_rejected {
-  background: var(--be-red-soft);
-  color: var(--be-text-on-red);
-}
-
-.adm-status-badge--closed,
-.adm-status-badge--reconciled,
-.adm-status-badge--not_started {
-  background: var(--be-slate-soft);
-  color: var(--be-text-on-slate);
-}
-
 .adm-tx-type {
   font-weight: 500;
   font-size: var(--be-text-xs);
@@ -183,8 +136,8 @@
 
 .adm-validation-banner--success {
   background: var(--be-green-soft);
-  color: var(--be-green);
-  border-color: var(--be-green);
+  color: var(--be-text-on-green);
+  border-color: var(--be-green-fg);
 }
 
 .adm-validation-banner--inline {
@@ -522,7 +475,7 @@
 }
 
 .adm-field-error {
-  color: var(--be-red);
+  color: var(--be-red-fg);
   font-size: var(--be-text-xs);
   line-height: 1.4;
 }

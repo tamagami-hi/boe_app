@@ -1,4 +1,5 @@
 const FUND_STATES = new Set(['draft', 'published', 'paused', 'archived']);
+const STOCK_STATES = new Set(['active', 'exited']);
 
 function fail(operation, detail) {
   const error = new Error(
@@ -73,6 +74,78 @@ export function parseAumSnapshot(snapshot, operation = 'The AUM history') {
   if (!Number.isInteger(snapshot.revision)) throw fail(operation, 'revision is not an integer');
   if (!isPaise(snapshot.aumPaise)) throw fail(operation, 'aumPaise is not a paise string');
   return snapshot;
+}
+
+export function parseFundStock(stock, operation = 'The stock list') {
+  if (!isObject(stock)) throw fail(operation, 'a stock row is not an object');
+  if (!isId(stock.id)) throw fail(operation, 'a stock row has no id');
+  if (typeof stock.stockName !== 'string' || stock.stockName === '') {
+    throw fail(operation, 'a stock row has no name');
+  }
+  if (!STOCK_STATES.has(stock.state)) throw fail(operation, `unknown stock state "${stock.state}"`);
+  return stock;
+}
+
+export function parseFundStockList(payload) {
+  const operation = 'The stock list';
+  if (!isObject(payload) || !Array.isArray(payload.items)) {
+    throw fail(operation, 'items is not an array');
+  }
+  for (const stock of payload.items) parseFundStock(stock, operation);
+  return payload;
+}
+
+export function parseFundStockWrite(payload) {
+  const operation = 'The stock change';
+  if (!isObject(payload)) throw fail(operation, 'the payload is not an object');
+  parseFundStock(payload.stock, operation);
+  return payload;
+}
+
+export function parsePublishedVersion(payload) {
+  const operation = 'Publishing the version';
+  if (!isObject(payload)) throw fail(operation, 'the payload is not an object');
+  if (!isId(payload.fundId)) throw fail(operation, 'no fundId was returned');
+  if (!isId(payload.fundVersionId)) throw fail(operation, 'no fundVersionId was returned');
+  if (!Number.isInteger(payload.version)) throw fail(operation, 'version is not an integer');
+  if (!FUND_STATES.has(payload.status)) throw fail(operation, `unknown fund state "${payload.status}"`);
+  return payload;
+}
+
+export function parseFundLifecycle(payload) {
+  const operation = 'The lifecycle change';
+  if (!isObject(payload)) throw fail(operation, 'the payload is not an object');
+  if (!isId(payload.fundId)) throw fail(operation, 'no fundId was returned');
+  if (!FUND_STATES.has(payload.status)) throw fail(operation, `unknown fund state "${payload.status}"`);
+  return payload;
+}
+
+export function parseAumMutation(payload) {
+  const operation = 'The AUM publication';
+  if (!isObject(payload)) throw fail(operation, 'the payload is not an object');
+  parseAumSnapshot(payload.snapshot, operation);
+  if (payload.deltaPaise !== undefined && !isPaise(payload.deltaPaise)) {
+    throw fail(operation, 'deltaPaise is not a paise string');
+  }
+  return payload;
+}
+
+export function parseCollectiveCommit(payload) {
+  const operation = 'The collective commit';
+  if (!isObject(payload)) throw fail(operation, 'the payload is not an object');
+  if (!isId(payload.growthBatchId)) throw fail(operation, 'no growthBatchId was returned');
+  if (!Number.isInteger(payload.targetCount)) throw fail(operation, 'targetCount is not an integer');
+  if (!isPaise(payload.totalDeltaPaise)) throw fail(operation, 'totalDeltaPaise is not a paise string');
+  if (!Array.isArray(payload.items)) throw fail(operation, 'items is not an array');
+  for (const item of payload.items) {
+    if (!isObject(item)) throw fail(operation, 'a committed row is not an object');
+    if (!isId(item.fundId)) throw fail(operation, 'a committed row has no fundId');
+    if (!isId(item.snapshotId)) throw fail(operation, 'a committed row has no snapshotId');
+    for (const key of ['beforeAumPaise', 'deltaPaise', 'afterAumPaise']) {
+      if (!isPaise(item[key])) throw fail(operation, `a committed row has no ${key}`);
+    }
+  }
+  return payload;
 }
 
 export function parseAumPreview(payload) {

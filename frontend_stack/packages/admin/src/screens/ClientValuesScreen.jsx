@@ -13,6 +13,7 @@ import { useIdempotencyKeys } from '../helpers/idempotencyKeys.js';
 import { fmtDateTime, fmtInt, fmtPaise, fmtPaiseSigned } from '../helpers/formatters.js';
 import { todayInIndia as today } from '../helpers/aumReasons.js';
 import './admin-screens-shared.css';
+import './admin-aum.css';
 
 const VALUE_BOUNDARY_NOTE =
   'This changes client displayed values only. It does not change published AUM.';

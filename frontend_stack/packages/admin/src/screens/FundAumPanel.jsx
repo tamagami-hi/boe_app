@@ -2,8 +2,10 @@ import { useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Layers, RefreshCw } from 'lucide-react';
 import { apiRequest } from '@beonedge/client/services/_util.js';
 import I from '../components/I.jsx';
+import FormField from '../components/FormField.jsx';
 import Skeleton from '@beonedge/shared/components/Skeleton.jsx';
 import { useAdminCacheActions } from '../data/adminResources.js';
+import { parseAumMutation } from '../data/fundContracts.js';
 import { useIdempotencyKeys } from '../helpers/idempotencyKeys.js';
 import {
   AUM_ADJUSTMENT_REASONS,
@@ -13,9 +15,9 @@ import {
 import { fmtPaise as rupees } from '../helpers/formatters.js';
 import {
   MAX_GROWTH_PERCENT,
-  toAbsolutePaise,
-  toSignedBasisPoints,
-  toSignedPaise,
+  parseAbsolutePaise,
+  parseSignedBasisPoints,
+  parseSignedPaise,
 } from '../helpers/signedAmounts.js';
 import useAumHistory from './useAumHistory.js';
 
@@ -45,6 +47,7 @@ export default function FundAumPanel({ fundId, fundName }) {
   const [reasonCode, setReasonCode] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const lockRef = useRef(false);
@@ -54,13 +57,21 @@ export default function FundAumPanel({ fundId, fundName }) {
   const isOpening = !history.loading && !readFailed && history.rows.length === 0;
   const reasons = isOpening ? AUM_OPENING_REASONS : AUM_ADJUSTMENT_REASONS;
 
+  const clearError = (key) => setErrors(
+    (previous) => (previous[key] ? { ...previous, [key]: undefined } : previous),
+  );
+  const edit = (setter, key) => (event) => {
+    clearError(key);
+    setter(event.target.value);
+  };
+
   const preview = useMemo(() => {
     if (isOpening || !latest) return null;
-    const signed = mode === 'amount'
-      ? toSignedPaise(direction, magnitude)
-      : toSignedBasisPoints(direction, magnitude);
-    if (signed === null) return null;
-    const delta = previewDelta(latest.aumPaise ?? '0', mode, signed);
+    const parsed = mode === 'amount'
+      ? parseSignedPaise(direction, magnitude)
+      : parseSignedBasisPoints(direction, magnitude);
+    if (!parsed.ok) return null;
+    const delta = previewDelta(latest.aumPaise ?? '0', mode, parsed.value);
     return { delta, after: BigInt(latest.aumPaise ?? '0') + delta };
   }, [isOpening, latest, mode, direction, magnitude]);
 
@@ -70,39 +81,34 @@ export default function FundAumPanel({ fundId, fundName }) {
     setError('');
     setMessage('');
 
+    const found = {};
     let body;
     let path;
     if (isOpening) {
-      const aumPaise = toAbsolutePaise(openingAmount);
-      if (aumPaise === null) {
-        setError('Enter the opening AUM in rupees. Zero is allowed; negative is not.');
-        return;
-      }
-      body = { aumPaise };
+      const parsed = parseAbsolutePaise(openingAmount);
+      if (!parsed.ok) found.openingAmount = parsed.problem;
+      body = parsed.ok ? { aumPaise: parsed.value } : {};
       path = `/v1/admin/aum/funds/${encodeURIComponent(fundId)}/initialize`;
     } else {
-      const instruction = mode === 'amount'
-        ? { growthPaise: toSignedPaise(direction, magnitude) }
-        : { growthBasisPoints: toSignedBasisPoints(direction, magnitude) };
-      if (!Object.values(instruction)[0]) {
-        setError(
-          mode === 'amount'
-            ? 'Enter an amount above zero.'
-            : `Enter a percentage above zero and no more than ${MAX_GROWTH_PERCENT}%.`,
-        );
-        return;
-      }
-      body = { ...instruction };
+      const parsed = mode === 'amount'
+        ? parseSignedPaise(direction, magnitude)
+        : parseSignedBasisPoints(direction, magnitude);
+      if (!parsed.ok) found.magnitude = parsed.problem;
+      body = parsed.ok
+        ? (mode === 'amount' ? { growthPaise: parsed.value } : { growthBasisPoints: parsed.value })
+        : {};
       path = `/v1/admin/aum/funds/${encodeURIComponent(fundId)}/growth`;
     }
-    if (!asOfDate) {
-      setError('Choose the as-of date this figure applies to.');
-      return;
-    }
+    if (!asOfDate) found.asOfDate = 'Choose the as-of date this figure applies to.';
     if (!reasons.some((reason) => reason.value === reasonCode)) {
-      setError('Choose a reason. It is recorded on the audit entry.');
+      found.reasonCode = 'Choose a reason. It is recorded on the audit entry.';
+    }
+    setErrors(found);
+    if (Object.keys(found).length > 0) {
+      setError('Some details need attention before this can be published.');
       return;
     }
+
     const trimmedNote = note.trim();
     Object.assign(body, {
       asOfDate,
@@ -119,11 +125,9 @@ export default function FundAumPanel({ fundId, fundName }) {
         body,
         headers: { 'Idempotency-Key': idempotencyKeyFor(`aum:${fundId}`, body) },
       });
-      const snapshot = payload?.snapshot ?? payload ?? null;
+      const { snapshot } = parseAumMutation(payload);
       setMessage(
-        snapshot?.aumPaise != null
-          ? `Published. Fund AUM is now ${rupees(snapshot.aumPaise)} as of ${snapshot.asOfDate ?? asOfDate}.`
-          : 'Published.',
+        `Published. Fund AUM is now ${rupees(snapshot.aumPaise)} as of ${snapshot.asOfDate}.`,
       );
       setOpeningAmount('');
       setMagnitude('');
@@ -193,82 +197,103 @@ export default function FundAumPanel({ fundId, fundName }) {
       )}
 
       {!history.loading && !readFailed && (
-        <form className="adm-form-grid" onSubmit={onSubmit}>
+        <form className="adm-form-grid" onSubmit={onSubmit} noValidate>
           {isOpening ? (
-            <label className="adm-field">
-              <span className="adm-field-label">Opening AUM (₹)</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                step="0.01"
-                value={openingAmount}
-                onChange={(event) => setOpeningAmount(event.target.value)}
-              />
-            </label>
-          ) : (
-            <>
-              <label className="adm-field">
-                <span className="adm-field-label">Instruction</span>
-                <select value={mode} onChange={(event) => setMode(event.target.value)}>
-                  <option value="amount">Amount (₹)</option>
-                  <option value="percentage">Percentage of current AUM</option>
-                </select>
-              </label>
-
-              <label className="adm-field">
-                <span className="adm-field-label">Direction</span>
-                <select value={direction} onChange={(event) => setDirection(event.target.value)}>
-                  <option value="increase">Increase</option>
-                  <option value="decrease">Decrease</option>
-                </select>
-              </label>
-
-              <label className="adm-field">
-                <span className="adm-field-label">
-                  {mode === 'amount' ? 'Amount (₹)' : 'Percentage (%)'}
-                </span>
+            <FormField
+              id="aum-opening"
+              label="Opening AUM (₹)"
+              error={errors.openingAmount}
+              hint="Zero is allowed. Two decimal places at most."
+            >
+              {(props) => (
                 <input
                   type="number"
                   inputMode="decimal"
                   min="0"
-                  max={mode === 'amount' ? undefined : MAX_GROWTH_PERCENT}
-                  step={mode === 'amount' ? '0.01' : '0.0001'}
-                  value={magnitude}
-                  onChange={(event) => setMagnitude(event.target.value)}
+                  step="0.01"
+                  value={openingAmount}
+                  onChange={edit(setOpeningAmount, 'openingAmount')}
+                  {...props}
                 />
-              </label>
+              )}
+            </FormField>
+          ) : (
+            <>
+              <FormField id="aum-mode" label="Instruction">
+                {(props) => (
+                  <select value={mode} onChange={edit(setMode, 'magnitude')} {...props}>
+                    <option value="amount">Amount (₹)</option>
+                    <option value="percentage">Percentage of current AUM</option>
+                  </select>
+                )}
+              </FormField>
+
+              <FormField id="aum-direction" label="Direction">
+                {(props) => (
+                  <select value={direction} onChange={edit(setDirection, 'magnitude')} {...props}>
+                    <option value="increase">Increase</option>
+                    <option value="decrease">Decrease</option>
+                  </select>
+                )}
+              </FormField>
+
+              <FormField
+                id="aum-magnitude"
+                label={mode === 'amount' ? 'Amount (₹)' : 'Percentage (%)'}
+                error={errors.magnitude}
+                hint={mode === 'amount'
+                  ? 'Enter it unsigned; the direction above carries the sign.'
+                  : `Up to ${MAX_GROWTH_PERCENT}%, to the nearest 0.01%.`}
+              >
+                {(props) => (
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    max={mode === 'amount' ? undefined : MAX_GROWTH_PERCENT}
+                    step="0.01"
+                    value={magnitude}
+                    onChange={edit(setMagnitude, 'magnitude')}
+                    {...props}
+                  />
+                )}
+              </FormField>
             </>
           )}
 
-          <label className="adm-field">
-            <span className="adm-field-label">As-of date</span>
-            <input
-              type="date"
-              value={asOfDate}
-              onChange={(event) => setAsOfDate(event.target.value)}
-            />
-          </label>
+          <FormField id="aum-as-of" label="As-of date" error={errors.asOfDate}>
+            {(props) => (
+              <input
+                type="date"
+                value={asOfDate}
+                onChange={edit(setAsOfDate, 'asOfDate')}
+                {...props}
+              />
+            )}
+          </FormField>
 
-          <label className="adm-field">
-            <span className="adm-field-label">Reason</span>
-            <select value={reasonCode} onChange={(event) => setReasonCode(event.target.value)}>
-              <option value="">Choose a reason</option>
-              {reasons.map((reason) => (
-                <option key={reason.value} value={reason.value}>{reason.label}</option>
-              ))}
-            </select>
-          </label>
+          <FormField id="aum-reason" label="Reason" error={errors.reasonCode}>
+            {(props) => (
+              <select value={reasonCode} onChange={edit(setReasonCode, 'reasonCode')} {...props}>
+                <option value="">Choose a reason</option>
+                {reasons.map((reason) => (
+                  <option key={reason.value} value={reason.value}>{reason.label}</option>
+                ))}
+              </select>
+            )}
+          </FormField>
 
-          <label className="adm-field adm-field--wide">
-            <span className="adm-field-label">Internal note (optional)</span>
-            <textarea
-              rows={2}
-              maxLength={2000}
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-            />
-          </label>
+          <FormField id="aum-note" label="Internal note (optional)" wide>
+            {(props) => (
+              <textarea
+                rows={2}
+                maxLength={2000}
+                value={note}
+                onChange={edit(setNote, 'note')}
+                {...props}
+              />
+            )}
+          </FormField>
 
           {preview && (
             <div className="adm-field--wide adm-aum-projection">

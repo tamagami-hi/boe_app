@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  RESOURCE_STATUS,
   STALE_TIME,
   useResource,
   useResourceCache,
@@ -40,6 +41,8 @@ function useAdminCollection(key, path, { staleTime, enabled = true } = {}) {
 
 export const FUND_PAGE_LIMIT = 100;
 
+const EMPTY_APPENDED = { key: null, rows: [], cursor: null, hasMore: false };
+
 const EMPTY_SUMMARY = {
   total: 0,
   byState: { draft: 0, published: 0, paused: 0, archived: 0 },
@@ -63,18 +66,27 @@ export function useAdminFunds({ state = 'all', search = '' } = {}) {
     staleTime: STALE_TIME.CATALOGUE,
   });
 
-  const [appended, setAppended] = useState({ key: null, rows: [], cursor: null, hasMore: false });
+  const [appended, setAppended] = useState(EMPTY_APPENDED);
   const [loadingMore, setLoadingMore] = useState(false);
 
+  const invalidated = resource.status === RESOURCE_STATUS.SUCCESS && resource.updatedAt === null;
+  useEffect(() => {
+    if (invalidated) setAppended(EMPTY_APPENDED);
+  }, [invalidated]);
+
   const firstPage = resource.data ?? null;
-  const sameKey = appended.key === key;
+  const sameSlice = appended.key === key;
   const rows = useMemo(
-    () => [...(firstPage?.rows ?? []), ...(sameKey ? appended.rows : [])],
-    [firstPage, sameKey, appended.rows],
+    () => [...(firstPage?.rows ?? []), ...(sameSlice ? appended.rows : [])],
+    [firstPage, sameSlice, appended.rows],
   );
 
-  const cursor = sameKey && appended.cursor !== null ? appended.cursor : firstPage?.nextCursor ?? null;
-  const hasMore = sameKey && appended.cursor !== null ? appended.hasMore : firstPage?.hasMore === true;
+  const cursor = sameSlice && appended.cursor !== null
+    ? appended.cursor
+    : firstPage?.nextCursor ?? null;
+  const hasMore = sameSlice && appended.cursor !== null
+    ? appended.hasMore
+    : firstPage?.hasMore === true;
 
   const loadMore = useCallback(async () => {
     if (!cursor || loadingMore) return;
@@ -91,7 +103,7 @@ export function useAdminFunds({ state = 'all', search = '' } = {}) {
   }, [cursor, key, loadingMore, request]);
 
   const refresh = useCallback(() => {
-    setAppended({ key: null, rows: [], cursor: null, hasMore: false });
+    setAppended(EMPTY_APPENDED);
     return resource.refresh();
   }, [resource]);
 

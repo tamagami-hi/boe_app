@@ -61,7 +61,21 @@ beforeEach(() => {
   __resetFallbackResourceStore();
   loadAdminCollection.mockReset().mockResolvedValue([]);
   loadAdminFundPage.mockReset().mockResolvedValue(EMPTY_PAGE);
-  apiRequest.mockReset().mockResolvedValue({ fund: { id: 'f1' } });
+  apiRequest.mockReset().mockImplementation((path, options = {}) => {
+    if (options.method === 'PATCH') {
+      return Promise.resolve({ fundId: 'f1', status: 'published', version: 2 });
+    }
+    if (path.endsWith('/versions')) {
+      return Promise.resolve({
+        fundId: 'f1',
+        status: 'draft',
+        fundVersionId: 'fv2',
+        version: 2,
+        disclosureVersionId: 'dv2',
+      });
+    }
+    return Promise.resolve({ fund: { id: 'f1', slug: 'f-1', status: 'draft' } });
+  });
   addToast.mockReset();
 });
 
@@ -266,6 +280,34 @@ describe('AUM and client-growth invalidation boundaries (spec §12.2)', () => {
       '/v1/admin/payments',
     ]);
     expect(refetched.some((path) => path.endsWith('/funds'))).toBe(false);
+  });
+
+  test('an invalidation drops appended cursor pages instead of leaving them stale', async () => {
+    let actions;
+    let funds;
+    function Probe() {
+      funds = useAdminFunds();
+      actions = useAdminCacheActions();
+      return null;
+    }
+    loadAdminFundPage.mockImplementation(async (request) => (
+      request.after === undefined
+        ? { ...EMPTY_PAGE, rows: [{ id: 'f1' }], nextCursor: 'c1', hasMore: true }
+        : { ...EMPTY_PAGE, rows: [{ id: 'f2' }] }
+    ));
+
+    render(<Wrap><Probe /></Wrap>);
+    await settle();
+    expect(funds.rows.map((row) => row.id)).toEqual(['f1']);
+
+    await act(async () => { await funds.loadMore(); });
+    await settle();
+    expect(funds.rows.map((row) => row.id)).toEqual(['f1', 'f2']);
+
+    await act(async () => { actions.invalidateFunds(); });
+    await settle();
+    expect(funds.rows.map((row) => row.id)).toEqual(['f1']);
+    expect(funds.hasMore).toBe(true);
   });
 });
 

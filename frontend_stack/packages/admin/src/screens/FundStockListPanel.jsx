@@ -5,6 +5,8 @@ import I from '../components/I.jsx';
 import EmptyTableRow from '../components/EmptyTableRow.jsx';
 import SkeletonTableRow from '../components/SkeletonTableRow.jsx';
 import { useAdminCacheActions } from '../data/adminResources.js';
+import { parseFundStockList, parseFundStockWrite } from '../data/fundContracts.js';
+import { useIdempotencyKeys } from '../helpers/idempotencyKeys.js';
 
 const QUARTER_PATTERN = /^Q[1-4] FY\d{2}$/u;
 
@@ -18,10 +20,11 @@ function defaultQuarter() {
 
 const EMPTY_DRAFT = { stockName: '', quarterLabel: '', weight: '' };
 
-export default function FundStockListPanel({ fundId, initialStocks = [], canWrite = true }) {
+export default function FundStockListPanel({ fundId, initialStocks = null, canWrite = true }) {
   const { invalidateFunds } = useAdminCacheActions();
-  const [stocks, setStocks] = useState(initialStocks);
-  const [loading, setLoading] = useState(initialStocks.length === 0);
+  const idempotencyKeyFor = useIdempotencyKeys();
+  const [stocks, setStocks] = useState(initialStocks ?? []);
+  const [loading, setLoading] = useState(initialStocks === null);
   const [addDraft, setAddDraft] = useState({ ...EMPTY_DRAFT, quarterLabel: defaultQuarter() });
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState(EMPTY_DRAFT);
@@ -35,7 +38,7 @@ export default function FundStockListPanel({ fundId, initialStocks = [], canWrit
       const payload = await apiRequest(`/v1/admin/funds/${encodeURIComponent(fundId)}/stocks`, {
         scope: 'admin',
       });
-      setStocks(payload?.items ?? []);
+      setStocks(parseFundStockList(payload).items);
       setError('');
     } catch (loadError) {
       setError(loadError?.message || 'Could not load the stock list.');
@@ -47,7 +50,7 @@ export default function FundStockListPanel({ fundId, initialStocks = [], canWrit
   useEffect(() => {
     if (seededFundRef.current === fundId) return;
     seededFundRef.current = fundId;
-    if (initialStocks.length > 0) {
+    if (initialStocks !== null) {
       setStocks(initialStocks);
       setLoading(false);
       return;
@@ -93,11 +96,13 @@ export default function FundStockListPanel({ fundId, initialStocks = [], canWrit
     setBusy(true);
     setError('');
     try {
-      await apiRequest(`/v1/admin/funds/${encodeURIComponent(fundId)}/stocks`, {
+      const body = bodyOf(addDraft, stocks.filter((stock) => stock.state === 'active').length + 1);
+      parseFundStockWrite(await apiRequest(`/v1/admin/funds/${encodeURIComponent(fundId)}/stocks`, {
         method: 'POST',
         scope: 'admin',
-        body: bodyOf(addDraft, stocks.filter((stock) => stock.state === 'active').length + 1),
-      });
+        body,
+        headers: { 'Idempotency-Key': idempotencyKeyFor(`stock-add:${fundId}`, body) },
+      }));
       setAddDraft({ ...EMPTY_DRAFT, quarterLabel: defaultQuarter() });
       await afterWrite();
     } catch (addError) {
@@ -130,14 +135,16 @@ export default function FundStockListPanel({ fundId, initialStocks = [], canWrit
     setBusy(true);
     setError('');
     try {
-      await apiRequest(
+      const body = bodyOf(editDraft, stock.sortOrder ?? 0);
+      parseFundStockWrite(await apiRequest(
         `/v1/admin/funds/${encodeURIComponent(fundId)}/stocks/${encodeURIComponent(stock.id)}`,
         {
           method: 'PATCH',
           scope: 'admin',
-          body: bodyOf(editDraft, stock.sortOrder ?? 0),
+          body,
+          headers: { 'Idempotency-Key': idempotencyKeyFor(`stock-edit:${stock.id}`, body) },
         },
-      );
+      ));
       setEditingId(null);
       await afterWrite();
     } catch (editError) {
@@ -155,10 +162,14 @@ export default function FundStockListPanel({ fundId, initialStocks = [], canWrit
     setBusy(true);
     setError('');
     try {
-      await apiRequest(
+      parseFundStockWrite(await apiRequest(
         `/v1/admin/funds/${encodeURIComponent(fundId)}/stocks/${encodeURIComponent(stock.id)}`,
-        { method: 'DELETE', scope: 'admin' },
-      );
+        {
+          method: 'DELETE',
+          scope: 'admin',
+          headers: { 'Idempotency-Key': idempotencyKeyFor(`stock-exit:${stock.id}`, null) },
+        },
+      ));
       setConfirmExit(null);
       await afterWrite();
     } catch (exitError) {

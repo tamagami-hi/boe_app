@@ -9,18 +9,20 @@ import SkeletonTableRow from '../components/SkeletonTableRow.jsx';
 import StateBadge from '../components/StateBadge.jsx';
 import AdminReadError from '../data/AdminReadError.jsx';
 import { useAdminCacheActions, useAdminFunds } from '../data/adminResources.js';
-import { parseAumPreview } from '../data/fundContracts.js';
+import { parseAumPreview, parseCollectiveCommit } from '../data/fundContracts.js';
 import { useIdempotencyKeys } from '../helpers/idempotencyKeys.js';
 import { AUM_ADJUSTMENT_REASONS, todayInIndia } from '../helpers/aumReasons.js';
 import {
   MAX_GROWTH_PERCENT,
-  signedPaiseFromInput,
-  toSignedBasisPoints,
+  parseSignedBasisPoints,
+  parseSignedPaiseFromInput,
 } from '../helpers/signedAmounts.js';
+import FormField from '../components/FormField.jsx';
 import { fmtInt, fmtPaise, fmtPaiseSigned } from '../helpers/formatters.js';
 import FundAumPanel, { AUM_BOUNDARY_NOTE } from './FundAumPanel.jsx';
 import FundAumHistoryPanel from './FundAumHistoryPanel.jsx';
 import './admin-screens-shared.css';
+import './admin-aum.css';
 
 function eligibleFunds(rows) {
   return rows.filter((fund) => fund.status !== 'archived');
@@ -62,7 +64,8 @@ function FundPicker({ funds, value, onChange, label }) {
       </div>
       {!funds.isLoading && rows.length === 0 && (
         <p className="adm-screen-note">
-          No fund can take an AUM publication yet. Create a fund under Funds, or un-archive one.
+          No fund can take an AUM publication yet. Create one under Funds — its opening AUM is
+          published with it. Archived funds are excluded permanently.
         </p>
       )}
       <LoadMoreFunds funds={funds} />
@@ -207,6 +210,7 @@ function CollectiveAumTab() {
   const [note, setNote] = useState('');
   const [preview, setPreview] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
   const lockRef = useRef(false);
@@ -222,13 +226,19 @@ function CollectiveAumTab() {
     setResult(null);
   }, []);
 
-  const change = (setter) => (value) => {
+  const clearError = (key) => setErrors(
+    (previous) => (previous[key] ? { ...previous, [key]: undefined } : previous),
+  );
+
+  const change = (setter, key) => (value) => {
     discardPreview();
+    if (key) clearError(key);
     setter(value);
   };
 
   function toggleFund(id) {
     discardPreview();
+    clearError('funds');
     setSelected((previous) => (
       previous.includes(id) ? previous.filter((item) => item !== id) : [...previous, id]
     ));
@@ -242,25 +252,18 @@ function CollectiveAumTab() {
       ...(trimmedNote ? { note: trimmedNote } : {}),
     };
     if (mode === 'percentage') {
-      const points = toSignedBasisPoints(direction, percent);
-      if (points === null) {
-        return {
-          body: null,
-          problem: `Enter a percentage above zero and no more than ${MAX_GROWTH_PERCENT}%. Very small values round to zero.`,
-        };
-      }
-      return { body: { ...common, fundIds: selected, growthBasisPoints: points } };
+      const parsed = parseSignedBasisPoints(direction, percent);
+      if (!parsed.ok) return { body: null, fieldErrors: { percent: parsed.problem } };
+      return { body: { ...common, fundIds: selected, growthBasisPoints: parsed.value } };
     }
-    const entries = selected.map((fundId) => ({
-      fundId,
-      growthPaise: signedPaiseFromInput(deltas[fundId]),
-    }));
-    if (entries.some((entry) => entry.growthPaise === null)) {
-      return {
-        body: null,
-        problem: 'Enter a non-zero rupee amount for every selected fund.',
-      };
+    const fieldErrors = {};
+    const entries = [];
+    for (const fundId of selected) {
+      const parsed = parseSignedPaiseFromInput(deltas[fundId]);
+      if (parsed.ok) entries.push({ fundId, growthPaise: parsed.value });
+      else fieldErrors[`delta:${fundId}`] = parsed.problem;
     }
+    if (Object.keys(fieldErrors).length > 0) return { body: null, fieldErrors };
     return { body: { ...common, items: entries } };
   }, [asOfDate, deltas, direction, mode, note, percent, reasonCode, selected]);
 
@@ -268,21 +271,17 @@ function CollectiveAumTab() {
     event.preventDefault();
     setPreview(null);
     setResult(null);
-    if (selected.length === 0) {
-      setError('Select at least one fund.');
-      return;
-    }
-    if (!asOfDate) {
-      setError('Choose the as-of date the figures apply to.');
-      return;
-    }
+    const found = {};
+    if (selected.length === 0) found.funds = 'Select at least one fund.';
+    if (!asOfDate) found.asOfDate = 'Choose the as-of date the figures apply to.';
     if (!AUM_ADJUSTMENT_REASONS.some((reason) => reason.value === reasonCode)) {
-      setError('Choose a reason. It is recorded on the audit entry.');
-      return;
+      found.reasonCode = 'Choose a reason. It is recorded on the audit entry.';
     }
-    const { body, problem } = buildBody();
-    if (problem) {
-      setError(problem);
+    const { body, fieldErrors } = buildBody();
+    Object.assign(found, fieldErrors ?? {});
+    setErrors(found);
+    if (Object.keys(found).length > 0 || body === null) {
+      setError('Some details need attention before this can be previewed.');
       return;
     }
     setBusy(true);
@@ -314,7 +313,7 @@ function CollectiveAumTab() {
         body,
         headers: { 'Idempotency-Key': idempotencyKeyFor('aum-collective', body) },
       });
-      setResult(payload);
+      setResult(parseCollectiveCommit(payload));
       setPreview(null);
       invalidateAum();
     } catch (commitError) {
@@ -348,8 +347,11 @@ function CollectiveAumTab() {
 
         <p className="adm-screen-note"><strong>{AUM_BOUNDARY_NOTE}</strong></p>
 
-        <form className="adm-form-grid" onSubmit={onPreview}>
-          <fieldset className="adm-fieldset adm-field--wide">
+        <form className="adm-form-grid" onSubmit={onPreview} noValidate>
+          <fieldset
+            className="adm-fieldset adm-field--wide"
+            aria-describedby={errors.funds ? 'aum-collective-funds-error' : undefined}
+          >
             <legend className="adm-fieldset-legend">Funds</legend>
             {!funds.isLoading && rows.length === 0 ? (
               <p className="adm-screen-note">No fund can take an AUM publication yet.</p>
@@ -368,38 +370,56 @@ function CollectiveAumTab() {
               </div>
             )}
             <LoadMoreFunds funds={funds} />
+            {errors.funds && (
+              <small className="adm-field-error" id="aum-collective-funds-error" role="alert">
+                {errors.funds}
+              </small>
+            )}
           </fieldset>
 
-          <label className="adm-field">
-            <span className="adm-field-label">Mode</span>
-            <select value={mode} onChange={(event) => change(setMode)(event.target.value)}>
-              <option value="percentage">Same percentage for each selected fund</option>
-              <option value="explicit">Explicit amount per fund</option>
-            </select>
-          </label>
+          <FormField id="aum-collective-mode" label="Mode">
+            {(props) => (
+              <select value={mode} onChange={(event) => change(setMode, 'percent')(event.target.value)} {...props}>
+                <option value="percentage">Same percentage for each selected fund</option>
+                <option value="explicit">Explicit amount per fund</option>
+              </select>
+            )}
+          </FormField>
 
           {mode === 'percentage' && (
             <>
-              <label className="adm-field">
-                <span className="adm-field-label">Direction</span>
-                <select value={direction} onChange={(event) => change(setDirection)(event.target.value)}>
-                  <option value="increase">Increase</option>
-                  <option value="decrease">Decrease</option>
-                </select>
-              </label>
-              <label className="adm-field">
-                <span className="adm-field-label">Percentage (%)</span>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  max={MAX_GROWTH_PERCENT}
-                  step="0.0001"
-                  value={percent}
-                  onChange={(event) => change(setPercent)(event.target.value)}
-                  placeholder="2.50"
-                />
-              </label>
+              <FormField id="aum-collective-direction" label="Direction">
+                {(props) => (
+                  <select
+                    value={direction}
+                    onChange={(event) => change(setDirection, 'percent')(event.target.value)}
+                    {...props}
+                  >
+                    <option value="increase">Increase</option>
+                    <option value="decrease">Decrease</option>
+                  </select>
+                )}
+              </FormField>
+              <FormField
+                id="aum-collective-percent"
+                label="Percentage (%)"
+                error={errors.percent}
+                hint={`Up to ${MAX_GROWTH_PERCENT}%, to the nearest 0.01%.`}
+              >
+                {(props) => (
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    max={MAX_GROWTH_PERCENT}
+                    step="0.01"
+                    value={percent}
+                    onChange={(event) => change(setPercent, 'percent')(event.target.value)}
+                    placeholder="2.50"
+                    {...props}
+                  />
+                )}
+              </FormField>
             </>
           )}
 
@@ -413,54 +433,71 @@ function CollectiveAumTab() {
               ) : (
                 <div className="adm-form-grid">
                   {selected.map((fundId) => (
-                    <label className="adm-field" key={fundId}>
-                      <span className="adm-field-label">{nameById.get(fundId) || fundId}</span>
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        step="0.01"
-                        value={deltas[fundId] ?? ''}
-                        onChange={(event) => {
-                          discardPreview();
-                          setDeltas((previous) => ({ ...previous, [fundId]: event.target.value }));
-                        }}
-                        placeholder="250000 or -100000"
-                      />
-                    </label>
+                    <FormField
+                      key={fundId}
+                      id={`aum-collective-delta-${fundId}`}
+                      label={nameById.get(fundId) || fundId}
+                      error={errors[`delta:${fundId}`]}
+                    >
+                      {(props) => (
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          step="0.01"
+                          value={deltas[fundId] ?? ''}
+                          onChange={(event) => {
+                            discardPreview();
+                            clearError(`delta:${fundId}`);
+                            setDeltas((previous) => ({ ...previous, [fundId]: event.target.value }));
+                          }}
+                          placeholder="250000 or -100000"
+                          {...props}
+                        />
+                      )}
+                    </FormField>
                   ))}
                 </div>
               )}
             </fieldset>
           )}
 
-          <label className="adm-field">
-            <span className="adm-field-label">As-of date</span>
-            <input
-              type="date"
-              value={asOfDate}
-              onChange={(event) => change(setAsOfDate)(event.target.value)}
-            />
-          </label>
+          <FormField id="aum-collective-as-of" label="As-of date" error={errors.asOfDate}>
+            {(props) => (
+              <input
+                type="date"
+                value={asOfDate}
+                onChange={(event) => change(setAsOfDate, 'asOfDate')(event.target.value)}
+                {...props}
+              />
+            )}
+          </FormField>
 
-          <label className="adm-field">
-            <span className="adm-field-label">Reason</span>
-            <select value={reasonCode} onChange={(event) => change(setReasonCode)(event.target.value)}>
-              <option value="">Choose a reason</option>
-              {AUM_ADJUSTMENT_REASONS.map((reason) => (
-                <option key={reason.value} value={reason.value}>{reason.label}</option>
-              ))}
-            </select>
-          </label>
+          <FormField id="aum-collective-reason" label="Reason" error={errors.reasonCode}>
+            {(props) => (
+              <select
+                value={reasonCode}
+                onChange={(event) => change(setReasonCode, 'reasonCode')(event.target.value)}
+                {...props}
+              >
+                <option value="">Choose a reason</option>
+                {AUM_ADJUSTMENT_REASONS.map((reason) => (
+                  <option key={reason.value} value={reason.value}>{reason.label}</option>
+                ))}
+              </select>
+            )}
+          </FormField>
 
-          <label className="adm-field adm-field--wide">
-            <span className="adm-field-label">Internal note (optional)</span>
-            <textarea
-              rows={2}
-              maxLength={2000}
-              value={note}
-              onChange={(event) => change(setNote)(event.target.value)}
-            />
-          </label>
+          <FormField id="aum-collective-note" label="Internal note (optional)" wide>
+            {(props) => (
+              <textarea
+                rows={2}
+                maxLength={2000}
+                value={note}
+                onChange={(event) => change(setNote)(event.target.value)}
+                {...props}
+              />
+            )}
+          </FormField>
 
           <div className="adm-field--wide adm-form-actions adm-form-actions--start">
             <button type="submit" className="be-btn be-btn-primary" disabled={busy || selected.length === 0}>

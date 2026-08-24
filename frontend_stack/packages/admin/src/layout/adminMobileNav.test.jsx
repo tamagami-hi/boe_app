@@ -160,4 +160,21 @@ describe('AdminDomainStrip', () => {
     expect(screen.getByRole('link', { name: 'Directory' })).toBeInTheDocument();
     expect(screen.getAllByRole('link')).toHaveLength(2);
   });
+
+  test('a destination whose prerequisite permissions are absent is hidden', () => {
+    renderAt(
+      <AdminDomainStrip user={admin(['aum.read', 'aum.write'])} />,
+      '/admin/aum/current',
+    );
+    expect(screen.queryAllByRole('link')).toHaveLength(0);
+  });
+
+  test('an AUM reader without write access sees only the read destinations', () => {
+    renderAt(
+      <AdminDomainStrip user={admin(['aum.read', 'funds.read'])} />,
+      '/admin/aum/current',
+    );
+    const labels = screen.getAllByRole('link').map((link) => link.textContent);
+    expect(labels).toEqual(['Current published AUM', 'History and corrections']);
+  });
 });

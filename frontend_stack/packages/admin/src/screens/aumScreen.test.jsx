@@ -48,6 +48,26 @@ const HISTORY = [
   },
 ];
 
+const SNAPSHOT = {
+  id: 'snap_3',
+  fundId: 'f1',
+  asOfDate: '2026-08-15',
+  revision: 3,
+  aumPaise: '250500000',
+  reasonCode: 'monthly_valuation',
+  note: null,
+  growthBatchId: 'batch_1',
+  createdAt: '2026-08-15T10:00:00.000Z',
+};
+
+function respond({ history = [], mutation = { snapshot: SNAPSHOT } } = {}) {
+  request.mockImplementation((path, options = {}) => (
+    options.method === 'POST'
+      ? Promise.resolve(mutation)
+      : Promise.resolve({ items: history })
+  ));
+}
+
 beforeEach(() => {
   request.mockReset().mockResolvedValue({ items: [] });
   invalidateAum.mockReset();
@@ -98,7 +118,7 @@ describe('FundAumPanel', () => {
   });
 
   test('a fund with no snapshot publishes an opening figure the route accepts', async () => {
-    request.mockResolvedValue({ items: [] });
+    respond({ history: [] });
     render(<FundAumPanel fundId="f2" />);
     const input = await screen.findByLabelText(/Opening AUM/u);
     fireEvent.change(input, { target: { value: '100000' } });
@@ -168,7 +188,24 @@ describe('FundAumPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /Publish AUM adjustment/u }));
     await Promise.resolve();
     expect(lastPost()).toBeUndefined();
-    expect(screen.getByRole('alert').textContent).toContain('Choose a reason');
+    const reason = screen.getByLabelText(/Reason/u);
+    expect(reason.getAttribute('aria-invalid')).toBe('true');
+    const describedBy = reason.getAttribute('aria-describedby');
+    expect(document.getElementById(describedBy).textContent).toContain('Choose a reason');
+  });
+
+  test('an amount with sub-paise precision is refused at the amount field', async () => {
+    request.mockResolvedValue({ items: HISTORY });
+    render(<FundAumPanel fundId="f1" />);
+    const input = await screen.findByLabelText(/Amount \(₹\)/u);
+    fireEvent.change(input, { target: { value: '100.005' } });
+    fireEvent.change(screen.getByLabelText(/Reason/u), { target: { value: 'market_movement' } });
+    fireEvent.click(screen.getByRole('button', { name: /Publish AUM adjustment/u }));
+    await Promise.resolve();
+    expect(lastPost()).toBeUndefined();
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(document.getElementById(input.getAttribute('aria-describedby')).textContent)
+      .toContain('two decimal places');
   });
 });
 
@@ -231,7 +268,20 @@ describe('CollectiveAumTab', () => {
   });
 
   test('the commit adds the basisHash and an Idempotency-Key, then invalidates AUM caches', async () => {
-    request.mockResolvedValueOnce(PREVIEW).mockResolvedValueOnce({ targetCount: 1 });
+    request.mockResolvedValueOnce(PREVIEW).mockResolvedValueOnce({
+      growthBatchId: 'batch_1',
+      targetCount: 1,
+      totalDeltaPaise: '5000000',
+      basisHash: 'a'.repeat(64),
+      items: [{
+        fundId: 'f1',
+        snapshotId: 'snap_9',
+        revision: 3,
+        beforeAumPaise: '250000000',
+        deltaPaise: '5000000',
+        afterAumPaise: '255000000',
+      }],
+    });
     renderAt(<CollectiveAumTab />);
     selectAndFill();
     fireEvent.click(screen.getByRole('button', { name: /Preview growth/u }));
@@ -271,7 +321,7 @@ describe('FundAumHistoryPanel', () => {
   });
 
   test('a correction posts a new revision body with an Idempotency-Key', async () => {
-    request.mockResolvedValue({ items: HISTORY });
+    respond({ history: HISTORY });
     render(<FundAumHistoryPanel fundId="f1" />);
     const [correct] = await screen.findAllByRole('button', { name: 'Correct' });
     fireEvent.click(correct);

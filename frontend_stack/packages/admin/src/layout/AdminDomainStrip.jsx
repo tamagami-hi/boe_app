@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { hasAnyPermission, findNavDomain } from '../navigation/nav.js';
+import { canAccessItem, findNavDomain } from '../navigation/nav.js';
 
 // The active domain's sibling destinations, on phone only.
 //
@@ -16,7 +16,7 @@ export default function AdminDomainStrip({ user }) {
   const domain = findNavDomain(location.pathname);
 
   const items = useMemo(
-    () => (domain?.items || []).filter((item) => hasAnyPermission(user, item.permissions)),
+    () => (domain?.items || []).filter((item) => canAccessItem(user, item)),
     [domain, user],
   );
 

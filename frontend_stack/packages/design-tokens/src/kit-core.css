@@ -39,8 +39,8 @@
 
 .be-btn-danger {
   background: transparent;
-  color: var(--be-red);
-  border: 1px solid color-mix(in srgb, var(--be-red) 45%, transparent);
+  color: var(--be-red-fg);
+  border: 1px solid color-mix(in srgb, var(--be-red-fg) 45%, transparent);
 }
 .be-btn-danger:hover { background: var(--be-red-soft); color: var(--be-text-on-red); }
 
@@ -92,7 +92,7 @@
 
 .be-field { display: flex; flex-direction: column; gap: var(--be-space-2); margin-bottom: var(--be-space-4); }
 .be-field label { font-size: var(--be-text-xs); color: var(--be-slate); }
-.be-field .be-field-error { font-size: var(--be-text-xs); color: var(--be-red); margin-top: 2px; }
+.be-field .be-field-error { font-size: var(--be-text-xs); color: var(--be-red-fg); margin-top: 2px; }
 
 .be-card {
   background: var(--be-bone);
@@ -142,7 +142,7 @@
   display: block;
   padding: var(--be-space-2) var(--be-space-3);
   border-radius: var(--be-radius-sm);
-  border-left: 3px solid var(--be-red);
+  border-inline-start: 3px solid var(--be-red-fg);
   background: var(--be-red-soft);
   color: var(--be-text-on-red);
   font: 400 var(--be-text-sm) var(--be-font-ui);
@@ -167,9 +167,9 @@
   font-variant-numeric: tabular-nums lining-nums;
 }
 .be-money { font-weight: 500; letter-spacing: var(--be-tracking-tight); }
-.be-gain { color: var(--be-green); }
-.be-loss { color: var(--be-red); }
-.be-pending { color: var(--be-amber); }
+.be-gain { color: var(--be-green-fg); }
+.be-loss { color: var(--be-red-fg); }
+.be-pending { color: var(--be-amber-fg); }
 
 .be-rule { height: 1px; background: var(--be-border); border: none; margin: 0; }
 

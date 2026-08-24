@@ -6,11 +6,13 @@ import I from '../components/I.jsx';
 import EmptyTableRow from '../components/EmptyTableRow.jsx';
 import SkeletonTableRow from '../components/SkeletonTableRow.jsx';
 import { useAdminCacheActions } from '../data/adminResources.js';
+import { parseAumMutation } from '../data/fundContracts.js';
 import { useIdempotencyKeys } from '../helpers/idempotencyKeys.js';
 import { AUM_CORRECTION_REASONS } from '../helpers/aumReasons.js';
 import { fmtDateTime, fmtPaise as rupees } from '../helpers/formatters.js';
 import { hasAnyPermission } from '../navigation/nav.js';
-import { toAbsolutePaise } from '../helpers/signedAmounts.js';
+import FormField from '../components/FormField.jsx';
+import { paiseToRupeeInput, parseAbsolutePaise } from '../helpers/signedAmounts.js';
 import useAumHistory from './useAumHistory.js';
 
 export default function FundAumHistoryPanel({ fundId, fundName }) {
@@ -25,6 +27,7 @@ export default function FundAumHistoryPanel({ fundId, fundName }) {
   const [reasonCode, setReasonCode] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [formError, setFormError] = useState('');
   const [message, setMessage] = useState('');
   const lockRef = useRef(false);
@@ -40,28 +43,35 @@ export default function FundAumHistoryPanel({ fundId, fundName }) {
 
   function openCorrection(snapshot) {
     setCorrecting(snapshot);
-    setAmount(snapshot.aumPaise != null ? String(Number(snapshot.aumPaise) / 100) : '');
+    setAmount(paiseToRupeeInput(snapshot.aumPaise));
     setReasonCode('');
     setNote('');
+    setFieldErrors({});
     setFormError('');
     setMessage('');
   }
 
+  const clearFieldError = (key) => setFieldErrors(
+    (previous) => (previous[key] ? { ...previous, [key]: undefined } : previous),
+  );
+
   async function onCorrect(event) {
     event.preventDefault();
     if (lockRef.current || !correcting) return;
-    const aumPaise = toAbsolutePaise(amount);
-    if (aumPaise === null) {
-      setFormError('Enter the corrected AUM in rupees. Zero is allowed; negative is not.');
-      return;
-    }
+    const found = {};
+    const parsed = parseAbsolutePaise(amount);
+    if (!parsed.ok) found.amount = parsed.problem;
     if (!AUM_CORRECTION_REASONS.some((reason) => reason.value === reasonCode)) {
-      setFormError('Choose a reason. It is recorded on the audit entry.');
+      found.reasonCode = 'Choose a reason. It is recorded on the audit entry.';
+    }
+    setFieldErrors(found);
+    if (Object.keys(found).length > 0) {
+      setFormError('Some details need attention before this correction can be published.');
       return;
     }
     const trimmedNote = note.trim();
     const body = {
-      aumPaise,
+      aumPaise: parsed.value,
       reasonCode,
       ...(trimmedNote ? { note: trimmedNote } : {}),
     };
@@ -69,13 +79,17 @@ export default function FundAumHistoryPanel({ fundId, fundName }) {
     setBusy(true);
     setFormError('');
     try {
-      await apiRequest(`/v1/admin/aum/snapshots/${encodeURIComponent(correcting.id)}/corrections`, {
+      const payload = await apiRequest(`/v1/admin/aum/snapshots/${encodeURIComponent(correcting.id)}/corrections`, {
         method: 'POST',
         scope: 'admin',
         body,
         headers: { 'Idempotency-Key': idempotencyKeyFor(`correction:${correcting.id}`, body) },
       });
-      setMessage('Correction published as a new revision. The earlier snapshot is preserved.');
+      const { snapshot } = parseAumMutation(payload);
+      setMessage(
+        `Correction published as revision ${snapshot.revision} of ${snapshot.asOfDate}. `
+        + 'The earlier snapshot is preserved.',
+      );
       setCorrecting(null);
       invalidateAum();
       await history.reload();
@@ -161,7 +175,10 @@ export default function FundAumHistoryPanel({ fundId, fundName }) {
                   {index === 0 && <span className="adm-cell-meta"> · authoritative</span>}
                 </td>
                 <td className="be-money" data-label="AUM">{rupees(snapshot.aumPaise)}</td>
-                <td data-label="Reason">{snapshot.reasonCode || '—'}</td>
+                <td data-label="Reason">
+                  {snapshot.reasonCode || '—'}
+                  {snapshot.note ? <div className="adm-cell-sub">{snapshot.note}</div> : null}
+                </td>
                 <td className="be-num adm-cell-meta" data-label="Published">
                   {snapshot.createdAt ? fmtDateTime(snapshot.createdAt) : '—'}
                 </td>
@@ -215,36 +232,60 @@ export default function FundAumHistoryPanel({ fundId, fundName }) {
             The corrected date is fixed by the snapshot being corrected. This publishes revision
             {' '}{correcting.revision + 1} for the same date; nothing on other dates is recalculated.
           </p>
-          <form className="adm-form-grid" onSubmit={onCorrect}>
-            <label className="adm-field">
-              <span className="adm-field-label">Corrected AUM (₹)</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                step="0.01"
-                value={amount}
-                onChange={(event) => setAmount(event.target.value)}
-              />
-            </label>
-            <label className="adm-field">
-              <span className="adm-field-label">Reason</span>
-              <select value={reasonCode} onChange={(event) => setReasonCode(event.target.value)}>
-                <option value="">Choose a reason</option>
-                {AUM_CORRECTION_REASONS.map((reason) => (
-                  <option key={reason.value} value={reason.value}>{reason.label}</option>
-                ))}
-              </select>
-            </label>
-            <label className="adm-field adm-field--wide">
-              <span className="adm-field-label">Internal note (optional)</span>
-              <textarea
-                rows={2}
-                maxLength={2000}
-                value={note}
-                onChange={(event) => setNote(event.target.value)}
-              />
-            </label>
+          <form className="adm-form-grid" onSubmit={onCorrect} noValidate>
+            <FormField
+              id="aum-correction-amount"
+              label="Corrected AUM (₹)"
+              error={fieldErrors.amount}
+              hint="Zero is allowed. Two decimal places at most."
+            >
+              {(props) => (
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  value={amount}
+                  onChange={(event) => {
+                    clearFieldError('amount');
+                    setAmount(event.target.value);
+                  }}
+                  {...props}
+                />
+              )}
+            </FormField>
+            <FormField
+              id="aum-correction-reason"
+              label="Reason"
+              error={fieldErrors.reasonCode}
+            >
+              {(props) => (
+                <select
+                  value={reasonCode}
+                  onChange={(event) => {
+                    clearFieldError('reasonCode');
+                    setReasonCode(event.target.value);
+                  }}
+                  {...props}
+                >
+                  <option value="">Choose a reason</option>
+                  {AUM_CORRECTION_REASONS.map((reason) => (
+                    <option key={reason.value} value={reason.value}>{reason.label}</option>
+                  ))}
+                </select>
+              )}
+            </FormField>
+            <FormField id="aum-correction-note" label="Internal note (optional)" wide>
+              {(props) => (
+                <textarea
+                  rows={2}
+                  maxLength={2000}
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                  {...props}
+                />
+              )}
+            </FormField>
             {formError && (
               <div className="be-error adm-field--wide" role="alert">{formError}</div>
             )}
