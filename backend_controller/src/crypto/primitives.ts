@@ -37,19 +37,20 @@ export interface EncryptedEnvelope {
  * AES-256-GCM encrypt `plaintext`. The returned ciphertext is the GCM output
  * with the 16-byte authentication tag appended; the nonce is a fresh 12 bytes.
  */
-export const encryptGcm = (key: Buffer, plaintext: string): EncryptedEnvelope => {
+export const encryptGcm = (key: Buffer, plaintext: string, aad?: Buffer): EncryptedEnvelope => {
   if (key.length !== AES_256_KEY_BYTES) {
     throw new Error("AES-256-GCM requires a 32-byte key")
   }
   const nonce = randomBytes(GCM_NONCE_BYTES)
   const cipher = createCipheriv("aes-256-gcm", key, nonce)
+  if (aad !== undefined) cipher.setAAD(aad)
   const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()])
   const tag = cipher.getAuthTag()
   return { ciphertext: Buffer.concat([encrypted, tag]), nonce }
 }
 
 /** AES-256-GCM decrypt an envelope produced by {@link encryptGcm}. */
-export const decryptGcm = (key: Buffer, ciphertext: Buffer, nonce: Buffer): string => {
+export const decryptGcm = (key: Buffer, ciphertext: Buffer, nonce: Buffer, aad?: Buffer): string => {
   if (key.length !== AES_256_KEY_BYTES) {
     throw new Error("AES-256-GCM requires a 32-byte key")
   }
@@ -59,6 +60,7 @@ export const decryptGcm = (key: Buffer, ciphertext: Buffer, nonce: Buffer): stri
   const tag = ciphertext.subarray(ciphertext.length - GCM_TAG_BYTES)
   const encrypted = ciphertext.subarray(0, ciphertext.length - GCM_TAG_BYTES)
   const decipher = createDecipheriv("aes-256-gcm", key, nonce)
+  if (aad !== undefined) decipher.setAAD(aad)
   decipher.setAuthTag(tag)
   return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString("utf8")
 }

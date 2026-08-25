@@ -14,6 +14,8 @@ const MAX_REFERENCE_LENGTH = 63
 /** `boe_` + 32 hex chars = 36 characters. */
 export const newMerchantOrderId = (): string => `boe_${randomUUID().replaceAll("-", "")}`
 
+export const newMerchantSubscriptionId = (): string => `boesip_${randomUUID().replaceAll("-", "")}`
+
 /** `boerf_` + 32 hex chars = 38 characters. */
 export const newMerchantRefundId = (): string => `boerf_${randomUUID().replaceAll("-", "")}`
 
