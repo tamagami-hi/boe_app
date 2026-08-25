@@ -60,6 +60,8 @@ export interface PaymentDetailRow {
   readonly amountPaise: string
   readonly currency: string
   readonly state: PaymentState
+  readonly orderState: OrderState
+  readonly acceptedAt: Date | null
   readonly provider: string | null
   readonly merchantOrderId: string | null
   readonly providerOrderId: string | null
@@ -160,6 +162,8 @@ export const createClientPortfolioRepository = (): ClientPortfolioReadRepository
         p.amount_paise::text as "amountPaise",
         p.currency as "currency",
         p.state as "state",
+        o.state as "orderState",
+        o.accepted_at as "acceptedAt",
         a.provider as "provider",
         a.merchant_order_id as "merchantOrderId",
         a.provider_order_id as "providerOrderId",

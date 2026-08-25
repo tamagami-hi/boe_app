@@ -8,7 +8,7 @@
 import { sql } from "kysely"
 
 import type { Transaction } from "../db/repositories.js"
-import type { ClientValueEntryType } from "../db/types.js"
+import type { ClientValueEntryType, OrderType } from "../db/types.js"
 
 export interface ClientValueEntryRow {
   readonly id: string
@@ -18,6 +18,7 @@ export interface ClientValueEntryRow {
   readonly valueDeltaPaise: string
   readonly effectiveDate: string
   readonly orderId: string | null
+  readonly orderType: OrderType | null
   readonly createdAt: Date
 }
 
@@ -31,23 +32,25 @@ export interface ClientValueEntryRepository {
 }
 
 const ENTRY_COLUMNS = sql`
-  id,
-  fund_id as "fundId",
-  entry_type as "entryType",
-  principal_delta_paise::text as "principalDeltaPaise",
-  value_delta_paise::text as "valueDeltaPaise",
-  effective_date::text as "effectiveDate",
-  order_id as "orderId",
-  created_at as "createdAt"
+  v.id,
+  v.fund_id as "fundId",
+  v.entry_type as "entryType",
+  v.principal_delta_paise::text as "principalDeltaPaise",
+  v.value_delta_paise::text as "valueDeltaPaise",
+  v.effective_date::text as "effectiveDate",
+  v.order_id as "orderId",
+  v.created_at as "createdAt",
+  o.type as "orderType"
 `
 
 export const createClientValueEntryRepository = (): ClientValueEntryRepository => ({
   listByUser: async (tx, userId) => {
     const result = await sql<ClientValueEntryRow>`
       select ${ENTRY_COLUMNS}
-      from client_value_entries
-      where user_id = ${userId}
-      order by effective_date asc, created_at asc, id asc
+      from client_value_entries v
+      left join investment_orders o on o.id = v.order_id
+      where v.user_id = ${userId}
+      order by v.effective_date asc, v.created_at asc, v.id asc
     `.execute(tx)
     return result.rows
   },
@@ -55,9 +58,10 @@ export const createClientValueEntryRepository = (): ClientValueEntryRepository =
   listRecentByUser: async (tx, userId, limit) => {
     const result = await sql<ClientValueEntryRow>`
       select ${ENTRY_COLUMNS}
-      from client_value_entries
-      where user_id = ${userId}
-      order by created_at desc, id desc
+      from client_value_entries v
+      left join investment_orders o on o.id = v.order_id
+      where v.user_id = ${userId}
+      order by v.created_at desc, v.id desc
       limit ${limit}
     `.execute(tx)
     return result.rows

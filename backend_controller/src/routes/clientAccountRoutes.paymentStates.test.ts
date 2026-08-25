@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest"
 
-import { parsePaymentStates } from "./clientAccountRoutes.js"
+import { parsePaymentStates, paymentSuccessProjectionFor } from "./clientAccountRoutes.js"
 
 describe("parsePaymentStates", () => {
   test("accepts repeatable query params as an array, not only a comma string", () => {
@@ -13,7 +13,7 @@ describe("parsePaymentStates", () => {
     expect(parsePaymentStates("processing")).toEqual(["succeeded"])
     expect(parsePaymentStates("payment_failed")).toEqual(["failed", "expired"])
     expect(parsePaymentStates("refund_in_progress")).toEqual(["refund_pending"])
-    expect(parsePaymentStates("support_required")).toEqual(["refund_failed"])
+    expect(parsePaymentStates("support_required")).toEqual(["reconciliation_required", "refund_failed"])
     expect(parsePaymentStates("refunded")).toEqual(["refunded"])
   })
 
@@ -31,5 +31,17 @@ describe("parsePaymentStates", () => {
 
   test("returns an empty list when absent", () => {
     expect(parsePaymentStates(undefined)).toEqual([])
+  })
+})
+
+describe("paymentSuccessProjectionFor", () => {
+  test("distinguishes confirmed and processing succeeded-payment queries", () => {
+    expect(paymentSuccessProjectionFor("confirmed")).toBe("confirmed")
+    expect(paymentSuccessProjectionFor("processing")).toBe("processing")
+  })
+
+  test("does not constrain raw or combined succeeded-payment queries", () => {
+    expect(paymentSuccessProjectionFor("succeeded")).toBeNull()
+    expect(paymentSuccessProjectionFor("confirmed,processing")).toBeNull()
   })
 })

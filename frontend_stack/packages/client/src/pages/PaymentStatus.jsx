@@ -9,6 +9,7 @@ import { buildPath, HOME_PATH } from '../navigation/routes.js';
 import { useOrderCheckout } from '../payments/CheckoutProvider.jsx';
 import { clearPendingPayment } from '../payments/pendingPayment.js';
 import { useSession } from '../store/SessionContext.jsx';
+import { useClientCacheActions } from '../data/clientResources.js';
 
 /** The copy promises 90 seconds of checking, so the poll is bounded to it. */
 const POLL_INTERVAL_MS = 2000;
@@ -54,6 +55,7 @@ export default function PaymentStatus() {
   const navigate = useNavigate();
   const startOrderCheckout = useOrderCheckout();
   const { user } = useSession();
+  const { invalidateMoney } = useClientCacheActions();
   const [payment, setPayment] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [pollExpired, setPollExpired] = useState(false);
@@ -62,12 +64,21 @@ export default function PaymentStatus() {
   const retryLockRef = useRef(false);
   const polling = useRef(null);
   const mountedRef = useRef(true);
+  const observedStatusRef = useRef(null);
+
+  const applyPayment = useCallback((nextPayment) => {
+    const previousStatus = observedStatusRef.current;
+    const nextStatus = nextPayment?.status ?? null;
+    setPayment(nextPayment);
+    if (previousStatus !== null && nextStatus !== previousStatus) invalidateMoney();
+    observedStatusRef.current = nextStatus;
+  }, [invalidateMoney]);
 
   const loadPayment = useCallback(async () => {
     try {
       const p = await ordersApi.getPayment(paymentId);
       if (!mountedRef.current) return null;
-      setPayment(p);
+      applyPayment(p);
       if (!NON_TERMINAL.has(p?.status)) clearPendingPayment(paymentId, user?.id);
       setLoadError(null);
       return p;
@@ -80,7 +91,7 @@ export default function PaymentStatus() {
       if (mountedRef.current) setLoadError(error);
       return null;
     }
-  }, [paymentId, user?.id]);
+  }, [applyPayment, paymentId, user?.id]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -92,7 +103,7 @@ export default function PaymentStatus() {
       try {
         const p = await ordersApi.getPayment(paymentId);
         if (!mountedRef.current) return;
-        setPayment(p);
+        applyPayment(p);
         if (!NON_TERMINAL.has(p?.status)) {
           clearPendingPayment(paymentId);
           clearInterval(polling.current);
@@ -113,7 +124,7 @@ export default function PaymentStatus() {
       mountedRef.current = false;
       if (polling.current) clearInterval(polling.current);
     };
-  }, [paymentId, loadPayment]);
+  }, [applyPayment, paymentId, loadPayment]);
 
   const checkAgain = useCallback(async () => {
     setPollExpired(false);
@@ -126,13 +137,14 @@ export default function PaymentStatus() {
     retryLockRef.current = true;
     try {
       const outcome = await startOrderCheckout(payment.orderId);
+      invalidateMoney();
       if (!outcome.leaving) await loadPayment();
     } catch (error) {
       if (mountedRef.current) setLoadError(error);
     } finally {
       retryLockRef.current = false;
     }
-  }, [payment, startOrderCheckout, loadPayment]);
+  }, [invalidateMoney, payment, startOrderCheckout, loadPayment]);
 
   if (!payment) {
     return (

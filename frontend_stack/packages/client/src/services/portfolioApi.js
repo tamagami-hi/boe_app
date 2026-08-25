@@ -15,7 +15,7 @@ function mapPool(pool) {
     fundId: pool.fundId,
     invested: paiseToRupees(pool.totalInvestmentPaise),
     currentValue: paiseToRupees(pool.currentValuePaise),
-    totalReturn: paiseToRupees(pool.totalReturnPaise),
+    totalReturn: paiseToRupees(pool.totalGrowthPaise),
     returnPercent: pool.returnPercent,
     sipInstallments: pool.sipInstallmentCount,
     sipTotal: paiseToRupees(pool.sipTotalPaise),
@@ -42,7 +42,7 @@ export async function getPortfolio() {
     return {
       currentValue: paiseToRupees(payload?.currentValuePaise) ?? 0,
       invested: paiseToRupees(payload?.totalInvestmentPaise) ?? 0,
-      totalReturn: paiseToRupees(payload?.totalReturnPaise) ?? 0,
+      totalReturn: paiseToRupees(payload?.totalGrowthPaise) ?? 0,
       returnPercent: payload?.returnPercent ?? null,
       // "Return Since First Investment" and "Last Updated" on the card.
       returnSince: payload?.returnSince ?? null,
@@ -57,10 +57,6 @@ export async function getPortfolio() {
         allocatedGain: paiseToRupees(summary.allocatedGainPaise) ?? 0,
       },
       pools: (payload?.pools ?? []).map(mapPool),
-      // Legacy field names some older screens still read.
-      marketValue: paiseToRupees(payload?.currentValuePaise) ?? 0,
-      asOf: payload?.lastUpdated ?? null,
-      dataAsOf: payload?.lastUpdated ?? null,
       staleFlag: false,
       source: 'canonical',
     };

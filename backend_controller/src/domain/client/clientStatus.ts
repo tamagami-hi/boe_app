@@ -35,10 +35,15 @@ const PAYMENT_STATUS: Readonly<Record<PaymentState, ClientInvestmentStatus>> = {
   succeeded: "processing",
   failed: "payment_failed",
   expired: "payment_failed",
+  reconciliation_required: "support_required",
   refund_pending: "refund_in_progress",
   refund_failed: "support_required",
   refunded: "refunded",
 }
 
 export const projectOrderStatus = (state: OrderState): ClientInvestmentStatus => ORDER_STATUS[state]
-export const projectPaymentStatus = (state: PaymentState): ClientInvestmentStatus => PAYMENT_STATUS[state]
+export const projectPaymentStatus = (
+  state: PaymentState,
+  orderState?: OrderState,
+): ClientInvestmentStatus =>
+  state === "succeeded" && orderState === "accepted" ? "confirmed" : PAYMENT_STATUS[state]

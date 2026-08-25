@@ -102,6 +102,7 @@ const PAYMENT_STATES = [
   "succeeded",
   "failed",
   "expired",
+  "reconciliation_required",
   "refund_pending",
   "refund_failed",
   "refunded",
@@ -120,7 +121,7 @@ const STATE_ALIASES: Readonly<Record<string, readonly PaymentState[]>> = {
   reconciled: ["succeeded"],
   rejected: ["failed"],
   refund_in_progress: ["refund_pending"],
-  support_required: ["refund_failed"],
+  support_required: ["reconciliation_required", "refund_failed"],
   payment_in_progress: ["created", "provider_pending"],
   processing: ["succeeded"],
   payment_failed: ["failed", "expired"],
@@ -145,6 +146,17 @@ export const parsePaymentStates = (raw: string | readonly string[] | undefined):
     resolved.add(known)
   }
   return [...resolved]
+}
+
+export const paymentSuccessProjectionFor = (
+  raw: string | readonly string[] | undefined,
+): "confirmed" | "processing" | null => {
+  if (raw === undefined) return null
+  const values = (typeof raw === "string" ? raw.split(",") : raw).map((value) => value.trim().toLowerCase())
+  const hasConfirmed = values.includes("confirmed")
+  const hasProcessing = values.includes("processing")
+  if (hasConfirmed === hasProcessing) return null
+  return hasConfirmed ? "confirmed" : "processing"
 }
 
 const paymentsQuerySchema = z
@@ -180,12 +192,13 @@ const mapPayment = (row: ClientPaymentRow): Record<string, unknown> => ({
   id: row.id,
   orderId: row.orderId,
   fundId: row.fundId,
-  status: projectPaymentStatus(row.state),
+  status: projectPaymentStatus(row.state, row.orderState),
   amountPaise: row.amountPaise,
   currency: row.currency,
   provider: row.provider,
   failureCode: row.failureCode,
   succeededAt: isoOrNull(row.succeededAt),
+  confirmedAt: isoOrNull(row.acceptedAt),
   createdAt: iso(row.createdAt),
   updatedAt: iso(row.updatedAt),
 })
@@ -299,8 +312,14 @@ const listPayments = async (
   const principal = await authenticateNativeRequest(request, deps)
   const query = parseOrThrow(paymentsQuerySchema, request.query ?? {})
   const states = parsePaymentStates(query.status)
+  const successProjection = paymentSuccessProjectionFor(query.status)
   const rows = await deps.unitOfWork.execute((tx) =>
-    deps.clientAccountRepository.listPayments(tx, { userId: principal.userId, states, limit: query.limit }),
+    deps.clientAccountRepository.listPayments(tx, {
+      userId: principal.userId,
+      states,
+      successProjection,
+      limit: query.limit,
+    }),
   )
   return reply.sendData({ items: rows.map(mapPayment) })
 }

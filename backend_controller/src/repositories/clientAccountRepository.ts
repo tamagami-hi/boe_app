@@ -12,7 +12,7 @@
 import { sql } from "kysely"
 
 import type { Transaction } from "../db/repositories.js"
-import type { PaymentState, SupportRequestState } from "../db/types.js"
+import type { OrderState, PaymentState, SupportRequestState } from "../db/types.js"
 
 // --- notifications ---
 
@@ -33,6 +33,8 @@ export interface ClientPaymentRow {
   readonly orderId: string
   readonly fundId: string | null
   readonly state: PaymentState
+  readonly orderState: OrderState
+  readonly acceptedAt: Date | null
   readonly amountPaise: string
   readonly currency: string
   readonly provider: string | null
@@ -88,7 +90,12 @@ export interface ClientAccountRepository {
   ) => Promise<NotificationRow | null>
   listPayments: (
     tx: Transaction,
-    input: Readonly<{ userId: string; states: readonly PaymentState[]; limit: number }>,
+    input: Readonly<{
+      userId: string
+      states: readonly PaymentState[]
+      successProjection: "confirmed" | "processing" | null
+      limit: number
+    }>,
   ) => Promise<readonly ClientPaymentRow[]>
   listSupportRequests: (
     tx: Transaction,
@@ -181,6 +188,8 @@ export const createClientAccountRepository = (): ClientAccountRepository => ({
         p.order_id as "orderId",
         o.fund_id as "fundId",
         p.state,
+        o.state as "orderState",
+        o.accepted_at as "acceptedAt",
         p.amount_paise::text as "amountPaise",
         p.currency,
         latest.provider,
@@ -199,6 +208,12 @@ export const createClientAccountRepository = (): ClientAccountRepository => ({
       ) latest on true
       where p.user_id = ${input.userId}
         and (${input.states.length === 0} or p.state = any(${input.states}::payment_state[]))
+        and (
+          ${input.successProjection}::text is null or
+          p.state <> 'succeeded' or
+          (${input.successProjection} = 'confirmed' and o.state = 'accepted') or
+          (${input.successProjection} = 'processing' and o.state <> 'accepted')
+        )
       order by p.created_at desc, p.id desc
       limit ${input.limit}
     `.execute(tx)

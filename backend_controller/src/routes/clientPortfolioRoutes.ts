@@ -99,7 +99,9 @@ const mapOrder = (row: OrderRow): Record<string, unknown> => ({
 const mapTransaction = (row: ClientValueEntryRow): Record<string, unknown> => ({
   id: row.id,
   fundId: row.fundId,
-  type: row.entryType,
+  type: row.entryType === "contribution"
+    ? row.orderType ?? "lump_sum"
+    : row.entryType === "growth_adjustment" ? "gain_allocation" : "adjustment",
   // Signed deltas explain how the row moved each headline figure.
   principalDeltaPaise: row.principalDeltaPaise,
   valueDeltaPaise: row.valueDeltaPaise,
@@ -114,7 +116,7 @@ const mapPayment = (payment: PaymentDetailRow): Record<string, unknown> => ({
   fundId: payment.fundId,
   amountPaise: payment.amountPaise,
   currency: payment.currency,
-  status: projectPaymentStatus(payment.state),
+  status: projectPaymentStatus(payment.state, payment.orderState),
   provider: payment.provider,
   attemptStatus: payment.attemptState,
   failureCode: payment.failureCode,
@@ -122,6 +124,7 @@ const mapPayment = (payment: PaymentDetailRow): Record<string, unknown> => ({
   succeededAt: isoOrNull(payment.succeededAt),
   failedAt: isoOrNull(payment.failedAt),
   refundedAt: isoOrNull(payment.refundedAt),
+  confirmedAt: isoOrNull(payment.acceptedAt),
   createdAt: iso(payment.createdAt),
   updatedAt: iso(payment.updatedAt),
 })
@@ -164,8 +167,22 @@ const getPortfolio = async (deps: ClientPortfolioDeps, request: FastifyRequest, 
   const summary = derivePortfolio(entries)
 
   const fundIds = [...new Set(entries.map((entry) => entry.fundId))]
-  const funds = fundIds.map((fundId) => {
+  const contributionBreakdown = (sourceRows: readonly ClientValueEntryRow[]) => {
+    const contributions = sourceRows.filter((row) => row.entryType === "contribution")
+    const sipRows = contributions.filter((row) => row.orderType === "sip_installment")
+    const lumpRows = contributions.filter((row) => row.orderType === "lump_sum")
+    const total = (items: readonly ClientValueEntryRow[]) =>
+      items.reduce((sum, row) => sum + BigInt(row.principalDeltaPaise), 0n).toString()
+    return {
+      sipInstallmentCount: sipRows.length,
+      sipTotalPaise: total(sipRows),
+      lumpSumCount: lumpRows.length,
+      lumpSumTotalPaise: total(lumpRows),
+    }
+  }
+  const pools = fundIds.map((fundId) => {
     const perFund = derivePortfolio(entries.filter((entry) => entry.fundId === fundId))
+    const breakdown = contributionBreakdown(rows.filter((row) => row.fundId === fundId))
     return {
       fundId,
       totalInvestmentPaise: perFund.totalInvestmentPaise.toString(),
@@ -177,8 +194,13 @@ const getPortfolio = async (deps: ClientPortfolioDeps, request: FastifyRequest, 
       growthAdjustmentTotalPaise: perFund.growthAdjustmentTotalPaise.toString(),
       firstContributionDate: perFund.firstContributionDate,
       lastActivityDate: perFund.lastActivityDate,
+      firstInvestmentDate: perFund.firstContributionDate,
+      allocatedGainPaise: perFund.growthAdjustmentTotalPaise.toString(),
+      redeemedTotalPaise: "0",
+      ...breakdown,
     }
   })
+  const breakdown = contributionBreakdown(rows)
 
   return reply.sendData(
     {
@@ -193,8 +215,12 @@ const getPortfolio = async (deps: ClientPortfolioDeps, request: FastifyRequest, 
         contributionTotalPaise: summary.contributionTotalPaise.toString(),
         growthAdjustmentTotalPaise: summary.growthAdjustmentTotalPaise.toString(),
         reversalCount: summary.reversalCount,
+        allocatedGainPaise: summary.growthAdjustmentTotalPaise.toString(),
+        redeemedTotalPaise: "0",
+        redemptionCount: 0,
+        ...breakdown,
       },
-      funds,
+      pools,
     },
     { status: 200 },
   )
