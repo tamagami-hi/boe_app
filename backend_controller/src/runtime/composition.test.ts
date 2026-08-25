@@ -2,7 +2,7 @@ import { generateKeyPairSync, randomBytes } from "node:crypto"
 
 import { afterEach, describe, expect, test } from "vitest"
 
-import { composeBackend } from "./composition.js"
+import { composeBackend, composeMandateCollectionWorker, composeSipScheduleWorker } from "./composition.js"
 import { parseServerConfig } from "./environment.js"
 import { createApplication } from "./application.js"
 
@@ -96,6 +96,50 @@ describe("parseServerConfig", () => {
     expect(config.web.cookieSecure).toBe(false)
     expect(config.refreshKey).toHaveLength(32)
     expect(config.emailConfigured).toBe(true)
+    expect(config.payments.autoPay.enabled).toBe(false)
+    expect(() => parseServerConfig({ ...validEnv(), PHONEPE_AUTOPAY_ENABLED: "true" })).toThrow(/PHONEPE_MERCHANT_ID/u)
+    expect(parseServerConfig({
+      ...validEnv(),
+      PHONEPE_CLIENT_ID: "client-id",
+      PHONEPE_CLIENT_SECRET: "client-secret",
+      PHONEPE_CLIENT_VERSION: "1",
+      PHONEPE_ENV: "sandbox",
+      PHONEPE_CALLBACK_USERNAME: "callback-user",
+      PHONEPE_CALLBACK_PASSWORD: "callback-password",
+      PHONEPE_REDIRECT_URL: "https://dev-app.beonedge.in/payment-return",
+      PHONEPE_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment",
+      PHONEPE_SUBSCRIPTION_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/subscription",
+      PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: "checkout.setup.order.completed,checkout.setup.order.failed",
+      PHONEPE_CHECKOUT_ALLOWED_ORIGINS: "https://mercury-uat.phonepe.com",
+      PHONEPE_MERCHANT_ID: "merchant-id",
+      CRYPTO_PAYMENT_TOKEN_ENC_KEY: base64Key(),
+      CRYPTO_PAYMENT_TOKEN_ENC_KEY_VERSION: "ptk1",
+      PHONEPE_AUTOPAY_ENABLED: "true",
+    }).payments.autoPay.enabled).toBe(true)
+  })
+
+  test("requires subscription reconciliation metadata whenever PhonePe credentials are configured", () => {
+    const phonePeCredentials = {
+      ...validEnv(),
+      PHONEPE_CLIENT_ID: "client-id",
+      PHONEPE_CLIENT_SECRET: "client-secret",
+      PHONEPE_CLIENT_VERSION: "1",
+      PHONEPE_ENV: "sandbox",
+      PHONEPE_CALLBACK_USERNAME: "callback-user",
+      PHONEPE_CALLBACK_PASSWORD: "callback-password",
+      PHONEPE_REDIRECT_URL: "https://dev-app.beonedge.in/payment-return",
+      PHONEPE_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment",
+      PHONEPE_CHECKOUT_ALLOWED_ORIGINS: "https://mercury-uat.phonepe.com",
+      PHONEPE_AUTOPAY_ENABLED: "false",
+    }
+    expect(() => parseServerConfig(phonePeCredentials)).toThrow(/PHONEPE_MERCHANT_ID/u)
+    expect(() => parseServerConfig({ ...phonePeCredentials, PHONEPE_MERCHANT_ID: "merchant-id" }))
+      .toThrow(/PHONEPE_SUBSCRIPTION_CALLBACK_URL/u)
+    expect(() => parseServerConfig({
+      ...phonePeCredentials,
+      PHONEPE_MERCHANT_ID: "merchant-id",
+      PHONEPE_SUBSCRIPTION_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/subscription",
+    })).toThrow(/PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST/u)
   })
 
   test("rejects a refresh key that is not 32 bytes", () => {
@@ -151,6 +195,192 @@ describe("parseServerConfig", () => {
     expect(parseServerConfig({ ...validEnv(), APK_DOWNLOAD_BASE_URL: downloadBaseUrl }).appUpdate.downloadBaseUrl)
       .toBe(downloadBaseUrl)
   })
+
+  test("accepts canonical PhonePe return and callback URLs", () => {
+    const config = parseServerConfig({
+      ...validEnv(),
+      PHONEPE_CLIENT_ID: "client-id",
+      PHONEPE_CLIENT_SECRET: "client-secret",
+      PHONEPE_CLIENT_VERSION: "1",
+      PHONEPE_ENV: "sandbox",
+      PHONEPE_CALLBACK_USERNAME: "callback-user",
+      PHONEPE_CALLBACK_PASSWORD: "callback-password",
+      PHONEPE_REDIRECT_URL: "https://dev-app.beonedge.in/payment-return",
+      PHONEPE_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment",
+      PHONEPE_SUBSCRIPTION_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/subscription",
+      PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: "subscription.status.updated",
+      PHONEPE_CHECKOUT_ALLOWED_ORIGINS: "https://mercury-uat.phonepe.com",
+      PHONEPE_MERCHANT_ID: "merchant-id",
+    })
+
+    expect(config.payments.phonepe?.redirectUrl).toBe("https://dev-app.beonedge.in/payment-return")
+    expect(config.payments.phonepe?.callbackUrl).toBe(
+      "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment",
+    )
+  })
+
+  test("accepts production PhonePe only with production runtime and hosts", () => {
+    const config = parseServerConfig({
+      ...validEnv(),
+      NODE_ENV: "production",
+      PHONEPE_CLIENT_ID: "client-id",
+      PHONEPE_CLIENT_SECRET: "client-secret",
+      PHONEPE_CLIENT_VERSION: "1",
+      PHONEPE_ENV: "production",
+      PHONEPE_CALLBACK_USERNAME: "callback-user",
+      PHONEPE_CALLBACK_PASSWORD: "callback-password",
+      PHONEPE_REDIRECT_URL: "https://app.beonedge.in/payment-return",
+      PHONEPE_CALLBACK_URL: "https://app.beonedge.in/api/v1/provider-events/phonepe/payment",
+      PHONEPE_SUBSCRIPTION_CALLBACK_URL: "https://app.beonedge.in/api/v1/provider-events/phonepe/subscription",
+      PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: "subscription.status.updated",
+      PHONEPE_CHECKOUT_ALLOWED_ORIGINS: "https://mercury.phonepe.com",
+      PHONEPE_MERCHANT_ID: "merchant-id",
+    })
+
+    expect(config.payments.phonepe?.env).toBe("production")
+  })
+
+  test.each([
+    ["sandbox", "https://app.beonedge.in/payment-return", "https://app.beonedge.in/api/v1/provider-events/phonepe/payment"],
+    ["production", "https://dev-app.beonedge.in/payment-return", "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment"],
+  ])("rejects %s PhonePe credentials wired to the other environment", (phonePeEnvironment, redirectUrl, callbackUrl) => {
+    expect(() => parseServerConfig({
+      ...validEnv(),
+      PHONEPE_CLIENT_ID: "client-id",
+      PHONEPE_CLIENT_SECRET: "client-secret",
+      PHONEPE_CLIENT_VERSION: "1",
+      PHONEPE_ENV: phonePeEnvironment,
+      PHONEPE_CALLBACK_USERNAME: "callback-user",
+      PHONEPE_CALLBACK_PASSWORD: "callback-password",
+      PHONEPE_REDIRECT_URL: redirectUrl,
+      PHONEPE_CALLBACK_URL: callbackUrl,
+      PHONEPE_CHECKOUT_ALLOWED_ORIGINS: "https://mercury-uat.phonepe.com",
+    })).toThrow(/PHONEPE_/u)
+  })
+
+  test.each([
+    ["production", "sandbox"],
+    ["development", "production"],
+    ["test", "production"],
+  ])("rejects NODE_ENV=%s with PHONEPE_ENV=%s", (nodeEnvironment, phonePeEnvironment) => {
+    expect(() => parseServerConfig({
+      ...validEnv(),
+      NODE_ENV: nodeEnvironment,
+      PHONEPE_CLIENT_ID: "client-id",
+      PHONEPE_CLIENT_SECRET: "client-secret",
+      PHONEPE_CLIENT_VERSION: "1",
+      PHONEPE_ENV: phonePeEnvironment,
+      PHONEPE_CALLBACK_USERNAME: "callback-user",
+      PHONEPE_CALLBACK_PASSWORD: "callback-password",
+      PHONEPE_REDIRECT_URL: phonePeEnvironment === "sandbox"
+        ? "https://dev-app.beonedge.in/payment-return"
+        : "https://app.beonedge.in/payment-return",
+      PHONEPE_CALLBACK_URL: phonePeEnvironment === "sandbox"
+        ? "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment"
+        : "https://app.beonedge.in/api/v1/provider-events/phonepe/payment",
+      PHONEPE_CHECKOUT_ALLOWED_ORIGINS: "https://mercury-uat.phonepe.com",
+    })).toThrow(/PHONEPE_ENV/u)
+  })
+
+  test.each([
+    ["PHONEPE_REDIRECT_URL", "https://dev-app.beonedge.in/payment-status"],
+    ["PHONEPE_REDIRECT_URL", "https://evil.example/payment-return"],
+    ["PHONEPE_CALLBACK_URL", "http://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment"],
+    ["PHONEPE_CALLBACK_URL", "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/subscription"],
+  ])("rejects non-canonical PhonePe wiring in %s", (name, value) => {
+    const phonePe = {
+      PHONEPE_CLIENT_ID: "client-id",
+      PHONEPE_CLIENT_SECRET: "client-secret",
+      PHONEPE_CLIENT_VERSION: "1",
+      PHONEPE_ENV: "sandbox",
+      PHONEPE_CALLBACK_USERNAME: "callback-user",
+      PHONEPE_CALLBACK_PASSWORD: "callback-password",
+      PHONEPE_REDIRECT_URL: "https://dev-app.beonedge.in/payment-return",
+      PHONEPE_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment",
+      PHONEPE_SUBSCRIPTION_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/subscription",
+      PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: "subscription.status.updated",
+      PHONEPE_CHECKOUT_ALLOWED_ORIGINS: "https://mercury-uat.phonepe.com",
+      [name]: value,
+    }
+
+    expect(() => parseServerConfig({ ...validEnv(), ...phonePe })).toThrow(/PHONEPE_/u)
+  })
+
+  test("rejects a configured gateway without return and callback URLs", () => {
+    expect(() => parseServerConfig({
+      ...validEnv(),
+      PHONEPE_CLIENT_ID: "client-id",
+      PHONEPE_CLIENT_SECRET: "client-secret",
+      PHONEPE_CLIENT_VERSION: "1",
+      PHONEPE_ENV: "sandbox",
+      PHONEPE_CALLBACK_USERNAME: "callback-user",
+      PHONEPE_CALLBACK_PASSWORD: "callback-password",
+    })).toThrow(/PHONEPE_REDIRECT_URL and PHONEPE_CALLBACK_URL/u)
+  })
+
+  test.each(["304999", "3600001"])("rejects payment attempt TTL %s outside PhonePe limits", (attemptTtlMs) => {
+    expect(() => parseServerConfig({ ...validEnv(), PAYMENT_ATTEMPT_TTL_MS: attemptTtlMs })).toThrow()
+  })
+
+  test.each(["305000", "3600000"])("accepts payment attempt TTL %s at configured limits", (attemptTtlMs) => {
+    expect(parseServerConfig({ ...validEnv(), PAYMENT_ATTEMPT_TTL_MS: attemptTtlMs }).payments.attemptTtlMs)
+      .toBe(Number(attemptTtlMs))
+  })
+
+  test("fails closed when mobile SDK orders are enabled without their dedicated secrets", () => {
+    expect(() => parseServerConfig({
+      ...validEnv(),
+      PHONEPE_MOBILE_SDK_ORDER_ENABLED: "true",
+    })).toThrow(/PHONEPE_MERCHANT_ID/u)
+  })
+
+  test("enables mobile SDK orders only with complete PhonePe and token encryption configuration", () => {
+    const config = parseServerConfig({
+      ...validEnv(),
+      PHONEPE_CLIENT_ID: "client-id",
+      PHONEPE_CLIENT_SECRET: "client-secret",
+      PHONEPE_CLIENT_VERSION: "1",
+      PHONEPE_ENV: "sandbox",
+      PHONEPE_CALLBACK_USERNAME: "callback-user",
+      PHONEPE_CALLBACK_PASSWORD: "callback-password",
+      PHONEPE_REDIRECT_URL: "https://dev-app.beonedge.in/payment-return",
+      PHONEPE_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment",
+      PHONEPE_SUBSCRIPTION_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/subscription",
+      PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: "subscription.status.updated",
+      PHONEPE_CHECKOUT_ALLOWED_ORIGINS: "https://mercury-uat.phonepe.com",
+      PHONEPE_MERCHANT_ID: "merchant-id",
+      PHONEPE_MOBILE_SDK_ORDER_ENABLED: "true",
+      CRYPTO_PAYMENT_TOKEN_ENC_KEY: base64Key(),
+      CRYPTO_PAYMENT_TOKEN_ENC_KEY_VERSION: "ptk1",
+    })
+
+    expect(config.payments.mobileSdk).toMatchObject({
+      enabled: true,
+      merchantId: "merchant-id",
+      tokenKeyVersion: "ptk1",
+    })
+    expect(config.payments.mobileSdk.tokenEncryptionKey).toHaveLength(32)
+  })
+
+  test.each([
+    "http://mercury-uat.phonepe.com",
+    "https://mercury-uat.phonepe.com/path",
+    "https://*.phonepe.com",
+    "https://user@mercury-uat.phonepe.com",
+  ])("rejects unsafe PhonePe checkout origin %s", (origin) => {
+    expect(() => parseServerConfig({
+      ...validEnv(),
+      PHONEPE_CLIENT_ID: "client-id",
+      PHONEPE_CLIENT_SECRET: "client-secret",
+      PHONEPE_CLIENT_VERSION: "1",
+      PHONEPE_ENV: "sandbox",
+      PHONEPE_CALLBACK_USERNAME: "callback-user",
+      PHONEPE_CALLBACK_PASSWORD: "callback-password",
+      PHONEPE_REDIRECT_URL: "https://dev-app.beonedge.in/payment-return",
+      PHONEPE_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment",
+      PHONEPE_CHECKOUT_ALLOWED_ORIGINS: origin,
+    })).toThrow(/PHONEPE_CHECKOUT_ALLOWED_ORIGINS/u)
+  })
 })
 
 describe("the read cache is optional", () => {
@@ -182,5 +412,43 @@ describe("the read cache is optional", () => {
 
     expect(typeof composed.registerRoutes).toBe("function")
     await composed.dispose()
+  })
+})
+
+describe("worker composers", () => {
+  test("composeMandateCollectionWorker returns an unconfigured pass when PhonePe is absent", async () => {
+    const worker = composeMandateCollectionWorker(validEnv())
+    dispose.push(worker.dispose)
+    expect(worker.gatewayConfigured).toBe(false)
+    const summary = await worker.runOnce()
+    expect(summary).toEqual({ plansChecked: 0, collectionsCreated: 0, notificationsDispatched: 0, collectionsResolved: 0 })
+  })
+
+  test("composeMandateCollectionWorker composes with PhonePe configured", async () => {
+    const worker = composeMandateCollectionWorker({
+      ...validEnv(),
+      PHONEPE_CLIENT_ID: "client-id",
+      PHONEPE_CLIENT_SECRET: "client-secret",
+      PHONEPE_CLIENT_VERSION: "1",
+      PHONEPE_ENV: "sandbox",
+      PHONEPE_CALLBACK_USERNAME: "callback-user",
+      PHONEPE_CALLBACK_PASSWORD: "callback-password",
+      PHONEPE_REDIRECT_URL: "https://dev-app.beonedge.in/payment-return",
+      PHONEPE_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment",
+      PHONEPE_SUBSCRIPTION_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/subscription",
+      PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: "subscription.status.updated",
+      PHONEPE_CHECKOUT_ALLOWED_ORIGINS: "https://mercury-uat.phonepe.com",
+      PHONEPE_MERCHANT_ID: "merchant-id",
+      CRYPTO_PAYMENT_TOKEN_ENC_KEY: base64Key(),
+      CRYPTO_PAYMENT_TOKEN_ENC_KEY_VERSION: "ptk1",
+    })
+    dispose.push(worker.dispose)
+    expect(worker.gatewayConfigured).toBe(true)
+  })
+
+  test("composeSipScheduleWorker composes and exposes a runOnce function", async () => {
+    const worker = composeSipScheduleWorker(validEnv())
+    dispose.push(worker.dispose)
+    expect(typeof worker.runOnce).toBe("function")
   })
 })

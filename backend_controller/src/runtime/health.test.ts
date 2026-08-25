@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test } from "vitest"
 
 import { createApplication } from "./application.js"
 import { buildReadinessReport, registerHealthRoutes, type ReadinessReport } from "./health.js"
+import type { MetricsDeps } from "./metrics.js"
 
 let app: FastifyInstance | undefined
 afterEach(async () => {
@@ -68,5 +69,29 @@ describe("health routes", () => {
       ok: true,
       data: { status: "ok" },
     })
+  })
+
+  test("/metrics route is wired when metrics deps are provided", async () => {
+    const metricsDeps: MetricsDeps = {
+      repository: {
+        findLatestWorkerHeartbeats: async () => [],
+        countPaymentReconciliationBacklog: async () => 0,
+        countMandateReconciliationBacklog: async () => 0,
+        countSetupDispatchBacklog: async () => 0,
+        countCollectionNotifyBacklog: async () => 0,
+        countCollectionReconcileBacklog: async () => 0,
+        countCancelEscalations: async () => 0,
+        countStaleSetups: async () => 0,
+        countStaleCollections: async () => 0,
+      },
+      clock: () => new Date("2026-08-24T10:00:00.000Z"),
+    }
+    app = createApplication({
+      logger: false,
+      registerRoutes: (instance) => registerHealthRoutes(instance, { checkReadiness: () => Promise.resolve(buildReadinessReport(true, true, true)), metrics: metricsDeps }),
+    })
+    const response = await app.inject({ method: "GET", url: "/metrics" })
+    expect(response.statusCode).toBe(200)
+    expect(response.body).toContain("boe_worker_backlog_count")
   })
 })

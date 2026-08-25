@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify"
+import type { Kysely } from "kysely"
 
 import { createAccessTokenService } from "../auth/accessToken.js"
 import { createBreachChecker, resolveBreachCheckMode } from "../auth/breachCheck.js"
@@ -10,6 +11,7 @@ import {
 } from "../domain/email/dispatchDueDeliveries.js"
 import { createTransactionalEmailSender } from "../email/transactionalEmailSender.js"
 import { createDatabase, createUnitOfWork } from "../db/database.js"
+import type { Database } from "../db/types.js"
 import { parseDatabaseConfig } from "../db/config.js"
 import { createPool } from "../db/pool.js"
 import { createCertificateFetcher } from "../email/certificateFetcher.js"
@@ -30,8 +32,15 @@ import { createRefundRepository } from "../repositories/refundRepository.js"
 import { createInvestmentReviewRepository } from "../repositories/investmentReviewRepository.js"
 import { createProviderEventInboxRepository } from "../repositories/providerEventInboxRepository.js"
 import { createPhonePeCheckoutGateway } from "../providers/phonepe/phonePeCheckoutGateway.js"
+import { createPhonePeMobileOrderGateway } from "../providers/phonepe/phonePeMobileOrderGateway.js"
+import { createPhonePeRecurringGateway } from "../providers/phonepe/phonePeRecurringGateway.js"
+import type { MobilePaymentGateway } from "../providers/mobilePaymentGateway.js"
+import type { RecurringPaymentGateway } from "../providers/recurringPaymentGateway.js"
 import type { PaymentGateway } from "../providers/phonepe/paymentGateway.js"
+import type { GatewayFailureLogger } from "../providers/phonepe/gatewayFailure.js"
 import { runReconciliationPass, type ReconciliationSummary } from "../paymentReconciliationWorker.js"
+import { runMandateReconciliationPass } from "../mandateReconciliationWorker.js"
+import { runMandateCollectionPass, type MandateCollectionSummary } from "../mandateCollectionWorker.js"
 import { runSipSchedulePass, type SipScheduleSummary } from "../sipScheduleWorker.js"
 import { createApplicationReviewRepository } from "../repositories/applicationReviewRepository.js"
 import { createAuditRepository } from "../repositories/auditRepository.js"
@@ -43,6 +52,8 @@ import { createEmailDeliveryRepository } from "../repositories/emailDeliveryRepo
 import { createEmailProviderEventRepository } from "../repositories/emailProviderEventRepository.js"
 import { createEmailSuppressionRepository } from "../repositories/emailSuppressionRepository.js"
 import { createIdempotencyRepository } from "../repositories/idempotencyRepository.js"
+import { createMandatesRepository } from "../repositories/mandatesRepository.js"
+import { createAdminMandateRepository } from "../repositories/adminMandateRepository.js"
 import { createLoginEventRepository } from "../repositories/loginEventRepository.js"
 import { createOutboxRepository } from "../repositories/outboxRepository.js"
 import { createUserRepository } from "../repositories/userRepository.js"
@@ -64,6 +75,7 @@ import { registerClientAccountRoutes } from "../routes/clientAccountRoutes.js"
 import { registerClientKycRoutes } from "../routes/clientKycRoutes.js"
 import { registerClientOrderRoutes } from "../routes/clientOrderRoutes.js"
 import { registerClientSipPlanRoutes } from "../routes/clientSipPlanRoutes.js"
+import { registerClientAutoPaySipRoutes } from "../routes/clientAutoPaySipRoutes.js"
 import { createSipPlanRepository } from "../repositories/sipPlanRepository.js"
 import { registerClientCatalogRoutes } from "../routes/clientCatalogRoutes.js"
 import { registerClientPortfolioRoutes } from "../routes/clientPortfolioRoutes.js"
@@ -74,10 +86,16 @@ import { createRedisClient } from "../cache/redisClient.js"
 import { registerNativeAuthRoutes } from "../routes/nativeAuthRoutes.js"
 import { registerProviderEventRoutes } from "../routes/providerEventRoutes.js"
 import { registerPhonePeProviderEventRoutes } from "../routes/phonePeProviderEventRoutes.js"
+import { registerPhonePeMandateEventRoutes } from "../routes/phonePeMandateEventRoutes.js"
+import { registerAdminMandateRoutes } from "../routes/adminMandateRoutes.js"
+import { registerPaymentReturnRoutes } from "../routes/paymentReturnRoutes.js"
 import { registerPublicOnboardingRoutes } from "../routes/publicOnboardingRoutes.js"
 import { registerWebAuthRoutes } from "../routes/webAuthRoutes.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
+
+const PAYMENT_NOT_FOUND_GRACE_MS = 60_000
 import { createReadinessCheck, registerHealthRoutes, type ReadinessReport } from "./health.js"
+import { createMetricsRepository } from "../repositories/metricsRepository.js"
 import { parseServerConfig } from "./environment.js"
 
 export interface BackendServices {
@@ -139,6 +157,30 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
     serverConfig.payments.phonepe !== null
       ? createPhonePeCheckoutGateway({ config: serverConfig.payments.phonepe })
       : null
+  const mobilePaymentGateway: MobilePaymentGateway | null =
+    serverConfig.payments.mobileSdk.enabled && serverConfig.payments.phonepe !== null
+      ? createPhonePeMobileOrderGateway({
+          config: {
+            clientId: serverConfig.payments.phonepe.clientId,
+            clientSecret: serverConfig.payments.phonepe.clientSecret,
+            clientVersion: serverConfig.payments.phonepe.clientVersion,
+            env: serverConfig.payments.phonepe.env,
+            requestTimeoutMs: serverConfig.payments.mobileSdk.requestTimeoutMs,
+          },
+        })
+      : null
+  const recurringPaymentGateway: RecurringPaymentGateway | null =
+    serverConfig.payments.phonepe !== null
+      ? createPhonePeRecurringGateway({
+          config: {
+            clientId: serverConfig.payments.phonepe.clientId,
+            clientSecret: serverConfig.payments.phonepe.clientSecret,
+            clientVersion: serverConfig.payments.phonepe.clientVersion,
+            env: serverConfig.payments.phonepe.env,
+            requestTimeoutMs: serverConfig.payments.mobileSdk.requestTimeoutMs,
+          },
+        })
+      : null
 
   const applicationRepository = createApplicationRepository()
   const applicationReviewRepository = createApplicationReviewRepository()
@@ -159,6 +201,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const paymentsRepository = createPaymentsRepository()
   const refundRepository = createRefundRepository()
   const investmentReviewRepository = createInvestmentReviewRepository()
+  const adminMandateRepository = createAdminMandateRepository()
   const providerEventInboxRepository = createProviderEventInboxRepository()
   const notificationRepository = createNotificationRepository()
   const kycRepository = createKycRepository()
@@ -193,7 +236,11 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const adminContentRepository = createAdminContentRepository()
 
   const registerRoutes = (application: FastifyInstance): void => {
-    registerHealthRoutes(application, { checkReadiness })
+    registerHealthRoutes(application, {
+      checkReadiness,
+      metrics: { repository: createMetricsRepository(database), clock },
+    })
+    registerPaymentReturnRoutes(application, { clock, signingKey: serverConfig.cursorKey })
 
     registerPublicOnboardingRoutes(application, {
       database,
@@ -256,9 +303,21 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       idempotencyRepository,
       paymentsRepository,
       paymentGateway,
+      mobilePaymentGateway,
       config: {
         idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
         attemptTtlMs: serverConfig.payments.attemptTtlMs,
+        paymentReturnUrl: serverConfig.payments.phonepe?.redirectUrl ?? null,
+        paymentReturnSigningKey: serverConfig.cursorKey,
+        mobileSdk: {
+          enabled: serverConfig.payments.mobileSdk.enabled,
+          merchantId: serverConfig.payments.mobileSdk.merchantId,
+          environment: serverConfig.payments.phonepe === null
+            ? null
+            : serverConfig.payments.phonepe.env === "sandbox" ? "SANDBOX" : "PRODUCTION",
+          tokenEncryptionKey: serverConfig.payments.mobileSdk.tokenEncryptionKey,
+          tokenKeyVersion: serverConfig.payments.mobileSdk.tokenKeyVersion,
+        },
       },
     })
 
@@ -272,6 +331,32 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       userRepository,
       auditRepository,
       notificationRepository,
+    })
+
+    registerClientAutoPaySipRoutes(application, {
+      accessTokenService,
+      database,
+      unitOfWork,
+      clock,
+      sipPlanRepository: createSipPlanRepository(),
+      mandatesRepository: createMandatesRepository(),
+      orderRepository,
+      paymentsRepository,
+      userRepository,
+      auditRepository,
+      idempotencyRepository,
+      recurringPaymentGateway,
+      config: {
+        enabled: serverConfig.payments.autoPay.enabled,
+        idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
+        attemptTtlMs: serverConfig.payments.attemptTtlMs,
+        merchantId: serverConfig.payments.mobileSdk.merchantId,
+        environment: serverConfig.payments.phonepe === null
+          ? null
+          : serverConfig.payments.phonepe.env === "sandbox" ? "SANDBOX" : "PRODUCTION",
+        tokenEncryptionKey: serverConfig.payments.mobileSdk.tokenEncryptionKey,
+        tokenKeyVersion: serverConfig.payments.mobileSdk.tokenKeyVersion,
+      },
     })
 
     registerClientKycRoutes(application, {
@@ -480,6 +565,39 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         refundRepository,
       })
     }
+    if (paymentGateway !== null && recurringPaymentGateway !== null) {
+      registerPhonePeMandateEventRoutes(application, {
+        unitOfWork,
+        clock,
+        paymentGateway,
+        recurringPaymentGateway,
+        mandatesRepository: createMandatesRepository(),
+        paymentsRepository,
+        providerEventInboxRepository,
+        config: {
+          payloadEncryptionKey: cryptoKeys.recipientEncryptionKey,
+          payloadKeyVersion: cryptoKeys.recipientEncryptionKeyVersion,
+          merchantId: serverConfig.payments.mobileSdk.merchantId as string,
+          eventAllowlist: serverConfig.payments.autoPay.subscriptionEventAllowlist,
+        },
+      })
+      registerAdminMandateRoutes(application, {
+        webAuth,
+        unitOfWork,
+        database,
+        clock,
+        config: {
+          cursorKey: serverConfig.cursorKey,
+          idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
+        },
+        adminMandateRepository,
+        mandatesRepository: createMandatesRepository(),
+        paymentsRepository,
+        recurringPaymentGateway,
+        auditRepository,
+        idempotencyRepository,
+      })
+    }
   }
 
   return {
@@ -497,6 +615,7 @@ export interface EmailDispatchWorker {
   readonly runOnce: () => Promise<DispatchSummary>
   readonly transportConfigured: boolean
   readonly dispose: () => Promise<void>
+  readonly database: Kysely<Database>
 }
 
 export const composeEmailDispatchWorker = (
@@ -536,6 +655,7 @@ export const composeEmailDispatchWorker = (
     dispose: async () => {
       await pool.end()
     },
+    database,
   }
 }
 
@@ -543,10 +663,12 @@ export interface PaymentReconciliationWorker {
   readonly runOnce: () => Promise<ReconciliationSummary>
   readonly gatewayConfigured: boolean
   readonly dispose: () => Promise<void>
+  readonly database: Kysely<Database>
 }
 
 export const composePaymentReconciliationWorker = (
   source: Readonly<Record<string, string | undefined>>,
+  logger: GatewayFailureLogger | null = null,
 ): PaymentReconciliationWorker => {
   const pool = createPool(parseDatabaseConfig(source))
   const database = createDatabase(pool)
@@ -557,34 +679,115 @@ export const composePaymentReconciliationWorker = (
     serverConfig.payments.phonepe !== null
       ? createPhonePeCheckoutGateway({ config: serverConfig.payments.phonepe })
       : null
+  const recurringGateway =
+    serverConfig.payments.phonepe !== null
+      ? createPhonePeRecurringGateway({
+          config: {
+            clientId: serverConfig.payments.phonepe.clientId,
+            clientSecret: serverConfig.payments.phonepe.clientSecret,
+            clientVersion: serverConfig.payments.phonepe.clientVersion,
+            env: serverConfig.payments.phonepe.env,
+            requestTimeoutMs: serverConfig.payments.mobileSdk.requestTimeoutMs,
+          },
+        })
+      : null
 
   return {
     runOnce: async () => {
       if (gateway === null) {
         return { attemptsChecked: 0, attemptsResolved: 0, refundsChecked: 0, refundsResolved: 0 }
       }
-      return runReconciliationPass({
+      const summary = await runReconciliationPass({
         unitOfWork,
         clock: (): Date => new Date(),
         paymentGateway: gateway,
+        logger,
         paymentsRepository: createPaymentsRepository(),
         refundRepository: createRefundRepository(),
         config: {
           claimLimit: 25,
-          staleAfterMs: serverConfig.payments.attemptTtlMs,
+          notFoundGraceMs: PAYMENT_NOT_FOUND_GRACE_MS,
         },
       })
+      if (recurringGateway !== null) {
+        await runMandateReconciliationPass({
+          unitOfWork,
+          clock: (): Date => new Date(),
+          recurringPaymentGateway: recurringGateway,
+          mandatesRepository: createMandatesRepository(),
+          paymentsRepository: createPaymentsRepository(),
+          logger,
+          config: {
+            claimLimit: 25,
+            notFoundGraceMs: PAYMENT_NOT_FOUND_GRACE_MS,
+            cancelDispatchGraceMs: PAYMENT_NOT_FOUND_GRACE_MS,
+            cancelDispatchInFlightTimeoutMs: serverConfig.payments.mobileSdk.requestTimeoutMs,
+          },
+        })
+      }
+      return summary
     },
     gatewayConfigured: gateway !== null,
     dispose: async () => {
       await pool.end()
     },
+    database,
   }
 }
 
 export interface SipScheduleWorker {
   readonly runOnce: () => Promise<SipScheduleSummary>
   readonly dispose: () => Promise<void>
+  readonly database: Kysely<Database>
+}
+
+export interface MandateCollectionWorker {
+  readonly runOnce: () => Promise<MandateCollectionSummary>
+  readonly gatewayConfigured: boolean
+  readonly dispose: () => Promise<void>
+  readonly database: Kysely<Database>
+}
+
+export const composeMandateCollectionWorker = (
+  source: Readonly<Record<string, string | undefined>>,
+  logger: GatewayFailureLogger | null = null,
+): MandateCollectionWorker => {
+  const pool = createPool(parseDatabaseConfig(source))
+  const database = createDatabase(pool)
+  const unitOfWork = createUnitOfWork(database)
+  const serverConfig = parseServerConfig(source)
+  const gateway = serverConfig.payments.phonepe === null
+    ? null
+    : createPhonePeRecurringGateway({
+        config: {
+          clientId: serverConfig.payments.phonepe.clientId,
+          clientSecret: serverConfig.payments.phonepe.clientSecret,
+          clientVersion: serverConfig.payments.phonepe.clientVersion,
+          env: serverConfig.payments.phonepe.env,
+          requestTimeoutMs: serverConfig.payments.mobileSdk.requestTimeoutMs,
+        },
+      })
+  return {
+    runOnce: () => gateway === null
+      ? Promise.resolve({ plansChecked: 0, collectionsCreated: 0, notificationsDispatched: 0, collectionsResolved: 0 })
+      : runMandateCollectionPass({
+          unitOfWork,
+          clock: (): Date => new Date(),
+          recurringPaymentGateway: gateway,
+          sipPlanRepository: createSipPlanRepository(),
+          mandatesRepository: createMandatesRepository(),
+          orderRepository: createOrderRepository(),
+          paymentsRepository: createPaymentsRepository(),
+          userRepository: createUserRepository(),
+          auditRepository: createAuditRepository(),
+          notificationRepository: createNotificationRepository(),
+          logger,
+          config: { claimLimit: 100, commandEnabled: serverConfig.payments.autoPay.collectionEnabled },
+        }),
+    gatewayConfigured: gateway !== null,
+    dispose: async () => pool.end(),
+    database,
+  }
 }
 
 export const composeSipScheduleWorker = (
@@ -612,6 +815,6 @@ export const composeSipScheduleWorker = (
     dispose: async () => {
       await pool.end()
     },
+    database,
   }
 }
-

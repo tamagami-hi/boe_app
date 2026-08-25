@@ -1,6 +1,10 @@
 import { z } from "zod"
 
 import type { AccessTokenConfig } from "../auth/accessToken.js"
+import {
+  MAX_PAYMENT_ATTEMPT_TTL_MS,
+  MIN_PAYMENT_ATTEMPT_TTL_MS,
+} from "../domain/payments/checkoutExpiry.js"
 
 const DEFAULT_PORT = 47502
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -99,11 +103,26 @@ const ServerConfigSchema = z.object({
   PHONEPE_ENV: z.enum(["sandbox", "production"]).optional(),
   PHONEPE_CALLBACK_USERNAME: z.string().trim().optional(),
   PHONEPE_CALLBACK_PASSWORD: z.string().optional(),
+  PHONEPE_MERCHANT_ID: z.string().trim().optional(),
+  PHONEPE_MOBILE_SDK_ORDER_ENABLED: z.enum(["true", "false"]).default("false"),
+  PHONEPE_AUTOPAY_ENABLED: z.enum(["true", "false"]).default("false"),
+  PHONEPE_AUTOPAY_COLLECTION_ENABLED: z.enum(["true", "false"]).default("false"),
+  PHONEPE_API_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(30_000).default(10_000),
+  CRYPTO_PAYMENT_TOKEN_ENC_KEY: z.string().optional(),
+  CRYPTO_PAYMENT_TOKEN_ENC_KEY_VERSION: z.string().trim().optional(),
   // Where the app returns after checkout and where the provider posts the
   // callback; both are deployment wiring, optional at boot.
   PHONEPE_REDIRECT_URL: z.string().trim().optional(),
   PHONEPE_CALLBACK_URL: z.string().trim().optional(),
-  PAYMENT_ATTEMPT_TTL_MS: z.coerce.number().int().min(1).default(15 * 60 * 1000),
+  PHONEPE_SUBSCRIPTION_CALLBACK_URL: z.string().trim().optional(),
+  PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: z.string().trim().optional(),
+  PHONEPE_CHECKOUT_ALLOWED_ORIGINS: z.string().trim().optional(),
+  PAYMENT_ATTEMPT_TTL_MS: z.coerce
+    .number()
+    .int()
+    .min(MIN_PAYMENT_ATTEMPT_TTL_MS)
+    .max(MAX_PAYMENT_ATTEMPT_TTL_MS)
+    .default(15 * 60 * 1000),
   // POST /newuser is the only unauthenticated-by-default write in the surface:
   // the standalone marketing site (beonedge.in, on AWS) posts signups to it
   // server-to-server. This shared secret is how that one caller is recognised —
@@ -200,10 +219,24 @@ export interface ServerConfig {
       readonly env: "sandbox" | "production"
       readonly callbackUsername: string
       readonly callbackPassword: string
-      readonly redirectUrl: string | null
-      readonly callbackUrl: string | null
+      readonly redirectUrl: string
+      readonly callbackUrl: string
+      readonly subscriptionCallbackUrl: string | null
+      readonly checkoutAllowedOrigins: readonly string[]
     } | null
     readonly attemptTtlMs: number
+    readonly mobileSdk: {
+      readonly enabled: boolean
+      readonly merchantId: string | null
+      readonly tokenEncryptionKey: Buffer | null
+      readonly tokenKeyVersion: string | null
+      readonly requestTimeoutMs: number
+    }
+    readonly autoPay: {
+      readonly enabled: boolean
+      readonly collectionEnabled: boolean
+      readonly subscriptionEventAllowlist: readonly string[]
+    }
   }
   readonly email: {
     readonly fromAddress: string | null
@@ -340,15 +373,83 @@ const parsePhonePeConfig = (
     }
     return null
   }
+  if (!present(parsed.PHONEPE_REDIRECT_URL) || !present(parsed.PHONEPE_CALLBACK_URL)) {
+    throw new Error("PHONEPE_REDIRECT_URL and PHONEPE_CALLBACK_URL are required when PhonePe is configured")
+  }
+  if (!present(parsed.PHONEPE_CHECKOUT_ALLOWED_ORIGINS)) {
+    throw new Error("PHONEPE_CHECKOUT_ALLOWED_ORIGINS is required when PhonePe is configured")
+  }
+  const checkoutAllowedOrigins = parsed.PHONEPE_CHECKOUT_ALLOWED_ORIGINS
+    .split(",")
+    .map((value) => value.trim())
+  if (checkoutAllowedOrigins.some((value) => value.length === 0)) {
+    throw new Error("PHONEPE_CHECKOUT_ALLOWED_ORIGINS must contain exact HTTPS origins")
+  }
+  for (const origin of checkoutAllowedOrigins) {
+    let url: URL
+    try {
+      url = new URL(origin)
+    } catch {
+      throw new Error("PHONEPE_CHECKOUT_ALLOWED_ORIGINS must contain exact HTTPS origins")
+    }
+    if (
+      url.protocol !== "https:" || url.origin !== origin || url.hostname.includes("*") ||
+      url.username !== "" || url.password !== "" ||
+      url.pathname !== "/" || url.search !== "" || url.hash !== ""
+    ) {
+      throw new Error("PHONEPE_CHECKOUT_ALLOWED_ORIGINS must contain exact HTTPS origins")
+    }
+  }
+  if (!/^[1-9][0-9]*$/u.test(parsed.PHONEPE_CLIENT_VERSION as string)) {
+    throw new Error("PHONEPE_CLIENT_VERSION must be a positive integer")
+  }
+  const expectedEnvironment = source.NODE_ENV === "production" ? "production" : "sandbox"
+  if (parsed.PHONEPE_ENV !== expectedEnvironment) {
+    throw new Error(`PHONEPE_ENV must be ${expectedEnvironment} for the configured NODE_ENV`)
+  }
+  const expectedHost = parsed.PHONEPE_ENV === "sandbox" ? "dev-app.beonedge.in" : "app.beonedge.in"
+  const canonicalUrl = (name: string, value: string, expectedPath: string): string => {
+    let url: URL
+    try {
+      url = new URL(value)
+    } catch {
+      throw new Error(`${name} must be a canonical BeOnEdge HTTPS URL`)
+    }
+    if (
+      url.protocol !== "https:" ||
+      url.hostname !== expectedHost ||
+      url.port !== "" ||
+      url.username !== "" ||
+      url.password !== "" ||
+      url.pathname !== expectedPath ||
+      url.search !== "" ||
+      url.hash !== ""
+    ) {
+      throw new Error(`${name} must use the canonical ${expectedHost}${expectedPath} URL for PHONEPE_ENV`)
+    }
+    return url.toString()
+  }
   return Object.freeze({
     clientId: parsed.PHONEPE_CLIENT_ID as string,
     clientSecret: parsed.PHONEPE_CLIENT_SECRET as string,
     clientVersion: parsed.PHONEPE_CLIENT_VERSION as string,
-    env: parsed.PHONEPE_ENV as "sandbox" | "production",
+    env: parsed.PHONEPE_ENV,
     callbackUsername: parsed.PHONEPE_CALLBACK_USERNAME as string,
     callbackPassword: parsed.PHONEPE_CALLBACK_PASSWORD as string,
-    redirectUrl: present(parsed.PHONEPE_REDIRECT_URL) ? parsed.PHONEPE_REDIRECT_URL : null,
-    callbackUrl: present(parsed.PHONEPE_CALLBACK_URL) ? parsed.PHONEPE_CALLBACK_URL : null,
+    checkoutAllowedOrigins: Object.freeze([...new Set(checkoutAllowedOrigins)]),
+    redirectUrl: canonicalUrl("PHONEPE_REDIRECT_URL", parsed.PHONEPE_REDIRECT_URL, "/payment-return"),
+    callbackUrl: canonicalUrl(
+      "PHONEPE_CALLBACK_URL",
+      parsed.PHONEPE_CALLBACK_URL,
+      "/api/v1/provider-events/phonepe/payment",
+    ),
+    subscriptionCallbackUrl: present(parsed.PHONEPE_SUBSCRIPTION_CALLBACK_URL)
+      ? canonicalUrl(
+          "PHONEPE_SUBSCRIPTION_CALLBACK_URL",
+          parsed.PHONEPE_SUBSCRIPTION_CALLBACK_URL,
+          "/api/v1/provider-events/phonepe/subscription",
+        )
+      : null,
   })
 }
 
@@ -379,6 +480,40 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
   const topicArn = nonEmpty(parsed.SNS_TOPIC_ARN)
   const sesConfigurationSet = nonEmpty(parsed.SES_CONFIGURATION_SET)
   const emailConfigured = awsRegion !== null && topicArn !== null && sesConfigurationSet !== null
+  const isMobileSdkEnabled = parsed.PHONEPE_MOBILE_SDK_ORDER_ENABLED === "true"
+  const isAutoPayEnabled = parsed.PHONEPE_AUTOPAY_ENABLED === "true"
+  const isAutoPayCollectionEnabled = parsed.PHONEPE_AUTOPAY_COLLECTION_ENABLED === "true"
+  if (isAutoPayCollectionEnabled && !isAutoPayEnabled) {
+    throw new Error("PHONEPE_AUTOPAY_COLLECTION_ENABLED requires PHONEPE_AUTOPAY_ENABLED=true")
+  }
+  const subscriptionEventAllowlist = (parsed.PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0)
+  if (subscriptionEventAllowlist.some((value) => !/^[a-z0-9._-]{1,128}$/u.test(value))) {
+    throw new Error("PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST must contain exact event names")
+  }
+  const merchantId = nonEmpty(parsed.PHONEPE_MERCHANT_ID)
+  const paymentTokenKey = nonEmpty(parsed.CRYPTO_PAYMENT_TOKEN_ENC_KEY)
+  const paymentTokenKeyVersion = nonEmpty(parsed.CRYPTO_PAYMENT_TOKEN_ENC_KEY_VERSION)
+  if ((isMobileSdkEnabled || isAutoPayEnabled) && (merchantId === null || paymentTokenKey === null || paymentTokenKeyVersion === null)) {
+    throw new Error(
+      "PHONEPE_MERCHANT_ID, CRYPTO_PAYMENT_TOKEN_ENC_KEY and CRYPTO_PAYMENT_TOKEN_ENC_KEY_VERSION are required when PhonePe mobile payments are enabled",
+    )
+  }
+  const phonepeConfig = parsePhonePeConfig(parsed, source)
+  if ((isMobileSdkEnabled || isAutoPayEnabled) && phonepeConfig === null) {
+    throw new Error("PhonePe gateway configuration is required when PhonePe mobile payments are enabled")
+  }
+  if (phonepeConfig !== null && merchantId === null) {
+    throw new Error("PHONEPE_MERCHANT_ID is required when PhonePe gateway credentials are configured")
+  }
+  if (phonepeConfig !== null && phonepeConfig.subscriptionCallbackUrl === null) {
+    throw new Error("PHONEPE_SUBSCRIPTION_CALLBACK_URL is required when PhonePe gateway credentials are configured")
+  }
+  if (phonepeConfig !== null && subscriptionEventAllowlist.length === 0) {
+    throw new Error("PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST is required when PhonePe gateway credentials are configured")
+  }
 
   return Object.freeze({
     access: {
@@ -407,8 +542,22 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
     },
     payments: {
       provider: parsed.PAYMENT_PROVIDER,
-      phonepe: parsePhonePeConfig(parsed, source),
+      phonepe: phonepeConfig,
       attemptTtlMs: parsed.PAYMENT_ATTEMPT_TTL_MS,
+      mobileSdk: {
+        enabled: isMobileSdkEnabled,
+        merchantId,
+        tokenEncryptionKey: paymentTokenKey === null
+          ? null
+          : decode32ByteKey("CRYPTO_PAYMENT_TOKEN_ENC_KEY", paymentTokenKey),
+        tokenKeyVersion: paymentTokenKeyVersion,
+        requestTimeoutMs: parsed.PHONEPE_API_TIMEOUT_MS,
+      },
+      autoPay: {
+        enabled: isAutoPayEnabled,
+        collectionEnabled: isAutoPayCollectionEnabled,
+        subscriptionEventAllowlist: Object.freeze([...new Set(subscriptionEventAllowlist)]),
+      },
     },
     email: {
       fromAddress: nonEmpty(parsed.KYC_EMAIL_FROM),

@@ -15,11 +15,13 @@
  * and one with SES variables but no SMTP — which cannot send a single message —
  * reported `email: true`.
  */
-import type { FastifyInstance } from "fastify"
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
 import { sql } from "kysely"
 import type { Kysely } from "kysely"
 
 import type { Database } from "../db/types.js"
+import { createMetricsRepository } from "../repositories/metricsRepository.js"
+import { renderMetrics, type MetricsDeps } from "./metrics.js"
 
 export interface ReadinessReport {
   readonly ready: boolean
@@ -67,6 +69,7 @@ export const createReadinessCheck =
 
 export interface HealthRouteDeps {
   readonly checkReadiness: () => Promise<ReadinessReport>
+  readonly metrics?: MetricsDeps
 }
 
 export const registerHealthRoutes = (application: FastifyInstance, deps: HealthRouteDeps): void => {
@@ -83,4 +86,11 @@ export const registerHealthRoutes = (application: FastifyInstance, deps: HealthR
   })
 
   application.get("/v1/health", async (_request, reply) => reply.sendData({ status: "ok" }))
+
+  if (deps.metrics !== undefined) {
+    application.get("/metrics", async (request: FastifyRequest, reply: FastifyReply) => {
+      const { body, status } = await renderMetrics(deps.metrics as MetricsDeps, request.ip)
+      return reply.code(status).send(body)
+    })
+  }
 }
