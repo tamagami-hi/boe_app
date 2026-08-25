@@ -9,11 +9,13 @@
  * distinct error types because the ingress route must answer them differently
  * while writing nothing either way.
  */
-import { describe, expect, test } from "vitest"
+import { describe, expect, test, vi } from "vitest"
 
 import {
   GatewayAuthenticationError,
+  GatewayCredentialError,
   GatewayMalformedCallbackError,
+  GatewayMalformedResponseError,
   GatewayNotFoundError,
   GatewayRejectedError,
   GatewayUnavailableError,
@@ -22,6 +24,7 @@ import {
   createPhonePeCheckoutGateway,
   type PhonePeSdkClient,
 } from "./phonePeCheckoutGateway.js"
+import { classifyGatewayFailure, logGatewayFailure } from "./gatewayFailure.js"
 
 const CONFIG = {
   clientId: "merchant-client-id",
@@ -30,7 +33,8 @@ const CONFIG = {
   env: "sandbox" as const,
   callbackUsername: "callback-user",
   callbackPassword: "callback-pass",
-  redirectUrl: "https://app.beonedge.in/payment-status",
+  redirectUrl: "https://app.beonedge.in/payment-return",
+  checkoutAllowedOrigins: ["https://mercury-uat.phonepe.com"],
 }
 
 /** Test double for the SDK exception taxonomy (structural, no SDK import). */
@@ -75,7 +79,7 @@ describe("createCheckout", () => {
             orderId: "provider-order-1",
             state: "PENDING",
             expireAt: 1_800_000_000_000,
-            redirectUrl: "https://checkout.phonepe.example/pay/abc",
+            redirectUrl: "https://mercury-uat.phonepe.com/pay/abc",
           }
         },
       }),
@@ -84,12 +88,12 @@ describe("createCheckout", () => {
     const result = await gateway.createCheckout({
       merchantOrderId: "boe_0123456789abcdef0123456789abcdef",
       amountPaise: "500000",
-      redirectUrl: "https://app.beonedge.in/payment-status",
+      redirectUrl: "https://app.beonedge.in/payment-return?token=opaque",
       expireAfterSeconds: 900,
     })
 
     expect(result).toEqual({
-      redirectUrl: "https://checkout.phonepe.example/pay/abc",
+      redirectUrl: "https://mercury-uat.phonepe.com/pay/abc",
       providerOrderId: "provider-order-1",
       expiresAt: new Date(1_800_000_000_000),
     })
@@ -116,6 +120,46 @@ describe("createCheckout", () => {
         expireAfterSeconds: 900,
       }),
     ).rejects.toBeInstanceOf(GatewayRejectedError)
+  })
+
+  test("rejects an HTTPS checkout redirect outside the configured exact origins", async () => {
+    const gateway = createPhonePeCheckoutGateway({
+      config: CONFIG,
+      client: stubClient({ pay: () => Promise.resolve({ redirectUrl: "https://attacker.example/pay/abc" }) }),
+    })
+    await expect(gateway.createCheckout({
+      merchantOrderId: "boe_x",
+      amountPaise: "100",
+      redirectUrl: CONFIG.redirectUrl,
+      expireAfterSeconds: 900,
+    })).rejects.toBeInstanceOf(GatewayMalformedResponseError)
+  })
+
+  test.each([299, 3601])("rejects checkout expiry %s outside PhonePe's supported range", async (expireAfterSeconds) => {
+    const pay = vi.fn()
+    const gateway = createPhonePeCheckoutGateway({ config: CONFIG, client: stubClient({ pay }) })
+
+    await expect(gateway.createCheckout({
+      merchantOrderId: "boe_x",
+      amountPaise: "100",
+      redirectUrl: CONFIG.redirectUrl,
+      expireAfterSeconds,
+    })).rejects.toBeInstanceOf(GatewayRejectedError)
+    expect(pay).not.toHaveBeenCalled()
+  })
+
+  test.each([300, 3600])("accepts checkout expiry %s at PhonePe's supported boundary", async (expireAfterSeconds) => {
+    const gateway = createPhonePeCheckoutGateway({
+      config: CONFIG,
+      client: stubClient({ pay: () => Promise.resolve({ redirectUrl: "https://mercury-uat.phonepe.com/pay/boundary" }) }),
+    })
+
+    await expect(gateway.createCheckout({
+      merchantOrderId: "boe_x",
+      amountPaise: "100",
+      redirectUrl: CONFIG.redirectUrl,
+      expireAfterSeconds,
+    })).resolves.toMatchObject({ redirectUrl: "https://mercury-uat.phonepe.com/pay/boundary" })
   })
 })
 
@@ -300,7 +344,7 @@ describe("refunds", () => {
 })
 
 describe("error mapping", () => {
-  test("network errors are unavailable, 404 is not-found, 400 is rejected", async () => {
+  test("network errors are unavailable, provider auth is distinct, 404 is not-found, and 400 is rejected", async () => {
     const withError = (error: unknown) =>
       createPhonePeCheckoutGateway({
         config: CONFIG,
@@ -314,8 +358,53 @@ describe("error mapping", () => {
     await expect(withError(new Error("socket hangup")).getOrderStatus("boe_1")).rejects.toBeInstanceOf(
       GatewayUnavailableError,
     )
+    await expect(withError(sdkError(401)).getOrderStatus("boe_1")).rejects.toBeInstanceOf(GatewayCredentialError)
     await expect(withError(sdkError(404)).getOrderStatus("boe_1")).rejects.toBeInstanceOf(GatewayNotFoundError)
     await expect(withError(sdkError(400)).getOrderStatus("boe_1")).rejects.toBeInstanceOf(GatewayRejectedError)
     await expect(withError(sdkError(503)).getOrderStatus("boe_1")).rejects.toBeInstanceOf(GatewayUnavailableError)
+  })
+
+  test("missing required provider response fields are malformed responses", async () => {
+    const checkoutGateway = createPhonePeCheckoutGateway({
+      config: CONFIG,
+      client: stubClient({ pay: () => Promise.resolve({ orderId: "provider-order-1" }) }),
+    })
+    const statusGateway = createPhonePeCheckoutGateway({
+      config: CONFIG,
+      client: stubClient({ getOrderStatus: () => Promise.resolve({ orderId: "provider-order-1" }) }),
+    })
+
+    await expect(checkoutGateway.createCheckout({
+      merchantOrderId: "boe_1",
+      amountPaise: "100",
+      redirectUrl: CONFIG.redirectUrl,
+      expireAfterSeconds: 900,
+    })).rejects.toBeInstanceOf(GatewayMalformedResponseError)
+    await expect(statusGateway.getOrderStatus("boe_1")).rejects.toBeInstanceOf(GatewayMalformedResponseError)
+  })
+
+  test("classifies operational failures without serializing provider errors", () => {
+    const warning: Record<string, unknown>[] = []
+    const timeout = new GatewayUnavailableError("secret-bearing provider text", {
+      cause: Object.assign(new Error("oauth-token-value"), { code: "ETIMEDOUT" }),
+    })
+    const provider5xx = new GatewayUnavailableError("provider failed", { cause: { httpStatusCode: 503 } })
+
+    expect(classifyGatewayFailure(new GatewayCredentialError("bad credentials"))).toBe("provider_auth_rejected")
+    expect(classifyGatewayFailure(new GatewayRejectedError("bad request"))).toBe("request_rejected")
+    expect(classifyGatewayFailure(new GatewayMalformedResponseError("bad response"))).toBe("malformed_response")
+    expect(classifyGatewayFailure(timeout)).toBe("provider_timeout")
+    expect(classifyGatewayFailure(provider5xx)).toBe("provider_5xx")
+    logGatewayFailure({ warn: (fields) => warning.push(fields) }, timeout, {
+      requestId: "request-1",
+      operation: "create_checkout",
+    })
+    expect(warning).toEqual([{
+      requestId: "request-1",
+      provider: "phonepe",
+      operation: "create_checkout",
+      failureKind: "provider_timeout",
+    }])
+    expect(JSON.stringify(warning)).not.toMatch(/secret-bearing|oauth-token-value/u)
   })
 })

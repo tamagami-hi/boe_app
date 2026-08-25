@@ -21,9 +21,15 @@
 import { Env, StandardCheckoutClient, StandardCheckoutPayRequest, RefundRequest } from "@phonepe-pg/pg-sdk-node"
 
 import {
+  PHONEPE_MAX_CHECKOUT_SECONDS,
+  PHONEPE_MIN_CHECKOUT_SECONDS,
+} from "../../domain/payments/checkoutExpiry.js"
+import {
   GatewayAuthenticationError,
+  GatewayCredentialError,
   type GatewayError,
   GatewayMalformedCallbackError,
+  GatewayMalformedResponseError,
   GatewayNotFoundError,
   GatewayRejectedError,
   GatewayUnavailableError,
@@ -47,6 +53,7 @@ export interface PhonePeGatewayConfig {
   readonly callbackUsername: string
   readonly callbackPassword: string
   readonly redirectUrl: string | null
+  readonly checkoutAllowedOrigins: readonly string[]
 }
 
 /**
@@ -104,6 +111,20 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const optionalString = (value: unknown): string | null =>
   typeof value === "string" && value.trim() !== "" ? value : null
 
+const trustedCheckoutUrl = (value: string, allowedOrigins: readonly string[]): string | null => {
+  let url: URL
+  try {
+    url = new URL(value)
+  } catch {
+    return null
+  }
+  if (
+    url.protocol !== "https:" || url.username !== "" || url.password !== "" ||
+    !allowedOrigins.includes(url.origin)
+  ) return null
+  return url.toString()
+}
+
 const mapPaymentDetails = (value: unknown): readonly ProviderPaymentDetailFact[] => {
   if (!Array.isArray(value)) return []
   const facts: ProviderPaymentDetailFact[] = []
@@ -133,6 +154,7 @@ const sdkStatusCode = (error: unknown): number | null => {
 
 const mapCallError = (error: unknown): GatewayError => {
   const status = sdkStatusCode(error)
+  if (status === 401 || status === 403) return new GatewayCredentialError("the provider rejected gateway credentials", { cause: error })
   if (status === 404) return new GatewayNotFoundError("the provider does not know this reference", { cause: error })
   if (status === 400) return new GatewayRejectedError("the provider rejected the request", { cause: error })
   if (status !== null && status < 500) return new GatewayRejectedError("the provider rejected the request", { cause: error })
@@ -165,6 +187,12 @@ export const createPhonePeCheckoutGateway = (deps: PhonePeCheckoutGatewayDeps): 
 
   return Object.freeze({
     createCheckout: async (command: CreateCheckoutCommand): Promise<CheckoutCreated> => {
+      if (
+        command.expireAfterSeconds < PHONEPE_MIN_CHECKOUT_SECONDS ||
+        command.expireAfterSeconds > PHONEPE_MAX_CHECKOUT_SECONDS
+      ) {
+        throw new GatewayRejectedError("checkout expiry is outside the provider-supported range")
+      }
       const amount = paiseToNumber(command.amountPaise)
       const builder = StandardCheckoutPayRequest.builder()
         .merchantOrderId(command.merchantOrderId)
@@ -184,10 +212,14 @@ export const createPhonePeCheckoutGateway = (deps: PhonePeCheckoutGatewayDeps): 
       if (checkoutUrl === null) {
         // A checkout without a redirect URL is unusable; treat as unavailable so
         // the caller's retry recovers rather than persisting a dead attempt.
-        throw new GatewayUnavailableError("the provider returned no checkout redirect")
+        throw new GatewayMalformedResponseError("the provider returned no checkout redirect")
+      }
+      const safeCheckoutUrl = trustedCheckoutUrl(checkoutUrl, config.checkoutAllowedOrigins)
+      if (safeCheckoutUrl === null) {
+        throw new GatewayMalformedResponseError("the provider returned an untrusted checkout redirect")
       }
       return {
-        redirectUrl: checkoutUrl,
+        redirectUrl: safeCheckoutUrl,
         providerOrderId: optionalString(body.orderId),
         expiresAt:
           typeof body.expireAt === "number" && Number.isFinite(body.expireAt) && body.expireAt > 0
@@ -207,7 +239,7 @@ export const createPhonePeCheckoutGateway = (deps: PhonePeCheckoutGatewayDeps): 
       const body = isRecord(response) ? response : {}
       const providerState = optionalString(body.state)
       if (providerState === null) {
-        throw new GatewayUnavailableError("the provider status response carried no state")
+        throw new GatewayMalformedResponseError("the provider status response carried no state")
       }
       return {
         outcome: mapOutcome(providerState),
@@ -297,7 +329,7 @@ export const createPhonePeCheckoutGateway = (deps: PhonePeCheckoutGatewayDeps): 
       const body = isRecord(response) ? response : {}
       const providerState = optionalString(body.state)
       if (providerState === null) {
-        throw new GatewayUnavailableError("the provider refund status carried no state")
+        throw new GatewayMalformedResponseError("the provider refund status carried no state")
       }
       return {
         merchantRefundId: optionalString(body.merchantRefundId) ?? merchantRefundId,

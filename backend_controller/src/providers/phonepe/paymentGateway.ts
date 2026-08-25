@@ -25,6 +25,8 @@ export class GatewayError extends Error {
  */
 export class GatewayAuthenticationError extends GatewayError {}
 
+export class GatewayCredentialError extends GatewayError {}
+
 /**
  * The callback authorized but its body is not a parseable, minimally complete
  * provider event (missing `event`, missing `payload`, unusable state).
@@ -34,11 +36,8 @@ export class GatewayMalformedCallbackError extends GatewayError {}
 /** Network, timeout, or provider 5xx: retryable later. */
 export class GatewayUnavailableError extends GatewayError {}
 
-/**
- * The provider answered a status inquiry with "unknown merchant reference"
- * (HTTP 404). Distinguishing this from {@link GatewayUnavailableError} is what
- * lets crash recovery decide it is safe to create the checkout after all.
- */
+export class GatewayMalformedResponseError extends GatewayUnavailableError {}
+
 export class GatewayNotFoundError extends GatewayError {}
 
 /**
