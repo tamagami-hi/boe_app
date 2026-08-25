@@ -16,6 +16,7 @@
     "./data/*": "./src/data/*",
     "./hooks/*": "./src/hooks/*",
     "./platform/*": "./src/platform/*",
+    "./payments/*": "./src/payments/*",
     "./auth/*": "./src/auth/*",
     "./components/*": "./src/components/*"
   },

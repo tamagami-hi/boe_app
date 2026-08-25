@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync, spawnSync } from 'node:child_process';
 
 const root = process.cwd();
 const read = (relative) => fs.readFileSync(path.join(root, relative), 'utf8');
@@ -96,5 +97,27 @@ describe('the android artifact guard', () => {
   test('it asserts byte budgets and font hygiene, not just file names', () => {
     expect(guard).toContain('maxBytes');
     expect(guard).toContain('woff');
+  });
+});
+
+describe('native payment target isolation', () => {
+  test('the admin Capacitor target excludes the PhonePe plugin', () => {
+    const listTarget = (target) => execFileSync(
+      'npx',
+      ['--no-install', 'cap', 'ls', 'android'],
+      { cwd: path.join(root, 'app'), env: { ...process.env, BOE_CAPACITOR_VARIANT: target }, encoding: 'utf8' },
+    );
+    expect(listTarget('admin')).not.toContain('ionic-capacitor-phonepe-pg');
+    expect(listTarget('client')).toContain('ionic-capacitor-phonepe-pg@3.0.5');
+  });
+
+  test('Capacitor commands fail closed without an exact native target', () => {
+    const result = spawnSync(
+      'npx',
+      ['--no-install', 'cap', 'ls', 'android'],
+      { cwd: path.join(root, 'app'), env: { ...process.env, BOE_CAPACITOR_VARIANT: '' }, encoding: 'utf8' },
+    );
+    expect(result.status).not.toBe(0);
+    expect(`${result.stdout}${result.stderr}`).toContain('BOE_CAPACITOR_VARIANT must be client or admin');
   });
 });

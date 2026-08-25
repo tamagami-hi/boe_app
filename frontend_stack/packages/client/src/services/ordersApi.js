@@ -18,6 +18,10 @@ function idempotencyKey() {
   return `idem-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+export function createIdempotencyKey(prefix = 'idem') {
+  return `${prefix}-${idempotencyKey()}`;
+}
+
 function paiseToRupees(value) {
   return value === null || value === undefined ? null : Number(value) / 100;
 }
@@ -87,6 +91,166 @@ function mapSip(sip) {
     nextDueDate: sip.nextDueDate ?? null,
     source: 'canonical',
   };
+}
+
+const AUTO_PAY_STATES = new Set([
+  'pending_mandate', 'active', 'paused', 'cancel_pending', 'cancelled',
+  'completed', 'setup_failed', 'mandate_failed', 'expired', 'revoked',
+]);
+
+const AUTO_PAY_MANDATE_STATES = new Set([
+  'setup_pending', 'active', 'pause_pending', 'paused', 'cancel_pending',
+  'cancelled', 'revoke_pending', 'revoked', 'expired', 'failed',
+]);
+
+const AUTO_PAY_SETUP_STATES = new Set([
+  'created', 'dispatching', 'provider_pending', 'authorized', 'failed', 'expired',
+]);
+
+function requiredText(value) {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+export function mapAutoPayDetail(payload) {
+  const sipPlanId = requiredText(payload?.sipPlanId);
+  const mandateId = requiredText(payload?.mandate?.mandateId ?? payload?.mandateId);
+  const status = requiredText(payload?.status);
+  const mandateStatus = requiredText(payload?.mandate?.status);
+  const latestSetupState = payload?.latestSetupState == null ? null : requiredText(payload.latestSetupState);
+  if (
+    !sipPlanId || !mandateId || !AUTO_PAY_STATES.has(status) || !AUTO_PAY_MANDATE_STATES.has(mandateStatus) ||
+    (latestSetupState !== null && !AUTO_PAY_SETUP_STATES.has(latestSetupState)) ||
+    (payload?.canRetrySetup !== undefined && typeof payload.canRetrySetup !== 'boolean') ||
+    (payload?.canRetrySetup === true && latestSetupState !== 'failed')
+  ) {
+    throw new Error("Couldn't load this AutoPay SIP. Try again.");
+  }
+  return {
+    id: sipPlanId,
+    type: 'sip',
+    collectionMode: 'phonepe_autopay',
+    status,
+    fundId: requiredText(payload.fundId),
+    amount: paiseToRupees(payload.amountPaise),
+    debitDay: payload.debitDay ?? null,
+    durationMonths: payload.durationMonths ?? null,
+    latestSetupState,
+    canRetrySetup: payload?.canRetrySetup === true,
+    mandate: {
+      id: mandateId,
+      status: mandateStatus,
+      authorizedAt: payload?.mandate?.authorizedAt ?? null,
+      cancellationRequestedAt: payload?.mandate?.cancellationRequestedAt ?? null,
+    },
+    source: 'canonical',
+  };
+}
+
+function mapAutoPaySetup(payload) {
+  const sipPlanId = requiredText(payload?.sipPlanId);
+  const mandateId = requiredText(payload?.mandateId);
+  const orderId = requiredText(payload?.orderId);
+  const paymentId = requiredText(payload?.paymentId);
+  const checkout = mapPaymentCheckout(payload?.checkout);
+  if (
+    !sipPlanId || !mandateId || !orderId || !paymentId ||
+    payload?.status !== 'mandate_setup_in_progress' || checkout?.type !== 'phonepe_sdk'
+  ) {
+    throw new Error("Couldn't start AutoPay authorization. Try again.");
+  }
+  return {
+    id: sipPlanId,
+    mandateId,
+    orderId,
+    paymentId,
+    status: 'pending_mandate',
+    collectionMode: 'phonepe_autopay',
+    checkout,
+  };
+}
+
+function autoPayInput({ fundId, amount, durationMonths, debitDay }) {
+  const months = Number(durationMonths);
+  const day = Number(debitDay);
+  if (!requiredText(fundId) || !Number.isInteger(months) || months < 1 || months > 360) {
+    throw new Error('AutoPay duration must be between 1 and 360 months.');
+  }
+  if (!Number.isInteger(day) || day < 1 || day > 28) {
+    throw new Error('Choose a debit day between 1 and 28.');
+  }
+  const amountPaise = rupeesToPaiseString(amount);
+  if (BigInt(amountPaise) > 1_500_000n) throw new Error('AutoPay SIP amount cannot exceed ₹15,000.');
+  return { fundId, amountPaise, debitDay: day, durationMonths: months };
+}
+
+export async function createAutoPaySip(input, { requestKey } = {}) {
+  const body = autoPayInput(input);
+  if (useHttpApi()) {
+    return mapAutoPaySetup(await apiRequest('/v1/client/sips/autopay', {
+      method: 'POST',
+      headers: { 'idempotency-key': requiredText(requestKey) ?? idempotencyKey() },
+      body,
+    }));
+  }
+  await delay(180);
+  const id = nextId('sip_auto', oId++);
+  const plan = {
+    id,
+    type: 'sip',
+    collectionMode: 'phonepe_autopay',
+    status: 'pending_mandate',
+    fundId: input.fundId,
+    amount: input.amount,
+    debitDay: input.debitDay,
+    durationMonths: input.durationMonths,
+    mandate: { id: nextId('mandate', oId++), status: 'setup_pending', authorizedAt: null, cancellationRequestedAt: null },
+    source: 'mock',
+  };
+  orders = [plan, ...orders];
+  return { ...clone(plan), paymentId: nextId('payment', pId++), checkout: null };
+}
+
+export async function getAutoPaySip(sipPlanId) {
+  if (useHttpApi()) {
+    return mapAutoPayDetail(await apiRequest(`/v1/client/sips/autopay/${encodeURIComponent(sipPlanId)}`));
+  }
+  await delay(80);
+  const plan = orders.find((item) => item.id === sipPlanId && item.collectionMode === 'phonepe_autopay');
+  if (!plan) return null;
+  return clone(plan);
+}
+
+export async function retryAutoPaySetup(sipPlanId) {
+  if (useHttpApi()) {
+    return mapAutoPaySetup(await apiRequest(`/v1/client/sips/autopay/${encodeURIComponent(sipPlanId)}/setup/retry`, {
+      method: 'POST',
+      headers: { 'idempotency-key': idempotencyKey() },
+    }));
+  }
+  await delay(120);
+  const plan = await getAutoPaySip(sipPlanId);
+  if (!plan) throw new Error('AutoPay SIP unavailable.');
+  return { ...plan, paymentId: nextId('payment', pId++), checkout: null };
+}
+
+export async function cancelAutoPaySip(sipPlanId) {
+  if (useHttpApi()) {
+    const result = await apiRequest(`/v1/client/sips/autopay/${encodeURIComponent(sipPlanId)}/cancel`, {
+      method: 'POST',
+      headers: { 'idempotency-key': idempotencyKey() },
+    });
+    if (requiredText(result?.mandateId) === null || !['cancel_pending', 'cancelled'].includes(result?.status)) {
+      throw new Error("Couldn't request AutoPay cancellation. Try again.");
+    }
+    return { mandateId: result.mandateId, status: result.status };
+  }
+  await delay(120);
+  orders = orders.map((item) => item.id === sipPlanId ? {
+    ...item,
+    status: 'cancel_pending',
+    mandate: { ...item.mandate, status: 'cancel_pending', cancellationRequestedAt: new Date().toISOString() },
+  } : item);
+  return { mandateId: orders.find((item) => item.id === sipPlanId)?.mandate?.id, status: 'cancel_pending' };
 }
 
 export async function createSip({ fundId, amount, durationMonths, debitDay }) {
@@ -175,27 +339,47 @@ export async function createLumpsum({ fundId, amount }) {
   return clone(order);
 }
 
-/**
- * Begin payment for a submitted order: POST /v1/client/orders/:orderId/pay.
- * Returns `{ orderId, paymentId, provider, checkout: { type, url }, expiresAt }`
- * (spec §9.1). The browser's only job is to redirect to `checkout.url`; the
- * provider callback — never the browser — moves the payment forward.
- */
-export async function beginOrderPayment(orderId) {
+export function mapPaymentCheckout(checkout) {
+  if (checkout === null || checkout === undefined) return null;
+  if (checkout.type === 'redirect' && typeof checkout.url === 'string' && checkout.url.length > 0) {
+    return { type: 'redirect', url: checkout.url };
+  }
+  if (
+    checkout.type === 'phonepe_sdk' &&
+    typeof checkout.providerOrderId === 'string' && checkout.providerOrderId.trim().length > 0 &&
+    typeof checkout.token === 'string' && checkout.token.trim().length > 0 &&
+    typeof checkout.merchantId === 'string' && checkout.merchantId.trim().length > 0 &&
+    (checkout.environment === 'SANDBOX' || checkout.environment === 'PRODUCTION') &&
+    typeof checkout.expiresAt === 'string' &&
+    Number.isFinite(Date.parse(checkout.expiresAt)) &&
+    Date.parse(checkout.expiresAt) - Date.now() >= 30000
+  ) {
+    return {
+      type: 'phonepe_sdk',
+      providerOrderId: checkout.providerOrderId.trim(),
+      token: checkout.token.trim(),
+      merchantId: checkout.merchantId.trim(),
+      environment: checkout.environment,
+      expiresAt: new Date(checkout.expiresAt).toISOString(),
+    };
+  }
+  throw new Error("Couldn't start the payment. Try again.");
+}
+
+export async function beginOrderPayment(orderId, { checkoutChannel = 'hosted_redirect' } = {}) {
   if (useHttpApi()) {
     const payload = await apiRequest(`/v1/client/orders/${encodeURIComponent(orderId)}/pay`, {
       method: 'POST',
       headers: { 'idempotency-key': idempotencyKey() },
+      body: { checkoutChannel },
     });
     const row = payload?.payment ?? payload;
     return {
       orderId: row?.orderId ?? orderId,
       paymentId: row?.paymentId ?? null,
       provider: row?.provider ?? null,
-      checkout: row?.checkout && row.checkout.url
-        ? { type: row.checkout.type ?? 'redirect', url: row.checkout.url }
-        : null,
-      expiresAt: row?.expiresAt ?? null,
+      checkout: mapPaymentCheckout(row?.checkout),
+      expiresAt: row?.checkout?.expiresAt ?? row?.expiresAt ?? null,
     };
   }
 

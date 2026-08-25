@@ -5,8 +5,10 @@ import { ErrorState, Skeleton } from '@beonedge/shared';
 import AppBar from '../layout/AppBar.jsx';
 import * as ordersApi from '../services/ordersApi.js';
 import { fmtMoney, fmtDate } from '../utils/format.js';
-import { redirectToCheckout } from '../utils/checkoutRedirect.js';
-import { HOME_PATH, buildPath } from '../navigation/routes.js';
+import { buildPath, HOME_PATH } from '../navigation/routes.js';
+import { useOrderCheckout } from '../payments/CheckoutProvider.jsx';
+import { clearPendingPayment } from '../payments/pendingPayment.js';
+import { useSession } from '../store/SessionContext.jsx';
 
 /** The copy promises 90 seconds of checking, so the poll is bounded to it. */
 const POLL_INTERVAL_MS = 2000;
@@ -50,6 +52,8 @@ function stateIcon(status) {
 export default function PaymentStatus() {
   const { paymentId } = useParams();
   const navigate = useNavigate();
+  const startOrderCheckout = useOrderCheckout();
+  const { user } = useSession();
   const [payment, setPayment] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [pollExpired, setPollExpired] = useState(false);
@@ -64,15 +68,19 @@ export default function PaymentStatus() {
       const p = await ordersApi.getPayment(paymentId);
       if (!mountedRef.current) return null;
       setPayment(p);
+      if (!NON_TERMINAL.has(p?.status)) clearPendingPayment(paymentId, user?.id);
       setLoadError(null);
       return p;
     } catch (error) {
+      if (error?.code === 'RESOURCE_NOT_FOUND' || error?.code === 'AUTHORIZATION_DENIED' || error?.status === 403 || error?.status === 404) {
+        clearPendingPayment(paymentId);
+      }
       // A failed read must not leave a permanent skeleton on the screen the
       // investor opened to find out whether their money moved.
       if (mountedRef.current) setLoadError(error);
       return null;
     }
-  }, [paymentId]);
+  }, [paymentId, user?.id]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -86,6 +94,7 @@ export default function PaymentStatus() {
         if (!mountedRef.current) return;
         setPayment(p);
         if (!NON_TERMINAL.has(p?.status)) {
+          clearPendingPayment(paymentId);
           clearInterval(polling.current);
           return;
         }
@@ -111,28 +120,19 @@ export default function PaymentStatus() {
     await loadPayment();
   }, [loadPayment]);
 
-  // Explicit retry after a terminal failure: the backend creates a fresh
-  // checkout (new attempt, new merchant order id) and returns a new redirect.
   const handleRetry = useCallback(async () => {
     if (!payment?.orderId) return;
     if (retryLockRef.current) return;
     retryLockRef.current = true;
     try {
-      const begun = await ordersApi.beginOrderPayment(payment.orderId);
-      if (begun?.checkout?.type === 'redirect' && begun.checkout.url && redirectToCheckout(begun.checkout.url).ok) {
-        return; // browser is leaving for PhonePe
-      }
-      if (begun?.paymentId && begun.paymentId !== paymentId) {
-        navigate(buildPath('payment_status', { paymentId: begun.paymentId }), { replace: true });
-        return;
-      }
-      await loadPayment();
+      const outcome = await startOrderCheckout(payment.orderId);
+      if (!outcome.leaving) await loadPayment();
     } catch (error) {
       if (mountedRef.current) setLoadError(error);
     } finally {
       retryLockRef.current = false;
     }
-  }, [payment, paymentId, navigate, loadPayment]);
+  }, [payment, startOrderCheckout, loadPayment]);
 
   if (!payment) {
     return (

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { CreditCard } from 'lucide-react';
 import AppBar from '../layout/AppBar.jsx';
 import Skeleton from '@beonedge/shared/components/Skeleton.jsx';
@@ -8,14 +8,13 @@ import * as fundsApi from '../services/fundsApi.js';
 import * as ordersApi from '../services/ordersApi.js';
 import { useAppConfig } from '../hooks/useAppConfig.js';
 import { fmtMoney } from '../utils/format.js';
-import { redirectToCheckout } from '../utils/checkoutRedirect.js';
-import { buildPath } from '../navigation/routes.js';
+import { useOrderCheckout } from '../payments/CheckoutProvider.jsx';
 
 const RISK_DISCLOSURE = 'Investments are subject to market risk. Please read all scheme-related documents carefully before investing.';
 
 export default function LumpsumSheet() {
   const { fundId } = useParams();
-  const navigate = useNavigate();
+  const startOrderCheckout = useOrderCheckout();
   const appConfig = useAppConfig();
   const settings = appConfig.mobile.screens.invest.oneTime;
   const [fund, setFund] = useState(null);
@@ -63,9 +62,6 @@ export default function LumpsumSheet() {
     setAmount(next === '' ? '' : Math.max(0, Math.floor(Number(next))));
   }
 
-  // Create the order, then begin its PhonePe checkout and hand the browser to
-  // the returned redirect URL. The browser never asserts payment success: the
-  // return URL re-opens the payment status route, which polls the backend.
   async function onContinue() {
     if (submitLockRef.current) return;
     submitLockRef.current = true;
@@ -73,21 +69,8 @@ export default function LumpsumSheet() {
     setSubmitting(true);
     try {
       const order = await ordersApi.createLumpsum({ fundId, amount: amountNumber });
-      const begun = await ordersApi.beginOrderPayment(order.id);
-      if (begun?.checkout?.type === 'redirect' && begun.checkout.url && redirectToCheckout(begun.checkout.url).ok) {
-        // The browser is leaving for PhonePe. Keep the lock held: if the user
-        // comes back without paying, the status route shows the real state.
-        return;
-      }
-      // No usable checkout redirect (offline demo, blocked navigation): land on
-      // the authoritative status route instead of claiming anything locally.
-      if (begun?.paymentId) {
-        navigate(buildPath('payment_status', { paymentId: begun.paymentId }), { replace: true });
-        return;
-      }
-      setErr("Couldn't start the payment. Try again.");
-      setSubmitting(false);
-      submitLockRef.current = false;
+      await startOrderCheckout(order.id);
+      return;
     } catch (e) {
       // Server envelope messages are client-safe; anything else gets the
       // generic line. Internals (codes, stack, provider detail) stay hidden.

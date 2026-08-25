@@ -14,6 +14,10 @@ import { HOME_PATH, buildPath } from '../navigation/routes.js';
 const FUND = { id: 'f1', name: 'Alpha Pool', tagline: 'Growth', minSip: 500, minLumpsum: 1000 };
 
 const createSip = vi.fn();
+const createAutoPaySip = vi.fn();
+const getAutoPaySip = vi.fn();
+const retryAutoPaySetup = vi.fn();
+const cancelAutoPaySip = vi.fn();
 const createLumpsum = vi.fn();
 const beginOrderPayment = vi.fn();
 const getPayment = vi.fn();
@@ -21,10 +25,16 @@ const getOrder = vi.fn();
 const listSips = vi.fn();
 const listOrders = vi.fn();
 const requestSipControl = vi.fn();
+const createIdempotencyKey = vi.fn();
 
 vi.mock('../services/fundsApi.js', () => ({ getFund: async () => FUND }));
 vi.mock('../services/ordersApi.js', () => ({
   createSip: (...a) => createSip(...a),
+  createIdempotencyKey: (...a) => createIdempotencyKey(...a),
+  createAutoPaySip: (...a) => createAutoPaySip(...a),
+  getAutoPaySip: (...a) => getAutoPaySip(...a),
+  retryAutoPaySetup: (...a) => retryAutoPaySetup(...a),
+  cancelAutoPaySip: (...a) => cancelAutoPaySip(...a),
   createLumpsum: (...a) => createLumpsum(...a),
   beginOrderPayment: (...a) => beginOrderPayment(...a),
   getPayment: (...a) => getPayment(...a),
@@ -59,6 +69,10 @@ vi.mock('../hooks/useAppConfig.js', () => ({
   }),
 }));
 
+vi.mock('../store/SessionContext.jsx', () => ({
+  useSession: () => ({ status: 'authenticated', user: { id: 'user-1' }, error: null, endedReason: null }),
+}));
+
 vi.mock('../layout/AppBar.jsx', () => ({
   default: ({ title, onLeft }) => (
     <div>
@@ -71,6 +85,7 @@ vi.mock('../layout/AppBar.jsx', () => ({
 const { default: StartSipSheet } = await import('./StartSipSheet.jsx');
 const { default: LumpsumSheet } = await import('./LumpsumSheet.jsx');
 const { default: PaymentStatus } = await import('./PaymentStatus.jsx');
+const { CheckoutProvider } = await import('../payments/CheckoutProvider.jsx');
 
 function LocationProbe() {
   const location = useLocation();
@@ -100,8 +115,26 @@ const CHECKOUT = {
 };
 
 beforeEach(() => {
+  localStorage.clear();
   redirectToCheckout.mockClear();
   createSip.mockReset().mockResolvedValue({ id: 'sip_1', status: 'active', amount: 1000, debitDay: 5 });
+  createIdempotencyKey.mockReset().mockReturnValue('sip-request-1');
+  createAutoPaySip.mockReset().mockResolvedValue({
+    id: 'sip_auto_1',
+    paymentId: 'pay_setup_1',
+    status: 'pending_mandate',
+    checkout: {
+      type: 'phonepe_sdk',
+      providerOrderId: 'provider_setup_1',
+      token: 'setup-token',
+      merchantId: 'merchant-1',
+      environment: 'SANDBOX',
+      expiresAt: new Date(Date.now() + 120000).toISOString(),
+    },
+  });
+  getAutoPaySip.mockReset();
+  retryAutoPaySetup.mockReset();
+  cancelAutoPaySip.mockReset();
   createLumpsum.mockReset().mockResolvedValue({ id: 'ord_1', status: 'submitted', amount: 1000 });
   beginOrderPayment.mockReset().mockResolvedValue(CHECKOUT);
   getPayment.mockReset().mockResolvedValue({
@@ -118,57 +151,112 @@ afterEach(() => { vi.useRealTimers(); });
 
 /* ---- SIP ------------------------------------------------------------------- */
 
-describe('StartSipSheet (schedule/reminder SIP)', () => {
-  async function reachReview() {
-    renderFlow(<StartSipSheet />, '/app/invest/sip/f1', '/app/invest/sip/:fundId');
+describe('StartSipSheet', () => {
+  const platform = {
+    resolveChannel: vi.fn().mockResolvedValue('phonepe_mobile_sdk'),
+    start: vi.fn().mockResolvedValue({ status: 'returned' }),
+  };
+
+  beforeEach(() => {
+    platform.resolveChannel.mockClear().mockResolvedValue('phonepe_mobile_sdk');
+    platform.start.mockClear().mockResolvedValue({ status: 'returned' });
+  });
+
+  async function reachReview({ manual = false } = {}) {
+    const rendered = renderFlow(
+      <CheckoutProvider platform={platform}><StartSipSheet /></CheckoutProvider>,
+      '/app/invest/sip/f1',
+      '/app/invest/sip/:fundId',
+    );
     await settle();
+    if (manual) fireEvent.click(screen.getByRole('button', { name: /Manual monthly payments/i }));
     fireEvent.click(screen.getByRole('checkbox', { name: /Risk disclosure/i }));
-    fireEvent.click(screen.getByRole('checkbox', { name: /no automatic debit/i }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /monthly payment/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Review SIP details' }));
     fireEvent.click(screen.getByRole('checkbox', { name: /market risks/i }));
+    return rendered;
   }
 
   test('a double tap on Create SIP creates ONE plan', async () => {
     // A held-open promise reproduces the real window: `disabled` has not rendered
     // yet when the second tap lands.
-    createSip.mockImplementation(() => new Promise(() => {}));
+    createAutoPaySip.mockImplementation(() => new Promise(() => {}));
     await reachReview();
-    const confirm = screen.getByRole('button', { name: /Create SIP/ });
+    const confirm = screen.getByRole('button', { name: /Authorize AutoPay/ });
     fireEvent.click(confirm);
     fireEvent.click(confirm);
     fireEvent.click(confirm);
-    expect(createSip).toHaveBeenCalledTimes(1);
+    await settle();
+    expect(createAutoPaySip).toHaveBeenCalledTimes(1);
   });
 
   test('a created plan REPLACES the flow on the plan detail, so Back cannot re-enter it', async () => {
     await reachReview();
-    fireEvent.click(screen.getByRole('button', { name: /Create SIP/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Authorize AutoPay/ }));
     await settle();
-    expect(screen.getByTestId('location')).toHaveTextContent(buildPath('mandate_detail', { mandateId: 'sip_1' }));
+    expect(platform.start).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('location')).toHaveTextContent(buildPath('mandate_detail', { mandateId: 'sip_auto_1' }));
   });
 
   test('a failed create releases the lock so the user can retry', async () => {
-    createSip.mockRejectedValueOnce(new Error('server unavailable'));
+    createAutoPaySip.mockRejectedValueOnce(new Error('server unavailable'));
     await reachReview();
-    fireEvent.click(screen.getByRole('button', { name: /Create SIP/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Authorize AutoPay/ }));
     await settle();
     expect(screen.getByText('server unavailable')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Create SIP/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Authorize AutoPay/ }));
     await settle();
-    expect(createSip).toHaveBeenCalledTimes(2);
+    expect(createAutoPaySip).toHaveBeenCalledTimes(2);
+    expect(createAutoPaySip.mock.calls[0][1]?.requestKey).toMatch(/^sip-/);
+    expect(createAutoPaySip.mock.calls[1][1]).toEqual(createAutoPaySip.mock.calls[0][1]);
   });
 
-  test('there is no mandate or step-up UI: the SIP is a schedule paid per installment', async () => {
-    renderFlow(<StartSipSheet />, '/app/invest/sip/f1', '/app/invest/sip/:fundId');
+  test('a process restart reuses the owner-bound create key for the same input', async () => {
+    createIdempotencyKey
+      .mockReset()
+      .mockReturnValueOnce('sip-request-1')
+      .mockReturnValueOnce('sip-request-2');
+    createAutoPaySip.mockRejectedValueOnce(new Error('connection lost')).mockResolvedValueOnce({
+      id: 'sip_auto_1',
+      paymentId: 'pay_setup_1',
+      status: 'pending_mandate',
+      checkout: null,
+    });
+
+    const first = await reachReview();
+    fireEvent.click(screen.getByRole('button', { name: /Authorize AutoPay/ }));
     await settle();
-    expect(screen.queryByRole('button', { name: /Increase SIP every year/ })).not.toBeInTheDocument();
-    expect(screen.queryByText(/mandate cap/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/razorpay/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/no automatic debit is set up/i)).toBeInTheDocument();
+    first.unmount();
+
+    await reachReview();
+    fireEvent.click(screen.getByRole('button', { name: /Authorize AutoPay/ }));
+    await settle();
+
+    expect(createAutoPaySip.mock.calls[0][1]).toEqual({ requestKey: 'sip-request-1' });
+    expect(createAutoPaySip.mock.calls[1][1]).toEqual({ requestKey: 'sip-request-1' });
+    expect(createIdempotencyKey).toHaveBeenCalledTimes(1);
+  });
+
+  test('SDK return never becomes local mandate truth', async () => {
+    await reachReview();
+    fireEvent.click(screen.getByRole('button', { name: /Authorize AutoPay/ }));
+    await settle();
+    expect(platform.start).toHaveBeenCalledTimes(1);
+    expect(getAutoPaySip).not.toHaveBeenCalled();
+    expect(document.body.textContent).not.toMatch(/mandate active|authorization successful/i);
+  });
+
+  test('manual monthly payments retain the existing schedule flow', async () => {
+    await reachReview({ manual: true });
+    fireEvent.click(screen.getByRole('button', { name: /Create manual SIP/i }));
+    await settle();
+    expect(createSip).toHaveBeenCalledTimes(1);
+    expect(createAutoPaySip).not.toHaveBeenCalled();
+    expect(platform.start).not.toHaveBeenCalled();
   });
 
   test('every chip declares type=button', async () => {
-    const { container } = renderFlow(<StartSipSheet />, '/app/invest/sip/f1', '/app/invest/sip/:fundId');
+    const { container } = renderFlow(<CheckoutProvider platform={platform}><StartSipSheet /></CheckoutProvider>, '/app/invest/sip/f1', '/app/invest/sip/:fundId');
     await settle();
     const chips = [...container.querySelectorAll('.apk-chip')];
     expect(chips.length).toBeGreaterThan(3);
@@ -204,7 +292,7 @@ describe('LumpsumSheet', () => {
     fireEvent.click(screen.getByRole('button', { name: /Pay / }));
     await settle();
     expect(createLumpsum).toHaveBeenCalledTimes(1);
-    expect(beginOrderPayment).toHaveBeenCalledWith('ord_1');
+    expect(beginOrderPayment).toHaveBeenCalledWith('ord_1', { checkoutChannel: 'hosted_redirect' });
     expect(redirectToCheckout).toHaveBeenCalledWith('https://checkout.phonepe.example/pay/abc');
   });
 
@@ -294,7 +382,7 @@ describe('PaymentStatus', () => {
     await settle();
     fireEvent.click(screen.getByRole('button', { name: /Try again/ }));
     await settle();
-    expect(beginOrderPayment).toHaveBeenCalledWith('ord_1');
+    expect(beginOrderPayment).toHaveBeenCalledWith('ord_1', { checkoutChannel: 'hosted_redirect' });
     expect(redirectToCheckout).toHaveBeenCalledWith(CHECKOUT.checkout.url);
   });
 
@@ -306,5 +394,15 @@ describe('PaymentStatus', () => {
     await settle();
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(screen.getByTestId('location')).toHaveTextContent(HOME_PATH);
+  });
+
+  test('a confirmed payment can open its transaction record', async () => {
+    getPayment.mockResolvedValue({
+      id: 'pay_1', orderId: 'ord_1', status: 'confirmed', amount: 1000, createdAt: '2026-08-01T10:00:00Z',
+    });
+    renderFlow(<PaymentStatus />, '/app/payment/pay_1', '/app/payment/:paymentId');
+    await settle();
+    fireEvent.click(screen.getByRole('button', { name: 'View transaction' }));
+    expect(screen.getByTestId('location')).toHaveTextContent('/app/transactions');
   });
 });
