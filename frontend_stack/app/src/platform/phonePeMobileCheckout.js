@@ -9,8 +9,10 @@ const MIN_CHECKOUT_LIFETIME_MS = 30000;
 
 const loadPhonePePlugin = async () => {
   const module = await import('ionic-capacitor-phonepe-pg');
-  return module.PhonePePaymentPlugin;
+  return { plugin: module.PhonePePaymentPlugin };
 };
+
+const unwrapPlugin = (loaded) => (loaded && typeof loaded === 'object' && 'plugin' in loaded ? loaded.plugin : loaded);
 
 const validateText = (value) =>
   typeof value === 'string' && value.trim().length > 0 && value === value.trim();
@@ -46,7 +48,7 @@ export function createPhonePeMobileCheckout({
   const resolveChannel = async () => {
     if (!isNativePlatform() || !isPluginAvailable(SDK_PLUGIN_NAME)) return 'hosted_redirect';
     try {
-      const plugin = await loadPlugin();
+      const plugin = unwrapPlugin(await loadPlugin());
       return plugin ? 'phonepe_mobile_sdk' : 'hosted_redirect';
     } catch {
       return 'hosted_redirect';
@@ -56,7 +58,7 @@ export function createPhonePeMobileCheckout({
   const start = async ({ checkout }) => {
     validateCheckout(checkout, now);
     try {
-      const plugin = await loadPlugin();
+      const plugin = unwrapPlugin(await loadPlugin());
       const configuration = `${checkout.environment}:${checkout.merchantId}`;
       if (initializedConfiguration !== configuration) {
         const initialized = await plugin.init({
