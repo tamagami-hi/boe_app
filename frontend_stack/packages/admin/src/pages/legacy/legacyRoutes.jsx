@@ -8,9 +8,12 @@ import AdminReadError from '../../data/AdminReadError.jsx';
 import {
   useAdminAuditLogs,
   useAdminFunds,
+  useAdminMandateDetail,
+  useAdminMandates,
   useAdminPayments,
 } from '../../data/adminResources.js';
 import { useFundMutations } from '../../data/useFundMutations.js';
+import { useMandateMutations } from '../../data/useMandateMutations.js';
 import { hasAnyPermission } from '../../navigation/nav.js';
 import { useAdminNavigation } from '../../navigation/useAdminNavigation.js';
 
@@ -26,6 +29,8 @@ const AuditLogScreen = lazy(() => import('../../screens/AuditLogScreen.jsx'));
 const EmailDeliveriesScreen = lazy(() => import('../../screens/EmailDeliveriesScreen.jsx'));
 const EnvironmentScreen = lazy(() => import('../../screens/EnvironmentScreen.jsx'));
 const PaymentsScreen = lazy(() => import('../../screens/PaymentsScreen.jsx'));
+const MandatesScreen = lazy(() => import('../../screens/MandatesScreen.jsx'));
+const MandateDetailScreen = lazy(() => import('../../screens/MandateDetailScreen.jsx'));
 const UserDetailScreen = lazy(() => import('../../screens/UserDetailScreen.jsx'));
 const UserDetailsListScreen = lazy(() => import('../../screens/UserDetailsListScreen.jsx'));
 
@@ -110,6 +115,66 @@ export function PaymentsRoute() {
         { label: 'payments', ...payments },
       ]} />
       <PaymentsScreen rows={payments.rows} loading={payments.isLoading} onUserDetail={openUserDetail} />
+    </>
+  );
+}
+
+export function MandatesRoute() {
+  const [state, setState] = useState('');
+  const [attention, setAttention] = useState(false);
+  const mandates = useAdminMandates({ state, attention });
+  return (
+    <>
+      <AdminReadError resources={[{ label: 'AutoPay mandates', ...mandates }]} />
+      <MandatesScreen
+        rows={mandates.rows}
+        loading={mandates.isLoading}
+        state={state}
+        attention={attention}
+        onStateChange={setState}
+        onAttentionChange={setAttention}
+      />
+    </>
+  );
+}
+
+export function MandateDetailRoute() {
+  const { mandateId } = useParams();
+  const detail = useAdminMandateDetail(mandateId);
+  const operations = useMandateMutations();
+  const { user } = useAdminSession();
+  const [busy, setBusy] = useState('');
+  const [actionError, setActionError] = useState('');
+  const canOperate = hasAnyPermission(user, ['finance.operate']);
+
+  async function run(key, operation) {
+    setBusy(key);
+    setActionError('');
+    try {
+      await operation();
+      await detail.refresh();
+    } catch (error) {
+      setActionError(error?.message || 'The operator action could not be completed.');
+    } finally {
+      setBusy('');
+    }
+  }
+
+  return (
+    <>
+      <AdminReadError resources={[{ label: 'AutoPay mandate detail', ...detail }]} />
+      {detail.isLoading && !detail.data && <div className="adm-card be-pad-5">Loading mandate trace…</div>}
+      {detail.data && (
+        <MandateDetailScreen
+          detail={detail.data}
+          canOperate={canOperate}
+          busy={busy}
+          actionError={actionError}
+          onReconcileMandate={(reason) => run('mandate', () => operations.reconcileMandate(mandateId, reason))}
+          onReconcileCollection={(collectionId, reason) => run(`collection:${collectionId}`, () => operations.reconcileCollection(collectionId, reason))}
+          onCancelMandate={(reason) => run('cancel', () => operations.cancelMandate(mandateId, reason))}
+        />
+      )}
     </>
   );
 }

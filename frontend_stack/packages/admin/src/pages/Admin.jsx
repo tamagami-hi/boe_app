@@ -5,6 +5,8 @@ import OverviewPage from './OverviewPage.jsx';
 import {
   ApprovalsRoute,
   PaymentsRoute,
+  MandatesRoute,
+  MandateDetailRoute,
   UserDirectoryRoute,
   UserDetailRoute,
   FundsRoute,
@@ -60,7 +62,7 @@ export default function Admin() {
         <Route path="users/kyc" element={<Navigate to="/admin/users/approvals" replace />} />
         <Route path="users/risk-profiles" element={<Navigate to="/admin/users/approvals" replace />} />
         {}
-        <Route path="users/subscriptions" element={<Navigate to="/admin/reviews/awaiting" replace />} />
+        <Route path="users/subscriptions" element={<Navigate to="/admin/payments/mandates" replace />} />
         <Route path="users/payments" element={<Navigate to="/admin/payments" replace />} />
 
         <Route path="funds" element={<Permitted><FundsRoute /></Permitted>} />
@@ -84,6 +86,8 @@ export default function Admin() {
         <Route path="aum/history" element={<Permitted><AumRoute tab="history" /></Permitted>} />
 
         <Route path="payments" element={<Permitted><PaymentsRoute /></Permitted>} />
+        <Route path="payments/mandates" element={<Permitted><MandatesRoute /></Permitted>} />
+        <Route path="payments/mandates/:mandateId" element={<Permitted><MandateDetailRoute /></Permitted>} />
         <Route path="audit" element={<Permitted><AuditLogRoute /></Permitted>} />
 
         <Route path="site/faqs" element={<Permitted><FaqsPage /></Permitted>} />
@@ -96,7 +100,7 @@ export default function Admin() {
         <Route path="ops/redemptions" element={<Navigate to="/admin/payments" replace />} />
         <Route path="ops/transactions" element={<Navigate to="/admin/payments" replace />} />
         <Route path="ops/ledger" element={<Navigate to="/admin/payments" replace />} />
-        <Route path="ops/sip-control" element={<Navigate to="/admin/payments" replace />} />
+        <Route path="ops/sip-control" element={<Navigate to="/admin/payments/mandates" replace />} />
         <Route path="ops/holdings" element={<Navigate to="/admin/aum/current" replace />} />
 
         {}

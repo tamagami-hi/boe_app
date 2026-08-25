@@ -7,6 +7,8 @@ import {
 } from '@beonedge/shared/data/ResourceCacheProvider.jsx';
 
 import { loadAdminCollection, loadAdminFundPage } from '../helpers/loadAdminData.js';
+import { apiRequest } from '@beonedge/client/services/_util.js';
+import { parseMandateDetail, parseMandatePage } from './mandateContracts.js';
 
 export const ADMIN_CACHE_PREFIX = 'admin:';
 
@@ -14,6 +16,8 @@ export const ADMIN_KEYS = {
   faqs: () => 'admin:faqs',
   funds: () => 'admin:funds',
   payments: () => 'admin:payments',
+  mandates: (state = 'all', attention = 'all') => `admin:mandates:${state}:${attention}`,
+  mandateDetail: (mandateId = '') => `admin:mandates:detail:${mandateId}`,
   investmentReviews: (state = 'pending') => `admin:investmentReviews:${state}`,
   refunds: (state = 'all') => `admin:refunds:${state}`,
   auditLogs: () => 'admin:auditLogs',
@@ -23,6 +27,7 @@ export const ADMIN_DOMAINS = {
   FAQS: 'admin:faqs',
   FUNDS: 'admin:funds',
   PAYMENTS: 'admin:payments',
+  MANDATES: 'admin:mandates',
   INVESTMENT_REVIEWS: 'admin:investmentReviews',
   REFUNDS: 'admin:refunds',
   AUDIT_LOGS: 'admin:auditLogs',
@@ -132,6 +137,35 @@ export function useAdminPayments(options) {
   });
 }
 
+export function useAdminMandates({ state = '', attention = false } = {}) {
+  const params = new URLSearchParams({ limit: '100' });
+  if (state) params.set('state', state);
+  if (attention) params.set('attention', 'true');
+  const key = ADMIN_KEYS.mandates(state || 'all', attention ? 'attention' : 'all');
+  const path = `/v1/admin/mandates?${params.toString()}`;
+  const resource = useResource(key, async () => {
+    const payload = await apiRequest(path, { scope: 'admin', envelope: true });
+    return parseMandatePage(payload);
+  }, { staleTime: STALE_TIME.MONEY });
+  return {
+    ...resource,
+    rows: resource.data?.rows ?? [],
+    nextCursor: resource.data?.nextCursor ?? null,
+    hasMore: resource.data?.hasMore === true,
+  };
+}
+
+export function useAdminMandateDetail(mandateId) {
+  return useResource(
+    ADMIN_KEYS.mandateDetail(mandateId),
+    async () => parseMandateDetail(await apiRequest(
+      `/v1/admin/mandates/${encodeURIComponent(mandateId)}`,
+      { scope: 'admin' },
+    )),
+    { staleTime: STALE_TIME.MONEY, enabled: Boolean(mandateId) },
+  );
+}
+
 export function useAdminInvestmentReviews(state = 'pending', options) {
   return useAdminCollection(
     ADMIN_KEYS.investmentReviews(state),
@@ -172,6 +206,12 @@ export function useAdminCacheActions() {
     cache.invalidate(ADMIN_DOMAINS.AUDIT_LOGS);
   }, [cache]);
 
+  const invalidateMandates = useCallback(() => {
+    cache.invalidate(ADMIN_DOMAINS.MANDATES);
+    cache.invalidate(ADMIN_DOMAINS.PAYMENTS);
+    cache.invalidate(ADMIN_DOMAINS.AUDIT_LOGS);
+  }, [cache]);
+
   const invalidateAum = useCallback(() => {
     cache.invalidate(ADMIN_DOMAINS.FUNDS);
     cache.invalidate(ADMIN_DOMAINS.AUDIT_LOGS);
@@ -191,6 +231,7 @@ export function useAdminCacheActions() {
     invalidate,
     invalidateFaqs,
     invalidateFunds,
+    invalidateMandates,
     invalidateReviews,
     invalidateAum,
     invalidateClientGrowth,

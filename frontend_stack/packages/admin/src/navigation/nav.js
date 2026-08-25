@@ -157,6 +157,13 @@ export const NAV_DOMAINS = [
     mobile: { primary: false, shortLabel: 'Payments', icon: CreditCard },
     items: [
       {
+        path: '/admin/payments/mandates',
+        label: 'SIP AutoPay',
+        icon: History,
+        title: 'SIP AutoPay mandates',
+        permissions: ['payments.read'],
+      },
+      {
         path: '/admin/payments',
         label: 'PhonePe evidence',
         icon: CreditCard,

@@ -31,6 +31,7 @@ const {
   useAdminCacheActions,
   useAdminFunds,
   useAdminInvestmentReviews,
+  useAdminMandates,
   useAdminPayments,
 } = await import('./adminResources.js');
 const { useFundMutations } = await import('./useFundMutations.js');
@@ -90,8 +91,8 @@ describe('cache keys', () => {
     expect(Object.keys(ADMIN_KEYS)).not.toContain('transactions');
   });
 
-  test('there is no mandates collection key', () => {
-    expect(Object.keys(ADMIN_KEYS)).not.toContain('mandates');
+  test('mandates have a dedicated collection key', () => {
+    expect(ADMIN_KEYS.mandates()).toBe('admin:mandates:all:all');
   });
 });
 
@@ -101,6 +102,14 @@ describe('per-screen reads', () => {
     render(<Wrap><ReviewsShape /></Wrap>);
     await settle();
     expect(pathsCalled()).toEqual(['/v1/admin/investment-reviews?state=pending']);
+  });
+
+  test('the mandate register reads only the mandate endpoint', async () => {
+    function MandatesShape() { useAdminMandates(); return null; }
+    render(<Wrap><MandatesShape /></Wrap>);
+    await settle();
+    expect(apiRequest).toHaveBeenCalledWith('/v1/admin/mandates?limit=100', { scope: 'admin', envelope: true });
+    expect(loadAdminCollection).not.toHaveBeenCalled();
   });
 
   test('a screen that needs nothing fetches nothing', async () => {
