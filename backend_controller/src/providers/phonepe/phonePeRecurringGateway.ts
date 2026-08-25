@@ -19,6 +19,7 @@ import {
   GatewayMalformedResponseError,
   GatewayNotFoundError,
   GatewayRejectedError,
+  GatewayThrottledError,
   GatewayUnavailableError,
 } from "./paymentGateway.js"
 import { createPhonePeApiClient } from "./phonePeApiClient.js"
@@ -66,6 +67,7 @@ const bodyOf = async (response: Response): Promise<unknown> => {
     throw new GatewayCredentialError("the provider rejected gateway credentials")
   }
   if (response.status === 404) throw new GatewayNotFoundError("the provider order was not found")
+  if (response.status === 429) throw new GatewayThrottledError("the provider throttled the request")
   if (response.status < 500) throw new GatewayRejectedError("the provider rejected the request")
   throw new GatewayUnavailableError("the provider call failed; retry later", { cause: { httpStatusCode: response.status } })
 }

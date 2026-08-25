@@ -198,8 +198,6 @@ const seedPublishedFund = async (
 
 let stubOutcome: "succeeded" | "failed" | "pending" = "succeeded"
 let stubRedirectUrl = "https://mercury-uat.phonepe.com/checkout/abc"
-let stubPaymentReturnUrl: string | null = null
-let stubExpireAfterSeconds: number | null = null
 let stubProviderState: string | null = null
 let stubOrderStatusError: Error | null = null
 let stubOrderStatusCalls = 0
@@ -209,25 +207,27 @@ let stubMobileOrderCalls: string[] = []
 let stubMobileOrderError: Error | null = null
 let stubMobileEnabled = true
 let stubCheckoutCalls = 0
+let stubRefundOriginalMerchantOrderId: string | null = null
+let stubRefundAmountPaise: string | null = null
 
 const stubMobileGateway: MobilePaymentGateway = {
-  createSdkOrder: (command) => {
+  createSdkOrder: async (command) => {
     stubMobileOrderCalls.push(command.merchantOrderId)
-    if (stubMobileOrderError !== null) return Promise.reject(stubMobileOrderError)
-    return Promise.resolve({
+    stubCheckoutStarted?.()
+    if (stubCheckoutGate !== null) await stubCheckoutGate
+    if (stubMobileOrderError !== null) throw stubMobileOrderError
+    return {
       providerOrderId: `sdk_${command.merchantOrderId}`,
       providerState: "PENDING",
       sdkToken: `sdk-token-${command.merchantOrderId}`,
       expiresAt: new Date(Date.now() + 600_000),
-    })
+    }
   },
 }
 
 const stubGateway: PaymentGateway = {
   createCheckout: async (command): Promise<CheckoutCreated> => {
     stubCheckoutCalls += 1
-    stubPaymentReturnUrl = command.redirectUrl
-    stubExpireAfterSeconds = command.expireAfterSeconds
     stubCheckoutStarted?.()
     if (stubCheckoutGate !== null) await stubCheckoutGate
     return {
@@ -240,26 +240,39 @@ const stubGateway: PaymentGateway = {
     stubOrderStatusCalls += 1
     if (stubOrderStatusError !== null) return Promise.reject(stubOrderStatusError)
     return Promise.resolve({
+      merchantOrderId,
       outcome: stubOutcome,
-      providerState: stubProviderState ?? stubOutcome.toUpperCase(),
-      providerOrderId: `provider_${merchantOrderId}`,
-      amountPaise: null,
-      details: [],
+      providerState: stubProviderState ?? (stubOutcome === "succeeded" ? "COMPLETED" : stubOutcome.toUpperCase()),
+      providerOrderId: `sdk_${merchantOrderId}`,
+      amountPaise: "1000000",
+      currency: "INR",
+      details: stubOutcome === "succeeded" ? [{
+        transactionId: `transaction_${merchantOrderId}`,
+        reference: "utr-test",
+        instrumentType: "UPI",
+        state: "COMPLETED",
+        amountPaise: "1000000",
+      }] : [],
     })
   },
   validateShaCallback: (authorizationHeader, rawBody): VerifiedCallback => {
     if (authorizationHeader !== CALLBACK_AUTH) throw new Error("bad auth")
     return JSON.parse(rawBody) as VerifiedCallback
   },
-  initiateRefund: (command): Promise<RefundInitiated> => Promise.resolve({
-    providerRefundId: `provrf_${command.merchantRefundId}`,
-    outcome: "succeeded",
-    providerState: "COMPLETED",
-  }),
+  initiateRefund: (command): Promise<RefundInitiated> => {
+    stubRefundOriginalMerchantOrderId = command.originalMerchantOrderId
+    stubRefundAmountPaise = command.amountPaise
+    return Promise.resolve({
+      providerRefundId: `provrf_${command.merchantRefundId}`,
+      outcome: "succeeded",
+      providerState: "COMPLETED",
+    })
+  },
   getRefundStatus: (merchantRefundId): Promise<RefundStatusFact> => Promise.resolve({
     merchantRefundId,
-    originalMerchantOrderId: null,
-    amountPaise: null,
+    providerRefundId: `provrf_${merchantRefundId}`,
+    originalMerchantOrderId: stubRefundOriginalMerchantOrderId,
+    amountPaise: stubRefundAmountPaise,
     outcome: "succeeded",
     providerState: "COMPLETED",
   }),
@@ -377,8 +390,6 @@ beforeAll(async () => {
         config: {
           idempotencyTtlMs: 86_400_000,
           attemptTtlMs: 900_000,
-          paymentReturnUrl: "https://app.beonedge.in/payment-return",
-          paymentReturnSigningKey: randomBytes(32),
           mobileSdk: {
             get enabled() { return stubMobileEnabled },
             merchantId: "PHONEPE_MERCHANT",
@@ -418,6 +429,8 @@ beforeAll(async () => {
         config: {
           payloadEncryptionKey: randomBytes(32),
           payloadKeyVersion: "ek1",
+          paymentEventAllowlist: ["checkout.order.completed", "checkout.order.failed"],
+          refundEventAllowlist: ["pg.refund.completed", "pg.refund.failed"],
         },
         providerEventInboxRepository,
         paymentsRepository,
@@ -1162,7 +1175,7 @@ describe("checkout orchestrator", () => {
     recurringSetupStatusError = null
   })
 
-  test("creates an order, dispatches a checkout, and reuses the same attempt on retry", async () => {
+  test("creates an order, dispatches a mobile checkout, and reuses the same attempt on retry", async () => {
     const { userId, token } = await seedClientToken(`client-${randomUUID().slice(0, 8)}@example.com`)
     const admin = await pool.query<{ id: string }>("select id from users where email_normalized = $1", [
       "payrev-finance@example.com",
@@ -1182,14 +1195,12 @@ describe("checkout orchestrator", () => {
       method: "POST",
       url: `/v1/client/orders/${orderId}/pay`,
       headers: { ...bearer(token), "idempotency-key": `pay-${randomUUID()}` },
+      payload: { checkoutChannel: "phonepe_mobile_sdk" },
     })
     expect(pay.statusCode).toBe(200)
-    const payBody = dataOf<{ checkout: { url: string } }>(pay)
-    expect(payBody.checkout.url).toBe(stubRedirectUrl)
-    const returnUrl = new URL(stubPaymentReturnUrl as string)
-    expect(returnUrl.origin + returnUrl.pathname).toBe("https://app.beonedge.in/payment-return")
-    expect(returnUrl.searchParams.get("token")).toMatch(/^v1\./u)
-    expect(stubPaymentReturnUrl).not.toContain(orderId)
+    const payBody = dataOf<{ checkout: { type: string; token: string } }>(pay)
+    expect(payBody.checkout.type).toBe("phonepe_sdk")
+    expect(payBody.checkout.token).toMatch(/^sdk-token-/u)
 
     const attempts = await pool.query<{ count: string }>(
       "select count(*) as count from payment_attempts where user_id = $1",
@@ -1206,11 +1217,10 @@ describe("checkout orchestrator", () => {
       method: "POST",
       url: `/v1/client/orders/${orderId}/pay`,
       headers: { ...bearer(token), "idempotency-key": retryKey },
+      payload: { checkoutChannel: "phonepe_mobile_sdk" },
     })
     expect(retry.statusCode).toBe(200)
-    expect(stubExpireAfterSeconds).toBeGreaterThan(0)
-    expect(stubExpireAfterSeconds).toBeGreaterThanOrEqual(300)
-    expect(stubExpireAfterSeconds).toBeLessThanOrEqual(360)
+    expect(dataOf<{ checkout: { token: string } }>(retry).checkout.token).toBe(payBody.checkout.token)
     const attemptsAfterRetry = await pool.query<{ count: string }>(
       "select count(*) as count from payment_attempts where user_id = $1",
       [userId],
@@ -1225,6 +1235,7 @@ describe("checkout orchestrator", () => {
       method: "POST",
       url: `/v1/client/orders/${orderId}/pay`,
       headers: { ...bearer(token), "idempotency-key": `pay-after-expiry-${randomUUID()}` },
+      payload: { checkoutChannel: "phonepe_mobile_sdk" },
     })
     expect(afterExpiry.statusCode).toBe(409)
     expect(errorOf(afterExpiry)).toBe("STATE_CONFLICT")
@@ -1253,6 +1264,10 @@ describe("checkout orchestrator", () => {
     expect(unavailable.attemptsResolved).toBe(0)
     expect(warnings[0]?.requestId).toMatch(/^[0-9a-f-]{36}$/u)
     expect(warnings[0]?.requestId).not.toBe(attemptIdentity.rows[0]!.id)
+    await pool.query(
+      "update payment_attempts set next_status_check_at = null, reconciliation_lease_expires_at = null where id = $1",
+      [attemptIdentity.rows[0]!.id],
+    )
 
     stubOrderStatusError = new GatewayNotFoundError("provider reference not found")
     const earlyNotFound = await runReconciliationPass({
@@ -1265,6 +1280,10 @@ describe("checkout orchestrator", () => {
       config: { claimLimit: 25, notFoundGraceMs: 60_000 },
     })
     expect(earlyNotFound.attemptsResolved).toBe(0)
+    await pool.query(
+      "update payment_attempts set next_status_check_at = null, reconciliation_lease_expires_at = null where id = $1",
+      [attemptIdentity.rows[0]!.id],
+    )
 
     stubOrderStatusError = null
     stubOutcome = "pending"
@@ -1278,6 +1297,10 @@ describe("checkout orchestrator", () => {
       config: { claimLimit: 25, notFoundGraceMs: 60_000 },
     })
     expect(ambiguous.attemptsResolved).toBe(0)
+    await pool.query(
+      "update payment_attempts set next_status_check_at = null, reconciliation_lease_expires_at = null where id = $1",
+      [attemptIdentity.rows[0]!.id],
+    )
 
     stubProviderState = "EXPIRED"
     const expired = await runReconciliationPass({
@@ -1303,6 +1326,7 @@ describe("checkout orchestrator", () => {
       method: "POST",
       url: `/v1/client/orders/${orderId}/pay`,
       headers: { ...bearer(token), "idempotency-key": `pay-after-resolution-${randomUUID()}` },
+      payload: { checkoutChannel: "phonepe_mobile_sdk" },
     })
     expect(retryAfterResolution.statusCode).toBe(200)
     const retryState = await pool.query<{ payment_state: string; attempt_states: string[] }>(
@@ -1454,7 +1478,7 @@ describe("checkout orchestrator", () => {
       headers: { ...bearer(token), "idempotency-key": `hosted-${randomUUID()}` },
       payload: { checkoutChannel: "hosted_redirect" },
     })
-    expect(crossChannel.statusCode).toBe(409)
+    expect(crossChannel.statusCode).toBe(400)
     await expect(pool.query("update payment_attempts set state = 'failed' where id = $1", [row.id])).rejects.toThrow()
     await pool.query(
       "update payment_attempts set state = 'failed', sdk_order_token_ciphertext = null, " +
@@ -1463,7 +1487,7 @@ describe("checkout orchestrator", () => {
     )
   })
 
-  test("rejects disabled mobile checkout before attempt creation and allows a fresh hosted fallback", async () => {
+  test("rejects disabled mobile checkout before attempt creation and rejects hosted fallback", async () => {
     const { userId, token } = await seedClientToken(`client-${randomUUID().slice(0, 8)}@example.com`)
     const fund = await seedPublishedFund(`pay-disabled-${randomUUID().slice(0, 8)}`, financeAdminId)
     const created = await app.inject({
@@ -1499,9 +1523,8 @@ describe("checkout orchestrator", () => {
         headers: { ...bearer(token), "idempotency-key": `hosted-${randomUUID()}` },
         payload: { checkoutChannel: "hosted_redirect" },
       })
-      expect(hosted.statusCode).toBe(200)
-      expect(dataOf<{ checkout: { type: string } }>(hosted).checkout.type).toBe("redirect")
-      expect(stubCheckoutCalls).toBe(hostedCalls + 1)
+      expect(hosted.statusCode).toBe(400)
+      expect(stubCheckoutCalls).toBe(hostedCalls)
     } finally {
       await pool.query(
         "update payment_attempts set state = 'failed', provider_state = 'TEST_CLOSED' where user_id = $1 and state in ('created','provider_pending')",
@@ -1611,6 +1634,7 @@ describe("checkout orchestrator", () => {
       method: "POST",
       url: `/v1/client/orders/${orderId}/pay`,
       headers: { ...bearer(token), "idempotency-key": `pay-${randomUUID()}` },
+      payload: { checkoutChannel: "phonepe_mobile_sdk" },
     })
     await checkoutStarted
     const reconciliation = await runReconciliationPass({
@@ -1658,6 +1682,7 @@ describe("checkout orchestrator", () => {
       method: "POST",
       url: `/v1/client/orders/${orderId}/pay`,
       headers: { ...bearer(token), "idempotency-key": `pay-${randomUUID()}` },
+      payload: { checkoutChannel: "phonepe_mobile_sdk" },
     })
     await checkoutStarted
     await pool.query("update payment_attempts set state = 'failed' where user_id = $1", [userId])
@@ -1688,6 +1713,7 @@ describe("PhonePe callback processing", () => {
       method: "POST",
       url: `/v1/client/orders/${orderId}/pay`,
       headers: { ...bearer(token), "idempotency-key": `pay-${randomUUID()}` },
+      payload: { checkoutChannel: "phonepe_mobile_sdk" },
     })
 
     const attempt = await pool.query<{ merchant_order_id: string }>(
@@ -1747,6 +1773,7 @@ describe("PhonePe callback processing", () => {
       method: "POST",
       url: `/v1/client/orders/${orderId}/pay`,
       headers: { ...bearer(token), "idempotency-key": `pay-${randomUUID()}` },
+      payload: { checkoutChannel: "phonepe_mobile_sdk" },
     })
     const attempt = await pool.query<{ merchant_order_id: string }>(
       "select merchant_order_id from payment_attempts where payment_id = " +
@@ -1796,6 +1823,7 @@ const advanceOrderToReview = async (
     method: "POST",
     url: `/v1/client/orders/${orderId}/pay`,
     headers: { ...bearer(token), "idempotency-key": `pay-${randomUUID()}` },
+    payload: { checkoutChannel: "phonepe_mobile_sdk" },
   })
   const attempt = await pool.query<{ merchant_order_id: string }>(
     "select merchant_order_id from payment_attempts where payment_id = " +

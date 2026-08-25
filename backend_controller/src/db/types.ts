@@ -121,6 +121,7 @@ export type PaymentState =
   | "succeeded"
   | "failed"
   | "expired"
+  | "reconciliation_required"
   | "refund_pending"
   | "refunded"
   | "refund_failed"
@@ -913,6 +914,10 @@ export interface PaymentAttemptsTable {
   failure_code: Nullable<string>
   checkout_expires_at: NullableTimestamp
   last_status_checked_at: NullableTimestamp
+  next_status_check_at: NullableTimestamp
+  reconciliation_lease_expires_at: NullableTimestamp
+  reconciliation_failure_count: Generated<number>
+  reconciliation_required_at: NullableTimestamp
   provider_state: Nullable<string>
   created_at: TimestampDefault
   updated_at: TimestampDefault

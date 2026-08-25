@@ -37,14 +37,17 @@ export interface EncryptedEnvelope {
  * AES-256-GCM encrypt `plaintext`. The returned ciphertext is the GCM output
  * with the 16-byte authentication tag appended; the nonce is a fresh 12 bytes.
  */
-export const encryptGcm = (key: Buffer, plaintext: string, aad?: Buffer): EncryptedEnvelope => {
+export const encryptGcm = (key: Buffer, plaintext: string | Buffer, aad?: Buffer): EncryptedEnvelope => {
   if (key.length !== AES_256_KEY_BYTES) {
     throw new Error("AES-256-GCM requires a 32-byte key")
   }
   const nonce = randomBytes(GCM_NONCE_BYTES)
   const cipher = createCipheriv("aes-256-gcm", key, nonce)
   if (aad !== undefined) cipher.setAAD(aad)
-  const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()])
+  const encrypted = Buffer.concat([
+    typeof plaintext === "string" ? cipher.update(plaintext, "utf8") : cipher.update(plaintext),
+    cipher.final(),
+  ])
   const tag = cipher.getAuthTag()
   return { ciphertext: Buffer.concat([encrypted, tag]), nonce }
 }

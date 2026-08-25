@@ -108,6 +108,11 @@ const ServerConfigSchema = z.object({
   PHONEPE_AUTOPAY_ENABLED: z.enum(["true", "false"]).default("false"),
   PHONEPE_AUTOPAY_COLLECTION_ENABLED: z.enum(["true", "false"]).default("false"),
   PHONEPE_API_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(30_000).default(10_000),
+  PAYMENT_RECONCILIATION_INTERVAL_SECONDS: z.coerce.number().int().min(5).max(3600).default(30),
+  PAYMENT_RECONCILIATION_LEASE_SECONDS: z.coerce.number().int().min(10).max(3600).default(60),
+  PAYMENT_RECONCILIATION_MAX_BACKOFF_SECONDS: z.coerce.number().int().min(30).max(86400).default(900),
+  PAYMENT_RECONCILIATION_EXPIRY_GRACE_SECONDS: z.coerce.number().int().min(0).max(86400).default(300),
+  PAYMENT_RECONCILIATION_CLAIM_LIMIT: z.coerce.number().int().min(1).max(200).default(25),
   CRYPTO_PAYMENT_TOKEN_ENC_KEY: z.string().optional(),
   CRYPTO_PAYMENT_TOKEN_ENC_KEY_VERSION: z.string().trim().optional(),
   // Where the app returns after checkout and where the provider posts the
@@ -116,6 +121,7 @@ const ServerConfigSchema = z.object({
   PHONEPE_CALLBACK_URL: z.string().trim().optional(),
   PHONEPE_SUBSCRIPTION_CALLBACK_URL: z.string().trim().optional(),
   PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: z.string().trim().optional(),
+  PHONEPE_PAYMENT_EVENT_ALLOWLIST: z.string().trim().default("checkout.order.completed,checkout.order.failed"),
   PHONEPE_CHECKOUT_ALLOWED_ORIGINS: z.string().trim().optional(),
   PAYMENT_ATTEMPT_TTL_MS: z.coerce
     .number()
@@ -223,6 +229,7 @@ export interface ServerConfig {
       readonly callbackUrl: string
       readonly subscriptionCallbackUrl: string | null
       readonly checkoutAllowedOrigins: readonly string[]
+      readonly requestTimeoutMs: number
     } | null
     readonly attemptTtlMs: number
     readonly mobileSdk: {
@@ -236,6 +243,14 @@ export interface ServerConfig {
       readonly enabled: boolean
       readonly collectionEnabled: boolean
       readonly subscriptionEventAllowlist: readonly string[]
+    }
+    readonly reconciliation: {
+      readonly intervalMs: number
+      readonly leaseMs: number
+      readonly maxBackoffMs: number
+      readonly expiryGraceMs: number
+      readonly claimLimit: number
+      readonly paymentEventAllowlist: readonly string[]
     }
   }
   readonly email: {
@@ -437,6 +452,7 @@ const parsePhonePeConfig = (
     callbackUsername: parsed.PHONEPE_CALLBACK_USERNAME as string,
     callbackPassword: parsed.PHONEPE_CALLBACK_PASSWORD as string,
     checkoutAllowedOrigins: Object.freeze([...new Set(checkoutAllowedOrigins)]),
+    requestTimeoutMs: parsed.PHONEPE_API_TIMEOUT_MS,
     redirectUrl: canonicalUrl("PHONEPE_REDIRECT_URL", parsed.PHONEPE_REDIRECT_URL, "/payment-return"),
     callbackUrl: canonicalUrl(
       "PHONEPE_CALLBACK_URL",
@@ -492,6 +508,12 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
     .filter((value) => value.length > 0)
   if (subscriptionEventAllowlist.some((value) => !/^[a-z0-9._-]{1,128}$/u.test(value))) {
     throw new Error("PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST must contain exact event names")
+  }
+  const paymentEventAllowlist = parsed.PHONEPE_PAYMENT_EVENT_ALLOWLIST.split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0)
+  if (paymentEventAllowlist.length === 0 || paymentEventAllowlist.some((value) => !/^[a-z0-9._-]{1,128}$/u.test(value))) {
+    throw new Error("PHONEPE_PAYMENT_EVENT_ALLOWLIST must contain exact event names")
   }
   const merchantId = nonEmpty(parsed.PHONEPE_MERCHANT_ID)
   const paymentTokenKey = nonEmpty(parsed.CRYPTO_PAYMENT_TOKEN_ENC_KEY)
@@ -557,6 +579,14 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
         enabled: isAutoPayEnabled,
         collectionEnabled: isAutoPayCollectionEnabled,
         subscriptionEventAllowlist: Object.freeze([...new Set(subscriptionEventAllowlist)]),
+      },
+      reconciliation: {
+        intervalMs: parsed.PAYMENT_RECONCILIATION_INTERVAL_SECONDS * 1000,
+        leaseMs: parsed.PAYMENT_RECONCILIATION_LEASE_SECONDS * 1000,
+        maxBackoffMs: parsed.PAYMENT_RECONCILIATION_MAX_BACKOFF_SECONDS * 1000,
+        expiryGraceMs: parsed.PAYMENT_RECONCILIATION_EXPIRY_GRACE_SECONDS * 1000,
+        claimLimit: parsed.PAYMENT_RECONCILIATION_CLAIM_LIMIT,
+        paymentEventAllowlist: Object.freeze([...new Set(paymentEventAllowlist)]),
       },
     },
     email: {

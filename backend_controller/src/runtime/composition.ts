@@ -307,8 +307,6 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       config: {
         idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
         attemptTtlMs: serverConfig.payments.attemptTtlMs,
-        paymentReturnUrl: serverConfig.payments.phonepe?.redirectUrl ?? null,
-        paymentReturnSigningKey: serverConfig.cursorKey,
         mobileSdk: {
           enabled: serverConfig.payments.mobileSdk.enabled,
           merchantId: serverConfig.payments.mobileSdk.merchantId,
@@ -559,6 +557,8 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         config: {
           payloadEncryptionKey: cryptoKeys.recipientEncryptionKey,
           payloadKeyVersion: cryptoKeys.recipientEncryptionKeyVersion,
+          paymentEventAllowlist: serverConfig.payments.reconciliation.paymentEventAllowlist,
+          refundEventAllowlist: ["pg.refund.completed", "pg.refund.failed"],
         },
         providerEventInboxRepository,
         paymentsRepository,
@@ -664,6 +664,7 @@ export interface PaymentReconciliationWorker {
   readonly gatewayConfigured: boolean
   readonly dispose: () => Promise<void>
   readonly database: Kysely<Database>
+  readonly intervalMs: number
 }
 
 export const composePaymentReconciliationWorker = (
@@ -705,8 +706,11 @@ export const composePaymentReconciliationWorker = (
         paymentsRepository: createPaymentsRepository(),
         refundRepository: createRefundRepository(),
         config: {
-          claimLimit: 25,
-          notFoundGraceMs: PAYMENT_NOT_FOUND_GRACE_MS,
+          claimLimit: serverConfig.payments.reconciliation.claimLimit,
+          notFoundGraceMs: serverConfig.payments.reconciliation.expiryGraceMs,
+          leaseMs: serverConfig.payments.reconciliation.leaseMs,
+          pendingIntervalMs: serverConfig.payments.reconciliation.intervalMs,
+          maxBackoffMs: serverConfig.payments.reconciliation.maxBackoffMs,
         },
       })
       if (recurringGateway !== null) {
@@ -732,6 +736,7 @@ export const composePaymentReconciliationWorker = (
       await pool.end()
     },
     database,
+    intervalMs: serverConfig.payments.reconciliation.intervalMs,
   }
 }
 

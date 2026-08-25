@@ -36,6 +36,8 @@ export class GatewayMalformedCallbackError extends GatewayError {}
 /** Network, timeout, or provider 5xx: retryable later. */
 export class GatewayUnavailableError extends GatewayError {}
 
+export class GatewayThrottledError extends GatewayUnavailableError {}
+
 export class GatewayMalformedResponseError extends GatewayUnavailableError {}
 
 export class GatewayNotFoundError extends GatewayError {}
@@ -72,11 +74,13 @@ export interface ProviderPaymentDetailFact {
 }
 
 export interface OrderStatusFact {
+  readonly merchantOrderId: string | null
   readonly outcome: ProviderOutcome
   /** The provider's own state string (e.g. `COMPLETED`), kept for evidence. */
   readonly providerState: string
   readonly providerOrderId: string | null
   readonly amountPaise: string | null
+  readonly currency: string | null
   readonly details: readonly ProviderPaymentDetailFact[]
 }
 
@@ -115,6 +119,7 @@ export interface RefundInitiated {
 
 export interface RefundStatusFact {
   readonly merchantRefundId: string
+  readonly providerRefundId: string | null
   readonly originalMerchantOrderId: string | null
   readonly amountPaise: string | null
   readonly outcome: ProviderOutcome

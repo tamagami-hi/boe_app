@@ -11,6 +11,7 @@ import {
   GatewayCredentialError,
   GatewayMalformedResponseError,
   GatewayRejectedError,
+  GatewayThrottledError,
   GatewayUnavailableError,
 } from "./paymentGateway.js"
 import { createPhonePeApiClient } from "./phonePeApiClient.js"
@@ -39,6 +40,7 @@ const assertSuccessful = async (response: Response): Promise<unknown> => {
   if (response.status === 401 || response.status === 403) {
     throw new GatewayCredentialError("the provider rejected gateway credentials")
   }
+  if (response.status === 429) throw new GatewayThrottledError("the provider throttled the request")
   if (response.status >= 400 && response.status < 500) {
     throw new GatewayRejectedError("the provider rejected the request")
   }

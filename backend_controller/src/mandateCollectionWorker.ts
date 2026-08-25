@@ -152,9 +152,12 @@ const dispatchCollection = async (deps: MandateCollectionDeps, prepared: NonNull
         if (failed === null) return
         await applyCanonicalPaymentOutcome(tx, deps.paymentsRepository, {
           merchantOrderId: prepared.paymentAttempt.merchant_order_id,
+          providerMerchantOrderId: prepared.paymentAttempt.merchant_order_id,
           outcome: "failed",
           providerState: "MANDATE_INACTIVE",
           providerOrderId: null,
+          amountPaise: null,
+          currency: "INR",
           details: [],
         }, deps.clock())
       })

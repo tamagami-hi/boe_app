@@ -14,6 +14,15 @@ interface PassLogger {
 export interface RunPaymentReconciliationPassOptions {
   readonly worker?: PaymentReconciliationWorker
   readonly logger?: PassLogger
+  readonly dispose?: boolean
+  readonly recordHeartbeat?: (input: Readonly<{
+    workerName: string
+    passStartedAt: Date
+    passCompletedAt: Date
+    success: boolean
+    summary: Record<string, unknown>
+    errorCode: string | undefined
+  }>) => Promise<void>
 }
 
 const WORKER_NAME = "payment_reconciliation"
@@ -42,20 +51,52 @@ export const runPaymentReconciliationPass = async (
     throw error
   } finally {
     try {
-      const unitOfWork = createUnitOfWork(worker.database)
-      await unitOfWork.execute((tx) =>
-        createWorkerHeartbeatRepository().recordHeartbeat(tx, {
+      const recordHeartbeat = options.recordHeartbeat ?? (async (input) => {
+        const unitOfWork = createUnitOfWork(worker.database)
+        await unitOfWork.execute((tx) =>
+          createWorkerHeartbeatRepository().recordHeartbeat(tx, input),
+        )
+      })
+      await recordHeartbeat({
           workerName: WORKER_NAME,
           passStartedAt,
           passCompletedAt: new Date(),
           success,
           summary,
           errorCode,
-        }),
-      )
+      })
     } catch (heartbeatError) {
       logger.warn({ error: String(heartbeatError), errorCode: "HEARTBEAT_RECORD_FAILED" }, "Failed to record worker heartbeat")
     }
+    if (options.dispose !== false) await worker.dispose()
+  }
+}
+
+const waitForNextPass = (intervalMs: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, intervalMs))
+
+export const runPaymentReconciliationLoop = async (
+  worker: PaymentReconciliationWorker,
+  logger: PassLogger,
+): Promise<void> => {
+  let isStopping = false
+  const stop = (): void => {
+    isStopping = true
+  }
+  process.once("SIGINT", stop)
+  process.once("SIGTERM", stop)
+  try {
+    while (!isStopping) {
+      try {
+        await runPaymentReconciliationPass({ worker, logger, dispose: false })
+      } catch {
+        logger.warn({ errorCode: "PAYMENT_WORKER_PASS_FAILURE" }, "Payment reconciliation pass failed")
+      }
+      if (!isStopping) await waitForNextPass(worker.intervalMs)
+    }
+  } finally {
+    process.removeListener("SIGINT", stop)
+    process.removeListener("SIGTERM", stop)
     await worker.dispose()
   }
 }
@@ -65,7 +106,8 @@ const isMainModule =
 
 if (isMainModule) {
   const logger = createRuntimeLogger({ level: parseRuntimeEnvironment(process.env).logLevel })
-  void runPaymentReconciliationPass({ logger }).catch(() => {
+  const worker = composePaymentReconciliationWorker(process.env, logger)
+  void runPaymentReconciliationLoop(worker, logger).catch(() => {
     logger.error({ errorCode: "PAYMENT_WORKER_FAILURE" }, "Payment reconciliation pass failed")
     process.exitCode = 1
   })

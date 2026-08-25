@@ -136,7 +136,9 @@ describe("mandate collection timing", () => {
       version: "1",
     }
     const paymentsRepository = {
-      lockAttemptById: vi.fn().mockResolvedValue({ id: "attempt-1", payment_id: "payment-1", user_id: "user-1", merchant_order_id: "merchant-order-1" }),
+      lockAttemptById: vi.fn().mockResolvedValue({ id: "attempt-1", payment_id: "payment-1", user_id: "user-1", merchant_order_id: "merchant-order-1", provider_order_id: "provider-order-1", state: "provider_pending" }),
+      lockPaymentById: vi.fn().mockResolvedValue({ id: "payment-1", order_id: "order-1", user_id: "user-1", amount_paise: "10000", currency: "INR", state: "provider_pending" }),
+      lockOrderById: vi.fn().mockResolvedValue({ id: "order-1", user_id: "user-1", amount_paise: "10000", currency: "INR", state: "payment_pending" }),
       recordPaymentDetail: vi.fn().mockResolvedValue(undefined),
       findAttemptByMerchantOrderId: vi.fn().mockResolvedValue({ id: "attempt-1", payment_id: "payment-1", user_id: "user-1" }),
       markAttemptSucceeded: vi.fn().mockResolvedValue({ id: "attempt-1", payment_id: "payment-1" }),

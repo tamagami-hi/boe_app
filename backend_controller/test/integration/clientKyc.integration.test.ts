@@ -159,8 +159,6 @@ beforeAll(async () => {
         config: {
           idempotencyTtlMs: 86_400_000,
           attemptTtlMs: 900_000,
-          paymentReturnUrl: null,
-          paymentReturnSigningKey: randomBytes(32),
           mobileSdk: {
             enabled: false,
             merchantId: null,

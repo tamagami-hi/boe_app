@@ -48,9 +48,12 @@ export const reconcileCollectionFact = async (
   }
   await applyCanonicalPaymentOutcome(tx, deps.paymentsRepository, {
     merchantOrderId: fact.merchantOrderId,
+    providerMerchantOrderId: fact.merchantOrderId,
     outcome: fact.state === "COMPLETED" ? "succeeded" : "failed",
     providerState: fact.state,
     providerOrderId: fact.providerOrderId,
+    amountPaise: fact.amountPaise,
+    currency: "INR",
     details: fact.paymentDetails.map((detail) => ({
       transactionId: detail.transactionId,
       reference: null,

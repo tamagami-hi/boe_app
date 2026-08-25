@@ -127,6 +127,14 @@ export interface PaymentsRepository {
     tx: Transaction,
     input: Readonly<{ attemptId: string; now: Date }>,
   ) => Promise<void>
+  rescheduleAttemptReconciliation: (
+    tx: Transaction,
+    input: Readonly<{ attemptId: string; now: Date; nextCheckAt: Date; isFailure: boolean }>,
+  ) => Promise<void>
+  markReconciliationRequired: (
+    tx: Transaction,
+    input: Readonly<{ attemptId: string; paymentId: string; providerState: string; now: Date }>,
+  ) => Promise<void>
   markPaymentProviderPending: (tx: Transaction, paymentId: string, now: Date) => Promise<Payment | null>
   markPaymentSucceeded: (tx: Transaction, paymentId: string, now: Date) => Promise<Payment | null>
   markPaymentFailed: (
@@ -153,7 +161,7 @@ export interface PaymentsRepository {
   recordPaymentDetail: (tx: Transaction, input: RecordPaymentDetailInput) => Promise<void>
   lockAttemptsForReconciliation: (
     tx: Transaction,
-    input: Readonly<{ limit: number; createdDueBefore: Date }>,
+    input: Readonly<{ limit: number; createdDueBefore: Date; now: Date; leaseExpiresAt: Date }>,
   ) => Promise<readonly PaymentAttempt[]>
   listPage: (
     tx: Transaction,
@@ -375,6 +383,8 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
         provider_state: input.providerState,
         provider_order_id: input.providerOrderId,
         last_status_checked_at: input.now,
+        next_status_check_at: null,
+        reconciliation_lease_expires_at: null,
         sdk_order_token_ciphertext: null,
         sdk_order_token_nonce: null,
         sdk_order_token_key_version: null,
@@ -397,6 +407,8 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
         provider_state: input.providerState,
         failure_code: input.failureCode,
         last_status_checked_at: input.now,
+        next_status_check_at: null,
+        reconciliation_lease_expires_at: null,
         sdk_order_token_ciphertext: null,
         sdk_order_token_nonce: null,
         sdk_order_token_key_version: null,
@@ -418,6 +430,8 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
         state: "expired",
         provider_state: input.providerState,
         last_status_checked_at: input.now,
+        next_status_check_at: null,
+        reconciliation_lease_expires_at: null,
         sdk_order_token_ciphertext: null,
         sdk_order_token_nonce: null,
         sdk_order_token_key_version: null,
@@ -438,6 +452,55 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
       .set({ last_status_checked_at: input.now, updated_at: input.now })
       .where("id", "=", input.attemptId)
       .execute()
+  },
+
+  rescheduleAttemptReconciliation: async (tx, input) => {
+    await tx
+      .updateTable("payment_attempts")
+      .set({
+        last_status_checked_at: input.now,
+        next_status_check_at: input.nextCheckAt,
+        reconciliation_lease_expires_at: null,
+        reconciliation_failure_count: input.isFailure
+          ? sql<number>`reconciliation_failure_count + 1`
+          : 0,
+        updated_at: input.now,
+      })
+      .where("id", "=", input.attemptId)
+      .where("state", "in", ATTEMPT_OPEN_STATES)
+      .execute()
+  },
+
+  markReconciliationRequired: async (tx, input) => {
+    const attempt = await tx
+      .updateTable("payment_attempts")
+      .set({
+        state: "reconciliation_required",
+        provider_state: input.providerState,
+        last_status_checked_at: input.now,
+        next_status_check_at: null,
+        reconciliation_lease_expires_at: null,
+        reconciliation_required_at: input.now,
+        sdk_order_token_ciphertext: null,
+        sdk_order_token_nonce: null,
+        sdk_order_token_key_version: null,
+        sdk_order_token_expires_at: null,
+        updated_at: input.now,
+        version: sql<string>`version + 1`,
+      })
+      .where("id", "=", input.attemptId)
+      .where("state", "in", ATTEMPT_OPEN_STATES)
+      .returning("id")
+      .executeTakeFirst()
+    if (attempt === undefined) throw new Error("attempt reconciliation transition failed")
+    const payment = await tx
+      .updateTable("payments")
+      .set({ state: "reconciliation_required", updated_at: input.now, version: sql<string>`version + 1` })
+      .where("id", "=", input.paymentId)
+      .where("state", "in", PAYMENT_OPEN_STATES)
+      .returning("id")
+      .executeTakeFirst()
+    if (payment === undefined) throw new Error("payment reconciliation transition failed")
   },
 
   markPaymentProviderPending: async (tx, paymentId, now) => {
@@ -629,10 +692,10 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
       .execute()
   },
 
-  lockAttemptsForReconciliation: async (tx, input) =>
-    tx
+  lockAttemptsForReconciliation: async (tx, input) => {
+    const claimable = await tx
       .selectFrom("payment_attempts")
-      .selectAll()
+      .select("id")
       .where("checkout_channel", "in", ["hosted_redirect", "phonepe_mobile_sdk"])
       .where((expression) =>
         expression.or([
@@ -644,12 +707,28 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
           ]),
         ]),
       )
+      .where((expression) => expression.or([
+        expression("next_status_check_at", "is", null),
+        expression("next_status_check_at", "<=", input.now),
+      ]))
+      .where((expression) => expression.or([
+        expression("reconciliation_lease_expires_at", "is", null),
+        expression("reconciliation_lease_expires_at", "<=", input.now),
+      ]))
       .orderBy("created_at")
       .orderBy("id")
       .limit(input.limit)
       .forUpdate()
       .skipLocked()
-      .execute(),
+      .execute()
+    if (claimable.length === 0) return []
+    return tx
+      .updateTable("payment_attempts")
+      .set({ reconciliation_lease_expires_at: input.leaseExpiresAt, updated_at: input.now })
+      .where("id", "in", claimable.map((row) => row.id))
+      .returningAll()
+      .execute()
+  },
 
   listPage: async (tx, input) => {
     const result = await sql<PaymentListRow>`

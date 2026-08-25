@@ -1,7 +1,14 @@
 import { randomUUID } from "node:crypto"
 
 import type { UnitOfWork } from "./db/database.js"
-import { GatewayNotFoundError, type PaymentGateway } from "./providers/phonepe/paymentGateway.js"
+import { applyCanonicalPaymentOutcome } from "./domain/payments/applyCanonicalPaymentOutcome.js"
+import { isRefundEvidenceCorrelated } from "./domain/payments/refundEvidence.js"
+import {
+  GatewayMalformedResponseError,
+  GatewayNotFoundError,
+  GatewayThrottledError,
+  type PaymentGateway,
+} from "./providers/phonepe/paymentGateway.js"
 import { logGatewayFailure, type GatewayFailureLogger } from "./providers/phonepe/gatewayFailure.js"
 import type { PaymentsRepository } from "./repositories/paymentsRepository.js"
 import type { RefundRepository } from "./repositories/refundRepository.js"
@@ -9,6 +16,9 @@ import type { RefundRepository } from "./repositories/refundRepository.js"
 export interface PaymentReconciliationConfig {
   readonly claimLimit: number
   readonly notFoundGraceMs: number
+  readonly leaseMs?: number
+  readonly pendingIntervalMs?: number
+  readonly maxBackoffMs?: number
 }
 
 export interface PaymentReconciliationDeps {
@@ -38,7 +48,9 @@ const expireAttempt = async (
   return deps.unitOfWork.execute(async (tx) => {
     const attempt = await deps.paymentsRepository.markAttemptExpired(tx, { attemptId, providerState, now })
     if (attempt === null) return false
-    await deps.paymentsRepository.markPaymentExpired(tx, paymentId, now)
+    if (await deps.paymentsRepository.markPaymentExpired(tx, paymentId, now) === null) {
+      throw new Error("payment expiry transition failed")
+    }
     return true
   })
 }
@@ -49,15 +61,15 @@ const reconcileAttempt = async (
   paymentId: string,
   merchantOrderId: string,
   checkoutExpiresAt: Date | string | null,
+  failureCount: number,
 ): Promise<boolean> => {
-  let outcome: "succeeded" | "failed" | "pending"
+  const pendingIntervalMs = deps.config.pendingIntervalMs ?? 0
+  const maxBackoffMs = deps.config.maxBackoffMs ?? 900_000
+  let fact
   let providerState = "UNKNOWN"
-  let providerOrderId: string | null = null
   try {
-    const fact = await deps.paymentGateway.getOrderStatus(merchantOrderId)
-    outcome = fact.outcome
+    fact = await deps.paymentGateway.getOrderStatus(merchantOrderId)
     providerState = fact.providerState
-    providerOrderId = fact.providerOrderId
   } catch (error) {
     if (error instanceof GatewayNotFoundError) {
       const now = deps.clock()
@@ -65,12 +77,39 @@ const reconcileAttempt = async (
         checkoutExpiresAt === null ||
         now.getTime() <= new Date(checkoutExpiresAt).getTime() + deps.config.notFoundGraceMs
       ) {
-        await deps.unitOfWork.execute((tx) => deps.paymentsRepository.markAttemptStatusChecked(tx, { attemptId, now }))
+        await deps.unitOfWork.execute((tx) => deps.paymentsRepository.rescheduleAttemptReconciliation(tx, {
+          attemptId,
+          now,
+          nextCheckAt: new Date(now.getTime() + pendingIntervalMs),
+          isFailure: false,
+        }))
         return false
       }
       return expireAttempt(deps, attemptId, paymentId, "NOT_FOUND")
     }
     logGatewayFailure(deps.logger, error, { requestId: randomUUID(), operation: "get_order_status" })
+    const now = deps.clock()
+    const exponent = Math.min(failureCount, 10)
+    const base = error instanceof GatewayThrottledError ? pendingIntervalMs * 2 : pendingIntervalMs
+    const backoffMs = Math.min(maxBackoffMs, base * 2 ** exponent)
+    if (
+      error instanceof GatewayMalformedResponseError && failureCount >= 2 && checkoutExpiresAt !== null &&
+      now.getTime() > new Date(checkoutExpiresAt).getTime() + deps.config.notFoundGraceMs
+    ) {
+      await deps.unitOfWork.execute((tx) => deps.paymentsRepository.markReconciliationRequired(tx, {
+        attemptId,
+        paymentId,
+        providerState: "MALFORMED_RESPONSE",
+        now,
+      }))
+      return true
+    }
+    await deps.unitOfWork.execute((tx) => deps.paymentsRepository.rescheduleAttemptReconciliation(tx, {
+      attemptId,
+      now,
+      nextCheckAt: new Date(now.getTime() + backoffMs),
+      isFailure: true,
+    }))
     return false
   }
 
@@ -79,45 +118,42 @@ const reconcileAttempt = async (
     if (providerState === "EXPIRED") {
       const attempt = await deps.paymentsRepository.markAttemptExpired(tx, { attemptId, providerState, now })
       if (attempt === null) return false
-      await deps.paymentsRepository.markPaymentExpired(tx, attempt.payment_id, now)
+      if (await deps.paymentsRepository.markPaymentExpired(tx, attempt.payment_id, now) === null) {
+        throw new Error("payment expiry transition failed")
+      }
       return true
     }
-    if (outcome === "succeeded") {
-      const attempt = await deps.paymentsRepository.markAttemptSucceeded(tx, {
+    if (fact.outcome !== "pending") {
+      await applyCanonicalPaymentOutcome(tx, deps.paymentsRepository, {
+        merchantOrderId,
+        providerMerchantOrderId: fact.merchantOrderId,
+        outcome: fact.outcome,
+        providerState: fact.providerState,
+        providerOrderId: fact.providerOrderId,
+        amountPaise: fact.amountPaise,
+        currency: fact.currency,
+        details: fact.details,
+      }, now)
+      return true
+    }
+    if (
+      checkoutExpiresAt !== null &&
+      now.getTime() > new Date(checkoutExpiresAt).getTime() + deps.config.notFoundGraceMs
+    ) {
+      await deps.paymentsRepository.markReconciliationRequired(tx, {
         attemptId,
+        paymentId,
         providerState,
-        providerOrderId,
-        now,
-      })
-      if (attempt === null) return false
-      const payment = await deps.paymentsRepository.markPaymentSucceeded(tx, attempt.payment_id, now)
-      if (payment === null) return false
-      await deps.paymentsRepository.markOrderReviewPending(tx, payment.order_id, now)
-      await deps.paymentsRepository.createPendingReview(tx, payment.order_id)
-      return true
-    }
-    if (outcome === "failed") {
-      const attempt = await deps.paymentsRepository.markAttemptFailed(tx, {
-        attemptId,
-        providerState,
-        failureCode: "PROVIDER_DECLINED",
-        now,
-      })
-      if (attempt === null) return false
-      const payment = await deps.paymentsRepository.markPaymentFailed(tx, {
-        paymentId: attempt.payment_id,
-        failureCode: "PROVIDER_DECLINED",
-        now,
-      })
-      if (payment === null) return false
-      await deps.paymentsRepository.markOrderPaymentFailed(tx, {
-        orderId: payment.order_id,
-        failureCode: "PROVIDER_DECLINED",
         now,
       })
       return true
     }
-    await deps.paymentsRepository.markAttemptStatusChecked(tx, { attemptId, now })
+    await deps.paymentsRepository.rescheduleAttemptReconciliation(tx, {
+      attemptId,
+      now,
+      nextCheckAt: new Date(now.getTime() + pendingIntervalMs),
+      isFailure: false,
+    })
     return false
   })
 }
@@ -138,7 +174,6 @@ const reconcileRefund = async (
     if (attempt === null || attempt.state !== "succeeded") return false
 
     let providerRefundId: string | null = null
-    let outcome: "succeeded" | "failed" | "pending" = "pending"
     try {
       const initiated = await deps.paymentGateway.initiateRefund({
         merchantRefundId,
@@ -146,7 +181,6 @@ const reconcileRefund = async (
         amountPaise,
       })
       providerRefundId = initiated.providerRefundId
-      outcome = initiated.outcome
     } catch (error) {
       logGatewayFailure(deps.logger, error, { requestId: randomUUID(), operation: "initiate_refund" })
       return false
@@ -154,21 +188,13 @@ const reconcileRefund = async (
     const now = deps.clock()
     return deps.unitOfWork.execute(async (tx) => {
       await deps.refundRepository.markProviderPending(tx, { refundId, providerRefundId, now })
-      if (outcome === "succeeded") {
-        const refunded = await deps.refundRepository.markRefunded(tx, { refundId, providerRefundId, now })
-        if (refunded === null) return false
-        await deps.paymentsRepository.markPaymentRefunded(tx, paymentId, now)
-        await deps.paymentsRepository.markOrderRefunded(tx, orderId, now)
-        return true
-      }
       return false
     })
   }
 
-  let outcome: "succeeded" | "failed" | "pending"
+  let fact
   try {
-    const fact = await deps.paymentGateway.getRefundStatus(merchantRefundId)
-    outcome = fact.outcome
+    fact = await deps.paymentGateway.getRefundStatus(merchantRefundId)
   } catch (error) {
     logGatewayFailure(deps.logger, error, { requestId: randomUUID(), operation: "get_refund_status" })
     return false
@@ -176,26 +202,56 @@ const reconcileRefund = async (
 
   const now = deps.clock()
   return deps.unitOfWork.execute(async (tx) => {
-    if (outcome === "succeeded") {
-      const refunded = await deps.refundRepository.markRefunded(tx, { refundId, providerRefundId: null, now })
-      if (refunded === null) return false
-      await deps.paymentsRepository.markPaymentRefunded(tx, paymentId, now)
-      await deps.paymentsRepository.markOrderRefunded(tx, orderId, now)
+    const lockedRefund = await deps.refundRepository.lockById(tx, refundId)
+    const originalAttempt = await deps.paymentsRepository.latestAttempt(tx, paymentId)
+    if (
+      lockedRefund === null ||
+      originalAttempt === null ||
+      originalAttempt.state !== "succeeded" ||
+      !isRefundEvidenceCorrelated({
+        expectedAmountPaise: lockedRefund.amount_paise,
+        expectedMerchantOrderId: originalAttempt.merchant_order_id,
+        expectedProviderRefundId: lockedRefund.provider_refund_id,
+        providerRefundId: fact.providerRefundId,
+        amountPaise: fact.amountPaise,
+        originalMerchantOrderId: fact.originalMerchantOrderId,
+      })
+    ) {
+      if (lockedRefund !== null) await deps.refundRepository.markStatusChecked(tx, { refundId, now })
+      return false
+    }
+    if (fact.outcome === "succeeded") {
+      if (lockedRefund.state === "refunded") return true
+      const refunded = await deps.refundRepository.markRefunded(tx, {
+        refundId,
+        providerRefundId: fact.providerRefundId,
+        now,
+      })
+      if (refunded === null) throw new Error("refund success transition failed")
+      if (await deps.paymentsRepository.markPaymentRefunded(tx, paymentId, now) === null) {
+        throw new Error("payment refund transition failed")
+      }
+      if (await deps.paymentsRepository.markOrderRefunded(tx, orderId, now) === null) {
+        throw new Error("order refund transition failed")
+      }
       return true
     }
-    if (outcome === "failed") {
+    if (fact.outcome === "failed") {
+      if (lockedRefund.state === "failed") return true
       const failed = await deps.refundRepository.markFailed(tx, {
         refundId,
         failureCode: "PROVIDER_REFUND_FAILED",
         now,
       })
-      if (failed === null) return false
-      await deps.paymentsRepository.markPaymentRefundFailed(tx, paymentId, now)
-      await deps.paymentsRepository.markOrderRefundFailed(tx, {
+      if (failed === null) throw new Error("refund failure transition failed")
+      if (await deps.paymentsRepository.markPaymentRefundFailed(tx, paymentId, now) === null) {
+        throw new Error("payment refund failure transition failed")
+      }
+      if (await deps.paymentsRepository.markOrderRefundFailed(tx, {
         orderId,
         failureCode: "PROVIDER_REFUND_FAILED",
         now,
-      })
+      }) === null) throw new Error("order refund failure transition failed")
       return true
     }
     await deps.refundRepository.markStatusChecked(tx, { refundId, now })
@@ -206,22 +262,29 @@ const reconcileRefund = async (
 export const runReconciliationPass = async (
   deps: PaymentReconciliationDeps,
 ): Promise<ReconciliationSummary> => {
-  const now = deps.clock()
-  const attempts = await deps.unitOfWork.execute((tx) =>
-    deps.paymentsRepository.lockAttemptsForReconciliation(tx, {
-      limit: deps.config.claimLimit,
-      createdDueBefore: new Date(now.getTime() - deps.config.notFoundGraceMs),
-    }),
-  )
-
+  const claimedAttemptIds = new Set<string>()
+  let attemptsChecked = 0
   let attemptsResolved = 0
-  for (const attempt of attempts) {
+  while (attemptsChecked < deps.config.claimLimit) {
+    const now = deps.clock()
+    const [attempt] = await deps.unitOfWork.execute((tx) =>
+      deps.paymentsRepository.lockAttemptsForReconciliation(tx, {
+        limit: 1,
+        createdDueBefore: new Date(now.getTime() - deps.config.notFoundGraceMs),
+        now,
+        leaseExpiresAt: new Date(now.getTime() + (deps.config.leaseMs ?? 60_000)),
+      }),
+    )
+    if (attempt === undefined || claimedAttemptIds.has(attempt.id)) break
+    claimedAttemptIds.add(attempt.id)
+    attemptsChecked += 1
     const resolved = await reconcileAttempt(
       deps,
       attempt.id,
       attempt.payment_id,
       attempt.merchant_order_id,
       attempt.checkout_expires_at,
+      attempt.reconciliation_failure_count,
     )
     if (resolved) attemptsResolved += 1
   }
@@ -245,7 +308,7 @@ export const runReconciliationPass = async (
   }
 
   return {
-    attemptsChecked: attempts.length,
+    attemptsChecked,
     attemptsResolved,
     refundsChecked: refunds.length,
     refundsResolved,

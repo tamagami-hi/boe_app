@@ -31,7 +31,6 @@ import { createOrder } from "../domain/client/createOrder.js"
 import { projectOrderStatus } from "../domain/client/clientStatus.js"
 import { newMerchantOrderId } from "../domain/payments/merchantIds.js"
 import { checkoutSecondsRemaining } from "../domain/payments/checkoutExpiry.js"
-import { buildPaymentReturnUrl } from "../domain/payments/paymentReturnToken.js"
 import { AppError } from "../http/errorCatalog.js"
 import { executeIdempotent, idempotencyKeySchema } from "../http/idempotencyProtocol.js"
 import { parseOrThrow } from "../http/validation.js"
@@ -47,8 +46,6 @@ export interface ClientOrderConfig {
   readonly idempotencyTtlMs: number
   /** How long a fresh checkout stays open before PhonePe expires it (spec §7). */
   readonly attemptTtlMs: number
-  readonly paymentReturnUrl: string | null
-  readonly paymentReturnSigningKey: Buffer
   readonly mobileSdk: {
     readonly enabled: boolean
     readonly merchantId: string | null
@@ -166,7 +163,7 @@ const postCreateOrder = async (deps: ClientOrderDeps, request: FastifyRequest, r
 
 const payParamsSchema = z.object({ orderId: z.string().uuid() }).strict()
 const payBodySchema = z.object({
-  checkoutChannel: z.enum(["hosted_redirect", "phonepe_mobile_sdk"]).default("hosted_redirect"),
+  checkoutChannel: z.literal("phonepe_mobile_sdk"),
 }).strict()
 
 type CheckoutChannel = z.infer<typeof payBodySchema>["checkoutChannel"]
@@ -320,18 +317,13 @@ const postPay = async (deps: ClientOrderDeps, request: FastifyRequest, reply: Fa
   const principal = await authenticateNativeRequest(request, deps)
   const params = parseOrThrow(payParamsSchema, request.params)
   const body = parseOrThrow(payBodySchema, request.body ?? {})
-  if (body.checkoutChannel === "phonepe_mobile_sdk" && !deps.config.mobileSdk.enabled) {
+  if (!deps.config.mobileSdk.enabled) {
     throw new AppError("MOBILE_CHECKOUT_DISABLED")
   }
   if (deps.paymentGateway === null) {
     logGatewayUnconfigured(request.log, { requestId: request.requestId, operation: "create_checkout" })
     throw new AppError("DEPENDENCY_UNAVAILABLE")
   }
-  if (body.checkoutChannel === "hosted_redirect" && deps.config.paymentReturnUrl === null) {
-    logGatewayUnconfigured(request.log, { requestId: request.requestId, operation: "create_checkout_return" })
-    throw new AppError("DEPENDENCY_UNAVAILABLE")
-  }
-  const gateway = deps.paymentGateway
   const idempotencyKey = requireIdempotencyKey(request)
   const now = deps.clock()
 
@@ -370,100 +362,19 @@ const postPay = async (deps: ClientOrderDeps, request: FastifyRequest, reply: Fa
   const paymentId = prepared.body.paymentId as string
   const orderId = params.orderId
   const preparedCheckoutExpiresAt = new Date(prepared.body.checkoutExpiresAt as string)
-  if (body.checkoutChannel === "phonepe_mobile_sdk") {
-    const remainingCheckoutSeconds = checkoutSecondsRemaining(preparedCheckoutExpiresAt, deps.clock())
-    if (remainingCheckoutSeconds === null) throw new AppError("STATE_CONFLICT")
-    const response = await dispatchMobileCheckout(deps, request, {
-      orderId,
-      paymentId,
-      attemptId,
-      merchantOrderId,
-      amountPaise: prepared.body.amountPaise as string,
-      checkoutExpiresAt: preparedCheckoutExpiresAt,
-      remainingCheckoutSeconds,
-      isInitialDispatch: prepared.body.mobileDispatchClaimed === true && !prepared.replay,
-    })
-    return reply.sendData(response, { status: 200, ...(prepared.replay ? { idempotencyReplay: true } : {}) })
-  }
-  const currentAttempt = await deps.unitOfWork.execute((tx) => deps.paymentsRepository.lockAttemptById(tx, attemptId))
-  if (
-    currentAttempt === null ||
-    !ATTEMPT_OPEN_STATES.has(currentAttempt.state) ||
-    currentAttempt.checkout_expires_at === null
-  ) {
-    throw new AppError("STATE_CONFLICT")
-  }
-  const persistedCheckoutExpiresAt = new Date(currentAttempt.checkout_expires_at)
-  const checkoutExpiresAt =
-    preparedCheckoutExpiresAt.getTime() < persistedCheckoutExpiresAt.getTime()
-      ? preparedCheckoutExpiresAt
-      : persistedCheckoutExpiresAt
-  const remainingCheckoutSeconds = checkoutSecondsRemaining(checkoutExpiresAt, deps.clock())
+  const remainingCheckoutSeconds = checkoutSecondsRemaining(preparedCheckoutExpiresAt, deps.clock())
   if (remainingCheckoutSeconds === null) throw new AppError("STATE_CONFLICT")
-  const paymentReturnUrl = buildPaymentReturnUrl(
-    deps.config.paymentReturnUrl as string,
-    deps.config.paymentReturnSigningKey,
+  const response = await dispatchMobileCheckout(deps, request, {
+    orderId,
+    paymentId,
     attemptId,
-    checkoutExpiresAt,
-  )
-
-  // The PhonePe call happens outside any database transaction (spec §7): a
-  // crash here leaves the attempt in `created`, and the retry (crash recovery
-  // or the reconciliation worker) reuses this same stable merchantOrderId and
-  // consults `getOrderStatus()` rather than this route inventing a second
-  // attempt. A status lookup carries no redirect URL, so it cannot substitute
-  // for a fresh `createCheckout()` response here — this route's only job on
-  // failure is to fail closed and let the caller retry the idempotent call.
-  let checkout: { readonly redirectUrl: string; readonly providerOrderId: string | null; readonly expiresAt: Date | null }
-  try {
-    checkout = await gateway.createCheckout({
-      merchantOrderId,
-      amountPaise: prepared.body.amountPaise as string,
-      redirectUrl: paymentReturnUrl,
-      expireAfterSeconds: remainingCheckoutSeconds,
-    })
-  } catch (error) {
-    logGatewayFailure(request.log, error, {
-      requestId: request.requestId,
-      operation: "create_checkout",
-    })
-    // Never let the SDK's own error type reach the HTTP boundary: it is not an
-    // AppError, so it would otherwise render as an opaque 500 without a
-    // retryable hint. A gateway failure is DEPENDENCY_UNAVAILABLE — retrying
-    // the same idempotent call is exactly the right client behaviour.
-    throw new AppError("DEPENDENCY_UNAVAILABLE", { cause: error })
-  }
-
-  // Transaction B: persist the checkout result and move the payment to
-  // provider_pending. Guarded updates make this a no-op if a concurrent
-  // request already advanced the attempt past `created`/`provider_pending`.
-  const dispatched = await deps.unitOfWork.execute(async (tx) => {
-    const expiresAt =
-      checkout.expiresAt === null || checkout.expiresAt.getTime() > checkoutExpiresAt.getTime()
-        ? checkoutExpiresAt
-        : checkout.expiresAt
-    const attempt = await deps.paymentsRepository.markAttemptDispatched(tx, {
-      attemptId,
-      providerOrderId: checkout.providerOrderId,
-      checkoutExpiresAt: expiresAt,
-      now: deps.clock(),
-    })
-    if (attempt === null) throw new AppError("STATE_CONFLICT")
-    await deps.paymentsRepository.markPaymentProviderPending(tx, paymentId, deps.clock())
-    return { expiresAt }
+    merchantOrderId,
+    amountPaise: prepared.body.amountPaise as string,
+    checkoutExpiresAt: preparedCheckoutExpiresAt,
+    remainingCheckoutSeconds,
+    isInitialDispatch: prepared.body.mobileDispatchClaimed === true && !prepared.replay,
   })
-
-  return reply.sendData(
-    {
-      orderId,
-      paymentId,
-      provider: "phonepe",
-      status: "payment_in_progress",
-      checkout: { type: "redirect", url: checkout.redirectUrl },
-      expiresAt: iso(dispatched.expiresAt),
-    },
-    { status: 200, ...(prepared.replay ? { idempotencyReplay: true } : {}) },
-  )
+  return reply.sendData(response, { status: 200, ...(prepared.replay ? { idempotencyReplay: true } : {}) })
 }
 
 /**

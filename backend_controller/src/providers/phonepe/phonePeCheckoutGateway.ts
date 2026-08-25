@@ -18,6 +18,8 @@
  * Nothing here logs: credentials, authorization headers, instruments, and raw
  * payloads must never reach a log line (spec §7/§10).
  */
+import { createHash, timingSafeEqual } from "node:crypto"
+
 import { Env, StandardCheckoutClient, StandardCheckoutPayRequest, RefundRequest } from "@phonepe-pg/pg-sdk-node"
 
 import {
@@ -32,6 +34,7 @@ import {
   GatewayMalformedResponseError,
   GatewayNotFoundError,
   GatewayRejectedError,
+  GatewayThrottledError,
   GatewayUnavailableError,
   type CheckoutCreated,
   type CreateCheckoutCommand,
@@ -54,6 +57,7 @@ export interface PhonePeGatewayConfig {
   readonly callbackPassword: string
   readonly redirectUrl: string | null
   readonly checkoutAllowedOrigins: readonly string[]
+  readonly requestTimeoutMs?: number
 }
 
 /**
@@ -62,6 +66,7 @@ export interface PhonePeGatewayConfig {
  * mapping is the only deserialization that matters.
  */
 export interface PhonePeSdkClient {
+  readonly httpClient?: { readonly defaults: { timeout: number } }
   readonly pay: (request: unknown) => Promise<unknown>
   readonly getOrderStatus: (merchantOrderId: string, details?: boolean) => Promise<unknown>
   readonly validateCallback: (
@@ -111,6 +116,25 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const optionalString = (value: unknown): string | null =>
   typeof value === "string" && value.trim() !== "" ? value : null
 
+const verifyCallbackAuthorization = (username: string, password: string, authorization: string): boolean => {
+  const expected = createHash("sha256").update(`${username}:${password}`).digest()
+  if (!/^[0-9a-fA-F]{64}$/u.test(authorization)) return false
+  const supplied = Buffer.from(authorization, "hex")
+  return supplied.length === expected.length && timingSafeEqual(supplied, expected)
+}
+
+const withTimeout = async <T>(operation: Promise<T>, timeoutMs: number): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => reject(new GatewayUnavailableError("the provider call timed out")), timeoutMs)
+  })
+  try {
+    return await Promise.race([operation, timeout])
+  } finally {
+    if (timer !== undefined) clearTimeout(timer)
+  }
+}
+
 const trustedCheckoutUrl = (value: string, allowedOrigins: readonly string[]): string | null => {
   let url: URL
   try {
@@ -134,9 +158,10 @@ const mapPaymentDetails = (value: unknown): readonly ProviderPaymentDetailFact[]
     // it is evidence-shaped noise, so it is skipped rather than stored.
     const transactionId = optionalString(entry.transactionId)
     if (transactionId === null) continue
+    const rail = isRecord(entry.rail) ? entry.rail : null
     facts.push({
       transactionId,
-      reference: null,
+      reference: rail === null ? optionalString(entry.referenceId) : optionalString(rail.utr),
       instrumentType: optionalString(entry.paymentMode),
       state: optionalString(entry.state),
       amountPaise: paiseFromNumber(entry.amount),
@@ -156,6 +181,7 @@ const mapCallError = (error: unknown): GatewayError => {
   const status = sdkStatusCode(error)
   if (status === 401 || status === 403) return new GatewayCredentialError("the provider rejected gateway credentials", { cause: error })
   if (status === 404) return new GatewayNotFoundError("the provider does not know this reference", { cause: error })
+  if (status === 429) return new GatewayThrottledError("the provider throttled the request", { cause: error })
   if (status === 400) return new GatewayRejectedError("the provider rejected the request", { cause: error })
   if (status !== null && status < 500) return new GatewayRejectedError("the provider rejected the request", { cause: error })
   return new GatewayUnavailableError("the provider call failed; retry later", { cause: error })
@@ -170,7 +196,7 @@ const buildClient = (config: PhonePeGatewayConfig): PhonePeSdkClient => {
   // not `unknown`; `PhonePeSdkClient` is deliberately narrowed to `unknown` so
   // tests can substitute a plain stub. The adapter's own mapping functions are
   // the only place that deserializes these values, so this cast is safe.
-  return StandardCheckoutClient.getInstance(
+  const client = StandardCheckoutClient.getInstance(
     config.clientId,
     config.clientSecret,
     clientVersion,
@@ -179,6 +205,9 @@ const buildClient = (config: PhonePeGatewayConfig): PhonePeSdkClient => {
     // flow does not depend on it, so it stays off.
     false,
   ) as unknown as PhonePeSdkClient
+  if (client.httpClient === undefined) throw new Error("PhonePe SDK HTTP client is unavailable")
+  client.httpClient.defaults.timeout = config.requestTimeoutMs ?? 10_000
+  return client
 }
 
 export const createPhonePeCheckoutGateway = (deps: PhonePeCheckoutGatewayDeps): PaymentGateway => {
@@ -203,7 +232,7 @@ export const createPhonePeCheckoutGateway = (deps: PhonePeCheckoutGatewayDeps): 
 
       let response: unknown
       try {
-        response = await client.pay(builder.build())
+        response = await withTimeout(client.pay(builder.build()), config.requestTimeoutMs ?? 10_000)
       } catch (error) {
         throw mapCallError(error)
       }
@@ -232,7 +261,7 @@ export const createPhonePeCheckoutGateway = (deps: PhonePeCheckoutGatewayDeps): 
       let response: unknown
       try {
         // `details: true` — every attempt detail, not just the latest.
-        response = await client.getOrderStatus(merchantOrderId, true)
+        response = await withTimeout(client.getOrderStatus(merchantOrderId, true), config.requestTimeoutMs ?? 10_000)
       } catch (error) {
         throw mapCallError(error)
       }
@@ -242,29 +271,19 @@ export const createPhonePeCheckoutGateway = (deps: PhonePeCheckoutGatewayDeps): 
         throw new GatewayMalformedResponseError("the provider status response carried no state")
       }
       return {
+        merchantOrderId: optionalString(body.merchantOrderId),
         outcome: mapOutcome(providerState),
         providerState,
         providerOrderId: optionalString(body.orderId),
         amountPaise: paiseFromNumber(body.amount),
+        currency: optionalString(body.currency),
         details: mapPaymentDetails(body.paymentDetails),
       }
     },
 
     validateShaCallback: (authorizationHeader: string, rawBody: string): VerifiedCallback => {
-      // Authorization first: the SDK checks sha256(username:password) against the
-      // header and throws before parsing when it does not match.
-      try {
-        client.validateCallback(
-          config.callbackUsername,
-          config.callbackPassword,
-          authorizationHeader,
-          rawBody,
-        )
-      } catch (error) {
-        if (error instanceof SyntaxError) {
-          throw new GatewayMalformedCallbackError("callback body is not JSON", { cause: error })
-        }
-        throw new GatewayAuthenticationError("callback authorization failed", { cause: error })
+      if (!verifyCallbackAuthorization(config.callbackUsername, config.callbackPassword, authorizationHeader)) {
+        throw new GatewayAuthenticationError("callback authorization failed")
       }
 
       let parsed: unknown
@@ -306,7 +325,7 @@ export const createPhonePeCheckoutGateway = (deps: PhonePeCheckoutGatewayDeps): 
         .build()
       let response: unknown
       try {
-        response = await client.refund(request)
+        response = await withTimeout(client.refund(request), config.requestTimeoutMs ?? 10_000)
       } catch (error) {
         throw mapCallError(error)
       }
@@ -322,7 +341,7 @@ export const createPhonePeCheckoutGateway = (deps: PhonePeCheckoutGatewayDeps): 
     getRefundStatus: async (merchantRefundId: string): Promise<RefundStatusFact> => {
       let response: unknown
       try {
-        response = await client.getRefundStatus(merchantRefundId)
+        response = await withTimeout(client.getRefundStatus(merchantRefundId), config.requestTimeoutMs ?? 10_000)
       } catch (error) {
         throw mapCallError(error)
       }
@@ -331,11 +350,21 @@ export const createPhonePeCheckoutGateway = (deps: PhonePeCheckoutGatewayDeps): 
       if (providerState === null) {
         throw new GatewayMalformedResponseError("the provider refund status carried no state")
       }
+      const returnedMerchantRefundId = optionalString(body.merchantRefundId)
+      if (returnedMerchantRefundId !== merchantRefundId) {
+        throw new GatewayMalformedResponseError("the provider refund status correlation failed")
+      }
+      const providerRefundId = optionalString(body.refundId)
+      const outcome = mapOutcome(providerState)
+      if (outcome !== "pending" && providerRefundId === null) {
+        throw new GatewayMalformedResponseError("the terminal provider refund status carried no refund identifier")
+      }
       return {
-        merchantRefundId: optionalString(body.merchantRefundId) ?? merchantRefundId,
+        merchantRefundId: returnedMerchantRefundId,
+        providerRefundId,
         originalMerchantOrderId: optionalString(body.originalMerchantOrderId),
         amountPaise: paiseFromNumber(body.amount),
-        outcome: mapOutcome(providerState),
+        outcome,
         providerState,
       }
     },

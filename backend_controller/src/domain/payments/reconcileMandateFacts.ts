@@ -34,9 +34,12 @@ export const reconcileSetupFact = async (
     if (input.status.state === "COMPLETED" && completed.length > 0) {
       await applyCanonicalPaymentOutcome(tx, deps.paymentsRepository, {
         merchantOrderId: setup.merchant_order_id,
+        providerMerchantOrderId: setup.merchant_order_id,
         outcome: "succeeded",
         providerState: input.status.state,
         providerOrderId: input.status.providerOrderId,
+        amountPaise: setup.amount_paise,
+        currency: "INR",
         details: completed.map((detail) => ({
           transactionId: detail.transactionId,
           reference: null,
@@ -60,9 +63,12 @@ export const reconcileSetupFact = async (
     if (input.status.state !== "FAILED" || !["provider_pending", "dispatching"].includes(setup.state)) return
     await applyCanonicalPaymentOutcome(tx, deps.paymentsRepository, {
       merchantOrderId: setup.merchant_order_id,
+      providerMerchantOrderId: setup.merchant_order_id,
       outcome: "failed",
       providerState: input.status.state,
       providerOrderId: input.status.providerOrderId,
+      amountPaise: null,
+      currency: "INR",
       details: [],
     }, input.now)
     await deps.mandatesRepository.applyProviderSetupState(tx, {
