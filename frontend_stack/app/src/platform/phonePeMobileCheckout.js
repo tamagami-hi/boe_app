@@ -46,12 +46,13 @@ export function createPhonePeMobileCheckout({
   let initializedConfiguration = null;
 
   const resolveChannel = async () => {
-    if (!isNativePlatform() || !isPluginAvailable(SDK_PLUGIN_NAME)) return 'hosted_redirect';
+    if (!isNativePlatform() || !isPluginAvailable(SDK_PLUGIN_NAME)) throw new Error(CONFIGURATION_ERROR);
     try {
       const plugin = unwrapPlugin(await loadPlugin());
-      return plugin ? 'phonepe_mobile_sdk' : 'hosted_redirect';
+      if (!plugin) throw new Error(CONFIGURATION_ERROR);
+      return 'phonepe_mobile_sdk';
     } catch {
-      return 'hosted_redirect';
+      throw new Error(CONFIGURATION_ERROR);
     }
   };
 

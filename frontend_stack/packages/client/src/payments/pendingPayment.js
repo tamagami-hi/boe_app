@@ -19,15 +19,16 @@ export function persistPendingPayment(paymentId, ownerId) {
   if (
     typeof paymentId !== 'string' || !PAYMENT_ID_PATTERN.test(paymentId) ||
     typeof ownerId !== 'string' || !OWNER_ID_PATTERN.test(ownerId)
-  ) return;
+  ) return false;
   try {
     storage()?.setItem(PENDING_PAYMENT_KEY, JSON.stringify({
       paymentId,
       ownerId,
       expiresAt: new Date(Date.now() + PENDING_PAYMENT_TTL_MS).toISOString(),
     }));
+    return storage()?.getItem(PENDING_PAYMENT_KEY) !== null;
   } catch {
-    return;
+    return false;
   }
 }
 

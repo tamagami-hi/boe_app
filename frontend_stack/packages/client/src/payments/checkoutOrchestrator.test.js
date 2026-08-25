@@ -33,7 +33,7 @@ describe('order checkout orchestration', () => {
       .toThrow("Couldn't start the payment. Try again.");
   });
 
-  test('falls back once to hosted checkout only when mobile checkout is disabled', async () => {
+  test('fails closed without hosted checkout when mobile checkout is disabled', async () => {
     const disabled = Object.assign(new Error('safe'), { code: 'MOBILE_CHECKOUT_DISABLED' });
     const beginPayment = vi.fn()
       .mockRejectedValueOnce(disabled)
@@ -41,20 +41,17 @@ describe('order checkout orchestration', () => {
         paymentId: 'payment-2',
         checkout: { type: 'redirect', url: 'https://mercury-uat.phonepe.com/pay/abc' },
       });
-    const redirect = vi.fn().mockReturnValue({ ok: true });
     const platform = {
       resolveChannel: vi.fn().mockResolvedValue('phonepe_mobile_sdk'),
       start: vi.fn(),
     };
     await expect(executeOrderCheckout({
-      orderId: 'order-1', beginPayment, platform, navigate: vi.fn(), redirect, persistPendingPayment: vi.fn(),
-    })).resolves.toEqual({ leaving: true, paymentId: 'payment-2' });
+      orderId: 'order-1', beginPayment, platform, navigate: vi.fn(), persistPendingPayment: vi.fn(),
+    })).rejects.toBe(disabled);
     expect(beginPayment.mock.calls).toEqual([
       ['order-1', { checkoutChannel: 'phonepe_mobile_sdk' }],
-      ['order-1', { checkoutChannel: 'hosted_redirect' }],
     ]);
     expect(platform.start).not.toHaveBeenCalled();
-    expect(redirect).toHaveBeenCalledTimes(1);
   });
 
   test.each([
@@ -77,7 +74,7 @@ describe('order checkout orchestration', () => {
     'SDK result %s only returns the user to authoritative payment status',
     async (sdkStatus) => {
       const navigate = vi.fn();
-      const persistPendingPayment = vi.fn();
+      const persistPendingPayment = vi.fn().mockReturnValue(true);
       const beginPayment = vi.fn().mockResolvedValue(sdkCheckout);
       const platform = {
         resolveChannel: vi.fn().mockResolvedValue('phonepe_mobile_sdk'),

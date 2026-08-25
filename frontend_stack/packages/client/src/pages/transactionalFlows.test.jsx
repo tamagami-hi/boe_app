@@ -26,6 +26,9 @@ const listSips = vi.fn();
 const listOrders = vi.fn();
 const requestSipControl = vi.fn();
 const createIdempotencyKey = vi.fn();
+const listPendingPayments = vi.fn();
+const listFailedPayments = vi.fn();
+const listApprovalPayments = vi.fn();
 
 vi.mock('../services/fundsApi.js', () => ({ getFund: async () => FUND }));
 vi.mock('../services/ordersApi.js', () => ({
@@ -42,6 +45,9 @@ vi.mock('../services/ordersApi.js', () => ({
   listSips: (...a) => listSips(...a),
   listOrders: (...a) => listOrders(...a),
   requestSipControl: (...a) => requestSipControl(...a),
+  listPendingPayments: (...a) => listPendingPayments(...a),
+  listFailedPayments: (...a) => listFailedPayments(...a),
+  listApprovalPayments: (...a) => listApprovalPayments(...a),
 }));
 
 // The PhonePe redirect is a seam: tests capture the URL instead of navigating.
@@ -110,7 +116,13 @@ const CHECKOUT = {
   orderId: 'ord_1',
   paymentId: 'pay_1',
   provider: 'phonepe',
-  checkout: { type: 'redirect', url: 'https://checkout.phonepe.example/pay/abc' },
+  checkout: {
+    type: 'phonepe_sdk',
+    providerOrderId: 'provider_order_1',
+    token: 'sdk-token',
+    merchantId: 'merchant-1',
+    environment: 'SANDBOX',
+  },
   expiresAt: '2026-08-18T12:00:00Z',
 };
 
@@ -267,8 +279,13 @@ describe('StartSipSheet', () => {
 /* ---- Lumpsum --------------------------------------------------------------- */
 
 describe('LumpsumSheet', () => {
+  const platform = {
+    resolveChannel: vi.fn().mockResolvedValue('phonepe_mobile_sdk'),
+    start: vi.fn().mockResolvedValue({ status: 'returned' }),
+  };
+
   async function ready() {
-    renderFlow(<LumpsumSheet />, '/app/invest/lumpsum/f1', '/app/invest/lumpsum/:fundId');
+    renderFlow(<CheckoutProvider platform={platform}><LumpsumSheet /></CheckoutProvider>, '/app/invest/lumpsum/f1', '/app/invest/lumpsum/:fundId');
     await settle();
     fireEvent.click(screen.getByRole('checkbox', { name: /market risks/i }));
   }
@@ -287,13 +304,13 @@ describe('LumpsumSheet', () => {
     expect(screen.getByLabelText('Amount').tagName).toBe('INPUT');
   });
 
-  test('create order -> begin payment -> redirect to the PhonePe checkout URL', async () => {
+  test('create order -> begin payment -> launch the PhonePe SDK', async () => {
     await ready();
     fireEvent.click(screen.getByRole('button', { name: /Pay / }));
     await settle();
     expect(createLumpsum).toHaveBeenCalledTimes(1);
-    expect(beginOrderPayment).toHaveBeenCalledWith('ord_1', { checkoutChannel: 'hosted_redirect' });
-    expect(redirectToCheckout).toHaveBeenCalledWith('https://checkout.phonepe.example/pay/abc');
+    expect(beginOrderPayment).toHaveBeenCalledWith('ord_1', { checkoutChannel: 'phonepe_mobile_sdk' });
+    expect(platform.start).toHaveBeenCalledWith({ checkout: CHECKOUT.checkout, paymentId: 'pay_1' });
   });
 
   test('a begin-payment failure shows a neutral error and releases the lock', async () => {
@@ -320,9 +337,14 @@ describe('LumpsumSheet', () => {
 /* ---- PaymentStatus --------------------------------------------------------- */
 
 describe('PaymentStatus', () => {
+  const platform = {
+    resolveChannel: vi.fn().mockResolvedValue('phonepe_mobile_sdk'),
+    start: vi.fn().mockResolvedValue({ status: 'returned' }),
+  };
+
   test('a failed read reports it instead of showing a skeleton forever', async () => {
     getPayment.mockRejectedValue(new Error('backend down'));
-    renderFlow(<PaymentStatus />, '/app/payment/pay_1', '/app/payment/:paymentId');
+    renderFlow(<CheckoutProvider platform={platform}><PaymentStatus /></CheckoutProvider>, '/app/payment/pay_1', '/app/payment/:paymentId');
     await settle();
     expect(screen.getByRole('alert')).toHaveTextContent('We could not load this payment');
   });
@@ -331,7 +353,7 @@ describe('PaymentStatus', () => {
     getPayment.mockResolvedValue({
       id: 'pay_1', orderId: 'ord_1', status: 'processing', amount: 1000, createdAt: '2026-08-01T10:00:00Z',
     });
-    renderFlow(<PaymentStatus />, '/app/payment/pay_1', '/app/payment/:paymentId');
+    renderFlow(<CheckoutProvider platform={platform}><PaymentStatus /></CheckoutProvider>, '/app/payment/pay_1', '/app/payment/:paymentId');
     await settle();
     expect(screen.getByText('Payment received — investment is being processed')).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/bank|verification|review|approval|allocation|rejected/i);
@@ -378,12 +400,12 @@ describe('PaymentStatus', () => {
       id: 'pay_1', orderId: 'ord_1', status: 'payment_failed', amount: 1000, createdAt: '2026-08-01T10:00:00Z',
     });
     beginOrderPayment.mockResolvedValue({ ...CHECKOUT, paymentId: 'pay_2' });
-    renderFlow(<PaymentStatus />, '/app/payment/pay_1', '/app/payment/:paymentId');
+    renderFlow(<CheckoutProvider platform={platform}><PaymentStatus /></CheckoutProvider>, '/app/payment/pay_1', '/app/payment/:paymentId');
     await settle();
     fireEvent.click(screen.getByRole('button', { name: /Try again/ }));
     await settle();
-    expect(beginOrderPayment).toHaveBeenCalledWith('ord_1', { checkoutChannel: 'hosted_redirect' });
-    expect(redirectToCheckout).toHaveBeenCalledWith(CHECKOUT.checkout.url);
+    expect(beginOrderPayment).toHaveBeenCalledWith('ord_1', { checkoutChannel: 'phonepe_mobile_sdk' });
+    expect(platform.start).toHaveBeenCalledWith({ checkout: CHECKOUT.checkout, paymentId: 'pay_2' });
   });
 
   test('every exit replaces the completed payment in history', async () => {

@@ -2,7 +2,6 @@ import React, { createContext, useCallback, useContext, useEffect, useRef } from
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSession } from '../store/SessionContext.jsx';
 import * as ordersApi from '../services/ordersApi.js';
-import { redirectToCheckout } from '../utils/checkoutRedirect.js';
 import { buildPath } from '../navigation/routes.js';
 import { executeOrderCheckout } from './checkoutOrchestrator.js';
 import {
@@ -41,7 +40,6 @@ export function useOrderCheckout() {
     beginPayment: ordersApi.beginOrderPayment,
     platform,
     navigate,
-    redirect: redirectToCheckout,
     persistPendingPayment: persistForPrincipal,
   }), [navigate, persistForPrincipal, platform]);
 }

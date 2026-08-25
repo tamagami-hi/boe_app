@@ -147,7 +147,10 @@ export default function StartSipSheet() {
         submitLockRef.current = false;
         return;
       }
-      if (isAutoPay) completePendingAutoPaySetup({ ownerId: user.id, requestKey, sipPlanId: plan.id });
+      if (
+        isAutoPay &&
+        !completePendingAutoPaySetup({ ownerId: user.id, requestKey, sipPlanId: plan.id })
+      ) throw new Error("Couldn't safely save AutoPay recovery state. Check device storage and retry.");
       if (isAutoPay && plan.checkout) {
         try {
           await checkoutPlatform.start({ checkout: plan.checkout, paymentId: plan.paymentId });
