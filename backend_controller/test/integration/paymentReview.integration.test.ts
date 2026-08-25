@@ -13,6 +13,7 @@ import { createAccessTokenService } from "../../src/auth/accessToken.js"
 import { hashPassword } from "../../src/auth/passwordHasher.js"
 import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
+import { decryptGcm } from "../../src/crypto/primitives.js"
 import { SEED_ROLE_PERMISSIONS } from "../../src/db/seedCatalog.js"
 import type { WebAuthDeps } from "../../src/domain/auth/webAuth.js"
 import type {
@@ -23,19 +24,29 @@ import type {
   RefundStatusFact,
   VerifiedCallback,
 } from "../../src/providers/phonepe/paymentGateway.js"
+import { GatewayNotFoundError, GatewayRejectedError, GatewayUnavailableError } from "../../src/providers/phonepe/paymentGateway.js"
+import type { MobilePaymentGateway } from "../../src/providers/mobilePaymentGateway.js"
+import type { RecurringPaymentGateway } from "../../src/providers/recurringPaymentGateway.js"
+import { paymentSdkTokenAad } from "../../src/providers/mobilePaymentGateway.js"
+import { runReconciliationPass } from "../../src/paymentReconciliationWorker.js"
+import { runMandateReconciliationPass } from "../../src/mandateReconciliationWorker.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
 import { createAuthSessionRepository } from "../../src/repositories/authSessionRepository.js"
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
 import { createInvestmentReviewRepository } from "../../src/repositories/investmentReviewRepository.js"
 import { createLoginEventRepository } from "../../src/repositories/loginEventRepository.js"
+import { createMandatesRepository } from "../../src/repositories/mandatesRepository.js"
 import { createOrderRepository } from "../../src/repositories/orderRepository.js"
 import { createPaymentsRepository } from "../../src/repositories/paymentsRepository.js"
 import { createProviderEventInboxRepository } from "../../src/repositories/providerEventInboxRepository.js"
+import { createSipPlanRepository } from "../../src/repositories/sipPlanRepository.js"
 import { createRefundRepository } from "../../src/repositories/refundRepository.js"
 import { createUserRepository } from "../../src/repositories/userRepository.js"
 import { registerAdminInvestmentReviewRoutes } from "../../src/routes/adminInvestmentReviewRoutes.js"
 import { registerClientOrderRoutes } from "../../src/routes/clientOrderRoutes.js"
+import { registerClientAutoPaySipRoutes } from "../../src/routes/clientAutoPaySipRoutes.js"
 import { registerPhonePeProviderEventRoutes } from "../../src/routes/phonePeProviderEventRoutes.js"
+import { registerPhonePeMandateEventRoutes } from "../../src/routes/phonePeMandateEventRoutes.js"
 import { registerWebAuthRoutes } from "../../src/routes/webAuthRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
 import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
@@ -44,10 +55,26 @@ import { runSeed } from "../../src/scripts/seed.js"
 const PASSWORD = "correct horse battery staple"
 const ORIGIN = "https://admin.beonedge.test"
 const CALLBACK_AUTH = "Basic dGVzdDpzZWNyZXQ="
+const MOBILE_TOKEN_KEY = randomBytes(32)
+let recurringCreateCalls = 0
+let recurringCancelCalls = 0
+let recurringMerchantOrderId = ""
+let recurringMerchantSubscriptionId = ""
+let recurringAmountPaise = ""
+let recurringSetupState: "PENDING" | "FAILED" | "COMPLETED" = "PENDING"
+let recurringMandateState: "ACTIVATION_IN_PROGRESS" | "ACTIVE" | "PAUSED" | "CANCELLED" | "REVOKED" | "EXPIRED" | "FAILED" = "ACTIVATION_IN_PROGRESS"
+let stubAutoPayEnabled = true
+let recurringSetupStatusError: Error | null = null
+let recurringCancelError: Error | null = null
+let recurringCancelGate: Promise<void> | null = null
+let recurringCancelStarted: (() => void) | null = null
 
 let container: StartedPostgreSqlContainer
 let pool: Pool
 let app: FastifyInstance
+let unitOfWork: ReturnType<typeof createUnitOfWork>
+let paymentsRepository: ReturnType<typeof createPaymentsRepository>
+let refundRepository: ReturnType<typeof createRefundRepository>
 
 const dataOf = <T>(response: { json: () => unknown }): T => (response.json() as { data: T }).data
 const errorOf = (response: { json: () => unknown }): string =>
@@ -170,37 +197,114 @@ const seedPublishedFund = async (
 }
 
 let stubOutcome: "succeeded" | "failed" | "pending" = "succeeded"
-let stubRedirectUrl = "https://phonepe.test/checkout/abc"
+let stubRedirectUrl = "https://mercury-uat.phonepe.com/checkout/abc"
+let stubPaymentReturnUrl: string | null = null
+let stubExpireAfterSeconds: number | null = null
+let stubProviderState: string | null = null
+let stubOrderStatusError: Error | null = null
+let stubOrderStatusCalls = 0
+let stubCheckoutGate: Promise<void> | null = null
+let stubCheckoutStarted: (() => void) | null = null
+let stubMobileOrderCalls: string[] = []
+let stubMobileOrderError: Error | null = null
+let stubMobileEnabled = true
+let stubCheckoutCalls = 0
+
+const stubMobileGateway: MobilePaymentGateway = {
+  createSdkOrder: (command) => {
+    stubMobileOrderCalls.push(command.merchantOrderId)
+    if (stubMobileOrderError !== null) return Promise.reject(stubMobileOrderError)
+    return Promise.resolve({
+      providerOrderId: `sdk_${command.merchantOrderId}`,
+      providerState: "PENDING",
+      sdkToken: `sdk-token-${command.merchantOrderId}`,
+      expiresAt: new Date(Date.now() + 600_000),
+    })
+  },
+}
 
 const stubGateway: PaymentGateway = {
-  createCheckout: async (command): Promise<CheckoutCreated> => ({
-    redirectUrl: stubRedirectUrl,
-    providerOrderId: `provider_${command.merchantOrderId}`,
-    expiresAt: null,
-  }),
-  getOrderStatus: async (merchantOrderId): Promise<OrderStatusFact> => ({
-    outcome: stubOutcome,
-    providerState: stubOutcome.toUpperCase(),
-    providerOrderId: `provider_${merchantOrderId}`,
-    amountPaise: null,
-    details: [],
-  }),
+  createCheckout: async (command): Promise<CheckoutCreated> => {
+    stubCheckoutCalls += 1
+    stubPaymentReturnUrl = command.redirectUrl
+    stubExpireAfterSeconds = command.expireAfterSeconds
+    stubCheckoutStarted?.()
+    if (stubCheckoutGate !== null) await stubCheckoutGate
+    return {
+      redirectUrl: stubRedirectUrl,
+      providerOrderId: `provider_${command.merchantOrderId}`,
+      expiresAt: null,
+    }
+  },
+  getOrderStatus: (merchantOrderId): Promise<OrderStatusFact> => {
+    stubOrderStatusCalls += 1
+    if (stubOrderStatusError !== null) return Promise.reject(stubOrderStatusError)
+    return Promise.resolve({
+      outcome: stubOutcome,
+      providerState: stubProviderState ?? stubOutcome.toUpperCase(),
+      providerOrderId: `provider_${merchantOrderId}`,
+      amountPaise: null,
+      details: [],
+    })
+  },
   validateShaCallback: (authorizationHeader, rawBody): VerifiedCallback => {
     if (authorizationHeader !== CALLBACK_AUTH) throw new Error("bad auth")
     return JSON.parse(rawBody) as VerifiedCallback
   },
-  initiateRefund: async (command): Promise<RefundInitiated> => ({
+  initiateRefund: (command): Promise<RefundInitiated> => Promise.resolve({
     providerRefundId: `provrf_${command.merchantRefundId}`,
     outcome: "succeeded",
     providerState: "COMPLETED",
   }),
-  getRefundStatus: async (merchantRefundId): Promise<RefundStatusFact> => ({
+  getRefundStatus: (merchantRefundId): Promise<RefundStatusFact> => Promise.resolve({
     merchantRefundId,
     originalMerchantOrderId: null,
     amountPaise: null,
     outcome: "succeeded",
     providerState: "COMPLETED",
   }),
+}
+
+const stubRecurringGateway: RecurringPaymentGateway = {
+  createMandateSdkOrder: (command) => {
+    recurringCreateCalls += 1
+    recurringMerchantOrderId = command.merchantOrderId
+    recurringMerchantSubscriptionId = command.merchantSubscriptionId
+    recurringAmountPaise = command.amountPaise
+    return Promise.resolve({
+      providerOrderId: `provider_${command.merchantOrderId}`,
+      providerState: "PENDING",
+      sdkToken: `mandate_token_${command.merchantOrderId}`,
+      expiresAt: new Date(Date.now() + 600_000),
+    })
+  },
+  getSetupOrderStatus: (merchantOrderId) => recurringSetupStatusError === null
+    ? Promise.resolve({
+        state: recurringSetupState,
+        providerOrderId: `provider_${merchantOrderId}`,
+        merchantSubscriptionId: recurringMerchantSubscriptionId,
+        providerSubscriptionId: recurringMandateState === "ACTIVATION_IN_PROGRESS" ? null : `subscription_${recurringMerchantSubscriptionId}`,
+        paymentDetails: recurringSetupState === "COMPLETED" ? [{
+          transactionId: `transaction_${merchantOrderId}`,
+          state: "COMPLETED",
+          amountPaise: recurringAmountPaise,
+          instrumentType: "UPI_MANDATE",
+        }] : [],
+      })
+    : Promise.reject(recurringSetupStatusError),
+  getMandateStatus: (merchantSubscriptionId) => Promise.resolve({
+    state: recurringMandateState,
+    merchantSubscriptionId,
+    providerSubscriptionId: recurringMandateState === "ACTIVATION_IN_PROGRESS" ? null : `subscription_${merchantSubscriptionId}`,
+  }),
+  notifyCollection: () => Promise.reject(new Error("unused")),
+  getCollectionStatus: () => Promise.reject(new Error("unused")),
+  cancelMandate: async () => {
+    recurringCancelCalls += 1
+    recurringCancelStarted?.()
+    if (recurringCancelGate !== null) await recurringCancelGate
+    if (recurringCancelError !== null) throw recurringCancelError
+  },
 }
 
 let financeAdminId: string
@@ -222,7 +326,7 @@ beforeAll(async () => {
   await runSeed(pool)
 
   const database = createDatabase(pool)
-  const unitOfWork = createUnitOfWork(database)
+  unitOfWork = createUnitOfWork(database)
 
   const nativeKeyPair = await generateKeyPair("ES256", { extractable: true })
   accessTokenService = createAccessTokenService({
@@ -245,8 +349,8 @@ beforeAll(async () => {
     config: { cookieSecure: false, originAllowlist: [ORIGIN] },
   }
 
-  const paymentsRepository = createPaymentsRepository()
-  const refundRepository = createRefundRepository()
+  paymentsRepository = createPaymentsRepository()
+  refundRepository = createRefundRepository()
   const reviewRepository = createInvestmentReviewRepository()
   const providerEventInboxRepository = createProviderEventInboxRepository()
 
@@ -269,7 +373,43 @@ beforeAll(async () => {
         idempotencyRepository: createIdempotencyRepository(),
         paymentsRepository,
         paymentGateway: stubGateway,
-        config: { idempotencyTtlMs: 86_400_000, attemptTtlMs: 900_000 },
+        mobilePaymentGateway: stubMobileGateway,
+        config: {
+          idempotencyTtlMs: 86_400_000,
+          attemptTtlMs: 900_000,
+          paymentReturnUrl: "https://app.beonedge.in/payment-return",
+          paymentReturnSigningKey: randomBytes(32),
+          mobileSdk: {
+            get enabled() { return stubMobileEnabled },
+            merchantId: "PHONEPE_MERCHANT",
+            environment: "SANDBOX",
+            tokenEncryptionKey: MOBILE_TOKEN_KEY,
+            tokenKeyVersion: "ptk1",
+          },
+        },
+      })
+      registerClientAutoPaySipRoutes(instance, {
+        accessTokenService,
+        database,
+        unitOfWork,
+        clock: () => new Date(),
+        sipPlanRepository: createSipPlanRepository(),
+        mandatesRepository: createMandatesRepository(),
+        orderRepository: createOrderRepository(),
+        paymentsRepository,
+        userRepository: createUserRepository(),
+        auditRepository: createAuditRepository(),
+        idempotencyRepository: createIdempotencyRepository(),
+        recurringPaymentGateway: stubRecurringGateway,
+        config: {
+          get enabled() { return stubAutoPayEnabled },
+          idempotencyTtlMs: 86_400_000,
+          attemptTtlMs: 900_000,
+          merchantId: "PHONEPE_MERCHANT",
+          environment: "SANDBOX",
+          tokenEncryptionKey: MOBILE_TOKEN_KEY,
+          tokenKeyVersion: "ptk1",
+        },
       })
       registerPhonePeProviderEventRoutes(instance, {
         unitOfWork,
@@ -282,6 +422,25 @@ beforeAll(async () => {
         providerEventInboxRepository,
         paymentsRepository,
         refundRepository,
+      })
+      registerPhonePeMandateEventRoutes(instance, {
+        unitOfWork,
+        clock: () => new Date(),
+        paymentGateway: stubGateway,
+        recurringPaymentGateway: stubRecurringGateway,
+        mandatesRepository: createMandatesRepository(),
+        paymentsRepository,
+        providerEventInboxRepository,
+        config: {
+          payloadEncryptionKey: randomBytes(32),
+          payloadKeyVersion: "ek1",
+          merchantId: "PHONEPE_MERCHANT",
+          eventAllowlist: [
+            "subscription.status.updated",
+            "checkout.setup.order.completed",
+            "checkout.setup.order.failed",
+          ],
+        },
       })
       registerAdminInvestmentReviewRoutes(instance, {
         webAuth,
@@ -325,7 +484,684 @@ const callbackFor = (merchantOrderId: string, event: string, providerState: stri
     details: [],
   })
 
+const createActiveAutoPay = async (
+  token: string,
+  fundId: string,
+): Promise<Readonly<{ sipPlanId: string }>> => {
+  recurringSetupState = "PENDING"
+  recurringMandateState = "ACTIVATION_IN_PROGRESS"
+  recurringSetupStatusError = null
+  const create = await app.inject({
+    method: "POST",
+    url: "/v1/client/sips/autopay",
+    headers: { ...bearer(token), "idempotency-key": `autopay-cancel-create-${randomUUID()}` },
+    payload: { fundId, amountPaise: "50000", debitDay: 5, durationMonths: 12 },
+  })
+  expect(create.statusCode, create.body).toBe(201)
+  const created = dataOf<{ sipPlanId: string }>(create)
+  recurringSetupState = "COMPLETED"
+  recurringMandateState = "ACTIVE"
+  const callback = await app.inject({
+    method: "POST",
+    url: "/v1/provider-events/phonepe/subscription",
+    headers: { authorization: CALLBACK_AUTH, "content-type": "application/json" },
+    payload: JSON.stringify({
+      event: "checkout.setup.order.completed",
+      payload: {
+        state: "COMPLETED",
+        merchantId: "PHONEPE_MERCHANT",
+        merchantOrderId: recurringMerchantOrderId,
+        paymentFlow: {
+          type: "SUBSCRIPTION_CHECKOUT_SETUP",
+          subscriptionDetails: { merchantSubscriptionId: recurringMerchantSubscriptionId },
+        },
+      },
+    }),
+  })
+  expect(callback.statusCode, callback.body).toBe(200)
+  return created
+}
+
+const runMandateWorker = (clock: () => Date = () => new Date()) => runMandateReconciliationPass({
+  unitOfWork,
+  clock,
+  recurringPaymentGateway: stubRecurringGateway,
+  mandatesRepository: createMandatesRepository(),
+  paymentsRepository,
+  config: { claimLimit: 100, notFoundGraceMs: 60_000 },
+})
+
 describe("checkout orchestrator", () => {
+  test("creates an AutoPay mandate setup through the canonical first installment and replays one encrypted SDK order", async () => {
+    const { userId, token } = await seedClientToken(`autopay-${randomUUID().slice(0, 8)}@example.com`)
+    const admin = await pool.query<{ id: string }>("select id from users where email_normalized = $1", [
+      "payrev-finance@example.com",
+    ])
+    const fund = await seedPublishedFund(`autopay-${randomUUID().slice(0, 8)}`, admin.rows[0]!.id)
+    const key = `autopay-${randomUUID()}`
+    const beforeCalls = recurringCreateCalls
+    const create = await app.inject({
+      method: "POST",
+      url: "/v1/client/sips/autopay",
+      headers: { ...bearer(token), "idempotency-key": key },
+      payload: { fundId: fund.fundId, amountPaise: "50000", debitDay: 5, durationMonths: 12 },
+    })
+    expect(create.statusCode, create.body).toBe(201)
+    const created = dataOf<{
+      sipPlanId: string
+      mandateId: string
+      orderId: string
+      paymentId: string
+      checkout: { type: string; token: string; providerOrderId: string }
+    }>(create)
+    expect(created.checkout.type).toBe("phonepe_sdk")
+    expect(recurringCreateCalls - beforeCalls).toBe(1)
+
+    const rows = await pool.query<{
+      sip_state: string
+      mandate_state: string
+      order_type: string
+      order_state: string
+      payment_state: string
+      attempt_state: string
+      checkout_channel: string
+      sdk_order_token_ciphertext: Buffer | null
+      response_body: unknown
+    }>(
+      "select sip.state sip_state, mandate.state mandate_state, investment_order.type order_type, " +
+        "investment_order.state order_state, payment.state payment_state, attempt.state attempt_state, " +
+        "attempt.checkout_channel, setup.sdk_order_token_ciphertext, idem.response_body " +
+        "from sip_plans sip join payment_mandates mandate on mandate.sip_plan_id = sip.id " +
+        "join mandate_setup_attempts setup on setup.mandate_id = mandate.id " +
+        "join investment_orders investment_order on investment_order.id = setup.order_id " +
+        "join payments payment on payment.id = setup.payment_id " +
+        "join payment_attempts attempt on attempt.id = setup.payment_attempt_id " +
+        "join idempotency_records idem on idem.actor_scope = $2 and idem.key = $3 where sip.id = $1",
+      [created.sipPlanId, `user:${userId}`, key],
+    )
+    expect(rows.rows[0]).toMatchObject({
+      sip_state: "pending_mandate",
+      mandate_state: "setup_pending",
+      order_type: "sip_installment",
+      order_state: "payment_pending",
+      payment_state: "provider_pending",
+      attempt_state: "provider_pending",
+      checkout_channel: "phonepe_mandate_setup",
+    })
+    expect(rows.rows[0]?.sdk_order_token_ciphertext).toBeInstanceOf(Buffer)
+    expect(JSON.stringify(rows.rows[0]?.response_body)).not.toContain(created.checkout.token)
+
+    const replay = await app.inject({
+      method: "POST",
+      url: "/v1/client/sips/autopay",
+      headers: { ...bearer(token), "idempotency-key": key },
+      payload: { fundId: fund.fundId, amountPaise: "50000", debitDay: 5, durationMonths: 12 },
+    })
+    expect(replay.statusCode).toBe(200)
+    expect(dataOf<{ checkout: { token: string } }>(replay).checkout.token).toBe(created.checkout.token)
+    expect(recurringCreateCalls - beforeCalls).toBe(1)
+  })
+
+  test("keeps provider reconciliation live while AutoPay commands are disabled", async () => {
+    stubAutoPayEnabled = true
+    recurringSetupState = "PENDING"
+    recurringMandateState = "ACTIVATION_IN_PROGRESS"
+    const { token } = await seedClientToken(`autopay-disabled-${randomUUID().slice(0, 8)}@example.com`)
+    const admin = await pool.query<{ id: string }>("select id from users where email_normalized = $1", [
+      "payrev-finance@example.com",
+    ])
+    const fund = await seedPublishedFund(`autopay-disabled-${randomUUID().slice(0, 8)}`, admin.rows[0]!.id)
+    const create = await app.inject({
+      method: "POST",
+      url: "/v1/client/sips/autopay",
+      headers: { ...bearer(token), "idempotency-key": `autopay-disabled-create-${randomUUID()}` },
+      payload: { fundId: fund.fundId, amountPaise: "50000", debitDay: 5, durationMonths: 12 },
+    })
+    expect(create.statusCode, create.body).toBe(201)
+    const created = dataOf<{ sipPlanId: string }>(create)
+
+    stubAutoPayEnabled = false
+    const blockedCreate = await app.inject({
+      method: "POST",
+      url: "/v1/client/sips/autopay",
+      headers: { ...bearer(token), "idempotency-key": `autopay-disabled-blocked-${randomUUID()}` },
+      payload: { fundId: fund.fundId, amountPaise: "50000", debitDay: 5, durationMonths: 12 },
+    })
+    expect(blockedCreate.statusCode).toBe(409)
+
+    recurringSetupState = "COMPLETED"
+    recurringMandateState = "ACTIVE"
+    const repaired = await app.inject({
+      method: "POST",
+      url: "/v1/provider-events/phonepe/subscription",
+      headers: { authorization: CALLBACK_AUTH, "content-type": "application/json" },
+      payload: JSON.stringify({
+        event: "checkout.setup.order.completed",
+        payload: {
+          state: "COMPLETED",
+          merchantId: "PHONEPE_MERCHANT",
+          merchantOrderId: recurringMerchantOrderId,
+          paymentFlow: {
+            type: "SUBSCRIPTION_CHECKOUT_SETUP",
+            subscriptionDetails: { merchantSubscriptionId: recurringMerchantSubscriptionId },
+          },
+        },
+      }),
+    })
+    expect(repaired.statusCode, repaired.body).toBe(200)
+    expect((await pool.query<{ state: string }>("select state from sip_plans where id = $1", [created.sipPlanId])).rows[0]?.state)
+      .toBe("active")
+
+    recurringMandateState = "PAUSED"
+    await runMandateReconciliationPass({
+      unitOfWork,
+      clock: () => new Date(),
+      recurringPaymentGateway: stubRecurringGateway,
+      mandatesRepository: createMandatesRepository(),
+      paymentsRepository,
+      config: { claimLimit: 25, notFoundGraceMs: 60_000 },
+    })
+    expect((await pool.query<{ state: string }>("select state from sip_plans where id = $1", [created.sipPlanId])).rows[0]?.state)
+      .toBe("paused")
+
+    const cancelCallsBefore = recurringCancelCalls
+    const cancel = await app.inject({
+      method: "POST",
+      url: `/v1/client/sips/autopay/${created.sipPlanId}/cancel`,
+      headers: { ...bearer(token), "idempotency-key": `autopay-disabled-cancel-${randomUUID()}` },
+    })
+    expect(cancel.statusCode, cancel.body).toBe(202)
+    await runMandateWorker()
+    expect(recurringCancelCalls).toBe(cancelCallsBefore + 1)
+
+    recurringMandateState = "CANCELLED"
+    await runMandateReconciliationPass({
+      unitOfWork,
+      clock: () => new Date(),
+      recurringPaymentGateway: stubRecurringGateway,
+      mandatesRepository: createMandatesRepository(),
+      paymentsRepository,
+      config: { claimLimit: 25, notFoundGraceMs: 60_000 },
+    })
+    expect((await pool.query<{ state: string }>("select state from sip_plans where id = $1", [created.sipPlanId])).rows[0]?.state)
+      .toBe("cancelled")
+    stubAutoPayEnabled = true
+  })
+
+  test("activates AutoPay only after both the setup debit succeeds and the subscription is active", async () => {
+    recurringSetupState = "PENDING"
+    recurringMandateState = "ACTIVATION_IN_PROGRESS"
+    const { token } = await seedClientToken(`autopay-gate-${randomUUID().slice(0, 8)}@example.com`)
+    const admin = await pool.query<{ id: string }>("select id from users where email_normalized = $1", [
+      "payrev-finance@example.com",
+    ])
+    const fund = await seedPublishedFund(`autopay-gate-${randomUUID().slice(0, 8)}`, admin.rows[0]!.id)
+    const create = await app.inject({
+      method: "POST",
+      url: "/v1/client/sips/autopay",
+      headers: { ...bearer(token), "idempotency-key": `autopay-gate-${randomUUID()}` },
+      payload: { fundId: fund.fundId, amountPaise: "50000", debitDay: 5, durationMonths: 12 },
+    })
+    expect(create.statusCode, create.body).toBe(201)
+    const created = dataOf<{ sipPlanId: string; orderId: string }>(create)
+
+    recurringMandateState = "ACTIVE"
+    const activeFirst = await app.inject({
+      method: "POST",
+      url: "/v1/provider-events/phonepe/subscription",
+      headers: { authorization: CALLBACK_AUTH, "content-type": "application/json" },
+      payload: JSON.stringify({
+        event: "subscription.status.updated",
+        payload: {
+          state: "ACTIVE",
+          merchantId: "PHONEPE_MERCHANT",
+          merchantSubscriptionId: recurringMerchantSubscriptionId,
+        },
+      }),
+    })
+    expect(activeFirst.statusCode).toBe(200)
+    expect((await pool.query<{ state: string }>("select state from sip_plans where id = $1", [created.sipPlanId])).rows[0]?.state)
+      .toBe("pending_mandate")
+
+    recurringSetupState = "COMPLETED"
+    const setupCompletePayload = JSON.stringify({
+      event: "checkout.setup.order.completed",
+      payload: {
+        state: "COMPLETED",
+        merchantId: "PHONEPE_MERCHANT",
+        merchantOrderId: recurringMerchantOrderId,
+        paymentFlow: {
+          type: "SUBSCRIPTION_CHECKOUT_SETUP",
+          subscriptionDetails: { merchantSubscriptionId: recurringMerchantSubscriptionId },
+        },
+      },
+    })
+    const setupComplete = await app.inject({
+      method: "POST",
+      url: "/v1/provider-events/phonepe/subscription",
+      headers: { authorization: CALLBACK_AUTH, "content-type": "application/json" },
+      payload: setupCompletePayload,
+    })
+    expect(setupComplete.statusCode, setupComplete.body).toBe(200)
+    const truth = await pool.query<{
+      sip_state: string
+      mandate_state: string
+      payment_state: string
+      order_state: string
+      reviews: string
+    }>(
+      "select sip.state sip_state, mandate.state mandate_state, payment.state payment_state, " +
+        "investment_order.state order_state, count(review.id)::text reviews from sip_plans sip " +
+        "join payment_mandates mandate on mandate.sip_plan_id = sip.id " +
+        "join investment_orders investment_order on investment_order.sip_plan_id = sip.id " +
+        "join payments payment on payment.order_id = investment_order.id " +
+        "left join investment_reviews review on review.order_id = investment_order.id " +
+        "where sip.id = $1 group by sip.state, mandate.state, payment.state, investment_order.state",
+      [created.sipPlanId],
+    )
+    expect(truth.rows[0]).toEqual({
+      sip_state: "active",
+      mandate_state: "active",
+      payment_state: "succeeded",
+      order_state: "review_pending",
+      reviews: "1",
+    })
+
+    const duplicate = await app.inject({
+      method: "POST",
+      url: "/v1/provider-events/phonepe/subscription",
+      headers: { authorization: CALLBACK_AUTH, "content-type": "application/json" },
+      payload: setupCompletePayload,
+    })
+    expect(duplicate.statusCode).toBe(200)
+    expect((await pool.query<{ count: string }>("select count(*) from investment_reviews where order_id = $1", [created.orderId])).rows[0]?.count)
+      .toBe("1")
+
+    const cancelKey = `autopay-cancel-${randomUUID()}`
+    const cancelCallsBefore = recurringCancelCalls
+    const cancel = await app.inject({
+      method: "POST",
+      url: `/v1/client/sips/autopay/${created.sipPlanId}/cancel`,
+      headers: { ...bearer(token), "idempotency-key": cancelKey },
+    })
+    expect(cancel.statusCode).toBe(202)
+    expect(dataOf<{ status: string }>(cancel).status).toBe("cancel_pending")
+    expect(recurringCancelCalls - cancelCallsBefore).toBe(0)
+    expect((await pool.query<{ state: string }>("select state from payment_mandates where sip_plan_id = $1", [created.sipPlanId])).rows[0]?.state)
+      .toBe("cancel_pending")
+    const replayCancel = await app.inject({
+      method: "POST",
+      url: `/v1/client/sips/autopay/${created.sipPlanId}/cancel`,
+      headers: { ...bearer(token), "idempotency-key": cancelKey },
+    })
+    expect(replayCancel.statusCode).toBe(202)
+    expect(recurringCancelCalls - cancelCallsBefore).toBe(0)
+    expect((await pool.query<{ state: string }>("select state from mandate_cancel_commands where sip_plan_id = $1", [created.sipPlanId])).rows[0]?.state)
+      .toBe("queued")
+    const dispatched = await runMandateReconciliationPass({
+      unitOfWork,
+      clock: () => new Date(),
+      recurringPaymentGateway: stubRecurringGateway,
+      mandatesRepository: createMandatesRepository(),
+      paymentsRepository,
+      config: { claimLimit: 25, notFoundGraceMs: 60_000 },
+    })
+    expect(dispatched.cancelCommandsDispatched).toBeGreaterThanOrEqual(1)
+    expect(recurringCancelCalls - cancelCallsBefore).toBe(1)
+    expect((await pool.query<{ state: string }>("select state from mandate_cancel_commands where sip_plan_id = $1", [created.sipPlanId])).rows[0]?.state)
+      .toBe("accepted")
+    recurringMandateState = "CANCELLED"
+    const reconciled = await runMandateReconciliationPass({
+      unitOfWork,
+      clock: () => new Date(),
+      recurringPaymentGateway: stubRecurringGateway,
+      mandatesRepository: createMandatesRepository(),
+      paymentsRepository,
+      config: { claimLimit: 25, notFoundGraceMs: 60_000 },
+    })
+    expect(reconciled.mandatesResolved).toBeGreaterThanOrEqual(1)
+    expect((await pool.query<{ state: string }>("select state from payment_mandates where sip_plan_id = $1", [created.sipPlanId])).rows[0]?.state)
+      .toBe("cancelled")
+    expect((await pool.query<{ state: string }>("select state from sip_plans where id = $1", [created.sipPlanId])).rows[0]?.state)
+      .toBe("cancelled")
+    const detail = await app.inject({
+      method: "GET",
+      url: `/v1/client/sips/autopay/${created.sipPlanId}`,
+      headers: bearer(token),
+    })
+    expect(detail.statusCode, detail.body).toBe(200)
+    expect(dataOf<{ mandate: { status: string } }>(detail).mandate.status).toBe("cancelled")
+  })
+
+  test("restores the active mandate after a definite cancellation rejection", async () => {
+    stubAutoPayEnabled = true
+    recurringCancelError = null
+    recurringCancelGate = null
+    const { token } = await seedClientToken(`autopay-cancel-reject-${randomUUID().slice(0, 8)}@example.com`)
+    const admin = await pool.query<{ id: string }>("select id from users where email_normalized = $1", [
+      "payrev-finance@example.com",
+    ])
+    const fund = await seedPublishedFund(`autopay-cancel-reject-${randomUUID().slice(0, 8)}`, admin.rows[0]!.id)
+    const created = await createActiveAutoPay(token, fund.fundId)
+    const cancel = await app.inject({
+      method: "POST",
+      url: `/v1/client/sips/autopay/${created.sipPlanId}/cancel`,
+      headers: { ...bearer(token), "idempotency-key": `autopay-cancel-reject-${randomUUID()}` },
+    })
+    expect(cancel.statusCode, cancel.body).toBe(202)
+    const callsBefore = recurringCancelCalls
+    recurringCancelError = new GatewayRejectedError("provider rejected")
+    await runMandateWorker()
+    expect(recurringCancelCalls - callsBefore).toBe(1)
+    expect((await pool.query<{ mandate_state: string; sip_state: string; command_state: string }>(
+      "select mandate.state mandate_state, sip.state sip_state, command.state command_state " +
+        "from payment_mandates mandate join sip_plans sip on sip.id = mandate.sip_plan_id " +
+        "join mandate_cancel_commands command on command.mandate_id = mandate.id where sip.id = $1",
+      [created.sipPlanId],
+    )).rows[0]).toEqual({ mandate_state: "active", sip_state: "active", command_state: "rejected" })
+    recurringCancelError = null
+  })
+
+  test("reconciles an ambiguous cancellation without dispatching it twice", async () => {
+    stubAutoPayEnabled = true
+    recurringCancelError = null
+    recurringCancelGate = null
+    const { token } = await seedClientToken(`autopay-cancel-ambiguous-${randomUUID().slice(0, 8)}@example.com`)
+    const admin = await pool.query<{ id: string }>("select id from users where email_normalized = $1", [
+      "payrev-finance@example.com",
+    ])
+    const fund = await seedPublishedFund(`autopay-cancel-ambiguous-${randomUUID().slice(0, 8)}`, admin.rows[0]!.id)
+    const created = await createActiveAutoPay(token, fund.fundId)
+    const cancel = await app.inject({
+      method: "POST",
+      url: `/v1/client/sips/autopay/${created.sipPlanId}/cancel`,
+      headers: { ...bearer(token), "idempotency-key": `autopay-cancel-ambiguous-${randomUUID()}` },
+    })
+    expect(cancel.statusCode, cancel.body).toBe(202)
+    const callsBefore = recurringCancelCalls
+    recurringCancelError = new GatewayUnavailableError("timeout")
+    await runMandateWorker()
+    expect(recurringCancelCalls - callsBefore).toBe(1)
+    expect((await pool.query<{ state: string }>("select state from mandate_cancel_commands where sip_plan_id = $1", [created.sipPlanId])).rows[0]?.state)
+      .toBe("dispatching")
+
+    recurringCancelError = null
+    recurringMandateState = "ACTIVE"
+    const dispatchStarted = await pool.query<{ dispatch_started_at: Date }>(
+      "select dispatch_started_at from mandate_cancel_commands where sip_plan_id = $1",
+      [created.sipPlanId],
+    )
+    const startedAt = dispatchStarted.rows[0]!.dispatch_started_at
+    await runMandateWorker(() => new Date(startedAt.getTime() + 30_000))
+    await runMandateWorker(() => new Date(startedAt.getTime() + 60_001))
+    expect(recurringCancelCalls - callsBefore).toBe(1)
+    expect((await pool.query<{ state: string; status_check_count: number }>(
+      "select state, status_check_count from mandate_cancel_commands where sip_plan_id = $1",
+      [created.sipPlanId],
+    )).rows[0]).toEqual({ state: "reconciliation_required", status_check_count: 2 })
+    const detail = await app.inject({
+      method: "GET",
+      url: `/v1/client/sips/autopay/${created.sipPlanId}`,
+      headers: bearer(token),
+    })
+    expect(dataOf<{ cancellation: { status: string; failureCode: string } }>(detail).cancellation)
+      .toEqual({ status: "reconciliation_required", failureCode: "PROVIDER_STILL_ACTIVE" })
+
+    recurringMandateState = "CANCELLED"
+    await runMandateWorker()
+    expect(recurringCancelCalls - callsBefore).toBe(1)
+    expect((await pool.query<{ mandate_state: string; sip_state: string; command_state: string }>(
+      "select mandate.state mandate_state, sip.state sip_state, command.state command_state " +
+        "from payment_mandates mandate join sip_plans sip on sip.id = mandate.sip_plan_id " +
+        "join mandate_cancel_commands command on command.mandate_id = mandate.id where sip.id = $1",
+      [created.sipPlanId],
+    )).rows[0]).toEqual({ mandate_state: "cancelled", sip_state: "cancelled", command_state: "accepted" })
+  })
+
+  test("claims one cancellation dispatch under concurrent worker passes", async () => {
+    stubAutoPayEnabled = true
+    recurringCancelError = null
+    const { token } = await seedClientToken(`autopay-cancel-race-${randomUUID().slice(0, 8)}@example.com`)
+    const admin = await pool.query<{ id: string }>("select id from users where email_normalized = $1", [
+      "payrev-finance@example.com",
+    ])
+    const fund = await seedPublishedFund(`autopay-cancel-race-${randomUUID().slice(0, 8)}`, admin.rows[0]!.id)
+    const created = await createActiveAutoPay(token, fund.fundId)
+    const cancel = await app.inject({
+      method: "POST",
+      url: `/v1/client/sips/autopay/${created.sipPlanId}/cancel`,
+      headers: { ...bearer(token), "idempotency-key": `autopay-cancel-race-${randomUUID()}` },
+    })
+    expect(cancel.statusCode, cancel.body).toBe(202)
+    let releaseCancel = (): void => undefined
+    let markCancelStarted = (): void => undefined
+    recurringCancelGate = new Promise<void>((resolve) => { releaseCancel = resolve })
+    const cancelStarted = new Promise<void>((resolve) => { markCancelStarted = resolve })
+    recurringCancelStarted = markCancelStarted
+    const callsBefore = recurringCancelCalls
+    const first = runMandateWorker()
+    await cancelStarted
+    const second = runMandateWorker()
+    releaseCancel()
+    await Promise.all([first, second])
+    expect(recurringCancelCalls - callsBefore).toBe(1)
+    expect((await pool.query<{ state: string }>("select state from mandate_cancel_commands where sip_plan_id = $1", [created.sipPlanId])).rows[0]?.state)
+      .toBe("accepted")
+    recurringCancelGate = null
+    recurringCancelStarted = null
+  })
+
+  test("preserves a successful setup debit for review when mandate activation fails", async () => {
+    recurringSetupState = "PENDING"
+    recurringMandateState = "ACTIVATION_IN_PROGRESS"
+    const { token } = await seedClientToken(`autopay-failed-${randomUUID().slice(0, 8)}@example.com`)
+    const admin = await pool.query<{ id: string }>("select id from users where email_normalized = $1", [
+      "payrev-finance@example.com",
+    ])
+    const fund = await seedPublishedFund(`autopay-failed-${randomUUID().slice(0, 8)}`, admin.rows[0]!.id)
+    const create = await app.inject({
+      method: "POST",
+      url: "/v1/client/sips/autopay",
+      headers: { ...bearer(token), "idempotency-key": `autopay-failed-${randomUUID()}` },
+      payload: { fundId: fund.fundId, amountPaise: "50000", debitDay: 5, durationMonths: 12 },
+    })
+    expect(create.statusCode, create.body).toBe(201)
+    const created = dataOf<{ sipPlanId: string }>(create)
+    recurringSetupState = "COMPLETED"
+    recurringMandateState = "FAILED"
+    const callback = await app.inject({
+      method: "POST",
+      url: "/v1/provider-events/phonepe/subscription",
+      headers: { authorization: CALLBACK_AUTH, "content-type": "application/json" },
+      payload: JSON.stringify({
+        event: "checkout.setup.order.completed",
+        payload: {
+          state: "COMPLETED",
+          merchantId: "PHONEPE_MERCHANT",
+          merchantOrderId: recurringMerchantOrderId,
+          paymentFlow: {
+            type: "SUBSCRIPTION_CHECKOUT_SETUP",
+            subscriptionDetails: { merchantSubscriptionId: recurringMerchantSubscriptionId },
+          },
+        },
+      }),
+    })
+    expect(callback.statusCode, callback.body).toBe(200)
+    const truth = await pool.query<{ sip_state: string; mandate_state: string; payment_state: string; order_state: string }>(
+      "select sip.state sip_state, mandate.state mandate_state, payment.state payment_state, investment_order.state order_state " +
+        "from sip_plans sip join payment_mandates mandate on mandate.sip_plan_id = sip.id " +
+        "join investment_orders investment_order on investment_order.sip_plan_id = sip.id " +
+        "join payments payment on payment.order_id = investment_order.id where sip.id = $1",
+      [created.sipPlanId],
+    )
+    expect(truth.rows[0]).toEqual({
+      sip_state: "setup_failed",
+      mandate_state: "failed",
+      payment_state: "succeeded",
+      order_state: "review_pending",
+    })
+  })
+
+  test("creates one fresh setup attempt only after an authoritative unpaid failure", async () => {
+    recurringSetupState = "PENDING"
+    recurringMandateState = "ACTIVATION_IN_PROGRESS"
+    const { token } = await seedClientToken(`autopay-retry-${randomUUID().slice(0, 8)}@example.com`)
+    const admin = await pool.query<{ id: string }>("select id from users where email_normalized = $1", [
+      "payrev-finance@example.com",
+    ])
+    const fund = await seedPublishedFund(`autopay-retry-${randomUUID().slice(0, 8)}`, admin.rows[0]!.id)
+    const create = await app.inject({
+      method: "POST",
+      url: "/v1/client/sips/autopay",
+      headers: { ...bearer(token), "idempotency-key": `autopay-retry-create-${randomUUID()}` },
+      payload: { fundId: fund.fundId, amountPaise: "50000", debitDay: 5, durationMonths: 12 },
+    })
+    expect(create.statusCode, create.body).toBe(201)
+    const created = dataOf<{ sipPlanId: string }>(create)
+    recurringSetupState = "FAILED"
+    const failed = await app.inject({
+      method: "POST",
+      url: "/v1/provider-events/phonepe/subscription",
+      headers: { authorization: CALLBACK_AUTH, "content-type": "application/json" },
+      payload: JSON.stringify({
+        event: "checkout.setup.order.failed",
+        payload: {
+          state: "FAILED",
+          merchantId: "PHONEPE_MERCHANT",
+          merchantOrderId: recurringMerchantOrderId,
+          paymentFlow: {
+            type: "SUBSCRIPTION_CHECKOUT_SETUP",
+            subscriptionDetails: { merchantSubscriptionId: recurringMerchantSubscriptionId },
+          },
+        },
+      }),
+    })
+    expect(failed.statusCode, failed.body).toBe(200)
+    const failedTruth = await pool.query(
+      "select sip.state sip_state, mandate.state mandate_state, investment_order.state order_state, " +
+        "payment.state payment_state, setup.state setup_state from sip_plans sip " +
+        "join payment_mandates mandate on mandate.sip_plan_id = sip.id " +
+        "join mandate_setup_attempts setup on setup.mandate_id = mandate.id " +
+        "join investment_orders investment_order on investment_order.id = setup.order_id " +
+        "join payments payment on payment.id = setup.payment_id where sip.id = $1",
+      [created.sipPlanId],
+    )
+    expect(failedTruth.rows[0]).toEqual({
+      sip_state: "pending_mandate",
+      mandate_state: "setup_pending",
+      order_state: "payment_failed",
+      payment_state: "failed",
+      setup_state: "failed",
+    })
+    const detail = await app.inject({
+      method: "GET",
+      url: `/v1/client/sips/autopay/${created.sipPlanId}`,
+      headers: bearer(token),
+    })
+    expect(detail.statusCode, detail.body).toBe(200)
+    expect(dataOf<{
+      canRetrySetup: boolean
+      setup: { status: string; failureCode: string | null }
+    }>(detail)).toMatchObject({
+      canRetrySetup: true,
+      setup: { status: "failed" },
+    })
+    const callsBefore = recurringCreateCalls
+    recurringSetupState = "PENDING"
+    const retryKey = `autopay-retry-${randomUUID()}`
+    const retry = await app.inject({
+      method: "POST",
+      url: `/v1/client/sips/autopay/${created.sipPlanId}/setup/retry`,
+      headers: { ...bearer(token), "idempotency-key": retryKey },
+    })
+    expect(retry.statusCode, retry.body).toBe(201)
+    expect(recurringCreateCalls - callsBefore).toBe(1)
+    const counts = await pool.query<{ setups: string; attempts: string }>(
+      "select count(distinct setup.id)::text setups, count(distinct attempt.id)::text attempts " +
+        "from mandate_setup_attempts setup join payment_attempts attempt on attempt.payment_id = setup.payment_id " +
+        "where setup.sip_plan_id = $1",
+      [created.sipPlanId],
+    )
+    expect(counts.rows[0]).toEqual({ setups: "2", attempts: "2" })
+    const replay = await app.inject({
+      method: "POST",
+      url: `/v1/client/sips/autopay/${created.sipPlanId}/setup/retry`,
+      headers: { ...bearer(token), "idempotency-key": retryKey },
+    })
+    expect(replay.statusCode).toBe(200)
+    expect(recurringCreateCalls - callsBefore).toBe(1)
+  })
+
+  test("expires undispatched and authoritative-not-found setup attempts without another provider POST", async () => {
+    stubAutoPayEnabled = true
+    recurringSetupState = "PENDING"
+    recurringMandateState = "ACTIVATION_IN_PROGRESS"
+    recurringSetupStatusError = null
+    const { token } = await seedClientToken(`autopay-expiry-${randomUUID().slice(0, 8)}@example.com`)
+    const admin = await pool.query<{ id: string }>("select id from users where email_normalized = $1", [
+      "payrev-finance@example.com",
+    ])
+    const fund = await seedPublishedFund(`autopay-expiry-${randomUUID().slice(0, 8)}`, admin.rows[0]!.id)
+    const createPlan = async () => dataOf<{ sipPlanId: string }>(await app.inject({
+      method: "POST",
+      url: "/v1/client/sips/autopay",
+      headers: { ...bearer(token), "idempotency-key": `autopay-expiry-${randomUUID()}` },
+      payload: { fundId: fund.fundId, amountPaise: "50000", debitDay: 5, durationMonths: 12 },
+    }))
+    const undispatched = await createPlan()
+    const ambiguous = await createPlan()
+    const now = new Date()
+    await pool.query(
+      "update mandate_setup_attempts set state = 'created', provider_order_id = null, provider_dispatch_started_at = null, " +
+        "sdk_order_token_ciphertext = null, sdk_order_token_nonce = null, sdk_order_token_key_version = null, " +
+        "sdk_order_token_expires_at = null, setup_expires_at = $2 where sip_plan_id = $1",
+      [undispatched.sipPlanId, new Date(now.getTime() - 1)],
+    )
+    await pool.query(
+      "update payment_attempts attempt set state = 'created', provider_order_id = null, provider_dispatch_started_at = null, " +
+        "provider_state = null from mandate_setup_attempts setup where setup.payment_attempt_id = attempt.id and setup.sip_plan_id = $1",
+      [undispatched.sipPlanId],
+    )
+    await pool.query(
+      "update payments payment set state = 'created' from mandate_setup_attempts setup where setup.payment_id = payment.id and setup.sip_plan_id = $1",
+      [undispatched.sipPlanId],
+    )
+    await pool.query("update mandate_setup_attempts set setup_expires_at = $2 where sip_plan_id = $1", [
+      ambiguous.sipPlanId,
+      new Date(now.getTime() - 1),
+    ])
+    const createCallsBefore = recurringCreateCalls
+    recurringSetupStatusError = new GatewayNotFoundError("not found")
+    await runMandateReconciliationPass({
+      unitOfWork,
+      clock: () => now,
+      recurringPaymentGateway: stubRecurringGateway,
+      mandatesRepository: createMandatesRepository(),
+      paymentsRepository,
+      config: { claimLimit: 100, notFoundGraceMs: 60_000 },
+    })
+    expect((await pool.query<{ state: string }>("select state from mandate_setup_attempts where sip_plan_id = $1", [undispatched.sipPlanId])).rows[0]?.state)
+      .toBe("expired")
+    expect((await pool.query<{ state: string }>("select state from mandate_setup_attempts where sip_plan_id = $1", [ambiguous.sipPlanId])).rows[0]?.state)
+      .toBe("provider_pending")
+
+    await runMandateReconciliationPass({
+      unitOfWork,
+      clock: () => new Date(now.getTime() + 60_001),
+      recurringPaymentGateway: stubRecurringGateway,
+      mandatesRepository: createMandatesRepository(),
+      paymentsRepository,
+      config: { claimLimit: 100, notFoundGraceMs: 60_000 },
+    })
+    expect((await pool.query<{ setup_state: string; payment_state: string }>(
+      "select setup.state setup_state, payment.state payment_state from mandate_setup_attempts setup " +
+        "join payments payment on payment.id = setup.payment_id where setup.sip_plan_id = $1",
+      [ambiguous.sipPlanId],
+    )).rows[0]).toEqual({ setup_state: "expired", payment_state: "expired" })
+    expect(recurringCreateCalls).toBe(createCallsBefore)
+    recurringSetupStatusError = null
+  })
+
   test("creates an order, dispatches a checkout, and reuses the same attempt on retry", async () => {
     const { userId, token } = await seedClientToken(`client-${randomUUID().slice(0, 8)}@example.com`)
     const admin = await pool.query<{ id: string }>("select id from users where email_normalized = $1", [
@@ -350,6 +1186,10 @@ describe("checkout orchestrator", () => {
     expect(pay.statusCode).toBe(200)
     const payBody = dataOf<{ checkout: { url: string } }>(pay)
     expect(payBody.checkout.url).toBe(stubRedirectUrl)
+    const returnUrl = new URL(stubPaymentReturnUrl as string)
+    expect(returnUrl.origin + returnUrl.pathname).toBe("https://app.beonedge.in/payment-return")
+    expect(returnUrl.searchParams.get("token")).toMatch(/^v1\./u)
+    expect(stubPaymentReturnUrl).not.toContain(orderId)
 
     const attempts = await pool.query<{ count: string }>(
       "select count(*) as count from payment_attempts where user_id = $1",
@@ -357,6 +1197,10 @@ describe("checkout orchestrator", () => {
     )
     expect(Number(attempts.rows[0]!.count)).toBe(1)
 
+    await pool.query(
+      "update payment_attempts set checkout_expires_at = now() + interval '6 minutes' where user_id = $1",
+      [userId],
+    )
     const retryKey = `pay-retry-${randomUUID()}`
     const retry = await app.inject({
       method: "POST",
@@ -364,12 +1208,467 @@ describe("checkout orchestrator", () => {
       headers: { ...bearer(token), "idempotency-key": retryKey },
     })
     expect(retry.statusCode).toBe(200)
-
+    expect(stubExpireAfterSeconds).toBeGreaterThan(0)
+    expect(stubExpireAfterSeconds).toBeGreaterThanOrEqual(300)
+    expect(stubExpireAfterSeconds).toBeLessThanOrEqual(360)
     const attemptsAfterRetry = await pool.query<{ count: string }>(
       "select count(*) as count from payment_attempts where user_id = $1",
       [userId],
     )
     expect(Number(attemptsAfterRetry.rows[0]!.count)).toBe(1)
+
+    await pool.query(
+      "update payment_attempts set checkout_expires_at = now() - interval '1 second' where user_id = $1",
+      [userId],
+    )
+    const afterExpiry = await app.inject({
+      method: "POST",
+      url: `/v1/client/orders/${orderId}/pay`,
+      headers: { ...bearer(token), "idempotency-key": `pay-after-expiry-${randomUUID()}` },
+    })
+    expect(afterExpiry.statusCode).toBe(409)
+    expect(errorOf(afterExpiry)).toBe("STATE_CONFLICT")
+
+    const attemptsAfterExpiry = await pool.query<{ state: string; checkout_expires_at: Date }>(
+      "select state, checkout_expires_at from payment_attempts where user_id = $1 order by attempt_number",
+      [userId],
+    )
+    expect(attemptsAfterExpiry.rows.map((row) => row.state)).toEqual(["provider_pending"])
+
+    const attemptIdentity = await pool.query<{ id: string; payment_id: string }>(
+      "select id, payment_id from payment_attempts where user_id = $1",
+      [userId],
+    )
+    const warnings: Record<string, unknown>[] = []
+    stubOrderStatusError = new GatewayUnavailableError("provider unavailable")
+    const unavailable = await runReconciliationPass({
+      unitOfWork,
+      clock: () => new Date(),
+      paymentGateway: stubGateway,
+      paymentsRepository,
+      refundRepository,
+      logger: { warn: (fields) => warnings.push(fields) },
+      config: { claimLimit: 25, notFoundGraceMs: 60_000 },
+    })
+    expect(unavailable.attemptsResolved).toBe(0)
+    expect(warnings[0]?.requestId).toMatch(/^[0-9a-f-]{36}$/u)
+    expect(warnings[0]?.requestId).not.toBe(attemptIdentity.rows[0]!.id)
+
+    stubOrderStatusError = new GatewayNotFoundError("provider reference not found")
+    const earlyNotFound = await runReconciliationPass({
+      unitOfWork,
+      clock: () => new Date(),
+      paymentGateway: stubGateway,
+      paymentsRepository,
+      refundRepository,
+      logger: null,
+      config: { claimLimit: 25, notFoundGraceMs: 60_000 },
+    })
+    expect(earlyNotFound.attemptsResolved).toBe(0)
+
+    stubOrderStatusError = null
+    stubOutcome = "pending"
+    const ambiguous = await runReconciliationPass({
+      unitOfWork,
+      clock: () => new Date(),
+      paymentGateway: stubGateway,
+      paymentsRepository,
+      refundRepository,
+      logger: null,
+      config: { claimLimit: 25, notFoundGraceMs: 60_000 },
+    })
+    expect(ambiguous.attemptsResolved).toBe(0)
+
+    stubProviderState = "EXPIRED"
+    const expired = await runReconciliationPass({
+      unitOfWork,
+      clock: () => new Date(),
+      paymentGateway: stubGateway,
+      paymentsRepository,
+      refundRepository,
+      logger: null,
+      config: { claimLimit: 25, notFoundGraceMs: 60_000 },
+    })
+    expect(expired.attemptsResolved).toBe(1)
+    stubProviderState = null
+    stubOutcome = "succeeded"
+
+    const resolvedAttempt = await pool.query<{ state: string; provider_state: string }>(
+      "select state, provider_state from payment_attempts where id = $1",
+      [attemptIdentity.rows[0]!.id],
+    )
+    expect(resolvedAttempt.rows[0]).toMatchObject({ state: "expired", provider_state: "EXPIRED" })
+
+    const retryAfterResolution = await app.inject({
+      method: "POST",
+      url: `/v1/client/orders/${orderId}/pay`,
+      headers: { ...bearer(token), "idempotency-key": `pay-after-resolution-${randomUUID()}` },
+    })
+    expect(retryAfterResolution.statusCode).toBe(200)
+    const retryState = await pool.query<{ payment_state: string; attempt_states: string[] }>(
+      "select p.state as payment_state, array_agg(a.state::text order by a.attempt_number) as attempt_states " +
+        "from payments p join payment_attempts a on a.payment_id = p.id where p.order_id = $1 group by p.state",
+      [orderId],
+    )
+    expect(retryState.rows[0]).toMatchObject({
+      payment_state: "provider_pending",
+      attempt_states: ["expired", "provider_pending"],
+    })
+
+    await pool.query(
+      "update payment_attempts set checkout_expires_at = now() - interval '61 seconds' " +
+        "where user_id = $1 and state = 'provider_pending'",
+      [userId],
+    )
+    stubOrderStatusError = new GatewayNotFoundError("provider reference not found")
+    const notFound = await runReconciliationPass({
+      unitOfWork,
+      clock: () => new Date(),
+      paymentGateway: stubGateway,
+      paymentsRepository,
+      refundRepository,
+      logger: null,
+      config: { claimLimit: 25, notFoundGraceMs: 60_000 },
+    })
+    expect(notFound.attemptsResolved).toBe(1)
+    stubOrderStatusError = null
+    const finalAttempts = await pool.query<{ state: string; provider_state: string }>(
+      "select state, provider_state from payment_attempts where user_id = $1 order by attempt_number",
+      [userId],
+    )
+    expect(finalAttempts.rows).toEqual([
+      expect.objectContaining({ state: "expired", provider_state: "EXPIRED" }),
+      expect.objectContaining({ state: "expired", provider_state: "NOT_FOUND" }),
+    ])
+  })
+
+  test("persists and replays a mobile SDK token only through its encrypted attempt envelope", async () => {
+    const { userId, token } = await seedClientToken(`client-${randomUUID().slice(0, 8)}@example.com`)
+    const fund = await seedPublishedFund(`pay-mobile-${randomUUID().slice(0, 8)}`, financeAdminId)
+    const created = await app.inject({
+      method: "POST",
+      url: "/v1/client/orders",
+      headers: { ...bearer(token), "idempotency-key": `create-${randomUUID()}` },
+      payload: { fundId: fund.fundId, amountPaise: "1000000" },
+    })
+    const orderId = dataOf<{ orderId: string }>(created).orderId
+    const payKey = `mobile-${randomUUID()}`
+    stubMobileOrderCalls = []
+
+    const first = await app.inject({
+      method: "POST",
+      url: `/v1/client/orders/${orderId}/pay`,
+      headers: { ...bearer(token), "idempotency-key": payKey },
+      payload: { checkoutChannel: "phonepe_mobile_sdk" },
+    })
+    expect(first.statusCode).toBe(200)
+    const firstBody = dataOf<{
+      checkout: { type: string; providerOrderId: string; token: string; merchantId: string; environment: string }
+    }>(first)
+    expect(firstBody.checkout).toMatchObject({
+      type: "phonepe_sdk",
+      merchantId: "PHONEPE_MERCHANT",
+      environment: "SANDBOX",
+    })
+    expect(stubMobileOrderCalls).toHaveLength(1)
+
+    const attempt = await pool.query<{
+      id: string
+      merchant_order_id: string
+      checkout_channel: string
+      provider_order_id: string
+      sdk_order_token_ciphertext: Buffer
+      sdk_order_token_nonce: Buffer
+      sdk_order_token_key_version: string
+      sdk_order_token_expires_at: Date
+    }>(
+      "select id, merchant_order_id, checkout_channel, provider_order_id, sdk_order_token_ciphertext, " +
+        "sdk_order_token_nonce, sdk_order_token_key_version, sdk_order_token_expires_at " +
+        "from payment_attempts where user_id = $1",
+      [userId],
+    )
+    const row = attempt.rows[0]!
+    expect(row.checkout_channel).toBe("phonepe_mobile_sdk")
+    expect(row.provider_order_id).toBe(firstBody.checkout.providerOrderId)
+    expect(row.sdk_order_token_key_version).toBe("ptk1")
+    expect(decryptGcm(
+      MOBILE_TOKEN_KEY,
+      row.sdk_order_token_ciphertext,
+      row.sdk_order_token_nonce,
+      paymentSdkTokenAad(row.id, row.provider_order_id),
+    ))
+      .toBe(firstBody.checkout.token)
+    expect(() => decryptGcm(
+      MOBILE_TOKEN_KEY,
+      row.sdk_order_token_ciphertext,
+      row.sdk_order_token_nonce,
+      paymentSdkTokenAad(randomUUID(), row.provider_order_id),
+    )).toThrow()
+    const guardedReplay = await unitOfWork.execute((tx) => paymentsRepository.markAttemptSdkDispatched(tx, {
+      attemptId: row.id,
+      providerOrderId: row.provider_order_id,
+      providerState: "PENDING",
+      checkoutExpiresAt: row.sdk_order_token_expires_at,
+      tokenCiphertext: row.sdk_order_token_ciphertext,
+      tokenNonce: row.sdk_order_token_nonce,
+      tokenKeyVersion: row.sdk_order_token_key_version,
+      tokenExpiresAt: row.sdk_order_token_expires_at,
+      now: new Date(),
+    }))
+    expect(guardedReplay).toBeNull()
+
+    const idempotency = await pool.query<{ response_body: string }>(
+      "select response_body::text as response_body from idempotency_records where key = $1",
+      [payKey],
+    )
+    const audit = await pool.query<{ metadata: string }>(
+      "select metadata::text as metadata from audit_events where entity_type = 'payment_attempt' and entity_id = $1",
+      [row.id],
+    )
+    expect(idempotency.rows[0]!.response_body).not.toContain(firstBody.checkout.token)
+    expect(audit.rows[0]!.metadata).not.toContain(firstBody.checkout.token)
+
+    const replay = await app.inject({
+      method: "POST",
+      url: `/v1/client/orders/${orderId}/pay`,
+      headers: { ...bearer(token), "idempotency-key": payKey },
+      payload: { checkoutChannel: "phonepe_mobile_sdk" },
+    })
+    expect(replay.statusCode).toBe(200)
+    expect(dataOf<{ checkout: { token: string } }>(replay).checkout.token).toBe(firstBody.checkout.token)
+    expect(stubMobileOrderCalls).toEqual([row.merchant_order_id])
+
+    const newKeyReplay = await app.inject({
+      method: "POST",
+      url: `/v1/client/orders/${orderId}/pay`,
+      headers: { ...bearer(token), "idempotency-key": `mobile-replay-${randomUUID()}` },
+      payload: { checkoutChannel: "phonepe_mobile_sdk" },
+    })
+    expect(newKeyReplay.statusCode).toBe(200)
+    expect(dataOf<{ checkout: { token: string } }>(newKeyReplay).checkout.token).toBe(firstBody.checkout.token)
+    expect(stubMobileOrderCalls).toEqual([row.merchant_order_id])
+
+    const crossChannel = await app.inject({
+      method: "POST",
+      url: `/v1/client/orders/${orderId}/pay`,
+      headers: { ...bearer(token), "idempotency-key": `hosted-${randomUUID()}` },
+      payload: { checkoutChannel: "hosted_redirect" },
+    })
+    expect(crossChannel.statusCode).toBe(409)
+    await expect(pool.query("update payment_attempts set state = 'failed' where id = $1", [row.id])).rejects.toThrow()
+    await pool.query(
+      "update payment_attempts set state = 'failed', sdk_order_token_ciphertext = null, " +
+        "sdk_order_token_nonce = null, sdk_order_token_key_version = null, sdk_order_token_expires_at = null where id = $1",
+      [row.id],
+    )
+  })
+
+  test("rejects disabled mobile checkout before attempt creation and allows a fresh hosted fallback", async () => {
+    const { userId, token } = await seedClientToken(`client-${randomUUID().slice(0, 8)}@example.com`)
+    const fund = await seedPublishedFund(`pay-disabled-${randomUUID().slice(0, 8)}`, financeAdminId)
+    const created = await app.inject({
+      method: "POST",
+      url: "/v1/client/orders",
+      headers: { ...bearer(token), "idempotency-key": `create-${randomUUID()}` },
+      payload: { fundId: fund.fundId, amountPaise: "1000000" },
+    })
+    const orderId = dataOf<{ orderId: string }>(created).orderId
+    const mobileCalls = stubMobileOrderCalls.length
+    const hostedCalls = stubCheckoutCalls
+    stubMobileEnabled = false
+    try {
+      const disabled = await app.inject({
+        method: "POST",
+        url: `/v1/client/orders/${orderId}/pay`,
+        headers: { ...bearer(token), "idempotency-key": `mobile-${randomUUID()}` },
+        payload: { checkoutChannel: "phonepe_mobile_sdk" },
+      })
+      expect(disabled.statusCode).toBe(409)
+      expect(errorOf(disabled)).toBe("MOBILE_CHECKOUT_DISABLED")
+      expect(stubMobileOrderCalls).toHaveLength(mobileCalls)
+      expect(stubCheckoutCalls).toBe(hostedCalls)
+      const attemptsBeforeFallback = await pool.query<{ count: string }>(
+        "select count(*)::text as count from payment_attempts where user_id = $1",
+        [userId],
+      )
+      expect(attemptsBeforeFallback.rows[0]?.count).toBe("0")
+
+      const hosted = await app.inject({
+        method: "POST",
+        url: `/v1/client/orders/${orderId}/pay`,
+        headers: { ...bearer(token), "idempotency-key": `hosted-${randomUUID()}` },
+        payload: { checkoutChannel: "hosted_redirect" },
+      })
+      expect(hosted.statusCode).toBe(200)
+      expect(dataOf<{ checkout: { type: string } }>(hosted).checkout.type).toBe("redirect")
+      expect(stubCheckoutCalls).toBe(hostedCalls + 1)
+    } finally {
+      await pool.query(
+        "update payment_attempts set state = 'failed', provider_state = 'TEST_CLOSED' where user_id = $1 and state in ('created','provider_pending')",
+        [userId],
+      )
+      stubMobileEnabled = true
+    }
+  })
+
+  test("never repeats an ambiguous mobile SDK order and permits a fresh attempt only after expiry reconciliation", async () => {
+    const { userId, token } = await seedClientToken(`client-${randomUUID().slice(0, 8)}@example.com`)
+    const fund = await seedPublishedFund(`pay-mobile-timeout-${randomUUID().slice(0, 8)}`, financeAdminId)
+    const created = await app.inject({
+      method: "POST",
+      url: "/v1/client/orders",
+      headers: { ...bearer(token), "idempotency-key": `create-${randomUUID()}` },
+      payload: { fundId: fund.fundId, amountPaise: "1000000" },
+    })
+    const orderId = dataOf<{ orderId: string }>(created).orderId
+    stubMobileOrderCalls = []
+    stubMobileOrderError = new GatewayUnavailableError("ambiguous transport failure")
+
+    const first = await app.inject({
+      method: "POST",
+      url: `/v1/client/orders/${orderId}/pay`,
+      headers: { ...bearer(token), "idempotency-key": `mobile-timeout-${randomUUID()}` },
+      payload: { checkoutChannel: "phonepe_mobile_sdk" },
+    })
+    expect(first.statusCode).toBe(503)
+    expect(stubMobileOrderCalls).toHaveLength(1)
+
+    const immediate = await app.inject({
+      method: "POST",
+      url: `/v1/client/orders/${orderId}/pay`,
+      headers: { ...bearer(token), "idempotency-key": `mobile-immediate-${randomUUID()}` },
+      payload: { checkoutChannel: "phonepe_mobile_sdk" },
+    })
+    expect(immediate.statusCode).toBe(409)
+    expect(stubMobileOrderCalls).toHaveLength(1)
+
+    stubOrderStatusError = new GatewayNotFoundError("not found")
+    stubMobileOrderError = null
+    const notFound = await app.inject({
+      method: "POST",
+      url: `/v1/client/orders/${orderId}/pay`,
+      headers: { ...bearer(token), "idempotency-key": `mobile-recover-${randomUUID()}` },
+      payload: { checkoutChannel: "phonepe_mobile_sdk" },
+    })
+    expect(notFound.statusCode).toBe(409)
+    expect(stubMobileOrderCalls).toHaveLength(1)
+
+    await pool.query(
+      "update payment_attempts set checkout_expires_at = now() - interval '2 minutes' where user_id = $1",
+      [userId],
+    )
+    const reconciliation = await runReconciliationPass({
+      unitOfWork,
+      clock: () => new Date(),
+      paymentGateway: stubGateway,
+      paymentsRepository,
+      refundRepository,
+      logger: null,
+      config: { claimLimit: 25, notFoundGraceMs: 60_000 },
+    })
+    expect(reconciliation.attemptsResolved).toBe(1)
+    stubOrderStatusError = null
+    const recovered = await app.inject({
+      method: "POST",
+      url: `/v1/client/orders/${orderId}/pay`,
+      headers: { ...bearer(token), "idempotency-key": `mobile-fresh-${randomUUID()}` },
+      payload: { checkoutChannel: "phonepe_mobile_sdk" },
+    })
+    expect(recovered.statusCode).toBe(200)
+    expect(stubMobileOrderCalls).toHaveLength(2)
+    expect(new Set(stubMobileOrderCalls).size).toBe(2)
+    const attempts = await pool.query<{ count: string }>(
+      "select count(*) as count from payment_attempts where user_id = $1",
+      [userId],
+    )
+    expect(Number(attempts.rows[0]!.count)).toBe(2)
+    await pool.query(
+      "update payment_attempts set state = 'failed', sdk_order_token_ciphertext = null, " +
+        "sdk_order_token_nonce = null, sdk_order_token_key_version = null, sdk_order_token_expires_at = null where user_id = $1",
+      [userId],
+    )
+  })
+
+  test("does not reconcile a fresh attempt while checkout dispatch is in flight", async () => {
+    const { userId, token } = await seedClientToken(`client-${randomUUID().slice(0, 8)}@example.com`)
+    const fund = await seedPublishedFund(`pay-race-${randomUUID().slice(0, 8)}`, financeAdminId)
+    const created = await app.inject({
+      method: "POST",
+      url: "/v1/client/orders",
+      headers: { ...bearer(token), "idempotency-key": `create-${randomUUID()}` },
+      payload: { fundId: fund.fundId, amountPaise: "1000000" },
+    })
+    const orderId = dataOf<{ orderId: string }>(created).orderId
+    let releaseCheckout: () => void = () => undefined
+    let reportCheckoutStarted: () => void = () => undefined
+    const checkoutStarted = new Promise<void>((resolve) => { reportCheckoutStarted = resolve })
+    stubCheckoutGate = new Promise<void>((resolve) => { releaseCheckout = resolve })
+    stubCheckoutStarted = reportCheckoutStarted
+    stubOrderStatusError = new GatewayNotFoundError("provider reference not found")
+    stubOrderStatusCalls = 0
+
+    const paymentResponse = app.inject({
+      method: "POST",
+      url: `/v1/client/orders/${orderId}/pay`,
+      headers: { ...bearer(token), "idempotency-key": `pay-${randomUUID()}` },
+    })
+    await checkoutStarted
+    const reconciliation = await runReconciliationPass({
+      unitOfWork,
+      clock: () => new Date(),
+      paymentGateway: stubGateway,
+      paymentsRepository,
+      refundRepository,
+      logger: null,
+      config: { claimLimit: 25, notFoundGraceMs: 60_000 },
+    })
+    releaseCheckout()
+    const response = await paymentResponse
+    stubCheckoutGate = null
+    stubCheckoutStarted = null
+    stubOrderStatusError = null
+
+    expect(reconciliation.attemptsChecked).toBe(0)
+    expect(stubOrderStatusCalls).toBe(0)
+    expect(response.statusCode).toBe(200)
+    const attempts = await pool.query<{ state: string }>(
+      "select state from payment_attempts where user_id = $1 order by attempt_number",
+      [userId],
+    )
+    expect(attempts.rows).toEqual([{ state: "provider_pending" }])
+  })
+
+  test("does not return a checkout when the guarded dispatch transition loses", async () => {
+    const { userId, token } = await seedClientToken(`client-${randomUUID().slice(0, 8)}@example.com`)
+    const fund = await seedPublishedFund(`pay-guard-${randomUUID().slice(0, 8)}`, financeAdminId)
+    const created = await app.inject({
+      method: "POST",
+      url: "/v1/client/orders",
+      headers: { ...bearer(token), "idempotency-key": `create-${randomUUID()}` },
+      payload: { fundId: fund.fundId, amountPaise: "1000000" },
+    })
+    const orderId = dataOf<{ orderId: string }>(created).orderId
+    let releaseCheckout: () => void = () => undefined
+    let reportCheckoutStarted: () => void = () => undefined
+    const checkoutStarted = new Promise<void>((resolve) => { reportCheckoutStarted = resolve })
+    stubCheckoutGate = new Promise<void>((resolve) => { releaseCheckout = resolve })
+    stubCheckoutStarted = reportCheckoutStarted
+
+    const paymentResponse = app.inject({
+      method: "POST",
+      url: `/v1/client/orders/${orderId}/pay`,
+      headers: { ...bearer(token), "idempotency-key": `pay-${randomUUID()}` },
+    })
+    await checkoutStarted
+    await pool.query("update payment_attempts set state = 'failed' where user_id = $1", [userId])
+    releaseCheckout()
+    const response = await paymentResponse
+    stubCheckoutGate = null
+    stubCheckoutStarted = null
+
+    expect(response.statusCode).toBe(409)
+    expect(errorOf(response)).toBe("STATE_CONFLICT")
+    expect(response.body).not.toContain(stubRedirectUrl)
   })
 })
 

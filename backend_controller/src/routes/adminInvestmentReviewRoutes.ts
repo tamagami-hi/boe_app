@@ -11,6 +11,7 @@ import { newMerchantRefundId } from "../domain/payments/merchantIds.js"
 import { AppError } from "../http/errorCatalog.js"
 import { parseOrThrow } from "../http/validation.js"
 import type { PaymentGateway } from "../providers/phonepe/paymentGateway.js"
+import { logGatewayFailure } from "../providers/phonepe/gatewayFailure.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
 import type { InvestmentReviewRepository, ReviewQueueRow } from "../repositories/investmentReviewRepository.js"
 import type { PaymentsRepository, PaymentListRow } from "../repositories/paymentsRepository.js"
@@ -385,7 +386,8 @@ const reconcileRefund = async (deps: AdminInvestmentReviewDeps, request: Fastify
   try {
     const fact = await deps.paymentGateway.getRefundStatus(target.merchant_refund_id)
     status = fact.outcome === "succeeded" ? "refunded" : fact.outcome === "failed" ? "failed" : "pending"
-  } catch {
+  } catch (error) {
+    logGatewayFailure(request.log, error, { requestId: request.requestId, operation: "get_refund_status" })
     status = "pending"
   }
 

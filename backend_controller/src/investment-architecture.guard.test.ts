@@ -50,6 +50,29 @@ const CLIENT_FORBIDDEN_FIELDS: readonly string[] = [
   "privateNote",
 ]
 
+const MANDATE_MODULES: readonly string[] = [
+  "db/types.ts",
+  "db/repositories.ts",
+  "domain/payments/mandateSetupToken.ts",
+  "domain/payments/mandateStates.ts",
+  "domain/payments/reconcileMandateFacts.ts",
+  "repositories/mandatesRepository.ts",
+  "repositories/adminMandateRepository.ts",
+  "repositories/metricsRepository.ts",
+  "routes/clientAutoPaySipRoutes.ts",
+  "routes/phonePeMandateEventRoutes.ts",
+  "routes/adminMandateRoutes.ts",
+  "mandateReconciliationWorker.ts",
+  "runtime/metrics.ts",
+]
+
+const MANDATE_TABLES: readonly string[] = [
+  "payment_mandates",
+  "mandate_setup_attempts",
+  "mandate_collection_attempts",
+  "mandate_cancel_commands",
+]
+
 const listSourceFiles = async (): Promise<readonly string[]> => {
   const root = fileURLToPath(new URL("./", import.meta.url))
   const entries = await readdir(root, { recursive: true, withFileTypes: true })
@@ -74,7 +97,16 @@ const isAumModule = (path: string): boolean => /aum/iu.test(path)
 const isClientGrowthModule = (path: string): boolean =>
   /clientGrowth/iu.test(path) || /client_growth/iu.test(path)
 
+const isRecurringModule = (path: string): boolean =>
+  /sip|mandate|autopay|recurring/iu.test(path)
+
 describe("investment architecture guard", () => {
+  test("classifies future SIP, mandate, AutoPay, and recurring modules", () => {
+    expect(isRecurringModule("workers/newSipDebit.ts")).toBe(true)
+    expect(isRecurringModule("services/mandateReconciliation.ts")).toBe(true)
+    expect(isRecurringModule("providers/phonepeAutopayCommand.ts")).toBe(true)
+    expect(isRecurringModule("jobs/recurringCollection.ts")).toBe(true)
+  })
   test.each(DELETED_MODULES)("%s remains deleted", (relativePath) => {
     const absolutePath = fileURLToPath(new URL(`./${relativePath}`, import.meta.url))
     expect(existsSync(absolutePath)).toBe(false)
@@ -92,7 +124,10 @@ describe("investment architecture guard", () => {
       }
       if (file === "db/seedContent.ts") continue
       if (/\bholdings\b/u.test(code)) offenders.push(`${file}: holdings`)
-      if (/\bmandates\b/u.test(code)) offenders.push(`${file}: mandates`)
+      if (/\bmandates\b/u.test(code) && !MANDATE_MODULES.includes(file)) offenders.push(`${file}: mandates`)
+      for (const table of MANDATE_TABLES) {
+        if (code.includes(table) && !MANDATE_MODULES.includes(file)) offenders.push(`${file}: ${table}`)
+      }
     }
 
     expect(offenders).toEqual([])
@@ -121,6 +156,9 @@ describe("investment architecture guard", () => {
     for (const file of files) {
       if (file.endsWith(".test.ts")) continue
       const code = await codeOf(file)
+      if (isRecurringModule(file) && /allocation|clientValue|client_value|aum|growth/iu.test(code)) {
+        offenders.push(`${file}: recurring -> allocation/aum/value/growth`)
+      }
       if (isPaymentModule(file)) {
         if (/aum|clientValue|client_value|growth/iu.test(code)) offenders.push(`${file}: payment -> aum/value/growth`)
       } else if (isAumModule(file)) {

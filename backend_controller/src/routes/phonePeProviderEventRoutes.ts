@@ -4,6 +4,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify"
 
 import type { UnitOfWork } from "../db/database.js"
 import type { Transaction } from "../db/repositories.js"
+import { applyCanonicalPaymentOutcome } from "../domain/payments/applyCanonicalPaymentOutcome.js"
 import { encryptGcm } from "../crypto/primitives.js"
 import { GatewayAuthenticationError, GatewayMalformedCallbackError, type PaymentGateway, type VerifiedCallback } from "../providers/phonepe/paymentGateway.js"
 import { AppError } from "../http/errorCatalog.js"
@@ -45,56 +46,13 @@ const applyPaymentOutcome = async (
 ): Promise<void> => {
   const merchantOrderId = merchantOrderIdOf(callback)
   if (merchantOrderId === null) return
-  const attempt = await deps.paymentsRepository.findAttemptByMerchantOrderId(tx, merchantOrderId)
-  if (attempt === null) return
-
-  for (const detail of callback.details) {
-    await deps.paymentsRepository.recordPaymentDetail(tx, {
-      paymentAttemptId: attempt.id,
-      userId: attempt.user_id,
-      transactionId: detail.transactionId,
-      reference: detail.reference,
-      instrumentType: detail.instrumentType,
-      state: detail.state,
-      amountPaise: detail.amountPaise,
-    })
-  }
-
-  if (callback.outcome === "succeeded") {
-    const succeededAttempt = await deps.paymentsRepository.markAttemptSucceeded(tx, {
-      attemptId: attempt.id,
-      providerState: callback.providerState,
-      providerOrderId: callback.providerOrderId,
-      now,
-    })
-    if (succeededAttempt === null) return
-    const succeededPayment = await deps.paymentsRepository.markPaymentSucceeded(tx, attempt.payment_id, now)
-    if (succeededPayment === null) return
-    await deps.paymentsRepository.markOrderReviewPending(tx, succeededPayment.order_id, now)
-    await deps.paymentsRepository.createPendingReview(tx, succeededPayment.order_id)
-    return
-  }
-
-  if (callback.outcome === "failed") {
-    const failedAttempt = await deps.paymentsRepository.markAttemptFailed(tx, {
-      attemptId: attempt.id,
-      providerState: callback.providerState,
-      failureCode: "PROVIDER_DECLINED",
-      now,
-    })
-    if (failedAttempt === null) return
-    const failedPayment = await deps.paymentsRepository.markPaymentFailed(tx, {
-      paymentId: attempt.payment_id,
-      failureCode: "PROVIDER_DECLINED",
-      now,
-    })
-    if (failedPayment === null) return
-    await deps.paymentsRepository.markOrderPaymentFailed(tx, {
-      orderId: failedPayment.order_id,
-      failureCode: "PROVIDER_DECLINED",
-      now,
-    })
-  }
+  await applyCanonicalPaymentOutcome(tx, deps.paymentsRepository, {
+    merchantOrderId,
+    outcome: callback.outcome,
+    providerState: callback.providerState,
+    providerOrderId: callback.providerOrderId,
+    details: callback.details,
+  }, now)
 }
 
 const applyRefundOutcome = async (
@@ -139,7 +97,7 @@ const applyRefundOutcome = async (
 
 const processCallback = async (
   deps: PhonePeProviderEventDeps,
-  channel: "payment" | "subscription" | "refund",
+  channel: "payment" | "refund",
   callback: VerifiedCallback,
   now: Date,
 ): Promise<void> => {
@@ -170,7 +128,7 @@ const processCallback = async (
 const registerChannel = (
   instance: FastifyInstance,
   path: string,
-  channel: "payment" | "subscription" | "refund",
+  channel: "payment" | "refund",
   deps: PhonePeProviderEventDeps,
 ): void => {
   instance.post(path, async (request: FastifyRequest, reply) => {
@@ -209,7 +167,6 @@ export const registerPhonePeProviderEventRoutes = (
     )
 
     registerChannel(instance, "/v1/provider-events/phonepe/payment", "payment", deps)
-    registerChannel(instance, "/v1/provider-events/phonepe/subscription", "subscription", deps)
     registerChannel(instance, "/v1/provider-events/phonepe/refund", "refund", deps)
 
     done()
