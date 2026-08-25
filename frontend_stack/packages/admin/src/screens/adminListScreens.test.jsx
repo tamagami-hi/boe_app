@@ -136,13 +136,11 @@ describe('PaymentsScreen', () => {
     expect(onUserDetail).toHaveBeenCalledTimes(1);
   });
 
-  test('there are no approval buttons — acceptance happens under Investment reviews', () => {
+  test('there are no approval buttons because successful payments allocate immediately', () => {
     render(<PaymentsScreen rows={payments()} />);
     expect(screen.queryByRole('button', { name: /Approve/u })).toBeNull();
     expect(screen.queryByRole('button', { name: /Reject/u })).toBeNull();
-    // The note points operators at the real decision surface…
-    expect(screen.getByText(/Investment reviews/u)).toBeTruthy();
-    // …and the old "nothing to approve" copy is gone.
+    expect(screen.getByText(/allocated immediately/u)).toBeTruthy();
     expect(screen.queryByText(/nothing to approve/iu)).toBeNull();
   });
 });

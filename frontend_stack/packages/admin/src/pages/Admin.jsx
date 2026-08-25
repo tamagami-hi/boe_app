@@ -12,7 +12,7 @@ import {
   FundsRoute,
   FundCreateRoute,
   FundWorkspaceRoute,
-  InvestmentReviewsRoute,
+  FundReceiptsRoute,
   ClientValuesRoute,
   AumRoute,
   AppBuilderRoute,
@@ -69,10 +69,10 @@ export default function Admin() {
         <Route path="funds/new" element={<Permitted><FundCreateRoute /></Permitted>} />
         <Route path="funds/:fundId" element={<Permitted><FundWorkspaceRoute /></Permitted>} />
 
-        <Route path="reviews" element={<Navigate to="/admin/reviews/awaiting" replace />} />
-        <Route path="reviews/awaiting" element={<Permitted><InvestmentReviewsRoute tab="awaiting" /></Permitted>} />
-        <Route path="reviews/accepted" element={<Permitted><InvestmentReviewsRoute tab="accepted" /></Permitted>} />
-        <Route path="reviews/refunds" element={<Permitted><InvestmentReviewsRoute tab="refunds" /></Permitted>} />
+        <Route path="funds-received" element={<Navigate to="/admin/funds-received/awaiting" replace />} />
+        <Route path="funds-received/awaiting" element={<Permitted><FundReceiptsRoute tab="awaiting" /></Permitted>} />
+        <Route path="funds-received/acknowledged" element={<Permitted><FundReceiptsRoute tab="acknowledged" /></Permitted>} />
+        <Route path="funds-received/refunds" element={<Permitted><FundReceiptsRoute tab="refunds" /></Permitted>} />
 
         <Route path="client-values" element={<Navigate to="/admin/client-values/detail" replace />} />
         <Route path="client-values/detail" element={<Permitted><ClientValuesRoute tab="detail" /></Permitted>} />

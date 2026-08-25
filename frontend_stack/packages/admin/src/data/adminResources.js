@@ -18,7 +18,7 @@ export const ADMIN_KEYS = {
   payments: () => 'admin:payments',
   mandates: (state = 'all', attention = 'all') => `admin:mandates:${state}:${attention}`,
   mandateDetail: (mandateId = '') => `admin:mandates:detail:${mandateId}`,
-  investmentReviews: (state = 'pending') => `admin:investmentReviews:${state}`,
+  fundReceipts: (state = 'pending') => `admin:fundReceipts:${state}`,
   refunds: (state = 'all') => `admin:refunds:${state}`,
   auditLogs: () => 'admin:auditLogs',
 };
@@ -28,7 +28,7 @@ export const ADMIN_DOMAINS = {
   FUNDS: 'admin:funds',
   PAYMENTS: 'admin:payments',
   MANDATES: 'admin:mandates',
-  INVESTMENT_REVIEWS: 'admin:investmentReviews',
+  FUND_RECEIPTS: 'admin:fundReceipts',
   REFUNDS: 'admin:refunds',
   AUDIT_LOGS: 'admin:auditLogs',
 };
@@ -166,10 +166,10 @@ export function useAdminMandateDetail(mandateId) {
   );
 }
 
-export function useAdminInvestmentReviews(state = 'pending', options) {
+export function useAdminFundReceipts(state = 'pending', options) {
   return useAdminCollection(
-    ADMIN_KEYS.investmentReviews(state),
-    `/v1/admin/investment-reviews?state=${encodeURIComponent(state)}`,
+    ADMIN_KEYS.fundReceipts(state),
+    `/v1/admin/fund-receipts?state=${encodeURIComponent(state)}`,
     { staleTime: STALE_TIME.MONEY, ...options },
   );
 }
@@ -199,8 +199,12 @@ export function useAdminCacheActions() {
     cache.invalidate(ADMIN_DOMAINS.AUDIT_LOGS);
   }, [cache]);
 
-  const invalidateReviews = useCallback(() => {
-    cache.invalidate(ADMIN_DOMAINS.INVESTMENT_REVIEWS);
+  const invalidateFundReceipts = useCallback(() => {
+    cache.invalidate(ADMIN_DOMAINS.FUND_RECEIPTS);
+    cache.invalidate(ADMIN_DOMAINS.AUDIT_LOGS);
+  }, [cache]);
+
+  const invalidateRefunds = useCallback(() => {
     cache.invalidate(ADMIN_DOMAINS.REFUNDS);
     cache.invalidate(ADMIN_DOMAINS.PAYMENTS);
     cache.invalidate(ADMIN_DOMAINS.AUDIT_LOGS);
@@ -232,7 +236,8 @@ export function useAdminCacheActions() {
     invalidateFaqs,
     invalidateFunds,
     invalidateMandates,
-    invalidateReviews,
+    invalidateFundReceipts,
+    invalidateRefunds,
     invalidateAum,
     invalidateClientGrowth,
     clearAll,

@@ -8,7 +8,6 @@ import StateBadge from '../components/StateBadge.jsx';
 import { fmtDateTime, fmtInt, fmtPaise } from '../helpers/formatters.js';
 import './admin-screens-shared.css';
 
-// The canonical payment_state enum (spec §5.2), including the refund lifecycle.
 const PAYMENT_STATES = [
   'created', 'provider_pending', 'succeeded', 'failed', 'expired',
   'refund_pending', 'refunded', 'refund_failed',
@@ -37,19 +36,6 @@ function isWithinDate(row, from, to) {
   return true;
 }
 
-/*
- * Read-only PhonePe gateway evidence (spec §11.1).
- *
- * PhonePe confirms money movement; accepting or rejecting the INVESTMENT is a
- * separate, private decision made under Investment reviews — never here. This
- * screen deliberately has no approval buttons: a payment record is evidence, not
- * a decision surface.
- *
- * There is no fund-pool column or filter: a payment settles an order, and the
- * order reference is the link to the fund. `GET /v1/admin/payments` carries no
- * fund fields.
- */
-
 function PaymentsScreen({ rows = [], loading = false, onUserDetail }) {
   const [filters, setFilters] = useState({ status: '', from: '', to: '', q: '' });
 
@@ -68,14 +54,6 @@ function PaymentsScreen({ rows = [], loading = false, onUserDetail }) {
     setFilters((prev) => ({ ...prev, [key]: value }));
   }
 
-  /*
-   * Counted from the rows on screen. These tiles previously read
-   * `stats.paymentsProcessedToday` / `pendingPayments` / `failedPayments`, none of
-   * which any endpoint supplies — and since the integer formatter renders a
-   * missing value as "0", the screen reported zero pending and zero failed
-   * payments as fact. The state lists they counted were wrong too: nothing is ever
-   * in state `success`, so "Settled" read 0 with every payment settled.
-   */
   const countIn = (states) => rows.filter((row) => states.includes(row.status)).length;
 
   return (
@@ -97,9 +75,8 @@ function PaymentsScreen({ rows = [], loading = false, onUserDetail }) {
         </div>
 
         <p className="adm-screen-note">
-          PhonePe confirms each payment; this is the gateway evidence trail, most recent first.
-          Verifying bank evidence and accepting or rejecting an investment happens under{' '}
-          Investment reviews — a succeeded payment is not yet an accepted investment.
+          PhonePe confirms each payment; successful payments are allocated immediately and reflected
+          in the client portfolio. Fund receipt acknowledgements are tracked separately.
         </p>
 
         <div className="adm-payment-filters">

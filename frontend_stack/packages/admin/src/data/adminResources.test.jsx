@@ -30,7 +30,7 @@ const {
   useAdminAuditLogs,
   useAdminCacheActions,
   useAdminFunds,
-  useAdminInvestmentReviews,
+  useAdminFundReceipts,
   useAdminMandates,
   useAdminPayments,
 } = await import('./adminResources.js');
@@ -98,10 +98,10 @@ describe('cache keys', () => {
 
 describe('per-screen reads', () => {
   test('a screen that needs the review queue does not fetch funds, payments or audit logs', async () => {
-    function ReviewsShape() { useAdminInvestmentReviews('pending'); return null; }
+    function ReviewsShape() { useAdminFundReceipts('pending'); return null; }
     render(<Wrap><ReviewsShape /></Wrap>);
     await settle();
-    expect(pathsCalled()).toEqual(['/v1/admin/investment-reviews?state=pending']);
+    expect(pathsCalled()).toEqual(['/v1/admin/fund-receipts?state=pending']);
   });
 
   test('the mandate register reads only the mandate endpoint', async () => {
@@ -172,7 +172,7 @@ describe('fund mutations invalidate only what they changed', () => {
     useAdminFunds();
     useAdminAuditLogs();
     useAdminPayments();
-    useAdminInvestmentReviews('pending');
+    useAdminFundReceipts('pending');
     return null;
   }
 
@@ -251,7 +251,7 @@ describe('AUM and client-growth invalidation boundaries (spec §12.2)', () => {
     useAdminFunds();
     useAdminAuditLogs();
     useAdminPayments();
-    useAdminInvestmentReviews('pending');
+    useAdminFundReceipts('pending');
     return null;
   }
 
@@ -271,7 +271,7 @@ describe('AUM and client-growth invalidation boundaries (spec §12.2)', () => {
     const refetched = await invalidateInPlace(() => actions.invalidateAum());
     expect(refetched.sort()).toEqual(['/v1/admin/audit-logs', '/v1/admin/funds']);
     expect(refetched.some((path) => path.includes('payments'))).toBe(false);
-    expect(refetched.some((path) => path.includes('investment-reviews'))).toBe(false);
+    expect(refetched.some((path) => path.includes('fund-receipts'))).toBe(false);
   });
 
   test('a client-growth commit re-reads the audit log only — never the catalogue', async () => {
@@ -280,13 +280,12 @@ describe('AUM and client-growth invalidation boundaries (spec §12.2)', () => {
     expect(refetched).toEqual(['/v1/admin/audit-logs']);
   });
 
-  test('a review decision re-reads reviews, refunds, payments and the audit log', async () => {
+  test('a fund acknowledgement re-reads receipts and the audit log only', async () => {
     render(<Wrap><FundsAndFriends /><Actions /></Wrap>);
-    const refetched = await invalidateInPlace(() => actions.invalidateReviews());
+    const refetched = await invalidateInPlace(() => actions.invalidateFundReceipts());
     expect(refetched.sort()).toEqual([
       '/v1/admin/audit-logs',
-      '/v1/admin/investment-reviews?state=pending',
-      '/v1/admin/payments',
+      '/v1/admin/fund-receipts?state=pending',
     ]);
     expect(refetched.some((path) => path.endsWith('/funds'))).toBe(false);
   });

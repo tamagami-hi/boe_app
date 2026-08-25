@@ -8,7 +8,7 @@ import StateBadge from '../components/StateBadge.jsx';
 import AdminReadError from '../data/AdminReadError.jsx';
 import {
   useAdminCacheActions,
-  useAdminInvestmentReviews,
+  useAdminFundReceipts,
   useAdminRefunds,
 } from '../data/adminResources.js';
 import { useIdempotencyKeys } from '../helpers/idempotencyKeys.js';
@@ -16,98 +16,52 @@ import { fmtDateTime, fmtInt, fmtPaise, humanizeState } from '../helpers/formatt
 import { hasAnyPermission } from '../navigation/nav.js';
 import './admin-screens-shared.css';
 
-/*
- * The private review queue (spec §9.3, §11.1).
- *
- * PhonePe confirming a payment is evidence of money movement, not acceptance of an
- * investment. An investment exists only after an admin verifies the bank evidence
- * and accepts here; the full succeeded amount is then allocated to the exact
- * issued fund the client selected — which is why the fund is shown read-only and
- * there is no fund selector anywhere on this screen.
- *
- * Tabs are routes (`/admin/reviews/awaiting|accepted|refunds`) so each is a real
- * destination with its own breadcrumb and permission gate.
- *
- *   GET  /v1/admin/investment-reviews?state=pending|accepted
- *   POST /v1/admin/investment-reviews/:orderId/accept   { bankVerified, expectedVersion, privateNote? }
- *   POST /v1/admin/investment-reviews/:orderId/reject   { reasonCode, expectedVersion, privateNote? }
- *   GET  /v1/admin/refunds?state=...
- *   POST /v1/admin/refunds/:refundId/retry | /reconcile
- *
- * Every mutation sends an Idempotency-Key (see helpers/idempotencyKeys.js) and the
- * CSRF token that apiRequest attaches to unsafe requests. A stale expectedVersion
- * or a conflicting terminal state comes back as 409 and is answered by refreshing
- * the queue, not by retrying blindly.
- */
-
-const REVIEW_TABS = [
-  { id: 'awaiting', label: 'Awaiting review', path: '/admin/reviews/awaiting' },
-  { id: 'accepted', label: 'Accepted', path: '/admin/reviews/accepted' },
-  { id: 'refunds', label: 'Refunds and exceptions', path: '/admin/reviews/refunds' },
+const RECEIPT_TABS = [
+  { id: 'awaiting', label: 'Awaiting acknowledgement', path: '/admin/funds-received/awaiting' },
+  { id: 'acknowledged', label: 'Acknowledged', path: '/admin/funds-received/acknowledged' },
+  { id: 'refunds', label: 'Refunds and exceptions', path: '/admin/funds-received/refunds' },
 ];
 
-const REFUND_STATES = ['refund_pending', 'provider_pending', 'refund_failed', 'refunded'];
-// The exception queue: terminal refund failures an operator must retry or reconcile.
-const REFUND_ACTIONABLE = ['refund_failed', 'failed'];
+const REFUND_STATES = ['pending', 'provider_pending', 'failed', 'refunded'];
 
 const isConflict = (error) => error?.status === 409;
 
-function ReviewPanel({ item, onDone }) {
-  const [bankConfirmed, setBankConfirmed] = useState(false);
+function FundReceiptPanel({ item, onDone, canAcknowledge }) {
   const [privateNote, setPrivateNote] = useState('');
-  const [reasonCode, setReasonCode] = useState('');
-  const [busy, setBusy] = useState('');
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const lockRef = useRef(false);
   const idempotencyKeyFor = useIdempotencyKeys();
 
-  const expectedVersion = String(item.review?.version ?? '1');
+  const expectedVersion = String(item.acknowledgement?.version ?? '1');
   const note = privateNote.trim();
 
-  async function decide(action) {
+  async function acknowledge() {
     if (lockRef.current) return;
-    if (action === 'accept' && !bankConfirmed) {
-      setError('Confirm the payment against the bank evidence before accepting.');
-      return;
-    }
-    if (action === 'reject' && !reasonCode.trim()) {
-      setError('A rejection needs a reason code. It is recorded on the review and starts a full refund.');
-      return;
-    }
     lockRef.current = true;
-    setBusy(action);
+    setBusy(true);
     setError('');
-    const body = action === 'accept'
-      // `bankVerified` is the admin's attestation, sent as the literal true the
-      // accept command requires. There is no earlier "mark verified" step.
-      ? { bankVerified: true, expectedVersion, ...(note ? { privateNote: note } : {}) }
-      : { reasonCode: reasonCode.trim(), expectedVersion, ...(note ? { privateNote: note } : {}) };
+    const body = { expectedVersion, ...(note ? { privateNote: note } : {}) };
     try {
       await apiRequest(
-        `/v1/admin/investment-reviews/${encodeURIComponent(item.orderId)}/${action}`,
+        `/v1/admin/fund-receipts/${encodeURIComponent(item.orderId)}/acknowledge`,
         {
           method: 'POST',
           scope: 'admin',
           body,
-          headers: { 'Idempotency-Key': idempotencyKeyFor(`${item.orderId}:${action}`, body) },
+          headers: { 'Idempotency-Key': idempotencyKeyFor(`${item.orderId}:acknowledge`, body) },
         },
       );
-      onDone(
-        action === 'accept'
-          ? 'Accepted. The full payment is allocated to the fund the client selected; the investment now appears on the client\u2019s record.'
-          : 'Rejected. A full refund has been started; follow it under Refunds and exceptions.',
-      );
+      onDone('Funds acknowledged. The client has been notified that their funds are ready for investment.');
     } catch (decideError) {
       if (isConflict(decideError)) {
-        // A conflict closes the panel and refreshes the queue, so the in-panel
-        // error would vanish with it; the screen-level notice carries the why.
-        onDone('This review changed since you opened it. The queue was refreshed — check the item again before deciding.');
+        onDone('This acknowledgement changed since you opened it. The queue was refreshed.');
         return;
       }
-      setError(decideError?.message || 'The decision was not applied.');
+      setError(decideError?.message || 'The acknowledgement was not recorded.');
     } finally {
       lockRef.current = false;
-      setBusy('');
+      setBusy(false);
     }
   }
 
@@ -127,8 +81,6 @@ function ReviewPanel({ item, onDone }) {
         </div>
         <div>
           <dt>Selected fund</dt>
-          {/* Read-only by design: the allocation target is the fund the client
-              selected at order time. There is deliberately no selector here. */}
           <dd>
             {item.selectedFund?.name || '—'}
             {item.selectedFund?.versionId && (
@@ -155,38 +107,18 @@ function ReviewPanel({ item, onDone }) {
         </div>
       </dl>
 
-      <label className="adm-field adm-field--wide adm-checkbox-field">
-        <input
-          type="checkbox"
-          checked={bankConfirmed}
-          onChange={(event) => setBankConfirmed(event.target.checked)}
-        />
-        <span>
-          I have confirmed this payment against the bank evidence. Accepting allocates the full
-          amount to the selected fund and cannot be undone from this screen.
-        </span>
-      </label>
-
-      <label className="adm-field adm-field--wide">
-        <span className="adm-field-label">Private note (optional)</span>
-        <input
-          type="text"
-          maxLength={2000}
-          value={privateNote}
-          onChange={(event) => setPrivateNote(event.target.value)}
-          placeholder="Visible only inside Investment reviews"
-        />
-      </label>
-
-      <label className="adm-field adm-field--wide">
-        <span className="adm-field-label">Rejection reason code</span>
-        <input
-          type="text"
-          value={reasonCode}
-          onChange={(event) => setReasonCode(event.target.value)}
-          placeholder="Required to reject, e.g. bank_mismatch"
-        />
-      </label>
+      {canAcknowledge && (
+        <label className="adm-field adm-field--wide">
+          <span className="adm-field-label">Private note (optional)</span>
+          <input
+            type="text"
+            maxLength={2000}
+            value={privateNote}
+            onChange={(event) => setPrivateNote(event.target.value)}
+            placeholder="Visible only to administrators"
+          />
+        </label>
+      )}
 
       {error && (
         <div className="adm-validation-banner adm-validation-banner--error" role="alert">
@@ -194,54 +126,50 @@ function ReviewPanel({ item, onDone }) {
         </div>
       )}
 
-      <div className="adm-decision-actions">
-        <button
-          type="button"
-          className="be-btn be-btn-danger adm-decision-btn"
-          onClick={() => decide('reject')}
-          disabled={busy !== ''}
-        >
-          {busy === 'reject' ? 'Rejecting…' : 'Reject and refund'}
-        </button>
-        <button
-          type="button"
-          className="be-btn be-btn-primary adm-decision-btn"
-          onClick={() => decide('accept')}
-          disabled={busy !== '' || !bankConfirmed}
-        >
-          {busy === 'accept' ? 'Accepting…' : `Accept and allocate ${fmtPaise(item.amountPaise, 0)}`}
-        </button>
-      </div>
+      {canAcknowledge && (
+        <div className="adm-decision-actions">
+          <button
+            type="button"
+            className="be-btn be-btn-primary adm-decision-btn"
+            onClick={acknowledge}
+            disabled={busy}
+          >
+            {busy ? 'Acknowledging…' : `Acknowledge ${fmtPaise(item.amountPaise, 0)}`}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-function AwaitingReview() {
-  const queue = useAdminInvestmentReviews('pending');
-  const { invalidateReviews } = useAdminCacheActions();
+function AwaitingReceipts() {
+  const queue = useAdminFundReceipts('pending');
+  const { invalidateFundReceipts } = useAdminCacheActions();
+  const { user } = useAdminSession();
+  const canAcknowledge = hasAnyPermission(user, ['funds.receipts.write']);
   const [openOrderId, setOpenOrderId] = useState(null);
   const [notice, setNotice] = useState('');
 
   function onDecided(message) {
     if (message) setNotice(message);
     setOpenOrderId(null);
-    invalidateReviews();
+    invalidateFundReceipts();
   }
 
   return (
     <div className="adm-card adm-table">
-      <AdminReadError resources={[{ label: 'review queue', ...queue }]} />
+      <AdminReadError resources={[{ label: 'fund receipt queue', ...queue }]} />
       <div className="adm-card-head">
         <div>
-          <span className="be-eyebrow">Investment reviews</span>
-          <h2 className="adm-card-title">Awaiting review</h2>
+          <span className="be-eyebrow">Funds received</span>
+          <h2 className="adm-card-title">Awaiting acknowledgement</h2>
         </div>
         <div className="adm-payment-count">{fmtInt(queue.rows.length)} pending</div>
       </div>
 
       <p className="adm-screen-note">
-        PhonePe has confirmed these payments. An investment exists only after you verify the bank
-        evidence and accept; the full amount is then allocated to the fund the client selected.
+        These PhonePe payments are already confirmed, allocated, and visible in each client&apos;s portfolio.
+        Acknowledge receipt to notify the client that BeOnEdge LLP has received their funds.
       </p>
 
       {notice && <div className="adm-inline-note" role="status">{notice}</div>}
@@ -265,13 +193,13 @@ function AwaitingReview() {
             )}
             {!queue.isLoading && queue.rows.length === 0 && (
               <EmptyTableRow colSpan={7}>
-                No payments are waiting for review. One appears here as soon as PhonePe confirms a
+                No funds are waiting for acknowledgement. One appears here as soon as PhonePe confirms a
                 client&apos;s checkout.
               </EmptyTableRow>
             )}
             {queue.rows.map((item) => {
               const isOpen = openOrderId === item.orderId;
-              const panelId = `review-panel-${item.orderId}`;
+              const panelId = `fund-receipt-panel-${item.orderId}`;
               return [
                 <tr key={item.orderId}>
                   <td data-label="Client">
@@ -304,14 +232,14 @@ function AwaitingReview() {
                       aria-controls={panelId}
                       onClick={() => setOpenOrderId(isOpen ? null : item.orderId)}
                     >
-                      {isOpen ? 'Close' : 'Review'}
+                      {isOpen ? 'Close' : 'View funds'}
                     </button>
                   </td>
                 </tr>,
                 isOpen ? (
-                  <tr key={`${item.orderId}-review`} className="adm-decision-row">
+                  <tr key={`${item.orderId}-receipt`} className="adm-decision-row">
                     <td colSpan={7} id={panelId}>
-                      <ReviewPanel item={item} onDone={onDecided} />
+                      <FundReceiptPanel item={item} onDone={onDecided} canAcknowledge={canAcknowledge} />
                     </td>
                   </tr>
                 ) : null,
@@ -324,40 +252,40 @@ function AwaitingReview() {
   );
 }
 
-function AcceptedReviews() {
-  const accepted = useAdminInvestmentReviews('accepted');
+function AcknowledgedReceipts() {
+  const acknowledged = useAdminFundReceipts('acknowledged');
   return (
     <div className="adm-card adm-table">
-      <AdminReadError resources={[{ label: 'accepted reviews', ...accepted }]} />
+      <AdminReadError resources={[{ label: 'acknowledged funds', ...acknowledged }]} />
       <div className="adm-card-head">
         <div>
-          <span className="be-eyebrow">Investment reviews</span>
-          <h2 className="adm-card-title">Accepted</h2>
+          <span className="be-eyebrow">Funds received</span>
+          <h2 className="adm-card-title">Acknowledged</h2>
         </div>
-        <div className="adm-payment-count">{fmtInt(accepted.rows.length)} shown</div>
+        <div className="adm-payment-count">{fmtInt(acknowledged.rows.length)} shown</div>
       </div>
       <p className="adm-screen-note">
-        The record of accepted investments. Acceptance already allocated each payment in full to the
-        client&apos;s selected fund; there is nothing further to decide here.
+        These payments were already allocated when PhonePe confirmed them. This records when an
+        administrator acknowledged receipt and notified the client.
       </p>
       <div className="adm-table-scroll">
         <table className="adm-table-cards">
           <thead>
             <tr>
-              <th>Client</th><th>Amount</th><th>Fund</th><th>Order</th><th>Accepted</th>
+              <th>Client</th><th>Amount</th><th>Fund</th><th>Order</th><th>Acknowledged</th>
             </tr>
           </thead>
           <tbody>
-            {accepted.isLoading && accepted.rows.length === 0 && (
+            {acknowledged.isLoading && acknowledged.rows.length === 0 && (
               <>
                 <SkeletonTableRow columnCount={5} />
                 <SkeletonTableRow columnCount={5} />
               </>
             )}
-            {!accepted.isLoading && accepted.rows.length === 0 && (
-              <EmptyTableRow colSpan={5}>No investments have been accepted yet.</EmptyTableRow>
+            {!acknowledged.isLoading && acknowledged.rows.length === 0 && (
+              <EmptyTableRow colSpan={5}>No fund receipts have been acknowledged yet.</EmptyTableRow>
             )}
-            {accepted.rows.map((item) => (
+            {acknowledged.rows.map((item) => (
               <tr key={item.orderId}>
                 <td data-label="Client">
                   <div className="adm-user-info">
@@ -368,8 +296,11 @@ function AcceptedReviews() {
                 <td className="be-money" data-label="Amount">{fmtPaise(item.amountPaise)}</td>
                 <td data-label="Fund">{item.selectedFund?.name || '—'}</td>
                 <td data-label="Order"><code className="adm-code">{item.orderId}</code></td>
-                <td className="be-num adm-cell-meta" data-label="Accepted">
-                  {item.review?.reviewedAt ? fmtDateTime(item.review.reviewedAt) : '—'}
+                <td className="be-num adm-cell-meta" data-label="Acknowledged">
+                  {item.acknowledgement?.acknowledgedAt ? fmtDateTime(item.acknowledgement.acknowledgedAt) : '—'}
+                  {item.acknowledgement?.privateNote && (
+                    <div className="adm-cell-sub">{item.acknowledgement.privateNote}</div>
+                  )}
                 </td>
               </tr>
             ))}
@@ -381,11 +312,10 @@ function AcceptedReviews() {
 }
 
 function RefundExceptions() {
-  const [stateFilter, setStateFilter] = useState('refund_failed');
+  const [stateFilter, setStateFilter] = useState('failed');
   const refunds = useAdminRefunds(stateFilter);
-  const { invalidateReviews } = useAdminCacheActions();
+  const { invalidateRefunds } = useAdminCacheActions();
   const { user } = useAdminSession();
-  // Presentation only: the backend enforces refunds.write on every request.
   const canWriteRefunds = hasAnyPermission(user, ['refunds.write']);
   const [busyId, setBusyId] = useState('');
   const [error, setError] = useState('');
@@ -414,14 +344,14 @@ function RefundExceptions() {
           ? 'Refund retry dispatched with its stable merchant reference.'
           : 'Reconciliation requested against PhonePe.',
       );
-      invalidateReviews();
+      invalidateRefunds();
     } catch (actionError) {
       setError(
         isConflict(actionError)
           ? 'This refund changed since the list was read. It has been refreshed — check it again.'
           : actionError?.message || 'The refund action was not applied.',
       );
-      if (isConflict(actionError)) invalidateReviews();
+      if (isConflict(actionError)) invalidateRefunds();
     } finally {
       lockRef.current = false;
       setBusyId('');
@@ -433,15 +363,15 @@ function RefundExceptions() {
       <AdminReadError resources={[{ label: 'refunds', ...refunds }]} />
       <div className="adm-card-head">
         <div>
-          <span className="be-eyebrow">Investment reviews</span>
+          <span className="be-eyebrow">Payment operations</span>
           <h2 className="adm-card-title">Refunds and exceptions</h2>
         </div>
         <div className="adm-card-actions">
           <label className="adm-filter">
             <span className="adm-sr-only">Refund status</span>
             <select value={stateFilter} onChange={(event) => setStateFilter(event.target.value)}>
-              <option value="refund_failed">Exceptions (refund failed)</option>
-              {REFUND_STATES.filter((state) => state !== 'refund_failed').map((state) => (
+              <option value="failed">Exceptions (refund failed)</option>
+              {REFUND_STATES.filter((state) => state !== 'failed').map((state) => (
                 <option key={state} value={state}>{state.replace(/_/gu, ' ')}</option>
               ))}
               <option value="all">All refunds</option>
@@ -451,9 +381,8 @@ function RefundExceptions() {
       </div>
 
       <p className="adm-screen-note">
-        A rejected investment is refunded in full through PhonePe. A refund that exhausts its retries
-        lands here; retry dispatches the same stable merchant reference, and reconcile asks PhonePe
-        for the authoritative status. Neither action changes a client value or fund AUM.
+        Failed refund operations land here. Retry dispatches the same stable merchant reference,
+        and reconcile asks PhonePe for the authoritative status.
       </p>
 
       {notice && <div className="adm-inline-note" role="status">{notice}</div>}
@@ -479,12 +408,11 @@ function RefundExceptions() {
             )}
             {!refunds.isLoading && refunds.rows.length === 0 && (
               <EmptyTableRow colSpan={7}>
-                No refunds in this state. A rejected investment appears here while its refund is in
-                flight, and stays if the refund fails terminally.
+                No refunds are currently in this state.
               </EmptyTableRow>
             )}
             {refunds.rows.map((refund) => {
-              const actionable = REFUND_ACTIONABLE.includes(refund.state) && canWriteRefunds;
+              const actionable = refund.state === 'failed' && canWriteRefunds;
               return (
                 <tr key={refund.id}>
                   <td data-label="Refund">
@@ -537,14 +465,12 @@ function RefundExceptions() {
   );
 }
 
-export default function InvestmentReviewScreen({ tab = 'awaiting' }) {
-  const active = REVIEW_TABS.some((item) => item.id === tab) ? tab : 'awaiting';
-  // Reads are declared unconditionally so the hook order never changes across tabs;
-  // the idle tabs' reads are disabled, so no extra requests are issued.
+export default function FundReceiptScreen({ tab = 'awaiting' }) {
+  const active = RECEIPT_TABS.some((item) => item.id === tab) ? tab : 'awaiting';
   return (
     <div className="adm-screen">
-      <div className="adm-chip-row" role="group" aria-label="Investment review sections">
-        {REVIEW_TABS.map((item) => (
+      <div className="adm-chip-row" role="group" aria-label="Fund receipt sections">
+        {RECEIPT_TABS.map((item) => (
           <Link
             key={item.id}
             to={item.path}
@@ -556,12 +482,11 @@ export default function InvestmentReviewScreen({ tab = 'awaiting' }) {
         ))}
       </div>
 
-      {active === 'awaiting' && <AwaitingReview />}
-      {active === 'accepted' && <AcceptedReviews />}
+      {active === 'awaiting' && <AwaitingReceipts />}
+      {active === 'acknowledged' && <AcknowledgedReceipts />}
       {active === 'refunds' && <RefundExceptions />}
     </div>
   );
 }
 
-// Re-exported for the route wrappers and tests.
-export { AwaitingReview, AcceptedReviews, RefundExceptions };
+export { AcknowledgedReceipts, AwaitingReceipts, RefundExceptions };

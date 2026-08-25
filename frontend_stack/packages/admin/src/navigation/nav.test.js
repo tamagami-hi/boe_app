@@ -29,9 +29,9 @@ describe('findNavMeta on canonical paths', () => {
   });
 
   test('builds breadcrumbs with a linkable domain entry outside Overview', () => {
-    const meta = findNavMeta('/admin/reviews/accepted');
-    expect(meta.crumbs).toEqual(['BeOnEdge', 'Investment reviews', 'Accepted']);
-    expect(meta.crumbPaths).toEqual(['/admin/overview', '/admin/reviews/awaiting', '/admin/reviews/accepted']);
+    const meta = findNavMeta('/admin/funds-received/acknowledged');
+    expect(meta.crumbs).toEqual(['BeOnEdge', 'Funds received', 'Acknowledged']);
+    expect(meta.crumbPaths).toEqual(['/admin/overview', '/admin/funds-received/awaiting', '/admin/funds-received/acknowledged']);
   });
 });
 
@@ -90,7 +90,7 @@ describe('nav permission metadata', () => {
       'email_deliveries.read', 'email_deliveries.read_masked',
       'users.read', 'users.read_limited', 'users.suspend', 'users.close',
       'payments.read',
-      'investments.review.read', 'investments.review.write',
+      'funds.receipts.read', 'funds.receipts.write',
       'refunds.write',
       'client_values.read', 'client_growth.write',
       'aum.read', 'aum.write',

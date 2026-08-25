@@ -20,10 +20,10 @@ const QUICK_LINKS = [
     description: 'Edit the help answers clients read inside the app.',
   },
   {
-    path: '/admin/reviews/awaiting',
+    path: '/admin/funds-received/awaiting',
     icon: ShieldCheck,
-    title: 'Review investments',
-    description: 'Accept or reject paid orders after confirming the bank credit.',
+    title: 'Acknowledge funds',
+    description: 'Review confirmed funds and notify clients when receipt is acknowledged.',
   },
   {
     path: '/admin/payments',

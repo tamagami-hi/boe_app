@@ -11,7 +11,6 @@ export const LEGACY_TAB_MAP = {
   holdings: '/admin/aum/current',
   ledger: '/admin/payments',
   transactions: '/admin/payments',
-  requests: '/admin/reviews/awaiting',
   appBuilder: '/admin/app/builder',
   support: '/admin/audit',
   audit: '/admin/audit',

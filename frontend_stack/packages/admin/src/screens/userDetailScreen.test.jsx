@@ -3,7 +3,6 @@
 // from a hardcoded empty array (so every user "had no redemptions, tickets or
 // notifications"), and a tab strip that a keyboard could enter but not move within.
 // Mandates and the gain-allocation form are retired: growth moves through Client
-// values, and the accepted stamp on an order is set by the investment review.
 import React from 'react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';

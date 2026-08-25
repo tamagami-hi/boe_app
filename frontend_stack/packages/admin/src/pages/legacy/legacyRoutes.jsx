@@ -24,7 +24,7 @@ const ClientValuesScreen = lazy(() => import('../../screens/ClientValuesScreen.j
 const FundCreateScreen = lazy(() => import('../../screens/fundOps/FundCreateScreen.jsx'));
 const FundsListScreen = lazy(() => import('../../screens/fundOps/FundsListScreen.jsx'));
 const FundWorkspace = lazy(() => import('../../screens/fundOps/FundWorkspace.jsx'));
-const InvestmentReviewScreen = lazy(() => import('../../screens/InvestmentReviewScreen.jsx'));
+const FundReceiptScreen = lazy(() => import('../../screens/FundReceiptScreen.jsx'));
 const AuditLogScreen = lazy(() => import('../../screens/AuditLogScreen.jsx'));
 const EmailDeliveriesScreen = lazy(() => import('../../screens/EmailDeliveriesScreen.jsx'));
 const EnvironmentScreen = lazy(() => import('../../screens/EnvironmentScreen.jsx'));
@@ -94,8 +94,8 @@ export function FundWorkspaceRoute() {
   );
 }
 
-export function InvestmentReviewsRoute({ tab }) {
-  return <InvestmentReviewScreen tab={tab} />;
+export function FundReceiptsRoute({ tab }) {
+  return <FundReceiptScreen tab={tab} />;
 }
 
 export function ClientValuesRoute({ tab }) {

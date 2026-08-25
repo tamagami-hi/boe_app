@@ -29,6 +29,7 @@ const createIdempotencyKey = vi.fn();
 const listPendingPayments = vi.fn();
 const listFailedPayments = vi.fn();
 const listApprovalPayments = vi.fn();
+const invalidateMoney = vi.fn();
 
 vi.mock('../services/fundsApi.js', () => ({ getFund: async () => FUND }));
 vi.mock('../services/ordersApi.js', () => ({
@@ -48,6 +49,10 @@ vi.mock('../services/ordersApi.js', () => ({
   listPendingPayments: (...a) => listPendingPayments(...a),
   listFailedPayments: (...a) => listFailedPayments(...a),
   listApprovalPayments: (...a) => listApprovalPayments(...a),
+}));
+
+vi.mock('../data/clientResources.js', () => ({
+  useClientCacheActions: () => ({ invalidateMoney }),
 }));
 
 // The PhonePe redirect is a seam: tests capture the URL instead of navigating.
@@ -128,6 +133,7 @@ const CHECKOUT = {
 
 beforeEach(() => {
   localStorage.clear();
+  invalidateMoney.mockReset();
   redirectToCheckout.mockClear();
   createSip.mockReset().mockResolvedValue({ id: 'sip_1', status: 'active', amount: 1000, debitDay: 5 });
   createIdempotencyKey.mockReset().mockReturnValue('sip-request-1');
@@ -357,6 +363,29 @@ describe('PaymentStatus', () => {
     await settle();
     expect(screen.getByText('Payment received — investment is being processed')).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/bank|verification|review|approval|allocation|rejected/i);
+  });
+
+  test('a processing payment refreshes money data once when it becomes confirmed', async () => {
+    vi.useFakeTimers();
+    getPayment
+      .mockResolvedValueOnce({
+        id: 'pay_1', orderId: 'ord_1', status: 'processing', amount: 1000, createdAt: '2026-08-01T10:00:00Z',
+      })
+      .mockResolvedValue({
+        id: 'pay_1', orderId: 'ord_1', status: 'confirmed', amount: 1000, createdAt: '2026-08-01T10:00:00Z',
+      });
+    renderFlow(<CheckoutProvider platform={platform}><PaymentStatus /></CheckoutProvider>, '/app/payment/pay_1', '/app/payment/:paymentId');
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(invalidateMoney).not.toHaveBeenCalled();
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    expect(screen.getAllByText('Investment confirmed')).toHaveLength(2);
+    expect(invalidateMoney).toHaveBeenCalledTimes(1);
+    const callsAtConfirmation = getPayment.mock.calls.length;
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(10000); });
+    expect(getPayment).toHaveBeenCalledTimes(callsAtConfirmation);
+    expect(invalidateMoney).toHaveBeenCalledTimes(1);
   });
 
   test('a rejected/refunded payment shows only a neutral refund/support message', async () => {
