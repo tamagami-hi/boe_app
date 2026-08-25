@@ -13,6 +13,7 @@ import { createPool } from "../../src/db/pool.js"
 import type { Database } from "../../src/db/types.js"
 import { createMandatesRepository } from "../../src/repositories/mandatesRepository.js"
 import { createPaymentsRepository } from "../../src/repositories/paymentsRepository.js"
+import { createInvestmentSettlementRepository } from "../../src/repositories/investmentSettlementRepository.js"
 import { createSipPlanRepository } from "../../src/repositories/sipPlanRepository.js"
 import { reconcileCollectionFact } from "../../src/domain/payments/reconcileCollectionFact.js"
 import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
@@ -22,6 +23,7 @@ let pool: Pool
 let database: Kysely<Database>
 
 const repository = createMandatesRepository()
+const settlementRepository = createInvestmentSettlementRepository()
 
 const randomPhone = (): string =>
   `+91${(randomBytes(8).readBigUInt64BE() % 10_000_000_000n).toString().padStart(10, "0")}`
@@ -490,7 +492,7 @@ describe("PhonePe AutoPay mandate persistence", () => {
     const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000)
     const merchantOrderId = await unitOfWork.execute(async (tx) =>
       (await paymentsRepository.lockAttemptById(tx, record.attempt_id))!.merchant_order_id)
-    expect(await unitOfWork.execute((tx) => reconcileCollectionFact(tx, { mandatesRepository: repository, paymentsRepository }, {
+    expect(await unitOfWork.execute((tx) => reconcileCollectionFact(tx, { mandatesRepository: repository, paymentsRepository, settlementRepository }, {
       state: "FAILED",
       merchantOrderId,
       providerOrderId: "provider-order",
@@ -499,7 +501,7 @@ describe("PhonePe AutoPay mandate persistence", () => {
       expiresAt,
       paymentDetails: [],
     }, new Date()))).toBe(false)
-    expect(await unitOfWork.execute((tx) => reconcileCollectionFact(tx, { mandatesRepository: repository, paymentsRepository }, {
+    expect(await unitOfWork.execute((tx) => reconcileCollectionFact(tx, { mandatesRepository: repository, paymentsRepository, settlementRepository }, {
       state: "COMPLETED",
       merchantOrderId,
       providerOrderId: "provider-order",
@@ -510,12 +512,12 @@ describe("PhonePe AutoPay mandate persistence", () => {
     }, new Date()))).toBe(true)
     const canonical = await pool.query<{ payment_state: string; order_state: string; reviews: string }>(
       "select payment.state payment_state, investment_order.state order_state, " +
-        "(select count(*) from investment_reviews where order_id = investment_order.id) reviews " +
+        "(select count(*) from fund_receipt_acknowledgements where order_id = investment_order.id) reviews " +
         "from payments payment join investment_orders investment_order on investment_order.id = payment.order_id " +
         "where payment.id = $1",
       [record.payment_id],
     )
-    expect(canonical.rows[0]).toEqual({ payment_state: "succeeded", order_state: "review_pending", reviews: "1" })
+    expect(canonical.rows[0]).toEqual({ payment_state: "succeeded", order_state: "accepted", reviews: "1" })
   })
 
   test("rejects a SIP installment anchored to a different fund", async () => {

@@ -14,6 +14,7 @@ import type { MandatesRepository } from "./repositories/mandatesRepository.js"
 import type { NotificationWriteRepository } from "./repositories/notificationRepository.js"
 import type { OrderWriteRepository } from "./repositories/orderRepository.js"
 import type { PaymentsRepository } from "./repositories/paymentsRepository.js"
+import type { InvestmentSettlementRepository } from "./repositories/investmentSettlementRepository.js"
 import type { SipPlanRepository } from "./repositories/sipPlanRepository.js"
 import type { UserWriteRepository } from "./repositories/userRepository.js"
 
@@ -36,6 +37,7 @@ export interface MandateCollectionDeps {
   readonly mandatesRepository: MandatesRepository
   readonly orderRepository: OrderWriteRepository
   readonly paymentsRepository: PaymentsRepository
+  readonly settlementRepository: InvestmentSettlementRepository
   readonly userRepository: UserWriteRepository
   readonly auditRepository: AuditWriteRepository
   readonly notificationRepository: NotificationWriteRepository
@@ -159,7 +161,7 @@ const dispatchCollection = async (deps: MandateCollectionDeps, prepared: NonNull
           amountPaise: null,
           currency: "INR",
           details: [],
-        }, deps.clock())
+        }, deps.clock(), deps.settlementRepository)
       })
       return false
     }

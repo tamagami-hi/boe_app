@@ -2,6 +2,7 @@ import type { UnitOfWork } from "../../db/database.js"
 import type { MandateSetupStatus, MandateStatus } from "../../providers/recurringPaymentGateway.js"
 import type { MandatesRepository } from "../../repositories/mandatesRepository.js"
 import type { PaymentsRepository } from "../../repositories/paymentsRepository.js"
+import type { InvestmentSettlementRepository } from "../../repositories/investmentSettlementRepository.js"
 
 import { applyCanonicalPaymentOutcome } from "./applyCanonicalPaymentOutcome.js"
 
@@ -9,6 +10,7 @@ export interface MandateFactDeps {
   readonly unitOfWork: UnitOfWork
   readonly mandatesRepository: MandatesRepository
   readonly paymentsRepository: PaymentsRepository
+  readonly settlementRepository: InvestmentSettlementRepository
 }
 
 export const reconcileSetupFact = async (
@@ -47,7 +49,7 @@ export const reconcileSetupFact = async (
           state: detail.state,
           amountPaise: detail.amountPaise,
         })),
-      }, input.now)
+      }, input.now, deps.settlementRepository)
       if (setup.state === "provider_pending" || setup.state === "dispatching") {
         await deps.mandatesRepository.applyProviderSetupState(tx, {
           merchantOrderId: setup.merchant_order_id,
@@ -70,7 +72,7 @@ export const reconcileSetupFact = async (
       amountPaise: null,
       currency: "INR",
       details: [],
-    }, input.now)
+    }, input.now, deps.settlementRepository)
     await deps.mandatesRepository.applyProviderSetupState(tx, {
       merchantOrderId: setup.merchant_order_id,
       providerOrderId: input.status.providerOrderId,

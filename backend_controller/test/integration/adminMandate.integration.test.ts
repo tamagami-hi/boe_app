@@ -22,6 +22,7 @@ import { createAuthSessionRepository } from "../../src/repositories/authSessionR
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
 import { createMandatesRepository } from "../../src/repositories/mandatesRepository.js"
 import { createPaymentsRepository } from "../../src/repositories/paymentsRepository.js"
+import { createInvestmentSettlementRepository } from "../../src/repositories/investmentSettlementRepository.js"
 import { createUserRepository } from "../../src/repositories/userRepository.js"
 import { registerAdminMandateRoutes, type AdminMandateDeps } from "../../src/routes/adminMandateRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
@@ -315,6 +316,7 @@ beforeAll(async () => {
     adminMandateRepository: createAdminMandateRepository(),
     mandatesRepository: createMandatesRepository(),
     paymentsRepository: createPaymentsRepository(),
+    settlementRepository: createInvestmentSettlementRepository(),
     recurringPaymentGateway: fakeRecurringGateway,
     auditRepository,
     idempotencyRepository,
@@ -558,12 +560,22 @@ describe("admin mandate collection reconcile", () => {
     const { fundId, versionId } = await seedFund("mandate-collection-reconcile")
     const { mandateId, sipPlanId, userId, merchantSubscriptionId } = await createSipAndMandate(fundId)
     await activateMandate(mandateId, sipPlanId)
-    const { collectionId, merchantOrderId } = await createCollectionAttempt(mandateId, sipPlanId, userId, fundId, versionId)
+    const { collectionId, paymentAttemptId, merchantOrderId } = await createCollectionAttempt(
+      mandateId,
+      sipPlanId,
+      userId,
+      fundId,
+      versionId,
+    )
+    const providerOrder = await pool.query<{ provider_order_id: string }>(
+      "select provider_order_id from payment_attempts where id = $1",
+      [paymentAttemptId],
+    )
 
     nextCollectionStatus = {
       state: "COMPLETED",
       merchantOrderId,
-      providerOrderId: "provider-order",
+      providerOrderId: providerOrder.rows[0]!.provider_order_id,
       merchantSubscriptionId,
       amountPaise: "50000",
       expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
@@ -580,6 +592,16 @@ describe("admin mandate collection reconcile", () => {
       [collectionId],
     )
     expect(payment.rows[0]?.state).toBe("succeeded")
+    expect((await pool.query<{ count: string }>(
+      "select count(*)::text as count from investment_allocations where order_id = " +
+        "(select order_id from mandate_collection_attempts where id = $1)",
+      [collectionId],
+    )).rows[0]?.count).toBe("1")
+    expect((await pool.query<{ count: string }>(
+      "select count(*)::text as count from client_value_entries where payment_id = " +
+        "(select payment_id from mandate_collection_attempts where id = $1) and entry_type = 'contribution'",
+      [collectionId],
+    )).rows[0]?.count).toBe("1")
   })
 
   test("requires finance.operate", async () => {

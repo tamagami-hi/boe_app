@@ -2,7 +2,11 @@ import { describe, expect, test, vi } from "vitest"
 
 import type { PaymentAttempt, Transaction } from "./db/repositories.js"
 import { runReconciliationPass, type PaymentReconciliationDeps } from "./paymentReconciliationWorker.js"
-import { GatewayThrottledError, type PaymentGateway } from "./providers/phonepe/paymentGateway.js"
+import {
+  GatewayNotFoundError,
+  GatewayThrottledError,
+  type PaymentGateway,
+} from "./providers/phonepe/paymentGateway.js"
 import type { PaymentsRepository } from "./repositories/paymentsRepository.js"
 import type { RefundRepository } from "./repositories/refundRepository.js"
 
@@ -23,16 +27,25 @@ const createAttempt = (overrides: Partial<PaymentAttempt> = {}): PaymentAttempt 
 const createDeps = (input: Readonly<{
   attempt: PaymentAttempt
   getOrderStatus: PaymentGateway["getOrderStatus"]
+  succeededAt?: Date | null
 }>) => {
   const lockAttemptsForReconciliation = vi.fn()
     .mockResolvedValueOnce([input.attempt])
     .mockResolvedValueOnce([])
   const markReconciliationRequired = vi.fn().mockResolvedValue(input.attempt)
   const rescheduleAttemptReconciliation = vi.fn().mockResolvedValue(input.attempt)
+  const markAttemptExpired = vi.fn().mockResolvedValue(input.attempt)
+  const markPaymentExpired = vi.fn().mockResolvedValue({ id: PAYMENT_ID })
   const paymentsRepository = {
     lockAttemptsForReconciliation,
     markReconciliationRequired,
     rescheduleAttemptReconciliation,
+    lockPaymentById: vi.fn().mockResolvedValue({
+      id: PAYMENT_ID,
+      succeeded_at: input.succeededAt ?? null,
+    }),
+    markAttemptExpired,
+    markPaymentExpired,
   } as unknown as PaymentsRepository
   const refundRepository = {
     lockDueRefunds: vi.fn().mockResolvedValue([]),
@@ -60,6 +73,8 @@ const createDeps = (input: Readonly<{
     lockAttemptsForReconciliation,
     markReconciliationRequired,
     rescheduleAttemptReconciliation,
+    markAttemptExpired,
+    markPaymentExpired,
   }
 }
 
@@ -120,5 +135,44 @@ describe("runReconciliationPass", () => {
       },
     )
     expect(harness.markReconciliationRequired).not.toHaveBeenCalled()
+  })
+
+  test.each([
+    {
+      name: "expired provider state",
+      getOrderStatus: vi.fn().mockResolvedValue({
+        merchantOrderId: MERCHANT_ORDER_ID,
+        outcome: "pending",
+        providerState: "EXPIRED",
+        providerOrderId: "OMO_PROVIDER_ORDER",
+        amountPaise: "1000000",
+        currency: "INR",
+        details: [],
+      }),
+      providerState: "EXPIRED",
+    },
+    {
+      name: "post-grace provider 404",
+      getOrderStatus: vi.fn().mockRejectedValue(new GatewayNotFoundError("not found")),
+      providerState: "NOT_FOUND",
+    },
+  ])("quarantines a previously succeeded payment on $name", async ({ getOrderStatus, providerState }) => {
+    const harness = createDeps({
+      attempt: createAttempt(),
+      getOrderStatus,
+      succeededAt: new Date("2026-08-25T10:00:00.000Z"),
+    })
+
+    const summary = await runReconciliationPass(harness.deps)
+
+    expect(summary.attemptsResolved).toBe(1)
+    expect(harness.markReconciliationRequired).toHaveBeenCalledWith(expect.anything(), {
+      attemptId: ATTEMPT_ID,
+      paymentId: PAYMENT_ID,
+      providerState,
+      now: NOW,
+    })
+    expect(harness.markAttemptExpired).not.toHaveBeenCalled()
+    expect(harness.markPaymentExpired).not.toHaveBeenCalled()
   })
 })

@@ -1,5 +1,6 @@
 import type { Transaction } from "../../db/repositories.js"
 import type { PaymentsRepository } from "../../repositories/paymentsRepository.js"
+import type { InvestmentSettlementRepository } from "../../repositories/investmentSettlementRepository.js"
 
 export interface CanonicalPaymentDetail {
   readonly transactionId: string
@@ -65,6 +66,7 @@ export const applyCanonicalPaymentOutcome = async (
   paymentsRepository: PaymentsRepository,
   outcome: CanonicalPaymentOutcome,
   now: Date,
+  settlementRepository: InvestmentSettlementRepository,
 ): Promise<void> => {
   const candidate = await paymentsRepository.findAttemptByMerchantOrderId(tx, outcome.merchantOrderId)
   if (candidate === null) return
@@ -93,7 +95,10 @@ export const applyCanonicalPaymentOutcome = async (
   }
   if (outcome.outcome === "succeeded") {
     if (attempt.state === "succeeded" && payment.state === "succeeded") {
-      if (["review_pending", "accepted", "refund_pending", "refund_failed", "refunded"].includes(order.state)) return
+      if (
+        order.state === "accepted" &&
+        await settlementRepository.hasCompletedInvestmentSettlement(tx, { orderId: order.id, paymentId: payment.id })
+      ) return
       throw new Error("order success correlation failed")
     }
     if (!isCompletedEvidenceValid(attempt, payment, outcome)) {
@@ -114,13 +119,53 @@ export const applyCanonicalPaymentOutcome = async (
     }) === null) throw new Error("attempt success transition failed")
     const succeededPayment = await paymentsRepository.markPaymentSucceeded(tx, attempt.payment_id, now)
     if (succeededPayment === null) throw new Error("payment success transition failed")
-    if (await paymentsRepository.markOrderReviewPending(tx, succeededPayment.order_id, now) === null) {
-      throw new Error("order review transition failed")
+    const acceptedOrder = await paymentsRepository.markOrderAcceptedOnSettlement(tx, succeededPayment.order_id, now)
+    if (acceptedOrder === null) {
+      throw new Error("order acceptance transition failed")
     }
-    await paymentsRepository.createPendingReview(tx, succeededPayment.order_id)
+    if (succeededPayment.succeeded_at === null) throw new Error("payment success timestamp missing")
+    const settledAt = new Date(succeededPayment.succeeded_at)
+    const requestId = `settlement:${succeededPayment.id}`
+    const allocation = await settlementRepository.insertSystemAllocation(tx, {
+      orderId: acceptedOrder.id,
+      userId: acceptedOrder.user_id,
+      fundId: acceptedOrder.fund_id,
+      amountPaise: succeededPayment.amount_paise,
+      allocatedAt: settledAt,
+      requestId,
+    })
+    await settlementRepository.insertSystemContribution(tx, {
+      orderId: acceptedOrder.id,
+      userId: acceptedOrder.user_id,
+      fundId: acceptedOrder.fund_id,
+      amountPaise: succeededPayment.amount_paise,
+      allocatedAt: settledAt,
+      requestId,
+      allocationId: allocation.id,
+      paymentId: succeededPayment.id,
+    })
+    await settlementRepository.createPendingFundReceiptAcknowledgement(tx, succeededPayment.order_id)
+    await settlementRepository.recordSystemInvestmentSettlement(tx, {
+      orderId: acceptedOrder.id,
+      paymentId: succeededPayment.id,
+      userId: acceptedOrder.user_id,
+      fundId: acceptedOrder.fund_id,
+      amountPaise: succeededPayment.amount_paise,
+      requestId: succeededPayment.id,
+      entityVersion: Number(acceptedOrder.version),
+    })
     return
   }
   if (outcome.outcome !== "failed") return
+  if (payment.succeeded_at !== null) {
+    await paymentsRepository.markReconciliationRequired(tx, {
+      attemptId: attempt.id,
+      paymentId: payment.id,
+      providerState: outcome.providerState,
+      now,
+    })
+    return
+  }
   if (attempt.state === "failed" && payment.state === "failed") {
     if (order.state === "payment_failed") return
     throw new Error("order failure correlation failed")

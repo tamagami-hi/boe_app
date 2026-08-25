@@ -11,6 +11,7 @@ describe("mandate collection timing", () => {
         findCollectionAttemptByMerchantOrder: vi.fn().mockResolvedValue(null),
       } as never,
       paymentsRepository: paymentsRepository as never,
+      settlementRepository: {} as never,
     }, {
       state: "COMPLETED",
       merchantOrderId: "unknown-order",
@@ -138,13 +139,23 @@ describe("mandate collection timing", () => {
     const paymentsRepository = {
       lockAttemptById: vi.fn().mockResolvedValue({ id: "attempt-1", payment_id: "payment-1", user_id: "user-1", merchant_order_id: "merchant-order-1", provider_order_id: "provider-order-1", state: "provider_pending" }),
       lockPaymentById: vi.fn().mockResolvedValue({ id: "payment-1", order_id: "order-1", user_id: "user-1", amount_paise: "10000", currency: "INR", state: "provider_pending" }),
-      lockOrderById: vi.fn().mockResolvedValue({ id: "order-1", user_id: "user-1", amount_paise: "10000", currency: "INR", state: "payment_pending" }),
+      lockOrderById: vi.fn().mockResolvedValue({ id: "order-1", user_id: "user-1", fund_id: "fund-1", amount_paise: "10000", currency: "INR", state: "payment_pending" }),
       recordPaymentDetail: vi.fn().mockResolvedValue(undefined),
       findAttemptByMerchantOrderId: vi.fn().mockResolvedValue({ id: "attempt-1", payment_id: "payment-1", user_id: "user-1" }),
       markAttemptSucceeded: vi.fn().mockResolvedValue({ id: "attempt-1", payment_id: "payment-1" }),
-      markPaymentSucceeded: vi.fn().mockResolvedValue({ id: "payment-1", order_id: "order-1" }),
-      markOrderReviewPending: vi.fn().mockResolvedValue({ id: "order-1" }),
-      createPendingReview: vi.fn().mockResolvedValue(undefined),
+      markPaymentSucceeded: vi.fn().mockResolvedValue({
+        id: "payment-1",
+        order_id: "order-1",
+        amount_paise: "10000",
+        succeeded_at: now,
+      }),
+      markOrderAcceptedOnSettlement: vi.fn().mockResolvedValue({ id: "order-1", user_id: "user-1", fund_id: "fund-1" }),
+    }
+    const settlementRepository = {
+      insertSystemAllocation: vi.fn().mockResolvedValue({ id: "allocation-1" }),
+      insertSystemContribution: vi.fn().mockResolvedValue(undefined),
+      createPendingFundReceiptAcknowledgement: vi.fn().mockResolvedValue(undefined),
+      recordSystemInvestmentSettlement: vi.fn().mockResolvedValue(undefined),
     }
     const deps = {
       unitOfWork: { execute: (work: (tx: never) => unknown) => work({} as never) },
@@ -170,6 +181,7 @@ describe("mandate collection timing", () => {
         findMandateForAdmin: vi.fn().mockResolvedValue({ id: "mandate-1", merchant_subscription_id: "subscription-1" }),
       },
       paymentsRepository,
+      settlementRepository,
       logger: null,
       config: { claimLimit: 10, commandEnabled: false },
     } as unknown as MandateCollectionDeps
@@ -179,7 +191,7 @@ describe("mandate collection timing", () => {
       notificationsDispatched: 0,
       collectionsResolved: 1,
     })
-    expect(paymentsRepository.createPendingReview).toHaveBeenCalledOnce()
+    expect(settlementRepository.createPendingFundReceiptAcknowledgement).toHaveBeenCalledOnce()
     expect(deps.sipPlanRepository.listAutoPayDue).not.toHaveBeenCalled()
   })
 })

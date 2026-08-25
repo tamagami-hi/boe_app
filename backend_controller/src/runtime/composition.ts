@@ -29,7 +29,8 @@ import { createNotificationRepository } from "../repositories/notificationReposi
 import { createOrderRepository } from "../repositories/orderRepository.js"
 import { createPaymentsRepository } from "../repositories/paymentsRepository.js"
 import { createRefundRepository } from "../repositories/refundRepository.js"
-import { createInvestmentReviewRepository } from "../repositories/investmentReviewRepository.js"
+import { createFundReceiptAcknowledgementRepository } from "../repositories/fundReceiptAcknowledgementRepository.js"
+import { createInvestmentSettlementRepository } from "../repositories/investmentSettlementRepository.js"
 import { createProviderEventInboxRepository } from "../repositories/providerEventInboxRepository.js"
 import { createPhonePeCheckoutGateway } from "../providers/phonepe/phonePeCheckoutGateway.js"
 import { createPhonePeMobileOrderGateway } from "../providers/phonepe/phonePeMobileOrderGateway.js"
@@ -61,7 +62,7 @@ import { createFixedWindowRateLimiter } from "../http/rateLimit.js"
 import { registerAdminIdentityRoutes } from "../routes/adminIdentityRoutes.js"
 import { registerAdminAumRoutes } from "../routes/adminAumRoutes.js"
 import { registerAdminFundGrowthPreviewRoutes } from "../routes/adminFundGrowthPreviewRoutes.js"
-import { registerAdminInvestmentReviewRoutes } from "../routes/adminInvestmentReviewRoutes.js"
+import { registerAdminFundReceiptRoutes } from "../routes/adminFundReceiptRoutes.js"
 import { registerAdminCatalogRoutes } from "../routes/adminCatalogRoutes.js"
 import { registerAdminClientGrowthRoutes } from "../routes/adminClientGrowthRoutes.js"
 import { registerAdminContentRoutes } from "../routes/adminContentRoutes.js"
@@ -199,8 +200,9 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const clientValueEntryRepository = createClientValueEntryRepository()
   const orderRepository = createOrderRepository()
   const paymentsRepository = createPaymentsRepository()
+  const settlementRepository = createInvestmentSettlementRepository()
   const refundRepository = createRefundRepository()
-  const investmentReviewRepository = createInvestmentReviewRepository()
+  const fundReceiptAcknowledgementRepository = createFundReceiptAcknowledgementRepository()
   const adminMandateRepository = createAdminMandateRepository()
   const providerEventInboxRepository = createProviderEventInboxRepository()
   const notificationRepository = createNotificationRepository()
@@ -517,21 +519,21 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       notificationRepository,
     })
 
-    if (paymentGateway !== null) {
-      registerAdminInvestmentReviewRoutes(application, {
-        webAuth,
-        unitOfWork,
-        database,
-        clock,
-        config: { idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
-        reviewRepository: investmentReviewRepository,
-        paymentsRepository,
-        refundRepository,
-        paymentGateway,
-        auditRepository,
-        idempotencyRepository,
-      })
-    }
+    registerAdminFundReceiptRoutes(application, {
+      webAuth,
+      unitOfWork,
+      database,
+      clock,
+      config: { idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
+      acknowledgementRepository: fundReceiptAcknowledgementRepository,
+      paymentsRepository,
+      settlementRepository,
+      refundRepository,
+      paymentGateway,
+      auditRepository,
+      idempotencyRepository,
+      notificationRepository,
+    })
     const { awsRegion, topicArn, ttlMs } = serverConfig.providerEvents
     if (awsRegion !== null && topicArn !== null) {
       registerProviderEventRoutes(application, {
@@ -562,6 +564,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         },
         providerEventInboxRepository,
         paymentsRepository,
+        settlementRepository,
         refundRepository,
       })
     }
@@ -573,6 +576,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         recurringPaymentGateway,
         mandatesRepository: createMandatesRepository(),
         paymentsRepository,
+        settlementRepository,
         providerEventInboxRepository,
         config: {
           payloadEncryptionKey: cryptoKeys.recipientEncryptionKey,
@@ -593,6 +597,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         adminMandateRepository,
         mandatesRepository: createMandatesRepository(),
         paymentsRepository,
+        settlementRepository,
         recurringPaymentGateway,
         auditRepository,
         idempotencyRepository,
@@ -704,6 +709,7 @@ export const composePaymentReconciliationWorker = (
         paymentGateway: gateway,
         logger,
         paymentsRepository: createPaymentsRepository(),
+        settlementRepository: createInvestmentSettlementRepository(),
         refundRepository: createRefundRepository(),
         config: {
           claimLimit: serverConfig.payments.reconciliation.claimLimit,
@@ -720,6 +726,7 @@ export const composePaymentReconciliationWorker = (
           recurringPaymentGateway: recurringGateway,
           mandatesRepository: createMandatesRepository(),
           paymentsRepository: createPaymentsRepository(),
+          settlementRepository: createInvestmentSettlementRepository(),
           logger,
           config: {
             claimLimit: 25,
@@ -783,6 +790,7 @@ export const composeMandateCollectionWorker = (
           mandatesRepository: createMandatesRepository(),
           orderRepository: createOrderRepository(),
           paymentsRepository: createPaymentsRepository(),
+          settlementRepository: createInvestmentSettlementRepository(),
           userRepository: createUserRepository(),
           auditRepository: createAuditRepository(),
           notificationRepository: createNotificationRepository(),

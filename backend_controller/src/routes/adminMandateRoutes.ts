@@ -21,6 +21,7 @@ import { logGatewayFailure } from "../providers/phonepe/gatewayFailure.js"
 import type { RecurringPaymentGateway } from "../providers/recurringPaymentGateway.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
 import type { PaymentsRepository } from "../repositories/paymentsRepository.js"
+import type { InvestmentSettlementRepository } from "../repositories/investmentSettlementRepository.js"
 import type { AdminMandateRepository, AdminMandateListRow } from "../repositories/adminMandateRepository.js"
 import type { MandatesRepository } from "../repositories/mandatesRepository.js"
 import {
@@ -98,6 +99,7 @@ export interface AdminMandateDeps {
   readonly adminMandateRepository: AdminMandateRepository
   readonly mandatesRepository: MandatesRepository
   readonly paymentsRepository: PaymentsRepository
+  readonly settlementRepository: InvestmentSettlementRepository
   readonly recurringPaymentGateway: RecurringPaymentGateway | null
   readonly auditRepository: AuditWriteRepository
   readonly idempotencyRepository: IdempotencyRepository
@@ -334,6 +336,7 @@ const reconcileMandate = async (deps: AdminMandateDeps, request: FastifyRequest,
     unitOfWork: deps.unitOfWork,
     mandatesRepository: deps.mandatesRepository,
     paymentsRepository: deps.paymentsRepository,
+    settlementRepository: deps.settlementRepository,
   }
 
   let providerState: string | null = null
@@ -433,7 +436,11 @@ const reconcileCollection = async (deps: AdminMandateDeps, request: FastifyReque
     scope,
     requestHash,
     execute: async (tx) => {
-      await reconcileCollectionFact(tx, { mandatesRepository: deps.mandatesRepository, paymentsRepository: deps.paymentsRepository }, fact, deps.clock())
+      await reconcileCollectionFact(tx, {
+        mandatesRepository: deps.mandatesRepository,
+        paymentsRepository: deps.paymentsRepository,
+        settlementRepository: deps.settlementRepository,
+      }, fact, deps.clock())
       const updated = await deps.mandatesRepository.markCollectionAttemptReconciled(tx, {
         attemptId: collectionId,
         now: deps.clock(),

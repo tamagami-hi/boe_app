@@ -11,6 +11,7 @@ import {
 } from "./providers/phonepe/paymentGateway.js"
 import { logGatewayFailure, type GatewayFailureLogger } from "./providers/phonepe/gatewayFailure.js"
 import type { PaymentsRepository } from "./repositories/paymentsRepository.js"
+import type { InvestmentSettlementRepository } from "./repositories/investmentSettlementRepository.js"
 import type { RefundRepository } from "./repositories/refundRepository.js"
 
 export interface PaymentReconciliationConfig {
@@ -26,6 +27,7 @@ export interface PaymentReconciliationDeps {
   readonly clock: () => Date
   readonly paymentGateway: PaymentGateway
   readonly paymentsRepository: PaymentsRepository
+  readonly settlementRepository: InvestmentSettlementRepository
   readonly refundRepository: RefundRepository
   readonly logger: GatewayFailureLogger | null
   readonly config: PaymentReconciliationConfig
@@ -46,6 +48,17 @@ const expireAttempt = async (
 ): Promise<boolean> => {
   const now = deps.clock()
   return deps.unitOfWork.execute(async (tx) => {
+    const payment = await deps.paymentsRepository.lockPaymentById(tx, paymentId)
+    if (payment === null) return false
+    if (payment.succeeded_at !== null) {
+      await deps.paymentsRepository.markReconciliationRequired(tx, {
+        attemptId,
+        paymentId,
+        providerState,
+        now,
+      })
+      return true
+    }
     const attempt = await deps.paymentsRepository.markAttemptExpired(tx, { attemptId, providerState, now })
     if (attempt === null) return false
     if (await deps.paymentsRepository.markPaymentExpired(tx, paymentId, now) === null) {
@@ -114,15 +127,8 @@ const reconcileAttempt = async (
   }
 
   const now = deps.clock()
+  if (providerState === "EXPIRED") return expireAttempt(deps, attemptId, paymentId, providerState)
   return deps.unitOfWork.execute(async (tx) => {
-    if (providerState === "EXPIRED") {
-      const attempt = await deps.paymentsRepository.markAttemptExpired(tx, { attemptId, providerState, now })
-      if (attempt === null) return false
-      if (await deps.paymentsRepository.markPaymentExpired(tx, attempt.payment_id, now) === null) {
-        throw new Error("payment expiry transition failed")
-      }
-      return true
-    }
     if (fact.outcome !== "pending") {
       await applyCanonicalPaymentOutcome(tx, deps.paymentsRepository, {
         merchantOrderId,
@@ -133,7 +139,7 @@ const reconcileAttempt = async (
         amountPaise: fact.amountPaise,
         currency: fact.currency,
         details: fact.details,
-      }, now)
+      }, now, deps.settlementRepository)
       return true
     }
     if (
@@ -166,6 +172,7 @@ const reconcileRefund = async (
   orderId: string,
   amountPaise: string,
   state: string,
+  existingProviderRefundId: string | null,
 ): Promise<boolean> => {
   if (state === "pending") {
     const attempt = await deps.unitOfWork.execute((tx) =>
@@ -186,8 +193,40 @@ const reconcileRefund = async (
       return false
     }
     const now = deps.clock()
+    if (
+      existingProviderRefundId !== null &&
+      providerRefundId !== null &&
+      providerRefundId !== existingProviderRefundId
+    ) {
+      logGatewayFailure(deps.logger, new Error("provider refund identity mismatch"), {
+        requestId: randomUUID(),
+        operation: "initiate_refund",
+      })
+      return deps.unitOfWork.execute(async (tx) => {
+        const failed = await deps.refundRepository.markFailed(tx, {
+          refundId,
+          failureCode: "PROVIDER_REFUND_ID_MISMATCH",
+          now,
+        })
+        if (failed === null) throw new Error("refund identity quarantine failed")
+        if (await deps.paymentsRepository.markPaymentRefundFailed(tx, paymentId, now) === null) {
+          throw new Error("payment refund identity quarantine failed")
+        }
+        if (await deps.paymentsRepository.markOrderRefundFailed(tx, {
+          orderId,
+          failureCode: "PROVIDER_REFUND_ID_MISMATCH",
+          now,
+        }) === null) throw new Error("order refund identity quarantine failed")
+        return true
+      })
+    }
     return deps.unitOfWork.execute(async (tx) => {
-      await deps.refundRepository.markProviderPending(tx, { refundId, providerRefundId, now })
+      const boundProviderRefundId = existingProviderRefundId ?? providerRefundId
+      if (await deps.refundRepository.markProviderPending(tx, {
+        refundId,
+        providerRefundId: boundProviderRefundId,
+        now,
+      }) === null) throw new Error("refund dispatch transition failed")
       return false
     })
   }
@@ -303,6 +342,7 @@ export const runReconciliationPass = async (
       refund.order_id,
       refund.amount_paise,
       refund.state,
+      refund.provider_refund_id,
     )
     if (resolved) refundsResolved += 1
   }

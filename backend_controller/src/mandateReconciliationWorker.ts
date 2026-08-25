@@ -4,6 +4,7 @@ import { GatewayNotFoundError, GatewayRejectedError } from "./providers/phonepe/
 import type { RecurringPaymentGateway } from "./providers/recurringPaymentGateway.js"
 import type { MandatesRepository } from "./repositories/mandatesRepository.js"
 import type { PaymentsRepository } from "./repositories/paymentsRepository.js"
+import type { InvestmentSettlementRepository } from "./repositories/investmentSettlementRepository.js"
 import type { MandateSetupAttempt } from "./db/repositories.js"
 import { logGatewayFailure, type GatewayFailureLogger } from "./providers/phonepe/gatewayFailure.js"
 
@@ -21,6 +22,7 @@ export interface MandateReconciliationDeps {
   readonly recurringPaymentGateway: RecurringPaymentGateway
   readonly mandatesRepository: MandatesRepository
   readonly paymentsRepository: PaymentsRepository
+  readonly settlementRepository: InvestmentSettlementRepository
   readonly logger?: GatewayFailureLogger | null
   readonly config: Readonly<{ claimLimit: number; notFoundGraceMs: number; cancelDispatchGraceMs?: number; cancelDispatchInFlightTimeoutMs?: number }>
 }

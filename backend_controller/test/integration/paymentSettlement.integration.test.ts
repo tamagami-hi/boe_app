@@ -32,18 +32,23 @@ import { runReconciliationPass } from "../../src/paymentReconciliationWorker.js"
 import { runMandateReconciliationPass } from "../../src/mandateReconciliationWorker.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
 import { createAuthSessionRepository } from "../../src/repositories/authSessionRepository.js"
+import { createClientPortfolioRepository } from "../../src/repositories/clientPortfolioRepository.js"
+import { createClientValueEntryRepository } from "../../src/repositories/clientValueEntryRepository.js"
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
-import { createInvestmentReviewRepository } from "../../src/repositories/investmentReviewRepository.js"
+import { createFundReceiptAcknowledgementRepository } from "../../src/repositories/fundReceiptAcknowledgementRepository.js"
+import { createInvestmentSettlementRepository } from "../../src/repositories/investmentSettlementRepository.js"
 import { createLoginEventRepository } from "../../src/repositories/loginEventRepository.js"
 import { createMandatesRepository } from "../../src/repositories/mandatesRepository.js"
+import { createNotificationRepository } from "../../src/repositories/notificationRepository.js"
 import { createOrderRepository } from "../../src/repositories/orderRepository.js"
 import { createPaymentsRepository } from "../../src/repositories/paymentsRepository.js"
 import { createProviderEventInboxRepository } from "../../src/repositories/providerEventInboxRepository.js"
 import { createSipPlanRepository } from "../../src/repositories/sipPlanRepository.js"
 import { createRefundRepository } from "../../src/repositories/refundRepository.js"
 import { createUserRepository } from "../../src/repositories/userRepository.js"
-import { registerAdminInvestmentReviewRoutes } from "../../src/routes/adminInvestmentReviewRoutes.js"
+import { registerAdminFundReceiptRoutes } from "../../src/routes/adminFundReceiptRoutes.js"
 import { registerClientOrderRoutes } from "../../src/routes/clientOrderRoutes.js"
+import { registerClientPortfolioRoutes } from "../../src/routes/clientPortfolioRoutes.js"
 import { registerClientAutoPaySipRoutes } from "../../src/routes/clientAutoPaySipRoutes.js"
 import { registerPhonePeProviderEventRoutes } from "../../src/routes/phonePeProviderEventRoutes.js"
 import { registerPhonePeMandateEventRoutes } from "../../src/routes/phonePeMandateEventRoutes.js"
@@ -74,6 +79,7 @@ let pool: Pool
 let app: FastifyInstance
 let unitOfWork: ReturnType<typeof createUnitOfWork>
 let paymentsRepository: ReturnType<typeof createPaymentsRepository>
+let settlementRepository: ReturnType<typeof createInvestmentSettlementRepository>
 let refundRepository: ReturnType<typeof createRefundRepository>
 
 const dataOf = <T>(response: { json: () => unknown }): T => (response.json() as { data: T }).data
@@ -209,6 +215,7 @@ let stubMobileEnabled = true
 let stubCheckoutCalls = 0
 let stubRefundOriginalMerchantOrderId: string | null = null
 let stubRefundAmountPaise: string | null = null
+const stubRefundInitiationIds = new Map<string, string | null>()
 
 const stubMobileGateway: MobilePaymentGateway = {
   createSdkOrder: async (command) => {
@@ -263,7 +270,9 @@ const stubGateway: PaymentGateway = {
     stubRefundOriginalMerchantOrderId = command.originalMerchantOrderId
     stubRefundAmountPaise = command.amountPaise
     return Promise.resolve({
-      providerRefundId: `provrf_${command.merchantRefundId}`,
+      providerRefundId: stubRefundInitiationIds.has(command.merchantRefundId)
+        ? stubRefundInitiationIds.get(command.merchantRefundId) ?? null
+        : `provrf_${command.merchantRefundId}`,
       outcome: "succeeded",
       providerState: "COMPLETED",
     })
@@ -363,8 +372,9 @@ beforeAll(async () => {
   }
 
   paymentsRepository = createPaymentsRepository()
+  settlementRepository = createInvestmentSettlementRepository()
   refundRepository = createRefundRepository()
-  const reviewRepository = createInvestmentReviewRepository()
+  const acknowledgementRepository = createFundReceiptAcknowledgementRepository()
   const providerEventInboxRepository = createProviderEventInboxRepository()
 
   app = createApplication({
@@ -398,6 +408,15 @@ beforeAll(async () => {
             tokenKeyVersion: "ptk1",
           },
         },
+      })
+      registerClientPortfolioRoutes(instance, {
+        accessTokenService,
+        database,
+        clientPortfolioRepository: createClientPortfolioRepository(),
+        clientValueEntryRepository: createClientValueEntryRepository(),
+        unitOfWork,
+        clock: () => new Date(),
+        config: { cursorKey: randomBytes(32) },
       })
       registerClientAutoPaySipRoutes(instance, {
         accessTokenService,
@@ -434,6 +453,7 @@ beforeAll(async () => {
         },
         providerEventInboxRepository,
         paymentsRepository,
+        settlementRepository,
         refundRepository,
       })
       registerPhonePeMandateEventRoutes(instance, {
@@ -443,6 +463,7 @@ beforeAll(async () => {
         recurringPaymentGateway: stubRecurringGateway,
         mandatesRepository: createMandatesRepository(),
         paymentsRepository,
+        settlementRepository,
         providerEventInboxRepository,
         config: {
           payloadEncryptionKey: randomBytes(32),
@@ -455,18 +476,20 @@ beforeAll(async () => {
           ],
         },
       })
-      registerAdminInvestmentReviewRoutes(instance, {
+      registerAdminFundReceiptRoutes(instance, {
         webAuth,
         unitOfWork,
         database,
         clock: () => new Date(),
         config: { idempotencyTtlMs: 86_400_000 },
-        reviewRepository,
+        acknowledgementRepository,
         paymentsRepository,
+        settlementRepository,
         refundRepository,
         paymentGateway: stubGateway,
         auditRepository: createAuditRepository(),
         idempotencyRepository: createIdempotencyRepository(),
+        notificationRepository: createNotificationRepository(),
       })
     },
   })
@@ -541,6 +564,7 @@ const runMandateWorker = (clock: () => Date = () => new Date()) => runMandateRec
   recurringPaymentGateway: stubRecurringGateway,
   mandatesRepository: createMandatesRepository(),
   paymentsRepository,
+  settlementRepository,
   config: { claimLimit: 100, notFoundGraceMs: 60_000 },
 })
 
@@ -611,6 +635,7 @@ describe("checkout orchestrator", () => {
       payload: { fundId: fund.fundId, amountPaise: "50000", debitDay: 5, durationMonths: 12 },
     })
     expect(replay.statusCode).toBe(200)
+
     expect(dataOf<{ checkout: { token: string } }>(replay).checkout.token).toBe(created.checkout.token)
     expect(recurringCreateCalls - beforeCalls).toBe(1)
   })
@@ -672,6 +697,7 @@ describe("checkout orchestrator", () => {
       recurringPaymentGateway: stubRecurringGateway,
       mandatesRepository: createMandatesRepository(),
       paymentsRepository,
+      settlementRepository,
       config: { claimLimit: 25, notFoundGraceMs: 60_000 },
     })
     expect((await pool.query<{ state: string }>("select state from sip_plans where id = $1", [created.sipPlanId])).rows[0]?.state)
@@ -694,6 +720,7 @@ describe("checkout orchestrator", () => {
       recurringPaymentGateway: stubRecurringGateway,
       mandatesRepository: createMandatesRepository(),
       paymentsRepository,
+      settlementRepository,
       config: { claimLimit: 25, notFoundGraceMs: 60_000 },
     })
     expect((await pool.query<{ state: string }>("select state from sip_plans where id = $1", [created.sipPlanId])).rows[0]?.state)
@@ -768,7 +795,7 @@ describe("checkout orchestrator", () => {
         "join payment_mandates mandate on mandate.sip_plan_id = sip.id " +
         "join investment_orders investment_order on investment_order.sip_plan_id = sip.id " +
         "join payments payment on payment.order_id = investment_order.id " +
-        "left join investment_reviews review on review.order_id = investment_order.id " +
+        "left join fund_receipt_acknowledgements review on review.order_id = investment_order.id " +
         "where sip.id = $1 group by sip.state, mandate.state, payment.state, investment_order.state",
       [created.sipPlanId],
     )
@@ -776,7 +803,7 @@ describe("checkout orchestrator", () => {
       sip_state: "active",
       mandate_state: "active",
       payment_state: "succeeded",
-      order_state: "review_pending",
+      order_state: "accepted",
       reviews: "1",
     })
 
@@ -787,7 +814,7 @@ describe("checkout orchestrator", () => {
       payload: setupCompletePayload,
     })
     expect(duplicate.statusCode).toBe(200)
-    expect((await pool.query<{ count: string }>("select count(*) from investment_reviews where order_id = $1", [created.orderId])).rows[0]?.count)
+    expect((await pool.query<{ count: string }>("select count(*) from fund_receipt_acknowledgements where order_id = $1", [created.orderId])).rows[0]?.count)
       .toBe("1")
 
     const cancelKey = `autopay-cancel-${randomUUID()}`
@@ -817,6 +844,7 @@ describe("checkout orchestrator", () => {
       recurringPaymentGateway: stubRecurringGateway,
       mandatesRepository: createMandatesRepository(),
       paymentsRepository,
+      settlementRepository,
       config: { claimLimit: 25, notFoundGraceMs: 60_000 },
     })
     expect(dispatched.cancelCommandsDispatched).toBeGreaterThanOrEqual(1)
@@ -830,6 +858,7 @@ describe("checkout orchestrator", () => {
       recurringPaymentGateway: stubRecurringGateway,
       mandatesRepository: createMandatesRepository(),
       paymentsRepository,
+      settlementRepository,
       config: { claimLimit: 25, notFoundGraceMs: 60_000 },
     })
     expect(reconciled.mandatesResolved).toBeGreaterThanOrEqual(1)
@@ -1011,7 +1040,7 @@ describe("checkout orchestrator", () => {
       sip_state: "setup_failed",
       mandate_state: "failed",
       payment_state: "succeeded",
-      order_state: "review_pending",
+      order_state: "accepted",
     })
   })
 
@@ -1151,6 +1180,7 @@ describe("checkout orchestrator", () => {
       recurringPaymentGateway: stubRecurringGateway,
       mandatesRepository: createMandatesRepository(),
       paymentsRepository,
+      settlementRepository,
       config: { claimLimit: 100, notFoundGraceMs: 60_000 },
     })
     expect((await pool.query<{ state: string }>("select state from mandate_setup_attempts where sip_plan_id = $1", [undispatched.sipPlanId])).rows[0]?.state)
@@ -1164,6 +1194,7 @@ describe("checkout orchestrator", () => {
       recurringPaymentGateway: stubRecurringGateway,
       mandatesRepository: createMandatesRepository(),
       paymentsRepository,
+      settlementRepository,
       config: { claimLimit: 100, notFoundGraceMs: 60_000 },
     })
     expect((await pool.query<{ setup_state: string; payment_state: string }>(
@@ -1257,6 +1288,7 @@ describe("checkout orchestrator", () => {
       clock: () => new Date(),
       paymentGateway: stubGateway,
       paymentsRepository,
+      settlementRepository,
       refundRepository,
       logger: { warn: (fields) => warnings.push(fields) },
       config: { claimLimit: 25, notFoundGraceMs: 60_000 },
@@ -1275,6 +1307,7 @@ describe("checkout orchestrator", () => {
       clock: () => new Date(),
       paymentGateway: stubGateway,
       paymentsRepository,
+      settlementRepository,
       refundRepository,
       logger: null,
       config: { claimLimit: 25, notFoundGraceMs: 60_000 },
@@ -1292,6 +1325,7 @@ describe("checkout orchestrator", () => {
       clock: () => new Date(),
       paymentGateway: stubGateway,
       paymentsRepository,
+      settlementRepository,
       refundRepository,
       logger: null,
       config: { claimLimit: 25, notFoundGraceMs: 60_000 },
@@ -1308,6 +1342,7 @@ describe("checkout orchestrator", () => {
       clock: () => new Date(),
       paymentGateway: stubGateway,
       paymentsRepository,
+      settlementRepository,
       refundRepository,
       logger: null,
       config: { claimLimit: 25, notFoundGraceMs: 60_000 },
@@ -1350,6 +1385,7 @@ describe("checkout orchestrator", () => {
       clock: () => new Date(),
       paymentGateway: stubGateway,
       paymentsRepository,
+      settlementRepository,
       refundRepository,
       logger: null,
       config: { claimLimit: 25, notFoundGraceMs: 60_000 },
@@ -1585,6 +1621,7 @@ describe("checkout orchestrator", () => {
       clock: () => new Date(),
       paymentGateway: stubGateway,
       paymentsRepository,
+      settlementRepository,
       refundRepository,
       logger: null,
       config: { claimLimit: 25, notFoundGraceMs: 60_000 },
@@ -1642,6 +1679,7 @@ describe("checkout orchestrator", () => {
       clock: () => new Date(),
       paymentGateway: stubGateway,
       paymentsRepository,
+      settlementRepository,
       refundRepository,
       logger: null,
       config: { claimLimit: 25, notFoundGraceMs: 60_000 },
@@ -1698,7 +1736,7 @@ describe("checkout orchestrator", () => {
 })
 
 describe("PhonePe callback processing", () => {
-  test("a succeeded callback moves the order to review_pending and creates one pending review", async () => {
+  test("a succeeded callback immediately accepts and allocates exactly once", async () => {
     const { token } = await seedClientToken(`client-${randomUUID().slice(0, 8)}@example.com`)
     const fund = await seedPublishedFund(`pay-cb-${randomUUID().slice(0, 8)}`, financeAdminId)
 
@@ -1735,15 +1773,37 @@ describe("PhonePe callback processing", () => {
       "select state from investment_orders where id = $1",
       [orderId],
     )
-    expect(order.rows[0]!.state).toBe("review_pending")
+    expect(order.rows[0]!.state).toBe("accepted")
 
-    const reviews = await pool.query<{ state: string; bank_verified: boolean }>(
-      "select state, bank_verified from investment_reviews where order_id = $1",
+    const acknowledgements = await pool.query<{ state: string }>(
+      "select state from fund_receipt_acknowledgements where order_id = $1",
       [orderId],
     )
-    expect(reviews.rows).toHaveLength(1)
-    expect(reviews.rows[0]!.state).toBe("pending")
-    expect(reviews.rows[0]!.bank_verified).toBe(false)
+    expect(acknowledgements.rows).toEqual([{ state: "pending" }])
+    expect((await pool.query<{ count: string }>(
+      "select count(*) from investment_allocations where order_id = $1 and actor_type = 'system' and allocated_by_user_id is null",
+      [orderId],
+    )).rows[0]!.count).toBe("1")
+
+    const paymentId = (await pool.query<{ id: string }>("select id from payments where order_id = $1", [orderId])).rows[0]!.id
+    const paymentDetail = await app.inject({
+      method: "GET",
+      url: `/v1/client/payments/${paymentId}`,
+      headers: bearer(token),
+    })
+    expect(paymentDetail.statusCode).toBe(200)
+    const projectedPayment = dataOf<{ payment: { status: string; confirmedAt: string | null } }>(paymentDetail).payment
+    expect(projectedPayment.status).toBe("confirmed")
+    expect(typeof projectedPayment.confirmedAt).toBe("string")
+
+    const portfolio = await app.inject({ method: "GET", url: "/v1/client/portfolio", headers: bearer(token) })
+    expect(portfolio.statusCode).toBe(200)
+    expect(dataOf<{ totalInvestmentPaise: string; currentValuePaise: string }>(portfolio))
+      .toMatchObject({ totalInvestmentPaise: "1000000", currentValuePaise: "1000000" })
+    expect((await pool.query<{ count: string }>(
+      "select count(*) from client_value_entries where order_id = $1 and entry_type = 'contribution' and actor_type = 'system'",
+      [orderId],
+    )).rows[0]!.count).toBe("1")
 
     const duplicate = await app.inject({
       method: "POST",
@@ -1752,11 +1812,14 @@ describe("PhonePe callback processing", () => {
       payload: callbackFor(merchantOrderId, "checkout.order.completed", "COMPLETED"),
     })
     expect(duplicate.statusCode).toBe(200)
-    const reviewsAfterDuplicate = await pool.query<{ count: string }>(
-      "select count(*) as count from investment_reviews where order_id = $1",
+    const resultsAfterDuplicate = await pool.query<{ acknowledgements: string; allocations: string; contributions: string }>(
+      "select " +
+        "(select count(*) from fund_receipt_acknowledgements where order_id = $1)::text acknowledgements, " +
+        "(select count(*) from investment_allocations where order_id = $1)::text allocations, " +
+        "(select count(*) from client_value_entries where order_id = $1 and entry_type = 'contribution')::text contributions",
       [orderId],
     )
-    expect(Number(reviewsAfterDuplicate.rows[0]!.count)).toBe(1)
+    expect(resultsAfterDuplicate.rows[0]).toEqual({ acknowledgements: "1", allocations: "1", contributions: "1" })
   })
 
   test("a bad callback authorization makes zero writes", async () => {
@@ -1807,7 +1870,7 @@ describe("PhonePe callback processing", () => {
   })
 })
 
-const advanceOrderToReview = async (
+const settleOrder = async (
   fundSlugPrefix: string,
 ): Promise<{ orderId: string; userId: string; fundId: string }> => {
   const { userId, token } = await seedClientToken(`client-${randomUUID().slice(0, 8)}@example.com`)
@@ -1839,23 +1902,23 @@ const advanceOrderToReview = async (
   return { orderId, userId, fundId: fund.fundId }
 }
 
-describe("admin accept", () => {
-  test("accepts a reviewed order into exactly one allocation and one contribution", async () => {
-    const { orderId, userId, fundId } = await advanceOrderToReview("pay-acc")
+describe("admin fund acknowledgement", () => {
+  test("acknowledges already allocated funds and notifies the client", async () => {
+    const { orderId, userId, fundId } = await settleOrder("pay-ack")
 
-    const review = await pool.query<{ id: string; version: string }>(
-      "select id, version from investment_reviews where order_id = $1",
+    const acknowledgement = await pool.query<{ id: string; version: string }>(
+      "select id, version from fund_receipt_acknowledgements where order_id = $1",
       [orderId],
     )
 
-    const accept = await app.inject({
+    const response = await app.inject({
       method: "POST",
-      url: `/v1/admin/investment-reviews/${orderId}/accept`,
-      headers: adminHeaders(financeSession, { "idempotency-key": `accept-${randomUUID()}` }),
-      payload: { bankVerified: true, expectedVersion: Number(review.rows[0]!.version) },
+      url: `/v1/admin/fund-receipts/${orderId}/acknowledge`,
+      headers: adminHeaders(financeSession, { "idempotency-key": `acknowledge-${randomUUID()}` }),
+      payload: { expectedVersion: Number(acknowledgement.rows[0]!.version) },
     })
-    expect(accept.statusCode).toBe(200)
-    expect(dataOf<{ state: string }>(accept).state).toBe("accepted")
+    expect(response.statusCode).toBe(200)
+    expect(dataOf<{ state: string }>(response).state).toBe("acknowledged")
 
     const order = await pool.query<{ state: string }>(
       "select state from investment_orders where id = $1",
@@ -1875,16 +1938,25 @@ describe("admin accept", () => {
     )
     expect(Number(contributions.rows[0]!.count)).toBe(1)
 
+    const notification = await pool.query<{ kind: string; title: string; body: string }>(
+      "select kind, title, body from notifications where user_id = $1 and payload ->> 'orderId' = $2",
+      [userId, orderId],
+    )
+    expect(notification.rows).toEqual([{
+      kind: "fund_receipt_acknowledged",
+      title: "Funds acknowledged",
+      body: "Your funds have been acknowledged by BeOnEdge LLP and are ready for investment. Please stay updated through our app.",
+    }])
+
     const aumRows = await pool.query<{ count: string }>(
       "select count(*) as count from fund_aum_snapshots where fund_id = $1",
       [fundId],
     )
     expect(Number(aumRows.rows[0]!.count)).toBe(0)
-    void userId
   })
 
   test("a stale version conflicts and writes nothing", async () => {
-    const { orderId } = await advanceOrderToReview("pay-stale")
+    const { orderId } = await settleOrder("pay-stale")
     const allocationsBefore = await pool.query<{ count: string }>(
       "select count(*) as count from investment_allocations where order_id = $1",
       [orderId],
@@ -1892,9 +1964,9 @@ describe("admin accept", () => {
 
     const response = await app.inject({
       method: "POST",
-      url: `/v1/admin/investment-reviews/${orderId}/accept`,
-      headers: adminHeaders(financeSession, { "idempotency-key": `accept-stale-${randomUUID()}` }),
-      payload: { bankVerified: true, expectedVersion: 999 },
+      url: `/v1/admin/fund-receipts/${orderId}/acknowledge`,
+      headers: adminHeaders(financeSession, { "idempotency-key": `acknowledge-stale-${randomUUID()}` }),
+      payload: { expectedVersion: 999 },
     })
     expect(response.statusCode).toBe(409)
 
@@ -1905,18 +1977,18 @@ describe("admin accept", () => {
     expect(allocationsAfter.rows[0]!.count).toBe(allocationsBefore.rows[0]!.count)
   })
 
-  test("a replayed accept returns the same result without a second allocation", async () => {
-    const { orderId } = await advanceOrderToReview("pay-replay")
+  test("a replayed acknowledgement returns the same result without duplicate writes", async () => {
+    const { orderId } = await settleOrder("pay-replay")
     const review = await pool.query<{ version: string }>(
-      "select version from investment_reviews where order_id = $1",
+      "select version from fund_receipt_acknowledgements where order_id = $1",
       [orderId],
     )
-    const key = `accept-replay-${randomUUID()}`
-    const payload = { bankVerified: true, expectedVersion: Number(review.rows[0]!.version) }
+    const key = `acknowledge-replay-${randomUUID()}`
+    const payload = { expectedVersion: Number(review.rows[0]!.version) }
 
     const first = await app.inject({
       method: "POST",
-      url: `/v1/admin/investment-reviews/${orderId}/accept`,
+      url: `/v1/admin/fund-receipts/${orderId}/acknowledge`,
       headers: adminHeaders(financeSession, { "idempotency-key": key }),
       payload,
     })
@@ -1924,100 +1996,240 @@ describe("admin accept", () => {
 
     const replay = await app.inject({
       method: "POST",
-      url: `/v1/admin/investment-reviews/${orderId}/accept`,
+      url: `/v1/admin/fund-receipts/${orderId}/acknowledge`,
       headers: adminHeaders(financeSession, { "idempotency-key": key }),
       payload,
     })
     expect(replay.statusCode).toBe(200)
+
+    const conflictingReplay = await app.inject({
+      method: "POST",
+      url: `/v1/admin/fund-receipts/${orderId}/acknowledge`,
+      headers: adminHeaders(financeSession, { "idempotency-key": `acknowledge-again-${randomUUID()}` }),
+      payload,
+    })
+    expect(conflictingReplay.statusCode).toBe(409)
 
     const allocations = await pool.query<{ count: string }>(
       "select count(*) as count from investment_allocations where order_id = $1",
       [orderId],
     )
     expect(Number(allocations.rows[0]!.count)).toBe(1)
+    expect((await pool.query<{ count: string }>(
+      "select count(*) from notifications where payload ->> 'orderId' = $1 and kind = 'fund_receipt_acknowledged'",
+      [orderId],
+    )).rows[0]!.count).toBe("1")
   })
 
-  test("requires investments.review.write", async () => {
-    const { orderId } = await advanceOrderToReview("pay-rbac")
+  test("requires funds.receipts.write", async () => {
+    const { orderId } = await settleOrder("pay-rbac")
     const review = await pool.query<{ version: string }>(
-      "select version from investment_reviews where order_id = $1",
+      "select version from fund_receipt_acknowledgements where order_id = $1",
       [orderId],
     )
 
     const denied = await app.inject({
       method: "POST",
-      url: `/v1/admin/investment-reviews/${orderId}/accept`,
-      headers: adminHeaders(supportSession, { "idempotency-key": `accept-denied-${randomUUID()}` }),
-      payload: { bankVerified: true, expectedVersion: Number(review.rows[0]!.version) },
+      url: `/v1/admin/fund-receipts/${orderId}/acknowledge`,
+      headers: adminHeaders(supportSession, { "idempotency-key": `acknowledge-denied-${randomUUID()}` }),
+      payload: { expectedVersion: Number(review.rows[0]!.version) },
     })
     expect(denied.statusCode).toBe(403)
     expect(errorOf(denied)).toBe("AUTHORIZATION_DENIED")
   })
 })
 
-describe("admin reject and refund", () => {
-  test("rejecting a reviewed order creates no contribution and starts a refund", async () => {
-    const { orderId } = await advanceOrderToReview("pay-rej")
-    const review = await pool.query<{ version: string }>(
-      "select version from investment_reviews where order_id = $1",
+describe("admin refund operations", () => {
+  test("requeues the failed refund, payment, and order exactly once", async () => {
+    const { orderId } = await settleOrder("refund-retry")
+    const payment = await pool.query<{ id: string }>(
+      "select id from payments where order_id = $1",
       [orderId],
     )
+    const refund = await pool.query<{ id: string }>(
+      "insert into refund_operations " +
+        "(payment_id, order_id, merchant_refund_id, amount_paise, state, failure_code, " +
+        "created_by_user_id, request_id) values ($1, $2, $3, 1000000, 'failed', " +
+        "'PROVIDER_UNAVAILABLE', $4, $5) returning id",
+      [payment.rows[0]!.id, orderId, `refund_${randomUUID()}`, financeAdminId, randomUUID()],
+    )
+    await pool.query("update payments set state = 'refund_failed' where id = $1", [payment.rows[0]!.id])
+    await pool.query(
+      "update investment_orders set state = 'refund_failed', failure_code = 'PROVIDER_UNAVAILABLE' where id = $1",
+      [orderId],
+    )
+    const key = `refund-retry-${randomUUID()}`
 
-    const reject = await app.inject({
+    const first = await app.inject({
       method: "POST",
-      url: `/v1/admin/investment-reviews/${orderId}/reject`,
-      headers: adminHeaders(financeSession, { "idempotency-key": `reject-${randomUUID()}` }),
-      payload: { reasonCode: "bank_mismatch", expectedVersion: Number(review.rows[0]!.version) },
+      url: `/v1/admin/refunds/${refund.rows[0]!.id}/retry`,
+      headers: adminHeaders(financeSession, { "idempotency-key": key }),
+      payload: {},
     })
-    expect(reject.statusCode).toBe(200)
-    const refundId = dataOf<{ refundId: string }>(reject).refundId
+    expect(first.statusCode, first.body).toBe(200)
+    expect(dataOf<{ state: string }>(first).state).toBe("pending")
 
-    const order = await pool.query<{ state: string }>(
-      "select state from investment_orders where id = $1",
-      [orderId],
-    )
-    expect(order.rows[0]!.state).toBe("refund_pending")
+    const replay = await app.inject({
+      method: "POST",
+      url: `/v1/admin/refunds/${refund.rows[0]!.id}/retry`,
+      headers: adminHeaders(financeSession, { "idempotency-key": key }),
+      payload: {},
+    })
+    expect(replay.statusCode, replay.body).toBe(200)
 
-    const contributions = await pool.query<{ count: string }>(
-      "select count(*) as count from client_value_entries where order_id = $1 and entry_type = 'contribution'",
-      [orderId],
+    const states = await pool.query<{
+      refund_state: string
+      payment_state: string
+      order_state: string
+      failure_code: string | null
+      audit_count: string
+    }>(
+      "select refund.state as refund_state, payment.state as payment_state, investment_order.state as order_state, " +
+        "investment_order.failure_code, count(audit.id)::text as audit_count " +
+        "from refund_operations refund " +
+        "join payments payment on payment.id = refund.payment_id " +
+        "join investment_orders investment_order on investment_order.id = refund.order_id " +
+        "left join audit_events audit on audit.entity_type = 'refund_operation' " +
+        "and audit.entity_id = refund.id and audit.command = 'refund.retry' " +
+        "where refund.id = $1 " +
+        "group by refund.state, payment.state, investment_order.state, investment_order.failure_code",
+      [refund.rows[0]!.id],
     )
-    expect(Number(contributions.rows[0]!.count)).toBe(0)
-
-    const refund = await pool.query<{ state: string; merchant_refund_id: string }>(
-      "select state, merchant_refund_id from refund_operations where id = $1",
-      [refundId],
-    )
-    expect(refund.rows[0]!.state).toBe("pending")
-    expect(refund.rows[0]!.merchant_refund_id).toMatch(/^boerf_/u)
+    expect(states.rows[0]).toEqual({
+      refund_state: "pending",
+      payment_state: "refund_pending",
+      order_state: "refund_pending",
+      failure_code: null,
+      audit_count: "1",
+    })
   })
 
-  test("reconcile applies the gateway's refunded outcome", async () => {
-    const { orderId } = await advanceOrderToReview("pay-reconcile")
-    const review = await pool.query<{ version: string }>(
-      "select version from investment_reviews where order_id = $1",
+  test("rolls back the refund requeue when its payment is not retryable", async () => {
+    const { orderId } = await settleOrder("refund-retry-conflict")
+    const payment = await pool.query<{ id: string }>(
+      "select id from payments where order_id = $1",
       [orderId],
     )
-    const reject = await app.inject({
-      method: "POST",
-      url: `/v1/admin/investment-reviews/${orderId}/reject`,
-      headers: adminHeaders(financeSession, { "idempotency-key": `reject-rec-${randomUUID()}` }),
-      payload: { reasonCode: "bank_mismatch", expectedVersion: Number(review.rows[0]!.version) },
-    })
-    const refundId = dataOf<{ refundId: string }>(reject).refundId
-
-    const reconcile = await app.inject({
-      method: "POST",
-      url: `/v1/admin/refunds/${refundId}/reconcile`,
-      headers: adminHeaders(financeSession, { "idempotency-key": `reconcile-${randomUUID()}` }),
-    })
-    expect(reconcile.statusCode).toBe(200)
-    expect(dataOf<{ state: string }>(reconcile).state).toBe("refunded")
-
-    const order = await pool.query<{ state: string }>(
-      "select state from investment_orders where id = $1",
-      [orderId],
+    const refund = await pool.query<{ id: string }>(
+      "insert into refund_operations " +
+        "(payment_id, order_id, merchant_refund_id, amount_paise, state, failure_code, " +
+        "created_by_user_id, request_id) values ($1, $2, $3, 1000000, 'failed', " +
+        "'PROVIDER_UNAVAILABLE', $4, $5) returning id",
+      [payment.rows[0]!.id, orderId, `refund_${randomUUID()}`, financeAdminId, randomUUID()],
     )
-    expect(order.rows[0]!.state).toBe("refunded")
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/admin/refunds/${refund.rows[0]!.id}/retry`,
+      headers: adminHeaders(financeSession, { "idempotency-key": `refund-retry-conflict-${randomUUID()}` }),
+      payload: {},
+    })
+    expect(response.statusCode, response.body).toBe(409)
+
+    const states = await pool.query<{ refund_state: string; payment_state: string; order_state: string }>(
+      "select refund.state as refund_state, payment.state as payment_state, investment_order.state as order_state " +
+        "from refund_operations refund " +
+        "join payments payment on payment.id = refund.payment_id " +
+        "join investment_orders investment_order on investment_order.id = refund.order_id " +
+        "where refund.id = $1",
+      [refund.rows[0]!.id],
+    )
+    expect(states.rows[0]).toEqual({
+      refund_state: "failed",
+      payment_state: "succeeded",
+      order_state: "accepted",
+    })
+  })
+
+  test("preserves a persisted provider refund identity across worker retries", async () => {
+    const cases = [
+      { suffix: "same", existingId: "provider_refund_same", returnedId: "provider_refund_same", expectedState: "provider_pending" },
+      { suffix: "null", existingId: "provider_refund_null", returnedId: null, expectedState: "provider_pending" },
+      { suffix: "mismatch", existingId: "provider_refund_original", returnedId: "provider_refund_different", expectedState: "failed" },
+    ] as const
+    const refundIds: string[] = []
+
+    for (const scenario of cases) {
+      const { orderId } = await settleOrder(`refund-identity-${scenario.suffix}`)
+      const payment = await pool.query<{ id: string }>("select id from payments where order_id = $1", [orderId])
+      const merchantRefundId = `refund_${randomUUID()}`
+      const refund = await pool.query<{ id: string }>(
+        "insert into refund_operations " +
+          "(payment_id, order_id, merchant_refund_id, provider_refund_id, amount_paise, state, " +
+          "created_by_user_id, request_id) values ($1, $2, $3, $4, 1000000, 'pending', $5, $6) returning id",
+        [payment.rows[0]!.id, orderId, merchantRefundId, scenario.existingId, financeAdminId, randomUUID()],
+      )
+      await pool.query("update payments set state = 'refund_pending' where id = $1", [payment.rows[0]!.id])
+      await pool.query("update investment_orders set state = 'refund_pending' where id = $1", [orderId])
+      stubRefundInitiationIds.set(merchantRefundId, scenario.returnedId)
+      refundIds.push(refund.rows[0]!.id)
+    }
+
+    const result = await runReconciliationPass({
+      unitOfWork,
+      clock: () => new Date(),
+      paymentGateway: stubGateway,
+      paymentsRepository,
+      settlementRepository,
+      refundRepository,
+      logger: null,
+      config: { claimLimit: 25, notFoundGraceMs: 60_000 },
+    })
+    expect(result.refundsChecked).toBeGreaterThanOrEqual(3)
+
+    const states = await pool.query<{
+      id: string
+      provider_refund_id: string | null
+      refund_state: string
+      payment_state: string
+      order_state: string
+    }>(
+      "select refund.id, refund.provider_refund_id, refund.state as refund_state, " +
+        "payment.state as payment_state, investment_order.state as order_state " +
+        "from refund_operations refund " +
+        "join payments payment on payment.id = refund.payment_id " +
+        "join investment_orders investment_order on investment_order.id = refund.order_id " +
+        "where refund.id = any($1::uuid[]) order by refund.created_at",
+      [refundIds],
+    )
+    expect(states.rows).toEqual([
+      expect.objectContaining({
+        provider_refund_id: "provider_refund_same",
+        refund_state: "provider_pending",
+        payment_state: "refund_pending",
+        order_state: "refund_pending",
+      }),
+      expect.objectContaining({
+        provider_refund_id: "provider_refund_null",
+        refund_state: "provider_pending",
+        payment_state: "refund_pending",
+        order_state: "refund_pending",
+      }),
+      expect.objectContaining({
+        provider_refund_id: "provider_refund_original",
+        refund_state: "failed",
+        payment_state: "refund_failed",
+        order_state: "refund_failed",
+      }),
+    ])
+
+    stubRefundInitiationIds.clear()
+    await pool.query("update refund_operations set state = 'failed' where id = any($1::uuid[])", [refundIds])
+  })
+})
+
+describe("removed investment decision endpoints", () => {
+  test("does not expose accept or reject actions", async () => {
+    const { orderId } = await settleOrder("pay-no-decisions")
+
+    for (const action of ["accept", "reject"]) {
+      const response = await app.inject({
+        method: "POST",
+        url: `/v1/admin/investment-reviews/${orderId}/${action}`,
+        headers: adminHeaders(financeSession, { "idempotency-key": `${action}-${randomUUID()}` }),
+        payload: {},
+      })
+      expect(response.statusCode).toBe(404)
+    }
   })
 })

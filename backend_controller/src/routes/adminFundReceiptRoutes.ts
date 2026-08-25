@@ -7,13 +7,18 @@ import type { IdempotencyRepository } from "../db/repositories.js"
 import type { Database } from "../db/types.js"
 import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adminAccess.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
-import { newMerchantRefundId } from "../domain/payments/merchantIds.js"
 import { AppError } from "../http/errorCatalog.js"
 import { parseOrThrow } from "../http/validation.js"
 import type { PaymentGateway } from "../providers/phonepe/paymentGateway.js"
 import { logGatewayFailure } from "../providers/phonepe/gatewayFailure.js"
+import { isRefundEvidenceCorrelated } from "../domain/payments/refundEvidence.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
-import type { InvestmentReviewRepository, ReviewQueueRow } from "../repositories/investmentReviewRepository.js"
+import type {
+  FundReceiptAcknowledgementRepository,
+  FundReceiptQueueRow,
+} from "../repositories/fundReceiptAcknowledgementRepository.js"
+import type { NotificationWriteRepository } from "../repositories/notificationRepository.js"
+import type { InvestmentSettlementRepository } from "../repositories/investmentSettlementRepository.js"
 import type { PaymentsRepository, PaymentListRow } from "../repositories/paymentsRepository.js"
 import type { RefundRepository, RefundListRow } from "../repositories/refundRepository.js"
 import {
@@ -22,54 +27,49 @@ import {
   iso,
   isoOrNull,
   limitSchema,
-  reasonCodeSchema,
   reasonDetailSchema,
   requireIdempotencyKey,
   runAdminMutation,
   uuidParam,
 } from "./adminRouteKit.js"
 
-const REVIEWS_ROUTE = "/v1/admin/investment-reviews"
+const FUND_RECEIPTS_ROUTE = "/v1/admin/fund-receipts"
 const REFUNDS_ROUTE = "/v1/admin/refunds"
 const PAYMENTS_ROUTE = "/v1/admin/payments"
 
-export interface AdminInvestmentReviewConfig {
+export interface AdminFundReceiptConfig {
   readonly idempotencyTtlMs: number
 }
 
-export interface AdminInvestmentReviewDeps {
+export interface AdminFundReceiptDeps {
   readonly webAuth: WebAuthDeps
   readonly unitOfWork: UnitOfWork
   readonly database: Kysely<Database>
   readonly clock: () => Date
-  readonly config: AdminInvestmentReviewConfig
-  readonly reviewRepository: InvestmentReviewRepository
+  readonly config: AdminFundReceiptConfig
+  readonly acknowledgementRepository: FundReceiptAcknowledgementRepository
   readonly paymentsRepository: PaymentsRepository
+  readonly settlementRepository: InvestmentSettlementRepository
   readonly refundRepository: RefundRepository
-  readonly paymentGateway: PaymentGateway
+  readonly paymentGateway: PaymentGateway | null
   readonly auditRepository: AuditWriteRepository
   readonly idempotencyRepository: IdempotencyRepository
+  readonly notificationRepository: NotificationWriteRepository
 }
 
 const queueQuerySchema = z
-  .object({ state: z.enum(["pending", "accepted", "rejected"]).default("pending"), limit: limitSchema })
+  .object({ state: z.enum(["pending", "acknowledged"]).default("pending"), limit: limitSchema })
   .strict()
 
-const acceptBodySchema = z
+const acknowledgeBodySchema = z
   .object({
-    bankVerified: z.literal(true),
     expectedVersion: z.coerce.number().int().min(1),
     privateNote: reasonDetailSchema.optional(),
   })
   .strict()
 
-const rejectBodySchema = z
-  .object({
-    reasonCode: reasonCodeSchema,
-    expectedVersion: z.coerce.number().int().min(1),
-    privateNote: reasonDetailSchema.optional(),
-  })
-  .strict()
+const ACKNOWLEDGEMENT_TITLE = "Funds acknowledged"
+const ACKNOWLEDGEMENT_BODY = "Your funds have been acknowledged by BeOnEdge LLP and are ready for investment. Please stay updated through our app."
 
 const refundsQuerySchema = z
   .object({
@@ -80,7 +80,7 @@ const refundsQuerySchema = z
 
 const paymentsQuerySchema = z.object({ limit: limitSchema }).strict()
 
-const mapQueueRow = (row: ReviewQueueRow): Record<string, unknown> => ({
+const mapQueueRow = (row: FundReceiptQueueRow): Record<string, unknown> => ({
   orderId: row.orderId,
   client: { id: row.userId, name: row.clientName, email: row.clientEmail },
   amountPaise: row.amountPaise,
@@ -94,12 +94,12 @@ const mapQueueRow = (row: ReviewQueueRow): Record<string, unknown> => ({
     providerReference: row.providerReference,
     succeededAt: isoOrNull(row.succeededAt),
   },
-  review: {
-    id: row.reviewId,
-    state: row.reviewState,
-    reasonCode: row.reasonCode,
-    reviewedAt: isoOrNull(row.reviewedAt),
-    version: Number(row.reviewVersion),
+  acknowledgement: {
+    id: row.acknowledgementId,
+    state: row.acknowledgementState,
+    acknowledgedAt: isoOrNull(row.acknowledgedAt),
+    privateNote: row.privateNote,
+    version: Number(row.acknowledgementVersion),
   },
   createdAt: iso(row.createdAt),
 })
@@ -134,33 +134,33 @@ const mapPaymentRow = (row: PaymentListRow): Record<string, unknown> => ({
   createdAt: iso(row.createdAt),
 })
 
-const listQueue = async (deps: AdminInvestmentReviewDeps, request: FastifyRequest, reply: FastifyReply) => {
+const listQueue = async (deps: AdminFundReceiptDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: false })
-  requireAnyPermission(principal, ["investments.review.read", "investments.review.write"])
+  requireAnyPermission(principal, ["funds.receipts.read", "funds.receipts.write"])
   const query = parseOrThrow(queueQuerySchema, request.query)
 
-  const rows = await deps.reviewRepository.findQueuePage(deps.database, {
+  const rows = await deps.acknowledgementRepository.findQueuePage(deps.database, {
     state: query.state,
     limit: query.limit,
   })
   return reply.sendData({ items: rows.map(mapQueueRow) }, { status: 200 })
 }
 
-const getDetail = async (deps: AdminInvestmentReviewDeps, request: FastifyRequest, reply: FastifyReply) => {
+const getDetail = async (deps: AdminFundReceiptDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: false })
-  requireAnyPermission(principal, ["investments.review.read", "investments.review.write"])
+  requireAnyPermission(principal, ["funds.receipts.read", "funds.receipts.write"])
   const orderId = parseOrThrow(uuidParam, (request.params as { orderId?: unknown }).orderId)
 
-  const row = await deps.reviewRepository.findDetailByOrder(deps.database, orderId)
+  const row = await deps.acknowledgementRepository.findDetailByOrder(deps.database, orderId)
   if (row === null) throw new AppError("RESOURCE_NOT_FOUND")
   return reply.sendData(mapQueueRow(row), { status: 200 })
 }
 
-const acceptReview = async (deps: AdminInvestmentReviewDeps, request: FastifyRequest, reply: FastifyReply) => {
+const acknowledgeFunds = async (deps: AdminFundReceiptDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
-  requireAnyPermission(principal, ["investments.review.write"])
+  requireAnyPermission(principal, ["funds.receipts.write"])
   const orderId = parseOrThrow(uuidParam, (request.params as { orderId?: unknown }).orderId)
-  const body = parseOrThrow(acceptBodySchema, request.body)
+  const body = parseOrThrow(acknowledgeBodySchema, request.body)
   const key = requireIdempotencyKey(request)
 
   const result = await runAdminMutation({
@@ -168,155 +168,62 @@ const acceptReview = async (deps: AdminInvestmentReviewDeps, request: FastifyReq
     idempotencyRepository: deps.idempotencyRepository,
     now: deps.clock(),
     idempotencyTtlMs: deps.config.idempotencyTtlMs,
-    scope: adminIdempotencyScope(principal.userId, `${REVIEWS_ROUTE}/:orderId/accept`, key),
+    scope: adminIdempotencyScope(principal.userId, `${FUND_RECEIPTS_ROUTE}/:orderId/acknowledge`, key),
     requestHash: hashRequest({ orderId, ...body }),
     execute: async (tx) => {
-      const order = await deps.reviewRepository.lockOrderById(tx, orderId)
+      const order = await deps.acknowledgementRepository.lockOrderById(tx, orderId)
       if (order === null) throw new AppError("RESOURCE_NOT_FOUND")
-      if (order.state !== "review_pending") throw new AppError("STATE_CONFLICT")
+      if (order.state !== "accepted") throw new AppError("STATE_CONFLICT")
 
-      const review = await deps.reviewRepository.lockReviewByOrder(tx, orderId)
-      if (review === null) throw new AppError("RESOURCE_NOT_FOUND")
-      if (review.state !== "pending") throw new AppError("STATE_CONFLICT")
-      if (Number(review.version) !== body.expectedVersion) throw new AppError("STATE_CONFLICT")
+      const acknowledgement = await deps.acknowledgementRepository.lockAcknowledgementByOrder(tx, orderId)
+      if (acknowledgement === null) throw new AppError("RESOURCE_NOT_FOUND")
+      if (acknowledgement.state !== "pending") throw new AppError("STATE_CONFLICT")
+      if (Number(acknowledgement.version) !== body.expectedVersion) throw new AppError("STATE_CONFLICT")
 
-      const payment = await deps.reviewRepository.lockPaymentByOrder(tx, orderId)
+      const payment = await deps.acknowledgementRepository.lockPaymentByOrder(tx, orderId)
       if (payment === null || payment.state !== "succeeded") throw new AppError("STATE_CONFLICT")
-
-      const fundState = await deps.reviewRepository.findFundState(tx, order.fund_id)
-      if (fundState === null || fundState === "archived") throw new AppError("STATE_CONFLICT")
-
-      if (await deps.reviewRepository.hasAllocation(tx, orderId)) throw new AppError("STATE_CONFLICT")
+      if (!await deps.settlementRepository.hasCompletedInvestmentSettlement(tx, {
+        orderId,
+        paymentId: payment.id,
+      })) throw new AppError("STATE_CONFLICT")
 
       const now = deps.clock()
-      const acceptedReview = await deps.reviewRepository.markAccepted(tx, {
-        reviewId: review.id,
-        reviewerUserId: principal.userId,
+      const acknowledged = await deps.acknowledgementRepository.markAcknowledged(tx, {
+        acknowledgementId: acknowledgement.id,
+        acknowledgedByUserId: principal.userId,
         privateNote: body.privateNote ?? null,
         now,
       })
-      if (acceptedReview === null) throw new AppError("STATE_CONFLICT")
+      if (acknowledged === null) throw new AppError("STATE_CONFLICT")
 
-      const allocation = await deps.reviewRepository.insertAllocation(tx, {
-        orderId,
+      await deps.notificationRepository.create(tx, {
         userId: order.user_id,
-        fundId: order.fund_id,
-        amountPaise: payment.amount_paise,
-        allocatedByUserId: principal.userId,
-        allocatedAt: now,
-        requestId: request.requestId,
-      })
-
-      await deps.reviewRepository.insertContribution(tx, {
-        userId: order.user_id,
-        fundId: order.fund_id,
-        allocationId: allocation.id,
-        amountPaise: payment.amount_paise,
-        effectiveDate: now.toISOString().slice(0, 10),
-        orderId,
-        paymentId: payment.id,
-        reasonCode: "investment_accepted",
-        createdByUserId: principal.userId,
-        requestId: request.requestId,
-      })
-
-      const acceptedOrder = await deps.reviewRepository.markOrderAccepted(tx, orderId, now)
-      if (acceptedOrder === null) throw new AppError("STATE_CONFLICT")
-
-      await deps.auditRepository.append(tx, {
-        actorType: "admin",
-        actorUserId: principal.userId,
-        command: "investment_review.accept",
-        entityType: "investment_order",
-        entityId: orderId,
-        requestId: request.requestId,
-        entityVersion: Number(acceptedOrder.version),
-        metadata: {
-          fundId: order.fund_id,
-          userId: order.user_id,
-          amountPaise: payment.amount_paise,
-          allocationId: allocation.id,
-        },
-      })
-
-      return { status: 200, body: { orderId, state: "accepted", acceptedAt: iso(now) } }
-    },
-  })
-  return reply.sendData(result.body, { status: result.status, ...(result.replay ? { idempotencyReplay: true } : {}) })
-}
-
-const rejectReview = async (deps: AdminInvestmentReviewDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
-  requireAnyPermission(principal, ["investments.review.write"])
-  const orderId = parseOrThrow(uuidParam, (request.params as { orderId?: unknown }).orderId)
-  const body = parseOrThrow(rejectBodySchema, request.body)
-  const key = requireIdempotencyKey(request)
-
-  const result = await runAdminMutation({
-    unitOfWork: deps.unitOfWork,
-    idempotencyRepository: deps.idempotencyRepository,
-    now: deps.clock(),
-    idempotencyTtlMs: deps.config.idempotencyTtlMs,
-    scope: adminIdempotencyScope(principal.userId, `${REVIEWS_ROUTE}/:orderId/reject`, key),
-    requestHash: hashRequest({ orderId, ...body }),
-    execute: async (tx) => {
-      const order = await deps.reviewRepository.lockOrderById(tx, orderId)
-      if (order === null) throw new AppError("RESOURCE_NOT_FOUND")
-      if (order.state !== "review_pending") throw new AppError("STATE_CONFLICT")
-
-      const review = await deps.reviewRepository.lockReviewByOrder(tx, orderId)
-      if (review === null) throw new AppError("RESOURCE_NOT_FOUND")
-      if (review.state !== "pending") throw new AppError("STATE_CONFLICT")
-      if (Number(review.version) !== body.expectedVersion) throw new AppError("STATE_CONFLICT")
-
-      const payment = await deps.reviewRepository.lockPaymentByOrder(tx, orderId)
-      if (payment === null || payment.state !== "succeeded") throw new AppError("STATE_CONFLICT")
-
-      const now = deps.clock()
-      const rejectedReview = await deps.reviewRepository.markRejected(tx, {
-        reviewId: review.id,
-        reviewerUserId: principal.userId,
-        reasonCode: body.reasonCode,
-        privateNote: body.privateNote ?? null,
-        now,
-      })
-      if (rejectedReview === null) throw new AppError("STATE_CONFLICT")
-
-      const refundPendingOrder = await deps.reviewRepository.markOrderRefundPending(tx, orderId, now)
-      if (refundPendingOrder === null) throw new AppError("STATE_CONFLICT")
-
-      const refundPendingPayment = await deps.paymentsRepository.markPaymentRefundPending(tx, payment.id, now)
-      if (refundPendingPayment === null) throw new AppError("STATE_CONFLICT")
-
-      const refund = await deps.refundRepository.create(tx, {
-        paymentId: payment.id,
-        orderId,
-        merchantRefundId: newMerchantRefundId(),
-        amountPaise: payment.amount_paise,
-        createdByUserId: principal.userId,
-        requestId: request.requestId,
+        kind: "fund_receipt_acknowledged",
+        title: ACKNOWLEDGEMENT_TITLE,
+        body: ACKNOWLEDGEMENT_BODY,
+        payload: { orderId, paymentId: payment.id, fundId: order.fund_id, deepLink: "/app/portfolio" },
       })
 
       await deps.auditRepository.append(tx, {
         actorType: "admin",
         actorUserId: principal.userId,
-        command: "investment_review.reject",
-        entityType: "investment_order",
-        entityId: orderId,
+        command: "investment_funds.acknowledge",
+        entityType: "fund_receipt_acknowledgement",
+        entityId: acknowledged.id,
         requestId: request.requestId,
-        entityVersion: Number(refundPendingOrder.version),
-        metadata: { fundId: order.fund_id, userId: order.user_id, reasonCode: body.reasonCode, refundId: refund.id },
+        entityVersion: Number(acknowledged.version),
+        metadata: { fundId: order.fund_id, userId: order.user_id, paymentId: payment.id },
       })
 
-      return { status: 200, body: { orderId, state: "refund_pending", refundId: refund.id } }
+      return { status: 200, body: { orderId, state: "acknowledged", acknowledgedAt: iso(now) } }
     },
   })
   return reply.sendData(result.body, { status: result.status, ...(result.replay ? { idempotencyReplay: true } : {}) })
 }
 
-const listRefunds = async (deps: AdminInvestmentReviewDeps, request: FastifyRequest, reply: FastifyReply) => {
+const listRefunds = async (deps: AdminFundReceiptDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: false })
-  requireAnyPermission(principal, ["refunds.write", "investments.review.read"])
+  requireAnyPermission(principal, ["funds.receipts.read", "refunds.write"])
   const query = parseOrThrow(refundsQuerySchema, request.query)
 
   const rows = await deps.refundRepository.listPage(deps.database, {
@@ -326,16 +233,16 @@ const listRefunds = async (deps: AdminInvestmentReviewDeps, request: FastifyRequ
   return reply.sendData({ items: rows.map(mapRefundRow) }, { status: 200 })
 }
 
-const listPayments = async (deps: AdminInvestmentReviewDeps, request: FastifyRequest, reply: FastifyReply) => {
+const listPayments = async (deps: AdminFundReceiptDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: false })
-  requireAnyPermission(principal, ["payments.read", "investments.review.read"])
+  requireAnyPermission(principal, ["payments.read"])
   const query = parseOrThrow(paymentsQuerySchema, request.query)
 
   const rows = await deps.paymentsRepository.listPage(deps.database, { limit: query.limit })
   return reply.sendData({ items: rows.map(mapPaymentRow) }, { status: 200 })
 }
 
-const retryRefund = async (deps: AdminInvestmentReviewDeps, request: FastifyRequest, reply: FastifyReply) => {
+const retryRefund = async (deps: AdminFundReceiptDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
   requireAnyPermission(principal, ["refunds.write"])
   const refundId = parseOrThrow(uuidParam, (request.params as { refundId?: unknown }).refundId)
@@ -353,8 +260,15 @@ const retryRefund = async (deps: AdminInvestmentReviewDeps, request: FastifyRequ
       if (refund === null) throw new AppError("RESOURCE_NOT_FOUND")
       if (refund.state !== "failed") throw new AppError("STATE_CONFLICT")
 
-      const requeued = await deps.refundRepository.requeue(tx, refundId, deps.clock())
+      const now = deps.clock()
+      const requeued = await deps.refundRepository.requeue(tx, refundId, now)
       if (requeued === null) throw new AppError("STATE_CONFLICT")
+      if (await deps.paymentsRepository.requeuePaymentRefund(tx, refund.payment_id, now) === null) {
+        throw new AppError("STATE_CONFLICT")
+      }
+      if (await deps.paymentsRepository.requeueOrderRefund(tx, refund.order_id, now) === null) {
+        throw new AppError("STATE_CONFLICT")
+      }
 
       await deps.auditRepository.append(tx, {
         actorType: "admin",
@@ -373,22 +287,23 @@ const retryRefund = async (deps: AdminInvestmentReviewDeps, request: FastifyRequ
   return reply.sendData(result.body, { status: result.status, ...(result.replay ? { idempotencyReplay: true } : {}) })
 }
 
-const reconcileRefund = async (deps: AdminInvestmentReviewDeps, request: FastifyRequest, reply: FastifyReply) => {
+const reconcileRefund = async (deps: AdminFundReceiptDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
   requireAnyPermission(principal, ["refunds.write"])
   const refundId = parseOrThrow(uuidParam, (request.params as { refundId?: unknown }).refundId)
   const key = requireIdempotencyKey(request)
+  const paymentGateway = deps.paymentGateway
+  if (paymentGateway === null) throw new AppError("DEPENDENCY_UNAVAILABLE")
 
   const target = await deps.unitOfWork.execute((tx) => deps.refundRepository.lockById(tx, refundId))
   if (target === null) throw new AppError("RESOURCE_NOT_FOUND")
 
-  let status: "refunded" | "failed" | "pending"
+  let fact: Awaited<ReturnType<PaymentGateway["getRefundStatus"]>>
   try {
-    const fact = await deps.paymentGateway.getRefundStatus(target.merchant_refund_id)
-    status = fact.outcome === "succeeded" ? "refunded" : fact.outcome === "failed" ? "failed" : "pending"
+    fact = await paymentGateway.getRefundStatus(target.merchant_refund_id)
   } catch (error) {
     logGatewayFailure(request.log, error, { requestId: request.requestId, operation: "get_refund_status" })
-    status = "pending"
+    throw new AppError("DEPENDENCY_UNAVAILABLE")
   }
 
   const result = await runAdminMutation({
@@ -401,17 +316,34 @@ const reconcileRefund = async (deps: AdminInvestmentReviewDeps, request: Fastify
     execute: async (tx) => {
       const refund = await deps.refundRepository.lockById(tx, refundId)
       if (refund === null) throw new AppError("RESOURCE_NOT_FOUND")
+      const attempt = await deps.paymentsRepository.latestAttempt(tx, refund.payment_id)
+      if (
+        attempt === null || attempt.state !== "succeeded" ||
+        fact.merchantRefundId !== refund.merchant_refund_id ||
+        !isRefundEvidenceCorrelated({
+          expectedAmountPaise: refund.amount_paise,
+          expectedMerchantOrderId: attempt.merchant_order_id,
+          expectedProviderRefundId: refund.provider_refund_id,
+          providerRefundId: fact.providerRefundId,
+          amountPaise: fact.amountPaise,
+          originalMerchantOrderId: fact.originalMerchantOrderId,
+        })
+      ) throw new AppError("STATE_CONFLICT")
       const now = deps.clock()
+      const status = fact.outcome === "succeeded" ? "refunded" : fact.outcome === "failed" ? "failed" : "pending"
 
       if (status === "refunded") {
         const refunded = await deps.refundRepository.markRefunded(tx, {
           refundId,
-          providerRefundId: refund.provider_refund_id,
+          providerRefundId: fact.providerRefundId,
           now,
         })
-        if (refunded !== null) {
-          await deps.paymentsRepository.markPaymentRefunded(tx, refund.payment_id, now)
-          await deps.paymentsRepository.markOrderRefunded(tx, refund.order_id, now)
+        if (refunded === null) throw new AppError("STATE_CONFLICT")
+        if (await deps.paymentsRepository.markPaymentRefunded(tx, refund.payment_id, now) === null) {
+          throw new AppError("STATE_CONFLICT")
+        }
+        if (await deps.paymentsRepository.markOrderRefunded(tx, refund.order_id, now) === null) {
+          throw new AppError("STATE_CONFLICT")
         }
       } else if (status === "failed") {
         const failed = await deps.refundRepository.markFailed(tx, {
@@ -419,14 +351,15 @@ const reconcileRefund = async (deps: AdminInvestmentReviewDeps, request: Fastify
           failureCode: "PROVIDER_REFUND_FAILED",
           now,
         })
-        if (failed !== null) {
-          await deps.paymentsRepository.markPaymentRefundFailed(tx, refund.payment_id, now)
-          await deps.paymentsRepository.markOrderRefundFailed(tx, {
-            orderId: refund.order_id,
-            failureCode: "PROVIDER_REFUND_FAILED",
-            now,
-          })
+        if (failed === null) throw new AppError("STATE_CONFLICT")
+        if (await deps.paymentsRepository.markPaymentRefundFailed(tx, refund.payment_id, now) === null) {
+          throw new AppError("STATE_CONFLICT")
         }
+        if (await deps.paymentsRepository.markOrderRefundFailed(tx, {
+          orderId: refund.order_id,
+          failureCode: "PROVIDER_REFUND_FAILED",
+          now,
+        }) === null) throw new AppError("STATE_CONFLICT")
       } else {
         await deps.refundRepository.markStatusChecked(tx, { refundId, now })
       }
@@ -448,14 +381,13 @@ const reconcileRefund = async (deps: AdminInvestmentReviewDeps, request: Fastify
   return reply.sendData(result.body, { status: result.status, ...(result.replay ? { idempotencyReplay: true } : {}) })
 }
 
-export const registerAdminInvestmentReviewRoutes = (
+export const registerAdminFundReceiptRoutes = (
   application: FastifyInstance,
-  deps: AdminInvestmentReviewDeps,
+  deps: AdminFundReceiptDeps,
 ): void => {
-  application.get(REVIEWS_ROUTE, (request, reply) => listQueue(deps, request, reply))
-  application.get(`${REVIEWS_ROUTE}/:orderId`, (request, reply) => getDetail(deps, request, reply))
-  application.post(`${REVIEWS_ROUTE}/:orderId/accept`, (request, reply) => acceptReview(deps, request, reply))
-  application.post(`${REVIEWS_ROUTE}/:orderId/reject`, (request, reply) => rejectReview(deps, request, reply))
+  application.get(FUND_RECEIPTS_ROUTE, (request, reply) => listQueue(deps, request, reply))
+  application.get(`${FUND_RECEIPTS_ROUTE}/:orderId`, (request, reply) => getDetail(deps, request, reply))
+  application.post(`${FUND_RECEIPTS_ROUTE}/:orderId/acknowledge`, (request, reply) => acknowledgeFunds(deps, request, reply))
   application.get(REFUNDS_ROUTE, (request, reply) => listRefunds(deps, request, reply))
   application.post(`${REFUNDS_ROUTE}/:refundId/retry`, (request, reply) => retryRefund(deps, request, reply))
   application.post(`${REFUNDS_ROUTE}/:refundId/reconcile`, (request, reply) => reconcileRefund(deps, request, reply))

@@ -10,6 +10,7 @@ import { encryptGcm } from "../crypto/primitives.js"
 import { GatewayAuthenticationError, GatewayMalformedCallbackError, type PaymentGateway, type VerifiedCallback } from "../providers/phonepe/paymentGateway.js"
 import { AppError } from "../http/errorCatalog.js"
 import type { PaymentsRepository } from "../repositories/paymentsRepository.js"
+import type { InvestmentSettlementRepository } from "../repositories/investmentSettlementRepository.js"
 import type { ProviderEventInboxRepository } from "../repositories/providerEventInboxRepository.js"
 import type { RefundRepository } from "../repositories/refundRepository.js"
 
@@ -29,6 +30,7 @@ export interface PhonePeProviderEventDeps {
   readonly config: PhonePeProviderEventConfig
   readonly providerEventInboxRepository: ProviderEventInboxRepository
   readonly paymentsRepository: PaymentsRepository
+  readonly settlementRepository: InvestmentSettlementRepository
   readonly refundRepository: RefundRepository
 }
 
@@ -146,7 +148,7 @@ const processCallback = async (
         amountPaise: fact.amountPaise,
         currency: fact.currency,
         details: fact.details,
-      }, now)
+      }, now, deps.settlementRepository)
       await deps.providerEventInboxRepository.markProcessed(tx, { eventId, now })
     })
     return

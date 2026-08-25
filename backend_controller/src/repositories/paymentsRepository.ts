@@ -144,20 +144,21 @@ export interface PaymentsRepository {
   markPaymentExpired: (tx: Transaction, paymentId: string, now: Date) => Promise<Payment | null>
   markPaymentRetryCreated: (tx: Transaction, paymentId: string, now: Date) => Promise<Payment | null>
   markPaymentRefundPending: (tx: Transaction, paymentId: string, now: Date) => Promise<Payment | null>
+  requeuePaymentRefund: (tx: Transaction, paymentId: string, now: Date) => Promise<Payment | null>
   markPaymentRefunded: (tx: Transaction, paymentId: string, now: Date) => Promise<Payment | null>
   markPaymentRefundFailed: (tx: Transaction, paymentId: string, now: Date) => Promise<Payment | null>
   markOrderPaymentPending: (tx: Transaction, orderId: string, now: Date) => Promise<InvestmentOrder | null>
-  markOrderReviewPending: (tx: Transaction, orderId: string, now: Date) => Promise<InvestmentOrder | null>
+  markOrderAcceptedOnSettlement: (tx: Transaction, orderId: string, now: Date) => Promise<InvestmentOrder | null>
   markOrderPaymentFailed: (
     tx: Transaction,
     input: Readonly<{ orderId: string; failureCode: string; now: Date }>,
   ) => Promise<InvestmentOrder | null>
+  requeueOrderRefund: (tx: Transaction, orderId: string, now: Date) => Promise<InvestmentOrder | null>
   markOrderRefunded: (tx: Transaction, orderId: string, now: Date) => Promise<InvestmentOrder | null>
   markOrderRefundFailed: (
     tx: Transaction,
     input: Readonly<{ orderId: string; failureCode: string; now: Date }>,
   ) => Promise<InvestmentOrder | null>
-  createPendingReview: (tx: Transaction, orderId: string) => Promise<void>
   recordPaymentDetail: (tx: Transaction, input: RecordPaymentDetailInput) => Promise<void>
   lockAttemptsForReconciliation: (
     tx: Transaction,
@@ -517,7 +518,12 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
   markPaymentSucceeded: async (tx, paymentId, now) => {
     const row = await tx
       .updateTable("payments")
-      .set({ state: "succeeded", succeeded_at: now, updated_at: now, version: sql<string>`version + 1` })
+      .set({
+        state: "succeeded",
+        succeeded_at: sql<Date>`coalesce(succeeded_at, ${now})`,
+        updated_at: now,
+        version: sql<string>`version + 1`,
+      })
       .where("id", "=", paymentId)
       .where("state", "in", PAYMENT_OPEN_STATES)
       .returningAll()
@@ -574,6 +580,17 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
     return row ?? null
   },
 
+  requeuePaymentRefund: async (tx, paymentId, now) => {
+    const row = await tx
+      .updateTable("payments")
+      .set({ state: "refund_pending", updated_at: now, version: sql<string>`version + 1` })
+      .where("id", "=", paymentId)
+      .where("state", "=", "refund_failed")
+      .returningAll()
+      .executeTakeFirst()
+    return row ?? null
+  },
+
   markPaymentRefunded: async (tx, paymentId, now) => {
     const row = await tx
       .updateTable("payments")
@@ -607,12 +624,13 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
     return row ?? null
   },
 
-  markOrderReviewPending: async (tx, orderId, now) => {
+  markOrderAcceptedOnSettlement: async (tx, orderId, now) => {
     const row = await tx
       .updateTable("investment_orders")
       .set({
-        state: "review_pending",
-        payment_confirmed_at: now,
+        state: "accepted",
+        payment_confirmed_at: sql<Date>`coalesce(payment_confirmed_at, ${now})`,
+        accepted_at: now,
         updated_at: now,
         version: sql<string>`version + 1`,
       })
@@ -634,6 +652,17 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
       })
       .where("id", "=", input.orderId)
       .where("state", "in", ["submitted", "payment_pending"])
+      .returningAll()
+      .executeTakeFirst()
+    return row ?? null
+  },
+
+  requeueOrderRefund: async (tx, orderId, now) => {
+    const row = await tx
+      .updateTable("investment_orders")
+      .set({ state: "refund_pending", failure_code: null, updated_at: now, version: sql<string>`version + 1` })
+      .where("id", "=", orderId)
+      .where("state", "=", "refund_failed")
       .returningAll()
       .executeTakeFirst()
     return row ?? null
@@ -664,14 +693,6 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
       .returningAll()
       .executeTakeFirst()
     return row ?? null
-  },
-
-  createPendingReview: async (tx, orderId) => {
-    await tx
-      .insertInto("investment_reviews")
-      .values({ order_id: orderId })
-      .onConflict((builder) => builder.column("order_id").doNothing())
-      .execute()
   },
 
   recordPaymentDetail: async (tx, input) => {

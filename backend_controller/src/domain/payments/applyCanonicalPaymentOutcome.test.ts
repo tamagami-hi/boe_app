@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from "vitest"
 
 import type { Payment, PaymentAttempt, Transaction } from "../../db/repositories.js"
 import type { PaymentsRepository } from "../../repositories/paymentsRepository.js"
+import type { InvestmentSettlementRepository } from "../../repositories/investmentSettlementRepository.js"
 import {
   applyCanonicalPaymentOutcome,
   type CanonicalPaymentOutcome,
@@ -36,6 +37,7 @@ const payment = {
   amount_paise: "1000000",
   currency: "INR",
   state: "provider_pending",
+  succeeded_at: null,
 } as unknown as Payment
 
 const completedOutcome = (overrides: Partial<CompletedOutcome> = {}): CompletedOutcome => ({
@@ -60,9 +62,19 @@ const completedOutcome = (overrides: Partial<CompletedOutcome> = {}): CompletedO
 
 const createSettlementHarness = () => {
   const markAttemptSucceeded = vi.fn().mockResolvedValue(attempt)
-  const markPaymentSucceeded = vi.fn().mockResolvedValue(payment)
-  const markOrderReviewPending = vi.fn().mockResolvedValue({ id: ORDER_ID })
-  const createPendingReview = vi.fn().mockResolvedValue(undefined)
+  const markPaymentSucceeded = vi.fn().mockResolvedValue({ ...payment, succeeded_at: NOW })
+  const markOrderAcceptedOnSettlement = vi.fn().mockResolvedValue({
+    id: ORDER_ID,
+    user_id: USER_ID,
+    fund_id: "00000000-0000-4000-8000-000000000006",
+    state: "accepted",
+    version: "1",
+  })
+  const insertSystemAllocation = vi.fn().mockResolvedValue({ id: "00000000-0000-4000-8000-000000000005" })
+  const insertSystemContribution = vi.fn().mockResolvedValue(undefined)
+  const hasCompletedInvestmentSettlement = vi.fn().mockResolvedValue(true)
+  const recordSystemInvestmentSettlement = vi.fn().mockResolvedValue(undefined)
+  const createPendingFundReceiptAcknowledgement = vi.fn().mockResolvedValue(undefined)
   const recordPaymentDetail = vi.fn().mockResolvedValue(undefined)
   const markReconciliationRequired = vi.fn().mockResolvedValue(undefined)
   const markAttemptFailed = vi.fn().mockResolvedValue({ ...attempt, state: "failed" })
@@ -72,23 +84,41 @@ const createSettlementHarness = () => {
     findAttemptByMerchantOrderId: vi.fn().mockResolvedValue(attempt),
     lockAttemptById: vi.fn().mockResolvedValue(attempt),
     lockPaymentById: vi.fn().mockResolvedValue(payment),
-    lockOrderById: vi.fn().mockResolvedValue({ id: ORDER_ID, user_id: USER_ID, amount_paise: "1000000", currency: "INR", state: "payment_pending" }),
+    lockOrderById: vi.fn().mockResolvedValue({
+      id: ORDER_ID,
+      user_id: USER_ID,
+      fund_id: "00000000-0000-4000-8000-000000000006",
+      amount_paise: "1000000",
+      currency: "INR",
+      state: "payment_pending",
+    }),
     recordPaymentDetail,
     markReconciliationRequired,
     markAttemptSucceeded,
     markPaymentSucceeded,
-    markOrderReviewPending,
-    createPendingReview,
+    markOrderAcceptedOnSettlement,
     markAttemptFailed,
     markPaymentFailed,
     markOrderPaymentFailed,
   } as unknown as PaymentsRepository
+  const settlementRepository = {
+    insertSystemAllocation,
+    insertSystemContribution,
+    hasCompletedInvestmentSettlement,
+    recordSystemInvestmentSettlement,
+    createPendingFundReceiptAcknowledgement,
+  } as unknown as InvestmentSettlementRepository
   return {
     repository,
+    settlementRepository,
     markAttemptSucceeded,
     markPaymentSucceeded,
-    markOrderReviewPending,
-    createPendingReview,
+    markOrderAcceptedOnSettlement,
+    insertSystemAllocation,
+    insertSystemContribution,
+    hasCompletedInvestmentSettlement,
+    recordSystemInvestmentSettlement,
+    createPendingFundReceiptAcknowledgement,
     recordPaymentDetail,
     markReconciliationRequired,
     markAttemptFailed,
@@ -97,11 +127,25 @@ const createSettlementHarness = () => {
   }
 }
 
+const applyOutcome = (
+  harness: ReturnType<typeof createSettlementHarness>,
+  outcome: CanonicalPaymentOutcome,
+): Promise<void> => applyCanonicalPaymentOutcome(
+  {} as Transaction,
+  harness.repository,
+  outcome,
+  NOW,
+  harness.settlementRepository,
+)
+
 const expectNoSettlement = (harness: ReturnType<typeof createSettlementHarness>) => {
   expect(harness.markAttemptSucceeded).not.toHaveBeenCalled()
   expect(harness.markPaymentSucceeded).not.toHaveBeenCalled()
-  expect(harness.markOrderReviewPending).not.toHaveBeenCalled()
-  expect(harness.createPendingReview).not.toHaveBeenCalled()
+  expect(harness.markOrderAcceptedOnSettlement).not.toHaveBeenCalled()
+  expect(harness.insertSystemAllocation).not.toHaveBeenCalled()
+  expect(harness.insertSystemContribution).not.toHaveBeenCalled()
+  expect(harness.recordSystemInvestmentSettlement).not.toHaveBeenCalled()
+  expect(harness.createPendingFundReceiptAcknowledgement).not.toHaveBeenCalled()
 }
 
 describe("applyCanonicalPaymentOutcome", () => {
@@ -112,12 +156,7 @@ describe("applyCanonicalPaymentOutcome", () => {
       details: [{ ...completedOutcome().details[0]!, amountPaise: "999999" }],
     })
 
-    await applyCanonicalPaymentOutcome(
-      {} as Transaction,
-      harness.repository,
-      outcome,
-      NOW,
-    )
+    await applyOutcome(harness, outcome)
 
     expectNoSettlement(harness)
     expect(harness.markReconciliationRequired).toHaveBeenCalledOnce()
@@ -127,12 +166,7 @@ describe("applyCanonicalPaymentOutcome", () => {
     const harness = createSettlementHarness()
     const outcome = completedOutcome({ details: [] })
 
-    await applyCanonicalPaymentOutcome(
-      {} as Transaction,
-      harness.repository,
-      outcome,
-      NOW,
-    )
+    await applyOutcome(harness, outcome)
 
     expectNoSettlement(harness)
     expect(harness.markReconciliationRequired).toHaveBeenCalledOnce()
@@ -142,12 +176,7 @@ describe("applyCanonicalPaymentOutcome", () => {
     const harness = createSettlementHarness()
     const outcome = completedOutcome({ providerOrderId: "OMO_DIFFERENT_ORDER" })
 
-    await applyCanonicalPaymentOutcome(
-      {} as Transaction,
-      harness.repository,
-      outcome,
-      NOW,
-    )
+    await applyOutcome(harness, outcome)
 
     expectNoSettlement(harness)
     expect(harness.markReconciliationRequired).toHaveBeenCalledOnce()
@@ -155,36 +184,44 @@ describe("applyCanonicalPaymentOutcome", () => {
 
   test("does not settle when provider merchant order or currency evidence differs", async () => {
     const merchantHarness = createSettlementHarness()
-    await applyCanonicalPaymentOutcome(
-      {} as Transaction,
-      merchantHarness.repository,
-      completedOutcome({ providerMerchantOrderId: "BOE_DIFFERENT_ORDER" }),
-      NOW,
-    )
+    await applyOutcome(merchantHarness, completedOutcome({ providerMerchantOrderId: "BOE_DIFFERENT_ORDER" }))
     expectNoSettlement(merchantHarness)
     expect(merchantHarness.markReconciliationRequired).toHaveBeenCalledOnce()
 
     const currencyHarness = createSettlementHarness()
-    await applyCanonicalPaymentOutcome(
-      {} as Transaction,
-      currencyHarness.repository,
-      completedOutcome({ currency: "USD" }),
-      NOW,
-    )
+    await applyOutcome(currencyHarness, completedOutcome({ currency: "USD" }))
     expectNoSettlement(currencyHarness)
     expect(currencyHarness.markReconciliationRequired).toHaveBeenCalledOnce()
   })
 
-  test("settles exact completed evidence and creates one review", async () => {
+  test("settles exact completed evidence into an accepted investment and pending acknowledgement", async () => {
     const harness = createSettlementHarness()
 
-    await applyCanonicalPaymentOutcome({} as Transaction, harness.repository, completedOutcome(), NOW)
+    await applyOutcome(harness, completedOutcome())
 
     expect(harness.recordPaymentDetail).toHaveBeenCalledOnce()
     expect(harness.markAttemptSucceeded).toHaveBeenCalledOnce()
     expect(harness.markPaymentSucceeded).toHaveBeenCalledOnce()
-    expect(harness.markOrderReviewPending).toHaveBeenCalledOnce()
-    expect(harness.createPendingReview).toHaveBeenCalledOnce()
+    expect(harness.markOrderAcceptedOnSettlement).toHaveBeenCalledOnce()
+    expect(harness.insertSystemAllocation).toHaveBeenCalledWith(expect.anything(), {
+      orderId: ORDER_ID,
+      userId: USER_ID,
+      fundId: "00000000-0000-4000-8000-000000000006",
+      amountPaise: "1000000",
+      allocatedAt: NOW,
+      requestId: `settlement:${PAYMENT_ID}`,
+    })
+    expect(harness.insertSystemContribution).toHaveBeenCalledOnce()
+    expect(harness.recordSystemInvestmentSettlement).toHaveBeenCalledWith(expect.anything(), {
+      orderId: ORDER_ID,
+      paymentId: PAYMENT_ID,
+      userId: USER_ID,
+      fundId: "00000000-0000-4000-8000-000000000006",
+      amountPaise: "1000000",
+      requestId: PAYMENT_ID,
+      entityVersion: 1,
+    })
+    expect(harness.createPendingFundReceiptAcknowledgement).toHaveBeenCalledOnce()
     expect(harness.markReconciliationRequired).not.toHaveBeenCalled()
   })
 
@@ -198,12 +235,33 @@ describe("applyCanonicalPaymentOutcome", () => {
       details: [],
     }
 
-    await applyCanonicalPaymentOutcome({} as Transaction, harness.repository, failed, NOW)
+    await applyOutcome(harness, failed)
 
     expect(harness.markAttemptFailed).toHaveBeenCalledOnce()
     expect(harness.markPaymentFailed).toHaveBeenCalledOnce()
     expect(harness.markOrderPaymentFailed).toHaveBeenCalledOnce()
-    expect(harness.createPendingReview).not.toHaveBeenCalled()
+    expect(harness.createPendingFundReceiptAcknowledgement).not.toHaveBeenCalled()
+  })
+
+  test("quarantines contradictory failure evidence for a previously succeeded payment", async () => {
+    const harness = createSettlementHarness()
+    vi.mocked(harness.repository.lockPaymentById).mockResolvedValue({
+      ...payment,
+      succeeded_at: NOW,
+    })
+
+    await applyOutcome(harness, {
+      ...completedOutcome(),
+      outcome: "failed",
+      providerState: "FAILED",
+      amountPaise: null,
+      details: [],
+    })
+
+    expect(harness.markReconciliationRequired).toHaveBeenCalledOnce()
+    expect(harness.markAttemptFailed).not.toHaveBeenCalled()
+    expect(harness.markPaymentFailed).not.toHaveBeenCalled()
+    expect(harness.markOrderPaymentFailed).not.toHaveBeenCalled()
   })
 
   test("quarantines a failed fact correlated to a different merchant order", async () => {
@@ -216,7 +274,7 @@ describe("applyCanonicalPaymentOutcome", () => {
       details: [],
     }
 
-    await applyCanonicalPaymentOutcome({} as Transaction, harness.repository, failed, NOW)
+    await applyOutcome(harness, failed)
 
     expect(harness.markReconciliationRequired).toHaveBeenCalledOnce()
     expect(harness.markAttemptFailed).not.toHaveBeenCalled()
@@ -234,7 +292,7 @@ describe("applyCanonicalPaymentOutcome", () => {
       state: "reconciliation_required",
     })
 
-    await applyCanonicalPaymentOutcome({} as Transaction, harness.repository, completedOutcome({ amountPaise: null }), NOW)
+    await applyOutcome(harness, completedOutcome({ amountPaise: null }))
 
     expect(harness.markReconciliationRequired).not.toHaveBeenCalled()
     expectNoSettlement(harness)
@@ -245,7 +303,49 @@ describe("applyCanonicalPaymentOutcome", () => {
     vi.mocked(harness.repository.lockAttemptById).mockResolvedValue({ ...attempt, state: "succeeded" })
     vi.mocked(harness.repository.lockPaymentById).mockResolvedValue({ ...payment, state: "succeeded" })
 
-    await expect(applyCanonicalPaymentOutcome({} as Transaction, harness.repository, completedOutcome(), NOW))
+    await expect(applyOutcome(harness, completedOutcome()))
       .rejects.toThrow("order success correlation failed")
+  })
+
+  test("accepts an idempotent success replay only when the complete financial shape exists", async () => {
+    const harness = createSettlementHarness()
+    vi.mocked(harness.repository.lockAttemptById).mockResolvedValue({ ...attempt, state: "succeeded" })
+    vi.mocked(harness.repository.lockPaymentById).mockResolvedValue({ ...payment, state: "succeeded" })
+    vi.mocked(harness.repository.lockOrderById).mockResolvedValue({
+      id: ORDER_ID,
+      user_id: USER_ID,
+      fund_id: "00000000-0000-4000-8000-000000000006",
+      amount_paise: "1000000",
+      currency: "INR",
+      state: "accepted",
+    } as never)
+
+    await applyOutcome(harness, completedOutcome())
+
+    expect(harness.hasCompletedInvestmentSettlement).toHaveBeenCalledWith(expect.anything(), {
+      orderId: ORDER_ID,
+      paymentId: PAYMENT_ID,
+    })
+    expectNoSettlement(harness)
+  })
+
+  test("rejects an idempotent success replay when the financial shape is incomplete", async () => {
+    const harness = createSettlementHarness()
+    vi.mocked(harness.repository.lockAttemptById).mockResolvedValue({ ...attempt, state: "succeeded" })
+    vi.mocked(harness.repository.lockPaymentById).mockResolvedValue({ ...payment, state: "succeeded" })
+    vi.mocked(harness.repository.lockOrderById).mockResolvedValue({
+      id: ORDER_ID,
+      user_id: USER_ID,
+      fund_id: "00000000-0000-4000-8000-000000000006",
+      amount_paise: "1000000",
+      currency: "INR",
+      state: "accepted",
+    } as never)
+    harness.hasCompletedInvestmentSettlement.mockResolvedValue(false)
+
+    await expect(applyOutcome(harness, completedOutcome()))
+      .rejects.toThrow("order success correlation failed")
+
+    expectNoSettlement(harness)
   })
 })

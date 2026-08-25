@@ -11,6 +11,7 @@ import type { RecurringPaymentGateway } from "../providers/recurringPaymentGatew
 import { GatewayAuthenticationError, GatewayMalformedCallbackError, type PaymentGateway } from "../providers/phonepe/paymentGateway.js"
 import type { MandatesRepository } from "../repositories/mandatesRepository.js"
 import type { PaymentsRepository } from "../repositories/paymentsRepository.js"
+import type { InvestmentSettlementRepository } from "../repositories/investmentSettlementRepository.js"
 import type { ProviderEventInboxRepository } from "../repositories/providerEventInboxRepository.js"
 
 const BODY_LIMIT = 65_536
@@ -46,6 +47,7 @@ export interface PhonePeMandateEventDeps {
   readonly recurringPaymentGateway: RecurringPaymentGateway
   readonly mandatesRepository: MandatesRepository
   readonly paymentsRepository: PaymentsRepository
+  readonly settlementRepository: InvestmentSettlementRepository
   readonly providerEventInboxRepository: ProviderEventInboxRepository
   readonly config: Readonly<{
     payloadEncryptionKey: Buffer

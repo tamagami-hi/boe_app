@@ -137,7 +137,7 @@ export const createOrderRepository = (): OrderWriteRepository => ({
       .selectAll()
       .where("sip_plan_id", "=", sipPlanId)
       .where("type", "=", "sip_installment")
-      .where("state", "in", ["submitted", "payment_pending", "review_pending"])
+      .where("state", "in", ["submitted", "payment_pending"])
       .orderBy("due_period", "desc")
       .limit(1)
       .executeTakeFirst()

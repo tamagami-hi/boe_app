@@ -31,7 +31,7 @@ export interface SipScheduleSummary {
   readonly plansCompleted: number
 }
 
-const OPEN_ORDER_STATES: readonly OrderState[] = ["submitted", "payment_pending", "review_pending"]
+const OPEN_ORDER_STATES: readonly OrderState[] = ["submitted", "payment_pending"]
 
 const dateOnly = (value: Date | string): string => {
   const iso = typeof value === "string" ? value : value.toISOString()

@@ -108,7 +108,6 @@ export type OrderType = "lump_sum" | "sip_installment"
 export type OrderState =
   | "submitted"
   | "payment_pending"
-  | "review_pending"
   | "accepted"
   | "refund_pending"
   | "refunded"
@@ -127,7 +126,7 @@ export type PaymentState =
   | "refund_failed"
 export type ProviderEventState = "received" | "processing" | "processed" | "dead_lettered"
 export type RefundState = "pending" | "provider_pending" | "refunded" | "failed"
-export type ReviewState = "pending" | "accepted" | "rejected"
+export type FundReceiptAcknowledgementState = "pending" | "acknowledged"
 export type ClientValueEntryType = "contribution" | "growth_adjustment" | "reversal"
 export type LedgerActorType = "admin" | "system"
 export type GrowthScope = "individual" | "collective"
@@ -839,15 +838,13 @@ export interface InvestmentOrdersTable {
   version: BigIntStringDefault
 }
 
-export interface InvestmentReviewsTable {
+export interface FundReceiptAcknowledgementsTable {
   id: Generated<string>
   order_id: string
-  state: Generated<ReviewState>
-  bank_verified: Generated<boolean>
-  reviewed_by_user_id: Nullable<string>
-  reason_code: Nullable<string>
+  state: Generated<FundReceiptAcknowledgementState>
+  acknowledged_by_user_id: Nullable<string>
   private_note: Nullable<string>
-  reviewed_at: NullableTimestamp
+  acknowledged_at: NullableTimestamp
   created_at: TimestampDefault
   updated_at: TimestampDefault
   version: BigIntStringDefault
@@ -859,7 +856,8 @@ export interface InvestmentAllocationsTable {
   user_id: string
   fund_id: string
   amount_paise: BigIntString
-  allocated_by_user_id: string
+  allocated_by_user_id: Nullable<string>
+  actor_type: Generated<LedgerActorType>
   allocated_at: TimestampDefault
   request_id: string
   created_at: TimestampDefault
@@ -1074,7 +1072,7 @@ export interface Database {
   mandate_cancel_commands: MandateCancelCommandsTable
   worker_heartbeats: WorkerHeartbeatsTable
   investment_orders: InvestmentOrdersTable
-  investment_reviews: InvestmentReviewsTable
+  fund_receipt_acknowledgements: FundReceiptAcknowledgementsTable
   investment_allocations: InvestmentAllocationsTable
   client_growth_batches: ClientGrowthBatchesTable
   payments: PaymentsTable

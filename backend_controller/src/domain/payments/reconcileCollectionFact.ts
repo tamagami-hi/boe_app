@@ -2,11 +2,13 @@ import type { Transaction } from "../../db/repositories.js"
 import type { CollectionStatus } from "../../providers/recurringPaymentGateway.js"
 import type { MandatesRepository } from "../../repositories/mandatesRepository.js"
 import type { PaymentsRepository } from "../../repositories/paymentsRepository.js"
+import type { InvestmentSettlementRepository } from "../../repositories/investmentSettlementRepository.js"
 import { applyCanonicalPaymentOutcome } from "./applyCanonicalPaymentOutcome.js"
 
 export interface ReconcileCollectionDeps {
   readonly mandatesRepository: MandatesRepository
   readonly paymentsRepository: PaymentsRepository
+  readonly settlementRepository: InvestmentSettlementRepository
 }
 
 export const reconcileCollectionFact = async (
@@ -61,6 +63,6 @@ export const reconcileCollectionFact = async (
       state: detail.state,
       amountPaise: detail.amountPaise,
     })),
-  }, now)
+  }, now, deps.settlementRepository)
   return true
 }
