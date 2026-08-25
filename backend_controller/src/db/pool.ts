@@ -3,6 +3,18 @@ import pg from "pg"
 import type { DatabaseConfig } from "./config.js"
 
 /**
+ * Parse PostgreSQL `date` columns into a UTC-midnight Date. node-postgres
+ * returns date columns as local-midnight Date objects by default, so a host
+ * running in a positive-offset timezone sees the previous UTC day. Fixing the
+ * parser keeps every `toISOString().slice(0, 10)` extraction correct regardless
+ * of the Node process timezone.
+ */
+pg.types.setTypeParser(pg.types.builtins.DATE, (value: string): Date => {
+  const [year, month, day] = value.split("-").map(Number)
+  return new Date(Date.UTC(year as number, (month as number) - 1, day as number))
+})
+
+/**
  * What the pool needs. The two timeouts are optional so callers that build a
  * config literal (integration tests) keep working; omitting them leaves the
  * PostgreSQL server default in place, and `parseDatabaseConfig` always supplies
