@@ -31,7 +31,7 @@
     "worker:email:watch": "sh -ec 'while true; do node --env-file-if-exists=.env --import=tsx src/emailWorker.ts; sleep ${EMAIL_WORKER_INTERVAL_SECONDS:-15}; done'",
     "worker:payments": "node dist/paymentReconciliationEntrypoint.js",
     "worker:payments:dev": "node --env-file-if-exists=.env --import=tsx src/paymentReconciliationEntrypoint.ts",
-    "worker:payments:watch": "sh -ec 'while true; do node --env-file-if-exists=.env --import=tsx src/paymentReconciliationEntrypoint.ts; sleep ${PAYMENT_WORKER_INTERVAL_SECONDS:-30}; done'",
+    "worker:payments:watch": "node --env-file-if-exists=.env --import=tsx src/paymentReconciliationEntrypoint.ts",
     "worker:sips": "node dist/sipScheduleEntrypoint.js",
     "worker:sips:dev": "node --env-file-if-exists=.env --import=tsx src/sipScheduleEntrypoint.ts",
     "worker:sips:watch": "sh -ec 'while true; do node --env-file-if-exists=.env --import=tsx src/sipScheduleEntrypoint.ts; sleep ${SIP_WORKER_INTERVAL_SECONDS:-300}; done'",

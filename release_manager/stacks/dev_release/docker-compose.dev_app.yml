@@ -144,6 +144,12 @@ x-backend-env: &backend-env
   PHONEPE_AUTOPAY_ENABLED: ${PHONEPE_AUTOPAY_ENABLED:-false}
   PHONEPE_AUTOPAY_COLLECTION_ENABLED: ${PHONEPE_AUTOPAY_COLLECTION_ENABLED:-false}
   PHONEPE_API_TIMEOUT_MS: ${PHONEPE_API_TIMEOUT_MS:-10000}
+  PHONEPE_PAYMENT_EVENT_ALLOWLIST: ${PHONEPE_PAYMENT_EVENT_ALLOWLIST:-checkout.order.completed,checkout.order.failed}
+  PAYMENT_RECONCILIATION_INTERVAL_SECONDS: ${PAYMENT_RECONCILIATION_INTERVAL_SECONDS:-30}
+  PAYMENT_RECONCILIATION_LEASE_SECONDS: ${PAYMENT_RECONCILIATION_LEASE_SECONDS:-60}
+  PAYMENT_RECONCILIATION_MAX_BACKOFF_SECONDS: ${PAYMENT_RECONCILIATION_MAX_BACKOFF_SECONDS:-900}
+  PAYMENT_RECONCILIATION_EXPIRY_GRACE_SECONDS: ${PAYMENT_RECONCILIATION_EXPIRY_GRACE_SECONDS:-300}
+  PAYMENT_RECONCILIATION_CLAIM_LIMIT: ${PAYMENT_RECONCILIATION_CLAIM_LIMIT:-25}
   PAYMENT_ATTEMPT_TTL_MS: ${PAYMENT_ATTEMPT_TTL_MS:-900000}
 
   KYC_EMAIL_FROM: ${KYC_EMAIL_FROM}
@@ -345,7 +351,7 @@ services:
     container_name: ${BOE_CONTAINER_PREFIX:-boe-dev}-payments-worker
     <<: *security
     restart: unless-stopped
-    command: ["sh", "-ec", "rm -f /tmp/boe-worker-ready; while true; do node dist/paymentReconciliationEntrypoint.js; touch /tmp/boe-worker-ready; sleep ${PAYMENT_WORKER_INTERVAL_SECONDS:-20}; done"]
+    command: ["node", "dist/paymentReconciliationEntrypoint.js"]
     environment: *backend-env
     healthcheck: *payments-worker-health
     depends_on:

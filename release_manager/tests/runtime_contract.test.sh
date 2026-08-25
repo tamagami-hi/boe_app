@@ -96,12 +96,17 @@ for stack in dev_release prod_release; do
         fi
         grep -qE '^[[:space:]]+seed:$' <<< "$block" \
             || fail_test "$stack/$service is not gated on successful seed completion"
-        grep -qE 'command: \["sh", "-ec",' <<< "$block" \
-            || fail_test "$stack/$service does not exit when a worker pass fails"
-        grep -qF 'rm -f /tmp/boe-worker-ready' <<< "$block" \
-            || fail_test "$stack/$service does not clear stale readiness on restart"
-        grep -qF 'touch /tmp/boe-worker-ready' <<< "$block" \
-            || fail_test "$stack/$service does not record a successful first pass"
+        if [[ "$service" == "payments-worker" ]]; then
+            grep -qF 'command: ["node", "dist/paymentReconciliationEntrypoint.js"]' <<< "$block" \
+                || fail_test "$stack/$service is not a long-lived reconciliation process"
+        else
+            grep -qE 'command: \["sh", "-ec",' <<< "$block" \
+                || fail_test "$stack/$service does not exit when a worker pass fails"
+            grep -qF 'rm -f /tmp/boe-worker-ready' <<< "$block" \
+                || fail_test "$stack/$service does not clear stale readiness on restart"
+            grep -qF 'touch /tmp/boe-worker-ready' <<< "$block" \
+                || fail_test "$stack/$service does not record a successful first pass"
+        fi
         if grep -qF '|| true' <<< "$block"; then
             fail_test "$stack/$service masks worker pass failures"
         fi
