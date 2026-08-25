@@ -124,7 +124,8 @@ export const createOrderRepository = (): OrderWriteRepository => ({
         due_period: input.duePeriod,
         requested_at: input.now,
       })
-      .onConflict((builder) => builder.columns(["sip_plan_id", "due_period"]).doNothing())
+      .onConflict((builder) => builder.columns(["sip_plan_id", "due_period"])
+        .where("type", "=", "sip_installment").doNothing())
       .returningAll()
       .executeTakeFirst()
     return row ?? null

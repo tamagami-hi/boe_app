@@ -13,8 +13,11 @@ export interface CreateSipPlanInput {
 
 export interface SipPlanRepository {
   create: (tx: Transaction, input: CreateSipPlanInput) => Promise<SipPlan>
+  createAutoPay: (tx: Transaction, input: CreateSipPlanInput) => Promise<SipPlan>
   listByUser: (tx: Transaction, userId: string) => Promise<readonly SipPlan[]>
   listDue: (tx: Transaction, input: Readonly<{ asOf: string; limit: number }>) => Promise<readonly SipPlan[]>
+  listAutoPayDue: (tx: Transaction, input: Readonly<{ asOf: string; limit: number }>) => Promise<readonly SipPlan[]>
+  listAutoPayTermCompletionCandidates: (tx: Transaction, limit: number) => Promise<readonly SipPlan[]>
   lockById: (
     tx: Transaction,
     input: Readonly<{ sipPlanId: string; userId: string }>,
@@ -40,12 +43,26 @@ export const createSipPlanRepository = (): SipPlanRepository => ({
         amount_paise: input.amountPaise,
         debit_day: input.debitDay,
         duration_months: input.durationMonths,
+        collection_mode: "manual_checkout",
         state: "active",
         start_date: input.now.toISOString().slice(0, 10),
         next_due_date: input.now.toISOString().slice(0, 10),
       })
       .returningAll()
       .executeTakeFirstOrThrow(),
+
+  createAutoPay: async (tx, input) =>
+    tx.insertInto("sip_plans").values({
+      user_id: input.userId,
+      fund_id: input.fundId,
+      amount_paise: input.amountPaise,
+      debit_day: input.debitDay,
+      duration_months: input.durationMonths,
+      collection_mode: "phonepe_autopay",
+      state: "pending_mandate",
+      start_date: input.now.toISOString().slice(0, 10),
+      next_due_date: null,
+    }).returningAll().executeTakeFirstOrThrow(),
 
   listByUser: async (tx, userId) =>
     tx
@@ -60,6 +77,7 @@ export const createSipPlanRepository = (): SipPlanRepository => ({
       .selectFrom("sip_plans")
       .selectAll()
       .where("state", "=", "active")
+      .where("collection_mode", "=", "manual_checkout")
       .where("next_due_date", "is not", null)
       .where(sql<boolean>`next_due_date <= ${input.asOf}`)
       .orderBy("next_due_date")
@@ -68,6 +86,22 @@ export const createSipPlanRepository = (): SipPlanRepository => ({
       .forUpdate()
       .skipLocked()
       .execute(),
+
+  listAutoPayDue: async (tx, input) => tx.selectFrom("sip_plans").selectAll()
+    .where("state", "=", "active").where("collection_mode", "=", "phonepe_autopay")
+    .where("next_due_date", "is not", null).where(sql<boolean>`next_due_date <= ${input.asOf}`)
+    .orderBy("next_due_date").orderBy("id").limit(input.limit).forUpdate().skipLocked().execute(),
+
+  listAutoPayTermCompletionCandidates: async (tx, limit) => tx.selectFrom("sip_plans").selectAll()
+    .where("state", "=", "active").where("collection_mode", "=", "phonepe_autopay")
+    .where("duration_months", "is not", null)
+    .where(sql<boolean>`(
+      select count(*) from investment_orders investment_order
+      where investment_order.sip_plan_id = sip_plans.id
+        and investment_order.type = 'sip_installment'
+        and investment_order.state = 'accepted'
+    ) >= sip_plans.duration_months`)
+    .orderBy("updated_at").orderBy("id").limit(limit).forUpdate().skipLocked().execute(),
 
   lockById: async (tx, input) => {
     const row = await tx
@@ -95,6 +129,7 @@ export const createSipPlanRepository = (): SipPlanRepository => ({
       .updateTable("sip_plans")
       .set({ state: "paused", paused_at: now, updated_at: now, version: sql<string>`version + 1` })
       .where("id", "=", sipPlanId)
+      .where("collection_mode", "=", "manual_checkout")
       .where("state", "=", "active")
       .returningAll()
       .executeTakeFirst()
@@ -106,6 +141,7 @@ export const createSipPlanRepository = (): SipPlanRepository => ({
       .updateTable("sip_plans")
       .set({ state: "active", paused_at: null, updated_at: now, version: sql<string>`version + 1` })
       .where("id", "=", sipPlanId)
+      .where("collection_mode", "=", "manual_checkout")
       .where("state", "=", "paused")
       .returningAll()
       .executeTakeFirst()
@@ -117,6 +153,7 @@ export const createSipPlanRepository = (): SipPlanRepository => ({
       .updateTable("sip_plans")
       .set({ state: "cancelled", cancelled_at: now, updated_at: now, version: sql<string>`version + 1` })
       .where("id", "=", sipPlanId)
+      .where("collection_mode", "=", "manual_checkout")
       .where("state", "in", ["active", "paused"])
       .returningAll()
       .executeTakeFirst()
@@ -134,6 +171,7 @@ export const createSipPlanRepository = (): SipPlanRepository => ({
         version: sql<string>`version + 1`,
       })
       .where("id", "=", sipPlanId)
+      .where("collection_mode", "=", "manual_checkout")
       .where("state", "=", "active")
       .returningAll()
       .executeTakeFirst()

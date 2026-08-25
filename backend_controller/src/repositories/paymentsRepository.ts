@@ -20,6 +20,19 @@ export interface CreateAttemptInput {
   readonly attemptNumber: number
   readonly merchantOrderId: string
   readonly checkoutExpiresAt: Date
+  readonly checkoutChannel: "hosted_redirect" | "phonepe_mobile_sdk" | "phonepe_mandate_setup" | "phonepe_autopay"
+}
+
+export interface PersistSdkOrderInput {
+  readonly attemptId: string
+  readonly providerOrderId: string
+  readonly providerState: string
+  readonly checkoutExpiresAt: Date
+  readonly tokenCiphertext: Buffer
+  readonly tokenNonce: Buffer
+  readonly tokenKeyVersion: string
+  readonly tokenExpiresAt: Date
+  readonly now: Date
 }
 
 export interface RecordPaymentDetailInput {
@@ -61,11 +74,24 @@ export interface PaymentsRepository {
   createPayment: (tx: Transaction, input: CreatePaymentInput) => Promise<Payment>
   latestAttempt: (tx: Transaction, paymentId: string) => Promise<PaymentAttempt | null>
   lockAttemptById: (tx: Transaction, attemptId: string) => Promise<PaymentAttempt | null>
+  findAttemptById: (tx: Transaction, attemptId: string) => Promise<PaymentAttempt | null>
   findAttemptByMerchantOrderId: (
     tx: Transaction,
     merchantOrderId: string,
   ) => Promise<PaymentAttempt | null>
   createAttempt: (tx: Transaction, input: CreateAttemptInput) => Promise<PaymentAttempt>
+  markAttemptDispatchStarted: (tx: Transaction, attemptId: string, now: Date) => Promise<PaymentAttempt | null>
+  markMandateAttemptDispatchStarted: (tx: Transaction, attemptId: string, now: Date) => Promise<PaymentAttempt | null>
+  markMandateAttemptDispatched: (
+    tx: Transaction,
+    input: Readonly<{ attemptId: string; providerOrderId: string; checkoutExpiresAt: Date; now: Date }>,
+  ) => Promise<PaymentAttempt | null>
+  markAutoPayAttemptDispatchStarted: (tx: Transaction, attemptId: string, now: Date) => Promise<PaymentAttempt | null>
+  markAutoPayAttemptDispatched: (
+    tx: Transaction,
+    input: Readonly<{ attemptId: string; providerOrderId: string; checkoutExpiresAt: Date; now: Date }>,
+  ) => Promise<PaymentAttempt | null>
+  markAttemptSdkDispatched: (tx: Transaction, input: PersistSdkOrderInput) => Promise<PaymentAttempt | null>
   markAttemptDispatched: (
     tx: Transaction,
     input: Readonly<{
@@ -108,6 +134,7 @@ export interface PaymentsRepository {
     input: Readonly<{ paymentId: string; failureCode: string; now: Date }>,
   ) => Promise<Payment | null>
   markPaymentExpired: (tx: Transaction, paymentId: string, now: Date) => Promise<Payment | null>
+  markPaymentRetryCreated: (tx: Transaction, paymentId: string, now: Date) => Promise<Payment | null>
   markPaymentRefundPending: (tx: Transaction, paymentId: string, now: Date) => Promise<Payment | null>
   markPaymentRefunded: (tx: Transaction, paymentId: string, now: Date) => Promise<Payment | null>
   markPaymentRefundFailed: (tx: Transaction, paymentId: string, now: Date) => Promise<Payment | null>
@@ -126,7 +153,7 @@ export interface PaymentsRepository {
   recordPaymentDetail: (tx: Transaction, input: RecordPaymentDetailInput) => Promise<void>
   lockAttemptsForReconciliation: (
     tx: Transaction,
-    input: Readonly<{ limit: number }>,
+    input: Readonly<{ limit: number; createdDueBefore: Date }>,
   ) => Promise<readonly PaymentAttempt[]>
   listPage: (
     tx: Transaction,
@@ -209,6 +236,15 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
     return row ?? null
   },
 
+  findAttemptById: async (tx, attemptId) => {
+    const row = await tx
+      .selectFrom("payment_attempts")
+      .selectAll()
+      .where("id", "=", attemptId)
+      .executeTakeFirst()
+    return row ?? null
+  },
+
   findAttemptByMerchantOrderId: async (tx, merchantOrderId) => {
     const row = await tx
       .selectFrom("payment_attempts")
@@ -226,11 +262,91 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
         user_id: input.userId,
         attempt_number: input.attemptNumber,
         provider: "phonepe",
+        checkout_channel: input.checkoutChannel,
         merchant_order_id: input.merchantOrderId,
         checkout_expires_at: input.checkoutExpiresAt,
       })
       .returningAll()
       .executeTakeFirstOrThrow(),
+
+  markAttemptDispatchStarted: async (tx, attemptId, now) => {
+    const row = await tx
+      .updateTable("payment_attempts")
+      .set({ provider_dispatch_started_at: now, updated_at: now, version: sql<string>`version + 1` })
+      .where("id", "=", attemptId)
+      .where("checkout_channel", "=", "phonepe_mobile_sdk")
+      .where("state", "=", "created")
+      .where("provider_dispatch_started_at", "is", null)
+      .returningAll()
+      .executeTakeFirst()
+    return row ?? null
+  },
+
+  markMandateAttemptDispatchStarted: async (tx, attemptId, now) => {
+    const row = await tx.updateTable("payment_attempts")
+      .set({ provider_dispatch_started_at: now, updated_at: now, version: sql<string>`version + 1` })
+      .where("id", "=", attemptId).where("checkout_channel", "=", "phonepe_mandate_setup")
+      .where("state", "=", "created").where("provider_dispatch_started_at", "is", null)
+      .returningAll().executeTakeFirst()
+    return row ?? null
+  },
+
+  markMandateAttemptDispatched: async (tx, input) => {
+    const row = await tx.updateTable("payment_attempts").set({
+      state: "provider_pending",
+      provider_order_id: input.providerOrderId,
+      provider_state: "PENDING",
+      checkout_expires_at: input.checkoutExpiresAt,
+      updated_at: input.now,
+      version: sql<string>`version + 1`,
+    }).where("id", "=", input.attemptId).where("checkout_channel", "=", "phonepe_mandate_setup")
+      .where("state", "=", "created").where("provider_dispatch_started_at", "is not", null)
+      .returningAll().executeTakeFirst()
+    return row ?? null
+  },
+
+  markAutoPayAttemptDispatchStarted: async (tx, attemptId, now) => (await tx.updateTable("payment_attempts").set({
+    provider_dispatch_started_at: now,
+    updated_at: now,
+    version: sql<string>`version + 1`,
+  }).where("id", "=", attemptId).where("checkout_channel", "=", "phonepe_autopay")
+    .where("state", "=", "created").where("provider_dispatch_started_at", "is", null)
+    .returningAll().executeTakeFirst()) ?? null,
+
+  markAutoPayAttemptDispatched: async (tx, input) => (await tx.updateTable("payment_attempts").set({
+    state: "provider_pending",
+    provider_order_id: input.providerOrderId,
+    provider_state: "NOTIFICATION_IN_PROGRESS",
+    checkout_expires_at: input.checkoutExpiresAt,
+    updated_at: input.now,
+    version: sql<string>`version + 1`,
+  }).where("id", "=", input.attemptId).where("checkout_channel", "=", "phonepe_autopay")
+    .where("state", "=", "created").where("provider_dispatch_started_at", "is not", null)
+    .returningAll().executeTakeFirst()) ?? null,
+
+  markAttemptSdkDispatched: async (tx, input) => {
+    const row = await tx
+      .updateTable("payment_attempts")
+      .set({
+        state: "provider_pending",
+        provider_order_id: input.providerOrderId,
+        provider_state: input.providerState,
+        checkout_expires_at: input.checkoutExpiresAt,
+        sdk_order_token_ciphertext: input.tokenCiphertext,
+        sdk_order_token_nonce: input.tokenNonce,
+        sdk_order_token_key_version: input.tokenKeyVersion,
+        sdk_order_token_expires_at: input.tokenExpiresAt,
+        updated_at: input.now,
+        version: sql<string>`version + 1`,
+      })
+      .where("id", "=", input.attemptId)
+      .where("checkout_channel", "=", "phonepe_mobile_sdk")
+      .where("state", "=", "created")
+      .where("provider_dispatch_started_at", "is not", null)
+      .returningAll()
+      .executeTakeFirst()
+    return row ?? null
+  },
 
   markAttemptDispatched: async (tx, input) => {
     const row = await tx
@@ -244,6 +360,7 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
         version: sql<string>`version + 1`,
       })
       .where("id", "=", input.attemptId)
+      .where("checkout_channel", "=", "hosted_redirect")
       .where("state", "in", ATTEMPT_OPEN_STATES)
       .returningAll()
       .executeTakeFirst()
@@ -258,6 +375,10 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
         provider_state: input.providerState,
         provider_order_id: input.providerOrderId,
         last_status_checked_at: input.now,
+        sdk_order_token_ciphertext: null,
+        sdk_order_token_nonce: null,
+        sdk_order_token_key_version: null,
+        sdk_order_token_expires_at: null,
         updated_at: input.now,
         version: sql<string>`version + 1`,
       })
@@ -276,6 +397,10 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
         provider_state: input.providerState,
         failure_code: input.failureCode,
         last_status_checked_at: input.now,
+        sdk_order_token_ciphertext: null,
+        sdk_order_token_nonce: null,
+        sdk_order_token_key_version: null,
+        sdk_order_token_expires_at: null,
         updated_at: input.now,
         version: sql<string>`version + 1`,
       })
@@ -293,6 +418,10 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
         state: "expired",
         provider_state: input.providerState,
         last_status_checked_at: input.now,
+        sdk_order_token_ciphertext: null,
+        sdk_order_token_nonce: null,
+        sdk_order_token_key_version: null,
+        sdk_order_token_expires_at: null,
         updated_at: input.now,
         version: sql<string>`version + 1`,
       })
@@ -355,6 +484,17 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
       .set({ state: "expired", updated_at: now, version: sql<string>`version + 1` })
       .where("id", "=", paymentId)
       .where("state", "in", PAYMENT_OPEN_STATES)
+      .returningAll()
+      .executeTakeFirst()
+    return row ?? null
+  },
+
+  markPaymentRetryCreated: async (tx, paymentId, now) => {
+    const row = await tx
+      .updateTable("payments")
+      .set({ state: "created", failed_at: null, updated_at: now, version: sql<string>`version + 1` })
+      .where("id", "=", paymentId)
+      .where("state", "in", ["failed", "expired"])
       .returningAll()
       .executeTakeFirst()
     return row ?? null
@@ -493,7 +633,17 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
     tx
       .selectFrom("payment_attempts")
       .selectAll()
-      .where("state", "in", ATTEMPT_OPEN_STATES)
+      .where("checkout_channel", "in", ["hosted_redirect", "phonepe_mobile_sdk"])
+      .where((expression) =>
+        expression.or([
+          expression("state", "=", "provider_pending"),
+          expression.and([
+            expression("state", "=", "created"),
+            expression("checkout_expires_at", "is not", null),
+            expression("checkout_expires_at", "<=", input.createdDueBefore),
+          ]),
+        ]),
+      )
       .orderBy("created_at")
       .orderBy("id")
       .limit(input.limit)
