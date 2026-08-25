@@ -194,6 +194,181 @@ describe("getOrderStatus", () => {
     ])
   })
 
+  test("correlates an omitted V2 merchant order identifier from the requested path", async () => {
+    const gateway = createPhonePeCheckoutGateway({
+      config: CONFIG,
+      client: statusClient({
+        orderId: "provider-order-1",
+        state: "PENDING",
+        amount: 500000,
+        currency: "INR",
+        paymentDetails: [],
+      }),
+    })
+
+    const fact = await gateway.getOrderStatus("boe_requested_order")
+
+    expect(fact.merchantOrderId).toBe("boe_requested_order")
+  })
+
+  test("correlates an undefined V2 merchant order identifier from the requested path", async () => {
+    const gateway = createPhonePeCheckoutGateway({
+      config: CONFIG,
+      client: statusClient({
+        merchantOrderId: undefined,
+        orderId: "provider-order-1",
+        state: "PENDING",
+        amount: 500000,
+        currency: "INR",
+        paymentDetails: [],
+      }),
+    })
+
+    const fact = await gateway.getOrderStatus("boe_requested_order")
+
+    expect(fact.merchantOrderId).toBe("boe_requested_order")
+  })
+
+  test.each(["", 42, false])("rejects an invalid echoed V2 merchant order identifier: %j", async (merchantOrderId) => {
+    const gateway = createPhonePeCheckoutGateway({
+      config: CONFIG,
+      client: statusClient({
+        merchantOrderId,
+        orderId: "provider-order-1",
+        state: "PENDING",
+        amount: 500000,
+        currency: "INR",
+        paymentDetails: [],
+      }),
+    })
+
+    await expect(gateway.getOrderStatus("boe_requested_order")).rejects.toBeInstanceOf(GatewayMalformedResponseError)
+  })
+
+  test("rejects a mismatched echoed V2 merchant order identifier", async () => {
+    const gateway = createPhonePeCheckoutGateway({
+      config: CONFIG,
+      client: statusClient({
+        merchantOrderId: "boe_different_order",
+        orderId: "provider-order-1",
+        state: "PENDING",
+        amount: 500000,
+        currency: "INR",
+        paymentDetails: [],
+      }),
+    })
+
+    await expect(gateway.getOrderStatus("boe_requested_order")).rejects.toBeInstanceOf(GatewayMalformedResponseError)
+  })
+
+  test("maps V2 split instrument evidence without losing root transaction fields", async () => {
+    const gateway = createPhonePeCheckoutGateway({
+      config: CONFIG,
+      client: statusClient({
+        orderId: "provider-order-1",
+        state: "COMPLETED",
+        amount: 500000,
+        currency: "INR",
+        paymentDetails: [
+          {
+            transactionId: "txn-v2-1",
+            paymentMode: "UPI",
+            amount: 500000,
+            state: "COMPLETED",
+            splitInstruments: [
+              {
+                amount: 500000,
+                rail: { type: "UPI", utr: "UTR123456789" },
+                instrument: { type: "ACCOUNT", maskedAccountNumber: "XXXXXX1234" },
+              },
+            ],
+          },
+        ],
+      }),
+    })
+
+    const fact = await gateway.getOrderStatus("boe_v2_order")
+
+    expect(fact.details).toEqual([
+      {
+        transactionId: "txn-v2-1",
+        reference: "UTR123456789",
+        instrumentType: "ACCOUNT",
+        state: "COMPLETED",
+        amountPaise: "500000",
+      },
+    ])
+  })
+
+  test("does not select an ambiguous split-instrument UTR", async () => {
+    const gateway = createPhonePeCheckoutGateway({
+      config: CONFIG,
+      client: statusClient({
+        orderId: "provider-order-1",
+        state: "COMPLETED",
+        amount: 500000,
+        currency: "INR",
+        paymentDetails: [
+          {
+            transactionId: "txn-v2-1",
+            amount: 500000,
+            state: "COMPLETED",
+            splitInstruments: [
+              { rail: { utr: "UTR-ONE" }, instrument: { type: "ACCOUNT" } },
+              { rail: { utr: "UTR-TWO" }, instrument: { type: "ACCOUNT" } },
+            ],
+          },
+        ],
+      }),
+    })
+
+    const fact = await gateway.getOrderStatus("boe_v2_order")
+
+    expect(fact.details[0]?.reference).toBeNull()
+  })
+
+  test.each([
+    "txn-with-control\ncharacter",
+    "x".repeat(257),
+  ])("discards an unsafe provider transaction identifier", async (transactionId) => {
+    const gateway = createPhonePeCheckoutGateway({
+      config: CONFIG,
+      client: statusClient({
+        orderId: "provider-order-1",
+        state: "COMPLETED",
+        amount: 500000,
+        currency: "INR",
+        paymentDetails: [{ transactionId, state: "COMPLETED", amount: 500000 }],
+      }),
+    })
+
+    const fact = await gateway.getOrderStatus("boe_v2_order")
+
+    expect(fact.details).toEqual([])
+  })
+
+  test("discards a payment detail with oversized split evidence", async () => {
+    const gateway = createPhonePeCheckoutGateway({
+      config: CONFIG,
+      client: statusClient({
+        orderId: "provider-order-1",
+        state: "COMPLETED",
+        amount: 500000,
+        currency: "INR",
+        paymentDetails: [{
+          transactionId: "txn-v2-1",
+          state: "COMPLETED",
+          amount: 500000,
+          splitInstruments: Array.from({ length: 17 }, () => ({ rail: { utr: "UTR" } })),
+        }],
+      }),
+    })
+
+    const fact = await gateway.getOrderStatus("boe_v2_order")
+
+    expect(fact.details).toEqual([])
+  })
+
   test("maps FAILED to failed and PENDING to pending; unknown states stay non-terminal", async () => {
     const gateway = createPhonePeCheckoutGateway({ config: CONFIG, client: stubClient() })
     const withState = (state: string) =>

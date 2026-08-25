@@ -116,6 +116,37 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const optionalString = (value: unknown): string | null =>
   typeof value === "string" && value.trim() !== "" ? value : null
 
+const MAX_SPLIT_INSTRUMENTS = 16
+const MAX_PROVIDER_EVIDENCE_LENGTH = 256
+
+const evidenceString = (value: unknown): string | null => {
+  if (typeof value !== "string") return null
+  const normalized = value.trim()
+  if (
+    normalized.length === 0 ||
+    normalized.length > MAX_PROVIDER_EVIDENCE_LENGTH ||
+    /[\u0000-\u001f\u007f]/u.test(normalized)
+  ) return null
+  return normalized
+}
+
+const uniqueEvidence = (values: readonly unknown[]): readonly string[] =>
+  [...new Set(values.map(evidenceString).filter((value): value is string => value !== null))]
+
+const statusMerchantOrderId = (body: Record<string, unknown>, requestedMerchantOrderId: string): string => {
+  if (!Object.hasOwn(body, "merchantOrderId") || body.merchantOrderId === null || body.merchantOrderId === undefined) {
+    return requestedMerchantOrderId
+  }
+  const echoedMerchantOrderId = optionalString(body.merchantOrderId)
+  if (echoedMerchantOrderId === null) {
+    throw new GatewayMalformedResponseError("the provider returned an invalid merchant order identifier")
+  }
+  if (echoedMerchantOrderId !== requestedMerchantOrderId) {
+    throw new GatewayMalformedResponseError("the provider returned a mismatched merchant order identifier")
+  }
+  return echoedMerchantOrderId
+}
+
 const verifyCallbackAuthorization = (username: string, password: string, authorization: string): boolean => {
   const expected = createHash("sha256").update(`${username}:${password}`).digest()
   if (!/^[0-9a-fA-F]{64}$/u.test(authorization)) return false
@@ -156,14 +187,38 @@ const mapPaymentDetails = (value: unknown): readonly ProviderPaymentDetailFact[]
     if (!isRecord(entry)) continue
     // A detail without a provider transaction id cannot be keyed (spec §5.2);
     // it is evidence-shaped noise, so it is skipped rather than stored.
-    const transactionId = optionalString(entry.transactionId)
+    const transactionId = evidenceString(entry.transactionId)
     if (transactionId === null) continue
-    const rail = isRecord(entry.rail) ? entry.rail : null
+    const rawSplitInstruments = entry.splitInstruments
+    if (
+      rawSplitInstruments !== undefined &&
+      (!Array.isArray(rawSplitInstruments) ||
+        rawSplitInstruments.length > MAX_SPLIT_INSTRUMENTS ||
+        !rawSplitInstruments.every(isRecord))
+    ) continue
+    const splitInstruments = Array.isArray(rawSplitInstruments) ? rawSplitInstruments : []
+    const rootRail = isRecord(entry.rail) ? entry.rail : null
+    const splitRails = splitInstruments
+      .map((splitInstrument) => splitInstrument.rail)
+      .filter(isRecord)
+    const splitInstrumentTypes = splitInstruments
+      .map((splitInstrument) => splitInstrument.instrument)
+      .filter(isRecord)
+      .map((instrument) => instrument.type)
+    const utrs = uniqueEvidence([
+      rootRail?.utr,
+      ...splitRails.map((rail) => rail.utr),
+    ])
+    const instrumentTypes = uniqueEvidence(splitInstrumentTypes)
     facts.push({
       transactionId,
-      reference: rail === null ? optionalString(entry.referenceId) : optionalString(rail.utr),
-      instrumentType: optionalString(entry.paymentMode),
-      state: optionalString(entry.state),
+      reference: utrs.length === 1
+        ? utrs[0]!
+        : utrs.length === 0
+          ? evidenceString(entry.referenceId)
+          : null,
+      instrumentType: instrumentTypes.length === 1 ? instrumentTypes[0]! : evidenceString(entry.paymentMode),
+      state: evidenceString(entry.state),
       amountPaise: paiseFromNumber(entry.amount),
     })
   }
@@ -271,7 +326,7 @@ export const createPhonePeCheckoutGateway = (deps: PhonePeCheckoutGatewayDeps): 
         throw new GatewayMalformedResponseError("the provider status response carried no state")
       }
       return {
-        merchantOrderId: optionalString(body.merchantOrderId),
+        merchantOrderId: statusMerchantOrderId(body, merchantOrderId),
         outcome: mapOutcome(providerState),
         providerState,
         providerOrderId: optionalString(body.orderId),
