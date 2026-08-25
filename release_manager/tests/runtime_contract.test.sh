@@ -89,7 +89,7 @@ for stack in dev_release prod_release; do
 
     for service in payments-worker email-worker sips-worker; do
         block="$(service_block "$compose_file" "$service")"
-        grep -qF 'healthcheck: *worker-health' <<< "$block" \
+        grep -qE 'healthcheck: \*[a-z0-9_-]+-worker-health' <<< "$block" \
             || fail_test "$stack/$service has no first-pass readiness healthcheck"
         if grep -qE '^[[:space:]]+disable:[[:space:]]+true$' <<< "$block"; then
             fail_test "$stack/$service disables worker readiness checks"

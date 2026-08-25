@@ -169,6 +169,51 @@ groups:
         annotations:
           summary: "PostgreSQL deadlock detected ({{ $labels.environment }})"
 
+  # ── workers and mandate operations ────────────────────────────────────────
+  - name: boe-workers
+    rules:
+      - alert: WorkerPassStale
+        expr: |
+          (time() - boe_worker_last_success_timestamp_seconds) > 300
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Worker {{ $labels.worker }} has not completed a pass recently"
+          description: "No successful heartbeat in the last 5 minutes."
+
+      - alert: WorkerPassFailed
+        expr: boe_worker_last_success == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Worker {{ $labels.worker }} last pass failed"
+
+      - alert: MandateSetupStale
+        expr: boe_mandate_setup_stale_count > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Mandate setup attempts are not being reconciled"
+
+      - alert: MandateCollectionStale
+        expr: boe_mandate_collection_stale_count > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Mandate collection attempts are not being reconciled"
+
+      - alert: MandateCancelEscalation
+        expr: boe_mandate_cancel_reconciliation_required_count > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Mandate cancellation commands require manual reconciliation"
+
   # ── monitoring self-check ─────────────────────────────────────────────────
   - name: boe-monitoring
     rules:

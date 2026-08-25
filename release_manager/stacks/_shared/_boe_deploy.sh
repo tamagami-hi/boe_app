@@ -271,7 +271,7 @@ boe_validate_app_key_material() {
 }
 
 boe_validate_app_policy() {
-    local issuer allowlist origin provider smtp_host smtp_port smtp_secure smtp_user smtp_password from_address apk_base expected_apk_base seed_enabled key value
+    local issuer allowlist origin provider node_env expected_node_env phonepe_env phonepe_version phonepe_redirect phonepe_callback expected_phonepe_origin smtp_host smtp_port smtp_secure smtp_user smtp_password from_address apk_base expected_apk_base seed_enabled key value
     local -a origins
     issuer="$(env_get ACCESS_TOKEN_ISSUER "$BOE_EFFECTIVE_ENV")"
     [[ "$issuer" == https://* ]] || die "ACCESS_TOKEN_ISSUER must use https://"
@@ -315,10 +315,79 @@ boe_validate_app_policy() {
         *,https://localhost,*) : ;;
         *) warn "WEB_ORIGIN_ALLOWLIST does not include https://localhost — APK requests will be blocked by CORS" ;;
     esac
+    node_env="$(env_get NODE_ENV "$BOE_EFFECTIVE_ENV")"
+    expected_node_env="development"
+    [[ "${P[environment]}" == "production" ]] && expected_node_env="production"
+    if [[ -n "$node_env" ]]; then
+        [[ "$node_env" == "$expected_node_env" ]] || die "${P[environment]} deployment requires NODE_ENV=$expected_node_env"
+    fi
     provider="$(env_get PAYMENT_PROVIDER "$BOE_EFFECTIVE_ENV")"
-    [[ -z "$provider" || "$provider" == "manual" ]] \
-        || boe_assert_env_keys PHONEPE_CLIENT_ID PHONEPE_CLIENT_SECRET PHONEPE_CLIENT_VERSION \
-            PHONEPE_ENV PHONEPE_CALLBACK_USERNAME PHONEPE_CALLBACK_PASSWORD
+    [[ -n "$provider" ]] || provider="phonepe"
+    if [[ -n "$provider" ]]; then
+        [[ "$provider" == "phonepe" ]] || die "PAYMENT_PROVIDER must be phonepe"
+        boe_assert_env_keys PHONEPE_CLIENT_ID PHONEPE_CLIENT_SECRET PHONEPE_CLIENT_VERSION \
+            PHONEPE_ENV PHONEPE_CALLBACK_USERNAME PHONEPE_CALLBACK_PASSWORD \
+            PHONEPE_REDIRECT_URL PHONEPE_CALLBACK_URL PHONEPE_SUBSCRIPTION_CALLBACK_URL \
+            PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST PHONEPE_CHECKOUT_ALLOWED_ORIGINS PHONEPE_MERCHANT_ID
+        phonepe_env="$(env_get PHONEPE_ENV "$BOE_EFFECTIVE_ENV")"
+        phonepe_version="$(env_get PHONEPE_CLIENT_VERSION "$BOE_EFFECTIVE_ENV")"
+        phonepe_redirect="$(env_get PHONEPE_REDIRECT_URL "$BOE_EFFECTIVE_ENV")"
+        phonepe_callback="$(env_get PHONEPE_CALLBACK_URL "$BOE_EFFECTIVE_ENV")"
+        phonepe_subscription_callback="$(env_get PHONEPE_SUBSCRIPTION_CALLBACK_URL "$BOE_EFFECTIVE_ENV")"
+        phonepe_subscription_events="$(env_get PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST "$BOE_EFFECTIVE_ENV")"
+        phonepe_checkout_origins="$(env_get PHONEPE_CHECKOUT_ALLOWED_ORIGINS "$BOE_EFFECTIVE_ENV")"
+        phonepe_mobile_sdk_enabled="$(env_get PHONEPE_MOBILE_SDK_ORDER_ENABLED "$BOE_EFFECTIVE_ENV")"
+        phonepe_autopay_enabled="$(env_get PHONEPE_AUTOPAY_ENABLED "$BOE_EFFECTIVE_ENV")"
+        phonepe_autopay_collection_enabled="$(env_get PHONEPE_AUTOPAY_COLLECTION_ENABLED "$BOE_EFFECTIVE_ENV")"
+        [[ -n "$phonepe_mobile_sdk_enabled" ]] || phonepe_mobile_sdk_enabled="false"
+        [[ -n "$phonepe_autopay_enabled" ]] || phonepe_autopay_enabled="false"
+        [[ -n "$phonepe_autopay_collection_enabled" ]] || phonepe_autopay_collection_enabled="false"
+        [[ "$phonepe_env" == "sandbox" || "$phonepe_env" == "production" ]] \
+            || die "PHONEPE_ENV must be sandbox or production"
+        [[ "$phonepe_version" =~ ^[1-9][0-9]*$ ]] \
+            || die "PHONEPE_CLIENT_VERSION must be a positive integer"
+        if [[ "${P[environment]}" == "production" ]]; then
+            expected_phonepe_origin="https://app.beonedge.in"
+            [[ "$phonepe_env" == "production" ]] || die "production deployment requires PHONEPE_ENV=production"
+        else
+            expected_phonepe_origin="https://dev-app.beonedge.in"
+            [[ "$phonepe_env" == "sandbox" ]] || die "development deployment requires PHONEPE_ENV=sandbox"
+        fi
+        [[ "$phonepe_redirect" == "$expected_phonepe_origin/payment-return" ]] \
+            || die "PHONEPE_REDIRECT_URL must be $expected_phonepe_origin/payment-return"
+        [[ "$phonepe_callback" == "$expected_phonepe_origin/api/v1/provider-events/phonepe/payment" ]] \
+            || die "PHONEPE_CALLBACK_URL must be $expected_phonepe_origin/api/v1/provider-events/phonepe/payment"
+        [[ "$phonepe_subscription_callback" == "$expected_phonepe_origin/api/v1/provider-events/phonepe/subscription" ]] \
+            || die "PHONEPE_SUBSCRIPTION_CALLBACK_URL must be $expected_phonepe_origin/api/v1/provider-events/phonepe/subscription"
+        [[ -n "$phonepe_subscription_events" ]] \
+            || die "PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST must list exact event names"
+        local phonepe_subscription_event phonepe_subscription_event_values
+        IFS=',' read -r -a phonepe_subscription_event_values <<< "$phonepe_subscription_events"
+        for phonepe_subscription_event in "${phonepe_subscription_event_values[@]}"; do
+            [[ "$phonepe_subscription_event" =~ ^[a-z0-9._-]{1,128}$ ]] \
+                || die "PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST must list exact event names"
+        done
+        local phonepe_checkout_origin phonepe_checkout_origin_values
+        IFS=',' read -r -a phonepe_checkout_origin_values <<< "$phonepe_checkout_origins"
+        [[ "${#phonepe_checkout_origin_values[@]}" -gt 0 ]] \
+            || die "PHONEPE_CHECKOUT_ALLOWED_ORIGINS must list exact HTTPS origins"
+        for phonepe_checkout_origin in "${phonepe_checkout_origin_values[@]}"; do
+            [[ "$phonepe_checkout_origin" =~ ^https://[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]] \
+                || die "PHONEPE_CHECKOUT_ALLOWED_ORIGINS must list exact HTTPS origins without wildcards or paths"
+        done
+        [[ "$phonepe_mobile_sdk_enabled" == "true" || "$phonepe_mobile_sdk_enabled" == "false" ]] \
+            || die "PHONEPE_MOBILE_SDK_ORDER_ENABLED must be true or false"
+        [[ "$phonepe_autopay_enabled" == "true" || "$phonepe_autopay_enabled" == "false" ]] \
+            || die "PHONEPE_AUTOPAY_ENABLED must be true or false"
+        [[ "$phonepe_autopay_collection_enabled" == "true" || "$phonepe_autopay_collection_enabled" == "false" ]] \
+            || die "PHONEPE_AUTOPAY_COLLECTION_ENABLED must be true or false"
+        [[ "$phonepe_autopay_collection_enabled" != "true" || "$phonepe_autopay_enabled" == "true" ]] \
+            || die "PHONEPE_AUTOPAY_COLLECTION_ENABLED requires PHONEPE_AUTOPAY_ENABLED=true"
+        if [[ "$phonepe_mobile_sdk_enabled" == "true" || "$phonepe_autopay_enabled" == "true" ]]; then
+            boe_assert_env_keys CRYPTO_PAYMENT_TOKEN_ENC_KEY CRYPTO_PAYMENT_TOKEN_ENC_KEY_VERSION
+            boe_assert_base64_key CRYPTO_PAYMENT_TOKEN_ENC_KEY 32 true
+        fi
+    fi
     smtp_host="$(env_get EMAIL_SMTP_HOST "$BOE_EFFECTIVE_ENV")"
     smtp_port="$(env_get EMAIL_SMTP_PORT "$BOE_EFFECTIVE_ENV")"
     smtp_secure="$(env_get EMAIL_SMTP_SECURE "$BOE_EFFECTIVE_ENV")"

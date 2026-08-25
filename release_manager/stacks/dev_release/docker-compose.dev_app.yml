@@ -48,8 +48,36 @@ x-worker-health: &worker-health
   retries: 3
   start_period: 30s
 
+x-payments-worker-health: &payments-worker-health
+  test: ["CMD-SHELL", "node dist/scripts/check-worker-health.js payment_reconciliation 120 || rm -f /tmp/boe-worker-ready; test -f /tmp/boe-worker-ready"]
+  interval: 30s
+  timeout: 5s
+  retries: 2
+  start_period: 60s
+
+x-email-worker-health: &email-worker-health
+  test: ["CMD-SHELL", "node dist/scripts/check-worker-health.js email_dispatch 60 || rm -f /tmp/boe-worker-ready; test -f /tmp/boe-worker-ready"]
+  interval: 30s
+  timeout: 5s
+  retries: 2
+  start_period: 60s
+
+x-collections-worker-health: &collections-worker-health
+  test: ["CMD-SHELL", "node dist/scripts/check-worker-health.js mandate_collection 180 || rm -f /tmp/boe-worker-ready; test -f /tmp/boe-worker-ready"]
+  interval: 30s
+  timeout: 5s
+  retries: 2
+  start_period: 60s
+
+x-sips-worker-health: &sips-worker-health
+  test: ["CMD-SHELL", "node dist/scripts/check-worker-health.js sip_schedule 900 || rm -f /tmp/boe-worker-ready; test -f /tmp/boe-worker-ready"]
+  interval: 60s
+  timeout: 5s
+  retries: 2
+  start_period: 120s
+
 x-backend-env: &backend-env
-  NODE_ENV: ${NODE_ENV:-production}
+  NODE_ENV: ${NODE_ENV:-development}
   HOST: 0.0.0.0
   PORT: ${BACKEND_PORT}
   LOG_LEVEL: ${LOG_LEVEL:-info}
@@ -96,8 +124,10 @@ x-backend-env: &backend-env
   CRYPTO_RECIPIENT_HMAC_KEY_VERSION: ${CRYPTO_RECIPIENT_HMAC_KEY_VERSION:-rk1}
   CRYPTO_RECIPIENT_ENC_KEY: ${CRYPTO_RECIPIENT_ENC_KEY}
   CRYPTO_RECIPIENT_ENC_KEY_VERSION: ${CRYPTO_RECIPIENT_ENC_KEY_VERSION:-ek1}
+  CRYPTO_PAYMENT_TOKEN_ENC_KEY: ${CRYPTO_PAYMENT_TOKEN_ENC_KEY:-}
+  CRYPTO_PAYMENT_TOKEN_ENC_KEY_VERSION: ${CRYPTO_PAYMENT_TOKEN_ENC_KEY_VERSION:-}
 
-  PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-manual}
+  PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-phonepe}
   PHONEPE_CLIENT_ID: ${PHONEPE_CLIENT_ID}
   PHONEPE_CLIENT_SECRET: ${PHONEPE_CLIENT_SECRET}
   PHONEPE_CLIENT_VERSION: ${PHONEPE_CLIENT_VERSION:-1}
@@ -106,6 +136,14 @@ x-backend-env: &backend-env
   PHONEPE_CALLBACK_PASSWORD: ${PHONEPE_CALLBACK_PASSWORD}
   PHONEPE_REDIRECT_URL: ${PHONEPE_REDIRECT_URL}
   PHONEPE_CALLBACK_URL: ${PHONEPE_CALLBACK_URL}
+  PHONEPE_SUBSCRIPTION_CALLBACK_URL: ${PHONEPE_SUBSCRIPTION_CALLBACK_URL}
+  PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: ${PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST}
+  PHONEPE_CHECKOUT_ALLOWED_ORIGINS: ${PHONEPE_CHECKOUT_ALLOWED_ORIGINS}
+  PHONEPE_MERCHANT_ID: ${PHONEPE_MERCHANT_ID:-}
+  PHONEPE_MOBILE_SDK_ORDER_ENABLED: ${PHONEPE_MOBILE_SDK_ORDER_ENABLED:-false}
+  PHONEPE_AUTOPAY_ENABLED: ${PHONEPE_AUTOPAY_ENABLED:-false}
+  PHONEPE_AUTOPAY_COLLECTION_ENABLED: ${PHONEPE_AUTOPAY_COLLECTION_ENABLED:-false}
+  PHONEPE_API_TIMEOUT_MS: ${PHONEPE_API_TIMEOUT_MS:-10000}
   PAYMENT_ATTEMPT_TTL_MS: ${PAYMENT_ATTEMPT_TTL_MS:-900000}
 
   KYC_EMAIL_FROM: ${KYC_EMAIL_FROM}
@@ -309,11 +347,12 @@ services:
     restart: unless-stopped
     command: ["sh", "-ec", "rm -f /tmp/boe-worker-ready; while true; do node dist/paymentReconciliationEntrypoint.js; touch /tmp/boe-worker-ready; sleep ${PAYMENT_WORKER_INTERVAL_SECONDS:-20}; done"]
     environment: *backend-env
-    healthcheck: *worker-health
+    healthcheck: *payments-worker-health
     depends_on:
       seed:
         condition: service_completed_successfully
     networks:
+      - dev_egress
       - dev_internal
 
   email-worker:
@@ -323,13 +362,28 @@ services:
     restart: unless-stopped
     command: ["sh", "-ec", "rm -f /tmp/boe-worker-ready; while true; do node dist/emailWorker.js; touch /tmp/boe-worker-ready; sleep ${EMAIL_WORKER_INTERVAL_SECONDS:-15}; done"]
     environment: *backend-env
-    healthcheck: *worker-health
+    healthcheck: *email-worker-health
     depends_on:
       seed:
         condition: service_completed_successfully
     networks:
       # SMTP needs outbound access. This dedicated bridge has no frontend peers
       # and the worker publishes no ports.
+      - dev_egress
+      - dev_internal
+
+  collections-worker:
+    image: boe-dev-backend:${BOE_VERSION}
+    container_name: ${BOE_CONTAINER_PREFIX:-boe-dev}-collections-worker
+    <<: *security
+    restart: unless-stopped
+    command: ["sh", "-ec", "rm -f /tmp/boe-worker-ready; while true; do node dist/mandateCollectionEntrypoint.js; touch /tmp/boe-worker-ready; sleep ${COLLECTION_WORKER_INTERVAL_SECONDS:-60}; done"]
+    environment: *backend-env
+    healthcheck: *collections-worker-health
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    networks:
       - dev_egress
       - dev_internal
 
@@ -340,7 +394,7 @@ services:
     restart: unless-stopped
     command: ["sh", "-ec", "rm -f /tmp/boe-worker-ready; while true; do node dist/sipScheduleEntrypoint.js; touch /tmp/boe-worker-ready; sleep ${SIP_WORKER_INTERVAL_SECONDS:-300}; done"]
     environment: *backend-env
-    healthcheck: *worker-health
+    healthcheck: *sips-worker-health
     depends_on:
       seed:
         condition: service_completed_successfully

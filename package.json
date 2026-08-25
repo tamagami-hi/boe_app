@@ -8,7 +8,7 @@
   },
   "devDependencies": {
     "agent-browser": "^0.27.2",
-    "ngrok": "^5.0.0-beta.2",
+    "ngrok": "^4.3.3",
     "playwright": "^1.59.1"
   }
 }

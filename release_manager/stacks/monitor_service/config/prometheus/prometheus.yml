@@ -5,15 +5,16 @@
 # mounted read-only into the Prometheus container.
 #
 # WHAT IT CAN AND CANNOT SEE
-#   The backend currently exposes NO /metrics endpoint, so there are no
-#   application-level request-rate or latency series. Coverage today is:
+#   The backend exposes an internal /metrics endpoint with worker heartbeats,
+#   backlog counts and mandate-operation stale counts. Coverage today is:
+#     • application metrics         → boe_backend_prod / boe_backend_dev
 #     • host metrics                → node_exporter
 #     • container metrics           → cAdvisor (CPU, memory, restarts)
 #     • public reachability + TLS   → blackbox_exporter
 #     • nginx connection counts     → nginx stub_status
 #     • database internals          → postgres_exporter (optional profiles)
-#   Add a /metrics route to the backend and uncomment the boe-backend jobs below
-#   to get application series.
+#   The /metrics route is restricted to internal addresses; the scrape targets
+#   below hit the docker bridge gateway so the endpoint stays off the public net.
 # ─────────────────────────────────────────────────────────────────────────────
 
 global:
@@ -126,20 +127,19 @@ scrape_configs:
         labels:
           environment: development
 
-  # ── application metrics (not available yet) ───────────────────────────────
-  # Uncomment once the backend serves /metrics. Keep it on the internal network
-  # only — an unauthenticated metrics endpoint must never be public (plan §25.1).
-  #
-  # - job_name: boe_backend_prod
-  #   metrics_path: /metrics
-  #   static_configs:
-  #     - targets: ["172.17.0.1:47413"]
-  #       labels:
-  #         environment: production
-  #
-  # - job_name: boe_backend_dev
-  #   metrics_path: /metrics
-  #   static_configs:
-  #     - targets: ["172.17.0.1:47423"]
-  #       labels:
-  #         environment: development
+  # ── application metrics ───────────────────────────────────────────────────
+  # Keep it on the internal network only — an unauthenticated metrics endpoint
+  # must never be public (plan §25.1).
+  - job_name: boe_backend_prod
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["172.17.0.1:47413"]
+        labels:
+          environment: production
+
+  - job_name: boe_backend_dev
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["172.17.0.1:47423"]
+        labels:
+          environment: development

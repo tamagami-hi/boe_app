@@ -374,6 +374,7 @@ build_variant() {
 
     # Vite reads these from the process environment; shell wins over .env files.
     export VITE_BEO_APP_TARGET="$variant"
+    export BOE_CAPACITOR_VARIANT="$variant"
     export VITE_BEO_API_MODE="http"
     export VITE_BEO_API_BASE_URL="$API_BASE"
     export VITE_BEO_ONBOARDING_URL="$ONBOARDING"
@@ -399,6 +400,8 @@ build_variant() {
     step "capacitor sync"
     ( cd "$APP_DIR" && npx --no-install cap sync android ) \
         || { err "cap sync failed"; return 1; }
+    ( cd "$APP_DIR" && node scripts/check-phonepe-native-target.mjs --variant="$variant" ) \
+        || { err "native plugin target validation failed"; return 1; }
 
     # Remove the previous output so a failed build cannot be mistaken for a
     # fresh one — this is the freshness guarantee, in place of a build id.
@@ -425,6 +428,18 @@ build_variant() {
 
     [[ -f "$gradle_apk" ]] || { err "APK not produced: $gradle_apk"; return 1; }
 
+    local runtime_configuration runtime_dependencies
+    runtime_configuration="${signing}RuntimeClasspath"
+    runtime_dependencies="$(cd "$ANDROID_DIR" && ./gradlew :app:dependencies --configuration "$runtime_configuration" --console=plain 2>/dev/null)" \
+        || { err "could not inspect the Android runtime classpath"; return 1; }
+    if [[ "$variant" == "client" ]]; then
+        printf '%s\n' "$runtime_dependencies" | grep -Fq 'phonepe.intentsdk.android.release:IntentSDK' \
+            || { err "client runtime classpath is missing PhonePe IntentSDK"; return 1; }
+    elif printf '%s\n' "$runtime_dependencies" | grep -Fq 'phonepe.intentsdk.android.release:IntentSDK'; then
+        err "admin runtime classpath contains PhonePe IntentSDK"
+        return 1
+    fi
+
     # Check the FINAL artifact, not the dist folder that fed it: the bundle guard
     # reads filenames in dist/, which says nothing about what Gradle packaged. A
     # client APK carrying an admin chunk is the failure this catches.
@@ -443,8 +458,21 @@ build_variant() {
             return 1
         fi
         ok "packaged assets are $variant-only"
+        command -v strings >/dev/null 2>&1 \
+            || { err "strings is required for PhonePe DEX verification"; return 1; }
+        local phonepe_dex_matches
+        phonepe_dex_matches="$(unzip -p "$gradle_apk" 'classes*.dex' 2>/dev/null | strings | grep -E 'PhonePePaymentSDKPlugin|com/phonepe/intent/sdk' || true)"
+        if [[ "$variant" == "client" && -z "$phonepe_dex_matches" ]]; then
+            err "client APK is missing PhonePe native classes"
+            return 1
+        fi
+        if [[ "$variant" == "admin" && -n "$phonepe_dex_matches" ]]; then
+            err "admin APK contains PhonePe native classes"
+            return 1
+        fi
     else
-        warn "unzip not found — skipping the packaged-asset check"
+        err "unzip is required for packaged asset and PhonePe DEX verification"
+        return 1
     fi
 
     cp "$gradle_apk" "$out_apk"

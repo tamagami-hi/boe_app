@@ -46,6 +46,7 @@ base64_key="$(head -c 32 /dev/zero | base64 -w0)"
 cat >> "$env_file" <<ENV
 WEB_ORIGIN_ALLOWLIST=https://api.example.test
 WEB_COOKIE_SECURE=true
+NODE_ENV=development
 ACCESS_TOKEN_ISSUER=https://api.example.test
 ACCESS_TOKEN_AUDIENCE=boe-test
 ACCESS_TOKEN_CURRENT_KID=test-kid
@@ -64,7 +65,22 @@ CRYPTO_RECIPIENT_HMAC_KEY_VERSION=rk1
 CRYPTO_RECIPIENT_ENC_KEY=$base64_key
 CRYPTO_RECIPIENT_ENC_KEY_VERSION=ek1
 NEWUSER_SHARED_SECRET=test-only-newuser-shared-secret-0123456789
-PAYMENT_PROVIDER=manual
+PAYMENT_PROVIDER=phonepe
+PHONEPE_CLIENT_ID=test-client
+PHONEPE_CLIENT_SECRET=test-secret
+PHONEPE_CLIENT_VERSION=1
+PHONEPE_ENV=sandbox
+PHONEPE_CALLBACK_USERNAME=test-callback-user
+PHONEPE_CALLBACK_PASSWORD=test-callback-password
+PHONEPE_REDIRECT_URL=https://dev-app.beonedge.in/payment-return
+PHONEPE_CALLBACK_URL=https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment
+PHONEPE_SUBSCRIPTION_CALLBACK_URL=https://dev-app.beonedge.in/api/v1/provider-events/phonepe/subscription
+PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST=checkout.setup.order.completed,checkout.setup.order.failed,checkout.order.completed,checkout.order.failed,subscription.notification.completed,subscription.notification.failed,subscription.redemption.order.completed,subscription.redemption.order.failed,subscription.redemption.transaction.completed,subscription.redemption.transaction.failed
+PHONEPE_CHECKOUT_ALLOWED_ORIGINS=https://mercury-uat.phonepe.com
+PHONEPE_MERCHANT_ID=test-merchant
+PHONEPE_MOBILE_SDK_ORDER_ENABLED=false
+PHONEPE_AUTOPAY_ENABLED=false
+PHONEPE_AUTOPAY_COLLECTION_ENABLED=false
 KYC_EMAIL_FROM=support@beonedge.in
 EMAIL_SMTP_HOST=smtppro.zoho.in
 EMAIL_SMTP_PORT=465
@@ -82,6 +98,129 @@ P[environment]="development"
 
 boe_deploy_assert_env >/dev/null \
     || { printf 'FAIL: deploy rejected a complete valid security configuration\n' >&2; exit 1; }
+
+phonepe_env="$TEST_DIR/phonepe.env"
+cp "$env_file" "$phonepe_env"
+chmod 600 "$phonepe_env"
+BOE_EFFECTIVE_ENV="$phonepe_env"
+boe_deploy_assert_env >/dev/null \
+    || { printf 'FAIL: deploy rejected canonical PhonePe wiring\n' >&2; exit 1; }
+
+bad_autopay_flag="$TEST_DIR/bad-autopay-flag.env"
+sed 's/^PHONEPE_AUTOPAY_ENABLED=.*/PHONEPE_AUTOPAY_ENABLED=yes/' "$phonepe_env" > "$bad_autopay_flag"
+chmod 600 "$bad_autopay_flag"
+BOE_EFFECTIVE_ENV="$bad_autopay_flag"
+if (boe_deploy_assert_env >/dev/null 2>&1); then
+    printf 'FAIL: deploy accepted a non-boolean PhonePe AutoPay flag\n' >&2
+    exit 1
+fi
+
+bad_subscription_callback="$TEST_DIR/bad-subscription-callback.env"
+sed 's#^PHONEPE_SUBSCRIPTION_CALLBACK_URL=.*#PHONEPE_SUBSCRIPTION_CALLBACK_URL=https://untrusted.example/provider-events/phonepe/subscription#' "$phonepe_env" > "$bad_subscription_callback"
+chmod 600 "$bad_subscription_callback"
+BOE_EFFECTIVE_ENV="$bad_subscription_callback"
+if (boe_deploy_assert_env >/dev/null 2>&1); then
+    printf 'FAIL: deploy accepted a PhonePe subscription callback on the wrong host\n' >&2
+    exit 1
+fi
+
+mobile_sdk_missing_secrets="$TEST_DIR/mobile-sdk-missing-secrets.env"
+sed 's/^PHONEPE_MOBILE_SDK_ORDER_ENABLED=.*/PHONEPE_MOBILE_SDK_ORDER_ENABLED=true/' "$phonepe_env" > "$mobile_sdk_missing_secrets"
+chmod 600 "$mobile_sdk_missing_secrets"
+BOE_EFFECTIVE_ENV="$mobile_sdk_missing_secrets"
+if (boe_deploy_assert_env >/dev/null 2>&1); then
+    printf 'FAIL: deploy accepted mobile SDK checkout without its merchant and encryption keys\n' >&2
+    exit 1
+fi
+
+mobile_sdk_env="$TEST_DIR/mobile-sdk.env"
+cp "$mobile_sdk_missing_secrets" "$mobile_sdk_env"
+cat >> "$mobile_sdk_env" <<ENV
+CRYPTO_PAYMENT_TOKEN_ENC_KEY=$base64_key
+CRYPTO_PAYMENT_TOKEN_ENC_KEY_VERSION=ptk1
+ENV
+chmod 600 "$mobile_sdk_env"
+BOE_EFFECTIVE_ENV="$mobile_sdk_env"
+boe_deploy_assert_env >/dev/null \
+    || { printf 'FAIL: deploy rejected complete mobile SDK checkout configuration\n' >&2; exit 1; }
+
+wrong_phonepe_environment="$TEST_DIR/wrong-phonepe-environment.env"
+sed 's/^PHONEPE_ENV=.*/PHONEPE_ENV=production/' "$phonepe_env" > "$wrong_phonepe_environment"
+chmod 600 "$wrong_phonepe_environment"
+BOE_EFFECTIVE_ENV="$wrong_phonepe_environment"
+if (boe_deploy_assert_env >/dev/null 2>&1); then
+    printf 'FAIL: development deploy accepted PhonePe production credentials\n' >&2
+    exit 1
+fi
+
+wrong_node_environment="$TEST_DIR/wrong-node-environment.env"
+sed 's/^NODE_ENV=.*/NODE_ENV=production/' "$phonepe_env" > "$wrong_node_environment"
+chmod 600 "$wrong_node_environment"
+BOE_EFFECTIVE_ENV="$wrong_node_environment"
+if (boe_deploy_assert_env >/dev/null 2>&1); then
+    printf 'FAIL: development deploy accepted NODE_ENV=production\n' >&2
+    exit 1
+fi
+
+unsupported_provider_env="$TEST_DIR/unsupported-provider.env"
+sed 's/^PAYMENT_PROVIDER=.*/PAYMENT_PROVIDER=manual/' "$phonepe_env" > "$unsupported_provider_env"
+chmod 600 "$unsupported_provider_env"
+BOE_EFFECTIVE_ENV="$unsupported_provider_env"
+if (boe_deploy_assert_env >/dev/null 2>&1); then
+    printf 'FAIL: deploy accepted an unsupported payment provider\n' >&2
+    exit 1
+fi
+
+production_phonepe_env="$TEST_DIR/production-phonepe.env"
+sed \
+    -e 's/^PHONEPE_ENV=.*/PHONEPE_ENV=production/' \
+    -e 's#^PHONEPE_REDIRECT_URL=.*#PHONEPE_REDIRECT_URL=https://app.beonedge.in/payment-return#' \
+    -e 's#^PHONEPE_CALLBACK_URL=.*#PHONEPE_CALLBACK_URL=https://app.beonedge.in/api/v1/provider-events/phonepe/payment#' \
+    -e 's#^PHONEPE_SUBSCRIPTION_CALLBACK_URL=.*#PHONEPE_SUBSCRIPTION_CALLBACK_URL=https://app.beonedge.in/api/v1/provider-events/phonepe/subscription#' \
+    -e 's#^PHONEPE_CHECKOUT_ALLOWED_ORIGINS=.*#PHONEPE_CHECKOUT_ALLOWED_ORIGINS=https://mercury.phonepe.com#' \
+    -e 's#^APK_DOWNLOAD_BASE_URL=.*#APK_DOWNLOAD_BASE_URL=https://app.beonedge.in/downloads#' \
+    -e 's/^NODE_ENV=.*/NODE_ENV=production/' \
+    -e 's/^SEED_AUTH_ENABLED=.*/SEED_AUTH_ENABLED=false/' \
+    -e 's/^SEED_AUTH_OVERWRITE=.*/SEED_AUTH_OVERWRITE=false/' \
+    "$phonepe_env" > "$production_phonepe_env"
+chmod 600 "$production_phonepe_env"
+P[environment]="production"
+BOE_EFFECTIVE_ENV="$production_phonepe_env"
+boe_deploy_assert_env >/dev/null \
+    || { printf 'FAIL: deploy rejected canonical production PhonePe wiring\n' >&2; exit 1; }
+
+production_with_sandbox_env="$TEST_DIR/production-with-sandbox.env"
+sed 's/^PHONEPE_ENV=.*/PHONEPE_ENV=sandbox/' "$production_phonepe_env" > "$production_with_sandbox_env"
+chmod 600 "$production_with_sandbox_env"
+BOE_EFFECTIVE_ENV="$production_with_sandbox_env"
+if (boe_deploy_assert_env >/dev/null 2>&1); then
+    printf 'FAIL: production deploy accepted PhonePe sandbox credentials\n' >&2
+    exit 1
+fi
+
+P[environment]="development"
+
+bad_phonepe_return_env="$TEST_DIR/bad-phonepe-return.env"
+sed 's#^PHONEPE_REDIRECT_URL=.*#PHONEPE_REDIRECT_URL=https://dev-app.beonedge.in/payment-status#' \
+    "$phonepe_env" > "$bad_phonepe_return_env"
+chmod 600 "$bad_phonepe_return_env"
+BOE_EFFECTIVE_ENV="$bad_phonepe_return_env"
+if (boe_deploy_assert_env >/dev/null 2>&1); then
+    printf 'FAIL: deploy accepted the invalid PhonePe payment-status return\n' >&2
+    exit 1
+fi
+
+bad_phonepe_checkout_origin_env="$TEST_DIR/bad-phonepe-checkout-origin.env"
+sed 's#^PHONEPE_CHECKOUT_ALLOWED_ORIGINS=.*#PHONEPE_CHECKOUT_ALLOWED_ORIGINS=https://*.phonepe.com/pay#' \
+    "$phonepe_env" > "$bad_phonepe_checkout_origin_env"
+chmod 600 "$bad_phonepe_checkout_origin_env"
+BOE_EFFECTIVE_ENV="$bad_phonepe_checkout_origin_env"
+if (boe_deploy_assert_env >/dev/null 2>&1); then
+    printf 'FAIL: deploy accepted an unsafe PhonePe checkout origin\n' >&2
+    exit 1
+fi
+
+BOE_EFFECTIVE_ENV="$env_file"
 
 insecure_smtp_env="$TEST_DIR/insecure-smtp.env"
 sed 's/^EMAIL_SMTP_SECURE=.*/EMAIL_SMTP_SECURE=false/' "$env_file" > "$insecure_smtp_env"
