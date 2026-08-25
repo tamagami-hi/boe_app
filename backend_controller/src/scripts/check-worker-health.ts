@@ -54,7 +54,7 @@ export const runCli = async (argv: readonly string[], env: NodeJS.ProcessEnv, no
     maxAgeSeconds: MAX_AGE_SECONDS,
     nowMs,
     repository: createWorkerHeartbeatRepository(),
-    database: { destroy: () => database.destroy() },
+    database,
   })
   const writer = result.exitCode === 0 ? console.log : console.error
   writer(result.message)
