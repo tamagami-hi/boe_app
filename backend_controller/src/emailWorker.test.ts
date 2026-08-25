@@ -1,6 +1,13 @@
+import type { Kysely } from "kysely"
 import { describe, expect, test, vi } from "vitest"
 
+import type { Database } from "./db/types.js"
 import { runEmailDispatchPass } from "./emailWorker.js"
+
+const fakeDatabase = (): Kysely<Database> =>
+  ({
+    transaction: () => ({ execute: vi.fn().mockResolvedValue({}) }),
+  }) as unknown as Kysely<Database>
 
 const EMPTY_SUMMARY = {
   claimed: 0,
@@ -19,7 +26,7 @@ describe("runEmailDispatchPass", () => {
     const dispose = vi.fn().mockResolvedValue(undefined)
     const logger = testLogger()
 
-    await runEmailDispatchPass({ worker: { runOnce, dispose, transportConfigured: true }, logger })
+    await runEmailDispatchPass({ worker: { runOnce, dispose, transportConfigured: true, database: fakeDatabase() }, logger })
 
     expect(runOnce).toHaveBeenCalledTimes(1)
     expect(dispose).toHaveBeenCalledTimes(1)
@@ -32,7 +39,7 @@ describe("runEmailDispatchPass", () => {
     const logger = testLogger()
 
     await expect(
-      runEmailDispatchPass({ worker: { runOnce, dispose, transportConfigured: true }, logger }),
+      runEmailDispatchPass({ worker: { runOnce, dispose, transportConfigured: true, database: fakeDatabase() }, logger }),
     ).rejects.toThrow("boom")
     expect(dispose).toHaveBeenCalledTimes(1)
   })
@@ -47,7 +54,7 @@ describe("runEmailDispatchPass", () => {
     const dispose = vi.fn().mockResolvedValue(undefined)
     const logger = testLogger()
 
-    await runEmailDispatchPass({ worker: { runOnce, dispose, transportConfigured: false }, logger })
+    await runEmailDispatchPass({ worker: { runOnce, dispose, transportConfigured: false, database: fakeDatabase() }, logger })
 
     expect(logger.warn).toHaveBeenCalledWith(
       expect.objectContaining({ errorCode: "EMAIL_TRANSPORT_NOT_CONFIGURED" }),
@@ -64,6 +71,7 @@ describe("runEmailDispatchPass", () => {
         runOnce: vi.fn().mockResolvedValue(EMPTY_SUMMARY),
         dispose: vi.fn().mockResolvedValue(undefined),
         transportConfigured: true,
+        database: fakeDatabase(),
       },
       logger,
     })

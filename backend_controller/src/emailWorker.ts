@@ -9,9 +9,11 @@
  */
 import { pathToFileURL } from "node:url"
 
+import { createUnitOfWork } from "./db/database.js"
 import { composeEmailDispatchWorker, type EmailDispatchWorker } from "./runtime/composition.js"
 import { parseRuntimeEnvironment } from "./runtime/environment.js"
 import { createRuntimeLogger } from "./runtime/logger.js"
+import { createWorkerHeartbeatRepository } from "./repositories/workerHeartbeatRepository.js"
 
 interface PassLogger {
   info: (object: Record<string, unknown>, message: string) => void
@@ -23,9 +25,15 @@ export interface RunEmailDispatchPassOptions {
   readonly logger?: PassLogger
 }
 
+const WORKER_NAME = "email_dispatch"
+
 export const runEmailDispatchPass = async (options: RunEmailDispatchPassOptions = {}): Promise<void> => {
   const worker = options.worker ?? composeEmailDispatchWorker(process.env)
   const logger = options.logger ?? createRuntimeLogger({ level: parseRuntimeEnvironment(process.env).logLevel })
+  const passStartedAt = new Date()
+  let success = true
+  let errorCode: string | undefined
+  let summary: Record<string, unknown> = {}
   try {
     /*
      * Said once per pass, before the work. With no transport every delivery in
@@ -42,9 +50,28 @@ export const runEmailDispatchPass = async (options: RunEmailDispatchPassOptions 
           "Set EMAIL_SMTP_HOST, EMAIL_SMTP_USER and EMAIL_SMTP_PASSWORD; queued mail drains on the next pass.",
       )
     }
-    const summary = await worker.runOnce()
+    summary = (await worker.runOnce()) as unknown as Record<string, unknown>
     logger.info({ ...summary, transportConfigured: worker.transportConfigured }, "Email delivery pass complete")
+  } catch (error) {
+    success = false
+    errorCode = error instanceof Error ? error.name : "UNKNOWN_ERROR"
+    throw error
   } finally {
+    try {
+      const unitOfWork = createUnitOfWork(worker.database)
+      await unitOfWork.execute((tx) =>
+        createWorkerHeartbeatRepository().recordHeartbeat(tx, {
+          workerName: WORKER_NAME,
+          passStartedAt,
+          passCompletedAt: new Date(),
+          success,
+          summary,
+          errorCode,
+        }),
+      )
+    } catch (heartbeatError) {
+      logger.warn({ error: String(heartbeatError), errorCode: "HEARTBEAT_RECORD_FAILED" }, "Failed to record worker heartbeat")
+    }
     await worker.dispose()
   }
 }

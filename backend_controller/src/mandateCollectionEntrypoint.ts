@@ -1,7 +1,7 @@
 import { pathToFileURL } from "node:url"
 
 import { createUnitOfWork } from "./db/database.js"
-import { composeSipScheduleWorker, type SipScheduleWorker } from "./runtime/composition.js"
+import { composeMandateCollectionWorker, type MandateCollectionWorker } from "./runtime/composition.js"
 import { parseRuntimeEnvironment } from "./runtime/environment.js"
 import { createRuntimeLogger } from "./runtime/logger.js"
 import { createWorkerHeartbeatRepository } from "./repositories/workerHeartbeatRepository.js"
@@ -11,23 +11,24 @@ interface PassLogger {
   warn: (object: Record<string, unknown>, message: string) => void
 }
 
-export interface RunSipSchedulePassOptions {
-  readonly worker?: SipScheduleWorker
+export interface RunMandateCollectionPassOptions {
+  readonly worker?: MandateCollectionWorker
   readonly logger?: PassLogger
 }
 
-const WORKER_NAME = "sip_schedule"
+const WORKER_NAME = "mandate_collection"
 
-export const runSipSchedulePass = async (options: RunSipSchedulePassOptions = {}): Promise<void> => {
-  const worker = options.worker ?? composeSipScheduleWorker(process.env)
+export const runMandateCollectionWorkerPass = async (options: RunMandateCollectionPassOptions = {}): Promise<void> => {
   const logger = options.logger ?? createRuntimeLogger({ level: parseRuntimeEnvironment(process.env).logLevel })
+  const worker = options.worker ?? composeMandateCollectionWorker(process.env, logger)
   const passStartedAt = new Date()
   let success = true
   let errorCode: string | undefined
   let summary: Record<string, unknown> = {}
   try {
+    if (!worker.gatewayConfigured) logger.warn({ errorCode: "PAYMENT_GATEWAY_NOT_CONFIGURED" }, "No PhonePe gateway is configured")
     summary = (await worker.runOnce()) as unknown as Record<string, unknown>
-    logger.info({ ...summary }, "SIP schedule pass complete")
+    logger.info({ ...summary, gatewayConfigured: worker.gatewayConfigured }, "Mandate collection pass complete")
   } catch (error) {
     success = false
     errorCode = error instanceof Error ? error.name : "UNKNOWN_ERROR"
@@ -52,13 +53,12 @@ export const runSipSchedulePass = async (options: RunSipSchedulePassOptions = {}
   }
 }
 
-const isMainModule =
-  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href
+const isMainModule = process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href
 
 if (isMainModule) {
   const logger = createRuntimeLogger({ level: parseRuntimeEnvironment(process.env).logLevel })
-  void runSipSchedulePass({ logger }).catch(() => {
-    logger.error({ errorCode: "SIP_SCHEDULE_WORKER_FAILURE" }, "SIP schedule pass failed")
+  void runMandateCollectionWorkerPass({ logger }).catch(() => {
+    logger.error({ errorCode: "MANDATE_COLLECTION_WORKER_FAILURE" }, "Mandate collection pass failed")
     process.exitCode = 1
   })
 }
