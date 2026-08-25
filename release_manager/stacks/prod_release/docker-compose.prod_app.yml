@@ -49,28 +49,28 @@ x-worker-health: &worker-health
   start_period: 30s
 
 x-payments-worker-health: &payments-worker-health
-  test: ["CMD-SHELL", "node dist/scripts/check-worker-health.js payment_reconciliation 120 || rm -f /tmp/boe-worker-ready; test -f /tmp/boe-worker-ready"]
+  test: ["CMD-SHELL", "node dist/scripts/check-worker-health.js payment_reconciliation 120"]
   interval: 30s
   timeout: 5s
   retries: 2
   start_period: 60s
 
 x-email-worker-health: &email-worker-health
-  test: ["CMD-SHELL", "node dist/scripts/check-worker-health.js email_dispatch 60 || rm -f /tmp/boe-worker-ready; test -f /tmp/boe-worker-ready"]
+  test: ["CMD-SHELL", "node dist/scripts/check-worker-health.js email_dispatch 60"]
   interval: 30s
   timeout: 5s
   retries: 2
   start_period: 60s
 
 x-collections-worker-health: &collections-worker-health
-  test: ["CMD-SHELL", "node dist/scripts/check-worker-health.js mandate_collection 180 || rm -f /tmp/boe-worker-ready; test -f /tmp/boe-worker-ready"]
+  test: ["CMD-SHELL", "node dist/scripts/check-worker-health.js mandate_collection 180"]
   interval: 30s
   timeout: 5s
   retries: 2
   start_period: 60s
 
 x-sips-worker-health: &sips-worker-health
-  test: ["CMD-SHELL", "node dist/scripts/check-worker-health.js sip_schedule 900 || rm -f /tmp/boe-worker-ready; test -f /tmp/boe-worker-ready"]
+  test: ["CMD-SHELL", "node dist/scripts/check-worker-health.js sip_schedule 900"]
   interval: 60s
   timeout: 5s
   retries: 2
