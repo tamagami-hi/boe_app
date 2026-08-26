@@ -14,7 +14,6 @@ dependencies {
     implementation project(':capacitor-browser')
     implementation project(':capacitor-local-notifications')
     implementation project(':capgo-capacitor-native-biometric')
-    implementation project(':ionic-capacitor-phonepe-pg')
 
 }
 
