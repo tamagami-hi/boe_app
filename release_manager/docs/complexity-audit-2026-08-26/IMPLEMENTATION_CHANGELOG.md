@@ -64,6 +64,11 @@
   - `frontend_stack/packages/client/src/data/fixtureSipControlRequests.js`
 - These files had no production or test imports in the repository scan. Full frontend verification is pending.
 
+## Next roadmap slice — role helper hardening
+
+- Added `frontend_stack/packages/shared/src/auth/roles.test.js` covering case-insensitive `role`, `accountType`, `roles[]`, empty-role, and absent-user behavior for the shared authorization selector.
+- No server-side authorization behavior was changed.
+
 ### Preserved pre-existing worktree changes
 
 - `release_manager/stacks/_shared/_boe_deploy.sh`
