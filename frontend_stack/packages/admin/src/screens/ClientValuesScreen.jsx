@@ -11,6 +11,7 @@ import { useAdminCacheActions, useAdminFunds } from '../data/adminResources.js';
 import useAdminList from '../hooks/useAdminList.js';
 import { useIdempotencyKeys } from '../helpers/idempotencyKeys.js';
 import { fmtDateTime, fmtInt, fmtPaise, fmtPaiseSigned } from '../helpers/formatters.js';
+import { parseSignedGrowth } from '../helpers/signedAmounts.js';
 import { todayInIndia as today } from '../helpers/aumReasons.js';
 import './admin-screens-shared.css';
 import './admin-aum.css';
@@ -23,20 +24,6 @@ const TABS = [
   { id: 'individual', label: 'Individual growth', path: '/admin/client-values/individual' },
   { id: 'collective', label: 'Collective growth by fund', path: '/admin/client-values/collective' },
 ];
-
-function toSignedPaise(direction, rupees) {
-  const value = Number(rupees);
-  if (!Number.isFinite(value) || value <= 0) return null;
-  const magnitude = Math.round(value * 100);
-  return String(direction === 'loss' ? -magnitude : magnitude);
-}
-
-function toSignedBasisPoints(direction, percent) {
-  const value = Number(percent);
-  if (!Number.isFinite(value) || value <= 0) return null;
-  const points = Math.round(value * 100);
-  return direction === 'loss' ? -points : points;
-}
 
 function previewDelta(currentValuePaise, mode, signedInput) {
   if (mode === 'amount') return Number(signedInput);
@@ -189,10 +176,10 @@ function IndividualGrowthTab() {
 
   const preview = useMemo(() => {
     if (!position) return null;
-    const signed = mode === 'amount'
-      ? Number(toSignedPaise(direction, magnitude))
-      : toSignedBasisPoints(direction, magnitude);
-    if (!Number.isFinite(signed) || signed === null || signed === 0) return null;
+    const parsed = parseSignedGrowth(mode, direction, magnitude);
+    if (!parsed.ok) return null;
+    const signed = mode === 'amount' ? Number(parsed.value) : parsed.value;
+    if (!Number.isFinite(signed) || signed === 0) return null;
     const delta = previewDelta(position.currentValuePaise ?? 0, mode, signed);
     return {
       before: Number(position.currentValuePaise ?? 0),
@@ -214,9 +201,10 @@ function IndividualGrowthTab() {
       reasonCode: reasonCode.trim(),
       ...(note.trim() ? { note: note.trim() } : {}),
     };
+    const parsed = parseSignedGrowth(mode, direction, magnitude);
     const instruction = mode === 'amount'
-      ? { growthPaise: toSignedPaise(direction, magnitude) }
-      : { growthBasisPoints: toSignedBasisPoints(direction, magnitude) };
+      ? { growthPaise: parsed.ok ? parsed.value : null }
+      : { growthBasisPoints: parsed.ok ? parsed.value : null };
     let problem = '';
     if (!body.userId) problem = 'Enter the client user ID.';
     else if (!fundId) problem = 'Choose the fund the position belongs to.';
@@ -412,9 +400,9 @@ function CollectiveGrowthTab() {
       ...(note.trim() ? { note: note.trim() } : {}),
     };
     if (mode === 'percentage') {
-      const points = toSignedBasisPoints(direction, percent);
-      if (!points) return { body: null, problem: 'Enter a non-zero percentage.' };
-      body.growthBasisPoints = points;
+      const parsed = parseSignedGrowth(mode, direction, percent);
+      if (!parsed.ok) return { body: null, problem: 'Enter a non-zero percentage.' };
+      body.growthBasisPoints = parsed.value;
       return { body };
     }
     const rows = items

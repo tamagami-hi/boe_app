@@ -69,6 +69,13 @@
 - Added `frontend_stack/packages/shared/src/auth/roles.test.js` covering case-insensitive `role`, `accountType`, `roles[]`, empty-role, and absent-user behavior for the shared authorization selector.
 - No server-side authorization behavior was changed.
 
+## Next roadmap slice — signed growth amount consolidation
+
+- Added canonical `parseSignedGrowth(mode, direction, input)` in `frontend_stack/packages/admin/src/helpers/signedAmounts.js`.
+- Updated `ClientValuesScreen.jsx` to use it for individual amount/percentage previews and commits, plus collective percentage growth.
+- Removed duplicated local conversion functions while preserving collective explicit-amount semantics.
+- Verification: 27 targeted tests passed, frontend production build and bundle boot check passed, and final review found no blocking/high-severity issues.
+
 ### Preserved pre-existing worktree changes
 
 - `release_manager/stacks/_shared/_boe_deploy.sh`

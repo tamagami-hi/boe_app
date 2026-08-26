@@ -63,6 +63,15 @@ export function parseSignedBasisPoints(direction, input) {
   return value(Number(signed));
 }
 
+export function parseSignedGrowth(mode, direction, input) {
+  const signedDirection = direction === 'loss' || direction === 'decrease'
+    ? 'decrease'
+    : 'increase';
+  return mode === 'amount'
+    ? parseSignedPaise(signedDirection, input)
+    : parseSignedBasisPoints(signedDirection, input);
+}
+
 export function parseSignedPaiseFromInput(input) {
   const parsed = parseDecimal(input);
   if (!parsed.ok) return parsed;
