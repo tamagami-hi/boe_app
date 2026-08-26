@@ -20,7 +20,7 @@ export interface CreateAttemptInput {
   readonly attemptNumber: number
   readonly merchantOrderId: string
   readonly checkoutExpiresAt: Date
-  readonly checkoutChannel: "hosted_redirect" | "phonepe_mobile_sdk" | "phonepe_mandate_setup" | "phonepe_autopay"
+  readonly checkoutChannel: "phonepe_mobile_sdk" | "phonepe_mandate_setup" | "phonepe_autopay"
 }
 
 export interface PersistSdkOrderInput {
@@ -92,15 +92,6 @@ export interface PaymentsRepository {
     input: Readonly<{ attemptId: string; providerOrderId: string; checkoutExpiresAt: Date; now: Date }>,
   ) => Promise<PaymentAttempt | null>
   markAttemptSdkDispatched: (tx: Transaction, input: PersistSdkOrderInput) => Promise<PaymentAttempt | null>
-  markAttemptDispatched: (
-    tx: Transaction,
-    input: Readonly<{
-      attemptId: string
-      providerOrderId: string | null
-      checkoutExpiresAt: Date
-      now: Date
-    }>,
-  ) => Promise<PaymentAttempt | null>
   markAttemptSucceeded: (
     tx: Transaction,
     input: Readonly<{
@@ -352,25 +343,6 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
       .where("checkout_channel", "=", "phonepe_mobile_sdk")
       .where("state", "=", "created")
       .where("provider_dispatch_started_at", "is not", null)
-      .returningAll()
-      .executeTakeFirst()
-    return row ?? null
-  },
-
-  markAttemptDispatched: async (tx, input) => {
-    const row = await tx
-      .updateTable("payment_attempts")
-      .set({
-        state: "provider_pending",
-        provider_order_id: input.providerOrderId,
-        provider_state: "PENDING",
-        checkout_expires_at: input.checkoutExpiresAt,
-        updated_at: input.now,
-        version: sql<string>`version + 1`,
-      })
-      .where("id", "=", input.attemptId)
-      .where("checkout_channel", "=", "hosted_redirect")
-      .where("state", "in", ATTEMPT_OPEN_STATES)
       .returningAll()
       .executeTakeFirst()
     return row ?? null

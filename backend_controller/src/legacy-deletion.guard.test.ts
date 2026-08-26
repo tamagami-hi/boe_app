@@ -44,6 +44,9 @@ const DELETED_LEGACY_FILES: readonly string[] = [
   "shared/services/payments/mockProvider.js",
   "shared/services/payments/providerFactory.js",
   "shared/services/payments/razorpayProvider.js",
+  "domain/payments/paymentReturnToken.ts",
+  "routes/paymentReturnRoutes.ts",
+  "routes/paymentReturnRoutes.test.ts",
   // BE-015: legacy client investment domain. Every /v1/client/* route (dashboard,
   // portfolio, products, SIPs, orders, payments, mandates, transactions,
   // statements, notifications, KYC, support, withdrawals, redemptions) is financial

@@ -56,11 +56,6 @@ vi.mock('../data/clientResources.js', () => ({
 }));
 
 // The PhonePe redirect is a seam: tests capture the URL instead of navigating.
-const redirectToCheckout = vi.fn(() => ({ ok: true }));
-vi.mock('../utils/checkoutRedirect.js', () => ({
-  redirectToCheckout: (...a) => redirectToCheckout(...a),
-}));
-
 vi.mock('../hooks/useAppConfig.js', () => ({
   useAppConfig: () => ({
     publishedAt: '2026-01-01',
@@ -134,7 +129,6 @@ const CHECKOUT = {
 beforeEach(() => {
   localStorage.clear();
   invalidateMoney.mockReset();
-  redirectToCheckout.mockClear();
   createSip.mockReset().mockResolvedValue({ id: 'sip_1', status: 'active', amount: 1000, debitDay: 5 });
   createIdempotencyKey.mockReset().mockReturnValue('sip-request-1');
   createAutoPaySip.mockReset().mockResolvedValue({
@@ -325,7 +319,6 @@ describe('LumpsumSheet', () => {
     fireEvent.click(screen.getByRole('button', { name: /Pay / }));
     await settle();
     expect(screen.getByText('checkout unavailable')).toBeInTheDocument();
-    expect(redirectToCheckout).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: /Pay / }));
     await settle();
     expect(beginOrderPayment).toHaveBeenCalledTimes(2);

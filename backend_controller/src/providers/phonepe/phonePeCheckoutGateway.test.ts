@@ -1,5 +1,5 @@
 /**
- * PhonePe checkout gateway adapter tests (spec §7, §14 "Payment and PhonePe").
+ * PhonePe payment evidence and refund adapter tests.
  *
  * The adapter is the only module allowed to see PhonePe SDK shapes; these tests
  * pin the mapping both ways with a stub SDK client: exact paise amounts and
@@ -11,7 +11,7 @@
  */
 import { createHash } from "node:crypto"
 
-import { describe, expect, test, vi } from "vitest"
+import { describe, expect, test } from "vitest"
 
 import {
   GatewayAuthenticationError,
@@ -23,7 +23,7 @@ import {
   GatewayUnavailableError,
 } from "./paymentGateway.js"
 import {
-  createPhonePeCheckoutGateway,
+  createPhonePeGateway,
   type PhonePeSdkClient,
 } from "./phonePeCheckoutGateway.js"
 import { classifyGatewayFailure, logGatewayFailure } from "./gatewayFailure.js"
@@ -35,8 +35,6 @@ const CONFIG = {
   env: "sandbox" as const,
   callbackUsername: "callback-user",
   callbackPassword: "callback-pass",
-  redirectUrl: "https://app.beonedge.in/payment-return",
-  checkoutAllowedOrigins: ["https://mercury-uat.phonepe.com"],
 }
 
 /** Test double for the SDK exception taxonomy (structural, no SDK import). */
@@ -51,7 +49,6 @@ const isPhonePeException = (error: unknown): boolean =>
   error instanceof Error && error.name === "PhonePeException"
 
 const stubClient = (overrides: Partial<PhonePeSdkClient> = {}): PhonePeSdkClient => ({
-  pay: () => Promise.reject(new Error("pay not stubbed")),
   getOrderStatus: () => Promise.reject(new Error("getOrderStatus not stubbed")),
   validateCallback: () => {
     throw new Error("validateCallback not stubbed")
@@ -61,108 +58,12 @@ const stubClient = (overrides: Partial<PhonePeSdkClient> = {}): PhonePeSdkClient
   ...overrides,
 })
 
-describe("createCheckout", () => {
-  test("sends the stable merchant order id and the exact paise amount", async () => {
-    let seen: unknown
-    const gateway = createPhonePeCheckoutGateway({
-      config: CONFIG,
-      client: stubClient({
-        pay: (request) => {
-          seen = request
-          return Promise.resolve({
-            orderId: "provider-order-1",
-            state: "PENDING",
-            expireAt: 1_800_000_000_000,
-            redirectUrl: "https://mercury-uat.phonepe.com/pay/abc",
-          })
-        },
-      }),
-    })
-
-    const result = await gateway.createCheckout({
-      merchantOrderId: "boe_0123456789abcdef0123456789abcdef",
-      amountPaise: "500000",
-      redirectUrl: "https://app.beonedge.in/payment-return?token=opaque",
-      expireAfterSeconds: 900,
-    })
-
-    expect(result).toEqual({
-      redirectUrl: "https://mercury-uat.phonepe.com/pay/abc",
-      providerOrderId: "provider-order-1",
-      expiresAt: new Date(1_800_000_000_000),
-    })
-    const request = seen as Record<string, unknown>
-    expect(request.merchantOrderId).toBe("boe_0123456789abcdef0123456789abcdef")
-    expect(request.amount).toBe(500000)
-  })
-
-  test("refuses amounts that a JS number cannot represent exactly", async () => {
-    const gateway = createPhonePeCheckoutGateway({ config: CONFIG, client: stubClient() })
-    await expect(
-      gateway.createCheckout({
-        merchantOrderId: "boe_x",
-        amountPaise: "9007199254740993", // 2^53 + 1
-        redirectUrl: null,
-        expireAfterSeconds: 900,
-      }),
-    ).rejects.toBeInstanceOf(GatewayRejectedError)
-    await expect(
-      gateway.createCheckout({
-        merchantOrderId: "boe_x",
-        amountPaise: "100.5",
-        redirectUrl: null,
-        expireAfterSeconds: 900,
-      }),
-    ).rejects.toBeInstanceOf(GatewayRejectedError)
-  })
-
-  test("rejects an HTTPS checkout redirect outside the configured exact origins", async () => {
-    const gateway = createPhonePeCheckoutGateway({
-      config: CONFIG,
-      client: stubClient({ pay: () => Promise.resolve({ redirectUrl: "https://attacker.example/pay/abc" }) }),
-    })
-    await expect(gateway.createCheckout({
-      merchantOrderId: "boe_x",
-      amountPaise: "100",
-      redirectUrl: CONFIG.redirectUrl,
-      expireAfterSeconds: 900,
-    })).rejects.toBeInstanceOf(GatewayMalformedResponseError)
-  })
-
-  test.each([299, 3601])("rejects checkout expiry %s outside PhonePe's supported range", async (expireAfterSeconds) => {
-    const pay = vi.fn()
-    const gateway = createPhonePeCheckoutGateway({ config: CONFIG, client: stubClient({ pay }) })
-
-    await expect(gateway.createCheckout({
-      merchantOrderId: "boe_x",
-      amountPaise: "100",
-      redirectUrl: CONFIG.redirectUrl,
-      expireAfterSeconds,
-    })).rejects.toBeInstanceOf(GatewayRejectedError)
-    expect(pay).not.toHaveBeenCalled()
-  })
-
-  test.each([300, 3600])("accepts checkout expiry %s at PhonePe's supported boundary", async (expireAfterSeconds) => {
-    const gateway = createPhonePeCheckoutGateway({
-      config: CONFIG,
-      client: stubClient({ pay: () => Promise.resolve({ redirectUrl: "https://mercury-uat.phonepe.com/pay/boundary" }) }),
-    })
-
-    await expect(gateway.createCheckout({
-      merchantOrderId: "boe_x",
-      amountPaise: "100",
-      redirectUrl: CONFIG.redirectUrl,
-      expireAfterSeconds,
-    })).resolves.toMatchObject({ redirectUrl: "https://mercury-uat.phonepe.com/pay/boundary" })
-  })
-})
-
 describe("getOrderStatus", () => {
   const statusClient = (response: unknown): PhonePeSdkClient =>
     stubClient({ getOrderStatus: () => Promise.resolve(response) })
 
   test("maps COMPLETED to succeeded and retains every payment detail", async () => {
-    const gateway = createPhonePeCheckoutGateway({
+    const gateway = createPhonePeGateway({
       config: CONFIG,
       client: statusClient({
         merchantOrderId: "boe_1",
@@ -195,7 +96,7 @@ describe("getOrderStatus", () => {
   })
 
   test("correlates an omitted V2 merchant order identifier from the requested path", async () => {
-    const gateway = createPhonePeCheckoutGateway({
+    const gateway = createPhonePeGateway({
       config: CONFIG,
       client: statusClient({
         orderId: "provider-order-1",
@@ -212,7 +113,7 @@ describe("getOrderStatus", () => {
   })
 
   test("correlates an undefined V2 merchant order identifier from the requested path", async () => {
-    const gateway = createPhonePeCheckoutGateway({
+    const gateway = createPhonePeGateway({
       config: CONFIG,
       client: statusClient({
         merchantOrderId: undefined,
@@ -230,7 +131,7 @@ describe("getOrderStatus", () => {
   })
 
   test.each(["", 42, false])("rejects an invalid echoed V2 merchant order identifier: %j", async (merchantOrderId) => {
-    const gateway = createPhonePeCheckoutGateway({
+    const gateway = createPhonePeGateway({
       config: CONFIG,
       client: statusClient({
         merchantOrderId,
@@ -246,7 +147,7 @@ describe("getOrderStatus", () => {
   })
 
   test("rejects a mismatched echoed V2 merchant order identifier", async () => {
-    const gateway = createPhonePeCheckoutGateway({
+    const gateway = createPhonePeGateway({
       config: CONFIG,
       client: statusClient({
         merchantOrderId: "boe_different_order",
@@ -262,7 +163,7 @@ describe("getOrderStatus", () => {
   })
 
   test("maps V2 split instrument evidence without losing root transaction fields", async () => {
-    const gateway = createPhonePeCheckoutGateway({
+    const gateway = createPhonePeGateway({
       config: CONFIG,
       client: statusClient({
         orderId: "provider-order-1",
@@ -301,7 +202,7 @@ describe("getOrderStatus", () => {
   })
 
   test("does not select an ambiguous split-instrument UTR", async () => {
-    const gateway = createPhonePeCheckoutGateway({
+    const gateway = createPhonePeGateway({
       config: CONFIG,
       client: statusClient({
         orderId: "provider-order-1",
@@ -331,7 +232,7 @@ describe("getOrderStatus", () => {
     "txn-with-control\ncharacter",
     "x".repeat(257),
   ])("discards an unsafe provider transaction identifier", async (transactionId) => {
-    const gateway = createPhonePeCheckoutGateway({
+    const gateway = createPhonePeGateway({
       config: CONFIG,
       client: statusClient({
         orderId: "provider-order-1",
@@ -348,7 +249,7 @@ describe("getOrderStatus", () => {
   })
 
   test("discards a payment detail with oversized split evidence", async () => {
-    const gateway = createPhonePeCheckoutGateway({
+    const gateway = createPhonePeGateway({
       config: CONFIG,
       client: statusClient({
         orderId: "provider-order-1",
@@ -370,9 +271,9 @@ describe("getOrderStatus", () => {
   })
 
   test("maps FAILED to failed and PENDING to pending; unknown states stay non-terminal", async () => {
-    const gateway = createPhonePeCheckoutGateway({ config: CONFIG, client: stubClient() })
+    const gateway = createPhonePeGateway({ config: CONFIG, client: stubClient() })
     const withState = (state: string) =>
-      createPhonePeCheckoutGateway({
+      createPhonePeGateway({
         config: CONFIG,
         client: statusClient({ merchantOrderId: "boe_1", orderId: "o", state, amount: 100, currency: "INR", expireAt: 1, paymentDetails: [] }),
       })
@@ -406,7 +307,7 @@ describe("validateShaCallback", () => {
   const authOkClient = (): PhonePeSdkClient => stubClient({ validateCallback: () => ({}) })
 
   test("maps an authorized callback from `event` and `payload.state`", () => {
-    const gateway = createPhonePeCheckoutGateway({ config: CONFIG, client: authOkClient() })
+    const gateway = createPhonePeGateway({ config: CONFIG, client: authOkClient() })
     const fact = gateway.validateShaCallback(authorization, rawBody)
     expect(fact).toMatchObject({
       event: "checkout.order.completed",
@@ -420,7 +321,7 @@ describe("validateShaCallback", () => {
   })
 
   test("an authorization failure is its own error type (zero writes follow)", () => {
-    const gateway = createPhonePeCheckoutGateway({
+    const gateway = createPhonePeGateway({
       config: CONFIG,
       client: stubClient({
         validateCallback: () => {
@@ -432,7 +333,7 @@ describe("validateShaCallback", () => {
   })
 
   test("malformed bodies are a separate error type", () => {
-    const gateway = createPhonePeCheckoutGateway({ config: CONFIG, client: authOkClient() })
+    const gateway = createPhonePeGateway({ config: CONFIG, client: authOkClient() })
     expect(() => gateway.validateShaCallback(authorization, "not-json")).toThrow(GatewayMalformedCallbackError)
     expect(() => gateway.validateShaCallback(authorization, JSON.stringify({ payload: { state: "COMPLETED" } }))).toThrow(
       GatewayMalformedCallbackError,
@@ -448,7 +349,7 @@ describe("validateShaCallback", () => {
   })
 
   test("maps refund callbacks with merchant refund correlation", () => {
-    const gateway = createPhonePeCheckoutGateway({ config: CONFIG, client: authOkClient() })
+    const gateway = createPhonePeGateway({ config: CONFIG, client: authOkClient() })
     const fact = gateway.validateShaCallback(
       authorization,
       JSON.stringify({
@@ -476,7 +377,7 @@ describe("validateShaCallback", () => {
 describe("refunds", () => {
   test("initiateRefund sends the stable merchant refund id and exact amount", async () => {
     let seen: unknown
-    const gateway = createPhonePeCheckoutGateway({
+    const gateway = createPhonePeGateway({
       config: CONFIG,
       client: stubClient({
         refund: (request) => {
@@ -498,7 +399,7 @@ describe("refunds", () => {
   })
 
   test("getRefundStatus maps states", async () => {
-    const gateway = createPhonePeCheckoutGateway({
+    const gateway = createPhonePeGateway({
       config: CONFIG,
       client: stubClient({
         getRefundStatus: () => Promise.resolve({
@@ -520,7 +421,7 @@ describe("refunds", () => {
   })
 
   test("getRefundStatus rejects completed evidence without a provider refund identifier", async () => {
-    const gateway = createPhonePeCheckoutGateway({
+    const gateway = createPhonePeGateway({
       config: CONFIG,
       client: stubClient({
         getRefundStatus: () => Promise.resolve({
@@ -536,7 +437,7 @@ describe("refunds", () => {
   })
 
   test("getRefundStatus rejects failed evidence without a provider refund identifier", async () => {
-    const gateway = createPhonePeCheckoutGateway({
+    const gateway = createPhonePeGateway({
       config: CONFIG,
       client: stubClient({
         getRefundStatus: () => Promise.resolve({
@@ -552,7 +453,7 @@ describe("refunds", () => {
   })
 
   test("getRefundStatus rejects a mismatched merchant refund identifier", async () => {
-    const gateway = createPhonePeCheckoutGateway({
+    const gateway = createPhonePeGateway({
       config: CONFIG,
       client: stubClient({
         getRefundStatus: () => Promise.resolve({
@@ -571,7 +472,7 @@ describe("refunds", () => {
 describe("error mapping", () => {
   test("network errors are unavailable, provider auth is distinct, 404 is not-found, and 400 is rejected", async () => {
     const withError = (error: unknown) =>
-      createPhonePeCheckoutGateway({
+      createPhonePeGateway({
         config: CONFIG,
         client: stubClient({
           getOrderStatus: () => Promise.reject(error instanceof Error ? error : new Error(String(error))),
@@ -588,21 +489,11 @@ describe("error mapping", () => {
   })
 
   test("missing required provider response fields are malformed responses", async () => {
-    const checkoutGateway = createPhonePeCheckoutGateway({
-      config: CONFIG,
-      client: stubClient({ pay: () => Promise.resolve({ orderId: "provider-order-1" }) }),
-    })
-    const statusGateway = createPhonePeCheckoutGateway({
+    const statusGateway = createPhonePeGateway({
       config: CONFIG,
       client: stubClient({ getOrderStatus: () => Promise.resolve({ orderId: "provider-order-1" }) }),
     })
 
-    await expect(checkoutGateway.createCheckout({
-      merchantOrderId: "boe_1",
-      amountPaise: "100",
-      redirectUrl: CONFIG.redirectUrl,
-      expireAfterSeconds: 900,
-    })).rejects.toBeInstanceOf(GatewayMalformedResponseError)
     await expect(statusGateway.getOrderStatus("boe_1")).rejects.toBeInstanceOf(GatewayMalformedResponseError)
   })
 

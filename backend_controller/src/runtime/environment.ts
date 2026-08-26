@@ -64,6 +64,7 @@ export const parseRuntimeEnvironment = (
  * misconfigured deployment never boots into a half-wired state.
  */
 const ServerConfigSchema = z.object({
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   ACCESS_TOKEN_ISSUER: z.string().trim().min(1),
   ACCESS_TOKEN_AUDIENCE: z.string().trim().min(1),
   ACCESS_TOKEN_CURRENT_KID: z.string().trim().min(1),
@@ -115,14 +116,10 @@ const ServerConfigSchema = z.object({
   PAYMENT_RECONCILIATION_CLAIM_LIMIT: z.coerce.number().int().min(1).max(200).default(25),
   CRYPTO_PAYMENT_TOKEN_ENC_KEY: z.string().optional(),
   CRYPTO_PAYMENT_TOKEN_ENC_KEY_VERSION: z.string().trim().optional(),
-  // Where the app returns after checkout and where the provider posts the
-  // callback; both are deployment wiring, optional at boot.
-  PHONEPE_REDIRECT_URL: z.string().trim().optional(),
   PHONEPE_CALLBACK_URL: z.string().trim().optional(),
   PHONEPE_SUBSCRIPTION_CALLBACK_URL: z.string().trim().optional(),
   PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: z.string().trim().optional(),
   PHONEPE_PAYMENT_EVENT_ALLOWLIST: z.string().trim().default("checkout.order.completed,checkout.order.failed"),
-  PHONEPE_CHECKOUT_ALLOWED_ORIGINS: z.string().trim().optional(),
   PAYMENT_ATTEMPT_TTL_MS: z.coerce
     .number()
     .int()
@@ -215,8 +212,8 @@ export interface ServerConfig {
     readonly provider: "phonepe"
     /**
      * The PhonePe integration, or null when unconfigured. Present iff every
-     * client credential and both callback credentials are set; in production an
-     * incomplete set fails the boot rather than half-wiring money movement.
+     * client credential and both callback credentials are set. An incomplete
+     * set fails the boot rather than half-wiring money movement.
      */
     readonly phonepe: {
       readonly clientId: string
@@ -225,10 +222,8 @@ export interface ServerConfig {
       readonly env: "sandbox" | "production"
       readonly callbackUsername: string
       readonly callbackPassword: string
-      readonly redirectUrl: string
       readonly callbackUrl: string
       readonly subscriptionCallbackUrl: string | null
-      readonly checkoutAllowedOrigins: readonly string[]
       readonly requestTimeoutMs: number
     } | null
     readonly attemptTtlMs: number
@@ -358,14 +353,12 @@ const parseVerificationKeys = (raw: string): Record<string, string> => {
 
 /**
  * The PhonePe integration is configured iff every client credential and both
- * callback credentials are present. A partial set is a misconfiguration: in
- * production it refuses the boot, elsewhere it degrades to "unconfigured" so a
- * dev stack can run without real money movement. Redirect/callback URLs are
- * deployment wiring and stay optional either way.
+ * callback credentials are present. A partial set is a misconfiguration and
+ * refuses to boot. PHONEPE_ENV selects the provider environment independently
+ * of NODE_ENV.
  */
 const parsePhonePeConfig = (
   parsed: z.infer<typeof ServerConfigSchema>,
-  source: Readonly<Record<string, string | undefined>>,
 ): ServerConfig["payments"]["phonepe"] => {
   const present = (value: string | undefined): value is string =>
     value !== undefined && value.trim().length > 0
@@ -373,56 +366,22 @@ const parsePhonePeConfig = (
     parsed.PHONEPE_CLIENT_ID,
     parsed.PHONEPE_CLIENT_SECRET,
     parsed.PHONEPE_CLIENT_VERSION,
-    parsed.PHONEPE_ENV,
     parsed.PHONEPE_CALLBACK_USERNAME,
     parsed.PHONEPE_CALLBACK_PASSWORD,
   ]
   const configuredCount = credentials.filter(present).length
   if (configuredCount === 0) return null
-  if (configuredCount < credentials.length) {
-    if (source.NODE_ENV === "production") {
-      throw new Error(
-        "PHONEPE_* configuration is incomplete: set PHONEPE_CLIENT_ID, PHONEPE_CLIENT_SECRET, " +
-          "PHONEPE_CLIENT_VERSION, PHONEPE_ENV, PHONEPE_CALLBACK_USERNAME and PHONEPE_CALLBACK_PASSWORD together",
-      )
-    }
-    return null
+  if (configuredCount < credentials.length || !present(parsed.PHONEPE_ENV)) {
+    throw new Error(
+      "PHONEPE_* configuration is incomplete: set PHONEPE_CLIENT_ID, PHONEPE_CLIENT_SECRET, " +
+        "PHONEPE_CLIENT_VERSION, PHONEPE_ENV, PHONEPE_CALLBACK_USERNAME and PHONEPE_CALLBACK_PASSWORD together",
+    )
   }
-  if (!present(parsed.PHONEPE_REDIRECT_URL) || !present(parsed.PHONEPE_CALLBACK_URL)) {
-    throw new Error("PHONEPE_REDIRECT_URL and PHONEPE_CALLBACK_URL are required when PhonePe is configured")
-  }
-  if (!present(parsed.PHONEPE_CHECKOUT_ALLOWED_ORIGINS)) {
-    throw new Error("PHONEPE_CHECKOUT_ALLOWED_ORIGINS is required when PhonePe is configured")
-  }
-  const checkoutAllowedOrigins = parsed.PHONEPE_CHECKOUT_ALLOWED_ORIGINS
-    .split(",")
-    .map((value) => value.trim())
-  if (checkoutAllowedOrigins.some((value) => value.length === 0)) {
-    throw new Error("PHONEPE_CHECKOUT_ALLOWED_ORIGINS must contain exact HTTPS origins")
-  }
-  for (const origin of checkoutAllowedOrigins) {
-    let url: URL
-    try {
-      url = new URL(origin)
-    } catch {
-      throw new Error("PHONEPE_CHECKOUT_ALLOWED_ORIGINS must contain exact HTTPS origins")
-    }
-    if (
-      url.protocol !== "https:" || url.origin !== origin || url.hostname.includes("*") ||
-      url.username !== "" || url.password !== "" ||
-      url.pathname !== "/" || url.search !== "" || url.hash !== ""
-    ) {
-      throw new Error("PHONEPE_CHECKOUT_ALLOWED_ORIGINS must contain exact HTTPS origins")
-    }
-  }
+  if (!present(parsed.PHONEPE_CALLBACK_URL)) throw new Error("PHONEPE_CALLBACK_URL is required when PhonePe is configured")
   if (!/^[1-9][0-9]*$/u.test(parsed.PHONEPE_CLIENT_VERSION as string)) {
     throw new Error("PHONEPE_CLIENT_VERSION must be a positive integer")
   }
-  const expectedEnvironment = source.NODE_ENV === "production" ? "production" : "sandbox"
-  if (parsed.PHONEPE_ENV !== expectedEnvironment) {
-    throw new Error(`PHONEPE_ENV must be ${expectedEnvironment} for the configured NODE_ENV`)
-  }
-  const expectedHost = parsed.PHONEPE_ENV === "sandbox" ? "dev-app.beonedge.in" : "app.beonedge.in"
+  const expectedHost = parsed.NODE_ENV === "production" ? "app.beonedge.in" : "dev-app.beonedge.in"
   const canonicalUrl = (name: string, value: string, expectedPath: string): string => {
     let url: URL
     try {
@@ -440,7 +399,7 @@ const parsePhonePeConfig = (
       url.search !== "" ||
       url.hash !== ""
     ) {
-      throw new Error(`${name} must use the canonical ${expectedHost}${expectedPath} URL for PHONEPE_ENV`)
+      throw new Error(`${name} must use the canonical ${expectedHost}${expectedPath} URL for NODE_ENV`)
     }
     return url.toString()
   }
@@ -451,9 +410,7 @@ const parsePhonePeConfig = (
     env: parsed.PHONEPE_ENV,
     callbackUsername: parsed.PHONEPE_CALLBACK_USERNAME as string,
     callbackPassword: parsed.PHONEPE_CALLBACK_PASSWORD as string,
-    checkoutAllowedOrigins: Object.freeze([...new Set(checkoutAllowedOrigins)]),
     requestTimeoutMs: parsed.PHONEPE_API_TIMEOUT_MS,
-    redirectUrl: canonicalUrl("PHONEPE_REDIRECT_URL", parsed.PHONEPE_REDIRECT_URL, "/payment-return"),
     callbackUrl: canonicalUrl(
       "PHONEPE_CALLBACK_URL",
       parsed.PHONEPE_CALLBACK_URL,
@@ -523,7 +480,7 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
       "PHONEPE_MERCHANT_ID, CRYPTO_PAYMENT_TOKEN_ENC_KEY and CRYPTO_PAYMENT_TOKEN_ENC_KEY_VERSION are required when PhonePe mobile payments are enabled",
     )
   }
-  const phonepeConfig = parsePhonePeConfig(parsed, source)
+  const phonepeConfig = parsePhonePeConfig(parsed)
   if ((isMobileSdkEnabled || isAutoPayEnabled) && phonepeConfig === null) {
     throw new Error("PhonePe gateway configuration is required when PhonePe mobile payments are enabled")
   }

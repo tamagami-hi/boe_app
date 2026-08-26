@@ -27,8 +27,7 @@ export async function executeOrderCheckout({
     return { leaving: false, paymentId };
   }
 
-  const expectedType = checkoutChannel === 'phonepe_mobile_sdk' ? 'phonepe_sdk' : 'redirect';
-  if (checkout.type !== expectedType) throw new Error(CHECKOUT_ERROR);
+  if (checkout.type !== 'phonepe_sdk') throw new Error(CHECKOUT_ERROR);
   if (paymentId && !persistPendingPayment(paymentId)) throw new Error(CHECKOUT_ERROR);
 
   if (!paymentId) throw new Error(CHECKOUT_ERROR);

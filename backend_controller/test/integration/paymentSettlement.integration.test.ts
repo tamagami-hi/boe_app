@@ -17,7 +17,6 @@ import { decryptGcm } from "../../src/crypto/primitives.js"
 import { SEED_ROLE_PERMISSIONS } from "../../src/db/seedCatalog.js"
 import type { WebAuthDeps } from "../../src/domain/auth/webAuth.js"
 import type {
-  CheckoutCreated,
   OrderStatusFact,
   PaymentGateway,
   RefundInitiated,
@@ -203,7 +202,6 @@ const seedPublishedFund = async (
 }
 
 let stubOutcome: "succeeded" | "failed" | "pending" = "succeeded"
-let stubRedirectUrl = "https://mercury-uat.phonepe.com/checkout/abc"
 let stubProviderState: string | null = null
 let stubOrderStatusError: Error | null = null
 let stubOrderStatusCalls = 0
@@ -212,7 +210,6 @@ let stubCheckoutStarted: (() => void) | null = null
 let stubMobileOrderCalls: string[] = []
 let stubMobileOrderError: Error | null = null
 let stubMobileEnabled = true
-let stubCheckoutCalls = 0
 let stubRefundOriginalMerchantOrderId: string | null = null
 let stubRefundAmountPaise: string | null = null
 const stubRefundInitiationIds = new Map<string, string | null>()
@@ -233,16 +230,6 @@ const stubMobileGateway: MobilePaymentGateway = {
 }
 
 const stubGateway: PaymentGateway = {
-  createCheckout: async (command): Promise<CheckoutCreated> => {
-    stubCheckoutCalls += 1
-    stubCheckoutStarted?.()
-    if (stubCheckoutGate !== null) await stubCheckoutGate
-    return {
-      redirectUrl: stubRedirectUrl,
-      providerOrderId: `provider_${command.merchantOrderId}`,
-      expiresAt: null,
-    }
-  },
   getOrderStatus: (merchantOrderId): Promise<OrderStatusFact> => {
     stubOrderStatusCalls += 1
     if (stubOrderStatusError !== null) return Promise.reject(stubOrderStatusError)
@@ -1534,7 +1521,6 @@ describe("checkout orchestrator", () => {
     })
     const orderId = dataOf<{ orderId: string }>(created).orderId
     const mobileCalls = stubMobileOrderCalls.length
-    const hostedCalls = stubCheckoutCalls
     stubMobileEnabled = false
     try {
       const disabled = await app.inject({
@@ -1546,7 +1532,6 @@ describe("checkout orchestrator", () => {
       expect(disabled.statusCode).toBe(409)
       expect(errorOf(disabled)).toBe("MOBILE_CHECKOUT_DISABLED")
       expect(stubMobileOrderCalls).toHaveLength(mobileCalls)
-      expect(stubCheckoutCalls).toBe(hostedCalls)
       const attemptsBeforeFallback = await pool.query<{ count: string }>(
         "select count(*)::text as count from payment_attempts where user_id = $1",
         [userId],
@@ -1560,7 +1545,6 @@ describe("checkout orchestrator", () => {
         payload: { checkoutChannel: "hosted_redirect" },
       })
       expect(hosted.statusCode).toBe(400)
-      expect(stubCheckoutCalls).toBe(hostedCalls)
     } finally {
       await pool.query(
         "update payment_attempts set state = 'failed', provider_state = 'TEST_CLOSED' where user_id = $1 and state in ('created','provider_pending')",
@@ -1731,7 +1715,6 @@ describe("checkout orchestrator", () => {
 
     expect(response.statusCode).toBe(409)
     expect(errorOf(response)).toBe("STATE_CONFLICT")
-    expect(response.body).not.toContain(stubRedirectUrl)
   })
 })
 

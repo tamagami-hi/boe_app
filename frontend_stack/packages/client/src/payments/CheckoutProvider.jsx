@@ -13,7 +13,7 @@ import {
 import { clearPendingAutoPaySetup, readPendingAutoPaySetup } from './pendingAutoPaySetup.js';
 
 const browserPlatform = Object.freeze({
-  resolveChannel: async () => 'hosted_redirect',
+  resolveChannel: async () => null,
   start: async () => ({ status: 'unavailable' }),
 });
 

@@ -32,7 +32,7 @@ import { createRefundRepository } from "../repositories/refundRepository.js"
 import { createFundReceiptAcknowledgementRepository } from "../repositories/fundReceiptAcknowledgementRepository.js"
 import { createInvestmentSettlementRepository } from "../repositories/investmentSettlementRepository.js"
 import { createProviderEventInboxRepository } from "../repositories/providerEventInboxRepository.js"
-import { createPhonePeCheckoutGateway } from "../providers/phonepe/phonePeCheckoutGateway.js"
+import { createPhonePeGateway } from "../providers/phonepe/phonePeCheckoutGateway.js"
 import { createPhonePeMobileOrderGateway } from "../providers/phonepe/phonePeMobileOrderGateway.js"
 import { createPhonePeRecurringGateway } from "../providers/phonepe/phonePeRecurringGateway.js"
 import type { MobilePaymentGateway } from "../providers/mobilePaymentGateway.js"
@@ -89,7 +89,6 @@ import { registerProviderEventRoutes } from "../routes/providerEventRoutes.js"
 import { registerPhonePeProviderEventRoutes } from "../routes/phonePeProviderEventRoutes.js"
 import { registerPhonePeMandateEventRoutes } from "../routes/phonePeMandateEventRoutes.js"
 import { registerAdminMandateRoutes } from "../routes/adminMandateRoutes.js"
-import { registerPaymentReturnRoutes } from "../routes/paymentReturnRoutes.js"
 import { registerPublicOnboardingRoutes } from "../routes/publicOnboardingRoutes.js"
 import { registerWebAuthRoutes } from "../routes/webAuthRoutes.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
@@ -156,7 +155,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const certificateFetcher = createCertificateFetcher()
   const paymentGateway: PaymentGateway | null =
     serverConfig.payments.phonepe !== null
-      ? createPhonePeCheckoutGateway({ config: serverConfig.payments.phonepe })
+      ? createPhonePeGateway({ config: serverConfig.payments.phonepe })
       : null
   const mobilePaymentGateway: MobilePaymentGateway | null =
     serverConfig.payments.mobileSdk.enabled && serverConfig.payments.phonepe !== null
@@ -242,8 +241,6 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       checkReadiness,
       metrics: { repository: createMetricsRepository(database), clock },
     })
-    registerPaymentReturnRoutes(application, { clock, signingKey: serverConfig.cursorKey })
-
     registerPublicOnboardingRoutes(application, {
       database,
       unitOfWork,
@@ -683,7 +680,7 @@ export const composePaymentReconciliationWorker = (
 
   const gateway =
     serverConfig.payments.phonepe !== null
-      ? createPhonePeCheckoutGateway({ config: serverConfig.payments.phonepe })
+      ? createPhonePeGateway({ config: serverConfig.payments.phonepe })
       : null
   const recurringGateway =
     serverConfig.payments.phonepe !== null

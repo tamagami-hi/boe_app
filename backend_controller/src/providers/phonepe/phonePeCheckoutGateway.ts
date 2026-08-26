@@ -1,5 +1,5 @@
 /**
- * PhonePe Standard Checkout adapter for the PaymentGateway port (spec §7).
+ * PhonePe payment evidence and refund adapter for the PaymentGateway port.
  *
  * This module is the only place PhonePe SDK types, builders, and exceptions are
  * referenced. Everything crossing the boundary is mapped into the port's own
@@ -20,12 +20,7 @@
  */
 import { createHash, timingSafeEqual } from "node:crypto"
 
-import { Env, StandardCheckoutClient, StandardCheckoutPayRequest, RefundRequest } from "@phonepe-pg/pg-sdk-node"
-
-import {
-  PHONEPE_MAX_CHECKOUT_SECONDS,
-  PHONEPE_MIN_CHECKOUT_SECONDS,
-} from "../../domain/payments/checkoutExpiry.js"
+import { Env, StandardCheckoutClient, RefundRequest } from "@phonepe-pg/pg-sdk-node"
 import {
   GatewayAuthenticationError,
   GatewayCredentialError,
@@ -36,8 +31,6 @@ import {
   GatewayRejectedError,
   GatewayThrottledError,
   GatewayUnavailableError,
-  type CheckoutCreated,
-  type CreateCheckoutCommand,
   type InitiateRefundCommand,
   type OrderStatusFact,
   type PaymentGateway,
@@ -55,8 +48,6 @@ export interface PhonePeGatewayConfig {
   readonly env: "sandbox" | "production"
   readonly callbackUsername: string
   readonly callbackPassword: string
-  readonly redirectUrl: string | null
-  readonly checkoutAllowedOrigins: readonly string[]
   readonly requestTimeoutMs?: number
 }
 
@@ -67,7 +58,6 @@ export interface PhonePeGatewayConfig {
  */
 export interface PhonePeSdkClient {
   readonly httpClient?: { readonly defaults: { timeout: number } }
-  readonly pay: (request: unknown) => Promise<unknown>
   readonly getOrderStatus: (merchantOrderId: string, details?: boolean) => Promise<unknown>
   readonly validateCallback: (
     username: string,
@@ -79,7 +69,7 @@ export interface PhonePeSdkClient {
   readonly getRefundStatus: (refundId: string) => Promise<unknown>
 }
 
-export interface PhonePeCheckoutGatewayDeps {
+export interface PhonePeGatewayDeps {
   readonly config: PhonePeGatewayConfig
   /** Injected in tests; the real SDK client is built from the config otherwise. */
   readonly client?: PhonePeSdkClient
@@ -164,20 +154,6 @@ const withTimeout = async <T>(operation: Promise<T>, timeoutMs: number): Promise
   } finally {
     if (timer !== undefined) clearTimeout(timer)
   }
-}
-
-const trustedCheckoutUrl = (value: string, allowedOrigins: readonly string[]): string | null => {
-  let url: URL
-  try {
-    url = new URL(value)
-  } catch {
-    return null
-  }
-  if (
-    url.protocol !== "https:" || url.username !== "" || url.password !== "" ||
-    !allowedOrigins.includes(url.origin)
-  ) return null
-  return url.toString()
 }
 
 const mapPaymentDetails = (value: unknown): readonly ProviderPaymentDetailFact[] => {
@@ -265,53 +241,11 @@ const buildClient = (config: PhonePeGatewayConfig): PhonePeSdkClient => {
   return client
 }
 
-export const createPhonePeCheckoutGateway = (deps: PhonePeCheckoutGatewayDeps): PaymentGateway => {
+export const createPhonePeGateway = (deps: PhonePeGatewayDeps): PaymentGateway => {
   const client: PhonePeSdkClient = deps.client ?? buildClient(deps.config)
   const { config } = deps
 
   return Object.freeze({
-    createCheckout: async (command: CreateCheckoutCommand): Promise<CheckoutCreated> => {
-      if (
-        command.expireAfterSeconds < PHONEPE_MIN_CHECKOUT_SECONDS ||
-        command.expireAfterSeconds > PHONEPE_MAX_CHECKOUT_SECONDS
-      ) {
-        throw new GatewayRejectedError("checkout expiry is outside the provider-supported range")
-      }
-      const amount = paiseToNumber(command.amountPaise)
-      const builder = StandardCheckoutPayRequest.builder()
-        .merchantOrderId(command.merchantOrderId)
-        .amount(amount)
-        .expireAfter(command.expireAfterSeconds)
-      const redirectUrl = command.redirectUrl ?? config.redirectUrl
-      if (redirectUrl !== null) builder.redirectUrl(redirectUrl)
-
-      let response: unknown
-      try {
-        response = await withTimeout(client.pay(builder.build()), config.requestTimeoutMs ?? 10_000)
-      } catch (error) {
-        throw mapCallError(error)
-      }
-      const body = isRecord(response) ? response : {}
-      const checkoutUrl = optionalString(body.redirectUrl)
-      if (checkoutUrl === null) {
-        // A checkout without a redirect URL is unusable; treat as unavailable so
-        // the caller's retry recovers rather than persisting a dead attempt.
-        throw new GatewayMalformedResponseError("the provider returned no checkout redirect")
-      }
-      const safeCheckoutUrl = trustedCheckoutUrl(checkoutUrl, config.checkoutAllowedOrigins)
-      if (safeCheckoutUrl === null) {
-        throw new GatewayMalformedResponseError("the provider returned an untrusted checkout redirect")
-      }
-      return {
-        redirectUrl: safeCheckoutUrl,
-        providerOrderId: optionalString(body.orderId),
-        expiresAt:
-          typeof body.expireAt === "number" && Number.isFinite(body.expireAt) && body.expireAt > 0
-            ? new Date(body.expireAt)
-            : null,
-      }
-    },
-
     getOrderStatus: async (merchantOrderId: string): Promise<OrderStatusFact> => {
       let response: unknown
       try {
