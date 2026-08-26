@@ -61,5 +61,8 @@
     "/v1/public/disclosures",
     "/v1/public/grievance",
     "/v1/public/investor-charter"
+  ],
+  "uncontractedMethods": [
+    "GET /v1/admin/funds/{param}/stocks"
   ]
 }

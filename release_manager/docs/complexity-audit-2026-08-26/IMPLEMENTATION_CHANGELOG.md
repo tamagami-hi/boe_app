@@ -76,6 +76,13 @@
 - Removed duplicated local conversion functions while preserving collective explicit-amount semantics.
 - Verification: 27 targeted tests passed, frontend production build and bundle boot check passed, and final review found no blocking/high-severity issues.
 
+## Next roadmap slice — method-aware contract drift
+
+- Enhanced `packages/contracts/scripts/check-frontend-contract-drift.mjs` to inspect explicit `apiRequest`/`fetch` methods and compare them with OpenAPI operations.
+- Added `uncontractedMethods` baseline support and recorded the existing `GET /v1/admin/funds/{param}/stocks` method gap.
+- The guard now reports 74 frontend paths, 57 request paths, 60 known path gaps, and method drift separately.
+- Static-analysis limitation remains: dynamic calls and full request/response schemas require runtime or generated-client verification.
+
 ### Preserved pre-existing worktree changes
 
 - `release_manager/stacks/_shared/_boe_deploy.sh`
