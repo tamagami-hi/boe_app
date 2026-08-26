@@ -23,6 +23,7 @@ const config: CapacitorConfig = {
   appId: 'com.beonedge.app',
   appName: 'BeOnEdge',
   webDir: 'dist',
+  loggingBehavior: 'none',
   server: {
     androidScheme: 'https',
     cleartext: false,

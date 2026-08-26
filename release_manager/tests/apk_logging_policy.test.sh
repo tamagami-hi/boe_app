@@ -39,8 +39,8 @@ grep -q 'VITE_BEO_ANDROID_BUILD_TYPE' "$PHONEPE_CHECKOUT" \
     || fail_test 'PhonePe build type no longer comes from VITE_BEO_ANDROID_BUILD_TYPE'
 ok 'PhonePe SDK logging stays disabled outside debug builds'
 
-grep -q 'application-debuggable' "$BUILDER" \
-    || fail_test 'boe_update.sh does not inspect the final APK for the debuggable flag'
+grep -q 'application-debuggable' "$APK_MANIFEST_LIB" \
+    || fail_test 'the APK manifest inspector does not detect the debuggable flag'
 grep -q -- '--argjson debuggable' "$BUILDER" \
     || fail_test 'boe_update.sh does not record the measured debuggable flag in the sidecar'
 grep -q -- '--arg buildType' "$BUILDER" \

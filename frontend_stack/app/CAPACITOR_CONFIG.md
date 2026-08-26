@@ -91,6 +91,24 @@ The naming is counter-intuitive, so from the source: `setStyle` calls
 "light appearance" = dark icons on a light background, which is what BOE wants.
 `DARK` would give white icons and make them invisible against the ivory app bar.
 
+## `loggingBehavior: "none"`
+
+Capacitor's default (`debug`) prints every bridge call's arguments and return
+value to logcat under the `Capacitor:V` tag. Those payloads include
+secure-storage tokens, biometric credentials, and the PhonePe
+`startTransaction` request token — see
+`release_manager/docs/CAPACITOR_DEBUG_LOG_TOKEN_EXPOSURE.md` for the incident.
+
+`none` disables bridge logging for every build, debug included; production
+fails closed by construction rather than by a build-mode flag. The app ships no
+logger of its own, so with the bridge silent nothing on the application side
+can put session data into logcat.
+
+Diagnostics do not use these tags: collect logcat only through
+`emu/boe_logcat.sh` (explicit tag allowlist, bridge/WebView tags refused,
+credential redaction at capture), and use `chrome://inspect` remote devtools
+for WebView internals.
+
 ## Not set here
 
 `hidden` is left at `false`: both bars stay visible. The app is edge-to-edge

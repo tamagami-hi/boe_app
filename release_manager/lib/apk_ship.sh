@@ -164,11 +164,17 @@ apk_validate_local_artifact() {
             return 1
         }
         signing="$(jq -r '.signing // "unknown"' "$sidecar")"
-        jq -e '.signing == "release" and ((.buildType // "release") == "release")' \
+        jq -e '.signing == "release" and .buildType == "release"' \
             "$sidecar" >/dev/null || {
             err "production APK must be release-signed, but the sidecar records signing=$signing"
             err "emu/boe_update.sh runs assembleRelease when android/keystore.properties is"
             err "present and falls back to assembleDebug when it is not — check the keystore"
+            return 1
+        }
+        jq -e '.debuggable == false' "$sidecar" >/dev/null || {
+            err "production APK must be proven non-debuggable, but the sidecar records debuggable=$(jq -r '.debuggable // "unknown"' "$sidecar")"
+            err "rebuild with emu/boe_update.sh — it measures the final APK with aapt"
+            err "and refuses a release artifact whose manifest is debuggable"
             return 1
         }
     fi

@@ -90,7 +90,7 @@ make_artifact() {
         '{apk: $apk, target: $target, variant: $variant, version: $version,
           buildLabel: $version,
           gitCommit: "0123456789abcdef0123456789abcdef01234567",
-          gitDirty: false, builtAt: "2026-08-03T00:00:00Z", signing: "debug",
+          gitDirty: false, builtAt: "2026-08-03T00:00:00Z", signing: "debug", buildType: "debug",
           debuggable: false,
           sha256: $sha, sizeBytes: 32}' > "$sidecar"
     if (( $# > 0 )); then
@@ -581,7 +581,7 @@ prod_err="$(apk_ship_release "$PROD_PATHS" "$APK_DIR" prod 0.6.5 false \
 grep -qi 'debug' <<< "$prod_err" \
     || fail_test 'the production signing rejection has no clear diagnostic'
 # a properly release-signed artifact passes the signing gate itself
-make_artifact "$APK_DIR" prod client 8.1.0 '.signing = "release"'
+make_artifact "$APK_DIR" prod client 8.1.0 '.signing = "release" | .buildType = "release"'
 apk_validate_local_artifact "$APK_DIR/boe.prod.client.8.1.0.apk" prod client 8.1.0 \
     0123456789abcdef0123456789abcdef01234567 prod >/dev/null \
     || fail_test 'a release-signed production artifact was rejected'

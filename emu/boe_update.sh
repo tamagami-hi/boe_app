@@ -80,6 +80,7 @@ OUT_DIR="$SCRIPT_DIR/out"
 source "$PROJECT_ROOT/release_manager/lib/version.sh"
 # shellcheck source=../release_manager/lib/ui.sh
 source "$PROJECT_ROOT/release_manager/lib/ui.sh"
+source "$PROJECT_ROOT/release_manager/lib/apk_manifest.sh"
 
 # ── arguments ───────────────────────────────────────────────────────────────
 TARGET=""
@@ -267,6 +268,8 @@ require_cmd sha256sum
 if [[ "$DO_INSTALL" == true ]]; then
     require_cmd adb
 fi
+
+AAPT_BIN="$(find "$ANDROID_HOME/build-tools" -maxdepth 2 -name aapt -type f 2>/dev/null | sort -V | tail -n1)"
 
 for d in "$FRONTEND_DIR" "$APP_DIR" "$ANDROID_DIR"; do
     [[ -d "$d" ]] || { err "missing directory: $d"; exit 1; }
@@ -480,6 +483,22 @@ build_variant() {
         return 1
     fi
 
+    local debuggable="unknown"
+    if [[ -n "$AAPT_BIN" ]]; then
+        debuggable="$(apk_manifest_debuggable "$AAPT_BIN" "$gradle_apk")" || {
+            err "aapt could not inspect the final APK: $gradle_apk"
+            return 1
+        }
+    fi
+    if [[ "$signing" == release && "$debuggable" != false ]]; then
+        if [[ -z "$AAPT_BIN" ]]; then
+            err "aapt is required to prove a release APK is not debuggable"
+        else
+            err "release APK is debuggable: $gradle_apk"
+        fi
+        return 1
+    fi
+
     cp "$gradle_apk" "$out_apk"
 
     local sha size
@@ -502,13 +521,16 @@ build_variant() {
         --argjson gitDirty "$GIT_DIRTY" \
         --arg builtAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
         --arg signing "$signing" \
+        --arg buildType "$ANDROID_BUILD_TYPE" \
+        --argjson debuggable "$([[ "$debuggable" =~ ^(true|false)$ ]] && echo "$debuggable" || echo null)" \
         --arg sha256 "$sha" \
         --argjson sizeBytes "$size" \
         '{apk: $apk, target: $target, variant: $variant, version: $version,
           buildLabel: $buildLabel, apiBaseUrl: $apiBaseUrl, onboardingUrl: $onboardingUrl,
           applicationId: $applicationId, versionName: $versionName, versionCode: $versionCode,
           gitCommit: $gitCommit, gitDirty: $gitDirty, builtAt: $builtAt,
-          signing: $signing, sha256: $sha256, sizeBytes: $sizeBytes}' \
+          signing: $signing, buildType: $buildType, debuggable: $debuggable,
+          sha256: $sha256, sizeBytes: $sizeBytes}' \
         > "${out_apk%.apk}.json"
 
     ok "$apk_name  ($(numfmt --to=iec "$size"))"
