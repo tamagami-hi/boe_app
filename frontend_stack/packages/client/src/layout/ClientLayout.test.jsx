@@ -85,7 +85,6 @@ describe('ClientLayout bottom nav visibility', () => {
     '/app/funds/f1',
     '/app/statements',
     '/app/notifications',
-    '/app/withdrawals',
     '/app/investor-charter',
     '/app/grievance',
   ];

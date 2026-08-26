@@ -1,14 +1,9 @@
 {
   "scripts": {
-    "kimi:chunk": "node scripts/kimi/chunk-codebase.mjs",
-    "kimi:run": "node scripts/kimi/kimi-api.mjs",
-    "kimi:apply": "node scripts/kimi/apply-kimi-output.mjs",
     "test:onboarding:harness": "node --test test_e2e/onboarding-harness.test.mjs",
     "test:e2e:onboarding": "node --env-file-if-exists=backend_controller/.env test_e2e/onboarding-e2e.mjs"
   },
   "devDependencies": {
-    "agent-browser": "^0.27.2",
-    "ngrok": "^4.3.3",
     "playwright": "^1.59.1"
   }
 }

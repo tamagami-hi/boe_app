@@ -12,7 +12,6 @@ import LumpsumSheet from './pages/LumpsumSheet.jsx';
 import PaymentStatus from './pages/PaymentStatus.jsx';
 import MandateDetail from './pages/MandateDetail.jsx';
 import Portfolio from './pages/Portfolio.jsx';
-import WithdrawalRequests from './pages/WithdrawalRequests.jsx';
 import Transactions from './pages/Transactions.jsx';
 import Statements from './pages/Statements.jsx';
 import Notifications from './pages/Notifications.jsx';
@@ -95,7 +94,6 @@ export default function ClientApp() {
         <Route path="payment/:paymentId" element={<RequireApproved><RouteErrorBoundary><PaymentStatus /></RouteErrorBoundary></RequireApproved>} />
         <Route path="mandates/:mandateId" element={<RouteErrorBoundary><MandateDetail /></RouteErrorBoundary>} />
         <Route path="portfolio" element={<RouteErrorBoundary><Portfolio /></RouteErrorBoundary>} />
-        <Route path="withdrawals" element={<RouteErrorBoundary><WithdrawalRequests /></RouteErrorBoundary>} />
         <Route path="transactions" element={<RouteErrorBoundary><Transactions /></RouteErrorBoundary>} />
         <Route path="statements" element={<RouteErrorBoundary><Statements /></RouteErrorBoundary>} />
         <Route path="notifications" element={<RouteErrorBoundary><Notifications /></RouteErrorBoundary>} />

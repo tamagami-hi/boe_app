@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { loadAppConfig, loadRemoteAppConfig, subscribeToAppConfig } from '@beonedge/shared/appConfig.js';
+import { apiRequest } from '../services/_util.js';
 import { resolveInternalPath } from '../navigation/routes.js';
 
 /**
@@ -59,7 +60,7 @@ export function useAppConfig() {
 
   useEffect(() => {
     let cancelled = false;
-    loadRemoteAppConfig().then((remoteConfig) => {
+    loadRemoteAppConfig({ request: apiRequest }).then((remoteConfig) => {
       if (!cancelled && remoteConfig) setConfig(remoteConfig);
     }).catch(() => {});
 

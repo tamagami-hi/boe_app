@@ -165,18 +165,6 @@ export const CLIENT_ROUTES = [
     backPolicy: BACK_POLICY.PARENT,
   },
 
-  /* -- secondary: under Portfolio --------------------------------------- */
-  {
-    path: '/app/withdrawals',
-    destinationId: 'withdrawals',
-    parent: '/app/portfolio',
-    appBarMode: APP_BAR_MODE.BACK,
-    primaryNavItem: 'portfolio',
-    showsBottomNav: false,
-    permissions: [],
-    isTransactional: false,
-    backPolicy: BACK_POLICY.PARENT,
-  },
   // SIP plan detail. The path keeps its historical name for links already in
   // the wild, but the parameter is a SIP plan id and the screen is the
   // schedule/reminder plan view (spec §6.2 fallback — there is no mandate).

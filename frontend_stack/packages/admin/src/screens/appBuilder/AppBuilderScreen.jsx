@@ -8,6 +8,7 @@ import {
   publishAppConfig,
   resetAppConfig,
 } from '@beonedge/shared/appConfig.js';
+import { apiRequest } from '@beonedge/client/services/_util.js';
 import Skeleton from '@beonedge/shared/components/Skeleton.jsx';
 import I from '../../components/I.jsx';
 import { clone, csvNumbers } from '../../helpers/formatters.js';
@@ -30,7 +31,7 @@ export default function AppBuilderScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    loadRemoteAppConfig({ admin: true })
+    loadRemoteAppConfig({ admin: true, request: apiRequest })
       .then((remoteConfig) => {
         if (cancelled || !remoteConfig) return;
         setConfig(remoteConfig);
@@ -78,7 +79,7 @@ export default function AppBuilderScreen() {
     setPublishing(true);
     setStatus({ tone: '', message: 'Publishing…' });
     try {
-      const next = await publishAppConfig(config);
+      const next = await publishAppConfig(config, { request: apiRequest });
       setConfig(next);
       setStatus({ tone: 'ok', message: 'Published. The app reads this on its next launch.' });
     } catch (error) {

@@ -1,24 +1,13 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { PieChart, RotateCcw, Wallet, TrendingUp } from 'lucide-react';
-import * as fundsApi from '../services/fundsApi.js';
-import { usePortfolio, useClientCacheActions } from '../data/clientResources.js';
+import { PieChart, Wallet, TrendingUp } from 'lucide-react';
+import { usePortfolio } from '../data/clientResources.js';
 import { buildPath } from '../navigation/routes.js';
 import { fmtMoney, fmtPct, fmtDate } from '../utils/format.js';
 import { EmptyState, ErrorState } from '@beonedge/shared';
-import PageSheet from '../layout/PageSheet.jsx';
 
 const EXPLORE_PATH = buildPath('explore');
 const ACTIVITY_PATH = buildPath('activity');
-const WITHDRAWALS_PATH = buildPath('withdrawals');
-
-const REDEMPTION_MODES = [
-  { value: 'full', label: 'Redeem full amount' },
-  { value: 'returns_only', label: 'Redeem returns only' },
-  { value: 'half', label: 'Redeem 50%' },
-  { value: 'custom', label: 'Redeem custom amount' },
-];
-
 export default function Portfolio() {
   const {
     data: portfolio,
@@ -27,53 +16,6 @@ export default function Portfolio() {
     isRefreshing,
     refresh: refreshPortfolio,
   } = usePortfolio();
-  const { invalidateMoney } = useClientCacheActions();
-  const [sheet, setSheet] = useState(null);
-  const [mode, setMode] = useState('full');
-  const [amount, setAmount] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState(null);
-  const [receipt, setReceipt] = useState(null);
-
-  function openRedeem(pool) {
-    setSheet(pool);
-    setMode('full');
-    setAmount('');
-    setMessage(null);
-    setReceipt(null);
-  }
-
-  function closeRedeem() {
-    if (submitting) return;
-    setSheet(null);
-    setReceipt(null);
-  }
-
-  async function onSubmitRedemption() {
-    if (!sheet || submitting) return;
-    if (mode === 'custom') {
-      const requested = Number(amount);
-      if (!Number.isFinite(requested) || requested <= 0) {
-        setMessage({ type: 'error', text: 'Enter the amount you want to redeem.' });
-        return;
-      }
-      if (requested > (sheet.currentValue ?? 0)) {
-        setMessage({ type: 'error', text: 'That is more than your current value.' });
-        return;
-      }
-    }
-    setSubmitting(true);
-    setMessage(null);
-    try {
-      const result = await fundsApi.submitRedemption({ fundId: sheet.fundId, mode, amount });
-      setReceipt(result);
-      invalidateMoney();
-    } catch (error) {
-      setMessage({ type: 'error', text: error?.message || 'We could not submit that redemption.' });
-    } finally {
-      setSubmitting(false);
-    }
-  }
 
   if (isLoading) {
     return (
@@ -176,14 +118,6 @@ export default function Portfolio() {
             Invest more
           </Link>
 
-          <button type="button"
-            className="be-btn be-btn-secondary be-btn-lg"
-            onClick={() => openRedeem(portfolio.pools?.[0])}
-            disabled={(portfolio.pools?.length ?? 0) === 0}
-          >
-            Redeem
-          </button>
-
         </div>
 
       </div>
@@ -226,16 +160,6 @@ export default function Portfolio() {
 
           </div>
 
-          {(summary.redemptionCount ?? 0) > 0 && (
-            <div>
-              <dt>Redeemed</dt>
-
-              <dd className="be-money">
-                {fmtMoney(summary.redeemedTotal ?? 0)} ({summary.redemptionCount})
-              </dd>
-
-            </div>
-          )}
           <div>
             <dt>Returns allocated</dt>
 
@@ -247,10 +171,6 @@ export default function Portfolio() {
 
         <Link className="be-btn be-btn-ghost be-btn-block" to={ACTIVITY_PATH}>
           View all transactions
-        </Link>
-
-        <Link className="be-btn be-btn-ghost be-btn-block" to={WITHDRAWALS_PATH}>
-          View withdrawal history
         </Link>
 
       </div>
@@ -282,11 +202,6 @@ export default function Portfolio() {
                   View
                 </Link>
 
-                <button type="button" className="be-btn be-btn-secondary be-btn-sm" onClick={() => openRedeem(pool)}>
-                  <RotateCcw size={13} /> Redeem
-
-                </button>
-
               </div>
 
             </div>
@@ -295,123 +210,6 @@ export default function Portfolio() {
       )}
 
       {}
-
-      <PageSheet
-        open={Boolean(sheet)}
-        onClose={closeRedeem}
-        dismissible={!submitting}
-        label={receipt ? 'Redemption submitted' : 'Redeem investment'}
-      >
-        {sheet && (
-          <>
-            <div className="apk-sheet-head">
-              <h2>{receipt ? 'Redemption submitted' : 'Redeem investment'}</h2>
-
-              <button type="button" className="apk-sheet-close" onClick={closeRedeem} aria-label="Close" disabled={submitting}>
-                ×
-              </button>
-
-            </div>
-
-            {receipt ? (
-              <div className="apk-sheet-body">
-                <p>
-                  We have recorded your request for <strong>{fmtMoney(receipt.requestedAmount)}</strong>. Your
-
-                  portfolio value changes once the redemption is settled.
-                </p>
-
-                <dl className="apk-summary-list">
-                  <div>
-                    <dt>From returns</dt>
-
-                    <dd className="be-money">{fmtMoney(receipt.returnsComponent ?? 0)}</dd>
-
-                  </div>
-
-                  <div>
-                    <dt>From invested principal</dt>
-
-                    <dd className="be-money">{fmtMoney(receipt.principalComponent ?? 0)}</dd>
-
-                  </div>
-
-                </dl>
-
-                <button type="button" className="be-btn be-btn-primary be-btn-block" onClick={closeRedeem}>
-                  Done
-                </button>
-
-              </div>
-            ) : (
-              <div className="apk-sheet-body">
-                <div className="apk-sheet-amount">
-                  <span>Available amount</span>
-
-                  <strong className="be-money">{fmtMoney(sheet.currentValue)}</strong>
-
-                </div>
-
-                <fieldset className="apk-radio-group">
-                  <legend className="apk-sr-only">Redemption type</legend>
-
-                  {REDEMPTION_MODES.map((option) => (
-                    <label key={option.value} className="apk-radio">
-                      <input
-                        type="radio"
-                        name="redemption-mode"
-                        value={option.value}
-                        checked={mode === option.value}
-                        onChange={() => setMode(option.value)}
-                      />
-
-                      <span>{option.label}</span>
-
-                    </label>
-                  ))}
-                </fieldset>
-
-                {mode === 'custom' && (
-                  <label className="apk-field">
-                    <span>Amount (₹)</span>
-
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      min="1"
-                      max={sheet.currentValue ?? undefined}
-                      value={amount}
-                      onChange={(event) => setAmount(event.target.value)}
-                    />
-
-                  </label>
-                )}
-
-                {mode === 'returns_only' && (
-                  <p className="be-disclosure">
-                    Redeeming returns only leaves your invested principal untouched.
-                  </p>
-                )}
-
-                {message && (
-                  <div className={`apk-sheet-message apk-sheet-message--${message.type}`} role="alert">
-                    {message.text}
-                  </div>
-                )}
-
-                <button type="button"
-                  className="be-btn be-btn-primary be-btn-block be-btn-lg"
-                  onClick={onSubmitRedemption}
-                  disabled={submitting}
-                >
-                  {submitting ? 'Submitting…' : 'Submit redemption'}
-                </button>
-
-              </div>
-            )}
-          </>
-        )}
-      </PageSheet>
 
     </div>
   );

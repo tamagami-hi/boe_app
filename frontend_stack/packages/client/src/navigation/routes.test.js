@@ -172,7 +172,6 @@ describe('parentPathOf', () => {
 
   test('secondary screens resolve to their logical parent', () => {
     expect(parentPathOf('/app/statements')).toBe('/app/profile');
-    expect(parentPathOf('/app/withdrawals')).toBe('/app/portfolio');
     expect(parentPathOf('/app/notifications')).toBe('/app/dashboard');
   });
 
@@ -205,7 +204,7 @@ describe('showsBottomNav', () => {
 
   test('false for secondary and transactional screens', () => {
     for (const path of [
-      '/app/statements', '/app/notifications', '/app/funds/f1', '/app/withdrawals',
+      '/app/statements', '/app/notifications', '/app/funds/f1',
       '/app/invest/sip/f1', '/app/payment/p1', '/app/mandates/m1',
     ]) {
       expect(showsBottomNav(path)).toBe(false);

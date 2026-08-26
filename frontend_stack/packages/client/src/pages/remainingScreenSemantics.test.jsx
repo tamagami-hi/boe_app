@@ -11,7 +11,6 @@ const listStatements = vi.fn();
 const listNotifications = vi.fn();
 const markAllRead = vi.fn();
 const markRead = vi.fn();
-const listRedemptionRequests = vi.fn();
 
 vi.mock('../services/statementsApi.js', () => ({
   listStatements: (...a) => listStatements(...a),
@@ -22,14 +21,10 @@ vi.mock('../services/notificationsApi.js', () => ({
   markAllRead: (...a) => markAllRead(...a),
   markRead: (...a) => markRead(...a),
 }));
-vi.mock('../services/fundsApi.js', () => ({
-  listRedemptionRequests: (...a) => listRedemptionRequests(...a),
-}));
 vi.mock('../layout/AppBar.jsx', () => ({ default: ({ title }) => <span>{title}</span> }));
 
 const { default: Statements } = await import('./Statements.jsx');
 const { default: Notifications } = await import('./Notifications.jsx');
-const { default: WithdrawalRequests } = await import('./WithdrawalRequests.jsx');
 
 function LocationProbe() {
   const location = useLocation();
@@ -58,9 +53,6 @@ beforeEach(() => {
   ]);
   markAllRead.mockReset().mockResolvedValue({});
   markRead.mockReset().mockResolvedValue({});
-  listRedemptionRequests.mockReset().mockResolvedValue([
-    { id: 'r1', status: 'pending', amount: 500, fundName: 'Alpha Pool', createdAt: '2026-08-01' },
-  ]);
 });
 
 describe('a failed read is never rendered as "you have nothing"', () => {
@@ -84,21 +76,6 @@ describe('a failed read is never rendered as "you have nothing"', () => {
     expect(listNotifications).toHaveBeenCalledTimes(2);
   });
 
-  test('WithdrawalRequests says the read failed instead of "no requests yet"', async () => {
-    listRedemptionRequests.mockRejectedValue(new Error('backend down'));
-    renderAt(<WithdrawalRequests />, '/app/withdrawals', '/app/withdrawals');
-    await flush();
-    expect(screen.getByRole('alert')).toHaveTextContent('We could not load your withdrawal requests');
-    expect(screen.queryByText('No withdrawal requests yet')).not.toBeInTheDocument();
-  });
-
-  test('a genuinely empty list still shows the empty state', async () => {
-    listRedemptionRequests.mockResolvedValue([]);
-    renderAt(<WithdrawalRequests />, '/app/withdrawals', '/app/withdrawals');
-    await flush();
-    expect(screen.getByText('No withdrawal requests yet')).toBeInTheDocument();
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-  });
 });
 
 describe('Notifications semantics', () => {
@@ -132,33 +109,5 @@ describe('Notifications semantics', () => {
     await flush();
     expect(markAllRead).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('button', { name: 'Mark all notifications as read' })).toBeDisabled();
-  });
-});
-
-describe('WithdrawalRequests navigation', () => {
-  test('its Back control is visible and reachable', async () => {
-    renderAt(<WithdrawalRequests />, '/app/withdrawals', '/app/withdrawals');
-    await flush();
-    // `.apk-back-link` was `display: none` with no rule anywhere turning it on, so
-    // this screen — which renders no AppBar — had no on-screen way out at all.
-    const back = screen.getByRole('button', { name: 'Back' });
-    expect(back).toHaveAttribute('type', 'button');
-    back.focus();
-    expect(back).toHaveFocus();
-  });
-
-  test('Back falls to the declared parent when there is no history to pop', async () => {
-    renderAt(<WithdrawalRequests />, '/app/withdrawals', '/app/withdrawals');
-    await flush();
-    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
-    // Deep-linked, so idx is 0: it must go to a real place, not nowhere.
-    expect(screen.getByTestId('location')).toHaveTextContent(buildPath('portfolio'));
-  });
-
-  test('the empty-state CTA is a link to Portfolio', async () => {
-    listRedemptionRequests.mockResolvedValue([]);
-    renderAt(<WithdrawalRequests />, '/app/withdrawals', '/app/withdrawals');
-    await flush();
-    expect(screen.getByRole('link', { name: 'Go to Portfolio' })).toHaveAttribute('href', buildPath('portfolio'));
   });
 });

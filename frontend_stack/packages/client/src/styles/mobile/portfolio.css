@@ -278,28 +278,6 @@
   letter-spacing: 0;
 }
 
-/* Withdrawal requests */
-.apk-withdrawal-back { margin-bottom: var(--be-space-2); }
-.apk-withdrawal-sub { font-size: var(--be-text-sm); color: var(--be-fg-muted); margin-bottom: var(--be-space-4); }
-.apk-withdrawal-card { margin-bottom: var(--be-space-3); }
-.apk-withdrawal-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--be-space-3); margin-bottom: var(--be-space-3); }
-.apk-withdrawal-card-head > div { min-width: 0; }
-.apk-withdrawal-fund { font-family: var(--be-font-ui); font-size: var(--be-text-base); font-weight: 600; overflow-wrap: anywhere; }
-.apk-withdrawal-date { font-size: var(--be-text-xs); color: var(--be-fg-muted); margin-top: var(--be-space-1); }
-.apk-status-pill { display: inline-flex; align-items: center; gap: var(--be-space-1); padding: 3px 10px; border-radius: var(--be-radius-pill); font-size: var(--be-text-xs); font-weight: 500; flex-shrink: 0; }
-.apk-status-pill--pending { background: var(--be-amber-soft); color: var(--be-amber); }
-.apk-status-pill--approved { background: var(--be-green-soft); color: var(--be-green); }
-.apk-status-pill--rejected { background: var(--be-red-soft); color: var(--be-red); }
-.apk-withdrawal-amount-row { display: flex; justify-content: space-between; align-items: center; gap: var(--be-space-3); }
-.apk-withdrawal-amount { font-size: var(--be-text-lg); font-weight: 600; }
-.apk-withdrawal-type { text-align: right; }
-.apk-withdrawal-type-value { font-size: var(--be-text-sm); text-transform: capitalize; }
-/* The returns/principal breakdown line under a withdrawal request. Was undefined,
-   so it rendered at body size and read as a second heading. */
-.apk-withdrawal-split { margin-top: var(--be-space-2); font-size: var(--be-text-xs); color: var(--be-fg-muted); }
-
-.apk-withdrawal-note { margin-top: var(--be-space-3); padding: var(--be-space-2); background: var(--be-bg-elevated); border-radius: var(--be-radius-sm); font-size: var(--be-text-xs); color: var(--be-fg-muted); overflow-wrap: anywhere; }
-
 /* Gain bar tints */
 .apk-portfolio-screen .apk-holding-gain.apk-holding-gain-positive {
   background: var(--be-green-soft);

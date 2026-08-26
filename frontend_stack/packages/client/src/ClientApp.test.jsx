@@ -48,7 +48,6 @@ vi.mock('./pages/LumpsumSheet.jsx', () => ({ default: () => <div data-testid="pa
 vi.mock('./pages/PaymentStatus.jsx', () => ({ default: () => <div data-testid="page-payment-status" /> }));
 vi.mock('./pages/MandateDetail.jsx', () => ({ default: () => <div data-testid="page-mandate-detail" /> }));
 vi.mock('./pages/Portfolio.jsx', () => ({ default: () => <div data-testid="page-portfolio" /> }));
-vi.mock('./pages/WithdrawalRequests.jsx', () => ({ default: () => <div data-testid="page-withdrawals" /> }));
 vi.mock('./pages/Transactions.jsx', () => ({ default: () => <div data-testid="page-transactions" /> }));
 vi.mock('./pages/Statements.jsx', () => ({ default: () => <div data-testid="page-statements" /> }));
 vi.mock('./pages/Notifications.jsx', () => ({ default: () => <div data-testid="page-notifications" /> }));
@@ -90,7 +89,6 @@ describe('ClientApp route table', () => {
     ['/app/payment/p1', 'page-payment-status'],
     ['/app/mandates/m1', 'page-mandate-detail'],
     ['/app/portfolio', 'page-portfolio'],
-    ['/app/withdrawals', 'page-withdrawals'],
     ['/app/transactions', 'page-transactions'],
     ['/app/statements', 'page-statements'],
     ['/app/notifications', 'page-notifications'],

@@ -204,7 +204,6 @@ describe('secondary routes go to their logical parent', () => {
   const cases = [
     ['/app/statements', '/app/profile'],
     ['/app/notifications', '/app/dashboard'],
-    ['/app/withdrawals', '/app/portfolio'],
     ['/app/funds/f1', '/app/explore'],
     ['/app/profile/security', '/app/profile'],
   ];

@@ -67,4 +67,3 @@ export { default as StartSipSheet } from './pages/StartSipSheet.jsx';
 export { default as Statements } from './pages/Statements.jsx';
 export { default as Support } from './pages/Support.jsx';
 export { default as Transactions } from './pages/Transactions.jsx';
-export { default as WithdrawalRequests } from './pages/WithdrawalRequests.jsx';

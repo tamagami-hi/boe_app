@@ -21,9 +21,6 @@
 .apk-detail-hero p { color: var(--be-slate); font-size: 14px; line-height: 1.55; max-width: 72ch; }
 .apk-detail-hero .apk-h { font-size: 30px; }
 
-/* Was `display: none` with no rule anywhere turning it back on, so the only
-   consumer left (WithdrawalRequests, which renders no AppBar) had an INVISIBLE
-   Back button and no on-screen way out. */
 .apk-back-link {
   display: inline-flex;
   align-items: center;

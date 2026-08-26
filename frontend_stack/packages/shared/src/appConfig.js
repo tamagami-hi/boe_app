@@ -1,20 +1,5 @@
 const STORAGE_KEY = 'boe.client.appConfig';
 const CONFIG_EVENT = 'boe:app-config-updated';
-const ACCESS_TOKEN_KEYS = {
-  client: 'boe.client.accessToken',
-  admin: 'boe.admin.accessToken',
-};
-/*
- * Same localStorage keys the client package's transport writes. Duplicated rather
- * than imported because `shared` underpins `client`, and importing the other way
- * would invert that dependency. They must stay in step with SESSION_KEYS in
- * packages/client/src/services/_util.js.
- */
-const CSRF_TOKEN_KEYS = {
-  client: 'boe.client.csrfToken',
-  admin: 'boe.admin.csrfToken',
-};
-const DEFAULT_API_BASE_URL = 'http://127.0.0.1:47502';
 
 export const COMPONENT_LIBRARY = {
   dashboard: [
@@ -328,18 +313,6 @@ function remoteConfigEnabled() {
   return import.meta.env.VITE_BEO_API_MODE === 'http';
 }
 
-function apiBaseUrl() {
-  return (import.meta.env.VITE_BEO_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/$/, '');
-}
-
-function accessToken(scope = 'client') {
-  return storage()?.getItem(ACCESS_TOKEN_KEYS[scope] || ACCESS_TOKEN_KEYS.client) || '';
-}
-
-function csrfToken(scope = 'client') {
-  return storage()?.getItem(CSRF_TOKEN_KEYS[scope] || CSRF_TOKEN_KEYS.client) || '';
-}
-
 function dispatchConfig(config) {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(CONFIG_EVENT, { detail: config }));
@@ -352,49 +325,6 @@ function persistAppConfig(config) {
   if (store) store.setItem(STORAGE_KEY, JSON.stringify(next));
   dispatchConfig(next);
   return clone(next);
-}
-
-/*
- * Minimal fetch for the app-config resource only.
- *
- * It must carry the same credentials as the main transport, because the admin
- * surface is cookie-authenticated with a synchronizer CSRF token: without
- * `credentials: 'include'` the session cookie never leaves the browser, and
- * without `x-csrf-token` the PATCH is refused. Both were missing, which is why
- * the app builder's "Publish config" failed while the read-only Environment
- * screen — which goes through the main transport — worked.
- */
-async function appConfigRequest(path, { method = 'GET', body, auth = false, scope = 'client' } = {}) {
-  const headers = { accept: 'application/json' };
-  const token = accessToken(scope);
-
-  if (body !== undefined) headers['content-type'] = 'application/json';
-  if (auth && token) headers.authorization = `Bearer ${token}`;
-
-  // Unsafe methods only: the backend does not require the token on reads, and
-  // sending it there would be noise.
-  if (method !== 'GET') {
-    const csrf = csrfToken(scope);
-    if (csrf) headers['x-csrf-token'] = csrf;
-  }
-
-  const response = await fetch(`${apiBaseUrl()}${path}`, {
-    method,
-    headers,
-    credentials: 'include',
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  const text = await response.text();
-  const payload = text ? JSON.parse(text) : null;
-
-  if (!response.ok || payload?.ok === false) {
-    const error = new Error(payload?.error?.message || `Request failed: ${method} ${path}`);
-    error.status = response.status;
-    error.code = payload?.error?.code;
-    throw error;
-  }
-
-  return payload && Object.prototype.hasOwnProperty.call(payload, 'data') ? payload.data : payload;
 }
 
 function normalizeScreen(screenId, screen = {}) {
@@ -488,10 +418,11 @@ export function saveAppConfig(config) {
   return persistAppConfig(next);
 }
 
-export async function loadRemoteAppConfig({ admin = false, persist = true } = {}) {
+export async function loadRemoteAppConfig({ admin = false, persist = true, request } = {}) {
   if (!remoteConfigEnabled()) return null;
+  if (typeof request !== 'function') throw new Error('App-config transport is not configured.');
 
-  const payload = await appConfigRequest(admin ? '/v1/admin/app-config' : '/v1/app-config', {
+  const payload = await request(admin ? '/v1/admin/app-config' : '/v1/app-config', {
     auth: admin,
     scope: admin ? 'admin' : 'client',
   });
@@ -689,14 +620,16 @@ export function toCanonicalAppConfig(config) {
   };
 }
 
-export async function publishAppConfig(config, { reason = 'Published from admin app builder.' } = {}) {
+export async function publishAppConfig(config, { reason = 'Published from admin app builder.', request } = {}) {
   const next = normalizeAppConfig({ ...config, publishedAt: new Date().toISOString() });
 
   if (!remoteConfigEnabled()) {
     return persistAppConfig(next);
   }
 
-  await appConfigRequest('/v1/admin/app-config', {
+  if (typeof request !== 'function') throw new Error('App-config transport is not configured.');
+
+  await request('/v1/admin/app-config', {
     method: 'PATCH',
     auth: true,
     scope: 'admin',
