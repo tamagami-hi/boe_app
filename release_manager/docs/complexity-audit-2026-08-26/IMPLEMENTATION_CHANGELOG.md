@@ -83,6 +83,13 @@
 - The guard now reports 74 frontend paths, 57 request paths, 60 known path gaps, and method drift separately.
 - Static-analysis limitation remains: dynamic calls and full request/response schemas require runtime or generated-client verification.
 
+## Next roadmap slice — workspace scope reduction
+
+- Changed `frontend_stack/package.json` to list only active workspaces (`app`, `admin`, `client`, `design-tokens`, `shared`) instead of the broad `packages/*` glob.
+- Regenerated `frontend_stack/package-lock.json`; `@beonedge/ui-kits` is no longer resolved as an active workspace dependency.
+- Preview/reference assets under `frontend_stack/packages/ui-kits` and `frontend_stack/preview` were intentionally retained for this pass and require a separate archival/removal decision.
+- Verification: full frontend build and bundle boot passed; full frontend suite remains at 67 passing files with the three pre-existing `fundStockListPanel.test.jsx` failures.
+
 ### Preserved pre-existing worktree changes
 
 - `release_manager/stacks/_shared/_boe_deploy.sh`

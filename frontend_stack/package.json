@@ -5,7 +5,10 @@
   "type": "module",
   "workspaces": [
     "app",
-    "packages/*"
+    "packages/admin",
+    "packages/client",
+    "packages/design-tokens",
+    "packages/shared"
   ],
   "scripts": {
     "dev": "npm --workspace app run dev",
