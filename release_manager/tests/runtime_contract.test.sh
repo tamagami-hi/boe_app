@@ -11,6 +11,7 @@ PATCHED_NODE_BASE='node:22.23.2-alpine3.24@sha256:c610fcdfb1d5b4740dd70c284ed3cb
 PATCHED_NGINX_BASE='nginxinc/nginx-unprivileged:1.31.1-alpine3.23-slim@sha256:762e8e4e5e103817c4158400fc3753c8e713ff8153b8c3afbb458ae4572bc9a3'
 STACKS_LIB="$ROOT_DIR/release_manager/lib/stacks.sh"
 EXPORT_SCRIPT="$ROOT_DIR/release_manager/export.sh"
+CI_WORKFLOW="$ROOT_DIR/.github/workflows/ci.yml"
 
 fail_test() {
     printf 'FAIL: %s\n' "$1" >&2
@@ -29,6 +30,15 @@ service_block() {
         in_service && /^  [[:alnum:]_-]+:/ { exit }
         in_service { print }
     ' "$compose_file"
+}
+
+workflow_job_block() {
+    local workflow_file="$1" job="$2"
+    awk -v header="  ${job}:" '
+        $0 == header { in_job=1; print; next }
+        in_job && /^  [[:alnum:]_-]+:/ { exit }
+        in_job { print }
+    ' "$workflow_file"
 }
 
 assert_file_contains "$DOCKERFILE" \
@@ -63,6 +73,25 @@ assert_file_contains "$EXPORT_SCRIPT" 'for key in app admin;' \
     'release export does not test both frontend runtime images'
 assert_file_contains "$EXPORT_SCRIPT" 'BOE_RUNTIME_IMAGE="\$tag" bash' \
     'release export does not execute the hardened runtime acceptance test'
+assert_file_contains "$CI_WORKFLOW" '^  backend:$' \
+    'CI does not define a backend verification job'
+assert_file_contains "$CI_WORKFLOW" '^  frontend:$' \
+    'CI does not define a frontend verification job'
+assert_file_contains "$CI_WORKFLOW" '^  contracts:$' \
+    'CI does not define a contracts verification job'
+backend_ci_block="$(workflow_job_block "$CI_WORKFLOW" backend)"
+frontend_ci_block="$(workflow_job_block "$CI_WORKFLOW" frontend)"
+contracts_ci_block="$(workflow_job_block "$CI_WORKFLOW" contracts)"
+grep -qE '^[[:space:]]+- run: npm run check$' <<< "$backend_ci_block" \
+    || fail_test 'backend CI job does not run the package verification command'
+grep -qE '^[[:space:]]+- run: npm run test:integration -- --coverage.enabled=false$' <<< "$backend_ci_block" \
+    || fail_test 'backend CI job does not run integration tests'
+grep -qE '^[[:space:]]+- run: npm test$' <<< "$frontend_ci_block" \
+    || fail_test 'frontend CI job does not run frontend tests'
+grep -qE '^[[:space:]]+- run: npm run build$' <<< "$frontend_ci_block" \
+    || fail_test 'frontend CI job does not run the production build'
+grep -qE '^[[:space:]]+- run: npm run check$' <<< "$contracts_ci_block" \
+    || fail_test 'contracts CI job does not run contract verification'
 
 # shellcheck source=../lib/stacks.sh
 source "$STACKS_LIB"

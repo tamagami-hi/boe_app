@@ -113,7 +113,7 @@ const postAum = (
     url,
     headers: { ...bearer(token), ...(key === undefined ? {} : { "idempotency-key": key }) },
     payload,
-  }) as Promise<unknown>
+  })
 
 interface Injected {
   statusCode: number
@@ -529,14 +529,12 @@ describe("corrections and history (integration)", () => {
       ["2026-07-31", 1, "150"],
       ["2026-06-30", 1, "100"],
     ])
-    expect(items[0]).toEqual(
-      expect.objectContaining({
-        id: expect.any(String),
-        reasonCode: "monthly_mark",
-        createdAt: expect.any(String),
-      }),
-    )
-    expect(items[0]).not.toHaveProperty("note")
+    expect(items[0]).toMatchObject({ reasonCode: "monthly_mark" })
+    expect(typeof items[0]?.id).toBe("string")
+    expect(typeof items[0]?.createdAt).toBe("string")
+    expect(items[0]).toHaveProperty("note", null)
+    expect(items[0]).not.toHaveProperty("publishedByUserId")
+    expect(items[0]).not.toHaveProperty("requestId")
 
     const forbidden = asInjected(await app.inject({
       method: "GET",

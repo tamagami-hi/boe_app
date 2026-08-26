@@ -20,7 +20,6 @@ import { sql } from "kysely"
 import type { Kysely } from "kysely"
 
 import type { Database } from "../db/types.js"
-import { createMetricsRepository } from "../repositories/metricsRepository.js"
 import { renderMetrics, type MetricsDeps } from "./metrics.js"
 
 export interface ReadinessReport {

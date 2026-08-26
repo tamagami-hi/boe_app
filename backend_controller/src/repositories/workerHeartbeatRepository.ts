@@ -54,5 +54,5 @@ export const createWorkerHeartbeatRepository = (): WorkerHeartbeatRepository => 
       SELECT DISTINCT ON (worker_name) *
       FROM worker_heartbeats
       ORDER BY worker_name, pass_completed_at DESC, id DESC
-    `.execute(tx)).rows as unknown as HeartbeatRow[],
+    `.execute(tx)).rows,
 })

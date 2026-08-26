@@ -59,7 +59,9 @@ const replayIfCompleted = async <TBody extends Record<string, unknown>>(
   if (!equalBytes(storedHash, requestHash)) {
     throw new AppError("IDEMPOTENCY_KEY_REUSED")
   }
-  const storedBody = typeof completed.response_body === "string" ? JSON.parse(completed.response_body) : completed.response_body
+  const storedBody: unknown = typeof completed.response_body === "string"
+    ? JSON.parse(completed.response_body) as unknown
+    : completed.response_body
   return { status: completed.response_status, body: storedBody as TBody }
 }
 

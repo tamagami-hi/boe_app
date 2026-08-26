@@ -244,7 +244,7 @@ const trackTransactionDepth = (unitOfWork: UnitOfWork): UnitOfWork =>
         transactionDepth -= 1
       }
     },
-  } as unknown as UnitOfWork)
+  })
 
 const postJson = (
   url: string,
@@ -257,14 +257,14 @@ const postJson = (
     url,
     headers: { ...bearer(token), "content-type": "application/json", ...(key === undefined ? {} : { "idempotency-key": key }) },
     payload,
-  }) as Promise<unknown>
+  })
 
 const getJson = (url: string, token: string): Promise<unknown> =>
   app.inject({
     method: "GET",
     url,
     headers: bearer(token),
-  }) as Promise<unknown>
+  })
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer("postgres:16-alpine")

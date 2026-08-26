@@ -6,6 +6,7 @@ import { SESSION_STATUS } from '@beonedge/client/store/sessionState.js';
 import { RouteErrorBoundary } from '@beonedge/shared/components/RouteErrorBoundary.jsx';
 import { ResourceCacheProvider } from '@beonedge/shared/data/ResourceCacheProvider.jsx';
 import BootstrapShell from '@beonedge/shared/components/BootstrapShell.jsx';
+import { hasRole } from '@beonedge/shared/auth/roles.js';
 import PageLoader from './components/PageLoader.jsx';
 import RootErrorBoundary from './components/RootErrorBoundary.jsx';
 
@@ -13,15 +14,6 @@ const Admin = lazy(() => import('@beonedge/admin/pages/Admin.jsx'));
 const AdminLogin = lazy(() => import('@beonedge/admin/pages/AdminLogin.jsx'));
 const AdminSplash = lazy(() => import('@beonedge/admin/pages/AdminSplash.jsx'));
 const AdminNotFound = lazy(() => import('@beonedge/admin/pages/NotFound.jsx'));
-
-function hasRole(user, role) {
-  const expected = role.toLowerCase();
-  return (
-    String(user?.role || '').toLowerCase() === expected ||
-    String(user?.accountType || '').toLowerCase() === expected ||
-    user?.roles?.some((value) => String(value).toLowerCase() === expected)
-  );
-}
 
 function RequireAdmin({ children }) {
   const { user, status } = useAdminSession();

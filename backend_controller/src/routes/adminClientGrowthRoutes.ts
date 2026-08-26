@@ -395,7 +395,7 @@ const collectivePreview = async (
   request: FastifyRequest,
   reply: FastifyReply,
 ) => {
-  const principal = await resolveWriter(deps, request)
+  await resolveWriter(deps, request)
   const body = parseOrThrow(schemas.collectivePreviewSchema, request.body)
   const instruction = collectiveInstruction(body)
 

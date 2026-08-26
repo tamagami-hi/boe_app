@@ -146,7 +146,7 @@ const withCollectiveRefinements = <S extends z.ZodType<CollectiveShape>>(schema:
     .refine((body) => {
       const ids = body.items !== undefined ? body.items.map((item) => item.fundId) : (body.fundIds ?? [])
       return new Set(ids).size === ids.length
-    }, "Each fund may appear at most once.") as S
+    }, "Each fund may appear at most once.")
 
 export const collectivePlanBodySchema = (maxBasisPoints: number) =>
   withCollectiveRefinements(z.object(collectiveFields(maxBasisPoints)).strict())
@@ -216,8 +216,6 @@ const mapSnapshot = (row: FundAumSnapshotRow): Record<string, unknown> => ({
   reasonCode: row.reasonCode,
   note: row.note,
   growthBatchId: row.growthBatchId,
-  publishedByUserId: row.publishedByUserId,
-  requestId: row.requestId,
   createdAt: iso(row.createdAt),
 })
 

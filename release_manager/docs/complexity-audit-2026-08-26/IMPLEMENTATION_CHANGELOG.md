@@ -1,94 +1,134 @@
 # Simplification Implementation Change Log
 
 **Started:** 2026-08-26
-**Scope:** Implementation of the approved simplification roadmap.
-**Rule:** Source changes are limited to bounded roadmap slices; security-critical authentication, payment verification, and ledger invariants are preserved.
 
-## 2026-08-26 — Initial implementation pass
+**Last verified:** 2026-08-27
 
-### Completed
+**Scope:** Bounded implementation slices from the approved simplification roadmap.
 
-- Removed orphaned root Kimi scripts from `package.json` (`kimi:chunk`, `kimi:run`, `kimi:apply`).
-- Removed unused root development dependencies `agent-browser` and `ngrok`; refreshed `package-lock.json`.
-- Consolidated app-config HTTP calls onto the canonical client transport:
+**Rule:** Authentication, authorization, payment verification, ledger integrity, and unresolved product decisions remain protected boundaries.
+
+## Completed implementation slices
+
+### Root dependency cleanup
+
+- Removed orphaned root Kimi scripts from `package.json`.
+- Removed unused root development dependencies `agent-browser` and `ngrok`.
+- Regenerated the root lockfile.
+- Repository search confirms no executable references remain.
+
+### Canonical app-config transport
+
+- Routed shared app-config reads and writes through the canonical frontend request transport.
+- Updated:
   - `frontend_stack/packages/shared/src/appConfig.js`
   - `frontend_stack/packages/client/src/hooks/useAppConfig.js`
   - `frontend_stack/packages/admin/src/screens/appBuilder/AppBuilderScreen.jsx`
-- The app-config path now reuses canonical timeout, retry, authentication, CSRF, refresh, envelope, and error handling.
+- App-config requests now share the established authentication, CSRF, refresh, retry, timeout, envelope, and error behavior.
+- Broader app-config presentation/fixture separation remains a future roadmap slice.
 
-### Verification
+### Unsupported withdrawal/redemption surface
 
-- App-config targeted tests: 22 passed across 2 files.
-- Frontend client/admin run after all current changes: 66 files passed, 1 file failed; 903 tests collected, 900 passed and 3 existing failures remain in `packages/admin/src/screens/fundStockListPanel.test.jsx`.
-- `git diff --check`: passed for the completed transport slice.
+- Removed the frontend route, navigation, page, service methods, styles, exports, and test references for the unsupported withdrawal/redemption workflow.
+- Confirmed no executable references remain to:
+  - `WithdrawalRequests`
+  - `submitRedemption`
+  - `listRedemptionRequests`
+  - `/app/withdrawals`
+- No backend route or table was removed because none existed.
+- Product scope remains unresolved: restoring withdrawals requires one secure backend transaction and owner-scoped history model; permanent removal requires explicit product confirmation.
 
-### Additional completed slices
+### Financial settlement characterization
 
-- Added frontend/API drift enforcement:
-  - `packages/contracts/scripts/check-frontend-contract-drift.mjs`
-  - `packages/contracts/scripts/frontend-contract-drift-baseline.json`
-  - `packages/contracts/package.json`
-  - The checker scans production frontend `/v1/...` calls, normalizes dynamic paths, compares them with the OpenAPI artifact, and records 74 currently known gaps so new drift fails CI.
-- Removed unsupported redemption/withdrawal affordances rather than leaving a UI contract with no backend implementation:
-  - Removed withdrawal route/navigation and `WithdrawalRequests.jsx`.
-  - Removed redemption methods from `frontend_stack/packages/client/src/services/fundsApi.js`.
-  - Removed package export, obsolete CSS, and affected tests/semantic references.
-  - Backend was intentionally unchanged because migration `017_canonical_investing.sql` provides no redemption table or route.
+- Expanded `backend_controller/src/domain/payments/applyCanonicalPaymentOutcome.test.ts` around canonical settlement behavior.
+- Coverage includes amount/currency correlation, allocation and contribution writes, receipt acknowledgement, failure handling, contradictory state quarantine, and idempotent replay.
+- Production settlement logic was not changed.
 
-### Verification for additional slices
+### Dead fixture cleanup
 
-- Contracts: typecheck, ESLint, 95 tests, 99.35% coverage, build/export/OpenAPI checks, and frontend drift check passed.
-- Corrected the drift checker’s version-segment normalization so `/v1` is preserved; regenerated the baseline from 74 to 60 actual known path gaps. The checker now reports path-level drift accurately.
-- Review note: the checker is intentionally a path-level guard in this pass; it does not yet validate HTTP methods or distinguish every executable string from literals/comments. Method-level contract generation remains a follow-up hardening task.
-- Removed the stale `WithdrawalRequests` reference comment from `frontend_stack/packages/client/src/styles/mobile/fund-detail.css`.
-- Redemption cleanup: 5 targeted frontend test files, 134 tests passed.
-- Backend: 73 files, 663 tests passed.
-- `git diff --check`: passed after all current changes.
+- Removed the unreferenced client fixture modules:
+  - `fixtureMandates.js`
+  - `fixtureOrders.js`
+  - `fixtureSipControlRequests.js`
+- Other active fixture-mode branches remain and have not been classified as removable.
 
-### In progress
+### Shared role selector
 
-- Full repository verification and implementation review.
+- Added the canonical selector at `frontend_stack/packages/shared/src/auth/roles.js`.
+- Consolidated client auth, layout, splash, and the browser admin guard onto the shared selector.
+- Retained the focused authorization tests in `roles.test.js`; role-based access control is a security-sensitive boundary under the repository test policy.
+- The admin guard continues to rely on the server-established admin principal and does not broaden authorization.
 
-## Final review
+### Signed growth parsing
 
-- Implementation review completed with no remaining blocking or high-severity issues.
-- Confirmed no executable references remain to `WithdrawalRequests`, `submitRedemption`, `listRedemptionRequests`, or `/app/withdrawals`.
-- Confirmed root dependency/script removals have no remaining repository references.
-- Remaining limitation: contract drift enforcement is path-level and baseline-based; it does not validate HTTP methods or request/response schemas, and 60 existing OpenAPI gaps remain explicitly recorded.
+- Added `parseSignedGrowth()` in `frontend_stack/packages/admin/src/helpers/signedAmounts.js`.
+- Updated `ClientValuesScreen.jsx` to use it for individual amount/percentage changes and collective percentage growth.
+- Preserved the existing collective explicit-amount semantics.
+- Broader paise conversion and delta-calculation consolidation remains incomplete.
 
-## Next roadmap slice — fixture cleanup
+### Frontend contract-drift guard
 
-- Removed the three unreferenced client fixture modules:
-  - `frontend_stack/packages/client/src/data/fixtureMandates.js`
-  - `frontend_stack/packages/client/src/data/fixtureOrders.js`
-  - `frontend_stack/packages/client/src/data/fixtureSipControlRequests.js`
-- These files had no production or test imports in the repository scan. Full frontend verification is pending.
+- Added `packages/contracts/scripts/check-frontend-contract-drift.mjs` and its reviewed baseline.
+- The checker currently observes 74 frontend paths and 57 explicit request paths.
+- The accepted baseline contains 60 path gaps and one method gap.
+- It prevents additional statically visible path/method drift; it does not yet validate dynamic calls or complete request/response schemas.
+- `.github/workflows/ci.yml` now runs `packages/contracts` verification, including the drift checker.
 
-## Next roadmap slice — role helper hardening
+### Frontend workspace scope
 
-- Added `frontend_stack/packages/shared/src/auth/roles.test.js` covering case-insensitive `role`, `accountType`, `roles[]`, empty-role, and absent-user behavior for the shared authorization selector.
-- No server-side authorization behavior was changed.
+- Restricted `frontend_stack/package.json` workspaces to:
+  - `app`
+  - `packages/admin`
+  - `packages/client`
+  - `packages/design-tokens`
+  - `packages/shared`
+- `@beonedge/ui-kits` is no longer resolved as an active workspace dependency.
+- `frontend_stack/packages/ui-kits` and `frontend_stack/preview` remain tracked reference material pending an archival/removal decision.
 
-## Next roadmap slice — signed growth amount consolidation
+### Admin compatibility aliases
 
-- Added canonical `parseSignedGrowth(mode, direction, input)` in `frontend_stack/packages/admin/src/helpers/signedAmounts.js`.
-- Updated `ClientValuesScreen.jsx` to use it for individual amount/percentage previews and commits, plus collective percentage growth.
-- Removed duplicated local conversion functions while preserving collective explicit-amount semantics.
-- Verification: 27 targeted tests passed, frontend production build and bundle boot check passed, and final review found no blocking/high-severity issues.
+- Removed `legacyTabMap.js` and `LegacyTabRedirect.jsx`.
+- Removed the superseded `/admin/users/*`, `/admin/ops/*`, and `/admin/system/{support,audit-log}` aliases.
+- Retained canonical section entry redirects.
+- The active `pages/legacy/legacyRoutes.jsx` routing wrapper remains and requires a separate consolidation decision.
 
-## Next roadmap slice — method-aware contract drift
+### Fund-stock regression repair
 
-- Enhanced `packages/contracts/scripts/check-frontend-contract-drift.mjs` to inspect explicit `apiRequest`/`fetch` methods and compare them with OpenAPI operations.
-- Added `uncontractedMethods` baseline support and recorded the existing `GET /v1/admin/funds/{param}/stocks` method gap.
-- The guard now reports 74 frontend paths, 57 request paths, 60 known path gaps, and method drift separately.
-- Static-analysis limitation remains: dynamic calls and full request/response schemas require runtime or generated-client verification.
+- Restored custom out-of-range validation feedback in `FundStockListPanel.jsx`.
+- Replaced duplicated accessible row-action names with explicit action labels.
 
-## Next roadmap slice — workspace scope reduction
+### CI verification correction
 
-- Changed `frontend_stack/package.json` to list only active workspaces (`app`, `admin`, `client`, `design-tokens`, `shared`) instead of the broad `packages/*` glob.
-- Regenerated `frontend_stack/package-lock.json`; `@beonedge/ui-kits` is no longer resolved as an active workspace dependency.
-- Preview/reference assets under `frontend_stack/packages/ui-kits` and `frontend_stack/preview` were intentionally retained for this pass and require a separate archival/removal decision.
-- Verification: full frontend build and bundle boot passed; full frontend suite remains at 67 passing files with the three pre-existing `fundStockListPanel.test.jsx` failures.
+- Replaced obsolete backend CI commands with the package's real verification command.
+- Added all 207 backend PostgreSQL integration tests; the unit check remains the enforced coverage gate.
+- Added independent frontend test/build and contracts verification jobs.
+- Pinned npm `11.16.0` to satisfy the strict backend/contracts engine contract.
+- Added a critical infrastructure assertion to `release_manager/tests/runtime_contract.test.sh` so the required CI jobs and commands cannot silently disappear.
+
+### Backend verification debt exposed by CI
+
+- Fixed six production lint findings in PostgreSQL date parsing, worker heartbeat typing, AUM schemas, client-growth authorization, mandate idempotency replay, and health imports.
+- Kept strict production lint rules and scoped `require-await` relief only to asynchronous test doubles.
+- Corrected stale AUM history integration expectations to the canonical nullable `note` contract.
+- Removed internal `publishedByUserId` and `requestId` fields from the public AUM snapshot mapper because the strict API contract does not expose them.
+
+## Verification baseline
+
+Verified on 2026-08-27:
+
+- Frontend: 68 files, 903/903 tests passed.
+- Frontend production build: passed.
+- Frontend bundle boot: 11 chunks evaluated successfully.
+- Backend: 73 files, 666/666 unit tests passed.
+- Backend typecheck, lint, 80% coverage gate, production build, and source/distribution smoke checks: passed.
+- Backend PostgreSQL integration: 18 files, 207/207 tests passed.
+- Contracts: 6 files, 95/95 tests passed.
+- Contracts typecheck, build, generated-artifact consistency, and drift check: passed.
+- Release deployment environment validation: passed.
+- Release runtime contract: passed.
+- `git diff --check`: passed.
+
+The standalone integration coverage profile currently reports less than 80%, so CI runs the complete integration behavior suite without its separate coverage threshold while `npm run check` enforces the backend's 80% unit/source coverage gate. Deployed runtime behavior, bookmarks/deep links, and production data remain runtime-verification boundaries.
 
 ## Commit sequence
 
@@ -99,54 +139,31 @@
 - `65ab0f7` — centralize signed growth parsing.
 - `5001368` — detect frontend contract method drift.
 - `3d09e0d` — scope frontend workspaces to active packages.
+- `8444e8f` — record simplification implementation history.
+- `a356b15` — remove obsolete admin route aliases.
+- `0de72d1` — restore fund-stock validation feedback.
+- Current correction slice — enforce CI verification, finish role-selector consolidation, and reconcile this log.
 
-## Current boundary
+## Deliberately incomplete roadmap work
 
-The next roadmap items with material impact—admin compatibility removal, SIP/AutoPay retirement or retention, orphan-table migration, persistent rate limiting, and monitoring/Redis changes—require production usage or product/compliance decisions not provable from static inspection. They remain intentionally unmodified until runtime verification and ownership decisions are available.
+The following items are not represented as complete:
 
-## Admin compatibility cleanup
+- Choosing and enforcing one complete API schema authority beyond the current drift baseline.
+- Resolving the withdrawal/redemption product decision.
+- Consolidating remaining amount/payment-state mappings and form primitives.
+- Separating app-config presentation data from fixture/conversion concerns.
+- Removing active fixture-mode branches and remaining legacy wrappers.
+- SIP/AutoPay product-boundary changes.
+- Forward-only orphan-table migrations and data-preservation checks.
+- Redis, rate-limit, monitoring, and deployment-architecture changes.
 
-- Removed the pre-redesign query-tab resolver and legacy redirect component:
-  - `frontend_stack/packages/admin/src/navigation/legacyTabMap.js`
-  - `frontend_stack/packages/admin/src/pages/LegacyTabRedirect.jsx`
-- Removed superseded `/admin/users/*`, `/admin/ops/*`, and `/admin/system/{support,audit-log}` aliases from `frontend_stack/packages/admin/src/pages/Admin.jsx`.
-- Kept canonical base redirects (`/admin/funds-received`, `/admin/client-values`, `/admin/aum`) because they are current section entry points rather than historical aliases.
-- Updated `Admin.test.jsx` and `ApprovalsQueueProvider.test.jsx` to assert canonical overview/Not Found behavior.
-- Verification: 110 targeted admin tests passed. Runtime bookmark/deep-link usage remains unverified.
-
-## Regression baseline cleanup
-
-- Fixed `frontend_stack/packages/admin/src/screens/FundStockListPanel.jsx`:
-  - `noValidate` now lets the component’s custom validation report out-of-range weights through its existing alert.
-  - Row action labels use explicit `aria-label` values instead of duplicated visually-hidden stock names.
-- Full frontend suite now passes: 68 test files, 903/903 tests.
-- Review found no accessibility, security, or regression issues.
-
-### Preserved pre-existing worktree changes
-
-- `release_manager/stacks/_shared/_boe_deploy.sh`
-- `release_manager/tests/deploy_env_validation.test.sh`
-
-These files were already modified before implementation began and were not altered by this work.
+These boundaries require the pending product, data-retention, and deployment decisions before implementation.
 
 ## Verification policy
 
-Each subsequent entry must record:
+Every subsequent entry must record:
 
 1. Files changed and the roadmap item addressed.
-2. Tests/checks run and results.
-3. Any known failures or runtime verification still required.
-
-## Role helper consolidation
-
-- Consolidated client role checks into `frontend_stack/packages/shared/src/auth/roles.js`.
-- Updated `frontend_stack/packages/client/src/services/authApi.js`, `frontend_stack/packages/client/src/layout/ClientLayout.jsx`, and `frontend_stack/packages/client/src/pages/Splash.jsx` to use the shared `hasRole(user, role)` implementation.
-- Added the `@beonedge/shared/auth/*` package export while preserving the existing `authApi.hasRole` public export.
-- The canonical helper now supports `role`, `accountType`, and `roles[]` consistently and safely returns `false` for an empty requested role.
-
-Verification:
-
-- `packages/client/src/pages/Splash.test.jsx`: 14 tests passed.
-- `packages/client/src/layout/ClientLayout.test.jsx`: 21 tests passed.
-- No source comments or new test files were added.
-- Runtime verification of native/admin package resolution remains pending until the full frontend build is run.
+2. Tests and checks run with exact results.
+3. Known failures and runtime-verification requirements.
+4. Product or data decisions that remain unresolved.

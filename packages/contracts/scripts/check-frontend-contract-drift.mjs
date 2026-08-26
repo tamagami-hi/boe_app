@@ -49,12 +49,6 @@ const extractPaths = (source) => {
   return paths
 }
 
-/**
- * Extract methods only from apiRequest/fetch call options that are statically
- * visible. Calls without an explicit method are treated as GET. Dynamic method
- * expressions remain GET-compatible by design; runtime verification is needed
- * for those calls.
- */
 const extractRequestMethods = (source) => {
   const requests = new Map()
   const callPattern = /\b(?:apiRequest|fetch)\s*\(\s*([`"'])(\/v1\/[^`"']+)\1([\s\S]*?)(?=\)\s*[,;]|\)\s*\}|\)\s*$)/g

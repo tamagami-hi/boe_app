@@ -11,7 +11,7 @@ import type { DatabaseConfig } from "./config.js"
  */
 pg.types.setTypeParser(pg.types.builtins.DATE, (value: string): Date => {
   const [year, month, day] = value.split("-").map(Number)
-  return new Date(Date.UTC(year as number, (month as number) - 1, day as number))
+  return new Date(Date.UTC(year as number, (month as number) - 1, day))
 })
 
 /**

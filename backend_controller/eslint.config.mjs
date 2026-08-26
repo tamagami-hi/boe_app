@@ -22,4 +22,10 @@ export default [
       "@typescript-eslint/consistent-type-imports": "error",
     },
   },
+  {
+    files: ["**/*.test.ts", "test/**/*.ts"],
+    rules: {
+      "@typescript-eslint/require-await": "off",
+    },
+  },
 ]

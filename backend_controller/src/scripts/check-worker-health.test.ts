@@ -29,7 +29,7 @@ const createMockRepository = (heartbeat: Awaited<ReturnType<WorkerHeartbeatRepos
     findLatestAllWorkers: async () => {
       throw new Error("unexpected")
     },
-  }) as unknown as WorkerHeartbeatRepository
+  })
 
 const fakeDatabase = { destroy: async () => undefined }
 

@@ -7,7 +7,7 @@ import { createPool } from "./pool.js"
 
 describe("PostgreSQL date parser", () => {
   test("parses date columns to UTC-midnight Date objects", () => {
-    const parser = pg.types.getTypeParser(pg.types.builtins.DATE)
+    const parser = pg.types.getTypeParser(pg.types.builtins.DATE) as (value: string) => Date
     const parsed = parser("2026-09-05")
     expect(parsed.toISOString()).toBe("2026-09-05T00:00:00.000Z")
   })
