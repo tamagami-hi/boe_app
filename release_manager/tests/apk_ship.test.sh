@@ -91,6 +91,7 @@ make_artifact() {
           buildLabel: $version,
           gitCommit: "0123456789abcdef0123456789abcdef01234567",
           gitDirty: false, builtAt: "2026-08-03T00:00:00Z", signing: "debug",
+          debuggable: false,
           sha256: $sha, sizeBytes: 32}' > "$sidecar"
     if (( $# > 0 )); then
         local tmp; tmp="$(mktemp)"

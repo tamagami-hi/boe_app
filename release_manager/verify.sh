@@ -54,7 +54,7 @@ section "1  shell syntax (local bash $BASH_VERSION)"
 while read -r f; do
     if bash -n "$f" 2>/dev/null; then pass "parses: ${f#"$RM_DIR"/}"
     else fail "SYNTAX ERROR: ${f#"$RM_DIR"/}"; fi
-done < <(find "$RM_DIR" -name '*.sh' -not -path '*/build/*' | sort; echo "$ROOT_DIR/emu/boe_update.sh")
+done < <(find "$RM_DIR" -name '*.sh' -not -path '*/build/*' | sort; echo "$ROOT_DIR/emu/boe_update.sh"; echo "$ROOT_DIR/emu/boe_logcat.sh")
 
 # ── 2. path contract authority ──────────────────────────────────────────────
 section "2  paths.json schema-3 contracts (the sole path authority)"
@@ -90,6 +90,7 @@ done < <(
     find "$RM_DIR" -maxdepth 1 -name '*.sh' | sort
     find "$RM_DIR/lib" "$RM_DIR/stacks" -name '*.sh' | sort
     printf '%s\n' "$ROOT_DIR/emu/boe_update.sh"
+    printf '%s\n' "$ROOT_DIR/emu/boe_logcat.sh"
 )
 if [[ -z "$literal_offenders" ]]; then
     pass "operational scripts contain no raw /srv/ path literals"
@@ -132,6 +133,11 @@ if bash "$RM_DIR/tests/apk_ship.test.sh" >/dev/null 2>&1; then
     pass "APK artifacts route through paths.json with checksum verification"
 else
     fail "APK artifact shipping tests failed"
+fi
+if bash "$RM_DIR/tests/apk_logging_policy.test.sh" >/dev/null 2>&1; then
+    pass "diagnostic logging cannot capture credentials and production APKs are proven non-debuggable"
+else
+    fail "APK logging policy tests failed"
 fi
 if bash "$RM_DIR/tests/paths_contract.test.sh" >/dev/null 2>&1; then
     pass "schema-3 path contracts validate and reject malformed fixtures"
