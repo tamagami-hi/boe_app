@@ -22,7 +22,7 @@
  * one place. A new application lands directly in `submitted`, visible in the
  * admin approvals queue; there is no pre-approval email verification to redeem,
  * so the former `POST /newuser/verify-email` door is gone. Email confirmation
- * happens later, inside the app, as the KYC OTP step.
+ * happens later, inside the app, as the Email OTP Verification step.
  *
  * The path is deliberately unversioned: it is a cross-team integration point,
  * whereas `/v1` is an internal contract free to evolve.

@@ -6,7 +6,7 @@
  *
  * There is deliberately no pre-approval email verification and no verification
  * mail: the admin decision is the gate, and email confirmation happens later
- * inside the app as the KYC OTP step. What used to be queued here (a
+ * inside the app as the Email OTP Verification step. What used to be queued here (a
  * verification token + `verify_email` delivery + outbox trigger) is gone, and
  * so is the resend-cooldown machinery that bounded it.
  *

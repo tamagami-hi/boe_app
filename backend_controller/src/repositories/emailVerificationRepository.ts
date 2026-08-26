@@ -1,180 +1,204 @@
-/**
- * KYC write repository (spec 03 §4.1; decisions 8-9). Owns the `kyc_cases`
- * lifecycle used by the email-OTP flow plus the `kyc_verification_codes` table.
- * A user has at most one open (nonterminal) case (DB partial-unique), so the
- * flow locks/reuses the open case rather than creating duplicates. Codes are
- * stored only as a 32-byte keyed hash; the raw code never touches the database.
- */
 import { sql } from "kysely"
 
-import type { KycCase, KycVerificationCode, Transaction } from "../db/repositories.js"
+import type { Transaction, User } from "../db/repositories.js"
+import type { EmailVerificationState } from "../db/types.js"
 
-export interface KycWriteRepository {
-  /** The user's current approved case (if any), for the already-verified short-circuit. */
-  findApprovedByUser: (tx: Transaction, userId: string) => Promise<KycCase | null>
-  /** The investor's most recent case in any state — what the status screen reads. */
-  findLatestByUser: (tx: Transaction, userId: string) => Promise<KycCase | null>
-  /** Lock the user's open (nonterminal) case, or null. */
-  lockOpenCaseByUser: (tx: Transaction, userId: string) => Promise<KycCase | null>
-  /** Create a new email-OTP case (`pending_submission`, provider `email_otp`). */
-  createCase: (tx: Transaction, userId: string) => Promise<KycCase>
-  /** pending_submission|submitted -> submitted (sets submitted_at once). */
-  markSubmitted: (
-    tx: Transaction,
-    input: Readonly<{ caseId: string; userId: string; now: Date }>,
-  ) => Promise<KycCase | null>
-  /** submitted -> approved (sets decided_at + expiry). */
-  approveCase: (
-    tx: Transaction,
-    input: Readonly<{ caseId: string; userId: string; expiresAt: Date; now: Date }>,
-  ) => Promise<KycCase | null>
+export interface EmailVerificationRecord {
+  readonly userId: string
+  readonly state: EmailVerificationState
+  readonly expiresAt: Date | null
+  readonly submittedAt: Date | null
+  readonly verifiedAt: Date | null
+}
 
-  /** The active (unconsumed) code for a case, locked, or null. */
-  lockActiveCode: (tx: Transaction, kycCaseId: string) => Promise<KycVerificationCode | null>
-  /** Timestamp of the most recent code for a case (resend cooldown), or null. */
-  latestCodeCreatedAt: (tx: Transaction, kycCaseId: string) => Promise<Date | null>
-  /** Consume (deactivate) the active code so a fresh one can be issued. */
-  consumeActiveCode: (tx: Transaction, input: Readonly<{ kycCaseId: string; now: Date }>) => Promise<void>
+export interface EmailVerificationCode {
+  readonly id: string
+  readonly userId: string
+  readonly codeHash: Buffer
+  readonly codeKeyVersion: string
+  readonly attemptCount: number
+  readonly expiresAt: Date
+  readonly consumedAt: Date | null
+  readonly createdAt: Date
+}
+
+export interface EmailVerificationRepository {
+  findVerifiedByUser: (tx: Transaction, userId: string) => Promise<EmailVerificationRecord | null>
+  findLatestByUser: (tx: Transaction, userId: string) => Promise<EmailVerificationRecord | null>
+  start: (tx: Transaction, input: Readonly<{ userId: string; now: Date }>) => Promise<EmailVerificationRecord | null>
+  markVerified: (
+    tx: Transaction,
+    input: Readonly<{ userId: string; expiresAt: Date; now: Date }>,
+  ) => Promise<EmailVerificationRecord | null>
+  lockActiveCode: (tx: Transaction, userId: string) => Promise<EmailVerificationCode | null>
+  latestCodeCreatedAt: (tx: Transaction, userId: string) => Promise<Date | null>
+  consumeActiveCode: (tx: Transaction, input: Readonly<{ userId: string; now: Date }>) => Promise<void>
   createCode: (
     tx: Transaction,
     input: Readonly<{
-      kycCaseId: string
       userId: string
       codeHash: Buffer
       codeKeyVersion: string
       expiresAt: Date
     }>,
-  ) => Promise<KycVerificationCode>
+  ) => Promise<EmailVerificationCode>
   incrementCodeAttempt: (tx: Transaction, codeId: string) => Promise<void>
   consumeCode: (tx: Transaction, input: Readonly<{ codeId: string; now: Date }>) => Promise<void>
 }
 
-const NONTERMINAL_STATES = ["pending_submission", "submitted", "in_review", "needs_information"] as const
+type VerificationUser = Pick<
+  User,
+  | "id"
+  | "email_verification_state"
+  | "email_verification_expires_at"
+  | "email_verification_started_at"
+  | "email_verified_at"
+>
 
-export const createKycRepository = (): KycWriteRepository => ({
-  findApprovedByUser: async (tx, userId) => {
-    const row = await tx
-      .selectFrom("kyc_cases")
-      .selectAll()
-      .where("user_id", "=", userId)
-      .where("state", "=", "approved")
-      .orderBy("decided_at", "desc")
-      .limit(1)
-      .executeTakeFirst()
-    return row ?? null
+const recordFromUser = (user: VerificationUser): EmailVerificationRecord => ({
+  userId: user.id,
+  state: user.email_verification_state,
+  expiresAt: user.email_verification_expires_at,
+  submittedAt: user.email_verification_started_at,
+  verifiedAt: user.email_verified_at,
+})
+
+const recordQuery = (tx: Transaction, userId: string) =>
+  tx
+    .selectFrom("users")
+    .select([
+      "id",
+      "email_verification_state",
+      "email_verification_expires_at",
+      "email_verification_started_at",
+      "email_verified_at",
+    ])
+    .where("id", "=", userId)
+
+const mapCode = (row: {
+  readonly id: string
+  readonly user_id: string
+  readonly code_hash: Buffer
+  readonly code_key_version: string
+  readonly attempt_count: number
+  readonly expires_at: Date
+  readonly consumed_at: Date | null
+  readonly created_at: Date
+}): EmailVerificationCode => ({
+  id: row.id,
+  userId: row.user_id,
+  codeHash: row.code_hash,
+  codeKeyVersion: row.code_key_version,
+  attemptCount: row.attempt_count,
+  expiresAt: row.expires_at,
+  consumedAt: row.consumed_at,
+  createdAt: row.created_at,
+})
+
+export const createEmailVerificationRepository = (): EmailVerificationRepository => ({
+  findVerifiedByUser: async (tx, userId) => {
+    const row = await recordQuery(tx, userId).where("email_verification_state", "=", "verified").executeTakeFirst()
+    return row === undefined ? null : recordFromUser(row)
   },
 
   findLatestByUser: async (tx, userId) => {
+    const row = await recordQuery(tx, userId).executeTakeFirst()
+    return row === undefined ? null : recordFromUser(row)
+  },
+
+  start: async (tx, input) => {
     const row = await tx
-      .selectFrom("kyc_cases")
+      .updateTable("users")
+      .set({
+        email_verification_state: "pending",
+        email_verification_started_at: sql<Date>`coalesce(email_verification_started_at, ${input.now})`,
+        email_verification_expires_at: null,
+        updated_at: input.now,
+        version: sql<string>`version + 1`,
+      })
+      .where("id", "=", input.userId)
+      .returning([
+        "id",
+        "email_verification_state",
+        "email_verification_expires_at",
+        "email_verification_started_at",
+        "email_verified_at",
+      ])
+      .executeTakeFirst()
+    return row === undefined ? null : recordFromUser(row)
+  },
+
+  markVerified: async (tx, input) => {
+    const row = await tx
+      .updateTable("users")
+      .set({
+        email_verification_state: "verified",
+        email_verified_at: input.now,
+        email_verification_expires_at: input.expiresAt,
+        updated_at: input.now,
+        version: sql<string>`version + 1`,
+      })
+      .where("id", "=", input.userId)
+      .where("email_verification_state", "=", "pending")
+      .returning([
+        "id",
+        "email_verification_state",
+        "email_verification_expires_at",
+        "email_verification_started_at",
+        "email_verified_at",
+      ])
+      .executeTakeFirst()
+    return row === undefined ? null : recordFromUser(row)
+  },
+
+  lockActiveCode: async (tx, userId) => {
+    const row = await tx
+      .selectFrom("email_verification_codes")
       .selectAll()
       .where("user_id", "=", userId)
-      .orderBy("created_at", "desc")
-      .limit(1)
-      .executeTakeFirst()
-    return row ?? null
-  },
-
-  lockOpenCaseByUser: async (tx, userId) => {
-    const row = await tx
-      .selectFrom("kyc_cases")
-      .selectAll()
-      .where("user_id", "=", userId)
-      .where("state", "in", [...NONTERMINAL_STATES])
-      .forUpdate()
-      .executeTakeFirst()
-    return row ?? null
-  },
-
-  createCase: async (tx, userId) =>
-    tx
-      .insertInto("kyc_cases")
-      .values({ user_id: userId, provider: "email_otp" })
-      .returningAll()
-      .executeTakeFirstOrThrow(),
-
-  markSubmitted: async (tx, input) => {
-    const row = await tx
-      .updateTable("kyc_cases")
-      .set({
-        state: "submitted",
-        submitted_at: sql<Date>`coalesce(submitted_at, ${input.now})`,
-        version: sql<string>`version + 1`,
-        updated_at: sql<Date>`now()`,
-      })
-      .where("id", "=", input.caseId)
-      .where("user_id", "=", input.userId)
-      .where("state", "in", ["pending_submission", "submitted"])
-      .returningAll()
-      .executeTakeFirst()
-    return row ?? null
-  },
-
-  approveCase: async (tx, input) => {
-    const row = await tx
-      .updateTable("kyc_cases")
-      .set({
-        state: "approved",
-        decided_at: input.now,
-        expires_at: input.expiresAt,
-        version: sql<string>`version + 1`,
-        updated_at: sql<Date>`now()`,
-      })
-      .where("id", "=", input.caseId)
-      .where("user_id", "=", input.userId)
-      .where("state", "=", "submitted")
-      .returningAll()
-      .executeTakeFirst()
-    return row ?? null
-  },
-
-  lockActiveCode: async (tx, kycCaseId) => {
-    const row = await tx
-      .selectFrom("kyc_verification_codes")
-      .selectAll()
-      .where("kyc_case_id", "=", kycCaseId)
       .where("consumed_at", "is", null)
       .forUpdate()
       .executeTakeFirst()
-    return row ?? null
+    return row === undefined ? null : mapCode(row)
   },
 
-  latestCodeCreatedAt: async (tx, kycCaseId) => {
+  latestCodeCreatedAt: async (tx, userId) => {
     const row = await tx
-      .selectFrom("kyc_verification_codes")
+      .selectFrom("email_verification_codes")
       .select("created_at")
-      .where("kyc_case_id", "=", kycCaseId)
+      .where("user_id", "=", userId)
       .orderBy("created_at", "desc")
       .limit(1)
       .executeTakeFirst()
-    return row?.created_at === undefined ? null : new Date(row.created_at)
+    return row === undefined ? null : new Date(row.created_at)
   },
 
   consumeActiveCode: async (tx, input) => {
     await tx
-      .updateTable("kyc_verification_codes")
+      .updateTable("email_verification_codes")
       .set({ consumed_at: input.now })
-      .where("kyc_case_id", "=", input.kycCaseId)
+      .where("user_id", "=", input.userId)
       .where("consumed_at", "is", null)
       .execute()
   },
 
-  createCode: async (tx, input) =>
-    tx
-      .insertInto("kyc_verification_codes")
+  createCode: async (tx, input) => {
+    const row = await tx
+      .insertInto("email_verification_codes")
       .values({
-        kyc_case_id: input.kycCaseId,
         user_id: input.userId,
         code_hash: input.codeHash,
         code_key_version: input.codeKeyVersion,
         expires_at: input.expiresAt,
       })
       .returningAll()
-      .executeTakeFirstOrThrow(),
+      .executeTakeFirstOrThrow()
+    return mapCode(row)
+  },
 
   incrementCodeAttempt: async (tx, codeId) => {
     await tx
-      .updateTable("kyc_verification_codes")
+      .updateTable("email_verification_codes")
       .set({ attempt_count: sql<number>`attempt_count + 1` })
       .where("id", "=", codeId)
       .execute()
@@ -182,9 +206,10 @@ export const createKycRepository = (): KycWriteRepository => ({
 
   consumeCode: async (tx, input) => {
     await tx
-      .updateTable("kyc_verification_codes")
+      .updateTable("email_verification_codes")
       .set({ consumed_at: input.now })
       .where("id", "=", input.codeId)
+      .where("consumed_at", "is", null)
       .execute()
   },
 })

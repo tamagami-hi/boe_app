@@ -2,7 +2,7 @@
  * Admin oversight repository.
  *
  * Read projections over authoritative evidence the admin console supervises —
- * the user directory, orders, KYC cases, and the audit log — plus the one write
+ * the user directory, orders, Email Verification state, and the audit log — plus the one write
  * path admins own here: the user account lifecycle.
  *
  * Every list is keyset-paginated on `(created_at DESC, id DESC)` with a validated
@@ -14,7 +14,7 @@ import { sql } from "kysely"
 
 import type { Transaction, User } from "../db/repositories.js"
 import type {
-  KycCaseState,
+  EmailVerificationState,
   OrderState,
   OrderType,
   UserAccountState,
@@ -36,7 +36,7 @@ export interface UserListRow {
   readonly activatedAt: Date | null
   readonly suspendedAt: Date | null
   readonly closedAt: Date | null
-  readonly kycState: KycCaseState | null
+  readonly emailVerificationState: EmailVerificationState | null
   readonly ordersCount: number
   readonly createdAt: Date
   readonly updatedAt: Date
@@ -74,12 +74,12 @@ export interface OrderListQuery extends OversightPageQuery {
   readonly search?: string
 }
 
-export interface KycCaseListRow {
+export interface EmailVerificationListRow {
   readonly id: string
   readonly userId: string
   readonly userEmail: string
   readonly userFullName: string
-  readonly state: KycCaseState
+  readonly state: EmailVerificationState
   readonly provider: string | null
   readonly submittedAt: Date | null
   readonly decidedAt: Date | null
@@ -120,7 +120,7 @@ export interface AuditListQuery extends OversightPageQuery {
 export interface UserDetail {
   readonly user: UserListRow
   readonly roles: readonly string[]
-  readonly kyc: KycCaseListRow | null
+  readonly emailVerification: EmailVerificationListRow | null
   readonly orders: readonly OrderListRow[]
 }
 
@@ -161,7 +161,7 @@ const USER_COLUMNS = sql`
   u.activated_at as "activatedAt",
   u.suspended_at as "suspendedAt",
   u.closed_at as "closedAt",
-  k.state as "kycState",
+  u.email_verification_state as "emailVerificationState",
   coalesce(o.count, 0)::int as "ordersCount",
   u.created_at as "createdAt",
   u.updated_at as "updatedAt",
@@ -170,9 +170,6 @@ const USER_COLUMNS = sql`
 
 const USER_JOINS = sql`
   from users u
-  left join lateral (
-    select state from kyc_cases where user_id = u.id order by created_at desc, id desc limit 1
-  ) k on true
   left join lateral (select count(*) as count from investment_orders where user_id = u.id) o on true
 `
 
@@ -202,26 +199,24 @@ const ORDER_JOINS = sql`
   left join fund_versions fv on fv.id = f.current_published_version_id
 `
 
-const KYC_COLUMNS = sql`
-  c.id as "id",
-  c.user_id as "userId",
+const EMAIL_VERIFICATION_COLUMNS = sql`
+  u.id as "id",
+  u.id as "userId",
   u.email_normalized as "userEmail",
   u.full_name as "userFullName",
-  c.state as "state",
-  c.provider as "provider",
-  c.submitted_at as "submittedAt",
-  c.decided_at as "decidedAt",
-  c.expires_at as "expiresAt",
-  coalesce(r.count, 0)::int as "reviewCount",
-  c.created_at as "createdAt",
-  c.updated_at as "updatedAt",
-  c.version::text as "version"
+  u.email_verification_state as "state",
+  'email_otp' as "provider",
+  u.email_verification_started_at as "submittedAt",
+  u.email_verified_at as "decidedAt",
+  u.email_verification_expires_at as "expiresAt",
+  0::int as "reviewCount",
+  coalesce(u.email_verification_started_at, u.created_at) as "createdAt",
+  u.updated_at as "updatedAt",
+  u.version::text as "version"
 `
 
-const KYC_JOINS = sql`
-  from kyc_cases c
-  join users u on u.id = c.user_id
-  left join lateral (select count(*) as count from kyc_reviews where kyc_case_id = c.id) r on true
+const EMAIL_VERIFICATION_JOINS = sql`
+  from users u
 `
 
 export const createAdminOversightRepository = (): AdminOversightRepository => ({
@@ -257,14 +252,14 @@ export const createAdminOversightRepository = (): AdminOversightRepository => ({
     const user = userResult.rows[0]
     if (user === undefined) return null
 
-    const [roles, kyc, orders] = await Promise.all([
+    const [roles, emailVerification, orders] = await Promise.all([
       sql<{ code: string }>`
         select r.code as "code" from user_roles ur join roles r on r.id = ur.role_id
         where ur.user_id = ${userId} order by r.code
       `.execute(tx),
-      sql<KycCaseListRow>`
-        select ${KYC_COLUMNS} ${KYC_JOINS} where c.user_id = ${userId}
-        order by c.created_at desc, c.id desc limit 1
+      sql<EmailVerificationListRow>`
+        select ${EMAIL_VERIFICATION_COLUMNS} ${EMAIL_VERIFICATION_JOINS} where u.id = ${userId}
+        limit 1
       `.execute(tx),
       sql<OrderListRow>`
         select ${ORDER_COLUMNS} ${ORDER_JOINS} where o.user_id = ${userId}
@@ -275,7 +270,7 @@ export const createAdminOversightRepository = (): AdminOversightRepository => ({
     return {
       user,
       roles: roles.rows.map((row) => row.code),
-      kyc: kyc.rows[0] ?? null,
+      emailVerification: emailVerification.rows[0] ?? null,
       orders: orders.rows,
     }
   },

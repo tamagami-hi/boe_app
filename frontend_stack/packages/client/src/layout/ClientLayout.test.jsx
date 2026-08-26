@@ -68,7 +68,7 @@ describe('ClientLayout bottom nav visibility', () => {
   // kept the bottom bar on them purely because their path starts with
   // `/app/profile`; the manifest now says otherwise.
   const profileDescendants = [
-    '/app/profile/kyc',
+    '/app/profile/email-verification',
     '/app/profile/security',
     '/app/profile/support',
     '/app/profile/legal',

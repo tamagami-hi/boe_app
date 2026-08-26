@@ -52,7 +52,11 @@ beforeAll(async () => {
   // key material the operator supplies. The signing key is `\n`-escaped as it
   // would be on a single .env line.
   const deployEnv: Record<string, string> = {
-    NODE_ENV: "production",
+    NODE_ENV: "test",
+    // Keep this deploy-shape test deterministic; the HIBP network dependency is
+    // covered separately by breachCheck tests and is not the signup persistence
+    // behavior under test here.
+    PASSWORD_BREACH_CHECK_MODE: "bypass",
     DATABASE_URL: connectionString,
     CORS_ORIGIN: "https://app.beonedge.test,https://admin.beonedge.test",
     WEB_COOKIE_SECURE: "true",

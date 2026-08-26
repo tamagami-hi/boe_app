@@ -1,4 +1,4 @@
-/* Profile, KYC, Security, Support — mobile-first */
+/* Profile, Email Verification, Security, Support — mobile-first */
 
 /* List rows */
 .apk-list { padding: 4px 0; }
@@ -16,7 +16,7 @@
 .apk-list-meta { font-size: 12px; color: var(--be-slate); margin-top: 2px; }
 .apk-list-r { display: flex; align-items: center; gap: 8px; color: var(--be-slate); }
 
-/* Nominee row (KYC) */
+/* Nominee row */
 .apk-nominee-row { grid-template-columns: 1fr; gap: 8px; align-items: start; }
 .apk-nominee-row .be-btn { justify-self: start; }
 
@@ -220,7 +220,7 @@ button.security-row { cursor: pointer; }
 .apk-ticket-actions .be-btn { flex: 1 1 120px; min-width: 0; }
 .apk-tickets-empty { padding: var(--be-space-4); color: var(--be-fg-muted); font-size: var(--be-text-sm); }
 
-/* Inline-style replacements for KYC detail */
+/* Inline-style replacements for Email Verification detail */
 .apk-card-p-24 { padding: 24px; }
 
 .apk-skel--h-20 { height: 20px; }
@@ -230,7 +230,7 @@ button.security-row { cursor: pointer; }
 .apk-skel--mb-16 { margin-bottom: 16px; }
 
 /* -------------------------------------------------------------------------- */
-/* KYC detail (KycDetail.jsx)                                                 */
+/* Email Verification detail (EmailVerificationDetail.jsx)                   */
 /* -------------------------------------------------------------------------- */
 
 .apk-card-no-pad { padding: 0; }

@@ -88,13 +88,13 @@ export default function Dashboard() {
       </div>
 
       {eligibility && eligibility.canInvest === false && (
-        <div className="be-card apk-approval-card apk-kyc-prompt">
+        <div className="be-card apk-approval-card apk-email-verification-prompt">
           <div className="apk-approval-icon"><ShieldCheck size={20} strokeWidth={1.6} /></div>
           <div>
             <div className="be-eyebrow">Verification needed</div>
             <div className="apk-h-sm">Verify your email to start investing</div>
             <p>
-              {eligibility.reason === 'kyc_required' || eligibility.kycState !== 'approved'
+              {eligibility.reason === 'email_verification_required' || eligibility.emailVerificationState !== 'verified'
                 ? 'We send a 6-character code (case-sensitive) to your registered email address.'
                 : 'Your account needs one more check before investing unlocks.'}
             </p>

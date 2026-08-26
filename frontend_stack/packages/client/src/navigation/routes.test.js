@@ -196,7 +196,7 @@ describe('showsBottomNav', () => {
     // Prefix matching kept the bar on all of these because they start with
     // `/app/profile`, even though they are pushed secondary screens.
     for (const path of [
-      '/app/profile/kyc', '/app/profile/security', '/app/profile/support', '/app/profile/legal',
+      '/app/profile/email-verification', '/app/profile/security', '/app/profile/support', '/app/profile/legal',
     ]) {
       expect(showsBottomNav(path)).toBe(false);
     }

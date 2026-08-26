@@ -11,19 +11,17 @@ import { sql } from "kysely"
 
 import type { Transaction } from "../db/repositories.js"
 import type {
-  KycCaseState,
+  EmailVerificationState,
   OrderState,
   OrderType,
   PaymentState,
-  RiskAssessmentState,
   UserAccountState,
 } from "../db/types.js"
 
 export interface EligibilityInputsRow {
   readonly accountState: UserAccountState
-  readonly kycState: KycCaseState | null
-  readonly kycExpiresAt: Date | null
-  readonly riskState: RiskAssessmentState | null
+  readonly emailVerificationState: EmailVerificationState | null
+  readonly emailVerificationExpiresAt: Date | null
 }
 
 export interface OrderRow {
@@ -108,18 +106,9 @@ export const createClientPortfolioRepository = (): ClientPortfolioReadRepository
     const result = await sql<EligibilityInputsRow>`
       select
         u.account_state as "accountState",
-        k.state as "kycState",
-        k.expires_at as "kycExpiresAt",
-        r.state as "riskState"
+        u.email_verification_state as "emailVerificationState",
+        u.email_verification_expires_at as "emailVerificationExpiresAt"
       from users u
-      left join lateral (
-        select state, expires_at from kyc_cases
-        where user_id = u.id order by created_at desc, id desc limit 1
-      ) k on true
-      left join lateral (
-        select state from risk_assessments
-        where user_id = u.id order by created_at desc, id desc limit 1
-      ) r on true
       where u.id = ${userId}
     `.execute(tx)
     return result.rows[0] ?? null

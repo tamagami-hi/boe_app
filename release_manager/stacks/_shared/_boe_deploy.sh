@@ -219,7 +219,7 @@ boe_deploy_assert_env() {
             CRYPTO_RECIPIENT_HMAC_KEY CRYPTO_RECIPIENT_HMAC_KEY_VERSION \
             CRYPTO_RECIPIENT_ENC_KEY CRYPTO_RECIPIENT_ENC_KEY_VERSION \
             NEWUSER_SHARED_SECRET \
-            KYC_EMAIL_FROM EMAIL_SMTP_HOST EMAIL_SMTP_PORT EMAIL_SMTP_USER EMAIL_SMTP_PASSWORD EMAIL_SMTP_SECURE \
+            EMAIL_VERIFICATION_FROM EMAIL_SMTP_HOST EMAIL_SMTP_PORT EMAIL_SMTP_USER EMAIL_SMTP_PASSWORD EMAIL_SMTP_SECURE \
             APK_DOWNLOAD_BASE_URL
         boe_validate_app_key_material
         boe_validate_app_policy
@@ -359,13 +359,13 @@ boe_validate_app_policy() {
     smtp_secure="$(env_get EMAIL_SMTP_SECURE "$BOE_EFFECTIVE_ENV")"
     smtp_user="$(env_get EMAIL_SMTP_USER "$BOE_EFFECTIVE_ENV")"
     smtp_password="$(env_get EMAIL_SMTP_PASSWORD "$BOE_EFFECTIVE_ENV")"
-    from_address="$(env_get KYC_EMAIL_FROM "$BOE_EFFECTIVE_ENV")"
+    from_address="$(env_get EMAIL_VERIFICATION_FROM "$BOE_EFFECTIVE_ENV")"
     [[ "$smtp_host" == "smtppro.zoho.in" ]] || die "EMAIL_SMTP_HOST must be smtppro.zoho.in"
     [[ "$smtp_port" == "465" ]] || die "EMAIL_SMTP_PORT must be 465"
     [[ "$smtp_secure" == "true" ]] || die "EMAIL_SMTP_SECURE must be true"
-    [[ "$from_address" == "$smtp_user" ]] || die "KYC_EMAIL_FROM must equal EMAIL_SMTP_USER"
-    [[ "$(env_get KYC_CODE_MAX_ATTEMPTS "$BOE_EFFECTIVE_ENV")" == "5" ]] \
-        || die "KYC_CODE_MAX_ATTEMPTS must be 5"
+    [[ "$from_address" == "$smtp_user" ]] || die "EMAIL_VERIFICATION_FROM must equal EMAIL_SMTP_USER"
+    [[ "$(env_get EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS "$BOE_EFFECTIVE_ENV")" == "5" ]] \
+        || die "EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS must be 5"
     seed_enabled="$(env_get SEED_AUTH_ENABLED "$BOE_EFFECTIVE_ENV")"
     [[ "$seed_enabled" == "false" ]] || boe_assert_env_keys ADMIN_LOGIN_ID ADMIN_PASSWORD
 }

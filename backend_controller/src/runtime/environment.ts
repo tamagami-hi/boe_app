@@ -138,9 +138,9 @@ const ServerConfigSchema = z.object({
   // fails closed on its own. The deploy scripts assert the key is present, so
   // the failure still surfaces before containers are replaced.
   NEWUSER_SHARED_SECRET: z.string().trim().min(32).optional(),
-  // Transactional email (KYC codes). The company mailbox is both the SMTP login
+  // Transactional email (Email OTP codes). The company mailbox is both the SMTP login
   // and the `From`. An incomplete SMTP configuration fails delivery closed.
-  KYC_EMAIL_FROM: z.string().trim().optional(),
+  EMAIL_VERIFICATION_FROM: z.string().trim().optional(),
   EMAIL_SMTP_HOST: z.string().trim().optional(),
   EMAIL_SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
   EMAIL_SMTP_USER: z.string().trim().optional(),
@@ -151,11 +151,11 @@ const ServerConfigSchema = z.object({
   // Outbox email delivery worker knobs (mirrors the payment worker).
   EMAIL_WORKER_CLAIM_LIMIT: z.coerce.number().int().min(1).max(200).default(25),
   EMAIL_WORKER_LEASE_MS: z.coerce.number().int().min(1000).default(60_000),
-  // KYC email-OTP policy.
-  KYC_CODE_TTL_MS: z.coerce.number().int().min(1).default(10 * 60 * 1000),
-  KYC_CODE_MAX_ATTEMPTS: z.coerce.number().int().min(1).default(5),
-  KYC_RESEND_COOLDOWN_MS: z.coerce.number().int().min(1).default(60 * 1000),
-  KYC_VALIDITY_MS: z.coerce.number().int().min(1).default(365 * DAY_MS),
+  // Email OTP Verification policy.
+  EMAIL_VERIFICATION_CODE_TTL_MS: z.coerce.number().int().min(1).default(10 * 60 * 1000),
+  EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS: z.coerce.number().int().min(1).default(5),
+  EMAIL_VERIFICATION_RESEND_COOLDOWN_MS: z.coerce.number().int().min(1).default(60 * 1000),
+  EMAIL_VERIFICATION_VALIDITY_MS: z.coerce.number().int().min(1).default(365 * DAY_MS),
   // Concurrent-device policy for native (client app) sessions. Signing in on a
   // new device beyond the cap revokes the oldest device's session rather than
   // refusing the login. SEED_CLIENT_EMAIL is exempt: the dev/QA account is
@@ -263,7 +263,7 @@ export interface ServerConfig {
     }
     readonly worker: { readonly claimLimit: number; readonly leaseMs: number }
   }
-  readonly kyc: {
+  readonly emailVerification: {
     readonly codeTtlMs: number
     readonly maxAttempts: number
     readonly resendCooldownMs: number
@@ -547,7 +547,7 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
       },
     },
     email: {
-      fromAddress: nonEmpty(parsed.KYC_EMAIL_FROM),
+      fromAddress: nonEmpty(parsed.EMAIL_VERIFICATION_FROM),
       // SMTP is enabled only when host + credentials are all present.
       smtp:
         nonEmpty(parsed.EMAIL_SMTP_HOST) !== null &&
@@ -569,11 +569,11 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
         leaseMs: parsed.EMAIL_WORKER_LEASE_MS,
       },
     },
-    kyc: {
-      codeTtlMs: parsed.KYC_CODE_TTL_MS,
-      maxAttempts: parsed.KYC_CODE_MAX_ATTEMPTS,
-      resendCooldownMs: parsed.KYC_RESEND_COOLDOWN_MS,
-      validityMs: parsed.KYC_VALIDITY_MS,
+    emailVerification: {
+      codeTtlMs: parsed.EMAIL_VERIFICATION_CODE_TTL_MS,
+      maxAttempts: parsed.EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS,
+      resendCooldownMs: parsed.EMAIL_VERIFICATION_RESEND_COOLDOWN_MS,
+      validityMs: parsed.EMAIL_VERIFICATION_VALIDITY_MS,
     },
     ttls: {
       idempotencyTtlMs: parsed.IDEMPOTENCY_TTL_MS,

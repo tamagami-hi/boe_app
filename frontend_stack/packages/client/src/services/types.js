@@ -63,24 +63,14 @@
 /** @typedef {Object} Transaction */
 /** @typedef {Object} Statement */
 /** @typedef {Object} Notification */
-/** @typedef {Object} KycStatus
- *  @property {string} id
- *  @property {string} userId
- *  @property {string|null} panLast4
- *  @property {string|null} aadhaarLast4
- *  @property {Object} addressJson
- *  @property {Array} documentRefsJson
- *  @property {'not_started'|'pending'|'completed'|'exempt'} fatcaStatus
- *  @property {{taxResidence:string,usPerson:boolean,tin:string,declarationDate:string}|null} fatcaDeclaration
- *  @property {Array<{name:string,relationship:string,dateOfBirth:string,percentage:number,guardianName:string|null}>} nominees
- *  @property {string|null} reKycDueDate
- *  @property {string|null} reKycTriggerReason
- *  @property {'not_started'|'pending'|'in_review'|'approved'|'rejected'|'needs_more_information'} reviewStatus
- *  @property {string|null} adminNotes
- *  @property {string|null} reviewedAt
- *  @property {string} createdAt
- *  @property {string} updatedAt
- *  @property {{id:string,firstName:string,lastName:string,email:string,phone:string,kycStatus:string,status:string}|null} user
+/** @typedef {Object} EmailVerificationStatus
+ *  @property {'not_started'|'pending'|'verified'|'rejected'} status
+ *  @property {'not_started'|'pending'|'verified'|'rejected'|null} emailVerificationState
+ *  @property {'email_otp'} method
+ *  @property {string|null} expiresAt
+ *  @property {boolean} expired
+ *  @property {string|null} submittedAt
+ *  @property {string|null} verifiedAt
  */
 /** @typedef {Object} MarketIndex */
 

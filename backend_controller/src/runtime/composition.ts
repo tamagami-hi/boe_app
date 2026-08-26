@@ -19,7 +19,7 @@ import { createApplicationRepository } from "../repositories/applicationReposito
 import { createClientCatalogRepository } from "../repositories/clientCatalogRepository.js"
 import { createClientPortfolioRepository } from "../repositories/clientPortfolioRepository.js"
 import { createClientValueEntryRepository } from "../repositories/clientValueEntryRepository.js"
-import { createKycRepository } from "../repositories/kycRepository.js"
+import { createEmailVerificationRepository } from "../repositories/emailVerificationRepository.js"
 import {
   createSmtpEmailSender,
   createUnconfiguredEmailSender,
@@ -73,7 +73,7 @@ import { createAdminContentRepository } from "../repositories/adminContentReposi
 import { createAdminOversightRepository } from "../repositories/adminOversightRepository.js"
 import { createClientGrowthRepository } from "../repositories/clientGrowthRepository.js"
 import { registerClientAccountRoutes } from "../routes/clientAccountRoutes.js"
-import { registerClientKycRoutes } from "../routes/clientKycRoutes.js"
+import { registerClientEmailVerificationRoutes } from "../routes/clientEmailVerificationRoutes.js"
 import { registerClientOrderRoutes } from "../routes/clientOrderRoutes.js"
 import { registerClientSipPlanRoutes } from "../routes/clientSipPlanRoutes.js"
 import { registerClientAutoPaySipRoutes } from "../routes/clientAutoPaySipRoutes.js"
@@ -205,7 +205,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const adminMandateRepository = createAdminMandateRepository()
   const providerEventInboxRepository = createProviderEventInboxRepository()
   const notificationRepository = createNotificationRepository()
-  const kycRepository = createKycRepository()
+  const emailVerificationRepository = createEmailVerificationRepository()
   const clientAccountRepository = createClientAccountRepository()
 
   const emailFromAddress =
@@ -356,21 +356,21 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       },
     })
 
-    registerClientKycRoutes(application, {
+    registerClientEmailVerificationRoutes(application, {
       accessTokenService,
       database,
       unitOfWork,
       clock,
       crypto,
-      kycRepository,
+      emailVerificationRepository,
       userRepository,
       auditRepository,
       emailSender,
       config: {
-        codeTtlMs: serverConfig.kyc.codeTtlMs,
-        maxAttempts: serverConfig.kyc.maxAttempts,
-        resendCooldownMs: serverConfig.kyc.resendCooldownMs,
-        validityMs: serverConfig.kyc.validityMs,
+        codeTtlMs: serverConfig.emailVerification.codeTtlMs,
+        maxAttempts: serverConfig.emailVerification.maxAttempts,
+        resendCooldownMs: serverConfig.emailVerification.resendCooldownMs,
+        validityMs: serverConfig.emailVerification.validityMs,
       },
     })
 

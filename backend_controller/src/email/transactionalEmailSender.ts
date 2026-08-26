@@ -2,7 +2,7 @@
  * Concrete `SesEmailSender` for the outbox delivery worker (spec 04 §6.2).
  *
  * The worker's port was written for Amazon SES, but the deployment sends through
- * the same company mailbox that already carries KYC codes. This adapter renders
+ * the same company mailbox that already carries Email OTP codes. This adapter renders
  * the body locally from the template key + queued payload and hands it to the
  * transport-agnostic `EmailSender` (SMTP in a deployment, the metadata-only log
  * sender when SMTP is not configured), then maps the outcome onto the port's

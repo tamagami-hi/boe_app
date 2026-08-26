@@ -7,7 +7,7 @@
 import { sql } from "kysely"
 
 import type { InvestmentOrder, Transaction } from "../db/repositories.js"
-import type { FundState, KycCaseState, RiskAssessmentState } from "../db/types.js"
+import type { FundState, EmailVerificationState } from "../db/types.js"
 
 export interface CreateOrderInput {
   readonly userId: string
@@ -39,9 +39,8 @@ export interface FundOrderTermsRow {
 }
 
 export interface LatestComplianceRow {
-  readonly kycState: KycCaseState | null
-  readonly kycExpiresAt: Date | null
-  readonly riskState: RiskAssessmentState | null
+  readonly emailVerificationState: EmailVerificationState | null
+  readonly emailVerificationExpiresAt: Date | null
 }
 
 export interface OrderWriteRepository {
@@ -79,20 +78,12 @@ export const createOrderRepository = (): OrderWriteRepository => ({
   latestCompliance: async (tx, userId) => {
     const result = await sql<LatestComplianceRow>`
       select
-        k.state as "kycState",
-        k.expires_at as "kycExpiresAt",
-        r.state as "riskState"
-      from (select ${userId}::uuid as user_id) u
-      left join lateral (
-        select state, expires_at from kyc_cases
-        where user_id = u.user_id order by created_at desc, id desc limit 1
-      ) k on true
-      left join lateral (
-        select state from risk_assessments
-        where user_id = u.user_id order by created_at desc, id desc limit 1
-      ) r on true
+        u.email_verification_state as "emailVerificationState",
+        u.email_verification_expires_at as "emailVerificationExpiresAt"
+      from users u
+      where u.id = ${userId}
     `.execute(tx)
-    return result.rows[0] ?? { kycState: null, kycExpiresAt: null, riskState: null }
+    return result.rows[0] ?? { emailVerificationState: null, emailVerificationExpiresAt: null }
   },
 
   createPurchase: async (tx, input) =>

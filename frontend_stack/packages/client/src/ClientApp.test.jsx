@@ -39,7 +39,7 @@ vi.mock('@beonedge/shared/components/RouteErrorBoundary.jsx', () => ({
 
 vi.mock('./pages/Splash.jsx', () => ({ default: () => <div data-testid="page-splash" /> }));
 vi.mock('./pages/Login.jsx', () => ({ default: () => <div data-testid="page-login" /> }));
-vi.mock('./pages/KycVerify.jsx', () => ({ default: () => <div data-testid="page-kyc-verify" /> }));
+vi.mock('./pages/EmailVerification.jsx', () => ({ default: () => <div data-testid="page-email-verification-verify" /> }));
 vi.mock('./pages/Dashboard.jsx', () => ({ default: () => <div data-testid="page-dashboard" /> }));
 vi.mock('./pages/Explore.jsx', () => ({ default: () => <div data-testid="page-explore" /> }));
 vi.mock('./pages/FundDetail.jsx', () => ({ default: () => <div data-testid="page-fund-detail" /> }));
@@ -52,7 +52,7 @@ vi.mock('./pages/Transactions.jsx', () => ({ default: () => <div data-testid="pa
 vi.mock('./pages/Statements.jsx', () => ({ default: () => <div data-testid="page-statements" /> }));
 vi.mock('./pages/Notifications.jsx', () => ({ default: () => <div data-testid="page-notifications" /> }));
 vi.mock('./pages/Profile.jsx', () => ({ default: () => <div data-testid="page-profile" /> }));
-vi.mock('./pages/KycDetail.jsx', () => ({ default: () => <div data-testid="page-kyc-detail" /> }));
+vi.mock('./pages/EmailVerificationDetail.jsx', () => ({ default: () => <div data-testid="page-emailVerification-detail" /> }));
 vi.mock('./pages/Security.jsx', () => ({ default: () => <div data-testid="page-security" /> }));
 vi.mock('./pages/Support.jsx', () => ({ default: () => <div data-testid="page-support" /> }));
 vi.mock('./pages/Legal.jsx', () => ({ default: () => <div data-testid="page-legal" /> }));
@@ -80,7 +80,7 @@ describe('ClientApp route table', () => {
   const routeCases = [
     ['/app/splash', 'page-splash'],
     ['/app/login', 'page-login'],
-    ['/app/verify-email', 'page-kyc-verify'],
+    ['/app/verify-email', 'page-email-verification-verify'],
     ['/app/dashboard', 'page-dashboard'],
     ['/app/explore', 'page-explore'],
     ['/app/funds/f1', 'page-fund-detail'],
@@ -93,7 +93,7 @@ describe('ClientApp route table', () => {
     ['/app/statements', 'page-statements'],
     ['/app/notifications', 'page-notifications'],
     ['/app/profile', 'page-profile'],
-    ['/app/profile/kyc', 'page-kyc-detail'],
+    ['/app/profile/email-verification', 'page-emailVerification-detail'],
     ['/app/profile/security', 'page-security'],
     ['/app/profile/support', 'page-support'],
     ['/app/profile/legal', 'page-legal'],

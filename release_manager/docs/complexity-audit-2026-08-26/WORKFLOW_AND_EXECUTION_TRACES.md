@@ -21,7 +21,7 @@ External marketing/native signup
   -> client session provider -> protected client routes
 ```
 
-Admin web login uses `POST /v1/auth/web/login`, cookie session state, and CSRF checks. Approval creates the user; rejection does not. Migration 025 removed verification-token/invite activation paths. KYC OTP is implemented in `clientKycRoutes.ts` and `domain/client/kyc.ts` using `kyc_cases` and `kyc_verification_codes`; document/review tables are not a complete current workflow (**Needs runtime verification/product confirmation**).
+Admin web login uses `POST /v1/auth/web/login`, cookie session state, and CSRF checks. Approval creates the user; rejection does not. Migration 025 removed verification-token/invite activation paths. The active Email OTP flow is implemented in `clientKycRoutes.ts` and `domain/client/kyc.ts` using `kyc_cases` and `kyc_verification_codes`; the `kyc` naming is incorrect for this contact-verification behavior and must be migrated without losing verified users. `users` is the durable identity; no legacy compliance table may be dropped until all required state and financial references are proven to survive.
 
 ## Fund lifecycle
 
@@ -91,13 +91,25 @@ The reconciliation worker is `paymentReconciliationEntrypoint.ts`. Provider call
 StartSipSheet.jsx
   -> client SIP routes
   -> sip_plans + installment investment_orders
-  -> optional payment_mandates setup/cancel/collection tables
+  -> payment_mandates setup/cancel/collection tables
   -> sipScheduleEntrypoint.ts creates due installments
-  -> mandateCollectionEntrypoint.ts / PhonePe collection
-  -> payment outcome path above
+  -> sipScheduleEntrypoint.ts determines due periods and creates installment orders
+  -> mandateCollectionEntrypoint.ts locks the plan, validates the active mandate,
+     creates the collection/payment attempt, and calls PhonePe Notify Redemption
+  -> phonePeRecurringGateway.ts sends autoDebit=true and
+     redemptionRetryStrategy="STANDARD"
+  -> PhonePe performs the authorized debit and provider-managed retries
+  -> webhook/status reconciliation -> reconcileCollectionFact.ts
+  -> applyCanonicalPaymentOutcome.ts settles the transaction and ledger
 ```
 
-This is a substantial optional subsystem. Confirm product usage before retaining its workers/tables; static code cannot establish whether recurring payments are live in production.
+SIP/AutoPay is a required retained product capability. Static source confirms
+the intended PhonePe-managed debit/retry model: `phonePeRecurringGateway.ts`
+validates both configuration values, and no Execute Redemption API call was found.
+The workers own scheduling, mandate/provider prechecks, Notify dispatch,
+reconciliation, idempotency, and audit/heartbeat persistence; they must not add
+merchant-side debit execution or a second retry engine. Whether the deployed
+workers are scheduled and reachable remains **Needs runtime verification**.
 
 ## Manual admin operations
 
@@ -112,7 +124,7 @@ This is a substantial optional subsystem. Confirm product usage before retaining
 
 ## Definite frontend/backend break
 
-`frontend_stack/packages/client/src/ClientApp.jsx` exposes `/app/withdrawals`. `Portfolio.jsx` calls `fundsApi.submitRedemption`; `WithdrawalRequests.jsx` calls `fundsApi.listRedemptionRequests`; `services/fundsApi.js` uses `POST/GET /v1/client/redemptions`. No backend route registration, repository, or migration table for redemption requests was found. Migration `017_canonical_investing.sql` explicitly states no redemption requests. This must become an explicit product decision.
+`frontend_stack/packages/client/src/ClientApp.jsx` previously exposed `/app/withdrawals` and the corresponding redemption services, but the current implementation slice removed those executable references. No backend route registration, repository, or migration table for redemption requests exists. Migration `017_canonical_investing.sql` explicitly states no redemption requests. Withdrawal remains outside the current supported scope unless a later product decision defines a secure end-to-end transaction workflow.
 
 ## Frontend state update path
 

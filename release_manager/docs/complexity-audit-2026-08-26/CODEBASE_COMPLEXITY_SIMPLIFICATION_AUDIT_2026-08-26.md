@@ -4,6 +4,54 @@
 **Scope:** tracked repository plus runtime-relevant ignored configuration where it affects deployment risk
 **Method:** static tracing of imports, route registration, migrations, schema types, UI navigation, tests, and git history. No source code was modified.
 
+## 0. Accepted architectural constraints (2026-08-27)
+
+The following decisions supersede the earlier “optional” or unresolved labels in
+this audit:
+
+- SIP and AutoPay are retained product capabilities. The current PhonePe
+  adapter sends `autoDebit: true` and `redemptionRetryStrategy: "STANDARD"`.
+  The backend schedules due SIPs, verifies the active mandate, creates the
+  merchant order, sends Notify Redemption, and reconciles status/webhooks. No
+  merchant-side Execute Redemption implementation was found. The workers must
+  remain orchestration/reconciliation code and must not implement a second
+  debit or retry engine.
+- The durable identity is `users` from
+  `backend_controller/db/migrations/010_canonical_identity.sql`. Financial
+  records reference `users` directly. Email OTP is an account/contact
+  verification checkpoint, not regulatory KYC. The committed baseline stores
+  that state in the incorrectly named `kyc_cases` and
+  `kyc_verification_codes` tables and exposes `/v1/client/kyc/*`; the current
+  worktree contains the in-progress migration/source rename toward
+  `email_verification_codes` and user columns. This is not complete until the
+  migration/backfill is tested and deployed without losing verified users.
+- `legacy_investment_reviews`, `investor_profiles`, `kyc_documents`,
+  `kyc_reviews`, `risk_assessments`, and `marketing_leads` are removal
+  candidates only through reviewed forward migrations. Before any drop, verify
+  foreign keys, row ownership, financial-history relationships, retention or
+  legal-hold obligations, and row/relationship counts before and after data
+  preservation. No such migration has been applied in the current repository.
+- Dev and production are separate application stacks at
+  `/srv/dev_stack/BOE_APP/dev_release` and
+  `/srv/dev_stack/BOE_APP/prod_release`. Their compose definitions use separate
+  Postgres and Redis services, volumes, networks, projects, and environment
+  files. PhonePe application code remains the same; environment configuration
+  selects the provider environment. The current compose/release configuration
+  should be checked against the VPS before a deployment claim is made.
+- Redis is retained. Static tracing shows it is a shared read cache for catalog,
+  public content/app data, and app configuration, with PostgreSQL fallback; it
+  is not used for sessions, queues, locks, rate limiting, or worker
+  coordination. The historical reason it resolved the prior multi-user issue
+  cannot be proven from this repository and remains **Needs runtime/history
+  verification**; concurrency correctness must not be attributed to Redis
+  without that evidence.
+- A monitoring deployment already exists inside this repository as
+  `release_manager/stacks/monitor_service` with eight compose services. That
+  contradicts the requested future boundary of a separate monitoring
+  repository. The target is therefore extraction/independent ownership, not
+  adding more monitoring logic to BOE_APP. Existing app health/metrics
+  endpoints can remain telemetry emission points.
+
 ## 1. Executive summary
 
 The product is a single Fastify/PostgreSQL application with two browser experiences (client and admin), native authentication, PhonePe payments, SIP/AutoPay workers, email dispatch, and deployment tooling. The core business is not implemented as microservices: `backend_controller/src/runtime/composition.ts` wires one process and several worker entrypoints over the same database.
@@ -18,9 +66,9 @@ The difficulty is cumulative drift, not one sophisticated subsystem. The reposit
 - A definite frontend/backend contract break: client redemption/withdrawal screens call `/v1/client/redemptions`, but no backend route or table implements it.
 - A disconnected generated contract package and a second raw app-config transport in `frontend_stack/packages/shared/src/appConfig.js`.
 
-The rational recommendation is **Option A: incremental simplification**, beginning with contract and payment/ledger consolidation. Do not rewrite authentication, authorization, payment verification, or the append-only ledger. Remove only proven dead/fixture/compatibility paths after reference and runtime confirmation.
+The rational recommendation is **Option A: incremental simplification**, beginning with contract and payment/ledger consolidation while preserving SIP/AutoPay. Do not rewrite authentication, authorization, PhonePe verification, or the append-only ledger. Remove only proven dead/fixture/compatibility paths after reference, data-preservation, and runtime confirmation.
 
-Static inspection cannot prove deployed reachability, worker scheduling, production environment values, or whether business users still require SIP/AutoPay. Those decisions are explicitly marked **Needs runtime verification** below.
+Static inspection cannot prove deployed reachability, worker scheduling, or production environment values. SIP/AutoPay retention is now an accepted product decision; only its deployed scheduling and provider behavior remain **Needs runtime verification** below.
 
 ## 2. What the application actually does
 
@@ -39,7 +87,16 @@ External signup site / native client
         -> client portfolio and admin oversight
 ```
 
-The backend currently supports application onboarding, admin approval, cookie and token sessions, RBAC, fund catalog/version/disclosure management, investment orders, PhonePe checkout/callback/reconciliation, client value ledger entries, SIP/AutoPay scheduling, notifications, support requests, content/app configuration, and operational AUM/growth commands. It does **not** provide a generic client withdrawal/redemption API, generic manual deposit endpoint, or generic manual allocation-adjustment endpoint. The UI nevertheless exposes withdrawal screens (see §14).
+The backend currently supports application onboarding, admin approval, cookie and token sessions, RBAC, fund catalog/version/disclosure management, investment orders, PhonePe checkout/callback/reconciliation, client value ledger entries, SIP/AutoPay scheduling, notifications, support requests, content/app configuration, and operational AUM/growth commands. It does **not** provide a generic client withdrawal/redemption API, generic manual deposit endpoint, or generic manual allocation-adjustment endpoint. The withdrawal/redemption UI and service surface was removed in the implementation slice; restoring it remains a separate product decision.
+
+SIP/AutoPay is not an optional product decision. `sipScheduleWorker.ts` creates due
+installment orders; `mandateCollectionWorker.ts` checks the mandate and provider
+status, creates a payment/collection attempt, sends Notify Redemption, and
+reconciles collection facts. `phonePeRecurringGateway.ts` hard-codes and validates
+`autoDebit: true` and `redemptionRetryStrategy: "STANDARD"`. No Execute Redemption
+call exists in the current source scan. This is the desired PhonePe-managed debit
+and retry model; worker simplification should remove only duplicate processing,
+not the scheduling or reconciliation responsibilities.
 
 Migration `backend_controller/db/migrations/039_immediate_investment_settlement.sql` is the current financial behavior: successful payment immediately settles the order, creates allocation and client value contribution, and creates a fund-receipt acknowledgement. Older audit documentation in `release_manager/docs/Completed/INTENDED_SCOPE_ARCHITECTURE_AUDIT_2026-08-24.md` describes the pre-039 investment-review flow and is stale relative to current code.
 
@@ -69,7 +126,7 @@ workers:
 | Area | Evidence | Status |
 |---|---|---|
 | Backend API | `backend_controller/src/server.ts`, `src/runtime/{application,composition}.ts` | Active |
-| Backend domain | `backend_controller/src/domain/**` | Active, mixed core and optional features |
+| Backend domain | `backend_controller/src/domain/**` | Active, mixed core and retained/legacy features |
 | Backend DB | `backend_controller/db/migrations/*.sql`, `src/db/{types,repositories}.ts` | Active; 30 migrations, 55 typed tables |
 | Client UI | `frontend_stack/packages/client`, mounted by `ClientRoot.jsx` | Active |
 | Admin UI | `frontend_stack/packages/admin`, mounted by `BrowserRoot.jsx`/`Admin.jsx` | Active |
@@ -78,7 +135,7 @@ workers:
 | UI kits/preview | `frontend_stack/packages/ui-kits`, `frontend_stack/preview` | No production imports found; candidate removal after confirmation |
 | Deployment | `release_manager/stacks`, `_shared`, `DEPLOY.md` | Active operational tooling |
 | Historical reference | `release_manager/BOE_APP/`, `.resources.legacy.TLDR/`, `vault.md` | Archives/ignored; not tracked runtime product |
-| Monitoring | `release_manager/stacks/monitor` | Operationally separate; 8 compose services |
+| Monitoring | `release_manager/stacks/monitor_service` | Eight-service monitoring deployment is tracked here; this is separate at deploy time but **not yet a separate repository** as requested |
 
 The production compose file `release_manager/stacks/prod_release/docker-compose.prod_app.yml` defines 11 service entries: Redis, Postgres, migration/seed jobs, backend, four workers, client SPA, and admin SPA. `release_manager/README.md` states the older `BOE_APP/` pipeline is reference-only. Deployed reachability of each service is **Needs runtime verification**.
 
@@ -87,7 +144,7 @@ The production compose file `release_manager/stacks/prod_release/docker-compose.
 ```text
 application --reviews/consents--> approved application --creates--> user
 user --credentials/sessions/roles--> authenticated actor
-user --kyc/sip/orders/payments/notifications/support--> client operations
+user --email verification/SIP/orders/payments/notifications/support--> client operations
 fund --versions/disclosures/stocks/AUM--> published investment catalogue
 investment_order --payment_attempts/provider_details--> payment outcome
 investment_order --accepted--> investment_allocation --contributes--> client_value_entry
@@ -96,23 +153,30 @@ payment_mandate --setup/collection/cancel--> SIP/AutoPay workers
 all sensitive mutations --> audit_events; external work --> outbox_events
 ```
 
-The current canonical investment relationship is `investment_orders` → `payments`/`payment_attempts` → `investment_allocations` → `client_value_entries`. `legacy_investment_reviews` remains physically after migration 039 but is not represented in the Kysely `Database` interface and has no current settlement role.
+The current canonical investment relationship is `investment_orders` → `payments`/`payment_attempts` → `investment_allocations` → `client_value_entries`. `legacy_investment_reviews` remains physically after migration 039 but is not represented in the Kysely `Database` interface and has no current settlement role. `users` is the durable identity: financial tables use direct `users` foreign keys with restrictive deletion in migrations 017–022 and 039. In the committed baseline, Email OTP state is coupled to `kyc_cases` and `kyc_verification_codes`; pending migration 040/041 moves it to user-linked Email Verification state, and migration 042 proposes dropping the old tables. Those changes require preservation and deployed verification before they are considered complete.
 
 ## 6. Database model
 
-`backend_controller/src/db/types.ts` defines 55 tables. A fresh migration sequence reaches 56 application tables because `investment_reviews` is renamed to `legacy_investment_reviews`; `schema_migrations` makes 57 physical tables. This count is static and should be checked against a real production schema (**Needs runtime verification**).
+The committed `backend_controller/src/db/types.ts` baseline defines 55 tables. A fresh
+039 migration sequence reaches 56 application tables because `investment_reviews`
+is renamed to `legacy_investment_reviews`; `schema_migrations` makes 57 physical
+tables. The current worktree adds the pending Email Verification/legacy cleanup
+migrations, so the post-migration count must be recalculated after review. All
+counts are static and should be checked against a real production schema
+(**Needs runtime verification**).
 
 Core groups are:
 
 - Identity/onboarding: `applications`, `application_consents`, `consent_documents`, `application_reviews`, `users`, `user_credentials`.
 - Authentication/RBAC/audit: `auth_sessions`, `auth_refresh_tokens`, `auth_login_events`, `roles`, `permissions`, `role_permissions`, `user_roles`, `audit_events`, `idempotency_records`, `rate_limit_windows`, `legal_holds`.
 - Reliability/email: `outbox_events`, `email_deliveries`, `email_provider_events`, `email_suppressions`.
-- Compliance/profile: `investor_profiles`, `kyc_cases`, `kyc_documents`, `kyc_reviews`, `kyc_verification_codes`, `risk_assessments`.
+- Email verification (currently KYC-named): `kyc_cases`, `kyc_verification_codes`; these are being replaced by durable user-linked Email Verification state.
+- Designated legacy compliance/profile: `investor_profiles`, `kyc_documents`, `kyc_reviews`, `risk_assessments`.
 - Catalogue/reporting: `funds`, `fund_versions`, `fund_disclosure_versions`, `fund_stock_disclosures`, `fund_aum_snapshots`, `aum_growth_batches`, `finance_policy_versions`, `content_items`, `app_config_versions`.
 - Investing/payments: `investment_orders`, `payments`, `payment_attempts`, `provider_payment_details`, `provider_events`, `refund_operations`, `investment_allocations`, `fund_receipt_acknowledgements`.
 - Ledger/operations: `client_value_entries`, `client_growth_batches`, `notifications`, `support_requests`.
-- Optional SIP/mandates: `sip_plans`, `payment_mandates`, `mandate_setup_attempts`, `mandate_collection_attempts`, `mandate_cancel_commands`, `worker_heartbeats`.
-- Marketing/other: `marketing_leads`.
+- Retained SIP/mandates: `sip_plans`, `payment_mandates`, `mandate_setup_attempts`, `mandate_collection_attempts`, `mandate_cancel_commands`, `worker_heartbeats`.
+- Designated legacy marketing: `marketing_leads`.
 
 Money is stored as integer paise (`bigint` columns). Client balance is derived by summing append-only `client_value_entries` in `backend_controller/src/domain/client/portfolioLedger.ts`; there is no authoritative stored client balance. The same accepted amount is repeated across order, payment, allocation, and ledger rows, protected by foreign keys/checks/settlement logic but costly to reason about.
 
@@ -132,11 +196,33 @@ The generated OpenAPI artifact (`frontend_stack/packages/contracts/generated/ope
 
 ## 8. User lifecycle
 
-`publicOnboardingRoutes.ts` receives `POST /newuser` with `x-signup-key`; `submitApplication.ts` writes `applications` in `submitted` state, consent rows, and audit. Admin `POST /v1/admin/applications/:id/decision` invokes `decideApplication.ts`; approval creates an active `users` row and credential, queues outbox/email, and rejection leaves no active account. Native login is `/v1/auth/native/login`; web admin login is `/v1/auth/web/login` with HttpOnly cookie and CSRF. KYC currently uses email OTP (`clientKycRoutes.ts`, `domain/client/kyc.ts`, `kyc_cases`, `kyc_verification_codes`) and directly sets approval; document/review/risk tables have incomplete write paths. Email ownership is not equivalent to regulated KYC (**Needs product/compliance verification**).
+`publicOnboardingRoutes.ts` receives `POST /newuser` with `x-signup-key`; `submitApplication.ts` writes `applications` in `submitted` state, consent rows, and audit. Admin `POST /v1/admin/applications/:id/decision` invokes `decideApplication.ts`; approval creates an active `users` row and credential, queues outbox/email, and rejection leaves no active account. Native login is `/v1/auth/native/login`; web admin login is `/v1/auth/web/login` with HttpOnly cookie and CSRF. Email OTP currently uses KYC-named code (`clientKycRoutes.ts`, `domain/client/kyc.ts`, `kyc_cases`, `kyc_verification_codes`) and directly sets the case approved; the current simplification slice is migrating this state to `users` and `email_verification_codes`. Email ownership is not regulatory KYC. Actual deployed row counts and legal-retention obligations remain **Needs runtime verification**.
 
 ## 9. Fund lifecycle
 
 Admin fund creation/configuration is registered by `adminCatalogRoutes.ts`; fund versions/disclosures/stocks are persisted and a publish pointer makes catalog data visible. Client catalog reads `/v1/client/funds`. AUM uses `adminAumRoutes.ts` and `fund_aum_snapshots`; this is reporting state, not client ledger state.
+
+### Email OTP terminology boundary
+
+Static tracing found the following KYC-named implementation of what the current
+business flow describes as email ownership verification:
+
+| Concern | Current artifact | Required direction |
+|---|---|---|
+| Persistent status | `kyc_cases.state`, queried in `investingEligibility.ts`, `orderRepository.ts`, and `clientPortfolioRepository.ts` | User-linked Email Verification state on `users` or an explicitly named retained table |
+| One-time code | `kyc_verification_codes` and `kycRepository.ts` | `email_verification_codes`, short-lived and user-linked |
+| Domain | `domain/client/kyc.ts` | `domain/client/emailVerification.ts` |
+| Routes | `clientKycRoutes.ts`: `POST /v1/client/kyc/start`, `/resend`, `/verify`, and `GET /v1/client/kyc-status` | Email Verification route/type names; remove KYC wording when the behavior is only OTP email control |
+| Runtime configuration | `EMAIL_VERIFICATION_FROM`, `EMAIL_VERIFICATION_CODE_TTL_MS`, `EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS`, `EMAIL_VERIFICATION_RESEND_COOLDOWN_MS`, `EMAIL_VERIFICATION_VALIDITY_MS` in `runtime/environment.ts` and composition | Canonical Email OTP Verification configuration; deployment examples and validation use the same names |
+| Admin/UI wording | `adminOversightRoutes.ts`, `adminOversightRepository.ts`, `UserDetailScreen.jsx`, `helpers/formatters.js` | Use Email Verification status/labels where no regulatory identity review is performed |
+| Email/onboarding wording | `emailTemplates.ts`, `emailSender.ts`, `transactionalEmailSender.ts`, `emailWorker.ts`, `submitApplication.ts`, and `publicOnboardingRoutes.ts` | Rename only OTP/account-verification semantics; preserve genuine regulatory, legal, or historical compliance wording |
+| Schema/migrations | `014_canonical_compliance.sql`, `019_kyc_email_verification.sql`, `db/types.ts` | Preserve source rows, backfill durable users, then drop/rename obsolete structures through forward migrations |
+
+This list is a semantic rename plan, not evidence that every KYC-named artifact
+is safe to rename. `kyc_documents`, `kyc_reviews`, `risk_assessments`, and any
+legal/compliance records may represent genuine regulatory retention and require
+separate review. **Needs runtime verification:** existing row counts, legal
+holds, and whether any production operator/report depends on these tables.
 
 ## 10. Allocation lifecycle
 
@@ -148,7 +234,7 @@ The payment path is PhonePe-specific after the Razorpay rewrite. Client order/pa
 
 ## 12. Frontend architecture
 
-`frontend_stack/app/src/main.jsx` build-time selects exactly one target. Client provider stack includes `SessionProvider`, `CheckoutProvider`, `ResourceCacheProvider`, eviction/recovery, error boundary, then `ClientApp`; admin adds admin session, cache eviction, toast, approvals queue, heading providers. Client has 22 manifest destinations and 26 route elements; admin has 44 route elements, including 15 compatibility redirects and 13 legacy query-tab mappings (`legacyTabMap.js`). `pages/legacy/legacyRoutes.jsx` is still imported by `Admin.jsx`, so “legacy” code is active wrapper code.
+`frontend_stack/app/src/main.jsx` build-time selects exactly one target. Client provider stack includes `SessionProvider`, `CheckoutProvider`, `ResourceCacheProvider`, eviction/recovery, error boundary, then `ClientApp`; admin adds admin session, cache eviction, toast, approvals queue, heading providers. The earlier admin compatibility aliases and `legacyTabMap.js` were removed in the implementation slice; `pages/legacy/legacyRoutes.jsx` remains imported by `Admin.jsx`, so “legacy” wrapper code is still active.
 
 The client transport `packages/client/src/services/_util.js::apiRequest` is the strongest canonical transport. `packages/shared/src/appConfig.js::appConfigRequest` separately implements base URL, auth, and CSRF handling, duplicating transport behavior. Fixture mode is spread across approximately 15 production service modules and can render local/stale data when remote config fails (`useAppConfig.js`). This is disproportionate for CRUD screens.
 
@@ -167,7 +253,7 @@ There are 26 production route modules, 36 repository modules, and 28 non-test do
 | Fixture business data | `fixture*.js` files and service fallbacks | inline fixtures in `ordersApi.js` and related services | Build/test/fallback paths | Remove after explicit fixture-mode decision |
 | Payment state mapping | order/payment/attempt maps in multiple service/screen files | backend canonical mapper | Active | Generate/use one contract mapping |
 | API contract | runtime Fastify routes | `packages/contracts` OpenAPI (15 paths) | Runtime ignores generated contract | Make route schema or generated contract authoritative |
-| Withdrawal | client `fundsApi.submitRedemption/listRedemptionRequests` | no backend route/table | UI active, backend absent | Either implement deliberately or remove UI; do not leave false affordance |
+| Withdrawal/redemption | Removed client redemption route/page/service surface | no backend route/table | No executable implementation; product scope still needs explicit confirmation | Keep removed unless a secure end-to-end withdrawal contract is approved |
 
 ## 15. Dead and stale code
 
@@ -176,12 +262,13 @@ There are 26 production route modules, 36 repository modules, and 28 non-test do
 - `frontend_stack/packages/client/src/data/fixtureMandates.js`, `fixtureOrders.js`, `fixtureSipControlRequests.js`: no production imports found; verify test-only consumers before removal.
 - `frontend_stack/packages/ui-kits` and `frontend_stack/preview`: no production imports; bundle contract test forbids `@beonedge/ui-kits`.
 - Root scripts `kimi:chunk`, `kimi:run`, `kimi:apply` reference absent `scripts/kimi/*`; root dependencies `agent-browser` and `ngrok` have no runtime references (Playwright is used by `test_e2e/signup-users.mjs`).
-- `legacy_investment_reviews`: physically retained after 039, absent from current typed schema and settlement path.
+- `legacy_investment_reviews`: physically retained after 039, absent from current typed schema and settlement path; designated for removal through a preserving forward migration.
 
 ### Probably stale or incomplete
 
 - `refund_operations` and refund repository operations without a create caller.
-- `risk_assessments`, `investor_profiles`, `kyc_documents`, `marketing_leads`, `legal_holds`, `finance_policy_versions`: schema/read/seed presence exceeds current write workflows.
+- `risk_assessments`, `investor_profiles`, `kyc_documents`, `kyc_reviews`, and `marketing_leads`: schema/read/seed presence exceeds current write workflows and are designated removal candidates, subject to FK, preservation, statutory-retention, and legal-hold checks.
+- `kyc_cases` and `kyc_verification_codes`: active Email OTP implementation despite incorrect KYC naming; not removable until state is migrated to durable Email Verification storage.
 - Persistent `rate_limit_windows` table versus in-process `http/rateLimit.ts` map.
 - Admin compatibility routes and legacy tab map.
 - Withdrawal/redemption client UI and `adminReason` display not populated by `mapRedemptionRequest`.
@@ -204,7 +291,7 @@ The simplified design should make one authority explicit per fact and make all p
 
 ## 17. Unnecessary abstraction
 
-The largest low-value complexity is not PostgreSQL or Fastify; it is parallel representations. Examples are the unused contract package, raw app-config transport, fixture-mode services, compatibility redirects, legacy wrappers, and giant route files that mix concerns. Repository modules are justified where they enforce ownership, transactions, and query boundaries; pass-through repositories that only rename a Kysely call should be consolidated cautiously. Redis is optional in code (`createRedisCache` with uncached fallback) and should remain only if production measurements show a requirement.
+The largest low-value complexity is not PostgreSQL or Fastify; it is parallel representations. Examples are the disconnected contract artifact, raw app-config transport, fixture-mode services, compatibility redirects, legacy wrappers, and giant route files that mix concerns. Repository modules are justified where they enforce ownership, transactions, and query boundaries; pass-through repositories that only rename a Kysely call should be consolidated cautiously. Redis is retained for the measured shared read-cache role (`createRedisCache` with PostgreSQL fallback), not as financial truth or a general concurrency mechanism.
 
 ## 18. Historical architectural drift
 
@@ -221,21 +308,27 @@ This sequence explains why names, tables, routes, and UI generations disagree: e
 
 ## 19. Infrastructure and dependency complexity
 
-Production compose has 11 app-related services; monitoring adds Prometheus, Grafana, Alertmanager, node exporter, cAdvisor, blackbox exporter, and two PostgreSQL exporters. This is reasonable for an operational VPS only if all are used; deployed usage is **Needs runtime verification**. Release scripts are active and should not be collapsed casually. `release_manager/README.md` identifies `BOE_APP/` as reference-only.
+Production compose has 11 app-related services; the tracked `monitor_service`
+stack adds Prometheus, Grafana, Alertmanager, node exporter, cAdvisor, blackbox
+exporter, and two PostgreSQL exporters. This is a separately deployed
+operational stack but it remains repository-coupled, contrary to the requested
+separate monitoring repository. Its deployed usage is **Needs runtime
+verification**. Release scripts are active and should not be collapsed casually.
+`release_manager/README.md` identifies `BOE_APP/` as reference-only.
 
 Potential simplifications after proof:
 
 - Remove unused root Kimi scripts/dependencies and unreferenced UI kit workspace.
 - Keep one frontend build shell, but avoid shipping both package trees if deployment can build target-specific bundles.
-- Keep workers only for retained email/payment/SIP responsibilities.
-- Keep Redis optional until cache/session/rate-limit requirements are measured.
-- Retain monitoring required for production security/operations; remove exporters only with evidence.
+- Keep workers only for retained email/payment/SIP responsibilities; the SIP workers must not duplicate PhonePe debit or retry behavior.
+- Keep Redis isolated per environment for shared read caching; do not expand its role without evidence.
+- Keep health/metrics/log/audit emission in BOE_APP, but move collection, dashboards, alerts, and backup operations to the separately owned monitoring repository; the currently tracked `monitor_service` is an extraction boundary.
 
 ## 20. Security-critical complexity that should remain
 
 Do not simplify away ES256 access tokens (`auth/accessToken.ts`), Argon2id hashing (`passwordHasher.ts`), password gate (`passwordGate.ts`), refresh rotation/reuse-family revocation (`nativeAuth.ts`, `webAuth.ts`, `authSessionRepository.ts`), HttpOnly/Secure/SameSite cookies, synchronizer CSRF and Origin/Sec-Fetch checks, channel-bound native/web sessions, live account-state checks, RBAC reload (`domain/admin/adminAccess.ts`), owner-scoped SQL reads, Zod validation/body bounds, DB transactions/locks/idempotency, PhonePe signature plus provider re-query, encrypted callback retention/dedup, payment correlation, append-only ledger, audit events, CORS, internal Postgres networking, non-root/cap-drop containers, and migration health gates/backups.
 
-The current rate limiter is an in-process map in `http/rateLimit.ts` and is used for only four AUM writes; login, onboarding, KYC, payments, webhooks, and support are not covered. `rate_limit_windows` exists but is not used by the runtime limiter. This is a security gap to fix deliberately, not an abstraction to delete.
+The current rate limiter is an in-process map in `http/rateLimit.ts` and is used for only four AUM writes; login, onboarding, Email OTP, payments, webhooks, and support are not covered. `rate_limit_windows` exists but is not used by the runtime limiter. This is a security gap to fix deliberately, not an abstraction to delete.
 
 ## 21. Complexity metrics
 
@@ -275,48 +368,59 @@ Evidence supports these causes:
 ## 23. Minimal Correct Architecture
 
 ```text
-Client SPA / Admin SPA / native client
-              |
-        Fastify API (one process)
-              |
-   small domain services (auth, onboarding,
-   funds, orders/payments, ledger, admin ops)
-              |
- PostgreSQL (one canonical schema + append-only ledger)
-       |                 |
- PhonePe webhook      email/outbox worker
-       |
- payment reconciliation worker (only if needed)
+                 Client SPA / Admin SPA / native client
+                                  |
+                         Fastify API (one process)
+                                  |
+             small domain services (auth, onboarding, funds,
+                 orders/payments, ledger, SIP/AutoPay, admin ops)
+                                  |
+               PostgreSQL (one canonical schema + append-only ledger)
+                       |                          |
+                 PhonePe callbacks       email/outbox worker
+                       |                          |
+             payment/SIP reconciliation workers
+
+        DEV stack: one app deployment + PostgreSQL DEV + Redis DEV
+        PROD stack: one app deployment + PostgreSQL PROD + Redis PROD
+        Monitoring/operations: separate repository and deployment
 ```
 
-Keep SIP/AutoPay as an optional bounded subsystem only if the product requires recurring collection. Use one order/payment outcome service, one allocation/ledger writer, one frontend transport, and one enforced API schema. Keep audit/idempotency/security tables. Remove compatibility and fixture paths once verified unused.
+Keep SIP/AutoPay as a bounded required subsystem. Use one order/payment outcome
+service, one allocation/ledger writer, one frontend transport, and one enforced
+API schema. PhonePe receives Notify Redemption with `autoDebit=true` and
+`redemptionRetryStrategy="STANDARD"`; the backend schedules due plans and
+reconciles outcomes, but does not perform merchant-side Execute Redemption or a
+second retry engine. Keep audit/idempotency/security tables. Remove compatibility
+and fixture paths once verified unused. Keep BOE_APP observability endpoints,
+while the monitoring repository owns collection and visualization.
 
 ## 24. Current vs proposed architecture
 
 | Area | Current | Minimal target | Reduction |
 |---|---|---|---|
 | Authentication | Native token + web cookie channels, duplicated UI role parsing | Keep two security channels; one session selector | Remove UI duplication, retain security boundary |
-| Users | Applications, reviews, users, credential records, and identity/compliance details | Keep onboarding, user, credential, and KYC status; archive unused compliance workflows | Fewer active write paths |
+| Users | Applications, reviews, users, credential records, and KYC-named Email OTP state | Keep onboarding, durable `users`, credentials, and user-linked Email Verification; remove legacy compliance workflows only after preservation | Fewer active write paths without losing verified users |
 | Funds | Funds, versions, disclosures, stocks, AUM, growth batches | Keep catalogue/version/disclosure; isolate optional AUM | Smaller core, explicit reporting boundary |
 | Allocations | Orders, payments, allocation, value entries, receipts, growth | One settlement service writes allocation + ledger transactionally | One canonical write path |
-| Payments | Order/payment/attempt/provider/mandate/refund/event projections | Keep provider evidence and idempotent outcome; remove unused refund/mandate paths | Fewer projections if features retired |
+| Payments | Order/payment/attempt/provider/mandate/refund/event projections | Keep provider evidence, idempotent outcome, and SIP/AutoPay mandate paths; remove only unused refund paths | Fewer projections while retaining recurring payments |
 | Frontend state | Multiple providers, fixture fallback, caches, repeated transport | One auth/cache/query policy per target, one transport | Less synchronization code |
-| Database | 55 typed tables plus legacy/optional tables | Core schema plus explicitly retained optional modules | Lower cognitive and migration burden |
+| Database | 55 typed tables plus KYC-named Email OTP and legacy tables | Durable users + Email Verification, canonical financial core, retained SIP/AutoPay, and only legally/operationally required tables | Lower cognitive and migration burden with preservation guarantees |
 | Contracts | Runtime routes + disconnected OpenAPI + service assumptions | Route schemas generate/validate client contract | Prevent drift |
 
 ## 25. KEEP / CONSOLIDATE / SIMPLIFY / REWRITE / REMOVE matrix
 
-See the exact file matrix in `FILE_DISPOSITION_AND_ROADMAP.md`. In summary: **KEEP** security, transaction/ledger, provider verification, deployment safety, and tested onboarding; **CONSOLIDATE** transport, payment outcome mapping, role parsing, API contract, and financial display conversions; **SIMPLIFY** app config, route-local orchestration, compatibility aliases, fixture mode, and optional Redis; **REWRITE** only the broken redemption workflow or a bounded subsystem if the business confirms it; **REMOVE** proven dead UI kits, fixture files, Kimi scripts, stale docs, and legacy tables only after reference/runtime checks.
+See the exact file matrix in `FILE_DISPOSITION_AND_ROADMAP.md`. In summary: **KEEP** security, transaction/ledger, provider verification, deployment safety, onboarding, SIP/AutoPay, Redis cache infrastructure, and financial history; **CONSOLIDATE** transport, payment outcome mapping, role parsing, API contract, and financial display conversions; **SIMPLIFY** app config, route-local orchestration, compatibility aliases, fixture mode, worker responsibilities, and monitoring ownership; **REWRITE** only the broken redemption workflow if the business confirms it; **REMOVE** proven dead UI kits, fixture files, Kimi scripts, stale docs, and designated legacy tables only after forward migration and data-preservation checks.
 
 ## 26. Migration strategy
 
 | Option | Risk | Effort | Assessment |
 |---|---|---|---|
 | A. Incremental simplification | Low–medium; each slice testable | Medium | **Recommended**; preserves secure financial foundation |
-| B. Controlled subsystem rewrite | Medium–high; contract/data migration risk | Medium–high | Use only for confirmed broken redemption or optional mandate subsystem |
+| B. Controlled subsystem rewrite | Medium–high; contract/data migration risk | Medium–high | Use only for confirmed broken redemption or a bounded SIP/AutoPay defect; retain the provider-managed debit contract |
 | C. Clean rebuild | Highest; auth/payment/data-loss/regression risk | High despite small domain | Not justified by static evidence |
 
-Recommended order: establish contract truth; freeze/verify financial invariants; consolidate frontend transport; remove fixture/compatibility paths; decide SIP/AutoPay; then archive unused schema with migrations. Never dual-write or preserve compatibility branches unless production migration requirements change the pre-production rule.
+Recommended order: establish contract truth; freeze/verify financial invariants; consolidate frontend transport; verify the Notify-only SIP/AutoPay worker boundary; remove fixture/compatibility paths; migrate Email OTP naming/state to durable `users`; then archive/drop designated unused schema with forward migrations and preservation checks. Never dual-write or preserve compatibility branches unless production migration requirements change the pre-production rule.
 
 ## 27. Prioritized simplification roadmap
 
@@ -326,9 +430,9 @@ Recommended order: establish contract truth; freeze/verify financial invariants;
 4. **Close the withdrawal gap:** product decision: implement a secure redemption workflow end to end, or remove/disable the client withdrawal UI and services.
 5. **Transport/state consolidation:** route app-config through canonical `apiRequest`; centralize role parsing, signed amount conversion, and payment-state mapping.
 6. **Remove proven fixture/compatibility code:** fixture files, old tab redirects, legacy wrappers, and unreferenced UI kit after runtime navigation/build checks.
-7. **Optional subsystem decision:** retain or retire SIP/AutoPay, mandates, workers, and related tables as one bounded decision.
-8. **Schema cleanup:** only after production data/backup review, archive or drop orphaned tables through forward migrations; update `db/types.ts` and repositories.
-9. **Operational hardening:** extend rate limiting to critical ingress, verify webhook exposure, and confirm monitoring/Redis necessity in deployed environment.
+7. **SIP/AutoPay boundary:** retain the required subsystem; verify deployed worker scheduling and ensure the source remains Notify-only with PhonePe-managed debit/retry (`autoDebit=true`, `STANDARD`).
+8. **Email Verification and schema cleanup:** migrate KYC-named Email OTP state to durable `users`, rename only email-verification semantics, then archive/drop the six designated legacy tables through forward migrations after data, backup, FK, retention, and legal-hold review.
+9. **Operational hardening:** extend rate limiting to critical ingress, verify webhook exposure, confirm VPS dev/prod isolation, and extract the tracked monitoring deployment to its separate repository while retaining Redis cache and BOE_APP telemetry endpoints.
 
 ## 28. Exact files/directories affected by a future simplification
 
@@ -349,4 +453,4 @@ Primary targets are listed in `FILE_DISPOSITION_AND_ROADMAP.md`; notable directo
 
 ## 30. Final verdict
 
-The repository is not inexplicably complex because the business requires a large distributed system. It is difficult because several valid implementations accumulated without a final authority pass: payment models were reset, recurring payments were added, settlement semantics changed, UI generations remained reachable, and contracts diverged. The secure core is salvageable and tested. The smallest reliable path is an incremental consolidation around one API contract, one payment outcome/ledger writer, one frontend transport, explicit optional SIP/AutoPay boundaries, and removal of proven historical paths. A clean rebuild is not supported by the evidence.
+The repository is not inexplicably complex because the business requires a large distributed system. It is difficult because several valid implementations accumulated without a final authority pass: payment models were reset, recurring payments were added, settlement semantics changed, UI generations remained reachable, and contracts diverged. The secure core is salvageable and tested. The smallest reliable path is an incremental consolidation around one API contract, one payment outcome/ledger writer, one frontend transport, a bounded required SIP/AutoPay subsystem using PhonePe-managed debit/retry, durable Email Verification on `users`, and removal of proven historical paths. A clean rebuild is not supported by the evidence.

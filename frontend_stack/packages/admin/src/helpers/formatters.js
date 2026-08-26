@@ -88,7 +88,7 @@ export function normalizeApprovalRow(row = {}) {
     email: row.email || '',
     phone: row.phone || '',
     status: row.status || 'pending',
-    kycStatus: row.kycStatus || 'pending',
+    emailVerificationStatus: row.emailVerificationStatus || 'not_started',
     riskProfileStatus: row.riskProfileStatus || 'pending',
     createdAt: row.createdAt || row.registeredAt || '',
     updatedAt: row.updatedAt || '',
@@ -133,4 +133,3 @@ export function csvNumbers(value) {
   if (!value) return [];
   return String(value).split(',').map((s) => Number(s.trim())).filter(Number.isFinite);
 }
-

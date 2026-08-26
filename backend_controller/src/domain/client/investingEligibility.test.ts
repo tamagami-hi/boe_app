@@ -5,20 +5,17 @@ import { deriveInvestingEligibility, type EligibilityInputs } from "./investingE
 const NOW = new Date("2026-07-21T00:00:00.000Z")
 const base: EligibilityInputs = {
   accountState: "active",
-  kyc: { state: "approved", expiresAt: "2027-07-21T00:00:00.000Z" },
+  emailVerification: { state: "verified", expiresAt: "2027-07-21T00:00:00.000Z" },
   now: NOW,
 }
 
-describe("deriveInvestingEligibility (decision 9: KYC-only, no client risk profiling)", () => {
-  test("active user with current approved KYC is eligible", () => {
+describe("deriveInvestingEligibility (decision 9: email verification-only, no client risk profiling)", () => {
+  test("active user with current verified email verification is eligible", () => {
     expect(deriveInvestingEligibility(base)).toEqual({ eligibility: "eligible", reason: null })
   })
 
-  test("risk assessment is NOT a gate — eligible regardless of riskState", () => {
-    expect(deriveInvestingEligibility({ ...base, riskState: null }).eligibility).toBe("eligible")
-    expect(deriveInvestingEligibility({ ...base, riskState: "not_started" }).eligibility).toBe("eligible")
-    expect(deriveInvestingEligibility({ ...base, riskState: "submitted" }).eligibility).toBe("eligible")
-    expect(deriveInvestingEligibility({ ...base, riskState: "assessed" }).eligibility).toBe("eligible")
+  test("no risk-assessment input is required for eligibility", () => {
+    expect(deriveInvestingEligibility(base).eligibility).toBe("eligible")
   })
 
   test("closed or suspended user is suspended", () => {
@@ -39,43 +36,43 @@ describe("deriveInvestingEligibility (decision 9: KYC-only, no client risk profi
     })
   })
 
-  test("missing or unapproved KYC is pending_compliance (kyc_required)", () => {
-    expect(deriveInvestingEligibility({ ...base, kyc: null })).toEqual({
-      eligibility: "pending_compliance",
-      reason: "kyc_required",
+  test("missing or unverified email verification is pending_verification (email_verification_required)", () => {
+    expect(deriveInvestingEligibility({ ...base, emailVerification: null })).toEqual({
+      eligibility: "pending_verification",
+      reason: "email_verification_required",
     })
     expect(
-      deriveInvestingEligibility({ ...base, kyc: { state: "submitted", expiresAt: null } }).reason,
-    ).toBe("kyc_required")
+      deriveInvestingEligibility({ ...base, emailVerification: { state: "pending", expiresAt: null } }).reason,
+    ).toBe("email_verification_required")
     expect(
-      deriveInvestingEligibility({ ...base, kyc: { state: "pending_submission", expiresAt: null } }).eligibility,
-    ).toBe("pending_compliance")
+      deriveInvestingEligibility({ ...base, emailVerification: { state: "pending", expiresAt: null } }).eligibility,
+    ).toBe("pending_verification")
   })
 
-  test("expired approved KYC is pending_compliance (kyc_expired)", () => {
+  test("expired verified email verification is pending_verification (email_verification_expired)", () => {
     expect(
       deriveInvestingEligibility({
         ...base,
-        kyc: { state: "approved", expiresAt: "2020-01-01T00:00:00.000Z" },
+        emailVerification: { state: "verified", expiresAt: "2020-01-01T00:00:00.000Z" },
       }),
-    ).toEqual({ eligibility: "pending_compliance", reason: "kyc_expired" })
+    ).toEqual({ eligibility: "pending_verification", reason: "email_verification_expired" })
   })
 
-  test("approved KYC with null expiry does not expire", () => {
+  test("verified email verification with null expiry does not expire", () => {
     expect(
-      deriveInvestingEligibility({ ...base, kyc: { state: "approved", expiresAt: null } }).eligibility,
+      deriveInvestingEligibility({ ...base, emailVerification: { state: "verified", expiresAt: null } }).eligibility,
     ).toBe("eligible")
   })
 
-  test("KYC expiring exactly at now is treated as expired (<=)", () => {
+  test("email verification expiring exactly at now is treated as expired (<=)", () => {
     expect(
-      deriveInvestingEligibility({ ...base, kyc: { state: "approved", expiresAt: NOW.toISOString() } }).reason,
-    ).toBe("kyc_expired")
+      deriveInvestingEligibility({ ...base, emailVerification: { state: "verified", expiresAt: NOW.toISOString() } }).reason,
+    ).toBe("email_verification_expired")
   })
 
-  test("suspension takes precedence over missing KYC", () => {
+  test("suspension takes precedence over missing email verification", () => {
     expect(
-      deriveInvestingEligibility({ ...base, accountState: "suspended", kyc: null }).eligibility,
+      deriveInvestingEligibility({ ...base, accountState: "suspended", emailVerification: null }).eligibility,
     ).toBe("suspended")
   })
 })

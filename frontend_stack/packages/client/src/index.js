@@ -52,7 +52,7 @@ export { default as Explore } from './pages/Explore.jsx';
 export { default as FundDetail } from './pages/FundDetail.jsx';
 export { default as GrievanceRedressal } from './pages/GrievanceRedressal.jsx';
 export { default as InvestorCharter } from './pages/InvestorCharter.jsx';
-export { default as KycDetail } from './pages/KycDetail.jsx';
+export { default as EmailVerificationDetail } from './pages/EmailVerificationDetail.jsx';
 export { default as Legal } from './pages/Legal.jsx';
 export { default as Login } from './pages/Login.jsx';
 export { default as LumpsumSheet } from './pages/LumpsumSheet.jsx';

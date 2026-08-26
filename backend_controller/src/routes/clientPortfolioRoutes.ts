@@ -137,10 +137,10 @@ const getEligibility = async (deps: ClientPortfolioDeps, request: FastifyRequest
 
   const inputs: EligibilityInputs = {
     accountState: inputsRow.accountState,
-    kyc:
-      inputsRow.kycState === null
+    emailVerification:
+      inputsRow.emailVerificationState === null
         ? null
-        : { state: inputsRow.kycState, expiresAt: isoOrNull(inputsRow.kycExpiresAt) },
+        : { state: inputsRow.emailVerificationState, expiresAt: isoOrNull(inputsRow.emailVerificationExpiresAt) },
     now,
   }
   const decision = deriveInvestingEligibility(inputs)
@@ -149,7 +149,7 @@ const getEligibility = async (deps: ClientPortfolioDeps, request: FastifyRequest
       eligibility: decision.eligibility,
       reason: decision.reason,
       canInvest: decision.eligibility === "eligible",
-      kycState: inputsRow.kycState,
+      emailVerificationState: inputsRow.emailVerificationState,
       evaluatedAt: iso(now),
     },
     { status: 200 },

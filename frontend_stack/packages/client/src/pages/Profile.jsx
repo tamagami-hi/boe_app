@@ -3,15 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { ListRow } from '@beonedge/shared';
 import { useSession } from '../store/SessionContext.jsx';
-import { fetchKycStatus } from '../services/kycApi.js';
+import { fetchEmailVerificationStatus } from '../services/emailVerificationApi.js';
 import { buildPath } from '../navigation/routes.js';
 
-const KYC_LABEL = {
-  approved: 'Verified',
+const EMAIL_VERIFICATION_LABEL = {
+  verified: 'Verified',
   not_started: 'Not started',
-  in_progress: 'Code sent',
-  submitted: 'In review',
-  in_review: 'In review',
+  pending: 'Code sent',
   rejected: 'Not verified',
 };
 
@@ -28,13 +26,13 @@ const Chevron = <ChevronRight size={18} strokeWidth={1.5} aria-hidden="true" />;
 export default function Profile() {
   const navigate = useNavigate();
   const { user, logout } = useSession();
-  const [kyc, setKyc] = useState(null);
-  const [kycUnavailable, setKycUnavailable] = useState(false);
+  const [emailVerification, setEmailVerification] = useState(null);
+  const [emailVerificationUnavailable, setEmailVerificationUnavailable] = useState(false);
 
   useEffect(() => {
-    fetchKycStatus()
-      .then((next) => { setKyc(next); setKycUnavailable(false); })
-      .catch(() => { setKyc(null); setKycUnavailable(true); });
+    fetchEmailVerificationStatus()
+      .then((next) => { setEmailVerification(next); setEmailVerificationUnavailable(false); })
+      .catch(() => { setEmailVerification(null); setEmailVerificationUnavailable(true); });
   }, []);
 
   async function onSignOut() {
@@ -42,7 +40,7 @@ export default function Profile() {
     navigate(buildPath('login'), { replace: true });
   }
 
-  const kycApproved = kyc?.status === 'approved' && kyc?.expired !== true;
+  const emailVerificationApproved = emailVerification?.status === 'verified' && emailVerification?.expired !== true;
 
   return (
     <div className="apk-screen">
@@ -76,14 +74,14 @@ export default function Profile() {
       <div className="be-card be-card--flush">
         <ListRow
           as={Link}
-          to={buildPath('kyc')}
-          title="KYC & Compliance"
-          meta={kycUnavailable ? 'Status unavailable — tap to check' : kyc === null ? undefined : KYC_LABEL[kyc.status] || kyc.status}
+          to={buildPath('email_verification')}
+          title="Email Verification"
+          meta={emailVerificationUnavailable ? 'Status unavailable — tap to check' : emailVerification === null ? undefined : EMAIL_VERIFICATION_LABEL[emailVerification.status] || emailVerification.status}
           trailing={
             <>
-              {kyc !== null && (
-                <span className={'be-badge ' + (kycApproved ? 'be-badge-active' : 'be-badge-paused')}>
-                  <span className="be-badge-dot" />{kycApproved ? 'active' : 'paused'}
+              {emailVerification !== null && (
+                <span className={'be-badge ' + (emailVerificationApproved ? 'be-badge-active' : 'be-badge-paused')}>
+                  <span className="be-badge-dot" />{emailVerificationApproved ? 'active' : 'paused'}
                 </span>
               )}
               {Chevron}

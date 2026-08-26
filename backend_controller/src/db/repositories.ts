@@ -34,12 +34,7 @@ export type OutboxEvent = Row<"outbox_events">
 export type EmailDelivery = Row<"email_deliveries">
 export type EmailProviderEvent = Row<"email_provider_events">
 export type EmailSuppression = Row<"email_suppressions">
-export type InvestorProfile = Row<"investor_profiles">
-export type KycCase = Row<"kyc_cases">
-export type KycVerificationCode = Row<"kyc_verification_codes">
-export type KycDocument = Row<"kyc_documents">
-export type KycReview = Row<"kyc_reviews">
-export type RiskAssessment = Row<"risk_assessments">
+export type EmailVerificationCode = Row<"email_verification_codes">
 export type Fund = Row<"funds">
 export type FundVersion = Row<"fund_versions">
 export type FundDisclosureVersion = Row<"fund_disclosure_versions">
@@ -47,7 +42,6 @@ export type FundAumSnapshot = Row<"fund_aum_snapshots">
 export type AumGrowthBatch = Row<"aum_growth_batches">
 export type FundStockDisclosure = Row<"fund_stock_disclosures">
 export type FinancePolicyVersion = Row<"finance_policy_versions">
-export type MarketingLead = Row<"marketing_leads">
 export type AppConfigVersion = Row<"app_config_versions">
 export type ContentItem = Row<"content_items">
 export type SipPlan = Row<"sip_plans">
@@ -135,10 +129,6 @@ export type RetentionEntityType =
   | "email_delivery"
   | "email_provider_event"
   | "audit_event"
-  | "investor_profile"
-  | "kyc_case"
-  | "risk_assessment"
-  | "marketing_lead"
   | "investment_order"
   | "payment"
 export type CleanupRecordType =

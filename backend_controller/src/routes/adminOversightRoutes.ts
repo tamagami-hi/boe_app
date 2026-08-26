@@ -3,7 +3,7 @@
  * methods, keyset cursors.
  *
  *   GET   /v1/admin/users                     directory (state/search filters)      users.read
- *   GET   /v1/admin/users/:id/detail          one user + roles/KYC/recent orders    users.read
+ *   GET   /v1/admin/users/:id/detail          one user + roles/email verification/recent orders    users.read
  *   GET   /v1/admin/users/:id/login-events    per-user sign-in attempts            users.read
  *   POST  /v1/admin/users/:id/suspend         lifecycle: active -> suspended        users.suspend
  *   POST  /v1/admin/users/:id/reinstate       lifecycle: suspended -> active        users.suspend
@@ -22,7 +22,7 @@ import { z } from "zod"
 
 import type { UnitOfWork } from "../db/database.js"
 import type { IdempotencyRepository } from "../db/repositories.js"
-import type { Database, KycCaseState, UserAccountState } from "../db/types.js"
+import type { Database, EmailVerificationState, UserAccountState } from "../db/types.js"
 import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adminAccess.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { AppError } from "../http/errorCatalog.js"
@@ -173,7 +173,7 @@ const mapUser = (row: {
   readonly activatedAt: Date | null
   readonly suspendedAt: Date | null
   readonly closedAt: Date | null
-  readonly kycState: string | null
+  readonly emailVerificationState: string | null
   readonly ordersCount: number
   readonly createdAt: Date
   readonly updatedAt: Date
@@ -187,7 +187,7 @@ const mapUser = (row: {
   status: row.accountState,
   accountState: row.accountState,
   isPiiTombstoned: row.isPiiTombstoned,
-  kycStatus: row.kycState,
+  emailVerificationStatus: row.emailVerificationState,
   ordersCount: row.ordersCount,
   activatedAt: isoOrNull(row.activatedAt),
   suspendedAt: isoOrNull(row.suspendedAt),
@@ -233,12 +233,12 @@ const mapOrder = (row: {
   updatedAt: iso(row.updatedAt),
 })
 
-const mapKycCase = (row: {
+const mapEmailVerification = (row: {
   readonly id: string
   readonly userId: string
   readonly userEmail: string
   readonly userFullName: string
-  readonly state: KycCaseState
+  readonly state: EmailVerificationState
   readonly provider: string | null
   readonly submittedAt: Date | null
   readonly decidedAt: Date | null
@@ -252,11 +252,11 @@ const mapKycCase = (row: {
   userId: row.userId,
   userEmail: row.userEmail,
   name: row.userFullName,
-  kycReviewStatus: row.state,
+  emailVerificationStatus: row.state,
   status: row.state,
   provider: row.provider,
   submittedAt: isoOrNull(row.submittedAt),
-  kycReviewedAt: isoOrNull(row.decidedAt),
+  emailVerifiedAt: isoOrNull(row.decidedAt),
   decidedAt: isoOrNull(row.decidedAt),
   expiresAt: isoOrNull(row.expiresAt),
   reviewCount: row.reviewCount,
@@ -333,7 +333,7 @@ const getUserDetail = async (deps: AdminOversightDeps, request: FastifyRequest, 
     {
       user: mapUser(detail.user),
       roles: detail.roles,
-      kyc: detail.kyc === null ? null : mapKycCase(detail.kyc),
+      emailVerification: detail.emailVerification === null ? null : mapEmailVerification(detail.emailVerification),
       orders: detail.orders.map(mapOrder),
     },
     { status: 200 },

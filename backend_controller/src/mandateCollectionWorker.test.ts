@@ -95,7 +95,7 @@ describe("mandate collection timing", () => {
       },
       orderRepository: {
         findInstallmentByPeriod: vi.fn().mockResolvedValue(null),
-        latestCompliance: vi.fn().mockResolvedValue({ kycState: "approved", kycExpiresAt: null, riskState: null }),
+        latestCompliance: vi.fn().mockResolvedValue({ emailVerificationState: "verified", emailVerificationExpiresAt: null }),
         findFundOrderTerms: vi.fn().mockResolvedValue({ fundState: "published", fundVersionId: "version-1", currency: "INR" }),
         createSipInstallment: vi.fn().mockResolvedValue(order),
       },

@@ -7,7 +7,7 @@ import { fmtDate } from '../utils/format.js';
 
 const CATEGORIES = [
   ['general', 'General'], ['technical', 'Technical'], ['billing', 'Billing'],
-  ['kyc', 'KYC'], ['sip', 'SIP'], ['withdrawal', 'Withdrawal'], ['mandate', 'Mandate'],
+  ['email_verification', 'Email Verification'], ['sip', 'SIP'], ['withdrawal', 'Withdrawal'], ['mandate', 'Mandate'],
 ];
 
 function Faq({ question, answer, open, onToggle }) {

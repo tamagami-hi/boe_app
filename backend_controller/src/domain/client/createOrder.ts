@@ -3,7 +3,7 @@
  * places a one-time purchase order for a published fund. The command runs inside
  * a caller-owned transaction (the route wraps it in the idempotency protocol):
  * it locks the user, re-derives investing eligibility from the live account
- * state + latest KYC + latest risk (never a cached value), verifies the fund is
+ * state + Email Verification state (never a cached value), verifies the fund is
  * published and the amount meets the published minimum, then inserts the order
  * in `submitted` and appends an audit event atomically.
  *
@@ -37,7 +37,7 @@ const assertEligible = (
 ): void => {
   if (eligibility === "eligible") return
   // A non-active account (suspended/closed/invited) is ACCOUNT_NOT_ACTIVE;
-  // unmet KYC/risk is an unsatisfied prerequisite -> STATE_CONFLICT.
+  // unmet Email Verification is an unsatisfied prerequisite -> STATE_CONFLICT.
   if (eligibility === "suspended" || eligibility === "blocked") {
     throw new AppError("ACCOUNT_NOT_ACTIVE")
   }
@@ -57,14 +57,13 @@ export const createOrder = async (
   const compliance = await deps.orderRepository.latestCompliance(tx, input.userId)
   const { eligibility } = deriveInvestingEligibility({
     accountState: user.account_state,
-    kyc:
-      compliance.kycState === null
+    emailVerification:
+      compliance.emailVerificationState === null
         ? null
         : {
-            state: compliance.kycState,
-            expiresAt: compliance.kycExpiresAt === null ? null : new Date(compliance.kycExpiresAt).toISOString(),
+            state: compliance.emailVerificationState,
+            expiresAt: compliance.emailVerificationExpiresAt === null ? null : new Date(compliance.emailVerificationExpiresAt).toISOString(),
           },
-    riskState: compliance.riskState,
     now,
   })
   assertEligible(eligibility)

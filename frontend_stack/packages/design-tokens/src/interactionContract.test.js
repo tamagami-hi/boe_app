@@ -98,9 +98,9 @@ describe('interaction contract', () => {
     expect(support).toMatch(/loadError/);
   });
 
-  it('a failed KYC read is distinguishable from KYC not started', () => {
+  it('a failed email-verification read is distinguishable from not started', () => {
     const profile = code(path.join(ROOT, 'client/src/pages/Profile.jsx'));
-    expect(profile).toMatch(/kycUnavailable/);
+    expect(profile).toMatch(/emailVerificationUnavailable/);
     expect(profile).toMatch(/Status unavailable/);
   });
 });

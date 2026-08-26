@@ -27,7 +27,7 @@ const TABS = [
 ];
 
 /*
- * `GET /v1/admin/users/:id/detail` returns user, roles, the latest KYC case, recent
+ * `GET /v1/admin/users/:id/detail` returns user, roles, Email Verification state, recent
  * orders, payments and SIP plans, plus derived positions and portfolio totals. That
  * is the whole payload — e-mandates are retired; payment collection is PhonePe
  * collect requests on each order.
@@ -70,7 +70,7 @@ function UserDetailScreen({ userId }) {
   }, [userId, refreshToken]);
 
   const user = data?.user || {};
-  const kyc = data?.kyc || null;
+  const emailVerification = data?.emailVerification || null;
   const sipPlans = data?.sips || [];
   const orders = data?.orders || [];
   const payments = data?.payments || [];
@@ -78,13 +78,15 @@ function UserDetailScreen({ userId }) {
   const portfolio = data?.portfolio || null;
 
   /*
-   * A user with no KYC case at all used to be reported as having "No blocking
+   * A user with no Email Verification state at all used to be reported as having "No blocking
    * reasons", because the check only looked at a case that was present. Account
    * state was not considered either, so a suspended account read as clear.
    */
   const blockingReasons = [];
-  if (kyc === null) blockingReasons.push('No KYC case on record');
-  else if (kyc.status !== 'approved') blockingReasons.push(`KYC is ${humanizeState(kyc.status).toLowerCase()}`);
+  if (emailVerification === null) blockingReasons.push('Email is not verified');
+  else if (emailVerification.status !== 'verified') {
+    blockingReasons.push(`Email verification is ${humanizeState(emailVerification.status).toLowerCase()}`);
+  }
   if (user.status && user.status !== 'active') blockingReasons.push(`Account is ${user.status}`);
   const hasBlocking = blockingReasons.length > 0;
 
@@ -254,7 +256,7 @@ function UserDetailScreen({ userId }) {
                     { label: 'Email', value: user.email || '—' },
                     { label: 'Phone', value: user.phone || '—' },
                     { label: 'Account', value: user.status ? <StateBadge state={user.status} /> : '—' },
-                    { label: 'KYC', value: kyc ? <StateBadge state={kyc.status} /> : 'No case' },
+                    { label: 'Email verification', value: emailVerification ? <StateBadge state={emailVerification.status} /> : 'Not started' },
                     { label: 'Signed up', value: date(user.createdAt) },
                     { label: 'Approved', value: date(user.activatedAt) },
                   ])}

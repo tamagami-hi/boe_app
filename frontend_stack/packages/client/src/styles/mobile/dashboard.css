@@ -375,10 +375,10 @@
   padding: 0 0 var(--be-space-2);
 }
 
-/* Eligibility prompt: shown on the dashboard while KYC is not yet approved, so
+/* Eligibility prompt: shown on the dashboard while Email Verification is not complete, so
    the client has a route to the email-OTP screen instead of hitting a refusal at
    order time. Mirrors the approval card, with the CTA on the trailing edge. */
-.apk-kyc-prompt {
+.apk-email-verification-prompt {
   display: grid;
   grid-template-columns: auto 1fr auto;
   gap: var(--space-3, 0.75rem);
@@ -386,17 +386,17 @@
   margin-bottom: var(--space-4, 1rem);
 }
 
-.apk-kyc-prompt p {
+.apk-email-verification-prompt p {
   margin: 0.25rem 0 0;
   font-size: 0.8125rem;
   opacity: 0.8;
 }
 
 @media (max-width: 24rem) {
-  .apk-kyc-prompt {
+  .apk-email-verification-prompt {
     grid-template-columns: auto 1fr;
   }
-  .apk-kyc-prompt .be-btn {
+  .apk-email-verification-prompt .be-btn {
     grid-column: 1 / -1;
   }
 }

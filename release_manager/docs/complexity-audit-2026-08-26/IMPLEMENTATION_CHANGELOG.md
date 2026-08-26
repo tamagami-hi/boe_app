@@ -6,6 +6,32 @@
 
 **Scope:** Bounded implementation slices from the approved simplification roadmap.
 
+**Architecture decisions recorded:** 2026-08-27
+
+- SIP/AutoPay is KEEP. The canonical recurring flow is backend scheduling and
+  mandate validation -> PhonePe Notify Redemption -> PhonePe-managed debit and
+  `STANDARD` retries -> backend webhook/status reconciliation and canonical
+  settlement. Current source uses `autoDebit: true` and
+  `redemptionRetryStrategy: "STANDARD"`; no Execute Redemption call is present.
+- Email OTP Verification is KEEP but is not regulatory KYC. The current
+  `kyc_cases`/`kyc_verification_codes` storage and `/v1/client/kyc/*` naming are
+  incorrect semantic labels and require a preserving migration/refactor before
+  removal or rename.
+- `users` is the durable identity. The six designated legacy tables may be
+  removed only through forward migrations after FK, row-count, financial-history,
+  statutory-retention, and legal-hold checks.
+- Dev and production are separate stacks at `/srv/dev_stack/BOE_APP/dev_release`
+  and `/srv/dev_stack/BOE_APP/prod_release`, with separate PostgreSQL and Redis
+  resources. PhonePe source/artifacts remain the same; environment selects the
+  provider environment.
+- Redis is KEEP for shared read caching and PostgreSQL fallback. It is not used
+  by the current source for sessions, queues, locks, rate limiting, or worker
+  coordination. The historical concurrency incident's causal link to Redis is
+  not proven and remains a runtime/history verification item.
+- The repository already tracks `release_manager/stacks/monitor_service` as an
+  eight-service monitoring deployment. The requested target is an independent
+  monitoring repository; no monitoring business logic should be added to BOE_APP.
+
 **Rule:** Authentication, authorization, payment verification, ledger integrity, and unresolved product decisions remain protected boundaries.
 
 ## Completed implementation slices
@@ -36,7 +62,7 @@
   - `listRedemptionRequests`
   - `/app/withdrawals`
 - No backend route or table was removed because none existed.
-- Product scope remains unresolved: restoring withdrawals requires one secure backend transaction and owner-scoped history model; permanent removal requires explicit product confirmation.
+- Product scope remains unresolved: restoring withdrawals requires one secure backend transaction and owner-scoped history model; permanent removal requires explicit product confirmation. Any future schema cleanup must preserve existing withdrawal/payment history if present.
 
 ### Financial settlement characterization
 
@@ -153,9 +179,23 @@ The following items are not represented as complete:
 - Consolidating remaining amount/payment-state mappings and form primitives.
 - Separating app-config presentation data from fixture/conversion concerns.
 - Removing active fixture-mode branches and remaining legacy wrappers.
-- SIP/AutoPay product-boundary changes.
-- Forward-only orphan-table migrations and data-preservation checks.
-- Redis, rate-limit, monitoring, and deployment-architecture changes.
+- SIP/AutoPay source configuration already matches the accepted PhonePe-managed
+  model; worker reachability and deployed scheduling still require runtime
+  verification. No worker rewrite has been claimed complete.
+- Email OTP terminology/storage migration and forward-only removal of the six
+  designated legacy tables are present as implementation-in-progress work in
+  migrations `040_email_verification_schema.sql`,
+  `041_email_verification_backfill.sql`, and
+  `042_remove_legacy_compliance_tables.sql`, plus the corresponding source
+  renames. They are not complete until migration tests, FK/preservation checks,
+  and deployed row/relationship counts pass; no deployed database validation
+  has been executed here.
+- Redis isolation is represented in both compose definitions but VPS isolation
+  and the historical concurrency root cause remain runtime/history verification
+  items.
+- Monitoring is deploy-time separate but repository-coupled in
+  `release_manager/stacks/monitor_service`; extraction to a separate repository
+  remains incomplete.
 
 These boundaries require the pending product, data-retention, and deployment decisions before implementation.
 

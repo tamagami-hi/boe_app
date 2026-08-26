@@ -155,11 +155,10 @@ const prepareAutoPay = async (
       const compliance = await deps.orderRepository.latestCompliance(tx, userId)
       const { eligibility } = deriveInvestingEligibility({
         accountState: user.account_state,
-        kyc: compliance.kycState === null ? null : {
-          state: compliance.kycState,
-          expiresAt: compliance.kycExpiresAt === null ? null : compliance.kycExpiresAt.toISOString(),
+        emailVerification: compliance.emailVerificationState === null ? null : {
+          state: compliance.emailVerificationState,
+          expiresAt: compliance.emailVerificationExpiresAt === null ? null : compliance.emailVerificationExpiresAt.toISOString(),
         },
-        riskState: compliance.riskState,
         now,
       })
       if (eligibility === "suspended" || eligibility === "blocked") throw new AppError("ACCOUNT_NOT_ACTIVE")

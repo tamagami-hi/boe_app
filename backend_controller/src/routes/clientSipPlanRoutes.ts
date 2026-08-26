@@ -70,14 +70,13 @@ const createSip = async (deps: ClientSipDeps, request: FastifyRequest, reply: Fa
     const compliance = await deps.orderRepository.latestCompliance(tx, principal.userId)
     const { eligibility } = deriveInvestingEligibility({
       accountState: user.account_state,
-      kyc:
-        compliance.kycState === null
+      emailVerification:
+        compliance.emailVerificationState === null
           ? null
           : {
-              state: compliance.kycState,
-              expiresAt: compliance.kycExpiresAt === null ? null : new Date(compliance.kycExpiresAt).toISOString(),
+              state: compliance.emailVerificationState,
+              expiresAt: compliance.emailVerificationExpiresAt === null ? null : new Date(compliance.emailVerificationExpiresAt).toISOString(),
             },
-      riskState: compliance.riskState,
       now,
     })
     if (eligibility === "suspended" || eligibility === "blocked") throw new AppError("ACCOUNT_NOT_ACTIVE")

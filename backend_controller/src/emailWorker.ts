@@ -5,7 +5,7 @@
  *
  * This is the process that gets queued onboarding decisions out of the database:
  * the rejection notice or the approval welcome/download email. Signup itself
- * deliberately queues no mail, and KYC codes use the direct SMTP sender.
+ * deliberately queues no mail, and Email OTP codes use the direct SMTP sender.
  */
 import { pathToFileURL } from "node:url"
 

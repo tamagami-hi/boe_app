@@ -20,7 +20,7 @@ const detail = {
     activatedAt: '2026-07-02T00:00:00.000Z',
   },
   roles: [],
-  kyc: { status: 'approved' },
+  emailVerification: { status: 'verified' },
   orders: [{
     id: 'ord_1',
     fundName: 'Edge Growth',
@@ -157,10 +157,10 @@ describe('sections with no data source', () => {
 });
 
 describe('blocking reasons', () => {
-  test('a user with no KYC case is not reported as clear', async () => {
-    request.mockResolvedValue({ ...detail, kyc: null });
+  test('a user without email verification is not reported as clear', async () => {
+    request.mockResolvedValue({ ...detail, emailVerification: null });
     await open();
-    expect(screen.getByText(/No KYC case on record/u)).toBeTruthy();
+    expect(screen.getByText(/Email is not verified/u)).toBeTruthy();
     expect(screen.queryByText('No blocking reasons')).toBeNull();
   });
 

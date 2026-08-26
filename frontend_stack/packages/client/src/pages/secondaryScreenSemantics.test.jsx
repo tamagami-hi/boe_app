@@ -18,8 +18,8 @@ vi.mock('../store/SessionContext.jsx', () => ({
   }),
 }));
 
-vi.mock('../services/kycApi.js', () => ({
-  fetchKycStatus: async () => ({ status: 'approved', expired: false }),
+vi.mock('../services/emailVerificationApi.js', () => ({
+  fetchEmailVerificationStatus: async () => ({ status: 'verified', expired: false }),
 }));
 
 const createTicket = vi.fn();
@@ -62,7 +62,7 @@ describe('Profile settings rows are links', () => {
     ['Statements', buildPath('statements')],
     ['Support', buildPath('support')],
     ['Legal & disclosures', buildPath('legal')],
-    ['KYC & Compliance', buildPath('kyc')],
+    ['Email Verification', buildPath('email_verification')],
   ];
 
   test.each(expected)('%s is a focusable link to %s', async (label, href) => {
@@ -79,8 +79,8 @@ describe('Profile settings rows are links', () => {
     // Email and Phone display a value; they lead nowhere and must not look like
     // they do. The old Row rendered a chevron only when onClick was passed but was
     // a clickable div either way.
-    expect(screen.queryByRole('link', { name: /^Email/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^Email/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /^Phone/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Phone/ })).not.toBeInTheDocument();
     // It appears twice on the screen (identity card + Account row), which is fine —
     // the point is that neither occurrence is a control.
     expect(screen.getAllByText('ada@example.com').length).toBeGreaterThan(0);

@@ -39,14 +39,13 @@ export const createSipInstallmentOrder = async (
   const compliance = await deps.orderRepository.latestCompliance(tx, plan.user_id)
   const { eligibility } = deriveInvestingEligibility({
     accountState: user.account_state,
-    kyc:
-      compliance.kycState === null
+    emailVerification:
+      compliance.emailVerificationState === null
         ? null
         : {
-            state: compliance.kycState,
-            expiresAt: compliance.kycExpiresAt === null ? null : new Date(compliance.kycExpiresAt).toISOString(),
+            state: compliance.emailVerificationState,
+            expiresAt: compliance.emailVerificationExpiresAt === null ? null : new Date(compliance.emailVerificationExpiresAt).toISOString(),
           },
-    riskState: compliance.riskState,
     now,
   })
   if (eligibility !== "eligible") return { outcome: "not_eligible" }

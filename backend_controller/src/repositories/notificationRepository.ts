@@ -1,6 +1,6 @@
 /**
  * Notification write repository (spec 03 §4.4). User-facing notifications carry
- * an allowlisted JSON payload and never contain provider payloads, tokens, KYC
+ * an allowlisted JSON payload and never contain provider payloads, Email OTP
  * identifiers, or sensitive audit detail.
  */
 import { sql } from "kysely"

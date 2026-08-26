@@ -116,7 +116,7 @@ const seedClientToken = async (email: string): Promise<{ userId: string; token: 
   )
   const userId = user.rows[0]!.id
   await pool.query(
-    "insert into kyc_cases (user_id, state, submitted_at, decided_at) values ($1, 'approved', now(), now())",
+    "update users set email_verification_state = 'verified', email_verified_at = now() where id = $1",
     [userId],
   )
   const session = await pool.query<{ id: string }>(

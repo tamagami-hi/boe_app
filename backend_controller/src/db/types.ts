@@ -65,15 +65,7 @@ export type EmailDeliveryState =
 export type EmailProviderEventState = "received" | "processed" | "ignored" | "unmatched"
 export type ConsentKind = "terms" | "privacy"
 
-export type KycCaseState =
-  | "pending_submission"
-  | "submitted"
-  | "in_review"
-  | "approved"
-  | "rejected"
-  | "needs_information"
-export type RiskAssessmentState = "not_started" | "submitted" | "assessed"
-export type RiskCategory = "conservative" | "balanced" | "growth" | "aggressive"
+export type EmailVerificationState = "not_started" | "pending" | "verified" | "rejected"
 export type FundState = "draft" | "published" | "paused" | "archived"
 export type FundRiskLevel = "low" | "moderate" | "high" | "very_high"
 export type FundReturnTier = "low" | "moderate" | "high"
@@ -178,6 +170,10 @@ export interface UsersTable {
   email_normalized: string
   phone_e164: string
   full_name: string
+  email_verification_state: Generated<EmailVerificationState>
+  email_verification_started_at: NullableTimestamp
+  email_verified_at: NullableTimestamp
+  email_verification_expires_at: NullableTimestamp
   account_state: Generated<UserAccountState>
   activated_at: NullableTimestamp
   suspended_at: NullableTimestamp
@@ -453,23 +449,8 @@ export interface EmailSuppressionsTable {
   lift_reason: Nullable<string>
 }
 
-export interface InvestorProfilesTable {
-  user_id: string
-  date_of_birth_ciphertext: NullableBytea
-  date_of_birth_nonce: NullableBytea
-  address_ciphertext: NullableBytea
-  address_nonce: NullableBytea
-  encryption_key_version: Nullable<string>
-  erased_at: NullableTimestamp
-  tax_residency_country: Nullable<string>
-  created_at: TimestampDefault
-  updated_at: TimestampDefault
-  version: BigIntStringDefault
-}
-
-export interface KycVerificationCodesTable {
+export interface EmailVerificationCodesTable {
   id: Generated<string>
-  kyc_case_id: string
   user_id: string
   code_hash: Bytea
   code_key_version: string
@@ -477,60 +458,6 @@ export interface KycVerificationCodesTable {
   expires_at: Timestamp
   consumed_at: NullableTimestamp
   created_at: TimestampDefault
-}
-
-export interface KycCasesTable {
-  id: Generated<string>
-  user_id: string
-  state: Generated<KycCaseState>
-  provider: Nullable<string>
-  provider_case_id: Nullable<string>
-  submitted_at: NullableTimestamp
-  review_started_at: NullableTimestamp
-  decided_at: NullableTimestamp
-  expires_at: NullableTimestamp
-  created_at: TimestampDefault
-  updated_at: TimestampDefault
-  version: BigIntStringDefault
-}
-
-export interface KycDocumentsTable {
-  id: Generated<string>
-  kyc_case_id: string
-  user_id: string
-  document_type: string
-  object_key: string
-  content_sha256: Bytea
-  encryption_key_version: string
-  created_at: TimestampDefault
-}
-
-export interface KycReviewsTable {
-  id: Generated<string>
-  kyc_case_id: string
-  user_id: string
-  reviewer_user_id: string
-  from_state: Nullable<KycCaseState>
-  to_state: KycCaseState
-  reason_code: Nullable<string>
-  reason_detail: Nullable<string>
-  request_id: string
-  created_at: TimestampDefault
-}
-
-export interface RiskAssessmentsTable {
-  id: Generated<string>
-  user_id: string
-  state: Generated<RiskAssessmentState>
-  questionnaire_version: string
-  answers: JsonDefault
-  score: Nullable<number>
-  category: Nullable<RiskCategory>
-  submitted_at: NullableTimestamp
-  assessed_at: NullableTimestamp
-  created_at: TimestampDefault
-  updated_at: TimestampDefault
-  version: BigIntStringDefault
 }
 
 export interface FundsTable {
@@ -630,26 +557,6 @@ export interface FinancePolicyVersionsTable {
   retired_at: NullableTimestamp
   published_by_user_id: string
   created_at: TimestampDefault
-}
-
-export interface MarketingLeadsTable {
-  id: Generated<string>
-  full_name_ciphertext: NullableBytea
-  full_name_nonce: NullableBytea
-  email_ciphertext: NullableBytea
-  email_nonce: NullableBytea
-  phone_ciphertext: NullableBytea
-  phone_nonce: NullableBytea
-  email_hmac: NullableBytea
-  phone_hmac: NullableBytea
-  pii_key_version: Nullable<string>
-  pii_erased_at: NullableTimestamp
-  source: string
-  state: Generated<string>
-  application_id: Nullable<string>
-  created_at: TimestampDefault
-  updated_at: TimestampDefault
-  version: BigIntStringDefault
 }
 
 export interface AppConfigVersionsTable {
@@ -1050,11 +957,6 @@ export interface Database {
   email_deliveries: EmailDeliveriesTable
   email_provider_events: EmailProviderEventsTable
   email_suppressions: EmailSuppressionsTable
-  investor_profiles: InvestorProfilesTable
-  kyc_cases: KycCasesTable
-  kyc_documents: KycDocumentsTable
-  kyc_reviews: KycReviewsTable
-  risk_assessments: RiskAssessmentsTable
   funds: FundsTable
   fund_versions: FundVersionsTable
   fund_disclosure_versions: FundDisclosureVersionsTable
@@ -1062,7 +964,6 @@ export interface Database {
   aum_growth_batches: AumGrowthBatchesTable
   fund_stock_disclosures: FundStockDisclosuresTable
   finance_policy_versions: FinancePolicyVersionsTable
-  marketing_leads: MarketingLeadsTable
   app_config_versions: AppConfigVersionsTable
   content_items: ContentItemsTable
   sip_plans: SipPlansTable
@@ -1082,6 +983,6 @@ export interface Database {
   provider_events: ProviderEventsTable
   client_value_entries: ClientValueEntriesTable
   notifications: NotificationsTable
-  kyc_verification_codes: KycVerificationCodesTable
+  email_verification_codes: EmailVerificationCodesTable
   support_requests: SupportRequestsTable
 }

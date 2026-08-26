@@ -166,7 +166,7 @@ function toClientUser(user) {
     status: user.status || 'approved',
     approvalRef: user.approvalRef || user.approval_ref || user.approvalReference || user.approval_reference || '',
     riskProfileStatus: user.riskProfileStatus || user.risk_profile_status || '',
-    kycStatus: user.kycStatus || user.kyc_status || '',
+    emailVerificationStatus: user.emailVerificationStatus || user.emailVerification_status || '',
     role,
     roles,
     avatarInitials: user.avatarInitials || initials(name) || 'BO',

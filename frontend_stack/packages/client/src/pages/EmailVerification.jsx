@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { MailCheck, ShieldCheck } from 'lucide-react';
 import AppBar from '../layout/AppBar.jsx';
 import { buildPath } from '../navigation/routes.js';
-import { startKyc, resendKyc, verifyKyc } from '../services/kycApi.js';
+import { startEmailVerification, resendEmailVerification, verifyEmailVerification } from '../services/emailVerificationApi.js';
 import { getInvestingEligibility } from '../services/eligibilityApi.js';
 
-// Email-OTP KYC — the step that turns an approved account into an eligible one.
+// Email OTP Verification — the step that turns an approved account into an eligible one.
 //
-// Flow: `POST /v1/client/kyc/start` emails a 6-character code from the company
-// mailbox, `POST /v1/client/kyc/verify` approves the case, and eligibility then
+// Flow: `POST /v1/client/email-verification/start` emails a 6-character code from the company
+// mailbox, `POST /v1/client/email-verification/verify` completes verification, and eligibility then
 // reports `eligible`. The code is case-sensitive alphanumeric (a-zA-Z0-9), so
 // the input must preserve exactly what the user typed. Resend is
 // cooldown-guarded server-side (429) and the code has an attempt cap (409) and
@@ -19,7 +19,7 @@ import { getInvestingEligibility } from '../services/eligibilityApi.js';
 const CODE_LENGTH = 6;
 const CODE_PATTERN = /^[A-Za-z0-9]{6}$/;
 
-export default function KycVerify() {
+export default function EmailVerificationVerify() {
   const navigate = useNavigate();
   const [phase, setPhase] = useState('sending');
   const [code, setCode] = useState('');
@@ -32,9 +32,9 @@ export default function KycVerify() {
     setError('');
     setNotice('');
     try {
-      const result = resend ? await resendKyc() : await startKyc();
+      const result = resend ? await resendEmailVerification() : await startEmailVerification();
       // An already-approved case short-circuits: nothing left to verify.
-      if (result?.status === 'approved') {
+      if (result?.status === 'verified') {
         setPhase('approved');
         return;
       }
@@ -80,7 +80,7 @@ export default function KycVerify() {
     setError('');
     setNotice('');
     try {
-      await verifyKyc(code);
+      await verifyEmailVerification(code);
       setPhase('approved');
     } catch (verifyError) {
       setError(verifyError?.message || 'That code was not accepted.');
@@ -145,9 +145,9 @@ export default function KycVerify() {
               onChange={(event) => setCode(event.target.value)}
               /* No aria-label: it OVERRODE the visible "Verification code" caption
                  this label already provides. The length hint is describedby. */
-              aria-describedby="kyc-code-hint"
+              aria-describedby="emailVerification-code-hint"
             />
-            <span className="be-disclosure" id="kyc-code-hint">
+            <span className="be-disclosure" id="emailVerification-code-hint">
               {CODE_LENGTH} characters, letters and numbers, case-sensitive.
             </span>
           </label>

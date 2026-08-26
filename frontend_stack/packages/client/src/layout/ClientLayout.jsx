@@ -66,7 +66,7 @@ export default function ClientLayout(props) {
   }
 
   // Explicit per-route metadata, not prefix matching. Prefix matching was wrong
-  // in both directions: it kept the bar on `/app/profile/{kyc,security,support,
+  // in both directions: it kept the bar on `/app/profile/{emailVerification,security,support,
   // legal}` — pushed secondary screens — while hiding it on Statements and
   // Notifications, which sit at the same level of the same hierarchy.
   const showBottomNav = routeShowsBottomNav(path);

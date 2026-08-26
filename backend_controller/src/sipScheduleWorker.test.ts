@@ -67,7 +67,7 @@ const buildDeps = (overrides: Partial<Record<string, unknown>> = {}): SipSchedul
         minimumPurchasePaise: "100000",
         minimumSipPaise: "50000",
       }),
-      latestCompliance: async () => ({ kycState: "approved" as const, kycExpiresAt: null, riskState: null }),
+      latestCompliance: async () => ({ emailVerificationState: "verified" as const, emailVerificationExpiresAt: null }),
       createPurchase: vi.fn(),
       findOpenInstallment: vi.fn(),
       lockById: vi.fn(),

@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BadgeCheck, Clock, MailCheck, ShieldAlert } from 'lucide-react';
+import { BadgeCheck, MailCheck, ShieldAlert } from 'lucide-react';
 import AppBar from '../layout/AppBar.jsx';
 import Skeleton from '@beonedge/shared/components/Skeleton.jsx';
-import { fetchKycStatus } from '../services/kycApi.js';
+import { fetchEmailVerificationStatus } from '../services/emailVerificationApi.js';
 import { fmtDate } from '../utils/format.js';
 import { buildPath } from '../navigation/routes.js';
 
-// KYC on BeOnEdge is an email one-time code: requesting it and entering it is the
+// Email Verification on BeOnEdge is an email one-time code: requesting it and entering it is the
 // whole flow, after which the account can invest. This screen reports where that
 // stands and links to the step that moves it forward. There is no document upload
 // or FATCA/nominee capture — nothing collects or stores that today, so the screen
@@ -21,28 +21,14 @@ const PRESENTATION = {
     summary: 'Verify your email address to unlock investing.',
     action: 'Start verification',
   },
-  in_progress: {
+  pending: {
     label: 'Code sent',
     tone: 'paused',
     Icon: MailCheck,
     summary: 'We emailed you a 6-character code. Enter it exactly as shown to finish verification.',
     action: 'Enter code',
   },
-  submitted: {
-    label: 'In review',
-    tone: 'paused',
-    Icon: Clock,
-    summary: 'Your verification is being processed.',
-    action: null,
-  },
-  in_review: {
-    label: 'In review',
-    tone: 'paused',
-    Icon: Clock,
-    summary: 'Your verification is being processed.',
-    action: null,
-  },
-  approved: {
+  verified: {
     label: 'Verified',
     tone: 'active',
     Icon: BadgeCheck,
@@ -60,14 +46,14 @@ const PRESENTATION = {
 
 const FALLBACK = PRESENTATION.not_started;
 
-export default function KycDetail() {
+export default function EmailVerificationDetail() {
   const navigate = useNavigate();
   const [status, setStatus] = useState(null);
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(() => {
-    fetchKycStatus()
+    fetchEmailVerificationStatus()
       .then((next) => {
         setStatus(next);
         setError('');
@@ -81,7 +67,7 @@ export default function KycDetail() {
   if (!loaded) {
     return (
       <>
-        <AppBar title="KYC & Compliance" />
+        <AppBar title="Email Verification" />
         <div className="apk-screen">
           <Skeleton variant="card" height={200} />
         </div>
@@ -96,11 +82,11 @@ export default function KycDetail() {
 
   return (
     <>
-      <AppBar title="KYC & Compliance" />
+      <AppBar title="Email Verification" />
       <div className="apk-screen">
-        <section className="be-card apk-kyc-card">
+        <section className="be-card apk-email-verification-card">
           <div className="apk-mandate-head">
-            <span className="apk-kyc-icon" aria-hidden="true">
+            <span className="apk-email-verification-icon" aria-hidden="true">
               <Icon size={20} strokeWidth={1.6} />
             </span>
             <span className={`be-badge be-badge-${expired ? 'paused' : view.tone}`}>
@@ -115,15 +101,15 @@ export default function KycDetail() {
               : view.summary}
           </p>
 
-          <dl className="apk-kyc-facts">
+          <dl className="apk-email-verification-facts">
             <div>
               <dt>Method</dt>
               <dd>Email one-time code</dd>
             </div>
-            {status?.decidedAt && (
+            {status?.verifiedAt && (
               <div>
                 <dt>Verified on</dt>
-                <dd>{fmtDate(status.decidedAt)}</dd>
+                <dd>{fmtDate(status.verifiedAt)}</dd>
               </div>
             )}
             {status?.expiresAt && (

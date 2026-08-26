@@ -79,7 +79,7 @@ const accountApproved = (
     "up at beonedge.in.",
     "",
     "Before you can invest, the app will ask you to verify your email address",
-    "and complete a short KYC step.",
+    "and complete Email OTP Verification.",
     "",
     "If you no longer remember your password, contact us and we will help you",
     "regain access.",

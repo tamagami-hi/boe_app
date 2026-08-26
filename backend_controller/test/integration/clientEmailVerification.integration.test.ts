@@ -18,11 +18,11 @@ import { createAuditRepository } from "../../src/repositories/auditRepository.js
 import { createClientValueEntryRepository } from "../../src/repositories/clientValueEntryRepository.js"
 import { createClientPortfolioRepository } from "../../src/repositories/clientPortfolioRepository.js"
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
-import { createKycRepository } from "../../src/repositories/kycRepository.js"
+import { createEmailVerificationRepository } from "../../src/repositories/emailVerificationRepository.js"
 import { createOrderRepository } from "../../src/repositories/orderRepository.js"
 import { createPaymentsRepository } from "../../src/repositories/paymentsRepository.js"
 import { createUserRepository } from "../../src/repositories/userRepository.js"
-import { registerClientKycRoutes } from "../../src/routes/clientKycRoutes.js"
+import { registerClientEmailVerificationRoutes } from "../../src/routes/clientEmailVerificationRoutes.js"
 import { registerClientOrderRoutes } from "../../src/routes/clientOrderRoutes.js"
 import { registerClientPortfolioRoutes } from "../../src/routes/clientPortfolioRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
@@ -57,7 +57,7 @@ const b64 = (n: number): string => randomBytes(n).toString("base64")
 const seedActiveUser = async (email: string, phone: string): Promise<{ userId: string; token: string }> => {
   const user = await pool.query<{ id: string }>(
     "insert into users (email_normalized, phone_e164, full_name, account_state, activated_at) " +
-      "values ($1,$2,'KYC User','active', now()) returning id",
+      "values ($1,$2,'email verification User','active', now()) returning id",
     [email, phone],
   )
   const userId = user.rows[0]!.id
@@ -74,10 +74,10 @@ const bearer = (token: string, key?: string): Record<string, string> => ({
   authorization: `Bearer ${token}`,
   ...(key === undefined ? {} : { "idempotency-key": key }),
 })
-const kyc = (token: string, action: "start" | "resend") =>
-  app.inject({ method: "POST", url: `/v1/client/kyc/${action}`, headers: bearer(token) })
+const emailVerification = (token: string, action: "start" | "resend") =>
+  app.inject({ method: "POST", url: `/v1/client/email-verification/${action}`, headers: bearer(token) })
 const verify = (token: string, code: string) =>
-  app.inject({ method: "POST", url: "/v1/client/kyc/verify", headers: bearer(token), payload: { code } })
+  app.inject({ method: "POST", url: "/v1/client/email-verification/verify", headers: bearer(token), payload: { code } })
 const eligibility = (token: string) =>
   app.inject({ method: "GET", url: "/v1/client/eligibility", headers: bearer(token) })
 
@@ -123,13 +123,13 @@ beforeAll(async () => {
   app = createApplication({
     logger: false,
     registerRoutes: (instance) => {
-      registerClientKycRoutes(instance, {
+      registerClientEmailVerificationRoutes(instance, {
         accessTokenService,
         database,
         unitOfWork,
         clock,
         crypto,
-        kycRepository: createKycRepository(),
+        emailVerificationRepository: createEmailVerificationRepository(),
         userRepository: createUserRepository(),
         auditRepository: createAuditRepository(),
         emailSender: capturingSender,
@@ -185,7 +185,7 @@ beforeAll(async () => {
   )
   const version = await pool.query<{ id: string }>(
     "insert into fund_versions (fund_id, version, name, category, objective, risk_level, minimum_sip_paise, minimum_purchase_paise, disclosure_version_id, terms_sha256, created_by_user_id) " +
-      "values ($1,1,'KYC Fund','equity','grow','moderate', 50000, 100000, $2, $3, $4) returning id",
+      "values ($1,1,'email verification Fund','equity','grow','moderate', 50000, 100000, $2, $3, $4) returning id",
     [fundId, disclosure.rows[0]!.id, randomBytes(32), anyUser.userId],
   )
   await pool.query("update funds set current_published_version_id = $1 where id = $2", [version.rows[0]!.id, fundId])
@@ -197,16 +197,16 @@ afterAll(async () => {
   await container.stop()
 })
 
-describe("client email-OTP KYC + eligibility (integration)", () => {
-  test("end-to-end: not eligible -> KYC -> eligible -> can invest, in one go", async () => {
+describe("client email OTP verification + eligibility (integration)", () => {
+  test("end-to-end: not eligible -> email verification -> eligible -> can invest, in one go", async () => {
     const { token } = await seedActiveUser("client-a@example.com", "+14155551701")
 
     const before = await eligibility(token)
     expect(before.statusCode).toBe(200)
     const beforeBody = dataOf<{ eligibility: string; reason: string; canInvest: boolean }>(before)
-    expect(beforeBody).toMatchObject({ eligibility: "pending_compliance", reason: "kyc_required", canInvest: false })
+    expect(beforeBody).toMatchObject({ eligibility: "pending_verification", reason: "email_verification_required", canInvest: false })
 
-    const started = await kyc(token, "start")
+    const started = await emailVerification(token, "start")
     expect(started.statusCode).toBe(200)
     expect(dataOf<{ status: string }>(started).status).toBe("code_sent")
 
@@ -220,7 +220,7 @@ describe("client email-OTP KYC + eligibility (integration)", () => {
 
     const verified = await verify(token, realCode)
     expect(verified.statusCode).toBe(200)
-    expect(dataOf<{ status: string }>(verified).status).toBe("approved")
+    expect(dataOf<{ status: string }>(verified).status).toBe("verified")
 
     const after = await eligibility(token)
     expect(dataOf<{ eligibility: string; canInvest: boolean }>(after)).toMatchObject({
@@ -235,62 +235,62 @@ describe("client email-OTP KYC + eligibility (integration)", () => {
       payload: { fundId, amountPaise: "500000" },
     })
     expect(order.statusCode).toBe(201)
-    // Client-safe projection (spec §9.2): a new order is awaiting payment.
+    // Client-safe projection: a new order is in the payment initiation flow.
     expect(dataOf<{ status: string }>(order).status).toBe("payment_in_progress")
   })
 
-  test("kyc-status reports not_started, then the open case, then approval", async () => {
+  test("email-verification-status reports not_started, then the open case, then approval", async () => {
     const { token } = await seedActiveUser("client-status@example.com", "+14155551711")
     const status = (bearerToken: string) =>
-      app.inject({ method: "GET", url: "/v1/client/kyc-status", headers: bearer(bearerToken) })
+      app.inject({ method: "GET", url: "/v1/client/email-verification-status", headers: bearer(bearerToken) })
 
     // A fresh account has no case at all: that is a status, not an error.
     const fresh = await status(token)
     expect(fresh.statusCode).toBe(200)
-    expect(dataOf<{ status: string; kycState: string | null; expired: boolean }>(fresh)).toMatchObject({
+    expect(dataOf<{ status: string; emailVerificationState: string | null; expired: boolean }>(fresh)).toMatchObject({
       status: "not_started",
-      kycState: null,
+      emailVerificationState: "not_started",
       method: "email_otp",
       expired: false,
     })
 
-    await kyc(token, "start")
+    await emailVerification(token, "start")
     const pending = await status(token)
-    // A case exists but is not decided; the app shows "verification in progress".
-    expect(dataOf<{ status: string; decidedAt: string | null }>(pending).decidedAt).toBeNull()
-    expect(["in_progress", "submitted", "in_review"]).toContain(
+    // A verification is pending and has not completed yet.
+    expect(dataOf<{ status: string; verifiedAt: string | null }>(pending).verifiedAt).toBeNull()
+    expect(["pending", "pending", "pending"]).toContain(
       dataOf<{ status: string }>(pending).status,
     )
 
     await verify(token, codeFor("client-status@example.com"))
-    const approved = await status(token)
-    const body = dataOf<{ status: string; expiresAt: string | null; expired: boolean; decidedAt: string | null }>(
-      approved,
+    const verified = await status(token)
+    const body = dataOf<{ status: string; expiresAt: string | null; expired: boolean; verifiedAt: string | null }>(
+      verified,
     )
-    expect(body.status).toBe("approved")
-    expect(body.decidedAt).not.toBeNull()
-    // Approval carries the expiry that drives re-verification.
+    expect(body.status).toBe("verified")
+    expect(body.verifiedAt).not.toBeNull()
+    // Verification carries the expiry that drives re-verification.
     expect(body.expiresAt).not.toBeNull()
     expect(body.expired).toBe(false)
   })
 
-  test("kyc-status requires a session", async () => {
-    const response = await app.inject({ method: "GET", url: "/v1/client/kyc-status" })
+  test("email-verification-status requires a session", async () => {
+    const response = await app.inject({ method: "GET", url: "/v1/client/email-verification-status" })
     expect(response.statusCode).toBe(401)
   })
 
-  test("verifying an already-approved user is an idempotent no-op success", async () => {
+  test("verifying an already-verified user is an idempotent no-op success", async () => {
     const { token } = await seedActiveUser("client-b@example.com", "+14155551702")
-    await kyc(token, "start")
+    await emailVerification(token, "start")
     const code = codeFor("client-b@example.com")
     await verify(token, code)
-    // A second start returns 'approved' (no new code), and the recorded email is stale.
-    const restart = await kyc(token, "start")
-    expect(dataOf<{ status: string }>(restart).status).toBe("approved")
+    // A second start returns 'verified' (no new code), and the recorded email is stale.
+    const restart = await emailVerification(token, "start")
+    expect(dataOf<{ status: string }>(restart).status).toBe("verified")
     // A verify after approval is also a no-op success, whatever code is presented.
     const reverify = await verify(token, code)
     expect(reverify.statusCode).toBe(200)
-    expect(dataOf<{ status: string }>(reverify).status).toBe("approved")
+    expect(dataOf<{ status: string }>(reverify).status).toBe("verified")
   })
 
   test("codes are 6-character alphanumeric and the comparison is case-sensitive", async () => {
@@ -304,7 +304,7 @@ describe("client email-OTP KYC + eligibility (integration)", () => {
         `+141555518${String(attempt).padStart(2, "0")}`,
       )
       token = seeded.token
-      const started = await kyc(token, "start")
+      const started = await emailVerification(token, "start")
       expect(started.statusCode).toBe(200)
       realCode = codeFor(`client-case-${attempt}@example.com`)
     }
@@ -322,21 +322,21 @@ describe("client email-OTP KYC + eligibility (integration)", () => {
 
     const verified = await verify(token, realCode)
     expect(verified.statusCode).toBe(200)
-    expect(dataOf<{ status: string }>(verified).status).toBe("approved")
+    expect(dataOf<{ status: string }>(verified).status).toBe("verified")
   })
 
   test("a resent code supersedes the previous one", async () => {
     const { userId, token } = await seedActiveUser("client-resend@example.com", "+14155551712")
-    const first = await kyc(token, "start")
+    const first = await emailVerification(token, "start")
     expect(first.statusCode).toBe(200)
     const firstCode = codeFor("client-resend@example.com")
 
     // Backdate the code so the resend cooldown no longer applies.
     await pool.query(
-      "update kyc_verification_codes set created_at = now() - interval '2 minutes' where user_id = $1 and consumed_at is null",
+      "update email_verification_codes set created_at = now() - interval '2 minutes' where user_id = $1 and consumed_at is null",
       [userId],
     )
-    const resent = await kyc(token, "resend")
+    const resent = await emailVerification(token, "resend")
     expect(resent.statusCode).toBe(200)
     const secondCode = codeFor("client-resend@example.com")
 
@@ -347,23 +347,23 @@ describe("client email-OTP KYC + eligibility (integration)", () => {
 
     const verified = await verify(token, secondCode)
     expect(verified.statusCode).toBe(200)
-    expect(dataOf<{ status: string }>(verified).status).toBe("approved")
+    expect(dataOf<{ status: string }>(verified).status).toBe("verified")
   })
 
   test("resend within the cooldown is RATE_LIMITED", async () => {
     const { token } = await seedActiveUser("client-c@example.com", "+14155551703")
-    const first = await kyc(token, "start")
+    const first = await emailVerification(token, "start")
     expect(first.statusCode).toBe(200)
-    const second = await kyc(token, "resend")
+    const second = await emailVerification(token, "resend")
     expect(second.statusCode).toBe(429)
     expect(errorOf(second)).toBe("RATE_LIMITED")
   })
 
   test("an expired code is TOKEN_EXPIRED", async () => {
     const { userId, token } = await seedActiveUser("client-d@example.com", "+14155551704")
-    await kyc(token, "start")
+    await emailVerification(token, "start")
     await pool.query(
-      "update kyc_verification_codes set created_at = now() - interval '20 minutes', expires_at = now() - interval '10 minutes' where user_id = $1 and consumed_at is null",
+      "update email_verification_codes set created_at = now() - interval '20 minutes', expires_at = now() - interval '10 minutes' where user_id = $1 and consumed_at is null",
       [userId],
     )
     const response = await verify(token, codeFor("client-d@example.com"))
@@ -373,7 +373,7 @@ describe("client email-OTP KYC + eligibility (integration)", () => {
 
   test("too many wrong attempts locks the code (STATE_CONFLICT)", async () => {
     const { token } = await seedActiveUser("client-e@example.com", "+14155551705")
-    await kyc(token, "start")
+    await emailVerification(token, "start")
     const realCode = codeFor("client-e@example.com")
     const wrongCode = realCode === "111111" ? "222222" : "111111"
     for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -389,7 +389,7 @@ describe("client email-OTP KYC + eligibility (integration)", () => {
   })
 
   test("a missing bearer is rejected", async () => {
-    const response = await app.inject({ method: "POST", url: "/v1/client/kyc/start" })
+    const response = await app.inject({ method: "POST", url: "/v1/client/email-verification/start" })
     expect(response.statusCode).toBe(401)
   })
 })

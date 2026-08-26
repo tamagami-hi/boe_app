@@ -193,8 +193,8 @@ export const CLIENT_ROUTES = [
     backPolicy: BACK_POLICY.PARENT,
   },
   {
-    path: '/app/profile/kyc',
-    destinationId: 'kyc',
+    path: '/app/profile/email-verification',
+    destinationId: 'email_verification',
     parent: '/app/profile',
     appBarMode: APP_BAR_MODE.BACK,
     primaryNavItem: 'profile',
@@ -399,7 +399,7 @@ export function findRouteMeta(pathname) {
  * Should the shell show the bottom navigation on this path?
  *
  * Replaces prefix matching, which was wrong in both directions: it kept the bar
- * on `/app/profile/kyc|security|support|legal` (secondary screens) while hiding
+ * on `/app/profile/email-verification|security|support|legal` (secondary screens) while hiding
  * it on Statements and Notifications, which sit at the same level of the same
  * hierarchy.
  */

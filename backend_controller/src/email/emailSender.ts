@@ -1,11 +1,11 @@
 /**
  * Transport-agnostic transactional email sender (decision 10). This is the seam
- * used by direct, transactional sends (e.g. the KYC one-time code) — distinct
+ * used by direct, transactional sends (e.g. the Email OTP Verification code) — distinct
  * from the SES `outbox` pipeline in `dispatchDueDeliveries`. Two adapters:
  *
  *  - `createSmtpEmailSender` — sends through a company mailbox over SMTP
  *    (`nodemailer`), with host/port/credentials and the `from` address supplied
- *    from the environment. This is what actually delivers KYC codes.
+ *    from the environment. This is what actually delivers Email OTP codes.
  *  - `createLogEmailSender` — a safe local/test fallback used when SMTP is not
  *    configured. It records only non-secret metadata (never the body/code).
  *
@@ -40,7 +40,7 @@ export interface SmtpEmailConfig {
   readonly secure: boolean
   readonly user: string
   readonly password: string
-  /** The company `From` address (spec/decision 10: `KYC_EMAIL_FROM`). */
+  /** The company `From` address used for Email OTP Verification. */
   readonly fromAddress: string
 }
 
@@ -114,7 +114,7 @@ export class EmailTransportNotConfiguredError extends Error {
  * configured the queued mail drains on the next pass rather than being lost — the
  * ladder in retrySchedule.ts allows roughly 42 hours before dead-lettering.
  *
- * Used whenever no SMTP transport exists. Direct KYC delivery and the outbox
+ * Used whenever no SMTP transport exists. Direct Email OTP delivery and the outbox
  * worker both fail honestly instead of claiming an unsent message succeeded.
  */
 export const createUnconfiguredEmailSender = (): EmailSender => ({
