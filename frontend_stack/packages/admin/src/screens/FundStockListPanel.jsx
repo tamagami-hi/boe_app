@@ -198,7 +198,7 @@ export default function FundStockListPanel({ fundId, initialStocks = null, canWr
       </div>
 
       {canWrite && (
-        <form className="adm-form-grid adm-form-grid--inset" onSubmit={onAdd}>
+        <form className="adm-form-grid adm-form-grid--inset" onSubmit={onAdd} noValidate>
           <label className="adm-field">
             <span className="adm-field-label">Stock name</span>
             <input
@@ -330,8 +330,9 @@ export default function FundStockListPanel({ fundId, initialStocks = null, canWr
                         className="be-btn be-btn-secondary be-btn-sm"
                         onClick={() => openEdit(stock)}
                         disabled={busy}
+                        aria-label={`Edit ${stock.stockName}`}
                       >
-                        Edit<span className="adm-sr-only"> {stock.stockName}</span>
+                        Edit
                       </button>
                       {confirmExit === stock.id ? (
                         <>
@@ -358,8 +359,9 @@ export default function FundStockListPanel({ fundId, initialStocks = null, canWr
                           className="be-btn be-btn-secondary be-btn-sm"
                           onClick={() => onExit(stock)}
                           disabled={busy}
+                          aria-label={`Mark exited ${stock.stockName}`}
                         >
-                          Mark exited<span className="adm-sr-only"> {stock.stockName}</span>
+                          Mark exited
                         </button>
                       )}
                     </td>

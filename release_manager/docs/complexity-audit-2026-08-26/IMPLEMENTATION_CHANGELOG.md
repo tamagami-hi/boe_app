@@ -114,6 +114,14 @@ The next roadmap items with material impact—admin compatibility removal, SIP/A
 - Updated `Admin.test.jsx` and `ApprovalsQueueProvider.test.jsx` to assert canonical overview/Not Found behavior.
 - Verification: 110 targeted admin tests passed. Runtime bookmark/deep-link usage remains unverified.
 
+## Regression baseline cleanup
+
+- Fixed `frontend_stack/packages/admin/src/screens/FundStockListPanel.jsx`:
+  - `noValidate` now lets the component’s custom validation report out-of-range weights through its existing alert.
+  - Row action labels use explicit `aria-label` values instead of duplicated visually-hidden stock names.
+- Full frontend suite now passes: 68 test files, 903/903 tests.
+- Review found no accessibility, security, or regression issues.
+
 ### Preserved pre-existing worktree changes
 
 - `release_manager/stacks/_shared/_boe_deploy.sh`
