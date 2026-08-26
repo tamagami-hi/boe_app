@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && node scripts/check-bundle-boots.mjs",
-    "build:android": "VITE_BEO_APP_TARGET=client vite build --mode android && node scripts/check-android-dist.mjs --variant=client && node scripts/check-bundle-boots.mjs",
-    "build:android:prod": "VITE_BEO_APP_TARGET=client vite build --mode android-prod && node scripts/check-android-dist.mjs --variant=client && node scripts/check-bundle-boots.mjs",
+    "build:android": "VITE_BEO_ANDROID_BUILD_TYPE=debug VITE_BEO_APP_TARGET=client vite build --mode android && node scripts/check-android-dist.mjs --variant=client && node scripts/check-bundle-boots.mjs",
+    "build:android:prod": "VITE_BEO_ANDROID_BUILD_TYPE=release VITE_BEO_APP_TARGET=client vite build --mode android-prod && node scripts/check-android-dist.mjs --variant=client && node scripts/check-bundle-boots.mjs",
     "preview": "vite preview",
     "android:sync": "npm run build:android && BOE_CAPACITOR_VARIANT=client cap sync android && node scripts/check-phonepe-native-target.mjs --variant=client",
     "android:sync:prod": "npm run build:android:prod && BOE_CAPACITOR_VARIANT=client cap sync android && node scripts/check-phonepe-native-target.mjs --variant=client",

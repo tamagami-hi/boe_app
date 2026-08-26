@@ -41,6 +41,7 @@ export function createPhonePeMobileCheckout({
   isPluginAvailable,
   loadPlugin,
   generateFlowId,
+  androidBuildType,
   now = () => Date.now(),
 }) {
   let initializedConfiguration = null;
@@ -66,7 +67,7 @@ export function createPhonePeMobileCheckout({
           environment: checkout.environment,
           merchantId: checkout.merchantId,
           flowId: flowIdFor(generateFlowId()),
-          enableLogging: false,
+          enableLogging: androidBuildType === 'debug',
         });
         if (initialized?.status !== true) throw new Error(SDK_ERROR);
         initializedConfiguration = configuration;
@@ -95,4 +96,5 @@ export const phonePeMobileCheckout = createPhonePeMobileCheckout({
   isPluginAvailable: (name) => Capacitor.isPluginAvailable(name),
   loadPlugin: loadPhonePePlugin,
   generateFlowId: () => globalThis.crypto.randomUUID(),
+  androidBuildType: import.meta.env.VITE_BEO_ANDROID_BUILD_TYPE,
 });

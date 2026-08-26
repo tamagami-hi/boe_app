@@ -341,6 +341,10 @@ if [[ "$RELEASE_SIGNING" == true ]]; then
 else
     warn "no usable android/keystore.properties — falling back to assembleDebug"
 fi
+ANDROID_BUILD_TYPE="release"
+if [[ "$RELEASE_SIGNING" != true && "$TARGET" != "prod" ]]; then
+    ANDROID_BUILD_TYPE="debug"
+fi
 
 # versionCode must be a monotonically increasing integer. Derive it from semver.
 IFS=. read -r _vmaj _vmin _vpat <<<"$BASE_VERSION"
@@ -378,6 +382,7 @@ build_variant() {
     export VITE_BEO_API_MODE="http"
     export VITE_BEO_API_BASE_URL="$API_BASE"
     export VITE_BEO_ONBOARDING_URL="$ONBOARDING"
+    export VITE_BEO_ANDROID_BUILD_TYPE="$ANDROID_BUILD_TYPE"
 
     step "vite build (mode=$VITE_MODE, target=$variant)"
     ( cd "$APP_DIR" && npx --no-install vite build --mode "$VITE_MODE" ) \
