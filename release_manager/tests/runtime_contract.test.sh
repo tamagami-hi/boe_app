@@ -32,6 +32,19 @@ service_block() {
     ' "$compose_file"
 }
 
+compose_backend_env_keys() {
+    local compose_file="$1"
+    awk '
+        $0 == "x-backend-env: &backend-env" { in_env=1; next }
+        in_env && $0 == "services:" { exit }
+        in_env && $0 ~ /^  [A-Z][A-Z0-9_]*:/ {
+            sub(/^  /, "", $0)
+            sub(/:.*/, "", $0)
+            print
+        }
+    ' "$compose_file" | sort -u
+}
+
 workflow_job_block() {
     local workflow_file="$1" job="$2"
     awk -v header="  ${job}:" '
@@ -165,6 +178,39 @@ for stack in dev_release prod_release; do
         -f "$compose_file" config --quiet \
         || fail_test "$stack Compose configuration does not render"
 done
+
+dev_compose="$ROOT_DIR/release_manager/stacks/dev_release/docker-compose.dev_app.yml"
+prod_compose="$ROOT_DIR/release_manager/stacks/prod_release/docker-compose.prod_app.yml"
+if ! diff -u <(compose_backend_env_keys "$dev_compose") \
+            <(compose_backend_env_keys "$prod_compose") >/dev/null; then
+    fail_test 'development and production backend containers do not expose the same application configuration contract'
+fi
+for pair in \
+    'dev_release dev_internal dev_redis_data dev_postgres_data' \
+    'prod_release prod_internal prod_redis_data prod_postgres_data'; do
+    read -r stack internal redis_volume postgres_volume <<< "$pair"
+    compose_file="$ROOT_DIR/release_manager/stacks/$stack/$(stack_attr "$stack" compose)"
+    redis_block="$(service_block "$compose_file" redis)"
+    postgres_block="$(service_block "$compose_file" postgres)"
+    grep -qE "^[[:space:]]+- ${internal}$" <<< "$redis_block" \
+        || fail_test "$stack Redis is not isolated on its application-internal network"
+    grep -qE "^[[:space:]]+- ${redis_volume}:/data$" <<< "$redis_block" \
+        || fail_test "$stack Redis does not use its dedicated persistent volume"
+    grep -qE "^[[:space:]]+- ${internal}$" <<< "$postgres_block" \
+        || fail_test "$stack PostgreSQL is not isolated on its application-internal network"
+    grep -qE "^[[:space:]]+- ${postgres_volume}:/var/lib/postgresql/data$" <<< "$postgres_block" \
+        || fail_test "$stack PostgreSQL does not use its dedicated persistent volume"
+    if grep -qE '^[[:space:]]+ports:' <<< "$postgres_block"; then
+        fail_test "$stack PostgreSQL exposes a host port"
+    fi
+done
+
+[[ "$(stack_image_tag dev_release backend release-test)" != \
+   "$(stack_image_tag prod_release backend release-test)" ]] \
+    || fail_test 'development and production backend image namespaces are not isolated'
+[[ "$(stack_image_tag dev_release app release-test)" != \
+   "$(stack_image_tag prod_release app release-test)" ]] \
+    || fail_test 'development and production frontend image namespaces are not isolated'
 
 # Optional executable acceptance check for a freshly built image. The caller
 # supplies BOE_RUNTIME_IMAGE so ordinary static verification does not build or

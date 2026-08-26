@@ -96,7 +96,7 @@ release_manager/
 │   ├── _shared/                _boe_lib.sh, _boe_deploy.sh, _boe_rollback.sh
 │   ├── dev_release/            compose, native scripts, .env.example, guide
 │   ├── prod_release/
-│   └── monitor_service/        + config/ for prometheus, grafana, alertmanager
+│   └── monitor_service/        temporary external-monitoring deployment scaffold
 │
 ├── nginx/                      site configs for you to install (see the guide)
 ├── build/                      staged bundles, per stack (gitignored)
@@ -106,6 +106,13 @@ release_manager/
 ├── OPERATOR_MANUAL_STEPS.md    everything you must do by hand
 └── BeOnEdge Application Deployment.md    the architecture plan
 ```
+
+`monitor_service/` is deliberately outside the BOE_APP business runtime. It is
+currently shipped by this operator pipeline only to preserve the existing VPS
+deployment path; it is the extraction boundary for the future independent
+monitoring/operations repository. It must not gain business logic or arbitrary
+production database write access. See
+`docs/complexity-audit-2026-08-26/DEPLOYMENT_CONSTRAINTS_IMPLEMENTATION.md`.
 
 `BOE_APP/`, `recent_builds/` and `rollback/` are the **previous** single-stack
 pipeline, kept for reference. Nothing new reads them.
