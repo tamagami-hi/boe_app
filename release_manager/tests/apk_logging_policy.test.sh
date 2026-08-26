@@ -102,6 +102,8 @@ cat > "$AAPT_STUB" <<'STUB'
 case "${BOE_TEST_AAPT_RESULT:-failure}" in
     debug) printf "package: name='com.beonedge.app'\napplication-debuggable\n" ;;
     release) printf "package: name='com.beonedge.app'\n" ;;
+    empty) exit 0 ;;
+    malformed) printf 'warning: manifest could not be parsed\n' ;;
     failure) exit 23 ;;
 esac
 STUB
@@ -115,6 +117,12 @@ touch "$TEST_DIR/app.apk"
         || fail_test 'a non-debuggable APK was not identified'
     if BOE_TEST_AAPT_RESULT=failure apk_manifest_debuggable "$AAPT_STUB" "$TEST_DIR/app.apk" >/dev/null; then
         fail_test 'a failed aapt inspection was reported as non-debuggable'
+    fi
+    if BOE_TEST_AAPT_RESULT=empty apk_manifest_debuggable "$AAPT_STUB" "$TEST_DIR/app.apk" >/dev/null; then
+        fail_test 'an empty aapt inspection was reported as non-debuggable'
+    fi
+    if BOE_TEST_AAPT_RESULT=malformed apk_manifest_debuggable "$AAPT_STUB" "$TEST_DIR/app.apk" >/dev/null; then
+        fail_test 'a malformed aapt inspection was reported as non-debuggable'
     fi
 ) || exit 1
 ok 'APK debuggability inspection fails closed'
