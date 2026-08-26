@@ -90,6 +90,20 @@
 - Preview/reference assets under `frontend_stack/packages/ui-kits` and `frontend_stack/preview` were intentionally retained for this pass and require a separate archival/removal decision.
 - Verification: full frontend build and bundle boot passed; full frontend suite remains at 67 passing files with the three pre-existing `fundStockListPanel.test.jsx` failures.
 
+## Commit sequence
+
+- `81fd011` — simplify frontend contracts and unsupported withdrawals.
+- `cb963a5` — characterize canonical payment settlement and remove dead fixtures.
+- `51edbc7` — centralize frontend role checks.
+- `c52cb6d` — cover shared role-check edge cases.
+- `65ab0f7` — centralize signed growth parsing.
+- `5001368` — detect frontend contract method drift.
+- `3d09e0d` — scope frontend workspaces to active packages.
+
+## Current boundary
+
+The next roadmap items with material impact—admin compatibility removal, SIP/AutoPay retirement or retention, orphan-table migration, persistent rate limiting, and monitoring/Redis changes—require production usage or product/compliance decisions not provable from static inspection. They remain intentionally unmodified until runtime verification and ownership decisions are available.
+
 ### Preserved pre-existing worktree changes
 
 - `release_manager/stacks/_shared/_boe_deploy.sh`
