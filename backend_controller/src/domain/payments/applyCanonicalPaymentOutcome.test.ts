@@ -225,6 +225,48 @@ describe("applyCanonicalPaymentOutcome", () => {
     expect(harness.markReconciliationRequired).not.toHaveBeenCalled()
   })
 
+  test("accepts split provider transaction details only when their integer sum equals the payment", async () => {
+    const harness = createSettlementHarness()
+    const splitDetails = [
+      { ...completedOutcome().details[0]!, transactionId: "T_PROVIDER_TRANSACTION_1", amountPaise: "400000" },
+      { ...completedOutcome().details[0]!, transactionId: "T_PROVIDER_TRANSACTION_2", amountPaise: "600000" },
+    ]
+
+    await applyOutcome(harness, completedOutcome({ details: splitDetails }))
+
+    expect(harness.recordPaymentDetail).toHaveBeenCalledTimes(2)
+    expect(harness.insertSystemAllocation).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      amountPaise: "1000000",
+    }))
+    expect(harness.insertSystemContribution).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      amountPaise: "1000000",
+    }))
+  })
+
+  test("rejects split provider transaction details whose integer sum differs from the payment", async () => {
+    const harness = createSettlementHarness()
+    const splitDetails = [
+      { ...completedOutcome().details[0]!, transactionId: "T_PROVIDER_TRANSACTION_1", amountPaise: "400000" },
+      { ...completedOutcome().details[0]!, transactionId: "T_PROVIDER_TRANSACTION_2", amountPaise: "599999" },
+    ]
+
+    await applyOutcome(harness, completedOutcome({ details: splitDetails }))
+
+    expectNoSettlement(harness)
+    expect(harness.markReconciliationRequired).toHaveBeenCalledOnce()
+  })
+
+  test("ignores unknown merchant orders without touching payment or ledger state", async () => {
+    const harness = createSettlementHarness()
+    vi.mocked(harness.repository.findAttemptByMerchantOrderId).mockResolvedValue(null)
+
+    await applyOutcome(harness, completedOutcome())
+
+    expect(harness.repository.lockAttemptById).not.toHaveBeenCalled()
+    expectNoSettlement(harness)
+    expect(harness.markReconciliationRequired).not.toHaveBeenCalled()
+  })
+
   test("records a provider failure without creating a review", async () => {
     const harness = createSettlementHarness()
     const failed = {

@@ -56,6 +56,14 @@
 - Confirmed root dependency/script removals have no remaining repository references.
 - Remaining limitation: contract drift enforcement is path-level and baseline-based; it does not validate HTTP methods or request/response schemas, and 60 existing OpenAPI gaps remain explicitly recorded.
 
+## Next roadmap slice — fixture cleanup
+
+- Removed the three unreferenced client fixture modules:
+  - `frontend_stack/packages/client/src/data/fixtureMandates.js`
+  - `frontend_stack/packages/client/src/data/fixtureOrders.js`
+  - `frontend_stack/packages/client/src/data/fixtureSipControlRequests.js`
+- These files had no production or test imports in the repository scan. Full frontend verification is pending.
+
 ### Preserved pre-existing worktree changes
 
 - `release_manager/stacks/_shared/_boe_deploy.sh`
