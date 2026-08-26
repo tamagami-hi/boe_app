@@ -1,5 +1,6 @@
 import { fixtureUser } from '../data/fixtureUser.js';
 import { Capacitor } from '@capacitor/core';
+import { hasRole } from '@beonedge/shared/auth/roles.js';
 
 import {
   apiRequest,
@@ -193,10 +194,7 @@ function toAdminUser(principal) {
   return { ...base, permissions };
 }
 
-export function hasRole(user, role) {
-  return user?.roles?.some((value) => String(value).toLowerCase() === role) ||
-    String(user?.role || '').toLowerCase() === role;
-}
+export { hasRole } from '@beonedge/shared/auth/roles.js';
 
 function assertScopeUser(user, scope) {
   if (scope === 'admin' && !hasRole(user, 'admin')) {

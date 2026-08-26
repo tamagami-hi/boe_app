@@ -8,15 +8,7 @@ import { isTerminalAccount } from '../utils/approval.js';
 import { findRouteMeta, showsBottomNav as routeShowsBottomNav } from '../navigation/routes.js';
 import { SESSION_STATUS } from '../store/sessionState.js';
 import { BootstrapShell, PageTransition } from '@beonedge/shared';
-
-function hasRole(user, role) {
-  const expected = role.toLowerCase();
-  return (
-    String(user?.role || '').toLowerCase() === expected ||
-    String(user?.accountType || '').toLowerCase() === expected ||
-    user?.roles?.some((value) => String(value).toLowerCase() === expected)
-  );
-}
+import { hasRole } from '@beonedge/shared/auth/roles.js';
 
 export default function ClientLayout(props) {
   const { user, status, logout } = useSession();

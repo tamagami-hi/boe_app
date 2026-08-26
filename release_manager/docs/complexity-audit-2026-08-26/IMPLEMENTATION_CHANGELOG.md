@@ -78,3 +78,17 @@ Each subsequent entry must record:
 1. Files changed and the roadmap item addressed.
 2. Tests/checks run and results.
 3. Any known failures or runtime verification still required.
+
+## Role helper consolidation
+
+- Consolidated client role checks into `frontend_stack/packages/shared/src/auth/roles.js`.
+- Updated `frontend_stack/packages/client/src/services/authApi.js`, `frontend_stack/packages/client/src/layout/ClientLayout.jsx`, and `frontend_stack/packages/client/src/pages/Splash.jsx` to use the shared `hasRole(user, role)` implementation.
+- Added the `@beonedge/shared/auth/*` package export while preserving the existing `authApi.hasRole` public export.
+- The canonical helper now supports `role`, `accountType`, and `roles[]` consistently and safely returns `false` for an empty requested role.
+
+Verification:
+
+- `packages/client/src/pages/Splash.test.jsx`: 14 tests passed.
+- `packages/client/src/layout/ClientLayout.test.jsx`: 21 tests passed.
+- No source comments or new test files were added.
+- Runtime verification of native/admin package resolution remains pending until the full frontend build is run.

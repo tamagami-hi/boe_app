@@ -7,13 +7,7 @@ import { LAUNCH_PHASE, useLaunchGate } from '@beonedge/shared/net/launchGate.js'
 import { SYSTEM_BAR_STYLE, useSystemChrome } from '@beonedge/shared/platform/systemBarStyle.js';
 import { HOME_PATH } from '../navigation/routes.js';
 import logoOnDark from '@beonedge/shared/assets/logo-on-dark.svg';
-
-function isAdmin(user) {
-  return (
-    String(user?.role || '').toLowerCase() === 'admin' ||
-    user?.roles?.some((value) => String(value).toLowerCase() === 'admin')
-  );
-}
+import { hasRole } from '@beonedge/shared/auth/roles.js';
 
 export default function Splash() {
   const navigate = useNavigate();
@@ -34,7 +28,7 @@ export default function Splash() {
   useEffect(() => {
     if (!ready) return;
     const destination = user
-      ? (isAdmin(user) ? '/admin' : HOME_PATH)
+      ? (hasRole(user, 'admin') ? '/admin' : HOME_PATH)
       : '/app/login';
     navigate(destination, { replace: true });
   }, [ready, navigate, user]);

@@ -15,6 +15,7 @@
     "./appTarget.js": "./src/appTarget.js",
     "./format.js": "./src/format.js",
     "./riskMapping.js": "./src/riskMapping.js",
-    "./platform/*": "./src/platform/*"
+    "./platform/*": "./src/platform/*",
+    "./auth/*": "./src/auth/*"
   }
 }
