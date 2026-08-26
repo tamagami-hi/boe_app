@@ -213,6 +213,11 @@ if BOE_TEST_ADB_ARGS_FILE="$adb_args_file" PATH="$STUB_BIN:$PATH" \
     "$LOGCAT" --dump --seconds 301 --out "$TEST_DIR/long-capture.log" PhonePeSDK:V >/dev/null 2>&1; then
     fail_test 'an overlong diagnostic capture was accepted'
 fi
+if BOE_TEST_ADB_ARGS_FILE="$adb_args_file" PATH="$STUB_BIN:$PATH" \
+    "$LOGCAT" --dump --seconds 999999999999999999999999999999999999999999999999999999 \
+    --out "$TEST_DIR/overflow-capture.log" PhonePeSDK:V >/dev/null 2>&1; then
+    fail_test 'an overflowing diagnostic capture duration was accepted'
+fi
 ok 'boe_logcat.sh requires a positive bounded capture duration'
 
 bash -n "$BUILDER" || fail_test 'boe_update.sh is not valid bash'
