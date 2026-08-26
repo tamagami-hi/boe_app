@@ -7,6 +7,7 @@ apk_manifest_debuggable() {
 
     [[ -x "$aapt_bin" && -f "$apk" ]] || return 1
     badging="$("$aapt_bin" dump badging "$apk" 2>/dev/null)" || return 1
+    grep -Eq "^package: name='[^']+'([[:space:]]|$)" <<<"$badging" || return 1
 
     if grep -q 'application-debuggable' <<<"$badging"; then
         printf 'true\n'

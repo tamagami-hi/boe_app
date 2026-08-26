@@ -9,6 +9,7 @@ OUT_DIR="$SCRIPT_DIR/out"
 source "$PROJECT_ROOT/release_manager/lib/ui.sh"
 
 SECONDS_LIMIT=30
+MAX_SECONDS_LIMIT=300
 DO_CLEAR=false
 DO_DUMP=false
 SERIAL=""
@@ -29,7 +30,7 @@ Filters (required, at least one):
 Options:
   --clear       clear the device log buffer before capturing
   --dump        capture the current buffer once instead of streaming
-  --seconds N   stop streaming after N seconds (default 30)
+  --seconds N   stop streaming after 1-300 seconds (default 30)
   --serial ID   adb device serial (default: adb's own selection)
   --out FILE    output file (default emu/out/logcat.<utc-timestamp>.log)
   --help, -h    this message
@@ -44,8 +45,8 @@ while [[ $# -gt 0 ]]; do
         --clear)   DO_CLEAR=true; shift ;;
         --dump)    DO_DUMP=true;  shift ;;
         --seconds)
-            [[ "${2:-}" =~ ^[0-9]+$ ]] \
-                || { err "--seconds requires a non-negative integer (got: '${2:-<none>}')"; exit 1; }
+            [[ "${2:-}" =~ ^[1-9][0-9]*$ && "${2:-0}" -le "$MAX_SECONDS_LIMIT" ]] \
+                || { err "--seconds requires an integer from 1 to $MAX_SECONDS_LIMIT (got: '${2:-<none>}')"; exit 1; }
             SECONDS_LIMIT="$2"; shift 2 ;;
         --serial)
             [[ -n "${2:-}" ]] || { err "--serial requires a device serial"; exit 1; }
