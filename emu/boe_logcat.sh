@@ -45,7 +45,7 @@ while [[ $# -gt 0 ]]; do
         --clear)   DO_CLEAR=true; shift ;;
         --dump)    DO_DUMP=true;  shift ;;
         --seconds)
-            [[ "${2:-}" =~ ^[1-9][0-9]*$ && "${2:-0}" -le "$MAX_SECONDS_LIMIT" ]] \
+            [[ "${2:-}" =~ ^[1-9][0-9]{0,2}$ && "${2:-0}" -le "$MAX_SECONDS_LIMIT" ]] \
                 || { err "--seconds requires an integer from 1 to $MAX_SECONDS_LIMIT (got: '${2:-<none>}')"; exit 1; }
             SECONDS_LIMIT="$2"; shift 2 ;;
         --serial)
