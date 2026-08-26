@@ -1,6 +1,5 @@
-import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AdminShell from '../layout/AdminShell.jsx';
-import LegacyTabRedirect from './LegacyTabRedirect.jsx';
 import OverviewPage from './OverviewPage.jsx';
 import {
   ApprovalsRoute,
@@ -37,11 +36,6 @@ function Permitted({ children }) {
   return children;
 }
 
-function LegacyFundRedirect() {
-  const { fundId } = useParams();
-  return <Navigate to={`/admin/funds/${fundId}`} replace />;
-}
-
 function AumEntryRedirect() {
   const { user } = useAdminSession();
   const destination = aumEntryPathFor(user);
@@ -52,19 +46,12 @@ export default function Admin() {
   return (
     <Routes>
       <Route element={<AdminShell />}>
-        <Route index element={<LegacyTabRedirect />} />
+        <Route index element={<Navigate to="/admin/overview" replace />} />
         <Route path="overview" element={<Permitted><OverviewPage /></Permitted>} />
 
         <Route path="users/approvals" element={<Permitted><ApprovalsRoute /></Permitted>} />
         <Route path="users/directory" element={<Permitted><UserDirectoryRoute /></Permitted>} />
         <Route path="users/directory/:userId" element={<Permitted><UserDetailRoute /></Permitted>} />
-        {}
-        <Route path="users/kyc" element={<Navigate to="/admin/users/approvals" replace />} />
-        <Route path="users/risk-profiles" element={<Navigate to="/admin/users/approvals" replace />} />
-        {}
-        <Route path="users/subscriptions" element={<Navigate to="/admin/payments/mandates" replace />} />
-        <Route path="users/payments" element={<Navigate to="/admin/payments" replace />} />
-
         <Route path="funds" element={<Permitted><FundsRoute /></Permitted>} />
         <Route path="funds/new" element={<Permitted><FundCreateRoute /></Permitted>} />
         <Route path="funds/:fundId" element={<Permitted><FundWorkspaceRoute /></Permitted>} />
@@ -94,18 +81,6 @@ export default function Admin() {
 
         <Route path="app/builder" element={<Permitted><AppBuilderRoute /></Permitted>} />
 
-        {}
-        <Route path="ops/funds" element={<Navigate to="/admin/funds" replace />} />
-        <Route path="ops/funds/:fundId" element={<LegacyFundRedirect />} />
-        <Route path="ops/redemptions" element={<Navigate to="/admin/payments" replace />} />
-        <Route path="ops/transactions" element={<Navigate to="/admin/payments" replace />} />
-        <Route path="ops/ledger" element={<Navigate to="/admin/payments" replace />} />
-        <Route path="ops/sip-control" element={<Navigate to="/admin/payments/mandates" replace />} />
-        <Route path="ops/holdings" element={<Navigate to="/admin/aum/current" replace />} />
-
-        {}
-        <Route path="system/support" element={<Navigate to="/admin/audit" replace />} />
-        <Route path="system/audit-log" element={<Navigate to="/admin/audit" replace />} />
         <Route path="system/emails" element={<Permitted><EmailDeliveriesRoute /></Permitted>} />
         <Route path="system/environment" element={<Permitted><EnvironmentRoute /></Permitted>} />
 

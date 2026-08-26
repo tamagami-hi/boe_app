@@ -255,7 +255,7 @@ describe('throttling and polling', () => {
 
   test('elsewhere in the console only the badge is polled, every 120s', async () => {
     vi.useFakeTimers();
-    mountAt('/admin/users/payments');
+    mountAt('/admin/payments');
     await act(async () => { await Promise.resolve(); });
     await act(async () => { pending[0].resolve({ rows: [ROW_A], truncated: false }); });
     const before = loadApprovals.mock.calls.length;

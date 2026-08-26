@@ -15,9 +15,6 @@ vi.mock('../layout/AdminShell.jsx', () => ({
   ),
 }));
 
-vi.mock('./LegacyTabRedirect.jsx', () => ({
-  default: () => <div data-testid="page-legacy-tab-redirect" />,
-}));
 vi.mock('./OverviewPage.jsx', () => ({ default: () => <div data-testid="page-overview" /> }));
 vi.mock('../features/site/FaqsPage.jsx', () => ({ default: () => <div data-testid="page-faqs" /> }));
 vi.mock('./NotFound.jsx', () => ({ default: () => <div data-testid="page-not-found" /> }));
@@ -97,14 +94,14 @@ describe('Admin route table', () => {
     expect(await screen.findByTestId('admin-shell')).toBeInTheDocument();
   });
 
-  test('/admin resolves through the legacy ?tab= resolver', async () => {
+  test('/admin resolves directly to overview', async () => {
     renderAt('/admin');
-    expect(await screen.findByTestId('page-legacy-tab-redirect')).toBeInTheDocument();
+    expect(await screen.findByTestId('page-overview')).toBeInTheDocument();
   });
 });
 
-describe('Admin retired-route redirects', () => {
-  const redirectCases = [
+describe('Admin retired routes', () => {
+  const retiredRoutes = [
     ['/admin/users/kyc', 'page-approvals'],
     ['/admin/users/risk-profiles', 'page-approvals'],
     ['/admin/users/subscriptions', 'page-mandates'],
@@ -118,15 +115,12 @@ describe('Admin retired-route redirects', () => {
     ['/admin/ops/holdings', 'page-aum-current'],
     ['/admin/system/support', 'page-audit-log'],
     ['/admin/system/audit-log', 'page-audit-log'],
-    ['/admin/funds-received', 'page-fund-receipts-awaiting'],
-    ['/admin/client-values', 'page-client-values-detail'],
-    ['/admin/aum', 'page-aum-current'],
   ];
 
-  for (const [path, testId] of redirectCases) {
-    test(`${path} still redirects to its replacement`, async () => {
+  for (const [path] of retiredRoutes) {
+    test(`${path} renders Not Found after compatibility removal`, async () => {
       renderAt(path);
-      expect(await screen.findByTestId(testId)).toBeInTheDocument();
+      expect(await screen.findByTestId('page-not-found')).toBeInTheDocument();
     });
   }
 });

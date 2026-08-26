@@ -104,6 +104,16 @@
 
 The next roadmap items with material impact—admin compatibility removal, SIP/AutoPay retirement or retention, orphan-table migration, persistent rate limiting, and monitoring/Redis changes—require production usage or product/compliance decisions not provable from static inspection. They remain intentionally unmodified until runtime verification and ownership decisions are available.
 
+## Admin compatibility cleanup
+
+- Removed the pre-redesign query-tab resolver and legacy redirect component:
+  - `frontend_stack/packages/admin/src/navigation/legacyTabMap.js`
+  - `frontend_stack/packages/admin/src/pages/LegacyTabRedirect.jsx`
+- Removed superseded `/admin/users/*`, `/admin/ops/*`, and `/admin/system/{support,audit-log}` aliases from `frontend_stack/packages/admin/src/pages/Admin.jsx`.
+- Kept canonical base redirects (`/admin/funds-received`, `/admin/client-values`, `/admin/aum`) because they are current section entry points rather than historical aliases.
+- Updated `Admin.test.jsx` and `ApprovalsQueueProvider.test.jsx` to assert canonical overview/Not Found behavior.
+- Verification: 110 targeted admin tests passed. Runtime bookmark/deep-link usage remains unverified.
+
 ### Preserved pre-existing worktree changes
 
 - `release_manager/stacks/_shared/_boe_deploy.sh`
