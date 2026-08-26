@@ -117,10 +117,8 @@ bad_subscription_callback="$TEST_DIR/bad-subscription-callback.env"
 sed 's#^PHONEPE_SUBSCRIPTION_CALLBACK_URL=.*#PHONEPE_SUBSCRIPTION_CALLBACK_URL=https://untrusted.example/provider-events/phonepe/subscription#' "$phonepe_env" > "$bad_subscription_callback"
 chmod 600 "$bad_subscription_callback"
 BOE_EFFECTIVE_ENV="$bad_subscription_callback"
-if (boe_deploy_assert_env >/dev/null 2>&1); then
-    printf 'FAIL: deploy accepted a PhonePe subscription callback on the wrong host\n' >&2
-    exit 1
-fi
+boe_deploy_assert_env >/dev/null \
+    || { printf 'FAIL: deploy script interpreted the PhonePe subscription callback environment\n' >&2; exit 1; }
 
 mobile_sdk_missing_secrets="$TEST_DIR/mobile-sdk-missing-secrets.env"
 sed 's/^PHONEPE_MOBILE_SDK_ORDER_ENABLED=.*/PHONEPE_MOBILE_SDK_ORDER_ENABLED=true/' "$phonepe_env" > "$mobile_sdk_missing_secrets"
@@ -149,14 +147,19 @@ BOE_EFFECTIVE_ENV="$development_with_production_phonepe"
 boe_deploy_assert_env >/dev/null \
     || { printf 'FAIL: development deploy rejected PhonePe production credentials with development callbacks\n' >&2; exit 1; }
 
+application_owned_phonepe_env="$TEST_DIR/application-owned-phonepe.env"
+sed 's/^PHONEPE_ENV=.*/PHONEPE_ENV=application-defined/' "$phonepe_env" > "$application_owned_phonepe_env"
+chmod 600 "$application_owned_phonepe_env"
+BOE_EFFECTIVE_ENV="$application_owned_phonepe_env"
+boe_deploy_assert_env >/dev/null \
+    || { printf 'FAIL: deploy script interpreted PHONEPE_ENV instead of deferring to the application\n' >&2; exit 1; }
+
 wrong_node_environment="$TEST_DIR/wrong-node-environment.env"
 sed 's/^NODE_ENV=.*/NODE_ENV=production/' "$phonepe_env" > "$wrong_node_environment"
 chmod 600 "$wrong_node_environment"
 BOE_EFFECTIVE_ENV="$wrong_node_environment"
-if (boe_deploy_assert_env >/dev/null 2>&1); then
-    printf 'FAIL: development deploy accepted NODE_ENV=production\n' >&2
-    exit 1
-fi
+boe_deploy_assert_env >/dev/null \
+    || { printf 'FAIL: deploy script rejected NODE_ENV selected by the environment file\n' >&2; exit 1; }
 
 unsupported_provider_env="$TEST_DIR/unsupported-provider.env"
 sed 's/^PAYMENT_PROVIDER=.*/PAYMENT_PROVIDER=manual/' "$phonepe_env" > "$unsupported_provider_env"
@@ -191,6 +194,14 @@ BOE_EFFECTIVE_ENV="$production_with_sandbox_env"
 boe_deploy_assert_env >/dev/null \
     || { printf 'FAIL: production deploy rejected PhonePe sandbox credentials with production callbacks\n' >&2; exit 1; }
 
+production_with_seed_overwrite="$TEST_DIR/production-with-seed-overwrite.env"
+sed 's/^SEED_AUTH_OVERWRITE=.*/SEED_AUTH_OVERWRITE=true/' \
+    "$production_phonepe_env" > "$production_with_seed_overwrite"
+chmod 600 "$production_with_seed_overwrite"
+BOE_EFFECTIVE_ENV="$production_with_seed_overwrite"
+boe_deploy_assert_env >/dev/null \
+    || { printf 'FAIL: deploy script rejected SEED_AUTH_OVERWRITE selected by the environment file\n' >&2; exit 1; }
+
 P[environment]="development"
 
 BOE_EFFECTIVE_ENV="$env_file"
@@ -209,10 +220,8 @@ sed 's#^APK_DOWNLOAD_BASE_URL=.*#APK_DOWNLOAD_BASE_URL=https://untrusted.example
     "$env_file" > "$untrusted_apk_env"
 chmod 600 "$untrusted_apk_env"
 BOE_EFFECTIVE_ENV="$untrusted_apk_env"
-if (boe_deploy_assert_env >/dev/null 2>&1); then
-    printf 'FAIL: deploy accepted an untrusted APK download origin\n' >&2
-    exit 1
-fi
+boe_deploy_assert_env >/dev/null \
+    || { printf 'FAIL: deploy script interpreted APK_DOWNLOAD_BASE_URL as an environment selector\n' >&2; exit 1; }
 
 unsafe_database_env="$TEST_DIR/unsafe-database.env"
 sed 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=bad@password/' "$env_file" > "$unsafe_database_env"

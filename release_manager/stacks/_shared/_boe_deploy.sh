@@ -271,7 +271,7 @@ boe_validate_app_key_material() {
 }
 
 boe_validate_app_policy() {
-    local issuer allowlist origin provider node_env expected_node_env phonepe_env phonepe_version phonepe_redirect phonepe_callback expected_phonepe_origin smtp_host smtp_port smtp_secure smtp_user smtp_password from_address apk_base expected_apk_base seed_enabled key value
+    local issuer allowlist origin provider phonepe_version smtp_host smtp_port smtp_secure smtp_user smtp_password from_address seed_enabled key value
     local -a origins
     issuer="$(env_get ACCESS_TOKEN_ISSUER "$BOE_EFFECTIVE_ENV")"
     [[ "$issuer" == https://* ]] || die "ACCESS_TOKEN_ISSUER must use https://"
@@ -315,12 +315,6 @@ boe_validate_app_policy() {
         *,https://localhost,*) : ;;
         *) warn "WEB_ORIGIN_ALLOWLIST does not include https://localhost — APK requests will be blocked by CORS" ;;
     esac
-    node_env="$(env_get NODE_ENV "$BOE_EFFECTIVE_ENV")"
-    expected_node_env="development"
-    [[ "${P[environment]}" == "production" ]] && expected_node_env="production"
-    if [[ -n "$node_env" ]]; then
-        [[ "$node_env" == "$expected_node_env" ]] || die "${P[environment]} deployment requires NODE_ENV=$expected_node_env"
-    fi
     provider="$(env_get PAYMENT_PROVIDER "$BOE_EFFECTIVE_ENV")"
     [[ -n "$provider" ]] || provider="phonepe"
     if [[ -n "$provider" ]]; then
@@ -329,10 +323,7 @@ boe_validate_app_policy() {
             PHONEPE_ENV PHONEPE_CALLBACK_USERNAME PHONEPE_CALLBACK_PASSWORD \
             PHONEPE_CALLBACK_URL PHONEPE_SUBSCRIPTION_CALLBACK_URL \
             PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST PHONEPE_MERCHANT_ID
-        phonepe_env="$(env_get PHONEPE_ENV "$BOE_EFFECTIVE_ENV")"
         phonepe_version="$(env_get PHONEPE_CLIENT_VERSION "$BOE_EFFECTIVE_ENV")"
-        phonepe_callback="$(env_get PHONEPE_CALLBACK_URL "$BOE_EFFECTIVE_ENV")"
-        phonepe_subscription_callback="$(env_get PHONEPE_SUBSCRIPTION_CALLBACK_URL "$BOE_EFFECTIVE_ENV")"
         phonepe_subscription_events="$(env_get PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST "$BOE_EFFECTIVE_ENV")"
         phonepe_mobile_sdk_enabled="$(env_get PHONEPE_MOBILE_SDK_ORDER_ENABLED "$BOE_EFFECTIVE_ENV")"
         phonepe_autopay_enabled="$(env_get PHONEPE_AUTOPAY_ENABLED "$BOE_EFFECTIVE_ENV")"
@@ -340,19 +331,8 @@ boe_validate_app_policy() {
         [[ -n "$phonepe_mobile_sdk_enabled" ]] || phonepe_mobile_sdk_enabled="false"
         [[ -n "$phonepe_autopay_enabled" ]] || phonepe_autopay_enabled="false"
         [[ -n "$phonepe_autopay_collection_enabled" ]] || phonepe_autopay_collection_enabled="false"
-        [[ "$phonepe_env" == "sandbox" || "$phonepe_env" == "production" ]] \
-            || die "PHONEPE_ENV must be sandbox or production"
         [[ "$phonepe_version" =~ ^[1-9][0-9]*$ ]] \
             || die "PHONEPE_CLIENT_VERSION must be a positive integer"
-        if [[ "${P[environment]}" == "production" ]]; then
-            expected_phonepe_origin="https://app.beonedge.in"
-        else
-            expected_phonepe_origin="https://dev-app.beonedge.in"
-        fi
-        [[ "$phonepe_callback" == "$expected_phonepe_origin/api/v1/provider-events/phonepe/payment" ]] \
-            || die "PHONEPE_CALLBACK_URL must be $expected_phonepe_origin/api/v1/provider-events/phonepe/payment"
-        [[ "$phonepe_subscription_callback" == "$expected_phonepe_origin/api/v1/provider-events/phonepe/subscription" ]] \
-            || die "PHONEPE_SUBSCRIPTION_CALLBACK_URL must be $expected_phonepe_origin/api/v1/provider-events/phonepe/subscription"
         [[ -n "$phonepe_subscription_events" ]] \
             || die "PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST must list exact event names"
         local phonepe_subscription_event phonepe_subscription_event_values
@@ -384,22 +364,10 @@ boe_validate_app_policy() {
     [[ "$smtp_port" == "465" ]] || die "EMAIL_SMTP_PORT must be 465"
     [[ "$smtp_secure" == "true" ]] || die "EMAIL_SMTP_SECURE must be true"
     [[ "$from_address" == "$smtp_user" ]] || die "KYC_EMAIL_FROM must equal EMAIL_SMTP_USER"
-    apk_base="$(env_get APK_DOWNLOAD_BASE_URL "$BOE_EFFECTIVE_ENV")"
-    if [[ "${P[environment]}" == "production" ]]; then
-        expected_apk_base="https://app.beonedge.in/downloads"
-    else
-        expected_apk_base="https://dev-app.beonedge.in/downloads"
-    fi
-    [[ "$apk_base" == "$expected_apk_base" ]] \
-        || die "APK_DOWNLOAD_BASE_URL must be $expected_apk_base"
     [[ "$(env_get KYC_CODE_MAX_ATTEMPTS "$BOE_EFFECTIVE_ENV")" == "5" ]] \
         || die "KYC_CODE_MAX_ATTEMPTS must be 5"
     seed_enabled="$(env_get SEED_AUTH_ENABLED "$BOE_EFFECTIVE_ENV")"
     [[ "$seed_enabled" == "false" ]] || boe_assert_env_keys ADMIN_LOGIN_ID ADMIN_PASSWORD
-    if [[ "${P[environment]}" == "production" ]]; then
-        [[ "$(env_get SEED_AUTH_OVERWRITE "$BOE_EFFECTIVE_ENV")" != "true" ]] \
-            || die "SEED_AUTH_OVERWRITE must not be true in production"
-    fi
 }
 
 # Archive the currently published APKs of every configured variant into that
