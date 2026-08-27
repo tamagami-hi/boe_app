@@ -1,4 +1,5 @@
 import { AUM_OPENING_REASONS, todayInIndia } from '../../helpers/aumReasons.js';
+import { paiseToRupees } from '@beonedge/shared/money.js';
 
 export const FUND_STATES = ['draft', 'published', 'paused', 'archived'];
 
@@ -76,12 +77,6 @@ const paise = (rupees) => {
   return Number.isFinite(value) && value > 0 ? Math.round(value * 100) : 0;
 };
 
-const rupees = (value) => {
-  if (value === null || value === undefined || value === '') return '';
-  const amount = Number(value);
-  return Number.isFinite(amount) ? amount / 100 : '';
-};
-
 const positiveInt = (value) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : null;
@@ -104,8 +99,8 @@ export function profileFromDetail(detail) {
     objective: fund.objective || '',
     riskLevel: fund.riskLevel || 'moderate',
     returnTier: fund.returnTier || '',
-    minSip: rupees(fund.minimumSipPaise),
-    minLumpsum: rupees(fund.minimumPurchasePaise),
+    minSip: paiseToRupees(fund.minimumSipPaise) ?? '',
+    minLumpsum: paiseToRupees(fund.minimumPurchasePaise) ?? '',
     minimumDurationMonths: version.minimumDurationMonths ?? '',
     recommendedHoldingMonths: version.recommendedHoldingMonths ?? '',
     disclosureTitle: disclosure.title || '',

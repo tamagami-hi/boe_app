@@ -1,5 +1,6 @@
 import { apiRequest, clone, delay, listFromPayload, useHttpApi } from './_util.js';
 import { loadAppConfig, strategyById } from '@beonedge/shared/appConfig.js';
+import { paiseToRupees } from '@beonedge/shared/money.js';
 
 // Canonical fund catalogue -> the product shape the fund screens render.
 //
@@ -9,8 +10,6 @@ import { loadAppConfig, strategyById } from '@beonedge/shared/appConfig.js';
 function mapFund(row) {
   if (!row) return null;
   const fundSize = row.fundSize || {};
-  const paiseToRupees = (value) =>
-    value === null || value === undefined ? null : Number(value) / 100;
   return {
     id: row.id,
     slug: row.slug,

@@ -1,7 +1,8 @@
 import { apiRequest, clone, delay, listFromPayload, useHttpApi } from './_util.js';
 import { fixtureStatements } from '../data/fixtureStatements.js';
+import { paiseToRupees } from '@beonedge/shared/money.js';
 
-const rupees = (paise) => (paise === null || paise === undefined ? 0 : Number(paise) / 100);
+const rupees = (paise) => paiseToRupees(paise) ?? 0;
 
 /**
  * A statement is derived from the investor's own ledger, one per month in which

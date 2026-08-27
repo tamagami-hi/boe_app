@@ -21,7 +21,7 @@ External marketing/native signup
   -> client session provider -> protected client routes
 ```
 
-Admin web login uses `POST /v1/auth/web/login`, cookie session state, and CSRF checks. Approval creates the user; rejection does not. Migration 025 removed verification-token/invite activation paths. The active Email OTP flow is implemented in `clientKycRoutes.ts` and `domain/client/kyc.ts` using `kyc_cases` and `kyc_verification_codes`; the `kyc` naming is incorrect for this contact-verification behavior and must be migrated without losing verified users. `users` is the durable identity; no legacy compliance table may be dropped until all required state and financial references are proven to survive.
+Admin web login uses `POST /v1/auth/web/login`, cookie session state, and CSRF checks. Approval creates the user; rejection does not. Migration 025 removed verification-token/invite activation paths. The active Email OTP flow is implemented in `clientEmailVerificationRoutes.ts`, `emailVerification.ts`, and `emailVerificationRepository.ts`, using `users.email_verification_*` and `email_verification_codes`. `users` is the durable identity; legacy cleanup migration 042 remains blocked until all required state, financial references, retention obligations, and deployed row counts are proven to survive.
 
 ## Fund lifecycle
 
@@ -145,7 +145,7 @@ Routes are registered in `backend_controller/src/runtime/composition.ts`; the ro
 | Web auth | `webAuthRoutes.ts`: `/v1/auth/web/login` and cookie-session paths |
 | Client catalogue/portfolio | `clientFundRoutes.ts`, `clientPortfolioRoutes.ts`: `/v1/client/funds`, portfolio/value reads |
 | Orders/payments | `clientOrderRoutes.ts`, `clientPaymentRoutes.ts`: order creation, payment initiation/status |
-| SIP/AutoPay/KYC | `clientSipPlanRoutes.ts`, `clientAutoPayRoutes.ts`, `clientKycRoutes.ts` |
+| SIP/AutoPay/Email Verification | `clientSipPlanRoutes.ts`, `clientAutoPaySipRoutes.ts`, `clientEmailVerificationRoutes.ts` |
 | Admin applications | `adminApplicationRoutes.ts`: `POST /v1/admin/applications/:id/decision` |
 | Admin catalogue/AUM | `adminCatalogRoutes.ts`, `adminAumRoutes.ts` |
 | Admin growth/receipts | `adminClientGrowthRoutes.ts`, admin fund receipt acknowledgement route |

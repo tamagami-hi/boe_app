@@ -21,16 +21,18 @@ this audit:
   records reference `users` directly. Email OTP is an account/contact
   verification checkpoint, not regulatory KYC. The committed baseline stores
   that state in the incorrectly named `kyc_cases` and
-  `kyc_verification_codes` tables and exposes `/v1/client/kyc/*`; the current
-  worktree contains the in-progress migration/source rename toward
-  `email_verification_codes` and user columns. This is not complete until the
-  migration/backfill is tested and deployed without losing verified users.
+  `kyc_verification_codes` tables and exposed `/v1/client/kyc/*`; migrations
+  040/041 now backfill it into `users.email_verification_*` and
+  `email_verification_codes`, and active source uses Email Verification names.
+  Migration 042 remains gated on deployed preservation, retention, and
+  legal-hold checks before legacy source tables are dropped.
 - `legacy_investment_reviews`, `investor_profiles`, `kyc_documents`,
   `kyc_reviews`, `risk_assessments`, and `marketing_leads` are removal
   candidates only through reviewed forward migrations. Before any drop, verify
   foreign keys, row ownership, financial-history relationships, retention or
   legal-hold obligations, and row/relationship counts before and after data
-  preservation. No such migration has been applied in the current repository.
+  preservation. Migration 042 now provides the forward, fail-closed cleanup; it
+  has not been applied to a deployed database in this audit.
 - Dev and production are separate application stacks at
   `/srv/dev_stack/BOE_APP/dev_release` and
   `/srv/dev_stack/BOE_APP/prod_release`. Their compose definitions use separate
@@ -153,15 +155,16 @@ payment_mandate --setup/collection/cancel--> SIP/AutoPay workers
 all sensitive mutations --> audit_events; external work --> outbox_events
 ```
 
-The current canonical investment relationship is `investment_orders` → `payments`/`payment_attempts` → `investment_allocations` → `client_value_entries`. `legacy_investment_reviews` remains physically after migration 039 but is not represented in the Kysely `Database` interface and has no current settlement role. `users` is the durable identity: financial tables use direct `users` foreign keys with restrictive deletion in migrations 017–022 and 039. In the committed baseline, Email OTP state is coupled to `kyc_cases` and `kyc_verification_codes`; pending migration 040/041 moves it to user-linked Email Verification state, and migration 042 proposes dropping the old tables. Those changes require preservation and deployed verification before they are considered complete.
+The current canonical investment relationship is `investment_orders` → `payments`/`payment_attempts` → `investment_allocations` → `client_value_entries`. `legacy_investment_reviews` remains physically after migration 039 but is not represented in the Kysely `Database` interface and has no current settlement role. `users` is the durable identity: financial tables use direct `users` foreign keys with restrictive deletion in migrations 017–022 and 039. Migrations 040/041 move Email OTP state to user-linked Email Verification storage, and migration 042 proposes dropping the migration-only source tables. Preservation and deployed verification are still required before cleanup is complete.
 
 ## 6. Database model
 
 The committed `backend_controller/src/db/types.ts` baseline defines 55 tables. A fresh
 039 migration sequence reaches 56 application tables because `investment_reviews`
 is renamed to `legacy_investment_reviews`; `schema_migrations` makes 57 physical
-tables. The current worktree adds the pending Email Verification/legacy cleanup
-migrations, so the post-migration count must be recalculated after review. All
+tables. Migrations 040–042 add durable Email Verification state and a guarded
+legacy cleanup path; the final physical count after applying 042 depends on the
+deployed schema and remains runtime verification. All
 counts are static and should be checked against a real production schema
 (**Needs runtime verification**).
 
@@ -170,7 +173,7 @@ Core groups are:
 - Identity/onboarding: `applications`, `application_consents`, `consent_documents`, `application_reviews`, `users`, `user_credentials`.
 - Authentication/RBAC/audit: `auth_sessions`, `auth_refresh_tokens`, `auth_login_events`, `roles`, `permissions`, `role_permissions`, `user_roles`, `audit_events`, `idempotency_records`, `rate_limit_windows`, `legal_holds`.
 - Reliability/email: `outbox_events`, `email_deliveries`, `email_provider_events`, `email_suppressions`.
-- Email verification (currently KYC-named): `kyc_cases`, `kyc_verification_codes`; these are being replaced by durable user-linked Email Verification state.
+- Email verification: `users.email_verification_*`, `email_verification_codes`; legacy `kyc_cases`/codes are migration-only source tables for 041/042.
 - Designated legacy compliance/profile: `investor_profiles`, `kyc_documents`, `kyc_reviews`, `risk_assessments`.
 - Catalogue/reporting: `funds`, `fund_versions`, `fund_disclosure_versions`, `fund_stock_disclosures`, `fund_aum_snapshots`, `aum_growth_batches`, `finance_policy_versions`, `content_items`, `app_config_versions`.
 - Investing/payments: `investment_orders`, `payments`, `payment_attempts`, `provider_payment_details`, `provider_events`, `refund_operations`, `investment_allocations`, `fund_receipt_acknowledgements`.
@@ -196,7 +199,7 @@ The generated OpenAPI artifact (`frontend_stack/packages/contracts/generated/ope
 
 ## 8. User lifecycle
 
-`publicOnboardingRoutes.ts` receives `POST /newuser` with `x-signup-key`; `submitApplication.ts` writes `applications` in `submitted` state, consent rows, and audit. Admin `POST /v1/admin/applications/:id/decision` invokes `decideApplication.ts`; approval creates an active `users` row and credential, queues outbox/email, and rejection leaves no active account. Native login is `/v1/auth/native/login`; web admin login is `/v1/auth/web/login` with HttpOnly cookie and CSRF. Email OTP currently uses KYC-named code (`clientKycRoutes.ts`, `domain/client/kyc.ts`, `kyc_cases`, `kyc_verification_codes`) and directly sets the case approved; the current simplification slice is migrating this state to `users` and `email_verification_codes`. Email ownership is not regulatory KYC. Actual deployed row counts and legal-retention obligations remain **Needs runtime verification**.
+`publicOnboardingRoutes.ts` receives `POST /newuser` with `x-signup-key`; `submitApplication.ts` writes `applications` in `submitted` state, consent rows, and audit. Admin `POST /v1/admin/applications/:id/decision` invokes `decideApplication.ts`; approval creates an active `users` row and credential, queues outbox/email, and rejection leaves no active account. Native login is `/v1/auth/native/login`; web admin login is `/v1/auth/web/login` with HttpOnly cookie and CSRF. Email OTP now uses `clientEmailVerificationRoutes.ts`, `emailVerification.ts`, `users.email_verification_*`, and `email_verification_codes`; email ownership is not regulatory KYC. Actual deployed row counts and legal-retention obligations remain **Needs runtime verification**.
 
 ## 9. Fund lifecycle
 
@@ -209,10 +212,10 @@ business flow describes as email ownership verification:
 
 | Concern | Current artifact | Required direction |
 |---|---|---|
-| Persistent status | `kyc_cases.state`, queried in `investingEligibility.ts`, `orderRepository.ts`, and `clientPortfolioRepository.ts` | User-linked Email Verification state on `users` or an explicitly named retained table |
-| One-time code | `kyc_verification_codes` and `kycRepository.ts` | `email_verification_codes`, short-lived and user-linked |
-| Domain | `domain/client/kyc.ts` | `domain/client/emailVerification.ts` |
-| Routes | `clientKycRoutes.ts`: `POST /v1/client/kyc/start`, `/resend`, `/verify`, and `GET /v1/client/kyc-status` | Email Verification route/type names; remove KYC wording when the behavior is only OTP email control |
+| Persistent status | `users.email_verification_state` and timestamps, queried by `investingEligibility.ts`, `orderRepository.ts`, and `clientPortfolioRepository.ts` | KEEP as the durable user-linked Email Verification state |
+| One-time code | `email_verification_codes` and `emailVerificationRepository.ts` | KEEP as short-lived, user-linked OTP material |
+| Domain | `domain/client/emailVerification.ts` | Active canonical implementation |
+| Routes | `clientEmailVerificationRoutes.ts`: `POST /v1/client/email-verification/start`, `/resend`, `/verify`, and `GET /v1/client/email-verification-status` | Active canonical route/type names |
 | Runtime configuration | `EMAIL_VERIFICATION_FROM`, `EMAIL_VERIFICATION_CODE_TTL_MS`, `EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS`, `EMAIL_VERIFICATION_RESEND_COOLDOWN_MS`, `EMAIL_VERIFICATION_VALIDITY_MS` in `runtime/environment.ts` and composition | Canonical Email OTP Verification configuration; deployment examples and validation use the same names |
 | Admin/UI wording | `adminOversightRoutes.ts`, `adminOversightRepository.ts`, `UserDetailScreen.jsx`, `helpers/formatters.js` | Use Email Verification status/labels where no regulatory identity review is performed |
 | Email/onboarding wording | `emailTemplates.ts`, `emailSender.ts`, `transactionalEmailSender.ts`, `emailWorker.ts`, `submitApplication.ts`, and `publicOnboardingRoutes.ts` | Rename only OTP/account-verification semantics; preserve genuine regulatory, legal, or historical compliance wording |
@@ -268,7 +271,7 @@ There are 26 production route modules, 36 repository modules, and 28 non-test do
 
 - `refund_operations` and refund repository operations without a create caller.
 - `risk_assessments`, `investor_profiles`, `kyc_documents`, `kyc_reviews`, and `marketing_leads`: schema/read/seed presence exceeds current write workflows and are designated removal candidates, subject to FK, preservation, statutory-retention, and legal-hold checks.
-- `kyc_cases` and `kyc_verification_codes`: active Email OTP implementation despite incorrect KYC naming; not removable until state is migrated to durable Email Verification storage.
+- `kyc_cases` and `kyc_verification_codes`: migration-only source tables; removable only when migration 042 passes deployed preservation/retention/legal-hold gates.
 - Persistent `rate_limit_windows` table versus in-process `http/rateLimit.ts` map.
 - Admin compatibility routes and legacy tab map.
 - Withdrawal/redemption client UI and `adminReason` display not populated by `mapRedemptionRequest`.

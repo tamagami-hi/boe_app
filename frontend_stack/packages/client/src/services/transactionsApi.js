@@ -1,5 +1,6 @@
 import { fixtureTransactions } from '../data/fixtureTransactions.js';
 import { apiRequest, clone, delay, listFromPayload, useHttpApi } from './_util.js';
+import { paiseToRupees } from '@beonedge/shared/money.js';
 
 function transactionType(transaction) {
   const type = String(transaction?.type || transaction?.rawType || transaction?.planType || '').toLowerCase();
@@ -28,8 +29,6 @@ function applyFilter(items, filter) {
 // Option B ledger row -> the transaction list shape. Each row is a dated event:
 // a SIP installment, a lump sum, an administrator-allocated gain, or a redemption.
 function mapLedgerRow(row) {
-  const toRupees = (paise) =>
-    paise === null || paise === undefined ? null : Number(paise) / 100;
   const label = {
     sip_installment: 'SIP installment',
     lump_sum: 'Lump sum',
@@ -43,10 +42,10 @@ function mapLedgerRow(row) {
     rawType: row.type,
     type: row.type === 'sip_installment' ? 'sip' : row.type === 'lump_sum' ? 'lumpsum' : row.type,
     label: label[row.type] ?? row.type,
-    amount: toRupees(row.amountPaise),
+    amount: paiseToRupees(row.amountPaise),
     // Signed deltas explain which headline figure the row moved.
-    investmentDelta: toRupees(row.principalDeltaPaise),
-    valueDelta: toRupees(row.valueDeltaPaise),
+    investmentDelta: paiseToRupees(row.principalDeltaPaise),
+    valueDelta: paiseToRupees(row.valueDeltaPaise),
     date: row.date,
     createdAt: row.createdAt,
     // Ledger entries are settled facts; the list has no pending state.

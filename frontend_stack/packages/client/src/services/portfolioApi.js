@@ -1,13 +1,11 @@
 import { fixturePortfolio } from '../data/fixturePortfolio.js';
 import { apiRequest, clone, delay, useHttpApi } from './_util.js';
+import { paiseToRupees } from '@beonedge/shared/money.js';
 
 // Option B: an investor's position is money on a dated ledger — there are no
 // units and no NAV. `GET /v1/client/portfolio` derives every figure from that
 // ledger on each read, so this adapter only converts paise to the rupees the UI
 // renders. Nothing is cached client-side.
-
-const paiseToRupees = (paise) =>
-  paise === null || paise === undefined ? null : Number(paise) / 100;
 
 /** One pool's position: what went in, what it is worth now, and the difference. */
 function mapPool(pool) {

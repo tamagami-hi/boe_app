@@ -65,3 +65,16 @@ Entries will be appended after each implementation slice is reviewed and tested.
   (666/666), frontend tests (903/903) and production build/bundle boot, complete
   integration suite (207/207), runtime deployment contracts, and deployment
   environment validation all pass.
+
+### 2026-08-27 — Frontend money conversion consolidation
+
+- Roadmap item: Stage 4 amount-conversion consolidation; monitoring stack was
+  intentionally left untouched.
+- Added `frontend_stack/packages/shared/src/money.js` as the canonical read-side
+  paise-to-rupee conversion.
+- Replaced local conversion copies in admin formatters/fund operations and the
+  client fund, order, portfolio, statement, and transaction adapters. Write-side
+  parsers remain feature-local because their validation rules differ.
+- Verification: targeted frontend tests passed 41/41; complete frontend tests
+  passed 68 files / 903 tests; production build and bundle boot passed; and
+  `git diff --check` passed.

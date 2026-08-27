@@ -5,11 +5,12 @@
 | Area | Decision | Rationale / evidence |
 | --- | --- | --- |
 | SIP / AutoPay | Keep SIP and AutoPay. Backend schedules due SIPs, validates an active mandate, sends PhonePe Notify Redemption, and reconciles webhooks/status. Use `autoDebit=true` and `redemptionRetryStrategy=STANDARD`; do not implement merchant-side Execute Redemption for this path. | `backend_controller/src/providers/phonepe/phonePeRecurringGateway.ts` sends and validates these values. `sipScheduleWorker.ts` and `mandateCollectionWorker.ts` contain scheduling, precheck, Notify, reconciliation, idempotency, and heartbeat responsibilities; no Execute Redemption call was found. Deployed scheduling remains runtime verification. |
-| Durable identity | `users` is the durable user/client identity. Email OTP verification must persist on that identity and is not regulatory KYC. | Existing financial records reference `users`; the current worktree is migrating KYC-named OTP state to `users.email_verification_*` and `email_verification_codes`. Migration/backfill safety and deployed counts remain unverified. |
+| Durable identity | `users` is the durable user/client identity. Email OTP verification must persist on that identity and is not regulatory KYC. | Existing financial records reference `users`; committed migrations 040/041 move KYC-named OTP state to `users.email_verification_*` and `email_verification_codes`. Migration safety, retention approval, and deployed counts remain unverified. |
 | Legacy tables | Remove only through forward migrations after FK, row-count, relationship, and retention checks. Never cascade-delete financial history. | User explicitly approved removal of the listed obsolete tables subject to preservation guarantees. |
 | Redis | Keep Redis, isolated between dev and prod. Document actual cache/session/queue/lock use; Redis is not financial truth. | Static inspection found shared read caching with PostgreSQL fallback; PostgreSQL stores sessions and worker state, while the runtime limiter is in-process. The historical concurrency fix is not proven by source/history. |
 | Deployment | Keep one application deployment per environment initially, with isolated PostgreSQL and Redis resources. Reuse the same application source/artifact semantics and select environment behavior through configuration. | `release_manager/stacks/dev_release` and `prod_release` provide separate stacks/resources. The frontend API base is baked separately into dev/prod bundles, so byte-identical artifact promotion is not yet proven; see `DEPLOYMENT_CONSTRAINTS_IMPLEMENTATION.md`. |
 | Monitoring | Monitoring/analytics is a separate future repository/stack. BOE_APP may expose standard health, metrics, logs, and audit events, but must not embed an unrestricted monitoring database admin path. | Current repository contains monitor-stack material; extraction/decoupling is being assessed before any removal. |
+| Money conversion | Share only the read-side paise-to-rupee conversion. Keep command/write parsers in their feature modules until their validation semantics are proven equivalent. | `frontend_stack/packages/shared/src/money.js` is now used by admin/client read adapters; signed amount parsing remains in `admin/helpers/signedAmounts.js` and order/fund command code. |
 
 ## Active risks and controls
 
@@ -27,6 +28,9 @@
 - Production/dev runtime row counts, FK contents, and statutory retention obligations require environment verification before executing destructive cleanup migrations.
 - Deployment artifact byte-identity and actual VPS resource isolation require runtime/deployment verification.
 - Monitoring extraction destination is intentionally outside this repository and is not created as part of this change.
+- The shared money helper changes presentation mapping only; financial persistence
+  continues to use validated integer/string paise values and canonical backend
+  settlement invariants.
 
 ## Implementation status
 

@@ -14,6 +14,7 @@
     "./appConfig.js": "./src/appConfig.js",
     "./appTarget.js": "./src/appTarget.js",
     "./format.js": "./src/format.js",
+    "./money.js": "./src/money.js",
     "./riskMapping.js": "./src/riskMapping.js",
     "./platform/*": "./src/platform/*",
     "./auth/*": "./src/auth/*"

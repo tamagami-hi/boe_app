@@ -25,7 +25,7 @@ without the preservation and verification gates below.
 | HTTP transport | `frontend_stack/packages/client/src/services/_util.js`; `frontend_stack/packages/shared/src/appConfig.js` | One transport with explicit auth/CSRF/error policy |
 | API contract | Fastify route schemas; `frontend_stack/packages/contracts` OpenAPI; service assumptions | One enforced source generated/validated in CI |
 | Role/session selectors | `client/src/services/authApi.js`, `BrowserRoot.jsx`, `ClientLayout.jsx` | One session/role selector per security channel |
-| Amount conversion | `admin/helpers/signedAmounts.js`, `ClientValuesScreen.jsx`, `FundAumPanel.jsx` | Shared paise/rupee and signed-value helpers |
+| Amount conversion | `admin/helpers/signedAmounts.js`, `ClientValuesScreen.jsx`, `FundAumPanel.jsx`, client service mappers | Shared `@beonedge/shared/money.js` read conversion plus feature-specific signed/write parsers |
 | Payment state mapping | Multiple client/admin service/screen maps | One typed mapping derived from backend contract |
 | Form primitives | admin `FormField` and shared form fields | One tested primitive package where styling permits |
 | Payment writes | Callback/reconciliation paths | One `applyCanonicalPaymentOutcome.ts` invariant boundary |
@@ -112,7 +112,14 @@ After navigation/build/runtime checks, remove admin aliases, legacy wrappers, fi
 
 ### Stage 6 — Email-verification migration and schema cleanup
 
-First migrate the Email OTP state currently held by `kyc_cases`/`kyc_verification_codes` into a durable user-linked Email Verification representation and rename routes/types/labels that incorrectly say KYC. Verify every existing verified user remains represented and all financial records still point to `users`. Then, after FK/row/retention/legal-hold checks and a backup, use reviewed forward migrations to archive/drop the six designated legacy tables. Keep dev/prod Postgres and Redis isolated; verify actual VPS resources. Move monitoring ownership to a separate repository/deployment while retaining only health/metrics/structured-log emission in BOE_APP.
+Email OTP state has been migrated in source and forward migrations 040/041 from
+`kyc_cases`/`kyc_verification_codes` to durable user-linked Email Verification
+columns and `email_verification_codes`; active routes/types/labels use the new
+terminology. The remaining gate is deployment: verify every existing verified
+user and financial record, FK/row counts, statutory retention/legal holds, and a
+backup before applying migration 042 to drop the six designated legacy tables.
+Keep dev/prod Postgres and Redis isolated and verify actual VPS resources.
+Monitoring ownership remains intentionally outside this slice.
 
 ## Risks and rollback
 

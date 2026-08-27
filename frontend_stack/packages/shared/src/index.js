@@ -1,6 +1,7 @@
 export * as AppConfig from './appConfig.js';
 export * as AppTarget from './appTarget.js';
 export * as RiskMapping from './riskMapping.js';
+export { paiseToRupees } from './money.js';
 export * from './components/Badges.jsx';
 export { default as DataFreshnessBadge } from './components/DataFreshnessBadge.jsx';
 export * from './components/ErrorBoundary.jsx';

@@ -1,4 +1,5 @@
 import { apiRequest, clone, delay, listFromPayload, useHttpApi } from './_util.js';
+import { paiseToRupees } from '@beonedge/shared/money.js';
 
 // Client-safe order/payment projection (spec §9.2). The backend never returns
 // raw internal order/payment/review enums to the browser; the UI groups the
@@ -20,10 +21,6 @@ function idempotencyKey() {
 
 export function createIdempotencyKey(prefix = 'idem') {
   return `${prefix}-${idempotencyKey()}`;
-}
-
-function paiseToRupees(value) {
-  return value === null || value === undefined ? null : Number(value) / 100;
 }
 
 // Money enters HTTP APIs as a decimal string (spec §9). The UI works in whole

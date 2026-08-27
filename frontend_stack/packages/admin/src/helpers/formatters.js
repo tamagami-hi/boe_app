@@ -1,4 +1,7 @@
 import { fmtMoney } from '@beonedge/shared/format.js';
+import { paiseToRupees } from '@beonedge/shared/money.js';
+
+export { paiseToRupees } from '@beonedge/shared/money.js';
 
 export function fmtInt(value) {
   return Number.isFinite(Number(value)) ? String(Number(value)) : '0';
@@ -30,12 +33,6 @@ export function fmtDateTime(value) {
 
 export function collectionKey(path) {
   return String(path || '').split('/').filter(Boolean).pop();
-}
-
-export function paiseToRupees(value) {
-  if (value === null || value === undefined || value === '') return null;
-  const paise = Number(value);
-  return Number.isFinite(paise) ? paise / 100 : null;
 }
 
 export function fmtPaise(value, decimals = 2) {
