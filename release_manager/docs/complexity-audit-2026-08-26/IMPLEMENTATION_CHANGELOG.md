@@ -112,7 +112,7 @@
 - `@beonedge/ui-kits` is no longer resolved as an active workspace dependency.
 - `frontend_stack/packages/ui-kits` and `frontend_stack/preview` were removed
   after confirming no workspace or production imports; the bundle contract
-  continues to prevent reintroduction.
+  guards the current app dependency/config boundary against reintroduction.
 
 ### Admin compatibility aliases
 

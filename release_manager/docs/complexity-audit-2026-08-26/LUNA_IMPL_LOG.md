@@ -88,5 +88,5 @@ Entries will be appended after each implementation slice is reviewed and tested.
 - Updated design-token directory scans and the audit/changelog records. Git
   history retains the deleted reference material if it is ever needed for
   historical review.
-- Verification: full frontend tests/build/bundle boot passed before this slice;
-  rerun after staging is required before commit.
+- Verification: full frontend tests passed (68 files / 903 tests), production
+  build and bundle boot passed after the removal, and `git diff --check` passed.

@@ -264,7 +264,8 @@ There are 26 production route modules, 36 repository modules, and 28 non-test do
 
 - `frontend_stack/packages/client/src/data/fixtureMandates.js`, `fixtureOrders.js`, `fixtureSipControlRequests.js`: no production imports found; verify test-only consumers before removal.
 - `frontend_stack/packages/ui-kits` and `frontend_stack/preview`: removed after
-  no-import/workspace checks; the bundle contract still forbids reintroduction.
+  no-import/workspace checks; the bundle contract guards the current app
+  dependency/config boundary against reintroduction.
 - Root scripts `kimi:chunk`, `kimi:run`, `kimi:apply` reference absent `scripts/kimi/*`; root dependencies `agent-browser` and `ngrok` have no runtime references (Playwright is used by `test_e2e/signup-users.mjs`).
 - `legacy_investment_reviews`: physically retained after 039, absent from current typed schema and settlement path; designated for removal through a preserving forward migration.
 
