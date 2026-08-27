@@ -190,3 +190,15 @@ Entries will be appended after each implementation slice is reviewed and tested.
   `git diff --check` passed for the changed deployment scripts and test.
 - The actual VPS migration status, deployed schema marker, and live consumer
   inventory remain **Needs runtime verification**.
+
+### 2026-08-27 — Remaining work and payment-test readiness
+
+- Added `REMAINING_WORK_AND_PAYMENT_TEST_READINESS.md` to reconcile the remaining
+  audit roadmap into release blockers, payment UAT, product gaps, consolidation,
+  runtime verification, and documentation cleanup.
+- Recommended a controlled development/UAT VPS deployment and low-value PhonePe
+  payment testing after creating a `0.11.9` or newer release and completing the
+  migration, backup, isolation, webhook, and worker preflight checks.
+- Production promotion remains gated on successful one-time payment, SIP/AutoPay,
+  idempotency, reconciliation, cancellation, migration-preservation, and rollback
+  evidence from development/UAT.
