@@ -72,17 +72,12 @@ This order is mandatory because startup validation rejects `PHONEPE_AUTOPAY_COLL
 
 Already-queued durable cancellations continue through reconciliation. Existing setup and collection attempts continue inquiry. Do not remove credentials as a routine kill switch: doing so disables the repair path.
 
-### 5.2 Stop native one-time order creation
-
-Set `PHONEPE_MOBILE_SDK_ORDER_ENABLED=false`. Keep hosted fallback only if its signed, expiring, non-authoritative return bridge is healthy and the rollout policy permits it. This flag is separate from recurring AutoPay flags.
-
-### 5.3 Re-enable safely
+### 5.2 Re-enable safely
 
 1. Resolve the incident and complete targeted sandbox/UAT evidence.
-2. Enable `PHONEPE_MOBILE_SDK_ORDER_ENABLED` only if one-time native checkout is approved.
-3. Enable `PHONEPE_AUTOPAY_ENABLED=true`; keep collection disabled while setup and cancellation behavior is observed.
-4. Confirm callbacks and reconciliation are current and no ambiguous backlog exists.
-5. Enable `PHONEPE_AUTOPAY_COLLECTION_ENABLED=true` only before a controlled T-24 window with staffed observation.
+2. Enable `PHONEPE_AUTOPAY_ENABLED=true`; keep collection disabled while setup and cancellation behavior is observed.
+3. Confirm callbacks and reconciliation are current and no ambiguous backlog exists.
+4. Enable `PHONEPE_AUTOPAY_COLLECTION_ENABLED=true` only before a controlled T-24 window with staffed observation.
 
 ## 6. Ambiguous provider command response
 
@@ -204,4 +199,3 @@ Prepare a sanitized incident package containing:
 - approved merchant order/subscription references sent only through the secure PhonePe support channel.
 
 Never include client secrets, callback passwords, OAuth/SDK tokens, raw payloads, full VPA, database dumps or user identity.
-

@@ -35,6 +35,7 @@ const CONFIG = {
   env: "sandbox" as const,
   callbackUsername: "callback-user",
   callbackPassword: "callback-pass",
+  checkoutAllowedOrigins: ["https://mercury.phonepe.com"],
 }
 
 /** Test double for the SDK exception taxonomy (structural, no SDK import). */
@@ -49,6 +50,7 @@ const isPhonePeException = (error: unknown): boolean =>
   error instanceof Error && error.name === "PhonePeException"
 
 const stubClient = (overrides: Partial<PhonePeSdkClient> = {}): PhonePeSdkClient => ({
+  pay: () => Promise.reject(new Error("pay not stubbed")),
   getOrderStatus: () => Promise.reject(new Error("getOrderStatus not stubbed")),
   validateCallback: () => {
     throw new Error("validateCallback not stubbed")
@@ -56,6 +58,71 @@ const stubClient = (overrides: Partial<PhonePeSdkClient> = {}): PhonePeSdkClient
   refund: () => Promise.reject(new Error("refund not stubbed")),
   getRefundStatus: () => Promise.reject(new Error("getRefundStatus not stubbed")),
   ...overrides,
+})
+
+describe("createCheckout", () => {
+  test("creates a hosted checkout with exact money and a stable merchant order id", async () => {
+    let request: unknown
+    const gateway = createPhonePeGateway({
+      config: CONFIG,
+      client: stubClient({
+        pay: async (value) => {
+          request = value
+          return {
+            orderId: "provider-order-1",
+            expireAt: 1_800_000_000_000,
+            redirectUrl: "https://mercury.phonepe.com/pay/abc",
+          }
+        },
+      }),
+    })
+
+    const result = await gateway.createCheckout({
+      merchantOrderId: "boe_stable_order",
+      amountPaise: "500000",
+      redirectUrl: null,
+      expireAfterSeconds: 900,
+    })
+
+    expect(request).toMatchObject({ merchantOrderId: "boe_stable_order", amount: 500000 })
+    expect(result).toEqual({
+      redirectUrl: "https://mercury.phonepe.com/pay/abc",
+      providerOrderId: "provider-order-1",
+      expiresAt: new Date(1_800_000_000_000),
+    })
+  })
+
+  test("rejects a provider checkout URL outside the configured origins", async () => {
+    const gateway = createPhonePeGateway({
+      config: CONFIG,
+      client: stubClient({
+        pay: async () => ({ redirectUrl: "https://attacker.example/pay/abc" }),
+      }),
+    })
+
+    await expect(gateway.createCheckout({
+      merchantOrderId: "boe_stable_order",
+      amountPaise: "500000",
+      redirectUrl: null,
+      expireAfterSeconds: 900,
+    })).rejects.toBeInstanceOf(GatewayMalformedResponseError)
+  })
+
+  test("rejects a trusted checkout response without a provider order id", async () => {
+    const gateway = createPhonePeGateway({
+      config: CONFIG,
+      client: stubClient({
+        pay: async () => ({ redirectUrl: "https://mercury.phonepe.com/pay/abc" }),
+      }),
+    })
+
+    await expect(gateway.createCheckout({
+      merchantOrderId: "boe_stable_order",
+      amountPaise: "500000",
+      redirectUrl: null,
+      expireAfterSeconds: 900,
+    })).rejects.toBeInstanceOf(GatewayMalformedResponseError)
+  })
 })
 
 describe("getOrderStatus", () => {

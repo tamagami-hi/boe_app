@@ -37,6 +37,7 @@ const validEnv = (): Record<string, string> => ({
   SNS_TOPIC_ARN: "arn:aws:sns:us-east-1:000000000000:test",
   SES_CONFIGURATION_SET: "test-set",
   PASSWORD_BREACH_CHECK_MODE: "bypass",
+  PHONEPE_CHECKOUT_ALLOWED_ORIGINS: "https://mercury-uat.phonepe.com",
   NODE_ENV: "test",
 })
 
@@ -293,39 +294,6 @@ describe("parseServerConfig", () => {
   test.each(["305000", "3600000"])("accepts payment attempt TTL %s at configured limits", (attemptTtlMs) => {
     expect(parseServerConfig({ ...validEnv(), PAYMENT_ATTEMPT_TTL_MS: attemptTtlMs }).payments.attemptTtlMs)
       .toBe(Number(attemptTtlMs))
-  })
-
-  test("fails closed when mobile SDK orders are enabled without their dedicated secrets", () => {
-    expect(() => parseServerConfig({
-      ...validEnv(),
-      PHONEPE_MOBILE_SDK_ORDER_ENABLED: "true",
-    })).toThrow(/PHONEPE_MERCHANT_ID/u)
-  })
-
-  test("enables mobile SDK orders only with complete PhonePe and token encryption configuration", () => {
-    const config = parseServerConfig({
-      ...validEnv(),
-      PHONEPE_CLIENT_ID: "client-id",
-      PHONEPE_CLIENT_SECRET: "client-secret",
-      PHONEPE_CLIENT_VERSION: "1",
-      PHONEPE_ENV: "sandbox",
-      PHONEPE_CALLBACK_USERNAME: "callback-user",
-      PHONEPE_CALLBACK_PASSWORD: "callback-password",
-      PHONEPE_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment",
-      PHONEPE_SUBSCRIPTION_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/subscription",
-      PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: "subscription.status.updated",
-      PHONEPE_MERCHANT_ID: "merchant-id",
-      PHONEPE_MOBILE_SDK_ORDER_ENABLED: "true",
-      CRYPTO_PAYMENT_TOKEN_ENC_KEY: base64Key(),
-      CRYPTO_PAYMENT_TOKEN_ENC_KEY_VERSION: "ptk1",
-    })
-
-    expect(config.payments.mobileSdk).toMatchObject({
-      enabled: true,
-      merchantId: "merchant-id",
-      tokenKeyVersion: "ptk1",
-    })
-    expect(config.payments.mobileSdk.tokenEncryptionKey).toHaveLength(32)
   })
 
 })

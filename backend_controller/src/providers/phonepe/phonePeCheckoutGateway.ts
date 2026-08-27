@@ -20,7 +20,11 @@
  */
 import { createHash, timingSafeEqual } from "node:crypto"
 
-import { Env, StandardCheckoutClient, RefundRequest } from "@phonepe-pg/pg-sdk-node"
+import { Env, StandardCheckoutClient, StandardCheckoutPayRequest, RefundRequest } from "@phonepe-pg/pg-sdk-node"
+import {
+  PHONEPE_MAX_CHECKOUT_SECONDS,
+  PHONEPE_MIN_CHECKOUT_SECONDS,
+} from "../../domain/payments/checkoutExpiry.js"
 import {
   GatewayAuthenticationError,
   GatewayCredentialError,
@@ -31,6 +35,8 @@ import {
   GatewayRejectedError,
   GatewayThrottledError,
   GatewayUnavailableError,
+  type CheckoutCreated,
+  type CreateCheckoutCommand,
   type InitiateRefundCommand,
   type OrderStatusFact,
   type PaymentGateway,
@@ -48,6 +54,7 @@ export interface PhonePeGatewayConfig {
   readonly env: "sandbox" | "production"
   readonly callbackUsername: string
   readonly callbackPassword: string
+  readonly checkoutAllowedOrigins: readonly string[]
   readonly requestTimeoutMs?: number
 }
 
@@ -58,6 +65,7 @@ export interface PhonePeGatewayConfig {
  */
 export interface PhonePeSdkClient {
   readonly httpClient?: { readonly defaults: { timeout: number } }
+  readonly pay: (request: unknown) => Promise<unknown>
   readonly getOrderStatus: (merchantOrderId: string, details?: boolean) => Promise<unknown>
   readonly validateCallback: (
     username: string,
@@ -156,6 +164,20 @@ const withTimeout = async <T>(operation: Promise<T>, timeoutMs: number): Promise
   }
 }
 
+const trustedCheckoutUrl = (value: string, allowedOrigins: readonly string[]): string | null => {
+  let url: URL
+  try {
+    url = new URL(value)
+  } catch {
+    return null
+  }
+  if (
+    url.protocol !== "https:" || url.username !== "" || url.password !== "" ||
+    !allowedOrigins.includes(url.origin)
+  ) return null
+  return url.toString()
+}
+
 const mapPaymentDetails = (value: unknown): readonly ProviderPaymentDetailFact[] => {
   if (!Array.isArray(value)) return []
   const facts: ProviderPaymentDetailFact[] = []
@@ -246,6 +268,47 @@ export const createPhonePeGateway = (deps: PhonePeGatewayDeps): PaymentGateway =
   const { config } = deps
 
   return Object.freeze({
+    createCheckout: async (command: CreateCheckoutCommand): Promise<CheckoutCreated> => {
+      if (
+        command.expireAfterSeconds < PHONEPE_MIN_CHECKOUT_SECONDS ||
+        command.expireAfterSeconds > PHONEPE_MAX_CHECKOUT_SECONDS
+      ) {
+        throw new GatewayRejectedError("checkout expiry is outside the provider-supported range")
+      }
+      const builder = StandardCheckoutPayRequest.builder()
+        .merchantOrderId(command.merchantOrderId)
+        .amount(paiseToNumber(command.amountPaise))
+        .expireAfter(command.expireAfterSeconds)
+      if (command.redirectUrl !== null) builder.redirectUrl(command.redirectUrl)
+
+      let response: unknown
+      try {
+        response = await withTimeout(client.pay(builder.build()), config.requestTimeoutMs ?? 10_000)
+      } catch (error) {
+        throw mapCallError(error)
+      }
+      const body = isRecord(response) ? response : {}
+      const checkoutUrl = optionalString(body.redirectUrl)
+      const safeCheckoutUrl = checkoutUrl === null
+        ? null
+        : trustedCheckoutUrl(checkoutUrl, config.checkoutAllowedOrigins)
+      if (safeCheckoutUrl === null) {
+        throw new GatewayMalformedResponseError("the provider returned no trusted checkout redirect")
+      }
+      const providerOrderId = optionalString(body.orderId)
+      if (providerOrderId === null) {
+        throw new GatewayMalformedResponseError("the provider returned no order id")
+      }
+      return {
+        redirectUrl: safeCheckoutUrl,
+        providerOrderId,
+        expiresAt:
+          typeof body.expireAt === "number" && Number.isFinite(body.expireAt) && body.expireAt > 0
+            ? new Date(body.expireAt)
+            : null,
+      }
+    },
+
     getOrderStatus: async (merchantOrderId: string): Promise<OrderStatusFact> => {
       let response: unknown
       try {

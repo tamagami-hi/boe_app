@@ -338,6 +338,17 @@ export async function createLumpsum({ fundId, amount }) {
 
 export function mapPaymentCheckout(checkout) {
   if (checkout === null || checkout === undefined) return null;
+  if (checkout.type === 'redirect' && typeof checkout.url === 'string') {
+    let url;
+    try {
+      url = new URL(checkout.url);
+    } catch {
+      throw new Error("Couldn't start the payment. Try again.");
+    }
+    if (url.protocol === 'https:' && url.username === '' && url.password === '') {
+      return { type: 'redirect', url: url.toString() };
+    }
+  }
   if (
     checkout.type === 'phonepe_sdk' &&
     typeof checkout.providerOrderId === 'string' && checkout.providerOrderId.trim().length > 0 &&
@@ -360,7 +371,7 @@ export function mapPaymentCheckout(checkout) {
   throw new Error("Couldn't start the payment. Try again.");
 }
 
-export async function beginOrderPayment(orderId, { checkoutChannel = 'phonepe_mobile_sdk' } = {}) {
+export async function beginOrderPayment(orderId, { checkoutChannel = 'hosted_redirect' } = {}) {
   if (useHttpApi()) {
     const payload = await apiRequest(`/v1/client/orders/${encodeURIComponent(orderId)}/pay`, {
       method: 'POST',

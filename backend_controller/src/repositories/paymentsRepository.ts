@@ -20,19 +20,7 @@ export interface CreateAttemptInput {
   readonly attemptNumber: number
   readonly merchantOrderId: string
   readonly checkoutExpiresAt: Date
-  readonly checkoutChannel: "phonepe_mobile_sdk" | "phonepe_mandate_setup" | "phonepe_autopay"
-}
-
-export interface PersistSdkOrderInput {
-  readonly attemptId: string
-  readonly providerOrderId: string
-  readonly providerState: string
-  readonly checkoutExpiresAt: Date
-  readonly tokenCiphertext: Buffer
-  readonly tokenNonce: Buffer
-  readonly tokenKeyVersion: string
-  readonly tokenExpiresAt: Date
-  readonly now: Date
+  readonly checkoutChannel: "hosted_redirect" | "phonepe_mobile_sdk" | "phonepe_mandate_setup" | "phonepe_autopay"
 }
 
 export interface RecordPaymentDetailInput {
@@ -91,7 +79,15 @@ export interface PaymentsRepository {
     tx: Transaction,
     input: Readonly<{ attemptId: string; providerOrderId: string; checkoutExpiresAt: Date; now: Date }>,
   ) => Promise<PaymentAttempt | null>
-  markAttemptSdkDispatched: (tx: Transaction, input: PersistSdkOrderInput) => Promise<PaymentAttempt | null>
+  markAttemptDispatched: (
+    tx: Transaction,
+    input: Readonly<{
+      attemptId: string
+      providerOrderId: string
+      checkoutExpiresAt: Date
+      now: Date
+    }>,
+  ) => Promise<PaymentAttempt | null>
   markAttemptSucceeded: (
     tx: Transaction,
     input: Readonly<{
@@ -274,7 +270,7 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
       .updateTable("payment_attempts")
       .set({ provider_dispatch_started_at: now, updated_at: now, version: sql<string>`version + 1` })
       .where("id", "=", attemptId)
-      .where("checkout_channel", "=", "phonepe_mobile_sdk")
+      .where("checkout_channel", "=", "hosted_redirect")
       .where("state", "=", "created")
       .where("provider_dispatch_started_at", "is", null)
       .returningAll()
@@ -324,23 +320,19 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
     .where("state", "=", "created").where("provider_dispatch_started_at", "is not", null)
     .returningAll().executeTakeFirst()) ?? null,
 
-  markAttemptSdkDispatched: async (tx, input) => {
+  markAttemptDispatched: async (tx, input) => {
     const row = await tx
       .updateTable("payment_attempts")
       .set({
         state: "provider_pending",
         provider_order_id: input.providerOrderId,
-        provider_state: input.providerState,
+        provider_state: "PENDING",
         checkout_expires_at: input.checkoutExpiresAt,
-        sdk_order_token_ciphertext: input.tokenCiphertext,
-        sdk_order_token_nonce: input.tokenNonce,
-        sdk_order_token_key_version: input.tokenKeyVersion,
-        sdk_order_token_expires_at: input.tokenExpiresAt,
         updated_at: input.now,
         version: sql<string>`version + 1`,
       })
       .where("id", "=", input.attemptId)
-      .where("checkout_channel", "=", "phonepe_mobile_sdk")
+      .where("checkout_channel", "=", "hosted_redirect")
       .where("state", "=", "created")
       .where("provider_dispatch_started_at", "is not", null)
       .returningAll()

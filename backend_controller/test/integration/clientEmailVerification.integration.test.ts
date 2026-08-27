@@ -155,17 +155,9 @@ beforeAll(async () => {
         idempotencyRepository: createIdempotencyRepository(),
         paymentsRepository: createPaymentsRepository(),
         paymentGateway: null,
-        mobilePaymentGateway: null,
         config: {
           idempotencyTtlMs: 86_400_000,
           attemptTtlMs: 900_000,
-          mobileSdk: {
-            enabled: false,
-            merchantId: null,
-            environment: null,
-            tokenEncryptionKey: null,
-            tokenKeyVersion: null,
-          },
         },
       })
     },

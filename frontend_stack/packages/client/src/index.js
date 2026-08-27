@@ -44,6 +44,7 @@ export {
 } from './utils/format.js';
 
 export { openOnboarding } from './utils/openOnboarding.js';
+export { redirectToCheckout } from './utils/checkoutRedirect.js';
 
 // Pages with default exports
 export { default as Blocked } from './pages/Blocked.jsx';

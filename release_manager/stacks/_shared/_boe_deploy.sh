@@ -328,14 +328,12 @@ boe_validate_app_policy() {
         [[ "$provider" == "phonepe" ]] || die "PAYMENT_PROVIDER must be phonepe"
         boe_assert_env_keys PHONEPE_CLIENT_ID PHONEPE_CLIENT_SECRET PHONEPE_CLIENT_VERSION \
             PHONEPE_ENV PHONEPE_CALLBACK_USERNAME PHONEPE_CALLBACK_PASSWORD \
-            PHONEPE_CALLBACK_URL PHONEPE_SUBSCRIPTION_CALLBACK_URL \
+            PHONEPE_CALLBACK_URL PHONEPE_CHECKOUT_ALLOWED_ORIGINS PHONEPE_SUBSCRIPTION_CALLBACK_URL \
             PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST PHONEPE_MERCHANT_ID
         phonepe_version="$(env_get PHONEPE_CLIENT_VERSION "$BOE_EFFECTIVE_ENV")"
         phonepe_subscription_events="$(env_get PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST "$BOE_EFFECTIVE_ENV")"
-        phonepe_mobile_sdk_enabled="$(env_get PHONEPE_MOBILE_SDK_ORDER_ENABLED "$BOE_EFFECTIVE_ENV")"
         phonepe_autopay_enabled="$(env_get PHONEPE_AUTOPAY_ENABLED "$BOE_EFFECTIVE_ENV")"
         phonepe_autopay_collection_enabled="$(env_get PHONEPE_AUTOPAY_COLLECTION_ENABLED "$BOE_EFFECTIVE_ENV")"
-        [[ -n "$phonepe_mobile_sdk_enabled" ]] || phonepe_mobile_sdk_enabled="false"
         [[ -n "$phonepe_autopay_enabled" ]] || phonepe_autopay_enabled="false"
         [[ -n "$phonepe_autopay_collection_enabled" ]] || phonepe_autopay_collection_enabled="false"
         [[ "$phonepe_version" =~ ^[1-9][0-9]*$ ]] \
@@ -348,15 +346,13 @@ boe_validate_app_policy() {
             [[ "$phonepe_subscription_event" =~ ^[a-z0-9._-]{1,128}$ ]] \
                 || die "PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST must list exact event names"
         done
-        [[ "$phonepe_mobile_sdk_enabled" == "true" || "$phonepe_mobile_sdk_enabled" == "false" ]] \
-            || die "PHONEPE_MOBILE_SDK_ORDER_ENABLED must be true or false"
         [[ "$phonepe_autopay_enabled" == "true" || "$phonepe_autopay_enabled" == "false" ]] \
             || die "PHONEPE_AUTOPAY_ENABLED must be true or false"
         [[ "$phonepe_autopay_collection_enabled" == "true" || "$phonepe_autopay_collection_enabled" == "false" ]] \
             || die "PHONEPE_AUTOPAY_COLLECTION_ENABLED must be true or false"
         [[ "$phonepe_autopay_collection_enabled" != "true" || "$phonepe_autopay_enabled" == "true" ]] \
             || die "PHONEPE_AUTOPAY_COLLECTION_ENABLED requires PHONEPE_AUTOPAY_ENABLED=true"
-        if [[ "$phonepe_mobile_sdk_enabled" == "true" || "$phonepe_autopay_enabled" == "true" ]]; then
+        if [[ "$phonepe_autopay_enabled" == "true" ]]; then
             boe_assert_env_keys CRYPTO_PAYMENT_TOKEN_ENC_KEY CRYPTO_PAYMENT_TOKEN_ENC_KEY_VERSION
             boe_assert_base64_key CRYPTO_PAYMENT_TOKEN_ENC_KEY 32 true
         fi

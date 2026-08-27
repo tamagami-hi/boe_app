@@ -1,22 +1,14 @@
 import { buildPath } from '../navigation/routes.js';
 
 const CHECKOUT_ERROR = "Couldn't start the payment. Try again.";
-async function beginCheckout(beginPayment, orderId, checkoutChannel) {
-  return { checkoutChannel, begun: await beginPayment(orderId, { checkoutChannel }) };
-}
-
 export async function executeOrderCheckout({
   orderId,
   beginPayment,
-  platform,
   navigate,
+  redirect,
   persistPendingPayment,
 }) {
-  const resolvedChannel = await platform.resolveChannel();
-  if (resolvedChannel !== 'phonepe_mobile_sdk') {
-    throw new Error(CHECKOUT_ERROR);
-  }
-  const { checkoutChannel, begun } = await beginCheckout(beginPayment, orderId, resolvedChannel);
+  const begun = await beginPayment(orderId, { checkoutChannel: 'hosted_redirect' });
   const paymentId = begun?.paymentId;
   const checkout = begun?.checkout;
 
@@ -27,14 +19,14 @@ export async function executeOrderCheckout({
     return { leaving: false, paymentId };
   }
 
-  if (checkout.type !== 'phonepe_sdk') throw new Error(CHECKOUT_ERROR);
+  if (checkout.type !== 'redirect') throw new Error(CHECKOUT_ERROR);
   if (paymentId && !persistPendingPayment(paymentId)) throw new Error(CHECKOUT_ERROR);
 
   if (!paymentId) throw new Error(CHECKOUT_ERROR);
-  try {
-    await platform.start({ checkout, paymentId });
-  } finally {
+  const opened = redirect(checkout.url);
+  if (!opened?.ok) {
     navigate(buildPath('payment_status', { paymentId }), { replace: true });
+    throw new Error(CHECKOUT_ERROR);
   }
-  return { leaving: false, paymentId };
+  return { leaving: true, paymentId };
 }

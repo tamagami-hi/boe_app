@@ -117,14 +117,12 @@ const CHECKOUT = {
   paymentId: 'pay_1',
   provider: 'phonepe',
   checkout: {
-    type: 'phonepe_sdk',
-    providerOrderId: 'provider_order_1',
-    token: 'sdk-token',
-    merchantId: 'merchant-1',
-    environment: 'SANDBOX',
+    type: 'redirect',
+    url: 'https://mercury.phonepe.com/pay/checkout-1',
   },
   expiresAt: '2026-08-18T12:00:00Z',
 };
+const hostedRedirect = vi.fn().mockReturnValue({ ok: true });
 
 beforeEach(() => {
   localStorage.clear();
@@ -157,6 +155,7 @@ beforeEach(() => {
   listSips.mockReset().mockResolvedValue([]);
   listOrders.mockReset().mockResolvedValue([]);
   requestSipControl.mockReset().mockResolvedValue({});
+  hostedRedirect.mockReset().mockReturnValue({ ok: true });
 });
 
 afterEach(() => { vi.useRealTimers(); });
@@ -176,7 +175,7 @@ describe('StartSipSheet', () => {
 
   async function reachReview({ manual = false } = {}) {
     const rendered = renderFlow(
-      <CheckoutProvider platform={platform}><StartSipSheet /></CheckoutProvider>,
+      <CheckoutProvider platform={platform} redirect={hostedRedirect}><StartSipSheet /></CheckoutProvider>,
       '/app/invest/sip/f1',
       '/app/invest/sip/:fundId',
     );
@@ -268,7 +267,7 @@ describe('StartSipSheet', () => {
   });
 
   test('every chip declares type=button', async () => {
-    const { container } = renderFlow(<CheckoutProvider platform={platform}><StartSipSheet /></CheckoutProvider>, '/app/invest/sip/f1', '/app/invest/sip/:fundId');
+    const { container } = renderFlow(<CheckoutProvider platform={platform} redirect={hostedRedirect}><StartSipSheet /></CheckoutProvider>, '/app/invest/sip/f1', '/app/invest/sip/:fundId');
     await settle();
     const chips = [...container.querySelectorAll('.apk-chip')];
     expect(chips.length).toBeGreaterThan(3);
@@ -285,7 +284,7 @@ describe('LumpsumSheet', () => {
   };
 
   async function ready() {
-    renderFlow(<CheckoutProvider platform={platform}><LumpsumSheet /></CheckoutProvider>, '/app/invest/lumpsum/f1', '/app/invest/lumpsum/:fundId');
+    renderFlow(<CheckoutProvider platform={platform} redirect={hostedRedirect}><LumpsumSheet /></CheckoutProvider>, '/app/invest/lumpsum/f1', '/app/invest/lumpsum/:fundId');
     await settle();
     fireEvent.click(screen.getByRole('checkbox', { name: /market risks/i }));
   }
@@ -304,13 +303,14 @@ describe('LumpsumSheet', () => {
     expect(screen.getByLabelText('Amount').tagName).toBe('INPUT');
   });
 
-  test('create order -> begin payment -> launch the PhonePe SDK', async () => {
+  test('create order -> begin payment -> open PhonePe hosted checkout', async () => {
     await ready();
     fireEvent.click(screen.getByRole('button', { name: /Pay / }));
     await settle();
     expect(createLumpsum).toHaveBeenCalledTimes(1);
-    expect(beginOrderPayment).toHaveBeenCalledWith('ord_1', { checkoutChannel: 'phonepe_mobile_sdk' });
-    expect(platform.start).toHaveBeenCalledWith({ checkout: CHECKOUT.checkout, paymentId: 'pay_1' });
+    expect(beginOrderPayment).toHaveBeenCalledWith('ord_1', { checkoutChannel: 'hosted_redirect' });
+    expect(hostedRedirect).toHaveBeenCalledWith(CHECKOUT.checkout.url);
+    expect(platform.start).not.toHaveBeenCalled();
   });
 
   test('a begin-payment failure shows a neutral error and releases the lock', async () => {
@@ -343,7 +343,7 @@ describe('PaymentStatus', () => {
 
   test('a failed read reports it instead of showing a skeleton forever', async () => {
     getPayment.mockRejectedValue(new Error('backend down'));
-    renderFlow(<CheckoutProvider platform={platform}><PaymentStatus /></CheckoutProvider>, '/app/payment/pay_1', '/app/payment/:paymentId');
+    renderFlow(<CheckoutProvider platform={platform} redirect={hostedRedirect}><PaymentStatus /></CheckoutProvider>, '/app/payment/pay_1', '/app/payment/:paymentId');
     await settle();
     expect(screen.getByRole('alert')).toHaveTextContent('We could not load this payment');
   });
@@ -352,7 +352,7 @@ describe('PaymentStatus', () => {
     getPayment.mockResolvedValue({
       id: 'pay_1', orderId: 'ord_1', status: 'processing', amount: 1000, createdAt: '2026-08-01T10:00:00Z',
     });
-    renderFlow(<CheckoutProvider platform={platform}><PaymentStatus /></CheckoutProvider>, '/app/payment/pay_1', '/app/payment/:paymentId');
+    renderFlow(<CheckoutProvider platform={platform} redirect={hostedRedirect}><PaymentStatus /></CheckoutProvider>, '/app/payment/pay_1', '/app/payment/:paymentId');
     await settle();
     expect(screen.getByText('Payment received — investment is being processed')).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/bank|verification|review|approval|allocation|rejected/i);
@@ -367,7 +367,7 @@ describe('PaymentStatus', () => {
       .mockResolvedValue({
         id: 'pay_1', orderId: 'ord_1', status: 'confirmed', amount: 1000, createdAt: '2026-08-01T10:00:00Z',
       });
-    renderFlow(<CheckoutProvider platform={platform}><PaymentStatus /></CheckoutProvider>, '/app/payment/pay_1', '/app/payment/:paymentId');
+    renderFlow(<CheckoutProvider platform={platform} redirect={hostedRedirect}><PaymentStatus /></CheckoutProvider>, '/app/payment/pay_1', '/app/payment/:paymentId');
     await act(async () => { await Promise.resolve(); await Promise.resolve(); });
     expect(invalidateMoney).not.toHaveBeenCalled();
 
@@ -422,12 +422,12 @@ describe('PaymentStatus', () => {
       id: 'pay_1', orderId: 'ord_1', status: 'payment_failed', amount: 1000, createdAt: '2026-08-01T10:00:00Z',
     });
     beginOrderPayment.mockResolvedValue({ ...CHECKOUT, paymentId: 'pay_2' });
-    renderFlow(<CheckoutProvider platform={platform}><PaymentStatus /></CheckoutProvider>, '/app/payment/pay_1', '/app/payment/:paymentId');
+    renderFlow(<CheckoutProvider platform={platform} redirect={hostedRedirect}><PaymentStatus /></CheckoutProvider>, '/app/payment/pay_1', '/app/payment/:paymentId');
     await settle();
     fireEvent.click(screen.getByRole('button', { name: /Try again/ }));
     await settle();
-    expect(beginOrderPayment).toHaveBeenCalledWith('ord_1', { checkoutChannel: 'phonepe_mobile_sdk' });
-    expect(platform.start).toHaveBeenCalledWith({ checkout: CHECKOUT.checkout, paymentId: 'pay_2' });
+    expect(beginOrderPayment).toHaveBeenCalledWith('ord_1', { checkoutChannel: 'hosted_redirect' });
+    expect(platform.start).not.toHaveBeenCalled();
   });
 
   test('every exit replaces the completed payment in history', async () => {

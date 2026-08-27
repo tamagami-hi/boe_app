@@ -53,7 +53,6 @@ Do not paste credentials, tokens, raw callbacks, VPAs or personal data into this
 ## 3. Kill-switch gates
 
 - [ ] With all command flags false, callback ingestion and payment/mandate reconciliation remain operational.
-- [ ] `PHONEPE_MOBILE_SDK_ORDER_ENABLED=false` prevents new native one-time orders without affecting inquiry.
 - [ ] `PHONEPE_AUTOPAY_ENABLED=false` prevents new AutoPay create and setup-retry commands without affecting callbacks, existing-fact repair or owner cancellation of existing mandates.
 - [ ] `PHONEPE_AUTOPAY_COLLECTION_ENABLED=false` creates no new collection/notify command while existing collections continue inquiry.
 - [ ] Disabling order is collection first, then AutoPay commands; enabling order is AutoPay setup first, collection last.
@@ -150,4 +149,3 @@ Do not paste credentials, tokens, raw callbacks, VPAs or personal data into this
 **Blocking evidence/reference:**
 **Operator signature/date:**
 **Reviewer signature/date:**
-

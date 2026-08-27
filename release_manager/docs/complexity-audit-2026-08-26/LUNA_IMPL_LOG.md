@@ -251,3 +251,58 @@ Entries will be appended after each implementation slice is reviewed and tested.
   sidecars respectively prove `debuggable=true` and `debuggable=false`. Shell
   parsing and `git diff --check` passed. Diagnostic captures are local, ignored,
   mode `0600`, bounded, and credential-redacted by `emu/boe_logcat.sh`.
+
+### 2026-08-27 — Restore hosted checkout for one-time payments
+
+- Correlated the PhonePe merchant email with physical-device and dashboard
+  evidence. The deployed one-time flow used `/checkout/v2/sdk/order` with the
+  development package `com.beonedge.app.dev`; PhonePe rejected it because its
+  package name/app URL differed from the merchant onboarding record.
+- Git history proved that the two successful INR 2 payments used the hosted
+  Standard Checkout implementation in `v0.10.7`: backend `client.pay()` against
+  `/checkout/v2/pay`, followed by navigation to PhonePe's returned checkout URL.
+  Commit `9b0ed63` later removed that path in favor of native checkout.
+- Restored `PaymentGateway.createCheckout()` and PhonePe
+  `StandardCheckoutPayRequest`, retaining exact integer-paise conversion,
+  provider timeouts, stable merchant order IDs, and status/webhook settlement.
+- One-time order payment is now server-constrained to `hosted_redirect`.
+  The frontend opens the validated PhonePe URL through same-WebView navigation
+  on Android and never treats browser/UPI return state as payment truth.
+- Added an exact HTTPS origin allowlist for provider-returned checkout URLs.
+  Current production configuration permits `https://mercury.phonepe.com` and
+  `https://mercury-t2.phonepe.com`; any different origin fails closed.
+- SIP AutoPay mandate authorization and recurring Notify/reconciliation remain
+  unchanged and continue to use their dedicated PhonePe SDK/AutoPay paths.
+- Verification passed: 669 backend unit tests, 899 frontend tests, 25/25
+  database-backed payment integration tests, frontend production build, and
+  deployment environment validation. The isolated integration invocation
+  reports the repository-wide coverage threshold after its 25 tests pass; it is
+  not a behavioral test failure.
+
+### 2026-08-27 — Hosted checkout pre-deploy correction and consolidation
+
+- Replaced the interim Capacitor Browser/custom-tab launcher with the same
+  validated `window.location.assign` navigation boundary used by the successful
+  hosted flow. Recovery state is persisted before navigation; browser return is
+  never accepted as settlement evidence.
+- Added a one-writer dispatch claim for hosted payment attempts. Once an attempt
+  is claimed or provider-pending, API retries return the canonical payment-status
+  path without issuing another PhonePe create request or rewriting the provider
+  order correlation.
+- Added migration 043 to permit the shared dispatch claim only on the four known
+  payment channels. The payment-attempt state and correlation guards remain in
+  force.
+- PhonePe hosted responses now fail closed unless both the redirect URL and the
+  provider order ID are present and valid.
+- Removed the unused backend one-time mobile SDK gateway, its adapter port,
+  persistence methods, rollout flag, Compose wiring, validation, and obsolete
+  operational instructions. Native PhonePe handling remains only for SIP AutoPay
+  mandate authorization.
+- Aligned development examples with the approved production-PhonePe-in-development
+  policy; source behavior remains selected by `PHONEPE_ENV`, with no deployment
+  hard gate.
+- Final verification: backend typecheck, lint, and build passed; 664 backend unit
+  tests and 899 frontend tests passed; 25/25 database-backed payment integration
+  tests and 10/10 Email OTP integration tests passed; frontend production build
+  passed; deployment validation passed; and `verify.sh --dev` reported 107 passed,
+  0 failed, 1 remote-only check skipped.

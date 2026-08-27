@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import { executeOrderCheckout } from './checkoutOrchestrator.js';
 import { mapPaymentCheckout } from '../services/ordersApi.js';
+import { redirectToCheckout } from '../utils/checkoutRedirect.js';
 
 const sdkCheckout = {
   orderId: 'order-1',
@@ -33,25 +34,35 @@ describe('order checkout orchestration', () => {
       .toThrow("Couldn't start the payment. Try again.");
   });
 
-  test('fails closed without hosted checkout when mobile checkout is disabled', async () => {
-    const disabled = Object.assign(new Error('safe'), { code: 'MOBILE_CHECKOUT_DISABLED' });
-    const beginPayment = vi.fn()
-      .mockRejectedValueOnce(disabled)
-      .mockResolvedValueOnce({
-        paymentId: 'payment-2',
-        checkout: { type: 'redirect', url: 'https://mercury-uat.phonepe.com/pay/abc' },
-      });
+  test('persists recovery state and opens hosted checkout for a one-time payment', async () => {
+    const redirect = vi.fn().mockReturnValue({ ok: true });
+    const persistPendingPayment = vi.fn().mockReturnValue(true);
+    const navigate = vi.fn();
+    const beginPayment = vi.fn().mockResolvedValue({
+      paymentId: 'payment-2',
+      checkout: { type: 'redirect', url: 'https://mercury.phonepe.com/pay/abc' },
+    });
     const platform = {
       resolveChannel: vi.fn().mockResolvedValue('phonepe_mobile_sdk'),
       start: vi.fn(),
     };
     await expect(executeOrderCheckout({
-      orderId: 'order-1', beginPayment, platform, navigate: vi.fn(), persistPendingPayment: vi.fn(),
-    })).rejects.toBe(disabled);
-    expect(beginPayment.mock.calls).toEqual([
-      ['order-1', { checkoutChannel: 'phonepe_mobile_sdk' }],
-    ]);
+      orderId: 'order-1', beginPayment, platform, navigate, redirect, persistPendingPayment,
+    })).resolves.toEqual({ leaving: true, paymentId: 'payment-2' });
+    expect(beginPayment).toHaveBeenCalledWith('order-1', { checkoutChannel: 'hosted_redirect' });
+    expect(persistPendingPayment).toHaveBeenCalledWith('payment-2');
+    expect(redirect).toHaveBeenCalledWith('https://mercury.phonepe.com/pay/abc');
     expect(platform.start).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    'javascript:alert(1)',
+    'data:text/html,<script>alert(1)</script>',
+    'http://mercury.phonepe.com/pay/abc',
+    '//attacker.example/pay/abc',
+  ])('does not navigate to unsafe checkout URL %s', (url) => {
+    expect(redirectToCheckout(url)).toMatchObject({ ok: false });
   });
 
   test.each([
@@ -70,31 +81,6 @@ describe('order checkout orchestration', () => {
     expect(beginPayment).toHaveBeenCalledTimes(1);
   });
 
-  test.each(['SUCCESS', 'FAILURE', 'INTERRUPTED'])(
-    'SDK result %s only returns the user to authoritative payment status',
-    async (sdkStatus) => {
-      const navigate = vi.fn();
-      const persistPendingPayment = vi.fn().mockReturnValue(true);
-      const beginPayment = vi.fn().mockResolvedValue(sdkCheckout);
-      const platform = {
-        resolveChannel: vi.fn().mockResolvedValue('phonepe_mobile_sdk'),
-        start: vi.fn().mockResolvedValue({ status: sdkStatus }),
-      };
-      await executeOrderCheckout({
-        orderId: 'order-1',
-        beginPayment,
-        platform,
-        navigate,
-        redirect: vi.fn(),
-        persistPendingPayment,
-      });
-      expect(beginPayment).toHaveBeenCalledWith('order-1', { checkoutChannel: 'phonepe_mobile_sdk' });
-      expect(beginPayment).toHaveBeenCalledTimes(1);
-      expect(persistPendingPayment).toHaveBeenCalledWith('payment-1');
-      expect(navigate).toHaveBeenCalledWith('/app/payment/payment-1', { replace: true });
-    },
-  );
-
   test('rejects a channel-mismatched response before opening any checkout', async () => {
     const persistPendingPayment = vi.fn();
     const platform = {
@@ -103,10 +89,7 @@ describe('order checkout orchestration', () => {
     };
     await expect(executeOrderCheckout({
       orderId: 'order-1',
-      beginPayment: vi.fn().mockResolvedValue({
-        ...sdkCheckout,
-        checkout: { type: 'redirect', url: 'https://example.test' },
-      }),
+      beginPayment: vi.fn().mockResolvedValue(sdkCheckout),
       platform,
       navigate: vi.fn(),
       redirect: vi.fn(),

@@ -48,6 +48,19 @@ export class GatewayNotFoundError extends GatewayError {}
  */
 export class GatewayRejectedError extends GatewayError {}
 
+export interface CreateCheckoutCommand {
+  readonly merchantOrderId: string
+  readonly amountPaise: string
+  readonly redirectUrl: string | null
+  readonly expireAfterSeconds: number
+}
+
+export interface CheckoutCreated {
+  readonly redirectUrl: string
+  readonly providerOrderId: string
+  readonly expiresAt: Date | null
+}
+
 /** One normalized entry of the provider's `paymentDetails[]` (spec §5.2). */
 export interface ProviderPaymentDetailFact {
   readonly transactionId: string
@@ -111,6 +124,7 @@ export interface RefundStatusFact {
 }
 
 export interface PaymentGateway {
+  createCheckout: (command: CreateCheckoutCommand) => Promise<CheckoutCreated>
   getOrderStatus: (merchantOrderId: string) => Promise<OrderStatusFact>
   /**
    * Verify the SHA callback authorization against the exact raw body and map

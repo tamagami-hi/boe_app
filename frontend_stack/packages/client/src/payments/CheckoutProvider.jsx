@@ -11,6 +11,7 @@ import {
   shouldClearPendingPaymentForSession,
 } from './pendingPayment.js';
 import { clearPendingAutoPaySetup, readPendingAutoPaySetup } from './pendingAutoPaySetup.js';
+import { redirectToCheckout } from '../utils/checkoutRedirect.js';
 
 const browserPlatform = Object.freeze({
   resolveChannel: async () => null,
@@ -18,9 +19,14 @@ const browserPlatform = Object.freeze({
 });
 
 const CheckoutContext = createContext(browserPlatform);
+const CheckoutRedirectContext = createContext(redirectToCheckout);
 
-export function CheckoutProvider({ platform = browserPlatform, children }) {
-  return <CheckoutContext.Provider value={platform}>{children}</CheckoutContext.Provider>;
+export function CheckoutProvider({ platform = browserPlatform, redirect = redirectToCheckout, children }) {
+  return (
+    <CheckoutContext.Provider value={platform}>
+      <CheckoutRedirectContext.Provider value={redirect}>{children}</CheckoutRedirectContext.Provider>
+    </CheckoutContext.Provider>
+  );
 }
 
 export function useCheckoutPlatform() {
@@ -29,8 +35,8 @@ export function useCheckoutPlatform() {
 
 export function useOrderCheckout() {
   const navigate = useNavigate();
-  const platform = useContext(CheckoutContext);
   const { user } = useSession();
+  const redirect = useContext(CheckoutRedirectContext);
   const persistForPrincipal = useCallback(
     (paymentId) => persistPendingPayment(paymentId, user?.id),
     [user?.id],
@@ -38,10 +44,10 @@ export function useOrderCheckout() {
   return useCallback((orderId) => executeOrderCheckout({
     orderId,
     beginPayment: ordersApi.beginOrderPayment,
-    platform,
     navigate,
+    redirect,
     persistPendingPayment: persistForPrincipal,
-  }), [navigate, persistForPrincipal, platform]);
+  }), [navigate, persistForPrincipal, redirect]);
 }
 
 export function PendingPaymentRecovery() {

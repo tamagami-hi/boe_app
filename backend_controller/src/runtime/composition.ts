@@ -33,9 +33,7 @@ import { createFundReceiptAcknowledgementRepository } from "../repositories/fund
 import { createInvestmentSettlementRepository } from "../repositories/investmentSettlementRepository.js"
 import { createProviderEventInboxRepository } from "../repositories/providerEventInboxRepository.js"
 import { createPhonePeGateway } from "../providers/phonepe/phonePeCheckoutGateway.js"
-import { createPhonePeMobileOrderGateway } from "../providers/phonepe/phonePeMobileOrderGateway.js"
 import { createPhonePeRecurringGateway } from "../providers/phonepe/phonePeRecurringGateway.js"
-import type { MobilePaymentGateway } from "../providers/mobilePaymentGateway.js"
 import type { RecurringPaymentGateway } from "../providers/recurringPaymentGateway.js"
 import type { PaymentGateway } from "../providers/phonepe/paymentGateway.js"
 import type { GatewayFailureLogger } from "../providers/phonepe/gatewayFailure.js"
@@ -156,18 +154,6 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const paymentGateway: PaymentGateway | null =
     serverConfig.payments.phonepe !== null
       ? createPhonePeGateway({ config: serverConfig.payments.phonepe })
-      : null
-  const mobilePaymentGateway: MobilePaymentGateway | null =
-    serverConfig.payments.mobileSdk.enabled && serverConfig.payments.phonepe !== null
-      ? createPhonePeMobileOrderGateway({
-          config: {
-            clientId: serverConfig.payments.phonepe.clientId,
-            clientSecret: serverConfig.payments.phonepe.clientSecret,
-            clientVersion: serverConfig.payments.phonepe.clientVersion,
-            env: serverConfig.payments.phonepe.env,
-            requestTimeoutMs: serverConfig.payments.mobileSdk.requestTimeoutMs,
-          },
-        })
       : null
   const recurringPaymentGateway: RecurringPaymentGateway | null =
     serverConfig.payments.phonepe !== null
@@ -302,19 +288,9 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       idempotencyRepository,
       paymentsRepository,
       paymentGateway,
-      mobilePaymentGateway,
       config: {
         idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
         attemptTtlMs: serverConfig.payments.attemptTtlMs,
-        mobileSdk: {
-          enabled: serverConfig.payments.mobileSdk.enabled,
-          merchantId: serverConfig.payments.mobileSdk.merchantId,
-          environment: serverConfig.payments.phonepe === null
-            ? null
-            : serverConfig.payments.phonepe.env === "sandbox" ? "SANDBOX" : "PRODUCTION",
-          tokenEncryptionKey: serverConfig.payments.mobileSdk.tokenEncryptionKey,
-          tokenKeyVersion: serverConfig.payments.mobileSdk.tokenKeyVersion,
-        },
       },
     })
 

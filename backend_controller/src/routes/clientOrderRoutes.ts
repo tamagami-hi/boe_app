@@ -23,7 +23,6 @@ import { createHash } from "node:crypto"
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
 import { z } from "zod"
 
-import { decryptGcm, encryptGcm } from "../crypto/primitives.js"
 import type { UnitOfWork } from "../db/database.js"
 import type { IdempotencyRepository, IdempotencyScope, Transaction } from "../db/repositories.js"
 import { authenticateNativeRequest, type NativeRequestAuthDeps } from "../domain/auth/nativeAuth.js"
@@ -34,8 +33,7 @@ import { checkoutSecondsRemaining } from "../domain/payments/checkoutExpiry.js"
 import { AppError } from "../http/errorCatalog.js"
 import { executeIdempotent, idempotencyKeySchema } from "../http/idempotencyProtocol.js"
 import { parseOrThrow } from "../http/validation.js"
-import { paymentSdkTokenAad, type MobilePaymentGateway } from "../providers/mobilePaymentGateway.js"
-import { GatewayNotFoundError, type PaymentGateway } from "../providers/phonepe/paymentGateway.js"
+import type { PaymentGateway } from "../providers/phonepe/paymentGateway.js"
 import { logGatewayFailure, logGatewayUnconfigured } from "../providers/phonepe/gatewayFailure.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
 import type { OrderWriteRepository } from "../repositories/orderRepository.js"
@@ -44,15 +42,7 @@ import type { UserWriteRepository } from "../repositories/userRepository.js"
 
 export interface ClientOrderConfig {
   readonly idempotencyTtlMs: number
-  /** How long a fresh checkout stays open before PhonePe expires it (spec §7). */
   readonly attemptTtlMs: number
-  readonly mobileSdk: {
-    readonly enabled: boolean
-    readonly merchantId: string | null
-    readonly environment: "SANDBOX" | "PRODUCTION" | null
-    readonly tokenEncryptionKey: Buffer | null
-    readonly tokenKeyVersion: string | null
-  }
 }
 
 export interface ClientOrderDeps extends NativeRequestAuthDeps {
@@ -65,7 +55,6 @@ export interface ClientOrderDeps extends NativeRequestAuthDeps {
   readonly paymentsRepository: PaymentsRepository
   /** Null when PhonePe is unconfigured; `/pay` fails closed rather than stub out a checkout. */
   readonly paymentGateway: PaymentGateway | null
-  readonly mobilePaymentGateway: MobilePaymentGateway | null
   readonly config: ClientOrderConfig
 }
 
@@ -163,163 +152,15 @@ const postCreateOrder = async (deps: ClientOrderDeps, request: FastifyRequest, r
 
 const payParamsSchema = z.object({ orderId: z.string().uuid() }).strict()
 const payBodySchema = z.object({
-  checkoutChannel: z.literal("phonepe_mobile_sdk"),
+  checkoutChannel: z.literal("hosted_redirect"),
 }).strict()
 
 type CheckoutChannel = z.infer<typeof payBodySchema>["checkoutChannel"]
-
-const mobileCheckoutResponse = (
-  deps: ClientOrderDeps,
-  input: Readonly<{
-    orderId: string
-    paymentId: string
-    providerOrderId: string
-    token: string
-    expiresAt: Date
-  }>,
-): Record<string, unknown> => ({
-  orderId: input.orderId,
-  paymentId: input.paymentId,
-  provider: "phonepe",
-  status: "payment_in_progress",
-  checkout: {
-    type: "phonepe_sdk",
-    providerOrderId: input.providerOrderId,
-    token: input.token,
-    merchantId: deps.config.mobileSdk.merchantId,
-    environment: deps.config.mobileSdk.environment,
-    expiresAt: iso(input.expiresAt),
-  },
-})
-
-const replayMobileCheckout = (
-  deps: ClientOrderDeps,
-  attempt: Awaited<ReturnType<PaymentsRepository["lockAttemptById"]>>,
-  orderId: string,
-  paymentId: string,
-  now: Date,
-): Record<string, unknown> | null => {
-  if (
-    attempt === null ||
-    attempt.state !== "provider_pending" ||
-    attempt.provider_order_id === null ||
-    attempt.sdk_order_token_ciphertext === null ||
-    attempt.sdk_order_token_nonce === null ||
-    attempt.sdk_order_token_key_version === null ||
-    attempt.sdk_order_token_expires_at === null ||
-    deps.config.mobileSdk.tokenEncryptionKey === null ||
-    deps.config.mobileSdk.tokenKeyVersion === null ||
-    attempt.sdk_order_token_key_version !== deps.config.mobileSdk.tokenKeyVersion ||
-    new Date(attempt.sdk_order_token_expires_at).getTime() <= now.getTime()
-  ) return null
-  return mobileCheckoutResponse(deps, {
-    orderId,
-    paymentId,
-    providerOrderId: attempt.provider_order_id,
-    token: decryptGcm(
-      deps.config.mobileSdk.tokenEncryptionKey,
-      attempt.sdk_order_token_ciphertext,
-      attempt.sdk_order_token_nonce,
-      paymentSdkTokenAad(attempt.id, attempt.provider_order_id),
-    ),
-    expiresAt: new Date(attempt.sdk_order_token_expires_at),
-  })
-}
-
-const dispatchMobileCheckout = async (
-  deps: ClientOrderDeps,
-  request: FastifyRequest,
-  input: Readonly<{
-    orderId: string
-    paymentId: string
-    attemptId: string
-    merchantOrderId: string
-    amountPaise: string
-    checkoutExpiresAt: Date
-    remainingCheckoutSeconds: number
-    isInitialDispatch: boolean
-  }>,
-): Promise<Record<string, unknown>> => {
-  const mobileConfig = deps.config.mobileSdk
-  if (
-    deps.mobilePaymentGateway === null ||
-    mobileConfig.merchantId === null ||
-    mobileConfig.environment === null ||
-    mobileConfig.tokenEncryptionKey === null ||
-    mobileConfig.tokenKeyVersion === null
-  ) throw new AppError("DEPENDENCY_UNAVAILABLE")
-
-  if (!input.isInitialDispatch) {
-    const attempt = await deps.unitOfWork.execute((tx) => deps.paymentsRepository.lockAttemptById(tx, input.attemptId))
-    const replay = replayMobileCheckout(deps, attempt, input.orderId, input.paymentId, deps.clock())
-    if (replay !== null) return replay
-    if (attempt === null || attempt.state !== "created" || attempt.provider_dispatch_started_at === null) {
-      throw new AppError("STATE_CONFLICT")
-    }
-    try {
-      await (deps.paymentGateway as PaymentGateway).getOrderStatus(input.merchantOrderId)
-    } catch (error) {
-      if (error instanceof GatewayNotFoundError) throw new AppError("STATE_CONFLICT")
-      logGatewayFailure(request.log, error, { requestId: request.requestId, operation: "get_order_status" })
-      throw new AppError("DEPENDENCY_UNAVAILABLE", { cause: error })
-    }
-    throw new AppError("STATE_CONFLICT")
-  }
-
-  let created
-  try {
-    created = await deps.mobilePaymentGateway.createSdkOrder({
-      merchantOrderId: input.merchantOrderId,
-      amountPaise: input.amountPaise,
-      expireAfterSeconds: input.remainingCheckoutSeconds,
-    })
-  } catch (error) {
-    logGatewayFailure(request.log, error, { requestId: request.requestId, operation: "create_sdk_order" })
-    throw new AppError("DEPENDENCY_UNAVAILABLE", { cause: error })
-  }
-
-  const expiresAt = created.expiresAt.getTime() < input.checkoutExpiresAt.getTime()
-    ? created.expiresAt
-    : input.checkoutExpiresAt
-  if (expiresAt.getTime() <= deps.clock().getTime()) throw new AppError("DEPENDENCY_UNAVAILABLE")
-  const encrypted = encryptGcm(
-    mobileConfig.tokenEncryptionKey,
-    created.sdkToken,
-    paymentSdkTokenAad(input.attemptId, created.providerOrderId),
-  )
-  const persisted = await deps.unitOfWork.execute(async (tx) => {
-    const updated = await deps.paymentsRepository.markAttemptSdkDispatched(tx, {
-      attemptId: input.attemptId,
-      providerOrderId: created.providerOrderId,
-      providerState: created.providerState,
-      checkoutExpiresAt: expiresAt,
-      tokenCiphertext: encrypted.ciphertext,
-      tokenNonce: encrypted.nonce,
-      tokenKeyVersion: mobileConfig.tokenKeyVersion as string,
-      tokenExpiresAt: expiresAt,
-      now: deps.clock(),
-    })
-    if (updated === null) throw new AppError("STATE_CONFLICT")
-    const payment = await deps.paymentsRepository.markPaymentProviderPending(tx, input.paymentId, deps.clock())
-    if (payment === null) throw new AppError("STATE_CONFLICT")
-    return updated
-  })
-  return mobileCheckoutResponse(deps, {
-    orderId: input.orderId,
-    paymentId: input.paymentId,
-    providerOrderId: created.providerOrderId,
-    token: created.sdkToken,
-    expiresAt: new Date(persisted.sdk_order_token_expires_at as Date | string),
-  })
-}
 
 const postPay = async (deps: ClientOrderDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await authenticateNativeRequest(request, deps)
   const params = parseOrThrow(payParamsSchema, request.params)
   const body = parseOrThrow(payBodySchema, request.body ?? {})
-  if (!deps.config.mobileSdk.enabled) {
-    throw new AppError("MOBILE_CHECKOUT_DISABLED")
-  }
   if (deps.paymentGateway === null) {
     logGatewayUnconfigured(request.log, { requestId: request.requestId, operation: "create_checkout" })
     throw new AppError("DEPENDENCY_UNAVAILABLE")
@@ -364,17 +205,62 @@ const postPay = async (deps: ClientOrderDeps, request: FastifyRequest, reply: Fa
   const preparedCheckoutExpiresAt = new Date(prepared.body.checkoutExpiresAt as string)
   const remainingCheckoutSeconds = checkoutSecondsRemaining(preparedCheckoutExpiresAt, deps.clock())
   if (remainingCheckoutSeconds === null) throw new AppError("STATE_CONFLICT")
-  const response = await dispatchMobileCheckout(deps, request, {
+  const dispatchClaim = await deps.unitOfWork.execute((tx) =>
+    deps.paymentsRepository.markAttemptDispatchStarted(tx, attemptId, deps.clock()),
+  )
+  if (dispatchClaim === null) {
+    const currentAttempt = await deps.unitOfWork.execute((tx) =>
+      deps.paymentsRepository.lockAttemptById(tx, attemptId),
+    )
+    if (currentAttempt === null || !ATTEMPT_OPEN_STATES.has(currentAttempt.state)) {
+      throw new AppError("STATE_CONFLICT")
+    }
+    return reply.sendData({
+      orderId,
+      paymentId,
+      provider: "phonepe",
+      status: "payment_in_progress",
+      checkout: null,
+      expiresAt: iso(currentAttempt.checkout_expires_at as Date | string),
+    }, { status: 200, ...(prepared.replay ? { idempotencyReplay: true } : {}) })
+  }
+  let checkout
+  try {
+    checkout = await deps.paymentGateway.createCheckout({
+      merchantOrderId,
+      amountPaise: prepared.body.amountPaise as string,
+      redirectUrl: null,
+      expireAfterSeconds: remainingCheckoutSeconds,
+    })
+  } catch (error) {
+    logGatewayFailure(request.log, error, { requestId: request.requestId, operation: "create_checkout" })
+    throw new AppError("DEPENDENCY_UNAVAILABLE", { cause: error })
+  }
+
+  const providerExpiry = checkout.expiresAt ?? preparedCheckoutExpiresAt
+  const expiresAt = providerExpiry.getTime() < preparedCheckoutExpiresAt.getTime()
+    ? providerExpiry
+    : preparedCheckoutExpiresAt
+  if (expiresAt.getTime() <= deps.clock().getTime()) throw new AppError("DEPENDENCY_UNAVAILABLE")
+  await deps.unitOfWork.execute(async (tx) => {
+    const attempt = await deps.paymentsRepository.markAttemptDispatched(tx, {
+      attemptId,
+      providerOrderId: checkout.providerOrderId,
+      checkoutExpiresAt: expiresAt,
+      now: deps.clock(),
+    })
+    if (attempt === null) throw new AppError("STATE_CONFLICT")
+    const payment = await deps.paymentsRepository.markPaymentProviderPending(tx, paymentId, deps.clock())
+    if (payment === null) throw new AppError("STATE_CONFLICT")
+  })
+  return reply.sendData({
     orderId,
     paymentId,
-    attemptId,
-    merchantOrderId,
-    amountPaise: prepared.body.amountPaise as string,
-    checkoutExpiresAt: preparedCheckoutExpiresAt,
-    remainingCheckoutSeconds,
-    isInitialDispatch: prepared.body.mobileDispatchClaimed === true && !prepared.replay,
-  })
-  return reply.sendData(response, { status: 200, ...(prepared.replay ? { idempotencyReplay: true } : {}) })
+    provider: "phonepe",
+    status: "payment_in_progress",
+    checkout: { type: "redirect", url: checkout.redirectUrl },
+    expiresAt: iso(expiresAt),
+  }, { status: 200, ...(prepared.replay ? { idempotencyReplay: true } : {}) })
 }
 
 /**
@@ -418,17 +304,6 @@ const prepareAttempt = async (
   let latest = await deps.paymentsRepository.latestAttempt(tx, payment.id)
   if (latest !== null && ATTEMPT_OPEN_STATES.has(latest.state)) {
     if (latest.checkout_channel !== checkoutChannel) throw new AppError("STATE_CONFLICT")
-    let mobileDispatchClaimed = false
-    if (
-      checkoutChannel === "phonepe_mobile_sdk" &&
-      latest.state === "created" &&
-      latest.provider_dispatch_started_at === null
-    ) {
-      const claimed = await deps.paymentsRepository.markAttemptDispatchStarted(tx, latest.id, now)
-      if (claimed === null) throw new AppError("STATE_CONFLICT")
-      latest = claimed
-      mobileDispatchClaimed = true
-    }
     // Crash/replay recovery: reuse the still-open attempt's stable id rather
     // than mint a second merchantOrderId for the same payment.
     return {
@@ -439,7 +314,6 @@ const prepareAttempt = async (
         paymentId: payment.id,
         amountPaise: payment.amount_paise,
         checkoutExpiresAt: iso(latest.checkout_expires_at as Date | string),
-        mobileDispatchClaimed,
       },
     }
   }
@@ -458,10 +332,7 @@ const prepareAttempt = async (
     checkoutExpiresAt: new Date(now.getTime() + deps.config.attemptTtlMs),
     checkoutChannel,
   })
-  const attempt = checkoutChannel === "phonepe_mobile_sdk"
-    ? await deps.paymentsRepository.markAttemptDispatchStarted(tx, createdAttempt.id, now)
-    : createdAttempt
-  if (attempt === null) throw new AppError("STATE_CONFLICT")
+  const attempt = createdAttempt
   await deps.auditRepository.append(tx, {
     actorType: "system",
     actorUserId: null,
@@ -481,7 +352,6 @@ const prepareAttempt = async (
       paymentId: payment.id,
       amountPaise: payment.amount_paise,
       checkoutExpiresAt: iso(attempt.checkout_expires_at ?? new Date(now.getTime() + deps.config.attemptTtlMs)),
-      mobileDispatchClaimed: checkoutChannel === "phonepe_mobile_sdk",
     },
   }
 }

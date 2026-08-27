@@ -73,10 +73,10 @@ PHONEPE_ENV=sandbox
 PHONEPE_CALLBACK_USERNAME=test-callback-user
 PHONEPE_CALLBACK_PASSWORD=test-callback-password
 PHONEPE_CALLBACK_URL=https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment
+PHONEPE_CHECKOUT_ALLOWED_ORIGINS=https://mercury.phonepe.com,https://mercury-t2.phonepe.com
 PHONEPE_SUBSCRIPTION_CALLBACK_URL=https://dev-app.beonedge.in/api/v1/provider-events/phonepe/subscription
 PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST=checkout.setup.order.completed,checkout.setup.order.failed,checkout.order.completed,checkout.order.failed,subscription.notification.completed,subscription.notification.failed,subscription.redemption.order.completed,subscription.redemption.order.failed,subscription.redemption.transaction.completed,subscription.redemption.transaction.failed
 PHONEPE_MERCHANT_ID=test-merchant
-PHONEPE_MOBILE_SDK_ORDER_ENABLED=false
 PHONEPE_AUTOPAY_ENABLED=false
 PHONEPE_AUTOPAY_COLLECTION_ENABLED=false
 EMAIL_VERIFICATION_FROM=support@beonedge.in
@@ -119,26 +119,6 @@ chmod 600 "$bad_subscription_callback"
 BOE_EFFECTIVE_ENV="$bad_subscription_callback"
 boe_deploy_assert_env >/dev/null \
     || { printf 'FAIL: deploy script interpreted the PhonePe subscription callback environment\n' >&2; exit 1; }
-
-mobile_sdk_missing_secrets="$TEST_DIR/mobile-sdk-missing-secrets.env"
-sed 's/^PHONEPE_MOBILE_SDK_ORDER_ENABLED=.*/PHONEPE_MOBILE_SDK_ORDER_ENABLED=true/' "$phonepe_env" > "$mobile_sdk_missing_secrets"
-chmod 600 "$mobile_sdk_missing_secrets"
-BOE_EFFECTIVE_ENV="$mobile_sdk_missing_secrets"
-if (boe_deploy_assert_env >/dev/null 2>&1); then
-    printf 'FAIL: deploy accepted mobile SDK checkout without its merchant and encryption keys\n' >&2
-    exit 1
-fi
-
-mobile_sdk_env="$TEST_DIR/mobile-sdk.env"
-cp "$mobile_sdk_missing_secrets" "$mobile_sdk_env"
-cat >> "$mobile_sdk_env" <<ENV
-CRYPTO_PAYMENT_TOKEN_ENC_KEY=$base64_key
-CRYPTO_PAYMENT_TOKEN_ENC_KEY_VERSION=ptk1
-ENV
-chmod 600 "$mobile_sdk_env"
-BOE_EFFECTIVE_ENV="$mobile_sdk_env"
-boe_deploy_assert_env >/dev/null \
-    || { printf 'FAIL: deploy rejected complete mobile SDK checkout configuration\n' >&2; exit 1; }
 
 development_with_production_phonepe="$TEST_DIR/development-with-production-phonepe.env"
 sed 's/^PHONEPE_ENV=.*/PHONEPE_ENV=production/' "$phonepe_env" > "$development_with_production_phonepe"
