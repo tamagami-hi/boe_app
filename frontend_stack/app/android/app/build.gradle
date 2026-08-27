@@ -78,6 +78,14 @@ android {
         }
     }
     buildTypes {
+        debug {
+            if (project.findProperty('boeSignDebugWithRelease') == 'true') {
+                if (!hasReleaseKeystore) {
+                    throw new GradleException('Debug release signing requested but signing is not configured.')
+                }
+                signingConfig signingConfigs.release
+            }
+        }
         release {
             minifyEnabled true
             shrinkResources true

@@ -6,6 +6,7 @@ RM_DIR="$ROOT_DIR/release_manager"
 CAPACITOR_CONFIG="$ROOT_DIR/frontend_stack/app/capacitor.config.ts"
 PHONEPE_CHECKOUT="$ROOT_DIR/frontend_stack/app/src/platform/phonePeMobileCheckout.js"
 BUILDER="$ROOT_DIR/emu/boe_update.sh"
+GRADLE_BUILD="$ROOT_DIR/frontend_stack/app/android/app/build.gradle"
 LOGCAT="$ROOT_DIR/emu/boe_logcat.sh"
 SHIP_LIB="$RM_DIR/lib/apk_ship.sh"
 APK_MANIFEST_LIB="$RM_DIR/lib/apk_manifest.sh"
@@ -26,6 +27,7 @@ trap 'rm -rf "$TEST_DIR"' EXIT
 [[ -f "$CAPACITOR_CONFIG" ]] || fail_test 'capacitor.config.ts is missing'
 [[ -f "$PHONEPE_CHECKOUT" ]] || fail_test 'phonePeMobileCheckout.js is missing'
 [[ -f "$BUILDER" ]] || fail_test 'emu/boe_update.sh is missing'
+[[ -f "$GRADLE_BUILD" ]] || fail_test 'Android app build.gradle is missing'
 [[ -x "$LOGCAT" ]] || fail_test 'emu/boe_logcat.sh is missing or not executable'
 [[ -f "$APK_MANIFEST_LIB" ]] || fail_test 'release_manager/lib/apk_manifest.sh is missing'
 
@@ -33,11 +35,29 @@ grep -q "loggingBehavior: 'none'" "$CAPACITOR_CONFIG" \
     || fail_test 'capacitor.config.ts does not disable bridge logging'
 ok 'capacitor.config.ts disables Capacitor bridge logging'
 
-grep -q "enableLogging: androidBuildType === 'debug'" "$PHONEPE_CHECKOUT" \
-    || fail_test 'PhonePe SDK logging is not gated on the debug build type'
-grep -q 'VITE_BEO_ANDROID_BUILD_TYPE' "$PHONEPE_CHECKOUT" \
-    || fail_test 'PhonePe build type no longer comes from VITE_BEO_ANDROID_BUILD_TYPE'
-ok 'PhonePe SDK logging stays disabled outside debug builds'
+grep -q 'enableLogging: false' "$PHONEPE_CHECKOUT" \
+    || fail_test 'PhonePe SDK logging is not disabled by default'
+if grep -q 'enableLogging: androidBuildType' "$PHONEPE_CHECKOUT"; then
+    fail_test 'PhonePe SDK logging is coupled to APK debuggability'
+fi
+if grep -q 'VITE_BEO_ANDROID_BUILD_TYPE' "$PHONEPE_CHECKOUT"; then
+    fail_test 'PhonePe checkout still consumes a frontend build-type logging switch'
+fi
+ok 'PhonePe SDK logging stays disabled independently of APK debuggability'
+
+grep -qF '[[ "$TARGET" == "prod" ]] && ANDROID_BUILD_TYPE="release"' "$BUILDER" \
+    || fail_test 'boe_update.sh does not limit release build type to the production target'
+grep -qF -- '-PboeSignDebugWithRelease="$RELEASE_SIGNING"' "$BUILDER" \
+    || fail_test 'boe_update.sh does not explicitly select release signing for debug updates'
+grep -qF 'if [[ "$TARGET" != "local" && "$RELEASE_SIGNING" != true ]]; then' "$BUILDER" \
+    || fail_test 'boe_update.sh permits a dev APK to change signing identity'
+grep -q 'boeSignDebugWithRelease' "$GRADLE_BUILD" \
+    || fail_test 'Gradle does not gate release signing of debug builds on the explicit script property'
+ok 'dev APKs stay debuggable while explicitly preserving the installed signing identity'
+
+grep -qF 'runtime_configuration="${ANDROID_BUILD_TYPE}RuntimeClasspath"' "$BUILDER" \
+    || fail_test 'runtime dependency validation does not follow the built Android build type'
+ok 'runtime dependency validation follows the actual build type'
 
 grep -q 'application-debuggable' "$APK_MANIFEST_LIB" \
     || fail_test 'the APK manifest inspector does not detect the debuggable flag'
@@ -45,6 +65,8 @@ grep -q -- '--argjson debuggable' "$BUILDER" \
     || fail_test 'boe_update.sh does not record the measured debuggable flag in the sidecar'
 grep -q -- '--arg buildType' "$BUILDER" \
     || fail_test 'boe_update.sh does not record the Android build type in the sidecar'
+grep -qF 'if [[ "$ANDROID_BUILD_TYPE" == "release" && "$debuggable" != false ]]; then' "$BUILDER" \
+    || fail_test 'boe_update.sh conflates release signing with a non-debuggable release build'
 grep -q 'release APK is debuggable' "$BUILDER" \
     || fail_test 'boe_update.sh does not fail a debuggable release APK'
 ok 'the builder measures and records the debuggable flag of the final APK'
@@ -136,6 +158,12 @@ fi
 if "$LOGCAT" --dump 'chromium:I' >/dev/null 2>&1; then
     fail_test 'boe_logcat.sh accepted a WebView tag'
 fi
+if "$LOGCAT" --dump 'WV_CONSOLE_PPE:E' >/dev/null 2>&1; then
+    fail_test 'boe_logcat.sh accepted a disguised WebView console tag'
+fi
+if "$LOGCAT" --dump 'UnreviewedPaymentTag:I' >/dev/null 2>&1; then
+    fail_test 'boe_logcat.sh accepted a tag outside its explicit allowlist'
+fi
 if "$LOGCAT" --dump '*:V' >/dev/null 2>&1; then
     fail_test 'boe_logcat.sh accepted a wildcard filter'
 fi
@@ -151,7 +179,9 @@ printf 'I PhonePeSDK: init complete\n'
 printf 'D OkHttp: {"accessToken":"secret-value-123","refreshToken":"secret-refresh-456"}\n'
 printf 'I OkHttp: Authorization: Bearer abc.def.ghi\n'
 printf 'D PhonePeSDK: {"token":"secret-payment-token","paymentToken":"secret-payment-token-2"}\n'
+printf 'D PhonePeSDK: {"sdkToken":"secret-sdk-token","orderToken":"secret-order-token"}\n'
 printf 'I OkHttp: Authorization: Basic secret-basic-credential\n'
+printf 'I OkHttp: X-VERIFY: secret-phonepe-verification\n'
 printf 'I OkHttp: Cookie: session=secret-cookie\n'
 printf 'D OkHttp: {"clientSecret":"secret-client-value","password":"secret-password"}\n'
 STUB
@@ -160,7 +190,7 @@ chmod +x "$STUB_BIN/adb"
 redacted_log="$TEST_DIR/capture.log"
 adb_args_file="$TEST_DIR/adb-args"
 if BOE_TEST_ADB_ARGS_FILE="$adb_args_file" PATH="$STUB_BIN:$PATH" \
-    "$LOGCAT" --dump --out "$redacted_log" PhonePeSDK:V OkHttp:D >/dev/null 2>&1; then
+    "$LOGCAT" --dump --out "$redacted_log" AndroidRuntime:V ActivityManager:D >/dev/null 2>&1; then
     fail_test 'a capture containing credentials exited zero'
 fi
 [[ -f "$redacted_log" ]] || fail_test 'no capture file was written'
@@ -172,7 +202,7 @@ grep -q 'secret-refresh-456' "$redacted_log" \
     && fail_test 'a refresh token value survived redaction'
 grep -q 'Bearer abc.def.ghi' "$redacted_log" \
     && fail_test 'a bearer token survived redaction'
-grep -Eq 'secret-payment-token|secret-basic-credential|secret-cookie|secret-client-value|secret-password' "$redacted_log" \
+grep -Eq 'secret-payment-token|secret-sdk-token|secret-order-token|secret-phonepe-verification|secret-basic-credential|secret-cookie|secret-client-value|secret-password' "$redacted_log" \
     && fail_test 'a payment, authorization, cookie, client secret, or password value survived redaction'
 grep -q '\[REDACTED' "$redacted_log" \
     || fail_test 'the redactor never fired on credential-shaped content'
@@ -185,7 +215,7 @@ symlink_output="$TEST_DIR/symlink-output.log"
 printf 'must remain unchanged\n' > "$symlink_target"
 ln -s "$symlink_target" "$symlink_output"
 if BOE_TEST_ADB_ARGS_FILE="$adb_args_file" PATH="$STUB_BIN:$PATH" \
-    "$LOGCAT" --dump --out "$symlink_output" PhonePeSDK:V >/dev/null 2>&1; then
+    "$LOGCAT" --dump --out "$symlink_output" AndroidRuntime:V >/dev/null 2>&1; then
     fail_test 'a symlink capture destination was accepted'
 fi
 grep -qxF 'must remain unchanged' "$symlink_target" \
@@ -199,23 +229,23 @@ STUB
 
 clean_log="$TEST_DIR/clean.log"
 BOE_TEST_ADB_ARGS_FILE="$adb_args_file" PATH="$STUB_BIN:$PATH" \
-    "$LOGCAT" --dump --out "$clean_log" PhonePeSDK:V >/dev/null 2>&1 \
+    "$LOGCAT" --dump --out "$clean_log" AndroidRuntime:V >/dev/null 2>&1 \
     || fail_test 'a clean capture was rejected'
 grep -q 'init complete' "$clean_log" \
     || fail_test 'the clean capture lost its content'
 ok 'boe_logcat.sh passes clean allowlisted output through'
 
 if BOE_TEST_ADB_ARGS_FILE="$adb_args_file" PATH="$STUB_BIN:$PATH" \
-    "$LOGCAT" --dump --seconds 0 --out "$TEST_DIR/zero-seconds.log" PhonePeSDK:V >/dev/null 2>&1; then
+    "$LOGCAT" --dump --seconds 0 --out "$TEST_DIR/zero-seconds.log" AndroidRuntime:V >/dev/null 2>&1; then
     fail_test 'a zero-second diagnostic capture was accepted'
 fi
 if BOE_TEST_ADB_ARGS_FILE="$adb_args_file" PATH="$STUB_BIN:$PATH" \
-    "$LOGCAT" --dump --seconds 301 --out "$TEST_DIR/long-capture.log" PhonePeSDK:V >/dev/null 2>&1; then
+    "$LOGCAT" --dump --seconds 301 --out "$TEST_DIR/long-capture.log" AndroidRuntime:V >/dev/null 2>&1; then
     fail_test 'an overlong diagnostic capture was accepted'
 fi
 if BOE_TEST_ADB_ARGS_FILE="$adb_args_file" PATH="$STUB_BIN:$PATH" \
     "$LOGCAT" --dump --seconds 999999999999999999999999999999999999999999999999999999 \
-    --out "$TEST_DIR/overflow-capture.log" PhonePeSDK:V >/dev/null 2>&1; then
+    --out "$TEST_DIR/overflow-capture.log" AndroidRuntime:V >/dev/null 2>&1; then
     fail_test 'an overflowing diagnostic capture duration was accepted'
 fi
 ok 'boe_logcat.sh requires a positive bounded capture duration'

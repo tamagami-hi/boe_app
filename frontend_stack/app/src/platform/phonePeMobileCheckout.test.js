@@ -62,25 +62,6 @@ describe('PhonePe mobile checkout boundary', () => {
     });
   });
 
-  test('enables SDK logging only for the exact debug build type', async () => {
-    const { platform, init } = fixture({ androidBuildType: 'debug' });
-
-    await platform.start({ checkout, paymentId: 'pay-debug' });
-
-    expect(init).toHaveBeenCalledWith(expect.objectContaining({ enableLogging: true }));
-  });
-
-  test.each(['release', 'DEBUG', 'unknown', undefined])(
-    'keeps SDK logging disabled for build type %s',
-    async (androidBuildType) => {
-      const { platform, init } = fixture({ androidBuildType });
-
-      await platform.start({ checkout, paymentId: 'pay-release' });
-
-      expect(init).toHaveBeenCalledWith(expect.objectContaining({ enableLogging: false }));
-    },
-  );
-
   test.each(['SUCCESS', 'FAILURE', 'INTERRUPTED', 'UNKNOWN'])(
     'normalizes SDK status %s without asserting payment completion',
     async (status) => {

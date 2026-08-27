@@ -92,11 +92,9 @@ variant_flags="$(grep -c 'PboeVariant' "$BUILDER")"
     || fail_test "boe_update.sh must pass -PboeVariant to both gradle tasks (found $variant_flags)"
 ok 'the builder passes -PboeVariant to both gradle tasks'
 
-grep -q 'VITE_BEO_ANDROID_BUILD_TYPE="$ANDROID_BUILD_TYPE"' "$BUILDER" \
-    || fail_test 'boe_update.sh does not pass its Android build type to Vite'
-grep -q 'RELEASE_SIGNING.*TARGET.*prod' "$BUILDER" \
-    || fail_test 'boe_update.sh does not keep production SDK logging disabled'
-ok 'the builder controls PhonePe logging from the Android build type'
+grep -qF '[[ "$TARGET" == "prod" ]] && ANDROID_BUILD_TYPE="release"' "$BUILDER" \
+    || fail_test 'boe_update.sh does not select release builds for production'
+ok 'the builder selects the production Android build type explicitly'
 
 if grep -E 'cp -f .*(mipmap|drawable|ic_launcher|splash)' "$BUILDER" >/dev/null; then
     fail_test 'boe_update.sh still copies branding into the tracked resource tree'

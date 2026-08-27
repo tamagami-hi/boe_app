@@ -45,10 +45,10 @@
 #      -PboeVersionName/-PboeVersionCode (versionCode 1 / "1.0" are only an
 #      IDE fallback), declares a release signingConfig fed by the gitignored
 #      android/keystore.properties, and minifies/shrinks release builds. When
-#      that keystore is configured this script builds assembleRelease and the
-#      sidecar records signing="release", which unblocks the prod gate in
-#      release_manager/lib/apk_ship.sh. Without it, it falls back to
-#      assembleDebug with the loud warning below.
+#      production builds use assembleRelease and the sidecar records
+#      signing="release", which unblocks the prod gate in
+#      release_manager/lib/apk_ship.sh. Development builds remain debuggable
+#      while using the configured certificate so updates preserve app data.
 #      KEEP THE KEYSTORE (android/keystore/boe-release.jks) FOREVER: Android
 #      only installs an update over an existing app when the certificate
 #      matches — same cert + increasing versionCode is what makes updates
@@ -328,8 +328,8 @@ fi
 
 # ── release signing probe ───────────────────────────────────────────────────
 # build.gradle reads signing material from the gitignored keystore.properties.
-# When it is present and complete we build assembleRelease (signed); otherwise
-# we fall back to assembleDebug and the sidecar honestly records signing=debug.
+# Production requires this signing material. Development uses it only to keep
+# the installed signing identity stable while retaining a debug build.
 KEYSTORE_PROPS="$ANDROID_DIR/keystore.properties"
 RELEASE_SIGNING=false
 if [[ -f "$KEYSTORE_PROPS" ]] \
@@ -339,14 +339,18 @@ if [[ -f "$KEYSTORE_PROPS" ]] \
     && grep -q '^keyPassword=' "$KEYSTORE_PROPS"; then
     RELEASE_SIGNING=true
 fi
-if [[ "$RELEASE_SIGNING" == true ]]; then
-    field "signing" "release (assembleRelease, minified)"
-else
-    warn "no usable android/keystore.properties — falling back to assembleDebug"
+ANDROID_BUILD_TYPE="debug"
+[[ "$TARGET" == "prod" ]] && ANDROID_BUILD_TYPE="release"
+if [[ "$TARGET" != "local" && "$RELEASE_SIGNING" != true ]]; then
+    err "$TARGET APK requires android/keystore.properties to preserve its signing identity"
+    exit 1
 fi
-ANDROID_BUILD_TYPE="release"
-if [[ "$RELEASE_SIGNING" != true && "$TARGET" != "prod" ]]; then
-    ANDROID_BUILD_TYPE="debug"
+if [[ "$ANDROID_BUILD_TYPE" == "release" ]]; then
+    field "signing" "release (assembleRelease, minified)"
+elif [[ "$RELEASE_SIGNING" == true ]]; then
+    field "signing" "release certificate (assembleDebug, debuggable)"
+else
+    field "signing" "debug certificate (assembleDebug, debuggable)"
 fi
 
 # versionCode must be a monotonically increasing integer. Derive it from semver.
@@ -385,7 +389,6 @@ build_variant() {
     export VITE_BEO_API_MODE="http"
     export VITE_BEO_API_BASE_URL="$API_BASE"
     export VITE_BEO_ONBOARDING_URL="$ONBOARDING"
-    export VITE_BEO_ANDROID_BUILD_TYPE="$ANDROID_BUILD_TYPE"
 
     step "vite build (mode=$VITE_MODE, target=$variant)"
     ( cd "$APP_DIR" && npx --no-install vite build --mode "$VITE_MODE" ) \
@@ -416,7 +419,7 @@ build_variant() {
     rm -f "$GRADLE_APK_DEBUG" "$GRADLE_APK_RELEASE"
 
     local gradle_apk signing
-    if [[ "$RELEASE_SIGNING" == true ]]; then
+    if [[ "$ANDROID_BUILD_TYPE" == "release" ]]; then
         signing="release"
         step "gradle assembleRelease (signed, minified)"
         ( cd "$ANDROID_DIR" && ./gradlew assembleRelease --console=plain \
@@ -425,11 +428,12 @@ build_variant() {
             || { err "gradle build failed"; return 1; }
         gradle_apk="$GRADLE_APK_RELEASE"
     else
-        signing="debug"
-        step "gradle assembleDebug (UNSIGNED-for-release fallback)"
+        [[ "$RELEASE_SIGNING" == true ]] && signing="release" || signing="debug"
+        step "gradle assembleDebug (debuggable)"
         ( cd "$ANDROID_DIR" && ./gradlew assembleDebug --console=plain \
             -PboeVersionName="$BUILD_LABEL" -PboeVersionCode="$VERSION_CODE" \
-            -PboeApplicationId="$APP_ID" -PboeVariant="$variant" ) \
+            -PboeApplicationId="$APP_ID" -PboeVariant="$variant" \
+            -PboeSignDebugWithRelease="$RELEASE_SIGNING" ) \
             || { err "gradle build failed"; return 1; }
         gradle_apk="$GRADLE_APK_DEBUG"
     fi
@@ -437,7 +441,7 @@ build_variant() {
     [[ -f "$gradle_apk" ]] || { err "APK not produced: $gradle_apk"; return 1; }
 
     local runtime_configuration runtime_dependencies
-    runtime_configuration="${signing}RuntimeClasspath"
+    runtime_configuration="${ANDROID_BUILD_TYPE}RuntimeClasspath"
     runtime_dependencies="$(cd "$ANDROID_DIR" && ./gradlew :app:dependencies --configuration "$runtime_configuration" --console=plain 2>/dev/null)" \
         || { err "could not inspect the Android runtime classpath"; return 1; }
     if [[ "$variant" == "client" ]]; then
@@ -490,7 +494,7 @@ build_variant() {
             return 1
         }
     fi
-    if [[ "$signing" == release && "$debuggable" != false ]]; then
+    if [[ "$ANDROID_BUILD_TYPE" == "release" && "$debuggable" != false ]]; then
         if [[ -z "$AAPT_BIN" ]]; then
             err "aapt is required to prove a release APK is not debuggable"
         else
@@ -572,16 +576,19 @@ if (( ${#FAILED[@]} > 0 )); then
 fi
 
 printf '\n'
-if [[ "$RELEASE_SIGNING" == true ]]; then
+if [[ "$ANDROID_BUILD_TYPE" == "release" ]]; then
     field "signing" "release (sidecars record signing=release)"
     warn "These APKs are signed with android/keystore/boe-release.jks."
     warn "KEEP THAT KEYSTORE (and keystore.properties) FOREVER — Android only"
     warn "installs an update over an existing app when the certificate matches."
     warn "Same cert + increasing versionCode is what makes updates install fast."
+elif [[ "$RELEASE_SIGNING" == true ]]; then
+    field "signing" "release certificate on a debuggable development APK"
+    warn "This APK is debuggable and intended only for development testing."
 else
     warn "This APK is DEBUG-SIGNED: no usable android/keystore.properties was"
-    warn "found, so assembleRelease was skipped. Fine for sideloading and"
-    warn "internal testing, but release_manager refuses to publish it to prod."
+    warn "found. Fine for sideloading and internal testing, but it cannot update"
+    warn "an installation signed with the release certificate."
     warn "Create frontend_stack/app/android/keystore.properties (storeFile,"
     warn "storePassword, keyAlias, keyPassword) to enable signed release builds."
 fi

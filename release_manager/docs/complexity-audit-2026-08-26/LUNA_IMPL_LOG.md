@@ -202,3 +202,52 @@ Entries will be appended after each implementation slice is reviewed and tested.
 - Production promotion remains gated on successful one-time payment, SIP/AutoPay,
   idempotency, reconciliation, cancellation, migration-preservation, and rollback
   evidence from development/UAT.
+
+### 2026-08-27 — Debuggable development APK and physical PhonePe diagnosis
+
+- Changed `emu/boe_update.sh` so development/local APKs use the Android debug
+  build type by default while production continues to require a signed,
+  minified, non-debuggable release build.
+- Added the explicit `boeSignDebugWithRelease` Gradle property in
+  `frontend_stack/app/android/app/build.gradle`. A development debug APK may use
+  the configured release certificate so it updates the installed test app
+  without clearing its data; this does not make the production build debuggable.
+- Built and installed `com.beonedge.app.dev` version code 1109 on the connected
+  OnePlus CPH2585. Android reported the installed package as `DEBUGGABLE`; APK
+  signature verification reported the configured BeOnEdge release certificate.
+- Reproduced one-time PhonePe checkout on the physical device. The native
+  `com.phonepe.intent.sdk.ui.b2bPg.B2bPgActivity` opened, proving that the
+  Capacitor bridge reached the PhonePe SDK. PhonePe's embedded checkout then
+  displayed `Sorry, we couldn’t process your request.`
+- The backend had already created a provider order and SDK token. PhonePe sent a
+  signature-valid `payment.checkout.order.failed` event. Its immediate status
+  lookup still returned `PENDING`, so the canonical attempt correctly remained
+  pending rather than trusting the webhook label alone. The healthy payment
+  reconciliation worker later observed `FAILED` and atomically converged the
+  attempt, payment, and investment order to `failed`, `failed`, and
+  `payment_failed` with `PROVIDER_DECLINED`.
+- No application-side crash, stuck worker, unsigned callback, missing SDK token,
+  or reconciliation defect was observed. The remaining cause is inside the
+  PhonePe rejection boundary and requires checking the merchant's selected
+  environment entitlement and registration for the exact application ID and
+  signing certificate in the PhonePe merchant configuration.
+- `ionic-capacitor-phonepe-pg@3.0.5` declares a Capacitor `^4.0.0` peer while the
+  application uses Capacitor `8.3.4`; `npm ls` reports this relationship as
+  invalid. The tested checkout did open, but full Capacitor 8 / Android 16
+  lifecycle compatibility remains a release risk requiring vendor confirmation
+  or replacement with a supported plugin.
+- Review found and corrected two build-policy defects: development now fails
+  closed without the stable signing configuration instead of silently changing
+  certificate identity, and dependency inspection now follows the actual Android
+  build type rather than the signing certificate label. Variant-sensitive files
+  produced by Capacitor sync were excluded from the committed change.
+- Security review also decoupled APK debuggability from PhonePe SDK logging.
+  `phonePeMobileCheckout.js` now initializes the provider with
+  `enableLogging=false` in every build. Debug APKs remain attachable through
+  Android tooling, while provider intent/token material is not automatically
+  emitted merely because the package is debuggable.
+- Focused APK policy tests passed 14/14 and hermetic-branding tests passed 13/13;
+  both development debug and production release APKs built successfully. Their
+  sidecars respectively prove `debuggable=true` and `debuggable=false`. Shell
+  parsing and `git diff --check` passed. Diagnostic captures are local, ignored,
+  mode `0600`, bounded, and credential-redacted by `emu/boe_logcat.sh`.

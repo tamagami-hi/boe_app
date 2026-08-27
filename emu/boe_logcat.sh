@@ -15,6 +15,7 @@ DO_DUMP=false
 SERIAL=""
 OUT_FILE=""
 FILTERS=()
+ALLOWED_TAGS=(AndroidRuntime ActivityManager ActivityTaskManager)
 
 usage() {
     cat <<'USAGE'
@@ -67,12 +68,15 @@ for filter in "${FILTERS[@]}"; do
         || { err "invalid filter: $filter (expected TAG:LEVEL, level one of V D I W E F)"; exit 1; }
     tag="${BASH_REMATCH[1]}"
     [[ "$tag" != "*" ]] || { err "wildcard filters are refused: $filter"; exit 1; }
-    case "${tag,,}" in
-        capacitor|capacitor/*|chromium|chromium/*|webview|webview/*)
-            err "tag refused by the diagnostic logging policy: $tag"
-            err "bridge and WebView tags can carry session credentials — use chrome://inspect"
-            exit 1 ;;
-    esac
+    isAllowed=false
+    for allowedTag in "${ALLOWED_TAGS[@]}"; do
+        [[ "$tag" == "$allowedTag" ]] && isAllowed=true
+    done
+    if [[ "$isAllowed" != true ]]; then
+        err "tag is not in the diagnostic allowlist: $tag"
+        err "bridge, provider, and WebView tags can carry payment or session credentials"
+        exit 1
+    fi
 done
 
 ADB_BIN=""
@@ -92,11 +96,12 @@ ADB_ARGS=()
 redact_stream() {
     sed -E \
         -e 's/(Authorization:[[:space:]]*)(Basic|Bearer)[[:space:]]+[^[:space:]]+/\1\2 [REDACTED]/gi' \
+        -e 's/(X-VERIFY:[[:space:]]*)[^[:space:]]+/\1[REDACTED]/gi' \
         -e 's/((Cookie|Set-Cookie):[[:space:]]*).*/\1[REDACTED]/gi' \
         -e 's/Bearer [A-Za-z0-9._~+\/-]+=*/Bearer [REDACTED]/gi' \
         -e 's/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_.\/+_-]*/[REDACTED-JWT]/g' \
-        -e 's/("(accessToken|refreshToken|access_token|refresh_token|csrfToken|idToken|authorization|token|paymentToken|sdkOrderToken|clientSecret|client_secret|password|callbackPassword|cookie)"[[:space:]]*:[[:space:]]*")[^"]*/\1[REDACTED]/gi' \
-        -e 's/\b(accessToken|refreshToken|access_token|refresh_token|csrfToken|idToken|authorization|token|paymentToken|sdkOrderToken|clientSecret|client_secret|password|callbackPassword|cookie)=[^&[:space:]]+/\1=[REDACTED]/gi'
+        -e 's/("(accessToken|refreshToken|access_token|refresh_token|csrfToken|idToken|authorization|token|paymentToken|sdkToken|sdkOrderToken|orderToken|clientSecret|client_secret|password|callbackPassword|cookie)"[[:space:]]*:[[:space:]]*")[^"]*/\1[REDACTED]/gi' \
+        -e 's/\b(accessToken|refreshToken|access_token|refresh_token|csrfToken|idToken|authorization|token|paymentToken|sdkToken|sdkOrderToken|orderToken|clientSecret|client_secret|password|callbackPassword|cookie)=[^&[:space:]]+/\1=[REDACTED]/gi'
 }
 
 mkdir -p "$OUT_DIR"
