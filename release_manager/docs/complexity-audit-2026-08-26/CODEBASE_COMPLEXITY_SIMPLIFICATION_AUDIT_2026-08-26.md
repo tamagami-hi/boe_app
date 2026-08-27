@@ -134,7 +134,7 @@ workers:
 | Admin UI | `frontend_stack/packages/admin`, mounted by `BrowserRoot.jsx`/`Admin.jsx` | Active |
 | Shared UI/config | `frontend_stack/packages/shared`, `ui`, `vite` | Active, with fixture/config baggage |
 | Contracts | `frontend_stack/packages/contracts` | Tests/generated artifact exist; no runtime imports found |
-| UI kits/preview | `frontend_stack/packages/ui-kits`, `frontend_stack/preview` | No production imports found; candidate removal after confirmation |
+| UI kits/preview | `frontend_stack/packages/ui-kits`, `frontend_stack/preview` | Removed; no workspace or production imports were found, and bundle tests remain green |
 | Deployment | `release_manager/stacks`, `_shared`, `DEPLOY.md` | Active operational tooling |
 | Historical reference | `release_manager/BOE_APP/`, `.resources.legacy.TLDR/`, `vault.md` | Archives/ignored; not tracked runtime product |
 | Monitoring | `release_manager/stacks/monitor_service` | Eight-service monitoring deployment is tracked here; this is separate at deploy time but **not yet a separate repository** as requested |
@@ -263,7 +263,8 @@ There are 26 production route modules, 36 repository modules, and 28 non-test do
 ### Definitely dead or non-production
 
 - `frontend_stack/packages/client/src/data/fixtureMandates.js`, `fixtureOrders.js`, `fixtureSipControlRequests.js`: no production imports found; verify test-only consumers before removal.
-- `frontend_stack/packages/ui-kits` and `frontend_stack/preview`: no production imports; bundle contract test forbids `@beonedge/ui-kits`.
+- `frontend_stack/packages/ui-kits` and `frontend_stack/preview`: removed after
+  no-import/workspace checks; the bundle contract still forbids reintroduction.
 - Root scripts `kimi:chunk`, `kimi:run`, `kimi:apply` reference absent `scripts/kimi/*`; root dependencies `agent-browser` and `ngrok` have no runtime references (Playwright is used by `test_e2e/signup-users.mjs`).
 - `legacy_investment_reviews`: physically retained after 039, absent from current typed schema and settlement path; designated for removal through a preserving forward migration.
 
@@ -439,7 +440,7 @@ Recommended order: establish contract truth; freeze/verify financial invariants;
 
 ## 28. Exact files/directories affected by a future simplification
 
-Primary targets are listed in `FILE_DISPOSITION_AND_ROADMAP.md`; notable directories are `backend_controller/src/runtime`, `src/routes`, `src/domain/payments`, `src/domain/client`, `src/db`, `frontend_stack/packages/client/src/services`, `frontend_stack/packages/shared/src/appConfig.js`, `frontend_stack/packages/admin/src`, `frontend_stack/packages/contracts`, `frontend_stack/packages/ui-kits`, and `release_manager/docs`. This audit itself adds documentation only.
+Primary targets are listed in `FILE_DISPOSITION_AND_ROADMAP.md`; notable directories are `backend_controller/src/runtime`, `src/routes`, `src/domain/payments`, `src/domain/client`, `src/db`, `frontend_stack/packages/client/src/services`, `frontend_stack/packages/shared/src/appConfig.js`, `frontend_stack/packages/admin/src`, `frontend_stack/packages/contracts`, and `release_manager/docs`. The UI-kit/preview reference surfaces were removed after verification.
 
 ## 29. Risks and regression-sensitive areas
 

@@ -31,6 +31,9 @@
 - The shared money helper changes presentation mapping only; financial persistence
   continues to use validated integer/string paise values and canonical backend
   settlement invariants.
+- Removing the preview-only UI surfaces is reversible through Git and does not
+  alter shipped application routes or runtime services; the bundle contract and
+  full frontend build are the acceptance gates.
 
 ## Implementation status
 

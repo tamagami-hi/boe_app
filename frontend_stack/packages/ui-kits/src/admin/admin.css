@@ -1,8 +1,0 @@
-/* Admin UI Kit — delegates to the canonical shell stylesheet.
- * This file exists for backward compatibility with the standalone
- * admin preview (index.html). The single source of truth is
- * @beonedge/admin/styles/desktop/shell.css.
- */
-
-@import '@beonedge/design-tokens/tokens.css';
-@import '@beonedge/admin/styles/desktop/shell.css';

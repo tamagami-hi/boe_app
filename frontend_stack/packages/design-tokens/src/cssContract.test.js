@@ -9,9 +9,7 @@ import { describe, expect, test } from 'vitest';
 const ROOT = process.cwd();
 const TOKENS_DIR = path.join('packages', 'design-tokens', 'src');
 
-// packages/ui-kits is a reference/preview kit: nothing in app/ or the other
-// packages imports it, so its CSS never ships. Excluded rather than migrated.
-const SKIP_DIRS = ['node_modules', 'dist', 'build', 'android', 'ui-kits'];
+const SKIP_DIRS = ['node_modules', 'dist', 'build', 'android'];
 
 function cssFiles() {
   const found = [];

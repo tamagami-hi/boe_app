@@ -110,7 +110,9 @@
   - `packages/design-tokens`
   - `packages/shared`
 - `@beonedge/ui-kits` is no longer resolved as an active workspace dependency.
-- `frontend_stack/packages/ui-kits` and `frontend_stack/preview` remain tracked reference material pending an archival/removal decision.
+- `frontend_stack/packages/ui-kits` and `frontend_stack/preview` were removed
+  after confirming no workspace or production imports; the bundle contract
+  continues to prevent reintroduction.
 
 ### Admin compatibility aliases
 
@@ -150,6 +152,17 @@
   `/ 100` mappers; existing admin/client consumer coverage exercises the helper.
 - Verification: targeted frontend suite passed (41/41 tests) and `git diff
   --check` passed. The complete frontend suite/build remains the release gate.
+
+### Removed preview-only UI surfaces
+
+- Removed the unreferenced `frontend_stack/packages/ui-kits` package and static
+  `frontend_stack/preview` pages. Neither was a workspace member or imported by
+  the shipped app; `app/src/bundleContract.test.js` already guarded against the
+  package entering production bundles.
+- Updated design-token scans and audit records to describe the removal. No
+  application, authentication, payment, ledger, or monitoring code changed.
+- Verification: full frontend tests and production build/bundle boot passed;
+  `git diff --check` passed.
 
 ## Verification baseline
 

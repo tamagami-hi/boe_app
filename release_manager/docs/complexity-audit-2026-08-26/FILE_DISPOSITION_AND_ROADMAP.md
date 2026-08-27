@@ -55,7 +55,8 @@ Do not rewrite authentication, provider verification, or the ledger based on thi
 ## REMOVE (only after reference/build/runtime confirmation)
 
 - `frontend_stack/packages/client/src/data/fixtureMandates.js`, `fixtureOrders.js`, `fixtureSipControlRequests.js`.
-- `frontend_stack/packages/ui-kits` and `frontend_stack/preview` if workspace/build checks remain green.
+- `frontend_stack/packages/ui-kits` and `frontend_stack/preview` (removed after
+  confirming no workspace or production imports; retained history is in Git).
 - Root `kimi:chunk`, `kimi:run`, `kimi:apply` scripts and unused `agent-browser`/`ngrok` dependencies after CI/tooling owner confirmation.
 - Proven-unreachable admin aliases and legacy wrappers.
 - Stale audit/docs that describe pre-039 investment review, replacing them with a current decision record.

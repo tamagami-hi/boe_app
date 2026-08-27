@@ -1,5 +1,0 @@
-/* Shared UI kit base — browser preview entry point.
- * Re-exports the canonical kit core from the design-tokens package.
- */
-
-@import '../../design-tokens/src/kit-core.css';

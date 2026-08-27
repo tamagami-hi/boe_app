@@ -1,6 +1,3 @@
-/* Shared UI kit base — build entry point.
- * Imports the canonical kit core. For browser previews, ui-kits/src/shared/kit.css
- * re-exports the same core.
- */
+/* Shared UI kit base — build entry point. */
 
 @import './kit-core.css';

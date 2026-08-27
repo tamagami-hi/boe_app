@@ -78,3 +78,15 @@ Entries will be appended after each implementation slice is reviewed and tested.
 - Verification: targeted frontend tests passed 41/41; complete frontend tests
   passed 68 files / 903 tests; production build and bundle boot passed; and
   `git diff --check` passed.
+
+### 2026-08-27 — Removed preview-only UI surfaces
+
+- Roadmap item: REMOVE proven-unreachable UI-kit and static preview artifacts;
+  monitoring stack intentionally left untouched.
+- Removed `frontend_stack/packages/ui-kits` and `frontend_stack/preview` after
+  verifying they were outside the workspace and had no production imports.
+- Updated design-token directory scans and the audit/changelog records. Git
+  history retains the deleted reference material if it is ever needed for
+  historical review.
+- Verification: full frontend tests/build/bundle boot passed before this slice;
+  rerun after staging is required before commit.

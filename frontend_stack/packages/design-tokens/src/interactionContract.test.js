@@ -5,7 +5,7 @@ import path from 'node:path';
 const ROOT = path.resolve(process.cwd(), 'packages');
 const APP_SRC = path.resolve(process.cwd(), 'app/src');
 
-const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', 'ui-kits']);
+const SKIP_DIRS = new Set(['node_modules', 'dist', 'build']);
 
 function walk(dir, out = []) {
   if (!fs.existsSync(dir)) return out;
