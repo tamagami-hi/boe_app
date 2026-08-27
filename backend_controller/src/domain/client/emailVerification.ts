@@ -89,7 +89,7 @@ export const requestEmailVerificationCode = async (
     entityId: input.userId,
     toState: "pending",
     requestId: input.requestId,
-    entityVersion: 1,
+    entityVersion: Number(verification.version),
     metadata: { method: "email_otp" },
   })
 
@@ -147,7 +147,7 @@ export const verifyEmail = async (
     fromState: "pending",
     toState: "verified",
     requestId: input.requestId,
-    entityVersion: 1,
+    entityVersion: Number(verifiedRecord.version),
     metadata: { method: "email_otp" },
   })
   return { kind: "verified", verification: verifiedRecord }

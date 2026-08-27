@@ -1,25 +1,32 @@
 UPDATE users u
+SET email_verification_state = 'verified',
+    email_verified_at = verified.decided_at,
+    email_verification_started_at = verified.submitted_at,
+    email_verification_expires_at = verified.expires_at,
+    updated_at = now()
+FROM (
+  SELECT DISTINCT ON (user_id) user_id, submitted_at, decided_at, expires_at
+  FROM kyc_cases
+  WHERE state = 'approved'
+  ORDER BY user_id, created_at DESC, id DESC
+) verified
+WHERE verified.user_id = u.id;
+
+UPDATE users u
 SET email_verification_state = CASE latest.state
-      WHEN 'approved' THEN 'verified'
       WHEN 'rejected' THEN 'rejected'
       ELSE 'pending'
     END,
-    email_verified_at = CASE latest.state
-      WHEN 'approved' THEN latest.decided_at
-      ELSE NULL
-    END,
     email_verification_started_at = latest.submitted_at,
-    email_verification_expires_at = CASE latest.state
-      WHEN 'approved' THEN latest.expires_at
-      ELSE NULL
-    END,
+    email_verification_expires_at = NULL,
     updated_at = now()
 FROM (
-  SELECT DISTINCT ON (user_id) user_id, state, submitted_at, decided_at, expires_at
+  SELECT DISTINCT ON (user_id) user_id, state, submitted_at
   FROM kyc_cases
   ORDER BY user_id, created_at DESC, id DESC
 ) latest
-WHERE latest.user_id = u.id;
+WHERE latest.user_id = u.id
+  AND u.email_verification_state <> 'verified';
 
 INSERT INTO email_verification_codes (
   id,
@@ -59,7 +66,7 @@ BEGIN
   IF source_count < target_count THEN
     RAISE EXCEPTION 'email verification code backfill copied more rows than source';
   END IF;
-  SELECT count(*) INTO source_count
+  SELECT count(DISTINCT user_id) INTO source_count
   FROM kyc_cases
   WHERE state = 'approved';
   SELECT count(*) INTO target_count

@@ -43,6 +43,24 @@ This log records the implementation and verification work performed after the co
 
 Entries will be appended after each implementation slice is reviewed and tested.
 
+### 2026-08-27 — Email verification populated-upgrade integrity fixes
+
+- Added the populated-upgrade regression coverage in
+  `backend_controller/test/integration/emailVerificationMigration.integration.test.ts`.
+- The backfill now selects the latest approved historical Email OTP record when a
+  later rejected record exists, preserving the durable verified-user state.
+- The preservation guard counts distinct approved users rather than historical
+  approval rows, so repeated OTP approvals for one user cannot abort a valid
+  upgrade.
+- The populated-upgrade test now applies migration 042 and proves that the
+  durable user and a linked SIP plan survive while `kyc_cases` is removed.
+- Email verification audit events now record the incremented durable `users.version`
+  instead of a hard-coded entity version.
+- Verification: the focused migration and Email Verification integration tests pass
+  11/11. The focused integration command still reports the repository-wide coverage
+  threshold failure because it intentionally runs only two integration files; the
+  full integration suite remains the coverage acceptance command.
+
 ### 2026-08-27 — Email Verification and deployment slice review
 
 - Migrated Email OTP state onto `users.email_verification_state`,
@@ -90,3 +108,85 @@ Entries will be appended after each implementation slice is reviewed and tested.
   historical review.
 - Verification: full frontend tests passed (68 files / 903 tests), production
   build and bundle boot passed after the removal, and `git diff --check` passed.
+
+### 2026-08-27 — PhonePe Standard Checkout AutoPay contract and rejection recovery
+
+- Re-verified the active adapter against PhonePe's product-specific Standard
+  Checkout AutoPay documentation. The canonical outbound contract remains
+  `/checkout/v2/subscriptions/notify`,
+  `/checkout/v2/order/{merchantOrderId}/status`,
+  `/checkout/v2/subscriptions/{merchantSubscriptionId}/status`, and
+  `/checkout/v2/subscriptions/{merchantSubscriptionId}/cancel`, with
+  `paymentFlow.type=SUBSCRIPTION_CHECKOUT_REDEMPTION`.
+- Did not replace those paths with the generic `/subscriptions/v2` API family.
+  PhonePe's generic AutoPay index and public Postman collection document that
+  separate family, but the repository creates mandates through the Standard
+  Checkout `SUBSCRIPTION_CHECKOUT_SETUP` flow. Mixing the two API families
+  would break correlation with the active setup contract.
+- Preserved `autoDebit=true` and `redemptionRetryStrategy=STANDARD`. PhonePe's
+  Standard Checkout documentation states that Execute is unnecessary when
+  AutoDebit is true and that PhonePe owns retries for the STANDARD strategy.
+- Strengthened the existing gateway contract test with exact Standard Checkout
+  setup-status, subscription-status, redemption-status, and cancellation paths.
+- Added a payment-critical worker regression test proving that a definitive
+  non-retryable Notify rejection previously left the collection in
+  `dispatching` and its canonical payment/order open indefinitely. The worker
+  now atomically marks the collection failed and applies the canonical failed
+  payment outcome only for `GatewayRejectedError`.
+- Ambiguous failures such as timeouts, throttling, malformed responses, and 5xx
+  responses remain in reconciliation instead of being converted into false
+  failures. A persistent provider 404 after an ambiguous Notify has no proven
+  safe automatic resend contract and remains `Needs runtime/vendor verification`.
+- Primary sources:
+  - https://developer.phonepe.com/payment-gateway/autopay/standard-checkout/redemption-notify
+  - https://developer.phonepe.com/payment-gateway/autopay/standard-checkout/notification-status
+  - https://developer.phonepe.com/payment-gateway/autopay/standard-checkout/subscription-status-2
+  - https://developer.phonepe.com/payment-gateway/autopay/standard-checkout/subscription-cancel
+- TDD evidence: the focused worker test failed 1/6 before the implementation
+  because no failed-state transition occurred, then the gateway and worker
+  tests passed 12/12 after the minimal fix.
+
+### 2026-08-27 — Contract and destructive-deployment safety fixes
+
+- Regenerated the frontend contract-drift baseline so the four canonical Email
+  Verification routes replace the removed KYC routes. The full contracts check
+  now passes 95/95 tests and all generation, lint, export, and drift gates.
+- Migration 042 is assigned to schema release family `0.11.9`, the first release
+  after the existing `v0.11.8` tag that can contain migrations 040–042.
+- Deployment refuses to run pending migration 042 under an older release
+  identity, refuses `--skip-db-backup`, stops database consumers before taking
+  the mandatory snapshot, and blocks image-only rollback after the destructive
+  migration.
+- A fresh database with no applied migration history is not misclassified as a
+  destructive upgrade merely because migration 042 appears in its pending list.
+- A populated upgrade with no recorded current release fails closed because it
+  cannot produce a version-addressable backup and rollback target safely.
+- Manual restore verification now rejects a snapshot containing migration 042
+  when the rollback target belongs to the pre-042 schema family.
+
+### 2026-08-27 — Destructive migration deployment safety gates
+
+- Added critical deployment regression coverage in
+  `release_manager/tests/database_backup.test.sh` for the migration-042
+  rollback boundary, mandatory backups, migration-status detection, and
+  stopping database consumers before a destructive migration backup.
+- `_boe_lib.sh` assigns migration 042 to release schema family `0.11.9` and
+  detects an exact pending `042_remove_legacy_compliance_tables.sql` marker
+  from the incoming migrate image. The existing `v0.11.8` tag predates these
+  migrations, and deployment fails closed if migration 042 is pending under an
+  older release identity.
+- `_boe_deploy.sh` loads the incoming image, starts only PostgreSQL, inspects
+  migration status, rejects `--skip-db-backup` when migration 042 is pending,
+  stops all Compose consumers except PostgreSQL, and then takes a mandatory
+  pre-deploy snapshot before starting the migration-bearing stack.
+- A failed deployment that has crossed the destructive boundary no longer
+  attempts an image-only rollback; it leaves consumers stopped and requires
+  the explicit database-restore rollback workflow. Consumer-stop failure is
+  fail-closed rather than ignored.
+- TDD evidence: the new deployment checks failed before the guards existed
+  (`boe_deploy_requires_database_restore: command not found`), then
+  `bash release_manager/tests/database_backup.test.sh` passed. All
+  `release_manager/tests/*.test.sh` scripts passed, and `bash -n` plus
+  `git diff --check` passed for the changed deployment scripts and test.
+- The actual VPS migration status, deployed schema marker, and live consumer
+  inventory remain **Needs runtime verification**.

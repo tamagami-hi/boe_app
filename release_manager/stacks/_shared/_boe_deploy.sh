@@ -125,40 +125,47 @@ boe_deploy_main() {
     step "12/16 preserve current APK artifacts"
     boe_deploy_archive_apks "$current"
 
-    # ── 13. pre-deployment database backup (plan §18 step 13) ───────────────
-    step "13/16 pre-deployment database backup"
+    step "13/16 load new images"
+    boe_load_images
+    boe_assert_images_present "$incoming"
+
+    step "14/16 prepare database migration"
+    BOE_DESTRUCTIVE_MIGRATION_PENDING=false
+    if [[ "${P[has_database]}" == "true" ]]; then
+        log "bringing up postgres first"
+        compose up -d postgres || die "failed to start postgres"
+        boe_wait_postgres
+        if boe_pending_destructive_migration; then
+            BOE_DESTRUCTIVE_MIGRATION_PENDING=true
+            warn "destructive migration 042 is pending"
+        fi
+    fi
+
+    boe_deploy_assert_destructive_release_version "$incoming"
+    boe_deploy_assert_backup_policy "$SKIP_DB_BACKUP" "$current"
+
+    step "15/16 pre-deployment database backup"
     if [[ "${P[has_database]}" != "true" ]]; then
         info "stack has no database"
-    elif [[ "$SKIP_DB_BACKUP" == true ]]; then
-        warn "database backup SKIPPED by flag — rollback will have no pre-deploy snapshot"
     elif [[ -z "$current" ]]; then
         info "first deploy — no database to back up yet"
+    elif [[ "${BOE_DESTRUCTIVE_MIGRATION_PENDING:-false}" == true ]]; then
+        boe_deploy_stop_database_consumers
+        boe_assert_writable "${P[rollback_db]}/$current"
+        boe_backup_database "${P[rollback_db]}/$current" "pre-deploy" true >/dev/null
+    elif [[ "$SKIP_DB_BACKUP" == true ]]; then
+        warn "database backup SKIPPED by flag — rollback will have no pre-deploy snapshot"
     else
         boe_assert_writable "${P[rollback_db]}/$current"
         boe_backup_database "${P[rollback_db]}/$current" "pre-deploy" >/dev/null
     fi
 
-    # ── 14. load new images ─────────────────────────────────────────────────
-    step "14/16 load new images"
-    boe_load_images
-    boe_assert_images_present "$incoming"
-
-    # ── 15. start the stack ─────────────────────────────────────────────────
-    # Ordering is enforced by the compose file's depends_on conditions
-    # (postgres healthy → migrate completed → seed → backend + workers →
-    # frontends), so a single `up -d` is correct and migrations run in-band.
-    step "15/16 start stack"
-    if [[ "${P[has_database]}" == "true" ]]; then
-        log "bringing up postgres first"
-        compose up -d postgres || die "failed to start postgres"
-        boe_wait_postgres
-    fi
+    step "16/16 start stack"
     log "bringing up the full stack (migrations run in-band)"
     compose up -d --remove-orphans || boe_deploy_fail "$current" "$incoming" "compose up failed"
     compose ps
 
-    # ── 16. health gate, then and only then record the version ──────────────
-    step "16/16 health checks"
+    step "health checks"
     local healthy=true
     if [[ "$SKIP_CHECKS" == true ]]; then
         warn "health checks SKIPPED by flag — version will be recorded unverified"
@@ -423,6 +430,41 @@ boe_deploy_smoke_tests() {
     return $rc
 }
 
+boe_deploy_requires_database_restore() {
+    local previous="$1" attempted="$2"
+    [[ "${BOE_DESTRUCTIVE_MIGRATION_PENDING:-false}" == true ]] && return 0
+    [[ "${P[has_database]:-false}" == true ]] \
+        && boe_rollback_requires_database_restore "$attempted" "$previous"
+}
+
+boe_deploy_assert_backup_policy() {
+    local skip="$1" current="$2"
+    if [[ -z "$current" && "${BOE_DESTRUCTIVE_MIGRATION_PENDING:-false}" == true ]]; then
+        die "destructive migration 042 requires a recorded current release for backup and rollback"
+    fi
+    if [[ "$skip" == true && "${BOE_DESTRUCTIVE_MIGRATION_PENDING:-false}" == true ]]; then
+        die "--skip-db-backup is not allowed while destructive migration 042 is pending"
+    fi
+}
+
+boe_deploy_assert_destructive_release_version() {
+    local incoming_core="${1%%-*}" boundary="0.11.9"
+    [[ "${BOE_DESTRUCTIVE_MIGRATION_PENDING:-false}" != true ]] && return 0
+    if [[ "$(printf '%s\n%s\n' "$boundary" "$incoming_core" | sort -V | tail -1)" != "$incoming_core" ]]; then
+        die "destructive migration 042 requires release $boundary or newer"
+    fi
+}
+
+boe_deploy_stop_database_consumers() {
+    local service
+    local -a consumers=()
+    while IFS= read -r service; do
+        [[ -n "$service" && "$service" != "postgres" ]] && consumers+=("$service")
+    done < <(compose config --services)
+    (( ${#consumers[@]} == 0 )) || compose stop "${consumers[@]}" \
+        || die "failed to stop database consumers before migration"
+}
+
 # boe_deploy_fail <previous> <attempted> <reason> — mark the release failed and
 # attempt an automatic application-level rollback.
 #
@@ -450,20 +492,14 @@ boe_deploy_fail() {
         die "deployment failed and no rollback archive exists at $rb"
     fi
 
-    if [[ "${P[has_database]}" == "true" ]] \
-        && boe_rollback_requires_database_restore "$attempted" "$previous"; then
+    if boe_deploy_requires_database_restore "$previous" "$attempted"; then
         # Migrations already ran before health checking. Starting the previous
         # image here would cross the destructive migration-025 boundary without
         # restoring its database. Stop every current consumer and leave only
         # Postgres available for the explicit manual restore workflow.
-        local service
-        local -a consumers=()
-        while IFS= read -r service; do
-            [[ -n "$service" && "$service" != "postgres" ]] && consumers+=("$service")
-        done < <(compose config --services)
-        (( ${#consumers[@]} == 0 )) || compose stop "${consumers[@]}" >/dev/null 2>&1 || true
+        boe_deploy_stop_database_consumers
         boe_write_version "$previous" "" failed "$attempted"
-        die "deployment failed ($reason) after migration 025; automatic image-only rollback to $previous is unsafe. Run the manual rollback with --restore-db"
+        die "deployment failed ($reason) after a destructive migration; automatic image-only rollback to $previous is unsafe. Run the manual rollback with --restore-db"
     fi
 
     step "AUTO-ROLLBACK to $previous"

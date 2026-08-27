@@ -174,15 +174,93 @@ fi
 if boe_rollback_requires_database_restore 0.8.7 0.8.6; then
     fail_test 'rollback guard applied migration 025 before its release boundary'
 fi
-boe_restored_schema_is_compatible 0.8.7 0 \
+boe_rollback_requires_database_restore 0.11.9 0.11.8 \
+    || fail_test 'rollback guard missed the migration-042 release boundary'
+if boe_rollback_requires_database_restore 0.11.9 0.11.9-dev.1; then
+    fail_test 'rollback guard treated the migration-042 schema family as incompatible'
+fi
+boe_restored_schema_is_compatible 0.8.7 0 0 \
     || fail_test 'pre-025 snapshot was rejected for a pre-025 target'
-if boe_restored_schema_is_compatible 0.8.7 1; then
+if boe_restored_schema_is_compatible 0.8.7 1 0; then
     fail_test 'migration-025 snapshot was accepted for a pre-025 target'
 fi
+boe_restored_schema_is_compatible 0.11.8 1 0 \
+    || fail_test 'pre-042 snapshot was rejected for a pre-042 target'
+if boe_restored_schema_is_compatible 0.11.8 1 1; then
+    fail_test 'migration-042 snapshot was accepted for a pre-042 target'
+fi
 DEPLOY_LIB="$ROOT_DIR/release_manager/stacks/_shared/_boe_deploy.sh"
-grep -q 'boe_rollback_requires_database_restore "$attempted" "$previous"' "$DEPLOY_LIB" \
-    || fail_test 'failed-deploy auto-rollback bypasses the migration-025 guard'
-guard_line="$(grep -n 'boe_rollback_requires_database_restore "$attempted" "$previous"' "$DEPLOY_LIB" | cut -d: -f1)"
+BOE_DESTRUCTIVE_MIGRATION_PENDING=true
+boe_deploy_requires_database_restore 0.11.8 0.11.9 \
+    || fail_test 'pending migration-042 was not treated as a database rollback boundary'
+if (boe_deploy_assert_destructive_release_version 0.11.8 >/dev/null 2>&1); then
+    fail_test 'migration-042 was allowed under a pre-boundary release identity'
+fi
+boe_deploy_assert_destructive_release_version 0.11.9-dev.1 \
+    || fail_test 'migration-042 rejected its release schema family'
+if (boe_deploy_assert_backup_policy false '' >/dev/null 2>&1); then
+    fail_test 'destructive upgrade without a recorded current release was allowed'
+fi
+if (boe_deploy_assert_backup_policy true 0.11.8 >/dev/null 2>&1); then
+    fail_test 'skip-db-backup remained allowed for a pending destructive migration'
+fi
+BOE_DESTRUCTIVE_MIGRATION_PENDING=false
+
+consumer_log="$TEST_DIR/consumer-stop.log"
+compose() {
+    if [[ "${1:-}" == "run" ]]; then
+        printf '%s\n' 'applied 039_immediate_investment_settlement.sql' 'pending 042_remove_legacy_compliance_tables.sql'
+        return 0
+    fi
+    if [[ "${1:-}" == "config" && "${2:-}" == "--services" ]]; then
+        printf '%s\n' postgres backend payments-worker email-worker collections-worker
+        return 0
+    fi
+    if [[ "${1:-}" == "stop" ]]; then
+        printf '%s\n' "$*" >> "$consumer_log"
+        return 0
+    fi
+    return 1
+}
+boe_pending_destructive_migration \
+    || fail_test 'migration status did not identify pending migration-042'
+compose() {
+    if [[ "${1:-}" == "run" ]]; then
+        printf '%s\n' 'pending 042_remove_legacy_compliance_tables.sql'
+        return 0
+    fi
+    return 1
+}
+if boe_pending_destructive_migration; then
+    fail_test 'a fresh database was treated as a destructive upgrade'
+fi
+compose() {
+    if [[ "${1:-}" == "config" && "${2:-}" == "--services" ]]; then
+        printf '%s\n' postgres backend payments-worker email-worker collections-worker
+        return 0
+    fi
+    if [[ "${1:-}" == "stop" ]]; then
+        printf '%s\n' "$*" >> "$consumer_log"
+        return 0
+    fi
+    return 1
+}
+boe_deploy_stop_database_consumers \
+    || fail_test 'destructive migration preparation could not stop old database consumers'
+grep -q '^stop backend payments-worker email-worker collections-worker$' "$consumer_log" \
+    || fail_test 'database consumer stop did not isolate postgres before migration'
+if grep -q 'postgres' "$consumer_log"; then
+    fail_test 'database consumer stop attempted to stop postgres'
+fi
+destructive_branch="$(awk '/elif .*BOE_DESTRUCTIVE_MIGRATION_PENDING/{inside=1} inside{print; if ($0 ~ /SKIP_DB_BACKUP/) exit}' "$DEPLOY_LIB")"
+stop_order="$(grep -n 'boe_deploy_stop_database_consumers' <<<"$destructive_branch" | head -1 | cut -d: -f1)"
+backup_order="$(grep -n 'boe_backup_database' <<<"$destructive_branch" | head -1 | cut -d: -f1)"
+[[ -n "$stop_order" && -n "$backup_order" && "$stop_order" -lt "$backup_order" ]] \
+    || fail_test 'destructive migration takes its backup before stopping database consumers'
+
+grep -q 'boe_deploy_requires_database_restore "$previous" "$attempted"' "$DEPLOY_LIB" \
+    || fail_test 'failed-deploy auto-rollback bypasses the destructive migration guard'
+guard_line="$(grep -n 'boe_deploy_requires_database_restore "$previous" "$attempted"' "$DEPLOY_LIB" | cut -d: -f1)"
 auto_start_line="$(grep -n 'BOE_VERSION_FOR_COMPOSE="$previous"' "$DEPLOY_LIB" | cut -d: -f1)"
 [[ -n "$guard_line" && -n "$auto_start_line" && "$guard_line" -lt "$auto_start_line" ]] \
     || fail_test 'failed-deploy boundary guard runs after auto-rollback startup'

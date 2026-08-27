@@ -9,6 +9,7 @@ export interface EmailVerificationRecord {
   readonly expiresAt: Date | null
   readonly submittedAt: Date | null
   readonly verifiedAt: Date | null
+  readonly version: string
 }
 
 export interface EmailVerificationCode {
@@ -53,6 +54,7 @@ type VerificationUser = Pick<
   | "email_verification_expires_at"
   | "email_verification_started_at"
   | "email_verified_at"
+  | "version"
 >
 
 const recordFromUser = (user: VerificationUser): EmailVerificationRecord => ({
@@ -61,6 +63,7 @@ const recordFromUser = (user: VerificationUser): EmailVerificationRecord => ({
   expiresAt: user.email_verification_expires_at,
   submittedAt: user.email_verification_started_at,
   verifiedAt: user.email_verified_at,
+  version: user.version,
 })
 
 const recordQuery = (tx: Transaction, userId: string) =>
@@ -72,6 +75,7 @@ const recordQuery = (tx: Transaction, userId: string) =>
       "email_verification_expires_at",
       "email_verification_started_at",
       "email_verified_at",
+      "version",
     ])
     .where("id", "=", userId)
 
@@ -123,6 +127,7 @@ export const createEmailVerificationRepository = (): EmailVerificationRepository
         "email_verification_expires_at",
         "email_verification_started_at",
         "email_verified_at",
+        "version",
       ])
       .executeTakeFirst()
     return row === undefined ? null : recordFromUser(row)
@@ -146,6 +151,7 @@ export const createEmailVerificationRepository = (): EmailVerificationRepository
         "email_verification_expires_at",
         "email_verification_started_at",
         "email_verified_at",
+        "version",
       ])
       .executeTakeFirst()
     return row === undefined ? null : recordFromUser(row)

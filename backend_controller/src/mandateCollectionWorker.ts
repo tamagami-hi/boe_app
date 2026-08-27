@@ -9,6 +9,7 @@ import { reconcileMandateFact } from "./domain/payments/reconcileMandateFacts.js
 import { newMerchantOrderId } from "./domain/payments/merchantIds.js"
 import type { RecurringPaymentGateway } from "./providers/recurringPaymentGateway.js"
 import { logGatewayFailure, type GatewayFailureLogger } from "./providers/phonepe/gatewayFailure.js"
+import { GatewayRejectedError } from "./providers/phonepe/paymentGateway.js"
 import type { AuditWriteRepository } from "./repositories/auditRepository.js"
 import type { MandatesRepository } from "./repositories/mandatesRepository.js"
 import type { NotificationWriteRepository } from "./repositories/notificationRepository.js"
@@ -139,6 +140,30 @@ const prepareCollection = async (deps: MandateCollectionDeps, plan: SipPlan) => 
   })
 }
 
+const failRejectedCollectionNotification = async (
+  deps: MandateCollectionDeps,
+  input: Readonly<{ paymentAttemptId: string; expectedVersion: string; merchantOrderId: string }>,
+): Promise<void> => deps.unitOfWork.execute(async (tx) => {
+  const failed = await deps.mandatesRepository.applyProviderNotificationOutcome(tx, {
+    paymentAttemptId: input.paymentAttemptId,
+    expectedVersion: input.expectedVersion,
+    toState: "failed",
+    failureCode: "PROVIDER_REJECTED",
+    now: deps.clock(),
+  })
+  if (failed === null) return
+  await applyCanonicalPaymentOutcome(tx, deps.paymentsRepository, {
+    merchantOrderId: input.merchantOrderId,
+    providerMerchantOrderId: input.merchantOrderId,
+    outcome: "failed",
+    providerState: "PROVIDER_REJECTED",
+    providerOrderId: null,
+    amountPaise: null,
+    currency: "INR",
+    details: [],
+  }, deps.clock(), deps.settlementRepository)
+})
+
 const dispatchCollection = async (deps: MandateCollectionDeps, prepared: NonNullable<Awaited<ReturnType<typeof prepareCollection>>>): Promise<boolean> => {
   try {
     const status = await deps.recurringPaymentGateway.getMandateStatus(prepared.mandate.merchant_subscription_id)
@@ -178,20 +203,31 @@ const dispatchCollection = async (deps: MandateCollectionDeps, prepared: NonNull
       return attempt === null ? null : collection
     })
     if (claimed === null) return false
-    const result = await deps.recurringPaymentGateway.notifyCollection({
-      merchantOrderId: prepared.paymentAttempt.merchant_order_id,
-      merchantSubscriptionId: prepared.mandate.merchant_subscription_id,
-      amountPaise: prepared.collection.amount_paise,
-      expireAt: prepared.expiresAt,
-    })
-    const dispatched = await deps.unitOfWork.execute((tx) => deps.paymentsRepository.markAutoPayAttemptDispatched(tx, {
-      attemptId: prepared.paymentAttempt.id,
-      providerOrderId: result.providerOrderId,
-      checkoutExpiresAt: result.expiresAt,
-      now: deps.clock(),
-    }))
-    if (dispatched === null) return false
-    return true
+    try {
+      const result = await deps.recurringPaymentGateway.notifyCollection({
+        merchantOrderId: prepared.paymentAttempt.merchant_order_id,
+        merchantSubscriptionId: prepared.mandate.merchant_subscription_id,
+        amountPaise: prepared.collection.amount_paise,
+        expireAt: prepared.expiresAt,
+      })
+      const dispatched = await deps.unitOfWork.execute((tx) => deps.paymentsRepository.markAutoPayAttemptDispatched(tx, {
+        attemptId: prepared.paymentAttempt.id,
+        providerOrderId: result.providerOrderId,
+        checkoutExpiresAt: result.expiresAt,
+        now: deps.clock(),
+      }))
+      if (dispatched === null) return false
+      return true
+    } catch (error) {
+      if (error instanceof GatewayRejectedError) {
+        await failRejectedCollectionNotification(deps, {
+          paymentAttemptId: claimed.payment_attempt_id,
+          expectedVersion: claimed.version,
+          merchantOrderId: prepared.paymentAttempt.merchant_order_id,
+        })
+      }
+      throw error
+    }
   } catch (error) {
     logGatewayFailure(deps.logger, error, { requestId: randomUUID(), operation: "notify_collection" })
     return false

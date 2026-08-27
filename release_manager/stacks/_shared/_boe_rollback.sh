@@ -235,10 +235,12 @@ USAGE
 }
 
 boe_restored_schema_is_compatible() {
-    local target="$1" has_migration_025="$2"
+    local target="$1" has_migration_025="$2" has_migration_042="$3"
     if boe_rollback_requires_database_restore 0.8.8 "$target"; then
-        [[ "$has_migration_025" == "0" ]]
-        return
+        [[ "$has_migration_025" == "0" ]] || return 1
+    fi
+    if boe_rollback_requires_database_restore 0.11.9 "$target"; then
+        [[ "$has_migration_042" == "0" ]] || return 1
     fi
     return 0
 }
@@ -365,7 +367,7 @@ SQL
     # A zero pg_restore exit is necessary but not sufficient evidence. BOE app
     # snapshots must carry their migration ledger and the core identity tables
     # before any API or worker is allowed to start.
-    local restored_version required_tables has_migration_025
+    local restored_version required_tables has_migration_025 has_migration_042
     restored_version="$("$(docker_bin)" exec -i "$(pg_container)" \
         psql -tA -U "$user" -d "$db" \
         -c "SELECT COALESCE(MAX(version), '') FROM schema_migrations;" 2>/dev/null)" \
@@ -375,8 +377,12 @@ SQL
         psql -tA -U "$user" -d "$db" \
         -c "SELECT count(*) FROM schema_migrations WHERE version = '025_onboarding_rework';" 2>/dev/null)" \
         || die "restored database migration-boundary verification failed"
-    boe_restored_schema_is_compatible "$version" "$has_migration_025" \
-        || die "restored snapshot contains migration 025 and is incompatible with rollback target $version"
+    has_migration_042="$("$(docker_bin)" exec -i "$(pg_container)" \
+        psql -tA -U "$user" -d "$db" \
+        -c "SELECT count(*) FROM schema_migrations WHERE version = '042_remove_legacy_compliance_tables';" 2>/dev/null)" \
+        || die "restored database migration-boundary verification failed"
+    boe_restored_schema_is_compatible "$version" "$has_migration_025" "$has_migration_042" \
+        || die "restored snapshot is incompatible with rollback target $version"
     required_tables="$("$(docker_bin)" exec -i "$(pg_container)" \
         psql -tA -U "$user" -d "$db" \
         -c "SELECT count(*) FROM (VALUES (to_regclass('public.users')), (to_regclass('public.applications'))) AS required(name) WHERE name IS NOT NULL;" 2>/dev/null)" \

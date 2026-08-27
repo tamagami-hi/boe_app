@@ -62,7 +62,9 @@ describe("PhonePe recurring gateway", () => {
   })
 
   test("normalizes setup, subscription, and accepted cancellation facts", async () => {
+    const calls: string[] = []
     const httpClient: PhonePeHttpClient = (url) => {
+      calls.push(url)
       if (url.endsWith("/v1/oauth/token")) {
         return Promise.resolve(response(200, { access_token: "oauth-secret", token_type: "O-Bearer", expires_at: 1893456000 }))
       }
@@ -87,6 +89,9 @@ describe("PhonePe recurring gateway", () => {
       providerSubscriptionId: "provider-sub",
     })
     await expect(gateway.cancelMandate("boe_sip_1")).resolves.toBeUndefined()
+    expect(calls[1]!.endsWith("/checkout/v2/order/boe_setup_1/status?details=true")).toBe(true)
+    expect(calls[2]!.endsWith("/checkout/v2/subscriptions/boe_sip_1/status")).toBe(true)
+    expect(calls[3]!.endsWith("/checkout/v2/subscriptions/boe_sip_1/cancel")).toBe(true)
   })
 
   test("does not repeat an ambiguous setup POST", async () => {
@@ -154,9 +159,11 @@ describe("PhonePe recurring gateway", () => {
 
   test("normalizes correlated notification and terminal redemption status", async () => {
     let statusCalls = 0
+    const calls: string[] = []
     const gateway = createPhonePeRecurringGateway({
       config,
       httpClient: (url) => {
+        calls.push(url)
         if (url.endsWith("/v1/oauth/token")) {
           return Promise.resolve(response(200, { access_token: "oauth-secret", token_type: "O-Bearer", expires_at: 1893456000 }))
         }
@@ -198,6 +205,8 @@ describe("PhonePe recurring gateway", () => {
       merchantSubscriptionId: "boe_sip_1",
       paymentDetails: [{ transactionId: "transaction-1", state: "COMPLETED", amountPaise: "10000" }],
     })
+    expect(calls.slice(1).every((url) =>
+      url.endsWith("/checkout/v2/order/boe_due_1/status?details=true"))).toBe(true)
   })
 
   test("does not repeat an ambiguous collection notification", async () => {

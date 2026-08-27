@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from "vitest"
 
 import { reconcileCollectionFact } from "./domain/payments/reconcileCollectionFact.js"
 import { runMandateCollectionPass, scheduledDebitAt, type MandateCollectionDeps } from "./mandateCollectionWorker.js"
+import { GatewayRejectedError } from "./providers/phonepe/paymentGateway.js"
 
 describe("mandate collection timing", () => {
   test("rejects an uncorrelated provider collection fact without changing payment truth", async () => {
@@ -123,6 +124,113 @@ describe("mandate collection timing", () => {
       merchantSubscriptionId: "subscription-1",
       amountPaise: "10000",
       expireAt: new Date("2026-09-06T04:30:00.000Z"),
+    })
+  })
+
+  test("fails canonical payment state when PhonePe definitively rejects collection notification", async () => {
+    const now = new Date("2026-09-04T04:30:00.000Z")
+    const plan = {
+      id: "sip-1",
+      user_id: "user-1",
+      fund_id: "fund-1",
+      amount_paise: "10000",
+      debit_day: 5,
+      duration_months: 12,
+      collection_mode: "phonepe_autopay",
+      state: "active",
+      start_date: "2026-08-01",
+      next_due_date: "2026-09-05",
+    }
+    const mandate = {
+      id: "mandate-1",
+      sip_plan_id: "sip-1",
+      user_id: "user-1",
+      fund_id: "fund-1",
+      merchant_subscription_id: "subscription-1",
+      provider_subscription_id: "provider-subscription-1",
+      state: "active",
+      version: "0",
+    }
+    const order = { id: "order-1", user_id: "user-1", fund_id: "fund-1", amount_paise: "10000", currency: "INR", state: "payment_pending" }
+    const payment = { id: "payment-1", order_id: "order-1", user_id: "user-1", amount_paise: "10000", currency: "INR", state: "created", succeeded_at: null }
+    const paymentAttempt = { id: "attempt-1", payment_id: "payment-1", user_id: "user-1", merchant_order_id: "merchant-order-1", provider_order_id: null, state: "created" }
+    const collection = {
+      id: "collection-1",
+      mandate_id: "mandate-1",
+      user_id: "user-1",
+      amount_paise: "10000",
+      payment_attempt_id: "attempt-1",
+      version: "0",
+    }
+    const applyProviderNotificationOutcome = vi.fn().mockResolvedValue({ ...collection, notify_state: "failed", version: "2" })
+    const markOrderPaymentFailed = vi.fn().mockResolvedValue({ ...order, state: "payment_failed" })
+    const deps = {
+      unitOfWork: { execute: (work: (tx: never) => unknown) => work({} as never) },
+      clock: () => now,
+      recurringPaymentGateway: {
+        getMandateStatus: vi.fn().mockResolvedValue({
+          state: "ACTIVE",
+          merchantSubscriptionId: "subscription-1",
+          providerSubscriptionId: "provider-subscription-1",
+        }),
+        notifyCollection: vi.fn().mockRejectedValue(new GatewayRejectedError("rejected")),
+      },
+      sipPlanRepository: {
+        listAutoPayTermCompletionCandidates: vi.fn().mockResolvedValue([]),
+        listAutoPayDue: vi.fn().mockResolvedValue([plan]),
+        lockById: vi.fn().mockResolvedValue(plan),
+      },
+      mandatesRepository: {
+        findCurrentMandateForOwner: vi.fn().mockResolvedValue(mandate),
+        createCollectionAttempt: vi.fn().mockResolvedValue(collection),
+        claimCollectionNotification: vi.fn().mockResolvedValue({ ...collection, notify_state: "dispatching", version: "1" }),
+        applyProviderNotificationOutcome,
+        listCollectionReconciliationCandidates: vi.fn().mockResolvedValue([]),
+      },
+      orderRepository: {
+        findInstallmentByPeriod: vi.fn().mockResolvedValue(null),
+        latestCompliance: vi.fn().mockResolvedValue({ emailVerificationState: "verified", emailVerificationExpiresAt: null }),
+        findFundOrderTerms: vi.fn().mockResolvedValue({ fundState: "published", fundVersionId: "version-1", currency: "INR" }),
+        createSipInstallment: vi.fn().mockResolvedValue(order),
+      },
+      paymentsRepository: {
+        markOrderPaymentPending: vi.fn().mockResolvedValue(order),
+        createPayment: vi.fn().mockResolvedValue(payment),
+        createAttempt: vi.fn().mockResolvedValue(paymentAttempt),
+        markAutoPayAttemptDispatchStarted: vi.fn().mockResolvedValue({ ...paymentAttempt, provider_dispatch_started_at: now }),
+        findAttemptByMerchantOrderId: vi.fn().mockResolvedValue(paymentAttempt),
+        lockAttemptById: vi.fn().mockResolvedValue(paymentAttempt),
+        lockPaymentById: vi.fn().mockResolvedValue(payment),
+        lockOrderById: vi.fn().mockResolvedValue(order),
+        recordPaymentDetail: vi.fn().mockResolvedValue(undefined),
+        markAttemptFailed: vi.fn().mockResolvedValue({ ...paymentAttempt, state: "failed" }),
+        markPaymentFailed: vi.fn().mockResolvedValue({ ...payment, state: "failed" }),
+        markOrderPaymentFailed,
+      },
+      settlementRepository: {},
+      userRepository: { lockById: vi.fn().mockResolvedValue({ id: "user-1", account_state: "active" }) },
+      auditRepository: { append: vi.fn().mockResolvedValue(undefined) },
+      notificationRepository: { create: vi.fn().mockResolvedValue(undefined) },
+      logger: null,
+      config: { claimLimit: 10, commandEnabled: true },
+    } as unknown as MandateCollectionDeps
+    await expect(runMandateCollectionPass(deps)).resolves.toEqual({
+      plansChecked: 1,
+      collectionsCreated: 1,
+      notificationsDispatched: 0,
+      collectionsResolved: 0,
+    })
+    expect(applyProviderNotificationOutcome).toHaveBeenCalledWith(expect.anything(), {
+      paymentAttemptId: "attempt-1",
+      expectedVersion: "1",
+      toState: "failed",
+      failureCode: "PROVIDER_REJECTED",
+      now,
+    })
+    expect(markOrderPaymentFailed).toHaveBeenCalledWith(expect.anything(), {
+      orderId: "order-1",
+      failureCode: "PROVIDER_DECLINED",
+      now,
     })
   })
 

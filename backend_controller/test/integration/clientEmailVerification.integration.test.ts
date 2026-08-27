@@ -209,6 +209,11 @@ describe("client email OTP verification + eligibility (integration)", () => {
     const started = await emailVerification(token, "start")
     expect(started.statusCode).toBe(200)
     expect(dataOf<{ status: string }>(started).status).toBe("code_sent")
+    const audit = await pool.query<{ entity_version: string }>(
+      "select entity_version from audit_events where command = 'email_verification.code_requested' and entity_id = $1 order by occurred_at desc limit 1",
+      [(await pool.query<{ id: string }>("select id from users where email_normalized = $1", ["client-a@example.com"])).rows[0]!.id],
+    )
+    expect(audit.rows[0]?.entity_version).toBe("2")
 
     const realCode = codeFor("client-a@example.com")
     expect(realCode).toMatch(/^[A-Za-z0-9]{6}$/u)

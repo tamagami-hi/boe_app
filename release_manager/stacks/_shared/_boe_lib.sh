@@ -64,11 +64,16 @@ require_cmds() {
 # required by older images. Any move from the v0.8.8+ schema family to a target
 # below v0.8.8 requires a matching database restoration.
 boe_rollback_requires_database_restore() {
-    local current_core="${1%%-*}" target_core="${2%%-*}" boundary="0.8.8"
+    local current_core="${1%%-*}" target_core="${2%%-*}" boundary
     [[ -n "$current_core" && -n "$target_core" ]] || return 1
-    [[ "$(printf '%s\n%s\n' "$boundary" "$current_core" | sort -V | tail -1)" == "$current_core" ]] \
-        && [[ "$(printf '%s\n%s\n' "$target_core" "$boundary" | sort -V | head -1)" == "$target_core" ]] \
-        && [[ "$target_core" != "$boundary" ]]
+    for boundary in 0.8.8 0.11.9; do
+        if [[ "$(printf '%s\n%s\n' "$boundary" "$current_core" | sort -V | tail -1)" == "$current_core" ]] \
+            && [[ "$(printf '%s\n%s\n' "$target_core" "$boundary" | sort -V | head -1)" == "$target_core" ]] \
+            && [[ "$target_core" != "$boundary" ]]; then
+            return 0
+        fi
+    done
+    return 1
 }
 
 # ── paths.json access ───────────────────────────────────────────────────────
@@ -374,6 +379,15 @@ compose() {
         --project-name "${P[compose_project]}" \
         --env-file "$BOE_EFFECTIVE_ENV" \
         -f "${P[compose_file]}" "$@"
+}
+
+boe_pending_destructive_migration() {
+    [[ "${P[has_database]:-false}" == "true" ]] || return 1
+    local status
+    status="$(compose run --rm --no-deps migrate node dist/scripts/migrate.js status 2>/dev/null)" \
+        || die "could not inspect pending migrations — refusing to deploy"
+    grep -q '^applied ' <<<"$status" \
+        && grep -q '^pending 042_remove_legacy_compliance_tables\.sql$' <<<"$status"
 }
 
 boe_assert_docker() {
