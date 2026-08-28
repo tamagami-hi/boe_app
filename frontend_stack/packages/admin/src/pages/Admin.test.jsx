@@ -25,7 +25,7 @@ vi.mock('@beonedge/client/store/AdminSessionContext.jsx', () => ({
   useAdminSession: () => ({ user: mockAdminUser, status: 'authenticated' }),
 }));
 
-vi.mock('./legacy/legacyRoutes.jsx', () => ({
+vi.mock('./adminRoutes.jsx', () => ({
   ApprovalsRoute: () => <div data-testid="page-approvals" />,
   PaymentsRoute: () => <div data-testid="page-payments" />,
   MandatesRoute: () => <div data-testid="page-mandates" />,

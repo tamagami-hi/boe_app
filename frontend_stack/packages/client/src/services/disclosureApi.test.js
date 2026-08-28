@@ -10,8 +10,6 @@ import { DESTINATION_KIND } from '../navigation/routes.js';
 import { getDisclosures, getGrievanceContent } from './disclosureApi.js';
 
 describe('disclosure defaults', () => {
-  // Test env runs in fixture mode (no VITE_BEO_API_MODE), so these resolve to the
-  // built-in defaults without any network access.
   test('resolve to real internal routes carrying the /app prefix', async () => {
     const disclosures = await getDisclosures();
 

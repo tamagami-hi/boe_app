@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { UserCheck, CreditCard, HelpCircle, History, Layers, ShieldCheck, Users, ArrowRight } from 'lucide-react';
+import { PAYMENT_RECORD_GROUPS } from '@beonedge/shared';
 import { useApprovalsQueue } from '../data/ApprovalsQueueProvider.jsx';
 import { useAdminFunds, useAdminPayments } from '../data/adminResources.js';
 import AdminReadError from '../data/AdminReadError.jsx';
@@ -67,7 +68,7 @@ export default function OverviewPage() {
   const funds = useAdminFunds();
 
   const paymentsInFlight = payments.rows.filter((row) =>
-    ['created', 'provider_pending'].includes(row.status),
+    PAYMENT_RECORD_GROUPS.inFlight.includes(row.status),
   ).length;
   const loading = queue.loading || payments.isLoading || funds.isLoading;
 

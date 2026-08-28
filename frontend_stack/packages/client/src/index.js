@@ -14,15 +14,12 @@ export { AdminSessionProvider, useAdminSession } from './store/AdminSessionConte
 
 export {
   apiRequest,
-  useHttpApi,
-  serviceMode,
 } from './services/_util.js';
 
 export {
   login,
   logout,
   currentUser,
-  listPendingApprovals,
   checkReachability,
   hasRole,
 } from './services/authApi.js';

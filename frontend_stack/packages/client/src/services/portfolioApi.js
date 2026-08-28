@@ -1,5 +1,4 @@
-import { fixturePortfolio } from '../data/fixturePortfolio.js';
-import { apiRequest, clone, delay, useHttpApi } from './_util.js';
+import { apiRequest } from './_util.js';
 import { paiseToRupees } from '@beonedge/shared/money.js';
 
 // Option B: an investor's position is money on a dated ledger — there are no
@@ -34,10 +33,9 @@ function mapPool(pool) {
  *   totalReturn   = currentValue - invested
  */
 export async function getPortfolio() {
-  if (useHttpApi()) {
-    const payload = await apiRequest('/v1/client/portfolio');
-    const summary = payload?.summary ?? {};
-    return {
+  const payload = await apiRequest('/v1/client/portfolio');
+  const summary = payload?.summary ?? {};
+  return {
       currentValue: paiseToRupees(payload?.currentValuePaise) ?? 0,
       invested: paiseToRupees(payload?.totalInvestmentPaise) ?? 0,
       totalReturn: paiseToRupees(payload?.totalGrowthPaise) ?? 0,
@@ -57,9 +55,5 @@ export async function getPortfolio() {
       pools: (payload?.pools ?? []).map(mapPool),
       staleFlag: false,
       source: 'canonical',
-    };
-  }
-
-  await delay();
-  return clone(fixturePortfolio);
+  };
 }

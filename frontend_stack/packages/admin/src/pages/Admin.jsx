@@ -18,7 +18,7 @@ import {
   AuditLogRoute,
   EmailDeliveriesRoute,
   EnvironmentRoute,
-} from './legacy/legacyRoutes.jsx';
+} from './adminRoutes.jsx';
 import FaqsPage from '../features/site/FaqsPage.jsx';
 import NotFound from './NotFound.jsx';
 import Forbidden from './Forbidden.jsx';

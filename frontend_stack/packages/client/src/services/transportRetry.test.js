@@ -6,10 +6,6 @@ import {
   CONNECTIVITY, getConnectivity, resetConnectivity,
 } from '@beonedge/shared/net/connectivity.js';
 
-// The harness runs in fixture mode by default, and `apiRequest` refuses to touch the
-// network there.
-vi.stubEnv('VITE_BEO_API_MODE', 'http');
-
 const { apiRequest, isTransportError } = await import('./_util.js');
 
 const ok = (body = { ok: true, data: {} }) => ({

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
+import { PAYMENT_RECORD_GROUPS, PAYMENT_RECORD_STATES } from '@beonedge/shared';
 import I from '../components/I.jsx';
 import StatTile from '../components/StatTile.jsx';
 import EmptyTableRow from '../components/EmptyTableRow.jsx';
@@ -7,14 +8,6 @@ import SkeletonTableRow from '../components/SkeletonTableRow.jsx';
 import StateBadge from '../components/StateBadge.jsx';
 import { fmtDateTime, fmtInt, fmtPaise } from '../helpers/formatters.js';
 import './admin-screens-shared.css';
-
-const PAYMENT_STATES = [
-  'created', 'provider_pending', 'succeeded', 'failed', 'expired',
-  'refund_pending', 'refunded', 'refund_failed',
-];
-const SETTLED = ['succeeded'];
-const IN_FLIGHT = ['created', 'provider_pending'];
-const UNSUCCESSFUL = ['failed', 'expired'];
 
 function normalizeText(value) {
   return String(value || '').trim().toLowerCase();
@@ -59,9 +52,9 @@ function PaymentsScreen({ rows = [], loading = false, onUserDetail }) {
   return (
     <div className="adm-screen">
       <div className="adm-stats">
-        <StatTile label="Succeeded" value={fmtInt(countIn(SETTLED))} />
-        <StatTile label="In flight" value={fmtInt(countIn(IN_FLIGHT))} />
-        <StatTile label="Failed or expired" value={fmtInt(countIn(UNSUCCESSFUL))} />
+        <StatTile label="Succeeded" value={fmtInt(countIn(PAYMENT_RECORD_GROUPS.settled))} />
+        <StatTile label="In flight" value={fmtInt(countIn(PAYMENT_RECORD_GROUPS.inFlight))} />
+        <StatTile label="Failed or expired" value={fmtInt(countIn(PAYMENT_RECORD_GROUPS.unsuccessful))} />
         <StatTile label="Loaded" value={fmtInt(rows.length)} />
       </div>
 
@@ -93,7 +86,7 @@ function PaymentsScreen({ rows = [], loading = false, onUserDetail }) {
             <span className="adm-sr-only">Payment status</span>
             <select value={filters.status} onChange={(event) => updateFilter('status', event.target.value)}>
               <option value="">All statuses</option>
-              {PAYMENT_STATES.map((state) => (
+              {PAYMENT_RECORD_STATES.map((state) => (
                 <option key={state} value={state}>{state.replace(/_/gu, ' ')}</option>
               ))}
             </select>
@@ -158,7 +151,7 @@ function PaymentsScreen({ rows = [], loading = false, onUserDetail }) {
                       )}
                     </div>
                   </td>
-                  <td className="adm-col-status" data-label="Status"><StateBadge state={row.status} /></td>
+                  <td className="adm-col-status" data-label="Status"><StateBadge state={row.status} domain="payment" /></td>
                   <td className="be-num adm-cell-meta" data-label="Created">{fmtDateTime(row.createdAt)}</td>
                   <td className="be-num adm-cell-meta" data-label="Settled">
                     {row.settledAt ? fmtDateTime(row.settledAt) : '—'}

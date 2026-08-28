@@ -56,13 +56,9 @@ describe('the canonical payload', () => {
     expect(featureFlags.dashboard_portfolio_summary).toBe(true);
   });
 
-  test('nothing from the offline fixture catalogue is published', () => {
+  test('the canonical payload excludes non-presentation data', () => {
     const payload = toCanonicalAppConfig(edited());
-    const serialized = JSON.stringify(payload);
     expect(payload).not.toHaveProperty('mobile');
-    // `mobile.products` is the fixture catalogue used when the app runs without a
-    // backend; the strict schema rejects it and the client reads /v1/client/funds.
-    expect(serialized).not.toContain('BeOnEdge Growth Fund');
   });
 });
 
@@ -108,7 +104,7 @@ describe('the round trip', () => {
     const local = edited();
     const normalized = normalizeAppConfig(local);
     expect(isComponentEnabled(normalized, 'dashboard', 'active_sips')).toBe(false);
-    expect(normalized.mobile.products).toHaveLength(local.mobile.products.length);
+    expect(normalized.mobile.screens.dashboard.copy.portfolioTitle).toBe('Your money');
   });
 
   test('junk in a published payload cannot break the expansion', () => {

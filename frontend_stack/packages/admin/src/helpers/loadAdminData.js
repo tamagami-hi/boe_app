@@ -1,7 +1,5 @@
-import { apiRequest, useHttpApi } from '@beonedge/client/services/_util.js';
-import { listPendingApprovals } from '@beonedge/client/services/authApi.js';
+import { apiRequest } from '@beonedge/client/services/_util.js';
 import { listPendingApplications } from '@beonedge/client/services/adminApplicationsApi.js';
-import { fixtureCollection } from '../fixtures/adminCollections.js';
 import { parseFundRow, parseFundSummary } from '../data/fundContracts.js';
 import { collectionKey, normalizeAdminCollection, normalizeApprovalRow } from './formatters.js';
 
@@ -32,12 +30,6 @@ function extractAdminCollection(payload, path) {
 }
 
 export async function loadAdminCollection(path) {
-  if (!useHttpApi()) {
-    if (path.endsWith('/approvals')) return listPendingApprovals();
-    const rows = fixtureCollection(path);
-    if (rows === null) return [];
-    return normalizeAdminCollection(rows, path);
-  }
   if (path.endsWith('/approvals')) {
     return (await loadApprovals()).rows;
   }
@@ -51,9 +43,6 @@ const EMPTY_FUND_SUMMARY = {
 };
 
 export async function loadAdminFundPage(query = {}) {
-  if (!useHttpApi()) {
-    return { rows: [], nextCursor: null, hasMore: false, summary: EMPTY_FUND_SUMMARY };
-  }
   const params = new URLSearchParams();
   params.set('limit', String(query.limit ?? 100));
   if (query.state) params.set('state', query.state);
@@ -77,9 +66,6 @@ export async function loadAdminFundPage(query = {}) {
 }
 
 export async function loadApprovals({ maxPages } = {}) {
-  if (!useHttpApi()) {
-    return { rows: await listPendingApprovals(), truncated: false };
-  }
   const { items, truncated } = await listPendingApplications(
     maxPages === undefined ? {} : { maxPages },
   );

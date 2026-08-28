@@ -1,5 +1,4 @@
-import { apiRequest, clone, delay, listFromPayload, useHttpApi } from './_util.js';
-import { loadAppConfig, strategyById } from '@beonedge/shared/appConfig.js';
+import { apiRequest, listFromPayload } from './_util.js';
 import { paiseToRupees } from '@beonedge/shared/money.js';
 
 // Canonical fund catalogue -> the product shape the fund screens render.
@@ -56,32 +55,20 @@ function mapStocks(stocks = []) {
 }
 
 export async function listFunds() {
-  if (useHttpApi()) {
-    // No fixture fallback in HTTP mode: a catalogue or eligibility error must
-    // surface as an error, never as hard-coded products or invented AUM.
-    return listFromPayload(await apiRequest('/v1/client/funds?limit=100')).map(mapFund);
-  }
-
-  await delay();
-  return clone(loadAppConfig().mobile.products);
+  return listFromPayload(await apiRequest('/v1/client/funds?limit=100')).map(mapFund);
 }
 
 export async function getFund(fundId) {
-  if (useHttpApi()) {
-    const payload = await apiRequest(`/v1/client/funds/${encodeURIComponent(fundId)}`);
-    const fund = mapFund(payload?.fund);
-    if (!fund) return null;
-    return {
-      ...fund,
-      ...mapStocks(payload?.stocks),
-      investments: [],
-      disclosureVersion: payload?.disclosure?.version ?? null,
-      methodology: payload?.disclosure?.body ?? '',
-      fees: [],
-      chartConfig: { showSectorDistribution: true, showInvestmentBreakdown: false, showCompanyNames: true },
-    };
-  }
-
-  await delay();
-  return clone(strategyById(loadAppConfig(), fundId));
+  const payload = await apiRequest(`/v1/client/funds/${encodeURIComponent(fundId)}`);
+  const fund = mapFund(payload?.fund);
+  if (!fund) return null;
+  return {
+    ...fund,
+    ...mapStocks(payload?.stocks),
+    investments: [],
+    disclosureVersion: payload?.disclosure?.version ?? null,
+    methodology: payload?.disclosure?.body ?? '',
+    fees: [],
+    chartConfig: { showSectorDistribution: true, showInvestmentBreakdown: false, showCompanyNames: true },
+  };
 }

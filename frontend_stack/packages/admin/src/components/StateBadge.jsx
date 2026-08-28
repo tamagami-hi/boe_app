@@ -1,4 +1,5 @@
 import { humanizeState } from '../helpers/formatters.js';
+import { paymentStatusLabel, paymentStatusTone } from '@beonedge/shared';
 
 const TONES = {
   created: 'paused',
@@ -58,13 +59,14 @@ const LABELS = {
   needs_information: 'Needs information',
 };
 
-export default function StateBadge({ state }) {
+export default function StateBadge({ state, domain }) {
   const key = String(state || '').toLowerCase();
-  const tone = TONES[key] || 'neutral';
+  const isPayment = domain === 'payment';
+  const tone = isPayment ? paymentStatusTone(key) : TONES[key] || 'neutral';
   return (
     <span className={`be-badge be-badge-${tone}`}>
       <span className="be-badge-dot" />
-      {LABELS[key] || humanizeState(state)}
+      {isPayment ? paymentStatusLabel(key) : LABELS[key] || humanizeState(state)}
     </span>
   );
 }

@@ -1,5 +1,5 @@
 import { registerPlugin, Capacitor } from '@capacitor/core';
-import { apiBaseUrl, apiRequest, useHttpApi } from './_util.js';
+import { apiBaseUrl, apiRequest } from './_util.js';
 
 /**
  * In-app APK updates.
@@ -64,7 +64,7 @@ function baseVersion(value) {
  * 401-refresh/session-invalidation machinery that `apiRequest` drives.
  */
 export async function checkForUpdate() {
-  if (!updatesSupported() || !useHttpApi()) return null;
+  if (!updatesSupported()) return null;
   const build = await currentBuild();
   if (build === null) return null;
 
@@ -109,7 +109,7 @@ export async function checkForUpdate() {
  * bookkeeping, and the launch dialog does not depend on it.
  */
 export async function reportAppVersion() {
-  if (!updatesSupported() || !useHttpApi()) return null;
+  if (!updatesSupported()) return null;
   const build = await currentBuild();
   if (build === null) return null;
   try {

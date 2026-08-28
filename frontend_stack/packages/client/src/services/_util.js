@@ -14,14 +14,6 @@ export const clone = (v) => (typeof structuredClone === 'function' ? structuredC
 
 const DEFAULT_API_BASE_URL = 'http://127.0.0.1:47502';
 
-export function serviceMode() {
-  return import.meta.env.VITE_BEO_API_MODE === 'http' ? 'http' : 'fixture';
-}
-
-export function useHttpApi() {
-  return serviceMode() === 'http';
-}
-
 export function apiBaseUrl() {
   return (import.meta.env.VITE_BEO_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/$/, '');
 }
@@ -75,24 +67,6 @@ export function storedRefreshToken(scope = 'client') {
 
 export function storedUser(scope = 'client') {
   return userOf(scope);
-}
-
-// Raised instead of performing a network request when the app runs in fixture
-// mode. Callers that have local fixture data catch this and fall back; callers
-// that do not surface it as an explicit "not available offline" state. Without
-// it, `apiRequest` would silently fetch `apiBaseUrl()` even though the app was
-// configured to stay offline.
-export class FixtureModeError extends Error {
-  constructor(path) {
-    super('This screen needs the backend. Set VITE_BEO_API_MODE=http to use live data.');
-    this.name = 'FixtureModeError';
-    this.code = 'FIXTURE_MODE';
-    this.path = path;
-  }
-}
-
-export function isFixtureModeError(error) {
-  return error?.code === 'FIXTURE_MODE';
 }
 
 // Per-scope session refreshers, registered by `authApi` (which cannot be
@@ -244,9 +218,6 @@ export async function apiRequest(
     _retried: retried = false,
   } = {},
 ) {
-  // Mode gate: fixture mode never touches the network, whichever layer calls in.
-  if (!useHttpApi()) throw new FixtureModeError(path);
-
   const headers = { accept: 'application/json' };
 
   if (body !== undefined) headers['content-type'] = 'application/json';

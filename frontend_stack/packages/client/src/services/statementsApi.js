@@ -1,5 +1,4 @@
-import { apiRequest, clone, delay, listFromPayload, useHttpApi } from './_util.js';
-import { fixtureStatements } from '../data/fixtureStatements.js';
+import { apiRequest, listFromPayload } from './_util.js';
 import { paiseToRupees } from '@beonedge/shared/money.js';
 
 const rupees = (paise) => paiseToRupees(paise) ?? 0;
@@ -26,10 +25,5 @@ function mapStatement(row) {
 }
 
 export async function listStatements() {
-  if (useHttpApi()) {
-    return listFromPayload(await apiRequest('/v1/client/statements')).map(mapStatement);
-  }
-
-  await delay();
-  return clone(fixtureStatements);
+  return listFromPayload(await apiRequest('/v1/client/statements')).map(mapStatement);
 }

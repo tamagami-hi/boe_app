@@ -2,37 +2,37 @@ import { lazy, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useAdminSession } from '@beonedge/client/store/AdminSessionContext.jsx';
-import I from '../../components/I.jsx';
-import { useApprovalsQueue } from '../../data/ApprovalsQueueProvider.jsx';
-import AdminReadError from '../../data/AdminReadError.jsx';
+import I from '../components/I.jsx';
+import { useApprovalsQueue } from '../data/ApprovalsQueueProvider.jsx';
+import AdminReadError from '../data/AdminReadError.jsx';
 import {
   useAdminAuditLogs,
   useAdminFunds,
   useAdminMandateDetail,
   useAdminMandates,
   useAdminPayments,
-} from '../../data/adminResources.js';
-import { useFundMutations } from '../../data/useFundMutations.js';
-import { useMandateMutations } from '../../data/useMandateMutations.js';
-import { hasAnyPermission } from '../../navigation/nav.js';
-import { useAdminNavigation } from '../../navigation/useAdminNavigation.js';
+} from '../data/adminResources.js';
+import { useFundMutations } from '../data/useFundMutations.js';
+import { useMandateMutations } from '../data/useMandateMutations.js';
+import { hasAnyPermission } from '../navigation/nav.js';
+import { useAdminNavigation } from '../navigation/useAdminNavigation.js';
 
-const ApprovalsScreen = lazy(() => import('../../screens/ApprovalsScreen.jsx'));
-const AppBuilderScreen = lazy(() => import('../../screens/appBuilder/AppBuilderScreen.jsx'));
-const AumScreen = lazy(() => import('../../screens/AumScreen.jsx'));
-const ClientValuesScreen = lazy(() => import('../../screens/ClientValuesScreen.jsx'));
-const FundCreateScreen = lazy(() => import('../../screens/fundOps/FundCreateScreen.jsx'));
-const FundsListScreen = lazy(() => import('../../screens/fundOps/FundsListScreen.jsx'));
-const FundWorkspace = lazy(() => import('../../screens/fundOps/FundWorkspace.jsx'));
-const FundReceiptScreen = lazy(() => import('../../screens/FundReceiptScreen.jsx'));
-const AuditLogScreen = lazy(() => import('../../screens/AuditLogScreen.jsx'));
-const EmailDeliveriesScreen = lazy(() => import('../../screens/EmailDeliveriesScreen.jsx'));
-const EnvironmentScreen = lazy(() => import('../../screens/EnvironmentScreen.jsx'));
-const PaymentsScreen = lazy(() => import('../../screens/PaymentsScreen.jsx'));
-const MandatesScreen = lazy(() => import('../../screens/MandatesScreen.jsx'));
-const MandateDetailScreen = lazy(() => import('../../screens/MandateDetailScreen.jsx'));
-const UserDetailScreen = lazy(() => import('../../screens/UserDetailScreen.jsx'));
-const UserDetailsListScreen = lazy(() => import('../../screens/UserDetailsListScreen.jsx'));
+const ApprovalsScreen = lazy(() => import('../screens/ApprovalsScreen.jsx'));
+const AppBuilderScreen = lazy(() => import('../screens/appBuilder/AppBuilderScreen.jsx'));
+const AumScreen = lazy(() => import('../screens/AumScreen.jsx'));
+const ClientValuesScreen = lazy(() => import('../screens/ClientValuesScreen.jsx'));
+const FundCreateScreen = lazy(() => import('../screens/fundOps/FundCreateScreen.jsx'));
+const FundsListScreen = lazy(() => import('../screens/fundOps/FundsListScreen.jsx'));
+const FundWorkspace = lazy(() => import('../screens/fundOps/FundWorkspace.jsx'));
+const FundReceiptScreen = lazy(() => import('../screens/FundReceiptScreen.jsx'));
+const AuditLogScreen = lazy(() => import('../screens/AuditLogScreen.jsx'));
+const EmailDeliveriesScreen = lazy(() => import('../screens/EmailDeliveriesScreen.jsx'));
+const EnvironmentScreen = lazy(() => import('../screens/EnvironmentScreen.jsx'));
+const PaymentsScreen = lazy(() => import('../screens/PaymentsScreen.jsx'));
+const MandatesScreen = lazy(() => import('../screens/MandatesScreen.jsx'));
+const MandateDetailScreen = lazy(() => import('../screens/MandateDetailScreen.jsx'));
+const UserDetailScreen = lazy(() => import('../screens/UserDetailScreen.jsx'));
+const UserDetailsListScreen = lazy(() => import('../screens/UserDetailsListScreen.jsx'));
 
 export function ApprovalsRoute() {
   const queue = useApprovalsQueue();

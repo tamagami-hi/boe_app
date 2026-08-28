@@ -33,147 +33,6 @@ export const DEFAULT_APP_CONFIG = {
   version: 1,
   publishedAt: '',
   mobile: {
-    products: [
-      {
-        id: 'strategy_slot_1',
-        name: 'BeOnEdge Growth Fund',
-        tagline: 'Long-term capital appreciation through diversified equity allocation.',
-        objective: 'Designed to help clients review a balanced investment approach before making a decision.',
-        categoryEyebrow: 'BeOnEdge strategy',
-        status: 'active',
-        lifecycleStage: 'active',
-        riskLabel: 'moderate_high',
-        minSip: 500,
-        minLumpsum: 5000,
-        minDurationMonths: 12,
-        lockInText: 'None',
-        allocation: [
-          { label: 'Technology', pct: 35 },
-          { label: 'Healthcare', pct: 25 },
-          { label: 'Finance', pct: 20 },
-          { label: 'Energy', pct: 20 },
-        ],
-        topHoldings: [
-          { name: 'Infosys Ltd', pct: 10.5 },
-          { name: 'HDFC Bank', pct: 10.0 },
-          { name: 'Reliance Industries', pct: 8.0 },
-          { name: 'Sun Pharma', pct: 7.5 },
-          { name: 'TCS Ltd', pct: 7.0 },
-        ],
-        disclosureVersion: 'standard',
-        methodology: 'Diversified allocation with periodic review and published disclosures.',
-        fees: [],
-        horizon: '3 years+',
-        totalPoolSize: 50000000,
-        sectors: [
-          { id: 'sec_1', name: 'Technology', percentage: 35, color: '#4F46E5' },
-          { id: 'sec_2', name: 'Healthcare', percentage: 25, color: '#10B981' },
-          { id: 'sec_3', name: 'Finance', percentage: 20, color: '#F59E0B' },
-          { id: 'sec_4', name: 'Energy', percentage: 20, color: '#EF4444' },
-        ],
-        investments: [
-          { id: 'inv_1', companyName: 'Infosys Ltd', amount: 5250000, sectorId: 'sec_1' },
-          { id: 'inv_2', companyName: 'TCS Ltd', amount: 3500000, sectorId: 'sec_1' },
-          { id: 'inv_3', companyName: 'Sun Pharma', amount: 3750000, sectorId: 'sec_2' },
-          { id: 'inv_4', companyName: 'HDFC Bank', amount: 5000000, sectorId: 'sec_3' },
-          { id: 'inv_5', companyName: 'Reliance Industries', amount: 4000000, sectorId: 'sec_4' },
-        ],
-        chartConfig: { showSectorDistribution: true, showInvestmentBreakdown: true, showCompanyNames: true },
-      },
-      {
-        id: 'strategy_slot_2',
-        name: 'BeOnEdge Static Fund',
-        tagline: 'Stable income generation through high-quality debt and fixed-income instruments.',
-        objective: 'Designed to present focused investment ideas with clear risk and suitability context.',
-        categoryEyebrow: 'BeOnEdge strategy',
-        status: 'active',
-        riskLabel: 'low',
-        minSip: 1000,
-        minLumpsum: 10000,
-        minDurationMonths: 6,
-        lockInText: 'None',
-        allocation: [
-          { label: 'Debt', pct: 40 },
-          { label: 'Government Bonds', pct: 30 },
-          { label: 'Corporate Bonds', pct: 20 },
-          { label: 'Cash', pct: 10 },
-        ],
-        topHoldings: [
-          { name: 'LIC Infrastructure Bonds', pct: 23.3 },
-          { name: 'SBI Tax Saver Deposit', pct: 16.7 },
-          { name: '10-Year G-Sec', pct: 16.7 },
-          { name: 'RBI Floating Rate Bonds', pct: 13.3 },
-          { name: 'Tata Steel Corporate Bonds', pct: 13.3 },
-          { name: 'HDFC Ltd Debentures', pct: 6.7 },
-          { name: 'Liquid Cash Reserve', pct: 10.0 },
-        ],
-        disclosureVersion: 'draft',
-        methodology: 'Research-led selection with published rationale and risk notes.',
-        fees: [],
-        horizon: '5 years+',
-        totalPoolSize: 30000000,
-        sectors: [
-          { id: 'sec_5', name: 'Debt', percentage: 40, color: '#6366F1' },
-          { id: 'sec_6', name: 'Government Bonds', percentage: 30, color: '#8B5CF6' },
-          { id: 'sec_7', name: 'Corporate Bonds', percentage: 20, color: '#EC4899' },
-          { id: 'sec_8', name: 'Cash', percentage: 10, color: '#14B8A6' },
-        ],
-        investments: [
-          { id: 'inv_6', companyName: 'LIC Infrastructure Bonds', amount: 7000000, sectorId: 'sec_5' },
-          { id: 'inv_7', companyName: 'SBI Tax Saver Deposit', amount: 5000000, sectorId: 'sec_5' },
-          { id: 'inv_8', companyName: '10-Year G-Sec', amount: 5000000, sectorId: 'sec_6' },
-          { id: 'inv_9', companyName: 'RBI Floating Rate Bonds', amount: 4000000, sectorId: 'sec_6' },
-          { id: 'inv_10', companyName: 'Tata Steel Corporate Bonds', amount: 4000000, sectorId: 'sec_7' },
-          { id: 'inv_11', companyName: 'HDFC Ltd Debentures', amount: 2000000, sectorId: 'sec_7' },
-          { id: 'inv_12', companyName: 'Liquid Cash Reserve', amount: 3000000, sectorId: 'sec_8' },
-        ],
-        chartConfig: { showSectorDistribution: true, showInvestmentBreakdown: true, showCompanyNames: true },
-      },
-      {
-        id: 'strategy_slot_3',
-        name: 'BeOnEdge Algo-Trade Fund',
-        tagline: 'Systematic alpha generation through quantitative models and algorithmic execution.',
-        objective: 'Designed to connect contribution habits, timelines, and strategy choices in one place.',
-        categoryEyebrow: 'BeOnEdge strategy',
-        status: 'coming_soon',
-        lifecycleStage: 'published',
-        riskLabel: 'very_high',
-        minSip: 1000,
-        minLumpsum: 10000,
-        minDurationMonths: 24,
-        lockInText: '12 months',
-        allocation: [
-          { label: 'Equity', pct: 50 },
-          { label: 'Derivatives', pct: 30 },
-          { label: 'Forex', pct: 20 },
-        ],
-        topHoldings: [
-          { name: 'Nifty 50 Futures', pct: 40.0 },
-          { name: 'Bank Nifty Options', pct: 25.0 },
-          { name: 'USD/INR Hedging', pct: 20.0 },
-          { name: 'EUR/USD Pairs', pct: 15.0 },
-        ],
-        disclosureVersion: 'draft',
-        methodology: 'Goal-led allocation with clear assumptions and periodic review.',
-        fees: [],
-        horizon: 'Varies by goal',
-        totalPoolSize: 20000000,
-        sectors: [
-          { id: 'sec_9', name: 'Equity', percentage: 50, color: '#F97316' },
-          { id: 'sec_10', name: 'Derivatives', percentage: 30, color: '#3B82F6' },
-          { id: 'sec_11', name: 'Forex', percentage: 20, color: '#8B5CF6' },
-        ],
-        investments: [
-          { id: 'inv_13', companyName: 'Nifty 50 Futures', amount: 8000000, sectorId: 'sec_9' },
-          { id: 'inv_14', companyName: 'Bank Nifty Options', amount: 5000000, sectorId: 'sec_10' },
-          { id: 'inv_15', companyName: 'USD/INR Hedging', amount: 4000000, sectorId: 'sec_11' },
-          { id: 'inv_16', companyName: 'EUR/USD Pairs', amount: 3000000, sectorId: 'sec_11' },
-        ],
-        chartConfig: { showSectorDistribution: true, showInvestmentBreakdown: true, showCompanyNames: true },
-      },
-    ],
-    researchContext: [
-    ],
     screens: {
       dashboard: {
         components: [
@@ -277,11 +136,6 @@ export const DEFAULT_APP_CONFIG = {
             stepUpTitle: 'Increase SIP every year',
             stepUpBody: 'Optional step-up. Default off.',
             riskConsent: 'I have read the Risk disclosure and understand market risk.',
-            // Spec §6.2 fallback: the SIP is a schedule/reminder — each installment
-            // is a fresh client-initiated PhonePe checkout; there is no mandate and
-            // no automatic debit.
-            scheduleConsent: 'I understand this SIP is a monthly schedule. Each installment is paid by me through a fresh checkout — no automatic debit is set up.',
-            scheduleDisclosure: 'Each due installment is paid by you through a fresh PhonePe checkout. Nothing is debited automatically.',
           },
         },
         oneTime: {
@@ -307,10 +161,6 @@ function storage() {
   } catch {
     return null;
   }
-}
-
-function remoteConfigEnabled() {
-  return import.meta.env.VITE_BEO_API_MODE === 'http';
 }
 
 function dispatchConfig(config) {
@@ -390,8 +240,6 @@ export function normalizeAppConfig(config) {
     },
   };
 
-  merged.mobile.products = clone(source?.mobile?.products || DEFAULT_APP_CONFIG.mobile.products);
-  merged.mobile.researchContext = clone(source?.mobile?.researchContext || DEFAULT_APP_CONFIG.mobile.researchContext);
   merged.mobile.screens.dashboard = normalizeScreen('dashboard', merged.mobile.screens.dashboard);
   merged.mobile.screens.explore = normalizeScreen('explore', merged.mobile.screens.explore);
   merged.mobile.screens.fundDetail = normalizeScreen('fundDetail', merged.mobile.screens.fundDetail);
@@ -419,7 +267,6 @@ export function saveAppConfig(config) {
 }
 
 export async function loadRemoteAppConfig({ admin = false, persist = true, request } = {}) {
-  if (!remoteConfigEnabled()) return null;
   if (typeof request !== 'function') throw new Error('App-config transport is not configured.');
 
   const payload = await request(admin ? '/v1/admin/app-config' : '/v1/app-config', {
@@ -593,14 +440,8 @@ export function fromCanonicalAppConfig(payload) {
  * Project the local app-builder document onto the canonical
  * `app_config_versions` payload. The canonical contract is presentation and
  * feature-flag data only: fund/product catalogue data lives in `funds` and
- * monetary policy in `finance_policy_versions`, so the backend schema is strict
- * and rejects them.
- *
- * NOT published, and not publishable: `mobile.products` and
- * `mobile.researchContext`. Those are the offline fixture catalogue that
- * `fundsApi`/`researchApi` fall back to when `VITE_BEO_API_MODE` is not `http`;
- * with a backend they are irrelevant, because the client reads funds from
- * `/v1/client/funds`.
+ * monetary policy lives in the finance domain, so the backend schema is strict
+ * and rejects it.
  */
 export function toCanonicalAppConfig(config) {
   const featureFlags = {};
@@ -622,10 +463,6 @@ export function toCanonicalAppConfig(config) {
 
 export async function publishAppConfig(config, { reason = 'Published from admin app builder.', request } = {}) {
   const next = normalizeAppConfig({ ...config, publishedAt: new Date().toISOString() });
-
-  if (!remoteConfigEnabled()) {
-    return persistAppConfig(next);
-  }
 
   if (typeof request !== 'function') throw new Error('App-config transport is not configured.');
 
@@ -670,8 +507,4 @@ export function isComponentEnabled(config, screenId, componentId) {
 
 export function visibleQuickActions(config) {
   return (config?.mobile?.screens?.dashboard?.quickActions || []).filter((item) => item.enabled !== false);
-}
-
-export function strategyById(config, strategyId) {
-  return config?.mobile?.products?.find((item) => item.id === strategyId) || null;
 }

@@ -1,5 +1,6 @@
-import { apiRequest, clone, delay, listFromPayload, useHttpApi } from './_util.js';
+import { apiRequest, listFromPayload } from './_util.js';
 import { paiseToRupees } from '@beonedge/shared/money.js';
+import { requireClientPaymentStatus } from '@beonedge/shared';
 
 // Client-safe order/payment projection (spec §9.2). The backend never returns
 // raw internal order/payment/review enums to the browser; the UI groups the
@@ -58,18 +59,6 @@ function matchesOrderFilter(order, filter) {
   if (filter === 'paused') return false; // SIP pause lives on sip_plans, not orders
   return true;
 }
-
-/* ---- fixture-mode state (offline demo only; never a production fallback) ---- */
-
-let orders = [];
-let sipRequests = [];
-const payments = new Map();
-
-let oId = 1;
-let pId = 1;
-let rId = 1;
-
-function nextId(prefix, n) { return `${prefix}_${String(n).padStart(3, '0')}`; }
 
 // Map a SIP plan (POST /v1/client/sips) to the UI shape. Money is paise on the
 // wire and rupees in the UI. There is no mandate: a SIP is a schedule/reminder
@@ -182,127 +171,60 @@ function autoPayInput({ fundId, amount, durationMonths, debitDay }) {
 
 export async function createAutoPaySip(input, { requestKey } = {}) {
   const body = autoPayInput(input);
-  if (useHttpApi()) {
-    return mapAutoPaySetup(await apiRequest('/v1/client/sips/autopay', {
-      method: 'POST',
-      headers: { 'idempotency-key': requiredText(requestKey) ?? idempotencyKey() },
-      body,
-    }));
-  }
-  await delay(180);
-  const id = nextId('sip_auto', oId++);
-  const plan = {
-    id,
-    type: 'sip',
-    collectionMode: 'phonepe_autopay',
-    status: 'pending_mandate',
-    fundId: input.fundId,
-    amount: input.amount,
-    debitDay: input.debitDay,
-    durationMonths: input.durationMonths,
-    mandate: { id: nextId('mandate', oId++), status: 'setup_pending', authorizedAt: null, cancellationRequestedAt: null },
-    source: 'mock',
-  };
-  orders = [plan, ...orders];
-  return { ...clone(plan), paymentId: nextId('payment', pId++), checkout: null };
+  return mapAutoPaySetup(await apiRequest('/v1/client/sips/autopay', {
+    method: 'POST',
+    headers: { 'idempotency-key': requiredText(requestKey) ?? idempotencyKey() },
+    body,
+  }));
 }
 
 export async function getAutoPaySip(sipPlanId) {
-  if (useHttpApi()) {
-    return mapAutoPayDetail(await apiRequest(`/v1/client/sips/autopay/${encodeURIComponent(sipPlanId)}`));
-  }
-  await delay(80);
-  const plan = orders.find((item) => item.id === sipPlanId && item.collectionMode === 'phonepe_autopay');
-  if (!plan) return null;
-  return clone(plan);
+  return mapAutoPayDetail(await apiRequest(`/v1/client/sips/autopay/${encodeURIComponent(sipPlanId)}`));
 }
 
 export async function retryAutoPaySetup(sipPlanId) {
-  if (useHttpApi()) {
-    return mapAutoPaySetup(await apiRequest(`/v1/client/sips/autopay/${encodeURIComponent(sipPlanId)}/setup/retry`, {
-      method: 'POST',
-      headers: { 'idempotency-key': idempotencyKey() },
-    }));
-  }
-  await delay(120);
-  const plan = await getAutoPaySip(sipPlanId);
-  if (!plan) throw new Error('AutoPay SIP unavailable.');
-  return { ...plan, paymentId: nextId('payment', pId++), checkout: null };
+  return mapAutoPaySetup(await apiRequest(`/v1/client/sips/autopay/${encodeURIComponent(sipPlanId)}/setup/retry`, {
+    method: 'POST',
+    headers: { 'idempotency-key': idempotencyKey() },
+  }));
 }
 
 export async function cancelAutoPaySip(sipPlanId) {
-  if (useHttpApi()) {
-    const result = await apiRequest(`/v1/client/sips/autopay/${encodeURIComponent(sipPlanId)}/cancel`, {
-      method: 'POST',
-      headers: { 'idempotency-key': idempotencyKey() },
-    });
-    if (requiredText(result?.mandateId) === null || !['cancel_pending', 'cancelled'].includes(result?.status)) {
-      throw new Error("Couldn't request AutoPay cancellation. Try again.");
-    }
-    return { mandateId: result.mandateId, status: result.status };
+  const result = await apiRequest(`/v1/client/sips/autopay/${encodeURIComponent(sipPlanId)}/cancel`, {
+    method: 'POST',
+    headers: { 'idempotency-key': idempotencyKey() },
+  });
+  if (requiredText(result?.mandateId) === null || !['cancel_pending', 'cancelled'].includes(result?.status)) {
+    throw new Error("Couldn't request AutoPay cancellation. Try again.");
   }
-  await delay(120);
-  orders = orders.map((item) => item.id === sipPlanId ? {
-    ...item,
-    status: 'cancel_pending',
-    mandate: { ...item.mandate, status: 'cancel_pending', cancellationRequestedAt: new Date().toISOString() },
-  } : item);
-  return { mandateId: orders.find((item) => item.id === sipPlanId)?.mandate?.id, status: 'cancel_pending' };
+  return { mandateId: result.mandateId, status: result.status };
 }
 
 export async function createSip({ fundId, amount, durationMonths, debitDay }) {
-  if (useHttpApi()) {
-    const created = await apiRequest('/v1/client/sips', {
-      method: 'POST',
-      headers: { 'idempotency-key': idempotencyKey() },
-      body: {
-        fundId,
-        amountPaise: rupeesToPaiseString(amount),
-        debitDay: debitDay ?? 1,
-        ...(durationMonths ? { durationMonths } : {}),
-      },
-    });
-    return mapSip(created);
-  }
-
-  await delay(180);
-  const plan = {
-    id: nextId('sip', oId++),
-    type: 'sip',
-    fundId,
-    amount,
-    durationMonths,
-    debitDay,
-    status: 'active',
-    nextDueDate: null,
-    createdAt: new Date().toISOString(),
-    source: 'mock',
-  };
-  orders.unshift(plan);
-  return clone(plan);
+  const created = await apiRequest('/v1/client/sips', {
+    method: 'POST',
+    headers: { 'idempotency-key': idempotencyKey() },
+    body: {
+      fundId,
+      amountPaise: rupeesToPaiseString(amount),
+      debitDay: debitDay ?? 1,
+      ...(durationMonths ? { durationMonths } : {}),
+    },
+  });
+  return mapSip(created);
 }
 
 /** The investor's SIP plans. */
 export async function listSips() {
-  if (useHttpApi()) {
-    return listFromPayload(await apiRequest('/v1/client/sips')).map(mapSip);
-  }
-
-  await delay();
-  return clone(orders.filter((order) => order.type === 'sip'));
+  return listFromPayload(await apiRequest('/v1/client/sips')).map(mapSip);
 }
 
 const sipControl = (action) => async (sipId) => {
-  if (useHttpApi()) {
-    const sip = await apiRequest(`/v1/client/sips/${encodeURIComponent(sipId)}/${action}`, {
-      method: 'POST',
-      headers: { 'idempotency-key': idempotencyKey() },
-    });
-    return mapSip(sip);
-  }
-  await delay(140);
-  const statusByAction = { pause: 'paused', resume: 'active', cancel: 'cancelled' };
-  return { id: sipId, status: statusByAction[action] };
+  const sip = await apiRequest(`/v1/client/sips/${encodeURIComponent(sipId)}/${action}`, {
+    method: 'POST',
+    headers: { 'idempotency-key': idempotencyKey() },
+  });
+  return mapSip(sip);
 };
 
 export const pauseSip = sipControl('pause');
@@ -310,30 +232,12 @@ export const resumeSip = sipControl('resume');
 export const cancelSip = sipControl('cancel');
 
 export async function createLumpsum({ fundId, amount }) {
-  if (useHttpApi()) {
-    // POST /v1/client/orders creates a one-time order in `submitted`. It does
-    // NOT return a payment: beginOrderPayment() is a separate call (spec §9.1).
-    const created = await apiRequest('/v1/client/orders', {
-      method: 'POST',
-      headers: { 'idempotency-key': idempotencyKey() },
-      body: { fundId, amountPaise: rupeesToPaiseString(amount) },
-    });
-    return mapOrder(created);
-  }
-
-  await delay(180);
-  const order = {
-    id: nextId('ord_lump', oId++),
-    type: 'lump_sum',
-    fundId,
-    amount,
-    status: 'payment_in_progress',
-    createdAt: new Date().toISOString(),
-    source: 'mock',
-    currency: 'INR',
-  };
-  orders.unshift(order);
-  return clone(order);
+  const created = await apiRequest('/v1/client/orders', {
+    method: 'POST',
+    headers: { 'idempotency-key': idempotencyKey() },
+    body: { fundId, amountPaise: rupeesToPaiseString(amount) },
+  });
+  return mapOrder(created);
 }
 
 export function mapPaymentCheckout(checkout) {
@@ -353,35 +257,19 @@ export function mapPaymentCheckout(checkout) {
 }
 
 export async function beginOrderPayment(orderId, { checkoutChannel = 'hosted_redirect' } = {}) {
-  if (useHttpApi()) {
-    const payload = await apiRequest(`/v1/client/orders/${encodeURIComponent(orderId)}/pay`, {
-      method: 'POST',
-      headers: { 'idempotency-key': idempotencyKey() },
-      body: { checkoutChannel },
-    });
-    const row = payload?.payment ?? payload;
-    return {
-      orderId: row?.orderId ?? orderId,
-      paymentId: row?.paymentId ?? null,
-      provider: row?.provider ?? null,
-      checkout: mapPaymentCheckout(row?.checkout),
-      expiresAt: row?.checkout?.expiresAt ?? row?.expiresAt ?? null,
-    };
-  }
-
-  await delay(160);
-  const paymentId = nextId('pay', pId++);
-  payments.set(paymentId, {
-    id: paymentId,
-    orderId,
-    amount: orders.find((o) => o.id === orderId)?.amount ?? null,
-    status: 'payment_in_progress',
-    provider: 'phonepe',
-    createdAt: new Date().toISOString(),
+  const payload = await apiRequest(`/v1/client/orders/${encodeURIComponent(orderId)}/pay`, {
+    method: 'POST',
+    headers: { 'idempotency-key': idempotencyKey() },
+    body: { checkoutChannel },
   });
-  // No checkout in offline demo mode: the caller lands on the status route,
-  // which keeps polling and never asserts success locally.
-  return { orderId, paymentId, provider: 'phonepe', checkout: null, expiresAt: null };
+  const row = payload?.payment ?? payload;
+  return {
+    orderId: row?.orderId ?? orderId,
+    paymentId: row?.paymentId ?? null,
+    provider: row?.provider ?? null,
+    checkout: mapPaymentCheckout(row?.checkout),
+    expiresAt: row?.checkout?.expiresAt ?? row?.expiresAt ?? null,
+  };
 }
 
 function mapOrderDetail(payload) {
@@ -401,7 +289,7 @@ function mapPaymentDetail(payload) {
     orderId: row.orderId,
     amount: paiseToRupees(row.amountPaise),
     currency: row.currency,
-    status: row.status,
+    status: requireClientPaymentStatus(row.status),
     provider: row.provider ?? null,
     expiresAt: row.expiresAt ?? null,
     confirmedAt: row.confirmedAt ?? null,
@@ -411,27 +299,13 @@ function mapPaymentDetail(payload) {
 }
 
 export async function getOrder(orderId) {
-  if (useHttpApi()) {
-    return mapOrderDetail(await apiRequest(`/v1/client/orders/${encodeURIComponent(orderId)}`));
-  }
-
-  await delay(80);
-  return clone(orders.find((o) => o.id === orderId) ?? null);
+  return mapOrderDetail(await apiRequest(`/v1/client/orders/${encodeURIComponent(orderId)}`));
 }
 
 export async function listOrders({ filter = 'all' } = {}) {
-  if (useHttpApi()) {
-    // Owner-scoped history via an opaque keyset cursor; the coarse UI filter is
-    // applied client-side over the page.
-    const payload = await apiRequest('/v1/client/orders?limit=100');
-    const mapped = listFromPayload(payload).map(mapOrder);
-    return mapped.filter((order) => matchesOrderFilter(order, filter));
-  }
-
-  await delay();
-  let out = orders;
-  if (filter !== 'all') out = out.filter((order) => matchesOrderFilter(order, filter));
-  return clone(out);
+  const payload = await apiRequest('/v1/client/orders?limit=100');
+  const mapped = listFromPayload(payload).map(mapOrder);
+  return mapped.filter((order) => matchesOrderFilter(order, filter));
 }
 
 // The payments list carries the same client-safe fields as the detail read, so
@@ -442,7 +316,7 @@ function mapPaymentRow(row) {
     orderId: row.orderId,
     fundId: row.fundId ?? null,
     amount: paiseToRupees(row.amountPaise),
-    status: row.status,
+    status: requireClientPaymentStatus(row.status),
     provider: row.provider ?? null,
     confirmedAt: row.confirmedAt ?? null,
     createdAt: row.createdAt,
@@ -459,31 +333,16 @@ function paymentsQuery(statuses) {
 }
 
 export async function listPendingPayments() {
-  if (useHttpApi()) {
-    return listFromPayload(await apiRequest(paymentsQuery(['payment_in_progress']))).map(mapPaymentRow);
-  }
-
-  await delay();
-  return clone(Array.from(payments.values()).filter((payment) => payment.status === 'payment_in_progress'));
+  return listFromPayload(await apiRequest(paymentsQuery(['payment_in_progress']))).map(mapPaymentRow);
 }
 
 export async function listFailedPayments() {
-  if (useHttpApi()) {
-    return listFromPayload(await apiRequest(paymentsQuery(['payment_failed']))).map(mapPaymentRow);
-  }
-
-  await delay();
-  return clone(Array.from(payments.values()).filter((payment) => payment.status === 'payment_failed'));
+  return listFromPayload(await apiRequest(paymentsQuery(['payment_failed']))).map(mapPaymentRow);
 }
 
 /** Payments received and being processed (the old "approval" queue). */
 export async function listApprovalPayments() {
-  if (useHttpApi()) {
-    return listFromPayload(await apiRequest(paymentsQuery(['processing']))).map(mapPaymentRow);
-  }
-
-  await delay();
-  return clone(Array.from(payments.values()).filter((payment) => payment.status === 'processing'));
+  return listFromPayload(await apiRequest(paymentsQuery(['processing']))).map(mapPaymentRow);
 }
 
 /**
@@ -491,43 +350,18 @@ export async function listApprovalPayments() {
  * there is no approval queue in between, so the caller sees the new plan state
  * rather than a pending request.
  */
-export async function requestSipControl({ orderId, requestType, requestedValue, effectiveDate, reason }) {
-  if (useHttpApi()) {
-    const action = { pause: pauseSip, resume: resumeSip, cancel: cancelSip }[requestType];
-    if (!action) {
-      throw new Error(`Unsupported plan control '${requestType}'. Pause, resume and cancel are available.`);
-    }
-    return action(orderId);
+export async function requestSipControl({ orderId, requestType }) {
+  const action = { pause: pauseSip, resume: resumeSip, cancel: cancelSip }[requestType];
+  if (!action) {
+    throw new Error(`Unsupported plan control '${requestType}'. Pause, resume and cancel are available.`);
   }
-
-  await delay(180);
-  const req = {
-    id: nextId('req', rId++),
-    orderId, requestType, requestedValue, effectiveDate,
-    status: 'pending',
-    reason: reason || '',
-    createdAt: new Date().toISOString(),
-  };
-  sipRequests.unshift(req);
-  return clone(req);
+  return action(orderId);
 }
 
-export async function listSipControlRequests(orderId) {
-  // Controls apply immediately, so there is nothing pending to list against a
-  // live backend; the plan's own state is the record.
-  if (useHttpApi()) return [];
-
-  await delay();
-  return clone(sipRequests.filter((r) => r.orderId === orderId));
+export async function listSipControlRequests() {
+  return [];
 }
 
 export async function getPayment(paymentId) {
-  if (useHttpApi()) {
-    return mapPaymentDetail(await apiRequest(`/v1/client/payments/${encodeURIComponent(paymentId)}`));
-  }
-
-  await delay(80);
-  const found = payments.get(paymentId);
-  if (found) return clone(found);
-  return { id: paymentId, orderId: '', amount: null, status: 'payment_in_progress', provider: 'phonepe', createdAt: '' };
+  return mapPaymentDetail(await apiRequest(`/v1/client/payments/${encodeURIComponent(paymentId)}`));
 }

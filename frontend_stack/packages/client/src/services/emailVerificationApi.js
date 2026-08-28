@@ -1,4 +1,4 @@
-import { apiRequest, delay, useHttpApi } from './_util.js';
+import { apiRequest } from './_util.js';
 
 // --- Email-OTP Email Verification (canonical, RA-C.10) -----------------------------------
 // The client requests a code (emailed from the company mailbox), then submits it
@@ -7,23 +7,17 @@ import { apiRequest, delay, useHttpApi } from './_util.js';
 
 /** Request an Email OTP Verification code to the client's email. */
 export async function startEmailVerification() {
-  if (useHttpApi()) return apiRequest('/v1/client/email-verification/start', { method: 'POST' });
-  await delay(160);
-  return { status: 'code_sent', expiresAt: new Date(Date.now() + 600_000).toISOString() };
+  return apiRequest('/v1/client/email-verification/start', { method: 'POST' });
 }
 
 /** Resend the Email OTP Verification code (cooldown-guarded server-side). */
 export async function resendEmailVerification() {
-  if (useHttpApi()) return apiRequest('/v1/client/email-verification/resend', { method: 'POST' });
-  await delay(160);
-  return { status: 'code_sent', expiresAt: new Date(Date.now() + 600_000).toISOString() };
+  return apiRequest('/v1/client/email-verification/resend', { method: 'POST' });
 }
 
 /** Submit the 6-character code to complete Email Verification. */
 export async function verifyEmailVerification(code) {
-  if (useHttpApi()) return apiRequest('/v1/client/email-verification/verify', { method: 'POST', body: { code } });
-  await delay(160);
-  return { status: 'verified' };
+  return apiRequest('/v1/client/email-verification/verify', { method: 'POST', body: { code } });
 }
 
 // --- Email Verification standing ---------------------------------------------------------
@@ -32,15 +26,5 @@ export async function verifyEmailVerification(code) {
 // stores that today, so nothing here writes it.
 
 export async function fetchEmailVerificationStatus() {
-  if (useHttpApi()) return apiRequest('/v1/client/email-verification-status', { method: 'GET' });
-  await delay(180);
-  return {
-    status: 'not_started',
-    emailVerificationState: 'not_started',
-    method: 'email_otp',
-    expiresAt: null,
-    expired: false,
-    submittedAt: null,
-    verifiedAt: null,
-  };
+  return apiRequest('/v1/client/email-verification-status', { method: 'GET' });
 }

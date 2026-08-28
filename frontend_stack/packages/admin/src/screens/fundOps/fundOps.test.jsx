@@ -14,9 +14,7 @@ import { normalizeFundRow } from '../../helpers/formatters.js';
 const request = vi.fn();
 vi.mock('@beonedge/client/services/_util.js', () => ({
   apiRequest: (...args) => request(...args),
-  useHttpApi: () => true,
   listFromPayload: (payload) => payload?.items ?? [],
-  isFixtureModeError: () => false,
 }));
 
 vi.mock('../FundStockListPanel.jsx', () => ({ default: () => <div data-testid="stocks-panel" /> }));

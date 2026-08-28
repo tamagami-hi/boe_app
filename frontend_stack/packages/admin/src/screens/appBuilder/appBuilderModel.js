@@ -25,26 +25,11 @@ export const QUICK_ACTION_ICONS = ['Plus', 'Repeat', 'Receipt', 'Compass'];
 
 export const MAX_QUICK_ACTIONS = 8;
 
-/*
- * The App Builder edits two different things, and the difference matters enough to
- * be declared in code rather than implied by layout.
- *
- * PUBLISHED reaches a device: component visibility, screen copy, dashboard
- * shortcuts, chart periods and the amount presets. All of it lands in
- * `app_config_versions` as feature flags and flat presentation values.
- *
- * LOCAL never leaves this browser: the strategy catalogue and research rows are the
- * fixtures `fundsApi`/`researchApi` fall back to when the app runs without a
- * backend (`VITE_BEO_API_MODE` != http). With a backend, the client reads funds from
- * `/v1/client/funds` and this data is not consulted. The strict canonical schema
- * rejects it, so it cannot be published even by accident.
- */
 export const SECTIONS = [
   { id: 'components', label: 'Components', scope: 'published' },
   { id: 'copy', label: 'Screen copy', scope: 'published' },
   { id: 'shortcuts', label: 'Shortcuts', scope: 'published' },
   { id: 'amounts', label: 'Amounts', scope: 'published' },
-  { id: 'fixtures', label: 'Offline fixtures', scope: 'local' },
 ];
 
 export const SECTION_IDS = SECTIONS.map((section) => section.id);

@@ -14,6 +14,9 @@ export default function FormField({
   required = false,
   htmlFor,
   className = '',
+  labelClassName = '',
+  hintClassName = '',
+  errorClassName = '',
   children,
 }) {
   const generated = useId();
@@ -40,16 +43,16 @@ export default function FormField({
   return (
     <div className={`be-field ${error ? 'is-invalid' : ''} ${className}`}>
       {label && (
-        <label className="be-field__label" htmlFor={id}>
+        <label className={`be-field__label ${labelClassName}`} htmlFor={id}>
           {label}
           {required && <span aria-hidden="true"> *</span>}
         </label>
       )}
       {control}
-      {hint && !error && <p className="be-field__hint" id={hintId}>{hint}</p>}
+      {hint && !error && <p className={`be-field__hint ${hintClassName}`} id={hintId}>{hint}</p>}
       {/* role="alert" so a validation failure is announced when it appears, not
           only when focus happens to land on the field. */}
-      {error && <p className="be-field__error" id={errorId} role="alert">{error}</p>}
+      {error && <p className={`be-field__error ${errorClassName}`} id={errorId} role="alert">{error}</p>}
     </div>
   );
 }

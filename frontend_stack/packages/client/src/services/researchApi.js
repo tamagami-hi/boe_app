@@ -1,16 +1,10 @@
-import { apiRequest, clone, delay, listFromPayload, useHttpApi } from './_util.js';
-import { loadAppConfig } from '@beonedge/shared/appConfig.js';
+import { apiRequest, listFromPayload } from './_util.js';
 
 export async function getResearchContext() {
-  if (useHttpApi()) {
-    try {
-      return listFromPayload(await apiRequest('/v1/client/research-context'));
-    } catch (error) {
-      if (error?.code !== 'USER_NOT_APPROVED') throw error;
-      return clone(loadAppConfig().mobile.researchContext);
-    }
+  try {
+    return listFromPayload(await apiRequest('/v1/client/research-context'));
+  } catch (error) {
+    if (error?.code !== 'USER_NOT_APPROVED') throw error;
+    return [];
   }
-
-  await delay();
-  return clone(loadAppConfig().mobile.researchContext);
 }

@@ -13,7 +13,6 @@ vi.mock('./_util.js', async (importOriginal) => {
   const actual = await importOriginal();
   return {
     ...actual,
-    useHttpApi: () => true,
     apiRequest: (...args) => apiRequestMock(...args),
   };
 });

@@ -1,3 +1,5 @@
+import { FormField as SharedFormField } from '@beonedge/shared';
+
 export default function FormField({
   id,
   label,
@@ -6,19 +8,18 @@ export default function FormField({
   wide = false,
   children,
 }) {
-  const hintId = hint ? `${id}-hint` : undefined;
-  const errorId = error ? `${id}-error` : undefined;
   return (
-    <div className={wide ? 'adm-field adm-field--wide' : 'adm-field'}>
-      <label className="adm-field-label" htmlFor={id}>{label}</label>
-      {children({
-        id,
-        'aria-describedby': errorId ?? hintId,
-        'aria-invalid': error ? 'true' : undefined,
-      })}
-      {error
-        ? <small className="adm-field-error" id={errorId} role="alert">{error}</small>
-        : hint && <small className="adm-help-text" id={hintId}>{hint}</small>}
-    </div>
+    <SharedFormField
+      htmlFor={id}
+      label={label}
+      hint={hint}
+      error={error}
+      className={wide ? 'adm-field adm-field--wide' : 'adm-field'}
+      labelClassName="adm-field-label"
+      hintClassName="adm-help-text"
+      errorClassName="adm-field-error"
+    >
+      {children}
+    </SharedFormField>
   );
 }

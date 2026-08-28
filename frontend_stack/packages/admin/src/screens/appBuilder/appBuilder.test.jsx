@@ -89,13 +89,11 @@ describe('destination validation', () => {
 });
 
 describe('the staged editor', () => {
-  test('sections are addressable and one is marked as not published', async () => {
+  test('sections are addressable', async () => {
     renderBuilder();
     await screen.findByRole('button', { name: /Components/u });
     fireEvent.click(screen.getByRole('button', { name: /Screen copy/u }));
     expect(screen.getByText('Screen copy', { selector: '.adm-card-title' })).toBeTruthy();
-    const fixtures = screen.getByRole('button', { name: /Offline fixtures/u });
-    expect(fixtures.textContent).toContain('not published');
   });
 
   test('a component toggle reports its state rather than an action', async () => {
@@ -144,13 +142,6 @@ describe('the staged editor', () => {
     renderBuilder();
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toContain('draft held in this browser');
-  });
-
-  test('the fixtures section states that it never leaves the browser', async () => {
-    renderBuilder();
-    fireEvent.click(await screen.findByRole('button', { name: /Offline fixtures/u }));
-    expect(screen.getByText(/without a backend/u)).toBeTruthy();
-    expect(screen.getByText(/Fund operations, not here/u)).toBeTruthy();
   });
 
   test('every button on the screen declares its type', async () => {

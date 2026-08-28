@@ -1,5 +1,4 @@
-import { fixtureTransactions } from '../data/fixtureTransactions.js';
-import { apiRequest, clone, delay, listFromPayload, useHttpApi } from './_util.js';
+import { apiRequest, listFromPayload } from './_util.js';
 import { paiseToRupees } from '@beonedge/shared/money.js';
 
 function transactionType(transaction) {
@@ -56,12 +55,6 @@ function mapLedgerRow(row) {
 }
 
 export async function listTransactions({ filter = 'all' } = {}) {
-  if (useHttpApi()) {
-    const items = listFromPayload(await apiRequest('/v1/client/transactions?limit=100')).map(mapLedgerRow);
-    return applyFilter(items, filter);
-  }
-
-  await delay();
-  const out = applyFilter(fixtureTransactions, filter);
-  return clone(out);
+  const items = listFromPayload(await apiRequest('/v1/client/transactions?limit=100')).map(mapLedgerRow);
+  return applyFilter(items, filter);
 }

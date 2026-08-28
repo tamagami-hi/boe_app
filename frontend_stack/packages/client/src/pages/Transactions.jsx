@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, Clock3, Download, Receipt, Repeat, ShieldCheck } from 'lucide-react';
-import { EmptyState, Skeleton } from '@beonedge/shared';
+import { EmptyState, Skeleton, paymentStatusLabel, paymentStatusTone } from '@beonedge/shared';
 import { usePaymentQueue, useTransactions } from '../data/clientResources.js';
 import { buildPath } from '../navigation/routes.js';
 import { fmtMoney, fmtDate } from '../utils/format.js';
@@ -56,34 +56,6 @@ export default function Transactions() {
   const items = transactionsResource.data ?? (transactionsResource.error ? [] : null);
   const payments = paymentsResource.data ?? (paymentsResource.error ? [] : null);
 
-  function statusBadgeClass(status) {
-    if (['success', 'confirmed', 'reconciled', 'approved'].includes(status)) return 'be-badge-active';
-    if (['failed', 'expired', 'rejected', 'payment_failed', 'approval_rejected', 'support_required'].includes(status)) return 'be-badge-failed';
-    return 'be-badge-paused';
-  }
-
-  function statusLabel(status) {
-    // Client-safe projection labels (spec §9.2). Bank-verification, review and
-    // allocation concepts never appear here.
-    const labels = {
-      payment_in_progress: 'Payment in progress',
-      processing: 'Processing',
-      confirmed: 'Confirmed',
-      refund_in_progress: 'Refund in progress',
-      support_required: 'Support required',
-      refunded: 'Refunded',
-      payment_failed: 'Payment failed',
-      success: 'Payment received',
-      reconciled: 'Reconciled',
-      created: 'Payment created',
-      pending: 'Payment pending',
-      failed: 'Payment failed',
-      expired: 'Payment expired',
-      submitted: 'Submitted',
-    };
-    return labels[status] || String(status || 'Unknown').replaceAll('_', ' ');
-  }
-
   function typeDotClass(type) {
     if (type === 'sip') return 'apk-tx-dot--sip';
     return 'apk-tx-dot--lumpsum';
@@ -132,8 +104,8 @@ export default function Transactions() {
 
             </div>
 
-            <span className={`be-badge ${statusBadgeClass(payment.status)}`}>
-              <span className="be-badge-dot" />{statusLabel(payment.status)}
+            <span className={`be-badge be-badge-${paymentStatusTone(payment.status)}`}>
+              <span className="be-badge-dot" />{paymentStatusLabel(payment.status)}
             </span>
 
           </div>
@@ -216,8 +188,8 @@ export default function Transactions() {
                   <div className="apk-tx-right">
                     <div className="apk-tx-amt be-money">{fmtMoney(t.amount)}</div>
 
-                    <span className={`be-badge apk-tx-status ${statusBadgeClass(t.status)}`}>
-                      <span className="be-badge-dot" />{statusLabel(t.status)}
+                    <span className={`be-badge apk-tx-status be-badge-${paymentStatusTone(t.status)}`}>
+                      <span className="be-badge-dot" />{paymentStatusLabel(t.status)}
                     </span>
 
                   </div>
@@ -260,8 +232,8 @@ export default function Transactions() {
 
               <div className="apk-sheet-summary-row"><span>Status</span>
 
-                <span className={`be-badge ${statusBadgeClass(open.status)}`}>
-                  <span className="be-badge-dot" />{statusLabel(open.status)}
+                <span className={`be-badge be-badge-${paymentStatusTone(open.status)}`}>
+                  <span className="be-badge-dot" />{paymentStatusLabel(open.status)}
                 </span>
 
               </div>

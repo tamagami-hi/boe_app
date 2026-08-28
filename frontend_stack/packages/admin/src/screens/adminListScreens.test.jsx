@@ -89,7 +89,7 @@ describe('PaymentsScreen', () => {
     const values = Array.from(select.querySelectorAll('option')).map((option) => option.value);
     expect(values).toEqual([
       '', 'created', 'provider_pending', 'succeeded', 'failed', 'expired',
-      'refund_pending', 'refunded', 'refund_failed',
+      'reconciliation_required', 'refund_pending', 'refunded', 'refund_failed',
     ]);
     // The old list offered success/confirmed/reconciled/approved/rejected/pending —
     // none of which any payment is ever in, so choosing one emptied the table.

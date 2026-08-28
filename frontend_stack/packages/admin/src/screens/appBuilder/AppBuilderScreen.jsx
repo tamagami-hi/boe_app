@@ -169,8 +169,7 @@ export default function AppBuilderScreen() {
             <span className="be-eyebrow">Mobile app configuration</span>
             <h2 className="adm-card-title">App builder</h2>
             <div className="adm-card-sub">
-              Component visibility, screen copy, shortcuts and amount presets are published to the
-              app. The offline fixtures are not.
+              Component visibility, screen copy, shortcuts and amount presets are published to the app.
             </div>
           </div>
           <div className="adm-card-actions">
@@ -458,38 +457,6 @@ export default function AppBuilderScreen() {
         </div>
       )}
 
-      {!loading && section === 'fixtures' && (
-        <div className="adm-card">
-          <div className="adm-card-head">
-            <div>
-              <h3 className="adm-card-title">Offline fixtures</h3>
-              <div className="adm-card-sub">
-                This browser only, and never published.
-              </div>
-            </div>
-          </div>
-          <div className="be-pad-5 be-stack-3">
-            {}
-            <p className="adm-screen-note">
-              These {config.mobile.products.length} strategy fixtures and{' '}
-              {config.mobile.researchContext.length} research rows are what the app shows when it runs
-              without a backend. A pool that clients can actually see is created and published under
-              Fund operations, not here.
-            </p>
-            <ul className="adm-stream">
-              {config.mobile.products.map((product) => (
-                <li key={product.id} className="adm-list-item">
-                  <div className="adm-list-item__header">
-                    <span className="adm-list-item__title">{product.name}</span>
-                    <span className="adm-cell-meta">{product.status}</span>
-                  </div>
-                  <div className="adm-list-item__body">{product.tagline}</div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

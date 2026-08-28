@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { X, Loader2, CheckCircle, XCircle, RefreshCw, LifeBuoy } from 'lucide-react';
-import { ErrorState, Skeleton } from '@beonedge/shared';
+import { ErrorState, Skeleton, isClientPaymentPending } from '@beonedge/shared';
 import AppBar from '../layout/AppBar.jsx';
 import * as ordersApi from '../services/ordersApi.js';
 import { fmtMoney, fmtDate } from '../utils/format.js';
@@ -18,8 +18,6 @@ const POLL_WINDOW_MS = 90000;
 // Client-safe projection (spec §9.2). These are the ONLY states this screen can
 // render — bank verification, review and allocation concepts never reach the
 // client bundle.
-const NON_TERMINAL = new Set(['payment_in_progress', 'processing', 'refund_in_progress']);
-
 const STATE_COPY = {
   payment_in_progress: 'Awaiting payment…',
   processing: 'Payment received — investment is being processed',
@@ -79,7 +77,7 @@ export default function PaymentStatus() {
       const p = await ordersApi.getPayment(paymentId);
       if (!mountedRef.current) return null;
       applyPayment(p);
-      if (!NON_TERMINAL.has(p?.status)) clearPendingPayment(paymentId, user?.id);
+      if (!isClientPaymentPending(p?.status)) clearPendingPayment(paymentId, user?.id);
       setLoadError(null);
       return p;
     } catch (error) {
@@ -104,7 +102,7 @@ export default function PaymentStatus() {
         const p = await ordersApi.getPayment(paymentId);
         if (!mountedRef.current) return;
         applyPayment(p);
-        if (!NON_TERMINAL.has(p?.status)) {
+        if (!isClientPaymentPending(p?.status)) {
           clearPendingPayment(paymentId);
           clearInterval(polling.current);
           return;
@@ -166,7 +164,7 @@ export default function PaymentStatus() {
   }
 
   const status = payment.status;
-  const isInProgress = NON_TERMINAL.has(status);
+  const isInProgress = isClientPaymentPending(status);
   const isSuccess = status === 'confirmed';
   const isFailed = status === 'payment_failed';
   const isRefund = status === 'refund_in_progress' || status === 'refunded' || status === 'support_required';

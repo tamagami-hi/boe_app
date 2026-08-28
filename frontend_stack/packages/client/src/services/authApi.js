@@ -1,4 +1,3 @@
-import { fixtureUser } from '../data/fixtureUser.js';
 import { Capacitor } from '@capacitor/core';
 import { hasRole } from '@beonedge/shared/auth/roles.js';
 
@@ -13,7 +12,6 @@ import {
   storedAccessToken,
   storedRefreshToken,
   storedUser,
-  useHttpApi,
   registerSessionRefresher,
 } from './_util.js';
 
@@ -49,8 +47,6 @@ let _users = {
   client: null,
   admin: null,
 };
-
-const LOCAL_PENDING_APPROVALS_KEY = 'boe.local.pendingApprovals';
 
 function initials(name) {
   return name
@@ -138,17 +134,6 @@ function localStorageHandle() {
   }
 }
 
-function readLocalPendingApprovals() {
-  const raw = localStorageHandle()?.getItem(LOCAL_PENDING_APPROVALS_KEY);
-  if (!raw) return [];
-  try {
-    const rows = JSON.parse(raw);
-    return Array.isArray(rows) ? rows : [];
-  } catch {
-    return [];
-  }
-}
-
 function toClientUser(user) {
   if (!user) return null;
   const name = user.name || [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || 'BeOnEdge Client';
@@ -211,8 +196,7 @@ function assertScopeUser(user, scope) {
 }
 
 export async function login(credentials = {}, { scope = 'client' } = {}) {
-  if (useHttpApi()) {
-    if (scope === 'admin') {
+  if (scope === 'admin') {
       const email = credentials.identifier || credentials.email;
 
       if (adminUsesBearer()) {
@@ -263,68 +247,35 @@ export async function login(credentials = {}, { scope = 'client' } = {}) {
       setSessionTokens({ user, scope });
       _users[scope] = user;
       return clone(user);
-    }
-
-    // Client (native) auth: bearer access + rotating refresh, held in storage.
-    const result = await apiRequest('/v1/auth/native/login', {
-      method: 'POST',
-      auth: false,
-      scope,
-      body: {
-        email: credentials.identifier || credentials.email,
-        password: credentials.password,
-        device: buildDevice(),
-      },
-    });
-    const user = assertScopeUser(toClientUser(fromNativeUser(result.user)), scope);
-    setSessionTokens({ user, accessToken: result.accessToken, refreshToken: result.refreshToken, scope });
-    _users[scope] = user;
-    return clone(user);
   }
 
-  await delay(280);
-  const identifier = String(credentials.identifier || credentials.email || credentials.phone || '').trim();
-  const isEmail = identifier.includes('@');
-  const isAdmin = scope === 'admin';
-  const user = assertScopeUser(toClientUser({
-    ...fixtureUser,
-    id: `local_${Date.now()}`,
-    name: isAdmin ? 'BeOnEdge Admin' : isEmail ? identifier.split('@')[0] : 'BeOnEdge Client',
-    email: isEmail ? identifier : fixtureUser.email,
-    phone: isEmail ? '' : identifier,
-    status: 'approved',
-    role: isAdmin ? 'admin' : 'client',
-    roles: [isAdmin ? 'admin' : 'client'],
-  }), scope);
+  const result = await apiRequest('/v1/auth/native/login', {
+    method: 'POST',
+    auth: false,
+    scope,
+    body: {
+      email: credentials.identifier || credentials.email,
+      password: credentials.password,
+      device: buildDevice(),
+    },
+  });
+  const user = assertScopeUser(toClientUser(fromNativeUser(result.user)), scope);
+  setSessionTokens({ user, accessToken: result.accessToken, refreshToken: result.refreshToken, scope });
   _users[scope] = user;
   return clone(user);
 }
 
-export async function listPendingApprovals() {
-  await delay(80);
-  return clone(readLocalPendingApprovals());
-}
-
 export async function logout({ scope = 'client' } = {}) {
-  if (useHttpApi()) {
-    // An admin session on the native transport is a native session, so it must
-    // be revoked through the native door; the web logout route authenticates
-    // from the cookie this transport does not have.
-    const nativeAdmin = scope === 'admin' && adminUsesBearer();
-    const useNativeDoor = scope !== 'admin' || nativeAdmin;
-    const logoutPath = useNativeDoor ? '/v1/auth/native/logout' : '/v1/auth/web/logout';
-    const logoutBody = useNativeDoor ? { refreshToken: storedRefreshToken(scope) } : undefined;
-    try {
-      await apiRequest(logoutPath, { method: 'POST', scope, body: logoutBody });
-    } finally {
-      clearSessionTokens(scope);
-      _users[scope] = null;
-    }
-    return;
+  const nativeAdmin = scope === 'admin' && adminUsesBearer();
+  const useNativeDoor = scope !== 'admin' || nativeAdmin;
+  const logoutPath = useNativeDoor ? '/v1/auth/native/logout' : '/v1/auth/web/logout';
+  const logoutBody = useNativeDoor ? { refreshToken: storedRefreshToken(scope) } : undefined;
+  try {
+    await apiRequest(logoutPath, { method: 'POST', scope, body: logoutBody });
+  } finally {
+    clearSessionTokens(scope);
+    _users[scope] = null;
   }
-
-  await delay(120);
-  _users[scope] = null;
 }
 
 /**
@@ -404,8 +355,7 @@ registerSessionRefresher('admin', refreshAdminSession);
 registerSessionRefresher('client', () => refreshCurrentUser('client'));
 
 export async function currentUser({ scope = 'client' } = {}) {
-  if (useHttpApi()) {
-    if (scope === 'admin') {
+  if (scope === 'admin') {
       if (adminUsesBearer()) {
         // Native transport: no cookie to recover from, so the stored bearer is
         // re-presented. /v1/admin/session doubles as the "is this still a valid
@@ -442,32 +392,25 @@ export async function currentUser({ scope = 'client' } = {}) {
         _users[scope] = null;
         return null;
       }
-    }
-
-    // Client (native): there is no server session endpoint. Trust the stored
-    // principal while an access token is present; otherwise rotate the refresh
-    // token to re-establish the session.
-    const storedClientUser = storedUser(scope);
-    if (storedAccessToken(scope) && storedClientUser) {
-      try {
-        const user = assertScopeUser(toClientUser(storedClientUser), scope);
-        _users[scope] = user;
-        return clone(user);
-      } catch {
-        clearSessionTokens(scope);
-        _users[scope] = null;
-        return null;
-      }
-    }
-    const refreshed = await refreshSession(scope).catch(() => null);
-    if (refreshed) return refreshed;
-    clearSessionTokens(scope);
-    _users[scope] = null;
-    return null;
   }
 
-  await delay(60);
-  return _users[scope] ? clone(_users[scope]) : null;
+  const storedClientUser = storedUser(scope);
+  if (storedAccessToken(scope) && storedClientUser) {
+    try {
+      const user = assertScopeUser(toClientUser(storedClientUser), scope);
+      _users[scope] = user;
+      return clone(user);
+    } catch {
+      clearSessionTokens(scope);
+      _users[scope] = null;
+      return null;
+    }
+  }
+  const refreshed = await refreshSession(scope).catch(() => null);
+  if (refreshed) return refreshed;
+  clearSessionTokens(scope);
+  _users[scope] = null;
+  return null;
 }
 
 export const REACHABILITY_TIMEOUT_MS = 6000;
@@ -478,12 +421,7 @@ export async function checkReachability({ timeoutMs = REACHABILITY_TIMEOUT_MS } 
     return { ok: false, minVersion: '1.0.0' };
   }
 
-  if (useHttpApi()) {
-    const health = await apiRequest('/v1/health', { auth: false, timeoutMs, retry: false })
-      .catch(() => null);
-    return { ok: health?.status === 'ok', minVersion: '1.0.0' };
-  }
-
-  await delay(180);
-  return { ok: true, minVersion: '1.0.0' };
+  const health = await apiRequest('/v1/health', { auth: false, timeoutMs, retry: false })
+    .catch(() => null);
+  return { ok: health?.status === 'ok', minVersion: '1.0.0' };
 }

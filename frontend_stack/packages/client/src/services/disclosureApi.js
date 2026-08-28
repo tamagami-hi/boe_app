@@ -1,4 +1,4 @@
-import { apiRequest, clone, delay, useHttpApi } from './_util.js';
+import { apiRequest, clone } from './_util.js';
 import { DESTINATION_KIND, resolveDestination } from '../navigation/routes.js';
 
 const DEFAULT_DISCLOSURES = {
@@ -172,39 +172,27 @@ function normalizeGrievanceContent(raw) {
 }
 
 export async function getDisclosures() {
-  if (useHttpApi()) {
-    try {
-      return normalizeDisclosures(await apiRequest('/v1/public/disclosures', { auth: false }));
-    } catch {
-      return normalizeDisclosures(clone(DEFAULT_DISCLOSURES));
-    }
+  try {
+    return normalizeDisclosures(await apiRequest('/v1/public/disclosures', { auth: false }));
+  } catch {
+    return normalizeDisclosures(clone(DEFAULT_DISCLOSURES));
   }
-  await delay(80);
-  return normalizeDisclosures(clone(DEFAULT_DISCLOSURES));
 }
 
 export async function getInvestorCharter() {
-  if (useHttpApi()) {
-    try {
-      return await apiRequest('/v1/public/investor-charter', { auth: false });
-    } catch {
-      return clone(DEFAULT_CHARTER);
-    }
+  try {
+    return await apiRequest('/v1/public/investor-charter', { auth: false });
+  } catch {
+    return clone(DEFAULT_CHARTER);
   }
-  await delay(80);
-  return clone(DEFAULT_CHARTER);
 }
 
 export async function getGrievanceContent() {
-  if (useHttpApi()) {
-    try {
-      return normalizeGrievanceContent(await apiRequest('/v1/public/grievance', { auth: false }));
-    } catch {
-      return normalizeGrievanceContent(clone(DEFAULT_GRIEVANCE));
-    }
+  try {
+    return normalizeGrievanceContent(await apiRequest('/v1/public/grievance', { auth: false }));
+  } catch {
+    return normalizeGrievanceContent(clone(DEFAULT_GRIEVANCE));
   }
-  await delay(80);
-  return normalizeGrievanceContent(clone(DEFAULT_GRIEVANCE));
 }
 
 export { DESTINATION_KIND };
