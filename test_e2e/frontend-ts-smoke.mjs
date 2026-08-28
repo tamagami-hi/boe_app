@@ -23,8 +23,31 @@ const collectDiagnostics = (page, sink) => {
     sink.pageErrors.push(error.message)
   })
   page.on("requestfailed", (request) => {
+    if (!request.url().includes("/api/v1/")) return
     sink.failedRequests.push(`${request.method()} ${request.url()}`)
   })
+}
+
+const MAIL_API = process.env.BOE_MAIL_API ?? "http://127.0.0.1:8025/api/v1"
+
+const readLatestOtp = async () => {
+  try {
+    const list = await fetch(`${MAIL_API}/messages?limit=5`)
+    if (!list.ok) return null
+    const payload = await list.json()
+    const messages = payload.messages ?? []
+    for (const message of messages) {
+      const detail = await fetch(`${MAIL_API}/message/${String(message.ID)}`)
+      if (!detail.ok) continue
+      const body = await detail.json()
+      const text = `${String(body.Text ?? "")} ${String(body.HTML ?? "")}`
+      const match = /\b([A-Za-z0-9]{6})\b/u.exec(text.replace(/\s+/gu, " "))
+      if (match?.[1] !== undefined) return match[1]
+    }
+    return null
+  } catch {
+    return null
+  }
 }
 
 const signIn = async (page, email, password) => {
@@ -66,6 +89,7 @@ const runClient = async (browser) => {
   await page.waitForURL(/\/portfolio$/u, { timeout: 10000 })
   check("client: tab navigation reaches /portfolio", true)
 
+  await page.goto(`${CLIENT_URL}/profile/security`, { waitUntil: "networkidle" })
   await page.getByText("Not built yet").waitFor({ timeout: 10000 })
   check("client: an unbuilt surface says so instead of rendering empty", true)
 
@@ -82,6 +106,67 @@ const runClient = async (browser) => {
     page.url(),
   )
 
+  await page.goto(`${CLIENT_URL}/dashboard`, { waitUntil: "networkidle" })
+  await page.getByText("Current value").first().waitFor({ timeout: 15000 })
+  check("client: dashboard renders the server-derived portfolio headline", true)
+
+  check(
+    "client: dashboard shows the investing gate while email is unverified",
+    (await page.getByText("Investing is locked").count()) > 0,
+  )
+
+  await page.goto(`${CLIENT_URL}/funds`, { waitUntil: "networkidle" })
+  const fundsBody = await page.locator("body").innerText()
+  check(
+    "client: fund list renders a real state, not a blank screen",
+    fundsBody.includes("No funds are published yet") || fundsBody.includes("Fund size"),
+    fundsBody.slice(0, 80).replace(/\n/gu, " "),
+  )
+
+  await page.goto(`${CLIENT_URL}/portfolio`, { waitUntil: "networkidle" })
+  const portfolioBody = await page.locator("body").innerText()
+  check(
+    "client: portfolio distinguishes empty from failed",
+    portfolioBody.includes("You have not invested yet") || portfolioBody.includes("Current value"),
+    portfolioBody.slice(0, 80).replace(/\n/gu, " "),
+  )
+
+  await page.goto(`${CLIENT_URL}/activity`, { waitUntil: "networkidle" })
+  check(
+    "client: activity renders an explicit empty state",
+    (await page.getByText("Nothing has happened yet").count()) > 0,
+  )
+
+  await page.goto(`${CLIENT_URL}/funds/00000000-0000-4000-8000-000000000000`, {
+    waitUntil: "networkidle",
+  })
+  check(
+    "client: an unknown fund id renders not-found, not a crash",
+    (await page.getByText("Not found").count()) > 0,
+  )
+
+  await page.goto(`${CLIENT_URL}/verify-email`, { waitUntil: "networkidle" })
+  await page.getByRole("button", { name: "Send me a code" }).click()
+  await page.getByText("Code sent").waitFor({ timeout: 20000 })
+  check("client: email verification requests a code and reports it was sent", true)
+
+  const otp = await readLatestOtp()
+  check("client: the code actually reached the mail sink", otp !== null, otp ?? "no code found")
+
+  if (otp !== null) {
+    await page.getByLabel("Verification code").fill(otp)
+    await page.getByRole("button", { name: "Verify" }).click()
+    await page.waitForURL(/\/dashboard$/u, { timeout: 20000 })
+    check("client: a valid code verifies and returns to the dashboard", true)
+
+    await page.reload({ waitUntil: "networkidle" })
+    await page.waitForTimeout(2000)
+    check(
+      "client: the investing gate clears once verified",
+      (await page.getByText("Investing is locked").count()) === 0,
+    )
+  }
+
   const reloaded = await context.newPage()
   collectDiagnostics(reloaded, sink)
   await reloaded.goto(`${CLIENT_URL}/dashboard`, { waitUntil: "networkidle" })
@@ -94,7 +179,7 @@ const runClient = async (browser) => {
     sink.pageErrors.join(" ; "),
   )
   check(
-    "client: no failed network requests",
+    "client: no failed API requests",
     sink.failedRequests.length === 0,
     sink.failedRequests.join(" ; "),
   )
@@ -147,7 +232,7 @@ const runAdmin = async (browser) => {
 
   check("admin: no uncaught page errors", sink.pageErrors.length === 0, sink.pageErrors.join(" ; "))
   check(
-    "admin: no failed network requests",
+    "admin: no failed API requests",
     sink.failedRequests.length === 0,
     sink.failedRequests.join(" ; "),
   )

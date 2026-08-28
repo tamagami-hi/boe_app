@@ -1,7 +1,148 @@
-import { PendingScreen } from "~/features/shared/PendingScreen"
+import { useMemo, useState } from "react"
+import { Link } from "react-router-dom"
 
-const Screen = (): React.ReactElement => (
-  <PendingScreen title="Funds" surface="fund catalogue" />
-)
+import { Page } from "~/app/layouts/Page"
+import { PageHeader } from "~/app/layouts/PageHeader"
+import { ContentGrid } from "~/app/layouts/ContentGrid"
+import { fundRiskLevel } from "~/domain/status"
+import { toPaise } from "~/domain/money"
+import { useFunds } from "~/features/shared/queries"
+import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
+import { EmptyState } from "~/ui/patterns/EmptyState"
+import { MoneyValue } from "~/ui/patterns/MoneyValue"
+import { StatusBadge } from "~/ui/patterns/StatusBadge"
+import { Card } from "~/ui/primitives/Card"
+import { Skeleton } from "~/ui/primitives/Feedback"
+import { Input } from "~/ui/primitives/FormField"
 
-export default Screen
+import styles from "./Funds.module.css"
+
+const SORTS = ["name", "risk", "size"] as const
+type Sort = (typeof SORTS)[number]
+
+const FundListScreen = (): React.ReactElement => {
+  const query = useFunds()
+  const [search, setSearch] = useState("")
+  const [sort, setSort] = useState<Sort>("name")
+
+  const skeleton = useMemo(
+    () => (
+      <ContentGrid columns={3}>
+        {[0, 1, 2, 3, 4, 5].map((index) => (
+          <Card key={index}>
+            <Skeleton height="1.2rem" width="70%" />
+            <Skeleton height="0.9rem" width="40%" />
+            <Skeleton height="2rem" width="55%" />
+          </Card>
+        ))}
+      </ContentGrid>
+    ),
+    [],
+  )
+
+  return (
+    <Page width="default">
+      <PageHeader
+        title="Funds"
+        description="Administrator-managed pools. Every figure here is served by the backend; nothing is computed on this device."
+      />
+
+      <div className={styles.controls}>
+        <Input
+          type="search"
+          placeholder="Search by name or category"
+          aria-label="Search funds"
+          value={search}
+          onChange={(event) => {
+            setSearch(event.target.value)
+          }}
+        />
+        <div className={styles.sorts} role="group" aria-label="Sort funds">
+          {SORTS.map((option) => (
+            <button
+              key={option}
+              type="button"
+              className={option === sort ? styles.sortActive : styles.sort}
+              aria-pressed={option === sort}
+              onClick={() => {
+                setSort(option)
+              }}
+            >
+              {option === "name" ? "Name" : option === "risk" ? "Risk" : "Size"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <AsyncBoundary
+        query={query}
+        skeleton={skeleton}
+        isEmpty={(data) => data.items.length === 0}
+        empty={
+          <EmptyState
+            title="No funds are published yet"
+            description="When an administrator publishes a fund it appears here."
+          />
+        }
+      >
+        {(data) => {
+          const term = search.trim().toLowerCase()
+          const filtered = data.items.filter(
+            (fund) =>
+              term === "" ||
+              fund.name.toLowerCase().includes(term) ||
+              fund.category.toLowerCase().includes(term),
+          )
+          const riskOrder = { low: 0, moderate: 1, high: 2, very_high: 3 } as const
+          const sorted = [...filtered].sort((left, right) => {
+            if (sort === "name") return left.name.localeCompare(right.name)
+            if (sort === "risk") return riskOrder[left.riskLevel] - riskOrder[right.riskLevel]
+            const leftSize = BigInt(left.fundSize?.aumPaise ?? "0")
+            const rightSize = BigInt(right.fundSize?.aumPaise ?? "0")
+            return leftSize === rightSize ? 0 : leftSize > rightSize ? -1 : 1
+          })
+
+          if (sorted.length === 0) {
+            return (
+              <EmptyState
+                title="No fund matches that search"
+                description="Clear the search to see every published fund."
+              />
+            )
+          }
+
+          return (
+            <ContentGrid columns={3}>
+              {sorted.map((fund) => (
+                <Link key={fund.id} to={`/funds/${fund.id}`} className={styles.cardLink}>
+                  <Card>
+                    <div className={styles.cardTop}>
+                      <span className={styles.fundName}>{fund.name}</span>
+                      <StatusBadge status={fundRiskLevel(fund.riskLevel)} />
+                    </div>
+                    <span className={styles.category}>{fund.category}</span>
+                    {fund.fundSize === null ? (
+                      <span className={styles.noSize}>Fund size not published</span>
+                    ) : (
+                      <div className={styles.sizeRow}>
+                        <span className={styles.sizeLabel}>Fund size</span>
+                        <MoneyValue amount={toPaise(fund.fundSize.aumPaise)} size="lg" />
+                      </div>
+                    )}
+                    <span className={styles.holdings}>
+                      {fund.stockCount === 0
+                        ? "Holdings not disclosed"
+                        : `${String(fund.stockCount)} disclosed holdings`}
+                    </span>
+                  </Card>
+                </Link>
+              ))}
+            </ContentGrid>
+          )
+        }}
+      </AsyncBoundary>
+    </Page>
+  )
+}
+
+export default FundListScreen

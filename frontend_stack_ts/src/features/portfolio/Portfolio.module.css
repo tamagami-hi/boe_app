@@ -1,0 +1,67 @@
+.label {
+  display: block;
+  font-family: var(--be-font-ui);
+  font-size: var(--be-text-xs);
+  font-weight: 600;
+  letter-spacing: var(--be-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--be-fg-faint);
+}
+
+.headlineGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--be-space-3);
+  padding-top: var(--be-space-3);
+  border-top: var(--be-border-1);
+}
+
+.percent {
+  font-family: var(--be-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--be-text-md);
+  color: var(--be-fg);
+}
+
+.percentSmall {
+  font-family: var(--be-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--be-text-sm);
+  color: var(--be-fg);
+}
+
+.poolLink {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.poolTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--be-space-3);
+}
+
+.poolName {
+  font-family: var(--be-font-ui);
+  font-size: var(--be-text-md);
+  font-weight: 600;
+  color: var(--be-fg);
+}
+
+.poolMeta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--be-space-1) var(--be-space-3);
+  align-items: baseline;
+  font-family: var(--be-font-ui);
+  font-size: var(--be-text-xs);
+  color: var(--be-fg-muted);
+}
+
+.poolFooter {
+  font-family: var(--be-font-ui);
+  font-size: var(--be-text-xs);
+  color: var(--be-fg-faint);
+}

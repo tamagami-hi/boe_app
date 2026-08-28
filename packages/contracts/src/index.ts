@@ -1,6 +1,7 @@
 export * from "./envelope.js"
 export * from "./errors.js"
 export * from "./operations/admin-fund-aum.js"
+export * from "./operations/client.js"
 export * from "./operations/native-auth.js"
 export * from "./operations/ops.js"
 export * from "./operations/public.js"

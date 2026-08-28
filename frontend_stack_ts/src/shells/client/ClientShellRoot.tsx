@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 
 import { createQueryClient } from "~/app/providers/QueryProvider"
+import { ApiProvider } from "~/app/providers/ApiProvider"
 import { AppProviders } from "~/app/providers/AppProviders"
 import { TransportReporter } from "~/app/providers/TransportReporter"
 import { createBackPolicyResolver } from "~/app/native/backPolicy"
@@ -10,15 +11,14 @@ import {
   CLIENT_HOME_PATH,
   CLIENT_LOGIN_PATH,
   CLIENT_ROUTES,
-  CLIENT_SPLASH_PATH,
   CLIENT_SUPPORT_PATH,
   CLIENT_VERIFY_EMAIL_PATH,
 } from "~/app/routing/clientRoutes"
-import { buildRouter } from "~/app/routing/buildRouter"
-import type { EligibilityGate, GuardTargets } from "~/app/routing/guards"
+import type { GuardTargets } from "~/app/routing/guards"
 import { AuthPortProvider } from "~/features/auth/authPort"
 import type { AuthPort } from "~/features/auth/authPort"
 import { ClientFrame } from "~/shells/client/ClientFrame"
+import { ClientRoutes } from "~/shells/client/ClientRoutes"
 import { createClientRuntime } from "~/shells/client/clientRuntime"
 
 const TARGETS: GuardTargets = {
@@ -27,14 +27,14 @@ const TARGETS: GuardTargets = {
   verifyEmailPath: CLIENT_VERIFY_EMAIL_PATH,
 }
 
-const ELIGIBILITY: EligibilityGate = { loading: false, canInvest: false }
-
 const resolveClientBackPolicy = createBackPolicyResolver(CLIENT_ROUTES, CLIENT_HOME_PATH)
 
 export const backPolicy = (input: BackPolicyInput): BackPolicy => resolveClientBackPolicy(input)
 
-export const probeReachability = (): Promise<boolean> =>
-  createClientRuntime().probeReachability()
+export const probeReachability = (): Promise<boolean> => createClientRuntime().probeReachability()
+
+const confirmTransactionalBack = (): boolean =>
+  !window.confirm("Leave this screen? Your entry will not be submitted.")
 
 const ClientShellRoot = (): React.ReactElement => {
   const [runtime] = useState(createClientRuntime)
@@ -53,29 +53,23 @@ const ClientShellRoot = (): React.ReactElement => {
     [runtime],
   )
 
-  const router = useMemo(
-    () =>
-      buildRouter({
-        manifest: CLIENT_ROUTES,
-        targets: TARGETS,
-        indexRedirect: CLIENT_SPLASH_PATH,
-        eligibility: ELIGIBILITY,
-      }),
-    [],
-  )
-
   return (
     <AppProviders
       scope="client"
       tokenStore={runtime.tokenStore}
       restore={runtime.restore}
       backPolicy={backPolicy}
+      onTransactionalBack={confirmTransactionalBack}
       queryClient={queryClient}
     >
       <TransportReporter bind={runtime.setOutcomeReporter} />
-      <AuthPortProvider value={port}>
-        <ClientFrame>{router}</ClientFrame>
-      </AuthPortProvider>
+      <ApiProvider value={runtime.http}>
+        <AuthPortProvider value={port}>
+          <ClientFrame>
+            <ClientRoutes targets={TARGETS} />
+          </ClientFrame>
+        </AuthPortProvider>
+      </ApiProvider>
     </AppProviders>
   )
 }

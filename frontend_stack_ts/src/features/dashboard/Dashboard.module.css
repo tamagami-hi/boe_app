@@ -1,0 +1,55 @@
+.label {
+  display: block;
+  font-family: var(--be-font-ui);
+  font-size: var(--be-text-xs);
+  font-weight: 600;
+  letter-spacing: var(--be-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--be-fg-faint);
+}
+
+.split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--be-space-3);
+  padding-top: var(--be-space-3);
+  border-top: var(--be-border-1);
+}
+
+.cardAction {
+  align-self: flex-start;
+  text-decoration: none;
+}
+
+.cardLink {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.fundName {
+  font-family: var(--be-font-ui);
+  font-size: var(--be-text-md);
+  font-weight: 600;
+  color: var(--be-fg);
+}
+
+.category {
+  font-family: var(--be-font-ui);
+  font-size: var(--be-text-xs);
+  color: var(--be-fg-muted);
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--be-space-3);
+}
+
+.gateRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--be-space-3);
+}
