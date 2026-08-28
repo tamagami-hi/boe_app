@@ -55,6 +55,13 @@ export default defineConfig({
   server: {
     port: 5174,
     strictPort: true,
+    proxy: {
+      "/api": {
+        target: "http://127.0.0.1:47502",
+        changeOrigin: false,
+        rewrite: (path) => path.replace(/^\/api/u, ""),
+      },
+    },
   },
   preview: {
     port: 5174,

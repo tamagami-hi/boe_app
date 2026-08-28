@@ -59,9 +59,16 @@ export const createWebPersistence = (): CredentialPersistence => ({
 export type TokenStoreOptions = Readonly<{
   persistence: CredentialPersistence
   persistSecrets: boolean
-  purgeLegacySecrets?: boolean
 }>
 
+export const purgeLegacyLocalSecrets = (): void => {
+  if (typeof localStorage === "undefined") return
+  for (const scope of SESSION_SCOPES) {
+    for (const field of SECRET_FIELDS) {
+      localStorage.removeItem(storageKey(scope, field))
+    }
+  }
+}
 export type TokenStore = Readonly<{
   read: (scope: SessionScope, field: CredentialField) => string | null
   set: (scope: SessionScope, field: CredentialField, value: string) => void
@@ -99,15 +106,6 @@ export const createTokenStore = (options: TokenStoreOptions): TokenStore => {
     void options.persistence.remove(storageKey(scope, field)).catch(() => undefined)
   }
 
-  const purgeLegacySecrets = async (): Promise<void> => {
-    if (options.purgeLegacySecrets !== true) return
-    for (const scope of SESSION_SCOPES) {
-      for (const field of SECRET_FIELDS) {
-        await options.persistence.remove(storageKey(scope, field)).catch(() => undefined)
-      }
-    }
-  }
-
   const runHydration = async (): Promise<void> => {
     const available = await options.persistence.available().catch(() => false)
     if (!available) {
@@ -120,8 +118,6 @@ export const createTokenStore = (options: TokenStoreOptions): TokenStore => {
       hydrated = true
       return
     }
-
-    await purgeLegacySecrets()
 
     for (const scope of SESSION_SCOPES) {
       const next: Record<CredentialField, string | null> = { ...emptyCredentials() }

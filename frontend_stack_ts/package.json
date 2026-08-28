@@ -13,7 +13,8 @@
     "fsevents": false
   },
   "scripts": {
-    "dev": "vite --port 5174 --strictPort",
+    "dev": "VITE_BEO_APP_TARGET=client vite --port 5174 --strictPort",
+    "dev:admin": "VITE_BEO_APP_TARGET=admin vite --port 5175 --strictPort",
     "build": "vite build && node scripts/check-bundle-boots.mjs",
     "build:client": "VITE_BEO_APP_TARGET=client vite build && node scripts/check-android-dist.mjs --variant=client && node scripts/check-bundle-boots.mjs",
     "build:admin": "VITE_BEO_APP_TARGET=admin vite build && node scripts/check-bundle-boots.mjs",

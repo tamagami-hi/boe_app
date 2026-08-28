@@ -3,7 +3,11 @@ import { createHttpClient } from "~/api/http"
 import type { HttpClient, TransportOutcome } from "~/api/http"
 import { createRefreshCoordinator } from "~/api/session/refresh"
 import type { RefreshCoordinator, RefreshOutcome } from "~/api/session/refresh"
-import { createTokenStore, createWebPersistence } from "~/api/session/tokenStore"
+import {
+  createTokenStore,
+  createWebPersistence,
+  purgeLegacyLocalSecrets,
+} from "~/api/session/tokenStore"
 import type { TokenStore } from "~/api/session/tokenStore"
 import type { Principal } from "~/app/providers/SessionProvider"
 import { isPermissionCode } from "~/domain/permissions"
@@ -46,10 +50,10 @@ const principalFrom = (
 })
 
 export const createAdminRuntime = (): AdminRuntime => {
+  purgeLegacyLocalSecrets()
   const tokenStore = createTokenStore({
     persistence: createWebPersistence(),
     persistSecrets: false,
-    purgeLegacySecrets: true,
   })
 
   let reportOutcome: (outcome: TransportOutcome) => void = () => undefined

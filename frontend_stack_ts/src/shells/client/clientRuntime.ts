@@ -3,7 +3,11 @@ import { createHttpClient } from "~/api/http"
 import type { HttpClient, TransportOutcome } from "~/api/http"
 import { createRefreshCoordinator } from "~/api/session/refresh"
 import type { RefreshCoordinator, RefreshOutcome } from "~/api/session/refresh"
-import { createTokenStore, createWebPersistence } from "~/api/session/tokenStore"
+import {
+  createTokenStore,
+  createWebPersistence,
+  purgeLegacyLocalSecrets,
+} from "~/api/session/tokenStore"
 import type { TokenStore } from "~/api/session/tokenStore"
 import type { Principal } from "~/app/providers/SessionProvider"
 import { isAndroid, isNative } from "~/platform/capacitor"
@@ -53,11 +57,11 @@ const principalFrom = (user: Readonly<{
 })
 
 export const createClientRuntime = (): ClientRuntime => {
-  const persistence = isNative() ? createSecureStoragePersistence() : createWebPersistence()
+  const native = isNative()
+  if (native) purgeLegacyLocalSecrets()
   const tokenStore = createTokenStore({
-    persistence,
+    persistence: native ? createSecureStoragePersistence() : createWebPersistence(),
     persistSecrets: true,
-    purgeLegacySecrets: !isNative(),
   })
 
   let reportOutcome: (outcome: TransportOutcome) => void = () => undefined

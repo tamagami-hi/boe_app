@@ -1,6 +1,8 @@
 export const PERMISSION_CODES = [
   "applications.read",
   "applications.decide",
+  "approvals.check",
+  "approvals.request",
   "audit.read",
   "aum.read",
   "aum.write",
@@ -19,7 +21,9 @@ export const PERMISSION_CODES = [
   "funds.receipts.read",
   "funds.receipts.write",
   "payments.read",
+  "permissions.change",
   "refunds.write",
+  "roles.assign",
   "support.read",
   "support.write",
   "users.read",
