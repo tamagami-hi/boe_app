@@ -56,7 +56,15 @@ describe("cors", () => {
       expect(response.statusCode).toBe(204)
       expect(response.headers["access-control-allow-origin"]).toBe("capacitor://localhost")
       const allowedHeaders = String(response.headers["access-control-allow-headers"])
-      for (const header of ["content-type", "authorization", "idempotency-key", "if-match", "x-csrf-token"]) {
+      for (const header of [
+        "content-type",
+        "authorization",
+        "idempotency-key",
+        "if-match",
+        "x-csrf-token",
+        "x-client-platform",
+        "x-app-version",
+      ]) {
         expect(allowedHeaders).toContain(header)
       }
       const allowedMethods = String(response.headers["access-control-allow-methods"])

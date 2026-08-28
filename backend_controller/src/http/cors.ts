@@ -26,9 +26,11 @@ const ALLOWED_METHODS = "GET, POST, PATCH, PUT, DELETE, OPTIONS"
 /**
  * Request headers the clients send: JSON content type, native bearer tokens,
  * idempotency keys on writes, optimistic-concurrency `If-Match`, the admin CSRF
- * synchroniser token, and the request-id used to correlate logs.
+ * synchroniser token, the request-id used to correlate logs, and the native
+ * platform and app version the native auth contract declares.
  */
-const ALLOWED_HEADERS = "content-type, authorization, idempotency-key, if-match, x-csrf-token, x-request-id"
+const ALLOWED_HEADERS =
+  "content-type, authorization, idempotency-key, if-match, x-csrf-token, x-request-id, x-client-platform, x-app-version"
 
 /** Response headers the clients read off the reply. */
 const EXPOSED_HEADERS = "x-request-id, etag, retry-after"
