@@ -73,7 +73,7 @@ export const ClientFrame = ({ children }: ClientFrameProps): React.ReactElement 
 
       <div className={styles.content}>{children}</div>
 
-      <nav className={styles.bottomNav} aria-label="Primary">
+      <nav className={styles.bottomNav} aria-label="Sections">
         {TABS.map((tab) => {
           const Glyph = NAV_GLYPHS[tab.id] ?? NAV_GLYPHS.dashboard
           return (

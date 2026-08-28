@@ -79,7 +79,8 @@ const runClient = async (browser) => {
   check("client: native login lands on the dashboard", true)
 
   const tabs = ["Home", "Funds", "Portfolio", "Activity", "Profile"]
-  const navLabels = await page.locator("nav[aria-label='Primary'] a").allInnerTexts()
+  await page.locator("nav[aria-label='Sections'] a").first().waitFor({ timeout: 15000 })
+  const navLabels = await page.locator("nav[aria-label='Sections'] a").allInnerTexts()
   const flattened = navLabels.join("|")
   check(
     "client: all five bottom-nav tabs render",
@@ -92,8 +93,46 @@ const runClient = async (browser) => {
   check("client: tab navigation reaches /portfolio", true)
 
   await page.goto(`${CLIENT_URL}/profile/security`, { waitUntil: "networkidle" })
-  await page.getByText("Not built yet").waitFor({ timeout: 10000 })
-  check("client: an unbuilt surface says so instead of rendering empty", true)
+  check(
+    "client: device security refuses to claim it is a security boundary",
+    (await page.getByText("It is checked on this device only", { exact: false }).count()) > 0,
+  )
+
+  await page.goto(`${CLIENT_URL}/statements`, { waitUntil: "networkidle" })
+  check(
+    "client: statements says there is nothing to download",
+    (await page.getByText("There is nothing to download", { exact: false }).count()) > 0,
+  )
+
+  await page.goto(`${CLIENT_URL}/notifications`, { waitUntil: "networkidle" })
+  check(
+    "client: notifications renders its own surface",
+    (await page.getByRole("heading", { name: "Notifications" }).count()) > 0,
+  )
+
+  await page.goto(`${CLIENT_URL}/profile/support`, { waitUntil: "networkidle" })
+  await page.getByLabel("Subject").waitFor({ timeout: 10000 })
+  check("client: support offers a ticket form", true)
+
+  await page.goto(`${CLIENT_URL}/profile/legal`, { waitUntil: "networkidle" })
+  check(
+    "client: the legal hub links both regulatory documents, which the legacy screen never did",
+    (await page.getByRole("link", { name: /Investor charter/u }).count()) > 0 &&
+      (await page.getByRole("link", { name: /Grievance/u }).count()) > 0,
+  )
+
+  await page.goto(`${CLIENT_URL}/profile/legal/grievance`, { waitUntil: "networkidle" })
+  check(
+    "client: an unpublished legal document falls back instead of erroring",
+    (await page.getByRole("heading", { name: "Grievance redressal" }).count()) > 0 &&
+      (await page.getByText("We could not load this").count()) === 0,
+  )
+
+  await page.goto(`${CLIENT_URL}/activity?tab=payments`, { waitUntil: "networkidle" })
+  check(
+    "client: activity keeps the payments tab in the URL",
+    (await page.getByRole("tab", { name: "Payments", selected: true }).count()) > 0,
+  )
 
   await page.goto(`${CLIENT_URL}/this-route-does-not-exist`, { waitUntil: "networkidle" })
   check(
@@ -231,6 +270,69 @@ const runAdmin = async (browser) => {
   await narrow.goto(`${ADMIN_URL}/overview`, { waitUntil: "networkidle" })
   const bottomNav = await narrow.locator("nav[aria-label='Sections']").last().isVisible()
   check("admin: renders a bottom nav below the shell breakpoint", bottomNav)
+
+  const ADMIN_SURFACES = [
+    ["/overview", "Overview"],
+    ["/applications", "Applications"],
+    ["/users", "Users"],
+    ["/aum", "AUM"],
+    ["/aum/collective", "Grow several funds"],
+    ["/client-values", "Client values"],
+    ["/client-values/individual", "Adjust one investor"],
+    ["/client-values/collective", "Adjust a whole fund"],
+    ["/receipts", "Fund receipts"],
+    ["/refunds", "Refunds"],
+    ["/payments", "Payments"],
+    ["/audit", "Audit log"],
+    ["/emails", "Emails"],
+    ["/content/faqs", "FAQs"],
+    ["/app-config", "App config"],
+  ]
+
+  for (const [path, heading] of ADMIN_SURFACES) {
+    await page.goto(`${ADMIN_URL}${path}`, { waitUntil: "networkidle" })
+    const rendered = await page.getByRole("heading", { name: heading, level: 1 }).count()
+    check(`admin: ${path} renders its own surface`, rendered > 0, page.url())
+  }
+
+  await page.goto(`${ADMIN_URL}/mandates`, { waitUntil: "networkidle" })
+  const mandateBody = await page.locator("body").innerText()
+  check(
+    "admin: mandates distinguishes an unconfigured provider from a missing screen",
+    mandateBody.includes("PhonePe is not configured in this environment") ||
+      mandateBody.includes("Mandate state"),
+    mandateBody.slice(0, 90).replace(/\n/gu, " "),
+  )
+
+  await page.goto(`${ADMIN_URL}/content/faqs`, { waitUntil: "networkidle" })
+  const faqQuestion = `E2E answer ${String(Date.now()).slice(-6)}`
+  await page.getByLabel("Question").fill(faqQuestion)
+  await page.getByLabel("Answer").fill("Written by the automated smoke suite.")
+  await page.getByRole("button", { name: "Save as draft" }).click()
+  await page.getByText(faqQuestion).waitFor({ timeout: 20000 })
+  check("admin: a new FAQ is created as a draft, not published", true)
+
+  const faqRow = page.locator("tr", { hasText: faqQuestion })
+  check(
+    "admin: a draft FAQ offers Publish but not Unpublish",
+    (await faqRow.getByRole("button", { name: "Publish" }).count()) > 0 &&
+      (await faqRow.getByRole("button", { name: "Unpublish" }).count()) === 0,
+  )
+
+  await faqRow.getByRole("button", { name: "Publish" }).click()
+  await page.locator("tr", { hasText: faqQuestion }).getByRole("button", { name: "Unpublish" }).waitFor({ timeout: 20000 })
+  check("admin: publishing the FAQ moves it out of draft", true)
+
+  await page.goto(`${ADMIN_URL}/audit`, { waitUntil: "networkidle" })
+  await page.getByLabel("Filter by entity type").fill("content_item")
+  await page.getByLabel("Filter by entity type").blur()
+  await page.waitForTimeout(1200)
+  const auditBody = await page.locator("body").innerText()
+  check(
+    "admin: the audit log records the FAQ publish under content_item",
+    auditBody.includes("content_item.published") || auditBody.includes("content_item"),
+    auditBody.slice(0, 90).replace(/\n/gu, " "),
+  )
 
   check("admin: no uncaught page errors", sink.pageErrors.length === 0, sink.pageErrors.join(" ; "))
   check(

@@ -1,0 +1,16 @@
+import { chromium } from "playwright"
+const CLIENT = "http://localhost:5174"
+const browser = await chromium.launch()
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } })
+const page = await ctx.newPage()
+page.on("pageerror", (e) => { process.stdout.write(`pageerror: ${e.message}\n`) })
+await page.goto(`${CLIENT}/login`, { waitUntil: "networkidle" })
+await page.getByLabel("Email").fill("client@beonedge.local")
+await page.getByLabel("Password").fill("LocalClientPassword123!")
+await page.getByRole("button", { name: "Sign in" }).click()
+await page.waitForURL(/\/dashboard$/u, { timeout: 20000 })
+await page.waitForTimeout(1500)
+const texts = await page.locator("nav[aria-label='Primary'] a").allInnerTexts()
+process.stdout.write(`count: ${String(texts.length)}\n`)
+process.stdout.write(`texts: ${JSON.stringify(texts)}\n`)
+await browser.close()

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom"
 
+import { isApiError } from "~/api/errors"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
@@ -41,7 +42,7 @@ const QUEUE_ENTRIES = [
     id: "mandates",
     to: "/mandates",
     label: "Mandates needing attention",
-    hint: "Setup or cancellation stuck mid-flight with the provider.",
+    hint: "Setup or cancellation stuck mid-flight with the provider. Shows n/a when PhonePe is not configured here.",
   },
 ] as const
 
@@ -52,16 +53,21 @@ const OverviewScreen = (): React.ReactElement => {
   const refunds = useAdminRefunds("failed")
   const mandates = useAdminMandates({ attention: true })
 
-  const counts: Readonly<Record<string, number | null>> = {
+  const notConfigured = (error: unknown): boolean =>
+    isApiError(error) && error.code === "RESOURCE_NOT_FOUND"
+
+  const counts: Readonly<Record<string, number | null | "unconfigured">> = {
     applications: applications.data?.items.length ?? null,
     receipts: receipts.data?.items.length ?? null,
     refunds: refunds.data?.items.length ?? null,
-    mandates: mandates.data?.items.length ?? null,
+    mandates: notConfigured(mandates.error)
+      ? "unconfigured"
+      : (mandates.data?.items.length ?? null),
   }
 
   const reachable = ADMIN_ROUTES.filter(
     (route) =>
-      route.nav?.primary === true &&
+      route.nav !== undefined &&
       (route.permissions === undefined || hasAnyPermission(route.permissions)),
   )
 
@@ -77,8 +83,12 @@ const OverviewScreen = (): React.ReactElement => {
           {QUEUE_ENTRIES.map((entry) => (
             <Card key={entry.id} elevated>
               <Stat label={entry.label} hint={entry.hint}>
-                <span className={styles.mono} style={{ fontSize: "2rem" }}>
-                  {counts[entry.id] === null ? "—" : String(counts[entry.id])}
+                <span className={styles.queueCount}>
+                  {counts[entry.id] === "unconfigured"
+                    ? "n/a"
+                    : counts[entry.id] === null
+                      ? "—"
+                      : String(counts[entry.id])}
                 </span>
               </Stat>
               <Link to={entry.to} className={styles.rowLink}>

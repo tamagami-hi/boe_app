@@ -42,35 +42,34 @@ const UserDirectoryScreen = (): React.ReactElement => {
         description="Every account on the platform. Search runs on the server, so it covers every user, not just the page in front of you."
       />
 
-      <div className={styles.controls}>
-        <Input
-          type="search"
-          placeholder="Search by email, phone or name"
-          aria-label="Search users"
-          value={search}
-          onChange={(event) => {
-            setSearch(event.target.value)
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") setApplied(search.trim())
-          }}
-          onBlur={() => {
-            setApplied(search.trim())
-          }}
-        />
-        <FilterRow label="Account state">
-          {FILTERS.map((option) => (
-            <FilterChip
-              key={option.value}
-              active={option.value === filter}
-              label={option.label}
-              onSelect={() => {
-                setFilter(option.value)
-              }}
-            />
-          ))}
-        </FilterRow>
-      </div>
+      <Input
+        type="search"
+        placeholder="Search by email, phone or name"
+        aria-label="Search users"
+        value={search}
+        onChange={(event) => {
+          setSearch(event.target.value)
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") setApplied(search.trim())
+        }}
+        onBlur={() => {
+          setApplied(search.trim())
+        }}
+      />
+
+      <FilterRow label="Account state">
+        {FILTERS.map((option) => (
+          <FilterChip
+            key={option.value}
+            active={option.value === filter}
+            label={option.label}
+            onSelect={() => {
+              setFilter(option.value)
+            }}
+          />
+        ))}
+      </FilterRow>
 
       <AsyncBoundary
         query={query}

@@ -8,6 +8,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--be-space-2);
+  align-items: center;
 }
 
 .filter {
@@ -152,7 +153,11 @@
   .controls {
     flex-direction: row;
     align-items: center;
-    justify-content: space-between;
+    gap: var(--be-space-4);
+  }
+
+  .controls > * {
+    flex: 1 1 0;
   }
 }
 
@@ -336,4 +341,14 @@
   .summaryGrid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+}
+
+.queueCount {
+  font-family: var(--be-font-numeric);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 2.25rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: var(--be-fg);
 }
