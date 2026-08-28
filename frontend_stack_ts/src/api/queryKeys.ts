@@ -1,0 +1,61 @@
+export const STALE = {
+  MONEY: 15_000,
+  CATALOGUE: 300_000,
+  ELIGIBILITY: 60_000,
+  CONFIG: 600_000,
+  SESSION: Number.POSITIVE_INFINITY,
+} as const
+
+export const CLIENT_MONEY_PREFIXES = [
+  ["client", "portfolio"],
+  ["client", "transactions"],
+  ["client", "payments"],
+  ["client", "payment"],
+  ["client", "sips"],
+  ["client", "statements"],
+] as const
+
+export const qk = {
+  client: {
+    eligibility: (userId: string) => ["client", "eligibility", userId] as const,
+    portfolio: () => ["client", "portfolio"] as const,
+    funds: () => ["client", "funds"] as const,
+    fund: (fundId: string) => ["client", "fund", fundId] as const,
+    transactions: (filter: string) => ["client", "transactions", filter] as const,
+    payments: (status: string) => ["client", "payments", status] as const,
+    payment: (paymentId: string) => ["client", "payment", paymentId] as const,
+    orders: () => ["client", "orders"] as const,
+    sips: () => ["client", "sips"] as const,
+    autopay: (sipPlanId: string) => ["client", "autopay", sipPlanId] as const,
+    statements: () => ["client", "statements"] as const,
+    notifications: () => ["client", "notifications"] as const,
+    supportFaqs: () => ["client", "support", "faqs"] as const,
+    supportTickets: () => ["client", "support", "tickets"] as const,
+    research: () => ["client", "research"] as const,
+    emailVerification: () => ["client", "email-verification"] as const,
+    appConfig: () => ["client", "app-config"] as const,
+  },
+  admin: {
+    session: () => ["admin", "session"] as const,
+    applications: (filter: string) => ["admin", "applications", filter] as const,
+    application: (applicationId: string) => ["admin", "application", applicationId] as const,
+    users: (filter: string) => ["admin", "users", filter] as const,
+    user: (userId: string) => ["admin", "user", userId] as const,
+    userLoginEvents: (userId: string) => ["admin", "user", userId, "login-events"] as const,
+    funds: (filter: string) => ["admin", "funds", filter] as const,
+    fund: (fundId: string) => ["admin", "fund", fundId] as const,
+    fundStocks: (fundId: string) => ["admin", "fund", fundId, "stocks"] as const,
+    fundAumHistory: (fundId: string, filter: string) =>
+      ["admin", "fund", fundId, "aum-history", filter] as const,
+    receipts: (state: string) => ["admin", "receipts", state] as const,
+    receipt: (orderId: string) => ["admin", "receipt", orderId] as const,
+    refunds: () => ["admin", "refunds"] as const,
+    payments: (filter: string) => ["admin", "payments", filter] as const,
+    mandates: (filter: string) => ["admin", "mandates", filter] as const,
+    mandate: (mandateId: string) => ["admin", "mandate", mandateId] as const,
+    auditLogs: (filter: string) => ["admin", "audit-logs", filter] as const,
+    emailDeliveries: (filter: string) => ["admin", "email-deliveries", filter] as const,
+    faqs: () => ["admin", "faqs"] as const,
+    appConfig: () => ["admin", "app-config"] as const,
+  },
+} as const

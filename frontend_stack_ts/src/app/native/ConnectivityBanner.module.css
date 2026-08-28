@@ -1,0 +1,13 @@
+.banner {
+  position: sticky;
+  top: 0;
+  z-index: var(--be-z-sticky);
+  padding: calc(var(--be-space-2) + var(--be-safe-top)) max(var(--be-space-4), var(--be-safe-left))
+    var(--be-space-2) max(var(--be-space-4), var(--be-safe-left));
+  background: var(--be-warning);
+  color: var(--be-fg-inverse);
+  font-family: var(--be-font-ui);
+  font-size: var(--be-text-xs);
+  font-weight: 600;
+  text-align: center;
+}

@@ -1,0 +1,38 @@
+.page {
+  width: 100%;
+  padding-left: max(var(--be-page-pad-x), var(--be-safe-left));
+  padding-right: max(var(--be-page-pad-x), var(--be-safe-left));
+  padding-top: var(--be-page-pad-y);
+  padding-bottom: calc(var(--be-nav-h) + var(--be-safe-bottom) + var(--be-space-7));
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--be-space-6);
+}
+
+.default {
+  max-width: var(--be-content-max);
+}
+
+.wide {
+  max-width: var(--be-content-max-wide);
+}
+
+.form {
+  max-width: var(--be-content-max-form);
+}
+
+@media (min-width: 768px) {
+  .page {
+    padding-left: max(var(--be-page-pad-x-md), var(--be-safe-left));
+    padding-right: max(var(--be-page-pad-x-md), var(--be-safe-left));
+  }
+}
+
+@media (min-width: 1024px) {
+  .page {
+    padding-left: max(var(--be-page-pad-x-lg), var(--be-safe-left));
+    padding-right: max(var(--be-page-pad-x-lg), var(--be-safe-left));
+    padding-bottom: var(--be-space-9);
+  }
+}

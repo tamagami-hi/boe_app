@@ -38,11 +38,15 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          if (id.includes("node_modules")) return "vendor"
-          if (id.includes("/src/shells/admin/") || id.includes("/src/features/admin/")) {
-            if (id.endsWith(".css")) return undefined
-            return "admin"
+          if (id.includes("node_modules")) {
+            if (/node_modules\/(react|react-dom|scheduler)\//u.test(id)) return "react"
+            if (id.includes("node_modules/react-router")) return "router"
+            if (id.includes("node_modules/@tanstack")) return "query"
+            if (id.includes("node_modules/zod")) return "zod"
+            return "vendor"
           }
+          if (id.endsWith(".css")) return undefined
+          if (id.includes("/src/")) return "app"
           return undefined
         },
       },

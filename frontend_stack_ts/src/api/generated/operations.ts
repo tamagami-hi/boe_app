@@ -8,7 +8,10 @@ import {
   exitAdminFundStock,
   getAdminFund,
   getAdminFundAumHistory,
+  getAdminSession,
+  getHealth,
   getPublicConsentDocuments,
+  getWebCsrf,
   initializeAdminFundAum,
   listAdminFunds,
   nativeLogin,
@@ -17,6 +20,9 @@ import {
   previewAdminCollectiveAumGrowth,
   publishAdminFundVersion,
   transitionAdminFundLifecycle,
+  webLogin,
+  webLogout,
+  webRefresh,
 } from "@beonedge/contracts"
 
 export {
@@ -29,7 +35,10 @@ export {
   exitAdminFundStock,
   getAdminFund,
   getAdminFundAumHistory,
+  getAdminSession,
+  getHealth,
   getPublicConsentDocuments,
+  getWebCsrf,
   initializeAdminFundAum,
   listAdminFunds,
   nativeLogin,
@@ -38,6 +47,9 @@ export {
   previewAdminCollectiveAumGrowth,
   publishAdminFundVersion,
   transitionAdminFundLifecycle,
+  webLogin,
+  webLogout,
+  webRefresh,
 }
 
 export const OPERATIONS = {
@@ -50,7 +62,10 @@ export const OPERATIONS = {
   exitAdminFundStock: exitAdminFundStock,
   getAdminFund: getAdminFund,
   getAdminFundAumHistory: getAdminFundAumHistory,
+  getAdminSession: getAdminSession,
+  getHealth: getHealth,
   getPublicConsentDocuments: getPublicConsentDocuments,
+  getWebCsrf: getWebCsrf,
   initializeAdminFundAum: initializeAdminFundAum,
   listAdminFunds: listAdminFunds,
   logoutNativeSession: nativeLogout,
@@ -59,6 +74,9 @@ export const OPERATIONS = {
   publishAdminFundVersion: publishAdminFundVersion,
   refreshNativeSession: nativeRefresh,
   transitionAdminFundLifecycle: transitionAdminFundLifecycle,
+  webLogin: webLogin,
+  webLogout: webLogout,
+  webRefresh: webRefresh,
 } as const
 
 export type OperationId = keyof typeof OPERATIONS

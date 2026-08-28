@@ -1,0 +1,38 @@
+.money {
+  font-family: var(--be-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  color: var(--be-fg);
+  white-space: nowrap;
+}
+
+.sm {
+  font-size: var(--be-text-sm);
+}
+
+.md {
+  font-size: var(--be-text-md);
+}
+
+.lg {
+  font-size: var(--be-text-xl);
+  font-weight: 500;
+}
+
+.xl {
+  font-size: var(--be-text-2xl);
+  font-weight: 500;
+  letter-spacing: var(--be-tracking-tight);
+}
+
+.positive {
+  color: var(--be-positive);
+}
+
+.negative {
+  color: var(--be-negative);
+}
+
+.muted {
+  color: var(--be-fg-muted);
+}
