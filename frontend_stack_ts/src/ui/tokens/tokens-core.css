@@ -1,0 +1,145 @@
+:root {
+  --be-safe-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --be-safe-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+  --be-safe-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --be-safe-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+
+  --be-bp-sm: 480px;
+  --be-bp-md: 768px;
+  --be-bp-lg: 1024px;
+  --be-bp-xl: 1440px;
+
+  --be-ink: #0e1116;
+  --be-ink-2: #1a1f27;
+  --be-ink-3: #262c36;
+  --be-ivory: #f7f7f5;
+  --be-ivory-2: #eeedea;
+  --be-bone: #faf9f6;
+  --be-slate: #5c6470;
+  --be-slate-2: #8a929d;
+  --be-gold: #b5894a;
+  --be-gold-2: #9c7339;
+  --be-green: #1f7a4d;
+  --be-red: #b43a2e;
+  --be-amber: #a8741c;
+
+  --be-slate-soft: color-mix(in srgb, var(--be-slate) 12%, transparent);
+  --be-slate-rule: color-mix(in srgb, var(--be-slate) 16%, transparent);
+  --be-slate-rule-strong: color-mix(in srgb, var(--be-slate) 28%, transparent);
+  --be-gold-soft: color-mix(in srgb, var(--be-gold) 12%, transparent);
+  --be-green-soft: color-mix(in srgb, var(--be-green) 10%, transparent);
+  --be-red-soft: color-mix(in srgb, var(--be-red) 10%, transparent);
+  --be-amber-soft: color-mix(in srgb, var(--be-amber) 12%, transparent);
+
+  --be-bg: var(--be-ivory);
+  --be-bg-elevated: var(--be-bone);
+  --be-bg-sunken: var(--be-ivory-2);
+  --be-bg-inverse: var(--be-ink);
+  --be-fg: var(--be-ink);
+  --be-fg-muted: var(--be-slate);
+  --be-fg-faint: var(--be-slate-2);
+  --be-fg-inverse: var(--be-ivory);
+  --be-accent: var(--be-gold);
+  --be-surface: var(--be-bg-elevated);
+
+  --be-border-color: var(--be-slate-rule);
+  --be-border-strong-color: var(--be-slate-rule-strong);
+  --be-border-1: 1px solid var(--be-border-color);
+  --be-border-1-strong: 1px solid var(--be-border-strong-color);
+  --be-focus-ring: 2px solid var(--be-ink);
+  --be-focus-ring-offset: 2px;
+
+  --be-positive: var(--be-green);
+  --be-positive-bg: var(--be-green-soft);
+  --be-negative: var(--be-red);
+  --be-negative-bg: var(--be-red-soft);
+  --be-warning: var(--be-amber);
+  --be-warning-bg: var(--be-amber-soft);
+  --be-info: var(--be-slate);
+  --be-info-bg: var(--be-slate-soft);
+
+  --be-font-display: "Fraunces Variable", Georgia, "Times New Roman", serif;
+  --be-font-body: "Instrument Sans Variable", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    system-ui, sans-serif;
+  --be-font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --be-font-ui: var(--be-font-body);
+  --be-font-brand: var(--be-font-display);
+  --be-font-code: var(--be-font-mono);
+
+  --be-text-xs: 12px;
+  --be-text-sm: 13px;
+  --be-text-base: 15px;
+  --be-text-md: 16px;
+  --be-text-lg: 18px;
+  --be-text-xl: 22px;
+  --be-text-2xl: 28px;
+  --be-text-3xl: 36px;
+
+  --be-lh-tight: 1.1;
+  --be-lh-snug: 1.25;
+  --be-lh-normal: 1.5;
+  --be-lh-relaxed: 1.7;
+  --be-tracking-eyebrow: 0.12em;
+  --be-tracking-tight: -0.01em;
+  --be-tracking-display: -0.02em;
+
+  --be-space-1: 4px;
+  --be-space-2: 8px;
+  --be-space-3: 12px;
+  --be-space-4: 16px;
+  --be-space-5: 20px;
+  --be-space-6: 24px;
+  --be-space-7: 32px;
+  --be-space-8: 40px;
+  --be-space-9: 48px;
+  --be-space-10: 64px;
+
+  --be-radius-sm: 6px;
+  --be-radius-md: 10px;
+  --be-radius-lg: 14px;
+  --be-radius-full: 999px;
+
+  --be-elev-1: 0 1px 2px color-mix(in srgb, var(--be-ink) 6%, transparent),
+    0 1px 1px color-mix(in srgb, var(--be-ink) 4%, transparent);
+  --be-elev-2: 0 8px 24px color-mix(in srgb, var(--be-ink) 12%, transparent),
+    0 2px 6px color-mix(in srgb, var(--be-ink) 6%, transparent);
+  --be-elev-3: 0 16px 48px color-mix(in srgb, var(--be-ink) 18%, transparent),
+    0 4px 12px color-mix(in srgb, var(--be-ink) 8%, transparent);
+
+  --be-dur-fast: 120ms;
+  --be-dur-base: 200ms;
+  --be-dur-slow: 320ms;
+  --be-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --be-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --be-content-max: 960px;
+  --be-content-max-wide: 1280px;
+  --be-content-max-form: 560px;
+  --be-page-pad-x: var(--be-space-4);
+  --be-page-pad-x-md: var(--be-space-6);
+  --be-page-pad-x-lg: var(--be-space-7);
+  --be-page-pad-y: var(--be-space-6);
+
+  --be-header-h: 56px;
+  --be-nav-h: 56px;
+  --be-topnav-h: 64px;
+  --be-sidebar-w: 240px;
+  --be-sidebar-w-rail: 64px;
+
+  --be-target-min: 44px;
+  --be-target-md: 40px;
+  --be-target-compact: 36px;
+
+  --be-icon-sm: 16px;
+  --be-icon-md: 20px;
+  --be-icon-lg: 24px;
+
+  --be-z-header: 100;
+  --be-z-nav: 100;
+  --be-z-sticky: 200;
+  --be-z-overlay: 900;
+  --be-z-toast: 1000;
+
+  --be-opacity-disabled: 0.4;
+  --be-opacity-backdrop: 0.5;
+}

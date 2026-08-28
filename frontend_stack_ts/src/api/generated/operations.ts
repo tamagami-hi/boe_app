@@ -1,0 +1,66 @@
+import {
+  addAdminFundStock,
+  appendAdminFundAumGrowth,
+  commitAdminCollectiveAumGrowth,
+  correctAdminFundAumSnapshot,
+  createAdminFund,
+  editAdminFundStock,
+  exitAdminFundStock,
+  getAdminFund,
+  getAdminFundAumHistory,
+  getPublicConsentDocuments,
+  initializeAdminFundAum,
+  listAdminFunds,
+  nativeLogin,
+  nativeLogout,
+  nativeRefresh,
+  previewAdminCollectiveAumGrowth,
+  publishAdminFundVersion,
+  transitionAdminFundLifecycle,
+} from "@beonedge/contracts"
+
+export {
+  addAdminFundStock,
+  appendAdminFundAumGrowth,
+  commitAdminCollectiveAumGrowth,
+  correctAdminFundAumSnapshot,
+  createAdminFund,
+  editAdminFundStock,
+  exitAdminFundStock,
+  getAdminFund,
+  getAdminFundAumHistory,
+  getPublicConsentDocuments,
+  initializeAdminFundAum,
+  listAdminFunds,
+  nativeLogin,
+  nativeLogout,
+  nativeRefresh,
+  previewAdminCollectiveAumGrowth,
+  publishAdminFundVersion,
+  transitionAdminFundLifecycle,
+}
+
+export const OPERATIONS = {
+  addAdminFundStock: addAdminFundStock,
+  appendAdminFundAumGrowth: appendAdminFundAumGrowth,
+  commitAdminCollectiveAumGrowth: commitAdminCollectiveAumGrowth,
+  correctAdminFundAumSnapshot: correctAdminFundAumSnapshot,
+  createAdminFund: createAdminFund,
+  editAdminFundStock: editAdminFundStock,
+  exitAdminFundStock: exitAdminFundStock,
+  getAdminFund: getAdminFund,
+  getAdminFundAumHistory: getAdminFundAumHistory,
+  getPublicConsentDocuments: getPublicConsentDocuments,
+  initializeAdminFundAum: initializeAdminFundAum,
+  listAdminFunds: listAdminFunds,
+  logoutNativeSession: nativeLogout,
+  nativeLogin: nativeLogin,
+  previewAdminCollectiveAumGrowth: previewAdminCollectiveAumGrowth,
+  publishAdminFundVersion: publishAdminFundVersion,
+  refreshNativeSession: nativeRefresh,
+  transitionAdminFundLifecycle: transitionAdminFundLifecycle,
+} as const
+
+export type OperationId = keyof typeof OPERATIONS
+
+export const OPERATION_IDS = Object.keys(OPERATIONS) as readonly OperationId[]

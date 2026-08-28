@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+.vite
+android/build
+android/app/build
+android/.gradle
+*.local

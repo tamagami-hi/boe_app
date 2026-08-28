@@ -1,0 +1,49 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--be-bg);
+  color: var(--be-fg);
+  font-family: var(--be-font-ui);
+  font-size: var(--be-text-base);
+  line-height: var(--be-lh-normal);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100dvh;
+  background: var(--be-bg);
+}
+
+:where(button, [role="button"], a, input, select, textarea):focus-visible {
+  outline: var(--be-focus-ring);
+  outline-offset: var(--be-focus-ring-offset);
+}
+
+:where(h1, h2, h3, h4, p, figure, blockquote) {
+  margin: 0;
+}
+
+:where(img, svg, video) {
+  display: block;
+  max-width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
