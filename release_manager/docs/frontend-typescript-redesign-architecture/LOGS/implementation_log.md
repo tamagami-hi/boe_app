@@ -570,3 +570,113 @@ curl -s -o /dev/null -w '%{http_code}\n' https://dev-app.beonedge.in/api/v1/heal
 # then, from a browser on http://localhost:5174 with the dev origin allowlisted,
 # confirm a 200 on GET /v1/health and that no CORS error appears in the console
 ```
+
+
+---
+
+## 2026-08-28 · Entry 013 · In-flight work committed in five slices
+
+**Task:** [`TASK/006-phase2-shells-and-routing.md`](../TASK/006-phase2-shells-and-routing.md)
+
+The working tree had accumulated 58 modified, 8 deleted and 8 untracked paths across four
+independent concerns. Split into five commits, each verified green before landing:
+
+| Commit | Scope | Verification |
+|---|---|---|
+| `65e1bd5` | contracts: error parity at 23, `PageMeta`, `native-bearer` idempotency variant, drift roots | `npm run check` |
+| `302e652` | backend: extract `applyRefundOutcome`, drop dead rate-limit and finance-policy types | 74 files / 676 tests, 80.04% branch |
+| `37dbf4a` | legacy frontend: remove fixture mode, the second transport, the container layer | 68 files / 891 tests, build green |
+| `ca4730a` | `frontend_stack_ts` foundation, transport, domain | 57 tests |
+| `9496fdc` | the architecture doc set, LOGS and TASK | documentation only |
+
+**Read `README.md` and `rules.md` in full before continuing, which `AGENTS.md` requires and I had
+not done.** Two compliance findings against my own work:
+
+1. **No comments in source — compliant.** A repo-wide scan of `frontend_stack_ts/src` and
+   `scripts/` found two apparent hits, both false: a `///` TypeScript reference directive in
+   `vite-env.d.ts`, required by Vite, and a comment-stripping regex literal inside
+   `safeArea.test.ts`.
+2. **Test scope — non-compliant, and corrected.** README §2, §4 and §5 permit tests only for
+   critical, security-sensitive, financial, authentication, authorization or data-integrity logic,
+   and require the *minimum* number. I had written plumbing tests the rules explicitly exclude.
+   Removed seven from `http.test.ts` (query-parameter formatting, non-retryable client error,
+   late-attempt success, envelope unwrapping, undeclared success status, verbatim validation
+   fields, retry-after passthrough) and two from `idempotency.test.ts` (bigint serialisation,
+   array order). 66 tests became 57. **This was a rules correction, not a weakening to make
+   anything pass** — every removed test passed. What remains maps to session-family protection,
+   duplicate-payment prevention, path-parameter encoding, deadline coverage, and non-JSON bodies
+   not reading as application failures.
+
+**Verified:** TESTED. All three project gates exit 0 after the split, and the legacy frontend's
+891 tests and build were confirmed green before its slice landed.
+
+---
+
+## 2026-08-28 · Entry 014 · Phase 2 — shells, generated router, providers, core UI
+
+**Task:** [`TASK/006-phase2-shells-and-routing.md`](../TASK/006-phase2-shells-and-routing.md)
+**Decisions:** [D-024](risk_and_decision.md#d-024) · [D-025](risk_and_decision.md#d-025) ·
+[D-026](risk_and_decision.md#d-026)
+
+### Created
+
+Routing: `routeManifest.ts` (the `RouteDef` contract, param matching and substitution),
+`clientRoutes.ts` (24 routes), `adminRoutes.ts` (31 routes), `buildRouter.tsx`, `guards.tsx`,
+`RouteErrorBoundary.tsx`, `resolveDestination.ts`.
+
+Providers: `AppProviders`, `QueryProvider`, `SessionProvider`, `OverlayStackProvider`,
+`ToastProvider`, `NetworkStatusProvider`, `TransportReporter`.
+
+Layouts: `Page`, `PageHeader`, `Section`, `ContentGrid`, `AuthLayout`.
+
+Primitives: `Button`, `Card`, `Badge`, `Divider`, `Spinner`, `Skeleton`, `Alert`, `FormField`,
+`Input`. Patterns: `AsyncBoundary`, `EmptyState`, `ErrorState`, `StatusBadge`, `MoneyValue`.
+
+Native: `NativeBackCoordinator`, `SystemBarsController`, `ConnectivityBanner`, `backPolicy`.
+Platform: `capacitor`, `lifecycle`, `systemChrome`, `openExternal`, `secureStorage`, `errors`.
+
+Shells: `ClientShellRoot` + `ClientFrame` + `clientRuntime`, `AdminShellRoot` + `AdminFrame` +
+`adminRuntime`. Auth: `SplashScreen`, `LoginScreen`, `BlockedScreen`, `NotFoundScreen`,
+`authPort`. Plus 47 route placeholders rendering an explicit not-implemented state.
+
+### Three defects the gates caught, none of which a unit test would have found
+
+1. **A chunk-graph cycle.** Splitting lazy screens into their own chunks produced
+   `ActivityScreen → PendingScreen → core → ActivityScreen`. `check-android-dist.mjs` builds
+   edges by substring-matching chunk filenames in emitted source, so a manifest chunk that
+   dynamically imports screens which import anything shared is **always** a cycle. Two
+   arrangements were rejected before the third passed. This is the exact defect class that made
+   v0.9.0 boot to a blank screen with zero failing tests, and it is why `rules.md` §5 exists.
+   Resolved by D-024: split `node_modules` only, keep first-party source in one chunk.
+2. **The vendor chunk over budget** at 329,202 bytes against a 327,680 limit — caught by the same
+   script, fixed by the same change.
+3. **A route with no way in.** `routeIntegrity.test.ts` failed on `blocked`, which is reached only
+   by a guard redirect from `RequireSession`, not by any declarative link. Rather than fake a link
+   to silence it, the manifests now declare `CLIENT_GUARD_DESTINATIONS` and
+   `ADMIN_GUARD_DESTINATIONS`, and the test accepts nav entry, inbound link **or** declared guard
+   redirect — and separately asserts every named guard destination is a real route.
+
+### Verified — TESTED on this machine
+
+| Command | Result |
+|---|---|
+| `frontend_stack_ts` `npm run check` | exit 0 |
+| `npm test` | **90 tests, 6 files** |
+| `npm run build:client` | both gates pass — 16 assets, 586,621 bytes, largest JS 193.69 kB |
+| `check-bundle-boots` | 7 chunks evaluated, no error |
+| `packages/contracts` `npm run check` | exit 0, drift baseline **60 → 54** |
+| `backend_controller` `npm run check` | exit 0 |
+
+### Not verified — UNVERIFIED
+
+- **Nothing has rendered in a browser.** No dev server was started and no Playwright run
+  happened. JSDOM chunk evaluation proves modules load, not that the app paints.
+- **No login has ever succeeded against a real backend.** The deployed dev stack is at migration
+  `042` and its `WEB_ORIGIN_ALLOWLIST` is
+  `https://dev-app.beonedge.in,https://beonedge-vps.tail4ea2bc.ts.net,https://localhost` — it
+  carries neither the hosted-checkout backend nor an origin entry for `http://localhost:5174`, so
+  it cannot serve a locally-run new frontend. Verifying auth end to end needs a local stack via
+  `test_e2e/local-stack.sh`.
+- Safe-area behaviour, system bars, hardware Back and the transactional-Back confirm are all
+  device concerns and remain untested.
+- 47 of 55 routes render a placeholder. The feature surfaces behind them do not exist yet.

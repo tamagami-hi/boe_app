@@ -369,3 +369,65 @@ the HTTP status against `success.status`, because a contracted 201 arriving as 2
 break that should surface rather than pass silently.
 
 **Consequence:** doc 07's API-layer example is misleading and should be corrected.
+
+
+### D-024
+**Chunking splits `node_modules` only; all first-party source stays in one chunk.** · DECIDED 2026-08-28
+
+`check-android-dist.mjs` builds its chunk-import graph by substring-matching chunk filenames in
+emitted source. It therefore counts a **dynamic** import as an edge, exactly like a static one.
+
+The consequence is structural: a chunk holding the route manifest dynamically imports every screen,
+and every screen imports something shared. Whatever chunk that shared code lands in becomes part of
+a cycle. Two arrangements were tried and both were correctly rejected —
+`ActivityScreen → ClientShellRoot → ActivityScreen`, then
+`ActivityScreen → PendingScreen → core → ActivityScreen`.
+
+This is not a checker defect. `rules.md` §5 is explicit that a cycle across a chunk boundary is a
+launch crash invisible to unit tests, and v0.9.0 shipped precisely that. The legacy client build
+satisfied the same constraint the same way: client pages were never split out of the client chunk.
+
+So `manualChunks` splits `react`, `react-router`, `@tanstack`, `zod` and the remaining
+`node_modules`, and returns a single `app` chunk for everything under `src/`. Route-level `lazy()`
+is retained because it is how the router is generated and it still helps the dev server, but the
+build folds the screens back together.
+
+Measured result: 16 assets, 586,621 bytes total against a 1,400,000 ceiling, largest JS 193.69 kB
+against 320 kB, and 7 chunks that all evaluate in JSDOM.
+
+**Reversible:** yes, but only against a different cycle checker. Admin-side domain splitting stays
+available because `check-android-dist.mjs` runs for the client variant only.
+
+### D-025
+**Routes whose phase has not landed render an explicit not-implemented state.** · DECIDED 2026-08-28
+
+Both manifests declare the full target route map from Phase 2, not a subset that grows. That makes
+`routeIntegrity.test.ts` meaningful immediately — every parent target, nav entry and inbound link is
+checked against the real map rather than against whatever happens to be built.
+
+The cost is 47 routes with no feature behind them. They render a `PendingScreen` that says the
+surface is not implemented in this build and that it is a declared route rather than a failed load.
+That distinction is the point: `rules.md` §4 forbids rendering absence as emptiness, and a blank
+screen behind a working nav tab is indistinguishable from a broken one.
+
+Each feature phase replaces one placeholder with a real screen. A placeholder is never a stub that
+pretends to work — the legacy Explore "notify me" button, which set a local toast and called no
+API, is the failure mode being avoided.
+
+### D-026
+**Auth screens take a shell-provided port rather than branching on target.** · DECIDED 2026-08-28
+
+Client and admin authenticate differently and irreconcilably: the client uses
+`/v1/auth/native/login` with a bearer token and a device record, while the browser admin console
+uses `/v1/auth/web/login` with HttpOnly cookies and a CSRF synchroniser. The Android admin build is
+a third case — it is served from `https://localhost`, cross-site with the API, so `SameSite=Lax`
+plus the `Sec-Fetch-Site` gate make cookie auth impossible and it must use the bearer path.
+
+Rather than duplicate the login screen per target, or branch inside it on
+`import.meta.env.VITE_BEO_APP_TARGET`, each shell supplies an `AuthPort`: `login`, `logout`,
+`probeReachability`, and the paths and audience label the screens need. `LoginScreen`,
+`SplashScreen`, `BlockedScreen` and `NotFoundScreen` are written once against that port.
+
+This keeps the transport specifics in `clientRuntime.ts` and `adminRuntime.ts`, where the
+scope-specific token store, refresh executor and rotation identifier already live, and it means the
+Android admin variant becomes a port swap rather than a screen fork.
