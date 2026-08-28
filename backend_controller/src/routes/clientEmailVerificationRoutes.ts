@@ -88,8 +88,8 @@ const postVerify = async (deps: ClientEmailVerificationDeps, request: FastifyReq
     return reply.sendData(
       {
         status: "verified",
-        emailVerificationState: verification.state,
-        expiresAt: verification.expiresAt === null ? null : verification.expiresAt.toISOString(),
+        emailVerificationStatus: verification.state,
+        verifiedAt: verification.verifiedAt === null ? null : verification.verifiedAt.toISOString(),
       },
       { status: 200 },
     )
@@ -104,17 +104,10 @@ const getStatus = async (deps: ClientEmailVerificationDeps, request: FastifyRequ
   const verification = await deps.unitOfWork.execute((tx) =>
     deps.emailVerificationRepository.findLatestByUser(tx, principal.userId),
   )
-  const now = deps.clock()
-  const expiresAt = verification?.expiresAt ?? null
-  const expired = expiresAt !== null && new Date(expiresAt).getTime() <= now.getTime()
-
   return reply.sendData({
-    status: verification === null ? "not_started" : verification.state,
-    emailVerificationState: verification?.state ?? null,
+    emailVerificationStatus: verification?.state ?? "not_started",
     method: "email_otp",
-    expiresAt: expiresAt === null ? null : new Date(expiresAt).toISOString(),
-    expired,
-    submittedAt: verification?.submittedAt === null || verification === null ? null : new Date(verification.submittedAt).toISOString(),
+    startedAt: verification?.submittedAt === null || verification === null ? null : new Date(verification.submittedAt).toISOString(),
     verifiedAt: verification?.verifiedAt === null || verification === null ? null : new Date(verification.verifiedAt).toISOString(),
   })
 }

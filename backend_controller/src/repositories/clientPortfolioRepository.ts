@@ -21,7 +21,6 @@ import type {
 export interface EligibilityInputsRow {
   readonly accountState: UserAccountState
   readonly emailVerificationState: EmailVerificationState | null
-  readonly emailVerificationExpiresAt: Date | null
 }
 
 export interface OrderRow {
@@ -106,8 +105,7 @@ export const createClientPortfolioRepository = (): ClientPortfolioReadRepository
     const result = await sql<EligibilityInputsRow>`
       select
         u.account_state as "accountState",
-        u.email_verification_state as "emailVerificationState",
-        u.email_verification_expires_at as "emailVerificationExpiresAt"
+        u.email_verification_state as "emailVerificationState"
       from users u
       where u.id = ${userId}
     `.execute(tx)

@@ -140,8 +140,7 @@ const getEligibility = async (deps: ClientPortfolioDeps, request: FastifyRequest
     emailVerification:
       inputsRow.emailVerificationState === null
         ? null
-        : { state: inputsRow.emailVerificationState, expiresAt: isoOrNull(inputsRow.emailVerificationExpiresAt) },
-    now,
+        : { state: inputsRow.emailVerificationState },
   }
   const decision = deriveInvestingEligibility(inputs)
   return reply.sendData(

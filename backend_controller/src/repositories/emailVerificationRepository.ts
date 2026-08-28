@@ -6,7 +6,6 @@ import type { EmailVerificationState } from "../db/types.js"
 export interface EmailVerificationRecord {
   readonly userId: string
   readonly state: EmailVerificationState
-  readonly expiresAt: Date | null
   readonly submittedAt: Date | null
   readonly verifiedAt: Date | null
   readonly version: string
@@ -29,7 +28,7 @@ export interface EmailVerificationRepository {
   start: (tx: Transaction, input: Readonly<{ userId: string; now: Date }>) => Promise<EmailVerificationRecord | null>
   markVerified: (
     tx: Transaction,
-    input: Readonly<{ userId: string; expiresAt: Date; now: Date }>,
+    input: Readonly<{ userId: string; now: Date }>,
   ) => Promise<EmailVerificationRecord | null>
   lockActiveCode: (tx: Transaction, userId: string) => Promise<EmailVerificationCode | null>
   latestCodeCreatedAt: (tx: Transaction, userId: string) => Promise<Date | null>
@@ -51,7 +50,6 @@ type VerificationUser = Pick<
   User,
   | "id"
   | "email_verification_state"
-  | "email_verification_expires_at"
   | "email_verification_started_at"
   | "email_verified_at"
   | "version"
@@ -60,7 +58,6 @@ type VerificationUser = Pick<
 const recordFromUser = (user: VerificationUser): EmailVerificationRecord => ({
   userId: user.id,
   state: user.email_verification_state,
-  expiresAt: user.email_verification_expires_at,
   submittedAt: user.email_verification_started_at,
   verifiedAt: user.email_verified_at,
   version: user.version,
@@ -72,7 +69,6 @@ const recordQuery = (tx: Transaction, userId: string) =>
     .select([
       "id",
       "email_verification_state",
-      "email_verification_expires_at",
       "email_verification_started_at",
       "email_verified_at",
       "version",
@@ -116,7 +112,6 @@ export const createEmailVerificationRepository = (): EmailVerificationRepository
       .set({
         email_verification_state: "pending",
         email_verification_started_at: sql<Date>`coalesce(email_verification_started_at, ${input.now})`,
-        email_verification_expires_at: null,
         updated_at: input.now,
         version: sql<string>`version + 1`,
       })
@@ -124,7 +119,6 @@ export const createEmailVerificationRepository = (): EmailVerificationRepository
       .returning([
         "id",
         "email_verification_state",
-        "email_verification_expires_at",
         "email_verification_started_at",
         "email_verified_at",
         "version",
@@ -139,7 +133,6 @@ export const createEmailVerificationRepository = (): EmailVerificationRepository
       .set({
         email_verification_state: "verified",
         email_verified_at: input.now,
-        email_verification_expires_at: input.expiresAt,
         updated_at: input.now,
         version: sql<string>`version + 1`,
       })
@@ -148,7 +141,6 @@ export const createEmailVerificationRepository = (): EmailVerificationRepository
       .returning([
         "id",
         "email_verification_state",
-        "email_verification_expires_at",
         "email_verification_started_at",
         "email_verified_at",
         "version",

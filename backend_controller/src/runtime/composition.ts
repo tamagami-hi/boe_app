@@ -158,12 +158,13 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const recurringPaymentGateway: RecurringPaymentGateway | null =
     serverConfig.payments.phonepe !== null
       ? createPhonePeRecurringGateway({
+          checkoutAllowedOrigins: serverConfig.payments.phonepe.checkoutAllowedOrigins,
           config: {
             clientId: serverConfig.payments.phonepe.clientId,
             clientSecret: serverConfig.payments.phonepe.clientSecret,
             clientVersion: serverConfig.payments.phonepe.clientVersion,
             env: serverConfig.payments.phonepe.env,
-            requestTimeoutMs: serverConfig.payments.mobileSdk.requestTimeoutMs,
+            requestTimeoutMs: serverConfig.payments.recurring.requestTimeoutMs,
           },
         })
       : null
@@ -323,12 +324,9 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         enabled: serverConfig.payments.autoPay.enabled,
         idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
         attemptTtlMs: serverConfig.payments.attemptTtlMs,
-        merchantId: serverConfig.payments.mobileSdk.merchantId,
-        environment: serverConfig.payments.phonepe === null
-          ? null
-          : serverConfig.payments.phonepe.env === "sandbox" ? "SANDBOX" : "PRODUCTION",
-        tokenEncryptionKey: serverConfig.payments.mobileSdk.tokenEncryptionKey,
-        tokenKeyVersion: serverConfig.payments.mobileSdk.tokenKeyVersion,
+        redirectUrl: serverConfig.payments.phonepe === null
+          ? "https://invalid.local/dashboard"
+          : new URL("/dashboard", serverConfig.payments.phonepe.callbackUrl).toString(),
       },
     })
 
@@ -346,7 +344,6 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         codeTtlMs: serverConfig.emailVerification.codeTtlMs,
         maxAttempts: serverConfig.emailVerification.maxAttempts,
         resendCooldownMs: serverConfig.emailVerification.resendCooldownMs,
-        validityMs: serverConfig.emailVerification.validityMs,
       },
     })
 
@@ -364,6 +361,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
 
     registerPublicContentRoutes(application, {
       clientAccountRepository,
+      consentRepository,
       unitOfWork,
       cache,
       config: { publicContentTtlMs: serverConfig.cache.publicContentTtlMs },
@@ -475,6 +473,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       loginEventRepository,
       auditRepository,
       idempotencyRepository,
+      authSessionRepository,
     })
 
     registerAdminClientGrowthRoutes(application, {
@@ -554,7 +553,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         config: {
           payloadEncryptionKey: cryptoKeys.recipientEncryptionKey,
           payloadKeyVersion: cryptoKeys.recipientEncryptionKeyVersion,
-          merchantId: serverConfig.payments.mobileSdk.merchantId as string,
+          merchantId: serverConfig.payments.recurring.merchantId as string,
           eventAllowlist: serverConfig.payments.autoPay.subscriptionEventAllowlist,
         },
       })
@@ -661,12 +660,13 @@ export const composePaymentReconciliationWorker = (
   const recurringGateway =
     serverConfig.payments.phonepe !== null
       ? createPhonePeRecurringGateway({
+          checkoutAllowedOrigins: serverConfig.payments.phonepe.checkoutAllowedOrigins,
           config: {
             clientId: serverConfig.payments.phonepe.clientId,
             clientSecret: serverConfig.payments.phonepe.clientSecret,
             clientVersion: serverConfig.payments.phonepe.clientVersion,
             env: serverConfig.payments.phonepe.env,
-            requestTimeoutMs: serverConfig.payments.mobileSdk.requestTimeoutMs,
+            requestTimeoutMs: serverConfig.payments.recurring.requestTimeoutMs,
           },
         })
       : null
@@ -705,7 +705,7 @@ export const composePaymentReconciliationWorker = (
             claimLimit: 25,
             notFoundGraceMs: PAYMENT_NOT_FOUND_GRACE_MS,
             cancelDispatchGraceMs: PAYMENT_NOT_FOUND_GRACE_MS,
-            cancelDispatchInFlightTimeoutMs: serverConfig.payments.mobileSdk.requestTimeoutMs,
+            cancelDispatchInFlightTimeoutMs: serverConfig.payments.recurring.requestTimeoutMs,
           },
         })
       }
@@ -744,12 +744,13 @@ export const composeMandateCollectionWorker = (
   const gateway = serverConfig.payments.phonepe === null
     ? null
     : createPhonePeRecurringGateway({
+        checkoutAllowedOrigins: serverConfig.payments.phonepe.checkoutAllowedOrigins,
         config: {
           clientId: serverConfig.payments.phonepe.clientId,
           clientSecret: serverConfig.payments.phonepe.clientSecret,
           clientVersion: serverConfig.payments.phonepe.clientVersion,
           env: serverConfig.payments.phonepe.env,
-          requestTimeoutMs: serverConfig.payments.mobileSdk.requestTimeoutMs,
+          requestTimeoutMs: serverConfig.payments.recurring.requestTimeoutMs,
         },
       })
   return {

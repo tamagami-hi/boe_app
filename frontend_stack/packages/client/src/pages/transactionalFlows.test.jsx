@@ -134,12 +134,8 @@ beforeEach(() => {
     paymentId: 'pay_setup_1',
     status: 'pending_mandate',
     checkout: {
-      type: 'phonepe_sdk',
-      providerOrderId: 'provider_setup_1',
-      token: 'setup-token',
-      merchantId: 'merchant-1',
-      environment: 'SANDBOX',
-      expiresAt: new Date(Date.now() + 120000).toISOString(),
+      type: 'redirect',
+      url: 'https://mercury.phonepe.com/pay/setup-1',
     },
   });
   getAutoPaySip.mockReset();
@@ -164,13 +160,13 @@ afterEach(() => { vi.useRealTimers(); });
 
 describe('StartSipSheet', () => {
   const platform = {
-    resolveChannel: vi.fn().mockResolvedValue('phonepe_mobile_sdk'),
-    start: vi.fn().mockResolvedValue({ status: 'returned' }),
+    resolveChannel: vi.fn().mockResolvedValue('hosted_redirect'),
+    start: vi.fn().mockResolvedValue({ status: 'leaving' }),
   };
 
   beforeEach(() => {
-    platform.resolveChannel.mockClear().mockResolvedValue('phonepe_mobile_sdk');
-    platform.start.mockClear().mockResolvedValue({ status: 'returned' });
+    platform.resolveChannel.mockClear().mockResolvedValue('hosted_redirect');
+    platform.start.mockClear().mockResolvedValue({ status: 'leaving' });
   });
 
   async function reachReview({ manual = false } = {}) {
@@ -279,8 +275,8 @@ describe('StartSipSheet', () => {
 
 describe('LumpsumSheet', () => {
   const platform = {
-    resolveChannel: vi.fn().mockResolvedValue('phonepe_mobile_sdk'),
-    start: vi.fn().mockResolvedValue({ status: 'returned' }),
+    resolveChannel: vi.fn().mockResolvedValue('hosted_redirect'),
+    start: vi.fn().mockResolvedValue({ status: 'leaving' }),
   };
 
   async function ready() {
@@ -337,8 +333,8 @@ describe('LumpsumSheet', () => {
 
 describe('PaymentStatus', () => {
   const platform = {
-    resolveChannel: vi.fn().mockResolvedValue('phonepe_mobile_sdk'),
-    start: vi.fn().mockResolvedValue({ status: 'returned' }),
+    resolveChannel: vi.fn().mockResolvedValue('hosted_redirect'),
+    start: vi.fn().mockResolvedValue({ status: 'leaving' }),
   };
 
   test('a failed read reports it instead of showing a skeleton forever', async () => {

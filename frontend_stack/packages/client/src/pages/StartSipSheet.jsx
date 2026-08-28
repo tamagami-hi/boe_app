@@ -117,9 +117,6 @@ export default function StartSipSheet() {
     setErr('');
     setSubmitting(true);
     try {
-      if (isAutoPay && await checkoutPlatform.resolveChannel() !== 'phonepe_mobile_sdk') {
-        throw new Error('UPI AutoPay authorization is available in the Android app on a supported device.');
-      }
       const input = { fundId, amount: amountNumber, durationMonths: monthsNumber, debitDay: day };
       const inputFingerprint = isAutoPay ? autoPayInputFingerprint(input) : null;
       let requestKey = null;

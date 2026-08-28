@@ -9,8 +9,8 @@
     "build:android": "VITE_BEO_APP_TARGET=client vite build --mode android && node scripts/check-android-dist.mjs --variant=client && node scripts/check-bundle-boots.mjs",
     "build:android:prod": "VITE_BEO_APP_TARGET=client vite build --mode android-prod && node scripts/check-android-dist.mjs --variant=client && node scripts/check-bundle-boots.mjs",
     "preview": "vite preview",
-    "android:sync": "npm run build:android && BOE_CAPACITOR_VARIANT=client cap sync android && node scripts/check-phonepe-native-target.mjs --variant=client",
-    "android:sync:prod": "npm run build:android:prod && BOE_CAPACITOR_VARIANT=client cap sync android && node scripts/check-phonepe-native-target.mjs --variant=client",
+    "android:sync": "npm run build:android && BOE_CAPACITOR_VARIANT=client cap sync android",
+    "android:sync:prod": "npm run build:android:prod && BOE_CAPACITOR_VARIANT=client cap sync android",
     "android:open": "npm run android:sync && BOE_CAPACITOR_VARIANT=client cap open android",
     "android:run": "npm run android:sync && BOE_CAPACITOR_VARIANT=client cap run android"
   },
@@ -29,7 +29,6 @@
     "@fontsource-variable/fraunces": "^5.2.9",
     "@fontsource-variable/instrument-sans": "^5.2.8",
     "@fontsource/jetbrains-mono": "^5.2.8",
-    "ionic-capacitor-phonepe-pg": "^3.0.5",
     "lucide-react": "^0.439.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

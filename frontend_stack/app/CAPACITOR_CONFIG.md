@@ -95,8 +95,7 @@ The naming is counter-intuitive, so from the source: `setStyle` calls
 
 Capacitor's default (`debug`) prints every bridge call's arguments and return
 value to logcat under the `Capacitor:V` tag. Those payloads include
-secure-storage tokens, biometric credentials, and the PhonePe
-`startTransaction` request token — see
+secure-storage tokens and biometric credentials — see
 `release_manager/docs/CAPACITOR_DEBUG_LOG_TOKEN_EXPOSURE.md` for the incident.
 
 `none` disables bridge logging for every build, debug included; production

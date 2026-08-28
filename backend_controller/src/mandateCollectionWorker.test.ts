@@ -96,7 +96,7 @@ describe("mandate collection timing", () => {
       },
       orderRepository: {
         findInstallmentByPeriod: vi.fn().mockResolvedValue(null),
-        latestCompliance: vi.fn().mockResolvedValue({ emailVerificationState: "verified", emailVerificationExpiresAt: null }),
+        latestCompliance: vi.fn().mockResolvedValue({ emailVerificationState: "verified" }),
         findFundOrderTerms: vi.fn().mockResolvedValue({ fundState: "published", fundVersionId: "version-1", currency: "INR" }),
         createSipInstallment: vi.fn().mockResolvedValue(order),
       },
@@ -189,7 +189,7 @@ describe("mandate collection timing", () => {
       },
       orderRepository: {
         findInstallmentByPeriod: vi.fn().mockResolvedValue(null),
-        latestCompliance: vi.fn().mockResolvedValue({ emailVerificationState: "verified", emailVerificationExpiresAt: null }),
+        latestCompliance: vi.fn().mockResolvedValue({ emailVerificationState: "verified" }),
         findFundOrderTerms: vi.fn().mockResolvedValue({ fundState: "published", fundVersionId: "version-1", currency: "INR" }),
         createSipInstallment: vi.fn().mockResolvedValue(order),
       },

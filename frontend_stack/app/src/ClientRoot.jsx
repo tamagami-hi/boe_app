@@ -9,7 +9,6 @@ import ClientCacheEvictor from '@beonedge/client/data/ClientCacheEvictor.jsx';
 import PageLoader from './components/PageLoader.jsx';
 import RootErrorBoundary from './components/RootErrorBoundary.jsx';
 import { CheckoutProvider, PendingPaymentRecovery } from '@beonedge/client/payments/CheckoutProvider.jsx';
-import { phonePeMobileCheckout } from './platform/phonePeMobileCheckout.js';
 
 const ClientApp = lazy(() => import('@beonedge/client/ClientApp.jsx'));
 const NotFound = lazy(() => import('@beonedge/client/pages/NotFound.jsx'));
@@ -23,7 +22,7 @@ const Page = ({ children }) => (
 export default function ClientRoot() {
   return (
     <SessionProvider>
-      <CheckoutProvider platform={phonePeMobileCheckout}>
+      <CheckoutProvider>
       {/*
         One cache for the whole client surface, above the routes so a tab switch
         reuses what the previous visit fetched instead of re-issuing it. Inside

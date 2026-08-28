@@ -65,7 +65,7 @@ export type EmailDeliveryState =
 export type EmailProviderEventState = "received" | "processed" | "ignored" | "unmatched"
 export type ConsentKind = "terms" | "privacy"
 
-export type EmailVerificationState = "not_started" | "pending" | "verified" | "rejected"
+export type EmailVerificationState = "not_started" | "pending" | "verified"
 export type FundState = "draft" | "published" | "paused" | "archived"
 export type FundRiskLevel = "low" | "moderate" | "high" | "very_high"
 export type FundReturnTier = "low" | "moderate" | "high"
@@ -173,7 +173,6 @@ export interface UsersTable {
   email_verification_state: Generated<EmailVerificationState>
   email_verification_started_at: NullableTimestamp
   email_verified_at: NullableTimestamp
-  email_verification_expires_at: NullableTimestamp
   account_state: Generated<UserAccountState>
   activated_at: NullableTimestamp
   suspended_at: NullableTimestamp
@@ -652,12 +651,9 @@ export interface MandateSetupAttemptsTable {
   merchant_order_id: string
   provider_order_id: Nullable<string>
   provider_dispatch_started_at: NullableTimestamp
+  checkout_redirect_url: Nullable<string>
   setup_expires_at: Timestamp
   not_found_first_observed_at: NullableTimestamp
-  sdk_order_token_ciphertext: NullableBytea
-  sdk_order_token_nonce: NullableBytea
-  sdk_order_token_key_version: Nullable<string>
-  sdk_order_token_expires_at: NullableTimestamp
   state: Generated<MandateSetupState>
   failure_code: Nullable<string>
   last_status_checked_at: NullableTimestamp
@@ -807,14 +803,10 @@ export interface PaymentAttemptsTable {
   user_id: string
   attempt_number: number
   provider: string
-  checkout_channel: Generated<"hosted_redirect" | "phonepe_mobile_sdk" | "phonepe_autopay" | "phonepe_mandate_setup">
+  checkout_channel: Generated<"hosted_redirect" | "phonepe_autopay" | "phonepe_mandate_setup">
   merchant_order_id: string
   provider_order_id: Nullable<string>
   provider_dispatch_started_at: NullableTimestamp
-  sdk_order_token_ciphertext: NullableBytea
-  sdk_order_token_nonce: NullableBytea
-  sdk_order_token_key_version: Nullable<string>
-  sdk_order_token_expires_at: NullableTimestamp
   state: Generated<PaymentState>
   failure_code: Nullable<string>
   checkout_expires_at: NullableTimestamp

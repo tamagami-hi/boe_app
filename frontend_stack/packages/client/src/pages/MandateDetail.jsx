@@ -112,8 +112,6 @@ export default function MandateDetail() {
     setBusy(true);
     setError('');
     try {
-      const channel = await checkoutPlatform.resolveChannel();
-      if (channel !== 'phonepe_mobile_sdk') throw new Error('UPI AutoPay authorization is available in the Android app.');
       const setup = await ordersApi.retryAutoPaySetup(plan.id);
       if (!setup.checkout) throw new Error("Couldn't start AutoPay authorization. Try again.");
       await checkoutPlatform.start({ checkout: setup.checkout, paymentId: setup.paymentId });

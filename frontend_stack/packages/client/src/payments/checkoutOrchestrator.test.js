@@ -3,34 +3,16 @@ import { executeOrderCheckout } from './checkoutOrchestrator.js';
 import { mapPaymentCheckout } from '../services/ordersApi.js';
 import { redirectToCheckout } from '../utils/checkoutRedirect.js';
 
-const sdkCheckout = {
+const malformedCheckout = {
   orderId: 'order-1',
   paymentId: 'payment-1',
   provider: 'phonepe',
-  checkout: {
-    type: 'phonepe_sdk',
-    providerOrderId: 'provider-order-1',
-    token: 'sdk-token',
-    merchantId: 'merchant-1',
-    environment: 'SANDBOX',
-    expiresAt: new Date(Date.now() + 120000).toISOString(),
-  },
+  checkout: { type: 'unsupported_checkout' },
 };
 
 describe('order checkout orchestration', () => {
-  test('rejects malformed SDK checkout material before it reaches the native boundary', () => {
-    expect(() => mapPaymentCheckout({
-      ...sdkCheckout.checkout,
-      environment: 'STAGING',
-    })).toThrow("Couldn't start the payment. Try again.");
-  });
-
-  test.each([
-    { token: '   ' },
-    { expiresAt: 'not-a-date' },
-    { expiresAt: new Date(Date.now() + 1000).toISOString() },
-  ])('rejects unsafe SDK checkout material before native dispatch', (invalid) => {
-    expect(() => mapPaymentCheckout({ ...sdkCheckout.checkout, ...invalid }))
+  test('rejects a non-hosted checkout contract', () => {
+    expect(() => mapPaymentCheckout(malformedCheckout.checkout))
       .toThrow("Couldn't start the payment. Try again.");
   });
 
@@ -43,7 +25,7 @@ describe('order checkout orchestration', () => {
       checkout: { type: 'redirect', url: 'https://mercury.phonepe.com/pay/abc' },
     });
     const platform = {
-      resolveChannel: vi.fn().mockResolvedValue('phonepe_mobile_sdk'),
+      resolveChannel: vi.fn().mockResolvedValue('hosted_redirect'),
       start: vi.fn(),
     };
     await expect(executeOrderCheckout({
@@ -73,7 +55,7 @@ describe('order checkout orchestration', () => {
     await expect(executeOrderCheckout({
       orderId: 'order-1',
       beginPayment,
-      platform: { resolveChannel: async () => 'phonepe_mobile_sdk', start: vi.fn() },
+      platform: { resolveChannel: async () => 'hosted_redirect', start: vi.fn() },
       navigate: vi.fn(),
       redirect: vi.fn(),
       persistPendingPayment: vi.fn(),
@@ -84,12 +66,12 @@ describe('order checkout orchestration', () => {
   test('rejects a channel-mismatched response before opening any checkout', async () => {
     const persistPendingPayment = vi.fn();
     const platform = {
-      resolveChannel: vi.fn().mockResolvedValue('phonepe_mobile_sdk'),
+      resolveChannel: vi.fn().mockResolvedValue('hosted_redirect'),
       start: vi.fn(),
     };
     await expect(executeOrderCheckout({
       orderId: 'order-1',
-      beginPayment: vi.fn().mockResolvedValue(sdkCheckout),
+      beginPayment: vi.fn().mockResolvedValue(malformedCheckout),
       platform,
       navigate: vi.fn(),
       redirect: vi.fn(),

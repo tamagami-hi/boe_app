@@ -45,10 +45,8 @@ export interface PersistSetupDispatchInput {
   readonly merchantOrderId: string
   readonly expectedVersion: string
   readonly providerOrderId: string
-  readonly tokenCiphertext: Buffer
-  readonly tokenNonce: Buffer
-  readonly tokenKeyVersion: string
-  readonly tokenExpiresAt: Date
+  readonly checkoutRedirectUrl: string
+  readonly checkoutExpiresAt: Date
   readonly now: Date
 }
 
@@ -656,19 +654,16 @@ export const createMandatesRepository = (): MandatesRepository => ({
 
   persistSetupDispatch: async (tx, input) => {
     transitionSetupState("dispatching", "provider_pending")
-    if (input.tokenExpiresAt.getTime() <= input.now.getTime()) throw new Error("Mandate setup token must expire in the future")
     return (await tx.updateTable("mandate_setup_attempts").set({
       state: "provider_pending",
       provider_order_id: input.providerOrderId,
-      sdk_order_token_ciphertext: input.tokenCiphertext,
-      sdk_order_token_nonce: input.tokenNonce,
-      sdk_order_token_key_version: input.tokenKeyVersion,
-      sdk_order_token_expires_at: input.tokenExpiresAt,
+      checkout_redirect_url: input.checkoutRedirectUrl,
+      setup_expires_at: input.checkoutExpiresAt,
       updated_at: input.now,
       version: sql<string>`version + 1`,
     }).where("merchant_order_id", "=", input.merchantOrderId).where("version", "=", input.expectedVersion)
       .where("state", "=", "dispatching").where("setup_expires_at", ">", input.now)
-      .where("setup_expires_at", ">=", input.tokenExpiresAt).returningAll().executeTakeFirst()) ?? null
+      .returningAll().executeTakeFirst()) ?? null
   },
 
   applyProviderSetupState: async (tx, input) => {
@@ -677,12 +672,9 @@ export const createMandatesRepository = (): MandatesRepository => ({
       state: transitionSetupState(input.fromState, input.toState),
       provider_order_id: input.providerOrderId === null ? undefined : sql<string>`coalesce(provider_order_id, ${input.providerOrderId})`,
       failure_code: input.toState === "failed" ? input.failureCode : undefined,
+      checkout_redirect_url: null,
       last_status_checked_at: input.now,
       provider_dispatch_started_at: input.toState === "expired" ? null : undefined,
-      sdk_order_token_ciphertext: null,
-      sdk_order_token_nonce: null,
-      sdk_order_token_key_version: null,
-      sdk_order_token_expires_at: null,
       updated_at: input.now,
       version: sql<string>`version + 1`,
     }).where("merchant_order_id", "=", input.merchantOrderId).where("version", "=", input.expectedVersion)
@@ -707,10 +699,6 @@ export const createMandatesRepository = (): MandatesRepository => ({
   expireSetupAfterNotFoundGrace: async (tx, input) => (await tx.updateTable("mandate_setup_attempts").set({
     state: transitionSetupState("dispatching", "expired"),
     provider_dispatch_started_at: null,
-    sdk_order_token_ciphertext: null,
-    sdk_order_token_nonce: null,
-    sdk_order_token_key_version: null,
-    sdk_order_token_expires_at: null,
     last_status_checked_at: input.now,
     updated_at: input.now,
     version: sql<string>`version + 1`,

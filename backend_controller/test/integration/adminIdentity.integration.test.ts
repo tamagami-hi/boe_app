@@ -22,6 +22,7 @@ import { SEED_ROLE_PERMISSIONS } from "../../src/db/seedCatalog.js"
 import type { WebAuthDeps } from "../../src/domain/auth/webAuth.js"
 import { createApplicationRepository } from "../../src/repositories/applicationRepository.js"
 import { createApplicationReviewRepository } from "../../src/repositories/applicationReviewRepository.js"
+import { createAdminOversightRepository } from "../../src/repositories/adminOversightRepository.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
 import { createAuthSessionRepository } from "../../src/repositories/authSessionRepository.js"
 import { createEmailDeliveryRepository } from "../../src/repositories/emailDeliveryRepository.js"
@@ -30,7 +31,9 @@ import { createOutboxRepository } from "../../src/repositories/outboxRepository.
 import { createUserRepository } from "../../src/repositories/userRepository.js"
 import { createCredentialRepository } from "../../src/repositories/credentialRepository.js"
 import { registerAdminIdentityRoutes, type AdminIdentityDeps } from "../../src/routes/adminIdentityRoutes.js"
+import { registerAdminOversightRoutes } from "../../src/routes/adminOversightRoutes.js"
 import { createLoginEventRepository } from "../../src/repositories/loginEventRepository.js"
+import { registerNativeAuthRoutes } from "../../src/routes/nativeAuthRoutes.js"
 import { registerWebAuthRoutes } from "../../src/routes/webAuthRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
 import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
@@ -88,7 +91,7 @@ const login = async (email: string): Promise<Session> => {
   }
 }
 
-const createAdmin = async (email: string, roleCode: "onboarding" | "support"): Promise<string> => {
+const createAdmin = async (email: string, roleCode: "onboarding" | "support" | "superadmin"): Promise<string> => {
   const userRow = await pool.query<{ id: string }>(
     "insert into users (email_normalized, phone_e164, full_name, account_state, activated_at) " +
       "values ($1, $2, 'Admin User', 'active', now()) returning id",
@@ -231,6 +234,7 @@ beforeAll(async () => {
     auditRepository: createAuditRepository(),
     idempotencyRepository: createIdempotencyRepository(),
   }
+  const authSessionRepository = createAuthSessionRepository()
   app = createApplication({
     logger: false,
     registerRoutes: (instance) => {
@@ -239,12 +243,30 @@ beforeAll(async () => {
         unitOfWork,
         loginEventRepository: createLoginEventRepository(),
       })
+      registerNativeAuthRoutes(instance, {
+        ...webAuth,
+        unitOfWork,
+        loginEventRepository: createLoginEventRepository(),
+      })
       registerAdminIdentityRoutes(instance, adminDeps)
+      registerAdminOversightRoutes(instance, {
+        webAuth,
+        unitOfWork,
+        database,
+        clock: () => new Date(),
+        config: { cursorKey: randomBytes(32), idempotencyTtlMs: 86_400_000 },
+        oversightRepository: createAdminOversightRepository(),
+        loginEventRepository: createLoginEventRepository(),
+        auditRepository: createAuditRepository(),
+        idempotencyRepository: createIdempotencyRepository(),
+        authSessionRepository,
+      })
     },
   })
 
   await createAdmin("admin@example.com", "onboarding")
   await createAdmin("support@example.com", "support")
+  await createAdmin("superadmin@example.com", "superadmin")
 }, 220_000)
 
 afterAll(async () => {
@@ -269,6 +291,105 @@ describe("admin identity RBAC (integration)", () => {
     const response = await app.inject({ method: "GET", url: "/v1/admin/applications", headers: { origin: ORIGIN } })
     expect(response.statusCode).toBe(401)
   })
+})
+
+describe("admin account lifecycle (integration)", () => {
+  test("suspending a user revokes every active session in the account-state transaction", async () => {
+    const admin = await login("superadmin@example.com")
+    const target = await pool.query<{ id: string }>(
+      "insert into users (email_normalized, phone_e164, full_name, account_state, activated_at) " +
+        "values ($1, $2, 'Lifecycle Client', 'active', now()) returning id",
+      [`lifecycle-${randomUUID()}@example.com`, `+1415555${String(Math.floor(1000000 + Math.random() * 8999999))}`],
+    )
+    const userId = target.rows[0]!.id
+    await pool.query(
+      "insert into auth_sessions (user_id, channel, refresh_key_version, expires_at) " +
+        "values ($1, 'native', 'rt1', now() + interval '90 days'), ($1, 'native', 'rt1', now() + interval '90 days')",
+      [userId],
+    )
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/admin/users/${userId}/suspend`,
+      headers: authHeaders(admin, { "idempotency-key": randomUUID() }),
+      payload: { reasonCode: "security_review" },
+    })
+
+    expect(response.statusCode).toBe(200)
+    const state = await pool.query<{ account_state: string; active_sessions: string }>(
+      "select u.account_state, count(s.id) filter (where s.state = 'active')::text active_sessions " +
+        "from users u left join auth_sessions s on s.user_id = u.id where u.id = $1 group by u.id",
+      [userId],
+    )
+    expect(state.rows[0]).toEqual({ account_state: "suspended", active_sessions: "0" })
+  })
+
+  test.each(["suspend", "close"] as const)(
+    "%s immediately invalidates web access, native access, and refresh credentials",
+    async (action) => {
+      const admin = await login("superadmin@example.com")
+      const email = `lifecycle-auth-${action}-${randomUUID()}@example.com`
+      const userId = await createAdmin(email, "support")
+      const webSession = await login(email)
+      const nativeLogin = await app.inject({
+        method: "POST",
+        url: "/v1/auth/native/login",
+        payload: {
+          email,
+          password: PASSWORD,
+          device: { installationId: randomUUID(), name: "Lifecycle Test", platform: "android", appVersion: "1.0.0" },
+        },
+      })
+      expect(nativeLogin.statusCode).toBe(200)
+      const nativeSession = dataOf<{ accessToken: string; refreshToken: string }>(nativeLogin)
+
+      const changed = await app.inject({
+        method: "POST",
+        url: `/v1/admin/users/${userId}/${action}`,
+        headers: authHeaders(admin, { "idempotency-key": randomUUID() }),
+        payload: { reasonCode: "security_review" },
+      })
+      expect(changed.statusCode).toBe(200)
+
+      const webAccess = await app.inject({
+        method: "GET",
+        url: "/v1/auth/web/csrf",
+        headers: { origin: ORIGIN, cookie: cookieHeader(webSession.jar) },
+      })
+      expect(webAccess.statusCode).toBe(401)
+
+      const nativeAccess = await app.inject({
+        method: "POST",
+        url: "/v1/auth/native/logout",
+        headers: { authorization: `Bearer ${nativeSession.accessToken}` },
+        payload: { refreshToken: nativeSession.refreshToken },
+      })
+      expect(nativeAccess.statusCode).toBe(401)
+
+      const nativeRefresh = await app.inject({
+        method: "POST",
+        url: "/v1/auth/native/refresh",
+        payload: { refreshToken: nativeSession.refreshToken, rotationId: randomUUID() },
+      })
+      expect(nativeRefresh.statusCode).toBe(401)
+
+      if (action === "suspend") {
+        const reinstated = await app.inject({
+          method: "POST",
+          url: `/v1/admin/users/${userId}/reinstate`,
+          headers: authHeaders(admin, { "idempotency-key": randomUUID() }),
+          payload: { reasonCode: "security_review_complete" },
+        })
+        expect(reinstated.statusCode).toBe(200)
+        const staleRefresh = await app.inject({
+          method: "POST",
+          url: "/v1/auth/native/refresh",
+          payload: { refreshToken: nativeSession.refreshToken, rotationId: randomUUID() },
+        })
+        expect(staleRefresh.statusCode).toBe(401)
+      }
+    },
+  )
 })
 
 describe("admin application decision (integration)", () => {

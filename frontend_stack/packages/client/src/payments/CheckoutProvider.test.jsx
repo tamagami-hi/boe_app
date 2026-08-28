@@ -9,7 +9,7 @@ let sessionValue;
 
 vi.mock('../store/SessionContext.jsx', () => ({ useSession: () => sessionValue }));
 
-const { PendingPaymentRecovery } = await import('./CheckoutProvider.jsx');
+const { PendingPaymentRecovery, createHostedCheckoutPlatform } = await import('./CheckoutProvider.jsx');
 
 function LocationProbe() {
   const location = useLocation();
@@ -66,5 +66,27 @@ describe('PendingPaymentRecovery session handling', () => {
     );
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/app/mandates/sip-1'));
     expect(localStorage.getItem('boe.pendingAutoPaySetup')).toBeNull();
+  });
+});
+
+describe('hosted checkout platform', () => {
+  test('opens a trusted redirect result and reports that the page is leaving', async () => {
+    const redirect = vi.fn().mockReturnValue({ ok: true });
+    const platform = createHostedCheckoutPlatform(redirect);
+
+    await expect(platform.start({
+      checkout: { type: 'redirect', url: 'https://mercury.phonepe.com/pay/setup' },
+    })).resolves.toEqual({ status: 'leaving' });
+    expect(await platform.resolveChannel()).toBe('hosted_redirect');
+    expect(redirect).toHaveBeenCalledWith('https://mercury.phonepe.com/pay/setup');
+  });
+
+  test('fails closed for a rejected URL or a non-redirect contract', async () => {
+    const platform = createHostedCheckoutPlatform(() => ({ ok: false }));
+
+    await expect(platform.start({ checkout: { type: 'redirect', url: 'https://attacker.example' } }))
+      .rejects.toThrow("Couldn't start the payment. Try again.");
+    await expect(platform.start({ checkout: { type: 'unknown' } }))
+      .rejects.toThrow("Couldn't start the payment. Try again.");
   });
 });

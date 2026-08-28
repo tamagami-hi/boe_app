@@ -12,9 +12,9 @@
  * (spec §9.2), never the raw internal state enum.
  *
  * `/pay` is the two-transaction checkout orchestrator (spec §7): transaction A
- * persists the payment/attempt and a stable `merchantOrderId`; the PhonePe SDK
+ * persists the payment/attempt and a stable `merchantOrderId`; the PhonePe adapter
  * call happens after that transaction commits; transaction B persists the
- * checkout result. A crash between the SDK call and transaction B is recovered
+ * checkout result. A crash between the provider call and transaction B is recovered
  * by a retry that reuses the same non-terminal attempt and asks PhonePe for its
  * status before ever creating a second one — the whole point of the stable id.
  */

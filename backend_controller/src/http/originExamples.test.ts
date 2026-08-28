@@ -47,13 +47,18 @@ const originsOf = (contents: string, key: string): string[] =>
     .filter((origin) => origin.length > 0)
 
 /** Every example that configures a backend expected to serve an APK. */
-const apkServingExamples = [
+const localDevelopmentExamples = [
   { file: "backend_controller/.env.example", key: "WEB_ORIGIN_ALLOWLIST" },
+] as const
+
+const deployedExamples = [
   { file: "backend_controller/.env.production.example", key: "WEB_ORIGIN_ALLOWLIST" },
   { file: "backend_controller/.env.production.example", key: "CORS_ORIGIN" },
   { file: "release_manager/stacks/dev_release/.env.example", key: "WEB_ORIGIN_ALLOWLIST" },
   { file: "release_manager/stacks/prod_release/.env.example", key: "WEB_ORIGIN_ALLOWLIST" },
 ] as const
+
+const apkServingExamples = [...localDevelopmentExamples, ...deployedExamples]
 
 describe("committed origin allowlists", () => {
   for (const { file, key } of apkServingExamples) {
@@ -67,7 +72,21 @@ describe("committed origin allowlists", () => {
     })
   }
 
-  for (const { file, key } of apkServingExamples) {
+  for (const { file, key } of localDevelopmentExamples) {
+    test(`${file} → ${key} limits cleartext to the local Vite server`, () => {
+      const origins = originsOf(repoFile(file), key)
+
+      for (const origin of origins) {
+        expect(origin).not.toBe("*")
+        expect(origin.startsWith("*")).toBe(false)
+        expect(origin).not.toMatch(/\s/)
+        if (origin.startsWith("http://")) expect(origin).toBe("http://localhost:5174")
+        else expect(origin.startsWith("https://")).toBe(true)
+      }
+    })
+  }
+
+  for (const { file, key } of deployedExamples) {
     test(`${file} → ${key} stays explicit and https-only`, () => {
       const origins = originsOf(repoFile(file), key)
 

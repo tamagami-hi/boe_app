@@ -133,7 +133,7 @@ beforeAll(async () => {
         userRepository: createUserRepository(),
         auditRepository: createAuditRepository(),
         emailSender: capturingSender,
-        config: { codeTtlMs: 600_000, maxAttempts: 5, resendCooldownMs: 60_000, validityMs: 31_536_000_000 },
+      config: { codeTtlMs: 600_000, maxAttempts: 5, resendCooldownMs: 60_000 },
       })
       registerClientPortfolioRoutes(instance, {
         accessTokenService,
@@ -244,31 +244,24 @@ describe("client email OTP verification + eligibility (integration)", () => {
     // A fresh account has no case at all: that is a status, not an error.
     const fresh = await status(token)
     expect(fresh.statusCode).toBe(200)
-    expect(dataOf<{ status: string; emailVerificationState: string | null; expired: boolean }>(fresh)).toMatchObject({
-      status: "not_started",
-      emailVerificationState: "not_started",
+    expect(dataOf<{ emailVerificationStatus: string }>(fresh)).toMatchObject({
+      emailVerificationStatus: "not_started",
       method: "email_otp",
-      expired: false,
     })
 
     await emailVerification(token, "start")
     const pending = await status(token)
     // A verification is pending and has not completed yet.
     expect(dataOf<{ status: string; verifiedAt: string | null }>(pending).verifiedAt).toBeNull()
-    expect(["pending", "pending", "pending"]).toContain(
-      dataOf<{ status: string }>(pending).status,
-    )
+    expect(dataOf<{ emailVerificationStatus: string }>(pending).emailVerificationStatus).toBe("pending")
 
     await verify(token, codeFor("client-status@example.com"))
     const verified = await status(token)
-    const body = dataOf<{ status: string; expiresAt: string | null; expired: boolean; verifiedAt: string | null }>(
+    const body = dataOf<{ emailVerificationStatus: string; verifiedAt: string | null }>(
       verified,
     )
-    expect(body.status).toBe("verified")
+    expect(body.emailVerificationStatus).toBe("verified")
     expect(body.verifiedAt).not.toBeNull()
-    // Verification carries the expiry that drives re-verification.
-    expect(body.expiresAt).not.toBeNull()
-    expect(body.expired).toBe(false)
   })
 
   test("email-verification-status requires a session", async () => {

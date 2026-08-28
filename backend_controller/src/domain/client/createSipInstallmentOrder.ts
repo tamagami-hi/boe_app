@@ -42,11 +42,7 @@ export const createSipInstallmentOrder = async (
     emailVerification:
       compliance.emailVerificationState === null
         ? null
-        : {
-            state: compliance.emailVerificationState,
-            expiresAt: compliance.emailVerificationExpiresAt === null ? null : new Date(compliance.emailVerificationExpiresAt).toISOString(),
-          },
-    now,
+        : { state: compliance.emailVerificationState },
   })
   if (eligibility !== "eligible") return { outcome: "not_eligible" }
 

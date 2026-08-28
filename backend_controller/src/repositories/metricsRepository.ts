@@ -39,7 +39,7 @@ export const createMetricsRepository = (database: Kysely<Database>): MetricsRepo
       .selectFrom("payment_attempts")
       .select((expression) => expression.fn.countAll<string>().as("count"))
       .where("state", "in", ["created", "provider_pending"])
-      .where("checkout_channel", "in", ["hosted_redirect", "phonepe_mobile_sdk"])
+      .where("checkout_channel", "=", "hosted_redirect")
       .executeTakeFirstOrThrow()
     return Number(row.count)
   },

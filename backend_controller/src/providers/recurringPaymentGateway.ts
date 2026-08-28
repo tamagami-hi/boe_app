@@ -1,15 +1,16 @@
-export interface CreateMandateSdkOrderCommand {
+export interface CreateMandateCheckoutCommand {
   readonly merchantOrderId: string
   readonly merchantSubscriptionId: string
   readonly amountPaise: string
   readonly expireAfterSeconds: number
   readonly mandateExpiresAt: Date
+  readonly redirectUrl: string
 }
 
-export interface MandateSdkOrderCreated {
+export interface MandateCheckoutCreated {
   readonly providerOrderId: string
   readonly providerState: "PENDING"
-  readonly sdkToken: string
+  readonly redirectUrl: string
   readonly expiresAt: Date
 }
 
@@ -71,7 +72,7 @@ export interface CollectionStatus {
 }
 
 export interface RecurringPaymentGateway {
-  readonly createMandateSdkOrder: (command: CreateMandateSdkOrderCommand) => Promise<MandateSdkOrderCreated>
+  readonly createMandateCheckout: (command: CreateMandateCheckoutCommand) => Promise<MandateCheckoutCreated>
   readonly getSetupOrderStatus: (merchantOrderId: string) => Promise<MandateSetupStatus>
   readonly getMandateStatus: (merchantSubscriptionId: string) => Promise<MandateStatus>
   readonly notifyCollection: (command: NotifyCollectionCommand) => Promise<CollectionNotificationResult>

@@ -218,7 +218,12 @@ let nextCollectionStatus: CollectionStatus | null = null
 let transactionDepth = 0
 
 const fakeRecurringGateway = {
-  createMandateSdkOrder: async () => ({ providerOrderId: "po", providerState: "PENDING" as const, sdkToken: "token", expiresAt: new Date() }),
+  createMandateCheckout: async () => ({
+    providerOrderId: "po",
+    providerState: "PENDING" as const,
+    redirectUrl: "https://mercury.phonepe.com/checkout",
+    expiresAt: new Date(),
+  }),
   getSetupOrderStatus: async () => ({ state: "PENDING" as const, providerOrderId: null, merchantSubscriptionId: "", providerSubscriptionId: null, paymentDetails: [] }),
   getMandateStatus: async (merchantSubscriptionId: string): Promise<MandateStatus> => {
     gatewayCalls.push({ operation: "getMandateStatus", merchantId: merchantSubscriptionId })

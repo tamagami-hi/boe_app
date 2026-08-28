@@ -61,14 +61,14 @@ beforeEach(() => {
 });
 
 describe('mandate admin security boundary', () => {
-  test('strict mappers exclude SDK token and encrypted envelope fields', () => {
+  test('strict mappers exclude provider-internal payload fields', () => {
     const row = parseMandateRow({
       mandateId: 'm1', sipPlanId: 's1', userId: 'u1', fundId: 'f1', amountPaise: 100000,
       sipState: 'active', mandateState: 'active', updatedAt: '2026-08-24T10:00:00.000Z',
-      sdkOrderToken: 'secret', sdkOrderTokenCiphertext: 'ciphertext', rawProviderPayload: 'raw',
+      rawProviderPayload: 'secret-provider-payload',
     });
-    const parsedDetail = parseMandateDetail({ ...detail, sdkOrderToken: 'secret' });
-    expect(JSON.stringify({ row, parsedDetail })).not.toMatch(/secret|ciphertext|rawProviderPayload/u);
+    const parsedDetail = parseMandateDetail({ ...detail, rawProviderPayload: 'secret-provider-payload' });
+    expect(JSON.stringify({ row, parsedDetail })).not.toMatch(/secret-provider-payload|rawProviderPayload/u);
   });
 
   test('operator actions are absent without finance.operate', () => {

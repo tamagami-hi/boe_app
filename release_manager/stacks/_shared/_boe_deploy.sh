@@ -352,10 +352,6 @@ boe_validate_app_policy() {
             || die "PHONEPE_AUTOPAY_COLLECTION_ENABLED must be true or false"
         [[ "$phonepe_autopay_collection_enabled" != "true" || "$phonepe_autopay_enabled" == "true" ]] \
             || die "PHONEPE_AUTOPAY_COLLECTION_ENABLED requires PHONEPE_AUTOPAY_ENABLED=true"
-        if [[ "$phonepe_autopay_enabled" == "true" ]]; then
-            boe_assert_env_keys CRYPTO_PAYMENT_TOKEN_ENC_KEY CRYPTO_PAYMENT_TOKEN_ENC_KEY_VERSION
-            boe_assert_base64_key CRYPTO_PAYMENT_TOKEN_ENC_KEY 32 true
-        fi
     fi
     smtp_host="$(env_get EMAIL_SMTP_HOST "$BOE_EFFECTIVE_ENV")"
     smtp_port="$(env_get EMAIL_SMTP_PORT "$BOE_EFFECTIVE_ENV")"

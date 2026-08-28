@@ -18,35 +18,47 @@ const config = {
 }
 
 describe("PhonePe recurring gateway", () => {
-  test("creates the exact fixed monthly transaction mandate SDK order", async () => {
+  test("creates the exact fixed monthly transaction mandate hosted checkout", async () => {
     const calls: Array<{ url: string; init: RequestInit }> = []
     const httpClient: PhonePeHttpClient = (url, init) => {
       calls.push({ url, init })
       if (url.endsWith("/v1/oauth/token")) {
         return Promise.resolve(response(200, { access_token: "oauth-secret", token_type: "O-Bearer", expires_at: 1893456000 }))
       }
-      return Promise.resolve(response(200, { orderId: "provider-order", state: "PENDING", expireAt: 1893456000000, token: "sdk-secret" }))
+      return Promise.resolve(response(200, {
+        orderId: "provider-order",
+        state: "PENDING",
+        expireAt: 1893456000000,
+        redirectUrl: "https://mercury.phonepe.com/transact/checkout-token",
+      }))
     }
-    const gateway = createPhonePeRecurringGateway({ config, httpClient })
-    const result = await gateway.createMandateSdkOrder({
+    const gateway = createPhonePeRecurringGateway({
+      config,
+      httpClient,
+      checkoutAllowedOrigins: ["https://mercury.phonepe.com"],
+    })
+    const result = await gateway.createMandateCheckout({
       merchantOrderId: "boe_setup_1",
       merchantSubscriptionId: "boe_sip_1",
       amountPaise: "10000",
       expireAfterSeconds: 1200,
       mandateExpiresAt: new Date(1893456000000),
+      redirectUrl: "https://dev-app.beonedge.in/payment-status",
     })
     expect(result).toEqual({
       providerOrderId: "provider-order",
       providerState: "PENDING",
-      sdkToken: "sdk-secret",
+      redirectUrl: "https://mercury.phonepe.com/transact/checkout-token",
       expiresAt: new Date(1893456000000),
     })
+    expect(calls[1]!.url.endsWith("/checkout/v2/pay")).toBe(true)
     expect(JSON.parse(calls[1]!.init.body as string)).toEqual({
       merchantOrderId: "boe_setup_1",
       amount: 10000,
       expireAfter: 1200,
       paymentFlow: {
         type: "SUBSCRIPTION_CHECKOUT_SETUP",
+        merchantUrls: { redirectUrl: "https://dev-app.beonedge.in/payment-status" },
         subscriptionDetails: {
           subscriptionType: "RECURRING",
           merchantSubscriptionId: "boe_sip_1",
@@ -77,7 +89,7 @@ describe("PhonePe recurring gateway", () => {
       if (url.endsWith("/cancel")) return Promise.resolve(response(204))
       return Promise.resolve(response(200, { state: "ACTIVE", merchantSubscriptionId: "boe_sip_1", subscriptionId: "provider-sub" }))
     }
-    const gateway = createPhonePeRecurringGateway({ config, httpClient })
+    const gateway = createPhonePeRecurringGateway({ config, httpClient, checkoutAllowedOrigins: [] })
     await expect(gateway.getSetupOrderStatus("boe_setup_1")).resolves.toMatchObject({
       state: "COMPLETED",
       merchantSubscriptionId: "boe_sip_1",
@@ -98,6 +110,7 @@ describe("PhonePe recurring gateway", () => {
     let setupCalls = 0
     const gateway = createPhonePeRecurringGateway({
       config,
+      checkoutAllowedOrigins: [],
       httpClient: (url) => {
         if (url.endsWith("/v1/oauth/token")) {
           return Promise.resolve(response(200, { access_token: "oauth-secret", token_type: "O-Bearer", expires_at: 1893456000 }))
@@ -106,20 +119,74 @@ describe("PhonePe recurring gateway", () => {
         return Promise.reject(new DOMException("secret", "TimeoutError"))
       },
     })
-    await expect(gateway.createMandateSdkOrder({
+    await expect(gateway.createMandateCheckout({
       merchantOrderId: "boe_setup_1",
       merchantSubscriptionId: "boe_sip_1",
       amountPaise: "10000",
       expireAfterSeconds: 1200,
       mandateExpiresAt: new Date(1893456000000),
+      redirectUrl: "https://dev-app.beonedge.in/payment-status",
     })).rejects.toBeInstanceOf(GatewayUnavailableError)
     expect(setupCalls).toBe(1)
+  })
+
+  test.each([
+    ["not-a-url", ["https://mercury.phonepe.com"]],
+    ["http://mercury.phonepe.com/checkout", ["http://mercury.phonepe.com"]],
+    ["https://user:secret@mercury.phonepe.com/checkout", ["https://mercury.phonepe.com"]],
+    ["https://evil.example/checkout", ["https://mercury.phonepe.com"]],
+  ])("rejects an untrusted hosted mandate URL: %s", async (redirectUrl, checkoutAllowedOrigins) => {
+    const gateway = createPhonePeRecurringGateway({
+      config,
+      checkoutAllowedOrigins,
+      httpClient: (url) => url.endsWith("/v1/oauth/token")
+        ? Promise.resolve(response(200, { access_token: "oauth-secret", token_type: "O-Bearer", expires_at: 1893456000 }))
+        : Promise.resolve(response(200, {
+            orderId: "provider-order",
+            state: "PENDING",
+            expireAt: 1893456000000,
+            redirectUrl,
+          })),
+    })
+
+    await expect(gateway.createMandateCheckout({
+      merchantOrderId: "boe_setup_1",
+      merchantSubscriptionId: "boe_sip_1",
+      amountPaise: "10000",
+      expireAfterSeconds: 1200,
+      mandateExpiresAt: new Date(1893456000000),
+      redirectUrl: "https://dev-app.beonedge.in/payment-status",
+    })).rejects.toThrow()
+  })
+
+  test.each([
+    [{ state: "PENDING", expireAt: 1893456000000, redirectUrl: "https://mercury.phonepe.com/checkout" }],
+    [{ orderId: "provider-order", state: "FAILED", expireAt: 1893456000000, redirectUrl: "https://mercury.phonepe.com/checkout" }],
+    [{ orderId: "provider-order", state: "PENDING", redirectUrl: "https://mercury.phonepe.com/checkout" }],
+  ])("rejects a malformed hosted mandate response", async (providerBody) => {
+    const gateway = createPhonePeRecurringGateway({
+      config,
+      checkoutAllowedOrigins: ["https://mercury.phonepe.com"],
+      httpClient: (url) => url.endsWith("/v1/oauth/token")
+        ? Promise.resolve(response(200, { access_token: "oauth-secret", token_type: "O-Bearer", expires_at: 1893456000 }))
+        : Promise.resolve(response(200, providerBody)),
+    })
+
+    await expect(gateway.createMandateCheckout({
+      merchantOrderId: "boe_setup_1",
+      merchantSubscriptionId: "boe_sip_1",
+      amountPaise: "10000",
+      expireAfterSeconds: 1200,
+      mandateExpiresAt: new Date(1893456000000),
+      redirectUrl: "https://dev-app.beonedge.in/payment-status",
+    })).rejects.toThrow()
   })
 
   test("notifies an active collection with automatic standard redemption", async () => {
     const calls: Array<{ url: string; init: RequestInit }> = []
     const gateway = createPhonePeRecurringGateway({
       config,
+      checkoutAllowedOrigins: [],
       httpClient: (url, init) => {
         calls.push({ url, init })
         if (url.endsWith("/v1/oauth/token")) {
@@ -162,6 +229,7 @@ describe("PhonePe recurring gateway", () => {
     const calls: string[] = []
     const gateway = createPhonePeRecurringGateway({
       config,
+      checkoutAllowedOrigins: [],
       httpClient: (url) => {
         calls.push(url)
         if (url.endsWith("/v1/oauth/token")) {
@@ -213,6 +281,7 @@ describe("PhonePe recurring gateway", () => {
     let notifyCalls = 0
     const gateway = createPhonePeRecurringGateway({
       config,
+      checkoutAllowedOrigins: [],
       httpClient: (url) => {
         if (url.endsWith("/v1/oauth/token")) {
           return Promise.resolve(response(200, { access_token: "oauth-secret", token_type: "O-Bearer", expires_at: 1893456000 }))

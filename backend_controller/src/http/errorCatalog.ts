@@ -33,7 +33,6 @@ export type ErrorCode =
   | "UNSUPPORTED_MEDIA_TYPE"
   | "RATE_LIMITED"
   | "INTERNAL_ERROR"
-  | "MOBILE_CHECKOUT_DISABLED"
   | "DEPENDENCY_UNAVAILABLE"
 
 export const ERROR_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = {
@@ -59,7 +58,6 @@ export const ERROR_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = {
   UNSUPPORTED_MEDIA_TYPE: 415,
   RATE_LIMITED: 429,
   INTERNAL_ERROR: 500,
-  MOBILE_CHECKOUT_DISABLED: 409,
   DEPENDENCY_UNAVAILABLE: 503,
 }
 
@@ -86,7 +84,6 @@ export const ERROR_RETRYABLE: Readonly<Record<ErrorCode, boolean>> = {
   UNSUPPORTED_MEDIA_TYPE: false,
   RATE_LIMITED: true,
   INTERNAL_ERROR: true,
-  MOBILE_CHECKOUT_DISABLED: false,
   DEPENDENCY_UNAVAILABLE: true,
 }
 
@@ -114,7 +111,6 @@ export const ERROR_DEFAULT_MESSAGE: Readonly<Record<ErrorCode, string>> = {
   UNSUPPORTED_MEDIA_TYPE: "The request media type is not supported",
   RATE_LIMITED: "Too many requests; slow down and retry",
   INTERNAL_ERROR: "An unexpected error occurred",
-  MOBILE_CHECKOUT_DISABLED: "Mobile checkout is not available",
   DEPENDENCY_UNAVAILABLE: "A required dependency is unavailable",
 }
 

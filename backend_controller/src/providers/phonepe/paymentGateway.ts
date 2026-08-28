@@ -1,7 +1,7 @@
 /**
  * PaymentGateway domain port (spec §7). The narrow contract the rest of the
- * backend depends on; the PhonePe SDK adapter in this directory is the only
- * implementation. PhonePe SDK DTOs never leave `providers/phonepe/` — every
+ * backend depends on; the PhonePe HTTP adapter in this directory is the only
+ * implementation. Provider DTOs never leave `providers/phonepe/` — every
  * type here is ours, and money crosses the boundary as decimal paise strings
  * (never as an unconstrained JS number).
  *

@@ -24,9 +24,11 @@ import type {
   ClientAccountRepository,
   ContentDocumentRow,
 } from "../repositories/clientAccountRepository.js"
+import type { ConsentRepositoryImpl } from "../repositories/consentRepository.js"
 
 export interface PublicContentDeps {
   readonly clientAccountRepository: ClientAccountRepository
+  readonly consentRepository: ConsentRepositoryImpl
   readonly unitOfWork: UnitOfWork
   readonly cache: Cache
   readonly config: { readonly publicContentTtlMs: number }
@@ -55,6 +57,26 @@ export const registerPublicContentRoutes = (
   application: FastifyInstance,
   deps: PublicContentDeps,
 ): void => {
+  application.get("/v1/public/consent-documents", async (_request, reply): Promise<FastifyReply> => {
+    const requiredKinds = ["terms", "privacy"] as const
+    const documents = await deps.unitOfWork.execute((tx) =>
+      deps.consentRepository.findCurrentDocuments(tx, requiredKinds),
+    )
+    const items = requiredKinds.map((kind) => documents.find((document) => document.kind === kind))
+    if (documents.length !== requiredKinds.length || items.some((document) => document === undefined)) {
+      throw new AppError("DEPENDENCY_UNAVAILABLE")
+    }
+    return reply.sendData({
+      items: items.map((document) => ({
+        kind: document!.kind,
+        version: document!.version,
+        publicPath: document!.public_path,
+        contentMarkdown: document!.content_markdown,
+        sha256: Buffer.from(document!.content_sha256 as unknown as Uint8Array).toString("hex"),
+      })),
+    })
+  })
+
   for (const [route, contentKey] of Object.entries(DOCUMENTS)) {
     application.get(route, async (_request, reply): Promise<FastifyReply> => {
       const document = await deps.cache.readOrLoad(

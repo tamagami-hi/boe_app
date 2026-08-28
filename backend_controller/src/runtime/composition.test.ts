@@ -111,8 +111,6 @@ describe("parseServerConfig", () => {
       PHONEPE_SUBSCRIPTION_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/subscription",
       PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: "checkout.setup.order.completed,checkout.setup.order.failed",
       PHONEPE_MERCHANT_ID: "merchant-id",
-      CRYPTO_PAYMENT_TOKEN_ENC_KEY: base64Key(),
-      CRYPTO_PAYMENT_TOKEN_ENC_KEY_VERSION: "ptk1",
       PHONEPE_AUTOPAY_ENABLED: "true",
     }).payments.autoPay.enabled).toBe(true)
   })
@@ -352,8 +350,6 @@ describe("worker composers", () => {
       PHONEPE_SUBSCRIPTION_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/subscription",
       PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: "subscription.status.updated",
       PHONEPE_MERCHANT_ID: "merchant-id",
-      CRYPTO_PAYMENT_TOKEN_ENC_KEY: base64Key(),
-      CRYPTO_PAYMENT_TOKEN_ENC_KEY_VERSION: "ptk1",
     })
     dispose.push(worker.dispose)
     expect(worker.gatewayConfigured).toBe(true)

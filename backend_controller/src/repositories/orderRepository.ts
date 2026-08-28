@@ -40,7 +40,6 @@ export interface FundOrderTermsRow {
 
 export interface LatestComplianceRow {
   readonly emailVerificationState: EmailVerificationState | null
-  readonly emailVerificationExpiresAt: Date | null
 }
 
 export interface OrderWriteRepository {
@@ -78,12 +77,11 @@ export const createOrderRepository = (): OrderWriteRepository => ({
   latestCompliance: async (tx, userId) => {
     const result = await sql<LatestComplianceRow>`
       select
-        u.email_verification_state as "emailVerificationState",
-        u.email_verification_expires_at as "emailVerificationExpiresAt"
+        u.email_verification_state as "emailVerificationState"
       from users u
       where u.id = ${userId}
     `.execute(tx)
-    return result.rows[0] ?? { emailVerificationState: null, emailVerificationExpiresAt: null }
+    return result.rows[0] ?? { emailVerificationState: null }
   },
 
   createPurchase: async (tx, input) =>

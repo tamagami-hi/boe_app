@@ -15,7 +15,6 @@ export interface EmailVerificationConfig {
   readonly codeTtlMs: number
   readonly maxAttempts: number
   readonly resendCooldownMs: number
-  readonly validityMs: number
 }
 
 export interface EmailVerificationDeps {
@@ -38,9 +37,7 @@ const generateVerificationCode = (): string => {
   return code
 }
 
-const isVerifiedAndCurrent = (verification: EmailVerificationRecord, now: Date): boolean =>
-  verification.state === "verified" &&
-  (verification.expiresAt === null || new Date(verification.expiresAt).getTime() > now.getTime())
+const isVerified = (verification: EmailVerificationRecord): boolean => verification.state === "verified"
 
 export interface RequestEmailVerificationCodeResult {
   readonly alreadyVerified: boolean
@@ -59,7 +56,7 @@ export const requestEmailVerificationCode = async (
   if (user === null) throw new AppError("RESOURCE_NOT_FOUND")
 
   const verified = await deps.emailVerificationRepository.findVerifiedByUser(tx, input.userId)
-  if (verified !== null && isVerifiedAndCurrent(verified, now)) {
+  if (verified !== null && isVerified(verified)) {
     return { alreadyVerified: true, email: user.email_normalized, rawCode: null, expiresAt: null }
   }
 
@@ -112,7 +109,7 @@ export const verifyEmail = async (
 ): Promise<VerifyEmailOutcome> => {
   const now = deps.clock()
   const verified = await deps.emailVerificationRepository.findVerifiedByUser(tx, input.userId)
-  if (verified !== null && isVerifiedAndCurrent(verified, now)) {
+  if (verified !== null && isVerified(verified)) {
     return { kind: "already_verified", verification: verified }
   }
 
@@ -133,7 +130,6 @@ export const verifyEmail = async (
   await deps.emailVerificationRepository.consumeCode(tx, { codeId: code.id, now })
   const verifiedRecord = await deps.emailVerificationRepository.markVerified(tx, {
     userId: input.userId,
-    expiresAt: new Date(now.getTime() + deps.config.validityMs),
     now,
   })
   if (verifiedRecord === null) return { kind: "no_active_verification" }

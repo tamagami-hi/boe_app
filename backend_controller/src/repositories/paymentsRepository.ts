@@ -20,7 +20,7 @@ export interface CreateAttemptInput {
   readonly attemptNumber: number
   readonly merchantOrderId: string
   readonly checkoutExpiresAt: Date
-  readonly checkoutChannel: "hosted_redirect" | "phonepe_mobile_sdk" | "phonepe_mandate_setup" | "phonepe_autopay"
+  readonly checkoutChannel: "hosted_redirect" | "phonepe_mandate_setup" | "phonepe_autopay"
 }
 
 export interface RecordPaymentDetailInput {
@@ -350,10 +350,6 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
         last_status_checked_at: input.now,
         next_status_check_at: null,
         reconciliation_lease_expires_at: null,
-        sdk_order_token_ciphertext: null,
-        sdk_order_token_nonce: null,
-        sdk_order_token_key_version: null,
-        sdk_order_token_expires_at: null,
         updated_at: input.now,
         version: sql<string>`version + 1`,
       })
@@ -374,10 +370,6 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
         last_status_checked_at: input.now,
         next_status_check_at: null,
         reconciliation_lease_expires_at: null,
-        sdk_order_token_ciphertext: null,
-        sdk_order_token_nonce: null,
-        sdk_order_token_key_version: null,
-        sdk_order_token_expires_at: null,
         updated_at: input.now,
         version: sql<string>`version + 1`,
       })
@@ -397,10 +389,6 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
         last_status_checked_at: input.now,
         next_status_check_at: null,
         reconciliation_lease_expires_at: null,
-        sdk_order_token_ciphertext: null,
-        sdk_order_token_nonce: null,
-        sdk_order_token_key_version: null,
-        sdk_order_token_expires_at: null,
         updated_at: input.now,
         version: sql<string>`version + 1`,
       })
@@ -446,10 +434,6 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
         next_status_check_at: null,
         reconciliation_lease_expires_at: null,
         reconciliation_required_at: input.now,
-        sdk_order_token_ciphertext: null,
-        sdk_order_token_nonce: null,
-        sdk_order_token_key_version: null,
-        sdk_order_token_expires_at: null,
         updated_at: input.now,
         version: sql<string>`version + 1`,
       })
@@ -681,7 +665,7 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
     const claimable = await tx
       .selectFrom("payment_attempts")
       .select("id")
-      .where("checkout_channel", "in", ["hosted_redirect", "phonepe_mobile_sdk"])
+      .where("checkout_channel", "=", "hosted_redirect")
       .where((expression) =>
         expression.or([
           expression("state", "=", "provider_pending"),

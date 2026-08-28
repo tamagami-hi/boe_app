@@ -114,8 +114,6 @@ const ServerConfigSchema = z.object({
   PAYMENT_RECONCILIATION_MAX_BACKOFF_SECONDS: z.coerce.number().int().min(30).max(86400).default(900),
   PAYMENT_RECONCILIATION_EXPIRY_GRACE_SECONDS: z.coerce.number().int().min(0).max(86400).default(300),
   PAYMENT_RECONCILIATION_CLAIM_LIMIT: z.coerce.number().int().min(1).max(200).default(25),
-  CRYPTO_PAYMENT_TOKEN_ENC_KEY: z.string().optional(),
-  CRYPTO_PAYMENT_TOKEN_ENC_KEY_VERSION: z.string().trim().optional(),
   PHONEPE_CALLBACK_URL: z.string().trim().optional(),
   PHONEPE_SUBSCRIPTION_CALLBACK_URL: z.string().trim().optional(),
   PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: z.string().trim().optional(),
@@ -155,7 +153,6 @@ const ServerConfigSchema = z.object({
   EMAIL_VERIFICATION_CODE_TTL_MS: z.coerce.number().int().min(1).default(10 * 60 * 1000),
   EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS: z.coerce.number().int().min(1).default(5),
   EMAIL_VERIFICATION_RESEND_COOLDOWN_MS: z.coerce.number().int().min(1).default(60 * 1000),
-  EMAIL_VERIFICATION_VALIDITY_MS: z.coerce.number().int().min(1).default(365 * DAY_MS),
   // Concurrent-device policy for native (client app) sessions. Signing in on a
   // new device beyond the cap revokes the oldest device's session rather than
   // refusing the login. SEED_CLIENT_EMAIL is exempt: the dev/QA account is
@@ -228,10 +225,8 @@ export interface ServerConfig {
       readonly requestTimeoutMs: number
     } | null
     readonly attemptTtlMs: number
-    readonly mobileSdk: {
+    readonly recurring: {
       readonly merchantId: string | null
-      readonly tokenEncryptionKey: Buffer | null
-      readonly tokenKeyVersion: string | null
       readonly requestTimeoutMs: number
     }
     readonly autoPay: {
@@ -267,7 +262,6 @@ export interface ServerConfig {
     readonly codeTtlMs: number
     readonly maxAttempts: number
     readonly resendCooldownMs: number
-    readonly validityMs: number
   }
   readonly ttls: {
     readonly idempotencyTtlMs: number
@@ -497,13 +491,7 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
     throw new Error("PHONEPE_PAYMENT_EVENT_ALLOWLIST must contain exact event names")
   }
   const merchantId = nonEmpty(parsed.PHONEPE_MERCHANT_ID)
-  const paymentTokenKey = nonEmpty(parsed.CRYPTO_PAYMENT_TOKEN_ENC_KEY)
-  const paymentTokenKeyVersion = nonEmpty(parsed.CRYPTO_PAYMENT_TOKEN_ENC_KEY_VERSION)
-  if (isAutoPayEnabled && (merchantId === null || paymentTokenKey === null || paymentTokenKeyVersion === null)) {
-    throw new Error(
-      "PHONEPE_MERCHANT_ID, CRYPTO_PAYMENT_TOKEN_ENC_KEY and CRYPTO_PAYMENT_TOKEN_ENC_KEY_VERSION are required when PhonePe AutoPay is enabled",
-    )
-  }
+  if (isAutoPayEnabled && merchantId === null) throw new Error("PHONEPE_MERCHANT_ID is required when PhonePe AutoPay is enabled")
   const phonepeConfig = parsePhonePeConfig(parsed)
   if (isAutoPayEnabled && phonepeConfig === null) {
     throw new Error("PhonePe gateway configuration is required when PhonePe AutoPay is enabled")
@@ -547,12 +535,8 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
       provider: parsed.PAYMENT_PROVIDER,
       phonepe: phonepeConfig,
       attemptTtlMs: parsed.PAYMENT_ATTEMPT_TTL_MS,
-      mobileSdk: {
+      recurring: {
         merchantId,
-        tokenEncryptionKey: paymentTokenKey === null
-          ? null
-          : decode32ByteKey("CRYPTO_PAYMENT_TOKEN_ENC_KEY", paymentTokenKey),
-        tokenKeyVersion: paymentTokenKeyVersion,
         requestTimeoutMs: parsed.PHONEPE_API_TIMEOUT_MS,
       },
       autoPay: {
@@ -596,7 +580,6 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
       codeTtlMs: parsed.EMAIL_VERIFICATION_CODE_TTL_MS,
       maxAttempts: parsed.EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS,
       resendCooldownMs: parsed.EMAIL_VERIFICATION_RESEND_COOLDOWN_MS,
-      validityMs: parsed.EMAIL_VERIFICATION_VALIDITY_MS,
     },
     ttls: {
       idempotencyTtlMs: parsed.IDEMPOTENCY_TTL_MS,

@@ -1,11 +1,10 @@
 /**
  * PhonePe payment evidence and refund adapter for the PaymentGateway port.
  *
- * This module is the only place PhonePe SDK types, builders, and exceptions are
- * referenced. Everything crossing the boundary is mapped into the port's own
+ * This module maps PhonePe's authenticated HTTP API into the port's own
  * types in `./paymentGateway.ts`:
  *
- *   - money crosses as decimal paise strings, converted to the SDK's `number`
+ *   - money crosses as decimal paise strings, converted to a JSON `number`
  *     only after proving the value is a safe positive integer (an amount above
  *     2^53 would silently lose paise, which is why the port speaks strings);
  *   - provider states map onto succeeded/failed/pending — `COMPLETED` succeeds,
@@ -20,7 +19,6 @@
  */
 import { createHash, timingSafeEqual } from "node:crypto"
 
-import { Env, StandardCheckoutClient, StandardCheckoutPayRequest, RefundRequest } from "@phonepe-pg/pg-sdk-node"
 import {
   PHONEPE_MAX_CHECKOUT_SECONDS,
   PHONEPE_MIN_CHECKOUT_SECONDS,
@@ -28,7 +26,7 @@ import {
 import {
   GatewayAuthenticationError,
   GatewayCredentialError,
-  type GatewayError,
+  GatewayError,
   GatewayMalformedCallbackError,
   GatewayMalformedResponseError,
   GatewayNotFoundError,
@@ -46,6 +44,8 @@ import {
   type RefundStatusFact,
   type VerifiedCallback,
 } from "./paymentGateway.js"
+import { createPhonePeApiClient } from "./phonePeApiClient.js"
+import type { PhonePeApiClient, PhonePeHttpClient } from "./phonePeApiClient.js"
 
 export interface PhonePeGatewayConfig {
   readonly clientId: string
@@ -54,36 +54,30 @@ export interface PhonePeGatewayConfig {
   readonly env: "sandbox" | "production"
   readonly callbackUsername: string
   readonly callbackPassword: string
+  readonly callbackUrl: string
   readonly checkoutAllowedOrigins: readonly string[]
   readonly requestTimeoutMs?: number
 }
 
 /**
- * The slice of `StandardCheckoutClient` the adapter consumes, typed
- * structurally over `unknown` so tests substitute a stub and the adapter's own
- * mapping is the only deserialization that matters.
+ * Narrow transport used by the adapter. Production implements it with the
+ * authenticated PhonePe HTTP API; tests use an in-memory substitute.
  */
-export interface PhonePeSdkClient {
-  readonly httpClient?: { readonly defaults: { timeout: number } }
+export interface PhonePeCheckoutClient {
   readonly pay: (request: unknown) => Promise<unknown>
   readonly getOrderStatus: (merchantOrderId: string, details?: boolean) => Promise<unknown>
-  readonly validateCallback: (
-    username: string,
-    password: string,
-    authorization: string,
-    responseBody: string,
-  ) => unknown
   readonly refund: (request: unknown) => Promise<unknown>
   readonly getRefundStatus: (refundId: string) => Promise<unknown>
 }
 
 export interface PhonePeGatewayDeps {
   readonly config: PhonePeGatewayConfig
-  /** Injected in tests; the real SDK client is built from the config otherwise. */
-  readonly client?: PhonePeSdkClient
+  /** Injected in tests; the authenticated HTTP client is built otherwise. */
+  readonly client?: PhonePeCheckoutClient
+  readonly httpClient?: PhonePeHttpClient
 }
 
-/** Decimal-string paise -> SDK number, or a rejection when precision would be lost. */
+/** Decimal-string paise -> JSON number, or a rejection when precision would be lost. */
 const paiseToNumber = (amountPaise: string): number => {
   if (!/^[1-9][0-9]*$/u.test(amountPaise)) {
     throw new GatewayRejectedError(`amount '${amountPaise}' is not a positive integer paise string`)
@@ -95,7 +89,7 @@ const paiseToNumber = (amountPaise: string): number => {
   return Number(value)
 }
 
-/** SDK number -> decimal paise string; anything non-integral is unusable evidence. */
+/** Provider number -> decimal paise string; anything non-integral is unusable evidence. */
 const paiseFromNumber = (amount: unknown): string | null => {
   if (typeof amount !== "number" || !Number.isSafeInteger(amount) || amount <= 0) return null
   return String(amount)
@@ -223,48 +217,80 @@ const mapPaymentDetails = (value: unknown): readonly ProviderPaymentDetailFact[]
   return facts
 }
 
-/** The SDK's exception family carries `httpStatusCode` on a PhonePeException. */
-const sdkStatusCode = (error: unknown): number | null => {
+const providerStatusCode = (error: unknown): number | null => {
   if (!isRecord(error)) return null
   const code = error.httpStatusCode
-  return typeof code === "number" && Number.isInteger(code) ? code : null
+  if (typeof code === "number" && Number.isInteger(code)) return code
+  return isRecord(error.cause) && typeof error.cause.httpStatusCode === "number" && Number.isInteger(error.cause.httpStatusCode)
+    ? error.cause.httpStatusCode
+    : null
 }
 
 const mapCallError = (error: unknown): GatewayError => {
-  const status = sdkStatusCode(error)
+  const status = providerStatusCode(error)
   if (status === 401 || status === 403) return new GatewayCredentialError("the provider rejected gateway credentials", { cause: error })
   if (status === 404) return new GatewayNotFoundError("the provider does not know this reference", { cause: error })
   if (status === 429) return new GatewayThrottledError("the provider throttled the request", { cause: error })
   if (status === 400) return new GatewayRejectedError("the provider rejected the request", { cause: error })
   if (status !== null && status < 500) return new GatewayRejectedError("the provider rejected the request", { cause: error })
+  if (error instanceof GatewayError) return error
   return new GatewayUnavailableError("the provider call failed; retry later", { cause: error })
 }
 
-const buildClient = (config: PhonePeGatewayConfig): PhonePeSdkClient => {
-  const clientVersion = Number(config.clientVersion)
-  if (!Number.isInteger(clientVersion) || clientVersion <= 0) {
-    throw new Error("PHONEPE_CLIENT_VERSION must be a positive integer")
+const responseBody = async (response: Response): Promise<unknown> => {
+  if (!response.ok) {
+    const cause = { httpStatusCode: response.status }
+    if (response.status === 401 || response.status === 403) throw new GatewayCredentialError("the provider rejected gateway credentials", { cause })
+    if (response.status === 404) throw new GatewayNotFoundError("the provider does not know this reference", { cause })
+    if (response.status === 429) throw new GatewayThrottledError("the provider throttled the request", { cause })
+    if (response.status < 500) throw new GatewayRejectedError("the provider rejected the request", { cause })
+    throw new GatewayUnavailableError("the provider call failed; retry later", { cause })
   }
-  // The SDK's concrete client methods take specific request/response classes,
-  // not `unknown`; `PhonePeSdkClient` is deliberately narrowed to `unknown` so
-  // tests can substitute a plain stub. The adapter's own mapping functions are
-  // the only place that deserializes these values, so this cast is safe.
-  const client = StandardCheckoutClient.getInstance(
-    config.clientId,
-    config.clientSecret,
-    clientVersion,
-    config.env === "sandbox" ? Env.SANDBOX : Env.PRODUCTION,
-    // The SDK's event publisher phones home operational telemetry; the payment
-    // flow does not depend on it, so it stays off.
-    false,
-  ) as unknown as PhonePeSdkClient
-  if (client.httpClient === undefined) throw new Error("PhonePe SDK HTTP client is unavailable")
-  client.httpClient.defaults.timeout = config.requestTimeoutMs ?? 10_000
+  try {
+    return await response.json()
+  } catch (error) {
+    throw new GatewayMalformedResponseError("the provider returned invalid JSON", { cause: error })
+  }
+}
+
+const buildClient = (config: PhonePeGatewayConfig, httpClient?: PhonePeHttpClient): PhonePeCheckoutClient => {
+  const api: PhonePeApiClient = createPhonePeApiClient({
+    config: {
+      clientId: config.clientId,
+      clientSecret: config.clientSecret,
+      clientVersion: config.clientVersion,
+      env: config.env,
+      requestTimeoutMs: config.requestTimeoutMs ?? 10_000,
+    },
+    ...(httpClient === undefined ? {} : { httpClient }),
+  })
+  const request = async (path: string, init: RequestInit): Promise<unknown> =>
+    responseBody(await api.authorizedRequest(path, init))
+  const client: PhonePeCheckoutClient = Object.freeze({
+    pay: (body: unknown) => request("/checkout/v2/pay", {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+    getOrderStatus: (merchantOrderId: string, details = false) => request(
+      `/checkout/v2/order/${encodeURIComponent(merchantOrderId)}/status${details ? "?details=true" : ""}`,
+      { method: "GET", headers: { Accept: "application/json" } },
+    ),
+    refund: (body: unknown) => request("/payments/v2/refund", {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+    getRefundStatus: (merchantRefundId: string) => request(
+      `/payments/v2/refund/${encodeURIComponent(merchantRefundId)}/status`,
+      { method: "GET", headers: { Accept: "application/json" } },
+    ),
+  })
   return client
 }
 
 export const createPhonePeGateway = (deps: PhonePeGatewayDeps): PaymentGateway => {
-  const client: PhonePeSdkClient = deps.client ?? buildClient(deps.config)
+  const client: PhonePeCheckoutClient = deps.client ?? buildClient(deps.config, deps.httpClient)
   const { config } = deps
 
   return Object.freeze({
@@ -275,15 +301,19 @@ export const createPhonePeGateway = (deps: PhonePeGatewayDeps): PaymentGateway =
       ) {
         throw new GatewayRejectedError("checkout expiry is outside the provider-supported range")
       }
-      const builder = StandardCheckoutPayRequest.builder()
-        .merchantOrderId(command.merchantOrderId)
-        .amount(paiseToNumber(command.amountPaise))
-        .expireAfter(command.expireAfterSeconds)
-      if (command.redirectUrl !== null) builder.redirectUrl(command.redirectUrl)
-
       let response: unknown
       try {
-        response = await withTimeout(client.pay(builder.build()), config.requestTimeoutMs ?? 10_000)
+        response = await withTimeout(client.pay({
+          merchantOrderId: command.merchantOrderId,
+          amount: paiseToNumber(command.amountPaise),
+          expireAfter: command.expireAfterSeconds,
+          paymentFlow: {
+            type: "PG_CHECKOUT",
+            merchantUrls: {
+              redirectUrl: command.redirectUrl ?? new URL("/dashboard", config.callbackUrl).toString(),
+            },
+          },
+        }), config.requestTimeoutMs ?? 10_000)
       } catch (error) {
         throw mapCallError(error)
       }
@@ -370,11 +400,11 @@ export const createPhonePeGateway = (deps: PhonePeGatewayDeps): PaymentGateway =
     },
 
     initiateRefund: async (command: InitiateRefundCommand): Promise<RefundInitiated> => {
-      const request = RefundRequest.builder()
-        .merchantRefundId(command.merchantRefundId)
-        .originalMerchantOrderId(command.originalMerchantOrderId)
-        .amount(paiseToNumber(command.amountPaise))
-        .build()
+      const request = {
+        merchantRefundId: command.merchantRefundId,
+        originalMerchantOrderId: command.originalMerchantOrderId,
+        amount: paiseToNumber(command.amountPaise),
+      }
       let response: unknown
       try {
         response = await withTimeout(client.refund(request), config.requestTimeoutMs ?? 10_000)

@@ -3,10 +3,10 @@ import {
   PHONEPE_MIN_CHECKOUT_SECONDS,
 } from "../../domain/payments/checkoutExpiry.js"
 import type {
-  CreateMandateSdkOrderCommand,
+  CreateMandateCheckoutCommand,
   CollectionNotificationResult,
   CollectionStatus,
-  MandateSdkOrderCreated,
+  MandateCheckoutCreated,
   MandateSetupStatus,
   MandateStatus,
   NotifyCollectionCommand,
@@ -123,14 +123,19 @@ const paymentDetailsOf = (value: unknown): readonly ProviderPaymentDetail[] => {
 }
 
 export const createPhonePeRecurringGateway = (
-  deps: Readonly<{ config: PhonePeApiConfig; httpClient?: PhonePeHttpClient; clock?: () => Date }>,
+  deps: Readonly<{
+    config: PhonePeApiConfig
+    checkoutAllowedOrigins: readonly string[]
+    httpClient?: PhonePeHttpClient
+    clock?: () => Date
+  }>,
 ): RecurringPaymentGateway => {
   const api = createPhonePeApiClient(deps)
 
-  const createMandateSdkOrder = async (
-    command: CreateMandateSdkOrderCommand,
-  ): Promise<MandateSdkOrderCreated> => {
-    const response = await api.authorizedRequest("/checkout/v2/sdk/order", {
+  const createMandateCheckout = async (
+    command: CreateMandateCheckoutCommand,
+  ): Promise<MandateCheckoutCreated> => {
+    const response = await api.authorizedRequest("/checkout/v2/pay", {
       method: "POST",
       headers: { Accept: "application/json", "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -139,6 +144,7 @@ export const createPhonePeRecurringGateway = (
         expireAfter: expiryOf(command.expireAfterSeconds),
         paymentFlow: {
           type: "SUBSCRIPTION_CHECKOUT_SETUP",
+          merchantUrls: { redirectUrl: command.redirectUrl },
           subscriptionDetails: {
             subscriptionType: "RECURRING",
             merchantSubscriptionId: referenceOf(command.merchantSubscriptionId),
@@ -153,17 +159,27 @@ export const createPhonePeRecurringGateway = (
       }),
     })
     const body = await bodyOf(response)
-    if (!isRecord(body)) throw new GatewayMalformedResponseError("the provider returned an invalid mandate SDK order")
+    if (!isRecord(body)) throw new GatewayMalformedResponseError("the provider returned an invalid mandate checkout")
     const providerOrderId = requiredString(body.orderId)
-    const sdkToken = requiredString(body.token)
+    const redirectUrl = requiredString(body.redirectUrl)
     const expireAt = typeof body.expireAt === "number" ? body.expireAt : body.expiryAt
     if (
-      providerOrderId === null || body.state !== "PENDING" || sdkToken === null ||
+      providerOrderId === null || body.state !== "PENDING" || redirectUrl === null ||
       typeof expireAt !== "number" || !Number.isSafeInteger(expireAt) || expireAt <= 0
-    ) throw new GatewayMalformedResponseError("the provider returned an invalid mandate SDK order")
+    ) throw new GatewayMalformedResponseError("the provider returned an invalid mandate checkout")
+    let parsedRedirectUrl: URL
+    try {
+      parsedRedirectUrl = new URL(redirectUrl)
+    } catch {
+      throw new GatewayMalformedResponseError("the provider returned an invalid mandate checkout URL")
+    }
+    if (
+      parsedRedirectUrl.protocol !== "https:" || parsedRedirectUrl.username !== "" ||
+      parsedRedirectUrl.password !== "" || !deps.checkoutAllowedOrigins.includes(parsedRedirectUrl.origin)
+    ) throw new GatewayMalformedResponseError("the provider returned an untrusted mandate checkout URL")
     const expiresAt = new Date(expireAt)
-    if (Number.isNaN(expiresAt.getTime())) throw new GatewayMalformedResponseError("the provider returned an invalid mandate SDK order")
-    return { providerOrderId, providerState: "PENDING", sdkToken, expiresAt }
+    if (Number.isNaN(expiresAt.getTime())) throw new GatewayMalformedResponseError("the provider returned an invalid mandate checkout")
+    return { providerOrderId, providerState: "PENDING", redirectUrl: parsedRedirectUrl.toString(), expiresAt }
   }
 
   const getSetupOrderStatus = async (merchantOrderId: string): Promise<MandateSetupStatus> => {
@@ -289,5 +305,5 @@ export const createPhonePeRecurringGateway = (
     }
   }
 
-  return Object.freeze({ createMandateSdkOrder, getSetupOrderStatus, getMandateStatus, notifyCollection, getCollectionStatus, cancelMandate })
+  return Object.freeze({ createMandateCheckout, getSetupOrderStatus, getMandateStatus, notifyCollection, getCollectionStatus, cancelMandate })
 }

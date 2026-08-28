@@ -1,8 +1,8 @@
 /**
  * PhonePe payment evidence and refund adapter tests.
  *
- * The adapter is the only module allowed to see PhonePe SDK shapes; these tests
- * pin the mapping both ways with a stub SDK client: exact paise amounts and
+ * The adapter is the only module allowed to see PhonePe API shapes; these tests
+ * pin the mapping both ways with a stub HTTP transport: exact paise amounts and
  * stable merchant ids out, tolerant domain facts in, and the terminality
  * contract (COMPLETED -> succeeded, FAILED -> failed, everything else
  * non-terminal). Callback authorization failures and malformed bodies are
@@ -24,9 +24,10 @@ import {
 } from "./paymentGateway.js"
 import {
   createPhonePeGateway,
-  type PhonePeSdkClient,
+  type PhonePeCheckoutClient,
 } from "./phonePeCheckoutGateway.js"
 import { classifyGatewayFailure, logGatewayFailure } from "./gatewayFailure.js"
+import type { PhonePeHttpClient } from "./phonePeApiClient.js"
 
 const CONFIG = {
   clientId: "merchant-client-id",
@@ -35,32 +36,71 @@ const CONFIG = {
   env: "sandbox" as const,
   callbackUsername: "callback-user",
   callbackPassword: "callback-pass",
+  callbackUrl: "https://app.example/api/v1/provider-events/phonepe/payment",
   checkoutAllowedOrigins: ["https://mercury.phonepe.com"],
 }
 
-/** Test double for the SDK exception taxonomy (structural, no SDK import). */
-const sdkError = (httpStatusCode: number): Error => {
+const providerError = (httpStatusCode: number): Error => {
   const error = new Error("phonepe error")
-  error.name = "PhonePeException"
+  error.name = "PhonePeHttpError"
   Object.assign(error, { httpStatusCode, type: "TEST" })
   return error
 }
 
-const isPhonePeException = (error: unknown): boolean =>
-  error instanceof Error && error.name === "PhonePeException"
-
-const stubClient = (overrides: Partial<PhonePeSdkClient> = {}): PhonePeSdkClient => ({
+const stubClient = (overrides: Partial<PhonePeCheckoutClient> = {}): PhonePeCheckoutClient => ({
   pay: () => Promise.reject(new Error("pay not stubbed")),
   getOrderStatus: () => Promise.reject(new Error("getOrderStatus not stubbed")),
-  validateCallback: () => {
-    throw new Error("validateCallback not stubbed")
-  },
   refund: () => Promise.reject(new Error("refund not stubbed")),
   getRefundStatus: () => Promise.reject(new Error("getRefundStatus not stubbed")),
   ...overrides,
 })
 
 describe("createCheckout", () => {
+  test("uses the authenticated HTTP checkout API without a provider SDK", async () => {
+    const calls: Array<{ url: string; init: RequestInit }> = []
+    const httpClient: PhonePeHttpClient = (url, init) => {
+      calls.push({ url, init })
+      if (url.endsWith("/v1/oauth/token")) {
+        return Promise.resolve(Response.json({
+          access_token: "access-token",
+          token_type: "O-Bearer",
+          expires_at: Math.floor(Date.now() / 1000) + 3600,
+        }))
+      }
+      return Promise.resolve(Response.json({
+        orderId: "provider-order-http",
+        state: "PENDING",
+        expireAt: 1_800_000_000_000,
+        redirectUrl: "https://mercury.phonepe.com/pay/http",
+      }))
+    }
+    const gateway = createPhonePeGateway({ config: CONFIG, httpClient })
+
+    await gateway.createCheckout({
+      merchantOrderId: "boe_http_order",
+      amountPaise: "500000",
+      redirectUrl: "https://app.example/dashboard",
+      expireAfterSeconds: 900,
+    })
+
+    expect(calls.map(({ url }) => url)).toEqual([
+      "https://api-preprod.phonepe.com/apis/pg-sandbox/v1/oauth/token",
+      "https://api-preprod.phonepe.com/apis/pg-sandbox/checkout/v2/pay",
+    ])
+    expect(calls[1]?.init.headers).toMatchObject({ Authorization: "O-Bearer access-token" })
+    const paymentBody = calls[1]?.init.body
+    if (typeof paymentBody !== "string") throw new Error("expected a JSON payment body")
+    expect(JSON.parse(paymentBody)).toEqual({
+      merchantOrderId: "boe_http_order",
+      amount: 500000,
+      expireAfter: 900,
+      paymentFlow: {
+        type: "PG_CHECKOUT",
+        merchantUrls: { redirectUrl: "https://app.example/dashboard" },
+      },
+    })
+  })
+
   test("creates a hosted checkout with exact money and a stable merchant order id", async () => {
     let request: unknown
     const gateway = createPhonePeGateway({
@@ -84,7 +124,11 @@ describe("createCheckout", () => {
       expireAfterSeconds: 900,
     })
 
-    expect(request).toMatchObject({ merchantOrderId: "boe_stable_order", amount: 500000 })
+    expect(request).toMatchObject({
+      merchantOrderId: "boe_stable_order",
+      amount: 500000,
+      paymentFlow: { merchantUrls: { redirectUrl: "https://app.example/dashboard" } },
+    })
     expect(result).toEqual({
       redirectUrl: "https://mercury.phonepe.com/pay/abc",
       providerOrderId: "provider-order-1",
@@ -126,7 +170,7 @@ describe("createCheckout", () => {
 })
 
 describe("getOrderStatus", () => {
-  const statusClient = (response: unknown): PhonePeSdkClient =>
+  const statusClient = (response: unknown): PhonePeCheckoutClient =>
     stubClient({ getOrderStatus: () => Promise.resolve(response) })
 
   test("maps COMPLETED to succeeded and retains every payment detail", async () => {
@@ -371,7 +415,7 @@ describe("validateShaCallback", () => {
     },
   })
 
-  const authOkClient = (): PhonePeSdkClient => stubClient({ validateCallback: () => ({}) })
+  const authOkClient = (): PhonePeCheckoutClient => stubClient()
 
   test("maps an authorized callback from `event` and `payload.state`", () => {
     const gateway = createPhonePeGateway({ config: CONFIG, client: authOkClient() })
@@ -390,11 +434,7 @@ describe("validateShaCallback", () => {
   test("an authorization failure is its own error type (zero writes follow)", () => {
     const gateway = createPhonePeGateway({
       config: CONFIG,
-      client: stubClient({
-        validateCallback: () => {
-          throw sdkError(417)
-        },
-      }),
+      client: stubClient(),
     })
     expect(() => gateway.validateShaCallback("wrong", rawBody)).toThrow(GatewayAuthenticationError)
   })
@@ -412,7 +452,6 @@ describe("validateShaCallback", () => {
         JSON.stringify({ type: "PG_ORDER_COMPLETED", payload: { state: "COMPLETED", merchantOrderId: "boe_1" } }),
       ),
     ).toThrow(GatewayMalformedCallbackError)
-    expect(isPhonePeException(sdkError(417))).toBe(true)
   })
 
   test("maps refund callbacks with merchant refund correlation", () => {
@@ -549,10 +588,10 @@ describe("error mapping", () => {
     await expect(withError(new Error("socket hangup")).getOrderStatus("boe_1")).rejects.toBeInstanceOf(
       GatewayUnavailableError,
     )
-    await expect(withError(sdkError(401)).getOrderStatus("boe_1")).rejects.toBeInstanceOf(GatewayCredentialError)
-    await expect(withError(sdkError(404)).getOrderStatus("boe_1")).rejects.toBeInstanceOf(GatewayNotFoundError)
-    await expect(withError(sdkError(400)).getOrderStatus("boe_1")).rejects.toBeInstanceOf(GatewayRejectedError)
-    await expect(withError(sdkError(503)).getOrderStatus("boe_1")).rejects.toBeInstanceOf(GatewayUnavailableError)
+    await expect(withError(providerError(401)).getOrderStatus("boe_1")).rejects.toBeInstanceOf(GatewayCredentialError)
+    await expect(withError(providerError(404)).getOrderStatus("boe_1")).rejects.toBeInstanceOf(GatewayNotFoundError)
+    await expect(withError(providerError(400)).getOrderStatus("boe_1")).rejects.toBeInstanceOf(GatewayRejectedError)
+    await expect(withError(providerError(503)).getOrderStatus("boe_1")).rejects.toBeInstanceOf(GatewayUnavailableError)
   })
 
   test("missing required provider response fields are malformed responses", async () => {

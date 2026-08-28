@@ -100,15 +100,15 @@ describe('the android artifact guard', () => {
   });
 });
 
-describe('native payment target isolation', () => {
-  test('the admin Capacitor target excludes the PhonePe plugin', () => {
+describe('native target isolation', () => {
+  test('client and admin targets contain only the common reviewed plugins', () => {
     const listTarget = (target) => execFileSync(
       'npx',
       ['--no-install', 'cap', 'ls', 'android'],
       { cwd: path.join(root, 'app'), env: { ...process.env, BOE_CAPACITOR_VARIANT: target }, encoding: 'utf8' },
     );
-    expect(listTarget('admin')).not.toContain('ionic-capacitor-phonepe-pg');
-    expect(listTarget('client')).toContain('ionic-capacitor-phonepe-pg@3.0.5');
+    expect(listTarget('admin')).toBe(listTarget('client'));
+    expect(listTarget('client')).not.toMatch(/phonepe|payment.?sdk/iu);
   });
 
   test('Capacitor commands fail closed without an exact native target', () => {

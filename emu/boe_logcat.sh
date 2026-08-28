@@ -100,8 +100,8 @@ redact_stream() {
         -e 's/((Cookie|Set-Cookie):[[:space:]]*).*/\1[REDACTED]/gi' \
         -e 's/Bearer [A-Za-z0-9._~+\/-]+=*/Bearer [REDACTED]/gi' \
         -e 's/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_.\/+_-]*/[REDACTED-JWT]/g' \
-        -e 's/("(accessToken|refreshToken|access_token|refresh_token|csrfToken|idToken|authorization|token|paymentToken|sdkToken|sdkOrderToken|orderToken|clientSecret|client_secret|password|callbackPassword|cookie)"[[:space:]]*:[[:space:]]*")[^"]*/\1[REDACTED]/gi' \
-        -e 's/\b(accessToken|refreshToken|access_token|refresh_token|csrfToken|idToken|authorization|token|paymentToken|sdkToken|sdkOrderToken|orderToken|clientSecret|client_secret|password|callbackPassword|cookie)=[^&[:space:]]+/\1=[REDACTED]/gi'
+        -e 's/("(accessToken|refreshToken|access_token|refresh_token|csrfToken|idToken|authorization|token|paymentToken|clientSecret|client_secret|password|callbackPassword|cookie)"[[:space:]]*:[[:space:]]*")[^"]*/\1[REDACTED]/gi' \
+        -e 's/\b(accessToken|refreshToken|access_token|refresh_token|csrfToken|idToken|authorization|token|paymentToken|clientSecret|client_secret|password|callbackPassword|cookie)=[^&[:space:]]+/\1=[REDACTED]/gi'
 }
 
 mkdir -p "$OUT_DIR"

@@ -30,9 +30,12 @@ describe("isPrivateRequest", () => {
 
   test("allows docker bridge gateway and private ranges", () => {
     expect(isPrivateRequest("172.17.0.1")).toBe(true)
+    expect(isPrivateRequest("172.17.42.9")).toBe(true)
     expect(isPrivateRequest("172.18.0.5")).toBe(true)
+    expect(isPrivateRequest("172.19.255.254")).toBe(true)
     expect(isPrivateRequest("10.0.0.1")).toBe(true)
     expect(isPrivateRequest("192.168.1.1")).toBe(true)
+    expect(isPrivateRequest("172.20.0.1")).toBe(false)
   })
 
   test("allows IPv4-mapped loopback", () => {
@@ -81,6 +84,28 @@ describe("renderMetrics", () => {
     expect(result.status).toBe(200)
     expect(result.body).toContain('boe_worker_last_success{worker="payment_reconciliation"} 1')
     expect(result.body).toContain('boe_worker_last_duration_seconds{worker="payment_reconciliation"}')
+  })
+
+  test("renders failed and clock-skewed heartbeats safely", async () => {
+    const result = await renderMetrics(
+      buildDeps({
+        repository: createMockRepository({
+          findLatestWorkerHeartbeats: async () => [
+            {
+              workerName: "mandate_collection",
+              passStartedAt: new Date("2026-08-24T10:00:30.000Z"),
+              passCompletedAt: new Date("2026-08-24T10:00:00.000Z"),
+              success: false,
+            },
+          ],
+          countPaymentReconciliationBacklog: async () => Number.NaN,
+        }),
+      }),
+      "127.0.0.1",
+    )
+    expect(result.body).toContain('boe_worker_last_success{worker="mandate_collection"} 0')
+    expect(result.body).toContain('boe_worker_last_duration_seconds{worker="mandate_collection"} 0')
+    expect(result.body).toContain('boe_worker_backlog_count{queue="payment_reconciliation"} 0')
   })
 
   test("renders backlog and stale counts", async () => {

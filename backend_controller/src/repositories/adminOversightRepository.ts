@@ -83,7 +83,6 @@ export interface EmailVerificationListRow {
   readonly provider: string | null
   readonly submittedAt: Date | null
   readonly decidedAt: Date | null
-  readonly expiresAt: Date | null
   readonly reviewCount: number
   readonly createdAt: Date
   readonly updatedAt: Date
@@ -208,7 +207,6 @@ const EMAIL_VERIFICATION_COLUMNS = sql`
   'email_otp' as "provider",
   u.email_verification_started_at as "submittedAt",
   u.email_verified_at as "decidedAt",
-  u.email_verification_expires_at as "expiresAt",
   0::int as "reviewCount",
   coalesce(u.email_verification_started_at, u.created_at) as "createdAt",
   u.updated_at as "updatedAt",

@@ -21,7 +21,7 @@ import type { Kysely } from "kysely"
 import { z } from "zod"
 
 import type { UnitOfWork } from "../db/database.js"
-import type { IdempotencyRepository } from "../db/repositories.js"
+import type { IdempotencyRepository, UserId } from "../db/repositories.js"
 import type { Database, EmailVerificationState, UserAccountState } from "../db/types.js"
 import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adminAccess.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
@@ -29,6 +29,7 @@ import { AppError } from "../http/errorCatalog.js"
 import { parseOrThrow } from "../http/validation.js"
 import type { AdminOversightRepository } from "../repositories/adminOversightRepository.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
+import type { AuthSessionWriteRepository } from "../repositories/authSessionRepository.js"
 import type { LoginEventRepository, LoginEventRow } from "../repositories/loginEventRepository.js"
 import {
   adminIdempotencyScope,
@@ -62,6 +63,7 @@ export interface AdminOversightDeps {
   readonly loginEventRepository: LoginEventRepository
   readonly auditRepository: AuditWriteRepository
   readonly idempotencyRepository: IdempotencyRepository
+  readonly authSessionRepository: Pick<AuthSessionWriteRepository, "revokeAllForUser">
 }
 
 const USERS_ROUTE = "/v1/admin/users"
@@ -97,6 +99,9 @@ const lifecycleBodySchema = z
   .object({ reasonCode: reasonCodeSchema.optional(), reason: reasonDetailSchema.optional() })
   .strict()
   .optional()
+
+export const shouldRevokeUserSessions = (nextState: UserAccountState): boolean =>
+  nextState === "suspended" || nextState === "closed"
 
 // --- generic list plumbing ---
 
@@ -242,7 +247,6 @@ const mapEmailVerification = (row: {
   readonly provider: string | null
   readonly submittedAt: Date | null
   readonly decidedAt: Date | null
-  readonly expiresAt: Date | null
   readonly reviewCount: number
   readonly createdAt: Date
   readonly updatedAt: Date
@@ -258,7 +262,6 @@ const mapEmailVerification = (row: {
   submittedAt: isoOrNull(row.submittedAt),
   emailVerifiedAt: isoOrNull(row.decidedAt),
   decidedAt: isoOrNull(row.decidedAt),
-  expiresAt: isoOrNull(row.expiresAt),
   reviewCount: row.reviewCount,
   createdAt: iso(row.createdAt),
   updatedAt: iso(row.updatedAt),
@@ -379,6 +382,14 @@ const changeUserState = async (
         expectedVersion: Number(user.version),
       })
       if (updated === null) throw new AppError("STATE_CONFLICT")
+
+      if (shouldRevokeUserSessions(nextState)) {
+        await deps.authSessionRepository.revokeAllForUser(tx, {
+          userId: userId as UserId,
+          reason: `account_${nextState}`,
+          now,
+        })
+      }
 
       await deps.auditRepository.append(tx, {
         actorType: "admin",

@@ -8,10 +8,7 @@ export const ADMIN_ANDROID_PLUGINS = [
   '@capgo/capacitor-native-biometric',
 ];
 
-export const CLIENT_ANDROID_PLUGINS = [
-  ...ADMIN_ANDROID_PLUGINS,
-  'ionic-capacitor-phonepe-pg',
-];
+export const CLIENT_ANDROID_PLUGINS = [...ADMIN_ANDROID_PLUGINS];
 
 const target = process.env.BOE_CAPACITOR_VARIANT;
 

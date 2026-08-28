@@ -13,17 +13,23 @@ import {
 import { clearPendingAutoPaySetup, readPendingAutoPaySetup } from './pendingAutoPaySetup.js';
 import { redirectToCheckout } from '../utils/checkoutRedirect.js';
 
-const browserPlatform = Object.freeze({
-  resolveChannel: async () => null,
-  start: async () => ({ status: 'unavailable' }),
+export const createHostedCheckoutPlatform = (redirect) => Object.freeze({
+  resolveChannel: async () => 'hosted_redirect',
+  start: async ({ checkout }) => {
+    if (checkout?.type !== 'redirect') throw new Error("Couldn't start the payment. Try again.");
+    const opened = redirect(checkout.url);
+    if (!opened?.ok) throw new Error("Couldn't start the payment. Try again.");
+    return { status: 'leaving' };
+  },
 });
 
-const CheckoutContext = createContext(browserPlatform);
+const CheckoutContext = createContext(createHostedCheckoutPlatform(redirectToCheckout));
 const CheckoutRedirectContext = createContext(redirectToCheckout);
 
-export function CheckoutProvider({ platform = browserPlatform, redirect = redirectToCheckout, children }) {
+export function CheckoutProvider({ platform, redirect = redirectToCheckout, children }) {
+  const checkoutPlatform = platform ?? createHostedCheckoutPlatform(redirect);
   return (
-    <CheckoutContext.Provider value={platform}>
+    <CheckoutContext.Provider value={checkoutPlatform}>
       <CheckoutRedirectContext.Provider value={redirect}>{children}</CheckoutRedirectContext.Provider>
     </CheckoutContext.Provider>
   );

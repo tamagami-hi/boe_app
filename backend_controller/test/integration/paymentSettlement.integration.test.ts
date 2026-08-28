@@ -57,7 +57,6 @@ import { runSeed } from "../../src/scripts/seed.js"
 const PASSWORD = "correct horse battery staple"
 const ORIGIN = "https://admin.beonedge.test"
 const CALLBACK_AUTH = "Basic dGVzdDpzZWNyZXQ="
-const MOBILE_TOKEN_KEY = randomBytes(32)
 let recurringCreateCalls = 0
 let recurringCancelCalls = 0
 let recurringMerchantOrderId = ""
@@ -272,7 +271,7 @@ const stubGateway: PaymentGateway = {
 }
 
 const stubRecurringGateway: RecurringPaymentGateway = {
-  createMandateSdkOrder: (command) => {
+  createMandateCheckout: (command) => {
     recurringCreateCalls += 1
     recurringMerchantOrderId = command.merchantOrderId
     recurringMerchantSubscriptionId = command.merchantSubscriptionId
@@ -280,7 +279,7 @@ const stubRecurringGateway: RecurringPaymentGateway = {
     return Promise.resolve({
       providerOrderId: `provider_${command.merchantOrderId}`,
       providerState: "PENDING",
-      sdkToken: `mandate_token_${command.merchantOrderId}`,
+      redirectUrl: `https://mercury.phonepe.com/${command.merchantOrderId}`,
       expiresAt: new Date(Date.now() + 600_000),
     })
   },
@@ -411,10 +410,7 @@ beforeAll(async () => {
           get enabled() { return stubAutoPayEnabled },
           idempotencyTtlMs: 86_400_000,
           attemptTtlMs: 900_000,
-          merchantId: "PHONEPE_MERCHANT",
-          environment: "SANDBOX",
-          tokenEncryptionKey: MOBILE_TOKEN_KEY,
-          tokenKeyVersion: "ptk1",
+          redirectUrl: "https://dev-app.beonedge.in/dashboard",
         },
       })
       registerPhonePeProviderEventRoutes(instance, {
@@ -545,7 +541,7 @@ const runMandateWorker = (clock: () => Date = () => new Date()) => runMandateRec
 })
 
 describe("checkout orchestrator", () => {
-  test("creates an AutoPay mandate setup through the canonical first installment and replays one encrypted SDK order", async () => {
+  test("creates an AutoPay mandate through hosted checkout without redispatching a replay", async () => {
     const { userId, token } = await seedClientToken(`autopay-${randomUUID().slice(0, 8)}@example.com`)
     const admin = await pool.query<{ id: string }>("select id from users where email_normalized = $1", [
       "payrev-finance@example.com",
@@ -565,9 +561,10 @@ describe("checkout orchestrator", () => {
       mandateId: string
       orderId: string
       paymentId: string
-      checkout: { type: string; token: string; providerOrderId: string }
+      checkout: { type: string; url: string }
     }>(create)
-    expect(created.checkout.type).toBe("phonepe_sdk")
+    expect(created.checkout.type).toBe("redirect")
+    expect(created.checkout.url).toMatch(/^https:\/\/mercury\.phonepe\.com\//u)
     expect(recurringCreateCalls - beforeCalls).toBe(1)
 
     const rows = await pool.query<{
@@ -578,12 +575,11 @@ describe("checkout orchestrator", () => {
       payment_state: string
       attempt_state: string
       checkout_channel: string
-      sdk_order_token_ciphertext: Buffer | null
       response_body: unknown
     }>(
       "select sip.state sip_state, mandate.state mandate_state, investment_order.type order_type, " +
         "investment_order.state order_state, payment.state payment_state, attempt.state attempt_state, " +
-        "attempt.checkout_channel, setup.sdk_order_token_ciphertext, idem.response_body " +
+        "attempt.checkout_channel, idem.response_body " +
         "from sip_plans sip join payment_mandates mandate on mandate.sip_plan_id = sip.id " +
         "join mandate_setup_attempts setup on setup.mandate_id = mandate.id " +
         "join investment_orders investment_order on investment_order.id = setup.order_id " +
@@ -601,8 +597,7 @@ describe("checkout orchestrator", () => {
       attempt_state: "provider_pending",
       checkout_channel: "phonepe_mandate_setup",
     })
-    expect(rows.rows[0]?.sdk_order_token_ciphertext).toBeInstanceOf(Buffer)
-    expect(JSON.stringify(rows.rows[0]?.response_body)).not.toContain(created.checkout.token)
+    expect(JSON.stringify(rows.rows[0]?.response_body)).not.toContain(created.checkout.url)
 
     const replay = await app.inject({
       method: "POST",
@@ -612,7 +607,7 @@ describe("checkout orchestrator", () => {
     })
     expect(replay.statusCode).toBe(200)
 
-    expect(dataOf<{ checkout: { token: string } }>(replay).checkout.token).toBe(created.checkout.token)
+    expect(dataOf<{ checkout: { type: string; url: string } }>(replay).checkout).toEqual(created.checkout)
     expect(recurringCreateCalls - beforeCalls).toBe(1)
   })
 
@@ -641,7 +636,7 @@ describe("checkout orchestrator", () => {
       headers: { ...bearer(token), "idempotency-key": `autopay-disabled-blocked-${randomUUID()}` },
       payload: { fundId: fund.fundId, amountPaise: "50000", debitDay: 5, durationMonths: 12 },
     })
-    expect(blockedCreate.statusCode).toBe(409)
+    expect(blockedCreate.statusCode).toBe(503)
 
     recurringSetupState = "COMPLETED"
     recurringMandateState = "ACTIVE"
@@ -1131,8 +1126,7 @@ describe("checkout orchestrator", () => {
     const now = new Date()
     await pool.query(
       "update mandate_setup_attempts set state = 'created', provider_order_id = null, provider_dispatch_started_at = null, " +
-        "sdk_order_token_ciphertext = null, sdk_order_token_nonce = null, sdk_order_token_key_version = null, " +
-        "sdk_order_token_expires_at = null, setup_expires_at = $2 where sip_plan_id = $1",
+        "setup_expires_at = $2 where sip_plan_id = $1",
       [undispatched.sipPlanId, new Date(now.getTime() - 1)],
     )
     await pool.query(
@@ -1408,23 +1402,13 @@ describe("checkout orchestrator", () => {
       merchant_order_id: string
       checkout_channel: string
       provider_order_id: string
-      sdk_order_token_ciphertext: Buffer | null
-      sdk_order_token_nonce: Buffer | null
-      sdk_order_token_key_version: string | null
-      sdk_order_token_expires_at: Date | null
     }>(
-      "select id, merchant_order_id, checkout_channel, provider_order_id, sdk_order_token_ciphertext, " +
-        "sdk_order_token_nonce, sdk_order_token_key_version, sdk_order_token_expires_at " +
-        "from payment_attempts where user_id = $1",
+      "select id, merchant_order_id, checkout_channel, provider_order_id from payment_attempts where user_id = $1",
       [userId],
     )
     const row = attempt.rows[0]!
     expect(row.checkout_channel).toBe("hosted_redirect")
     expect(row.provider_order_id).toBe(`hosted_${row.merchant_order_id}`)
-    expect(row.sdk_order_token_ciphertext).toBeNull()
-    expect(row.sdk_order_token_nonce).toBeNull()
-    expect(row.sdk_order_token_key_version).toBeNull()
-    expect(row.sdk_order_token_expires_at).toBeNull()
 
     const idempotency = await pool.query<{ response_body: string }>(
       "select response_body::text as response_body from idempotency_records where key = $1",
@@ -1461,7 +1445,7 @@ describe("checkout orchestrator", () => {
       method: "POST",
       url: `/v1/client/orders/${orderId}/pay`,
       headers: { ...bearer(token), "idempotency-key": `hosted-${randomUUID()}` },
-      payload: { checkoutChannel: "phonepe_mobile_sdk" },
+      payload: { checkoutChannel: "retired_channel" },
     })
     expect(nativeChannel.statusCode).toBe(400)
     await pool.query(
@@ -1485,7 +1469,7 @@ describe("checkout orchestrator", () => {
       method: "POST",
       url: `/v1/client/orders/${orderId}/pay`,
       headers: { ...bearer(token), "idempotency-key": `mobile-${randomUUID()}` },
-      payload: { checkoutChannel: "phonepe_mobile_sdk" },
+      payload: { checkoutChannel: "retired_channel" },
     })
     expect(native.statusCode).toBe(400)
     expect(stubCheckoutCalls).toHaveLength(callsBefore)
@@ -1572,11 +1556,7 @@ describe("checkout orchestrator", () => {
       [userId],
     )
     expect(Number(attempts.rows[0]!.count)).toBe(2)
-    await pool.query(
-      "update payment_attempts set state = 'failed', sdk_order_token_ciphertext = null, " +
-        "sdk_order_token_nonce = null, sdk_order_token_key_version = null, sdk_order_token_expires_at = null where user_id = $1",
-      [userId],
-    )
+    await pool.query("update payment_attempts set state = 'failed' where user_id = $1", [userId])
   })
 
   test("does not reconcile a fresh attempt while checkout dispatch is in flight", async () => {

@@ -60,11 +60,7 @@ export const createOrder = async (
     emailVerification:
       compliance.emailVerificationState === null
         ? null
-        : {
-            state: compliance.emailVerificationState,
-            expiresAt: compliance.emailVerificationExpiresAt === null ? null : new Date(compliance.emailVerificationExpiresAt).toISOString(),
-          },
-    now,
+        : { state: compliance.emailVerificationState },
   })
   assertEligible(eligibility)
 

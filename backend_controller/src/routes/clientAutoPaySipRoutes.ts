@@ -8,7 +8,6 @@ import type { IdempotencyRepository, IdempotencyScope, UserId } from "../db/repo
 import { authenticateNativeRequest, type NativeRequestAuthDeps } from "../domain/auth/nativeAuth.js"
 import { deriveInvestingEligibility } from "../domain/client/investingEligibility.js"
 import { checkoutSecondsRemaining } from "../domain/payments/checkoutExpiry.js"
-import { decryptMandateSetupToken, encryptMandateSetupToken } from "../domain/payments/mandateSetupToken.js"
 import { newMerchantOrderId, newMerchantSubscriptionId } from "../domain/payments/merchantIds.js"
 import { AppError } from "../http/errorCatalog.js"
 import { executeIdempotent, idempotencyKeySchema } from "../http/idempotencyProtocol.js"
@@ -66,10 +65,7 @@ export interface ClientAutoPaySipDeps extends NativeRequestAuthDeps {
     enabled: boolean
     idempotencyTtlMs: number
     attemptTtlMs: number
-    merchantId: string | null
-    environment: "SANDBOX" | "PRODUCTION" | null
-    tokenEncryptionKey: Buffer | null
-    tokenKeyVersion: string | null
+    redirectUrl: string
   }>
 }
 
@@ -118,20 +114,23 @@ export const addUtcMonthsClamped = (now: Date, durationMonths: number): Date => 
   ))
 }
 
-const mapCheckout = (deps: ClientAutoPaySipDeps, prepared: PreparedAutoPay, token: string, providerOrderId: string, expiresAt: Date) => ({
+export const buildMandateReturnUrl = (
+  returnBaseUrl: string,
+  identity: Readonly<{ paymentId: string; sipPlanId: string }>,
+): string => {
+  const url = new URL(returnBaseUrl)
+  url.searchParams.set("paymentId", identity.paymentId)
+  url.searchParams.set("sipPlanId", identity.sipPlanId)
+  return url.toString()
+}
+
+const mapCheckout = (prepared: PreparedAutoPay, redirectUrl: string | null) => ({
   sipPlanId: prepared.sipPlanId,
   mandateId: prepared.mandateId,
   orderId: prepared.orderId,
   paymentId: prepared.paymentId,
   status: "mandate_setup_in_progress",
-  checkout: {
-    type: "phonepe_sdk",
-    providerOrderId,
-    token,
-    merchantId: deps.config.merchantId,
-    environment: deps.config.environment,
-    expiresAt: expiresAt.toISOString(),
-  },
+  checkout: redirectUrl === null ? null : { type: "redirect", url: redirectUrl },
 })
 
 const prepareAutoPay = async (
@@ -155,11 +154,7 @@ const prepareAutoPay = async (
       const compliance = await deps.orderRepository.latestCompliance(tx, userId)
       const { eligibility } = deriveInvestingEligibility({
         accountState: user.account_state,
-        emailVerification: compliance.emailVerificationState === null ? null : {
-          state: compliance.emailVerificationState,
-          expiresAt: compliance.emailVerificationExpiresAt === null ? null : compliance.emailVerificationExpiresAt.toISOString(),
-        },
-        now,
+        emailVerification: compliance.emailVerificationState === null ? null : { state: compliance.emailVerificationState },
       })
       if (eligibility === "suspended" || eligibility === "blocked") throw new AppError("ACCOUNT_NOT_ACTIVE")
       if (eligibility !== "eligible") throw new AppError("STATE_CONFLICT")
@@ -258,30 +253,19 @@ const dispatchSetup = async (
   userId: string,
   prepared: PreparedAutoPay,
 ) => {
-  if (deps.recurringPaymentGateway === null || deps.config.tokenEncryptionKey === null || deps.config.tokenKeyVersion === null) {
-    throw new AppError("DEPENDENCY_UNAVAILABLE")
-  }
+  if (deps.recurringPaymentGateway === null) throw new AppError("DEPENDENCY_UNAVAILABLE")
   const existing = await deps.unitOfWork.execute((tx) => deps.mandatesRepository.findSetupAttemptForOwner(tx, {
     attemptId: prepared.setupAttemptId,
     userId,
   }))
-  if (
-    existing?.state === "provider_pending" && existing.provider_order_id !== null &&
-    existing.sdk_order_token_ciphertext !== null && existing.sdk_order_token_nonce !== null &&
-    existing.sdk_order_token_key_version === deps.config.tokenKeyVersion && existing.sdk_order_token_expires_at !== null &&
-    new Date(existing.sdk_order_token_expires_at).getTime() > deps.clock().getTime()
-  ) {
-    const token = decryptMandateSetupToken(deps.config.tokenEncryptionKey, {
-      ciphertext: existing.sdk_order_token_ciphertext,
-      nonce: existing.sdk_order_token_nonce,
-    }, {
-      mandateId: prepared.mandateId,
-      setupAttemptId: prepared.setupAttemptId,
-      merchantSubscriptionId: prepared.merchantSubscriptionId,
-      merchantOrderId: prepared.merchantOrderId,
-      providerOrderId: existing.provider_order_id,
-    })
-    return { body: mapCheckout(deps, prepared, token, existing.provider_order_id, new Date(existing.sdk_order_token_expires_at)), status: 200, replay: true }
+  if (existing?.state === "provider_pending") {
+    const redirectUrl = existing.setup_expires_at.getTime() > deps.clock().getTime()
+      ? existing.checkout_redirect_url
+      : null
+    return { body: mapCheckout(prepared, redirectUrl), status: 200, replay: true }
+  }
+  if (existing?.state === "dispatching") {
+    return { body: mapCheckout(prepared, null), status: 200, replay: true }
   }
   const claimed = await deps.unitOfWork.execute(async (tx) => {
     const setup = await deps.mandatesRepository.claimCanonicalSetupDispatch(tx, {
@@ -300,43 +284,38 @@ const dispatchSetup = async (
   if (seconds === null) throw new AppError("STATE_CONFLICT")
   let created
   try {
-    created = await deps.recurringPaymentGateway.createMandateSdkOrder({
+    created = await deps.recurringPaymentGateway.createMandateCheckout({
       merchantOrderId: prepared.merchantOrderId,
       merchantSubscriptionId: prepared.merchantSubscriptionId,
       amountPaise: prepared.amountPaise,
       expireAfterSeconds: seconds,
       mandateExpiresAt: new Date(prepared.mandateExpiresAt),
+      redirectUrl: buildMandateReturnUrl(deps.config.redirectUrl, {
+        paymentId: prepared.paymentId,
+        sipPlanId: prepared.sipPlanId,
+      }),
     })
   } catch (error) {
-    logGatewayFailure(request.log, error, { requestId: request.requestId, operation: "create_mandate_sdk_order" })
+    logGatewayFailure(request.log, error, { requestId: request.requestId, operation: "create_mandate_checkout" })
     throw new AppError("DEPENDENCY_UNAVAILABLE", { cause: error })
   }
-  const tokenExpiresAt = created.expiresAt.getTime() < new Date(prepared.setupExpiresAt).getTime()
+  const checkoutExpiresAt = created.expiresAt.getTime() < new Date(prepared.setupExpiresAt).getTime()
     ? created.expiresAt : new Date(prepared.setupExpiresAt)
-  if (tokenExpiresAt.getTime() <= deps.clock().getTime()) throw new AppError("DEPENDENCY_UNAVAILABLE")
-  const encrypted = encryptMandateSetupToken(deps.config.tokenEncryptionKey, created.sdkToken, {
-    mandateId: prepared.mandateId,
-    setupAttemptId: prepared.setupAttemptId,
-    merchantSubscriptionId: prepared.merchantSubscriptionId,
-    merchantOrderId: prepared.merchantOrderId,
-    providerOrderId: created.providerOrderId,
-  })
-  const persisted = await deps.unitOfWork.execute(async (tx) => {
+  if (checkoutExpiresAt.getTime() <= deps.clock().getTime()) throw new AppError("DEPENDENCY_UNAVAILABLE")
+  await deps.unitOfWork.execute(async (tx) => {
     const setup = await deps.mandatesRepository.persistSetupDispatch(tx, {
       merchantOrderId: prepared.merchantOrderId,
       expectedVersion: claimed.version,
       providerOrderId: created.providerOrderId,
-      tokenCiphertext: encrypted.ciphertext,
-      tokenNonce: encrypted.nonce,
-      tokenKeyVersion: deps.config.tokenKeyVersion as string,
-      tokenExpiresAt,
+      checkoutRedirectUrl: created.redirectUrl,
+      checkoutExpiresAt,
       now: deps.clock(),
     })
     if (setup === null) throw new AppError("STATE_CONFLICT")
     if (await deps.paymentsRepository.markMandateAttemptDispatched(tx, {
       attemptId: prepared.paymentAttemptId,
       providerOrderId: created.providerOrderId,
-      checkoutExpiresAt: tokenExpiresAt,
+      checkoutExpiresAt,
       now: deps.clock(),
     }) === null) throw new AppError("STATE_CONFLICT")
     if (await deps.paymentsRepository.markPaymentProviderPending(tx, prepared.paymentId, deps.clock()) === null) {
@@ -344,17 +323,14 @@ const dispatchSetup = async (
     }
     return setup
   })
-  return { body: mapCheckout(deps, prepared, created.sdkToken, created.providerOrderId, new Date(persisted.sdk_order_token_expires_at as Date)), status: 201, replay: false }
+  return { body: mapCheckout(prepared, created.redirectUrl), status: 201, replay: false }
 }
 
 const postAutoPay = async (deps: ClientAutoPaySipDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await authenticateNativeRequest(request, deps)
-  if (!deps.config.enabled) throw new AppError("MOBILE_CHECKOUT_DISABLED")
-  if (
-    deps.recurringPaymentGateway === null || deps.config.merchantId === null || deps.config.environment === null ||
-    deps.config.tokenEncryptionKey === null || deps.config.tokenKeyVersion === null
-  ) {
-    logGatewayUnconfigured(request.log, { requestId: request.requestId, operation: "create_mandate_sdk_order" })
+  if (!deps.config.enabled) throw new AppError("DEPENDENCY_UNAVAILABLE")
+  if (deps.recurringPaymentGateway === null) {
+    logGatewayUnconfigured(request.log, { requestId: request.requestId, operation: "create_mandate_checkout" })
     throw new AppError("DEPENDENCY_UNAVAILABLE")
   }
   const body = parseOrThrow(bodySchema, request.body)
@@ -543,7 +519,7 @@ const postCancel = async (deps: ClientAutoPaySipDeps, request: FastifyRequest, r
 
 const postRetry = async (deps: ClientAutoPaySipDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await authenticateNativeRequest(request, deps)
-  if (!deps.config.enabled || deps.recurringPaymentGateway === null) throw new AppError("MOBILE_CHECKOUT_DISABLED")
+  if (!deps.config.enabled || deps.recurringPaymentGateway === null) throw new AppError("DEPENDENCY_UNAVAILABLE")
   const params = parseOrThrow(paramsSchema, request.params)
   const key = requireIdempotencyKey(request)
   const now = deps.clock()

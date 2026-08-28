@@ -21,13 +21,11 @@ export type InvestingEligibility = "suspended" | "blocked" | "pending_verificati
 
 export interface EligibilityEmailVerificationInput {
   readonly state: EmailVerificationState
-  readonly expiresAt: string | null
 }
 
 export interface EligibilityInputs {
   readonly accountState: UserAccountState
   readonly emailVerification: EligibilityEmailVerificationInput | null
-  readonly now: Date
 }
 
 /**
@@ -38,7 +36,6 @@ export type EligibilityReason =
   | "account_suspended"
   | "account_not_active"
   | "email_verification_required"
-  | "email_verification_expired"
   | null
 
 export interface EligibilityDecision {
@@ -55,9 +52,6 @@ export const deriveInvestingEligibility = (inputs: EligibilityInputs): Eligibili
   }
   if (inputs.emailVerification === null || inputs.emailVerification.state !== "verified") {
     return { eligibility: "pending_verification", reason: "email_verification_required" }
-  }
-  if (inputs.emailVerification.expiresAt !== null && new Date(inputs.emailVerification.expiresAt).getTime() <= inputs.now.getTime()) {
-    return { eligibility: "pending_verification", reason: "email_verification_expired" }
   }
   // No client risk profiling (decision 9): active account + current Email Verification
   // is sufficient. Risk is chosen per-fund at investment time.

@@ -73,11 +73,7 @@ const createSip = async (deps: ClientSipDeps, request: FastifyRequest, reply: Fa
       emailVerification:
         compliance.emailVerificationState === null
           ? null
-          : {
-              state: compliance.emailVerificationState,
-              expiresAt: compliance.emailVerificationExpiresAt === null ? null : new Date(compliance.emailVerificationExpiresAt).toISOString(),
-            },
-      now,
+          : { state: compliance.emailVerificationState },
     })
     if (eligibility === "suspended" || eligibility === "blocked") throw new AppError("ACCOUNT_NOT_ACTIVE")
     if (eligibility !== "eligible") throw new AppError("STATE_CONFLICT")

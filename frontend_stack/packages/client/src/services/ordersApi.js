@@ -151,7 +151,7 @@ function mapAutoPaySetup(payload) {
   const checkout = mapPaymentCheckout(payload?.checkout);
   if (
     !sipPlanId || !mandateId || !orderId || !paymentId ||
-    payload?.status !== 'mandate_setup_in_progress' || checkout?.type !== 'phonepe_sdk'
+    payload?.status !== 'mandate_setup_in_progress' || (checkout !== null && checkout.type !== 'redirect')
   ) {
     throw new Error("Couldn't start AutoPay authorization. Try again.");
   }
@@ -348,25 +348,6 @@ export function mapPaymentCheckout(checkout) {
     if (url.protocol === 'https:' && url.username === '' && url.password === '') {
       return { type: 'redirect', url: url.toString() };
     }
-  }
-  if (
-    checkout.type === 'phonepe_sdk' &&
-    typeof checkout.providerOrderId === 'string' && checkout.providerOrderId.trim().length > 0 &&
-    typeof checkout.token === 'string' && checkout.token.trim().length > 0 &&
-    typeof checkout.merchantId === 'string' && checkout.merchantId.trim().length > 0 &&
-    (checkout.environment === 'SANDBOX' || checkout.environment === 'PRODUCTION') &&
-    typeof checkout.expiresAt === 'string' &&
-    Number.isFinite(Date.parse(checkout.expiresAt)) &&
-    Date.parse(checkout.expiresAt) - Date.now() >= 30000
-  ) {
-    return {
-      type: 'phonepe_sdk',
-      providerOrderId: checkout.providerOrderId.trim(),
-      token: checkout.token.trim(),
-      merchantId: checkout.merchantId.trim(),
-      environment: checkout.environment,
-      expiresAt: new Date(checkout.expiresAt).toISOString(),
-    };
   }
   throw new Error("Couldn't start the payment. Try again.");
 }
