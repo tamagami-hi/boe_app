@@ -755,3 +755,63 @@ Gates after the fixes: `backend_controller` exit 0 at 676 tests, `packages/contr
 Every process and container started in this session was stopped and removed: the two Vite servers,
 the local backend, `boe-local-pg` and `boe-local-mail`. The maintainer's own containers were not
 touched.
+
+
+---
+
+## 2026-08-28 · Entry 016 · Client read surface contracted and built, OTP proven end to end
+
+**Task:** [`TASK/008-client-surfaces.md`](../TASK/008-client-surfaces.md)
+
+### Contracted
+
+Twelve client operations in `packages/contracts/src/operations/client.ts`, every shape read off the
+route handlers rather than documentation — `mapFund`, `mapFundTerms`, `mapTransaction`,
+`derivePortfolio`, the eligibility projection and the notification mapper. Uncontracted paths fall
+**54 → 42**.
+
+### Built
+
+`DashboardScreen`, `FundListScreen`, `FundDetailScreen`, `PortfolioScreen`, `ActivityScreen`,
+`EmailVerificationScreen` replace their placeholders. Each reads through TanStack Query with a
+per-domain `staleTime` and renders through `AsyncBoundary`.
+
+The eligibility gate is now live: `RequireEligible` reads the real decision, so the invest routes
+redirect to verification carrying a `returnTo` instead of being permanently closed. The client shell
+wires `onTransactionalBack` for the first time.
+
+### One defect the response validator caught on the first browser run
+
+`derivePortfolio` returns `returnPercent: null` when nothing is invested; the contract declared
+`z.number()`. Validation failed, so the dashboard rendered its error state rather than a wrong
+number — which is precisely the behaviour the validation layer exists for. Corrected to nullable in
+both the headline and the per-pool shape, and the UI renders an em dash rather than inventing 0%.
+
+### Verified — TESTED
+
+`test_e2e/frontend-ts-smoke.mjs`, Chromium, **29 of 29 checks**. Beyond Entry 015's coverage this now
+proves:
+
+- the dashboard renders the server-derived portfolio headline, and the investing gate appears while
+  email is unverified;
+- fund list, portfolio and activity each render a real state — empty distinguished from failed;
+- an unknown fund id renders not-found rather than crashing;
+- **the email OTP round trip end to end**: request a code, read it out of the Mailpit sink, submit
+  it, and watch the investing gate clear on reload.
+
+The harness resets verification state before each run, so it is idempotent. Its failed-request
+assertion is scoped to `/api/v1/` calls, because Vite module fetches aborted by rapid navigation are
+a dev-server artifact and were producing a false failure.
+
+Gates: all three projects exit 0. `frontend_stack_ts` 90 tests; `build:client` 16 assets,
+632,901 bytes, both gates green.
+
+### Not verified — UNVERIFIED
+
+- **No money has moved.** Orders, payments, SIP and AutoPay are still placeholders, and PhonePe is
+  unconfigured locally so `/pay` answers `DEPENDENCY_UNAVAILABLE` by design.
+- No fund existed during verification, so the fund list and detail screens were exercised against
+  an empty catalogue and a not-found id, not against real published data.
+- Statements, notifications, support, profile, legal and device security remain placeholders.
+- The entire admin console beyond navigation and permission gating remains placeholders.
+- Nothing has run on the emulator; no APK exists; the container has never been built.
