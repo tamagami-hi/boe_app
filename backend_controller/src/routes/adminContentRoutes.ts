@@ -29,7 +29,7 @@ import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adm
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { AppError } from "../http/errorCatalog.js"
 import { parseOrThrow } from "../http/validation.js"
-import type { AdminContentRepository, ContentState } from "../repositories/adminContentRepository.js"
+import type { AdminContentRepository } from "../repositories/adminContentRepository.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
 import {
   adminIdempotencyScope,
@@ -243,13 +243,6 @@ const mutate = async <TBody extends Record<string, unknown>>(
   })
 }
 
-const stateFromBody = (body: unknown): ContentState | null => {
-  if (body === null || typeof body !== "object") return null
-  const keys = Object.keys(body)
-  if (keys.length !== 1 || keys[0] !== "status") return null
-  return parseOrThrow(statusPatchSchema, body).status
-}
-
 const createFaq = async (deps: AdminContentDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
   requireAnyPermission(principal, ["content.publish"])
@@ -295,13 +288,61 @@ const createFaq = async (deps: AdminContentDeps, request: FastifyRequest, reply:
   )
 }
 
-const patchFaq = async (deps: AdminContentDeps, request: FastifyRequest, reply: FastifyReply) => {
+const setFaqState = async (deps: AdminContentDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
   requireAnyPermission(principal, ["content.publish"])
   const faqId = parseOrThrow(uuidParam, (request.params as { faqId?: unknown }).faqId)
-  const nextState = stateFromBody(request.body)
-  const fields = nextState === null ? parseOrThrow(faqFieldsSchema, request.body) : null
+  const nextState = parseOrThrow(statusPatchSchema, request.body).status
   const now = deps.clock()
+
+  return mutate(
+    deps,
+    request,
+    reply,
+    `${FAQS_ROUTE}/:faqId/status`,
+    "PATCH",
+    { faqId, status: nextState },
+    principal.userId,
+    async (tx) => {
+      const existing = await deps.contentRepository.lockContentItem(tx, faqId)
+      if (existing === null || existing.kind !== "faq") throw new AppError("RESOURCE_NOT_FOUND")
+
+      if (nextState === "published") {
+        await deps.contentRepository.archivePublishedContentItems(
+          tx,
+          existing.content_key,
+          existing.id,
+          now,
+        )
+      }
+      const updated = await deps.contentRepository.setContentItemState(tx, {
+        id: faqId,
+        state: nextState,
+        publishedByUserId: principal.userId,
+        now,
+      })
+      await deps.auditRepository.append(tx, {
+        actorType: "admin",
+        actorUserId: principal.userId,
+        command: `content_item.${nextState}`,
+        entityType: "content_item",
+        entityId: faqId,
+        fromState: existing.state,
+        toState: updated.state,
+        requestId: request.requestId,
+        entityVersion: updated.version,
+        metadata: { contentKey: updated.content_key },
+      })
+      return { status: 200, body: { faq: mapFaq(updated) } }
+    },
+  )
+}
+
+const editFaq = async (deps: AdminContentDeps, request: FastifyRequest, reply: FastifyReply) => {
+  const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
+  requireAnyPermission(principal, ["content.publish"])
+  const faqId = parseOrThrow(uuidParam, (request.params as { faqId?: unknown }).faqId)
+  const fields = parseOrThrow(faqFieldsSchema, request.body)
 
   return mutate(
     deps,
@@ -309,44 +350,13 @@ const patchFaq = async (deps: AdminContentDeps, request: FastifyRequest, reply: 
     reply,
     `${FAQS_ROUTE}/:faqId`,
     "PATCH",
-    { faqId, status: nextState, question: fields?.question ?? null },
+    { faqId, question: fields.question },
     principal.userId,
     async (tx) => {
       const existing = await deps.contentRepository.lockContentItem(tx, faqId)
       if (existing === null || existing.kind !== "faq") throw new AppError("RESOURCE_NOT_FOUND")
-
-      if (nextState !== null) {
-        if (nextState === "published") {
-          await deps.contentRepository.archivePublishedContentItems(
-            tx,
-            existing.content_key,
-            existing.id,
-            now,
-          )
-        }
-        const updated = await deps.contentRepository.setContentItemState(tx, {
-          id: faqId,
-          state: nextState,
-          publishedByUserId: principal.userId,
-          now,
-        })
-        await deps.auditRepository.append(tx, {
-          actorType: "admin",
-          actorUserId: principal.userId,
-          command: `content_item.${nextState}`,
-          entityType: "content_item",
-          entityId: faqId,
-          fromState: existing.state,
-          toState: updated.state,
-          requestId: request.requestId,
-          entityVersion: updated.version,
-          metadata: { contentKey: updated.content_key },
-        })
-        return { status: 200, body: { faq: mapFaq(updated) } }
-      }
-
-      if (fields === null) throw new AppError("VALIDATION_FAILED")
       if (existing.state !== "draft") throw new AppError("STATE_CONFLICT")
+
       const updated = await deps.contentRepository.updateContentItem(tx, faqId, {
         title: fields.question,
         body: fields.answer,
@@ -482,7 +492,12 @@ export const registerAdminContentRoutes = (
     ),
   )
   application.post(FAQS_ROUTE, async (request, reply) => createFaq(deps, request, reply))
-  application.patch(`${FAQS_ROUTE}/:faqId`, async (request, reply) => patchFaq(deps, request, reply))
+  application.patch(`${FAQS_ROUTE}/:faqId`, async (request, reply) => editFaq(deps, request, reply))
+  application.patch(`${FAQS_ROUTE}/:faqId/status`, async (request, reply) => {
+    const result = await setFaqState(deps, request, reply)
+    await deps.cache.invalidate([CACHE_KEYS.supportFaqs])
+    return result
+  })
   application.delete(`${FAQS_ROUTE}/:faqId`, async (request, reply) => {
     const result = await archiveFaq(deps, request, reply)
     await deps.cache.invalidate([CACHE_KEYS.supportFaqs])

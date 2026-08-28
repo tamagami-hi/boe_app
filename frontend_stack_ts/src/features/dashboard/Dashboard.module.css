@@ -20,6 +20,36 @@
   gap: var(--be-space-2);
 }
 
+.headlineRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--be-space-4);
+}
+
+.returnCell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--be-space-1);
+  align-items: flex-start;
+}
+
+.returnValue {
+  font-family: var(--be-font-numeric);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: var(--be-text-xl);
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  color: var(--be-fg);
+}
+
+.asAt {
+  font-family: var(--be-font-ui);
+  font-size: var(--be-text-xs);
+  color: var(--be-fg-faint);
+}
+
 .figure {
   display: flex;
   flex-direction: column;
@@ -109,6 +139,11 @@
 @media (min-width: 1024px) {
   .bento {
     gap: var(--be-space-5);
+  }
+
+  .returnCell {
+    align-items: flex-end;
+    text-align: right;
   }
 
   .spanHero {

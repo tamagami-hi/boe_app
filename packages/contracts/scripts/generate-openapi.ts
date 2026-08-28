@@ -7,7 +7,10 @@ import { z } from "zod"
 import { ErrorEnvelope } from "../src/envelope.js"
 import { ERROR_DEFINITIONS } from "../src/errors.js"
 import type { ErrorCode } from "../src/errors.js"
+import { ADMIN_CONTENT_OPERATIONS } from "../src/operations/admin-content.js"
 import { ADMIN_FUND_AUM_OPERATIONS } from "../src/operations/admin-fund-aum.js"
+import { ADMIN_MONEY_OPERATIONS } from "../src/operations/admin-money.js"
+import { ADMIN_OVERSIGHT_OPERATIONS } from "../src/operations/admin-oversight.js"
 import { APP_OPERATIONS } from "../src/operations/app.js"
 import { CLIENT_ACCOUNT_OPERATIONS } from "../src/operations/client-account.js"
 import { CLIENT_ORDER_OPERATIONS } from "../src/operations/client-orders.js"
@@ -49,6 +52,9 @@ export const ALL_OPERATIONS: readonly GeneratableOperation[] = Object.freeze([
   ...NATIVE_AUTH_OPERATIONS,
   ...WEB_AUTH_OPERATIONS,
   ...ADMIN_FUND_AUM_OPERATIONS,
+  ...ADMIN_CONTENT_OPERATIONS,
+  ...ADMIN_MONEY_OPERATIONS,
+  ...ADMIN_OVERSIGHT_OPERATIONS,
 ])
 
 type RouteConfig = Parameters<OpenAPIRegistry["registerPath"]>[0]

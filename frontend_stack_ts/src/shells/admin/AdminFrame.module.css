@@ -44,7 +44,8 @@
   padding: 0 var(--be-space-4);
   border: 0;
   border-radius: var(--be-radius-full);
-  background: var(--be-shell-strong);
+  background: var(--be-parchment);
+  box-shadow: 0 0 0 1px var(--be-hairline-strong), var(--be-ambient-1);
   box-shadow: 0 0 0 1px var(--be-hairline);
   color: var(--be-fg-muted);
   font-family: var(--be-font-ui);
@@ -163,7 +164,12 @@
     background: transparent;
     backdrop-filter: none;
     box-shadow: none;
+    justify-content: flex-end;
     padding: var(--be-space-7) var(--be-space-8) var(--be-space-4);
+  }
+
+  .title {
+    display: none;
   }
 
   .sidebar {

@@ -255,7 +255,9 @@
 }
 
 .tabs {
-  display: flex;
+  display: inline-flex;
+  align-self: flex-start;
+  max-width: 100%;
   gap: var(--be-space-1);
   padding: 4px;
   border-radius: var(--be-radius-full);

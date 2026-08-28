@@ -4,6 +4,7 @@ import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { useSession } from "~/app/providers/SessionProvider"
+import { formatDate } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { emailVerificationState } from "~/domain/status"
 import { PendingPaymentRecovery } from "~/features/payments/PendingPaymentRecovery"
@@ -65,9 +66,24 @@ const DashboardScreen = (): React.ReactElement => {
             >
               {(data) => (
                 <Card tone="feature">
-                  <div className={styles.headlineCell}>
-                    <span className={styles.label}>Current value</span>
-                    <MoneyValue amount={toPaise(data.currentValuePaise)} size="xl" />
+                  <div className={styles.headlineRow}>
+                    <div className={styles.headlineCell}>
+                      <span className={styles.label}>Current value</span>
+                      <MoneyValue amount={toPaise(data.currentValuePaise)} size="xl" />
+                    </div>
+                    <div className={styles.returnCell}>
+                      <span className={styles.label}>Return</span>
+                      <span className={styles.returnValue}>
+                        {data.returnPercent === null
+                          ? "—"
+                          : `${data.returnPercent >= 0 ? "+" : ""}${data.returnPercent.toFixed(2)}%`}
+                      </span>
+                      <span className={styles.asAt}>
+                        {data.lastUpdated === null
+                          ? "No ledger entries yet"
+                          : `As at ${formatDate(`${data.lastUpdated}T00:00:00Z`)}`}
+                      </span>
+                    </div>
                   </div>
                   <div className={styles.split}>
                     <div className={styles.figure}>

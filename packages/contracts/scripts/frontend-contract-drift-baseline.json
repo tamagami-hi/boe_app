@@ -2,32 +2,9 @@
   "generatedFrom": "generated/openapi-v1.json",
   "uncontractedPaths": [
     "/v1/admin/*",
-    "/v1/admin/app-config",
-    "/v1/admin/applications",
-    "/v1/admin/applications/{param}/decision",
-    "/v1/admin/audit-logs",
-    "/v1/admin/client-growth/collective",
-    "/v1/admin/client-growth/collective/preview",
-    "/v1/admin/client-growth/individual",
-    "/v1/admin/email-deliveries",
-    "/v1/admin/faqs",
-    "/v1/admin/faqs/{param}",
-    "/v1/admin/fund-receipts",
-    "/v1/admin/fund-receipts/{param}/acknowledge",
-    "/v1/admin/mandate-collections/{param}/reconcile",
-    "/v1/admin/mandates",
-    "/v1/admin/mandates/{param}",
-    "/v1/admin/mandates/{param}/cancel",
-    "/v1/admin/mandates/{param}/reconcile",
-    "/v1/admin/payments",
-    "/v1/admin/refunds",
     "/v1/admin/refunds/{param}/{param}",
-    "/v1/admin/users",
-    "/v1/admin/users/{param}/detail",
     "/v1/client/email-verification/resend",
     "/v1/client/sips/{param}/{param}"
   ],
-  "uncontractedMethods": [
-    "GET /v1/admin/funds/{param}/stocks"
-  ]
+  "uncontractedMethods": []
 }
