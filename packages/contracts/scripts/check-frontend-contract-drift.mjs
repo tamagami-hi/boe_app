@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises"
+import { readFile, stat, writeFile } from "node:fs/promises"
 import { readdir } from "node:fs/promises"
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -6,20 +6,67 @@ import { fileURLToPath } from "node:url"
 const scriptDirectory = dirname(fileURLToPath(import.meta.url))
 const repositoryRoot = resolve(scriptDirectory, "../..", "..")
 const openApiPath = join(repositoryRoot, "packages/contracts/generated/openapi-v1.json")
-const frontendRoot = join(repositoryRoot, "frontend_stack/packages")
 const baselinePath = join(scriptDirectory, "frontend-contract-drift-baseline.json")
 
 const SOURCE_EXTENSIONS = new Set([".js", ".jsx", ".ts", ".tsx"])
-const SERVICE_DIRECTORIES = new Set(["client", "admin", "shared"])
 const HTTP_METHODS = new Set(["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"])
+const IGNORED_DIRECTORIES = new Set(["node_modules", "dist", "build", "coverage", "generated"])
+
+const DEFAULT_SCAN_ROOTS = [
+  "frontend_stack/packages/client",
+  "frontend_stack/packages/admin",
+  "frontend_stack/packages/shared",
+  "frontend_stack_ts/src",
+]
+
+const configuredScanRoots = () => {
+  const configured = process.env.BOE_FRONTEND_SCAN_ROOTS
+  if (configured === undefined || configured.trim() === "") return DEFAULT_SCAN_ROOTS
+  return configured
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry !== "")
+}
+
+const directoryExists = async (path) => {
+  try {
+    return (await stat(path)).isDirectory()
+  } catch (error) {
+    if (error?.code === "ENOENT") return false
+    throw error
+  }
+}
+
+const resolveScanRoots = async () => {
+  const requested = configuredScanRoots()
+  const present = []
+  for (const relativePath of requested) {
+    const absolute = join(repositoryRoot, relativePath)
+    if (await directoryExists(absolute)) present.push(absolute)
+  }
+  if (present.length === 0) {
+    throw new Error(
+      `No frontend source roots found. Looked for: ${requested.join(", ")}. ` +
+        "Set BOE_FRONTEND_SCAN_ROOTS to a comma-separated list of repository-relative directories.",
+    )
+  }
+  return present
+}
+
+const collectSourceFiles = async () => {
+  const roots = await resolveScanRoots()
+  return (await Promise.all(roots.map(walk))).flat()
+}
 
 const walk = async (directory) => {
   const entries = await readdir(directory, { withFileTypes: true })
   const files = []
   for (const entry of entries) {
     const path = join(directory, entry.name)
-    if (entry.isDirectory()) files.push(...(await walk(path)))
-    else if (
+    if (entry.isDirectory()) {
+      if (IGNORED_DIRECTORIES.has(entry.name)) continue
+      files.push(...(await walk(path)))
+    } else if (
       SOURCE_EXTENSIONS.has(entry.name.slice(entry.name.lastIndexOf("."))) &&
       !/(?:\.test|\.spec)\.[^.]+$/u.test(entry.name)
     ) files.push(path)
@@ -66,10 +113,7 @@ const extractRequestMethods = (source) => {
 }
 
 export const discoverFrontendPaths = async () => {
-  const packageDirectories = (await readdir(frontendRoot, { withFileTypes: true }))
-    .filter((entry) => entry.isDirectory() && SERVICE_DIRECTORIES.has(entry.name))
-    .map((entry) => join(frontendRoot, entry.name))
-  const files = (await Promise.all(packageDirectories.map(walk))).flat()
+  const files = await collectSourceFiles()
   const paths = new Map()
   for (const file of files) {
     const source = await readFile(file, "utf8")
@@ -83,10 +127,7 @@ export const discoverFrontendPaths = async () => {
 }
 
 export const discoverFrontendRequests = async () => {
-  const packageDirectories = (await readdir(frontendRoot, { withFileTypes: true }))
-    .filter((entry) => entry.isDirectory() && SERVICE_DIRECTORIES.has(entry.name))
-    .map((entry) => join(frontendRoot, entry.name))
-  const files = (await Promise.all(packageDirectories.map(walk))).flat()
+  const files = await collectSourceFiles()
   const requests = new Map()
   for (const file of files) {
     const source = await readFile(file, "utf8")

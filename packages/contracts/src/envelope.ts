@@ -2,7 +2,7 @@ import { z } from "zod"
 
 import { ERROR_CODES, ERROR_DEFINITIONS } from "./errors.js"
 import type { ErrorCode as ErrorCodeType } from "./errors.js"
-import { IsoDateTime, Uuid } from "./scalars.js"
+import { IsoDateTime, Uuid, Cursor } from "./scalars.js"
 
 const PROTOTYPE_SENSITIVE_FIELD_KEYS = ["__proto__", "prototype", "constructor"] as const
 const RESERVED_METADATA_KEYS = ["requestId", "timestamp", "idempotencyReplay"] as const
@@ -69,6 +69,17 @@ const createEnvelopeMetaSchema = <TMetadataShape extends MetadataShape>(
 export const EnvelopeMeta = createEnvelopeMetaSchema({})
 export type EnvelopeMeta = z.infer<typeof EnvelopeMeta>
 
+export const MAX_PAGE_LIMIT = 100
+
+export const PageMeta = z.strictObject({
+  nextCursor: Cursor.nullable(),
+  limit: z.int().min(1).max(MAX_PAGE_LIMIT),
+  hasMore: z.boolean(),
+})
+export type PageMeta = z.infer<typeof PageMeta>
+
+export const PAGINATED_METADATA_SHAPE = { page: PageMeta } as const
+
 const ValidationErrorDetail = z.strictObject({
   code: z.literal("VALIDATION_FAILED"),
   message: z.string(),
@@ -119,3 +130,8 @@ export const createSuccessEnvelopeSchema = <
     meta: metaSchema,
   })
 }
+
+
+export const createPaginatedSuccessEnvelopeSchema = <TDataSchema extends z.ZodType>(
+  dataSchema: TDataSchema,
+) => createSuccessEnvelopeSchema(dataSchema, PAGINATED_METADATA_SHAPE)

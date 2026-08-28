@@ -12,6 +12,7 @@ const EXPECTED_ERROR_DEFINITIONS = {
   INVALID_CREDENTIALS: { httpStatus: 401, retryable: false },
   SESSION_INVALID: { httpStatus: 401, retryable: false },
   SNS_SIGNATURE_INVALID: { httpStatus: 401, retryable: false },
+  PROVIDER_CALLBACK_UNVERIFIED: { httpStatus: 401, retryable: false },
   AUTHORIZATION_DENIED: { httpStatus: 403, retryable: false },
   ACCOUNT_NOT_ACTIVE: { httpStatus: 403, retryable: false },
   CSRF_INVALID: { httpStatus: 403, retryable: false },

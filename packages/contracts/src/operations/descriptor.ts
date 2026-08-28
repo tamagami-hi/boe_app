@@ -42,6 +42,12 @@ export type OperationSecurityPolicy =
       responseCacheControl: "no-store"
     }>
   | Readonly<{
+      authChannel: "native-bearer"
+      credentialPolicy: "native-bearer"
+      idempotency: "none" | "naturally-idempotent" | "required-key"
+      responseCacheControl: "no-store"
+    }>
+  | Readonly<{
       authChannel: "admin-web"
       credentialPolicy: "admin-session-cookie-and-csrf"
       idempotency: "none" | "optional-key" | "required-key"

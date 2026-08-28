@@ -18,6 +18,7 @@ export const ERROR_DEFINITIONS = Object.freeze({
   INVALID_CREDENTIALS: createErrorDefinition(401, false),
   SESSION_INVALID: createErrorDefinition(401, false),
   SNS_SIGNATURE_INVALID: createErrorDefinition(401, false),
+  PROVIDER_CALLBACK_UNVERIFIED: createErrorDefinition(401, false),
   AUTHORIZATION_DENIED: createErrorDefinition(403, false),
   ACCOUNT_NOT_ACTIVE: createErrorDefinition(403, false),
   CSRF_INVALID: createErrorDefinition(403, false),

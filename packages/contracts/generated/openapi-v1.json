@@ -97,6 +97,7 @@
                       "INVALID_CREDENTIALS",
                       "SESSION_INVALID",
                       "SNS_SIGNATURE_INVALID",
+                      "PROVIDER_CALLBACK_UNVERIFIED",
                       "AUTHORIZATION_DENIED",
                       "ACCOUNT_NOT_ACTIVE",
                       "CSRF_INVALID",
