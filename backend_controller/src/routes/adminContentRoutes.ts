@@ -13,8 +13,7 @@
  *
  * `app_config_versions` carries presentation/feature-flag/minimum-version data
  * only. The schema is `strict()`, so the legacy console habit of embedding fund
- * and product catalogues in app config is rejected rather than silently stored —
- * monetary policy lives in `finance_policy_versions`, catalogue data in `funds`.
+ * and product catalogues in app config is rejected rather than silently stored.
  */
 import { CACHE_KEYS, type Cache } from "../cache/cache.js"
 import { createHash } from "node:crypto"

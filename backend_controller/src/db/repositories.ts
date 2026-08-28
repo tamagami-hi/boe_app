@@ -28,7 +28,6 @@ export type RolePermission = Row<"role_permissions">
 export type UserRole = Row<"user_roles">
 export type AuditEvent = Row<"audit_events">
 export type IdempotencyRecord = Row<"idempotency_records">
-export type RateLimitWindow = Row<"rate_limit_windows">
 export type LegalHold = Row<"legal_holds">
 export type OutboxEvent = Row<"outbox_events">
 export type EmailDelivery = Row<"email_deliveries">
@@ -41,7 +40,6 @@ export type FundDisclosureVersion = Row<"fund_disclosure_versions">
 export type FundAumSnapshot = Row<"fund_aum_snapshots">
 export type AumGrowthBatch = Row<"aum_growth_batches">
 export type FundStockDisclosure = Row<"fund_stock_disclosures">
-export type FinancePolicyVersion = Row<"finance_policy_versions">
 export type AppConfigVersion = Row<"app_config_versions">
 export type ContentItem = Row<"content_items">
 export type SipPlan = Row<"sip_plans">
@@ -274,12 +272,6 @@ export type CompleteIdempotencyInput = ReadonlyDeep<{
   completedAt: string
   expiresAt: string
 }>
-export type IncrementRateLimitWindowInput = ReadonlyDeep<{
-  bucket: string
-  keyHash: Uint8Array
-  windowStart: string
-  expiresAt: string
-}>
 export type RetentionTarget = ReadonlyDeep<{
   entityType: RetentionEntityType
   entityId: string
@@ -428,10 +420,6 @@ export interface IdempotencyRepository {
   tryAcquireTransactionLock(tx: Transaction, scope: Readonly<IdempotencyScope>): Promise<boolean>
   findCompleted(tx: Transaction, scope: Readonly<IdempotencyScope>): Promise<IdempotencyRecord | null>
   insertCompleted(tx: Transaction, input: Readonly<CompleteIdempotencyInput>): Promise<IdempotencyRecord>
-}
-
-export interface RateLimitRepository {
-  incrementWindow(tx: Transaction, input: Readonly<IncrementRateLimitWindowInput>): Promise<RateLimitWindow>
 }
 
 export interface LegalHoldRepository {

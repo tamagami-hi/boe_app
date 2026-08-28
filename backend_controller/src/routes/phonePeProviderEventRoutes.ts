@@ -3,9 +3,8 @@ import { createHash } from "node:crypto"
 import type { FastifyInstance, FastifyRequest } from "fastify"
 
 import type { UnitOfWork } from "../db/database.js"
-import type { Transaction } from "../db/repositories.js"
 import { applyCanonicalPaymentOutcome } from "../domain/payments/applyCanonicalPaymentOutcome.js"
-import { isRefundEvidenceCorrelated } from "../domain/payments/refundEvidence.js"
+import { applyRefundOutcome } from "../domain/payments/applyRefundOutcome.js"
 import { encryptGcm } from "../crypto/primitives.js"
 import { GatewayAuthenticationError, GatewayMalformedCallbackError, type PaymentGateway, type VerifiedCallback } from "../providers/phonepe/paymentGateway.js"
 import { AppError } from "../http/errorCatalog.js"
@@ -42,63 +41,6 @@ const dedupKeyFor = (callback: VerifiedCallback): string => {
 
 const merchantOrderIdOf = (callback: VerifiedCallback): string | null =>
   callback.merchantOrderId ?? callback.originalMerchantOrderId
-
-const applyRefundOutcome = async (
-  deps: PhonePeProviderEventDeps,
-  tx: Transaction,
-  callback: VerifiedCallback,
-  now: Date,
-): Promise<void> => {
-  if (callback.merchantRefundId === null) return
-  const refund = await deps.refundRepository.lockByMerchantRefundId(tx, callback.merchantRefundId)
-  if (refund === null) return
-  const originalAttempt = await deps.paymentsRepository.latestAttempt(tx, refund.payment_id)
-  if (
-    originalAttempt === null ||
-    originalAttempt.state !== "succeeded" ||
-    !isRefundEvidenceCorrelated({
-      expectedAmountPaise: refund.amount_paise,
-      expectedMerchantOrderId: originalAttempt.merchant_order_id,
-      expectedProviderRefundId: refund.provider_refund_id,
-      providerRefundId: callback.providerRefundId,
-      amountPaise: callback.amountPaise,
-      originalMerchantOrderId: callback.originalMerchantOrderId,
-    })
-  ) throw new Error("refund correlation failed")
-
-  if (callback.outcome === "succeeded") {
-    if (refund.state === "refunded") return
-    const refunded = await deps.refundRepository.markRefunded(tx, {
-      refundId: refund.id,
-      providerRefundId: callback.providerRefundId,
-      now,
-    })
-    if (refunded === null) throw new Error("refund success transition failed")
-    const payment = await deps.paymentsRepository.markPaymentRefunded(tx, refund.payment_id, now)
-    if (payment === null) throw new Error("payment refund transition failed")
-    if (await deps.paymentsRepository.markOrderRefunded(tx, refund.order_id, now) === null) {
-      throw new Error("order refund transition failed")
-    }
-    return
-  }
-
-  if (callback.outcome === "failed") {
-    if (refund.state === "failed") return
-    const failed = await deps.refundRepository.markFailed(tx, {
-      refundId: refund.id,
-      failureCode: "PROVIDER_REFUND_FAILED",
-      now,
-    })
-    if (failed === null) throw new Error("refund failure transition failed")
-    const payment = await deps.paymentsRepository.markPaymentRefundFailed(tx, refund.payment_id, now)
-    if (payment === null) throw new Error("payment refund failure transition failed")
-    if (await deps.paymentsRepository.markOrderRefundFailed(tx, {
-      orderId: refund.order_id,
-      failureCode: "PROVIDER_REFUND_FAILED",
-      now,
-    }) === null) throw new Error("order refund failure transition failed")
-  }
-}
 
 const processCallback = async (
   deps: PhonePeProviderEventDeps,

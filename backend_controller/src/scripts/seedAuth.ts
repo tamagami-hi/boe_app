@@ -237,20 +237,6 @@ export const runSeedAuth = async (
       [adminId, role.id, adminId],
     )
 
-    // Seed the initial finance policy version. Version 1 carries the schema's
-    // default dual-approval threshold; changing thresholds is an administrative
-    // act that publishes a new version.
-    const policy = firstRow<{ version: number }>(
-      await client.query("SELECT version FROM finance_policy_versions WHERE retired_at IS NULL"),
-    )
-    if (policy === undefined) {
-      await client.query(
-        "INSERT INTO finance_policy_versions (version, effective_from, published_by_user_id) " +
-          "VALUES (1, now(), $1) ON CONFLICT (version) DO NOTHING",
-        [adminId],
-      )
-    }
-
     /*
      * The default client (QA) login. It deliberately gets no role grant: roles
      * carry admin permissions, and an investor is authorised by owning its own
