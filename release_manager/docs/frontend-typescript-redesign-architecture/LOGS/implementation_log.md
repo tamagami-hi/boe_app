@@ -680,3 +680,78 @@ Shells: `ClientShellRoot` + `ClientFrame` + `clientRuntime`, `AdminShellRoot` + 
 - Safe-area behaviour, system bars, hardware Back and the transactional-Back confirm are all
   device concerns and remain untested.
 - 47 of 55 routes render a placeholder. The feature surfaces behind them do not exist yet.
+
+
+---
+
+## 2026-08-28 · Entry 015 · First real runtime verification — five integration defects
+
+**Task:** [`TASK/007-runtime-verification.md`](../TASK/007-runtime-verification.md)
+**Decision:** [D-027](risk_and_decision.md#d-027)
+
+Everything before this entry was static. This is the first time the new frontend has run.
+
+### The stack it ran against
+
+The VPS could not serve this. Verified read-only: the dev stack is at migration `042`, so it does
+not carry the hosted-checkout backend, and its allowlist is
+`https://dev-app.beonedge.in,https://beonedge-vps.tail4ea2bc.ts.net,https://localhost` with no
+entry for a local origin. So a local stack via `test_e2e/local-stack.sh`: throwaway Postgres on
+5433, Mailpit on 1025, backend on 47502, client SPA on 5174, admin SPA on 5175.
+
+**Migrations 043, 044 and 045 applied for the first time anywhere.** All 37 in-tree migrations
+applied cleanly from empty, and `seedAuth` bootstrapped both an admin and a client login.
+
+### Five defects, none of which any test could have found
+
+1. **CORS rejected every browser native login.** The native auth contract declares
+   `x-client-platform` and `x-app-version`, but `ALLOWED_HEADERS` in `src/http/cors.ts` listed
+   neither, so preflight failed with "Request header field x-app-version is not allowed". The
+   Capacitor WebView would fail identically — its `https://localhost` origin is cross-origin to the
+   API host. Preflight is browser behaviour; the request never reaches a handler, so no unit test
+   could see it. Fixed in the backend, with the test updated.
+2. **`npm run dev` served the admin shell on the client port.** `vite.config.ts` defaults
+   `VITE_BEO_APP_TARGET` to `"admin"` and the script never set it. The client port rendered the
+   administrator console and called the web-auth endpoints. This is the same silent wrong-app
+   failure `export.sh` guards with its literal `ARG` grep.
+3. **The token store deleted its own credentials on web.** `purgeLegacySecrets` was wired to
+   `!isNative()`, and it removed the secret fields during hydration — precisely the fields the
+   browser client had just written, because the client uses a bearer token and has nowhere else to
+   keep it. Every page load dropped the session. Legacy purging is a native concern; it is now a
+   one-shot explicit call and no longer an option that can be pointed the wrong way.
+4. **The admin console could not hold a cookie.** `localhost:5175` calling `127.0.0.1:47502` is
+   cross-site, so `SameSite=Lax` cookies were never stored and `/v1/auth/web/csrf` answered
+   `CSRF_INVALID` on the `Sec-Fetch-Site` check. Doc 01 records this exact three-way failure for the
+   admin image. Resolved as the docs prescribe — same-origin `/api` (D-027).
+5. **Four permissions were silently dropped.** The seeded superadmin carries 31 permissions;
+   `PERMISSION_CODES` listed 27. `isPermissionCode` filtered out `approvals.check`,
+   `approvals.request`, `permissions.change` and `roles.assign`, which would have hidden admin
+   surfaces. Caught by diffing the live login response against the union.
+
+### Verified — TESTED on this machine
+
+`test_e2e/frontend-ts-smoke.mjs`, Chromium, **19 of 19 checks pass**: splash-to-login on both
+shells; client native login to dashboard; all five client tabs; tab navigation; admin cookie login
+to overview; 14 permitted sidebar sections; sidebar navigation; direct entry to `/sips`, which the
+legacy route map made impossible; unknown-path not-found; an unbuilt surface stating so rather than
+rendering empty; client session surviving a fresh page load; admin session recovering through the
+CSRF endpoint; the responsive nav switch at the shell breakpoint; and **zero uncaught page errors
+and zero failed network requests** on both shells.
+
+Gates after the fixes: `backend_controller` exit 0 at 676 tests, `packages/contracts` exit 0,
+`frontend_stack_ts` exit 0 at 90 tests.
+
+### Not verified — UNVERIFIED
+
+- **No money has moved.** No order, payment, SIP or mandate has been exercised. PhonePe is
+  unconfigured in the local env, so `/pay` answers `DEPENDENCY_UNAVAILABLE` by design.
+- **No email OTP round trip.** Mailpit is running but the verification flow is not built.
+- 47 of 55 routes still render the not-implemented state. Phases 4–10 are not done.
+- Nothing has run on the emulator; no APK exists yet.
+- The container was never built.
+
+### Cleanup
+
+Every process and container started in this session was stopped and removed: the two Vite servers,
+the local backend, `boe-local-pg` and `boe-local-mail`. The maintainer's own containers were not
+touched.

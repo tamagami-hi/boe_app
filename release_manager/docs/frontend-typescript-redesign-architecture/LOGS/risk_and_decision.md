@@ -431,3 +431,34 @@ Rather than duplicate the login screen per target, or branch inside it on
 This keeps the transport specifics in `clientRuntime.ts` and `adminRuntime.ts`, where the
 scope-specific token store, refresh executor and rotation identifier already live, and it means the
 Android admin variant becomes a port swap rather than a screen fork.
+
+
+### D-027
+**Both shells resolve the API same-origin through an `/api` proxy in development.** · DECIDED 2026-08-28
+
+The admin console could not authenticate at all when the SPA was served from `localhost:5175` and
+the API called at `127.0.0.1:47502`. Those are different hosts to a browser, so the exchange is
+cross-site: `SameSite=Lax` cookies are never stored, and `validateWebOrigin` rejects on
+`Sec-Fetch-Site: cross-site` before any handler runs. Observed directly — login answered 200 with
+`Set-Cookie`, and the browser held zero cookies.
+
+Doc 01 already records this as a shipped production failure for the admin image, where baking the
+user SPA's absolute origin "failed three ways at once — CORS, `validateWebOrigin()` rejecting
+`Sec-Fetch-Site: cross-site`, and `Secure`/`__Host-` cookies not being sent cross-site", with the
+visible symptom that the admin splash never released. The recorded resolution is that the console is
+served from a host whose vhost proxies `/api/` itself.
+
+So development now matches that: `vite.config.ts` proxies `/api` to the backend with the prefix
+stripped, and `VITE_BEO_API_BASE_URL` is left unset so `resolveApiBase()` falls through to its
+same-origin `/api` branch. Both shells use it.
+
+Two things this buys beyond fixing the bug. The same-origin branch of `resolveApiBase()` is now
+actually exercised rather than reasoned about, and that branch is the one D-010 added to make the
+browser images byte-identical promotable artifacts — the limitation
+`DEPLOYMENT_CONSTRAINTS_IMPLEMENTATION.md` asks a future change to remove. And the development
+topology now mirrors production instead of diverging from it, so a cookie or origin defect surfaces
+locally rather than at deploy.
+
+The APK remains the deliberate exception: a Capacitor WebView on `https://localhost` has no server
+to be same-origin with, so it must carry an absolute `https://` origin, which is why
+`resolveApiBase()` throws rather than guessing there.
