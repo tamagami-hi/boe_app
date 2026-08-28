@@ -137,6 +137,17 @@ export const Paise = z
   .refine((value) => isWithinUnsignedIntegerMaximum(value, POSTGRES_BIGINT_MAX))
 export type Paise = z.infer<typeof Paise>
 
+export const SignedPaise = z
+  .string()
+  .regex(/^-?(0|[1-9][0-9]*)$/u)
+  .refine((value) =>
+    isWithinUnsignedIntegerMaximum(
+      value.startsWith("-") ? value.slice(1) : value,
+      POSTGRES_BIGINT_MAX,
+    ),
+  )
+export type SignedPaise = z.infer<typeof SignedPaise>
+
 export const Decimal24x8 = z
   .string()
   .regex(/^-?(0|[1-9][0-9]*)([.][0-9]{1,8})?$/u)

@@ -21,10 +21,10 @@ import type { PaymentsRepository } from "../repositories/paymentsRepository.js"
 import type { SipPlanRepository } from "../repositories/sipPlanRepository.js"
 import type { UserWriteRepository } from "../repositories/userRepository.js"
 
-const ROUTE = "/v1/client/sips/autopay"
-const DETAIL_ROUTE = "/v1/client/sips/autopay/:sipPlanId"
-const CANCEL_ROUTE = "/v1/client/sips/autopay/:sipPlanId/cancel"
-const RETRY_ROUTE = "/v1/client/sips/autopay/:sipPlanId/setup/retry"
+const ROUTE = "/v1/client/sip-autopay"
+const DETAIL_ROUTE = "/v1/client/sip-autopay/:sipPlanId"
+const CANCEL_ROUTE = "/v1/client/sip-autopay/:sipPlanId/cancel"
+const RETRY_ROUTE = "/v1/client/sip-autopay/:sipPlanId/setup/retry"
 const MAX_AMOUNT_PAISE = 1_500_000n
 
 const bodySchema = z.object({

@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 import { createSuccessEnvelopeSchema } from "../envelope.js"
-import { IdempotencyKey, IsoDateTime, Paise, Uuid } from "../scalars.js"
+import { IdempotencyKey, IsoDateTime, Paise, SignedPaise, Uuid } from "../scalars.js"
 import { defineOperation, MAX_JSON_BODY_BYTES } from "./descriptor.js"
 
 export const AdminFundState = z.enum(["draft", "published", "paused", "archived"])
@@ -12,9 +12,6 @@ export type AdminFundRiskLevel = z.infer<typeof AdminFundRiskLevel>
 
 export const AdminFundReturnTier = z.enum(["low", "moderate", "high"])
 export type AdminFundReturnTier = z.infer<typeof AdminFundReturnTier>
-
-export const SignedPaise = z.string().trim().regex(/^-?(0|[1-9][0-9]{0,18})$/u)
-export type SignedPaise = z.infer<typeof SignedPaise>
 
 const NonZeroSignedPaise = SignedPaise.refine((value) => !/^-?0$/u.test(value))
 const AsOfDate = z.iso.date()

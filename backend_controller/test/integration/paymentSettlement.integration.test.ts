@@ -501,7 +501,7 @@ const createActiveAutoPay = async (
   recurringSetupStatusError = null
   const create = await app.inject({
     method: "POST",
-    url: "/v1/client/sips/autopay",
+    url: "/v1/client/sip-autopay",
     headers: { ...bearer(token), "idempotency-key": `autopay-cancel-create-${randomUUID()}` },
     payload: { fundId, amountPaise: "50000", debitDay: 5, durationMonths: 12 },
   })
@@ -551,7 +551,7 @@ describe("checkout orchestrator", () => {
     const beforeCalls = recurringCreateCalls
     const create = await app.inject({
       method: "POST",
-      url: "/v1/client/sips/autopay",
+      url: "/v1/client/sip-autopay",
       headers: { ...bearer(token), "idempotency-key": key },
       payload: { fundId: fund.fundId, amountPaise: "50000", debitDay: 5, durationMonths: 12 },
     })
@@ -601,7 +601,7 @@ describe("checkout orchestrator", () => {
 
     const replay = await app.inject({
       method: "POST",
-      url: "/v1/client/sips/autopay",
+      url: "/v1/client/sip-autopay",
       headers: { ...bearer(token), "idempotency-key": key },
       payload: { fundId: fund.fundId, amountPaise: "50000", debitDay: 5, durationMonths: 12 },
     })
@@ -622,7 +622,7 @@ describe("checkout orchestrator", () => {
     const fund = await seedPublishedFund(`autopay-disabled-${randomUUID().slice(0, 8)}`, admin.rows[0]!.id)
     const create = await app.inject({
       method: "POST",
-      url: "/v1/client/sips/autopay",
+      url: "/v1/client/sip-autopay",
       headers: { ...bearer(token), "idempotency-key": `autopay-disabled-create-${randomUUID()}` },
       payload: { fundId: fund.fundId, amountPaise: "50000", debitDay: 5, durationMonths: 12 },
     })
@@ -632,7 +632,7 @@ describe("checkout orchestrator", () => {
     stubAutoPayEnabled = false
     const blockedCreate = await app.inject({
       method: "POST",
-      url: "/v1/client/sips/autopay",
+      url: "/v1/client/sip-autopay",
       headers: { ...bearer(token), "idempotency-key": `autopay-disabled-blocked-${randomUUID()}` },
       payload: { fundId: fund.fundId, amountPaise: "50000", debitDay: 5, durationMonths: 12 },
     })
@@ -677,7 +677,7 @@ describe("checkout orchestrator", () => {
     const cancelCallsBefore = recurringCancelCalls
     const cancel = await app.inject({
       method: "POST",
-      url: `/v1/client/sips/autopay/${created.sipPlanId}/cancel`,
+      url: `/v1/client/sip-autopay/${created.sipPlanId}/cancel`,
       headers: { ...bearer(token), "idempotency-key": `autopay-disabled-cancel-${randomUUID()}` },
     })
     expect(cancel.statusCode, cancel.body).toBe(202)
@@ -709,7 +709,7 @@ describe("checkout orchestrator", () => {
     const fund = await seedPublishedFund(`autopay-gate-${randomUUID().slice(0, 8)}`, admin.rows[0]!.id)
     const create = await app.inject({
       method: "POST",
-      url: "/v1/client/sips/autopay",
+      url: "/v1/client/sip-autopay",
       headers: { ...bearer(token), "idempotency-key": `autopay-gate-${randomUUID()}` },
       payload: { fundId: fund.fundId, amountPaise: "50000", debitDay: 5, durationMonths: 12 },
     })
@@ -792,7 +792,7 @@ describe("checkout orchestrator", () => {
     const cancelCallsBefore = recurringCancelCalls
     const cancel = await app.inject({
       method: "POST",
-      url: `/v1/client/sips/autopay/${created.sipPlanId}/cancel`,
+      url: `/v1/client/sip-autopay/${created.sipPlanId}/cancel`,
       headers: { ...bearer(token), "idempotency-key": cancelKey },
     })
     expect(cancel.statusCode).toBe(202)
@@ -802,7 +802,7 @@ describe("checkout orchestrator", () => {
       .toBe("cancel_pending")
     const replayCancel = await app.inject({
       method: "POST",
-      url: `/v1/client/sips/autopay/${created.sipPlanId}/cancel`,
+      url: `/v1/client/sip-autopay/${created.sipPlanId}/cancel`,
       headers: { ...bearer(token), "idempotency-key": cancelKey },
     })
     expect(replayCancel.statusCode).toBe(202)
@@ -839,7 +839,7 @@ describe("checkout orchestrator", () => {
       .toBe("cancelled")
     const detail = await app.inject({
       method: "GET",
-      url: `/v1/client/sips/autopay/${created.sipPlanId}`,
+      url: `/v1/client/sip-autopay/${created.sipPlanId}`,
       headers: bearer(token),
     })
     expect(detail.statusCode, detail.body).toBe(200)
@@ -858,7 +858,7 @@ describe("checkout orchestrator", () => {
     const created = await createActiveAutoPay(token, fund.fundId)
     const cancel = await app.inject({
       method: "POST",
-      url: `/v1/client/sips/autopay/${created.sipPlanId}/cancel`,
+      url: `/v1/client/sip-autopay/${created.sipPlanId}/cancel`,
       headers: { ...bearer(token), "idempotency-key": `autopay-cancel-reject-${randomUUID()}` },
     })
     expect(cancel.statusCode, cancel.body).toBe(202)
@@ -887,7 +887,7 @@ describe("checkout orchestrator", () => {
     const created = await createActiveAutoPay(token, fund.fundId)
     const cancel = await app.inject({
       method: "POST",
-      url: `/v1/client/sips/autopay/${created.sipPlanId}/cancel`,
+      url: `/v1/client/sip-autopay/${created.sipPlanId}/cancel`,
       headers: { ...bearer(token), "idempotency-key": `autopay-cancel-ambiguous-${randomUUID()}` },
     })
     expect(cancel.statusCode, cancel.body).toBe(202)
@@ -914,7 +914,7 @@ describe("checkout orchestrator", () => {
     )).rows[0]).toEqual({ state: "reconciliation_required", status_check_count: 2 })
     const detail = await app.inject({
       method: "GET",
-      url: `/v1/client/sips/autopay/${created.sipPlanId}`,
+      url: `/v1/client/sip-autopay/${created.sipPlanId}`,
       headers: bearer(token),
     })
     expect(dataOf<{ cancellation: { status: string; failureCode: string } }>(detail).cancellation)
@@ -942,7 +942,7 @@ describe("checkout orchestrator", () => {
     const created = await createActiveAutoPay(token, fund.fundId)
     const cancel = await app.inject({
       method: "POST",
-      url: `/v1/client/sips/autopay/${created.sipPlanId}/cancel`,
+      url: `/v1/client/sip-autopay/${created.sipPlanId}/cancel`,
       headers: { ...bearer(token), "idempotency-key": `autopay-cancel-race-${randomUUID()}` },
     })
     expect(cancel.statusCode, cancel.body).toBe(202)
@@ -974,7 +974,7 @@ describe("checkout orchestrator", () => {
     const fund = await seedPublishedFund(`autopay-failed-${randomUUID().slice(0, 8)}`, admin.rows[0]!.id)
     const create = await app.inject({
       method: "POST",
-      url: "/v1/client/sips/autopay",
+      url: "/v1/client/sip-autopay",
       headers: { ...bearer(token), "idempotency-key": `autopay-failed-${randomUUID()}` },
       payload: { fundId: fund.fundId, amountPaise: "50000", debitDay: 5, durationMonths: 12 },
     })
@@ -1025,7 +1025,7 @@ describe("checkout orchestrator", () => {
     const fund = await seedPublishedFund(`autopay-retry-${randomUUID().slice(0, 8)}`, admin.rows[0]!.id)
     const create = await app.inject({
       method: "POST",
-      url: "/v1/client/sips/autopay",
+      url: "/v1/client/sip-autopay",
       headers: { ...bearer(token), "idempotency-key": `autopay-retry-create-${randomUUID()}` },
       payload: { fundId: fund.fundId, amountPaise: "50000", debitDay: 5, durationMonths: 12 },
     })
@@ -1068,7 +1068,7 @@ describe("checkout orchestrator", () => {
     })
     const detail = await app.inject({
       method: "GET",
-      url: `/v1/client/sips/autopay/${created.sipPlanId}`,
+      url: `/v1/client/sip-autopay/${created.sipPlanId}`,
       headers: bearer(token),
     })
     expect(detail.statusCode, detail.body).toBe(200)
@@ -1084,7 +1084,7 @@ describe("checkout orchestrator", () => {
     const retryKey = `autopay-retry-${randomUUID()}`
     const retry = await app.inject({
       method: "POST",
-      url: `/v1/client/sips/autopay/${created.sipPlanId}/setup/retry`,
+      url: `/v1/client/sip-autopay/${created.sipPlanId}/setup/retry`,
       headers: { ...bearer(token), "idempotency-key": retryKey },
     })
     expect(retry.statusCode, retry.body).toBe(201)
@@ -1098,7 +1098,7 @@ describe("checkout orchestrator", () => {
     expect(counts.rows[0]).toEqual({ setups: "2", attempts: "2" })
     const replay = await app.inject({
       method: "POST",
-      url: `/v1/client/sips/autopay/${created.sipPlanId}/setup/retry`,
+      url: `/v1/client/sip-autopay/${created.sipPlanId}/setup/retry`,
       headers: { ...bearer(token), "idempotency-key": retryKey },
     })
     expect(replay.statusCode).toBe(200)
@@ -1117,7 +1117,7 @@ describe("checkout orchestrator", () => {
     const fund = await seedPublishedFund(`autopay-expiry-${randomUUID().slice(0, 8)}`, admin.rows[0]!.id)
     const createPlan = async () => dataOf<{ sipPlanId: string }>(await app.inject({
       method: "POST",
-      url: "/v1/client/sips/autopay",
+      url: "/v1/client/sip-autopay",
       headers: { ...bearer(token), "idempotency-key": `autopay-expiry-${randomUUID()}` },
       payload: { fundId: fund.fundId, amountPaise: "50000", debitDay: 5, durationMonths: 12 },
     }))

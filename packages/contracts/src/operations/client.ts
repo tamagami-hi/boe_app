@@ -1,13 +1,27 @@
 import { z } from "zod"
 
 import { createPaginatedSuccessEnvelopeSchema, createSuccessEnvelopeSchema } from "../envelope.js"
-import { Cursor, IsoDateTime, Paise, Uuid } from "../scalars.js"
+import { Cursor, Decimal24x8, IsoDateTime, Paise, SignedPaise, Uuid } from "../scalars.js"
 import { defineOperation, MAX_JSON_BODY_BYTES } from "./descriptor.js"
 
 const NullablePaise = Paise.nullable()
-const IsoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/u)
+
+export const IsoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/u)
+export type IsoDate = z.infer<typeof IsoDate>
+
 const NullableIsoDate = IsoDate.nullable()
 const NullableIsoDateTime = IsoDateTime.nullable()
+
+export const ClientInvestmentStatus = z.enum([
+  "payment_in_progress",
+  "processing",
+  "confirmed",
+  "refund_in_progress",
+  "support_required",
+  "refunded",
+  "payment_failed",
+])
+export type ClientInvestmentStatus = z.infer<typeof ClientInvestmentStatus>
 
 export const ListQuery = z.strictObject({
   limit: z.coerce.number().int().min(1).max(100).optional(),
@@ -49,34 +63,34 @@ const ContributionBreakdown = {
 export const PortfolioPool = z.strictObject({
   fundId: Uuid,
   totalInvestmentPaise: Paise,
-  currentValuePaise: Paise,
-  totalGrowthPaise: Paise,
+  currentValuePaise: SignedPaise,
+  totalGrowthPaise: SignedPaise,
   returnPercent: z.number().nullable(),
   contributionCount: z.number().int(),
   contributionTotalPaise: Paise,
-  growthAdjustmentTotalPaise: Paise,
+  growthAdjustmentTotalPaise: SignedPaise,
   firstContributionDate: NullableIsoDate,
   lastActivityDate: NullableIsoDate,
   firstInvestmentDate: NullableIsoDate,
-  allocatedGainPaise: Paise,
+  allocatedGainPaise: SignedPaise,
   redeemedTotalPaise: Paise,
   ...ContributionBreakdown,
 })
 export type PortfolioPool = z.infer<typeof PortfolioPool>
 
 export const PortfolioData = z.strictObject({
-  currentValuePaise: Paise,
+  currentValuePaise: SignedPaise,
   totalInvestmentPaise: Paise,
-  totalGrowthPaise: Paise,
+  totalGrowthPaise: SignedPaise,
   returnPercent: z.number().nullable(),
   returnSince: NullableIsoDate,
   lastUpdated: NullableIsoDate,
   summary: z.strictObject({
     contributionCount: z.number().int(),
     contributionTotalPaise: Paise,
-    growthAdjustmentTotalPaise: Paise,
+    growthAdjustmentTotalPaise: SignedPaise,
     reversalCount: z.number().int(),
-    allocatedGainPaise: Paise,
+    allocatedGainPaise: SignedPaise,
     redeemedTotalPaise: Paise,
     redemptionCount: z.number().int(),
     ...ContributionBreakdown,
@@ -109,8 +123,8 @@ export const TransactionItem = z.strictObject({
   id: Uuid,
   fundId: Uuid,
   type: LedgerEntryType,
-  principalDeltaPaise: z.string(),
-  valueDeltaPaise: z.string(),
+  principalDeltaPaise: SignedPaise,
+  valueDeltaPaise: SignedPaise,
   date: IsoDate,
   orderId: Uuid.nullable(),
   createdAt: IsoDateTime,
@@ -185,9 +199,17 @@ export const FundDisclosure = z.strictObject({
   effectiveFrom: IsoDateTime,
 })
 
+export const FundStock = z.strictObject({
+  stockName: z.string(),
+  quarterLabel: z.string(),
+  weightPercent: Decimal24x8.nullable(),
+  sortOrder: z.number().int(),
+})
+export type FundStock = z.infer<typeof FundStock>
+
 export const FundDetailData = z.strictObject({
   fund: FundSummary,
-  stocks: z.array(z.unknown()),
+  stocks: z.array(FundStock),
   disclosure: FundDisclosure.nullable(),
 })
 export type FundDetailData = z.infer<typeof FundDetailData>
@@ -277,86 +299,6 @@ export const verifyEmail = defineOperation({
   ],
 })
 
-export const NotificationItem = z.looseObject({
-  id: Uuid,
-  title: z.string(),
-  body: z.string().nullable(),
-  read: z.boolean(),
-  createdAt: IsoDateTime,
-})
-export type NotificationItem = z.infer<typeof NotificationItem>
-
-export const listClientNotifications = defineOperation({
-  operationId: "listClientNotifications",
-  method: "GET",
-  path: "/v1/client/notifications",
-  authChannel: "native-bearer",
-  credentialPolicy: "native-bearer",
-  idempotency: "naturally-idempotent",
-  responseCacheControl: "no-store",
-  request: { query: ListQuery },
-  success: {
-    status: 200,
-    schema: createSuccessEnvelopeSchema(z.strictObject({ items: z.array(NotificationItem) })),
-  },
-  errorCodes: ["AUTHENTICATION_REQUIRED", "SESSION_INVALID", "ACCOUNT_NOT_ACTIVE", "VALIDATION_FAILED", "INTERNAL_ERROR"],
-})
-
-export const markNotificationRead = defineOperation({
-  operationId: "markNotificationRead",
-  method: "PATCH",
-  path: "/v1/client/notifications/{notificationId}",
-  authChannel: "native-bearer",
-  credentialPolicy: "native-bearer",
-  idempotency: "naturally-idempotent",
-  responseCacheControl: "no-store",
-  request: {
-    params: z.strictObject({ notificationId: Uuid }),
-    body: z.strictObject({ read: z.literal(true) }),
-    mediaType: "application/json",
-    maxBodyBytes: MAX_JSON_BODY_BYTES,
-  },
-  success: { status: 200, schema: createSuccessEnvelopeSchema(z.looseObject({})) },
-  errorCodes: ["AUTHENTICATION_REQUIRED", "SESSION_INVALID", "ACCOUNT_NOT_ACTIVE", "RESOURCE_NOT_FOUND", "VALIDATION_FAILED", "INTERNAL_ERROR"],
-})
-
-export const FaqItem = z.looseObject({
-  id: z.string(),
-  question: z.string(),
-  answer: z.string(),
-})
-
-export const listSupportFaqs = defineOperation({
-  operationId: "listSupportFaqs",
-  method: "GET",
-  path: "/v1/client/support/faqs",
-  authChannel: "native-bearer",
-  credentialPolicy: "native-bearer",
-  idempotency: "naturally-idempotent",
-  responseCacheControl: "no-store",
-  request: {},
-  success: {
-    status: 200,
-    schema: createSuccessEnvelopeSchema(z.strictObject({ items: z.array(FaqItem) })),
-  },
-  errorCodes: ["AUTHENTICATION_REQUIRED", "SESSION_INVALID", "ACCOUNT_NOT_ACTIVE", "INTERNAL_ERROR"],
-})
-
-export const StatementItem = z.looseObject({ periodStart: IsoDate, periodEnd: IsoDate })
-
-export const listClientStatements = defineOperation({
-  operationId: "listClientStatements",
-  method: "GET",
-  path: "/v1/client/statements",
-  authChannel: "native-bearer",
-  credentialPolicy: "native-bearer",
-  idempotency: "naturally-idempotent",
-  responseCacheControl: "no-store",
-  request: {},
-  success: { status: 200, schema: createSuccessEnvelopeSchema(z.looseObject({})) },
-  errorCodes: ["AUTHENTICATION_REQUIRED", "SESSION_INVALID", "ACCOUNT_NOT_ACTIVE", "INTERNAL_ERROR"],
-})
-
 export const CLIENT_OPERATIONS = Object.freeze([
   getClientEligibility,
   getClientPortfolio,
@@ -366,8 +308,4 @@ export const CLIENT_OPERATIONS = Object.freeze([
   getEmailVerificationStatus,
   startEmailVerification,
   verifyEmail,
-  listClientNotifications,
-  markNotificationRead,
-  listSupportFaqs,
-  listClientStatements,
 ])

@@ -171,7 +171,7 @@ function autoPayInput({ fundId, amount, durationMonths, debitDay }) {
 
 export async function createAutoPaySip(input, { requestKey } = {}) {
   const body = autoPayInput(input);
-  return mapAutoPaySetup(await apiRequest('/v1/client/sips/autopay', {
+  return mapAutoPaySetup(await apiRequest('/v1/client/sip-autopay', {
     method: 'POST',
     headers: { 'idempotency-key': requiredText(requestKey) ?? idempotencyKey() },
     body,
@@ -179,18 +179,18 @@ export async function createAutoPaySip(input, { requestKey } = {}) {
 }
 
 export async function getAutoPaySip(sipPlanId) {
-  return mapAutoPayDetail(await apiRequest(`/v1/client/sips/autopay/${encodeURIComponent(sipPlanId)}`));
+  return mapAutoPayDetail(await apiRequest(`/v1/client/sip-autopay/${encodeURIComponent(sipPlanId)}`));
 }
 
 export async function retryAutoPaySetup(sipPlanId) {
-  return mapAutoPaySetup(await apiRequest(`/v1/client/sips/autopay/${encodeURIComponent(sipPlanId)}/setup/retry`, {
+  return mapAutoPaySetup(await apiRequest(`/v1/client/sip-autopay/${encodeURIComponent(sipPlanId)}/setup/retry`, {
     method: 'POST',
     headers: { 'idempotency-key': idempotencyKey() },
   }));
 }
 
 export async function cancelAutoPaySip(sipPlanId) {
-  const result = await apiRequest(`/v1/client/sips/autopay/${encodeURIComponent(sipPlanId)}/cancel`, {
+  const result = await apiRequest(`/v1/client/sip-autopay/${encodeURIComponent(sipPlanId)}/cancel`, {
     method: 'POST',
     headers: { 'idempotency-key': idempotencyKey() },
   });
