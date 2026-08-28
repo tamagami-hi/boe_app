@@ -195,6 +195,43 @@ The standalone integration coverage profile currently reports less than 80%, so 
 - `a356b15` — remove obsolete admin route aliases.
 - `0de72d1` — restore fund-stock validation feedback.
 - Current correction slice — enforce CI verification, finish role-selector consolidation, and reconcile this log.
+- 2026-08-28 closeout slice — remove runtime fixture business paths, consolidate
+  payment/form presentation contracts, rename the active admin route registry,
+  simplify app configuration, and harden refund callback correlation.
+
+## 2026-08-28 open-contract closeout
+
+- Added `frontend_stack/packages/shared/src/paymentStates.js` as the canonical
+  frontend payment presentation vocabulary and wired client/admin payment
+  surfaces to it. Client service mapping rejects payment statuses outside the
+  client-safe projection.
+- Made the shared form field the behavior owner and retained the admin component
+  only as a styling adapter.
+- Removed runtime fixture selection, fixture business data, stale disclosure
+  fallbacks, and embedded product/research catalogues. HTTP failures no longer
+  silently become plausible business records.
+- Renamed `pages/legacy/legacyRoutes.jsx` to `pages/adminRoutes.jsx` and updated
+  the active registry imports/tests.
+- Removed the unused persistent rate-limit repository contract and the empty
+  finance-policy seed path. Physical tables remain pending a separately reviewed
+  forward migration and deployed data checks.
+- Extracted refund callback application into
+  `domain/payments/applyRefundOutcome.ts`. A verified callback now fails closed
+  unless it correlates to a canonical local refund operation and provider
+  evidence.
+- Confirmed from source that refund initiation is not safely complete: no
+  production caller creates `refund_operations`, and no atomic refund reversal
+  updates `client_value_entries`. This is an accounting/product decision, not a
+  safe inferred CRUD endpoint.
+- Confirmed fund AUM is intentionally independent from client ledger value and
+  retained the single-instance rate-limit architecture until horizontal backend
+  scaling is actually introduced.
+- Verification passed for the frontend production build and bundle boot, 900
+  frontend tests, and the full backend `npm run check` with 666 tests and
+  repository-wide coverage above 80%. All 208 database integration behaviors
+  passed; the standalone integration invocation reports a non-zero exit only
+  because that isolated subset has 78.39% coverage against the global 80%
+  threshold.
 
 ## Deliberately incomplete roadmap work
 
@@ -202,9 +239,6 @@ The following items are not represented as complete:
 
 - Choosing and enforcing one complete API schema authority beyond the current drift baseline.
 - Resolving the withdrawal/redemption product decision.
-- Consolidating remaining amount/payment-state mappings and form primitives.
-- Separating app-config presentation data from fixture/conversion concerns.
-- Removing active fixture-mode branches and remaining legacy wrappers.
 - SIP/AutoPay source configuration already matches the accepted PhonePe-managed
   model; worker reachability and deployed scheduling still require runtime
   verification. No worker rewrite has been claimed complete.
@@ -214,13 +248,17 @@ The following items are not represented as complete:
   and `042_remove_legacy_compliance_tables.sql`, plus the corresponding source
   renames. They are not production-complete until migration tests,
   FK/preservation checks, retention approval, and deployed row/relationship
-  counts pass; no deployed database validation has been executed here.
+  counts pass. Populated-upgrade integration coverage is present; deployed
+  database validation has not been executed here.
 - Redis isolation is represented in both compose definitions but VPS isolation
   and the historical concurrency root cause remain runtime/history verification
   items.
-- Monitoring is deploy-time separate but repository-coupled in
-  `release_manager/stacks/monitor_service`; extraction to a separate repository
-  remains incomplete.
+- Refund initiation, deposit/manual receipt, withdrawal/redemption, and generic
+  principal-adjustment contracts require explicit accounting and authorization
+  decisions before implementation.
+- Physical removal of `rate_limit_windows`, `finance_policy_versions`, or
+  `legal_holds` requires deployed data/retention evidence and a forward migration.
+- Monitoring is intentionally outside the current scope.
 
 These boundaries require the pending product, data-retention, and deployment decisions before implementation.
 

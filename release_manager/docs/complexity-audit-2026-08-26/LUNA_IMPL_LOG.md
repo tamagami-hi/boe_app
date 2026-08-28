@@ -306,3 +306,50 @@ Entries will be appended after each implementation slice is reviewed and tested.
   tests and 10/10 Email OTP integration tests passed; frontend production build
   passed; deployment validation passed; and `verify.sh --dev` reported 107 passed,
   0 failed, 1 remote-only check skipped.
+
+### 2026-08-28 — Open-contract implementation and verification closeout
+
+- Limited changes to `backend_controller`, `frontend_stack`, and this audit
+  folder. Unrelated work in `.github/workflows/ci.yml`, `packages/contracts`,
+  `frontend_stack_ts`, and separate architecture-document folders was preserved
+  and excluded from this slice.
+- Introduced the tested shared frontend payment-state vocabulary in
+  `packages/shared/src/paymentStates.js`. Client payment status/transaction pages,
+  admin payments/overview screens, and `StateBadge` now consume it; `ordersApi`
+  validates the client-safe backend projection.
+- Consolidated form-field behavior in the shared component. The admin component
+  now delegates and supplies only admin CSS class hooks.
+- Removed `VITE_BEO_API_MODE`, all runtime fixture branches, dead fixture data,
+  and the unused client service type catalogue. Service failures remain explicit
+  through the HTTP transport.
+- Reduced `shared/src/appConfig.js` to presentation defaults plus remote config
+  transport. Removed the embedded product/research catalogue, offline App Builder
+  fixture controls, stale AutoPay schedule disclosure defaults, and the unused
+  strategy lookup.
+- Replaced the active `pages/legacy/legacyRoutes.jsx` location with
+  `pages/adminRoutes.jsx`; no compatibility alias was retained.
+- Removed the unused `RateLimitRepository` API and finance-policy seed writes.
+  Physical schema was not dropped because this slice does not have deployed
+  row-count, retention, backup, or rollback evidence for a destructive migration.
+- Extracted `applyRefundOutcome.ts` from the PhonePe callback route. A verified
+  refund event now rejects unknown local refunds and correlation mismatches, so
+  the provider event cannot be marked processed while local financial state is
+  unchanged.
+- Refund creation remains intentionally unavailable. Static tracing found no
+  production `refundRepository.create()` caller and no refund transaction that
+  appends a compensating `client_value_entries` reversal. Implementing only the
+  provider call would leave client principal/value inconsistent.
+- Restored environment example validation so local `.env.example` may use only
+  exact `http://localhost:5174`, deployed examples remain HTTPS-only, and the APK
+  origin remains exact `https://localhost`.
+- Extended health/metrics security tests for private Docker subnet exposure,
+  clock-skewed worker heartbeats, and non-finite metric values.
+- Verification evidence:
+  - frontend: 69 files, 900 tests passed; production build passed; all 11 emitted
+    chunks passed the bundle boot check;
+  - backend: `npm run check` passed typecheck, lint, 73 files/666 tests,
+    81.43% statement/line coverage, 80.04% branch coverage, build, and source/dist
+    smoke checks;
+  - integration: 19 files and 208 tests passed. The integration-only command
+    exits 1 after successful behaviors because that subset's 78.39% coverage is
+    lower than the repository-wide 80% threshold.

@@ -34,12 +34,23 @@
 | Retrying `/pay` could create multiple PhonePe checkout requests or replace the provider order correlation for one payment attempt. | A database dispatch claim is acquired before the provider call. Claimed and provider-pending attempts return `checkout: null` and send the client to canonical status recovery. The provider correlation write accepts only the claimed `created` attempt, and a hosted response without `orderId` fails closed. |
 | Hosted checkout could be mistaken for settlement evidence. | Browser navigation, UPI app return, and the hosted page never confirm money movement. Authenticated PhonePe callbacks and server-to-server status reconciliation remain the only inputs to canonical payment/order settlement. |
 | `ionic-capacitor-phonepe-pg@3.0.5` declares Capacitor `^4.0.0`, while BOE_APP uses Capacitor `8.3.4`. | The physical test proves basic SDK launch, not lifecycle compatibility. Obtain PhonePe/plugin vendor confirmation for Capacitor 8 and Android target SDK 36 or move to a supported integration before production; do not suppress the peer mismatch as proof of compatibility. |
+| Runtime fixture fallbacks can display plausible users, investments, or payment state after a real API failure. | Runtime fixture mode and business fixture records were removed. Production services now fail explicitly through the HTTP transport; presentation-only defaults remain limited to non-financial UI configuration. |
+| A verified PhonePe refund callback can arrive for an unknown merchant refund identifier. | Fail closed before marking the provider event processed. `applyRefundOutcome.ts` requires a locked canonical `refund_operations` row, original attempt correlation, amount/currency identity, and provider refund identity. |
+| Creating a refund through the existing worker could refund cash without reversing the accepted investment ledger. | Do not expose refund initiation yet. Require one atomic contract that creates the stable refund, transitions payment/order state, and on confirmed completion appends the correct allocation/client-value reversal with audit evidence. |
+| Removing an unused repository abstraction could be mistaken for authorization to drop its physical table. | Runtime abstractions and schema lifecycle are separate decisions. `rate_limit_windows` and `finance_policy_versions` remain until a forward migration proves deployed contents, retention disposition, backup, and rollback safety. |
+| Fund AUM and summed client value can differ. | This is intentional: fund AUM snapshots are operational fund-level observations, while `client_value_entries` is the client portfolio authority. Do not add a false equality invariant; reconcile only explicitly shared dimensions if a reporting requirement is defined. |
+| In-process rate limits do not coordinate across backend replicas. | The intended deployment currently has one backend instance per environment, with ingress controls, password hashing concurrency gates, OTP cooldowns, and endpoint-local limits. Add a Redis/distributed limiter before horizontal scaling or if measured ingress abuse requires it; do not claim the unused database window table currently protects requests. |
 
 ## Explicit unresolved items
 
 - Production/dev runtime row counts, FK contents, and statutory retention obligations require environment verification before executing destructive cleanup migrations.
 - Deployment artifact byte-identity and actual VPS resource isolation require runtime/deployment verification.
 - Monitoring extraction destination is intentionally outside this repository and is not created as part of this change.
+- Deposit/manual receipt, withdrawal/redemption, generic principal adjustment,
+  and refund-reversal accounting rules require product decisions; repository
+  evidence is insufficient to implement them safely.
+- `legal_holds` remains a statutory-retention boundary. No removal is authorized
+  until legal/retention ownership and deployed records are reviewed.
 - The shared money helper changes presentation mapping only; financial persistence
   continues to use validated integer/string paise values and canonical backend
   settlement invariants.

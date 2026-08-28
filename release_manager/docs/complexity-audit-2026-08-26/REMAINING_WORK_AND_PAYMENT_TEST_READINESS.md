@@ -1,8 +1,8 @@
 # Remaining Work and Payment-Test Readiness
 
-**Reviewed:** 2026-08-27
+**Reviewed:** 2026-08-28
 
-**Code baseline:** `50db866` (`fix: harden verification and deployment`)
+**Code baseline:** working tree pending the 2026-08-28 simplification commit
 
 **Monitoring:** intentionally outside this work
 
@@ -146,54 +146,55 @@ AutoPay contract:
 Only after these checks pass should the same tested application artifacts be
 promoted with production environment configuration.
 
-## Remaining implementation work after payment validation
+## Open-contract closeout
 
-### Product functionality
+The implementation contracts that could be completed from repository evidence
+are closed:
 
-- Implement one secure deposit/manual-receipt workflow if deposits are intended
-  to be independent of PhonePe investment payments.
-- Implement one owner-scoped withdrawal/redemption workflow using the existing
-  ledger, authorization, idempotency, audit, and transaction boundaries.
-- Define whether generic admin allocation/adjustment is required beyond the
-  existing growth-adjustment workflow.
+| Contract | Status | Evidence |
+| --- | --- | --- |
+| Canonical frontend payment states | Complete | `frontend_stack/packages/shared/src/paymentStates.js` is consumed by client and admin payment displays and the client order adapter validates the client-safe status vocabulary. |
+| Shared form primitive | Complete | Admin `FormField.jsx` delegates to `packages/shared/src/components/FormField.jsx` while preserving admin styling hooks. |
+| Production fixture behavior | Complete | Runtime fixture-mode branches and fixture business records were removed from client/admin service modules. Network-backed services now fail through the canonical transport instead of silently presenting invented business state. |
+| App configuration | Complete | `packages/shared/src/appConfig.js` now contains presentation defaults and remote transport only; the embedded product/research catalogue and stale AutoPay disclosure defaults were removed. |
+| Admin legacy wrapper | Complete | The active route registry is `packages/admin/src/pages/adminRoutes.jsx`; the `pages/legacy` wrapper was removed. |
+| SIP/AutoPay boundary | Complete in source | `phonePeRecurringGateway.ts` sends Notify with `autoDebit=true` and `STANDARD`; workers schedule, correlate, and reconcile without Execute Redemption or a second debit retry engine. Runtime PhonePe behavior remains a UAT gate. |
+| Fund AUM authority | Decision closed | Fund AUM snapshots are intentionally an operational fund-level measure independent from the client value ledger. No automatic equality invariant is valid because their scopes differ. |
+| Current rate limiting | Decision closed for one backend instance | Nginx/ingress controls, the Argon2 password gate, OTP cooldowns, and local process limiters remain the current controls. A distributed limiter is required before horizontal backend scaling, not speculatively now. The unused `RateLimitRepository` abstraction was removed. |
+| Finance policy shell | Runtime abstraction removed | The obsolete seed/write abstraction was removed. The physical `finance_policy_versions` table is retained until a separately reviewed forward schema migration can prove deployed data and rollback safety. |
+| Refund callback consistency | Complete | Verified refund callbacks now require a canonical local `refund_operations` row and correlated evidence before changing payment/order state. |
 
-### Contract and frontend consolidation
+The API-authority work under `packages/contracts` is outside this slice because
+another active workstream owns those files. This closeout deliberately does not
+stage or modify that work.
 
-- Replace the current accepted drift baseline with one complete API authority.
-  It still contains 60 uncontracted frontend paths and one method gap.
-- Consolidate remaining payment-state mappings and form primitives.
-- Separate app-config presentation, fixture, conversion, and stale-fallback
-  concerns.
-- Remove or isolate active frontend fixture mode from production service modules.
-- Verify and remove the remaining active admin legacy routing wrapper.
+## Remaining decisions and runtime gates
 
-### Backend and accounting simplification
+These are not unfinished implementation tasks that can be safely guessed from
+the repository:
 
-- Split oversized route modules into cohesive command/query functions without
-  adding pass-through layers.
-- Decide and document whether fund AUM intentionally remains independent from
-  client ledger value; add reconciliation if required.
-- Determine the retained product role of `refund_operations`,
-  `rate_limit_windows`, `finance_policy_versions`, and `legal_holds`.
-- Verify whether critical ingress needs shared/distributed rate limiting before
-  horizontal backend scaling.
+- **Deposits/manual receipts:** define whether money can enter outside a
+  PhonePe-backed investment payment and specify its accounting evidence.
+- **Withdrawals/redemptions:** define authorization, available-value rules,
+  payout execution, failure recovery, and ledger semantics before restoring a
+  client workflow.
+- **Generic admin adjustments:** decide whether the existing controlled growth
+  adjustment is sufficient. A generic principal-changing command needs explicit
+  approval and audit policy.
+- **Refund initiation:** `refund_operations` supports dispatch and
+  reconciliation, but no production creator exists. A completed payment already
+  has an allocation and contribution; therefore a refund command must atomically
+  define the allocation/ledger reversal. Exposing refund creation without that
+  rule would create divergent financial truth.
+- **Legal holds and physical table removal:** `legal_holds`,
+  `finance_policy_versions`, and `rate_limit_windows` require a forward migration
+  with deployed row-count, retention, backup, and rollback evidence. Legal holds
+  cannot be removed on architectural grounds alone.
+- **Runtime evidence:** verify VPS dev/prod PostgreSQL and Redis isolation,
+  worker scheduling/heartbeats, public PhonePe callbacks, real hosted checkout,
+  AutoPay setup/Notify, and ambiguous provider recovery.
 
-### Runtime and operational investigation
-
-- Verify the actual VPS dev/prod PostgreSQL and Redis isolation.
-- Verify all required workers are scheduled and reachable.
-- Verify PhonePe webhook exposure and ambiguous-notification behavior.
-- Reconstruct the historical Redis/concurrency incident only if operationally
-  useful; Redis remains retained as the shared read cache regardless.
-
-## Documentation reconciliation still required
-
-Some audit documents retain historical observations that should be updated:
-
-- old frontend test failures that are now fixed;
-- old backend/frontend test counts;
-- migration testing described as pending even though populated-upgrade coverage
-  now exists;
-- pre-consolidation app-config and admin-alias descriptions;
-- the incomplete commit sequence;
-- withdrawal traces that refer to executable frontend calls already removed.
+Large route-file splitting is intentionally deferred. It should happen only
+when a feature change needs the affected module, using cohesive domain commands
+and without adding pass-through layers. Mechanical splitting now would add
+regression risk without closing a business contract.

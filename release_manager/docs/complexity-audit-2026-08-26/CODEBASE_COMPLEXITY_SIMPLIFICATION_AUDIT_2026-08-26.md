@@ -4,6 +4,12 @@
 **Scope:** tracked repository plus runtime-relevant ignored configuration where it affects deployment risk
 **Method:** static tracing of imports, route registration, migrations, schema types, UI navigation, tests, and git history. No source code was modified.
 
+**Implementation status:** The forensic baseline below records the repository as
+audited. Changes landed after the audit are reconciled in
+`REMAINING_WORK_AND_PAYMENT_TEST_READINESS.md`, `IMPLEMENTATION_CHANGELOG.md`,
+`LUNA_IMPL_LOG.md`, and `RISK_AND_DECISIONS.md`. Where this baseline conflicts
+with the 2026-08-28 closeout, the closeout is current.
+
 ## 0. Accepted architectural constraints (2026-08-27)
 
 The following decisions supersede the earlier “optional” or unresolved labels in
@@ -237,9 +243,14 @@ The payment path is PhonePe-specific after the Razorpay rewrite. Client order/pa
 
 ## 12. Frontend architecture
 
-`frontend_stack/app/src/main.jsx` build-time selects exactly one target. Client provider stack includes `SessionProvider`, `CheckoutProvider`, `ResourceCacheProvider`, eviction/recovery, error boundary, then `ClientApp`; admin adds admin session, cache eviction, toast, approvals queue, heading providers. The earlier admin compatibility aliases and `legacyTabMap.js` were removed in the implementation slice; `pages/legacy/legacyRoutes.jsx` remains imported by `Admin.jsx`, so “legacy” wrapper code is still active.
+`frontend_stack/app/src/main.jsx` build-time selects exactly one target. Client provider stack includes `SessionProvider`, `CheckoutProvider`, `ResourceCacheProvider`, eviction/recovery, error boundary, then `ClientApp`; admin adds admin session, cache eviction, toast, approvals queue, heading providers. The earlier admin compatibility aliases and `legacyTabMap.js` were removed in the implementation slice. On 2026-08-28 the active route registry was renamed from `pages/legacy/legacyRoutes.jsx` to `pages/adminRoutes.jsx`.
 
-The client transport `packages/client/src/services/_util.js::apiRequest` is the strongest canonical transport. `packages/shared/src/appConfig.js::appConfigRequest` separately implements base URL, auth, and CSRF handling, duplicating transport behavior. Fixture mode is spread across approximately 15 production service modules and can render local/stale data when remote config fails (`useAppConfig.js`). This is disproportionate for CRUD screens.
+The client transport `packages/client/src/services/_util.js::apiRequest` is the
+canonical client transport. The 2026-08-28 slice removed runtime fixture-mode
+branches and embedded business fixture catalogues. Shared app-config operations
+receive the caller's canonical request function, avoiding a reverse package
+dependency without duplicating auth/CSRF transport, and no longer mix transport
+with product/research fixtures or stale AutoPay business defaults.
 
 ## 13. Backend architecture
 
@@ -249,12 +260,12 @@ There are 26 production route modules, 36 repository modules, and 28 non-test do
 
 | Responsibility | Implementation A | Implementation B | Active usage | Recommendation |
 |---|---|---|---|---|
-| HTTP transport | `client/src/services/_util.js::apiRequest` | `shared/src/appConfig.js::appConfigRequest` | Both | Consolidate on one transport; runtime auth behavior needs verification |
+| HTTP transport | Authenticated client `apiRequest` | Public/shared app-config request | Both, with distinct package/auth boundaries | Keep the two bounded transports; do not introduce a reverse shared-to-client dependency |
 | Client balance/value | `domain/client/portfolioLedger.ts` | frontend paise/rupee/signed-value helpers (`ClientValuesScreen.jsx`, `FundAumPanel.jsx`, `signedAmounts.js`) | Backend canonical plus repeated UI calculations | Backend remains authority; one shared display conversion |
 | Role parsing | `authApi.hasRole` | `BrowserRoot.jsx`, `ClientLayout.jsx` checks | Active | One session/authorization selector |
-| Forms | admin `FormField` | shared form field components | Active in separate packages | Consolidate primitives after visual regression checks |
-| Fixture business data | `fixture*.js` files and service fallbacks | inline fixtures in `ordersApi.js` and related services | Build/test/fallback paths | Remove after explicit fixture-mode decision |
-| Payment state mapping | order/payment/attempt maps in multiple service/screen files | backend canonical mapper | Active | Generate/use one contract mapping |
+| Forms | admin styling wrapper | shared `FormField` primitive | Consolidated | Shared behavior with package-specific classes |
+| Fixture business data | Deleted fixture files and service fallbacks | Deleted inline order/payment fixtures | No runtime usage | Closed on 2026-08-28 |
+| Payment state mapping | shared `paymentStates.js` presentation vocabulary | backend canonical projection | Active and deliberately layered | Backend owns business state; shared frontend owns labels/tones |
 | API contract | runtime Fastify routes | `packages/contracts` OpenAPI (15 paths) | Runtime ignores generated contract | Make route schema or generated contract authoritative |
 | Withdrawal/redemption | Removed client redemption route/page/service surface | no backend route/table | No executable implementation; product scope still needs explicit confirmation | Keep removed unless a secure end-to-end withdrawal contract is approved |
 
@@ -271,15 +282,19 @@ There are 26 production route modules, 36 repository modules, and 28 non-test do
 
 ### Probably stale or incomplete
 
-- `refund_operations` and refund repository operations without a create caller.
+- `refund_operations` and refund repository operations without a create caller
+  or atomic client-ledger reversal. Keep fail-closed until a refund accounting
+  contract is approved.
 - `risk_assessments`, `investor_profiles`, `kyc_documents`, `kyc_reviews`, and `marketing_leads`: schema/read/seed presence exceeds current write workflows and are designated removal candidates, subject to FK, preservation, statutory-retention, and legal-hold checks.
 - `kyc_cases` and `kyc_verification_codes`: migration-only source tables; removable only when migration 042 passes deployed preservation/retention/legal-hold gates.
 - Persistent `rate_limit_windows` table versus in-process `http/rateLimit.ts` map.
-- Admin compatibility routes and legacy tab map.
-- Withdrawal/redemption client UI and `adminReason` display not populated by `mapRedemptionRequest`.
+- Withdrawal/redemption remains absent from the executable client/backend flow.
 - Stale audit docs describing investment review after migration 039.
 
-No file is classified dead solely because its name says “legacy”; `pages/legacy/legacyRoutes.jsx` is actively imported. Reachability of ignored archives and deployed routes is **Needs runtime verification**.
+No file was classified dead solely because its name said “legacy”. The active
+`pages/legacy/legacyRoutes.jsx` registry was verified, retained as behavior, and
+moved to `pages/adminRoutes.jsx` on 2026-08-28. Reachability of ignored archives
+and deployed routes is **Needs runtime verification**.
 
 ## 16. Multiple sources of truth
 
@@ -415,7 +430,15 @@ while the monitoring repository owns collection and visualization.
 
 ## 25. KEEP / CONSOLIDATE / SIMPLIFY / REWRITE / REMOVE matrix
 
-See the exact file matrix in `FILE_DISPOSITION_AND_ROADMAP.md`. In summary: **KEEP** security, transaction/ledger, provider verification, deployment safety, onboarding, SIP/AutoPay, Redis cache infrastructure, and financial history; **CONSOLIDATE** transport, payment outcome mapping, role parsing, API contract, and financial display conversions; **SIMPLIFY** app config, route-local orchestration, compatibility aliases, fixture mode, worker responsibilities, and monitoring ownership; **REWRITE** only the broken redemption workflow if the business confirms it; **REMOVE** proven dead UI kits, fixture files, Kimi scripts, stale docs, and designated legacy tables only after forward migration and data-preservation checks.
+See the exact file matrix in `FILE_DISPOSITION_AND_ROADMAP.md`. In summary:
+**KEEP** security, transaction/ledger, provider verification, deployment safety,
+onboarding, SIP/AutoPay, Redis cache infrastructure, and financial history;
+**CONSOLIDATE** API authority and financial display conversions only where
+semantics are proven equivalent; **SIMPLIFY** route-local orchestration when
+touched; **REWRITE** only bounded redemption/refund accounting after its business
+contract is defined; **REMOVE** designated legacy tables only after preserving
+forward migrations. Fixture-mode and active legacy-wrapper work is closed for
+the current frontend scope.
 
 ## 26. Migration strategy
 
@@ -429,12 +452,12 @@ Recommended order: establish contract truth; freeze/verify financial invariants;
 
 ## 27. Prioritized simplification roadmap
 
-1. **Baseline and contract inventory:** record route/schema/DB snapshots; run backend, contract, and frontend tests; fix/triage the three existing fund-stock test failures without changing behavior.
+1. **Baseline and contract inventory:** completed for the current backend/frontend scope; see the 2026-08-28 verification baseline in `FILE_DISPOSITION_AND_ROADMAP.md`.
 2. **Financial invariants:** document and test `applyCanonicalPaymentOutcome.ts`, allocation/value-entry amounts, idempotency, and AUM boundary.
 3. **API authority:** make Fastify schemas or generated OpenAPI authoritative; either wire `packages/contracts` or remove it.
 4. **Close the withdrawal gap:** product decision: implement a secure redemption workflow end to end, or remove/disable the client withdrawal UI and services.
-5. **Transport/state consolidation:** route app-config through canonical `apiRequest`; centralize role parsing, signed amount conversion, and payment-state mapping.
-6. **Remove proven fixture/compatibility code:** fixture files, old tab redirects, legacy wrappers, and unreferenced UI kit after runtime navigation/build checks.
+5. **Transport/state consolidation:** payment-state and form primitives are consolidated; app-config and authenticated client transport remain separate at their intentional package/auth boundary.
+6. **Remove proven fixture/compatibility code:** runtime fixture paths and the active legacy-named route wrapper were removed. Continue only when new evidence identifies a reachable compatibility path.
 7. **SIP/AutoPay boundary:** retain the required subsystem; verify deployed worker scheduling and ensure the source remains Notify-only with PhonePe-managed debit/retry (`autoDebit=true`, `STANDARD`).
 8. **Email Verification and schema cleanup:** migrate KYC-named Email OTP state to durable `users`, rename only email-verification semantics, then archive/drop the six designated legacy tables through forward migrations after data, backup, FK, retention, and legal-hold review.
 9. **Operational hardening:** extend rate limiting to critical ingress, verify webhook exposure, confirm VPS dev/prod isolation, and extract the tracked monitoring deployment to its separate repository while retaining Redis cache and BOE_APP telemetry endpoints.

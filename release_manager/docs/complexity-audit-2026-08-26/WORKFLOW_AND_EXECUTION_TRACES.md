@@ -128,11 +128,21 @@ workers are scheduled and reachable remains **Needs runtime verification**.
 
 ## Frontend state update path
 
-Client requests normally use `packages/client/src/services/_util.js::apiRequest`, which handles timeout, GET retry, bearer/cookie/CSRF, single-flight 401 refresh, response envelopes, and connectivity errors. Results flow through screen-local state plus `ResourceCacheProvider` invalidation. Admin uses similar package services but also has `shared/src/appConfig.js::appConfigRequest`, creating a second auth/transport path. Exact cache invalidation timing and production error behavior require runtime verification.
+Client requests use `packages/client/src/services/_util.js::apiRequest`, which
+handles timeout, GET retry, bearer/cookie/CSRF, single-flight 401 refresh,
+response envelopes, and connectivity errors. Results flow through screen-local
+state plus `ResourceCacheProvider` invalidation. Shared app-config functions now
+receive the caller's canonical `apiRequest`; they do not implement a second auth
+transport. Exact cache invalidation timing and production error behavior require
+runtime verification.
 
 ## Admin compatibility path
 
-`frontend_stack/packages/admin/src/Admin.jsx` defines 44 route elements; 15 are redirects for old users/KYC/risk/subscription/payment/operations/system URLs. `legacyTabMap.js` maps 13 old query tabs. `pages/legacy/legacyRoutes.jsx` is imported by Admin and therefore active despite its name. Remove only after checking navigation, bookmarks, native deep links, and support runbooks.
+`frontend_stack/packages/admin/src/pages/Admin.jsx` now exposes the current
+canonical admin route set plus entry redirects for the default funds-received,
+client-values, and AUM tabs. The old compatibility aliases and `legacyTabMap.js`
+were removed earlier. The active screen registry moved without behavior change
+from `pages/legacy/legacyRoutes.jsx` to `pages/adminRoutes.jsx` on 2026-08-28.
 
 ## Route registration evidence
 
