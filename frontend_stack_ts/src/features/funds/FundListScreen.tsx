@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 
+import { isCompact, useBreakpoint } from "~/lib/useBreakpoint"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { ContentGrid } from "~/app/layouts/ContentGrid"
@@ -15,6 +16,8 @@ import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 import { Input } from "~/ui/primitives/FormField"
 
+import { FundTable } from "./FundTable"
+
 import styles from "./Funds.module.css"
 
 const SORTS = ["name", "risk", "size"] as const
@@ -22,6 +25,8 @@ type Sort = (typeof SORTS)[number]
 
 const FundListScreen = (): React.ReactElement => {
   const query = useFunds()
+  const breakpoint = useBreakpoint()
+  const compact = isCompact(breakpoint)
   const [search, setSearch] = useState("")
   const [sort, setSort] = useState<Sort>("name")
 
@@ -57,6 +62,7 @@ const FundListScreen = (): React.ReactElement => {
             setSearch(event.target.value)
           }}
         />
+        {!compact ? null : (
         <div className={styles.sorts} role="group" aria-label="Sort funds">
           {SORTS.map((option) => (
             <button
@@ -72,6 +78,7 @@ const FundListScreen = (): React.ReactElement => {
             </button>
           ))}
         </div>
+        )}
       </div>
 
       <AsyncBoundary
@@ -111,8 +118,12 @@ const FundListScreen = (): React.ReactElement => {
             )
           }
 
+          if (!compact) {
+            return <FundTable rows={sorted} sort={sort} onSort={setSort} />
+          }
+
           return (
-            <ContentGrid columns={3}>
+            <ContentGrid columns={2}>
               {sorted.map((fund) => (
                 <Link key={fund.id} to={`/funds/${fund.id}`} className={styles.cardLink}>
                   <Card>

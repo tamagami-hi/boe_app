@@ -1,0 +1,74 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--be-space-4);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--be-space-3);
+}
+
+.ticketTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--be-space-3);
+}
+
+.subject {
+  font-family: var(--be-font-ui);
+  font-size: var(--be-text-md);
+  font-weight: 600;
+  color: var(--be-fg);
+}
+
+.reference {
+  font-family: var(--be-font-mono);
+  font-size: var(--be-text-xs);
+  letter-spacing: 0.06em;
+  color: var(--be-fg-faint);
+}
+
+.body {
+  font-family: var(--be-font-ui);
+  font-size: var(--be-text-sm);
+  line-height: var(--be-lh-normal);
+  color: var(--be-fg-muted);
+  white-space: pre-wrap;
+  margin: 0;
+  max-width: 64ch;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--be-space-3);
+  font-family: var(--be-font-ui);
+  font-size: var(--be-text-xs);
+  color: var(--be-fg-faint);
+}
+
+.resolution {
+  padding: var(--be-space-3);
+  border-radius: var(--be-squircle-sm);
+  background: var(--be-shell);
+  font-family: var(--be-font-ui);
+  font-size: var(--be-text-sm);
+  line-height: var(--be-lh-normal);
+  color: var(--be-fg);
+}
+
+.faqs {
+  display: flex;
+  flex-direction: column;
+}
+
+.counter {
+  align-self: flex-end;
+  font-family: var(--be-font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--be-text-xs);
+  color: var(--be-fg-faint);
+}

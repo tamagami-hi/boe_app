@@ -1,13 +1,14 @@
 .page {
+  position: relative;
   width: 100%;
   padding-left: max(var(--be-page-pad-x), var(--be-safe-left));
   padding-right: max(var(--be-page-pad-x), var(--be-safe-left));
-  padding-top: var(--be-page-pad-y);
-  padding-bottom: calc(var(--be-nav-h) + var(--be-safe-bottom) + var(--be-space-7));
+  padding-top: var(--be-space-7);
+  padding-bottom: calc(var(--be-nav-h) + var(--be-safe-bottom) + var(--be-space-9));
   margin-inline: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--be-space-6);
+  gap: var(--be-space-7);
 }
 
 .default {
@@ -26,6 +27,8 @@
   .page {
     padding-left: max(var(--be-page-pad-x-md), var(--be-safe-left));
     padding-right: max(var(--be-page-pad-x-md), var(--be-safe-left));
+    padding-top: var(--be-space-8);
+    gap: var(--be-space-8);
   }
 }
 
@@ -33,6 +36,8 @@
   .page {
     padding-left: max(var(--be-page-pad-x-lg), var(--be-safe-left));
     padding-right: max(var(--be-page-pad-x-lg), var(--be-safe-left));
-    padding-bottom: var(--be-space-9);
+    padding-top: var(--be-space-10);
+    padding-bottom: var(--be-space-10);
+    gap: var(--be-space-9);
   }
 }

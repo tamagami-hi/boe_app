@@ -59,7 +59,12 @@ const LoginScreen = (): React.ReactElement => {
   }
 
   return (
-    <AuthLayout tagline={port.audienceLabel}>
+    <AuthLayout
+      eyebrow={port.audienceLabel}
+      tagline="Fund pools managed by an administrator, valued from an append-only ledger. No projections, no guesswork."
+      panelTitle="Sign in"
+      panelHint="Use the email and password your account was created with."
+    >
       {session.endedReason === null ? null : (
         <Alert tone="warning" title="You were signed out">
           {session.endedReason === "expired"

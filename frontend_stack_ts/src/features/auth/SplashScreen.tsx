@@ -40,7 +40,10 @@ const SplashScreen = (): React.ReactElement => {
   }
 
   return (
-    <AuthLayout tagline={port.audienceLabel}>
+    <AuthLayout
+      eyebrow={port.audienceLabel}
+      panelTitle={reachability === "unreachable" ? "Cannot connect" : "Starting"}
+    >
       {reachability === "unreachable" ? (
         <>
           <Alert tone="error" title="We cannot reach BeOnEdge">

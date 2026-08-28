@@ -17,15 +17,18 @@
 }
 
 .percent {
-  font-family: var(--be-font-mono);
-  font-variant-numeric: tabular-nums;
+  font-family: var(--be-font-numeric);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   font-size: var(--be-text-md);
   color: var(--be-fg);
 }
 
 .percentSmall {
-  font-family: var(--be-font-mono);
-  font-variant-numeric: tabular-nums;
+  font-family: var(--be-font-numeric);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 500;
   font-size: var(--be-text-sm);
   color: var(--be-fg);
 }

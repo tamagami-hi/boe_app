@@ -1,0 +1,115 @@
+.wrap {
+  border-radius: var(--be-squircle-lg);
+  background: var(--be-shell);
+  padding: var(--be-shell-pad);
+  box-shadow: 0 0 0 1px var(--be-hairline);
+}
+
+.inner {
+  border-radius: calc(var(--be-squircle-lg) - var(--be-shell-pad));
+  background: var(--be-parchment);
+  box-shadow: var(--be-inner-lift-soft), var(--be-ambient-1);
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.headCell {
+  padding: var(--be-space-3) var(--be-space-4);
+  text-align: left;
+  border-bottom: 1px solid var(--be-hairline);
+  background: color-mix(in srgb, var(--be-sand) 32%, transparent);
+}
+
+.headButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--be-space-2);
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  font-family: var(--be-font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--be-fg-muted);
+}
+
+.headButtonActive {
+  composes: headButton;
+  color: var(--be-fg);
+}
+
+.headStatic {
+  font-family: var(--be-font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--be-fg-muted);
+}
+
+.numeric {
+  text-align: right;
+}
+
+.row {
+  transition: background var(--be-dur-fast) var(--be-ease-out);
+}
+
+.row:hover {
+  background: color-mix(in srgb, var(--be-sand) 22%, transparent);
+}
+
+.cell {
+  padding: var(--be-space-4);
+  border-bottom: 1px solid var(--be-hairline);
+  vertical-align: middle;
+}
+
+.row:last-child .cell {
+  border-bottom: 0;
+}
+
+.nameLink {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.name {
+  font-family: var(--be-font-ui);
+  font-size: var(--be-text-base);
+  font-weight: 600;
+  color: var(--be-fg);
+}
+
+.category {
+  font-family: var(--be-font-ui);
+  font-size: var(--be-text-xs);
+  color: var(--be-fg-muted);
+}
+
+.muted {
+  font-family: var(--be-font-ui);
+  font-size: var(--be-text-sm);
+  color: var(--be-fg-faint);
+}
+
+.sortGlyph {
+  width: 9px;
+  height: 9px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row {
+    transition: none;
+  }
+}

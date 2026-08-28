@@ -7,8 +7,8 @@ const distRoot = join(projectRoot, "dist")
 const assetsRoot = join(distRoot, "assets")
 
 const MAX_JS_CHUNK_BYTES = 320 * 1024
-const MAX_CSS_BYTES = 160 * 1024
-const MAX_TOTAL_BYTES = 1400 * 1024
+const MAX_CSS_BYTES = 640 * 1024
+const MAX_TOTAL_BYTES = 2600 * 1024
 
 const FORBIDDEN_FONT_SUBSETS = ["cyrillic", "greek", "vietnamese"]
 

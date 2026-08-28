@@ -1,36 +1,65 @@
 .label {
   display: block;
   font-family: var(--be-font-ui);
-  font-size: var(--be-text-xs);
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: var(--be-tracking-eyebrow);
+  letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--be-fg-faint);
+}
+
+.bento {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--be-space-4);
+}
+
+.headlineCell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--be-space-2);
+}
+
+.figure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--be-space-1);
 }
 
 .split {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--be-space-3);
-  padding-top: var(--be-space-3);
-  border-top: var(--be-border-1);
+  gap: var(--be-space-4);
+  margin-top: var(--be-space-4);
+  padding-top: var(--be-space-4);
+  border-top: 1px solid var(--be-hairline);
 }
 
 .cardAction {
   align-self: flex-start;
   text-decoration: none;
+  margin-top: var(--be-space-3);
 }
 
 .cardLink {
   text-decoration: none;
   color: inherit;
   display: block;
+  height: 100%;
+}
+
+.fundRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--be-space-3);
 }
 
 .fundName {
-  font-family: var(--be-font-ui);
-  font-size: var(--be-text-md);
-  font-weight: 600;
+  font-family: var(--be-font-display);
+  font-size: var(--be-text-lg);
+  font-weight: 400;
+  letter-spacing: -0.018em;
   color: var(--be-fg);
 }
 
@@ -45,11 +74,48 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--be-space-3);
+  padding: var(--be-space-2) 0;
+}
+
+.statusRow + .statusRow {
+  border-top: 1px solid var(--be-hairline);
 }
 
 .gateRow {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--be-space-3);
+  gap: var(--be-space-4);
+}
+
+@media (min-width: 768px) {
+  .bento {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .spanHero {
+    grid-column: span 6;
+  }
+
+  .spanHalf {
+    grid-column: span 3;
+  }
+
+  .spanThird {
+    grid-column: span 2;
+  }
+}
+
+@media (min-width: 1024px) {
+  .bento {
+    gap: var(--be-space-5);
+  }
+
+  .spanHero {
+    grid-column: span 4;
+  }
+
+  .spanAside {
+    grid-column: span 2;
+  }
 }

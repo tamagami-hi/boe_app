@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react"
 
+import { canMatchMedia, mediaMatches, observeMedia } from "~/lib/media"
+
 export const BREAKPOINTS = {
   sm: 480,
   md: 768,
@@ -11,10 +13,12 @@ export type Breakpoint = keyof typeof BREAKPOINTS
 
 const ORDER: readonly Breakpoint[] = ["xl", "lg", "md", "sm"]
 
+const queryFor = (name: Breakpoint): string => `(min-width: ${String(BREAKPOINTS[name])}px)`
+
 const resolve = (): Breakpoint => {
-  if (typeof window === "undefined") return "lg"
+  if (!canMatchMedia()) return "lg"
   for (const name of ORDER) {
-    if (window.matchMedia(`(min-width: ${String(BREAKPOINTS[name])}px)`).matches) return name
+    if (mediaMatches(queryFor(name))) return name
   }
   return "sm"
 }
@@ -23,18 +27,11 @@ export const useBreakpoint = (): Breakpoint => {
   const [breakpoint, setBreakpoint] = useState<Breakpoint>(resolve)
 
   useEffect(() => {
-    if (typeof window === "undefined") return
-    const queries = ORDER.map((name) =>
-      window.matchMedia(`(min-width: ${String(BREAKPOINTS[name])}px)`),
-    )
     const update = (): void => {
       setBreakpoint(resolve())
     }
-    for (const query of queries) query.addEventListener("change", update)
     update()
-    return () => {
-      for (const query of queries) query.removeEventListener("change", update)
-    }
+    return observeMedia(ORDER.map(queryFor), update) ?? undefined
   }, [])
 
   return breakpoint

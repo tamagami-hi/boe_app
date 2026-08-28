@@ -13,7 +13,10 @@ const BlockedScreen = (): React.ReactElement => {
   const closed = session.principal?.accountState === "closed"
 
   return (
-    <AuthLayout tagline={port.audienceLabel}>
+    <AuthLayout
+      eyebrow={port.audienceLabel}
+      panelTitle={closed ? "Account closed" : "Account suspended"}
+    >
       <Alert tone="warning" title={closed ? "This account is closed" : "This account is suspended"}>
         {closed
           ? "Investing and account changes are no longer available. Support can explain what this means for any holdings."

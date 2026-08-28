@@ -48,7 +48,7 @@ const ClientShellRoot = (): React.ReactElement => {
       loginPath: CLIENT_LOGIN_PATH,
       homePath: CLIENT_HOME_PATH,
       supportPath: CLIENT_SUPPORT_PATH,
-      audienceLabel: "Investing, made deliberate",
+      audienceLabel: "Client access",
     }),
     [runtime],
   )

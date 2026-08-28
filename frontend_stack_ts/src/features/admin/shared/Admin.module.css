@@ -116,8 +116,10 @@
 }
 
 .mono {
-  font-family: var(--be-font-mono);
-  font-variant-numeric: tabular-nums;
+  font-family: var(--be-font-numeric);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-weight: 600;
+  letter-spacing: -0.008em;
 }
 
 .select {

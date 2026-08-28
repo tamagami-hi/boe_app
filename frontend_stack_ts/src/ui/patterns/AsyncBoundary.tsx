@@ -22,6 +22,7 @@ export type AsyncBoundaryProps<TData> = Readonly<{
   empty?: ReactNode
   isEmpty?: (data: TData) => boolean
   notConfigured?: boolean
+  fallback?: ReactNode
   children: (data: TData) => ReactNode
 }>
 
@@ -48,12 +49,16 @@ export const AsyncBoundary = <TData,>({
   empty,
   isEmpty,
   notConfigured = false,
+  fallback,
   children,
 }: AsyncBoundaryProps<TData>): React.ReactElement | null => {
   const { data, error, isPending, isFetching, refetch } = query
 
   if (error !== null && error !== undefined && data === undefined) {
     if (isSessionEndingError(error)) return null
+    if (fallback !== undefined && isApiError(error) && error.code === "RESOURCE_NOT_FOUND") {
+      return <>{fallback}</>
+    }
     const requestId = error instanceof ApiError ? error.requestId : null
     const retryAfterSeconds = error instanceof ApiError ? error.retryAfterSeconds : null
     return (

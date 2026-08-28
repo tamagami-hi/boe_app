@@ -7,6 +7,7 @@ import { formatDate } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { fundRiskLevel } from "~/domain/status"
 import { useEligibility, useFund } from "~/features/shared/queries"
+import { DonutChart } from "~/ui/charts/DonutChart"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
@@ -42,8 +43,10 @@ const FundDetailScreen = (): React.ReactElement => {
   return (
     <AsyncBoundary query={query} skeleton={<Page width="default">{skeleton}</Page>}>
       {(data) => {
-        const { fund, disclosure } = data
+        const { fund, disclosure, stocks } = data
         const canInvest = eligibility.data?.canInvest === true
+        const weighted = stocks.filter((stock) => stock.weightPercent !== null)
+        const quarter = stocks[0]?.quarterLabel ?? null
 
         return (
           <Page width="default">
@@ -96,6 +99,41 @@ const FundDetailScreen = (): React.ReactElement => {
                 <Row label="Published version">{String(fund.version)}</Row>
               </div>
             </Section>
+
+            {stocks.length === 0 ? null : (
+              <Section
+                title="Disclosed holdings"
+                description={
+                  quarter === null
+                    ? "Published by the fund administrator."
+                    : `Published by the fund administrator for ${quarter}.`
+                }
+              >
+                {weighted.length === 0 ? (
+                  <Card>
+                    <div className={styles.detail}>
+                      {stocks.map((stock) => (
+                        <Row key={stock.stockName} label={stock.stockName}>
+                          Weight not disclosed
+                        </Row>
+                      ))}
+                    </div>
+                  </Card>
+                ) : (
+                  <Card>
+                    <DonutChart
+                      centreLabel="Holdings"
+                      centreValue={String(weighted.length)}
+                      slices={weighted.map((stock) => ({
+                        key: stock.stockName,
+                        label: stock.stockName,
+                        value: Number(stock.weightPercent ?? "0"),
+                      }))}
+                    />
+                  </Card>
+                )}
+              </Section>
+            )}
 
             {disclosure === null ? null : (
               <Section

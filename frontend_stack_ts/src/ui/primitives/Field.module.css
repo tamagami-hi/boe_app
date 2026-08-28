@@ -6,20 +6,23 @@
 
 .label {
   font-family: var(--be-font-ui);
-  font-size: var(--be-text-sm);
+  font-size: var(--be-text-xs);
   font-weight: 600;
-  color: var(--be-fg);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--be-fg-muted);
 }
 
 .required {
-  color: var(--be-negative);
-  margin-left: 2px;
+  color: var(--be-gold-deep);
+  margin-left: 3px;
 }
 
 .hint {
   font-family: var(--be-font-ui);
   font-size: var(--be-text-xs);
-  color: var(--be-fg-muted);
+  line-height: var(--be-lh-normal);
+  color: var(--be-fg-faint);
 }
 
 .error {
@@ -31,18 +34,36 @@
 
 .input {
   width: 100%;
-  min-height: var(--be-target-min);
-  padding: 0 var(--be-space-3);
-  border-radius: var(--be-radius-md);
-  border: var(--be-border-1-strong);
-  background: var(--be-bg-elevated);
+  min-height: 50px;
+  padding: 0 var(--be-space-4);
+  border-radius: var(--be-squircle-sm);
+  border: 0;
+  background: color-mix(in srgb, var(--be-sand) 26%, white);
   color: var(--be-fg);
   font-family: var(--be-font-ui);
   font-size: var(--be-text-md);
+  box-shadow:
+    inset 0 0 0 1px var(--be-hairline-strong),
+    inset 0 2px 4px rgb(var(--be-tint-warm) / 5%);
+  transition:
+    box-shadow var(--be-dur-base) var(--be-ease-out),
+    background-color var(--be-dur-base) var(--be-ease-out);
 }
 
 .input::placeholder {
   color: var(--be-fg-faint);
+}
+
+.input:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--be-sand) 18%, white);
+}
+
+.input:focus {
+  outline: none;
+  background: white;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--be-gold) 58%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--be-gold) 15%, transparent);
 }
 
 .input:disabled {
@@ -51,17 +72,31 @@
 }
 
 .invalid {
-  border-color: var(--be-negative);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--be-red) 55%, transparent),
+    inset 0 2px 4px rgb(var(--be-tint-warm) / 5%);
+}
+
+.invalid:focus {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--be-red) 65%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--be-red) 14%, transparent);
 }
 
 .mono {
   font-family: var(--be-font-mono);
-  letter-spacing: 0.08em;
+  font-size: var(--be-text-lg);
+  letter-spacing: 0.16em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .input {
+    transition: none;
+  }
 }
 
 @media (min-width: 1024px) {
   .input {
-    min-height: var(--be-target-md);
-    font-size: var(--be-text-base);
+    min-height: 46px;
   }
 }

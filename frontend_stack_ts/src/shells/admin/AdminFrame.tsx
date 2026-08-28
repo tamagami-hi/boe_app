@@ -49,6 +49,7 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
 
   return (
     <div className={styles.shell}>
+      <div className="be-grain" />
       <div className={styles.body}>
         <nav className={styles.sidebar} aria-label="Sections">
           <span className={styles.wordmark}>BeOnEdge</span>
