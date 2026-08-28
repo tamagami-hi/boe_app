@@ -815,3 +815,59 @@ Gates: all three projects exit 0. `frontend_stack_ts` 90 tests; `build:client` 1
 - Statements, notifications, support, profile, legal and device security remain placeholders.
 - The entire admin console beyond navigation and permission gating remains placeholders.
 - Nothing has run on the emulator; no APK exists; the container has never been built.
+
+
+---
+
+## 2026-08-28 · Entry 017 · Admin fund and AUM management, kept minimal
+
+**Task:** [`TASK/009-admin-funds-aum.md`](../TASK/009-admin-funds-aum.md)
+
+Scope was deliberately held to creating, publishing and managing a fund plus its AUM. No holdings
+editor, no collective growth, no preview-commit — those stay placeholders until asked for.
+
+### Built
+
+`FundListScreen`, `FundCreateScreen`, `FundWorkspaceScreen`, `FundAumScreen`, against the
+already-contracted `admin-fund-aum` operations. Every write carries an idempotency key; lifecycle
+changes send `If-Match` from the last read.
+
+### Three defects the browser found
+
+1. **The admin role gate locked out the superadmin.** Every admin route declared `role: "admin"`,
+   and the seeded principal carries `superadmin`. `hasRole` demanded the literal string, so fund
+   creation answered Forbidden. The backend's own rule is that `getSession` rejects zero roles and
+   each route enforces its permissions — it never requires a literal `admin` role. `hasRole` now
+   treats `"admin"` as any admin-capable role. Found by instrumenting the guard after the
+   permission list checked out clean.
+2. **The workspace offered transitions the backend forbids.** It rendered a button for every state
+   except the current one, so "Pause" appeared on a draft and answered `STATE_CONFLICT`.
+   `ALLOWED_TRANSITIONS` from `adminCatalogRoutes.ts` is now mirrored in the UI, and Publish is
+   disabled while no version exists — the other condition that route rejects.
+3. **My own copy was wrong.** `FundCreateScreen` said a fund is created as a draft awaiting
+   publication. It is created as a draft *with version 1 of its terms already published as a
+   version*, in one request. The database showed it; the copy now says it.
+
+### Verified — TESTED
+
+`test_e2e/frontend-ts-smoke.mjs`, Chromium, **45 of 45 checks**. The admin→client chain is proven in
+one pass: create a fund, confirm it starts invisible, confirm Pause is not offered on a draft,
+publish, pause, republish, record 250 basis points of growth — then switch to the client and find the
+fund in the catalogue at **exactly ₹51,25,000**, grown from ₹50,00,000, with the administrator's
+disclosure and published terms on the detail screen.
+
+The rupee figure is asserted literally, so the growth arithmetic is checked rather than assumed. The
+harness now ignores `ERR_ABORTED` requests, because an in-flight query cancelled by navigation is not
+a failure and was producing a false negative.
+
+Gates: all three projects exit 0.
+
+### Not verified — UNVERIFIED
+
+- **No money has moved.** Orders, payments, SIP and AutoPay remain placeholders; PhonePe is
+  unconfigured locally.
+- Admin applications, users, client values, receipts, refunds, payments, mandates, audit, emails,
+  FAQs and app config remain placeholders, as do the client statements, notifications, support,
+  profile, legal and device-security surfaces.
+- No holdings are disclosed on any fund, so the client fund detail renders "Holdings not disclosed".
+- Nothing has run on the emulator; no APK exists; the container has never been built.
