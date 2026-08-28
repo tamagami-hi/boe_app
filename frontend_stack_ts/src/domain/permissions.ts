@@ -51,5 +51,9 @@ export const hasAll = (
   required: readonly PermissionCode[],
 ): boolean => required.every((code) => granted.includes(code))
 
-export const hasRole = (granted: readonly string[], required: RoleCode): boolean =>
-  granted.includes(required)
+export const ADMIN_ROLE_CODES: readonly RoleCode[] = ["admin", "superadmin"]
+
+export const hasRole = (granted: readonly string[], required: RoleCode): boolean => {
+  if (required === "admin") return ADMIN_ROLE_CODES.some((role) => granted.includes(role))
+  return granted.includes(required)
+}

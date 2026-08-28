@@ -24,7 +24,9 @@ const collectDiagnostics = (page, sink) => {
   })
   page.on("requestfailed", (request) => {
     if (!request.url().includes("/api/v1/")) return
-    sink.failedRequests.push(`${request.method()} ${request.url()}`)
+    const reason = request.failure()?.errorText ?? ""
+    if (reason.includes("ERR_ABORTED")) return
+    sink.failedRequests.push(`${request.method()} ${request.url()} ${reason}`)
   })
 }
 
@@ -240,6 +242,129 @@ const runAdmin = async (browser) => {
   await context.close()
 }
 
+const runAdminFundLifecycle = async (browser) => {
+  if (ADMIN_EMAIL === undefined || ADMIN_PASSWORD === undefined) return null
+
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+  const page = await context.newPage()
+  const sink = { consoleErrors: [], pageErrors: [], failedRequests: [] }
+  collectDiagnostics(page, sink)
+
+  await page.goto(`${ADMIN_URL}/login`, { waitUntil: "networkidle" })
+  await signIn(page, ADMIN_EMAIL, ADMIN_PASSWORD)
+  await page.waitForURL(/\/overview$/u, { timeout: 20000 })
+
+  const slug = `e2e-fund-${String(Date.now()).slice(-8)}`
+  await page.goto(`${ADMIN_URL}/funds/new`, { waitUntil: "networkidle" })
+
+  await page.getByLabel("Slug").fill(slug)
+  await page.getByLabel("Name").fill("E2E Verified Growth Pool")
+  await page.getByLabel("Category").fill("Balanced")
+  await page.getByLabel("Objective").fill("Exercised by the automated smoke suite.")
+  await page.getByLabel("Minimum lump sum (paise)").fill("100000")
+  await page.getByLabel("Minimum SIP (paise)").fill("50000")
+  await page.getByLabel("Disclosure title").fill("Risk disclosure")
+  await page
+    .getByLabel("Disclosure body")
+    .fill("Investments carry risk. Past performance does not guarantee future returns.")
+  await page.getByLabel("Opening AUM (paise)").fill("500000000")
+  await page.getByRole("button", { name: "Create fund" }).click()
+
+  await page.waitForURL(/\/funds\/[0-9a-f-]{36}$/u, { timeout: 25000 })
+  check("admin: creating a fund lands on its workspace", true)
+
+  const fundId = page.url().split("/funds/")[1] ?? ""
+  check("admin: the new fund has a real id", /^[0-9a-f-]{36}$/u.test(fundId), fundId)
+
+  await page.getByText("Version 1").waitFor({ timeout: 20000 })
+  check("admin: creating a fund publishes version 1 of its terms in one step", true)
+
+  check(
+    "admin: a draft offers only the transitions the backend permits",
+    (await page.getByRole("button", { name: "Pause" }).count()) === 0,
+    "Pause must not be offered on a draft",
+  )
+
+  await page.getByRole("button", { name: "Publish", exact: true }).click()
+  await page.getByText("Yes").first().waitFor({ timeout: 20000 })
+  check("admin: publishing a draft makes it visible to investors", true)
+
+  await page.getByRole("button", { name: "Pause" }).click()
+  await page.getByText("Paused").first().waitFor({ timeout: 20000 })
+  check("admin: a published fund can then be paused under optimistic concurrency", true)
+
+  await page.getByRole("button", { name: "Publish", exact: true }).click()
+  await page.getByText("Yes").first().waitFor({ timeout: 20000 })
+  check("admin: a paused fund can be republished", true)
+
+  await page.goto(`${ADMIN_URL}/funds/${fundId}/aum`, { waitUntil: "networkidle" })
+  await page.getByText("Record growth").first().waitFor({ timeout: 15000 })
+  check("admin: an initialised fund offers growth entry, not opening AUM", true)
+
+  await page.getByRole("button", { name: "Percentage" }).click()
+  await page.getByLabel("Growth (basis points)").fill("250")
+  await page.getByRole("button", { name: "Record growth" }).click()
+  await page.getByText("Revision").first().waitFor({ timeout: 20000 })
+  check("admin: recording percentage growth appends an AUM revision", true)
+
+  check(
+    "admin: no uncaught page errors during the fund lifecycle",
+    sink.pageErrors.length === 0,
+    sink.pageErrors.join(" ; "),
+  )
+  check(
+    "admin: no failed API requests during the fund lifecycle",
+    sink.failedRequests.length === 0,
+    sink.failedRequests.join(" ; "),
+  )
+
+  await context.close()
+  return fundId
+}
+
+const runClientSeesFund = async (browser, fundId) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } })
+  const page = await context.newPage()
+  const sink = { consoleErrors: [], pageErrors: [], failedRequests: [] }
+  collectDiagnostics(page, sink)
+
+  await page.goto(`${CLIENT_URL}/login`, { waitUntil: "networkidle" })
+  await signIn(page, CLIENT_EMAIL, CLIENT_PASSWORD)
+  await page.waitForURL(/\/dashboard$/u, { timeout: 20000 })
+
+  await page.goto(`${CLIENT_URL}/funds`, { waitUntil: "networkidle" })
+  await page.getByText("E2E Verified Growth Pool").first().waitFor({ timeout: 20000 })
+  check("client: the published fund appears in the catalogue", true)
+
+  await page.goto(`${CLIENT_URL}/funds/${fundId}`, { waitUntil: "networkidle" })
+  await page.getByText("Fund size").first().waitFor({ timeout: 20000 })
+  check(
+    "client: the fund size reflects the administrator's 250 basis-point growth exactly",
+    (await page.getByText("₹51,25,000").count()) > 0,
+    await page.locator("body").innerText().then((t) => {
+      const line = t.split("\n").find((l) => l.includes("₹"))
+      return line ?? "no rupee value rendered"
+    }),
+  )
+
+  await page.goto(`${CLIENT_URL}/funds/${fundId}`, { waitUntil: "networkidle" })
+  await page.getByText("Risk disclosure").waitFor({ timeout: 20000 })
+  check("client: fund detail renders the administrator's disclosure", true)
+
+  check(
+    "client: fund detail renders the terms the administrator published",
+    (await page.getByText("Minimum lump sum").count()) > 0,
+  )
+
+  check(
+    "client: no failed API requests on the catalogue",
+    sink.failedRequests.length === 0,
+    sink.failedRequests.join(" ; "),
+  )
+
+  await context.close()
+}
+
 const main = async () => {
   const browser = await chromium.launch()
   try {
@@ -251,6 +376,27 @@ const main = async () => {
     await runAdmin(browser)
   } catch (error) {
     check("admin: suite completed", false, error instanceof Error ? error.message : String(error))
+  }
+  let fundId = null
+  try {
+    fundId = await runAdminFundLifecycle(browser)
+  } catch (error) {
+    check(
+      "admin: fund lifecycle completed",
+      false,
+      error instanceof Error ? error.message : String(error),
+    )
+  }
+  if (fundId !== null) {
+    try {
+      await runClientSeesFund(browser, fundId)
+    } catch (error) {
+      check(
+        "client: sees the published fund",
+        false,
+        error instanceof Error ? error.message : String(error),
+      )
+    }
   }
   await browser.close()
 

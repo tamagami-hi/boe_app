@@ -7,7 +7,7 @@ import { subscribeToSessionInvalidated } from "~/api/session/scope"
 import type { SessionScope } from "~/api/session/scope"
 import type { TokenStore } from "~/api/session/tokenStore"
 import type { PermissionCode, RoleCode } from "~/domain/permissions"
-import { hasAll, hasAny } from "~/domain/permissions"
+import { hasAll, hasAny, hasRole } from "~/domain/permissions"
 
 export type SessionStatus = "restoring" | "authenticated" | "anonymous"
 
@@ -153,7 +153,7 @@ export const SessionProvider = ({
       signedOut,
       failedRestore,
       retryRestore,
-      hasRole: (role) => state.principal?.roles.includes(role) ?? false,
+      hasRole: (role) => hasRole(state.principal?.roles ?? [], role),
       hasAnyPermission: (required) => hasAny(state.principal?.permissions ?? [], required),
       hasAllPermissions: (required) => hasAll(state.principal?.permissions ?? [], required),
     }),

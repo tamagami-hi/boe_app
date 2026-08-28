@@ -1,7 +1,152 @@
-import { PendingScreen } from "~/features/shared/PendingScreen"
+import { useState } from "react"
+import { Link } from "react-router-dom"
 
-const Screen = (): React.ReactElement => (
-  <PendingScreen title="Funds" surface="fund administration" />
-)
+import { Page } from "~/app/layouts/Page"
+import { PageHeader } from "~/app/layouts/PageHeader"
+import { toPaise } from "~/domain/money"
+import { fundState } from "~/domain/status"
+import { useSession } from "~/app/providers/SessionProvider"
+import { useAdminFunds } from "~/features/admin/shared/queries"
+import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
+import { EmptyState } from "~/ui/patterns/EmptyState"
+import { MoneyValue } from "~/ui/patterns/MoneyValue"
+import { StatusBadge } from "~/ui/patterns/StatusBadge"
+import { Button } from "~/ui/primitives/Button"
+import { Card } from "~/ui/primitives/Card"
+import { Skeleton } from "~/ui/primitives/Feedback"
+import { Input } from "~/ui/primitives/FormField"
 
-export default Screen
+import styles from "~/features/admin/shared/Admin.module.css"
+
+const STATES = ["draft", "published", "paused", "archived"] as const
+type FundState = (typeof STATES)[number]
+
+const FundListScreen = (): React.ReactElement => {
+  const [state, setState] = useState<FundState | null>(null)
+  const [search, setSearch] = useState("")
+  const query = useAdminFunds({
+    ...(state === null ? {} : { state }),
+    ...(search.trim() === "" ? {} : { search: search.trim() }),
+  })
+  const { hasAllPermissions } = useSession()
+  const canCreate = hasAllPermissions(["funds.write", "aum.write"])
+
+  return (
+    <Page width="wide">
+      <PageHeader
+        title="Funds"
+        description="Create a fund with its opening AUM, publish new terms, and pause or archive it."
+        actions={
+          canCreate ? (
+            <Link to="/funds/new">
+              <Button size="sm">New fund</Button>
+            </Link>
+          ) : null
+        }
+      />
+
+      <div className={styles.controls}>
+        <Input
+          type="search"
+          placeholder="Search by name or slug"
+          aria-label="Search funds"
+          value={search}
+          onChange={(event) => {
+            setSearch(event.target.value)
+          }}
+        />
+        <div className={styles.filters} role="group" aria-label="Filter by state">
+          <button
+            type="button"
+            className={state === null ? styles.filterActive : styles.filter}
+            aria-pressed={state === null}
+            onClick={() => {
+              setState(null)
+            }}
+          >
+            All
+          </button>
+          {STATES.map((option) => (
+            <button
+              key={option}
+              type="button"
+              className={state === option ? styles.filterActive : styles.filter}
+              aria-pressed={state === option}
+              onClick={() => {
+                setState(option)
+              }}
+            >
+              {fundState(option).label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <AsyncBoundary
+        query={query}
+        skeleton={
+          <Card>
+            <Skeleton height="1.1rem" width="45%" />
+            <Skeleton height="1.1rem" width="60%" />
+          </Card>
+        }
+        isEmpty={(data) => data.items.length === 0}
+        empty={
+          <EmptyState
+            title="No fund matches"
+            description="Create a fund, or clear the filters to see everything."
+            action={
+              canCreate ? (
+                <Link to="/funds/new">
+                  <Button>New fund</Button>
+                </Link>
+              ) : undefined
+            }
+          />
+        }
+      >
+        {(data) => (
+          <>
+            <div className={styles.counts}>
+              <span>{String(data.summary.total)} total</span>
+              {STATES.map((option) => (
+                <span key={option}>
+                  {String(data.summary.byState[option])} {fundState(option).label.toLowerCase()}
+                </span>
+              ))}
+            </div>
+
+            {data.items.map((fund) => (
+              <Link key={fund.id} to={`/funds/${fund.id}`} className={styles.rowLink}>
+                <Card>
+                  <div className={styles.rowTop}>
+                    <span className={styles.name}>{fund.name ?? "Unnamed draft"}</span>
+                    <StatusBadge status={fundState(fund.status)} />
+                  </div>
+                  <span className={styles.slug}>{fund.slug}</span>
+                  <div className={styles.meta}>
+                    <span>{fund.category ?? "No category"}</span>
+                    <span>
+                      {fund.currentVersion === null
+                        ? "No published version"
+                        : `Version ${String(fund.currentVersion)}`}
+                    </span>
+                    {fund.aum === null ? (
+                      <span>No AUM</span>
+                    ) : (
+                      <span>
+                        AUM <MoneyValue amount={toPaise(fund.aum.aumPaise)} size="sm" />
+                      </span>
+                    )}
+                  </div>
+                </Card>
+              </Link>
+            ))}
+          </>
+        )}
+      </AsyncBoundary>
+    </Page>
+  )
+}
+
+export default FundListScreen
