@@ -3121,3 +3121,92 @@ confirmed.
 - **UNVERIFIED** the settled-payment chain. Still zero allocations on this database.
 - The workers were **not** recreated, so they still lack `PHONEPE_CHECKOUT_REDIRECT_URL`. Harmless: the
   compose default is empty and the config field is optional. A full deploy aligns them.
+
+
+## Entry 033 — every input we control has now been varied; the block is PhonePe's record · 2026-08-29
+
+Phase 0 of `PLAN/payments-via-approved-domain.md` ran and **failed to move `Transacting_URL`**. That is
+the useful outcome: it kills the migration before any of it was built.
+
+### What was done
+
+- nginx on the approved host proxies `/api/v1/provider-events/phonepe/{payment,subscription}` to the
+  backend. Verified over the network: `401 PROVIDER_CALLBACK_UNVERIFIED` on `www.beonedge.in`, on the
+  apex, and on `dev-app` — identical, which is the backend's route correctly refusing an unsigned probe.
+- The maintainer re-registered the PhonePe webhook as
+  `https://www.beonedge.in/api/v1/provider-events/phonepe/payment`.
+- Fresh ₹1 order.
+
+```json
+{"errorCode":"INTERNAL_SECURITY_BLOCK_1","isRetryEnabled":false,
+ "data":{"Onboarding_URL":["www.beonedge.in"],"Transacting_URL":"https://dev-app.beonedge.in/"}}
+```
+
+Unchanged.
+
+### Four independent inputs, all eliminated
+
+| input | varied to | result |
+| --- | --- | --- |
+| browser `Referer` | absent, and `https://www.beonedge.in/` | unchanged (Entry 028) |
+| `merchantUrls.redirectUrl` | `https://www.beonedge.in/pay/return/dev`, confirmed in-process by `printenv` | unchanged (Entry 032) |
+| browser request payload | inspected: `{"type":"UPI_QR"}`, no hostname of ours | n/a (Entry 032) |
+| registered webhook URL | `https://www.beonedge.in/...` on the dashboard | unchanged (this entry) |
+
+`Transacting_URL` is therefore a value **stored against the merchant inside PhonePe** — consistent with
+their email describing it as the URL "you are using to receive payments" against the one "approved and
+mentioned in your Terms & Conditions document". It is a record, not a function of the request.
+
+### Consequence for the migration, which is the point of Phase 0
+
+**Do not build Phases 1–4.** PhonePe cannot distinguish the proxy from the relay: both put every
+PhonePe-facing URL on `www.beonedge.in`, and that has now been shown not to matter. Copying payment
+processing into `boe_landing` would have moved merchant credentials into the public marketing
+deployment and put a service boundary through the webhook → allocation transaction, in exchange for
+nothing. The plan document stays in the tree with this entry referenced from it, because the design is
+sound if the constraint ever changes — it is the premise that is dead, not the architecture.
+
+### What is left, and it is only PhonePe
+
+1. **Ask PhonePe to approve the subdomains.** Their email gives the path: Help → "Unable to receive
+   customer payments?" → Contact Us → Update URL. Request `dev-app.beonedge.in` **and**
+   `app.beonedge.in` in one go, and ask whether subdomains of an already-approved parent can be added
+   without the full 14-day re-verification. `Onboarding_URL` is a JSON array, so more than one is
+   expressible.
+2. **Use sandbox credentials for dev in the meantime.** Proven on 2026-08-25: 7 succeeded payments and
+   7 allocations. Needs `PHONEPE_ENV=sandbox` plus sandbox credentials; the allowlist already carries
+   `https://mercury-uat.phonepe.com`.
+
+### What to keep
+
+The nginx proxy and the webhook on `www` are **kept**, not reverted. They cost nothing, they are
+verified, and they are the only configuration under which the stored value could ever refresh to the
+approved host. Reverting would mean redoing a privileged reload later for no gain.
+
+`PHONEPE_CHECKOUT_REDIRECT_URL` on the VPS is now pointless indirection — two redirect hops through the
+marketing site on the payment return. Recommended to unset it, restoring the default
+`https://dev-app.beonedge.in/dashboard`. Env-only, no rebuild.
+
+### Verification
+
+- **VPS** proxy verified by request on both hostnames and compared against `dev-app`; marketing site
+  unaffected (`www` → apex 301, apex 200); `/api/v1/client/orders` and the auth routes still 404 on the
+  approved host, so only the callback paths are exposed.
+- **TESTED / VPS** fresh ₹1 order after the webhook change; `Transacting_URL` unchanged.
+- **VPS** spend cap held; every order this session was `100` paise.
+
+### Not verified
+
+- **UNVERIFIED** that PhonePe approving the subdomain lifts the block. It follows from their own
+  message and is now the only remaining lever.
+- **UNVERIFIED** the settled-payment chain. Still zero allocations on this database. Whichever route
+  unblocks payments, that is the thing to check: order → payment → allocation → acknowledgement.
+
+### A process note on how this went
+
+Three hypotheses were tested in sequence and two produced code before they were tested — the redirect
+URL (D-056, reverted in premise by Entry 032) and the callback host (D-058, inert per this entry). The
+referrer probe in Entry 028 cost nothing and eliminated a candidate outright. The lesson is the ordering:
+each of these could have been settled by one ₹1 order and a `printenv` before any file was edited. The
+one genuine defect the detour did surface is real and worth keeping — `envPassthrough.test.ts`, closing
+the compose-passthrough gap that made a whole experiment silently test nothing.

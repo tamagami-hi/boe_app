@@ -1,5 +1,10 @@
 # Plan — move the PhonePe gateway behind `beonedge.in`
 
+> **OUTCOME: DO NOT BUILD PHASES 1-4.** Phase 0 ran on 2026-08-29 and did not move
+> `Transacting_URL`. PhonePe cannot distinguish the proxy from the relay, so the migration would
+> achieve nothing. See implementation log Entry 033. The design below is kept because it is sound if
+> the constraint changes; the premise is what died, not the architecture.
+
 ## The constraint
 
 PhonePe approves one merchant URL and re-approval takes 14+ days. `www.beonedge.in` is approved
