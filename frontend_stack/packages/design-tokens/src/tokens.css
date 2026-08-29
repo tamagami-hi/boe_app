@@ -1,7 +1,0 @@
-/* BeOnEdge — Design Tokens (build entry point)
- * Imports npm-packaged variable fonts + the canonical token core.
- * For browser previews, use frontend_stack/colors_and_type.css instead.
- */
-
-@import './fonts.css';
-@import './tokens-core.css';

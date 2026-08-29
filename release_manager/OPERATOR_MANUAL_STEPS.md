@@ -414,7 +414,7 @@ Production follows the same route, but requires a cut release first:
 These are code changes, deliberately out of scope of the deployment scripts.
 Each is currently detected and reported rather than silently worked around.
 
-1. **`frontend_stack/app/Dockerfile` needs `ARG VITE_BEO_APP_TARGET`.**
+1. **`frontend_stack_ts/Dockerfile` needs `ARG VITE_BEO_APP_TARGET`.**
    Without it the user and admin images build identically. `export.sh` refuses to
    proceed and prints the exact two lines to add.
 

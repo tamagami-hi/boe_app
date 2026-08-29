@@ -1,8 +1,0 @@
-/* Was an inline style object on the element. Inline styles bypass the stylesheet
-   contract and cannot be overridden by a consumer. */
-.be-money-value {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--be-space-1);
-}

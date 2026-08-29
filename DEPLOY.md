@@ -14,7 +14,7 @@ for your domain. Internal container wiring uses Docker service names, so nothing
                  Internet :443
                        │
               ┌────────▼─────────┐   host nginx (TLS, NOT a container)
-              │   host nginx     │   frontend_stack/deploy/nginx.single-port.example.conf
+              │   host nginx     │   release_manager/nginx/app.beonedge.in.conf
               └───┬──────────┬───┘
             /     │          │  /api/
         ┌─────────▼──┐   ┌───▼────────┐
@@ -69,7 +69,7 @@ in the `pgdata` volume across deploys and rollbacks.
 ## Host nginx + TLS (one-time, on the VPS)
 
 ```bash
-sudo cp frontend_stack/deploy/nginx.single-port.example.conf /etc/nginx/sites-available/beonedge.conf
+sudo cp release_manager/nginx/app.beonedge.in.conf /etc/nginx/sites-available/beonedge.conf
 sudo sed -i 's/your-domain.tld/<your-domain>/g' /etc/nginx/sites-available/beonedge.conf
 sudo ln -s /etc/nginx/sites-available/beonedge.conf /etc/nginx/sites-enabled/
 sudo certbot --nginx -d <your-domain>        # provisions + wires TLS certs

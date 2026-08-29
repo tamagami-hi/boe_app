@@ -7,14 +7,23 @@ const forbidImports = (groups, message) => ({
 })
 
 export default [
-  { ignores: ["dist/**", "node_modules/**", "android/**", "coverage/**", "scripts/**"] },
+  {
+    ignores: [
+      "dist/**",
+      "node_modules/**",
+      "android/**",
+      "coverage/**",
+      "scripts/**",
+      "resources/**",
+    ],
+  },
   js.configs.recommended,
   {
     files: ["**/*.{ts,tsx}"],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        project: "./tsconfig.json",
+        project: ["./tsconfig.json", "./tsconfig.node.json"],
         tsconfigRootDir: import.meta.dirname,
         sourceType: "module",
       },

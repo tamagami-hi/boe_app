@@ -3,9 +3,9 @@ set -uo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 RM_DIR="$ROOT_DIR/release_manager"
-CAPACITOR_CONFIG="$ROOT_DIR/frontend_stack/app/capacitor.config.ts"
+CAPACITOR_CONFIG="$ROOT_DIR/frontend_stack_ts/capacitor.config.ts"
 BUILDER="$ROOT_DIR/emu/boe_update.sh"
-GRADLE_BUILD="$ROOT_DIR/frontend_stack/app/android/app/build.gradle"
+GRADLE_BUILD="$ROOT_DIR/frontend_stack_ts/android/app/build.gradle"
 LOGCAT="$ROOT_DIR/emu/boe_logcat.sh"
 SHIP_LIB="$RM_DIR/lib/apk_ship.sh"
 APK_MANIFEST_LIB="$RM_DIR/lib/apk_manifest.sh"
@@ -29,7 +29,7 @@ trap 'rm -rf "$TEST_DIR"' EXIT
 [[ -x "$LOGCAT" ]] || fail_test 'emu/boe_logcat.sh is missing or not executable'
 [[ -f "$APK_MANIFEST_LIB" ]] || fail_test 'release_manager/lib/apk_manifest.sh is missing'
 
-grep -q "loggingBehavior: 'none'" "$CAPACITOR_CONFIG" \
+grep -qE "loggingBehavior: [\"']none[\"']" "$CAPACITOR_CONFIG" \
     || fail_test 'capacitor.config.ts does not disable bridge logging'
 ok 'capacitor.config.ts disables Capacitor bridge logging'
 

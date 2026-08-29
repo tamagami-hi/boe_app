@@ -1,7 +1,0 @@
-/* BeOnEdge — Design Tokens (browser preview entry point)
- * Loads variable fonts from Google Fonts, then imports the canonical token core.
- * Keep the Google Fonts families in sync with the npm packages in app/package.json.
- */
-
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&family=JetBrains+Mono:wght@400;500&display=swap');
-@import './packages/design-tokens/src/tokens-core.css';

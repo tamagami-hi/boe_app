@@ -68,7 +68,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-FRONTEND_DIR="$PROJECT_ROOT/frontend_stack"
+FRONTEND_DIR="$PROJECT_ROOT/frontend_stack_ts"
 APP_DIR="$FRONTEND_DIR/app"
 ANDROID_DIR="$APP_DIR/android"
 GRADLE_APK_DEBUG="$ANDROID_DIR/app/build/outputs/apk/debug/app-debug.apk"
@@ -563,7 +563,7 @@ else
     warn "This APK is DEBUG-SIGNED: no usable android/keystore.properties was"
     warn "found. Fine for sideloading and internal testing, but it cannot update"
     warn "an installation signed with the release certificate."
-    warn "Create frontend_stack/app/android/keystore.properties (storeFile,"
+    warn "Create frontend_stack_ts/android/keystore.properties (storeFile,"
     warn "storePassword, keyAlias, keyPassword) to enable signed release builds."
 fi
 

@@ -128,8 +128,8 @@ resolve_stack() {
 #
 # Verified against the real source tree:
 #   backend  → backend_controller/Dockerfile,               listens 47502
-#   app      → frontend_stack/app/ (VITE_BEO_APP_TARGET=client), nginx :8080
-#   admin    → frontend_stack/app/ (VITE_BEO_APP_TARGET=admin),  nginx :8080
+#   app      → frontend_stack_ts/ (VITE_BEO_APP_TARGET=client), nginx :8080
+#   admin    → frontend_stack_ts/ (VITE_BEO_APP_TARGET=admin),  nginx :8080
 #
 # `app` and `admin` are two builds of the SAME Dockerfile. VITE_BEO_APP_TARGET
 # selects the client or admin bundle at build time; the runtime serves either

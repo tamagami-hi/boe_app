@@ -33,30 +33,39 @@ test('active nginx routes no longer expose the deleted website verification endp
   }
 });
 
-test('client KYC copy describes an alphanumeric 6-character code', async () => {
-  const source = await readRepoFile('frontend_stack/packages/client/src/pages/KycDetail.jsx');
+test('email verification copy describes a case-sensitive six-character code, never KYC', async () => {
+  const source = await readRepoFile(
+    'frontend_stack_ts/src/features/email-verification/EmailVerificationScreen.tsx',
+  );
 
-  assert.match(source, /6-character code/u);
-  assert.doesNotMatch(source, /six-digit code/u);
+  assert.match(source, /Six characters, case-sensitive/u);
+  assert.doesNotMatch(source, /six-digit|6-digit/iu);
+  assert.doesNotMatch(source, /\bKYC\b/u);
 });
 
-test('KYC delivery fails closed when SMTP is not configured', async () => {
+test('transactional email delivery fails closed when SMTP is not configured', async () => {
   const source = await readRepoFile('backend_controller/src/runtime/composition.ts');
-  const kycWiring = source.slice(source.indexOf('// KYC/transactional email sender:'), source.indexOf('const webAuth:'));
 
-  assert.match(kycWiring, /createUnconfiguredEmailSender\(\)/u);
-  assert.doesNotMatch(kycWiring, /createLogEmailSender/u);
+  assert.match(source, /createUnconfiguredEmailSender\(\)/u);
+  assert.doesNotMatch(source, /createLogEmailSender/u);
+  assert.doesNotMatch(
+    source,
+    /const emailSender: EmailSender =[\s\S]{0,200}createSmtpEmailSender[\s\S]{0,60}: undefined/u,
+  );
 });
 
-test('admin decisions use the bodyless idempotent wire contract and report queued email honestly', async () => {
-  const [apiSource, contextSource] = await Promise.all([
-    readRepoFile('frontend_stack/packages/client/src/services/adminApplicationsApi.js'),
-    readRepoFile('frontend_stack/packages/admin/src/context/LegacyAdminDataContext.jsx'),
-  ]);
+test('the application decision is contracted as an empty body with the outcome in the query', async () => {
+  const source = await readRepoFile('packages/contracts/src/operations/admin-oversight.ts');
+  const operation = source.slice(
+    source.indexOf('export const decideAdminApplication'),
+    source.indexOf('export const AdminEmailDeliveryQuery'),
+  );
 
-  assert.doesNotMatch(apiSource, /if-match|expectedVersion|resolveApplication/u);
-  assert.match(contextSource, /email[^\n]*queued/iu);
-  assert.doesNotMatch(contextSource, /email[^\n]*has been sent/iu);
+  assert.match(operation, /path: "\/v1\/admin\/applications\/\{applicationId\}\/decision"/u);
+  assert.match(operation, /query: z\.strictObject\(\{ outcome: z\.enum\(\["approved", "rejected"\]\) \}\)/u);
+  assert.match(operation, /body: z\.strictObject\(\{\}\)/u);
+  assert.match(operation, /idempotency: "required-key"/u);
+  assert.doesNotMatch(operation, /ifMatch|expectedVersion/u);
 });
 
 test('live SMTP smoke is guarded, bounded, and cleans up native sessions', async () => {

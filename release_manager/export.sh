@@ -201,10 +201,10 @@ build_images() {
     # does not declare, so without this ARG both images build identically and the
     # "user" frontend would serve the admin UI. Checked first because the backend
     # and admin builds take minutes.
-    local app_dockerfile="$ROOT_DIR/frontend_stack/app/Dockerfile"
+    local app_dockerfile="$ROOT_DIR/frontend_stack_ts/Dockerfile"
     [[ -f "$app_dockerfile" ]] || { err "missing $app_dockerfile"; exit 1; }
     if ! grep -q 'ARG[[:space:]]\+VITE_BEO_APP_TARGET' "$app_dockerfile"; then
-        err "frontend_stack/app/Dockerfile does not declare ARG VITE_BEO_APP_TARGET"
+        err "frontend_stack_ts/Dockerfile does not declare ARG VITE_BEO_APP_TARGET"
         err ""
         err "Both frontend images would build identically, and the user-facing app"
         err "would serve the admin UI. Add these two lines to its build stage,"
@@ -233,7 +233,7 @@ build_images() {
         --build-arg "VITE_BEO_API_BASE_URL=$api_base" \
         -f "$app_dockerfile" \
         -t "$app_tag" \
-        "$ROOT_DIR/frontend_stack"
+        "$ROOT_DIR"
 
     step "admin SPA → $admin_tag"
     docker build \
@@ -242,7 +242,7 @@ build_images() {
         --build-arg "VITE_BEO_API_BASE_URL=$admin_api_base" \
         -f "$app_dockerfile" \
         -t "$admin_tag" \
-        "$ROOT_DIR/frontend_stack"
+        "$ROOT_DIR"
 
     ok "all three images built"
 }

@@ -1,5 +1,0 @@
-.skeleton-table-row__bar {
-  width: var(--adm-skeleton-col-width, 100%);
-  max-width: 100%;
-  min-width: 0;
-}

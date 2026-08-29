@@ -462,3 +462,32 @@ locally rather than at deploy.
 The APK remains the deliberate exception: a Capacitor WebView on `https://localhost` has no server
 to be same-origin with, so it must carry an absolute `https://` origin, which is why
 `resolveApiBase()` throws rather than guessing there.
+
+
+### D-028
+**The CSS and total-asset ceilings are raised to fund a high-end visual layer.** · DECIDED 2026-08-28 (maintainer)
+
+`check-android-dist.mjs` enforced largest CSS ≤ 160 kB and total assets ≤ 1400 kB. Those numbers were
+inherited from the legacy build, where the entire client stylesheet loaded on every route and the
+budget was the only thing standing between the APK and a bloated bundle.
+
+Maintainer direction: there is no such requirement. The visual quality of the product matters more
+than the byte count, on both mobile and desktop. Raised to **largest CSS ≤ 640 kB** and **total
+assets ≤ 2600 kB**.
+
+What does **not** change, and why the raise is safe:
+
+- **The acyclicity check stays.** A cycle across a chunk boundary is a launch crash and is invisible
+  to unit tests (v0.9.0 shipped exactly that). Bytes were never the real risk; boot order was.
+- **`check-bundle-boots.mjs` stays.** Every chunk is still evaluated in JSDOM.
+- **The font rules stay.** woff2 only, no cyrillic/greek/vietnamese subsets. The APK packages every
+  emitted asset, so unused font subsets are still dead weight with no upside.
+- **The cross-target asset check stays.** A client build containing an admin asset is still a defect.
+- **CSS Modules remain the styling choice.** The 160 kB ceiling was only the *first* of the reasons
+  recorded in doc 07. The load-bearing reason is unchanged: locally-scoped class names structurally
+  prevent the four-vocabulary collision (`be-*` / `apk-*` / `adm-*` / `ash-*`) that is the legacy
+  frontend's defining defect, and the safe-area token contract is test-enforced. Lifting a byte
+  budget is not an argument for a utility framework, and switching now would rewrite every component
+  for no design gain.
+
+Doc 07's Tailwind rejection and doc 08's budget table are amended in place.

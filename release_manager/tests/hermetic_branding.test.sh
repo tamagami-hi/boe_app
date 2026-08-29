@@ -13,9 +13,9 @@ set -uo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BUILDER="$ROOT_DIR/emu/boe_update.sh"
-GRADLE="$ROOT_DIR/frontend_stack/app/android/app/build.gradle"
-RES="$ROOT_DIR/frontend_stack/app/android/app/src/main/res"
-LAUNCHER="$ROOT_DIR/frontend_stack/app/resources/launcher"
+GRADLE="$ROOT_DIR/frontend_stack_ts/android/app/build.gradle"
+RES="$ROOT_DIR/frontend_stack_ts/android/app/src/main/res"
+LAUNCHER="$ROOT_DIR/frontend_stack_ts/resources/launcher"
 
 pass_count=0
 fail_test() {

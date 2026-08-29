@@ -49,8 +49,9 @@ never import from it. No adapter, bridge, or compatibility layer of any kind.
 
 ### Why CSS Modules and not Tailwind
 
-1. The APK enforces **largest CSS ≤ 160 kB** and **total assets ≤ 1400 kB**
-   (`check-android-dist.mjs`). A utility framework's output is harder to bound per chunk.
+1. ~~The APK enforces largest CSS ≤ 160 kB~~ **Superseded (D-028): the CSS ceiling is raised to
+   640 kB and total assets to 2600 kB at the maintainer's direction, to fund a high-end visual
+   layer.** CSS Modules remain the choice for the reasons below, not for byte count.
 2. The design-token layer in `packages/design-tokens` already works and is **test-enforced** —
    in particular `tokens-core.css` is the sole legal owner of `env(safe-area-inset-*)`, and
    `safeArea.test.js` fails the build if any other stylesheet reads it or redeclares

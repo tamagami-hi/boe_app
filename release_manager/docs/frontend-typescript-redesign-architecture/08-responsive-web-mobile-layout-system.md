@@ -454,8 +454,8 @@ From `check-android-dist.mjs`:
 | Budget | Limit |
 |---|---|
 | Largest JS chunk | 320 kB |
-| Largest CSS file | 160 kB |
-| Total assets | 1400 kB |
+| Largest CSS file | 640 kB (raised from 160 kB by D-028) |
+| Total assets | 2600 kB (raised from 1400 kB by D-028) |
 | Font files | woff2 only; no cyrillic, greek or vietnamese subsets |
 | Client build | zero assets matching `/admin/i`, `/website/i`, `/landing/i`, `/browserroot/i` |
 | Chunk import graph | **must be acyclic** |

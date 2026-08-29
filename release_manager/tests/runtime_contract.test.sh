@@ -3,9 +3,9 @@
 set -uo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-DOCKERFILE="$ROOT_DIR/frontend_stack/app/Dockerfile"
-NGINX_CONFIG="$ROOT_DIR/frontend_stack/app/nginx.conf"
-FRONTEND_DOCKERIGNORE="$ROOT_DIR/frontend_stack/.dockerignore"
+DOCKERFILE="$ROOT_DIR/frontend_stack_ts/Dockerfile"
+NGINX_CONFIG="$ROOT_DIR/frontend_stack_ts/nginx.conf"
+FRONTEND_DOCKERIGNORE="$ROOT_DIR/.dockerignore"
 BACKEND_DOCKERFILE="$ROOT_DIR/backend_controller/Dockerfile"
 PATCHED_NODE_BASE='node:22.23.2-alpine3.24@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32'
 PATCHED_NGINX_BASE='nginxinc/nginx-unprivileged:1.31.1-alpine3.23-slim@sha256:762e8e4e5e103817c4158400fc3753c8e713ff8153b8c3afbb458ae4572bc9a3'
@@ -70,8 +70,10 @@ for node_dockerfile in "$BACKEND_DOCKERFILE" "$DOCKERFILE"; do
 done
 assert_file_contains "$FRONTEND_DOCKERIGNORE" '^\*\*/node_modules$' \
     'frontend Docker context does not exclude local dependency trees'
-assert_file_contains "$FRONTEND_DOCKERIGNORE" '^\*\*/\.next$' \
-    'frontend Docker context does not exclude local Next build output'
+assert_file_contains "$FRONTEND_DOCKERIGNORE" '^\*\*/dist$' \
+    'frontend Docker context does not exclude local build output'
+assert_file_contains "$FRONTEND_DOCKERIGNORE" '^\*\*/build$' \
+    'frontend Docker context does not exclude local Gradle build output'
 assert_file_contains "$DOCKERFILE" '^USER 101:101$' \
     'frontend runtime does not explicitly select the unprivileged nginx user'
 assert_file_contains "$DOCKERFILE" '^ENTRYPOINT \[\]$' \
@@ -101,8 +103,14 @@ grep -qE '^[[:space:]]+- run: npm run test:integration -- --coverage.enabled=fal
     || fail_test 'backend CI job does not run integration tests'
 grep -qE '^[[:space:]]+- run: npm test$' <<< "$frontend_ci_block" \
     || fail_test 'frontend CI job does not run frontend tests'
-grep -qE '^[[:space:]]+- run: npm run build$' <<< "$frontend_ci_block" \
-    || fail_test 'frontend CI job does not run the production build'
+grep -qE '^[[:space:]]+- run: npm run build:client$' <<< "$frontend_ci_block" \
+    || fail_test 'frontend CI job does not build the client variant'
+grep -qE '^[[:space:]]+- run: npm run build:admin$' <<< "$frontend_ci_block" \
+    || fail_test 'frontend CI job does not build the admin variant'
+grep -qE '^[[:space:]]+- run: npm run typecheck$' <<< "$frontend_ci_block" \
+    || fail_test 'frontend CI job does not typecheck'
+grep -qE 'check-phonepe-native-target' <<< "$frontend_ci_block" \
+    || fail_test 'frontend CI job does not assert the native PhonePe SDK stays unlinked'
 grep -qE '^[[:space:]]+- run: npm run check$' <<< "$contracts_ci_block" \
     || fail_test 'contracts CI job does not run contract verification'
 

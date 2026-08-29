@@ -66,9 +66,9 @@
     "generate:types": "openapi-typescript generated/openapi-v1.json -o generated/openapi-v1.d.ts",
     "generate": "npm run generate:openapi && npm run generate:types",
     "generate:check": "npm run generate && git diff --exit-code -- generated",
-    "check:frontend-contract-drift": "node scripts/check-frontend-contract-drift.mjs",
     "lint:openapi": "redocly lint generated/openapi-v1.json",
-    "check": "npm run typecheck && npm run lint && npm run test:coverage && npm run build && npm run test:exports && npm run generate:check && npm run lint:openapi && npm run check:frontend-contract-drift"
+    "check": "npm run typecheck && npm run lint && npm run test:coverage && npm run build && npm run test:exports && npm run generate:check && npm run lint:openapi && npm run check:frontend-contract-bypass",
+    "check:frontend-contract-bypass": "node scripts/check-frontend-contract-bypass.mjs"
   },
   "dependencies": {
     "zod": "4.4.3"
