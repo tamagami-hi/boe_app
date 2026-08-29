@@ -32,11 +32,12 @@ import { createRefundRepository } from "../repositories/refundRepository.js"
 import { createFundReceiptAcknowledgementRepository } from "../repositories/fundReceiptAcknowledgementRepository.js"
 import { createInvestmentSettlementRepository } from "../repositories/investmentSettlementRepository.js"
 import { createProviderEventInboxRepository } from "../repositories/providerEventInboxRepository.js"
+import { withApprovedStart } from "../providers/approvedStartGateway.js"
 import { createPhonePeGateway } from "../providers/phonepe/phonePeCheckoutGateway.js"
 import { createPhonePeRecurringGateway } from "../providers/phonepe/phonePeRecurringGateway.js"
 import type { RecurringPaymentGateway } from "../providers/recurringPaymentGateway.js"
-import type { PaymentGateway } from "../providers/phonepe/paymentGateway.js"
 import type { GatewayFailureLogger } from "../providers/phonepe/gatewayFailure.js"
+import type { PaymentGateway } from "../providers/phonepe/paymentGateway.js"
 import { runReconciliationPass, type ReconciliationSummary } from "../paymentReconciliationWorker.js"
 import { runMandateReconciliationPass } from "../mandateReconciliationWorker.js"
 import { runMandateCollectionPass, type MandateCollectionSummary } from "../mandateCollectionWorker.js"
@@ -99,6 +100,12 @@ import { createReadinessCheck, registerHealthRoutes, type ReadinessReport } from
 import { createMetricsRepository } from "../repositories/metricsRepository.js"
 import { parseServerConfig } from "./environment.js"
 
+const applyApprovedStart = <T extends { createCheckout: unknown }>(
+  approved: Readonly<{ startUrl: string; secret: string; ttlMs: number }> | null,
+  gateway: T,
+): T =>
+  approved === null ? gateway : (withApprovedStart(gateway as never, approved) as unknown as T)
+
 export interface BackendServices {
   readonly registerRoutes: (application: FastifyInstance) => void
   readonly corsAllowlist: readonly string[]
@@ -156,7 +163,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const certificateFetcher = createCertificateFetcher()
   const paymentGateway: PaymentGateway | null =
     serverConfig.payments.phonepe !== null
-      ? createPhonePeGateway({ config: serverConfig.payments.phonepe })
+      ? applyApprovedStart(serverConfig.payments.phonepe.approvedStart, createPhonePeGateway({ config: serverConfig.payments.phonepe }))
       : null
   const recurringPaymentGateway: RecurringPaymentGateway | null =
     serverConfig.payments.phonepe !== null
@@ -697,7 +704,7 @@ export const composePaymentReconciliationWorker = (
 
   const gateway =
     serverConfig.payments.phonepe !== null
-      ? createPhonePeGateway({ config: serverConfig.payments.phonepe })
+      ? applyApprovedStart(serverConfig.payments.phonepe.approvedStart, createPhonePeGateway({ config: serverConfig.payments.phonepe }))
       : null
   const recurringGateway =
     serverConfig.payments.phonepe !== null

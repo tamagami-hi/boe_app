@@ -117,6 +117,9 @@ const ServerConfigSchema = z.object({
   PHONEPE_CALLBACK_URL: z.string().trim().optional(),
   PHONEPE_PUBLIC_CALLBACK_ORIGIN: z.string().trim().optional(),
   PHONEPE_CHECKOUT_REDIRECT_URL: z.string().trim().optional(),
+  PAYMENT_START_URL: z.string().trim().optional(),
+  PAYMENT_START_SECRET: z.string().trim().optional(),
+  PAYMENT_START_TTL_MS: z.coerce.number().int().min(60_000).max(3_600_000).default(900_000),
   PHONEPE_SUBSCRIPTION_CALLBACK_URL: z.string().trim().optional(),
   PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: z.string().trim().optional(),
   PHONEPE_PAYMENT_EVENT_ALLOWLIST: z.string().trim().default("checkout.order.completed,checkout.order.failed"),
@@ -224,6 +227,7 @@ export interface ServerConfig {
       readonly checkoutAllowedOrigins: readonly string[]
       readonly callbackUrl: string
       readonly checkoutRedirectUrl: string
+      readonly approvedStart: Readonly<{ startUrl: string; secret: string; ttlMs: number }> | null
       readonly subscriptionCallbackUrl: string | null
       readonly requestTimeoutMs: number
     } | null
@@ -460,6 +464,26 @@ const parsePhonePeConfig = (
     if (url.hash !== "") throw new Error(`${name} must not contain a fragment`)
     return url.toString()
   }
+  const approvedStartConfig = (
+    values: z.infer<typeof ServerConfigSchema>,
+  ): Readonly<{ startUrl: string; secret: string; ttlMs: number }> | null => {
+    const declared = present(values.PAYMENT_START_URL)
+    const secret = present(values.PAYMENT_START_SECRET)
+    if (!declared && !secret) return null
+    if (!declared || !secret) {
+      throw new Error("PAYMENT_START_URL and PAYMENT_START_SECRET must be set together")
+    }
+    const startSecret = values.PAYMENT_START_SECRET as string
+    const startUrlValue = values.PAYMENT_START_URL as string
+    if (startSecret.length < 32) {
+      throw new Error("PAYMENT_START_SECRET must be at least 32 characters")
+    }
+    return Object.freeze({
+      startUrl: browserRedirectUrl("PAYMENT_START_URL", startUrlValue),
+      secret: startSecret,
+      ttlMs: values.PAYMENT_START_TTL_MS,
+    })
+  }
   const callbackUrl = canonicalUrl(
     "PHONEPE_CALLBACK_URL",
     parsed.PHONEPE_CALLBACK_URL,
@@ -478,6 +502,7 @@ const parsePhonePeConfig = (
     checkoutRedirectUrl: present(parsed.PHONEPE_CHECKOUT_REDIRECT_URL)
       ? browserRedirectUrl("PHONEPE_CHECKOUT_REDIRECT_URL", parsed.PHONEPE_CHECKOUT_REDIRECT_URL)
       : new URL("/dashboard", callbackUrl).toString(),
+    approvedStart: approvedStartConfig(parsed),
     subscriptionCallbackUrl: present(parsed.PHONEPE_SUBSCRIPTION_CALLBACK_URL)
       ? canonicalUrl(
           "PHONEPE_SUBSCRIPTION_CALLBACK_URL",
