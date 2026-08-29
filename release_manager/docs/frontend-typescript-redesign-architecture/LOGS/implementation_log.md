@@ -2858,3 +2858,78 @@ Applied so far only to files authored in this session (28 comments) plus my own 
 those two files were left intact. A repo-wide sweep would remove **1,073 comments across 150 files
 (197 KB)** and is deliberately **not** done: much of it records why a given check exists, and the
 entries in this log cross-reference it. Awaiting an explicit decision.
+
+
+## Entry 030 — the APK was stuck re-prompting for a fingerprint forever · 2026-08-29
+
+Reported from a device: the biometric prompt reappears immediately after a successful
+authentication, so the app never opens. This is the first time the device-lock path has been
+exercised on hardware — Entry 026 listed it as first-run and unverified — and it does not work.
+
+### Two defects, and it takes both to loop
+
+**`unlockDevice()` put the system into the one state that demands a lock.** `shouldLock` treats
+`leftAt === null` on a `resume` as "the time away cannot be established, so lock", which is the right
+conservative rule and is covered by its own test. But `unlockDevice()` set `leftAt = null`. So the
+state immediately after unlocking was indistinguishable from a resume with no recorded departure, and
+the next `resume` locked again.
+
+**The biometric prompt guarantees a resume event.** Android's prompt takes focus, so Capacitor's `App`
+plugin fires `appStateChange(isActive:false)` when it opens and `isActive:true` when it closes.
+`DeviceLockGate` treated that as the user leaving and returning. So around every unlock there is
+always a `resume` in flight, and whether it lands before or after `unlockDevice()` is a race:
+
+```
+cold-start  -> shouldLock(trigger:"cold-start") is unconditionally true -> lock
+LockScreen  -> biometric prompt opens
+              appStateChange(false) -> recordDeviceLeft(T)
+user authenticates
+              unlockDevice() -> leftAt = null, unlocked
+              appStateChange(true) -> evaluate("resume") -> leftAt null -> LOCK
+LockScreen remounts, biometricRequested ref is fresh -> prompt again -> forever
+```
+
+The fresh `biometricRequested` ref on each remount is what turns a single bad decision into an
+unbreakable loop rather than one spurious lock.
+
+### The fix
+
+`unlockDevice(at = Date.now())` now **records** the moment of unlocking instead of clearing it, so a
+resume straight afterwards computes an idle time near zero and does not lock. `shouldLock` and its
+eight tests are untouched — the rule was never wrong, the state fed to it was.
+
+Separately, a native prompt we opened ourselves no longer counts as leaving the app.
+`beginNativePrompt()` / `endNativePrompt()` bracket the `verifyBiometric` call in `LockScreen`, and
+while the depth is above zero `DeviceLockGate` ignores `appStateChange` in both directions and
+`recordDeviceLeft` is a no-op. This is what makes a slow authentication safe: without it, taking
+longer than the 120s idle threshold to present a finger would re-lock on return even with the first
+fix in place.
+
+Leaving the app for something we did *not* open — PhonePe checkout, the launcher — still records a
+departure and still locks after the threshold. That behaviour is deliberate and unchanged.
+
+### Verification
+
+- **TESTED** `src/app/native/deviceLock.test.ts`, 11 new tests. Three reproduce the loop directly: the
+  resume arriving after the unlock, arriving before it, and an authentication slower than the idle
+  threshold.
+- **TESTED** the fix is not vacuous. Reverting `unlockDevice` to `lastSeenAt = null` fails **5** of the
+  11, including all three loop cases; restoring it passes all 11. A test that cannot fail would have
+  been worthless here, since the whole defect was a state transition nothing observed.
+- **TESTED** the conservative rule is still intact: `leftAt: null` on a resume still locks, asserted
+  explicitly so a future change cannot "fix" the loop by weakening the security property instead.
+- **TESTED** `frontend_stack_ts`: tsc clean, eslint clean, **197** tests across 20 files (186 before),
+  `vite build` clean.
+
+### Not verified
+
+- **UNVERIFIED on device.** This is the important one: the defect was only found on hardware and the
+  fix has only been proven in tests. The event ordering I inferred from the symptom is consistent with
+  Capacitor's documented `appStateChange` behaviour, but I have not watched the events on a device. A
+  rebuilt APK has to be installed and the sequence walked: cold start, authenticate, reach the
+  dashboard; then background the app briefly and return without a prompt; then background it for over
+  two minutes and confirm the prompt does return.
+- **UNVERIFIED** the PIN path around the same race. `verifyDevicePin` does not open a native prompt so
+  it never produced the loop, but nothing has exercised it on hardware either.
+- The `cold-start` trigger locking unconditionally means any remount of `AppProviders` re-locks. Not
+  changed, and not observed to happen, but it is the remaining way to get an unexpected prompt.

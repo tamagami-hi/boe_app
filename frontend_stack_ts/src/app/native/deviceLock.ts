@@ -3,7 +3,8 @@ type Listener = () => void
 const listeners = new Set<Listener>()
 
 let locked = false
-let leftAt: number | null = null
+let lastSeenAt: number | null = null
+let nativePromptDepth = 0
 
 const notify = (): void => {
   for (const listener of listeners) listener()
@@ -24,15 +25,26 @@ export const lockDevice = (): void => {
   notify()
 }
 
-export const unlockDevice = (): void => {
-  leftAt = null
+export const unlockDevice = (at: number = Date.now()): void => {
+  lastSeenAt = at
   if (!locked) return
   locked = false
   notify()
 }
 
 export const recordDeviceLeft = (at: number): void => {
-  leftAt = at
+  if (nativePromptDepth > 0) return
+  lastSeenAt = at
 }
 
-export const readDeviceLeftAt = (): number | null => leftAt
+export const readDeviceLeftAt = (): number | null => lastSeenAt
+
+export const beginNativePrompt = (): void => {
+  nativePromptDepth += 1
+}
+
+export const endNativePrompt = (): void => {
+  nativePromptDepth = nativePromptDepth > 0 ? nativePromptDepth - 1 : 0
+}
+
+export const isNativePromptInFlight = (): boolean => nativePromptDepth > 0

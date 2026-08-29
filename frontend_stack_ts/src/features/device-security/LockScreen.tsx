@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { useSession } from "~/app/providers/SessionProvider"
+import { beginNativePrompt, endNativePrompt } from "~/app/native/deviceLock"
 import { NO_BIOMETRIC, readBiometricCapability, verifyBiometric } from "~/platform/biometric"
 import type { BiometricCapability } from "~/platform/biometric"
 import { Button } from "~/ui/primitives/Button"
@@ -47,6 +48,7 @@ export const LockScreen = ({ onUnlocked }: LockScreenProps): React.ReactElement 
 
   const attemptBiometric = useCallback(async (): Promise<void> => {
     setChecking(true)
+    beginNativePrompt()
     try {
       const outcome = await verifyBiometric({
         title: "Unlock BeOnEdge",
@@ -61,6 +63,7 @@ export const LockScreen = ({ onUnlocked }: LockScreenProps): React.ReactElement 
     } catch {
       setFailure(BIOMETRIC_MESSAGES.unavailable)
     } finally {
+      endNativePrompt()
       setChecking(false)
     }
   }, [])

@@ -3,6 +3,7 @@ import type { ReactNode } from "react"
 
 import {
   isDeviceLocked,
+  isNativePromptInFlight,
   lockDevice,
   readDeviceLeftAt,
   recordDeviceLeft,
@@ -49,6 +50,7 @@ export const DeviceLockGate = ({ children }: DeviceLockGateProps): React.ReactEl
   useEffect(
     () =>
       onAppStateChange((active) => {
+        if (isNativePromptInFlight()) return
         if (!active) {
           recordDeviceLeft(Date.now())
           return
