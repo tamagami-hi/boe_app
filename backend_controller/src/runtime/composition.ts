@@ -33,6 +33,7 @@ import { createFundReceiptAcknowledgementRepository } from "../repositories/fund
 import { createInvestmentSettlementRepository } from "../repositories/investmentSettlementRepository.js"
 import { createProviderEventInboxRepository } from "../repositories/providerEventInboxRepository.js"
 import { withApprovedStart } from "../providers/approvedStartGateway.js"
+import { createRelayPaymentGateway } from "../providers/relay/relayPaymentGateway.js"
 import { createPhonePeGateway } from "../providers/phonepe/phonePeCheckoutGateway.js"
 import { createPhonePeRecurringGateway } from "../providers/phonepe/phonePeRecurringGateway.js"
 import type { RecurringPaymentGateway } from "../providers/recurringPaymentGateway.js"
@@ -100,6 +101,23 @@ import { createReadinessCheck, registerHealthRoutes, type ReadinessReport } from
 import { createMetricsRepository } from "../repositories/metricsRepository.js"
 import { parseServerConfig } from "./environment.js"
 
+const selectPaymentGateway = (serverConfig: ServerConfigForGateway) => {
+  const relay = serverConfig.payments.relay
+  if (relay !== null) return createRelayPaymentGateway({ config: relay })
+  const phonepe = serverConfig.payments.phonepe
+  if (phonepe === null) return null
+  return applyApprovedStart(phonepe.approvedStart, createPhonePeGateway({ config: phonepe }))
+}
+
+type ServerConfigForGateway = Readonly<{
+  payments: Readonly<{
+    relay: Readonly<{ baseUrl: string; service: string; secret: string }> | null
+    phonepe: Parameters<typeof createPhonePeGateway>[0]["config"] & {
+      approvedStart: Readonly<{ startUrl: string; secret: string; ttlMs: number }> | null
+    } | null
+  }>
+}>
+
 const applyApprovedStart = <T extends { createCheckout: unknown }>(
   approved: Readonly<{ startUrl: string; secret: string; ttlMs: number }> | null,
   gateway: T,
@@ -161,10 +179,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const accessTokenService = createAccessTokenService(serverConfig.access)
   const breachChecker = createBreachChecker(breachMode)
   const certificateFetcher = createCertificateFetcher()
-  const paymentGateway: PaymentGateway | null =
-    serverConfig.payments.phonepe !== null
-      ? applyApprovedStart(serverConfig.payments.phonepe.approvedStart, createPhonePeGateway({ config: serverConfig.payments.phonepe }))
-      : null
+  const paymentGateway: PaymentGateway | null = selectPaymentGateway(serverConfig)
   const recurringPaymentGateway: RecurringPaymentGateway | null =
     serverConfig.payments.phonepe !== null
       ? createPhonePeRecurringGateway({
@@ -702,10 +717,7 @@ export const composePaymentReconciliationWorker = (
   const unitOfWork = createUnitOfWork(database)
   const serverConfig = parseServerConfig(source)
 
-  const gateway =
-    serverConfig.payments.phonepe !== null
-      ? applyApprovedStart(serverConfig.payments.phonepe.approvedStart, createPhonePeGateway({ config: serverConfig.payments.phonepe }))
-      : null
+  const gateway = selectPaymentGateway(serverConfig)
   const recurringGateway =
     serverConfig.payments.phonepe !== null
       ? createPhonePeRecurringGateway({

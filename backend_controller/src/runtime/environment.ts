@@ -117,6 +117,9 @@ const ServerConfigSchema = z.object({
   PHONEPE_CALLBACK_URL: z.string().trim().optional(),
   PHONEPE_PUBLIC_CALLBACK_ORIGIN: z.string().trim().optional(),
   PHONEPE_CHECKOUT_REDIRECT_URL: z.string().trim().optional(),
+  PAYMENTS_SERVICE_URL: z.string().trim().optional(),
+  PAYMENTS_SERVICE_SECRET: z.string().trim().optional(),
+  PAYMENTS_SERVICE_NAME: z.string().trim().default("boe-dev"),
   PAYMENT_START_URL: z.string().trim().optional(),
   PAYMENT_START_SECRET: z.string().trim().optional(),
   PAYMENT_START_TTL_MS: z.coerce.number().int().min(60_000).max(3_600_000).default(900_000),
@@ -230,6 +233,11 @@ export interface ServerConfig {
       readonly approvedStart: Readonly<{ startUrl: string; secret: string; ttlMs: number }> | null
       readonly subscriptionCallbackUrl: string | null
       readonly requestTimeoutMs: number
+    } | null
+    readonly relay: {
+      readonly baseUrl: string
+      readonly service: string
+      readonly secret: string
     } | null
     readonly attemptTtlMs: number
     readonly recurring: {
@@ -358,6 +366,39 @@ const parseVerificationKeys = (raw: string): Record<string, string> => {
  * refuses to boot. PHONEPE_ENV selects the provider environment independently
  * of NODE_ENV.
  */
+const relayConfig = (
+  parsed: z.infer<typeof ServerConfigSchema>,
+): Readonly<{ baseUrl: string; service: string; secret: string }> | null => {
+  const url = parsed.PAYMENTS_SERVICE_URL
+  const secret = parsed.PAYMENTS_SERVICE_SECRET
+  const declaredUrl = url !== undefined && url.trim().length > 0
+  const declaredSecret = secret !== undefined && secret.trim().length > 0
+  if (!declaredUrl && !declaredSecret) return null
+  if (!declaredUrl || !declaredSecret) {
+    throw new Error("PAYMENTS_SERVICE_URL and PAYMENTS_SERVICE_SECRET must be set together")
+  }
+  if (secret.length < 32) {
+    throw new Error("PAYMENTS_SERVICE_SECRET must be at least 32 characters")
+  }
+  let base: URL
+  try {
+    base = new URL(url)
+  } catch {
+    throw new Error("PAYMENTS_SERVICE_URL must be an absolute URL")
+  }
+  if (base.protocol !== "http:" && base.protocol !== "https:") {
+    throw new Error("PAYMENTS_SERVICE_URL must be http or https")
+  }
+  if (base.pathname !== "/" || base.search !== "" || base.hash !== "") {
+    throw new Error("PAYMENTS_SERVICE_URL must be a bare origin")
+  }
+  return Object.freeze({
+    baseUrl: base.origin,
+    service: parsed.PAYMENTS_SERVICE_NAME,
+    secret,
+  })
+}
+
 const parsePhonePeConfig = (
   parsed: z.infer<typeof ServerConfigSchema>,
 ): ServerConfig["payments"]["phonepe"] => {
@@ -602,6 +643,7 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
     payments: {
       provider: parsed.PAYMENT_PROVIDER,
       phonepe: phonepeConfig,
+      relay: relayConfig(parsed),
       attemptTtlMs: parsed.PAYMENT_ATTEMPT_TTL_MS,
       recurring: {
         merchantId,

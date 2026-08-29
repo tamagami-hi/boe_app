@@ -537,3 +537,97 @@ describe("PhonePe callbacks on a PhonePe-approved host", () => {
     }
   })
 })
+
+
+describe("payment service selection", () => {
+  const RELAY_SECRET = "0123456789abcdef0123456789abcdef0123456789abcdef"
+
+  const withPhonePe = () => ({
+    ...validEnv(),
+    PHONEPE_CLIENT_ID: "client-id",
+    PHONEPE_CLIENT_SECRET: "client-secret",
+    PHONEPE_CLIENT_VERSION: "1",
+    PHONEPE_ENV: "sandbox",
+    PHONEPE_CALLBACK_USERNAME: "callback-user",
+    PHONEPE_CALLBACK_PASSWORD: "callback-password",
+    PHONEPE_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment",
+    PHONEPE_SUBSCRIPTION_CALLBACK_URL:
+      "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/subscription",
+    PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: "checkout.setup.order.completed",
+    PHONEPE_MERCHANT_ID: "merchant-id",
+    PHONEPE_AUTOPAY_ENABLED: "false",
+  })
+
+  test("is absent until both relay keys are set", () => {
+    expect(parseServerConfig(withPhonePe()).payments.relay).toBeNull()
+  })
+
+  test("accepts a bare http origin, because the service is reached over a private network", () => {
+    const relay = parseServerConfig({
+      ...withPhonePe(),
+      PAYMENTS_SERVICE_URL: "http://boe-payment-service:47430",
+      PAYMENTS_SERVICE_SECRET: RELAY_SECRET,
+    }).payments.relay
+
+    expect(relay).toStrictEqual({
+      baseUrl: "http://boe-payment-service:47430",
+      service: "boe-dev",
+      secret: RELAY_SECRET,
+    })
+  })
+
+  test("carries the configured service identity, which selects credentials on the far side", () => {
+    expect(parseServerConfig({
+      ...withPhonePe(),
+      PAYMENTS_SERVICE_URL: "http://boe-payment-service:47430",
+      PAYMENTS_SERVICE_SECRET: RELAY_SECRET,
+      PAYMENTS_SERVICE_NAME: "boe-prod",
+    }).payments.relay?.service).toBe("boe-prod")
+  })
+
+  test("refuses one key without the other", () => {
+    expect(() => parseServerConfig({
+      ...withPhonePe(),
+      PAYMENTS_SERVICE_URL: "http://boe-payment-service:47430",
+    })).toThrow(/must be set together/u)
+    expect(() => parseServerConfig({
+      ...withPhonePe(),
+      PAYMENTS_SERVICE_SECRET: RELAY_SECRET,
+    })).toThrow(/must be set together/u)
+  })
+
+  test("refuses a weak secret", () => {
+    expect(() => parseServerConfig({
+      ...withPhonePe(),
+      PAYMENTS_SERVICE_URL: "http://boe-payment-service:47430",
+      PAYMENTS_SERVICE_SECRET: "short",
+    })).toThrow(/at least 32 characters/u)
+  })
+
+  test("refuses a URL carrying a path, query or fragment", () => {
+    for (const url of [
+      "http://boe-payment-service:47430/internal",
+      "http://boe-payment-service:47430/?a=1",
+      "http://boe-payment-service:47430/#x",
+    ]) {
+      expect(() => parseServerConfig({
+        ...withPhonePe(),
+        PAYMENTS_SERVICE_URL: url,
+        PAYMENTS_SERVICE_SECRET: RELAY_SECRET,
+      })).toThrow(/must be a bare origin/u)
+    }
+  })
+
+  test("refuses a non-URL and a non-http scheme", () => {
+    expect(() => parseServerConfig({
+      ...withPhonePe(),
+      PAYMENTS_SERVICE_URL: "boe-payment-service:47430",
+      PAYMENTS_SERVICE_SECRET: RELAY_SECRET,
+    })).toThrow(/PAYMENTS_SERVICE_URL/u)
+    expect(() => parseServerConfig({
+      ...withPhonePe(),
+      PAYMENTS_SERVICE_URL: "ftp://boe-payment-service",
+      PAYMENTS_SERVICE_SECRET: RELAY_SECRET,
+    })).toThrow(/must be http or https/u)
+  })
+})
