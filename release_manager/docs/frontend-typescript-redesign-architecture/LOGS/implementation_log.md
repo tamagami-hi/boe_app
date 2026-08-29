@@ -2816,10 +2816,27 @@ No nginx change is needed: `www.beonedge.in` already 301s to the apex preserving
   experimentally in Entry 028 and `redirectUrl` is the only remaining domain-bearing field — but no
   successful payment has been observed. Confirming it needs `PHONEPE_CHECKOUT_REDIRECT_URL` set in the
   deployed `.env`, the landing site redeployed with the new route, and a ₹1 payment.
-- **UNVERIFIED** the route behind Cloudflare and nginx. It is unit-tested and builds as a dynamic
-  route, but nothing has requested it over the network. After the landing site is redeployed,
-  `curl -sSI https://www.beonedge.in/pay/return/dev` should return `302` with
-  `location: https://dev-app.beonedge.in/dashboard` — possibly via a `301` to the apex first.
+- **VPS** the route is deployed and verified over the network. `boe_landing` `82f56b0` pushed to
+  `origin/dev/tamagami-hi`, fast-forwarded on the VPS at `/srv/dev_stack/BOE_LANDING/repo`
+  (`9c7de73..82f56b0`, untracked `docker-compose.override.yml` left intact), `docker compose build
+  landing` then `up -d landing`; healthy in ~10s. Only the `landing` service runs — the compose `nginx`
+  service is unused, host nginx proxies `127.0.0.1:47410` — so exactly one container was recreated.
+
+  ```
+  curl -sSIL https://www.beonedge.in/pay/return/dev
+    301 → https://beonedge.in/pay/return/dev
+    302 → https://dev-app.beonedge.in/dashboard   cache-control: no-store
+    200
+  /pay/return/app                  → 302 https://app.beonedge.in/dashboard
+  /pay/return/dev?code=…&merchantOrderId=… → 302 …/dashboard?code=…&merchantOrderId=…
+  /pay/return/evil                 → 404, no location header
+  /pay/return/dev?to=https://evil.test&redirect=//evil.test
+                                   → 302 https://dev-app.beonedge.in/dashboard?to=…&redirect=…
+  ```
+
+  The last one is the one worth keeping: the hostile values survive as inert query parameters on our
+  own host and cannot move the destination. The `www` → apex 301 preserving the request URI is
+  confirmed rather than assumed, which is what made the nginx change unnecessary.
 - The maintainer may instead simply add `dev-app.beonedge.in` as an approved URL on the PhonePe
   dashboard, which needs none of this. Both routes are now open; this one also serves production,
   where the host is `app.beonedge.in` and the same block applies.
