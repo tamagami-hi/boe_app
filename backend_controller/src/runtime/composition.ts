@@ -181,6 +181,10 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const breachChecker = createBreachChecker(breachMode)
   const certificateFetcher = createCertificateFetcher()
   const paymentGateway: PaymentGateway | null = selectPaymentGateway(serverConfig)
+  const callbackVerifier: PaymentGateway | null =
+    serverConfig.payments.phonepe === null
+      ? null
+      : createPhonePeGateway({ config: serverConfig.payments.phonepe })
   const recurringPaymentGateway: RecurringPaymentGateway | null =
     serverConfig.payments.relay !== null
       ? createRelayRecurringGateway({ config: serverConfig.payments.relay })
@@ -590,11 +594,11 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       })
     }
 
-    if (paymentGateway !== null) {
+    if (callbackVerifier !== null) {
       registerPhonePeProviderEventRoutes(application, {
         unitOfWork,
         clock,
-        paymentGateway,
+        paymentGateway: callbackVerifier,
         config: {
           payloadEncryptionKey: cryptoKeys.recipientEncryptionKey,
           payloadKeyVersion: cryptoKeys.recipientEncryptionKeyVersion,
@@ -607,11 +611,11 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         refundRepository,
       })
     }
-    if (paymentGateway !== null && recurringPaymentGateway !== null) {
+    if (callbackVerifier !== null && recurringPaymentGateway !== null) {
       registerPhonePeMandateEventRoutes(application, {
         unitOfWork,
         clock,
-        paymentGateway,
+        paymentGateway: callbackVerifier,
         recurringPaymentGateway,
         mandatesRepository: createMandatesRepository(),
         paymentsRepository,

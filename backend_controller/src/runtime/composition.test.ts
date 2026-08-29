@@ -631,3 +631,56 @@ describe("payment service selection", () => {
     })).toThrow(/must be http or https/u)
   })
 })
+
+
+describe("inbound callback verification survives the relay being selected", () => {
+  const RELAY_SECRET = "0123456789abcdef0123456789abcdef0123456789abcdef"
+
+  const configured = (extra: Record<string, string> = {}) => ({
+    ...validEnv(),
+    PHONEPE_CLIENT_ID: "client-id",
+    PHONEPE_CLIENT_SECRET: "client-secret",
+    PHONEPE_CLIENT_VERSION: "1",
+    PHONEPE_ENV: "sandbox",
+    PHONEPE_CALLBACK_USERNAME: "callback-user",
+    PHONEPE_CALLBACK_PASSWORD: "callback-password",
+    PHONEPE_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment",
+    PHONEPE_SUBSCRIPTION_CALLBACK_URL:
+      "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/subscription",
+    PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: "checkout.setup.order.completed",
+    PHONEPE_MERCHANT_ID: "merchant-id",
+    PHONEPE_AUTOPAY_ENABLED: "false",
+    ...extra,
+  })
+
+  test("the relay refuses to verify callbacks, so it must never be the verifier", async () => {
+    const { createRelayPaymentGateway } = await import("../providers/relay/relayPaymentGateway.js")
+    const relay = createRelayPaymentGateway({
+      config: { baseUrl: "http://boe-payment-service:47430", service: "boe-dev", secret: RELAY_SECRET },
+    })
+
+    expect(() => relay.validateShaCallback("sha256-anything", "{}")).toThrow()
+  })
+
+  test("PhonePe credentials remain required while callbacks land on this backend", () => {
+    const config = parseServerConfig(configured({
+      PAYMENTS_SERVICE_URL: "http://boe-payment-service:47430",
+      PAYMENTS_SERVICE_SECRET: RELAY_SECRET,
+    }))
+
+    expect(config.payments.relay).not.toBeNull()
+    expect(config.payments.phonepe).not.toBeNull()
+    expect(config.payments.phonepe?.callbackUsername).toBe("callback-user")
+  })
+
+  test("the direct adapter can still verify, which is what the callback routes use", async () => {
+    const { createPhonePeGateway } = await import("../providers/phonepe/phonePeCheckoutGateway.js")
+    const phonepe = parseServerConfig(configured()).payments.phonepe
+    if (phonepe === null) throw new Error("expected PhonePe to be configured")
+
+    const gateway = createPhonePeGateway({ config: phonepe })
+
+    expect(() => gateway.validateShaCallback("not-a-valid-sha", "{}")).toThrow()
+    expect(typeof gateway.validateShaCallback).toBe("function")
+  })
+})
