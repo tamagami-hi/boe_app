@@ -1,7 +1,10 @@
 import { describe, expect, test, vi } from "vitest"
 
 import type { PaymentReconciliationWorker } from "./runtime/composition.js"
-import { runPaymentReconciliationPass } from "./paymentReconciliationEntrypoint.js"
+import {
+  runPaymentReconciliationLoop,
+  runPaymentReconciliationPass,
+} from "./paymentReconciliationEntrypoint.js"
 
 const worker = (runOnce: PaymentReconciliationWorker["runOnce"]) => ({
   runOnce,
@@ -9,6 +12,7 @@ const worker = (runOnce: PaymentReconciliationWorker["runOnce"]) => ({
   dispose: vi.fn().mockResolvedValue(undefined),
   database: {} as PaymentReconciliationWorker["database"],
   intervalMs: 30_000,
+  nextWakeDelayMs: vi.fn().mockResolvedValue(30_000),
 })
 
 const logger = {
@@ -89,5 +93,73 @@ describe("payment reconciliation pass lifecycle", () => {
       expect.objectContaining({ errorCode: "HEARTBEAT_RECORD_FAILED" }),
       expect.any(String),
     )
+  })
+})
+
+
+describe("payment reconciliation loop cadence", () => {
+  const loopWorker = (nextWakeDelayMs: () => Promise<number>) => ({
+    runOnce: vi.fn().mockResolvedValue({
+      attemptsChecked: 0,
+      attemptsResolved: 0,
+      refundsChecked: 0,
+      refundsResolved: 0,
+    }),
+    gatewayConfigured: true,
+    dispose: vi.fn().mockResolvedValue(undefined),
+    database: {} as PaymentReconciliationWorker["database"],
+    intervalMs: 30_000,
+    nextWakeDelayMs: vi.fn(nextWakeDelayMs),
+  })
+
+  test("asks the worker when to wake instead of using the fixed interval", async () => {
+    const controller = new AbortController()
+    const subject = loopWorker(async () => {
+      controller.abort()
+      return 30_000
+    })
+
+    await runPaymentReconciliationLoop(
+      subject,
+      { info: vi.fn(), warn: vi.fn() },
+      { signal: controller.signal },
+    )
+
+    expect(subject.nextWakeDelayMs).toHaveBeenCalledOnce()
+    expect(subject.runOnce).toHaveBeenCalledOnce()
+    expect(subject.dispose).toHaveBeenCalledOnce()
+  })
+
+  test("falls back to the fixed interval when the wake lookup fails", async () => {
+    const controller = new AbortController()
+    const passLogger = { info: vi.fn(), warn: vi.fn() }
+    const subject = loopWorker(async () => {
+      controller.abort()
+      throw new Error("database unavailable")
+    })
+
+    await runPaymentReconciliationLoop(subject, passLogger, { signal: controller.signal })
+
+    expect(passLogger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        errorCode: "PAYMENT_WORKER_WAKE_LOOKUP_FAILED",
+        fallbackMs: 30_000,
+      }),
+      expect.any(String),
+    )
+  })
+
+  test("does not run a pass when it is asked to stop before starting", async () => {
+    const subject = loopWorker(async () => 1_000)
+
+    await runPaymentReconciliationLoop(
+      subject,
+      { info: vi.fn(), warn: vi.fn() },
+      { signal: AbortSignal.abort() },
+    )
+
+    expect(subject.runOnce).not.toHaveBeenCalled()
+    expect(subject.nextWakeDelayMs).not.toHaveBeenCalled()
+    expect(subject.dispose).toHaveBeenCalledOnce()
   })
 })

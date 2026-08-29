@@ -28,6 +28,7 @@ const createDeps = (input: Readonly<{
   attempt: PaymentAttempt
   getOrderStatus: PaymentGateway["getOrderStatus"]
   succeededAt?: Date | null
+  config?: Partial<PaymentReconciliationDeps["config"]>
 }>) => {
   const lockAttemptsForReconciliation = vi.fn()
     .mockResolvedValueOnce([input.attempt])
@@ -66,6 +67,7 @@ const createDeps = (input: Readonly<{
       leaseMs: 60_000,
       pendingIntervalMs: 30_000,
       maxBackoffMs: 900_000,
+      ...input.config,
     },
   } as PaymentReconciliationDeps
   return {
@@ -174,5 +176,96 @@ describe("runReconciliationPass", () => {
     })
     expect(harness.markAttemptExpired).not.toHaveBeenCalled()
     expect(harness.markPaymentExpired).not.toHaveBeenCalled()
+  })
+
+  test("re-checks a freshly dispatched pending attempt after one second", async () => {
+    const harness = createDeps({
+      attempt: createAttempt({
+        checkout_expires_at: new Date("2026-08-25T12:13:00.000Z"),
+        provider_dispatch_started_at: new Date("2026-08-25T11:59:55.000Z"),
+      }),
+      config: { fastIntervalMs: 1_000, fastWindowMs: 180_000 },
+      getOrderStatus: vi.fn().mockResolvedValue({
+        merchantOrderId: MERCHANT_ORDER_ID,
+        outcome: "pending",
+        providerState: "PENDING",
+        providerOrderId: "OMO_PROVIDER_ORDER",
+        amountPaise: "100",
+        currency: "INR",
+        details: [],
+      }),
+    })
+
+    const summary = await runReconciliationPass(harness.deps)
+
+    expect(summary.attemptsResolved).toBe(0)
+    expect(harness.rescheduleAttemptReconciliation).toHaveBeenCalledWith(expect.anything(), {
+      attemptId: ATTEMPT_ID,
+      now: NOW,
+      nextCheckAt: new Date("2026-08-25T12:00:01.000Z"),
+      isFailure: false,
+    })
+  })
+
+  test("does not park a live checkout behind a long backoff after repeated gateway errors", async () => {    const harness = createDeps({
+      attempt: createAttempt({
+        checkout_expires_at: new Date("2026-08-25T12:13:00.000Z"),
+        provider_dispatch_started_at: new Date("2026-08-25T11:59:55.000Z"),
+        reconciliation_failure_count: 8,
+      }),
+      config: { fastIntervalMs: 1_000, fastWindowMs: 180_000 },
+      getOrderStatus: vi.fn().mockRejectedValue(new Error("relay unreachable")),
+    })
+
+    const summary = await runReconciliationPass(harness.deps)
+
+    expect(summary.attemptsResolved).toBe(0)
+    expect(harness.rescheduleAttemptReconciliation).toHaveBeenCalledWith(expect.anything(), {
+      attemptId: ATTEMPT_ID,
+      now: NOW,
+      nextCheckAt: new Date("2026-08-25T12:00:30.000Z"),
+      isFailure: true,
+    })
+  })
+
+  test("quarantines a long-expired attempt the gateway will never answer for", async () => {
+    const harness = createDeps({
+      attempt: createAttempt({
+        checkout_expires_at: new Date("2026-08-25T10:00:00.000Z"),
+        provider_dispatch_started_at: new Date("2026-08-25T09:45:00.000Z"),
+        reconciliation_failure_count: 38,
+      }),
+      config: { quarantineFailureThreshold: 5 },
+      getOrderStatus: vi.fn().mockRejectedValue(new Error("request rejected")),
+    })
+
+    const summary = await runReconciliationPass(harness.deps)
+
+    expect(summary.attemptsResolved).toBe(1)
+    expect(harness.markReconciliationRequired).toHaveBeenCalledWith(expect.anything(), {
+      attemptId: ATTEMPT_ID,
+      paymentId: PAYMENT_ID,
+      providerState: "STATUS_UNAVAILABLE",
+      now: NOW,
+    })
+    expect(harness.rescheduleAttemptReconciliation).not.toHaveBeenCalled()
+  })
+
+  test("keeps retrying an expired attempt until the quarantine threshold is reached", async () => {
+    const harness = createDeps({
+      attempt: createAttempt({
+        checkout_expires_at: new Date("2026-08-25T10:00:00.000Z"),
+        provider_dispatch_started_at: new Date("2026-08-25T09:45:00.000Z"),
+        reconciliation_failure_count: 4,
+      }),
+      config: { quarantineFailureThreshold: 5 },
+      getOrderStatus: vi.fn().mockRejectedValue(new Error("request rejected")),
+    })
+
+    const summary = await runReconciliationPass(harness.deps)
+
+    expect(summary.attemptsResolved).toBe(0)
+    expect(harness.markReconciliationRequired).not.toHaveBeenCalled()
+    expect(harness.rescheduleAttemptReconciliation).toHaveBeenCalledOnce()
   })
 })

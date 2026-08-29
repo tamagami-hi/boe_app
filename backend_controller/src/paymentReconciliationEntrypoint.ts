@@ -72,27 +72,66 @@ export const runPaymentReconciliationPass = async (
   }
 }
 
-const waitForNextPass = (intervalMs: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, intervalMs))
+const waitForNextPass = (intervalMs: number, signal: AbortSignal): Promise<void> =>
+  new Promise((resolve) => {
+    if (signal.aborted) {
+      resolve()
+      return
+    }
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort)
+      resolve()
+    }, intervalMs)
+    function onAbort(): void {
+      clearTimeout(timer)
+      resolve()
+    }
+    signal.addEventListener("abort", onAbort, { once: true })
+  })
+
+const resolveNextDelayMs = async (
+  worker: PaymentReconciliationWorker,
+  logger: PassLogger,
+): Promise<number> => {
+  try {
+    return await worker.nextWakeDelayMs()
+  } catch {
+    logger.warn(
+      { errorCode: "PAYMENT_WORKER_WAKE_LOOKUP_FAILED", fallbackMs: worker.intervalMs },
+      "Could not determine next reconciliation wake time",
+    )
+    return worker.intervalMs
+  }
+}
+
+export interface RunPaymentReconciliationLoopOptions {
+  readonly signal?: AbortSignal
+}
 
 export const runPaymentReconciliationLoop = async (
   worker: PaymentReconciliationWorker,
   logger: PassLogger,
+  options: RunPaymentReconciliationLoopOptions = {},
 ): Promise<void> => {
-  let isStopping = false
+  const controller = new AbortController()
   const stop = (): void => {
-    isStopping = true
+    controller.abort()
   }
   process.once("SIGINT", stop)
   process.once("SIGTERM", stop)
+  if (options.signal !== undefined) {
+    if (options.signal.aborted) stop()
+    else options.signal.addEventListener("abort", stop, { once: true })
+  }
   try {
-    while (!isStopping) {
+    while (!controller.signal.aborted) {
       try {
         await runPaymentReconciliationPass({ worker, logger, dispose: false })
       } catch {
         logger.warn({ errorCode: "PAYMENT_WORKER_PASS_FAILURE" }, "Payment reconciliation pass failed")
       }
-      if (!isStopping) await waitForNextPass(worker.intervalMs)
+      if (controller.signal.aborted) break
+      await waitForNextPass(await resolveNextDelayMs(worker, logger), controller.signal)
     }
   } finally {
     process.removeListener("SIGINT", stop)

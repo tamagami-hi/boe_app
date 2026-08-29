@@ -151,6 +151,10 @@ export interface PaymentsRepository {
     tx: Transaction,
     input: Readonly<{ limit: number; createdDueBefore: Date; now: Date; leaseExpiresAt: Date }>,
   ) => Promise<readonly PaymentAttempt[]>
+  earliestReconciliationDueAt: (
+    tx: Transaction,
+    input: Readonly<{ createdDueBefore: Date; now: Date }>,
+  ) => Promise<Date | null>
   listPage: (
     tx: Transaction,
     input: Readonly<{ afterCreatedAt?: Date; afterId?: string; limit: number }>,
@@ -697,6 +701,38 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
       .where("id", "in", claimable.map((row) => row.id))
       .returningAll()
       .execute()
+  },
+
+  earliestReconciliationDueAt: async (tx, input) => {
+    const result = await sql<{
+      claimableCount: string
+      undatedCount: string
+      dueAt: Date | string | null
+    }>`
+      select
+        count(*)::text as "claimableCount",
+        (count(*) filter (where next_status_check_at is null))::text as "undatedCount",
+        min(next_status_check_at) as "dueAt"
+      from payment_attempts
+      where checkout_channel = 'hosted_redirect'
+        and (
+          state = 'provider_pending'
+          or (
+            state = 'created'
+            and checkout_expires_at is not null
+            and checkout_expires_at <= ${input.createdDueBefore}
+          )
+        )
+        and (
+          reconciliation_lease_expires_at is null
+          or reconciliation_lease_expires_at <= ${input.now}
+        )
+    `.execute(tx)
+    const row = result.rows[0]
+    if (row === undefined || Number(row.claimableCount) === 0) return null
+    if (Number(row.undatedCount) > 0) return input.now
+    if (row.dueAt === null) return input.now
+    return row.dueAt instanceof Date ? row.dueAt : new Date(row.dueAt)
   },
 
   listPage: async (tx, input) => {

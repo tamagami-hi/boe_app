@@ -41,6 +41,7 @@ import type { RecurringPaymentGateway } from "../providers/recurringPaymentGatew
 import type { GatewayFailureLogger } from "../providers/phonepe/gatewayFailure.js"
 import type { PaymentGateway } from "../providers/phonepe/paymentGateway.js"
 import { runReconciliationPass, type ReconciliationSummary } from "../paymentReconciliationWorker.js"
+import { resolveWakeDelayMs } from "../domain/payments/reconciliationCadence.js"
 import { runMandateReconciliationPass } from "../mandateReconciliationWorker.js"
 import { runMandateCollectionPass, type MandateCollectionSummary } from "../mandateCollectionWorker.js"
 import { runSipSchedulePass, type SipScheduleSummary } from "../sipScheduleWorker.js"
@@ -713,6 +714,7 @@ export interface PaymentReconciliationWorker {
   readonly dispose: () => Promise<void>
   readonly database: Kysely<Database>
   readonly intervalMs: number
+  readonly nextWakeDelayMs: () => Promise<number>
 }
 
 export const composePaymentReconciliationWorker = (
@@ -760,6 +762,10 @@ export const composePaymentReconciliationWorker = (
           leaseMs: serverConfig.payments.reconciliation.leaseMs,
           pendingIntervalMs: serverConfig.payments.reconciliation.intervalMs,
           maxBackoffMs: serverConfig.payments.reconciliation.maxBackoffMs,
+          fastIntervalMs: serverConfig.payments.reconciliation.fastIntervalMs,
+          fastWindowMs: serverConfig.payments.reconciliation.fastWindowMs,
+          quarantineFailureThreshold:
+            serverConfig.payments.reconciliation.quarantineFailureThreshold,
         },
       })
       if (recurringGateway !== null) {
@@ -787,6 +793,22 @@ export const composePaymentReconciliationWorker = (
     },
     database,
     intervalMs: serverConfig.payments.reconciliation.intervalMs,
+    nextWakeDelayMs: async () => {
+      const now = new Date()
+      const earliestDueAt = await unitOfWork.execute((tx) =>
+        createPaymentsRepository().earliestReconciliationDueAt(tx, {
+          now,
+          createdDueBefore: new Date(
+            now.getTime() - serverConfig.payments.reconciliation.expiryGraceMs,
+          ),
+        }),
+      )
+      return resolveWakeDelayMs({
+        now,
+        earliestDueAt,
+        idleIntervalMs: serverConfig.payments.reconciliation.idleIntervalMs,
+      })
+    },
   }
 }
 

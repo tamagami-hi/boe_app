@@ -10,6 +10,11 @@ import {
   type PaymentGateway,
 } from "./providers/phonepe/paymentGateway.js"
 import { logGatewayFailure, type GatewayFailureLogger } from "./providers/phonepe/gatewayFailure.js"
+import {
+  resolveFailureDelayMs,
+  resolvePendingDelayMs,
+  type ReconciliationCadence,
+} from "./domain/payments/reconciliationCadence.js"
 import type { PaymentsRepository } from "./repositories/paymentsRepository.js"
 import type { InvestmentSettlementRepository } from "./repositories/investmentSettlementRepository.js"
 import type { RefundRepository } from "./repositories/refundRepository.js"
@@ -20,6 +25,9 @@ export interface PaymentReconciliationConfig {
   readonly leaseMs?: number
   readonly pendingIntervalMs?: number
   readonly maxBackoffMs?: number
+  readonly fastIntervalMs?: number
+  readonly fastWindowMs?: number
+  readonly quarantineFailureThreshold?: number
 }
 
 export interface PaymentReconciliationDeps {
@@ -39,6 +47,9 @@ export interface ReconciliationSummary {
   readonly refundsChecked: number
   readonly refundsResolved: number
 }
+
+const MALFORMED_QUARANTINE_THRESHOLD = 2
+const DEFAULT_QUARANTINE_THRESHOLD = 5
 
 const expireAttempt = async (
   deps: PaymentReconciliationDeps,
@@ -68,6 +79,17 @@ const expireAttempt = async (
   })
 }
 
+const resolveCadence = (config: PaymentReconciliationConfig): ReconciliationCadence => {
+  const pendingIntervalMs = config.pendingIntervalMs ?? 0
+  return {
+    pendingIntervalMs,
+    fastIntervalMs: Math.min(config.fastIntervalMs ?? pendingIntervalMs, pendingIntervalMs),
+    fastWindowMs: config.fastWindowMs ?? 0,
+    maxBackoffMs: config.maxBackoffMs ?? 900_000,
+    expiryGraceMs: config.notFoundGraceMs,
+  }
+}
+
 const reconcileAttempt = async (
   deps: PaymentReconciliationDeps,
   attemptId: string,
@@ -75,9 +97,9 @@ const reconcileAttempt = async (
   merchantOrderId: string,
   checkoutExpiresAt: Date | string | null,
   failureCount: number,
+  dispatchStartedAt: Date | string | null,
 ): Promise<boolean> => {
-  const pendingIntervalMs = deps.config.pendingIntervalMs ?? 0
-  const maxBackoffMs = deps.config.maxBackoffMs ?? 900_000
+  const cadence = resolveCadence(deps.config)
   let fact
   let providerState = "UNKNOWN"
   try {
@@ -90,10 +112,11 @@ const reconcileAttempt = async (
         checkoutExpiresAt === null ||
         now.getTime() <= new Date(checkoutExpiresAt).getTime() + deps.config.notFoundGraceMs
       ) {
+        const delayMs = resolvePendingDelayMs({ now, dispatchStartedAt, checkoutExpiresAt }, cadence)
         await deps.unitOfWork.execute((tx) => deps.paymentsRepository.rescheduleAttemptReconciliation(tx, {
           attemptId,
           now,
-          nextCheckAt: new Date(now.getTime() + pendingIntervalMs),
+          nextCheckAt: new Date(now.getTime() + delayMs),
           isFailure: false,
         }))
         return false
@@ -102,17 +125,28 @@ const reconcileAttempt = async (
     }
     logGatewayFailure(deps.logger, error, { requestId: randomUUID(), operation: "get_order_status" })
     const now = deps.clock()
-    const exponent = Math.min(failureCount, 10)
-    const base = error instanceof GatewayThrottledError ? pendingIntervalMs * 2 : pendingIntervalMs
-    const backoffMs = Math.min(maxBackoffMs, base * 2 ** exponent)
+    const backoffMs = resolveFailureDelayMs({
+      now,
+      dispatchStartedAt,
+      checkoutExpiresAt,
+      failureCount,
+      throttled: error instanceof GatewayThrottledError,
+    }, cadence)
     if (
-      error instanceof GatewayMalformedResponseError && failureCount >= 2 && checkoutExpiresAt !== null &&
+      failureCount >= (
+        error instanceof GatewayMalformedResponseError
+          ? MALFORMED_QUARANTINE_THRESHOLD
+          : deps.config.quarantineFailureThreshold ?? DEFAULT_QUARANTINE_THRESHOLD
+      ) &&
+      checkoutExpiresAt !== null &&
       now.getTime() > new Date(checkoutExpiresAt).getTime() + deps.config.notFoundGraceMs
     ) {
       await deps.unitOfWork.execute((tx) => deps.paymentsRepository.markReconciliationRequired(tx, {
         attemptId,
         paymentId,
-        providerState: "MALFORMED_RESPONSE",
+        providerState: error instanceof GatewayMalformedResponseError
+          ? "MALFORMED_RESPONSE"
+          : "STATUS_UNAVAILABLE",
         now,
       }))
       return true
@@ -157,7 +191,10 @@ const reconcileAttempt = async (
     await deps.paymentsRepository.rescheduleAttemptReconciliation(tx, {
       attemptId,
       now,
-      nextCheckAt: new Date(now.getTime() + pendingIntervalMs),
+      nextCheckAt: new Date(now.getTime() + resolvePendingDelayMs(
+        { now, dispatchStartedAt, checkoutExpiresAt },
+        cadence,
+      )),
       isFailure: false,
     })
     return false
@@ -324,6 +361,7 @@ export const runReconciliationPass = async (
       attempt.merchant_order_id,
       attempt.checkout_expires_at,
       attempt.reconciliation_failure_count,
+      attempt.provider_dispatch_started_at,
     )
     if (resolved) attemptsResolved += 1
   }

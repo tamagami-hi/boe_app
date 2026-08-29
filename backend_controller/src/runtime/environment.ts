@@ -110,10 +110,14 @@ const ServerConfigSchema = z.object({
   PHONEPE_AUTOPAY_COLLECTION_ENABLED: z.enum(["true", "false"]).default("false"),
   PHONEPE_API_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(30_000).default(10_000),
   PAYMENT_RECONCILIATION_INTERVAL_SECONDS: z.coerce.number().int().min(5).max(3600).default(30),
+  PAYMENT_RECONCILIATION_FAST_INTERVAL_MS: z.coerce.number().int().min(250).max(60_000).default(1000),
+  PAYMENT_RECONCILIATION_FAST_WINDOW_SECONDS: z.coerce.number().int().min(0).max(3600).default(180),
+  PAYMENT_RECONCILIATION_IDLE_INTERVAL_SECONDS: z.coerce.number().int().min(1).max(300).default(5),
   PAYMENT_RECONCILIATION_LEASE_SECONDS: z.coerce.number().int().min(10).max(3600).default(60),
   PAYMENT_RECONCILIATION_MAX_BACKOFF_SECONDS: z.coerce.number().int().min(30).max(86400).default(900),
   PAYMENT_RECONCILIATION_EXPIRY_GRACE_SECONDS: z.coerce.number().int().min(0).max(86400).default(300),
   PAYMENT_RECONCILIATION_CLAIM_LIMIT: z.coerce.number().int().min(1).max(200).default(25),
+  PAYMENT_RECONCILIATION_QUARANTINE_FAILURES: z.coerce.number().int().min(1).max(50).default(5),
   PHONEPE_CALLBACK_URL: z.string().trim().optional(),
   PHONEPE_PUBLIC_CALLBACK_ORIGIN: z.string().trim().optional(),
   PHONEPE_CHECKOUT_REDIRECT_URL: z.string().trim().optional(),
@@ -251,10 +255,14 @@ export interface ServerConfig {
     }
     readonly reconciliation: {
       readonly intervalMs: number
+      readonly fastIntervalMs: number
+      readonly fastWindowMs: number
+      readonly idleIntervalMs: number
       readonly leaseMs: number
       readonly maxBackoffMs: number
       readonly expiryGraceMs: number
       readonly claimLimit: number
+      readonly quarantineFailureThreshold: number
       readonly paymentEventAllowlist: readonly string[]
     }
   }
@@ -656,10 +664,14 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
       },
       reconciliation: {
         intervalMs: parsed.PAYMENT_RECONCILIATION_INTERVAL_SECONDS * 1000,
+        fastIntervalMs: parsed.PAYMENT_RECONCILIATION_FAST_INTERVAL_MS,
+        fastWindowMs: parsed.PAYMENT_RECONCILIATION_FAST_WINDOW_SECONDS * 1000,
+        idleIntervalMs: parsed.PAYMENT_RECONCILIATION_IDLE_INTERVAL_SECONDS * 1000,
         leaseMs: parsed.PAYMENT_RECONCILIATION_LEASE_SECONDS * 1000,
         maxBackoffMs: parsed.PAYMENT_RECONCILIATION_MAX_BACKOFF_SECONDS * 1000,
         expiryGraceMs: parsed.PAYMENT_RECONCILIATION_EXPIRY_GRACE_SECONDS * 1000,
         claimLimit: parsed.PAYMENT_RECONCILIATION_CLAIM_LIMIT,
+        quarantineFailureThreshold: parsed.PAYMENT_RECONCILIATION_QUARANTINE_FAILURES,
         paymentEventAllowlist: Object.freeze([...new Set(paymentEventAllowlist)]),
       },
     },
