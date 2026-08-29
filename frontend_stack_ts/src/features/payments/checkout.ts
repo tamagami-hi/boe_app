@@ -1,5 +1,6 @@
 export const CHECKOUT_ORIGIN_ALLOWLIST: readonly string[] = [
   "https://mercury-t2.phonepe.com",
+  "https://mercury-uat.phonepe.com",
   "https://mercury.phonepe.com",
   "https://api.phonepe.com",
   "https://api-preprod.phonepe.com",

@@ -2561,3 +2561,83 @@ oldest admin session is evicted and the same operator's *client* session is unto
 - `AdminLoginEvent.channel` in `admin-oversight.ts` gained `admin_native`. Without it the first admin
   APK sign-in in a user's history would have failed the response contract validation in the console,
   which is a malformed-response error rather than a missing row — easy to misdiagnose.
+
+
+## Entry 027 — payments on the dev stack are blocked by PhonePe, not by us · 2026-08-29
+
+Diagnosis first, then the one code change it justified. The narrative is in
+`TASK/023-phonepe-payment-diagnosis.md`; this entry is what changed and what is proven.
+
+### The finding
+
+Payments from `https://dev-app.beonedge.in` cannot succeed. PhonePe's own checkout page gets
+HTTP 400 with `errorCode: INTERNAL_SECURITY_BLOCK_1` and a body naming
+`Onboarding_URL: ["www.beonedge.in"]` against `Transacting_URL: "https://dev-app.beonedge.in/"`.
+The merchant is whitelisted for a different domain. `isRetryEnabled: false`. No change to this
+repository can fix it — it needs a PhonePe dashboard change or serving the client from the
+onboarded domain.
+
+Our chain up to the redirect is correct and was observed working: order `201`, pay `200`, redirect
+to `https://mercury-t2.phonepe.com/transact/pgv3?token=…`, PhonePe rendering "Beonedge LLP" with
+the right amount. **VPS** — observed read-only against the deployed stack in a headed browser.
+
+The maintainer's hypothesis (that `mercury-t2` was not an allowed origin) is **disproven**:
+`mercury-t2.phonepe.com` is the correct production host for Standard Checkout v2 and was already in
+both the compiled frontend allowlist and the deployed `PHONEPE_CHECKOUT_ALLOWED_ORIGINS`.
+
+### What changed
+
+**`mercury-uat.phonepe.com` added to the checkout allowlists that may run against sandbox.**
+Not a fix for the block above — a latent trap found while ruling that block out. Standard Checkout
+v2 returns `mercury-uat.phonepe.com` when `PHONEPE_ENV=sandbox`, and no allowlist listed it. So the
+obvious next diagnostic step — flip to sandbox to take the production merchant out of the picture —
+would itself have failed every payment, at `trustedCheckoutUrl()`, with the *same* generic error
+screen. Two unrelated causes, one indistinguishable symptom.
+
+- `frontend_stack_ts/src/features/payments/checkout.ts` — `CHECKOUT_ORIGIN_ALLOWLIST`. One list for
+  all builds; it already carried `api-preprod.phonepe.com`, so the sandbox host is consistent there.
+- `backend_controller/.env.example` and `release_manager/stacks/dev_release/.env.example` — the two
+  examples whose `PHONEPE_ENV` may legitimately be flipped to `sandbox`.
+
+Deliberately **not** added to `backend_controller/.env.production.example` or
+`release_manager/stacks/prod_release/.env.example`. A production stack has no business trusting a
+UAT redirect, and `PHONEPE_ENV` there is never `sandbox`.
+
+`release_manager/stacks/*/.env.example` had drifted from the `backend_controller` examples and held
+their own copies of this key. That drift is the reason for the guard below.
+
+**A drift guard, in `backend_controller/src/http/originExamples.test.ts`.** Same defect class the
+file already guards for `WEB_ORIGIN_ALLOWLIST`, and now the same treatment for
+`PHONEPE_CHECKOUT_ALLOWED_ORIGINS`: every example lists the production host, every entry is an exact
+https origin with no wildcard and no path, the two sandbox-capable examples list the UAT host, and
+the two production examples do not. 12 tests.
+
+### Verification
+
+- **TESTED** `cd frontend_stack_ts && npx tsc -p tsconfig.json --noEmit` — clean.
+- **TESTED** `npx eslint .` in both `frontend_stack_ts` and `backend_controller` — clean.
+- **TESTED** `cd frontend_stack_ts && npx vitest run` — 19 files, 186 tests, all passed.
+  `features/payments/checkout.test.ts` (12 tests) still passes; it builds its own local allowlist
+  rather than importing `CHECKOUT_ORIGIN_ALLOWLIST`, so it does not pin the contents.
+- **TESTED** `cd backend_controller && npx vitest run --coverage` — 76 files, **756** tests (744
+  before), all passed. Branch coverage 80.08%, gate 80%, unchanged by this entry.
+- **TESTED** the new guard is not vacuous: reverting `dev_release/.env.example` to its previous
+  value made it fail 1 of 23, and only that one. Restored afterwards.
+- **TESTED** `./release_manager/verify.sh` — 108 passed, 0 failed, 1 skipped (remote). This is the
+  gate that reads the stack `.env.example` files for Compose-variable parity.
+- **VPS** the 400 body, the redirect host, the `.env` values and the order/payment rows were all
+  read from the deployed stack read-only. Nothing was deployed or restarted.
+
+### Not verified
+
+- **UNVERIFIED** that a payment completes. It cannot be, from this domain. Once PhonePe whitelists
+  `dev-app.beonedge.in`, the chain to re-check is order → payment → **allocation** → acknowledgement,
+  because the allocation and acknowledgement legs have never run against a real settled payment.
+  `investment_allocations` gaining a row is the signal.
+- **UNVERIFIED** the sandbox path end to end. The allowlist entry is a static string match; that
+  `mercury-uat.phonepe.com` is what a sandbox merchant returns is from PhonePe's create-payment
+  documentation, not from a request made here. Exercising it needs sandbox credentials, which the
+  deployed stack does not have.
+- The deployed `.env` was **not** modified. If `PHONEPE_ENV` is ever set to `sandbox` on the VPS,
+  `PHONEPE_CHECKOUT_ALLOWED_ORIGINS` in `/srv/dev_stack/BOE_APP/dev_release/.env` needs
+  `https://mercury-uat.phonepe.com` appended by hand — the example files are not the deployed file.

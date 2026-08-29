@@ -115,3 +115,82 @@ describe("committed origin allowlists", () => {
     expect(APK_ORIGIN).not.toMatch(/\s/)
   })
 })
+
+
+/**
+ * The committed checkout allowlists must contain the host PhonePe actually
+ * redirects to for the environment the same file configures.
+ *
+ * Same drift class as above, different blast radius. `PHONEPE_CHECKOUT_ALLOWED_ORIGINS`
+ * is a fail-closed gate: `phonePeCheckoutGateway` runs the provider's redirect
+ * through `trustedCheckoutUrl()` and throws `GatewayMalformedResponseError` when
+ * the host is not listed. The user sees a generic "something went wrong" and the
+ * order sits in `payment_pending`. Nothing in the request path reveals that the
+ * cause was a missing line in an env file.
+ *
+ * Standard Checkout v2 returns `mercury-t2.phonepe.com` in production and
+ * `mercury-uat.phonepe.com` in sandbox. An example that permits `PHONEPE_ENV=sandbox`
+ * must therefore list the UAT host, or flipping that one variable breaks every
+ * payment with no other configuration change. The production examples deliberately
+ * do NOT list it: a production stack has no business trusting a UAT redirect.
+ *
+ * Static file check only. It says nothing about what the deployed `.env` holds.
+ */
+
+/** The redirect host PhonePe Standard Checkout v2 returns in production. */
+const CHECKOUT_HOST_PRODUCTION = "https://mercury-t2.phonepe.com"
+
+/** The redirect host it returns when PHONEPE_ENV=sandbox. */
+const CHECKOUT_HOST_SANDBOX = "https://mercury-uat.phonepe.com"
+
+const CHECKOUT_KEY = "PHONEPE_CHECKOUT_ALLOWED_ORIGINS"
+
+/** Examples whose PHONEPE_ENV may legitimately be flipped to `sandbox`. */
+const sandboxCapableExamples = [
+  "backend_controller/.env.example",
+  "release_manager/stacks/dev_release/.env.example",
+] as const
+
+/** Examples that configure a production merchant and must stay production-only. */
+const productionOnlyExamples = [
+  "backend_controller/.env.production.example",
+  "release_manager/stacks/prod_release/.env.example",
+] as const
+
+describe("committed PhonePe checkout allowlists", () => {
+  for (const file of [...sandboxCapableExamples, ...productionOnlyExamples]) {
+    test(`${file} → ${CHECKOUT_KEY} allows the production checkout host`, () => {
+      const origins = originsOf(repoFile(file), CHECKOUT_KEY)
+
+      expect(origins.length).toBeGreaterThan(0)
+      expect(origins).toContain(CHECKOUT_HOST_PRODUCTION)
+    })
+
+    test(`${file} → ${CHECKOUT_KEY} stays explicit and https-only`, () => {
+      const origins = originsOf(repoFile(file), CHECKOUT_KEY)
+
+      for (const origin of origins) {
+        // `trustedCheckoutUrl` compares `URL.origin` exactly. A wildcard, a path,
+        // a trailing slash or a scheme change all silently stop matching.
+        expect(origin).not.toBe("*")
+        expect(origin.startsWith("*")).toBe(false)
+        expect(origin.startsWith("https://")).toBe(true)
+        expect(origin).not.toMatch(/\s/)
+        expect(new URL(origin).origin).toBe(origin)
+      }
+    })
+  }
+
+  for (const file of sandboxCapableExamples) {
+    test(`${file} → ${CHECKOUT_KEY} also allows the sandbox checkout host`, () => {
+      // Without this, setting PHONEPE_ENV=sandbox fails every payment closed.
+      expect(originsOf(repoFile(file), CHECKOUT_KEY)).toContain(CHECKOUT_HOST_SANDBOX)
+    })
+  }
+
+  for (const file of productionOnlyExamples) {
+    test(`${file} → ${CHECKOUT_KEY} does not trust the sandbox host`, () => {
+      expect(originsOf(repoFile(file), CHECKOUT_KEY)).not.toContain(CHECKOUT_HOST_SANDBOX)
+    })
+  }
+})

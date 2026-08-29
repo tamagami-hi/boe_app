@@ -1498,3 +1498,43 @@ independent. Signing into the admin APK never evicts the same person's investor 
 **Reversible:** the frontend half, yes — one boolean. The backend half leaves an enum value behind,
 which PostgreSQL cannot drop, so a revert means abandoning the label rather than removing it. The
 constraint and index rewrites are reversible by restating them against `native`.
+
+
+### D-054
+**The checkout allowlist carries the sandbox host on sandbox-capable configs only, and a test pins
+which config gets which.** · DECIDED 2026-08-29
+
+`PHONEPE_CHECKOUT_ALLOWED_ORIGINS` is a fail-closed gate: `phonePeCheckoutGateway` runs the
+provider's redirect through `trustedCheckoutUrl()` and throws `GatewayMalformedResponseError` when
+the host is not listed. The user gets `ErrorState` variant `server` — "Something went wrong on our
+side" — and the order stays `payment_pending`. Nothing in the response distinguishes it from any
+other server-side failure.
+
+Standard Checkout v2 returns `mercury-t2.phonepe.com` in production and `mercury-uat.phonepe.com`
+in sandbox. Only the production host was listed anywhere. So `PHONEPE_ENV=sandbox` — a one-variable
+change, and the natural first move when isolating a production-credential problem — broke every
+payment, with the same error screen as the problem being isolated. That is what makes this worth a
+decision entry rather than a one-line commit: the cost is not the missing string, it is that the
+missing string counterfeits the symptom you are trying to diagnose.
+
+**Added to the sandbox-capable examples only** — `backend_controller/.env.example` and
+`release_manager/stacks/dev_release/.env.example`. Rejected adding it to the two production examples:
+`PHONEPE_ENV` is never `sandbox` there, so the entry could only ever widen what a production stack
+will redirect a paying user to. The frontend's `CHECKOUT_ORIGIN_ALLOWLIST` is compiled once for all
+builds and cannot make this distinction; it gets the host, which is consistent with it already
+carrying `api-preprod.phonepe.com`.
+
+Rejected adding `merchant.phonepe.com` / `merchant-t2.phonepe.com` at the same time. Plausible-looking
+and no evidence Standard Checkout ever returns them. An allowlist populated by guesswork is a
+different failure mode, not a smaller one.
+
+**The split is now asserted, in `originExamples.test.ts`.** Four example files hold copies of this
+key and two of them — the `release_manager` stack examples, which are what a deploy is actually built
+from — had already drifted from the `backend_controller` pair. A rule that lives only in an env-file
+comment does not survive the next person adding a stack. The guard was checked against a reverted
+file to confirm it fails when drifted.
+
+**What this does not do.** It has nothing to do with the failure that prompted it. Payments from
+`dev-app.beonedge.in` are blocked by PhonePe with `INTERNAL_SECURITY_BLOCK_1` because the merchant is
+onboarded for `www.beonedge.in`; that is a merchant-dashboard change and no allowlist entry affects
+it. Recorded so a later reader does not connect the two.
