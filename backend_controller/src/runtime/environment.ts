@@ -115,6 +115,7 @@ const ServerConfigSchema = z.object({
   PAYMENT_RECONCILIATION_EXPIRY_GRACE_SECONDS: z.coerce.number().int().min(0).max(86400).default(300),
   PAYMENT_RECONCILIATION_CLAIM_LIMIT: z.coerce.number().int().min(1).max(200).default(25),
   PHONEPE_CALLBACK_URL: z.string().trim().optional(),
+  PHONEPE_CHECKOUT_REDIRECT_URL: z.string().trim().optional(),
   PHONEPE_SUBSCRIPTION_CALLBACK_URL: z.string().trim().optional(),
   PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: z.string().trim().optional(),
   PHONEPE_PAYMENT_EVENT_ALLOWLIST: z.string().trim().default("checkout.order.completed,checkout.order.failed"),
@@ -221,6 +222,7 @@ export interface ServerConfig {
       readonly callbackPassword: string
       readonly checkoutAllowedOrigins: readonly string[]
       readonly callbackUrl: string
+      readonly checkoutRedirectUrl: string
       readonly subscriptionCallbackUrl: string | null
       readonly requestTimeoutMs: number
     } | null
@@ -421,6 +423,23 @@ const parsePhonePeConfig = (
     }
     return url.toString()
   }
+  const browserRedirectUrl = (name: string, value: string): string => {
+    let url: URL
+    try {
+      url = new URL(value)
+    } catch {
+      throw new Error(`${name} must be an absolute HTTPS URL`)
+    }
+    if (url.protocol !== "https:") throw new Error(`${name} must be an absolute HTTPS URL`)
+    if (url.username !== "" || url.password !== "") throw new Error(`${name} must not embed credentials`)
+    if (url.hash !== "") throw new Error(`${name} must not contain a fragment`)
+    return url.toString()
+  }
+  const callbackUrl = canonicalUrl(
+    "PHONEPE_CALLBACK_URL",
+    parsed.PHONEPE_CALLBACK_URL,
+    "/api/v1/provider-events/phonepe/payment",
+  )
   return Object.freeze({
     clientId: parsed.PHONEPE_CLIENT_ID as string,
     clientSecret: parsed.PHONEPE_CLIENT_SECRET as string,
@@ -430,11 +449,10 @@ const parsePhonePeConfig = (
     callbackPassword: parsed.PHONEPE_CALLBACK_PASSWORD as string,
     checkoutAllowedOrigins: Object.freeze([...new Set(checkoutAllowedOrigins)]),
     requestTimeoutMs: parsed.PHONEPE_API_TIMEOUT_MS,
-    callbackUrl: canonicalUrl(
-      "PHONEPE_CALLBACK_URL",
-      parsed.PHONEPE_CALLBACK_URL,
-      "/api/v1/provider-events/phonepe/payment",
-    ),
+    callbackUrl,
+    checkoutRedirectUrl: present(parsed.PHONEPE_CHECKOUT_REDIRECT_URL)
+      ? browserRedirectUrl("PHONEPE_CHECKOUT_REDIRECT_URL", parsed.PHONEPE_CHECKOUT_REDIRECT_URL)
+      : new URL("/dashboard", callbackUrl).toString(),
     subscriptionCallbackUrl: present(parsed.PHONEPE_SUBSCRIPTION_CALLBACK_URL)
       ? canonicalUrl(
           "PHONEPE_SUBSCRIPTION_CALLBACK_URL",

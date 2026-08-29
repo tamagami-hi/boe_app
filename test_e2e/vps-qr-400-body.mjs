@@ -1,13 +1,3 @@
-/**
- * Captures the response BODY of the failing PhonePe checkout call on the
- * deployed stack. As an opaque 400 the failure looks like a network fault; the
- * body is where `INTERNAL_SECURITY_BLOCK_1` and the onboarded/transacting URL
- * pair actually appear.
- *
- * This drives the LIVE production merchant. Amounts are capped at ₹2 by
- * `lib/amount-guard.mjs`, which reads the field back and re-checks every rupee
- * figure on screen before the pay button is allowed to be clicked.
- */
 import { chromium } from "playwright"
 
 import { MAX_RUPEES, fillAmountUnderCap, requestedRupees } from "./lib/amount-guard.mjs"
@@ -29,7 +19,6 @@ log(`spend cap ₹${String(MAX_RUPEES)} · this run will submit ₹${String(rupe
 const browser = await chromium.launch({ headless: false, slowMo: 350 })
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
 
-/** Every PhonePe failure, with its body. This is the whole point of the script. */
 const phonePeFailures = []
 page.on("response", async (r) => {
   const u = r.url()
@@ -63,14 +52,11 @@ try {
 
   await page.locator('[role="checkbox"]').first().click().catch(() => undefined)
 
-  // Type the amount. Never click a preset chip: that is how a ₹50,000 order
-  // was created by an earlier version of this script.
   const amount = page.locator('input[inputmode="numeric"]').first()
   const first = await fillAmountUnderCap(amount, rupees, page)
   log(`typed ₹${first.typed} · screen says "${first.total}" — within cap, proceeding`)
   await page.waitForTimeout(600)
 
-  // Re-check after any reactive total has settled, immediately before paying.
   const confirmed = await fillAmountUnderCap(amount, rupees, page)
 
   log(`final check before real money: screen total "${confirmed.total}"`)

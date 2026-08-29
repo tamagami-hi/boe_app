@@ -55,6 +55,7 @@ export interface PhonePeGatewayConfig {
   readonly callbackUsername: string
   readonly callbackPassword: string
   readonly callbackUrl: string
+  readonly checkoutRedirectUrl: string
   readonly checkoutAllowedOrigins: readonly string[]
   readonly requestTimeoutMs?: number
 }
@@ -310,7 +311,7 @@ export const createPhonePeGateway = (deps: PhonePeGatewayDeps): PaymentGateway =
           paymentFlow: {
             type: "PG_CHECKOUT",
             merchantUrls: {
-              redirectUrl: command.redirectUrl ?? new URL("/dashboard", config.callbackUrl).toString(),
+              redirectUrl: command.redirectUrl ?? config.checkoutRedirectUrl,
             },
           },
         }), config.requestTimeoutMs ?? 10_000)

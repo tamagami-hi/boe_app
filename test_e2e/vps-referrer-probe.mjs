@@ -1,23 +1,3 @@
-/**
- * Decides WHERE PhonePe gets `Transacting_URL` from, because that determines
- * whether `INTERNAL_SECURITY_BLOCK_1` is fixable in our code or not.
- *
- * Two candidates:
- *   (a) the browser's `Referer` on the navigation into the checkout page
- *       → fixable here: suppress or change the referrer when redirecting
- *   (b) the order/token our backend created, or the merchant record itself
- *       → no client-side change can help; needs config or the PhonePe dashboard
- *
- * Method: create ONE order (₹1, under the ₹2 cap), let it redirect so we learn
- * the checkout URL, then re-open that same URL in three clean contexts with
- * three different `Referer` values and compare what PhonePe says. The checkout
- * page is reloadable — it advertises its own ~15 minute timeout — so one token
- * serves all three arms and only one rupee is ever at stake.
- *
- * If arm B or C stops reporting `dev-app.beonedge.in`, the referrer is the
- * source and there is a code fix. If all three arms report it identically, the
- * value is bound to the order or the merchant.
- */
 import { chromium } from "playwright"
 
 import { MAX_RUPEES, fillAmountUnderCap, requestedRupees } from "./lib/amount-guard.mjs"
@@ -43,7 +23,6 @@ const ARMS = [
 
 const browser = await chromium.launch({ headless: false, slowMo: 120 })
 
-/** Creates one ₹1 order and returns the PhonePe checkout URL it redirects to. */
 const mintCheckoutUrl = async () => {
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } })
   const page = await context.newPage()
@@ -85,7 +64,6 @@ const mintCheckoutUrl = async () => {
   return url
 }
 
-/** Opens a checkout URL with a given referer and reports what PhonePe says. */
 const probe = async (checkoutUrl, referer) => {
   const context = await browser.newContext({ viewport: { width: 1180, height: 860 } })
   const page = await context.newPage()
@@ -109,7 +87,6 @@ const probe = async (checkoutUrl, referer) => {
   })
   await page.waitForTimeout(4000)
 
-  // The QR button is what the maintainer reports as broken; it fires the same call.
   await page.getByText("Click to view QR").first().click().catch(() => undefined)
   await page.waitForTimeout(4500)
 

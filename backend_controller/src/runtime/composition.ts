@@ -339,7 +339,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         attemptTtlMs: serverConfig.payments.attemptTtlMs,
         redirectUrl: serverConfig.payments.phonepe === null
           ? "https://invalid.local/dashboard"
-          : new URL("/dashboard", serverConfig.payments.phonepe.callbackUrl).toString(),
+          : serverConfig.payments.phonepe.checkoutRedirectUrl,
       },
     })
 

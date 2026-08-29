@@ -372,3 +372,75 @@ describe("worker composers", () => {
     expect(typeof worker.runOnce).toBe("function")
   })
 })
+
+
+describe("PhonePe checkout redirect URL", () => {
+  const configured = () => ({
+    ...validEnv(),
+    PHONEPE_CLIENT_ID: "client-id",
+    PHONEPE_CLIENT_SECRET: "client-secret",
+    PHONEPE_CLIENT_VERSION: "1",
+    PHONEPE_ENV: "sandbox",
+    PHONEPE_CALLBACK_USERNAME: "callback-user",
+    PHONEPE_CALLBACK_PASSWORD: "callback-password",
+    PHONEPE_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment",
+    PHONEPE_SUBSCRIPTION_CALLBACK_URL:
+      "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/subscription",
+    PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: "checkout.setup.order.completed",
+    PHONEPE_MERCHANT_ID: "merchant-id",
+    PHONEPE_AUTOPAY_ENABLED: "false",
+  })
+
+  const phonepeOf = (env: Record<string, string>) => {
+    const phonepe = parseServerConfig(env).payments.phonepe
+    if (phonepe === null) throw new Error("expected PhonePe to be configured")
+    return phonepe
+  }
+
+  test("defaults to this stack's own dashboard when unset", () => {
+    expect(phonepeOf(configured()).checkoutRedirectUrl)
+      .toBe("https://dev-app.beonedge.in/dashboard")
+  })
+
+  test("accepts a host different from the backend's own", () => {
+    expect(phonepeOf({
+      ...configured(),
+      PHONEPE_CHECKOUT_REDIRECT_URL: "https://www.beonedge.in/pay/return/dev",
+    }).checkoutRedirectUrl).toBe("https://www.beonedge.in/pay/return/dev")
+  })
+
+  test("preserves a query string, which PhonePe may append to", () => {
+    expect(phonepeOf({
+      ...configured(),
+      PHONEPE_CHECKOUT_REDIRECT_URL: "https://www.beonedge.in/pay/return/dev?src=pg",
+    }).checkoutRedirectUrl).toBe("https://www.beonedge.in/pay/return/dev?src=pg")
+  })
+
+  test("refuses cleartext", () => {
+    expect(() => parseServerConfig({
+      ...configured(),
+      PHONEPE_CHECKOUT_REDIRECT_URL: "http://www.beonedge.in/pay/return/dev",
+    })).toThrow(/PHONEPE_CHECKOUT_REDIRECT_URL must be an absolute HTTPS URL/u)
+  })
+
+  test("refuses a relative URL", () => {
+    expect(() => parseServerConfig({
+      ...configured(),
+      PHONEPE_CHECKOUT_REDIRECT_URL: "/pay/return/dev",
+    })).toThrow(/PHONEPE_CHECKOUT_REDIRECT_URL must be an absolute HTTPS URL/u)
+  })
+
+  test("refuses embedded credentials", () => {
+    expect(() => parseServerConfig({
+      ...configured(),
+      PHONEPE_CHECKOUT_REDIRECT_URL: "https://user:pass@www.beonedge.in/pay/return/dev",
+    })).toThrow(/PHONEPE_CHECKOUT_REDIRECT_URL must not embed credentials/u)
+  })
+
+  test("refuses a fragment", () => {
+    expect(() => parseServerConfig({
+      ...configured(),
+      PHONEPE_CHECKOUT_REDIRECT_URL: "https://www.beonedge.in/pay/return/dev#done",
+    })).toThrow(/PHONEPE_CHECKOUT_REDIRECT_URL must not contain a fragment/u)
+  })
+})

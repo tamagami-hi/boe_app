@@ -2745,3 +2745,99 @@ and is recorded as the open question in D-055.
   `https://mercury-uat.phonepe.com` added to the deployed `.env` by hand.
 - **UNVERIFIED** the APK return-to-app path, which currently cannot work at all — no deep link is
   registered. Nothing about it has been changed, so there is nothing to test yet.
+
+
+## Entry 029 — the checkout return URL is configurable, so payments can transact from the approved host · 2026-08-29
+
+PhonePe confirmed Entry 028's diagnosis in writing, unprompted:
+
+```
+URL used to receive payments: https://dev-app.beonedge.in/
+Approved URL: www.beonedge.in
+```
+
+That is the `INTERNAL_SECURITY_BLOCK_1` body restated in prose, including the trailing-slash origin
+form, and it corroborates the inference in D-055: PhonePe reads the merchant's transacting URL from
+the **origin of `merchantUrls.redirectUrl`**, the only field in the pay payload carrying a domain.
+
+### What changed
+
+**`PHONEPE_CHECKOUT_REDIRECT_URL`.** The browser return destination is now its own setting instead of
+being derived from `PHONEPE_CALLBACK_URL`. It had to be: `canonicalUrl()` pins the callback to this
+stack's own host, which is right for a webhook — the callback must reach the backend that owns the
+payment records — and wrong for a browser destination that has to sit on a PhonePe-approved host.
+
+- `environment.ts` — new `browserRedirectUrl()` validator. HTTPS only, no embedded credentials, no
+  fragment, **host deliberately unconstrained**. Defaults to `new URL("/dashboard", callbackUrl)`,
+  which is exactly the behaviour that predates it, so an unmodified deployment is unaffected.
+- `phonePeCheckoutGateway.ts` — `PhonePeGatewayConfig.checkoutRedirectUrl`, used as the fallback for
+  `command.redirectUrl`.
+- `composition.ts` — the *second* copy of `new URL("/dashboard", callbackUrl)` at the AutoPay route
+  wiring now reads the same config value. Two independent derivations of the same URL was the kind of
+  duplication that drifts.
+- Four env examples, split by stack: `.../pay/return/dev` for the dev pair, `.../pay/return/app` for
+  the production pair.
+
+**`boe_landing`: `src/app/pay/return/[target]/route.ts`.** The approved host is `www.beonedge.in`,
+which the landing site serves, so checkout returns there and this route forwards into the app. The
+target is a **closed map** (`dev`, `app`) with a 404 fallback — not a `?to=` parameter, which would be
+an open redirect on an approved payment domain and a gift to a phisher. Query parameters PhonePe
+appends are carried through; the destination itself is fixed. `force-dynamic` and `Cache-Control:
+no-store` because Cloudflare fronts that host.
+
+No nginx change is needed: `www.beonedge.in` already 301s to the apex preserving `$request_uri`, so
+`www/pay/return/dev` → `beonedge.in/pay/return/dev` → the app. Verified live with `curl -I`.
+
+### Verification
+
+- **TESTED** `backend_controller`: tsc clean, eslint clean, **772** tests (756 before), branch
+  coverage 80.25% against the 80% gate.
+- **TESTED** the new behaviour is actually observable, not just configurable: the gateway test's
+  `CONFIG.checkoutRedirectUrl` is on a *different host* from `CONFIG.callbackUrl`, and the test asserts
+  the outgoing payload carries the former and that the two hosts differ. Before this change that
+  assertion was `https://app.example/dashboard` — derived from the callback — and it failed when the
+  change landed, which is how I know the test was pinning real behaviour rather than restating it.
+- **TESTED** validation refuses cleartext, relative URLs, embedded credentials
+  (`https://user:pass@www.beonedge.in/...`) and fragments; accepts a cross-host URL and preserves a
+  query string.
+- **TESTED** `boe_landing`: tsc clean, `npx vitest run` 87 tests across 6 files (7 of them new, for this
+  route), and `npx next build` registers `/pay/return/[target]` as **ƒ Dynamic** — server-rendered on
+  demand rather than statically prerendered, which a cached redirect would have been.
+- **TESTED** the route cannot be turned into an open redirect. `?to=`, `?redirect=//evil.test` and a
+  URL-encoded `?next=` all still land on `dev-app.beonedge.in`; a hostile path segment (`../app`,
+  `dev/../../evil`, `https://evil.test`, empty) 404s rather than redirecting.
+- **VPS** `curl -I https://www.beonedge.in/` returns `301 → https://beonedge.in/`, and nginx
+  `boe-landing` serves both names. Read-only.
+
+### Not verified
+
+- **UNVERIFIED, and this is the point of the exercise:** that PhonePe accepts a redirect on the
+  approved host and lifts the block. The inference is strong — the referrer was ruled out
+  experimentally in Entry 028 and `redirectUrl` is the only remaining domain-bearing field — but no
+  successful payment has been observed. Confirming it needs `PHONEPE_CHECKOUT_REDIRECT_URL` set in the
+  deployed `.env`, the landing site redeployed with the new route, and a ₹1 payment.
+- **UNVERIFIED** the route behind Cloudflare and nginx. It is unit-tested and builds as a dynamic
+  route, but nothing has requested it over the network. After the landing site is redeployed,
+  `curl -sSI https://www.beonedge.in/pay/return/dev` should return `302` with
+  `location: https://dev-app.beonedge.in/dashboard` — possibly via a `301` to the apex first.
+- The maintainer may instead simply add `dev-app.beonedge.in` as an approved URL on the PhonePe
+  dashboard, which needs none of this. Both routes are now open; this one also serves production,
+  where the host is `app.beonedge.in` and the same block applies.
+
+### Source comments removed at the maintainer's instruction
+
+The maintainer asked for no comments in source files, and for a script rather than hand-editing.
+`tools/strip-comments.mjs` uses the TypeScript parser to find exact comment ranges — a regex approach
+corrupts `//` inside URLs, regex literals and template strings, all of which occur in this codebase.
+It preserves directive comments (`eslint-disable`, `@ts-expect-error`, `prettier-ignore`, coverage
+ignores, license headers), is dry-run by default, and skips `node_modules`, `dist`, `build`, `.next`.
+
+**TESTED** against a fixture containing a URL with `//`, a template literal with `// not a comment`, a
+regex `/https?:\/\/[^/]+\/\//u`, chained division, and an `eslint-disable-next-line`: all five real
+comments removed, everything else byte-identical, and the result still typechecks.
+
+Applied so far only to files authored in this session (28 comments) plus my own additions to
+`originExamples.test.ts` and `composition.test.ts`, spliced so the pre-existing header comments in
+those two files were left intact. A repo-wide sweep would remove **1,073 comments across 150 files
+(197 KB)** and is deliberately **not** done: much of it records why a given check exists, and the
+entries in this log cross-reference it. Awaiting an explicit decision.

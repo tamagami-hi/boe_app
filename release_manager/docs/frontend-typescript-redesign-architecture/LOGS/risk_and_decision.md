@@ -1591,3 +1591,55 @@ a dashboard change, which needs `redirectUrl` decoupled from `PHONEPE_CALLBACK_U
 which must stay on the stack that owns the payment records). Deliberately not implemented: the
 cheaper and already-proven route is the sandbox merchant, and adding a config seam on an untested
 inference would be speculation with a permanent maintenance cost.
+
+
+### D-056
+**The checkout return URL is its own setting, and the approved host it points at is served by the
+landing site with a closed redirect map.** · DECIDED 2026-08-29
+
+Supersedes the "deliberately not implemented" paragraph at the end of D-055. That entry declined to
+build this on the grounds that the `redirectUrl` → `Transacting_URL` link was inferred rather than
+proven. PhonePe then confirmed it in writing — "URL used to receive payments:
+https://dev-app.beonedge.in/ / Approved URL: www.beonedge.in" — and the maintainer asked for the
+route through `beonedge.in` explicitly. The reasoning for declining no longer holds.
+
+**Why `PHONEPE_CALLBACK_URL` could not be reused.** It is validated by `canonicalUrl()` against
+`expectedHost`, which is `dev-app.beonedge.in` in development and `app.beonedge.in` in production.
+That constraint is correct for a webhook — a callback that reached a different stack would record
+payments against the wrong database — and it is exactly wrong for the browser return, which must sit
+on whatever host PhonePe has approved. One value cannot satisfy both rules, so there are two values.
+`browserRedirectUrl()` keeps everything except the host locked down: HTTPS only, no embedded
+credentials, no fragment.
+
+**Defaulting to the old derived value.** `new URL("/dashboard", callbackUrl)` remains the default when
+the key is unset, so this is not a breaking change for a deployment that has not been touched. The
+setting is opt-in, which also means the failure mode of forgetting it is the *previous* behaviour
+rather than a crash.
+
+**Rejected: a `?to=` parameter on the landing route.** The obvious shape — one route that redirects
+wherever the query string says — makes an **open redirect on a domain PhonePe has approved for
+payments**, reachable from any phishing email and wearing a trusted brand. The route uses a closed map
+of two keys with a 404 fallback instead. Query parameters are still forwarded, because PhonePe may
+append them, but they cannot influence the destination host.
+
+**Rejected: an nginx change on `www.beonedge.in`.** Initially it looked necessary, because that server
+block ends in a catch-all `return 301` to the apex and a server-level `return` runs before location
+selection, so a new `location` there would be unreachable. But the 301 preserves `$request_uri`, so
+`www/pay/return/dev` → `beonedge.in/pay/return/dev` reaches the landing app anyway. One extra hop in a
+browser redirect nobody waits on, against touching a shared nginx config that also serves the
+marketing site. Confirmed live: `curl -I https://www.beonedge.in/` → `301` to the apex.
+
+**This is still unproven end to end.** No payment has completed. If PhonePe turns out to validate
+against something in the merchant record rather than the redirect origin, this buys nothing and the
+dashboard remains the only route. Recommended to the maintainer as the second choice for that reason —
+adding `dev-app.beonedge.in` and `app.beonedge.in` as approved URLs is certain, needs no code, and
+`Onboarding_URL` arriving as a JSON array suggests multiple approved URLs are supported. The two are
+not exclusive; this one also covers production, where the same block is waiting.
+
+**Source comments.** The maintainer asked for none in source files. `tools/strip-comments.mjs` does it
+with the TypeScript parser rather than regex, because this codebase contains URLs with `//`, regex
+literals like `/https?:\/\/[^/]+\/\//u` and template strings containing `//`, all of which a regex
+stripper corrupts. Directive comments are preserved — removing `eslint-disable` or `@ts-expect-error`
+would break the very gates that verify the change. Applied only to this session's files so far. A
+repo-wide sweep is 1,073 comments across 150 files and is left undone pending an explicit decision,
+because a large share of them record why a check exists and this log cross-references them.

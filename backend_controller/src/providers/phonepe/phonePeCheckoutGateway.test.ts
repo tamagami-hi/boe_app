@@ -37,6 +37,7 @@ const CONFIG = {
   callbackUsername: "callback-user",
   callbackPassword: "callback-pass",
   callbackUrl: "https://app.example/api/v1/provider-events/phonepe/payment",
+  checkoutRedirectUrl: "https://www.approved.example/pay/return",
   checkoutAllowedOrigins: ["https://mercury.phonepe.com"],
 }
 
@@ -127,8 +128,10 @@ describe("createCheckout", () => {
     expect(request).toMatchObject({
       merchantOrderId: "boe_stable_order",
       amount: 500000,
-      paymentFlow: { merchantUrls: { redirectUrl: "https://app.example/dashboard" } },
+      paymentFlow: { merchantUrls: { redirectUrl: CONFIG.checkoutRedirectUrl } },
     })
+    expect(new URL(CONFIG.checkoutRedirectUrl).host)
+      .not.toBe(new URL(CONFIG.callbackUrl).host)
     expect(result).toEqual({
       redirectUrl: "https://mercury.phonepe.com/pay/abc",
       providerOrderId: "provider-order-1",

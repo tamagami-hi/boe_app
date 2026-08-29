@@ -115,43 +115,17 @@ describe("committed origin allowlists", () => {
     expect(APK_ORIGIN).not.toMatch(/\s/)
   })
 })
-
-
-/**
- * The committed checkout allowlists must contain the host PhonePe actually
- * redirects to for the environment the same file configures.
- *
- * Same drift class as above, different blast radius. `PHONEPE_CHECKOUT_ALLOWED_ORIGINS`
- * is a fail-closed gate: `phonePeCheckoutGateway` runs the provider's redirect
- * through `trustedCheckoutUrl()` and throws `GatewayMalformedResponseError` when
- * the host is not listed. The user sees a generic "something went wrong" and the
- * order sits in `payment_pending`. Nothing in the request path reveals that the
- * cause was a missing line in an env file.
- *
- * Standard Checkout v2 returns `mercury-t2.phonepe.com` in production and
- * `mercury-uat.phonepe.com` in sandbox. An example that permits `PHONEPE_ENV=sandbox`
- * must therefore list the UAT host, or flipping that one variable breaks every
- * payment with no other configuration change. The production examples deliberately
- * do NOT list it: a production stack has no business trusting a UAT redirect.
- *
- * Static file check only. It says nothing about what the deployed `.env` holds.
- */
-
-/** The redirect host PhonePe Standard Checkout v2 returns in production. */
 const CHECKOUT_HOST_PRODUCTION = "https://mercury-t2.phonepe.com"
 
-/** The redirect host it returns when PHONEPE_ENV=sandbox. */
 const CHECKOUT_HOST_SANDBOX = "https://mercury-uat.phonepe.com"
 
 const CHECKOUT_KEY = "PHONEPE_CHECKOUT_ALLOWED_ORIGINS"
 
-/** Examples whose PHONEPE_ENV may legitimately be flipped to `sandbox`. */
 const sandboxCapableExamples = [
   "backend_controller/.env.example",
   "release_manager/stacks/dev_release/.env.example",
 ] as const
 
-/** Examples that configure a production merchant and must stay production-only. */
 const productionOnlyExamples = [
   "backend_controller/.env.production.example",
   "release_manager/stacks/prod_release/.env.example",
@@ -170,8 +144,6 @@ describe("committed PhonePe checkout allowlists", () => {
       const origins = originsOf(repoFile(file), CHECKOUT_KEY)
 
       for (const origin of origins) {
-        // `trustedCheckoutUrl` compares `URL.origin` exactly. A wildcard, a path,
-        // a trailing slash or a scheme change all silently stop matching.
         expect(origin).not.toBe("*")
         expect(origin.startsWith("*")).toBe(false)
         expect(origin.startsWith("https://")).toBe(true)
@@ -183,7 +155,6 @@ describe("committed PhonePe checkout allowlists", () => {
 
   for (const file of sandboxCapableExamples) {
     test(`${file} → ${CHECKOUT_KEY} also allows the sandbox checkout host`, () => {
-      // Without this, setting PHONEPE_ENV=sandbox fails every payment closed.
       expect(originsOf(repoFile(file), CHECKOUT_KEY)).toContain(CHECKOUT_HOST_SANDBOX)
     })
   }
@@ -193,4 +164,40 @@ describe("committed PhonePe checkout allowlists", () => {
       expect(originsOf(repoFile(file), CHECKOUT_KEY)).not.toContain(CHECKOUT_HOST_SANDBOX)
     })
   }
+})
+
+const REDIRECT_KEY = "PHONEPE_CHECKOUT_REDIRECT_URL"
+
+const redirectExamples = [
+  "backend_controller/.env.example",
+  "backend_controller/.env.production.example",
+  "release_manager/stacks/dev_release/.env.example",
+  "release_manager/stacks/prod_release/.env.example",
+] as const
+
+describe("committed PhonePe checkout redirect URLs", () => {
+  for (const file of redirectExamples) {
+    test(`${file} declares ${REDIRECT_KEY}`, () => {
+      expect(envValue(repoFile(file), REDIRECT_KEY)).toBeDefined()
+    })
+
+    test(`${file} → ${REDIRECT_KEY} is a safe absolute https URL`, () => {
+      const value = envValue(repoFile(file), REDIRECT_KEY) ?? ""
+      expect(value.length).toBeGreaterThan(0)
+
+      const url = new URL(value)
+      expect(url.protocol).toBe("https:")
+      expect(url.username).toBe("")
+      expect(url.password).toBe("")
+      expect(url.hash).toBe("")
+      expect(url.pathname).not.toBe("/")
+    })
+  }
+
+  test("the examples do not point the payer back at a provider-events webhook", () => {
+    for (const file of redirectExamples) {
+      const value = envValue(repoFile(file), REDIRECT_KEY) ?? ""
+      expect(value).not.toContain("/provider-events/")
+    }
+  })
 })

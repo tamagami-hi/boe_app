@@ -1,12 +1,3 @@
-/**
- * Drives login → fund → lump-sum order → pay against the DEPLOYED stack in a
- * headed browser, and prints every order/pay API call with its body. Use it to
- * establish where in the chain a payment stops.
- *
- * This drives the LIVE production merchant. Amounts are capped at ₹2 by
- * `lib/amount-guard.mjs`, which reads the field back and re-checks every rupee
- * figure on screen before the pay button is allowed to be clicked.
- */
 import { chromium } from "playwright"
 
 import { MAX_RUPEES, fillAmountUnderCap, requestedRupees } from "./lib/amount-guard.mjs"
@@ -83,8 +74,6 @@ try {
     log("   risk consent accepted")
   }
 
-  // Type the amount once, at the capped value. Preset chips are never clicked:
-  // that is how an earlier version of this script created a ₹50,000 order.
   const amount = page.locator('input[inputmode="numeric"]').first()
   if ((await amount.count()) === 0) throw new Error("no amount input on the invest screen")
   const first = await fillAmountUnderCap(amount, rupees, page)
@@ -92,7 +81,6 @@ try {
   await page.waitForTimeout(800)
 
   log("== 4. submit and watch what happens ==")
-  // Last check before real money: re-read the field and every on-screen total.
   const confirmed = await fillAmountUnderCap(amount, rupees, page)
 
   log(`   final check before real money: screen total "${confirmed.total}"`)
