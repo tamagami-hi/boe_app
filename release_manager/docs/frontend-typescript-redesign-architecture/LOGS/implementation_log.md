@@ -3030,3 +3030,94 @@ maintainer to decide: keep it as the standing option, or remove it.
 - **UNVERIFIED** the whole settled-payment chain — order → payment → **allocation** → acknowledgement.
   Still zero allocations on this database. This remains the thing to check the moment a payment can
   complete by either route.
+
+
+## Entry 032 — the redirect really is unrelated, and the registered webhook host is the likely source · 2026-08-29
+
+Entry 031 reached the right conclusion for the wrong reason and I retracted it in `fe4d557`. This entry
+re-establishes it properly, and identifies a better candidate for where `Transacting_URL` comes from.
+
+### The retraction, and what fixed it
+
+The compose files enumerate every backend variable as `KEY: ${KEY}`, and
+`PHONEPE_CHECKOUT_REDIRECT_URL` was absent, so it never reached the container. `docker exec
+boe-dev-backend printenv` returned nothing. Entry 031's experiment had not varied the thing it claimed
+to vary.
+
+The check that misled me: `parseServerConfig` run in a *fresh* container with `--env-file`. That reads
+the current `.env` directly and bypasses compose, so it proves the file is right and says nothing about
+the running process. **`docker exec … printenv` is the check that answers the question**, and it is the
+one I skipped.
+
+Applied on the VPS: the missing line added to the deployed compose file (backed up first), validated
+with `docker compose config` using the deploy's own invocation — `env -u` every key from the env file,
+then `BOE_VERSION=0.12.2 BOE_CONTAINER_PREFIX=boe-dev COMPOSE_PROJECT_NAME=boe_dev` — confirming both
+that the file parses and that the backend image still resolves to `boe-dev-backend:0.12.2` rather than a
+stale tag. Then `up -d --no-deps backend`; healthy in ~12s, one container recreated.
+
+```
+docker exec boe-dev-backend printenv PHONEPE_CHECKOUT_REDIRECT_URL
+  → https://www.beonedge.in/pay/return/dev
+```
+
+### Re-tested, and the answer is unchanged
+
+With the value genuinely in the running process, a fresh ₹1 order still returns:
+
+```json
+{"errorCode":"INTERNAL_SECURITY_BLOCK_1","isRetryEnabled":false,
+ "data":{"Onboarding_URL":["www.beonedge.in"],"Transacting_URL":"https://dev-app.beonedge.in/"}}
+```
+
+So `merchantUrls.redirectUrl` does not determine `Transacting_URL`. This time the experiment actually
+varied it. The chain is: `printenv` proves the value is in the process; `createCheckout` uses
+`command.redirectUrl ?? config.checkoutRedirectUrl` with `clientOrderRoutes` passing `null`; and
+`phonePeCheckoutGateway.test.ts` asserts the outgoing payload carries `config.checkoutRedirectUrl` on a
+host deliberately different from the callback host. The backend is sending `www.beonedge.in`.
+
+**A near-miss worth recording.** `vps-checkout-knows-redirect.mjs` scans PhonePe's responses for our
+hostnames and reported "PhonePe knows www.beonedge.in: true", which reads like proof the redirect
+arrived. It is not. The only response containing either hostname is the error body itself, where
+`www.beonedge.in` is the `Onboarding_URL`. The script's own verdict is wrong and the test is
+inconclusive on that point; the conclusion above rests on `printenv` plus the unit-tested code path
+instead.
+
+### The better hypothesis: the registered webhook URL
+
+`PHONEPE_CALLBACK_URL` is `https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment`. Its
+origin is `https://dev-app.beonedge.in/` — character for character, including the trailing slash, what
+PhonePe reports as `Transacting_URL`.
+
+And it is **never sent in any request**. `grep callbackUrl src/providers/phonepe/*.ts` finds only the
+config field declaration; the pay payload contains exactly `merchantOrderId`, `amount`, `expireAfter`
+and `paymentFlow.merchantUrls.redirectUrl`. So the webhook URL reaches PhonePe only as **dashboard
+state**, which is precisely the property the observed value has: unchanged by anything we send.
+
+Not proven. It is now the best-supported candidate, and unlike the last one I am not writing code for it
+first. Two cheap ways to settle it, both on PhonePe's side: ask support what determines
+`Transacting_URL`, or change the registered webhook host and observe. If it holds, centralising on
+`beonedge.in` is achievable — register the webhook under the approved host and proxy that path to the
+backend — but it would need `PHONEPE_CALLBACK_URL` decoupled from `canonicalUrl`'s host pin, the same
+treatment `PHONEPE_CHECKOUT_REDIRECT_URL` got, and it should not be built before the hypothesis is
+confirmed.
+
+### Verification
+
+- **VPS** compose edit backed up, validated, backend recreated, `printenv` confirms the value, stack all
+  healthy.
+- **TESTED / VPS** fresh ₹1 order, `Transacting_URL` unchanged.
+- **TESTED** `envPassthrough.test.ts`, 5 tests: every key a stack `.env.example` declares that the
+  backend schema also declares must appear as a compose substitution. Zero pre-existing violations, so
+  this was the only instance. Deleting the compose line fails 3 of the 5.
+- **TESTED** backend tsc and eslint clean, 777 tests, branch coverage 80.25% against the 80% gate,
+  `verify.sh` 108/0.
+- **VPS** spend cap held: every order this session was `100` paise.
+
+### Not verified
+
+- **UNVERIFIED** that the registered webhook URL is the source of `Transacting_URL`. Hypothesis only.
+- **UNVERIFIED** that approving `dev-app.beonedge.in` lifts the block, though it follows from PhonePe's
+  own message and remains the certain route.
+- **UNVERIFIED** the settled-payment chain. Still zero allocations on this database.
+- The workers were **not** recreated, so they still lack `PHONEPE_CHECKOUT_REDIRECT_URL`. Harmless: the
+  compose default is empty and the config field is optional. A full deploy aligns them.
