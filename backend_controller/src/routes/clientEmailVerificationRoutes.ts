@@ -3,7 +3,7 @@ import { z } from "zod"
 
 import type { CryptoContext } from "../crypto/context.js"
 import type { UnitOfWork } from "../db/database.js"
-import { authenticateNativeRequest, type NativeRequestAuthDeps } from "../domain/auth/nativeAuth.js"
+import { resolveClientPrincipal, type ClientRequestAuthDeps } from "../domain/auth/clientWebAuth.js"
 import {
   requestEmailVerificationCode,
   verifyEmail,
@@ -16,7 +16,7 @@ import type { AuditWriteRepository } from "../repositories/auditRepository.js"
 import type { EmailVerificationRepository } from "../repositories/emailVerificationRepository.js"
 import type { UserWriteRepository } from "../repositories/userRepository.js"
 
-export interface ClientEmailVerificationDeps extends NativeRequestAuthDeps {
+export interface ClientEmailVerificationDeps extends ClientRequestAuthDeps {
   readonly unitOfWork: UnitOfWork
   readonly clock: () => Date
   readonly crypto: CryptoContext
@@ -39,7 +39,7 @@ const domainDeps = (deps: ClientEmailVerificationDeps) => ({
 })
 
 const issueCode = async (deps: ClientEmailVerificationDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await authenticateNativeRequest(request, deps)
+  const principal = await resolveClientPrincipal(request, deps)
   const result = await deps.unitOfWork.execute((tx) =>
     requestEmailVerificationCode(tx, domainDeps(deps), {
       userId: principal.userId,
@@ -73,7 +73,7 @@ const issueCode = async (deps: ClientEmailVerificationDeps, request: FastifyRequ
 }
 
 const postVerify = async (deps: ClientEmailVerificationDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await authenticateNativeRequest(request, deps)
+  const principal = await resolveClientPrincipal(request, deps)
   const body = parseOrThrow(verifyBodySchema, request.body)
   const outcome = await deps.unitOfWork.execute((tx) =>
     verifyEmail(tx, domainDeps(deps), {
@@ -100,7 +100,7 @@ const postVerify = async (deps: ClientEmailVerificationDeps, request: FastifyReq
 }
 
 const getStatus = async (deps: ClientEmailVerificationDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await authenticateNativeRequest(request, deps)
+  const principal = await resolveClientPrincipal(request, deps)
   const verification = await deps.unitOfWork.execute((tx) =>
     deps.emailVerificationRepository.findLatestByUser(tx, principal.userId),
   )

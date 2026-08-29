@@ -1,6 +1,6 @@
 import type { Kysely, Selectable } from "kysely"
 
-import type { Database } from "./types.js"
+import type { Database, SessionChannel } from "./types.js"
 
 export type Transaction = Kysely<Database>
 
@@ -214,7 +214,7 @@ export type ReplacePasswordCommand = ReadonlyDeep<
 >
 export type CreateSessionInput = ReadonlyDeep<{
   userId: UserId
-  channel: "native" | "web"
+  channel: SessionChannel
   deviceIdHash: Uint8Array | null
   refreshTokenHash: Uint8Array
   refreshKeyVersion: string

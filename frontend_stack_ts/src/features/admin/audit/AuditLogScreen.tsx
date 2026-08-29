@@ -6,6 +6,7 @@ import { formatDateTime } from "~/domain/dates"
 import { useAdminAuditEvents } from "~/features/admin/shared/adminQueries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
+import { LoadMore } from "~/ui/patterns/LoadMore"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
@@ -135,6 +136,7 @@ const AuditLogScreen = (): React.ReactElement => {
           />
         )}
       </AsyncBoundary>
+      <LoadMore list={query} noun="audit events" />
     </Page>
   )
 }

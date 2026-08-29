@@ -206,7 +206,7 @@ describe("native login device cap", () => {
 
   test("simultaneous first logins cannot collectively overshoot the cap", async () => {
     /*
-     * `listActiveNativeForUserOldestFirst` counts under FOR UPDATE, but FOR UPDATE
+     * `listActiveBearerForUserOldestFirst` counts under FOR UPDATE, but FOR UPDATE
      * locks rows that exist — so from a standing start there is nothing to lock,
      * and without the users-row lock in the write phase every concurrent login
      * reads a count of zero and inserts. Six at once against a cap of three is the

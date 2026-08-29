@@ -20,7 +20,7 @@ import {
 import {
   useAutoPayPlan,
   useCancelAutoPay,
-  useFunds,
+  useFundCatalogue,
   useRetryAutoPaySetup,
   useSipPlans,
   useSipTransition,
@@ -51,7 +51,7 @@ type Failure = Readonly<{ title: string; body: string }>
 const SipDetailScreen = (): React.ReactElement => {
   const { sipPlanId = "" } = useParams()
   const plans = useSipPlans()
-  const funds = useFunds()
+  const funds = useFundCatalogue()
   const { principal } = useSession()
   const transition = useSipTransition()
   const cancelAutoPay = useCancelAutoPay()

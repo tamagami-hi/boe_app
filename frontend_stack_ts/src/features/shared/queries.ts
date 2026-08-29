@@ -37,11 +37,14 @@ import {
   verifyEmail,
 } from "~/api/generated/operations"
 import type { DataOf } from "~/api/http"
+import { usePagedQuery } from "~/api/paged"
+import type { PagedQuery } from "~/api/paged"
 import { CLIENT_MONEY_PREFIXES, STALE, qk } from "~/api/queryKeys"
 import { useApi } from "~/app/providers/ApiProvider"
 import { useSession } from "~/app/providers/SessionProvider"
 
 const PAYMENT_POLL_INTERVAL_MS = 4_000
+const LIST_PAGE_LIMIT = 25
 
 export const useEligibility = (): UseQueryResult<DataOf<typeof getClientEligibility>> => {
   const api = useApi()
@@ -64,12 +67,28 @@ export const usePortfolio = (): UseQueryResult<DataOf<typeof getClientPortfolio>
   })
 }
 
-export const useFunds = (): UseQueryResult<DataOf<typeof listClientFunds>> => {
+export const useFunds = (): PagedQuery<DataOf<typeof listClientFunds>> => {
   const api = useApi()
-  return useQuery({
+  return usePagedQuery({
     queryKey: qk.client.funds(),
     staleTime: STALE.CATALOGUE,
-    queryFn: async () => (await api.request(listClientFunds, { query: { limit: 100 } })).data,
+    fetchPage: async (after) =>
+      api.request(listClientFunds, { query: { limit: LIST_PAGE_LIMIT, after } }),
+  })
+}
+
+/**
+ * The same catalogue, walked to the end. Screens that resolve a fund id to a
+ * name need every fund, not the newest page of them.
+ */
+export const useFundCatalogue = (): PagedQuery<DataOf<typeof listClientFunds>> => {
+  const api = useApi()
+  return usePagedQuery({
+    queryKey: qk.client.funds(),
+    staleTime: STALE.CATALOGUE,
+    loadAll: true,
+    fetchPage: async (after) =>
+      api.request(listClientFunds, { query: { limit: LIST_PAGE_LIMIT, after } }),
   })
 }
 
@@ -83,22 +102,25 @@ export const useFund = (fundId: string): UseQueryResult<DataOf<typeof getClientF
   })
 }
 
-export const useTransactions = (): UseQueryResult<DataOf<typeof listClientTransactions>> => {
+export const useTransactions = (): PagedQuery<DataOf<typeof listClientTransactions>> => {
   const api = useApi()
-  return useQuery({
+  return usePagedQuery({
     queryKey: qk.client.transactions("all"),
     staleTime: STALE.MONEY,
-    queryFn: async () =>
-      (await api.request(listClientTransactions, { query: { limit: 100 } })).data,
+    fetchPage: async (after) =>
+      api.request(listClientTransactions, {
+        query: { limit: LIST_PAGE_LIMIT, after },
+      }),
   })
 }
 
-export const useOrders = (): UseQueryResult<DataOf<typeof listClientOrders>> => {
+export const useOrders = (): PagedQuery<DataOf<typeof listClientOrders>> => {
   const api = useApi()
-  return useQuery({
+  return usePagedQuery({
     queryKey: qk.client.orders(),
     staleTime: STALE.MONEY,
-    queryFn: async () => (await api.request(listClientOrders, { query: { limit: 100 } })).data,
+    fetchPage: async (after) =>
+      api.request(listClientOrders, { query: { limit: LIST_PAGE_LIMIT, after } }),
   })
 }
 
@@ -112,19 +134,19 @@ export const useOrder = (orderId: string): UseQueryResult<DataOf<typeof getClien
   })
 }
 
-export const usePayments = (
-  status: string,
-): UseQueryResult<DataOf<typeof listClientPayments>> => {
+export const usePayments = (status: string): PagedQuery<DataOf<typeof listClientPayments>> => {
   const api = useApi()
-  return useQuery({
+  return usePagedQuery({
     queryKey: qk.client.payments(status),
     staleTime: STALE.MONEY,
-    queryFn: async () =>
-      (
-        await api.request(listClientPayments, {
-          query: { limit: 100, ...(status === "all" ? {} : { status }) },
-        })
-      ).data,
+    fetchPage: async (after) =>
+      api.request(listClientPayments, {
+        query: {
+          limit: LIST_PAGE_LIMIT,
+          after,
+          ...(status === "all" ? {} : { status }),
+        },
+      }),
   })
 }
 
@@ -137,13 +159,15 @@ export const useStatements = (): UseQueryResult<DataOf<typeof listClientStatemen
   })
 }
 
-export const useNotifications = (): UseQueryResult<DataOf<typeof listClientNotifications>> => {
+export const useNotifications = (): PagedQuery<DataOf<typeof listClientNotifications>> => {
   const api = useApi()
-  return useQuery({
+  return usePagedQuery({
     queryKey: qk.client.notifications(),
     staleTime: STALE.MONEY,
-    queryFn: async () =>
-      (await api.request(listClientNotifications, { query: { limit: 50 } })).data,
+    fetchPage: async (after) =>
+      api.request(listClientNotifications, {
+        query: { limit: LIST_PAGE_LIMIT, after },
+      }),
   })
 }
 
@@ -156,12 +180,13 @@ export const useSupportFaqs = (): UseQueryResult<DataOf<typeof listSupportFaqs>>
   })
 }
 
-export const useSupportTickets = (): UseQueryResult<DataOf<typeof listSupportTickets>> => {
+export const useSupportTickets = (): PagedQuery<DataOf<typeof listSupportTickets>> => {
   const api = useApi()
-  return useQuery({
+  return usePagedQuery({
     queryKey: qk.client.supportTickets(),
     staleTime: STALE.MONEY,
-    queryFn: async () => (await api.request(listSupportTickets, { query: { limit: 50 } })).data,
+    fetchPage: async (after) =>
+      api.request(listSupportTickets, { query: { limit: LIST_PAGE_LIMIT, after } }),
   })
 }
 

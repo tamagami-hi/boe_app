@@ -14,7 +14,7 @@ const DELETED_LEGACY_FILES: readonly string[] = [
   // BE-009a: replaced by src/auth/passwordHasher.ts (Argon2id).
   "security/passwords.js",
   // BE-009d: HS256 token module replaced by src/auth/accessToken.ts (ES256)
-  // + src/auth/sessionTokens.ts (opaque refresh/CSRF).
+  // + src/auth/refreshDerivation.ts (opaque refresh/CSRF hashing).
   "security/tokens.js",
   // BE-010: legacy request-auth + auth service/routes replaced by the canonical
   // native (domain/auth/nativeAuth.ts) and web (domain/auth/webAuth.ts) flows.
@@ -138,6 +138,11 @@ const DELETED_LEGACY_FILES: readonly string[] = [
   "../scripts/check-auth-403-envelope.js",
   "../scripts/print-routes.js",
   "../scripts/t11-route-inventory.js",
+  // Phase 13: the dormant keyed-HMAC session-token alternative. The live web and
+  // native refresh/CSRF paths hash through src/auth/refreshDerivation.ts, and
+  // CRYPTO_REFRESH_TOKEN_KEY / CRYPTO_CSRF_TOKEN_KEY were never in force.
+  "auth/sessionTokens.ts",
+  "auth/sessionTokens.test.ts",
 ]
 
 describe("legacy deletion guard", () => {

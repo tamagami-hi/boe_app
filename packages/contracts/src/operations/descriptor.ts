@@ -53,6 +53,12 @@ export type OperationSecurityPolicy =
       idempotency: "none" | "optional-key" | "required-key"
       responseCacheControl?: never
     }>
+  | Readonly<{
+      authChannel: "client-web"
+      credentialPolicy: "client-session-cookie-and-csrf"
+      idempotency: "none" | "optional-key" | "required-key"
+      responseCacheControl?: never
+    }>
 
 export type AuthChannel = OperationSecurityPolicy["authChannel"]
 export type CredentialPolicy = OperationSecurityPolicy["credentialPolicy"]

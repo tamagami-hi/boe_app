@@ -128,7 +128,9 @@ export type VersionTag = z.infer<typeof VersionTag>
 export const IdempotencyKey = z.string().regex(/^[A-Za-z0-9._:-]{8,128}$/u)
 export type IdempotencyKey = z.infer<typeof IdempotencyKey>
 
-export const Cursor = z.string().regex(/^[A-Za-z0-9_-]{16,1024}$/u)
+export const Cursor = z
+  .string()
+  .regex(/^[A-Za-z0-9_-]{16,1024}[.][A-Za-z0-9_-]{16,1024}$/u)
 export type Cursor = z.infer<typeof Cursor>
 
 export const Paise = z

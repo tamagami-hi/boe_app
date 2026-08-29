@@ -21,7 +21,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
 
 /** Methods any route in this API may use. */
-const ALLOWED_METHODS = "GET, POST, PATCH, PUT, DELETE, OPTIONS"
+const ALLOWED_METHODS = "GET, POST, PATCH, DELETE, OPTIONS"
 
 /**
  * Request headers the clients send: JSON content type, native bearer tokens,

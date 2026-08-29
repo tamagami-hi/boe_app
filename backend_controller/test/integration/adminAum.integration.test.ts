@@ -202,6 +202,7 @@ beforeAll(async () => {
       registerClientCatalogRoutes(instance, {
         accessTokenService,
         database,
+        clientWeb: { originAllowlist: [] },
         clock,
         cache: createUncachedCache(),
         config: { cursorKey: randomBytes(32), catalogTtlMs: 0 },

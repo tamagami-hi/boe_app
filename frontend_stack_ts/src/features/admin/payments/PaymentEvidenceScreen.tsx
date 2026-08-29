@@ -6,6 +6,7 @@ import { paymentState } from "~/domain/status"
 import { useAdminPayments } from "~/features/admin/shared/adminQueries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
+import { LoadMore } from "~/ui/patterns/LoadMore"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
@@ -99,6 +100,7 @@ const PaymentEvidenceScreen = (): React.ReactElement => {
           />
         )}
       </AsyncBoundary>
+      <LoadMore list={query} noun="payments" />
     </Page>
   )
 }

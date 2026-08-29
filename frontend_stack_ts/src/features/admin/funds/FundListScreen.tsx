@@ -8,6 +8,7 @@ import { fundState } from "~/domain/status"
 import { useSession } from "~/app/providers/SessionProvider"
 import { useAdminFunds } from "~/features/admin/shared/queries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
+import { LoadMore } from "~/ui/patterns/LoadMore"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
@@ -154,6 +155,7 @@ const FundListScreen = (): React.ReactElement => {
           </>
         )}
       </AsyncBoundary>
+      <LoadMore list={query} noun="funds" />
     </Page>
   )
 }

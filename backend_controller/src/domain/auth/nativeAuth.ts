@@ -1,12 +1,21 @@
 /**
- * Native authentication commands (spec 04 §3.3, 03 §5-§6): native login (with
- * same-device session replacement) and logout. Refresh rotation is a separate
- * command. All raw secrets exist only in memory / the response; PostgreSQL
- * stores only hashes.
+ * Bearer (native) authentication commands (spec 04 §3.3, 03 §5-§6): login with
+ * same-device session replacement, refresh rotation, and logout. All raw secrets
+ * exist only in memory / the response; PostgreSQL stores only hashes.
  *
  * Accounts are born active: the admin approval creates the user with the signup
  * password credential, so there is no activation-invite redemption here — the
  * first thing a new investor does in the app is sign in.
+ *
+ * Every function here is parameterised by a `NativeAuthScope`, because two
+ * audiences use this transport, for the same reason two use the cookie transport
+ * in `webAuth.ts`: the investor APK (`CLIENT_NATIVE_SCOPE`, session channel
+ * `native`) and the admin console APK (`ADMIN_NATIVE_SCOPE` in
+ * `adminNativeAuth.ts`, session channel `admin_native`). One implementation, two
+ * descriptors: the rotation state machine — the 30-second previous-token grace,
+ * the same-`rotationId` reproduction, the family revocation on reuse — is the
+ * subtle part and the part a copy would drift on. The accepted session channel,
+ * the audit command and the shape of the principal are data.
  */
 import { createHash } from "node:crypto"
 
@@ -19,7 +28,7 @@ import { maskPhone } from "../../auth/phone.js"
 import { deriveRefreshToken, generateInitialRefreshToken, hashToken } from "../../auth/refreshDerivation.js"
 import type { UnitOfWork } from "../../db/database.js"
 import type { Transaction, User, UserId } from "../../db/repositories.js"
-import type { AuthLoginOutcome, Database } from "../../db/types.js"
+import type { ActorType, AuthLoginOutcome, BearerSessionChannel, Database } from "../../db/types.js"
 import { AppError } from "../../http/errorCatalog.js"
 import type { AuditWriteRepository } from "../../repositories/auditRepository.js"
 import type { AuthSessionWriteRepository } from "../../repositories/authSessionRepository.js"
@@ -45,13 +54,37 @@ export interface NativeUser {
   readonly accountStatus: "active"
 }
 
-export interface NativeSessionResult {
-  readonly user: NativeUser
+export interface NativeSessionResult<TPrincipal> {
+  readonly user: TPrincipal
   readonly accessToken: string
   readonly accessTokenExpiresAt: string
   readonly refreshToken: string
   readonly refreshTokenExpiresAt: string
   readonly sessionId: string
+}
+
+/**
+ * The session channel, audit identity and principal shape that identify one
+ * bearer audience.
+ *
+ * `channel` is the whole of the isolation: it is written on the session row at
+ * login, required exactly by `authenticateBearerSession`, and required exactly by
+ * `nativeRefresh`, so no audience's token can authenticate or rotate another's.
+ */
+export interface NativeAuthScope<TPrincipal> {
+  readonly channel: BearerSessionChannel
+  readonly auditCommand: string
+  readonly auditActorType: ActorType
+  readonly buildPrincipal: (
+    tx: Transaction,
+    deps: NativeAuthDeps,
+    user: User,
+  ) => Promise<TPrincipal>
+  /**
+   * Login-time eligibility beyond a correct password on an active account.
+   * Returns the recorded outcome to reject with, or null to admit.
+   */
+  readonly rejectLogin: (principal: TPrincipal) => AuthLoginOutcome | null
 }
 
 export interface NativeAuthDeps {
@@ -73,7 +106,7 @@ export interface NativeAuthDeps {
    * enforceDeviceLimit.
    */
   readonly deviceLimit?: {
-    /** Maximum simultaneous active native sessions per user. */
+    /** Maximum simultaneous active sessions per user on one bearer channel. */
     readonly maxDevices: number
     /** Normalised emails exempt from the cap (the seeded dev/QA client). */
     readonly exemptEmails: readonly string[]
@@ -112,17 +145,35 @@ const buildNativeUser = (user: User): NativeUser => ({
   accountStatus: "active",
 })
 
-const issueNativeSession = async (
+/**
+ * The investor APK's bearer audience. No eligibility beyond a correct password on
+ * an active account, and no roles or permissions in the principal: the client
+ * surface is not permission-gated, and handing an investor app a permission list
+ * would make the two audiences' tokens interchangeable in the one place that
+ * matters — what the holder is told they may do.
+ */
+export const CLIENT_NATIVE_SCOPE: NativeAuthScope<NativeUser> = {
+  channel: "native",
+  auditCommand: "auth.native_login",
+  auditActorType: "user",
+  buildPrincipal: (_tx, _deps, user) => Promise.resolve(buildNativeUser(user)),
+  rejectLogin: () => null,
+}
+
+const issueNativeSession = async <TPrincipal>(
   tx: Transaction,
   deps: NativeAuthDeps,
+  scope: NativeAuthScope<TPrincipal>,
+  principal: TPrincipal,
   user: User,
   device: Buffer,
   now: Date,
   provenance: LoginProvenance,
-): Promise<NativeSessionResult> => {
+): Promise<NativeSessionResult<TPrincipal>> => {
   const refreshRaw = generateInitialRefreshToken()
-  const created = await deps.authSessionRepository.createNativeSession(tx, {
+  const created = await deps.authSessionRepository.createBearerSession(tx, {
     userId: user.id as UserId,
+    channel: scope.channel,
     deviceIdHash: device,
     refreshTokenHash: hashToken(refreshRaw),
     refreshKeyVersion: deps.refreshKeyVersion,
@@ -133,7 +184,7 @@ const issueNativeSession = async (
   })
   const accessToken = await deps.accessTokenService.sign({ sub: user.id, sid: created.session.id })
   return {
-    user: buildNativeUser(user),
+    user: principal,
     accessToken,
     accessTokenExpiresAt: new Date(now.getTime() + ACCESS_TOKEN_TTL_MS).toISOString(),
     refreshToken: refreshRaw,
@@ -169,9 +220,10 @@ export interface NativeLoginInput extends LoginProvenance {
  * trail — a user who is silently signed out elsewhere should be explicable from
  * the log.
  */
-const enforceDeviceLimit = async (
+const enforceDeviceLimit = async <TPrincipal>(
   tx: Transaction,
   deps: NativeAuthDeps,
+  scope: NativeAuthScope<TPrincipal>,
   user: User,
   now: Date,
 ): Promise<number> => {
@@ -180,8 +232,9 @@ const enforceDeviceLimit = async (
   if (policy.maxDevices <= 0) return 0
   if (policy.exemptEmails.includes(user.email_normalized)) return 0
 
-  const active = await deps.authSessionRepository.listActiveNativeForUserOldestFirst(tx, {
+  const active = await deps.authSessionRepository.listActiveBearerForUserOldestFirst(tx, {
     userId: user.id as UserId,
+    channel: scope.channel,
   })
   // The new session is not inserted yet, so room for it means strictly fewer
   // than the cap may remain.
@@ -230,10 +283,11 @@ const enforceDeviceLimit = async (
  *
  * Every outcome, success or failure, is recorded in `auth_login_events`.
  */
-export const nativeLogin = async (
+export const nativeLogin = async <TPrincipal>(
   deps: NativeLoginDeps,
+  scope: NativeAuthScope<TPrincipal>,
   input: NativeLoginInput,
-): Promise<NativeSessionResult> => {
+): Promise<NativeSessionResult<TPrincipal>> => {
   const emailNormalized = input.email.trim().toLowerCase()
   const device = deviceIdHash(input.device.installationId)
 
@@ -251,7 +305,7 @@ export const nativeLogin = async (
       await deps.loginEventRepository.record(deps.database, {
         userId,
         emailNormalized,
-        channel: "native",
+        channel: scope.channel,
         outcome,
         deviceIdHash: device,
         ipAddress: input.ipAddress ?? null,
@@ -294,14 +348,15 @@ export const nativeLogin = async (
   // rejection, so the failure record is written outside the transaction that
   // would otherwise roll it back.
   const outcome = await deps.unitOfWork.execute(
-    async (tx): Promise<IssueOutcome> => issueLoginSession(tx, deps, input, identity, device),
+    async (tx): Promise<IssueOutcome<TPrincipal>> =>
+      issueLoginSession(tx, deps, scope, input, identity, device),
   )
   if (outcome.kind === "rejected") return rejectAndRecord(outcome.outcome, identity.user.id)
   return outcome.result
 }
 
-type IssueOutcome =
-  | { readonly kind: "issued"; readonly result: NativeSessionResult }
+type IssueOutcome<TPrincipal> =
+  | { readonly kind: "issued"; readonly result: NativeSessionResult<TPrincipal> }
   | { readonly kind: "rejected"; readonly outcome: AuthLoginOutcome }
 
 /**
@@ -315,10 +370,10 @@ type IssueOutcome =
  * inserts, not across the Argon2id verification. Two things downstream need it,
  * and both were silently broken without it:
  *
- *   * `lockActiveNativeByUserAndDevice` locks rows that exist, so two concurrent
+ *   * `lockActiveBearerByUserAndDevice` locks rows that exist, so two concurrent
  *     logins from the *same* installationId would both find no active session,
  *     both skip the revocation, and both insert — one then violating
- *     `auth_sessions_active_native_device_uk` and surfacing as INTERNAL_ERROR
+ *     `auth_sessions_active_bearer_device_uk` and surfacing as INTERNAL_ERROR
  *     rather than replacing the session. The client's new 20 s request deadline
  *     makes that reachable: an abandoned request keeps running server-side while
  *     the user retries.
@@ -328,14 +383,18 @@ type IssueOutcome =
  *
  * The credential re-check compares the stored hash with the one just verified, so
  * a password rotated in between cannot yield a session.
+ *
+ * Both the device replacement and the cap are scoped to the audience's channel,
+ * so signing into the admin APK never touches the same person's investor session.
  */
-const issueLoginSession = async (
+const issueLoginSession = async <TPrincipal>(
   tx: Transaction,
   deps: NativeLoginDeps,
+  scope: NativeAuthScope<TPrincipal>,
   input: NativeLoginInput,
   verified: UserLoginIdentity,
   device: Buffer,
-): Promise<IssueOutcome> => {
+): Promise<IssueOutcome<TPrincipal>> => {
   const user = await deps.userRepository.lockById(tx, verified.user.id as UserId)
   if (user === null) return { kind: "rejected", outcome: "invalid_credentials" }
   if (user.account_state !== "active") return { kind: "rejected", outcome: "account_not_active" }
@@ -344,9 +403,14 @@ const issueLoginSession = async (
   if (currentHash === null) return { kind: "rejected", outcome: "invalid_credentials" }
   if (currentHash !== verified.passwordHash) return { kind: "rejected", outcome: "password_changed" }
 
+  const principal = await scope.buildPrincipal(tx, deps, user)
+  const rejection = scope.rejectLogin(principal)
+  if (rejection !== null) return { kind: "rejected", outcome: rejection }
+
   const now = deps.clock()
-  const existing = await deps.authSessionRepository.lockActiveNativeByUserAndDevice(tx, {
+  const existing = await deps.authSessionRepository.lockActiveBearerByUserAndDevice(tx, {
     userId: user.id as UserId,
+    channel: scope.channel,
     deviceIdHash: device,
   })
   if (existing !== null) {
@@ -359,13 +423,13 @@ const issueLoginSession = async (
 
   // Only other devices count towards the cap; this device's own prior session
   // was just revoked above, so re-signing in never evicts anyone.
-  const evictedDevices = await enforceDeviceLimit(tx, deps, user, now)
+  const evictedDevices = await enforceDeviceLimit(tx, deps, scope, user, now)
 
-  const result = await issueNativeSession(tx, deps, user, device, now, input)
+  const result = await issueNativeSession(tx, deps, scope, principal, user, device, now, input)
   await deps.auditRepository.append(tx, {
-    actorType: "user",
+    actorType: scope.auditActorType,
     actorUserId: user.id,
-    command: "auth.native_login",
+    command: scope.auditCommand,
     entityType: "auth_session",
     entityId: result.sessionId,
     requestId: input.requestId,
@@ -378,7 +442,7 @@ const issueLoginSession = async (
   await deps.loginEventRepository.record(tx, {
     userId: user.id,
     emailNormalized: user.email_normalized.toLowerCase(),
-    channel: "native",
+    channel: scope.channel,
     outcome: "success",
     sessionId: result.sessionId,
     deviceIdHash: device,
@@ -400,10 +464,20 @@ export interface NativeRequestAuthDeps {
   readonly database: Kysely<Database>
 }
 
-/** Resolve and re-check the native bearer principal (spec 04 §4.5). */
-export const authenticateNativeRequest = async (
+/**
+ * Resolve and re-check a bearer principal on one channel (spec 04 §4.5).
+ *
+ * The session channel must be exactly the caller's own. That single predicate is
+ * what keeps the two bearer audiences apart: an investor APK's access token
+ * resolves to a `native` session and is refused on an admin route, an admin APK's
+ * resolves to `admin_native` and is refused on a client route, and a cookie
+ * access-token *value* replayed in an `Authorization` header resolves to `web` or
+ * `client_web` and is refused by both.
+ */
+export const authenticateBearerSession = async (
   request: FastifyRequest,
   deps: NativeRequestAuthDeps,
+  channel: BearerSessionChannel,
 ): Promise<{ userId: string; sessionId: string }> => {
   const header = request.headers.authorization
   if (typeof header !== "string" || !header.startsWith("Bearer ")) {
@@ -416,7 +490,7 @@ export const authenticateNativeRequest = async (
     .select(["id", "user_id", "state", "channel"])
     .where("id", "=", verified.sid)
     .executeTakeFirst()
-  if (session === undefined || session.state !== "active" || session.channel !== "native") {
+  if (session === undefined || session.state !== "active" || session.channel !== channel) {
     throw new AppError("SESSION_INVALID")
   }
   const user = await deps.database
@@ -429,6 +503,13 @@ export const authenticateNativeRequest = async (
   }
   return { userId: verified.sub, sessionId: verified.sid }
 }
+
+/** The investor APK's bearer principal. */
+export const authenticateNativeRequest = (
+  request: FastifyRequest,
+  deps: NativeRequestAuthDeps,
+): Promise<{ userId: string; sessionId: string }> =>
+  authenticateBearerSession(request, deps, CLIENT_NATIVE_SCOPE.channel)
 
 export interface NativeRefreshInput {
   readonly refreshToken: string
@@ -450,14 +531,20 @@ export type NativeRefreshOutcome =
 const bufferEquals = (a: Buffer, b: Buffer | null): boolean => b !== null && Buffer.from(a).equals(Buffer.from(b))
 
 /**
- * Native refresh rotation (spec 04 §3.3, 03 §5-§6). Consumes generation N and
+ * Bearer refresh rotation (spec 04 §3.3, 03 §5-§6). Consumes generation N and
  * derives generation N+1; a same-rotationId re-presentation of the immediately
  * previous token inside the 30s grace reproduces the successor without a write;
  * any other reuse revokes the family.
+ *
+ * A refresh token only rotates the chain of its own audience: the session's
+ * channel must be exactly the scope's, so an investor refresh token presented to
+ * the admin rotation endpoint is refused rather than yielding an access token the
+ * admin resolver would then have to reject.
  */
-export const nativeRefresh = async (
+export const nativeRefresh = async <TPrincipal>(
   tx: Transaction,
   deps: NativeAuthDeps,
+  scope: NativeAuthScope<TPrincipal>,
   input: NativeRefreshInput,
 ): Promise<NativeRefreshOutcome> => {
   const presentedHash = hashToken(input.refreshToken)
@@ -471,6 +558,7 @@ export const nativeRefresh = async (
   if (session.state !== "active" || new Date(session.expires_at).getTime() <= now.getTime()) {
     throw new AppError("SESSION_INVALID")
   }
+  if (session.channel !== scope.channel) throw new AppError("SESSION_INVALID")
 
   const issue = async (successorRaw: string): Promise<NativeRefreshOutcome> => {
     const accessToken = await deps.accessTokenService.sign({ sub: session.user_id, sid: session.id })

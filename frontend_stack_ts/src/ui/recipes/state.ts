@@ -14,3 +14,5 @@ export const STATE_REFERENCE = "font-mono text-xs text-fg-faint [overflow-wrap:a
 export const STATE_REFRESHING = "flex items-center gap-2 font-ui text-xs text-fg-muted"
 
 export const STATE_STACK = "flex flex-col gap-3"
+
+export const LOAD_MORE_ROOT = "flex flex-col items-center gap-2 pt-2"

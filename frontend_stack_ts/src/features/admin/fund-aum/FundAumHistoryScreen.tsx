@@ -7,6 +7,7 @@ import { toPaise } from "~/domain/money"
 import { useAdminAumHistory, useAdminFund } from "~/features/admin/shared/queries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
+import { LoadMore } from "~/ui/patterns/LoadMore"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { Badge } from "~/ui/primitives/Badge"
@@ -93,6 +94,7 @@ const FundAumHistoryScreen = (): React.ReactElement => {
           />
         )}
       </AsyncBoundary>
+      <LoadMore list={history} noun="entries" />
     </Page>
   )
 }

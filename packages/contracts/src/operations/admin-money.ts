@@ -244,13 +244,20 @@ export const listAdminFundReceipts = defineOperation({
   credentialPolicy: "admin-session-cookie-and-csrf",
   idempotency: "none",
   request: {
-    query: z.strictObject({ state: AdminReceiptState.optional(), limit: AdminLimit }),
+    query: z.strictObject({
+      state: AdminReceiptState.optional(),
+      after: AdminCursor,
+      limit: AdminLimit,
+    }),
   },
   success: {
     status: 200,
-    schema: createSuccessEnvelopeSchema(z.strictObject({ items: z.array(AdminFundReceipt) })),
+    schema: createSuccessEnvelopeSchema(
+      z.strictObject({ items: z.array(AdminFundReceipt) }),
+      { page: AdminPageMeta },
+    ),
   },
-  errorCodes: [...ADMIN_READ_ERRORS],
+  errorCodes: [...ADMIN_PAGED_READ_ERRORS],
 })
 
 export const getAdminFundReceipt = defineOperation({
@@ -325,14 +332,18 @@ export const listAdminRefunds = defineOperation({
   request: {
     query: z.strictObject({
       state: z.enum(["pending", "provider_pending", "refunded", "failed", "all"]).optional(),
+      after: AdminCursor,
       limit: AdminLimit,
     }),
   },
   success: {
     status: 200,
-    schema: createSuccessEnvelopeSchema(z.strictObject({ items: z.array(AdminRefund) })),
+    schema: createSuccessEnvelopeSchema(
+      z.strictObject({ items: z.array(AdminRefund) }),
+      { page: AdminPageMeta },
+    ),
   },
-  errorCodes: [...ADMIN_READ_ERRORS],
+  errorCodes: [...ADMIN_PAGED_READ_ERRORS],
 })
 
 export const retryAdminRefund = defineOperation({
@@ -401,12 +412,15 @@ export const listAdminPayments = defineOperation({
   authChannel: "admin-web",
   credentialPolicy: "admin-session-cookie-and-csrf",
   idempotency: "none",
-  request: { query: z.strictObject({ limit: AdminLimit }) },
+  request: { query: z.strictObject({ after: AdminCursor, limit: AdminLimit }) },
   success: {
     status: 200,
-    schema: createSuccessEnvelopeSchema(z.strictObject({ items: z.array(AdminPayment) })),
+    schema: createSuccessEnvelopeSchema(
+      z.strictObject({ items: z.array(AdminPayment) }),
+      { page: AdminPageMeta },
+    ),
   },
-  errorCodes: [...ADMIN_READ_ERRORS],
+  errorCodes: [...ADMIN_PAGED_READ_ERRORS],
 })
 
 export const AdminMandateState = z.enum([
@@ -496,7 +510,8 @@ export const listAdminMandates = defineOperation({
   success: {
     status: 200,
     schema: createSuccessEnvelopeSchema(
-      z.strictObject({ items: z.array(AdminMandateListItem), page: AdminPageMeta }),
+      z.strictObject({ items: z.array(AdminMandateListItem) }),
+      { page: AdminPageMeta },
     ),
   },
   errorCodes: [...ADMIN_PAGED_READ_ERRORS, "RESOURCE_NOT_FOUND"],

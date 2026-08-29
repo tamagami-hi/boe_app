@@ -8,6 +8,7 @@ import { emailDeliveryState } from "~/domain/status"
 import { useAdminEmailDeliveries } from "~/features/admin/shared/adminQueries"
 import { AdminTable, FilterChip, FilterRow } from "~/features/admin/shared/AdminTable"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
+import { LoadMore } from "~/ui/patterns/LoadMore"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Card } from "~/ui/primitives/Card"
@@ -138,6 +139,7 @@ const EmailDeliveriesScreen = (): React.ReactElement => {
           />
         )}
       </AsyncBoundary>
+      <LoadMore list={query} noun="deliveries" />
     </Page>
   )
 }

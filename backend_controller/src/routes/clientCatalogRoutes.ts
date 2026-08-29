@@ -4,7 +4,7 @@ import type { Kysely } from "kysely"
 import { z } from "zod"
 
 import type { Database } from "../db/types.js"
-import { authenticateNativeRequest, type NativeRequestAuthDeps } from "../domain/auth/nativeAuth.js"
+import { resolveClientPrincipal, type ClientRequestAuthDeps } from "../domain/auth/clientWebAuth.js"
 import { computeFilterHash, decodeCursor, encodeCursor } from "../http/cursor.js"
 import type { PageMeta } from "../http/envelope.js"
 import { AppError } from "../http/errorCatalog.js"
@@ -20,7 +20,7 @@ export interface ClientCatalogConfig {
   readonly catalogTtlMs: number
 }
 
-export interface ClientCatalogDeps extends NativeRequestAuthDeps {
+export interface ClientCatalogDeps extends ClientRequestAuthDeps {
   readonly database: Kysely<Database>
   readonly clock: () => Date
   readonly cache: Cache
@@ -65,7 +65,7 @@ const mapFund = (row: ClientFundRow): Record<string, unknown> => ({
 })
 
 const listFunds = async (deps: ClientCatalogDeps, request: FastifyRequest, reply: FastifyReply) => {
-  await authenticateNativeRequest(request, deps)
+  await resolveClientPrincipal(request, deps)
   const query = parseOrThrow(listQuerySchema, request.query)
   const now = deps.clock()
   const filterHash = computeFilterHash({})
@@ -112,7 +112,7 @@ const listFunds = async (deps: ClientCatalogDeps, request: FastifyRequest, reply
 }
 
 const getFund = async (deps: ClientCatalogDeps, request: FastifyRequest, reply: FastifyReply) => {
-  await authenticateNativeRequest(request, deps)
+  await resolveClientPrincipal(request, deps)
   const fundId = parseOrThrow(uuidParam, (request.params as { fundId?: unknown }).fundId)
 
   const body = await deps.cache.readOrLoad(

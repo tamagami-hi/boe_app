@@ -24,11 +24,13 @@ import { z } from "zod"
 
 import type { UnitOfWork } from "../db/database.js"
 import type { Database, PaymentState } from "../db/types.js"
-import { authenticateNativeRequest, type NativeRequestAuthDeps } from "../domain/auth/nativeAuth.js"
+import { resolveClientPrincipal, type ClientRequestAuthDeps } from "../domain/auth/clientWebAuth.js"
 import { projectPaymentStatus } from "../domain/client/clientStatus.js"
 import { toLedgerEntries } from "../domain/client/portfolioProjection.js"
 import { deriveStatements } from "../domain/client/statements.js"
+import { computeFilterHash } from "../http/cursor.js"
 import { AppError } from "../http/errorCatalog.js"
+import { paginate, readKeyset } from "../http/pagination.js"
 import { parseOrThrow } from "../http/validation.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
 import type {
@@ -43,7 +45,11 @@ import type { NotificationWriteRepository } from "../repositories/notificationRe
 import { reconcileAppVersion } from "../domain/client/reconcileAppVersion.js"
 import { latestPublishedBuild } from "./publicAppRoutes.js"
 
-export interface ClientAccountDeps extends NativeRequestAuthDeps {
+export interface ClientAccountConfig {
+  readonly cursorKey: Buffer
+}
+
+export interface ClientAccountDeps extends ClientRequestAuthDeps {
   readonly clientAccountRepository: ClientAccountRepository
   readonly clientValueEntryRepository: ClientValueEntryRepository
   readonly auditRepository: AuditWriteRepository
@@ -51,6 +57,7 @@ export interface ClientAccountDeps extends NativeRequestAuthDeps {
   readonly unitOfWork: UnitOfWork
   readonly database: Kysely<Database>
   readonly clock: () => Date
+  readonly config: ClientAccountConfig
   /**
    * Where published APKs live, shared with the public update feed so the inbox
    * and the launch dialog can never disagree about what "newest" is. Optional:
@@ -74,10 +81,18 @@ const RESEARCH_ROUTE = "/v1/client/research-context"
 const RESEARCH_CONTENT_KEY = "research-context"
 
 const MAX_ITEMS = 200
-const DEFAULT_ITEMS = 50
+const MAX_PAGE_ITEMS = 100
+const DEFAULT_PAGE_ITEMS = 25
 
-const limitSchema = z.coerce.number().int().min(1).max(MAX_ITEMS).default(DEFAULT_ITEMS)
-const listQuerySchema = z.object({ limit: limitSchema }).strict()
+/**
+ * Paged reads share one limit ceiling with every other list so a page always
+ * fits inside what a cursor can describe. `MAX_ITEMS` stays for the unpaged
+ * content reads (FAQs), which are a bounded editorial set, not a queue.
+ */
+const limitSchema = z.coerce.number().int().min(1).max(MAX_PAGE_ITEMS).default(DEFAULT_PAGE_ITEMS)
+const cursorSchema = z.string().min(1).optional()
+
+export const listQuerySchema = z.object({ after: cursorSchema, limit: limitSchema }).strict()
 const uuidParam = z.string().uuid()
 
 /**
@@ -159,8 +174,12 @@ export const paymentSuccessProjectionFor = (
   return hasConfirmed ? "confirmed" : "processing"
 }
 
-const paymentsQuerySchema = z
-  .object({ status: z.union([z.string(), z.array(z.string())]).optional(), limit: limitSchema })
+export const paymentsQuerySchema = z
+  .object({
+    status: z.union([z.string(), z.array(z.string())]).optional(),
+    after: cursorSchema,
+    limit: limitSchema,
+  })
   .strict()
 const markReadSchema = z.object({ read: z.literal(true) }).strict()
 const createTicketSchema = z
@@ -240,7 +259,7 @@ const reportAppVersion = async (
   request: FastifyRequest,
   reply: FastifyReply,
 ): Promise<FastifyReply> => {
-  const principal = await authenticateNativeRequest(request, deps)
+  const principal = await resolveClientPrincipal(request, deps)
   const body = parseOrThrow(appVersionSchema, request.body)
 
   const latest =
@@ -272,15 +291,33 @@ const listNotifications = async (
   request: FastifyRequest,
   reply: FastifyReply,
 ): Promise<FastifyReply> => {
-  const principal = await authenticateNativeRequest(request, deps)
-  const { limit } = parseOrThrow(listQuerySchema, request.query ?? {})
-  const rows = await deps.unitOfWork.execute((tx) =>
-    deps.clientAccountRepository.listNotifications(tx, { userId: principal.userId, limit }),
+  const principal = await resolveClientPrincipal(request, deps)
+  const query = parseOrThrow(listQuerySchema, request.query ?? {})
+  const now = deps.clock()
+  const filterHash = computeFilterHash({ userId: principal.userId })
+  const keyset = readKeyset(deps.config.cursorKey, query.after, NOTIFICATIONS_ROUTE, filterHash, now)
+
+  const { rows, unreadCount } = await deps.unitOfWork.execute(async (tx) => ({
+    rows: await deps.clientAccountRepository.listNotifications(tx, {
+      userId: principal.userId,
+      ...keyset,
+      limit: query.limit + 1,
+    }),
+    unreadCount: await deps.clientAccountRepository.countUnreadNotifications(tx, principal.userId),
+  }))
+  const { items, page } = paginate(
+    deps.config.cursorKey,
+    rows,
+    query.limit,
+    NOTIFICATIONS_ROUTE,
+    filterHash,
+    now,
+    (row) => [iso(row.createdAt), row.id],
   )
-  return reply.sendData({
-    items: rows.map(mapNotification),
-    unreadCount: rows.filter((row) => row.readAt === null).length,
-  })
+  return reply.sendData(
+    { items: items.map(mapNotification), unreadCount },
+    { status: 200, page },
+  )
 }
 
 const markNotificationRead = async (
@@ -288,7 +325,7 @@ const markNotificationRead = async (
   request: FastifyRequest,
   reply: FastifyReply,
 ): Promise<FastifyReply> => {
-  const principal = await authenticateNativeRequest(request, deps)
+  const principal = await resolveClientPrincipal(request, deps)
   const notificationId = parseOrThrow(uuidParam, (request.params as { notificationId?: string }).notificationId)
   parseOrThrow(markReadSchema, request.body ?? {})
 
@@ -309,19 +346,41 @@ const listPayments = async (
   request: FastifyRequest,
   reply: FastifyReply,
 ): Promise<FastifyReply> => {
-  const principal = await authenticateNativeRequest(request, deps)
+  const principal = await resolveClientPrincipal(request, deps)
   const query = parseOrThrow(paymentsQuerySchema, request.query ?? {})
   const states = parsePaymentStates(query.status)
   const successProjection = paymentSuccessProjectionFor(query.status)
+  const now = deps.clock()
+  /*
+   * The state filter is part of the cursor's identity: a cursor minted while
+   * looking at failed payments cannot be replayed against the confirmed tab.
+   */
+  const filterHash = computeFilterHash({
+    userId: principal.userId,
+    states: [...states].sort().join(","),
+    successProjection,
+  })
+  const keyset = readKeyset(deps.config.cursorKey, query.after, PAYMENTS_ROUTE, filterHash, now)
+
   const rows = await deps.unitOfWork.execute((tx) =>
     deps.clientAccountRepository.listPayments(tx, {
       userId: principal.userId,
       states,
       successProjection,
-      limit: query.limit,
+      ...keyset,
+      limit: query.limit + 1,
     }),
   )
-  return reply.sendData({ items: rows.map(mapPayment) })
+  const { items, page } = paginate(
+    deps.config.cursorKey,
+    rows,
+    query.limit,
+    PAYMENTS_ROUTE,
+    filterHash,
+    now,
+    (row) => [iso(row.createdAt), row.id],
+  )
+  return reply.sendData({ items: items.map(mapPayment) }, { status: 200, page })
 }
 
 const listStatements = async (
@@ -329,7 +388,7 @@ const listStatements = async (
   request: FastifyRequest,
   reply: FastifyReply,
 ): Promise<FastifyReply> => {
-  const principal = await authenticateNativeRequest(request, deps)
+  const principal = await resolveClientPrincipal(request, deps)
   const entries = await deps.unitOfWork.execute((tx) =>
     deps.clientValueEntryRepository.listByUser(tx, principal.userId),
   )
@@ -361,7 +420,7 @@ const listFaqs = async (
   request: FastifyRequest,
   reply: FastifyReply,
 ): Promise<FastifyReply> => {
-  await authenticateNativeRequest(request, deps)
+  await resolveClientPrincipal(request, deps)
   const rows = await deps.unitOfWork.execute((tx) =>
     deps.clientAccountRepository.listFaqs(tx, { limit: MAX_ITEMS }),
   )
@@ -373,12 +432,29 @@ const listTickets = async (
   request: FastifyRequest,
   reply: FastifyReply,
 ): Promise<FastifyReply> => {
-  const principal = await authenticateNativeRequest(request, deps)
-  const { limit } = parseOrThrow(listQuerySchema, request.query ?? {})
+  const principal = await resolveClientPrincipal(request, deps)
+  const query = parseOrThrow(listQuerySchema, request.query ?? {})
+  const now = deps.clock()
+  const filterHash = computeFilterHash({ userId: principal.userId })
+  const keyset = readKeyset(deps.config.cursorKey, query.after, TICKETS_ROUTE, filterHash, now)
+
   const rows = await deps.unitOfWork.execute((tx) =>
-    deps.clientAccountRepository.listSupportRequests(tx, { userId: principal.userId, limit }),
+    deps.clientAccountRepository.listSupportRequests(tx, {
+      userId: principal.userId,
+      ...keyset,
+      limit: query.limit + 1,
+    }),
   )
-  return reply.sendData({ items: rows.map(mapTicket) })
+  const { items, page } = paginate(
+    deps.config.cursorKey,
+    rows,
+    query.limit,
+    TICKETS_ROUTE,
+    filterHash,
+    now,
+    (row) => [iso(row.createdAt), row.id],
+  )
+  return reply.sendData({ items: items.map(mapTicket) }, { status: 200, page })
 }
 
 /** Short, quotable handle: `BOE-` plus 8 hex characters of a fresh UUID. */
@@ -389,7 +465,7 @@ const createTicket = async (
   request: FastifyRequest,
   reply: FastifyReply,
 ): Promise<FastifyReply> => {
-  const principal = await authenticateNativeRequest(request, deps)
+  const principal = await resolveClientPrincipal(request, deps)
   const body = parseOrThrow(createTicketSchema, request.body ?? {})
 
   const row = await deps.unitOfWork.execute(async (tx) => {
@@ -423,7 +499,7 @@ const researchContext = async (
   request: FastifyRequest,
   reply: FastifyReply,
 ): Promise<FastifyReply> => {
-  await authenticateNativeRequest(request, deps)
+  await resolveClientPrincipal(request, deps)
   const document = await deps.unitOfWork.execute((tx) =>
     deps.clientAccountRepository.findDocument(tx, RESEARCH_CONTENT_KEY),
   )

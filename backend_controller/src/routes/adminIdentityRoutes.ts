@@ -24,10 +24,10 @@ import type { ApplicationState } from "../db/types.js"
 import { resolveAdminPrincipal, requireAnyPermission, hasPermission } from "../domain/admin/adminAccess.js"
 import { decideApplication } from "../domain/admin/decideApplication.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
-import { computeFilterHash, decodeCursor, encodeCursor } from "../http/cursor.js"
-import type { PageMeta } from "../http/envelope.js"
+import { computeFilterHash } from "../http/cursor.js"
 import { AppError } from "../http/errorCatalog.js"
-import { executeIdempotent, idempotencyKeySchema } from "../http/idempotencyProtocol.js"
+import { executeIdempotent } from "../http/idempotencyProtocol.js"
+import { createdAtKeyset, paginate, readKeyset } from "../http/pagination.js"
 import { parseOrThrow } from "../http/validation.js"
 import { latestPublishedApkUrl, type ReleaseFeed } from "../release/releaseFeed.js"
 import type { ApplicationWriteRepository } from "../repositories/applicationRepository.js"
@@ -37,6 +37,7 @@ import type { CredentialWriteRepository } from "../repositories/credentialReposi
 import type { EmailDeliveryWriteRepository } from "../repositories/emailDeliveryRepository.js"
 import type { OutboxWriteRepository } from "../repositories/outboxRepository.js"
 import type { UserWriteRepository } from "../repositories/userRepository.js"
+import { requireIdempotencyKey } from "./adminRouteKit.js"
 
 export interface AdminIdentityConfig {
   readonly cursorKey: Buffer
@@ -126,18 +127,6 @@ const uuidParam = z.string().uuid()
 
 // --- helpers ---
 
-const requireIdempotencyKey = (request: FastifyRequest): string => {
-  const header = request.headers["idempotency-key"]
-  const value = Array.isArray(header) ? header[0] : header
-  const parsed = idempotencyKeySchema.safeParse(value)
-  if (!parsed.success) {
-    throw new AppError("VALIDATION_FAILED", {
-      fields: { "idempotency-key": ["a valid Idempotency-Key header is required"] },
-    })
-  }
-  return parsed.data
-}
-
 const hashRequest = (canonical: Readonly<Record<string, unknown>>): Buffer =>
   createHash("sha256").update(JSON.stringify(canonical)).digest()
 
@@ -146,44 +135,17 @@ interface KeysetPosition {
   readonly afterId?: string
 }
 
-const readKeyset = (
+const keysetFor = (
   deps: AdminIdentityDeps,
   after: string | undefined,
   route: string,
   filterHash: string,
   now: Date,
-): KeysetPosition => {
-  if (after === undefined) return {}
-  const parts = decodeCursor(deps.config.cursorKey, after, { route, filterHash, now })
-  const createdAtRaw = parts[0]
-  const idRaw = parts[1]
-  if (createdAtRaw === undefined || idRaw === undefined) throw new AppError("CURSOR_INVALID")
-  return { afterCreatedAt: new Date(createdAtRaw), afterId: idRaw }
-}
+): KeysetPosition => readKeyset(deps.config.cursorKey, after, route, filterHash, now)
 
-interface Paginated<Row> {
-  readonly items: readonly Row[]
-  readonly page: PageMeta
-}
-
-const paginate = <Row>(
-  deps: AdminIdentityDeps,
-  rows: readonly Row[],
-  limit: number,
-  route: string,
-  filterHash: string,
-  now: Date,
-  sortValues: (row: Row) => readonly string[],
-): Paginated<Row> => {
-  const hasMore = rows.length > limit
-  const items = hasMore ? rows.slice(0, limit) : rows
-  const last = items[items.length - 1]
-  const nextCursor =
-    hasMore && last !== undefined
-      ? encodeCursor(deps.config.cursorKey, { route, filterHash, sortValues: sortValues(last), now })
-      : null
-  return { items, page: { nextCursor, limit, hasMore } }
-}
+const CREATED_AT_KEYSET = createdAtKeyset<{ readonly id: string; readonly created_at: Date | string }>(
+  (row) => row.created_at,
+)
 
 const adminScope = (userId: string, routeTemplate: string, key: string): IdempotencyScope => ({
   actorScope: `admin:${userId}`,
@@ -267,7 +229,7 @@ const listApplications = async (deps: AdminIdentityDeps, request: FastifyRequest
     createdFrom: query.createdFrom ?? null,
     createdTo: query.createdTo ?? null,
   })
-  const keyset = readKeyset(deps, query.after, APPLICATIONS_ROUTE, filterHash, now)
+  const keyset = keysetFor(deps, query.after, APPLICATIONS_ROUTE, filterHash, now)
 
   const rows = await deps.applicationRepository.queue(deps.database, {
     states: query.status === undefined ? WIRE_STATES : [query.status],
@@ -276,10 +238,15 @@ const listApplications = async (deps: AdminIdentityDeps, request: FastifyRequest
     ...keyset,
     limit: query.limit + 1,
   })
-  const { items, page } = paginate(deps, rows, query.limit, APPLICATIONS_ROUTE, filterHash, now, (row) => [
-    iso(row.created_at),
-    row.id,
-  ])
+  const { items, page } = paginate(
+    deps.config.cursorKey,
+    rows,
+    query.limit,
+    APPLICATIONS_ROUTE,
+    filterHash,
+    now,
+    CREATED_AT_KEYSET,
+  )
   return reply.sendData({ items: items.map(mapApplicationListItem) }, { status: 200, page })
 }
 
@@ -295,7 +262,7 @@ const getApplicationDetail = async (deps: AdminIdentityDeps, request: FastifyReq
 
   const now = deps.clock()
   const filterHash = computeFilterHash({ applicationId })
-  const keyset = readKeyset(deps, query.deliveryAfter, `${APPLICATIONS_ROUTE}/:id/deliveries`, filterHash, now)
+  const keyset = keysetFor(deps, query.deliveryAfter, `${APPLICATIONS_ROUTE}/:id/deliveries`, filterHash, now)
 
   const [consents, reviews, deliveryRows] = await Promise.all([
     deps.applicationRepository.listConsentDetails(deps.database, applicationId),
@@ -307,13 +274,13 @@ const getApplicationDetail = async (deps: AdminIdentityDeps, request: FastifyReq
     }),
   ])
   const { items, page } = paginate(
-    deps,
+    deps.config.cursorKey,
     deliveryRows,
     query.deliveryLimit,
     `${APPLICATIONS_ROUTE}/:id/deliveries`,
     filterHash,
     now,
-    (row) => [iso(row.created_at), row.id],
+    CREATED_AT_KEYSET,
   )
 
   return reply.sendData(
@@ -429,7 +396,7 @@ const listEmailDeliveries = async (deps: AdminIdentityDeps, request: FastifyRequ
     applicationId: query.applicationId ?? null,
     userId: query.userId ?? null,
   })
-  const keyset = readKeyset(deps, query.after, EMAIL_DELIVERIES_ROUTE, filterHash, now)
+  const keyset = keysetFor(deps, query.after, EMAIL_DELIVERIES_ROUTE, filterHash, now)
 
   const rows = await deps.emailDeliveryRepository.adminList(deps.database, {
     ...(query.state === undefined ? {} : { states: [query.state] }),
@@ -439,10 +406,15 @@ const listEmailDeliveries = async (deps: AdminIdentityDeps, request: FastifyRequ
     ...keyset,
     limit: query.limit + 1,
   })
-  const { items, page } = paginate(deps, rows, query.limit, EMAIL_DELIVERIES_ROUTE, filterHash, now, (row) => [
-    iso(row.created_at),
-    row.id,
-  ])
+  const { items, page } = paginate(
+    deps.config.cursorKey,
+    rows,
+    query.limit,
+    EMAIL_DELIVERIES_ROUTE,
+    filterHash,
+    now,
+    CREATED_AT_KEYSET,
+  )
   return reply.sendData({ items: items.map((row) => mapDeliveryAdmin(row, full)) }, { status: 200, page })
 }
 

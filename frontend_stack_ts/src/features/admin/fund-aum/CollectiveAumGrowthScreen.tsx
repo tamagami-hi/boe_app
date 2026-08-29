@@ -16,7 +16,7 @@ import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { useApi } from "~/app/providers/ApiProvider"
 import { toPaise } from "~/domain/money"
-import { useAdminFunds } from "~/features/admin/shared/queries"
+import { useAdminFundCatalogue } from "~/features/admin/shared/queries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { Stat } from "~/ui/patterns/DataList"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
@@ -76,7 +76,7 @@ const useCommit = (): UseMutationResult<
 }
 
 const CollectiveAumGrowthScreen = (): React.ReactElement => {
-  const funds = useAdminFunds({})
+  const funds = useAdminFundCatalogue()
   const preview = usePreview()
   const commit = useCommit()
 

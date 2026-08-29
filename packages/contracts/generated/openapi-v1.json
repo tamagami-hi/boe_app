@@ -1198,7 +1198,7 @@
           {
             "schema": {
               "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{16,1024}$/u"
+              "pattern": "^[A-Za-z0-9_-]{16,1024}[.][A-Za-z0-9_-]{16,1024}$/u"
             },
             "required": false,
             "name": "after",
@@ -1303,11 +1303,38 @@
                         },
                         "idempotencyReplay": {
                           "type": "boolean"
+                        },
+                        "page": {
+                          "type": "object",
+                          "properties": {
+                            "nextCursor": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "pattern": "^[A-Za-z0-9_-]{16,1024}[.][A-Za-z0-9_-]{16,1024}$/u"
+                            },
+                            "limit": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 100
+                            },
+                            "hasMore": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "nextCursor",
+                            "limit",
+                            "hasMore"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "required": [
                         "requestId",
-                        "timestamp"
+                        "timestamp",
+                        "page"
                       ],
                       "additionalProperties": false
                     }
@@ -1383,7 +1410,7 @@
           {
             "schema": {
               "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{16,1024}$/u"
+              "pattern": "^[A-Za-z0-9_-]{16,1024}[.][A-Za-z0-9_-]{16,1024}$/u"
             },
             "required": false,
             "name": "after",
@@ -1587,7 +1614,7 @@
                                 "string",
                                 "null"
                               ],
-                              "pattern": "^[A-Za-z0-9_-]{16,1024}$/u"
+                              "pattern": "^[A-Za-z0-9_-]{16,1024}[.][A-Za-z0-9_-]{16,1024}$/u"
                             },
                             "limit": {
                               "type": "integer",
@@ -2378,10 +2405,19 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 200
+              "maximum": 100
             },
             "required": false,
             "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,1024}[.][A-Za-z0-9_-]{16,1024}$/u"
+            },
+            "required": false,
+            "name": "after",
             "in": "query"
           }
         ],
@@ -2478,11 +2514,38 @@
                         },
                         "idempotencyReplay": {
                           "type": "boolean"
+                        },
+                        "page": {
+                          "type": "object",
+                          "properties": {
+                            "nextCursor": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "pattern": "^[A-Za-z0-9_-]{16,1024}[.][A-Za-z0-9_-]{16,1024}$/u"
+                            },
+                            "limit": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 100
+                            },
+                            "hasMore": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "nextCursor",
+                            "limit",
+                            "hasMore"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "required": [
                         "requestId",
-                        "timestamp"
+                        "timestamp",
+                        "page"
                       ],
                       "additionalProperties": false
                     }
@@ -2797,10 +2860,19 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 200
+              "maximum": 100
             },
             "required": false,
             "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,1024}[.][A-Za-z0-9_-]{16,1024}$/u"
+            },
+            "required": false,
+            "name": "after",
             "in": "query"
           }
         ],
@@ -2934,11 +3006,38 @@
                         },
                         "idempotencyReplay": {
                           "type": "boolean"
+                        },
+                        "page": {
+                          "type": "object",
+                          "properties": {
+                            "nextCursor": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "pattern": "^[A-Za-z0-9_-]{16,1024}[.][A-Za-z0-9_-]{16,1024}$/u"
+                            },
+                            "limit": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 100
+                            },
+                            "hasMore": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "nextCursor",
+                            "limit",
+                            "hasMore"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "required": [
                         "requestId",
-                        "timestamp"
+                        "timestamp",
+                        "page"
                       ],
                       "additionalProperties": false
                     }
@@ -3287,10 +3386,19 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 200
+              "maximum": 100
             },
             "required": false,
             "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,1024}[.][A-Za-z0-9_-]{16,1024}$/u"
+            },
+            "required": false,
+            "name": "after",
             "in": "query"
           }
         ],
@@ -3400,11 +3508,38 @@
                         },
                         "idempotencyReplay": {
                           "type": "boolean"
+                        },
+                        "page": {
+                          "type": "object",
+                          "properties": {
+                            "nextCursor": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "pattern": "^[A-Za-z0-9_-]{16,1024}[.][A-Za-z0-9_-]{16,1024}$/u"
+                            },
+                            "limit": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 100
+                            },
+                            "hasMore": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "nextCursor",
+                            "limit",
+                            "hasMore"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "required": [
                         "requestId",
-                        "timestamp"
+                        "timestamp",
+                        "page"
                       ],
                       "additionalProperties": false
                     }
@@ -3792,7 +3927,7 @@
           {
             "schema": {
               "type": "string",
-              "pattern": "^[A-Za-z0-9_-]{16,1024}$/u"
+              "pattern": "^[A-Za-z0-9_-]{16,1024}[.][A-Za-z0-9_-]{16,1024}$/u"
             },
             "required": false,
             "name": "after",
@@ -3966,7 +4101,7 @@
                                 "string",
                                 "null"
                               ],
-                              "pattern": "^[A-Za-z0-9_-]{16,1024}$/u"
+                              "pattern": "^[A-Za-z0-9_-]{16,1024}[.][A-Za-z0-9_-]{16,1024}$/u"
                             },
                             "limit": {
                               "type": "integer",
@@ -9484,6 +9619,1294 @@
             }
           }
         }
+      }
+    },
+    "/v1/auth/client/web/login": {
+      "post": {
+        "operationId": "clientWebLogin",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "maxLength": 254,
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user": {
+                          "type": "object",
+                          "properties": {
+                            "userId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "fullName": {
+                              "type": "string"
+                            },
+                            "email": {
+                              "type": "string",
+                              "maxLength": 254,
+                              "format": "email"
+                            },
+                            "accountStatus": {
+                              "type": "string",
+                              "enum": [
+                                "active"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "userId",
+                            "fullName",
+                            "email",
+                            "accountStatus"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "csrfToken": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "accessTokenExpiresAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "refreshTokenExpiresAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "user",
+                        "csrfToken",
+                        "accessTokenExpiresAt",
+                        "refreshTokenExpiresAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/client/web/refresh": {
+      "post": {
+        "operationId": "clientWebRefresh",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "rotationId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "rotationId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user": {
+                          "type": "object",
+                          "properties": {
+                            "userId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "fullName": {
+                              "type": "string"
+                            },
+                            "email": {
+                              "type": "string",
+                              "maxLength": 254,
+                              "format": "email"
+                            },
+                            "accountStatus": {
+                              "type": "string",
+                              "enum": [
+                                "active"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "userId",
+                            "fullName",
+                            "email",
+                            "accountStatus"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "csrfToken": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "accessTokenExpiresAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "refreshTokenExpiresAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "user",
+                        "csrfToken",
+                        "accessTokenExpiresAt",
+                        "refreshTokenExpiresAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/client/web/csrf": {
+      "get": {
+        "operationId": "getClientWebCsrf",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user": {
+                          "type": "object",
+                          "properties": {
+                            "userId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "fullName": {
+                              "type": "string"
+                            },
+                            "email": {
+                              "type": "string",
+                              "maxLength": 254,
+                              "format": "email"
+                            },
+                            "accountStatus": {
+                              "type": "string",
+                              "enum": [
+                                "active"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "userId",
+                            "fullName",
+                            "email",
+                            "accountStatus"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "csrfToken": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "csrfTokenExpiresAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "user",
+                        "csrfToken",
+                        "csrfTokenExpiresAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/client/web/logout": {
+      "post": {
+        "operationId": "clientWebLogout",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "loggedOut": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "loggedOut"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/admin/native/login": {
+      "post": {
+        "operationId": "adminNativeLogin",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "maxLength": 254,
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "device": {
+                    "type": "object",
+                    "properties": {
+                      "installationId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80
+                      },
+                      "platform": {
+                        "type": "string",
+                        "enum": [
+                          "android"
+                        ]
+                      },
+                      "appVersion": {
+                        "type": "string",
+                        "pattern": "^[0-9]+[.][0-9]+[.][0-9]+([+-][A-Za-z0-9.-]+)?$/u"
+                      }
+                    },
+                    "required": [
+                      "installationId",
+                      "name",
+                      "platform",
+                      "appVersion"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "email",
+                  "password",
+                  "device"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user": {
+                          "type": "object",
+                          "properties": {
+                            "userId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "fullName": {
+                              "type": "string"
+                            },
+                            "email": {
+                              "type": "string",
+                              "maxLength": 254,
+                              "format": "email"
+                            },
+                            "roles": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "pattern": "^[a-z][a-z0-9_]*$/u"
+                              }
+                            },
+                            "permissions": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "pattern": "^[a-z][a-z0-9_]*(?:[.][a-z][a-z0-9_]*)+$/u"
+                              }
+                            }
+                          },
+                          "required": [
+                            "userId",
+                            "fullName",
+                            "email",
+                            "roles",
+                            "permissions"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "accessToken": {
+                          "type": "string",
+                          "minLength": 100,
+                          "maxLength": 4096
+                        },
+                        "accessTokenExpiresAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "refreshToken": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_-]{43}$/u"
+                        },
+                        "refreshTokenExpiresAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "sessionId": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      },
+                      "required": [
+                        "user",
+                        "accessToken",
+                        "accessTokenExpiresAt",
+                        "refreshToken",
+                        "refreshTokenExpiresAt",
+                        "sessionId"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "x-app-version",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-client-platform",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/auth/admin/native/refresh": {
+      "post": {
+        "operationId": "refreshAdminNativeSession",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "refreshToken": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{43}$/u"
+                  },
+                  "rotationId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "refreshToken",
+                  "rotationId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "accessToken": {
+                          "type": "string",
+                          "minLength": 100,
+                          "maxLength": 4096
+                        },
+                        "accessTokenExpiresAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "refreshToken": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_-]{43}$/u"
+                        },
+                        "refreshTokenExpiresAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "sessionId": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      },
+                      "required": [
+                        "accessToken",
+                        "accessTokenExpiresAt",
+                        "refreshToken",
+                        "refreshTokenExpiresAt",
+                        "sessionId"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "x-app-version",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-client-platform",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/auth/admin/native/logout": {
+      "post": {
+        "operationId": "logoutAdminNativeSession",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "refreshToken": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{43}$/u"
+                  }
+                },
+                "required": [
+                  "refreshToken"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "loggedOut": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "loggedOut"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "x-app-version",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-client-platform",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     },
     "/v1/admin/funds": {
@@ -15836,6 +17259,15 @@
           },
           {
             "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": false,
+            "name": "after",
+            "in": "query"
+          },
+          {
+            "schema": {
               "type": "integer",
               "minimum": 1,
               "maximum": 100
@@ -16068,11 +17500,35 @@
                         },
                         "idempotencyReplay": {
                           "type": "boolean"
+                        },
+                        "page": {
+                          "type": "object",
+                          "properties": {
+                            "nextCursor": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "limit": {
+                              "type": "integer"
+                            },
+                            "hasMore": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "nextCursor",
+                            "limit",
+                            "hasMore"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "required": [
                         "requestId",
-                        "timestamp"
+                        "timestamp",
+                        "page"
                       ],
                       "additionalProperties": false
                     }
@@ -16723,6 +18179,15 @@
           },
           {
             "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": false,
+            "name": "after",
+            "in": "query"
+          },
+          {
+            "schema": {
               "type": "integer",
               "minimum": 1,
               "maximum": 100
@@ -16861,11 +18326,35 @@
                         },
                         "idempotencyReplay": {
                           "type": "boolean"
+                        },
+                        "page": {
+                          "type": "object",
+                          "properties": {
+                            "nextCursor": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "limit": {
+                              "type": "integer"
+                            },
+                            "hasMore": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "nextCursor",
+                            "limit",
+                            "hasMore"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "required": [
                         "requestId",
-                        "timestamp"
+                        "timestamp",
+                        "page"
                       ],
                       "additionalProperties": false
                     }
@@ -17358,6 +18847,15 @@
         "parameters": [
           {
             "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": false,
+            "name": "after",
+            "in": "query"
+          },
+          {
+            "schema": {
               "type": "integer",
               "minimum": 1,
               "maximum": 100
@@ -17495,11 +18993,35 @@
                         },
                         "idempotencyReplay": {
                           "type": "boolean"
+                        },
+                        "page": {
+                          "type": "object",
+                          "properties": {
+                            "nextCursor": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "limit": {
+                              "type": "integer"
+                            },
+                            "hasMore": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "nextCursor",
+                            "limit",
+                            "hasMore"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "required": [
                         "requestId",
-                        "timestamp"
+                        "timestamp",
+                        "page"
                       ],
                       "additionalProperties": false
                     }
@@ -17809,6 +19331,29 @@
                             ],
                             "additionalProperties": false
                           }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
                         },
                         "page": {
                           "type": "object",
@@ -17835,32 +19380,9 @@
                         }
                       },
                       "required": [
-                        "items",
-                        "page"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "error": {
-                      "type": "null"
-                    },
-                    "meta": {
-                      "type": "object",
-                      "properties": {
-                        "requestId": {
-                          "type": "string",
-                          "format": "uuid"
-                        },
-                        "timestamp": {
-                          "type": "string",
-                          "format": "date-time"
-                        },
-                        "idempotencyReplay": {
-                          "type": "boolean"
-                        }
-                      },
-                      "required": [
                         "requestId",
-                        "timestamp"
+                        "timestamp",
+                        "page"
                       ],
                       "additionalProperties": false
                     }
@@ -21651,7 +23173,9 @@
                                 "type": "string",
                                 "enum": [
                                   "native",
-                                  "web"
+                                  "web",
+                                  "client_web",
+                                  "admin_native"
                                 ]
                               },
                               "outcome": {

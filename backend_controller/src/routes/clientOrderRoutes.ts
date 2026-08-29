@@ -25,13 +25,13 @@ import { z } from "zod"
 
 import type { UnitOfWork } from "../db/database.js"
 import type { IdempotencyRepository, IdempotencyScope, Transaction } from "../db/repositories.js"
-import { authenticateNativeRequest, type NativeRequestAuthDeps } from "../domain/auth/nativeAuth.js"
+import { resolveClientPrincipal, type ClientRequestAuthDeps } from "../domain/auth/clientWebAuth.js"
 import { createOrder } from "../domain/client/createOrder.js"
 import { projectOrderStatus } from "../domain/client/clientStatus.js"
 import { newMerchantOrderId } from "../domain/payments/merchantIds.js"
 import { checkoutSecondsRemaining } from "../domain/payments/checkoutExpiry.js"
 import { AppError } from "../http/errorCatalog.js"
-import { executeIdempotent, idempotencyKeySchema } from "../http/idempotencyProtocol.js"
+import { executeIdempotent } from "../http/idempotencyProtocol.js"
 import { parseOrThrow } from "../http/validation.js"
 import type { PaymentGateway } from "../providers/phonepe/paymentGateway.js"
 import { logGatewayFailure, logGatewayUnconfigured } from "../providers/phonepe/gatewayFailure.js"
@@ -39,13 +39,14 @@ import type { AuditWriteRepository } from "../repositories/auditRepository.js"
 import type { OrderWriteRepository } from "../repositories/orderRepository.js"
 import type { PaymentsRepository } from "../repositories/paymentsRepository.js"
 import type { UserWriteRepository } from "../repositories/userRepository.js"
+import { requireIdempotencyKey } from "./adminRouteKit.js"
 
 export interface ClientOrderConfig {
   readonly idempotencyTtlMs: number
   readonly attemptTtlMs: number
 }
 
-export interface ClientOrderDeps extends NativeRequestAuthDeps {
+export interface ClientOrderDeps extends ClientRequestAuthDeps {
   readonly unitOfWork: UnitOfWork
   readonly clock: () => Date
   readonly orderRepository: OrderWriteRepository
@@ -73,18 +74,6 @@ const createOrderBodySchema = z
 
 const iso = (value: Date | string): string => new Date(value).toISOString()
 
-const requireIdempotencyKey = (request: FastifyRequest): string => {
-  const header = request.headers["idempotency-key"]
-  const value = Array.isArray(header) ? header[0] : header
-  const parsed = idempotencyKeySchema.safeParse(value)
-  if (!parsed.success) {
-    throw new AppError("VALIDATION_FAILED", {
-      fields: { "idempotency-key": ["a valid Idempotency-Key header is required"] },
-    })
-  }
-  return parsed.data
-}
-
 const hashRequest = (canonical: Readonly<Record<string, unknown>>): Buffer =>
   createHash("sha256").update(JSON.stringify(canonical)).digest()
 
@@ -98,7 +87,7 @@ const userScope = (userId: string, routeTemplate: string, key: string): Idempote
 })
 
 const postCreateOrder = async (deps: ClientOrderDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await authenticateNativeRequest(request, deps)
+  const principal = await resolveClientPrincipal(request, deps)
   const idempotencyKey = requireIdempotencyKey(request)
   const body = parseOrThrow(createOrderBodySchema, request.body)
   const now = deps.clock()
@@ -158,7 +147,7 @@ const payBodySchema = z.object({
 type CheckoutChannel = z.infer<typeof payBodySchema>["checkoutChannel"]
 
 const postPay = async (deps: ClientOrderDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await authenticateNativeRequest(request, deps)
+  const principal = await resolveClientPrincipal(request, deps)
   const params = parseOrThrow(payParamsSchema, request.params)
   const body = parseOrThrow(payBodySchema, request.body ?? {})
   if (deps.paymentGateway === null) {

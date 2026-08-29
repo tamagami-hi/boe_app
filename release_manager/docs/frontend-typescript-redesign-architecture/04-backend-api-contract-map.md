@@ -90,6 +90,27 @@ cookie if it still verifies, otherwise via `lockByRefreshTokenHash` on the refre
 re-issues a CSRF token, and returns the principal. It is safe without a prior CSRF token
 because `validateWebOrigin` runs first and a cross-origin caller cannot read the JSON.
 
+### Authentication — client web (cookies + CSRF), added in Entry 025
+
+The investor app running in a browser has the same four endpoints under `/v1/auth/client/web/`
+(`login`, `refresh`, `csrf`, `logout`), in `routes/clientWebAuthRoutes.ts`. They share every command
+above: `domain/auth/webAuth.ts` is generic over a `WebAuthScope`, and `CLIENT_WEB_SCOPE` in
+`domain/auth/clientWebAuth.ts` supplies the differences. Request and response shapes match the admin
+family except that the principal is `{userId, fullName, email, accountStatus}` — no roles, no
+permissions — and login has no zero-roles rejection, because the bar is the one `nativeLogin` sets.
+
+What differs, and is the point:
+
+- Session channel `client_web`, not `web`. Every authentication path requires its own channel exactly,
+  so neither audience's cookie authenticates the other's request and neither works as a bearer token.
+- Cookies `__Host-boe_client_access` / `__Host-boe_client_refresh` (unprefixed when `cookieSecure` is
+  false). Same attributes and lifetimes as above.
+- Client feature routes resolve their caller through `resolveClientPrincipal`, which takes the cookie
+  path when the client access cookie is present and the native bearer path otherwise, and requires
+  `x-csrf-token` for every method other than GET/HEAD/OPTIONS.
+
+See D-052 for the isolation argument and Entry 025 for the runtime checks that have not been run.
+
 ## Authentication — native (bearer + device)
 
 All envelope. Module `routes/nativeAuthRoutes.ts`, commands in `domain/auth/nativeAuth.ts`.

@@ -128,6 +128,7 @@ beforeAll(async () => {
       registerClientPortfolioRoutes(instance, {
         accessTokenService,
         database,
+        clientWeb: { originAllowlist: [] },
         clientPortfolioRepository: createClientPortfolioRepository(),
         clientValueEntryRepository: createClientValueEntryRepository(),
         unitOfWork: createUnitOfWork(database),
@@ -137,6 +138,7 @@ beforeAll(async () => {
       registerClientCatalogRoutes(instance, {
         accessTokenService,
         database,
+        clientWeb: { originAllowlist: [] },
         clock: () => new Date(),
         cache: createUncachedCache(),
         config: { cursorKey: randomBytes(32), catalogTtlMs: 0 },

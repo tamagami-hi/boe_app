@@ -6,7 +6,7 @@ import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { toPaise } from "~/domain/money"
 import { useIndividualClientGrowth } from "~/features/admin/shared/adminQueries"
-import { useAdminFunds } from "~/features/admin/shared/queries"
+import { useAdminFundCatalogue } from "~/features/admin/shared/queries"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { Button } from "~/ui/primitives/Button"
@@ -24,7 +24,7 @@ type Mode = "rate" | "amount"
 const today = (): string => new Date().toISOString().slice(0, 10)
 
 const IndividualClientGrowthScreen = (): React.ReactElement => {
-  const funds = useAdminFunds({})
+  const funds = useAdminFundCatalogue()
   const growth = useIndividualClientGrowth()
 
   const [mode, setMode] = useState<Mode>("rate")

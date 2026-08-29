@@ -12,6 +12,7 @@ import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adm
 import { computeAumBasisHash } from "../domain/admin/fundAumGrowth.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { AppError } from "../http/errorCatalog.js"
+import { paginate, readKeyset } from "../http/pagination.js"
 import { parseOrThrow } from "../http/validation.js"
 import type { AdminCatalogRepository, FundListRow } from "../repositories/adminCatalogRepository.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
@@ -25,8 +26,6 @@ import {
   isoOrNull,
   limitSchema,
   optionalIdempotencyKey,
-  paginate,
-  readKeyset,
   reasonCodeSchema,
   runAdminMutation,
   searchSchema,

@@ -8,6 +8,7 @@ import { applicationState } from "~/domain/status"
 import { useAdminApplications } from "~/features/admin/shared/adminQueries"
 import { AdminTable, FilterChip, FilterRow } from "~/features/admin/shared/AdminTable"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
+import { LoadMore } from "~/ui/patterns/LoadMore"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Badge } from "~/ui/primitives/Badge"
@@ -126,6 +127,7 @@ const ApplicationQueueScreen = (): React.ReactElement => {
           />
         )}
       </AsyncBoundary>
+      <LoadMore list={query} noun="applications" />
     </Page>
   )
 }

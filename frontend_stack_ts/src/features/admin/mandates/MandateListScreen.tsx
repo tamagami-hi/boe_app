@@ -9,6 +9,7 @@ import { mandateState, sipState } from "~/domain/status"
 import { useAdminMandates } from "~/features/admin/shared/adminQueries"
 import { AdminTable, FilterChip, FilterRow } from "~/features/admin/shared/AdminTable"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
+import { LoadMore } from "~/ui/patterns/LoadMore"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Card } from "~/ui/primitives/Card"
@@ -151,6 +152,7 @@ const MandateListScreen = (): React.ReactElement => {
               />
             )}
           </AsyncBoundary>
+          <LoadMore list={query} noun="mandates" />
         </>
       )}
     </Page>

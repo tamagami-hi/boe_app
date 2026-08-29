@@ -126,6 +126,7 @@ beforeAll(async () => {
       registerClientEmailVerificationRoutes(instance, {
         accessTokenService,
         database,
+        clientWeb: { originAllowlist: [] },
         unitOfWork,
         clock,
         crypto,
@@ -138,6 +139,7 @@ beforeAll(async () => {
       registerClientPortfolioRoutes(instance, {
         accessTokenService,
         database,
+        clientWeb: { originAllowlist: [] },
         clientPortfolioRepository: createClientPortfolioRepository(),
         clientValueEntryRepository: createClientValueEntryRepository(),
         unitOfWork: createUnitOfWork(database),
@@ -147,6 +149,7 @@ beforeAll(async () => {
       registerClientOrderRoutes(instance, {
         accessTokenService,
         database,
+        clientWeb: { originAllowlist: [] },
         unitOfWork,
         clock,
         orderRepository: createOrderRepository(),

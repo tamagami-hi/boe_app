@@ -10,11 +10,13 @@ import type { ErrorCode } from "../src/errors.js"
 import { ADMIN_CONTENT_OPERATIONS } from "../src/operations/admin-content.js"
 import { ADMIN_FUND_AUM_OPERATIONS } from "../src/operations/admin-fund-aum.js"
 import { ADMIN_MONEY_OPERATIONS } from "../src/operations/admin-money.js"
+import { ADMIN_NATIVE_AUTH_OPERATIONS } from "../src/operations/admin-native-auth.js"
 import { ADMIN_OVERSIGHT_OPERATIONS } from "../src/operations/admin-oversight.js"
 import { APP_OPERATIONS } from "../src/operations/app.js"
 import { CLIENT_ACCOUNT_OPERATIONS } from "../src/operations/client-account.js"
 import { CLIENT_ORDER_OPERATIONS } from "../src/operations/client-orders.js"
 import { CLIENT_SIP_OPERATIONS } from "../src/operations/client-sips.js"
+import { CLIENT_WEB_AUTH_OPERATIONS } from "../src/operations/client-web-auth.js"
 import { CLIENT_OPERATIONS } from "../src/operations/client.js"
 import { NATIVE_AUTH_OPERATIONS } from "../src/operations/native-auth.js"
 import { OPS_OPERATIONS } from "../src/operations/ops.js"
@@ -51,6 +53,8 @@ export const ALL_OPERATIONS: readonly GeneratableOperation[] = Object.freeze([
   ...APP_OPERATIONS,
   ...NATIVE_AUTH_OPERATIONS,
   ...WEB_AUTH_OPERATIONS,
+  ...CLIENT_WEB_AUTH_OPERATIONS,
+  ...ADMIN_NATIVE_AUTH_OPERATIONS,
   ...ADMIN_FUND_AUM_OPERATIONS,
   ...ADMIN_CONTENT_OPERATIONS,
   ...ADMIN_MONEY_OPERATIONS,

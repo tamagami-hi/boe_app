@@ -48,6 +48,7 @@ export default defineConfig({
             if (id.includes("node_modules/react-router")) return "router"
             if (id.includes("node_modules/@tanstack")) return "query"
             if (id.includes("node_modules/zod")) return "zod"
+            if (/node_modules\/(@capacitor|@capgo|@aparajita)\//u.test(id)) return "app"
             return "vendor"
           }
           if (id.endsWith(".css")) return undefined

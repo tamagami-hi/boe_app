@@ -16,6 +16,7 @@ import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { reconcileCollectionFact } from "../domain/payments/reconcileCollectionFact.js"
 import { reconcileMandateFact, type MandateFactDeps } from "../domain/payments/reconcileMandateFacts.js"
 import { AppError } from "../http/errorCatalog.js"
+import { paginate, readKeysetValues } from "../http/pagination.js"
 import { parseOrThrow } from "../http/validation.js"
 import { logGatewayFailure } from "../providers/phonepe/gatewayFailure.js"
 import type { RecurringPaymentGateway } from "../providers/recurringPaymentGateway.js"
@@ -31,8 +32,6 @@ import {
   iso,
   isoOrNull,
   limitSchema,
-  paginate,
-  readKeysetValues,
   reasonDetailSchema,
   requireIdempotencyKey,
   runAdminMutation,
@@ -267,37 +266,43 @@ const listMandates = async (deps: AdminMandateDeps, request: FastifyRequest, rep
   requireAnyPermission(principal, ["payments.read"])
   const query = parseOrThrow(listQuerySchema, request.query)
 
+  const now = deps.clock()
   const filterHash = computeFilterHash({ state: query.state ?? null, attention: query.attention ?? null })
-  const afterCursor = (request.query as Record<string, unknown>).after
   const afterValues = readKeysetValues(
     deps.config.cursorKey,
-    typeof afterCursor === "string" ? afterCursor : undefined,
+    query.after,
     MANDATES_ROUTE,
     filterHash,
-    deps.clock(),
+    now,
   )
+  const afterUpdatedAt = afterValues[0]
+  const afterId = afterValues[1]
   const afterPosition =
-    afterValues.length === 2
-      ? { updatedAt: new Date(afterValues[0] as string), id: afterValues[1] as string }
-      : undefined
+    afterUpdatedAt === undefined || afterId === undefined
+      ? undefined
+      : { updatedAt: new Date(afterUpdatedAt), id: afterId }
 
   const listInput = {
-    limit: query.limit,
+    /*
+     * One row past the page so `paginate` can tell whether another page exists;
+     * without the over-fetch every response claimed to be the last one.
+     */
+    limit: query.limit + 1,
     attention: query.attention === "true",
     ...(query.state === undefined ? {} : { state: query.state }),
     ...(afterPosition === undefined ? {} : { after: afterPosition }),
   }
   const rows = await deps.adminMandateRepository.listMandates(deps.database, listInput)
-  const page = paginate(
+  const { items, page } = paginate(
     deps.config.cursorKey,
     rows,
     query.limit,
     MANDATES_ROUTE,
     filterHash,
-    deps.clock(),
+    now,
     (row) => [iso(row.updatedAt), row.id],
   )
-  return reply.sendData({ items: page.items.map(mapListRow), page: page.page }, { status: 200 })
+  return reply.sendData({ items: items.map(mapListRow) }, { status: 200, page })
 }
 
 const getMandateDetail = async (deps: AdminMandateDeps, request: FastifyRequest, reply: FastifyReply) => {

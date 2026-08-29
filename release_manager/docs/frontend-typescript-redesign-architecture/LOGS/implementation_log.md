@@ -1602,3 +1602,962 @@ passes 74 files / 676 tests, and `npx eslint src/routes/clientEmailVerificationR
   `localStorage` alone.
 - **The rendered percentages were not seen.** Fund detail sector allocation, admin fund holdings,
   dashboard and portfolio return cells were checked by type and test only, not on screen.
+
+
+
+## Entry 022 — the app-update gate, a real device lock, and the Capacitor bridge nothing had ever registered
+
+2026-08-30. Known gaps 2 and 3 from `README.md` closed, plus the wiring defect underneath both.
+
+**Task:** [`TASK/018-app-update-gate-and-device-lock.md`](../TASK/018-app-update-gate-and-device-lock.md)
+**Decisions:** D-040, D-041, D-042
+**Scope:** `frontend_stack_ts/` only. `backend_controller/` and `packages/contracts/` untouched —
+`GET /v1/app/update` and the `getAppUpdate` descriptor already existed and were read as given.
+
+### The defect under the defects
+
+`src/platform/capacitor.ts` reads `window.Capacitor.Plugins[name]`. That object is written by exactly
+one function, `registerPlugin` in `@capacitor/core` (`dist/index.js:174`), and **nothing in `src/`
+had ever imported `@capacitor/core` or any plugin package**. `@capacitor/android`'s injected
+`native-bridge.js` does not populate `Plugins` from `PluginHeaders` — it only reads it, and warns
+when `cap.Plugins.App` is missing. So on a device `Plugins` was `{}` and every native wrapper
+resolved to `null`:
+
+- `lifecycle.ts` — no `backButton`, `resume`, `pause` or `appStateChange` subscription ever
+  attached, so `NativeBackCoordinator` was inert.
+- `systemChrome.ts` — `applySystemChrome` was two silent `tryCallPlugin` no-ops.
+- `openExternal.ts` — always the `window.open` fallback, never the in-app Browser.
+- `secureStorage.ts` — `available()` false, so native token persistence had nothing behind it.
+
+Entry 019's device run did not catch this because it could not: "Back on the root screen exits to
+the launcher" is Capacitor's *default* behaviour when no JS `backButton` listener exists, and the
+status-bar seam was fixed in `colors.xml`, not through the `SystemBars` call. Two green observations,
+neither of which exercised the bridge.
+
+`src/platform/plugins.ts` now registers `App`, `AppUpdate` and `NativeBiometric` and is called from
+`main.tsx` before the shell chunk loads. Three explicit names rather than importing each plugin
+package, for the reasons in D-040 — chiefly that `AppUpdate` has no npm package to import, and that
+the web shims would start firing lifecycle events in browsers that have never had them.
+
+### The app-update gate
+
+`src/platform/appUpdate.ts` wraps the plugin in the existing style — `isNative()`, `callPlugin`,
+`platformError` — with `readInstalledApp`, `canInstallUpdates`, `requestInstallPermission`,
+`downloadUpdate`, `installUpdate` and `onDownloadProgress`.
+
+The SHA-256 is now refused in three independent places. `installableRelease` returns `null` unless
+the digest matches `/^[a-f0-9]{64}$/`; `downloadUpdate` throws `INVALID_ARGUMENT` before it reaches
+the bridge; `AppUpdatePlugin.java` already rejected a missing `sha256`. The wrapper also compares
+the digest the plugin echoes back against the one it asked for, and requires `https`.
+
+`src/features/app-update/updateDecision.ts` is pure, and it does **not** treat `mandatory` as a
+refinement of `updateAvailable`. The backend computes them from different inputs: `mandatory`
+compares the running `version` against the published `minimumSupportedVersion`, `updateAvailable`
+compares the running `versionCode` against the newest APK on the mount. `mandatory: true,
+latest: null` is therefore reachable, and the blocking screen says so plainly rather than letting an
+unsupported build through (D-042).
+
+`src/app/native/AppUpdateGate.tsx` is mounted in both shell roots *inside* `ApiProvider` — it needs
+the transport, and `AppProviders` is `ApiProvider`'s parent, not its descendant. Mandatory replaces
+the children; optional renders the children plus a dismissible sheet keyed on `versionCode`, so
+dismissing one release does not silence the next. The query is `enabled: canCheckForUpdates()` and
+`retry: false`: a failed check must never block the app, or an unreachable server becomes
+indistinguishable from a mandatory update.
+
+### The device lock
+
+`securityStore.ts` had hashed and verified a PIN since Phase 9 with no caller outside the settings
+screen, and `@capgo/capacitor-native-biometric` sat in both allowlists imported by nothing, so the
+biometric switch wrote a flag and promised a protection that did not exist.
+
+`src/platform/biometric.ts` adds `readBiometricCapability()` — `isAvailable({ useFallback: false })`,
+so a device PIN/pattern does not masquerade as an enrolled biometric — and `verifyBiometric()`,
+which maps the plugin's error codes to `cancelled | unavailable | failed`. `DeviceSecurityScreen`
+now offers the switch only when the device reports an enrolment, names the modality it found, and
+switches a stale `on` flag back off when it finds none.
+
+`lockDecision.ts::shouldLock` is the whole policy, pure and tested: never off-device, never without
+an enrolment, always on cold start, and on resume once 120 s away is reached. Every case where the
+time away cannot be established — no recorded departure, a non-finite timestamp, a clock that moved
+backwards — locks rather than passes.
+
+`deviceLock.ts` holds the state as a module-level store with subscribers, in the same shape as
+`systemChrome.ts`, precisely so `NativeBackCoordinator` can consult it without a provider-order
+dependency. The Back handler returns *before* `dismissTop()`, because the lock is deliberately not an
+overlay-stack entry: registering it would have made hardware Back dismiss it, which is the exact
+bypass the requirement names. The "I have forgotten this PIN" confirmation is inline for the mirror
+reason — `ConfirmDialog` portals to `document.body` at `z-overlay` (900) and would have rendered
+behind the lock layer at `z-toast` (1000).
+
+`DeviceLockGate` sits above `ToastProvider` in `AppProviders` so its layer is last in the DOM and
+wins the `z-toast` tie against the toast region.
+
+The lock engages before the session resolves, so no authenticated frame is painted first; the
+forgotten-PIN path removes the PIN and signs out locally, so that choice cannot brick an install
+(D-041). The honesty copy is unchanged byte for byte and now appears on the lock screen too, read
+from one place (`features/device-security/copy.ts`) instead of being duplicated.
+
+### Verified — TESTED
+
+From `frontend_stack_ts`:
+
+- `npx tsc -p tsconfig.json --noEmit` — clean.
+- `npx eslint .` — clean.
+- `npx vitest run` — 15 files, 159 tests. Three new files: `updateDecision.test.ts` (11) covering
+  mandatory-versus-optional, the unsatisfiable floor, and every reason a release is refused;
+  `lockDecision.test.ts` (8) covering enrolment, platform, the threshold boundary in both
+  directions, an explicit threshold, and the four unknowable-time cases;
+  `plugins.test.ts` (5) asserting no bridged plugin is reachable before registration and all three
+  are after.
+- `VITE_BEO_APP_TARGET=client npx vite build` — built, `app` chunk 232.17 kB (was 231.08 kB before
+  this entry), CSS 84.65 kB, `vendor` 8.19 kB now carrying `@capacitor/core`.
+- `check-bundle-boots` — 7 chunks, no error. `check-android-dist --variant=client` — 16 assets,
+  837,629 B, no cross-target leakage.
+- `packages/contracts` `check:frontend-contract-bypass` — 94 operations, no bypass. No contract or
+  generated-client change was needed; `getAppUpdate` was already generated and simply unused.
+- The lifecycle guard was **negative-tested**: deleting `.catch(() => undefined)` from
+  `lifecycle.ts::subscribe` makes `vitest run` exit 1 with four `UNIMPLEMENTED` unhandled
+  rejections, because the bridge is now live in a browser too. Restored.
+
+### Not verified — UNVERIFIED
+
+Nothing here has run on a device, and this entry changes device behaviour more than it changes web
+behaviour. Every item below needs an APK.
+
+- **The whole update flow.** On the VPS, publish a client APK to the release mount and, from an
+  installed older build: confirm the sheet appears, that `downloadUpdate` reports progress, that the
+  file lands in `getCacheDir()/updates/update.apk`, and that the system installer opens. Then
+  corrupt the published `sha256` in the sidecar and confirm the download **fails closed** with "The
+  downloaded update could not be matched to the digest it was checked against" and that no installer
+  opens. That last check is the only one that proves the point of this work.
+- **The mandatory branch.** Publish `minimumSupportedVersion` above the installed build and confirm
+  the app blocks before any authenticated screen paints. Then publish a floor no artifact satisfies
+  and confirm the "nothing to download" copy with a working Check again.
+- **`Install unknown apps` permission.** Revoke it for BeOnEdge and confirm the
+  needs-permission branch opens the settings page and that "I have allowed it" then proceeds.
+- **The biometric prompt.** Enrol a fingerprint, switch the toggle on, background the app past
+  120 s, and confirm the prompt appears on resume and that cancelling it leaves the PIN pad usable.
+  Then remove every enrolment and confirm the toggle is disabled with the unenrolled hint and that
+  the stored flag is cleared.
+- **The lock itself.** Cold start with a PIN set must show the lock with no dashboard frame behind
+  it. Background for under 120 s and confirm no lock; over 120 s and confirm one. Press hardware
+  Back on the lock screen and confirm nothing happens — this is the assertion `vitest` cannot make.
+- **That `NativeBackCoordinator` now works at all.** It has never run. Doc 08's five Back rules
+  should be walked through on device, because until this entry the coordinator was never reached and
+  Capacitor's default was answering instead.
+- **`applySystemChrome` and `openDestination` on device.** Both now issue real plugin calls for the
+  first time. The status bar was already the right colour for a different reason (D-034), so a
+  regression here would be invisible on the emulator that was used before.
+
+### Follow-ups
+
+- `secureStorage.ts` asks the bridge for `"SecureStoragePlugin"`. The package registers, and its
+  Java class annotates, `"SecureStorage"`. The name has never matched, so native token persistence
+  has never had a backing store. Not fixed here: it moves client bearer tokens on Android and wants
+  its own task with a device. See D-040.
+- The optional-update sheet can appear over the splash screen during session restore, because the
+  feed query fires on mount. It is dismissible and honest, but a delay until the session resolves
+  would read better.
+
+
+## Entry 023 — cursor pagination end to end, and the cursor scalar that rejected every real cursor
+
+Closes known gap 1 from `README.md`: `src/api/cursor.ts` had no consumer outside `api/envelope.ts`,
+so every list in the product read one fixed page and stopped. Touches `backend_controller/`,
+`packages/contracts/` and `frontend_stack_ts/`. Decisions: D-043, D-044, D-045. Task: `TASK/019`.
+
+### The defect under the defect — `Cursor` could not match a cursor
+
+`packages/contracts/src/scalars.ts` defined
+
+```
+export const Cursor = z.string().regex(/^[A-Za-z0-9_-]{16,1024}$/u)
+```
+
+but `backend_controller/src/http/cursor.ts` mints `base64url(payload).base64url(HMAC)` — one dot,
+always. The alphabet class excludes `.`, so the scalar rejected every token the backend can produce.
+
+This was not theoretical. `listClientFunds` and `listClientOrders` already declared
+`createPaginatedSuccessEnvelopeSchema`, whose `meta.page.nextCursor` is `Cursor.nullable()`, and
+`src/api/http.ts` parses the success envelope with `safeParse` and throws `TransportError("malformed")`
+when it fails. So the moment a second page of funds or orders existed, the *first* page would have
+failed contract validation and the screen would have shown an error state. It had never fired because
+neither list has yet exceeded 25 rows in any environment this ran in. Fixed to
+`/^[A-Za-z0-9_-]{16,1024}[.][A-Za-z0-9_-]{16,1024}$/u`, with the scalar test rewritten to assert the
+two-part shape and to reject a bare body, a short half, and a three-part token.
+
+### One paginator, not seven
+
+`paginate`/`readKeyset`/`readKeysetValues` lived in `routes/adminRouteKit.ts`, and
+`routes/adminIdentityRoutes.ts` carried a second private copy while `clientPortfolioRoutes.ts` and
+`clientCatalogRoutes.ts` open-coded the same over-fetch inline. Doc 04 already flagged the
+`requireIdempotencyKey` quadruplication; this was the same shape one layer down.
+
+They now live in `src/http/pagination.ts` alongside `MAX_PAGE_LIMIT`/`DEFAULT_PAGE_LIMIT` and a
+`createdAtKeyset` projection, and the seven route modules import from there. `adminRouteKit` re-exports
+nothing of it and `MAX_ADMIN_LIMIT` is now derived from `MAX_PAGE_LIMIT` rather than a second literal
+`100`. `adminIdentityRoutes`' duplicate is deleted.
+
+### Defect — the mandate list could never report a next page
+
+`adminMandateRoutes.ts::listMandates` passed `limit: query.limit` to the repository, but
+`adminMandateRepository.listMandates` was itself appending `+ 1` to the SQL limit. `paginate` then
+compared `rows.length > limit` against a row set that had *not* been over-fetched from its own point
+of view — the extra row existed, so `hasMore` happened to work, but the two halves disagreed about
+whose job the over-fetch was, and the repository's contract was invisible at the call site. The
+repository now takes the caller's budget verbatim, like every other list repository in the codebase,
+and the route asks for `limit + 1`.
+
+The same route also emitted `page` inside `data`, alone among nine admin lists that put it in
+`meta.page`. Moved to `meta`, contract and integration test with it.
+
+### What now pages
+
+Backend routes that gained the opaque cursor (`after` query param, `meta.page` response, keyset
+predicate in SQL, all parameterised):
+
+| Route | Sort tuple | Filters bound into the cursor |
+| ----- | ---------- | ----------------------------- |
+| `GET /v1/client/transactions` | `(created_at, id) desc` | userId |
+| `GET /v1/client/notifications` | `(created_at, id) desc` | userId |
+| `GET /v1/client/payments` | `(created_at, id) desc` | userId, resolved states, success projection |
+| `GET /v1/client/support/tickets` | `(created_at, id) desc` | userId |
+| `GET /v1/admin/fund-receipts` | `(created_at, id) asc` | state |
+| `GET /v1/admin/refunds` | `(created_at, id) desc` | state |
+| `GET /v1/admin/payments` | `(created_at, id) desc` | none |
+
+Already paged on the backend and left alone: admin applications, application deliveries, email
+deliveries, users, per-user login events, audit log, FAQs, funds, AUM history, mandates, client funds,
+client orders.
+
+Three client repositories gained keyset parameters (`clientAccountRepository`,
+`clientValueEntryRepository`). The three admin repositories already accepted `afterCreatedAt`/`afterId`
+— only their routes were ignoring them.
+
+`GET /v1/client/notifications` previously computed `unreadCount` by filtering the rows it had just
+returned. Under pagination that would have meant "unread in this page", so it is now a `COUNT(*)`
+over the account. See D-045.
+
+### The frontend: one hook, one affordance
+
+`src/api/paged.ts` — `usePagedQuery` over TanStack `useInfiniteQuery`. `queryKey` must carry every
+active filter, which is what makes a filter change start a fresh chain rather than append to a cursor
+the backend will refuse; `getNextPageParam` is the existing `nextPageParam(meta.page)`; `mergePages`
+concatenates `items` and keeps page one's sibling fields (`unreadCount`, `summary`) because those
+describe the whole set, not the page. The returned object is structurally an `AsyncQuery`, so every
+`AsyncBoundary` call site type-checks unchanged and the **existing refreshing affordance appears while
+the next page is in flight** — `isFetching` is true during `fetchNextPage`.
+
+`src/ui/patterns/LoadMore.tsx` is the only Load more in the product. It renders nothing when
+`hasMore` is false and otherwise states `Showing the first N <noun>. There are more.` above the button,
+so a partial list is never presented as a complete one. Classes come from `LOAD_MORE_ROOT` (new, in
+`recipes/state.ts`) and the existing `META_MUTED`; a `LOAD_MORE_NOTE` was written and then removed
+because `recipes.test.ts` forbids two names for one class string and `META_MUTED` already was it.
+
+Page size is now 25 everywhere it used to be 100.
+
+### Verified — TESTED
+
+From `frontend_stack_ts`:
+
+- `npx tsc -p tsconfig.json --noEmit` — clean.
+- `npx eslint .` — clean.
+- `npx vitest run` — 16 files, 165 tests. New: `src/api/paged.test.ts` (6) covering the first read
+  with no cursor, appending page two at the cursor the server gave, the filter reset, `mergePages`
+  field precedence, and `clampPageLimit`.
+- The filter-reset test was **negative-tested**: replacing `queryKey: ["probe", filter]` with
+  `["probe"]` makes exactly that test fail, so it is testing the thing it claims to.
+- `VITE_BEO_APP_TARGET=client npx vite build` — built, `app` chunk 232.66 kB, CSS 84.65 kB.
+
+From `packages/contracts`: `typecheck`, `lint`, `test:coverage` (95 tests), `build`, `test:exports`,
+`lint:openapi` and `check:frontend-contract-bypass` all pass; the bypass gate reports 94 contracted
+operations and 94 in the generated client. `generated/openapi-v1.{json,d.ts}` were regenerated and
+`npm run generate` is idempotent against the committed sources.
+
+From `backend_controller`: `npx tsc -p tsconfig.json --noEmit` clean including `test/integration/**`;
+`npx eslint .` clean; `npx vitest run --exclude 'test/integration/**'` — 76 files, 726 tests. New:
+`src/http/pagination.test.ts` (11) covering the over-fetch, the last page, the empty page, that the
+cursor points at the last *kept* row, and that a cursor is refused across routes, across filter sets,
+under another key, and when it carries no position; `src/routes/pagedQueries.schema.test.ts` (39)
+running the same battery over all seven paged query schemas — default limit, cursor accepted verbatim,
+empty cursor refused rather than silently read as page one, limit coercion and both bounds, and
+`offset`/`page` rejected as unknown keys.
+
+### Not verified — UNVERIFIED
+
+No paginated route has been executed against PostgreSQL. `vitest run` does not touch SQL, and the
+integration tests that would (`test/integration/**`) need testcontainers. Specifically unproven:
+
+- **Every new keyset predicate.** They follow the pattern already shipping in `refundRepository` and
+  `fundReceiptAcknowledgementRepository` — `(${ts}::timestamptz is null or (created_at, id) < (${ts}, ${id}))`
+  — where the second placeholder is an untyped `null` on the first page and relies on PostgreSQL
+  resolving each element of the row comparison against the column types. That inference is what makes
+  the clause legal, and it has only been read, not executed, for `notifications`, `payments`,
+  `support_requests` and `client_value_entries`.
+- **That page two actually excludes page one.** Ordering and the comparison direction agree by
+  inspection (`desc` with `<`, and `asc` with `>` for the receipt queue) but no query has run.
+- **The `COUNT(*)` unread query.**
+- **The mandate list's over-fetch change.** `adminMandate.integration.test.ts` asserts
+  `hasMore === true` with `limit=1` and two mandates and now reads `meta.page`; it has not been run.
+
+On the VPS, after deploying, this is the check that matters — it proves the cursor chain, the filter
+binding and the refusal in one pass:
+
+```
+# a client bearer token in $T, against the deployed API base
+curl -s -H "authorization: Bearer $T" "$API/v1/client/payments?limit=1" \
+  | tee /tmp/p1.json | jq '{items: [.data.items[].id], page: .meta.page}'
+C=$(jq -r '.meta.page.nextCursor' /tmp/p1.json)
+curl -s -H "authorization: Bearer $T" "$API/v1/client/payments?limit=1&after=$C" \
+  | jq '{items: [.data.items[].id], page: .meta.page}'
+# the same cursor under a different filter must be refused, not silently restarted
+curl -s -H "authorization: Bearer $T" "$API/v1/client/payments?limit=1&status=confirmed&after=$C" \
+  | jq '{ok, code: .error.code}'   # expect ok:false, CURSOR_INVALID
+```
+
+Repeat the third call shape for `/v1/admin/refunds?state=failed` then `state=refunded`, and for
+`/v1/admin/fund-receipts?state=pending` then `state=acknowledged`, using the admin cookie pair.
+
+### Follow-ups
+
+- `AdminPageMeta` in `operations/admin-shared.ts` and `PageMeta` in `envelope.ts` are two schemas for
+  one wire shape; the admin one types `nextCursor` as a bare `z.string()`, so admin responses do not
+  get the scalar's shape check. Ten admin operations reference it. Left alone here to keep this entry's
+  blast radius on pagination rather than on a schema rename. See D-044.
+- There is still no count endpoint anywhere, so the admin Overview tiles read `25+` rather than a
+  queue depth (D-043). If a real depth is wanted, that is a backend addition, not a frontend fix.
+- `GET /v1/client/statements`, `GET /v1/client/support/faqs`, `GET /v1/client/research-context` and
+  `GET /v1/admin/funds/:id/stocks` remain one-shot on purpose — see D-043 for each reason.
+
+
+## Entry 024 — Phase 13 backend cleanup, and the four items doc 10 was wrong about
+
+Closes known gap 6 from `README.md`, partially. Decisions: D-046 to D-050. Task: `TASK/020`.
+
+Scope: `backend_controller/` only, plus one file under `.claude/`. The instruction was doc 10's
+"Phase 13 — Backend cleanup" list, treated as authority for *what* to look at and not for whether
+each item was actually dead. Ten items were audited. **Five were removed or consolidated. Five were
+kept**, four of them because the doc's premise was false.
+
+The audit method for every item was the same: grep the whole repository — `src/`, `test/`,
+`scripts/`, `db/migrations/`, the guard tests, `package.json` scripts, the compose files, and
+`frontend_stack_ts/` — for every identifier and every route literal, before touching anything.
+
+### Removed
+
+**`src/auth/sessionTokens.ts` and its test.** `parseSessionTokenKeys` and
+`createSessionTokenService` had exactly one consumer: `sessionTokens.test.ts`. The live web and
+native session paths hash refresh and CSRF tokens through `src/auth/refreshDerivation.ts`
+(`hashToken`), imported by `domain/auth/webAuth.ts` and `domain/auth/nativeAuth.ts`. The keyed-HMAC
+design here was never in force: `CRYPTO_REFRESH_TOKEN_KEY`, `CRYPTO_REFRESH_TOKEN_KEY_VERSION`,
+`CRYPTO_CSRF_TOKEN_KEY` and `CRYPTO_CSRF_TOKEN_KEY_VERSION` appear nowhere in the repository outside
+this module and its test — not in `.env.example`, not in `.env.production.example`, not in
+`runtime/composition.ts`, not in `scripts/generate-deploy-secrets.ts`. Nothing orphaned: the three
+`crypto/primitives.ts` helpers it used (`generateOpaqueToken`, `hmacSha256`, `bytesEqual`) all have
+other callers.
+
+Both paths were added to `legacy-deletion.guard.test.ts` so the dormant alternative cannot come
+back, and the stale `BE-009d` comment in that file — which named `sessionTokens.ts` as the
+replacement for `security/tokens.js` — now names `refreshDerivation.ts`.
+
+**`PUT` from the CORS allowed-methods list.** `src/http/cors.ts` advertised
+`GET, POST, PATCH, PUT, DELETE, OPTIONS`. No route registers `PUT`: the only method registrations in
+`src/routes/**` are `application.{get,post,patch,delete}`, and the only method string literals
+anywhere in `src/` are `"GET"`, `"POST"` and `"OPTIONS"`. `cors.test.ts` asserts
+`GET, POST, PATCH, DELETE` and never mentions `PUT`. The behaviour change is confined to a preflight
+for a method that would have 404'd.
+
+**`user_credentials.locked_until` from `src/db/types.ts`.** No reader and no writer in `src/`,
+`test/` or `scripts/`. **The column itself was not dropped** and no migration was written — see
+D-048 for why, and for why its two equally-dead neighbours were left in the type.
+
+**The provider-event inbox drain — all three methods, not just `claimReceived`.**
+`providerEventInboxRepository.claimReceived`, `.reschedule` and `.deadLetter` each had zero
+consumers anywhere. The instruction named only `claimReceived`; removing it alone would have left
+`reschedule` (`processing -> received`) and `deadLetter` reachable only from a claim that no longer
+existed, which is the dormant-fragment state the forward-only rule exists to prevent. See D-050.
+The `provider_events` columns and states that supported the drain were **not** touched.
+
+**`.claude/agent-memory/node-backend-engineer/project_razorpay_test_integration.md`.** Deleted. It
+asserted that Razorpay test orders were "the real (not stub) payment integration target" and
+instructed any agent to wrap new financial POSTs in `withIdempotency(...)` from
+`src/http/idempotency.js` — a module that `legacy-deletion.guard.test.ts` asserts stays deleted, in
+a repository whose only payment provider is PhonePe. It was the sole entry in `MEMORY.md`, so
+`MEMORY.md` was rewritten to an empty index that names the real mechanism
+(`http/idempotencyProtocol.ts::executeIdempotent`). `.claude/` is gitignored, so this is a
+working-tree deletion with no commit.
+
+### Consolidated
+
+**Three duplicate `requireIdempotencyKey` bodies.** `routes/clientAutoPaySipRoutes.ts:72`,
+`routes/clientOrderRoutes.ts:76` and `routes/adminIdentityRoutes.ts:129` each defined a private copy
+of the helper already exported from `routes/adminRouteKit.ts:37`. All four were behaviourally
+identical — same header read, same array-first coercion, same `idempotencyKeySchema.safeParse`, same
+`VALIDATION_FAILED` with the same `fields` payload; the only differences were line wrapping. The
+three locals are gone and all three files now import the shared one. Each also dropped its now-unused
+`idempotencyKeySchema` import.
+
+Checked before doing it: `investment-architecture.guard.test.ts:182` asserts the *text*
+`requireIdempotencyKey` appears in `adminAumRoutes.ts` and `adminClientGrowthRoutes.ts` — neither is
+one of the three, and the identifier survives in the three anyway. The §4.1 dependency-wall test
+scans each module's source for forbidden domain words; the added text `"./adminRouteKit.js"` matches
+none of `allocation|clientValue|client_value|aum|growth|payment|review`. The `adminRouteKit` name is
+now imported by two client route modules, which reads oddly — noted as a follow-up, not renamed here.
+
+### Kept, with the evidence that the doc was wrong
+
+**`optionalIdempotencyKey` is not unused.** Doc 10 lists it as dead. It has three live consumers:
+`adminOversightRoutes.ts:148`, `adminContentRoutes.ts:224` and `adminCatalogRoutes.ts:151`. Deleting
+it would have broken three admin write paths. Doc 10's row is stale and should be struck.
+
+**`adminFundGrowthPreviewRoutes.ts` is a live endpoint with a live caller.** It is registered at
+`runtime/composition.ts:463`, serves `POST /v1/admin/aum/growth/collective/preview`, is exercised by
+`test/integration/adminAum.integration.test.ts:189`, and
+`frontend_stack_ts/src/features/admin/fund-aum/CollectiveAumGrowthScreen.tsx:52` calls it through
+`previewAdminCollectiveAumGrowth`. Removing the module would remove the preview half of the
+preview-then-commit protocol from the admin console. See D-049.
+
+**`mandateReconciliationWorker` is wired.** Doc 10 and doc 01 both describe it as having "no
+dedicated entrypoint, no compose service, and no health check", which is true and reads as though
+it therefore does not run. It does: `runMandateReconciliationPass` is called from
+`composePaymentReconciliationWorker`'s `runOnce` at `runtime/composition.ts:698`, inside
+the pass that `worker:payments` → `src/paymentReconciliationEntrypoint.ts` executes and records a
+`payment_reconciliation` heartbeat for. It is co-hosted, not unwired. See D-047.
+
+**The refund machinery stays whole.** Doc 10's premise — nothing creates a refund row — is correct:
+`refundRepository.create` has no production caller, only `test/integration/paymentSettlement`.
+Everything else is live. `adminFundReceiptRoutes.ts` serves the refund list (`listPage`), the admin
+requeue (`requeue`) and the reconcile-now action; `paymentReconciliationWorker.ts` claims and settles
+refunds through `lockDueRefunds`/`markRefunded`/`markFailed`/`markStatusChecked`;
+`domain/payments/applyRefundOutcome.ts` applies provider callbacks; and
+`frontend_stack_ts/src/features/admin/refunds/RefundQueueScreen.tsx` is a shipped screen reading it
+via `useAdminRefunds` behind `refunds.write`. Removing the machinery would delete a working admin
+surface to resolve a product question. See D-048; this is still D6 in doc 10's decision log.
+
+### How it was verified — TESTED
+
+In `backend_controller/`:
+
+- `npx tsc -p tsconfig.json --noEmit` — clean. `tsconfig.json`'s `include` covers `scripts/**`,
+  `src/**`, `test/**` and both vitest configs, so the integration tests still compile.
+- `npx eslint .` — clean, no output. Re-run over the seven touched files with
+  `--rule '{"@typescript-eslint/no-unused-vars":"error"}'` explicitly, to prove no import was
+  orphaned by a deletion.
+- `npx vitest run --config vitest.config.ts` — 75 files, 724 tests, all passing. The config's
+  `include` is `src/**/*.test.ts`, so `test/integration/**` is already outside it; no exclude flag
+  was needed. Down from 76 files / 726 tests purely by the removal of `sessionTokens.test.ts`.
+- `npm run build` (`tsc -p tsconfig.build.json`) — clean.
+
+**Concurrency caveat.** The clean `tsc` and `build` runs above were taken on a tree containing this
+entry's changes and the cursor-pagination changes, and *before* the client-cookie-session work
+(D-052's `domain/auth/clientWebAuth.ts`, `SessionChannel = "client_web"`, migration
+`046_client_web_sessions.sql`) landed in the same working tree. `tsc` on the tree as left reports
+errors in `domain/auth/webAuth.ts` and `runtime/composition.ts` only — both mid-edit by that work,
+neither touched here. `eslint .` and the 724 unit tests still pass on the tree as left. No file this
+entry changed appears in the type-error list.
+
+### Not verified — UNVERIFIED
+
+- **No route was executed.** No PostgreSQL, no HTTP request, no worker pass. The three consolidated
+  call sites are argued identical by reading four copies of the same eight lines; nothing has sent an
+  `Idempotency-Key` header, or omitted one, through the shared helper on those routes. The check that
+  would prove it, on the VPS after deploying:
+
+```
+# a client bearer token in $T; expect 400 VALIDATION_FAILED with fields."idempotency-key"
+curl -s -X POST "$API/v1/client/orders" -H "authorization: Bearer $T" \
+  -H 'content-type: application/json' -d '{"fundId":"<uuid>","amountPaise":"100000"}' \
+  | jq '{ok, code: .error.code, fields: .error.fields}'
+# then the same call with a key, twice, and confirm one order — not two
+K=$(uuidgen)
+for i in 1 2; do curl -s -X POST "$API/v1/client/orders" -H "authorization: Bearer $T" \
+  -H "idempotency-key: $K" -H 'content-type: application/json' \
+  -d '{"fundId":"<uuid>","amountPaise":"100000"}' | jq -r '.data.id'; done
+# repeat the missing-key shape for POST /v1/client/sip-autopay and
+# POST /v1/admin/applications/:id/decision (admin cookie pair + x-csrf-token)
+```
+
+- **The CORS preflight.** `cors.test.ts` passes, but the header a browser actually receives has not
+  been observed. `curl -i -X OPTIONS "$API/v1/health" -H "origin: https://localhost" -H
+  "access-control-request-method: POST"` should show `access-control-allow-methods` without `PUT`.
+- **That nothing reads `user_credentials.locked_until` at runtime.** The evidence is a grep over
+  authored source. A raw `select *` would still return the column; the Kysely type no longer
+  declares it, which is a compile-time narrowing only.
+
+### Follow-up — a real risk this created
+
+**Branch coverage is now one branch above the gate.** `vitest.config.ts` sets an 80% threshold on
+all four metrics. Before this entry: branches 1142/1424 = **80.19%**. After: 1131/1413 = **80.04%**.
+`sessionTokens.ts` was fully covered by the test that was its only consumer, so deleting the pair
+removed 11 covered branches out of 11 and dragged the average down. `npm run check` passes, but one
+new uncovered branch anywhere in `src/` — outside the `repositories/`, `routes/` and `domain/`
+coverage excludes — now fails it. This was measured, not inferred: the deleted files were restored
+from `HEAD`, coverage re-run, and removed again.
+
+The fix is not to restore dead code. It is that `runtime/composition.ts` (72.16% lines, the largest
+single deficit) and `providers/phonepe/gatewayFailure.ts` (69.35%) have no unit tests worth the name,
+and the threshold has been riding on a well-tested dead module. Whoever next touches either should
+expect to add coverage before the gate lets them through.
+
+### Other follow-ups
+
+- `db/repositories.ts:58` `export type ProviderEvent = Row<"provider_events">` now has no importer.
+  Left in place: that block is a systematic one-alias-per-table index of 44 aliases, and
+  removing one entry because its repository stopped needing it would make the index lie about the
+  schema rather than about the code.
+- Doc 10's Phase 13 tables need three corrections applied at the source: `optionalIdempotencyKey` is
+  not unused, `adminFundGrowthPreviewRoutes.ts` is not removable, and `mandateReconciliationWorker`
+  is wired. They were not edited here — this log is the correction of record, per the README's rule
+  that the log wins where it and a numbered document disagree.
+- `backend_controller/.env.legacy-backup`, which doc 10 lists for deletion or key rotation, **does
+  not exist** in the working tree. The only env files present are `.env`, `.env.example`,
+  `.env.local-e2e` and `.env.production.example`. Nothing to do; if those Razorpay keys were ever
+  real they are still worth rotating, which is not a code change.
+- Untouched from doc 10's list, and still open: the `CACHE_KEYS.fundList` / `CACHE_PREFIXES` question
+  (BC10 wants `invalidatePrefix` wired, not deleted), the `POST /v1/client/email-verification/resend`
+  alias, the `payments.mobileSdk` rename, `MOBILE_CHECKOUT_DISABLED`, the
+  `email_verification_state = 'rejected'` CHECK value, the fixture-name residue, in-process rate
+  limiting, `legacy_investment_reviews`, and the suspend/reinstate/close surface. None was in this
+  entry's instruction.
+
+
+## Entry 025 — the browser client stopped holding refresh tokens, by getting a cookie session first
+
+D-037 was reverted on the day it landed because it removed `localStorage` persistence without
+providing anything to replace it, and a browser SPA loses memory on **every** full document load.
+This entry builds the replacement, then removes the persistence. In that order, for that reason.
+
+Decisions: **D-052**. D-037 carries a second correction. Task file: `TASK/021-client-scope-cookie-session.md`.
+
+### What landed
+
+**Backend — a third session channel.**
+
+- `db/migrations/046_client_web_sessions.sql`: `session_channel` gains `client_web`, and
+  `auth_sessions_web_csrf_present` is restated as "every non-native channel carries a CSRF pair" so it
+  covers the new label without naming it (`ALTER TYPE ... ADD VALUE` cannot use the value in the same
+  transaction, and the runner wraps each file in one). `SessionChannel` in `db/types.ts` follows.
+  **Ordering: this migration must be applied before the backend image that writes `client_web`.**
+- `domain/auth/webAuth.ts` is now generic over a `WebAuthScope`. `webLogin`, `webRefresh`,
+  `webRecoverCsrf` and the new `authenticateCookieSession` are one implementation each; the scope
+  supplies cookie names, session channel, audit command, audit actor type, principal builder and
+  login-eligibility rule. `ADMIN_WEB_SCOPE` preserves admin behaviour exactly, including the
+  `roles.length === 0 → not_authorized` rejection. `validateWebOrigin` now takes the allowlist rather
+  than a deps object, so routes whose `config` is already occupied can call it.
+- `domain/auth/clientWebAuth.ts`: `CLIENT_WEB_SCOPE` (channel `client_web`, cookies
+  `boe_client_access`/`boe_client_refresh`, audit `auth.client_web_login`, actor `user`, no
+  eligibility rule beyond an active account with a correct password — the same bar `nativeLogin`
+  sets), plus `resolveClientPrincipal`, the dual-transport resolver.
+- `routes/clientWebAuthRoutes.ts`: `POST /v1/auth/client/web/login`, `POST .../refresh`,
+  `GET .../csrf`, `POST .../logout`.
+- All 30 principal resolutions across the seven `client*Routes.ts` files moved from
+  `authenticateNativeRequest` to `resolveClientPrincipal`. Their deps interfaces extend
+  `ClientRequestAuthDeps`, which adds one field, `clientWeb: { originAllowlist }`.
+- `authSessionRepository.createWebSession` takes the channel; `rotateWebCsrf` takes it too and carries
+  it in the `WHERE`, so one audience's reload recovery cannot rotate the other's token.
+
+**Contracts — 94 → 98 operations, 84 → 88 paths.**
+
+- `operations/client-web-auth.ts` with the four operations and a `client-web` /
+  `client-session-cookie-and-csrf` variant in the `OperationSecurityPolicy` union.
+- `admin-oversight.ts`'s `AdminLoginEvent.channel` gains `client_web`, because client browser sign-ins
+  are recorded in `auth_login_events` with that channel and the admin sign-in history validates every
+  response against this contract. Without it the first client web login would have made the admin
+  screen fail with a malformed-response error.
+- Regenerated `generated/openapi-v1.{json,d.ts}` and `frontend_stack_ts/src/api/generated/operations.ts`.
+  `check:frontend-contract-bypass` reports 98 contracted, 98 generated.
+
+**Frontend — the transport is chosen by the shell.**
+
+- `createClientRuntime` now has a native half (unchanged: bearer pair, Secure Storage) and a browser
+  half (cookie login, cookie logout, cookie refresh, and a `restore()` that re-establishes the session
+  from `GET /v1/auth/client/web/csrf` rather than from anything the page remembered).
+- `persistSecrets: isNative()`, and `purgeLegacyLocalSecrets()` runs on both platforms. This is the
+  reverted change, reapplied — and this time it costs nothing.
+- `adminRuntime.executeRefresh` was repaired in passing: it called `webRefresh` with
+  `unauthenticated: true`, the flag that suppresses the automatic `x-csrf-token` header, so **every
+  admin refresh was answered CSRF_INVALID**. It now recovers the token first and passes it explicitly.
+- `clientRuntime.test.ts`: the test that pinned the `localStorage` behaviour is gone. In its place:
+  no secret reaches `localStorage` in a browser, none on a native shell either, pre-existing leaked
+  secrets are purged on construction, a second runtime recovers no secret across a document load,
+  `restore()` calls `/v1/auth/client/web/csrf` and returns the principal from the reply while
+  `localStorage` stays empty, and — the guard on the transport switch itself — a browser login goes to
+  `/v1/auth/client/web/login` and holds no token afterwards while a native login goes to
+  `/v1/auth/native/login` and holds the pair in memory. Nine tests, `fetch` stubbed for four of them.
+
+### Why the smoke suite should return to 71/71
+
+This cannot be run here. The argument is per-navigation, because the reverted attempt failed
+specifically at `page.goto`.
+
+The mechanism: Playwright cookies live in the **BrowserContext**, not the page. `page.goto`,
+`page.reload` and `context.newPage()` all discard the document and its JavaScript heap; none of them
+touches the cookie jar. `SessionProvider` holds `status: "restoring"` until `restore()` settles, and
+every gated route waits on that, so each new document re-establishes the session before a screen
+renders. `restore()` needs only the cookies the browser sends automatically. That is the whole
+difference from the reverted change, where `restore()` needed an access or refresh token from memory
+and the document had just lost both.
+
+Walking the client suite in order:
+
+| Navigation | Why the session survives |
+| --- | --- |
+| `goto(CLIENT_URL)` | Anonymous. `restore()` → `GET .../csrf` → 401 → `anonymous` → redirect to `/login`. Nothing to survive; the 401 is a completed response, not a `requestfailed`, so the "no failed API requests" check is unaffected — which is already proven by the admin suite, whose login page 401s the same way today and passes. |
+| `signIn(...)` | `POST /v1/auth/client/web/login` sets both cookies; the SPA routes to `/dashboard` client-side, no document load. |
+| `getByRole("link", { name: "Portfolio" }).click()` | Client-side route change. Memory intact. |
+| `goto(/profile/security)` | First hard navigation after login. New document, empty memory, both cookies sent. `restore()` → 200 → `authenticated`. |
+| `goto(/statements)`, `(/notifications)`, `(/profile/support)`, `(/profile/legal)`, `(/profile/legal/grievance)`, `(/activity?tab=payments)`, `(/sips)`, `(/dashboard)`, `(/funds)`, `(/portfolio)`, `(/activity)`, `(/funds/<unknown-uuid>)`, `(/verify-email)` | Identical to the row above, thirteen more times. The access cookie is `Max-Age=600`; the whole client section runs in seconds. |
+| `goto(/this-route-does-not-exist)` | Same restore, then the not-found screen. It does not need a session, but it gets one. |
+| `POST` send-code and verify-code on `/verify-email` | Both carry `x-csrf-token` from the token this document's own `restore()` obtained, and the backend compares it against the same session row. Unsafe methods are exactly what `resolveClientPrincipal` demands CSRF for. |
+| `page.reload()` after verification | Document load, cookies unchanged, restore, gate re-read from the server. |
+| `context.newPage()` → `goto(/dashboard)` | A new page in the **same context**: the cookie jar is shared, so this is the previous case with a new tab. This is the check that failed under the reverted change, and the check whose name said "secure storage fallback" — renamed here to name the cookie session. |
+| `runClientSeesFund`: `newContext()` → `goto(/login)` | A **fresh** context, so no cookies: anonymous, sign in again, exactly as the suite intends. |
+| `goto(/funds)`, `goto(/funds/<id>)` ×2 | Same-context document loads after that sign-in. Restore each time. |
+
+Two further conditions, both satisfied:
+
+- **Origin.** Cookie authentication runs `validateWebOrigin`. POSTs carry `Origin: http://localhost:5174`,
+  which the committed `.env.example` allow-lists and `originExamples.test.ts` enforces. Same-origin GETs
+  carry no `Origin` and fall back to `Referer`, which Chromium sends in full for same-origin requests.
+  The admin console has depended on that fallback for every cookie-authenticated read since it shipped.
+- **The ten-minute access cookie.** If the run ever outlasted it, the next request would 401
+  AUTHENTICATION_REQUIRED, `executeCookieRefresh` would recover the CSRF token from the refresh cookie
+  and rotate, and the request would be retried. The transport reaches that path only on
+  AUTHENTICATION_REQUIRED, which is precisely why `resolveClientPrincipal` falls through to the bearer
+  path when there is no client cookie rather than into the Origin check.
+
+The admin half of the suite is untouched. The only admin change is inside `executeRefresh`, which the
+suite never reaches, so it cannot regress a passing check — it can only turn a guaranteed failure into
+a probable success.
+
+### Verification
+
+**TESTED here:**
+
+- `frontend_stack_ts`: `npx tsc --noEmit`, `npx eslint .`, `npx vitest run` (18 files, 179 tests),
+  `VITE_BEO_APP_TARGET=client npx vite build`.
+- `packages/contracts`: `npm run typecheck`, `npm run lint`, `npm test` (95 tests), `npm run build`,
+  `npm run generate`, `npm run check:frontend-contract-bypass` → 98 contracted, 98 generated.
+- `backend_controller`: `npx tsc --noEmit`, `npx eslint .`, `npx vitest run --exclude
+  'test/integration/**'` (75 files, 724 tests).
+
+**STATIC only:** every claim about the two scopes not being able to authenticate each other. It is a
+reading of four independent predicates (cookie name, session channel, rotation channel filter, CSRF
+per row), not an executed attack. The cheap runtime proof is in the UNVERIFIED list below.
+
+**UNVERIFIED — needs the migration applied and the stack running. Nothing here has touched a database.**
+
+Migration first, then the backend image:
+
+```
+# on the VPS, in release_manager/, as part of the normal release
+node --env-file-if-exists=.env --import=tsx src/scripts/migrate.ts status | tail -3
+# expect: pending 046_client_web_sessions.sql   → then the release applies it
+psql -c "select unnest(enum_range(null::session_channel))"     # native, web, client_web
+```
+
+Then, against the deployed API (`$API`, `$ORIGIN` = the client SPA origin):
+
+```
+# 1. a browser client session, end to end
+curl -s -c jar -X POST "$API/v1/auth/client/web/login" -H "origin: $ORIGIN" \
+  -H 'content-type: application/json' -d '{"email":"...","password":"..."}' \
+  | jq '{ok, user: .data.user.userId, csrf: (.data.csrfToken != null)}'
+grep -c boe_client_ jar                     # expect 2 cookies, neither named boe_access
+curl -s -b jar "$API/v1/client/eligibility" -H "referer: $ORIGIN/dashboard" | jq '.ok'
+
+# 2. reload recovery: the CSRF endpoint on cookies alone
+curl -s -b jar "$API/v1/auth/client/web/csrf" -H "referer: $ORIGIN/dashboard" | jq '.data.csrfToken != null'
+
+# 3. rotation, with the token from step 2 as $C
+curl -s -b jar -c jar -X POST "$API/v1/auth/client/web/refresh" -H "origin: $ORIGIN" \
+  -H "x-csrf-token: $C" -H 'content-type: application/json' -d "{\"rotationId\":\"$(uuidgen)\"}" | jq '.ok'
+
+# 4. SCOPE ISOLATION — the claim that is only STATIC above.
+#    Take the admin access cookie value from an admin login and present it under the client name:
+curl -s "$API/v1/client/eligibility" -H "referer: $ORIGIN/dashboard" \
+  -H "cookie: boe_client_access=$ADMIN_ACCESS" | jq '.error.code'      # expect SESSION_INVALID
+#    And the reverse: a client access cookie presented under the admin name:
+curl -s "$API/v1/admin/session" -H "referer: $ADMIN_ORIGIN/overview" \
+  -H "cookie: boe_access=$CLIENT_ACCESS" | jq '.error.code'            # expect SESSION_INVALID
+#    And either one as a bearer token:
+curl -s "$API/v1/client/eligibility" -H "authorization: Bearer $CLIENT_ACCESS" | jq '.error.code'
+                                                                        # expect SESSION_INVALID
+
+# 5. CSRF is required on writes and not on reads
+curl -s -b jar -X POST "$API/v1/client/support-requests" -H "origin: $ORIGIN" \
+  -H 'content-type: application/json' -d '{"subject":"x","message":"y"}' | jq '.error.code'
+                                                                        # expect CSRF_INVALID
+
+# 6. the admin refresh repair, which no test covers
+#    log in to the console, wait out the 10-minute access cookie, then load a screen:
+#    it must rotate and stay signed in rather than bouncing to /login.
+```
+
+- **The APK is unverified.** `isNative()` selects the bearer path and the native operations did not
+  change, but the client routes it calls now resolve their principal through a different function.
+  Needs an install and a sign-in.
+- **The smoke suite itself.** The reasoning above is reasoning. `71/71` is the acceptance and it has
+  not been observed.
+- **Multi-tab behaviour.** The refresh path was made safe by construction (recover, then rotate); a
+  concurrent *write* from a second tab still fails CSRF_INVALID once. Not exercised.
+
+### Notes for whoever reads this next
+
+- Regenerating `packages/contracts/generated/**` also picked up the uncommitted cursor-pagination
+  work that was in the tree at the time (the `Cursor` scalar's new pattern and the paginated
+  envelopes). There is one generated artifact and one source tree; it could not be split. The
+  operation count moved by exactly the four operations added here.
+- The four integration-test harnesses that build client route deps by hand now pass
+  `clientWeb: { originAllowlist: [] }`. Empty is deliberate — those harnesses authenticate with bearer
+  tokens and never take the cookie path, and an empty allowlist fails closed if one ever does.
+- `test_e2e/frontend-ts-smoke.mjs` has two renamed checks and no new or removed ones: "native login
+  lands on the dashboard" is a cookie login now, and "survives a fresh page load from secure storage
+  fallback" survives on cookies. The count is unchanged at 71.
+
+
+
+## Entry 026 — A bearer channel for the admin scope, so the shipped admin APK can sign in · 2026-08-31
+
+Decision: **D-053**. Task file: `TASK/022-admin-native-bearer-channel.md`. Mirrors Entry 025 in
+shape and in method: generalise the existing machinery over a scope descriptor rather than copy it.
+
+### The problem
+
+`package.json` ships `build:android:admin`, `android:sync:admin` and `android:apk:admin`,
+`capacitor.config.ts` has an admin variant, `frontend_stack_ts/resources/launcher/admin/` holds real
+branding, `emu/boe_update.sh --both` builds it, and `release_manager/tests/hermetic_branding.test.sh`
+makes 17 admin assertions. The target is deliberate. It could not log in.
+
+Two reasons, one on each side:
+
+- **Frontend.** `adminRuntime` was cookie-only, and an APK is served from `https://localhost`, which
+  is cross-site with the API host. `SameSite=Lax` withholds the cookie on a cross-site subresource
+  request and `validateWebOrigin` refuses `Sec-Fetch-Site: cross-site` outright, so the cookie login
+  cannot succeed there at all. `buildAdminDevice` — named in doc 03, doc 10 and the README — did not
+  exist.
+- **Backend.** There was no admin bearer login. `resolveAdminPrincipal` already had a bearer leg, but
+  it called `authenticateNativeRequest`, which admits any active session whose channel is `native` —
+  the *investor* APK's channel. So the only obtainable bearer token for an admin request was a client
+  token, and an investor's token satisfied admin **authentication**, leaving the permission check as
+  the sole thing between an investor and the console. That is the exact error D-052 named: two
+  audiences separated at the authorization layer rather than the authentication layer, when
+  permissions are per-user and one person can hold both accounts.
+
+### What was built
+
+**Migration `047_admin_native_sessions.sql`** — a fourth session channel, `admin_native`. Built
+exactly like 046, including the constraint that made 046 possible: `ALTER TYPE ... ADD VALUE` may run
+inside a transaction on PostgreSQL 12+, but the new label cannot be *used* until that transaction
+commits, and the runner wraps each file in one — so nothing in the file names `admin_native`.
+
+Where 046 could restate the CSRF rule as "every non-native channel carries a CSRF pair", 047 cannot:
+`admin_native` is a bearer transport with no synchronizer token, so that phrasing would have demanded
+a CSRF pair on a row that must not have one. Both halves are restated against the two *cookie*
+labels instead — `auth_sessions_web_csrf_present` requires the pair when
+`channel IN ('web','client_web')`, `auth_sessions_native_csrf_null` forbids all CSRF material
+otherwise. The pair stays exhaustive and stays exhaustive as further bearer channels are added.
+
+`auth_sessions_active_native_device_uk` was scoped to `channel = 'native'`, so an admin bearer session
+would have had no same-device backstop at all. It is replaced by
+`auth_sessions_active_bearer_device_uk` on `(user_id, channel, device_id_hash)` where the channel is
+not a cookie channel. `channel` is in the *key*, not only the predicate, so one person holding both
+APKs on one handset cannot collide across audiences.
+
+**`domain/auth/nativeAuth.ts` is now generic over a `NativeAuthScope`**, the way `webAuth.ts` is
+generic over a `WebAuthScope`. One `nativeLogin`, one `nativeRefresh`, one
+`authenticateBearerSession`; the scope supplies the session channel, the audit command, the audit
+actor type, the principal builder and the login-eligibility rule. `CLIENT_NATIVE_SCOPE` lives beside
+them, `ADMIN_NATIVE_SCOPE` in `domain/auth/adminNativeAuth.ts`. The reason is the same as last time:
+the 30-second previous-token grace, the same-`rotationId` reproduction and the family revocation on
+reuse are the subtle parts and the parts a copy would drift on.
+
+**Three endpoints**, contracted and generated (98 → **101** operations, 88 → **91** paths):
+
+```
+POST /v1/auth/admin/native/login     AdminNativeSessionData (WebPrincipal + bearer pair)
+POST /v1/auth/admin/native/refresh   rotation on the admin chain only
+POST /v1/auth/admin/native/logout    revokes the family
+```
+
+`AdminNativeSessionData` carries the operator's roles and resolved permissions — the same
+`WebPrincipal` the cookie login returns, so the console renders identically on both hosts. The client
+native login was **not** widened to return permissions. Handing an investor app a permission list
+would make the two audiences' tokens interchangeable in exactly what they authorise, which is the one
+place it matters; the audiences stay separate the way the two cookie scopes do.
+
+There is no CSRF token and no Origin check on these three, and nothing is weakened by that: the
+credential is a bearer token, which a hostile page cannot make a browser attach and cannot read from
+another origin's storage. Those checks protect ambient credentials and there is no ambient credential
+on this path. The cookie path keeps every one of them.
+
+**`resolveAdminPrincipal` keeps its shape** — cookie preferred when present, bearer only when there is
+no access cookie *and* a `Bearer` header — and its bearer leg now calls
+`authenticateAdminNativeRequest`. Every admin route was already on the resolver (11 route files), so
+no route changed. Permission checks are untouched: `requireAnyPermission` on the server and
+`RequirePermission` in the console both read the same live permission set, which
+`resolveAdminPrincipal` still loads from the database on every request.
+
+**Frontend.** `adminRuntime` now branches on `isNative()` exactly as `clientRuntime` does: Secure
+Storage plus `persistSecrets: isNative()`, `executeNativeRefresh` against the admin rotation endpoint,
+`nativeSignIn`/`nativeSignOut`, and a `nativeRestore` that re-establishes from the stored pair and
+then reads `getAdminSession` live so a revoked role takes effect on the next start. The browser path
+is byte-for-byte the previous behaviour, including the recover-then-rotate refresh fix from Entry 025.
+
+`buildAdminDevice` lives in the new `src/platform/nativeDevice.ts` alongside `buildClientDevice`, one
+builder taking the scope. `clientRuntime`'s three inlined copies of the descriptor and the
+compatibility headers were replaced by calls to it — the descriptor shape is load-bearing (the backend
+hashes `installationId` into `device_id_hash` for same-device replacement) and two hand-maintained
+copies of a load-bearing shape is how they drift. The installation id is per scope
+(`boe.admin.installationId` vs `boe.client.installationId`), so the two APKs enrol as different
+devices and their per-channel caps stay independent.
+
+### The scope-isolation argument
+
+D-052's four predicates, restated for four scopes and asserted in
+`src/domain/auth/scopeIsolation.test.ts` (20 tests):
+
+1. **Distinct credential name or location.** The two cookie scopes use disjoint cookie names
+   (asserted). The two bearer scopes both present `Authorization: Bearer`, so for them the
+   discriminator is the session channel plus the distinct endpoint — see 2. There is deliberately no
+   scope claim in the access token: D-052 rejected that, because a discriminator the existing channel
+   predicate does not look at means every authentication path has to learn a second check, and the one
+   that forgets is the vulnerability.
+2. **The channel is compared exactly, on all four paths.** `authenticateBearerSession` takes the
+   channel from its *caller*, not from the token, and the two helpers
+   (`authenticateNativeRequest`, `authenticateAdminNativeRequest`) are one-line partial applications,
+   so a route cannot accidentally accept "whatever channel this token belongs to". The full 4×4 matrix
+   is asserted: each of the four channels is presented to each of the four authenticators and only the
+   diagonal resolves.
+3. **Rotation is channel-scoped.** `nativeRefresh` now refuses a refresh token whose session channel
+   is not the scope's — it did not check at all before. Asserted, including that the refusal happens
+   *before any write*, so a mismatched channel is not mistaken for refresh reuse and does not revoke
+   the innocent session's family. `webRefresh` and `rotateWebCsrf` already carried the channel.
+4. **No shared session row.** A login writes its own channel and nothing rewrites it; the unique
+   index has `channel` in the key. Additionally `ADMIN_NATIVE_SCOPE.rejectLogin` refuses an account
+   with no roles, so an investor cannot obtain an `admin_native` session in the first place — the
+   audiences are separated at issuance as well as at use.
+
+An admin bearer therefore does not work as a client bearer, a client bearer does not work as an admin
+bearer, and neither cookie works as either bearer.
+
+### Migration ordering
+
+**`047_admin_native_sessions.sql` must be applied before the code that writes `admin_native` runs.**
+A release whose backend serves `/v1/auth/admin/native/login` against a database still at 046 will fail
+the login with an invalid-enum-value error on the session insert. The migration is additive and
+touches no data; it drops and recreates two CHECK constraints and one partial unique index on
+`auth_sessions`.
+
+### Verified
+
+- **TESTED** `backend_controller`: `npx tsc --noEmit`, `npx eslint .`,
+  `npx vitest run --exclude 'test/integration/**'` → **76 files, 744 tests, all passing** (was 738:
+  +20 `scopeIsolation.test.ts`, −14/+14 in the rewritten `adminAccess.test.ts` mock target, +1
+  assertion in `composition.test.ts`).
+- **TESTED** `packages/contracts`: `npm run typecheck`, `npm run lint`, `npm run test` (95),
+  `npm run build`, `npm run test:exports`, `npm run lint:openapi`,
+  `npm run check:frontend-contract-bypass` → *"No contract bypasses. 101 contracted operations, all
+  reachable through the generated client."*
+- **TESTED** `frontend_stack_ts`: `npx tsc --noEmit`, `npx eslint .`, `npx vitest run` → **19 files,
+  186 tests** (was 179: +7 `adminRuntime.test.ts`), `VITE_BEO_APP_TARGET=admin npx vite build` → built
+  in 1.48s.
+- **STATIC** The integration suite was kept compiling but not run (testcontainers). Two
+  `createBearerSession` call sites in `authRepositories.integration.test.ts` now pass
+  `channel: "native"`; nothing else in `test/integration/**` needed a change.
+
+### UNVERIFIED — what a green suite here does not establish
+
+Nothing below has been observed. The unit tests exercise the channel predicate against a stubbed
+database; they do not exercise PostgreSQL, the migration, or an APK.
+
+**The migration.** Not applied anywhere. On the VPS, before the code:
+
+```
+cd /path/to/backend_controller && npm run migrate        # expect 047 applied
+psql "$DATABASE_URL" -c "select unnest(enum_range(null::session_channel));"
+#   expect native, web, client_web, admin_native
+psql "$DATABASE_URL" -c "\d auth_sessions" | grep -E 'csrf_present|csrf_null|bearer_device'
+#   expect both CHECKs restated against ('web','client_web') and auth_sessions_active_bearer_device_uk
+```
+
+**The endpoints.** Against the deployed API (`$API`), with an operator account and a plain investor
+account:
+
+```
+# 1. an admin bearer session, end to end
+curl -s -X POST "$API/v1/auth/admin/native/login" -H 'content-type: application/json' \
+  -H 'x-client-platform: android' -H "x-app-version: 0.1.0" \
+  -d "{\"email\":\"$OPS_EMAIL\",\"password\":\"$OPS_PW\",\"device\":{\"installationId\":\"$(uuidgen)\",\"name\":\"curl\",\"platform\":\"android\",\"appVersion\":\"0.1.0\"}}" \
+  | jq '{ok, roles: .data.user.roles, permissions: (.data.user.permissions | length), sid: .data.sessionId}'
+# expect ok:true and a non-empty permission list — an empty one means the console renders nothing
+
+export ADMIN_BEARER=...   # .data.accessToken from above
+curl -s "$API/v1/admin/session" -H "authorization: Bearer $ADMIN_BEARER" | jq '.ok'
+
+# 2. an investor cannot obtain an admin session at all
+curl -s -X POST "$API/v1/auth/admin/native/login" -H 'content-type: application/json' \
+  -H 'x-client-platform: android' -H 'x-app-version: 0.1.0' \
+  -d "{\"email\":\"$CLIENT_EMAIL\",\"password\":\"$CLIENT_PW\",\"device\":{\"installationId\":\"$(uuidgen)\",\"name\":\"curl\",\"platform\":\"android\",\"appVersion\":\"0.1.0\"}}" \
+  | jq '.error.code'                                        # expect INVALID_CREDENTIALS
+psql "$DATABASE_URL" -c "select channel, outcome from auth_login_events order by occurred_at desc limit 1;"
+#   expect admin_native / not_authorized
+
+# 3. CROSS-SCOPE REPLAY — the claim that is only TESTED-against-a-stub above.
+export CLIENT_BEARER=...  # from POST /v1/auth/native/login as the investor
+curl -s "$API/v1/admin/session"      -H "authorization: Bearer $CLIENT_BEARER" | jq '.error.code'
+#   expect SESSION_INVALID — NOT AUTHORIZATION_DENIED. Denied means the channel check did not fire
+#   and the permission check caught it, which is the pre-existing defect, not the fix.
+curl -s "$API/v1/client/eligibility" -H "authorization: Bearer $ADMIN_BEARER" | jq '.error.code'
+#   expect SESSION_INVALID
+curl -s -X POST "$API/v1/auth/native/refresh" -H 'content-type: application/json' \
+  -d "{\"refreshToken\":\"$ADMIN_REFRESH\",\"rotationId\":\"$(uuidgen)\"}" | jq '.error.code'
+#   expect SESSION_INVALID, and the admin session must still be active afterwards:
+psql "$DATABASE_URL" -c "select state from auth_sessions where id = '$ADMIN_SID';"   # expect active
+curl -s -X POST "$API/v1/auth/admin/native/refresh" -H 'content-type: application/json' \
+  -d "{\"refreshToken\":\"$CLIENT_REFRESH\",\"rotationId\":\"$(uuidgen)\"}" | jq '.error.code'
+#   expect SESSION_INVALID, client session still active
+
+# 4. the admin cookie path is unchanged
+#    log in to the browser console, load a screen, wait out the 10-minute access cookie,
+#    load another: it must rotate and stay signed in.
+```
+
+**The APK.** Never built, installed or launched for this change:
+
+```
+cd frontend_stack_ts && npm run android:apk:admin
+adb install -r android/app/build/outputs/apk/debug/app-admin-debug.apk
+# then: sign in as an operator, confirm the overview renders, confirm a permission-gated
+# screen is reachable, background the app for >10 minutes and confirm it rotates rather
+# than signing out, then sign out and confirm the session row is revoked.
+```
+
+The three things that would not be caught by anything above and have to be looked for on device:
+Secure Storage actually persisting the pair across process death (kill the app from the task
+switcher, not just background it); `getAdminSession` being reachable with a bearer token rather than
+404ing behind a cookie assumption; and the login screen's `AuthPort` wiring, since `AdminShellRoot`
+passes `runtime.login` through unchanged and a shell that never re-reads the runtime would keep the
+cookie path.
+
+**Same-device replacement and the device cap on the admin channel.** Both are now channel-scoped and
+neither has been exercised. Sign in twice from the same admin installation and confirm one active
+`admin_native` row; sign in from three installations with `DEVICE_LIMIT_MAX_DEVICES=2` and confirm the
+oldest admin session is evicted and the same operator's *client* session is untouched.
+
+### Notes for whoever reads this next
+
+- Renamed, and worth knowing before reading a diff: `createNativeSession` →
+  `createBearerSession`, `lockActiveNativeByUserAndDevice` → `lockActiveBearerByUserAndDevice`,
+  `listActiveNativeForUserOldestFirst` → `listActiveBearerForUserOldestFirst`. All three now take the
+  channel. `SessionChannel` gained `CookieSessionChannel` and `BearerSessionChannel` derivations, and
+  `webAuth.ts`'s `WebSessionChannel` was `Exclude<SessionChannel, "native">` — which would silently
+  have admitted `admin_native` as a cookie channel — and is now `CookieSessionChannel`.
+- The contracted `authChannel` labels on admin operations remain `admin-web` even though those routes
+  accept a bearer token. That is already true on the client side after Entry 025 (client operations are
+  labelled `native-bearer` while `resolveClientPrincipal` accepts the cookie). The labels name the
+  originating transport, not the accepted set; making them exhaustive is a contract-wide change and is
+  not attempted here.
+- `AdminLoginEvent.channel` in `admin-oversight.ts` gained `admin_native`. Without it the first admin
+  APK sign-in in a user's history would have failed the response contract validation in the console,
+  which is a malformed-response error rather than a missing row — easy to misdiagnose.

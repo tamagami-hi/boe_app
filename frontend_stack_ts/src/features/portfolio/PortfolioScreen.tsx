@@ -5,7 +5,7 @@ import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { toPaise } from "~/domain/money"
 import { formatPercent } from "~/domain/percent"
-import { useFunds, usePortfolio } from "~/features/shared/queries"
+import { useFundCatalogue, usePortfolio } from "~/features/shared/queries"
 import { cx } from "~/lib/cx"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { EmptyState } from "~/ui/patterns/EmptyState"
@@ -21,7 +21,7 @@ import { HEADLINE_GRID, POOL_META, POOL_TOP } from "./portfolio.recipe"
 
 const PortfolioScreen = (): React.ReactElement => {
   const query = usePortfolio()
-  const funds = useFunds()
+  const funds = useFundCatalogue()
 
   const nameFor = (fundId: string): string =>
     funds.data?.items.find((fund) => fund.id === fundId)?.name ?? "Fund"

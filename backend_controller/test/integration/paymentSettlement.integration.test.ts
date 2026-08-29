@@ -371,6 +371,7 @@ beforeAll(async () => {
       registerClientOrderRoutes(instance, {
         accessTokenService,
         database,
+        clientWeb: { originAllowlist: [] },
         unitOfWork,
         clock: () => new Date(),
         orderRepository: createOrderRepository(),
@@ -387,6 +388,7 @@ beforeAll(async () => {
       registerClientPortfolioRoutes(instance, {
         accessTokenService,
         database,
+        clientWeb: { originAllowlist: [] },
         clientPortfolioRepository: createClientPortfolioRepository(),
         clientValueEntryRepository: createClientValueEntryRepository(),
         unitOfWork,
@@ -396,6 +398,7 @@ beforeAll(async () => {
       registerClientAutoPaySipRoutes(instance, {
         accessTokenService,
         database,
+        clientWeb: { originAllowlist: [] },
         unitOfWork,
         clock: () => new Date(),
         sipPlanRepository: createSipPlanRepository(),
@@ -453,7 +456,7 @@ beforeAll(async () => {
         unitOfWork,
         database,
         clock: () => new Date(),
-        config: { idempotencyTtlMs: 86_400_000 },
+        config: { cursorKey: randomBytes(32), idempotencyTtlMs: 86_400_000 },
         acknowledgementRepository,
         paymentsRepository,
         settlementRepository,

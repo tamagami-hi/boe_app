@@ -1,16 +1,17 @@
 import { z } from "zod"
 
-import { createSuccessEnvelopeSchema } from "../envelope.js"
-import { IsoDateTime, Paise, SignedPaise, Uuid } from "../scalars.js"
+import { createPaginatedSuccessEnvelopeSchema, createSuccessEnvelopeSchema } from "../envelope.js"
+import { Cursor, IsoDateTime, Paise, SignedPaise, Uuid } from "../scalars.js"
 import { ClientInvestmentStatus, IsoDate } from "./client.js"
 import { defineOperation, MAX_JSON_BODY_BYTES } from "./descriptor.js"
 
 const NullableIsoDateTime = IsoDateTime.nullable()
 
-export const MAX_ACCOUNT_LIST_LIMIT = 200
+export const MAX_ACCOUNT_LIST_LIMIT = 100
 
 export const AccountListQuery = z.strictObject({
   limit: z.coerce.number().int().min(1).max(MAX_ACCOUNT_LIST_LIMIT).optional(),
+  after: Cursor.optional(),
 })
 
 const ACCOUNT_READ_ERRORS = [
@@ -18,6 +19,12 @@ const ACCOUNT_READ_ERRORS = [
   "SESSION_INVALID",
   "ACCOUNT_NOT_ACTIVE",
   "INTERNAL_ERROR",
+] as const
+
+const ACCOUNT_PAGED_READ_ERRORS = [
+  ...ACCOUNT_READ_ERRORS,
+  "VALIDATION_FAILED",
+  "CURSOR_INVALID",
 ] as const
 
 export const NotificationItem = z.strictObject({
@@ -43,14 +50,14 @@ export const listClientNotifications = defineOperation({
   request: { query: AccountListQuery },
   success: {
     status: 200,
-    schema: createSuccessEnvelopeSchema(
+    schema: createPaginatedSuccessEnvelopeSchema(
       z.strictObject({
         items: z.array(NotificationItem),
         unreadCount: z.number().int(),
       }),
     ),
   },
-  errorCodes: [...ACCOUNT_READ_ERRORS, "VALIDATION_FAILED"],
+  errorCodes: [...ACCOUNT_PAGED_READ_ERRORS],
 })
 
 export const markNotificationRead = defineOperation({
@@ -100,6 +107,7 @@ export type PaymentStateFilter = z.infer<typeof PaymentStateFilter>
 export const PaymentHistoryQuery = z.strictObject({
   status: z.union([PaymentStateFilter, z.array(PaymentStateFilter)]).optional(),
   limit: z.coerce.number().int().min(1).max(MAX_ACCOUNT_LIST_LIMIT).optional(),
+  after: Cursor.optional(),
 })
 
 export const PaymentHistoryItem = z.strictObject({
@@ -129,11 +137,11 @@ export const listClientPayments = defineOperation({
   request: { query: PaymentHistoryQuery },
   success: {
     status: 200,
-    schema: createSuccessEnvelopeSchema(
+    schema: createPaginatedSuccessEnvelopeSchema(
       z.strictObject({ items: z.array(PaymentHistoryItem) }),
     ),
   },
-  errorCodes: [...ACCOUNT_READ_ERRORS, "VALIDATION_FAILED"],
+  errorCodes: [...ACCOUNT_PAGED_READ_ERRORS],
 })
 
 export const StatementPeriod = z.strictObject({
@@ -219,9 +227,11 @@ export const listSupportTickets = defineOperation({
   request: { query: AccountListQuery },
   success: {
     status: 200,
-    schema: createSuccessEnvelopeSchema(z.strictObject({ items: z.array(SupportTicket) })),
+    schema: createPaginatedSuccessEnvelopeSchema(
+      z.strictObject({ items: z.array(SupportTicket) }),
+    ),
   },
-  errorCodes: [...ACCOUNT_READ_ERRORS, "VALIDATION_FAILED"],
+  errorCodes: [...ACCOUNT_PAGED_READ_ERRORS],
 })
 
 export const MAX_TICKET_SUBJECT_LENGTH = 200

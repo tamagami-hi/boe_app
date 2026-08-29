@@ -44,6 +44,11 @@ let supportToken: string
 const dataOf = <T>(response: { json: () => unknown }): T => (response.json() as { data: T }).data
 const metaOf = (response: { json: () => unknown }): { idempotencyReplay?: boolean } =>
   (response.json() as { meta: { idempotencyReplay?: boolean } }).meta
+const pageOf = (
+  response: { json: () => unknown },
+): { nextCursor: string | null; hasMore: boolean; limit: number } =>
+  (response.json() as { meta: { page: { nextCursor: string | null; hasMore: boolean; limit: number } } })
+    .meta.page
 const errorOf = (response: { json: () => unknown }): string =>
   (response.json() as { error: { code: string } }).error.code
 const bearer = (token: string): Record<string, string> => ({ authorization: `Bearer ${token}` })
@@ -360,14 +365,15 @@ describe("admin mandate list and detail", () => {
 
     const response = asInjected(await getJson("/v1/admin/mandates?limit=1", adminToken))
     expect(response.statusCode).toBe(200)
-    const body = dataOf<{ items: Record<string, unknown>[]; page: { nextCursor: string | null; hasMore: boolean; limit: number } }>(response)
+    const body = dataOf<{ items: Record<string, unknown>[] }>(response)
+    const page = pageOf(response)
     expect(body.items).toHaveLength(1)
-    expect(body.page.hasMore).toBe(true)
-    expect(body.page.limit).toBe(1)
+    expect(page.hasMore).toBe(true)
+    expect(page.limit).toBe(1)
 
-    const page2 = asInjected(await getJson(`/v1/admin/mandates?limit=1&after=${encodeURIComponent(body.page.nextCursor as string)}`, adminToken))
+    const page2 = asInjected(await getJson(`/v1/admin/mandates?limit=1&after=${encodeURIComponent(page.nextCursor as string)}`, adminToken))
     expect(page2.statusCode).toBe(200)
-    const body2 = dataOf<{ items: Record<string, unknown>[]; page: { hasMore: boolean } }>(page2)
+    const body2 = dataOf<{ items: Record<string, unknown>[] }>(page2)
     expect(body2.items).toHaveLength(1)
 
     const ids = new Set([body.items[0]?.mandateId, body2.items[0]?.mandateId])

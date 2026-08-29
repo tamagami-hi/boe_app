@@ -3,7 +3,7 @@ import { z } from "zod"
 
 import type { UnitOfWork } from "../db/database.js"
 import type { SipPlan, UserId } from "../db/repositories.js"
-import { authenticateNativeRequest, type NativeRequestAuthDeps } from "../domain/auth/nativeAuth.js"
+import { resolveClientPrincipal, type ClientRequestAuthDeps } from "../domain/auth/clientWebAuth.js"
 import { createSipInstallmentOrder } from "../domain/client/createSipInstallmentOrder.js"
 import { deriveInvestingEligibility } from "../domain/client/investingEligibility.js"
 import { AppError } from "../http/errorCatalog.js"
@@ -14,7 +14,7 @@ import type { OrderWriteRepository } from "../repositories/orderRepository.js"
 import type { SipPlanRepository } from "../repositories/sipPlanRepository.js"
 import type { UserWriteRepository } from "../repositories/userRepository.js"
 
-export interface ClientSipDeps extends NativeRequestAuthDeps {
+export interface ClientSipDeps extends ClientRequestAuthDeps {
   readonly unitOfWork: UnitOfWork
   readonly clock: () => Date
   readonly sipPlanRepository: SipPlanRepository
@@ -60,7 +60,7 @@ const firstOfMonth = (date: Date): string => {
 }
 
 const createSip = async (deps: ClientSipDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await authenticateNativeRequest(request, deps)
+  const principal = await resolveClientPrincipal(request, deps)
   const body = parseOrThrow(createSipBodySchema, request.body)
   const now = deps.clock()
 
@@ -116,7 +116,7 @@ const createSip = async (deps: ClientSipDeps, request: FastifyRequest, reply: Fa
 }
 
 const listSips = async (deps: ClientSipDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await authenticateNativeRequest(request, deps)
+  const principal = await resolveClientPrincipal(request, deps)
   const rows = await deps.unitOfWork.execute((tx) => deps.sipPlanRepository.listByUser(tx, principal.userId))
   return reply.sendData({ items: rows.map(mapSip) }, { status: 200 })
 }
@@ -124,7 +124,7 @@ const listSips = async (deps: ClientSipDeps, request: FastifyRequest, reply: Fas
 const controlSip = (
   action: "pause" | "resume" | "cancel",
 ) => async (deps: ClientSipDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await authenticateNativeRequest(request, deps)
+  const principal = await resolveClientPrincipal(request, deps)
   const params = parseOrThrow(sipParamsSchema, request.params)
 
   const plan = await deps.unitOfWork.execute(async (tx) => {

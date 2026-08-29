@@ -70,8 +70,9 @@ describe("auth repositories (integration)", () => {
     const userId = await insertActiveUser("sess@example.com", "+14155552002")
     const refreshHash = randomBytes(32)
     const created = await unitOfWork.execute((tx) =>
-      sessions.createNativeSession(tx, {
+      sessions.createBearerSession(tx, {
         userId,
+        channel: "native",
         deviceIdHash: randomBytes(32),
         refreshTokenHash: refreshHash,
         refreshKeyVersion: "rt1",
@@ -91,8 +92,9 @@ describe("auth repositories (integration)", () => {
   test("revokes every active session and current refresh token for a user", async () => {
     const userId = await insertActiveUser("revoke@example.com", "+14155552003")
     await unitOfWork.execute((tx) =>
-      sessions.createNativeSession(tx, {
+      sessions.createBearerSession(tx, {
         userId,
+        channel: "native",
         deviceIdHash: randomBytes(32),
         refreshTokenHash: randomBytes(32),
         refreshKeyVersion: "rt1",

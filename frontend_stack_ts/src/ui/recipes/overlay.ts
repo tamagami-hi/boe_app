@@ -29,3 +29,28 @@ export const SHEET_DESCRIPTION = "m-0 font-ui text-sm leading-normal text-fg-mut
 export const SHEET_BODY = "flex flex-col gap-3"
 
 export const SHEET_ACTIONS = "flex flex-col gap-2 lg:flex-row lg:justify-end"
+
+export const BLOCK_LAYER = [
+  "fixed inset-0 z-toast flex justify-center overflow-y-auto",
+  "bg-bg",
+  "px-[max(var(--be-page-pad-x),var(--be-safe-left))]",
+  "pt-[calc(var(--be-space-8)+var(--be-safe-top))]",
+  "pb-[calc(var(--be-space-8)+var(--be-safe-bottom))]",
+  "motion-safe:animate-[be-fade-in_var(--be-dur-base)_var(--be-ease-out)_both]",
+].join(" ")
+
+export const BLOCK_PANEL = "flex w-full max-w-form flex-col gap-6 self-center"
+
+export const BLOCK_HEAD = "flex flex-col items-center gap-2 text-center"
+
+export const BLOCK_MARK = "font-display text-lg font-medium tracking-display text-gold-deep"
+
+export const BLOCK_PROGRESS_TRACK = [
+  "h-1.5 w-full overflow-hidden rounded-full bg-shell-strong",
+  "shadow-hairline",
+].join(" ")
+
+export const BLOCK_PROGRESS_FILL = [
+  "h-full w-full origin-left rounded-full grad-gold",
+  "transition-transform duration-[var(--be-dur-base)] ease-out",
+].join(" ")

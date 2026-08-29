@@ -14,6 +14,7 @@ import { requestProvenance } from "../http/requestProvenance.js"
 import { parseOrThrow } from "../http/validation.js"
 import {
   authenticateNativeRequest,
+  CLIENT_NATIVE_SCOPE,
   nativeLogin,
   nativeLogout,
   nativeRefresh,
@@ -50,7 +51,7 @@ export const registerNativeAuthRoutes = (application: FastifyInstance, deps: Nat
     // connection is taken. Wrapping this call in a transaction again would
     // reinstate exactly the pool exhaustion it was restructured to remove.
     const provenance = requestProvenance(request)
-    const result = await nativeLogin(deps, {
+    const result = await nativeLogin(deps, CLIENT_NATIVE_SCOPE, {
       email: body.email,
       password: body.password,
       device: body.device,
@@ -64,7 +65,10 @@ export const registerNativeAuthRoutes = (application: FastifyInstance, deps: Nat
   application.post("/v1/auth/native/refresh", async (request, reply) => {
     const body = parseOrThrow(refreshSchema, request.body)
     const outcome = await deps.unitOfWork.execute((tx) =>
-      nativeRefresh(tx, deps, { refreshToken: body.refreshToken, rotationId: body.rotationId }),
+      nativeRefresh(tx, deps, CLIENT_NATIVE_SCOPE, {
+        refreshToken: body.refreshToken,
+        rotationId: body.rotationId,
+      }),
     )
     if (outcome.kind === "reuse_revoked") throw new AppError("SESSION_INVALID")
     return reply.sendData(outcome.result, { status: 200 })

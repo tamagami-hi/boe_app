@@ -36,7 +36,11 @@ type JsonDefault = ColumnType<Record<string, unknown>, string | undefined, strin
 export type ApplicationState = "submitted" | "approved" | "rejected" | "withdrawn"
 export type UserAccountState = "invited" | "active" | "suspended" | "closed"
 export type ApplicationDecision = "approved" | "rejected"
-export type SessionChannel = "native" | "web"
+export type SessionChannel = "native" | "web" | "client_web" | "admin_native"
+/** The two cookie transports. Each requires a synchronizer CSRF pair. */
+export type CookieSessionChannel = Extract<SessionChannel, "web" | "client_web">
+/** The two bearer transports. Each forbids CSRF material and carries a device. */
+export type BearerSessionChannel = Exclude<SessionChannel, CookieSessionChannel>
 export type AuthSessionState = "active" | "revoked" | "expired"
 export type AuthLoginOutcome =
   | "success"
@@ -189,7 +193,6 @@ export interface UserCredentialsTable {
   password_changed_at: TimestampDefault
   failed_attempt_count: Generated<number>
   failed_attempt_window_started_at: NullableTimestamp
-  locked_until: NullableTimestamp
   created_at: TimestampDefault
   updated_at: TimestampDefault
   version: BigIntStringDefault

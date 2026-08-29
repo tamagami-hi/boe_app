@@ -5,9 +5,10 @@ import { PageHeader } from "~/app/layouts/PageHeader"
 import { formatDate, formatDateTime } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { clientInvestmentStatus } from "~/domain/status"
-import { useFunds, usePayments, useTransactions } from "~/features/shared/queries"
+import { useFundCatalogue, usePayments, useTransactions } from "~/features/shared/queries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { EmptyState } from "~/ui/patterns/EmptyState"
+import { LoadMore } from "~/ui/patterns/LoadMore"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { CARD_LINK, CARD_STACK } from "~/ui/recipes/surface"
@@ -65,7 +66,7 @@ const ActivityScreen = (): React.ReactElement => {
 
   const ledger = useTransactions()
   const payments = usePayments(filter)
-  const funds = useFunds()
+  const funds = useFundCatalogue()
 
   const nameFor = (fundId: string | null): string =>
     fundId === null
@@ -92,6 +93,7 @@ const ActivityScreen = (): React.ReactElement => {
       <Tabs label="Activity view" value={tab} items={TABS} onChange={setTab} />
 
       {tab === "ledger" ? (
+        <>
         <AsyncBoundary
           query={ledger}
           skeleton={
@@ -144,6 +146,8 @@ const ActivityScreen = (): React.ReactElement => {
             </div>
           )}
         </AsyncBoundary>
+        <LoadMore list={ledger} noun="ledger entries" />
+        </>
       ) : (
         <>
           <Tabs
@@ -200,6 +204,7 @@ const ActivityScreen = (): React.ReactElement => {
               </div>
             )}
           </AsyncBoundary>
+          <LoadMore list={payments} noun="payments" />
         </>
       )}
     </Page>

@@ -9,6 +9,7 @@ import { useMarkNotificationRead, useNotifications } from "~/features/shared/que
 import { cx } from "~/lib/cx"
 import { openDestination } from "~/platform/openExternal"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
+import { LoadMore } from "~/ui/patterns/LoadMore"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
@@ -70,8 +71,8 @@ const NotificationsScreen = (): React.ReactElement => {
           <>
             <span className={COUNT_TEXT}>
               {data.unreadCount === 0
-                ? `${String(data.items.length)} notification(s)`
-                : `${String(data.unreadCount)} unread of ${String(data.items.length)}`}
+                ? `${String(data.items.length)} loaded`
+                : `${String(data.unreadCount)} unread on this account`}
             </span>
             <div className={CARD_STACK}>
               {data.items.map((item) => {
@@ -124,6 +125,7 @@ const NotificationsScreen = (): React.ReactElement => {
           </>
         )}
       </AsyncBoundary>
+      <LoadMore list={query} noun="notifications" />
     </Page>
   )
 }

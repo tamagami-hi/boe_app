@@ -39,10 +39,12 @@ import {
 } from "~/api/generated/operations"
 import { mintIdempotencyKey } from "~/api/idempotency"
 import type { DataOf } from "~/api/http"
+import { usePagedQuery } from "~/api/paged"
+import type { PagedQuery } from "~/api/paged"
 import { STALE, qk } from "~/api/queryKeys"
 import { useApi } from "~/app/providers/ApiProvider"
 
-const LIST_LIMIT = 100
+const LIST_LIMIT = 25
 
 export type AdminApplicationFilter = Readonly<{
   status?: "submitted" | "approved" | "rejected" | "withdrawn"
@@ -50,20 +52,19 @@ export type AdminApplicationFilter = Readonly<{
 
 export const useAdminApplications = (
   filter: AdminApplicationFilter,
-): UseQueryResult<DataOf<typeof listAdminApplications>> => {
+): PagedQuery<DataOf<typeof listAdminApplications>> => {
   const api = useApi()
-  return useQuery({
+  return usePagedQuery({
     queryKey: qk.admin.applications(filter.status ?? "any"),
     staleTime: STALE.MONEY,
-    queryFn: async () =>
-      (
-        await api.request(listAdminApplications, {
-          query: {
-            limit: LIST_LIMIT,
-            ...(filter.status === undefined ? {} : { status: filter.status }),
-          },
-        })
-      ).data,
+    fetchPage: async (after) =>
+      api.request(listAdminApplications, {
+        query: {
+          limit: LIST_LIMIT,
+          after,
+          ...(filter.status === undefined ? {} : { status: filter.status }),
+        },
+      }),
   })
 }
 
@@ -108,22 +109,21 @@ export type AdminUserFilter = Readonly<{
 
 export const useAdminUsers = (
   filter: AdminUserFilter,
-): UseQueryResult<DataOf<typeof listAdminUsers>> => {
+): PagedQuery<DataOf<typeof listAdminUsers>> => {
   const api = useApi()
   const key = `${filter.status ?? "any"}:${filter.q ?? ""}`
-  return useQuery({
+  return usePagedQuery({
     queryKey: qk.admin.users(key),
     staleTime: STALE.MONEY,
-    queryFn: async () =>
-      (
-        await api.request(listAdminUsers, {
-          query: {
-            limit: LIST_LIMIT,
-            ...(filter.status === undefined ? {} : { status: filter.status }),
-            ...(filter.q === undefined || filter.q === "" ? {} : { q: filter.q }),
-          },
-        })
-      ).data,
+    fetchPage: async (after) =>
+      api.request(listAdminUsers, {
+        query: {
+          limit: LIST_LIMIT,
+          after,
+          ...(filter.status === undefined ? {} : { status: filter.status }),
+          ...(filter.q === undefined || filter.q === "" ? {} : { q: filter.q }),
+        },
+      }),
   })
 }
 
@@ -139,19 +139,17 @@ export const useAdminUser = (userId: string): UseQueryResult<DataOf<typeof getAd
 
 export const useAdminUserLoginEvents = (
   userId: string,
-): UseQueryResult<DataOf<typeof listAdminUserLoginEvents>> => {
+): PagedQuery<DataOf<typeof listAdminUserLoginEvents>> => {
   const api = useApi()
-  return useQuery({
+  return usePagedQuery({
     queryKey: qk.admin.userLoginEvents(userId),
     enabled: userId !== "",
     staleTime: STALE.MONEY,
-    queryFn: async () =>
-      (
-        await api.request(listAdminUserLoginEvents, {
-          params: { userId },
-          query: { limit: LIST_LIMIT },
-        })
-      ).data,
+    fetchPage: async (after) =>
+      api.request(listAdminUserLoginEvents, {
+        params: { userId },
+        query: { limit: LIST_LIMIT, after },
+      }),
   })
 }
 
@@ -210,13 +208,13 @@ export type ReceiptFilter = "pending" | "acknowledged"
 
 export const useAdminReceipts = (
   state: ReceiptFilter,
-): UseQueryResult<DataOf<typeof listAdminFundReceipts>> => {
+): PagedQuery<DataOf<typeof listAdminFundReceipts>> => {
   const api = useApi()
-  return useQuery({
+  return usePagedQuery({
     queryKey: qk.admin.receipts(state),
     staleTime: STALE.MONEY,
-    queryFn: async () =>
-      (await api.request(listAdminFundReceipts, { query: { state, limit: LIST_LIMIT } })).data,
+    fetchPage: async (after) =>
+      api.request(listAdminFundReceipts, { query: { state, limit: LIST_LIMIT, after } }),
   })
 }
 
@@ -266,13 +264,13 @@ export type RefundFilter = "all" | "pending" | "provider_pending" | "refunded" |
 
 export const useAdminRefunds = (
   state: RefundFilter,
-): UseQueryResult<DataOf<typeof listAdminRefunds>> => {
+): PagedQuery<DataOf<typeof listAdminRefunds>> => {
   const api = useApi()
-  return useQuery({
-    queryKey: [...qk.admin.refunds(), state],
+  return usePagedQuery({
+    queryKey: qk.admin.refunds(state),
     staleTime: STALE.MONEY,
-    queryFn: async () =>
-      (await api.request(listAdminRefunds, { query: { state, limit: LIST_LIMIT } })).data,
+    fetchPage: async (after) =>
+      api.request(listAdminRefunds, { query: { state, limit: LIST_LIMIT, after } }),
   })
 }
 
@@ -298,17 +296,18 @@ export const useRefundAction = (): UseMutationResult<
       })
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: qk.admin.refunds() })
+      await queryClient.invalidateQueries({ queryKey: ["admin", "refunds"] })
     },
   })
 }
 
-export const useAdminPayments = (): UseQueryResult<DataOf<typeof listAdminPayments>> => {
+export const useAdminPayments = (): PagedQuery<DataOf<typeof listAdminPayments>> => {
   const api = useApi()
-  return useQuery({
+  return usePagedQuery({
     queryKey: qk.admin.payments("all"),
     staleTime: STALE.MONEY,
-    queryFn: async () => (await api.request(listAdminPayments, { query: { limit: LIST_LIMIT } })).data,
+    fetchPage: async (after) =>
+      api.request(listAdminPayments, { query: { limit: LIST_LIMIT, after } }),
   })
 }
 
@@ -316,23 +315,22 @@ export type MandateFilter = Readonly<{ state?: string; attention?: boolean }>
 
 export const useAdminMandates = (
   filter: MandateFilter,
-): UseQueryResult<DataOf<typeof listAdminMandates>> => {
+): PagedQuery<DataOf<typeof listAdminMandates>> => {
   const api = useApi()
   const key = `${filter.state ?? "any"}:${String(filter.attention ?? false)}`
-  return useQuery({
+  return usePagedQuery({
     queryKey: qk.admin.mandates(key),
     staleTime: STALE.MONEY,
     retry: false,
-    queryFn: async () =>
-      (
-        await api.request(listAdminMandates, {
-          query: {
-            limit: LIST_LIMIT,
-            ...(filter.state === undefined ? {} : { state: filter.state }),
-            ...(filter.attention === true ? { attention: "true" } : {}),
-          },
-        })
-      ).data,
+    fetchPage: async (after) =>
+      api.request(listAdminMandates, {
+        query: {
+          limit: LIST_LIMIT,
+          after,
+          ...(filter.state === undefined ? {} : { state: filter.state }),
+          ...(filter.attention === true ? { attention: "true" } : {}),
+        },
+      }),
   })
 }
 
@@ -376,26 +374,25 @@ export type AuditFilter = Readonly<{ entityType?: string; command?: string }>
 
 export const useAdminAuditEvents = (
   filter: AuditFilter,
-): UseQueryResult<DataOf<typeof listAdminAuditEvents>> => {
+): PagedQuery<DataOf<typeof listAdminAuditEvents>> => {
   const api = useApi()
   const key = `${filter.entityType ?? ""}:${filter.command ?? ""}`
-  return useQuery({
+  return usePagedQuery({
     queryKey: qk.admin.auditLogs(key),
     staleTime: STALE.MONEY,
-    queryFn: async () =>
-      (
-        await api.request(listAdminAuditEvents, {
-          query: {
-            limit: LIST_LIMIT,
-            ...(filter.entityType === undefined || filter.entityType === ""
-              ? {}
-              : { entityType: filter.entityType }),
-            ...(filter.command === undefined || filter.command === ""
-              ? {}
-              : { command: filter.command }),
-          },
-        })
-      ).data,
+    fetchPage: async (after) =>
+      api.request(listAdminAuditEvents, {
+        query: {
+          limit: LIST_LIMIT,
+          after,
+          ...(filter.entityType === undefined || filter.entityType === ""
+            ? {}
+            : { entityType: filter.entityType }),
+          ...(filter.command === undefined || filter.command === ""
+            ? {}
+            : { command: filter.command }),
+        },
+      }),
   })
 }
 
@@ -403,33 +400,33 @@ export type EmailDeliveryFilter = Readonly<{ state?: string; templateKey?: strin
 
 export const useAdminEmailDeliveries = (
   filter: EmailDeliveryFilter,
-): UseQueryResult<DataOf<typeof listAdminEmailDeliveries>> => {
+): PagedQuery<DataOf<typeof listAdminEmailDeliveries>> => {
   const api = useApi()
   const key = `${filter.state ?? ""}:${filter.templateKey ?? ""}`
-  return useQuery({
+  return usePagedQuery({
     queryKey: qk.admin.emailDeliveries(key),
     staleTime: STALE.MONEY,
-    queryFn: async () =>
-      (
-        await api.request(listAdminEmailDeliveries, {
-          query: {
-            limit: LIST_LIMIT,
-            ...(filter.state === undefined || filter.state === "" ? {} : { state: filter.state }),
-            ...(filter.templateKey === undefined || filter.templateKey === ""
-              ? {}
-              : { templateKey: filter.templateKey }),
-          },
-        })
-      ).data,
+    fetchPage: async (after) =>
+      api.request(listAdminEmailDeliveries, {
+        query: {
+          limit: LIST_LIMIT,
+          after,
+          ...(filter.state === undefined || filter.state === "" ? {} : { state: filter.state }),
+          ...(filter.templateKey === undefined || filter.templateKey === ""
+            ? {}
+            : { templateKey: filter.templateKey }),
+        },
+      }),
   })
 }
 
-export const useAdminFaqs = (): UseQueryResult<DataOf<typeof listAdminFaqs>> => {
+export const useAdminFaqs = (): PagedQuery<DataOf<typeof listAdminFaqs>> => {
   const api = useApi()
-  return useQuery({
+  return usePagedQuery({
     queryKey: qk.admin.faqs(),
     staleTime: STALE.CATALOGUE,
-    queryFn: async () => (await api.request(listAdminFaqs, { query: { limit: LIST_LIMIT } })).data,
+    fetchPage: async (after) =>
+      api.request(listAdminFaqs, { query: { limit: LIST_LIMIT, after } }),
   })
 }
 

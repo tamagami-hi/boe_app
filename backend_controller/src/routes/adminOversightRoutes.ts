@@ -26,6 +26,7 @@ import type { Database, EmailVerificationState, UserAccountState } from "../db/t
 import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adminAccess.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { AppError } from "../http/errorCatalog.js"
+import { paginate, readKeyset } from "../http/pagination.js"
 import { parseOrThrow } from "../http/validation.js"
 import type { AdminOversightRepository } from "../repositories/adminOversightRepository.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
@@ -39,8 +40,6 @@ import {
   isoOrNull,
   limitSchema,
   optionalIdempotencyKey,
-  paginate,
-  readKeyset,
   reasonCodeSchema,
   reasonDetailSchema,
   runAdminMutation,

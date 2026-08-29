@@ -544,7 +544,7 @@ reason `strict` mode earns its keep here.
 | Form state | `react-hook-form`, or `useState` for trivial forms | amounts, filters, drafts |
 | Cross-navigation transient state | `localStorage`, namespaced, **with an expiry** | `boe.pendingPayment`, `boe.pendingAutoPaySetup`, 30 minutes |
 | Persistent client preference | `localStorage` | device-security settings, last activity tab |
-| Credentials | Capacitor Secure Storage on native; **HttpOnly cookie on web** | never `localStorage` on native |
+| Credentials | Capacitor Secure Storage on native; **HttpOnly cookie on web** | never `localStorage`, on either platform |
 
 The session status must distinguish three things, because conflating them is a real defect the
 legacy code had and fixed:

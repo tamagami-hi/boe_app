@@ -5,7 +5,7 @@ import { PageHeader } from "~/app/layouts/PageHeader"
 import { formatDate } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { sipState } from "~/domain/status"
-import { useFunds, useSipPlans } from "~/features/shared/queries"
+import { useFundCatalogue, useSipPlans } from "~/features/shared/queries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
@@ -20,7 +20,7 @@ import { ITEM_TITLE } from "~/ui/recipes/datalist"
 
 const SipListScreen = (): React.ReactElement => {
   const query = useSipPlans()
-  const funds = useFunds()
+  const funds = useFundCatalogue()
 
   const nameFor = (fundId: string): string =>
     funds.data?.items.find((fund) => fund.id === fundId)?.name ?? "Fund"

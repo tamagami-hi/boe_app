@@ -38,10 +38,14 @@ every docker command:
 
 The interactive menu is organized as `Git → Exports → Ship + Deploy`. Under
 `Git`, the full workflow previews and commits dirty `wt/admin` and `wt/client`
-worktrees and main; checks, reviews, and integrates approved PRs;
+worktrees and main (their names are historical: `frontend_stack_ts` is one
+package building both variants, so the two worktrees are parallel workspaces
+rather than per-surface silos); checks, reviews, and integrates approved PRs;
 synchronizes `origin/main`; pushes after confirmation; and fast-forwards main
-back into each surface worktree. `Sync local worktrees` runs only that final
-main-to-worktree synchronization. `Cut a release` offers to run the full Git
+back into each dev worktree. `Sync local worktrees` runs only that final
+main-to-worktree synchronization; it also resets nothing, so if a worktree's
+sparse cone ever drifts from the live layout, fix the cone first or the sync
+will leave it missing directories. `Cut a release` offers to run the full Git
 preparation automatically when needed.
 
 `Exports → Build + ship APKs` builds the client and admin variants for the exact

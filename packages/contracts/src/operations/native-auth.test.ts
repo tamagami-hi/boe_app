@@ -145,6 +145,7 @@ describe("native authentication operation descriptors", () => {
       | "native-refresh"
       | "native-bearer"
       | "admin-web"
+      | "client-web"
     >()
     expectTypeOf<OperationInput["idempotency"]>().toEqualTypeOf<
       | "none"

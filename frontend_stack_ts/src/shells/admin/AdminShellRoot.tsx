@@ -5,6 +5,7 @@ import { ApiProvider } from "~/app/providers/ApiProvider"
 import { AppProviders } from "~/app/providers/AppProviders"
 import { TransportReporter } from "~/app/providers/TransportReporter"
 import { createBackPolicyResolver } from "~/app/native/backPolicy"
+import { AppUpdateGate } from "~/app/native/AppUpdateGate"
 import type { BackPolicy, BackPolicyInput } from "~/app/native/backPolicy"
 import {
   ADMIN_HOME_PATH,
@@ -72,7 +73,9 @@ const AdminShellRoot = (): React.ReactElement => {
       <TransportReporter bind={runtime.setOutcomeReporter} />
       <ApiProvider value={runtime.http}>
         <AuthPortProvider value={port}>
-          <AdminFrame>{router}</AdminFrame>
+          <AppUpdateGate>
+            <AdminFrame>{router}</AdminFrame>
+          </AppUpdateGate>
         </AuthPortProvider>
       </ApiProvider>
     </AppProviders>

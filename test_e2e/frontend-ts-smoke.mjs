@@ -76,7 +76,7 @@ const runClient = async (browser) => {
 
   await signIn(page, CLIENT_EMAIL, CLIENT_PASSWORD)
   await page.waitForURL(/\/dashboard$/u, { timeout: 20000 })
-  check("client: native login lands on the dashboard", true)
+  check("client: cookie login lands on the dashboard", true)
 
   const tabs = ["Home", "Funds", "Portfolio", "Activity", "Profile"]
   await page.locator("nav[aria-label='Sections'] a").first().waitFor({ timeout: 15000 })
@@ -212,7 +212,7 @@ const runClient = async (browser) => {
   collectDiagnostics(reloaded, sink)
   await reloaded.goto(`${CLIENT_URL}/dashboard`, { waitUntil: "networkidle" })
   await reloaded.waitForURL(/\/dashboard$/u, { timeout: 20000 })
-  check("client: session survives a fresh page load from secure storage fallback", true)
+  check("client: session survives a fresh page load on the HttpOnly cookie session", true)
 
   check(
     "client: no uncaught page errors",

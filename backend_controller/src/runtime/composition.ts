@@ -89,6 +89,9 @@ import { registerPhonePeMandateEventRoutes } from "../routes/phonePeMandateEvent
 import { registerAdminMandateRoutes } from "../routes/adminMandateRoutes.js"
 import { registerPublicOnboardingRoutes } from "../routes/publicOnboardingRoutes.js"
 import { registerWebAuthRoutes } from "../routes/webAuthRoutes.js"
+import { registerClientWebAuthRoutes } from "../routes/clientWebAuthRoutes.js"
+import { registerAdminNativeAuthRoutes } from "../routes/adminNativeAuthRoutes.js"
+import type { ClientWebOriginConfig } from "../domain/auth/clientWebAuth.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 
 const PAYMENT_NOT_FOUND_GRACE_MS = 60_000
@@ -215,6 +218,11 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
     config: { cookieSecure: serverConfig.web.cookieSecure, originAllowlist: serverConfig.web.originAllowlist },
   }
 
+  // What a client-authenticated route needs to accept the browser cookie session
+  // as well as a native bearer token. The allowlist is the same one web-auth and
+  // CORS use, so one WEB_ORIGIN_ALLOWLIST drives all three.
+  const clientWeb: ClientWebOriginConfig = { originAllowlist: serverConfig.web.originAllowlist }
+
   const checkReadiness = createReadinessCheck(
     database,
     serverConfig.email.smtp !== null,
@@ -262,6 +270,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
     registerClientPortfolioRoutes(application, {
       accessTokenService,
       database,
+      clientWeb,
       clientPortfolioRepository,
       clientValueEntryRepository,
       unitOfWork,
@@ -272,6 +281,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
     registerClientCatalogRoutes(application, {
       accessTokenService,
       database,
+      clientWeb,
       clock,
       cache,
       config: { cursorKey: serverConfig.cursorKey, catalogTtlMs: serverConfig.cache.catalogTtlMs },
@@ -281,6 +291,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
     registerClientOrderRoutes(application, {
       accessTokenService,
       database,
+      clientWeb,
       unitOfWork,
       clock,
       orderRepository,
@@ -298,6 +309,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
     registerClientSipPlanRoutes(application, {
       accessTokenService,
       database,
+      clientWeb,
       unitOfWork,
       clock,
       sipPlanRepository: createSipPlanRepository(),
@@ -310,6 +322,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
     registerClientAutoPaySipRoutes(application, {
       accessTokenService,
       database,
+      clientWeb,
       unitOfWork,
       clock,
       sipPlanRepository: createSipPlanRepository(),
@@ -333,6 +346,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
     registerClientEmailVerificationRoutes(application, {
       accessTokenService,
       database,
+      clientWeb,
       unitOfWork,
       clock,
       crypto,
@@ -350,12 +364,14 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
     registerClientAccountRoutes(application, {
       accessTokenService,
       database,
+      clientWeb,
       clientAccountRepository,
       clientValueEntryRepository,
       auditRepository,
       notificationRepository,
       unitOfWork,
       clock,
+      config: { cursorKey: serverConfig.cursorKey },
       appUpdate: serverConfig.appUpdate,
     })
 
@@ -379,6 +395,31 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       ...webAuth,
       unitOfWork,
       loginEventRepository,
+      logger: application.log,
+    })
+
+    registerClientWebAuthRoutes(application, {
+      ...webAuth,
+      unitOfWork,
+      loginEventRepository,
+      logger: application.log,
+    })
+
+    // The admin APK's bearer transport. Same dependency set as the client APK's
+    // native login, plus the role/permission lookup `webAuth` already carries;
+    // the scope descriptor is what makes it the admin audience.
+    registerAdminNativeAuthRoutes(application, {
+      userRepository,
+      authSessionRepository,
+      auditRepository,
+      loginEventRepository,
+      accessTokenService,
+      database,
+      refreshKey: serverConfig.refreshKey,
+      refreshKeyVersion: serverConfig.refreshKeyVersion,
+      clock,
+      deviceLimit: serverConfig.deviceLimit,
+      unitOfWork,
       logger: application.log,
     })
 
@@ -497,7 +538,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       unitOfWork,
       database,
       clock,
-      config: { idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
+      config: { cursorKey: serverConfig.cursorKey, idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
       acknowledgementRepository: fundReceiptAcknowledgementRepository,
       paymentsRepository,
       settlementRepository,

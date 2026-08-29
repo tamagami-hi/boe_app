@@ -1,10 +1,12 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { isNative } from "~/platform/capacitor"
+import { NO_BIOMETRIC, readBiometricCapability } from "~/platform/biometric"
+import type { BiometricCapability } from "~/platform/biometric"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Alert } from "~/ui/primitives/Feedback"
@@ -12,6 +14,14 @@ import { Switch } from "~/ui/primitives/Toggle"
 import { HONESTY_TEXT } from "~/ui/recipes/text"
 
 import { PinPad } from "./PinPad"
+import {
+  BIOMETRIC_HINT_NATIVE,
+  BIOMETRIC_HINT_UNENROLLED,
+  BIOMETRIC_HINT_WEB,
+  DEVICE_PIN_HONESTY,
+  DEVICE_PIN_SUBTITLE,
+} from "./copy"
+import { IDLE_LOCK_THRESHOLD_MS } from "./lockDecision"
 import {
   MIN_PIN_LENGTH,
   browserDeviceSecurityStore,
@@ -24,8 +34,9 @@ import {
   verifyDevicePin,
 } from "./securityStore"
 
-const HONESTY =
-  "This lock protects against casual access on a shared device. It is checked on this device only: it is not a password, it does not involve the server, and it does not encrypt anything. Anyone who can read this device's storage can bypass it. Your account password remains the thing that protects your money."
+const IDLE_MINUTES = Math.round(IDLE_LOCK_THRESHOLD_MS / 60_000)
+
+const LOCK_BEHAVIOUR = `Once a PIN is set, the Android app asks for it when it starts and again when you return to it after ${String(IDLE_MINUTES)} minutes or more in the background. On the web nothing is locked.`
 
 type Mode = "idle" | "set" | "confirm" | "verify"
 
@@ -33,12 +44,27 @@ const DeviceSecurityScreen = (): React.ReactElement => {
   const store = useMemo(browserDeviceSecurityStore, [])
   const [enrolled, setEnrolled] = useState(() => hasDevicePin(store))
   const [biometric, setBiometric] = useState(() => isBiometricEnabled(store))
+  const [capability, setCapability] = useState<BiometricCapability>(NO_BIOMETRIC)
   const [mode, setMode] = useState<Mode>("idle")
   const [entry, setEntry] = useState("")
   const [firstEntry, setFirstEntry] = useState("")
   const [notice, setNotice] = useState<string | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
   const [removing, setRemoving] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    void readBiometricCapability().then((resolved) => {
+      if (cancelled) return
+      setCapability(resolved)
+      if (resolved.enrolled || !isBiometricEnabled(store)) return
+      setBiometricEnabled(store, false)
+      setBiometric(false)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [store])
 
   const reset = (): void => {
     setMode("idle")
@@ -97,15 +123,19 @@ const DeviceSecurityScreen = (): React.ReactElement => {
     reset()
   }
 
+  const biometricHint = !isNative()
+    ? BIOMETRIC_HINT_WEB
+    : capability.enrolled
+      ? BIOMETRIC_HINT_NATIVE
+      : BIOMETRIC_HINT_UNENROLLED
+
   return (
     <Page width="form">
-      <PageHeader
-        title="Device security"
-        description="An optional PIN for this device. It is a convenience, not a security boundary."
-      />
+      <PageHeader title="Device security" description={DEVICE_PIN_SUBTITLE} />
 
       <Card>
-        <p className={HONESTY_TEXT}>{HONESTY}</p>
+        <p className={HONESTY_TEXT}>{DEVICE_PIN_HONESTY}</p>
+        <p className={HONESTY_TEXT}>{LOCK_BEHAVIOUR}</p>
       </Card>
 
       {notice === null ? null : (
@@ -125,14 +155,14 @@ const DeviceSecurityScreen = (): React.ReactElement => {
             {enrolled ? (
               <>
                 <Switch
-                  label="Unlock with biometrics"
-                  hint={
-                    isNative()
-                      ? "Uses whatever fingerprint or face this device already trusts. Enrolment changes on the device are honoured, which is a convenience trade-off, not a trust boundary."
-                      : "Biometric unlock needs the Android app. On the web the PIN is the only option."
+                  label={
+                    capability.enrolled
+                      ? `Unlock with ${capability.label}`
+                      : "Unlock with biometrics"
                   }
+                  hint={biometricHint}
                   checked={biometric}
-                  disabled={!isNative()}
+                  disabled={!capability.enrolled}
                   onChange={(next) => {
                     setBiometricEnabled(store, next)
                     setBiometric(next)

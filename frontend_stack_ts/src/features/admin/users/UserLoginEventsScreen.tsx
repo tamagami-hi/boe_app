@@ -6,6 +6,7 @@ import { formatDateTime } from "~/domain/dates"
 import { useAdminUserLoginEvents } from "~/features/admin/shared/adminQueries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
+import { LoadMore } from "~/ui/patterns/LoadMore"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { Badge } from "~/ui/primitives/Badge"
 import { Card } from "~/ui/primitives/Card"
@@ -89,6 +90,7 @@ const UserLoginEventsScreen = (): React.ReactElement => {
           />
         )}
       </AsyncBoundary>
+      <LoadMore list={query} noun="sign-in attempts" />
     </Page>
   )
 }

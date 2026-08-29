@@ -18,8 +18,9 @@
  *     there at all: `SameSite=Lax` forbids the cookie on cross-site
  *     subresource requests, browsers increasingly refuse to store it as a
  *     third-party cookie in the first place, and `validateWebOrigin` rejects
- *     `Sec-Fetch-Site: cross-site` outright. It authenticates with the same
- *     native bearer token the client app uses.
+ *     `Sec-Fetch-Site: cross-site` outright. It authenticates with a bearer
+ *     token from `/v1/auth/admin/native/login`, on the `admin_native` session
+ *     channel.
  *
  * Why accepting a bearer token here is not a weakening of the cookie rules:
  * the Origin/Sec-Fetch/CSRF machinery exists to stop a hostile page from riding
@@ -28,17 +29,25 @@
  * storage — so those checks have nothing to protect on this path. The cookie
  * path keeps every one of them, unchanged.
  *
- * The two channels cannot be crossed: `authenticateNativeRequest` only accepts
- * a session whose `channel` is `native`, and `authenticateWebRequest` only one
- * whose `channel` is `web`, so a web access-cookie value replayed in an
- * Authorization header is rejected, and vice versa.
+ * No channel can be crossed. `authenticateAdminNativeRequest` accepts only a
+ * session whose `channel` is `admin_native` and `authenticateWebRequest` only one
+ * whose channel is `web`, so an access-cookie value replayed in an Authorization
+ * header is refused and vice versa. Neither accepts the investor app's `native`
+ * or `client_web` sessions.
+ *
+ * The bearer leg used to call `authenticateNativeRequest`, which admits any
+ * `native` session — the investor APK's channel. That made a plain client's
+ * bearer token sufficient for admin *authentication*, leaving the permission
+ * check as the only thing between an investor and the console. Authorization is
+ * the wrong layer to separate audiences: permissions are per-user and one person
+ * can hold both accounts. The admin channel closes it at authentication.
  */
 import type { FastifyRequest } from "fastify"
 
 import type { UserId } from "../../db/repositories.js"
 import { AppError } from "../../http/errorCatalog.js"
-import { authenticateNativeRequest } from "../auth/nativeAuth.js"
-import { authenticateWebRequest, readAccessCookie, type WebAuthDeps } from "../auth/webAuth.js"
+import { authenticateAdminNativeRequest } from "../auth/adminNativeAuth.js"
+import { authenticateWebRequest, ADMIN_WEB_SCOPE, readAccessCookie, type WebAuthDeps } from "../auth/webAuth.js"
 
 export interface AdminPrincipal {
   readonly userId: string
@@ -68,9 +77,9 @@ export const resolveAdminPrincipal = async (
   deps: WebAuthDeps,
   options: Readonly<{ requireCsrf: boolean }>,
 ): Promise<AdminPrincipal> => {
-  const useBearer = readAccessCookie(request) === undefined && hasBearer(request)
+  const useBearer = readAccessCookie(request, ADMIN_WEB_SCOPE.cookies) === undefined && hasBearer(request)
   const actor = useBearer
-    ? await authenticateNativeRequest(request, deps)
+    ? await authenticateAdminNativeRequest(request, deps)
     : await authenticateWebRequest(request, deps, options)
 
   const { roles, permissions } = await deps.userRepository.findActiveRolesAndPermissions(

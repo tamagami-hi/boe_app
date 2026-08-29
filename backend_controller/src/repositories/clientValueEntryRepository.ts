@@ -26,8 +26,7 @@ export interface ClientValueEntryRepository {
   listByUser: (tx: Transaction, userId: string) => Promise<readonly ClientValueEntryRow[]>
   listRecentByUser: (
     tx: Transaction,
-    userId: string,
-    limit: number,
+    input: Readonly<{ userId: string; limit: number; afterCreatedAt?: Date; afterId?: string }>,
   ) => Promise<readonly ClientValueEntryRow[]>
 }
 
@@ -55,14 +54,16 @@ export const createClientValueEntryRepository = (): ClientValueEntryRepository =
     return result.rows
   },
 
-  listRecentByUser: async (tx, userId, limit) => {
+  listRecentByUser: async (tx, input) => {
     const result = await sql<ClientValueEntryRow>`
       select ${ENTRY_COLUMNS}
       from client_value_entries v
       left join investment_orders o on o.id = v.order_id
-      where v.user_id = ${userId}
+      where v.user_id = ${input.userId}
+        and (${input.afterCreatedAt ?? null}::timestamptz is null
+             or (v.created_at, v.id) < (${input.afterCreatedAt ?? null}, ${input.afterId ?? null}))
       order by v.created_at desc, v.id desc
-      limit ${limit}
+      limit ${input.limit}
     `.execute(tx)
     return result.rows
   },

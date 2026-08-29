@@ -5,12 +5,12 @@ import { z } from "zod"
 
 import type { UnitOfWork } from "../db/database.js"
 import type { IdempotencyRepository, IdempotencyScope, UserId } from "../db/repositories.js"
-import { authenticateNativeRequest, type NativeRequestAuthDeps } from "../domain/auth/nativeAuth.js"
+import { resolveClientPrincipal, type ClientRequestAuthDeps } from "../domain/auth/clientWebAuth.js"
 import { deriveInvestingEligibility } from "../domain/client/investingEligibility.js"
 import { checkoutSecondsRemaining } from "../domain/payments/checkoutExpiry.js"
 import { newMerchantOrderId, newMerchantSubscriptionId } from "../domain/payments/merchantIds.js"
 import { AppError } from "../http/errorCatalog.js"
-import { executeIdempotent, idempotencyKeySchema } from "../http/idempotencyProtocol.js"
+import { executeIdempotent } from "../http/idempotencyProtocol.js"
 import { parseOrThrow } from "../http/validation.js"
 import { logGatewayFailure, logGatewayUnconfigured } from "../providers/phonepe/gatewayFailure.js"
 import type { RecurringPaymentGateway } from "../providers/recurringPaymentGateway.js"
@@ -20,6 +20,7 @@ import type { OrderWriteRepository } from "../repositories/orderRepository.js"
 import type { PaymentsRepository } from "../repositories/paymentsRepository.js"
 import type { SipPlanRepository } from "../repositories/sipPlanRepository.js"
 import type { UserWriteRepository } from "../repositories/userRepository.js"
+import { requireIdempotencyKey } from "./adminRouteKit.js"
 
 const ROUTE = "/v1/client/sip-autopay"
 const DETAIL_ROUTE = "/v1/client/sip-autopay/:sipPlanId"
@@ -50,7 +51,7 @@ interface PreparedAutoPay {
   readonly mandateExpiresAt: string
 }
 
-export interface ClientAutoPaySipDeps extends NativeRequestAuthDeps {
+export interface ClientAutoPaySipDeps extends ClientRequestAuthDeps {
   readonly unitOfWork: UnitOfWork
   readonly clock: () => Date
   readonly sipPlanRepository: SipPlanRepository
@@ -67,16 +68,6 @@ export interface ClientAutoPaySipDeps extends NativeRequestAuthDeps {
     attemptTtlMs: number
     redirectUrl: string
   }>
-}
-
-const requireIdempotencyKey = (request: FastifyRequest): string => {
-  const header = request.headers["idempotency-key"]
-  const value = Array.isArray(header) ? header[0] : header
-  const parsed = idempotencyKeySchema.safeParse(value)
-  if (!parsed.success) {
-    throw new AppError("VALIDATION_FAILED", { fields: { "idempotency-key": ["a valid Idempotency-Key header is required"] } })
-  }
-  return parsed.data
 }
 
 const scopeFor = (userId: string, key: string): IdempotencyScope => ({
@@ -327,7 +318,7 @@ const dispatchSetup = async (
 }
 
 const postAutoPay = async (deps: ClientAutoPaySipDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await authenticateNativeRequest(request, deps)
+  const principal = await resolveClientPrincipal(request, deps)
   if (!deps.config.enabled) throw new AppError("DEPENDENCY_UNAVAILABLE")
   if (deps.recurringPaymentGateway === null) {
     logGatewayUnconfigured(request.log, { requestId: request.requestId, operation: "create_mandate_checkout" })
@@ -343,7 +334,7 @@ const postAutoPay = async (deps: ClientAutoPaySipDeps, request: FastifyRequest, 
 }
 
 const getAutoPay = async (deps: ClientAutoPaySipDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await authenticateNativeRequest(request, deps)
+  const principal = await resolveClientPrincipal(request, deps)
   const params = parseOrThrow(paramsSchema, request.params)
   const result = await deps.unitOfWork.execute(async (tx) => {
     const sip = await deps.sipPlanRepository.lockById(tx, { sipPlanId: params.sipPlanId, userId: principal.userId })
@@ -397,7 +388,7 @@ const getAutoPay = async (deps: ClientAutoPaySipDeps, request: FastifyRequest, r
 }
 
 const postCancel = async (deps: ClientAutoPaySipDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await authenticateNativeRequest(request, deps)
+  const principal = await resolveClientPrincipal(request, deps)
   if (deps.recurringPaymentGateway === null) throw new AppError("DEPENDENCY_UNAVAILABLE")
   const params = parseOrThrow(paramsSchema, request.params)
   const key = requireIdempotencyKey(request)
@@ -518,7 +509,7 @@ const postCancel = async (deps: ClientAutoPaySipDeps, request: FastifyRequest, r
 }
 
 const postRetry = async (deps: ClientAutoPaySipDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await authenticateNativeRequest(request, deps)
+  const principal = await resolveClientPrincipal(request, deps)
   if (!deps.config.enabled || deps.recurringPaymentGateway === null) throw new AppError("DEPENDENCY_UNAVAILABLE")
   const params = parseOrThrow(paramsSchema, request.params)
   const key = requireIdempotencyKey(request)

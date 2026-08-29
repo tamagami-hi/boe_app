@@ -7,7 +7,9 @@ import type { IdempotencyRepository } from "../db/repositories.js"
 import type { Database } from "../db/types.js"
 import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adminAccess.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
+import { computeFilterHash } from "../http/cursor.js"
 import { AppError } from "../http/errorCatalog.js"
+import { paginate, readKeyset } from "../http/pagination.js"
 import { parseOrThrow } from "../http/validation.js"
 import type { PaymentGateway } from "../providers/phonepe/paymentGateway.js"
 import { logGatewayFailure } from "../providers/phonepe/gatewayFailure.js"
@@ -38,6 +40,7 @@ const REFUNDS_ROUTE = "/v1/admin/refunds"
 const PAYMENTS_ROUTE = "/v1/admin/payments"
 
 export interface AdminFundReceiptConfig {
+  readonly cursorKey: Buffer
   readonly idempotencyTtlMs: number
 }
 
@@ -57,8 +60,12 @@ export interface AdminFundReceiptDeps {
   readonly notificationRepository: NotificationWriteRepository
 }
 
-const queueQuerySchema = z
-  .object({ state: z.enum(["pending", "acknowledged"]).default("pending"), limit: limitSchema })
+export const queueQuerySchema = z
+  .object({
+    state: z.enum(["pending", "acknowledged"]).default("pending"),
+    after: z.string().min(1).optional(),
+    limit: limitSchema,
+  })
   .strict()
 
 const acknowledgeBodySchema = z
@@ -71,14 +78,17 @@ const acknowledgeBodySchema = z
 const ACKNOWLEDGEMENT_TITLE = "Funds acknowledged"
 const ACKNOWLEDGEMENT_BODY = "Your funds have been acknowledged by BeOnEdge LLP and are ready for investment. Please stay updated through our app."
 
-const refundsQuerySchema = z
+export const refundsQuerySchema = z
   .object({
     state: z.enum(["pending", "provider_pending", "refunded", "failed", "all"]).default("failed"),
+    after: z.string().min(1).optional(),
     limit: limitSchema,
   })
   .strict()
 
-const paymentsQuerySchema = z.object({ limit: limitSchema }).strict()
+export const paymentsQuerySchema = z
+  .object({ after: z.string().min(1).optional(), limit: limitSchema })
+  .strict()
 
 const mapQueueRow = (row: FundReceiptQueueRow): Record<string, unknown> => ({
   orderId: row.orderId,
@@ -138,12 +148,25 @@ const listQueue = async (deps: AdminFundReceiptDeps, request: FastifyRequest, re
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: false })
   requireAnyPermission(principal, ["funds.receipts.read", "funds.receipts.write"])
   const query = parseOrThrow(queueQuerySchema, request.query)
+  const now = deps.clock()
+  const filterHash = computeFilterHash({ state: query.state })
+  const keyset = readKeyset(deps.config.cursorKey, query.after, FUND_RECEIPTS_ROUTE, filterHash, now)
 
   const rows = await deps.acknowledgementRepository.findQueuePage(deps.database, {
     state: query.state,
-    limit: query.limit,
+    ...keyset,
+    limit: query.limit + 1,
   })
-  return reply.sendData({ items: rows.map(mapQueueRow) }, { status: 200 })
+  const { items, page } = paginate(
+    deps.config.cursorKey,
+    rows,
+    query.limit,
+    FUND_RECEIPTS_ROUTE,
+    filterHash,
+    now,
+    (row) => [iso(row.createdAt), row.acknowledgementId],
+  )
+  return reply.sendData({ items: items.map(mapQueueRow) }, { status: 200, page })
 }
 
 const getDetail = async (deps: AdminFundReceiptDeps, request: FastifyRequest, reply: FastifyReply) => {
@@ -225,21 +248,49 @@ const listRefunds = async (deps: AdminFundReceiptDeps, request: FastifyRequest, 
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: false })
   requireAnyPermission(principal, ["funds.receipts.read", "refunds.write"])
   const query = parseOrThrow(refundsQuerySchema, request.query)
+  const now = deps.clock()
+  const filterHash = computeFilterHash({ state: query.state })
+  const keyset = readKeyset(deps.config.cursorKey, query.after, REFUNDS_ROUTE, filterHash, now)
 
   const rows = await deps.refundRepository.listPage(deps.database, {
     states: query.state === "all" ? [] : [query.state],
-    limit: query.limit,
+    ...keyset,
+    limit: query.limit + 1,
   })
-  return reply.sendData({ items: rows.map(mapRefundRow) }, { status: 200 })
+  const { items, page } = paginate(
+    deps.config.cursorKey,
+    rows,
+    query.limit,
+    REFUNDS_ROUTE,
+    filterHash,
+    now,
+    (row) => [iso(row.createdAt), row.id],
+  )
+  return reply.sendData({ items: items.map(mapRefundRow) }, { status: 200, page })
 }
 
 const listPayments = async (deps: AdminFundReceiptDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: false })
   requireAnyPermission(principal, ["payments.read"])
   const query = parseOrThrow(paymentsQuerySchema, request.query)
+  const now = deps.clock()
+  const filterHash = computeFilterHash({})
+  const keyset = readKeyset(deps.config.cursorKey, query.after, PAYMENTS_ROUTE, filterHash, now)
 
-  const rows = await deps.paymentsRepository.listPage(deps.database, { limit: query.limit })
-  return reply.sendData({ items: rows.map(mapPaymentRow) }, { status: 200 })
+  const rows = await deps.paymentsRepository.listPage(deps.database, {
+    ...keyset,
+    limit: query.limit + 1,
+  })
+  const { items, page } = paginate(
+    deps.config.cursorKey,
+    rows,
+    query.limit,
+    PAYMENTS_ROUTE,
+    filterHash,
+    now,
+    (row) => [iso(row.createdAt), row.id],
+  )
+  return reply.sendData({ items: items.map(mapPaymentRow) }, { status: 200, page })
 }
 
 const retryRefund = async (deps: AdminFundReceiptDeps, request: FastifyRequest, reply: FastifyReply) => {

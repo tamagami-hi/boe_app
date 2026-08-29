@@ -21,7 +21,7 @@ import { z } from "zod"
 
 import type { UnitOfWork } from "../db/database.js"
 import type { Database } from "../db/types.js"
-import { authenticateNativeRequest, type NativeRequestAuthDeps } from "../domain/auth/nativeAuth.js"
+import { resolveClientPrincipal, type ClientRequestAuthDeps } from "../domain/auth/clientWebAuth.js"
 import {
   projectOrderStatus,
   projectPaymentStatus,
@@ -32,9 +32,9 @@ import {
 } from "../domain/client/investingEligibility.js"
 import { derivePortfolio } from "../domain/client/portfolioLedger.js"
 import { toLedgerEntries } from "../domain/client/portfolioProjection.js"
-import { computeFilterHash, decodeCursor, encodeCursor } from "../http/cursor.js"
-import type { PageMeta } from "../http/envelope.js"
+import { computeFilterHash } from "../http/cursor.js"
 import { AppError } from "../http/errorCatalog.js"
+import { paginate, readKeyset } from "../http/pagination.js"
 import { parseOrThrow } from "../http/validation.js"
 import type {
   ClientPortfolioReadRepository,
@@ -50,7 +50,7 @@ export interface ClientPortfolioConfig {
   readonly cursorKey: Buffer
 }
 
-export interface ClientPortfolioDeps extends NativeRequestAuthDeps {
+export interface ClientPortfolioDeps extends ClientRequestAuthDeps {
   readonly clientPortfolioRepository: ClientPortfolioReadRepository
   readonly clientValueEntryRepository: ClientValueEntryRepository
   readonly unitOfWork: UnitOfWork
@@ -62,14 +62,22 @@ export interface ClientPortfolioDeps extends NativeRequestAuthDeps {
 const ORDERS_ROUTE = "/v1/client/orders"
 const PORTFOLIO_ROUTE = "/v1/client/portfolio"
 const TRANSACTIONS_ROUTE = "/v1/client/transactions"
-const MAX_TRANSACTIONS = 200
+const MAX_TRANSACTIONS = 100
 
-const historyQuerySchema = z
+export const historyQuerySchema = z
   .object({ after: z.string().min(1).optional(), limit: z.coerce.number().int().min(1).max(100).default(25) })
   .strict()
 
-const transactionsQuerySchema = z
-  .object({ limit: z.coerce.number().int().min(1).max(MAX_TRANSACTIONS).default(50) })
+/**
+ * The ledger pages on the same opaque cursor as every other list. `limit` is
+ * capped at the shared page maximum rather than the old 200 so a caller cannot
+ * ask for a page no cursor could describe.
+ */
+export const transactionsQuerySchema = z
+  .object({
+    after: z.string().min(1).optional(),
+    limit: z.coerce.number().int().min(1).max(MAX_TRANSACTIONS).default(25),
+  })
   .strict()
 
 const uuidParam = z.string().uuid()
@@ -130,7 +138,7 @@ const mapPayment = (payment: PaymentDetailRow): Record<string, unknown> => ({
 })
 
 const getEligibility = async (deps: ClientPortfolioDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await authenticateNativeRequest(request, deps)
+  const principal = await resolveClientPrincipal(request, deps)
   const now = deps.clock()
   const inputsRow = await deps.clientPortfolioRepository.eligibilityInputs(deps.database, principal.userId)
   if (inputsRow === null) throw new AppError("RESOURCE_NOT_FOUND")
@@ -160,7 +168,7 @@ const getEligibility = async (deps: ClientPortfolioDeps, request: FastifyRequest
  * client value ledger.
  */
 const getPortfolio = async (deps: ClientPortfolioDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await authenticateNativeRequest(request, deps)
+  const principal = await resolveClientPrincipal(request, deps)
   const rows = await deps.clientValueEntryRepository.listByUser(deps.database, principal.userId)
   const entries = toLedgerEntries(rows)
   const summary = derivePortfolio(entries)
@@ -226,64 +234,61 @@ const getPortfolio = async (deps: ClientPortfolioDeps, request: FastifyRequest, 
 }
 
 const listTransactions = async (deps: ClientPortfolioDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await authenticateNativeRequest(request, deps)
+  const principal = await resolveClientPrincipal(request, deps)
   const query = parseOrThrow(transactionsQuerySchema, request.query)
-  const rows = await deps.clientValueEntryRepository.listRecentByUser(
-    deps.database,
-    principal.userId,
-    query.limit,
+  const now = deps.clock()
+  const filterHash = computeFilterHash({ userId: principal.userId })
+  const keyset = readKeyset(
+    deps.config.cursorKey,
+    query.after,
+    TRANSACTIONS_ROUTE,
+    filterHash,
+    now,
   )
-  return reply.sendData({ items: rows.map(mapTransaction) }, { status: 200 })
+
+  const rows = await deps.clientValueEntryRepository.listRecentByUser(deps.database, {
+    userId: principal.userId,
+    ...keyset,
+    limit: query.limit + 1,
+  })
+  const { items, page } = paginate(
+    deps.config.cursorKey,
+    rows,
+    query.limit,
+    TRANSACTIONS_ROUTE,
+    filterHash,
+    now,
+    (row) => [iso(row.createdAt), row.id],
+  )
+  return reply.sendData({ items: items.map(mapTransaction) }, { status: 200, page })
 }
 
 const listOrders = async (deps: ClientPortfolioDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await authenticateNativeRequest(request, deps)
+  const principal = await resolveClientPrincipal(request, deps)
   const query = parseOrThrow(historyQuerySchema, request.query)
   const now = deps.clock()
   const filterHash = computeFilterHash({ userId: principal.userId })
-
-  let afterCreatedAt: Date | undefined
-  let afterId: string | undefined
-  if (query.after !== undefined) {
-    const parts = decodeCursor(deps.config.cursorKey, query.after, {
-      route: ORDERS_ROUTE,
-      filterHash,
-      now,
-    })
-    const createdAtRaw = parts[0]
-    const idRaw = parts[1]
-    if (createdAtRaw === undefined || idRaw === undefined) throw new AppError("CURSOR_INVALID")
-    afterCreatedAt = new Date(createdAtRaw)
-    afterId = idRaw
-  }
+  const keyset = readKeyset(deps.config.cursorKey, query.after, ORDERS_ROUTE, filterHash, now)
 
   const rows = await deps.clientPortfolioRepository.listOrders(deps.database, {
     userId: principal.userId,
-    ...(afterCreatedAt === undefined ? {} : { afterCreatedAt }),
-    ...(afterId === undefined ? {} : { afterId }),
+    ...keyset,
     limit: query.limit + 1,
   })
-  const hasMore = rows.length > query.limit
-  const items = hasMore ? rows.slice(0, query.limit) : rows
-  const last = items[items.length - 1]
-  const page: PageMeta = {
-    nextCursor:
-      hasMore && last !== undefined
-        ? encodeCursor(deps.config.cursorKey, {
-            route: ORDERS_ROUTE,
-            filterHash,
-            sortValues: [iso(last.createdAt), last.id],
-            now,
-          })
-        : null,
-    limit: query.limit,
-    hasMore,
-  }
+  const { items, page } = paginate(
+    deps.config.cursorKey,
+    rows,
+    query.limit,
+    ORDERS_ROUTE,
+    filterHash,
+    now,
+    (row) => [iso(row.createdAt), row.id],
+  )
   return reply.sendData({ items: items.map(mapOrder) }, { status: 200, page })
 }
 
 const getOrder = async (deps: ClientPortfolioDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await authenticateNativeRequest(request, deps)
+  const principal = await resolveClientPrincipal(request, deps)
   const orderId = parseOrThrow(uuidParam, (request.params as { orderId?: unknown }).orderId)
   const order = await deps.clientPortfolioRepository.findOrder(deps.database, principal.userId, orderId)
   if (order === null) throw new AppError("RESOURCE_NOT_FOUND")
@@ -291,7 +296,7 @@ const getOrder = async (deps: ClientPortfolioDeps, request: FastifyRequest, repl
 }
 
 const getPayment = async (deps: ClientPortfolioDeps, request: FastifyRequest, reply: FastifyReply) => {
-  const principal = await authenticateNativeRequest(request, deps)
+  const principal = await resolveClientPrincipal(request, deps)
   const paymentId = parseOrThrow(uuidParam, (request.params as { paymentId?: unknown }).paymentId)
   const payment = await deps.clientPortfolioRepository.findPayment(
     deps.database,

@@ -326,7 +326,7 @@ export const AdminLoginEvent = z.strictObject({
   createdAt: IsoDateTime,
   userId: Uuid.nullable(),
   email: z.string(),
-  channel: z.enum(["native", "web"]),
+  channel: z.enum(["native", "web", "client_web", "admin_native"]),
   outcome: AdminLoginOutcome,
   succeeded: z.boolean(),
   sessionId: Uuid.nullable(),

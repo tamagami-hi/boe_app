@@ -13,6 +13,8 @@ import {
   transitionAdminFundLifecycle,
 } from "~/api/generated/operations"
 import type { DataOf } from "~/api/http"
+import { usePagedQuery } from "~/api/paged"
+import type { PagedQuery } from "~/api/paged"
 import { STALE, qk } from "~/api/queryKeys"
 import { useApi } from "~/app/providers/ApiProvider"
 import { mintIdempotencyKey } from "~/api/idempotency"
@@ -22,26 +24,43 @@ export type AdminFundListFilter = Readonly<{
   search?: string
 }>
 
+const LIST_PAGE_LIMIT = 25
+
 export const useAdminFunds = (
   filter: AdminFundListFilter,
-): UseQueryResult<DataOf<typeof listAdminFunds>> => {
+): PagedQuery<DataOf<typeof listAdminFunds>> => {
   const api = useApi()
   const key = `${filter.state ?? "any"}:${filter.search ?? ""}`
-  return useQuery({
+  return usePagedQuery({
     queryKey: qk.admin.funds(key),
     staleTime: STALE.CATALOGUE,
-    queryFn: async () =>
-      (
-        await api.request(listAdminFunds, {
-          query: {
-            limit: 100,
-            ...(filter.state === undefined ? {} : { state: filter.state }),
-            ...(filter.search === undefined || filter.search === ""
-              ? {}
-              : { search: filter.search }),
-          },
-        })
-      ).data,
+    fetchPage: async (after) =>
+      api.request(listAdminFunds, {
+        query: {
+          limit: LIST_PAGE_LIMIT,
+          after,
+          ...(filter.state === undefined ? {} : { state: filter.state }),
+          ...(filter.search === undefined || filter.search === ""
+            ? {}
+            : { search: filter.search }),
+        },
+      }),
+  })
+}
+
+/**
+ * Every fund, walked to the end of the cursor chain. The growth and AUM screens
+ * put this in a picker, so a fund missing from the list is a fund an
+ * administrator cannot act on.
+ */
+export const useAdminFundCatalogue = (): PagedQuery<DataOf<typeof listAdminFunds>> => {
+  const api = useApi()
+  return usePagedQuery({
+    queryKey: qk.admin.funds("any:"),
+    staleTime: STALE.CATALOGUE,
+    loadAll: true,
+    fetchPage: async (after) =>
+      api.request(listAdminFunds, { query: { limit: LIST_PAGE_LIMIT, after } }),
   })
 }
 
@@ -57,15 +76,17 @@ export const useAdminFund = (fundId: string): UseQueryResult<DataOf<typeof getAd
 
 export const useAdminAumHistory = (
   fundId: string,
-): UseQueryResult<DataOf<typeof getAdminFundAumHistory>> => {
+): PagedQuery<DataOf<typeof getAdminFundAumHistory>> => {
   const api = useApi()
-  return useQuery({
+  return usePagedQuery({
     queryKey: qk.admin.fundAumHistory(fundId, "all"),
     enabled: fundId !== "",
     staleTime: STALE.MONEY,
-    queryFn: async () =>
-      (await api.request(getAdminFundAumHistory, { params: { fundId }, query: { limit: 100 } }))
-        .data,
+    fetchPage: async (after) =>
+      api.request(getAdminFundAumHistory, {
+        params: { fundId },
+        query: { limit: LIST_PAGE_LIMIT, after },
+      }),
   })
 }
 

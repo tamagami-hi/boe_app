@@ -1,6 +1,8 @@
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 
+import { bridgeNativePlugins } from "~/platform/plugins"
+
 import "~/ui/styles/index.css"
 
 const mount = (node: React.ReactNode): void => {
@@ -10,6 +12,8 @@ const mount = (node: React.ReactNode): void => {
 }
 
 const boot = async (): Promise<void> => {
+  bridgeNativePlugins()
+
   const shell =
     import.meta.env.VITE_BEO_APP_TARGET === "client"
       ? await import("~/shells/client/ClientShellRoot.js")

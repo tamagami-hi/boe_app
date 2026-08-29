@@ -55,7 +55,7 @@ Read in this order. Documents 00, 04, 07 and 10 are the load-bearing ones.
 
 State as of 2026-08-29:
 
-- `packages/contracts` describes **94 operations** across 84 paths. The drift checker was replaced
+- `packages/contracts` describes **101 operations** across 91 paths. The drift checker was replaced
   by `check-frontend-contract-bypass.mjs` (D-030), which fails on any `/v1/...` literal outside the
   generated client and on any mismatch between the contracted and generated operation counts.
 - Every route in both manifests renders a real screen. There is no placeholder screen.
@@ -68,34 +68,70 @@ State as of 2026-08-29:
   suite, and `release_manager/verify.sh`.
 
 **Read `LOGS/implementation_log.md` for what actually landed, and `LOGS/risk_and_decision.md`
-(D-001 to D-039) for the decisions that constrain it.** Several statements in the numbered documents
-have been superseded; where a document and the decision log disagree, the log is authoritative.
+(D-001 to D-052) for the decisions that constrain it.** Several statements in the numbered documents
+have been superseded; where a document and the decision log disagree, the log is authoritative. This
+applies with particular force to **doc 10's Phase 13 tables**, four rows of which were disproved in
+Entry 024 — see known gap 6.
 
 ### Known gaps, still open
 
 These were required by the plan and have not landed. They are tracked here because the numbered
 documents still read as though they were done:
 
-1. **No cursor pagination anywhere.** `src/api/cursor.ts` has no consumer; every list — client
-   transactions, payments, orders, funds, notifications, support, and all admin queues including
-   audit — fetches one fixed page. This is the defect Phase 6 and Phase 10 wrote acceptance criteria
-   to prevent.
-2. **App-update gate absent.** No `AppUpdateGate`, no consumer of the contracted `getAppUpdate`;
-   `AppUpdatePlugin.java` has no web caller, so a mandatory update cannot be enforced.
-3. **Device security is a settings screen with no lock.** Nothing consumes `verifyDevicePin` outside
-   the settings screen, and the biometric dependency is never imported in `src/`.
-4. **Android admin has no bearer auth path.** `buildAdminDevice` does not exist and `adminRuntime`
-   is cookie-only, yet the admin APK targets ship.
+1. ~~**No cursor pagination anywhere.**~~ Closed in Entry 023. Every browsable list in the product
+   pages on the opaque cursor through `usePagedQuery` and one shared `LoadMore`; the lists that stay
+   one-shot, and the pickers that walk every page instead, are enumerated with reasons in D-043. The
+   `Cursor` scalar was also fixed — it could not match a token the backend can mint. No paginated
+   query has been run against PostgreSQL; see Entry 023's UNVERIFIED list for the VPS check.
+2. ~~**App-update gate absent.**~~ Closed in Entry 022. `AppUpdateGate` is mounted in both shell
+   roots, `getAppUpdate` has a consumer, and a mandatory update blocks the app. Unverified on a
+   device — see Entry 022's UNVERIFIED list.
+3. ~~**Device security is a settings screen with no lock.**~~ Closed in Entry 022. `DeviceLockGate`
+   locks on cold start and after 120 s in the background, `NativeBiometric` is wired through
+   `src/platform/biometric.ts`, and Android Back cannot bypass the lock. Unverified on a device.
+4. ~~**Android admin has no bearer auth path.**~~ Closed in Entry 026. The admin scope has its own
+   bearer channel (`admin_native`), three contracted endpoints under the admin native auth prefix,
+   `buildAdminDevice`, and an `adminRuntime` that picks bearer + Secure Storage on native and keeps
+   cookies in a browser. Closing it also closed a real hole: the admin bearer leg previously accepted
+   any `native` session, so an investor's APK token passed admin *authentication*. Nothing has been
+   exercised on a device or against PostgreSQL — see Entry 026's UNVERIFIED list, and note that
+   migration 047 must be applied before the code that writes `admin_native` runs.
 5. **`OptimisticVersionForm` / `PreviewCommitPanel` were never built.** The `basisHash` and
    `expectedVersion` protocols are implemented correctly but inline in four admin screens, so there
    is no single guard. `parseIfMatchVersion` in the backend has no callers.
-6. **Phase 13 backend cleanup is largely untouched** — see doc 10's "safe to remove" list.
+6. **Phase 13 backend cleanup is partly done** — Entry 024 closed five items of doc 10's list
+   (`sessionTokens.ts`, the three duplicate `requireIdempotencyKey` bodies, CORS `PUT`,
+   `locked_until` in `db/types.ts`, the provider-event inbox drain, and the Razorpay agent-memory
+   note). **Four items in doc 10's Phase 13 tables are factually wrong and must not be acted on:**
+   `optionalIdempotencyKey` has three live callers (D-046), `adminFundGrowthPreviewRoutes.ts` is a
+   live endpoint the admin console calls (D-049), `mandateReconciliationWorker` is wired inside the
+   payment-reconciliation pass (D-047), and the refund machinery backs a shipped admin screen
+   (D-048). The rest of doc 10's list — `CACHE_KEYS.fundList`/`invalidatePrefix`, the
+   email-verification resend alias, `payments.mobileSdk`, `MOBILE_CHECKOUT_DISABLED`, the
+   `'rejected'` CHECK value, fixture residue, in-process rate limiting,
+   `legacy_investment_reviews`, and suspend/reinstate/close — is untouched.
 7. **`assertHttpMode()` is dead code**; D-009's configuration-error screen does not exist.
+8. **`secureStorage.ts` asks the bridge for a plugin name that does not exist.** It calls
+   `"SecureStoragePlugin"`; `@aparajita/capacitor-secure-storage` registers, and annotates its Java
+   class as, `"SecureStorage"`. Found in Entry 022 and deliberately left: correcting it moves client
+   bearer tokens on Android and needs a device. See D-040.
+9. ~~**The browser client keeps refresh tokens in `localStorage`.**~~ Closed in Entry 025. The client
+   scope has its own HttpOnly cookie session on a `client_web` session channel, and `persistSecrets`
+   is native-only. Nothing credential-shaped reaches `localStorage` on either platform. No cookie has
+   been issued by a running backend — see Entry 025's UNVERIFIED list, which also carries the four
+   cross-scope replays that prove the isolation, and note that migration `046` must be applied before
+   the backend image that writes the new channel.
 
 ## Recommended starting point
 
-The phased build is finished. Pick from "Known gaps, still open" above; item 1 (cursor pagination)
-has the widest blast radius because it silently truncates every list in the product.
+The phased build is finished. Pick from "Known gaps, still open" above; items 4 (Android admin bearer
+auth) and 5 (`OptimisticVersionForm` / `PreviewCommitPanel`) are the widest of what remains.
+
+**Before trusting any native behaviour, read D-040.** Until Entry 022 nothing in `src/` had ever
+called Capacitor's `registerPlugin`, so `window.Capacitor.Plugins` was empty on device and every
+wrapper in `src/platform/` failed silently. That is now fixed, which means `NativeBackCoordinator`,
+`applySystemChrome` and `openDestination` are executing for the first time and have never been
+observed running.
 
 ## Implementation sequence
 

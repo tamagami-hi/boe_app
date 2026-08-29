@@ -1,4 +1,13 @@
-import { getHealth, nativeLogin, nativeLogout, nativeRefresh } from "~/api/generated/operations"
+import {
+  clientWebLogin,
+  clientWebLogout,
+  clientWebRefresh,
+  getClientWebCsrf,
+  getHealth,
+  nativeLogin,
+  nativeLogout,
+  nativeRefresh,
+} from "~/api/generated/operations"
 import { createHttpClient } from "~/api/http"
 import type { HttpClient, TransportOutcome } from "~/api/http"
 import { createRefreshCoordinator } from "~/api/session/refresh"
@@ -11,11 +20,8 @@ import {
 import type { TokenStore } from "~/api/session/tokenStore"
 import type { Principal } from "~/app/providers/SessionProvider"
 import { isAndroid, isNative } from "~/platform/capacitor"
+import { buildClientDevice, NATIVE_COMPATIBILITY_HEADERS } from "~/platform/nativeDevice"
 import { createSecureStoragePersistence } from "~/platform/secureStorage"
-
-const INSTALLATION_ID_KEY = "boe.client.installationId"
-const APP_VERSION = "0.1.0"
-const DEVICE_NAME_FALLBACK = "BeOnEdge client"
 
 export type ClientRuntime = Readonly<{
   tokenStore: TokenStore
@@ -27,20 +33,6 @@ export type ClientRuntime = Readonly<{
   probeReachability: () => Promise<boolean>
   setOutcomeReporter: (report: (outcome: TransportOutcome) => void) => void
 }>
-
-const readInstallationId = (): string => {
-  const existing = localStorage.getItem(INSTALLATION_ID_KEY)
-  if (existing !== null && existing !== "") return existing
-  const minted = crypto.randomUUID()
-  localStorage.setItem(INSTALLATION_ID_KEY, minted)
-  return minted
-}
-
-const deviceName = (): string => {
-  if (typeof navigator === "undefined") return DEVICE_NAME_FALLBACK
-  const platform = navigator.userAgent.slice(0, 60).trim()
-  return platform === "" ? DEVICE_NAME_FALLBACK : platform
-}
 
 const principalFrom = (user: Readonly<{
   userId: string
@@ -56,12 +48,28 @@ const principalFrom = (user: Readonly<{
   accountState: user.accountStatus === "active" ? "active" : "suspended",
 })
 
+/**
+ * The investor app has two transports for one API, chosen by the shell it is
+ * running in.
+ *
+ * On Android the credentials are the native bearer pair, held in Capacitor Secure
+ * Storage, which survives process death.
+ *
+ * In a browser they are HttpOnly cookies the document cannot read, and nothing
+ * credential-shaped is persisted at all: `persistSecrets` is native-only. That is
+ * not a preference. A browser SPA loses every byte of memory on each full
+ * document load, so a bearer session can only survive one by living in
+ * `localStorage`, where any injected script can lift the refresh token — a full
+ * session-takeover primitive. The cookie session survives the same document load
+ * without the document ever holding the token, which is why the cookie endpoints
+ * had to exist before the `localStorage` persistence could be removed (D-037).
+ */
 export const createClientRuntime = (): ClientRuntime => {
   const native = isNative()
-  if (native) purgeLegacyLocalSecrets()
+  purgeLegacyLocalSecrets()
   const tokenStore = createTokenStore({
     persistence: native ? createSecureStoragePersistence() : createWebPersistence(),
-    persistSecrets: true,
+    persistSecrets: native,
   })
 
   let reportOutcome: (outcome: TransportOutcome) => void = () => undefined
@@ -77,7 +85,7 @@ export const createClientRuntime = (): ClientRuntime => {
     },
   })
 
-  const executeRefresh = async (): Promise<RefreshOutcome> => {
+  const executeNativeRefresh = async (): Promise<RefreshOutcome> => {
     const refreshToken = tokenStore.read("client", "refreshToken")
     if (refreshToken === null) return "unauthenticated"
     try {
@@ -96,7 +104,39 @@ export const createClientRuntime = (): ClientRuntime => {
     }
   }
 
-  const refreshCoordinator = createRefreshCoordinator(executeRefresh)
+  /**
+   * Recover the synchronizer token before rotating.
+   *
+   * The rotation requires the *current* CSRF token, and a mismatch is treated as
+   * refresh reuse and revokes the session family. An in-memory token can be one
+   * rotation behind for reasons that are nobody's fault — a second tab rotated
+   * first, or a document load has not restored yet — so this reads a fresh token
+   * from the session's own cookies first. `getClientWebCsrf` needs no CSRF token
+   * itself and accepts the refresh cookie alone, which is exactly the state an
+   * expired access cookie leaves behind.
+   */
+  const executeCookieRefresh = async (): Promise<RefreshOutcome> => {
+    try {
+      const recovered = await bareClient.request(getClientWebCsrf, { unauthenticated: true })
+      const { data } = await bareClient.request(clientWebRefresh, {
+        body: { rotationId: rotationId.value },
+        headers: { "x-csrf-token": recovered.data.csrfToken },
+        unauthenticated: true,
+      })
+      tokenStore.update("client", {
+        csrfToken: data.csrfToken,
+        principal: JSON.stringify(principalFrom(data.user)),
+      })
+      rotationId.value = crypto.randomUUID()
+      return "rotated"
+    } catch {
+      return "unauthenticated"
+    }
+  }
+
+  const refreshCoordinator = createRefreshCoordinator(
+    native ? executeNativeRefresh : executeCookieRefresh,
+  )
 
   const http = createHttpClient({
     scope: "client",
@@ -107,21 +147,16 @@ export const createClientRuntime = (): ClientRuntime => {
     },
   })
 
-  const login = async (
+  const nativeSignIn = async (
     input: Readonly<{ email: string; password: string }>,
   ): Promise<Principal> => {
     const { data } = await http.request(nativeLogin, {
       body: {
         email: input.email,
         password: input.password,
-        device: {
-          installationId: readInstallationId(),
-          name: deviceName(),
-          platform: "android",
-          appVersion: APP_VERSION,
-        },
+        device: buildClientDevice(),
       },
-      headers: { "x-client-platform": "android", "x-app-version": APP_VERSION },
+      headers: NATIVE_COMPATIBILITY_HEADERS,
       unauthenticated: true,
     })
 
@@ -134,17 +169,41 @@ export const createClientRuntime = (): ClientRuntime => {
     return principal
   }
 
-  const logout = async (): Promise<void> => {
+  const cookieSignIn = async (
+    input: Readonly<{ email: string; password: string }>,
+  ): Promise<Principal> => {
+    const { data } = await http.request(clientWebLogin, {
+      body: { email: input.email, password: input.password },
+      unauthenticated: true,
+    })
+    const principal = principalFrom(data.user)
+    tokenStore.update("client", {
+      csrfToken: data.csrfToken,
+      principal: JSON.stringify(principal),
+    })
+    return principal
+  }
+
+  const nativeSignOut = async (): Promise<void> => {
     const refreshToken = tokenStore.read("client", "refreshToken")
     if (refreshToken !== null) {
       try {
         await http.request(nativeLogout, {
           body: { refreshToken },
-          headers: { "x-client-platform": "android", "x-app-version": APP_VERSION },
+          headers: NATIVE_COMPATIBILITY_HEADERS,
         })
       } catch {
         void 0
       }
+    }
+    tokenStore.clear("client")
+  }
+
+  const cookieSignOut = async (): Promise<void> => {
+    try {
+      await http.request(clientWebLogout, {})
+    } catch {
+      void 0
     }
     tokenStore.clear("client")
   }
@@ -159,12 +218,32 @@ export const createClientRuntime = (): ClientRuntime => {
     }
   }
 
-  const restore = async (): Promise<Principal | null> => {
+  const nativeRestore = async (): Promise<Principal | null> => {
     const principal = cachedPrincipal()
     if (principal === null) return null
     if (tokenStore.read("client", "accessToken") !== null) return principal
     const outcome = await refreshCoordinator.refreshOnce("client")
     return outcome === "rotated" ? principal : null
+  }
+
+  /**
+   * A document load leaves the browser with its cookies and nothing else, so the
+   * session is re-established from the cookies rather than from anything the page
+   * remembered. The reply carries the principal, so a cached copy is never trusted
+   * as evidence of a session.
+   */
+  const cookieRestore = async (): Promise<Principal | null> => {
+    try {
+      const { data } = await http.request(getClientWebCsrf, { unauthenticated: true })
+      const principal = principalFrom(data.user)
+      tokenStore.update("client", {
+        csrfToken: data.csrfToken,
+        principal: JSON.stringify(principal),
+      })
+      return principal
+    } catch {
+      return null
+    }
   }
 
   const probeReachability = async (): Promise<boolean> => {
@@ -180,9 +259,9 @@ export const createClientRuntime = (): ClientRuntime => {
     tokenStore,
     refreshCoordinator,
     http,
-    login,
-    logout,
-    restore,
+    login: native ? nativeSignIn : cookieSignIn,
+    logout: native ? nativeSignOut : cookieSignOut,
+    restore: native ? nativeRestore : cookieRestore,
     probeReachability,
     setOutcomeReporter: (report) => {
       reportOutcome = report

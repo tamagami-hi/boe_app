@@ -3,6 +3,7 @@ import type { QueryClient } from "@tanstack/react-query"
 import type { ReactNode } from "react"
 
 import { ConnectivityBanner } from "~/app/native/ConnectivityBanner"
+import { DeviceLockGate } from "~/app/native/DeviceLockGate"
 import { NativeBackCoordinator } from "~/app/native/NativeBackCoordinator"
 import type { TransactionalBackHandler } from "~/app/native/NativeBackCoordinator"
 import { SystemBarsController } from "~/app/native/SystemBarsController"
@@ -40,15 +41,17 @@ export const AppProviders = ({
       <NetworkStatusProvider>
         <OverlayStackProvider>
           <SessionProvider scope={scope} tokenStore={tokenStore} restore={restore}>
-            <ToastProvider>
-              <SystemBarsController />
-              <NativeBackCoordinator
-                resolvePolicy={backPolicy}
-                {...(onTransactionalBack === undefined ? {} : { onTransactionalBack })}
-              />
-              <ConnectivityBanner />
-              {children}
-            </ToastProvider>
+            <DeviceLockGate>
+              <ToastProvider>
+                <SystemBarsController />
+                <NativeBackCoordinator
+                  resolvePolicy={backPolicy}
+                  {...(onTransactionalBack === undefined ? {} : { onTransactionalBack })}
+                />
+                <ConnectivityBanner />
+                {children}
+              </ToastProvider>
+            </DeviceLockGate>
           </SessionProvider>
         </OverlayStackProvider>
       </NetworkStatusProvider>

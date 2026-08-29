@@ -1,11 +1,19 @@
 /**
- * Browser-admin (web) authentication (spec 04 §3.4, §4.3): HttpOnly cookie access
+ * Cookie (browser) authentication (spec 04 §3.4, §4.3): HttpOnly cookie access
  * + opaque rotating refresh + synchronizer CSRF, with Origin/Referer and
  * Sec-Fetch-Site checks. Refresh + CSRF rotate together with the same 30s grace
- * and family-reuse revocation as native. `GET /v1/auth/web/csrf` (webRecoverCsrf)
- * re-issues the synchronizer token on reload from the access or refresh cookie
- * with no prior CSRF. The partial-response mixed-pair recovery edge (current
- * refresh + previous CSRF) is a documented later refinement.
+ * and family-reuse revocation as native. `webRecoverCsrf` re-issues the
+ * synchronizer token on reload from the access or refresh cookie with no prior
+ * CSRF. The partial-response mixed-pair recovery edge (current refresh +
+ * previous CSRF) is a documented later refinement.
+ *
+ * Every function here is parameterised by a `WebAuthScope`, because two audiences
+ * use this transport: the admin console (`ADMIN_WEB_SCOPE`, session channel
+ * `web`) and the investor app running in a browser (`CLIENT_WEB_SCOPE` in
+ * `clientWebAuth.ts`, session channel `client_web`). One implementation, two
+ * descriptors: the rotation semantics cannot drift apart, while the cookie names,
+ * the CSRF token, the refresh chain and the accepted session channel are all
+ * per-scope, so neither audience's cookie can authenticate the other's request.
  */
 import type { FastifyReply, FastifyRequest } from "fastify"
 import type { Kysely } from "kysely"
@@ -21,7 +29,7 @@ import {
 import { bytesEqual } from "../../crypto/primitives.js"
 import type { UnitOfWork } from "../../db/database.js"
 import type { AuthSession, Transaction, UserId } from "../../db/repositories.js"
-import type { AuthLoginOutcome, Database } from "../../db/types.js"
+import type { ActorType, AuthLoginOutcome, CookieSessionChannel, Database } from "../../db/types.js"
 import { AppError } from "../../http/errorCatalog.js"
 import type { AuditWriteRepository } from "../../repositories/auditRepository.js"
 import type { AuthSessionWriteRepository } from "../../repositories/authSessionRepository.js"
@@ -35,15 +43,20 @@ import type { UserLoginIdentity, UserWriteRepository } from "../../repositories/
  * only when the cookie is actually secure, and accept either name when reading so
  * sessions issued before a TLS switch keep working.
  */
-const SECURE_ACCESS_COOKIE = "__Host-boe_access"
-const SECURE_REFRESH_COOKIE = "__Host-boe_refresh"
-const PLAIN_ACCESS_COOKIE = "boe_access"
-const PLAIN_REFRESH_COOKIE = "boe_refresh"
+export interface WebCookieNames {
+  readonly secureAccess: string
+  readonly plainAccess: string
+  readonly secureRefresh: string
+  readonly plainRefresh: string
+}
 
-const accessCookieName = (secure: boolean): string =>
-  secure ? SECURE_ACCESS_COOKIE : PLAIN_ACCESS_COOKIE
-const refreshCookieName = (secure: boolean): string =>
-  secure ? SECURE_REFRESH_COOKIE : PLAIN_REFRESH_COOKIE
+export const ADMIN_WEB_COOKIES: WebCookieNames = {
+  secureAccess: "__Host-boe_access",
+  plainAccess: "boe_access",
+  secureRefresh: "__Host-boe_refresh",
+  plainRefresh: "boe_refresh",
+}
+
 const ACCESS_TOKEN_TTL_MS = 10 * 60 * 1000
 const REFRESH_IDLE_MS = 30 * 24 * 60 * 60 * 1000
 const SESSION_ABSOLUTE_MS = 90 * 24 * 60 * 60 * 1000
@@ -67,6 +80,42 @@ export interface WebAuthDeps {
   readonly config: WebAuthConfig
 }
 
+/** The slice needed to resolve a cookie principal, with no login/rotation state. */
+export interface WebRequestAuthDeps {
+  readonly accessTokenService: AccessTokenService
+  readonly database: Kysely<Database>
+}
+
+export interface WebSessionUserRow {
+  readonly id: string
+  readonly full_name: string
+  readonly email_normalized: string
+}
+
+/** A cookie transport is one of the two cookie channels, never a bearer one. */
+export type WebSessionChannel = CookieSessionChannel
+
+/** The cookie names and session channel that identify one audience's transport. */
+export interface WebSessionTransport {
+  readonly channel: WebSessionChannel
+  readonly cookies: WebCookieNames
+}
+
+export interface WebAuthScope<TPrincipal> extends WebSessionTransport {
+  readonly auditCommand: string
+  readonly auditActorType: ActorType
+  readonly buildPrincipal: (
+    tx: Transaction,
+    deps: WebAuthDeps,
+    user: WebSessionUserRow,
+  ) => Promise<TPrincipal>
+  /**
+   * Login-time eligibility beyond a correct password on an active account.
+   * Returns the recorded outcome to reject with, or null to admit.
+   */
+  readonly rejectLogin: (principal: TPrincipal) => AuthLoginOutcome | null
+}
+
 export interface WebPrincipal {
   readonly userId: string
   readonly fullName: string
@@ -75,9 +124,9 @@ export interface WebPrincipal {
   readonly permissions: readonly string[]
 }
 
-export interface WebAuthResult {
+export interface WebAuthResult<TPrincipal> {
   readonly body: {
-    readonly user: WebPrincipal
+    readonly user: TPrincipal
     readonly csrfToken: string
     readonly accessTokenExpiresAt: string
     readonly refreshTokenExpiresAt: string
@@ -87,8 +136,8 @@ export interface WebAuthResult {
   readonly refreshMaxAgeSeconds: number
 }
 
-export type WebRefreshOutcome =
-  | { readonly kind: "issued"; readonly result: WebAuthResult }
+export type WebRefreshOutcome<TPrincipal> =
+  | { readonly kind: "issued"; readonly result: WebAuthResult<TPrincipal> }
   | { readonly kind: "reuse_revoked" }
 
 // --- cookies ---
@@ -104,62 +153,83 @@ export const parseCookies = (header: string | undefined): Record<string, string>
   return cookies
 }
 
-export const readRefreshCookie = (request: FastifyRequest): string | undefined => {
+export const readRefreshCookie = (
+  request: FastifyRequest,
+  names: WebCookieNames,
+): string | undefined => {
   const cookies = parseCookies(request.headers.cookie)
-  return cookies[SECURE_REFRESH_COOKIE] ?? cookies[PLAIN_REFRESH_COOKIE]
+  return cookies[names.secureRefresh] ?? cookies[names.plainRefresh]
 }
 
-export const readAccessCookie = (request: FastifyRequest): string | undefined => {
+export const readAccessCookie = (
+  request: FastifyRequest,
+  names: WebCookieNames,
+): string | undefined => {
   const cookies = parseCookies(request.headers.cookie)
-  return cookies[SECURE_ACCESS_COOKIE] ?? cookies[PLAIN_ACCESS_COOKIE]
+  return cookies[names.secureAccess] ?? cookies[names.plainAccess]
 }
 
 const buildCookie = (name: string, value: string, maxAgeSeconds: number, secure: boolean): string =>
   `${name}=${value}; HttpOnly; ${secure ? "Secure; " : ""}SameSite=Lax; Path=/; Max-Age=${String(maxAgeSeconds)}`
 
-export const applyAuthCookies = (reply: FastifyReply, deps: WebAuthDeps, result: WebAuthResult): void => {
+export const applyAuthCookies = <TPrincipal>(
+  reply: FastifyReply,
+  deps: Readonly<{ config: Readonly<{ cookieSecure: boolean }> }>,
+  transport: WebSessionTransport,
+  result: WebAuthResult<TPrincipal>,
+): void => {
+  const secure = deps.config.cookieSecure
   reply.header("cache-control", "no-store")
   reply.header("set-cookie", [
     buildCookie(
-      accessCookieName(deps.config.cookieSecure),
+      secure ? transport.cookies.secureAccess : transport.cookies.plainAccess,
       result.accessToken,
       ACCESS_TOKEN_TTL_MS / 1000,
-      deps.config.cookieSecure,
+      secure,
     ),
     buildCookie(
-      refreshCookieName(deps.config.cookieSecure),
+      secure ? transport.cookies.secureRefresh : transport.cookies.plainRefresh,
       result.refreshToken,
       result.refreshMaxAgeSeconds,
-      deps.config.cookieSecure,
+      secure,
     ),
   ])
 }
 
-export const expireAuthCookies = (reply: FastifyReply, deps: WebAuthDeps): void => {
+export const expireAuthCookies = (
+  reply: FastifyReply,
+  deps: Readonly<{ config: Readonly<{ cookieSecure: boolean }> }>,
+  transport: WebSessionTransport,
+): void => {
   reply.header("cache-control", "no-store")
   reply.header("set-cookie", [
     // Clear both spellings: a session may have been issued under either policy.
-    buildCookie(SECURE_ACCESS_COOKIE, "", 0, deps.config.cookieSecure),
-    buildCookie(SECURE_REFRESH_COOKIE, "", 0, deps.config.cookieSecure),
-    buildCookie(PLAIN_ACCESS_COOKIE, "", 0, deps.config.cookieSecure),
-    buildCookie(PLAIN_REFRESH_COOKIE, "", 0, deps.config.cookieSecure),
+    // Only this scope's names are cleared, so signing out of one audience never
+    // signs the other out of the same browser.
+    buildCookie(transport.cookies.secureAccess, "", 0, deps.config.cookieSecure),
+    buildCookie(transport.cookies.secureRefresh, "", 0, deps.config.cookieSecure),
+    buildCookie(transport.cookies.plainAccess, "", 0, deps.config.cookieSecure),
+    buildCookie(transport.cookies.plainRefresh, "", 0, deps.config.cookieSecure),
   ])
 }
 
 // --- origin / fetch metadata ---
 
-export const validateWebOrigin = (request: FastifyRequest, deps: WebAuthDeps): void => {
+export const validateWebOrigin = (
+  request: FastifyRequest,
+  originAllowlist: readonly string[],
+): void => {
   const secFetchSite = request.headers["sec-fetch-site"]
   if (secFetchSite === "cross-site") throw new AppError("CSRF_INVALID")
 
   const origin = request.headers.origin
   if (typeof origin === "string") {
-    if (!deps.config.originAllowlist.includes(origin)) throw new AppError("CSRF_INVALID")
+    if (!originAllowlist.includes(origin)) throw new AppError("CSRF_INVALID")
     return
   }
   const referer = request.headers.referer
   if (typeof referer === "string") {
-    if (!deps.config.originAllowlist.some((allowed) => referer === allowed || referer.startsWith(`${allowed}/`))) {
+    if (!originAllowlist.some((allowed) => referer === allowed || referer.startsWith(`${allowed}/`))) {
       throw new AppError("CSRF_INVALID")
     }
     return
@@ -168,13 +238,24 @@ export const validateWebOrigin = (request: FastifyRequest, deps: WebAuthDeps): v
   throw new AppError("CSRF_INVALID")
 }
 
-const buildPrincipal = async (
-  deps: WebAuthDeps,
+const buildAdminPrincipal = async (
   tx: Transaction,
-  user: Readonly<{ id: string; full_name: string; email_normalized: string }>,
+  deps: WebAuthDeps,
+  user: WebSessionUserRow,
 ): Promise<WebPrincipal> => {
   const { roles, permissions } = await deps.userRepository.findActiveRolesAndPermissions(tx, user.id as UserId)
   return { userId: user.id, fullName: user.full_name, email: user.email_normalized, roles, permissions }
+}
+
+export const ADMIN_WEB_SCOPE: WebAuthScope<WebPrincipal> = {
+  channel: "web",
+  cookies: ADMIN_WEB_COOKIES,
+  auditCommand: "auth.web_login",
+  auditActorType: "admin",
+  buildPrincipal: buildAdminPrincipal,
+  // Not an admin principal. The caller still sees INVALID_CREDENTIALS, so the
+  // console does not confirm that the address is a real account.
+  rejectLogin: (principal) => (principal.roles.length === 0 ? "not_authorized" : null),
 }
 
 export interface WebLoginInput {
@@ -196,13 +277,13 @@ export interface WebLoginDeps extends WebAuthDeps {
   readonly logger?: { readonly warn: (object: Record<string, unknown>, message: string) => void }
 }
 
-type WebIssueOutcome =
-  | { readonly kind: "issued"; readonly result: WebAuthResult }
+type WebIssueOutcome<TPrincipal> =
+  | { readonly kind: "issued"; readonly result: WebAuthResult<TPrincipal> }
   | { readonly kind: "rejected"; readonly outcome: AuthLoginOutcome }
 
 /**
- * Admin (web) login, restructured exactly like `nativeLogin`: read without a
- * lock, verify the password holding no database connection, then open a short
+ * Cookie login, restructured exactly like `nativeLogin`: read without a lock,
+ * verify the password holding no database connection, then open a short
  * transaction to re-check and write.
  *
  * This path had the identical pathology — the route opened the transaction and
@@ -211,10 +292,14 @@ type WebIssueOutcome =
  * connection for the duration of a hash. Fewer people hit it than the client app,
  * but the shape is the same and so is the fix.
  *
- * Every outcome is recorded in `auth_login_events` with `channel = 'web'`, so the
- * admin surface has the same sign-in history the client surface now has.
+ * Every outcome is recorded in `auth_login_events` with the scope's channel, so
+ * each browser surface has the same sign-in history the client APK has.
  */
-export const webLogin = async (deps: WebLoginDeps, input: WebLoginInput): Promise<WebAuthResult> => {
+export const webLogin = async <TPrincipal>(
+  deps: WebLoginDeps,
+  scope: WebAuthScope<TPrincipal>,
+  input: WebLoginInput,
+): Promise<WebAuthResult<TPrincipal>> => {
   const emailNormalized = input.email.trim().toLowerCase()
 
   const rejectAndRecord = async (outcome: AuthLoginOutcome, userId: string | null): Promise<never> => {
@@ -222,7 +307,7 @@ export const webLogin = async (deps: WebLoginDeps, input: WebLoginInput): Promis
       await deps.loginEventRepository.record(deps.database, {
         userId,
         emailNormalized,
-        channel: "web",
+        channel: scope.channel,
         outcome,
         ipAddress: input.ipAddress ?? null,
         userAgent: input.userAgent ?? null,
@@ -231,7 +316,7 @@ export const webLogin = async (deps: WebLoginDeps, input: WebLoginInput): Promis
     } catch (error) {
       deps.logger?.warn(
         { requestId: input.requestId, outcome, error: error instanceof Error ? error.message : "unknown" },
-        "failed to record a failed admin sign-in attempt",
+        "failed to record a failed browser sign-in attempt",
       )
     }
     throw new AppError("INVALID_CREDENTIALS")
@@ -261,18 +346,20 @@ export const webLogin = async (deps: WebLoginDeps, input: WebLoginInput): Promis
   // Phase 3: short transaction, returning an outcome so a rejection's record is
   // written outside the transaction that would roll it back.
   const outcome = await deps.unitOfWork.execute(
-    async (tx): Promise<WebIssueOutcome> => issueWebLoginSession(tx, deps, input, identity),
+    async (tx): Promise<WebIssueOutcome<TPrincipal>> =>
+      issueWebLoginSession(tx, deps, scope, input, identity),
   )
   if (outcome.kind === "rejected") return rejectAndRecord(outcome.outcome, identity.user.id)
   return outcome.result
 }
 
-const issueWebLoginSession = async (
+const issueWebLoginSession = async <TPrincipal>(
   tx: Transaction,
   deps: WebLoginDeps,
+  scope: WebAuthScope<TPrincipal>,
   input: WebLoginInput,
   verified: UserLoginIdentity,
-): Promise<WebIssueOutcome> => {
+): Promise<WebIssueOutcome<TPrincipal>> => {
   // Locked for the same reasons as the native path: it serializes concurrent
   // logins for one account across the writes below, and re-reads the account
   // state that phase 2 assumed.
@@ -284,18 +371,16 @@ const issueWebLoginSession = async (
   if (currentHash === null) return { kind: "rejected", outcome: "invalid_credentials" }
   if (currentHash !== verified.passwordHash) return { kind: "rejected", outcome: "password_changed" }
 
-  const principal = await buildPrincipal(deps, tx, user)
-  if (principal.roles.length === 0) {
-    // Not an admin principal. The caller still sees INVALID_CREDENTIALS, so the
-    // console does not confirm that the address is a real account.
-    return { kind: "rejected", outcome: "not_authorized" }
-  }
+  const principal = await scope.buildPrincipal(tx, deps, user)
+  const rejection = scope.rejectLogin(principal)
+  if (rejection !== null) return { kind: "rejected", outcome: rejection }
 
   const now = deps.clock()
   const refreshRaw = generateInitialRefreshToken()
   const csrfRaw = generateInitialRefreshToken()
   const created = await deps.authSessionRepository.createWebSession(tx, {
     userId: user.id as UserId,
+    channel: scope.channel,
     refreshTokenHash: hashToken(refreshRaw),
     refreshKeyVersion: deps.refreshKeyVersion,
     csrfTokenHash: hashToken(csrfRaw),
@@ -308,21 +393,21 @@ const issueWebLoginSession = async (
   })
   const accessToken = await deps.accessTokenService.sign({ sub: user.id, sid: created.session.id })
   await deps.auditRepository.append(tx, {
-    actorType: "admin",
+    actorType: scope.auditActorType,
     actorUserId: user.id,
-    command: "auth.web_login",
+    command: scope.auditCommand,
     entityType: "auth_session",
     entityId: created.session.id,
     requestId: input.requestId,
     entityVersion: 1,
     metadata: {},
   })
-  // Inside the transaction, like the native path: a successful admin sign-in
-  // missing from the log would make the log unreliable as a history.
+  // Inside the transaction, like the native path: a successful sign-in missing
+  // from the log would make the log unreliable as a history.
   await deps.loginEventRepository.record(tx, {
     userId: user.id,
     emailNormalized: user.email_normalized.toLowerCase(),
-    channel: "web",
+    channel: scope.channel,
     outcome: "success",
     sessionId: created.session.id,
     ipAddress: input.ipAddress ?? null,
@@ -346,16 +431,23 @@ const issueWebLoginSession = async (
 }
 
 /**
- * Resolve and re-check a cookie-authenticated web principal, enforcing Origin and
+ * Resolve and re-check a cookie-authenticated principal, enforcing Origin and
  * (for unsafe methods) the synchronizer CSRF token.
+ *
+ * The session channel must be exactly the transport's own. That single predicate
+ * is what keeps the audiences apart: an admin access cookie replayed under the
+ * client cookie name resolves to a `web` session and is refused here, and an
+ * access-cookie value replayed in an `Authorization` header is refused by
+ * `authenticateBearerSession`, which requires a bearer channel.
  */
-export const authenticateWebRequest = async (
+export const authenticateCookieSession = async (
   request: FastifyRequest,
-  deps: WebAuthDeps,
-  options: Readonly<{ requireCsrf: boolean }>,
+  deps: WebRequestAuthDeps,
+  transport: WebSessionTransport,
+  options: Readonly<{ originAllowlist: readonly string[]; requireCsrf: boolean }>,
 ): Promise<{ userId: string; sessionId: string }> => {
-  validateWebOrigin(request, deps)
-  const accessCookie = readAccessCookie(request)
+  validateWebOrigin(request, options.originAllowlist)
+  const accessCookie = readAccessCookie(request, transport.cookies)
   if (accessCookie === undefined) throw new AppError("AUTHENTICATION_REQUIRED")
   const verified = await deps.accessTokenService.verify(accessCookie)
 
@@ -364,7 +456,7 @@ export const authenticateWebRequest = async (
     .selectAll()
     .where("id", "=", verified.sid)
     .executeTakeFirst()
-  if (session === undefined || session.state !== "active" || session.channel !== "web") {
+  if (session === undefined || session.state !== "active" || session.channel !== transport.channel) {
     throw new AppError("SESSION_INVALID")
   }
   const user = await deps.database
@@ -385,9 +477,20 @@ export const authenticateWebRequest = async (
   return { userId: verified.sub, sessionId: verified.sid }
 }
 
+/** The admin console's cookie principal (spec 04 §4.5). */
+export const authenticateWebRequest = async (
+  request: FastifyRequest,
+  deps: WebRequestAuthDeps & Readonly<{ config: Readonly<{ originAllowlist: readonly string[] }> }>,
+  options: Readonly<{ requireCsrf: boolean }>,
+): Promise<{ userId: string; sessionId: string }> =>
+  authenticateCookieSession(request, deps, ADMIN_WEB_SCOPE, {
+    originAllowlist: deps.config.originAllowlist,
+    requireCsrf: options.requireCsrf,
+  })
+
 export const webLogout = async (
   tx: Transaction,
-  deps: WebAuthDeps,
+  deps: Readonly<{ authSessionRepository: AuthSessionWriteRepository; clock: () => Date }>,
   input: Readonly<{ sessionId: string }>,
 ): Promise<void> => {
   await deps.authSessionRepository.revokeSessionFamily(tx, {
@@ -403,11 +506,12 @@ export interface WebRefreshInput {
   readonly presentedCsrf: string
 }
 
-export const webRefresh = async (
+export const webRefresh = async <TPrincipal>(
   tx: Transaction,
   deps: WebAuthDeps,
+  scope: WebAuthScope<TPrincipal>,
   input: WebRefreshInput,
-): Promise<WebRefreshOutcome> => {
+): Promise<WebRefreshOutcome<TPrincipal>> => {
   const locked = await deps.authSessionRepository.lockByRefreshTokenHash(tx, hashToken(input.refreshCookie))
   if (locked === null) throw new AppError("SESSION_INVALID")
   const { session, refreshToken: presented } = locked
@@ -415,14 +519,16 @@ export const webRefresh = async (
   if (session.state !== "active" || new Date(session.expires_at).getTime() <= now.getTime()) {
     throw new AppError("SESSION_INVALID")
   }
+  // A refresh cookie only rotates the chain of its own audience.
+  if (session.channel !== scope.channel) throw new AppError("SESSION_INVALID")
 
-  const issue = async (refreshRaw: string, csrfRaw: string): Promise<WebRefreshOutcome> => {
+  const issue = async (refreshRaw: string, csrfRaw: string): Promise<WebRefreshOutcome<TPrincipal>> => {
     const user = await deps.database
       .selectFrom("users")
       .select(["id", "full_name", "email_normalized"])
       .where("id", "=", session.user_id)
       .executeTakeFirstOrThrow()
-    const principal = await buildPrincipal(deps, tx, user)
+    const principal = await scope.buildPrincipal(tx, deps, user)
     const accessToken = await deps.accessTokenService.sign({ sub: session.user_id, sid: session.id })
     return {
       kind: "issued",
@@ -498,28 +604,29 @@ export const webRefresh = async (
   return { kind: "reuse_revoked" }
 }
 
-export interface WebCsrfResult {
+export interface WebCsrfResult<TPrincipal> {
   readonly body: {
-    readonly user: WebPrincipal
+    readonly user: TPrincipal
     readonly csrfToken: string
     readonly csrfTokenExpiresAt: string
   }
 }
 
 /**
- * Reload recovery for the synchronizer CSRF token (spec 04 §3.4,
- * `GET /v1/auth/web/csrf`). The SPA has lost its in-memory CSRF token after a
- * reload but still holds the HttpOnly access/refresh cookies. Identify the web
- * session from the access cookie if it still verifies, else from the refresh
- * cookie, then re-issue a fresh CSRF token (no prior CSRF required). Safe without
- * CSRF because the caller must pass the Origin/Fetch-Metadata check (enforced in
- * the route) and a cross-origin caller cannot read the JSON response.
+ * Reload recovery for the synchronizer CSRF token (spec 04 §3.4). The SPA has
+ * lost its in-memory CSRF token after a document load but still holds the
+ * HttpOnly access/refresh cookies. Identify the session from the access cookie if
+ * it still verifies, else from the refresh cookie, then re-issue a fresh CSRF
+ * token (no prior CSRF required). Safe without CSRF because the caller must pass
+ * the Origin/Fetch-Metadata check (enforced in the route) and a cross-origin
+ * caller cannot read the JSON response.
  */
-export const webRecoverCsrf = async (
+export const webRecoverCsrf = async <TPrincipal>(
   tx: Transaction,
   deps: WebAuthDeps,
+  scope: WebAuthScope<TPrincipal>,
   input: Readonly<{ accessCookie: string | undefined; refreshCookie: string | undefined }>,
-): Promise<WebCsrfResult> => {
+): Promise<WebCsrfResult<TPrincipal>> => {
   const now = deps.clock()
 
   let session: AuthSession | undefined
@@ -539,7 +646,7 @@ export const webRecoverCsrf = async (
     if (locked !== null) session = locked.session
   }
 
-  if (session === undefined || session.state !== "active" || session.channel !== "web") {
+  if (session === undefined || session.state !== "active" || session.channel !== scope.channel) {
     throw new AppError("AUTHENTICATION_REQUIRED")
   }
   if (new Date(session.expires_at).getTime() <= now.getTime()) throw new AppError("SESSION_INVALID")
@@ -554,12 +661,13 @@ export const webRecoverCsrf = async (
   const csrfRaw = generateInitialRefreshToken()
   await deps.authSessionRepository.rotateWebCsrf(tx, {
     sessionId: session.id,
+    channel: scope.channel,
     csrfTokenHash: hashToken(csrfRaw),
     csrfKeyVersion: deps.csrfKeyVersion,
     csrfExpiresAt: new Date(now.getTime() + ACCESS_TOKEN_TTL_MS),
     now,
   })
-  const principal = await buildPrincipal(deps, tx, user)
+  const principal = await scope.buildPrincipal(tx, deps, user)
   return {
     body: {
       user: principal,

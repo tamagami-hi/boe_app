@@ -16,6 +16,9 @@ export const CLIENT_MONEY_PREFIXES = [
 ] as const
 
 export const qk = {
+  app: {
+    update: (variant: string) => ["app", "update", variant] as const,
+  },
   client: {
     eligibility: (userId: string) => ["client", "eligibility", userId] as const,
     portfolio: () => ["client", "portfolio"] as const,
@@ -49,7 +52,7 @@ export const qk = {
       ["admin", "fund", fundId, "aum-history", filter] as const,
     receipts: (state: string) => ["admin", "receipts", state] as const,
     receipt: (orderId: string) => ["admin", "receipt", orderId] as const,
-    refunds: () => ["admin", "refunds"] as const,
+    refunds: (state: string) => ["admin", "refunds", state] as const,
     payments: (filter: string) => ["admin", "payments", filter] as const,
     mandates: (filter: string) => ["admin", "mandates", filter] as const,
     mandate: (mandateId: string) => ["admin", "mandate", mandateId] as const,

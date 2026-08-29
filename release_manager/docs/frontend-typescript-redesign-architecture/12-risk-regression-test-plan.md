@@ -280,9 +280,12 @@ tests asserting the eviction (and asserting a read evicts nothing).
 (D-036). `persistPendingPayment` was called before the lump-sum redirect only; the two AutoPay
 mandate redirects navigated to a provider with nothing persisted, stranding the user on return.
 
-**R7's guard now exists** — `src/shells/client/clientRuntime.test.ts` asserts the browser never
-persists `accessToken`/`refreshToken` (D-037). Previously `persistSecrets: true` was unconditional,
-so the deployed client web build wrote refresh tokens into `localStorage`.
+**R7's guard now exists and is true again** — `src/shells/client/clientRuntime.test.ts` asserts the
+browser never persists `accessToken`/`refreshToken`, and that a fresh runtime recovers no secret
+across a document load (D-052). This sentence described the reverted D-037 for a day, during which the
+tree said the opposite: `persistSecrets: true` was unconditional, so the deployed client web build
+wrote refresh tokens into `localStorage`. It could only be made true once the browser had a cookie
+session to be signed in by instead — Entry 025.
 
 `release_manager/tests/*.test.sh` are not run by any CI job; `verify.sh` runs them, and
 `hermetic_branding.test.sh` and `apk_logging_policy.test.sh` were not invoked by anything until

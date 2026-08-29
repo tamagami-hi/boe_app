@@ -6,16 +6,19 @@
  * cross-site with the API host, so cookie auth cannot reach it: `SameSite=Lax`
  * withholds the cookie on cross-site subresource requests and
  * `validateWebOrigin` rejects `Sec-Fetch-Site: cross-site` outright. It
- * therefore authenticates with a native bearer token instead.
+ * therefore authenticates with a bearer token on the admin scope's own session
+ * channel.
  *
  * The risk to guard against is the bearer path quietly becoming a way around the
  * cookie path's CSRF protections, so the tests assert the precedence rule (a
- * present access cookie always wins) as well as the fallback.
+ * present access cookie always wins) as well as the fallback. The channel the
+ * bearer leg accepts is asserted in `adminNativeAuth.test.ts`, because that is
+ * where a client token stops being admissible.
  */
 import type { FastifyRequest } from "fastify"
 import { describe, expect, test, vi } from "vitest"
 
-import * as nativeAuthModule from "../auth/nativeAuth.js"
+import * as adminNativeAuthModule from "../auth/adminNativeAuth.js"
 import * as webAuthModule from "../auth/webAuth.js"
 import { hasPermission, requireAnyPermission, resolveAdminPrincipal, type AdminPrincipal } from "./adminAccess.js"
 
@@ -36,7 +39,7 @@ const depsWith = (roles: readonly string[], permissions: readonly string[]) =>
   }) as never
 
 const webActor = { userId: "user-web", sessionId: "session-web" }
-const nativeActor = { userId: "user-native", sessionId: "session-native" }
+const nativeActor = { userId: "user-admin-native", sessionId: "session-admin-native" }
 
 vi.mock("../auth/webAuth.js", async () => {
   const actual = await vi.importActual<typeof webAuthModule>("../auth/webAuth.js")
@@ -51,12 +54,14 @@ vi.mock("../auth/webAuth.js", async () => {
   }
 })
 
-vi.mock("../auth/nativeAuth.js", () => ({
-  authenticateNativeRequest: vi.fn().mockResolvedValue({ userId: "user-native", sessionId: "session-native" }),
+vi.mock("../auth/adminNativeAuth.js", () => ({
+  authenticateAdminNativeRequest: vi
+    .fn()
+    .mockResolvedValue({ userId: "user-admin-native", sessionId: "session-admin-native" }),
 }))
 
 const { authenticateWebRequest } = webAuthModule
-const { authenticateNativeRequest } = nativeAuthModule
+const { authenticateAdminNativeRequest } = adminNativeAuthModule
 
 const captureError = (operation: () => void): Error => {
   try {
@@ -79,40 +84,40 @@ describe("resolveAdminPrincipal transport selection", () => {
     expect(authenticateWebRequest).toHaveBeenCalled()
   })
 
-  test("falls back to the bearer transport when there is no access cookie", async () => {
-    vi.mocked(authenticateNativeRequest).mockClear()
+  test("falls back to the admin bearer transport when there is no access cookie", async () => {
+    vi.mocked(authenticateAdminNativeRequest).mockClear()
     const principal = await resolveAdminPrincipal(
-      asRequest({ authorization: "Bearer some-native-access-token" }),
+      asRequest({ authorization: "Bearer some-admin-native-access-token" }),
       depsWith(["superadmin"], ["applications.read"]),
       { requireCsrf: false },
     )
     expect(principal.userId).toBe(nativeActor.userId)
-    expect(authenticateNativeRequest).toHaveBeenCalled()
+    expect(authenticateAdminNativeRequest).toHaveBeenCalled()
   })
 
   test("a present cookie takes precedence over a bearer header", async () => {
     // Belt and braces: the browser console must keep its exact previous
     // behaviour even if a stale bearer token is also sent, so the bearer path
     // can never be used to sidestep the Origin/CSRF checks.
-    vi.mocked(authenticateNativeRequest).mockClear()
+    vi.mocked(authenticateAdminNativeRequest).mockClear()
     const principal = await resolveAdminPrincipal(
       asRequest({ cookie: "boe_access=abc", authorization: "Bearer stale" }),
       depsWith(["superadmin"], ["applications.read"]),
       { requireCsrf: true },
     )
     expect(principal.userId).toBe(webActor.userId)
-    expect(authenticateNativeRequest).not.toHaveBeenCalled()
+    expect(authenticateAdminNativeRequest).not.toHaveBeenCalled()
   })
 
   test("a non-Bearer Authorization header does not select the bearer transport", async () => {
-    vi.mocked(authenticateNativeRequest).mockClear()
+    vi.mocked(authenticateAdminNativeRequest).mockClear()
     const principal = await resolveAdminPrincipal(
       asRequest({ authorization: "Basic dXNlcjpwYXNz" }),
       depsWith(["superadmin"], ["applications.read"]),
       { requireCsrf: false },
     )
     expect(principal.userId).toBe(webActor.userId)
-    expect(authenticateNativeRequest).not.toHaveBeenCalled()
+    expect(authenticateAdminNativeRequest).not.toHaveBeenCalled()
   })
 
   test("roles and permissions are read live and returned for both transports", async () => {
@@ -144,8 +149,8 @@ describe("authorization is unchanged by the transport", () => {
   })
 
   test("requireAnyPermission fails closed on a missing permission", () => {
-    // A plain client account can obtain a native bearer token, so this is what
-    // stops one from reaching the admin surface with it.
+    // Defence in depth behind the channel check: an account that somehow held an
+    // admin_native session without the route's permission is still refused.
     const error = captureError(() => requireAnyPermission(principal, ["finance.operate"]))
     expect(error).toMatchObject({ code: "AUTHORIZATION_DENIED", httpStatus: 403 })
   })

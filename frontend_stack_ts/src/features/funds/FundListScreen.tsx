@@ -7,7 +7,7 @@ import { PageHeader } from "~/app/layouts/PageHeader"
 import { ContentGrid } from "~/app/layouts/ContentGrid"
 import { fundRiskLevel } from "~/domain/status"
 import { toPaise } from "~/domain/money"
-import { useFunds } from "~/features/shared/queries"
+import { useFundCatalogue } from "~/features/shared/queries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
@@ -26,7 +26,7 @@ const SORTS = ["name", "risk", "size"] as const
 type Sort = (typeof SORTS)[number]
 
 const FundListScreen = (): React.ReactElement => {
-  const query = useFunds()
+  const query = useFundCatalogue()
   const breakpoint = useBreakpoint()
   const compact = isCompact(breakpoint)
   const [search, setSearch] = useState("")

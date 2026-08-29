@@ -2,7 +2,8 @@
  * Browser-admin (web) authentication routes (spec 04 §3.4): cookie + synchronizer
  * CSRF login, refresh rotation, logout, and the `GET /v1/auth/web/csrf` reload-
  * recovery endpoint that re-issues the CSRF token from the access or refresh
- * cookie.
+ * cookie. The investor app's equivalents are in `clientWebAuthRoutes.ts`; both
+ * share the machinery in `domain/auth/webAuth.ts`.
  */
 import type { FastifyInstance } from "fastify"
 import { z } from "zod"
@@ -13,6 +14,7 @@ import { AppError } from "../http/errorCatalog.js"
 import { requestProvenance } from "../http/requestProvenance.js"
 import { parseOrThrow } from "../http/validation.js"
 import {
+  ADMIN_WEB_SCOPE,
   applyAuthCookies,
   authenticateWebRequest,
   expireAuthCookies,
@@ -42,41 +44,43 @@ export const registerWebAuthRoutes = (application: FastifyInstance, deps: WebAut
     // the Argon2id verification runs before any connection is taken. Re-wrapping
     // this call would reinstate the pool exhaustion it was restructured to remove.
     const provenance = requestProvenance(request)
-    const result = await webLogin(deps, {
+    const result = await webLogin(deps, ADMIN_WEB_SCOPE, {
       email: body.email,
       password: body.password,
       requestId: request.requestId,
       ipAddress: provenance.ipAddress,
       userAgent: provenance.userAgent,
     })
-    applyAuthCookies(reply, deps, result)
+    applyAuthCookies(reply, deps, ADMIN_WEB_SCOPE, result)
     return reply.sendData(result.body, { status: 200 })
   })
 
   application.post("/v1/auth/web/refresh", async (request, reply) => {
     const body = parseOrThrow(refreshSchema, request.body)
-    validateWebOrigin(request, deps)
-    const refreshCookie = readRefreshCookie(request)
+    validateWebOrigin(request, deps.config.originAllowlist)
+    const refreshCookie = readRefreshCookie(request, ADMIN_WEB_SCOPE.cookies)
     const presentedCsrf = request.headers["x-csrf-token"]
     if (refreshCookie === undefined) throw new AppError("AUTHENTICATION_REQUIRED")
     if (typeof presentedCsrf !== "string") throw new AppError("CSRF_INVALID")
 
     const outcome = await deps.unitOfWork.execute((tx) =>
-      webRefresh(tx, deps, { rotationId: body.rotationId, refreshCookie, presentedCsrf }),
+      webRefresh(tx, deps, ADMIN_WEB_SCOPE, { rotationId: body.rotationId, refreshCookie, presentedCsrf }),
     )
     if (outcome.kind === "reuse_revoked") {
-      expireAuthCookies(reply, deps)
+      expireAuthCookies(reply, deps, ADMIN_WEB_SCOPE)
       throw new AppError("SESSION_INVALID")
     }
-    applyAuthCookies(reply, deps, outcome.result)
+    applyAuthCookies(reply, deps, ADMIN_WEB_SCOPE, outcome.result)
     return reply.sendData(outcome.result.body, { status: 200 })
   })
 
   application.get("/v1/auth/web/csrf", async (request, reply) => {
-    validateWebOrigin(request, deps)
-    const accessCookie = readAccessCookie(request)
-    const refreshCookie = readRefreshCookie(request)
-    const result = await deps.unitOfWork.execute((tx) => webRecoverCsrf(tx, deps, { accessCookie, refreshCookie }))
+    validateWebOrigin(request, deps.config.originAllowlist)
+    const accessCookie = readAccessCookie(request, ADMIN_WEB_SCOPE.cookies)
+    const refreshCookie = readRefreshCookie(request, ADMIN_WEB_SCOPE.cookies)
+    const result = await deps.unitOfWork.execute((tx) =>
+      webRecoverCsrf(tx, deps, ADMIN_WEB_SCOPE, { accessCookie, refreshCookie }),
+    )
     reply.header("cache-control", "no-store")
     return reply.sendData(result.body, { status: 200 })
   })
@@ -84,7 +88,7 @@ export const registerWebAuthRoutes = (application: FastifyInstance, deps: WebAut
   application.post("/v1/auth/web/logout", async (request, reply) => {
     const actor = await authenticateWebRequest(request, deps, { requireCsrf: true })
     await deps.unitOfWork.execute((tx) => webLogout(tx, deps, { sessionId: actor.sessionId }))
-    expireAuthCookies(reply, deps)
+    expireAuthCookies(reply, deps, ADMIN_WEB_SCOPE)
     return reply.sendData({ loggedOut: true }, { status: 200 })
   })
 }

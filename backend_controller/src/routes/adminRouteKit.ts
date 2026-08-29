@@ -5,12 +5,12 @@ import { z } from "zod"
 
 import type { UnitOfWork } from "../db/database.js"
 import type { IdempotencyRepository, IdempotencyScope, Transaction } from "../db/repositories.js"
-import { computeFilterHash, decodeCursor, encodeCursor } from "../http/cursor.js"
-import type { PageMeta } from "../http/envelope.js"
+import { computeFilterHash } from "../http/cursor.js"
+import { MAX_PAGE_LIMIT } from "../http/pagination.js"
 import { AppError } from "../http/errorCatalog.js"
 import { executeIdempotent, idempotencyKeySchema } from "../http/idempotencyProtocol.js"
 
-export const MAX_ADMIN_LIMIT = 100
+export const MAX_ADMIN_LIMIT = MAX_PAGE_LIMIT
 
 export const limitSchema = z.coerce.number().int().min(1).max(MAX_ADMIN_LIMIT).default(25)
 export const uuidParam = z.string().uuid()
@@ -86,61 +86,6 @@ const canonicalize = (value: unknown): unknown => {
 
 export const hashRequest = (canonical: Readonly<Record<string, unknown>>): Buffer =>
   createHash("sha256").update(JSON.stringify(canonicalize(canonical))).digest()
-
-export interface KeysetPosition {
-  readonly afterCreatedAt?: Date
-  readonly afterId?: string
-}
-
-export const readKeysetValues = (
-  cursorKey: Buffer,
-  after: string | undefined,
-  route: string,
-  filterHash: string,
-  now: Date,
-): readonly string[] => {
-  if (after === undefined) return []
-  return decodeCursor(cursorKey, after, { route, filterHash, now })
-}
-
-export const readKeyset = (
-  cursorKey: Buffer,
-  after: string | undefined,
-  route: string,
-  filterHash: string,
-  now: Date,
-): KeysetPosition => {
-  if (after === undefined) return {}
-  const parts = decodeCursor(cursorKey, after, { route, filterHash, now })
-  const createdAtRaw = parts[0]
-  const idRaw = parts[1]
-  if (createdAtRaw === undefined || idRaw === undefined) throw new AppError("CURSOR_INVALID")
-  return { afterCreatedAt: new Date(createdAtRaw), afterId: idRaw }
-}
-
-export interface Paginated<Row> {
-  readonly items: readonly Row[]
-  readonly page: PageMeta
-}
-
-export const paginate = <Row>(
-  cursorKey: Buffer,
-  rows: readonly Row[],
-  limit: number,
-  route: string,
-  filterHash: string,
-  now: Date,
-  sortValues: (row: Row) => readonly string[],
-): Paginated<Row> => {
-  const hasMore = rows.length > limit
-  const items = hasMore ? rows.slice(0, limit) : rows
-  const last = items[items.length - 1]
-  const nextCursor =
-    hasMore && last !== undefined
-      ? encodeCursor(cursorKey, { route, filterHash, sortValues: sortValues(last), now })
-      : null
-  return { items, page: { nextCursor, limit, hasMore } }
-}
 
 export const adminIdempotencyScope = (
   userId: string,

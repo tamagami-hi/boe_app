@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 
 import { useOverlayStack } from "~/app/providers/OverlayStackProvider"
+import { isDeviceLocked } from "~/app/native/deviceLock"
 import { onHardwareBack } from "~/platform/lifecycle"
 import { tryCallPlugin } from "~/platform/capacitor"
 import type { BackPolicyResolver } from "~/app/native/backPolicy"
@@ -41,6 +42,8 @@ export const NativeBackCoordinator = ({
     () =>
       onHardwareBack((canGoBack) => {
         const current = state.current
+
+        if (isDeviceLocked()) return
 
         if (current.dismissTop()) return
 

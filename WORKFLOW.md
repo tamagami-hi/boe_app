@@ -18,8 +18,12 @@ boe_app  (this folder)  ── branch: main ── FULL checkout
       │       │
   ┌───┘       └────────┐
 admin              client        ← boe_app-admin / boe_app-client
-  • each is a sparse worktree: sees ONLY its own surface
-  • developers/agents do per-surface code here
+  • two sparse dev worktrees, cone: backend_controller emu
+    frontend_stack_ts packages release_manager
+  • the names are historical. frontend_stack/ held separate admin and
+    client packages; frontend_stack_ts is ONE package building two
+    variants via VITE_BEO_APP_TARGET, so both worktrees see the same
+    frontend. They are parallel workspaces, not per-surface silos.
 ```
 
 **One job per location.** A worktree builds its surface. `boe_app` (main)

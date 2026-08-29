@@ -9,7 +9,7 @@ import {
   useCommitCollectiveClientGrowth,
   usePreviewCollectiveClientGrowth,
 } from "~/features/admin/shared/adminQueries"
-import { useAdminFunds } from "~/features/admin/shared/queries"
+import { useAdminFundCatalogue } from "~/features/admin/shared/queries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { Stat } from "~/ui/patterns/DataList"
@@ -32,7 +32,7 @@ import { STACK_LG } from "~/ui/recipes/layout"
 const today = (): string => new Date().toISOString().slice(0, 10)
 
 const CollectiveClientGrowthScreen = (): React.ReactElement => {
-  const funds = useAdminFunds({})
+  const funds = useAdminFundCatalogue()
   const preview = usePreviewCollectiveClientGrowth()
   const commit = useCommitCollectiveClientGrowth()
 

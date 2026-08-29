@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom"
 
 import { isApiError } from "~/api/errors"
+import type { PagedQuery } from "~/api/paged"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
@@ -59,13 +60,21 @@ const OverviewScreen = (): React.ReactElement => {
   const notConfigured = (error: unknown): boolean =>
     isApiError(error) && error.code === "RESOURCE_NOT_FOUND"
 
-  const counts: Readonly<Record<string, number | null | "unconfigured">> = {
-    applications: applications.data?.items.length ?? null,
-    receipts: receipts.data?.items.length ?? null,
-    refunds: refunds.data?.items.length ?? null,
-    mandates: notConfigured(mandates.error)
-      ? "unconfigured"
-      : (mandates.data?.items.length ?? null),
+  /**
+   * There is no count endpoint, so a tile can only report what it has read. A
+   * queue with another page behind it is shown as "25+" rather than as a total
+   * that happens to equal the page size.
+   */
+  const depth = (list: PagedQuery<{ items: readonly unknown[] }>): string =>
+    list.data === undefined
+      ? "—"
+      : `${String(list.data.items.length)}${list.hasMore ? "+" : ""}`
+
+  const counts: Readonly<Record<string, string>> = {
+    applications: depth(applications),
+    receipts: depth(receipts),
+    refunds: depth(refunds),
+    mandates: notConfigured(mandates.error) ? "n/a" : depth(mandates),
   }
 
   const reachable = ADMIN_ROUTES.filter(
@@ -86,13 +95,7 @@ const OverviewScreen = (): React.ReactElement => {
           {QUEUE_ENTRIES.map((entry) => (
             <Card key={entry.id} elevated>
               <Stat label={entry.label} hint={entry.hint}>
-                <span className={ADMIN_QUEUE_COUNT}>
-                  {counts[entry.id] === "unconfigured"
-                    ? "n/a"
-                    : counts[entry.id] === null
-                      ? "—"
-                      : String(counts[entry.id])}
-                </span>
+                <span className={ADMIN_QUEUE_COUNT}>{counts[entry.id] ?? "—"}</span>
               </Stat>
               <Link to={entry.to} className={CARD_LINK}>
                 <Button tone="ghost" size="sm" trailing>

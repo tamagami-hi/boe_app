@@ -142,7 +142,7 @@ export const listClientTransactions = defineOperation({
   idempotency: "naturally-idempotent",
   responseCacheControl: "no-store",
   request: { query: ListQuery },
-  success: { status: 200, schema: createSuccessEnvelopeSchema(TransactionsData) },
+  success: { status: 200, schema: createPaginatedSuccessEnvelopeSchema(TransactionsData) },
   errorCodes: ["AUTHENTICATION_REQUIRED", "SESSION_INVALID", "ACCOUNT_NOT_ACTIVE", "CURSOR_INVALID", "VALIDATION_FAILED", "INTERNAL_ERROR"],
 })
 

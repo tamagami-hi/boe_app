@@ -13,6 +13,7 @@ import {
 } from "~/features/shared/queries"
 import { cx } from "~/lib/cx"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
+import { LoadMore } from "~/ui/patterns/LoadMore"
 import { Disclosure, Prose } from "~/ui/patterns/DataList"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
@@ -208,6 +209,7 @@ const SupportScreen = (): React.ReactElement => {
             </div>
           )}
         </AsyncBoundary>
+        <LoadMore list={tickets} noun="requests" />
       </Section>
 
       <Section title="Published answers">

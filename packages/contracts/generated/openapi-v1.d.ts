@@ -692,6 +692,118 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/client/web/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["clientWebLogin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/client/web/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["clientWebRefresh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/client/web/csrf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getClientWebCsrf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/client/web/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["clientWebLogout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/admin/native/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminNativeLogin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/admin/native/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["refreshAdminNativeSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/admin/native/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["logoutAdminNativeSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/funds": {
         parameters: {
             query?: never;
@@ -1778,6 +1890,11 @@ export interface operations {
                             /** Format: date-time */
                             timestamp: string;
                             idempotencyReplay?: boolean;
+                            page: {
+                                nextCursor: string | null;
+                                limit: number;
+                                hasMore: boolean;
+                            };
                         };
                     };
                 };
@@ -2302,6 +2419,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
+                after?: string;
             };
             header?: never;
             path?: never;
@@ -2343,6 +2461,11 @@ export interface operations {
                             /** Format: date-time */
                             timestamp: string;
                             idempotencyReplay?: boolean;
+                            page: {
+                                nextCursor: string | null;
+                                limit: number;
+                                hasMore: boolean;
+                            };
                         };
                     };
                 };
@@ -2490,6 +2613,7 @@ export interface operations {
             query?: {
                 status?: ("created" | "provider_pending" | "succeeded" | "failed" | "expired" | "reconciliation_required" | "refund_pending" | "refund_failed" | "refunded" | "pending" | "gateway_initiated" | "success" | "confirmed" | "reconciled" | "rejected" | "refund_in_progress" | "support_required" | "payment_in_progress" | "processing" | "payment_failed") | ("created" | "provider_pending" | "succeeded" | "failed" | "expired" | "reconciliation_required" | "refund_pending" | "refund_failed" | "refunded" | "pending" | "gateway_initiated" | "success" | "confirmed" | "reconciled" | "rejected" | "refund_in_progress" | "support_required" | "payment_in_progress" | "processing" | "payment_failed")[];
                 limit?: number;
+                after?: string;
             };
             header?: never;
             path?: never;
@@ -2537,6 +2661,11 @@ export interface operations {
                             /** Format: date-time */
                             timestamp: string;
                             idempotencyReplay?: boolean;
+                            page: {
+                                nextCursor: string | null;
+                                limit: number;
+                                hasMore: boolean;
+                            };
                         };
                     };
                 };
@@ -2722,6 +2851,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
+                after?: string;
             };
             header?: never;
             path?: never;
@@ -2764,6 +2894,11 @@ export interface operations {
                             /** Format: date-time */
                             timestamp: string;
                             idempotencyReplay?: boolean;
+                            page: {
+                                nextCursor: string | null;
+                                limit: number;
+                                hasMore: boolean;
+                            };
                         };
                     };
                 };
@@ -5802,6 +5937,720 @@ export interface operations {
             };
             /** @description Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    clientWebLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    email: string;
+                    password: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            user: {
+                                /** Format: uuid */
+                                userId: string;
+                                fullName: string;
+                                /** Format: email */
+                                email: string;
+                                /** @enum {string} */
+                                accountStatus: "active";
+                            };
+                            csrfToken: string;
+                            /** Format: date-time */
+                            accessTokenExpiresAt: string;
+                            /** Format: date-time */
+                            refreshTokenExpiresAt: string;
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    clientWebRefresh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    rotationId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            user: {
+                                /** Format: uuid */
+                                userId: string;
+                                fullName: string;
+                                /** Format: email */
+                                email: string;
+                                /** @enum {string} */
+                                accountStatus: "active";
+                            };
+                            csrfToken: string;
+                            /** Format: date-time */
+                            accessTokenExpiresAt: string;
+                            /** Format: date-time */
+                            refreshTokenExpiresAt: string;
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getClientWebCsrf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            user: {
+                                /** Format: uuid */
+                                userId: string;
+                                fullName: string;
+                                /** Format: email */
+                                email: string;
+                                /** @enum {string} */
+                                accountStatus: "active";
+                            };
+                            csrfToken: string;
+                            /** Format: date-time */
+                            csrfTokenExpiresAt: string;
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    clientWebLogout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            /** @enum {boolean} */
+                            loggedOut: true;
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    adminNativeLogin: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-app-version": string;
+                "x-client-platform": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    email: string;
+                    password: string;
+                    device: {
+                        /** Format: uuid */
+                        installationId: string;
+                        name: string;
+                        /** @enum {string} */
+                        platform: "android";
+                        appVersion: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            user: {
+                                /** Format: uuid */
+                                userId: string;
+                                fullName: string;
+                                /** Format: email */
+                                email: string;
+                                roles: string[];
+                                permissions: string[];
+                            };
+                            accessToken: string;
+                            /** Format: date-time */
+                            accessTokenExpiresAt: string;
+                            refreshToken: string;
+                            /** Format: date-time */
+                            refreshTokenExpiresAt: string;
+                            /** Format: uuid */
+                            sessionId: string;
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    refreshAdminNativeSession: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-app-version": string;
+                "x-client-platform": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    refreshToken: string;
+                    /** Format: uuid */
+                    rotationId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            accessToken: string;
+                            /** Format: date-time */
+                            accessTokenExpiresAt: string;
+                            refreshToken: string;
+                            /** Format: date-time */
+                            refreshTokenExpiresAt: string;
+                            /** Format: uuid */
+                            sessionId: string;
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    logoutAdminNativeSession: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-app-version": string;
+                "x-client-platform": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    refreshToken: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            /** @enum {boolean} */
+                            loggedOut: true;
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9230,6 +10079,7 @@ export interface operations {
         parameters: {
             query?: {
                 state?: "pending" | "acknowledged";
+                after?: string;
                 limit?: number;
             };
             header?: never;
@@ -9301,6 +10151,11 @@ export interface operations {
                             /** Format: date-time */
                             timestamp: string;
                             idempotencyReplay?: boolean;
+                            page: {
+                                nextCursor: string | null;
+                                limit: number;
+                                hasMore: boolean;
+                            };
                         };
                     };
                 };
@@ -9647,6 +10502,7 @@ export interface operations {
         parameters: {
             query?: {
                 state?: "pending" | "provider_pending" | "refunded" | "failed" | "all";
+                after?: string;
                 limit?: number;
             };
             header?: never;
@@ -9696,6 +10552,11 @@ export interface operations {
                             /** Format: date-time */
                             timestamp: string;
                             idempotencyReplay?: boolean;
+                            page: {
+                                nextCursor: string | null;
+                                limit: number;
+                                hasMore: boolean;
+                            };
                         };
                     };
                 };
@@ -10023,6 +10884,7 @@ export interface operations {
     listAdminPayments: {
         parameters: {
             query?: {
+                after?: string;
                 limit?: number;
             };
             header?: never;
@@ -10070,6 +10932,11 @@ export interface operations {
                             /** Format: date-time */
                             timestamp: string;
                             idempotencyReplay?: boolean;
+                            page: {
+                                nextCursor: string | null;
+                                limit: number;
+                                hasMore: boolean;
+                            };
                         };
                     };
                 };
@@ -10185,11 +11052,6 @@ export interface operations {
                                 /** Format: date-time */
                                 updatedAt: string;
                             }[];
-                            page: {
-                                nextCursor: string | null;
-                                limit: number;
-                                hasMore: boolean;
-                            };
                         };
                         error: null;
                         meta: {
@@ -10198,6 +11060,11 @@ export interface operations {
                             /** Format: date-time */
                             timestamp: string;
                             idempotencyReplay?: boolean;
+                            page: {
+                                nextCursor: string | null;
+                                limit: number;
+                                hasMore: boolean;
+                            };
                         };
                     };
                 };
@@ -11847,7 +12714,7 @@ export interface operations {
                                 userId: string | null;
                                 email: string;
                                 /** @enum {string} */
-                                channel: "native" | "web";
+                                channel: "native" | "web" | "client_web" | "admin_native";
                                 /** @enum {string} */
                                 outcome: "success" | "invalid_credentials" | "unknown_identity" | "account_not_active" | "password_changed" | "not_authorized";
                                 succeeded: boolean;

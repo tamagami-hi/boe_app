@@ -1,15 +1,19 @@
 /**
- * Auth session repository (spec 03 §7, 04 §4.1). Owns native session + refresh
- * token creation, refresh-hash lookup under a row lock, and family revocation.
- * Only hashes are stored; raw refresh tokens live in native secure storage.
+ * Auth session repository (spec 03 §7, 04 §4.1). Owns bearer and cookie session
+ * creation, refresh-hash lookup under a row lock, and family revocation. Only
+ * hashes are stored; raw refresh tokens live in native secure storage.
  *
- * The web (cookie + CSRF) path and the refresh-rotation state machine
- * (previous-pair 30s grace, family reuse detection) land in BE-010c.
+ * Every method that has to distinguish audiences takes the session channel
+ * rather than assuming one, because four channels use this table: `native` and
+ * `admin_native` (bearer pairs), `web` and `client_web` (cookie sessions).
  */
 import type { AuthRefreshToken, AuthSession, Transaction, UserId } from "../db/repositories.js"
+import type { BearerSessionChannel, CookieSessionChannel } from "../db/types.js"
 
-export interface CreateNativeSessionInput {
+export interface CreateBearerSessionInput {
   readonly userId: UserId
+  /** `native` for the client APK, `admin_native` for the admin APK. */
+  readonly channel: BearerSessionChannel
   readonly deviceIdHash: Buffer
   readonly refreshTokenHash: Buffer
   readonly refreshKeyVersion: string
@@ -53,6 +57,8 @@ export interface RotateRefreshInput {
 
 export interface CreateWebSessionInput {
   readonly userId: UserId
+  /** `web` for the admin console, `client_web` for the investor app in a browser. */
+  readonly channel: CookieSessionChannel
   readonly refreshTokenHash: Buffer
   readonly refreshKeyVersion: string
   readonly csrfTokenHash: Buffer
@@ -74,23 +80,29 @@ export interface RotateWebRefreshInput extends RotateRefreshInput {
 }
 
 export interface AuthSessionWriteRepository {
-  createNativeSession: (tx: Transaction, input: CreateNativeSessionInput) => Promise<CreatedSession>
+  createBearerSession: (tx: Transaction, input: CreateBearerSessionInput) => Promise<CreatedSession>
   lockByRefreshTokenHash: (tx: Transaction, tokenHash: Buffer) => Promise<CreatedSession | null>
-  lockActiveNativeByUserAndDevice: (
+  lockActiveBearerByUserAndDevice: (
     tx: Transaction,
-    input: Readonly<{ userId: UserId; deviceIdHash: Buffer }>,
+    input: Readonly<{ userId: UserId; channel: BearerSessionChannel; deviceIdHash: Buffer }>,
   ) => Promise<AuthSession | null>
   /**
-   * Active native sessions for a user, oldest first, locked for update.
+   * Active bearer sessions for a user on one channel, oldest first, locked for
+   * update.
    *
    * Ordered by `created_at` so a device cap evicts the least recently *signed
    * in* device rather than the least recently used one: re-login already
    * replaces a device's session in place, so `created_at` is the age of that
    * device's enrolment. `auth_sessions_user_created_idx` covers the ordering.
+   *
+   * Scoped to one channel, so the client APK's cap counts client sessions and
+   * the admin APK's counts admin sessions. A shared cap would let an operator's
+   * admin sign-in evict their investor session, which is a different audience's
+   * credential.
    */
-  listActiveNativeForUserOldestFirst: (
+  listActiveBearerForUserOldestFirst: (
     tx: Transaction,
-    input: Readonly<{ userId: UserId }>,
+    input: Readonly<{ userId: UserId; channel: BearerSessionChannel }>,
   ) => Promise<readonly AuthSession[]>
   lockActiveBySid: (tx: Transaction, sessionId: string) => Promise<AuthSession | null>
   createWebSession: (tx: Transaction, input: CreateWebSessionInput) => Promise<CreatedSession>
@@ -100,6 +112,7 @@ export interface AuthSessionWriteRepository {
     tx: Transaction,
     input: Readonly<{
       sessionId: string
+      channel: CookieSessionChannel
       csrfTokenHash: Buffer
       csrfKeyVersion: string
       csrfExpiresAt: Date
@@ -147,12 +160,12 @@ const rotateRefreshRows = async (tx: Transaction, input: RotateRefreshInput): Pr
 }
 
 export const createAuthSessionRepository = (): AuthSessionWriteRepository => ({
-  createNativeSession: async (tx, input) => {
+  createBearerSession: async (tx, input) => {
     const session = await tx
       .insertInto("auth_sessions")
       .values({
         user_id: input.userId,
-        channel: "native",
+        channel: input.channel,
         device_id_hash: input.deviceIdHash,
         refresh_key_version: input.refreshKeyVersion,
         expires_at: input.sessionExpiresAt,
@@ -198,12 +211,12 @@ export const createAuthSessionRepository = (): AuthSessionWriteRepository => ({
     return { session, refreshToken }
   },
 
-  lockActiveNativeByUserAndDevice: async (tx, input) => {
+  lockActiveBearerByUserAndDevice: async (tx, input) => {
     const row = await tx
       .selectFrom("auth_sessions")
       .selectAll()
       .where("user_id", "=", input.userId)
-      .where("channel", "=", "native")
+      .where("channel", "=", input.channel)
       .where("state", "=", "active")
       .where("device_id_hash", "=", input.deviceIdHash)
       .forUpdate()
@@ -211,12 +224,12 @@ export const createAuthSessionRepository = (): AuthSessionWriteRepository => ({
     return row ?? null
   },
 
-  listActiveNativeForUserOldestFirst: async (tx, input) =>
+  listActiveBearerForUserOldestFirst: async (tx, input) =>
     tx
       .selectFrom("auth_sessions")
       .selectAll()
       .where("user_id", "=", input.userId)
-      .where("channel", "=", "native")
+      .where("channel", "=", input.channel)
       .where("state", "=", "active")
       // Locked so a burst of simultaneous logins cannot each read the same
       // under-limit count and collectively overshoot the cap.
@@ -241,7 +254,7 @@ export const createAuthSessionRepository = (): AuthSessionWriteRepository => ({
       .insertInto("auth_sessions")
       .values({
         user_id: input.userId,
-        channel: "web",
+        channel: input.channel,
         refresh_key_version: input.refreshKeyVersion,
         csrf_token_hash: input.csrfTokenHash,
         csrf_key_version: input.csrfKeyVersion,
@@ -310,9 +323,11 @@ export const createAuthSessionRepository = (): AuthSessionWriteRepository => ({
       .execute()
   },
 
-  // CSRF-only re-issue for reload recovery (GET /v1/auth/web/csrf): rotate the
+  // CSRF-only re-issue for reload recovery (GET .../csrf): rotate the
   // synchronizer token without touching the refresh chain. The prior CSRF is
-  // overwritten (the client had lost it), so it is immediately invalidated.
+  // overwritten (the client had lost it), so it is immediately invalidated. The
+  // channel is part of the predicate, so one audience's recovery can never
+  // rotate the other's token even if a session id were confused.
   rotateWebCsrf: async (tx, input) => {
     await tx
       .updateTable("auth_sessions")
@@ -326,7 +341,7 @@ export const createAuthSessionRepository = (): AuthSessionWriteRepository => ({
       })
       .where("id", "=", input.sessionId)
       .where("state", "=", "active")
-      .where("channel", "=", "web")
+      .where("channel", "=", input.channel)
       .execute()
   },
 

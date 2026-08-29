@@ -16,6 +16,7 @@ import {
   useInitializeAum,
 } from "~/features/admin/shared/queries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
+import { LoadMore } from "~/ui/patterns/LoadMore"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
@@ -363,6 +364,7 @@ const FundAumScreen = (): React.ReactElement => {
             </>
           )}
         </AsyncBoundary>
+        <LoadMore list={history} noun="entries" />
       </Section>
     </Page>
   )

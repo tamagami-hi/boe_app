@@ -46,6 +46,7 @@ export interface AdminMandateDetail {
 }
 
 export interface ListMandatesInput {
+  /** Row budget as sent, including the caller's over-fetch row. */
   readonly limit: number
   readonly after?: Readonly<{ updatedAt: Date; id: string }>
   readonly state?: MandateState
@@ -155,7 +156,7 @@ export const createAdminMandateRepository = (): AdminMandateRepository => {
         query = sql<AdminMandateListRow>`${query} and (m.updated_at, m.id) < (${afterUpdatedAt}, ${afterId})`
       }
 
-      query = sql<AdminMandateListRow>`${query} order by m.updated_at desc, m.id desc limit ${input.limit + 1}`
+      query = sql<AdminMandateListRow>`${query} order by m.updated_at desc, m.id desc limit ${input.limit}`
 
       const result = await query.execute(tx)
       return result.rows

@@ -81,6 +81,17 @@ describe("composeBackend", () => {
     const newUser = await app.inject({ method: "POST", url: "/newuser", payload: {} })
     expect(newUser.statusCode).toBe(503)
 
+    // The admin APK's bearer login is registered. An empty body fails validation
+    // before any database work, so a 400 here proves registration without needing
+    // a reachable database — and a 404 would mean the shipped admin APK has no
+    // way to sign in, which is the defect this route exists to close.
+    const adminNativeLogin = await app.inject({
+      method: "POST",
+      url: "/v1/auth/admin/native/login",
+      payload: {},
+    })
+    expect(adminNativeLogin.statusCode).toBe(400)
+
     await app.close()
   })
 

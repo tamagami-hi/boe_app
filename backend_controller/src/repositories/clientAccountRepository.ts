@@ -81,8 +81,13 @@ export interface ContentDocumentRow {
 export interface ClientAccountRepository {
   listNotifications: (
     tx: Transaction,
-    input: Readonly<{ userId: string; limit: number }>,
+    input: Readonly<{ userId: string; limit: number; afterCreatedAt?: Date; afterId?: string }>,
   ) => Promise<readonly NotificationRow[]>
+  /**
+   * Unread notifications for the whole account, not for the page just read —
+   * the inbox badge must not shrink because the caller only fetched one page.
+   */
+  countUnreadNotifications: (tx: Transaction, userId: string) => Promise<number>
   /** Marks one notification read; returns null when it is not the caller's. */
   markNotificationRead: (
     tx: Transaction,
@@ -95,11 +100,13 @@ export interface ClientAccountRepository {
       states: readonly PaymentState[]
       successProjection: "confirmed" | "processing" | null
       limit: number
+      afterCreatedAt?: Date
+      afterId?: string
     }>,
   ) => Promise<readonly ClientPaymentRow[]>
   listSupportRequests: (
     tx: Transaction,
-    input: Readonly<{ userId: string; limit: number }>,
+    input: Readonly<{ userId: string; limit: number; afterCreatedAt?: Date; afterId?: string }>,
   ) => Promise<readonly SupportRequestRow[]>
   createSupportRequest: (tx: Transaction, input: CreateSupportRequestInput) => Promise<SupportRequestRow>
   /** Published FAQ items in display order. */
@@ -160,10 +167,21 @@ export const createClientAccountRepository = (): ClientAccountRepository => ({
       select ${NOTIFICATION_COLUMNS}
       from notifications n
       where n.user_id = ${input.userId}
+        and (${input.afterCreatedAt ?? null}::timestamptz is null
+             or (n.created_at, n.id) < (${input.afterCreatedAt ?? null}, ${input.afterId ?? null}))
       order by n.created_at desc, n.id desc
       limit ${input.limit}
     `.execute(tx)
     return result.rows
+  },
+
+  countUnreadNotifications: async (tx, userId) => {
+    const result = await sql<{ readonly unread: number }>`
+      select count(*)::int as unread
+      from notifications n
+      where n.user_id = ${userId} and n.read_at is null
+    `.execute(tx)
+    return result.rows[0]?.unread ?? 0
   },
 
   markNotificationRead: async (tx, input) => {
@@ -208,6 +226,8 @@ export const createClientAccountRepository = (): ClientAccountRepository => ({
       ) latest on true
       where p.user_id = ${input.userId}
         and (${input.states.length === 0} or p.state = any(${input.states}::payment_state[]))
+        and (${input.afterCreatedAt ?? null}::timestamptz is null
+             or (p.created_at, p.id) < (${input.afterCreatedAt ?? null}, ${input.afterId ?? null}))
         and (
           ${input.successProjection}::text is null or
           p.state <> 'succeeded' or
@@ -225,6 +245,8 @@ export const createClientAccountRepository = (): ClientAccountRepository => ({
       select ${SUPPORT_COLUMNS}
       from support_requests s
       where s.user_id = ${input.userId}
+        and (${input.afterCreatedAt ?? null}::timestamptz is null
+             or (s.created_at, s.id) < (${input.afterCreatedAt ?? null}, ${input.afterId ?? null}))
       order by s.created_at desc, s.id desc
       limit ${input.limit}
     `.execute(tx)

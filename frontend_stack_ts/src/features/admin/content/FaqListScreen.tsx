@@ -17,6 +17,7 @@ import {
 import type { FaqFields } from "~/features/admin/shared/adminQueries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
+import { LoadMore } from "~/ui/patterns/LoadMore"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { Badge } from "~/ui/primitives/Badge"
 import { Button } from "~/ui/primitives/Button"
@@ -326,6 +327,7 @@ const FaqListScreen = (): React.ReactElement => {
             />
           )}
         </AsyncBoundary>
+        <LoadMore list={query} noun="FAQs" />
       </Section>
 
       <ConfirmDialog

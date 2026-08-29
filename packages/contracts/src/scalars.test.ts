@@ -148,9 +148,23 @@ describe("opaque key and numeric wire scalars", () => {
     expectRejected(IdempotencyKey, ["short", "a".repeat(129), " request1", "request/1"])
   })
 
-  it("validates opaque base64url cursors without trimming", () => {
-    expectAccepted(Cursor, ["a".repeat(16), "AbCd_ef-gh12_345", "a".repeat(1024)])
-    expectRejected(Cursor, ["a".repeat(15), "a".repeat(1025), "abc defghijklmno", "abcdefghijklmn+/" ])
+  it("validates the signed two-part opaque cursor the backend mints", () => {
+    const body = "a".repeat(16)
+    const signature = "AbCd_ef-gh12_345"
+    expectAccepted(Cursor, [
+      `${body}.${signature}`,
+      `${"a".repeat(1024)}.${"b".repeat(1024)}`,
+      "eyJyIjoiL3YxL2NsaWVudC9vcmRlcnMifQ.gB5Sekmh_62z0tk1PTQtohyKh_O7q31wG6PDAczV0mI",
+    ])
+    expectRejected(Cursor, [
+      body,
+      `${"a".repeat(15)}.${signature}`,
+      `${body}.${"b".repeat(15)}`,
+      `${body}.${signature}.${signature}`,
+      `${body}.${signature} `,
+      `abc defghijklmno.${signature}`,
+      `abcdefghijklmn+/.${signature}`,
+    ])
   })
 
   it("accepts canonical non-negative paise strings only", () => {
