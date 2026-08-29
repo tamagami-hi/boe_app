@@ -73,54 +73,47 @@ have been superseded; where a document and the decision log disagree, the log is
 applies with particular force to **doc 10's Phase 13 tables**, four rows of which were disproved in
 Entry 024 — see known gap 6.
 
-### Known gaps, still open
+### Known gaps — all seven closed 2026-08-29
 
-These were required by the plan and have not landed. They are tracked here because the numbered
-documents still read as though they were done:
+The seven gaps this section used to list are closed. See `DEPLOY_AND_TEST_RUNBOOK.md`
+for the deploy order and the verification each one still needs.
 
-1. ~~**No cursor pagination anywhere.**~~ Closed in Entry 023. Every browsable list in the product
-   pages on the opaque cursor through `usePagedQuery` and one shared `LoadMore`; the lists that stay
-   one-shot, and the pickers that walk every page instead, are enumerated with reasons in D-043. The
-   `Cursor` scalar was also fixed — it could not match a token the backend can mint. No paginated
-   query has been run against PostgreSQL; see Entry 023's UNVERIFIED list for the VPS check.
-2. ~~**App-update gate absent.**~~ Closed in Entry 022. `AppUpdateGate` is mounted in both shell
-   roots, `getAppUpdate` has a consumer, and a mandatory update blocks the app. Unverified on a
-   device — see Entry 022's UNVERIFIED list.
-3. ~~**Device security is a settings screen with no lock.**~~ Closed in Entry 022. `DeviceLockGate`
-   locks on cold start and after 120 s in the background, `NativeBiometric` is wired through
-   `src/platform/biometric.ts`, and Android Back cannot bypass the lock. Unverified on a device.
-4. ~~**Android admin has no bearer auth path.**~~ Closed in Entry 026. The admin scope has its own
-   bearer channel (`admin_native`), three contracted endpoints under the admin native auth prefix,
-   `buildAdminDevice`, and an `adminRuntime` that picks bearer + Secure Storage on native and keeps
-   cookies in a browser. Closing it also closed a real hole: the admin bearer leg previously accepted
-   any `native` session, so an investor's APK token passed admin *authentication*. Nothing has been
-   exercised on a device or against PostgreSQL — see Entry 026's UNVERIFIED list, and note that
-   migration 047 must be applied before the code that writes `admin_native` runs.
-5. **`OptimisticVersionForm` / `PreviewCommitPanel` were never built.** The `basisHash` and
-   `expectedVersion` protocols are implemented correctly but inline in four admin screens, so there
-   is no single guard. `parseIfMatchVersion` in the backend has no callers.
-6. **Phase 13 backend cleanup is partly done** — Entry 024 closed five items of doc 10's list
-   (`sessionTokens.ts`, the three duplicate `requireIdempotencyKey` bodies, CORS `PUT`,
-   `locked_until` in `db/types.ts`, the provider-event inbox drain, and the Razorpay agent-memory
-   note). **Four items in doc 10's Phase 13 tables are factually wrong and must not be acted on:**
-   `optionalIdempotencyKey` has three live callers (D-046), `adminFundGrowthPreviewRoutes.ts` is a
-   live endpoint the admin console calls (D-049), `mandateReconciliationWorker` is wired inside the
-   payment-reconciliation pass (D-047), and the refund machinery backs a shipped admin screen
-   (D-048). The rest of doc 10's list — `CACHE_KEYS.fundList`/`invalidatePrefix`, the
-   email-verification resend alias, `payments.mobileSdk`, `MOBILE_CHECKOUT_DISABLED`, the
-   `'rejected'` CHECK value, fixture residue, in-process rate limiting,
-   `legacy_investment_reviews`, and suspend/reinstate/close — is untouched.
-7. **`assertHttpMode()` is dead code**; D-009's configuration-error screen does not exist.
-8. **`secureStorage.ts` asks the bridge for a plugin name that does not exist.** It calls
-   `"SecureStoragePlugin"`; `@aparajita/capacitor-secure-storage` registers, and annotates its Java
-   class as, `"SecureStorage"`. Found in Entry 022 and deliberately left: correcting it moves client
-   bearer tokens on Android and needs a device. See D-040.
-9. ~~**The browser client keeps refresh tokens in `localStorage`.**~~ Closed in Entry 025. The client
-   scope has its own HttpOnly cookie session on a `client_web` session channel, and `persistSecrets`
-   is native-only. Nothing credential-shaped reaches `localStorage` on either platform. No cookie has
-   been issued by a running backend — see Entry 025's UNVERIFIED list, which also carries the four
-   cross-scope replays that prove the isolation, and note that migration `046` must be applied before
-   the backend image that writes the new channel.
+| Was | Now |
+| --- | --- |
+| No cursor pagination anywhere | 18 lists page with filters in the query key, one shared `LoadMore`; the deliberately-unpaged ones are justified in D-043 |
+| Browser client held refresh tokens in `localStorage` | HttpOnly cookie session for the client scope (D-052), verified by `test_e2e/client-cookie-session.mjs` |
+| App-update gate absent | `AppUpdateGate` + `platform/appUpdate.ts`; SHA-256 refused in three independent places (D-042) |
+| Device security had no lock | Real lock on cold start and on resume past an idle threshold, biometric wired, Back cannot dismiss it (D-041) |
+| Admin APK could not authenticate | `admin_native` bearer channel with scope isolation asserted across the 4×4 replay matrix (D-053) |
+| Phase 13 backend cleanup untouched | Five items removed or consolidated; four of doc 10's rows were factually wrong (D-046 to D-051) |
+| Dead dev worktrees | Cones reset to the live layout, both fast-forwarded |
+
+Four latent defects were found while closing them, three of which meant native code
+had never run at all:
+
+1. **The Capacitor bridge was never registered.** `window.Capacitor.Plugins` was empty,
+   so every native wrapper resolved to `null` — `NativeBackCoordinator` was inert,
+   `applySystemChrome` was two no-ops, `openExternal` always used `window.open`. Now
+   verified on a device over CDP: all eleven plugins present.
+2. **Secure storage had never worked on Android.** The wrapper asked for
+   `SecureStoragePlugin` with four method names the plugin does not expose, so the token
+   store failed closed and stayed memory-only.
+3. **An investor bearer token satisfied admin authentication.** The admin resolver's
+   bearer leg accepted any `native`-channel session; only the permission check stood
+   behind it.
+4. **A chunk cycle** (`app → vendor → app`) introduced by registering the bridge, caught
+   by `check-android-dist`.
+
+### Still open, and deliberately so
+
+- `securityStore` hashes the device PIN with an unsalted SHA-256 in `localStorage`. Not
+  a KDF; the product copy correctly calls the PIN a convenience, not a boundary.
+- Multi-tab admin writes fail CSRF once after a rotation; only the refresh path
+  self-heals.
+- Backend integration tests need testcontainers and were not run, so no pagination
+  predicate, session channel, or cache invalidation has met PostgreSQL.
+- Money has never moved. No PhonePe credentials outside the VPS.
+- Two admin mandate screens still format rupees with a local `Intl.NumberFormat`.
 
 ## Recommended starting point
 
