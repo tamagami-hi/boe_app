@@ -1643,3 +1643,44 @@ stripper corrupts. Directive comments are preserved — removing `eslint-disable
 would break the very gates that verify the change. Applied only to this session's files so far. A
 repo-wide sweep is 1,073 comments across 150 files and is left undone pending an explicit decision,
 because a large share of them record why a check exists and this log cross-references them.
+
+
+### D-057
+**D-056's premise is disproven. The transacting URL is PhonePe's own state, not something we send, so
+the block is fixable only on their dashboard.** · DECIDED 2026-08-29
+
+D-056 built `PHONEPE_CHECKOUT_REDIRECT_URL` on the inference that PhonePe reads the merchant's
+transacting URL from the origin of `merchantUrls.redirectUrl`. It was deployed correctly and the
+`Transacting_URL` in PhonePe's refusal did not move: still `https://dev-app.beonedge.in/` while the
+backend was sending `https://www.beonedge.in/pay/return/dev`. Capturing the failing request showed the
+browser sends `{"type":"UPI_QR"}` and no hostname of ours at all. Referer, redirect URL and browser
+payload are now each independently eliminated.
+
+So the value lives inside PhonePe. **No change in this repository can lift the block**, and the two
+real options are the merchant dashboard, or sandbox credentials on the dev stack.
+
+**What I got wrong, and why it was still worth doing.** The inference was reasonable — the referrer had
+been ruled out experimentally and `redirectUrl` was the only remaining field in the payload carrying a
+domain — but "the only remaining candidate I can see" is not the same as "the cause", and I presented it
+as strong when it was merely undisproven. D-056 did say it was unproven and recommended the dashboard
+as the certain route first; that hedge was doing real work and should have been weighted more heavily
+against writing code. The cost was one env var, one landing route and a deploy.
+
+**The setting is kept, the deployed value is not.** `PHONEPE_CHECKOUT_REDIRECT_URL` should be unset on
+the VPS, restoring the default `https://dev-app.beonedge.in/dashboard`, because routing the payment
+return through the marketing site now buys nothing and adds two redirect hops. The key itself stays:
+`canonicalUrl` pins the callback to the stack's own host, so there is no other way to express a return
+on a different host, and its default is the pre-change behaviour. That is a live option, not a dormant
+path — it becomes necessary the moment PhonePe approves only one URL and it is not the app's host.
+
+**The landing route is the part that is genuinely at risk of becoming dead code.**
+`boe_landing` `src/app/pay/return/[target]` is unreachable in normal operation while the key is unset.
+Forward-only says remove superseded paths, and this one is superseded *in the dev configuration*. Not
+removed unilaterally, because it is the working half of option 2 above and rebuilding it costs more
+than keeping it; put to the maintainer instead. If the dashboard route succeeds and production is also
+approved on its own host, delete it.
+
+**Method note worth carrying forward.** The token *prefix* PhonePe returns is stable across different
+orders, which made a genuinely fresh checkout look like a replayed one. Comparing tokens is not a valid
+way to tell them apart; compare `orderId` and `paymentId` from the `/pay` response body, which requires
+intercepting the response with `page.route` before the navigation to PhonePe destroys it.

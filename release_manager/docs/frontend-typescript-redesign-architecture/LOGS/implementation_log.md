@@ -2933,3 +2933,100 @@ departure and still locks after the threshold. That behaviour is deliberate and 
   it never produced the loop, but nothing has exercised it on hardware either.
 - The `cold-start` trigger locking unconditionally means any remount of `AppProviders` re-locks. Not
   changed, and not observed to happen, but it is the remaining way to get an unexpected prompt.
+
+
+## Entry 031 — the redirect-URL theory is disproven; the block is inside PhonePe · 2026-08-29
+
+Entry 029 and D-056 rested on an inference: that PhonePe derives the merchant's transacting URL from
+the origin of `merchantUrls.redirectUrl`. That inference is **wrong**, and the change built on it does
+not fix anything.
+
+### What was deployed, and what happened
+
+The maintainer deployed it correctly — this is not a deployment mistake:
+
+```
+PHONEPE_CHECKOUT_REDIRECT_URL=https://www.beonedge.in/pay/return/dev   set in the deployed .env
+boe-dev-backend:0.12.2 built 18:53, /app/dist contains the new key
+parseServerConfig on the live env resolves checkoutRedirectUrl = https://www.beonedge.in/pay/return/dev
+```
+
+A fresh ₹1 order (`6b70bf69`, its own `paymentId`) got a fresh token, and PhonePe returned the
+identical body it always has:
+
+```json
+{"errorCode":"INTERNAL_SECURITY_BLOCK_1","isRetryEnabled":false,
+ "data":{"Onboarding_URL":["www.beonedge.in"],"Transacting_URL":"https://dev-app.beonedge.in/"}}
+```
+
+The backend now sends `www.beonedge.in` as the redirect and PhonePe still reports
+`dev-app.beonedge.in` as the transacting URL. That single observation kills the theory.
+
+### Where it actually comes from
+
+`test_e2e/vps-phonepe-request.mjs` captures the POST body of the failing call. The browser sends:
+
+```
+POST https://api.phonepe.com/apis/pg/checkout/ui/v2/pay
+  referer: https://mercury-t2.phonepe.com/
+  origin : null
+  body   : {"type":"UPI_QR"}
+  beonedge hostnames in body: NONE
+```
+
+No hostname of ours, in any form, and the referer is PhonePe's own page. So `Transacting_URL` is
+resolved **server-side inside PhonePe** — from the merchant record, or from something bound to the
+token that our payload does not control. Three things are now each independently ruled out:
+
+| candidate | ruled out by |
+| --- | --- |
+| the browser's `Referer` | Entry 028's three-arm probe: unchanged with no referer, and when claiming `www.beonedge.in` |
+| `merchantUrls.redirectUrl` | this entry: changed to the approved host, `Transacting_URL` unchanged |
+| anything the browser sends | this entry: the request body carries no hostname at all |
+
+**There is no code change in this repository that can lift this block.** I said in Entry 029 that this
+was unproven and that the dashboard was the certain route; that caveat was correct and the experiment
+has now settled it in the dashboard's favour.
+
+### Consequences
+
+`PHONEPE_CHECKOUT_REDIRECT_URL` on the VPS should be **unset**, returning the default
+`https://dev-app.beonedge.in/dashboard`. Pointing the return through `www.beonedge.in` now buys
+nothing and inserts two redirect hops through the marketing site into the payment return path.
+
+The setting itself is kept. It is not dead: `canonicalUrl` pins the callback to the stack's own host
+and there is no other way to express a return on a different host, which production may still need.
+Its default is the previous behaviour, so an unset key behaves exactly as before the change.
+
+The landing route `boe_landing` `src/app/pay/return/[target]` is left in place but is **unused** while
+the key is unset. It is 91 lines, tested, and reachable only by direct request. Flagged for the
+maintainer to decide: keep it as the standing option, or remove it.
+
+### What actually fixes the payments
+
+1. **PhonePe dashboard** — Help → "Unable to receive customer payments?" → Contact Us → Update URL, and
+   add `dev-app.beonedge.in`, plus `app.beonedge.in` for production. This is what PhonePe's own email
+   instructed. Certain, and needs no code.
+2. **Sandbox credentials on the dev stack** — the configuration that demonstrably worked on 2026-08-25
+   (Entry 028: 7 succeeded payments, 7 allocations). Needs `PHONEPE_ENV=sandbox` plus sandbox
+   credentials; the allowlist already carries `https://mercury-uat.phonepe.com`. This is the one the
+   maintainer can do without waiting on PhonePe.
+
+### Verification
+
+- **VPS** deployed env and image inspected read-only; `parseServerConfig` run against the live `.env`
+  inside the deployed image, confirming the new redirect is active.
+- **TESTED / VPS** `vps-pay-response.mjs` intercepts the `/pay` response with `page.route` before the
+  navigation destroys it, proving a fresh `orderId`/`paymentId`/token rather than a replayed one. Worth
+  keeping: the token *prefix* is stable across orders, which looked like a stale checkout until the
+  response body showed distinct order and payment ids.
+- **TESTED / VPS** `vps-phonepe-request.mjs` captures the outgoing request body, referer and origin.
+- **VPS** the ₹2 spend cap held throughout; every order this session was `100` paise.
+
+### Not verified
+
+- **UNVERIFIED** that approving `dev-app.beonedge.in` lifts the block. It follows from PhonePe's own
+  message but only they can apply it.
+- **UNVERIFIED** the whole settled-payment chain — order → payment → **allocation** → acknowledgement.
+  Still zero allocations on this database. This remains the thing to check the moment a payment can
+  complete by either route.
