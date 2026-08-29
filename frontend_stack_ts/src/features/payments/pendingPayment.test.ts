@@ -23,8 +23,18 @@ const memoryStore = (): PendingPaymentStore & { readonly map: Map<string, string
 }
 
 const pending = {
+  kind: "order_payment",
   paymentId: "payment-1",
   orderId: "order-1",
+  ownerId: "user-1",
+  expiresAt: 2_000,
+} as const
+
+const pendingMandate = {
+  kind: "mandate_setup",
+  paymentId: "payment-2",
+  orderId: "order-2",
+  sipPlanId: "sip-1",
   ownerId: "user-1",
   expiresAt: 2_000,
 } as const
@@ -34,6 +44,12 @@ describe("persistPendingPayment", () => {
     const store = memoryStore()
     persistPendingPayment(store, pending)
     expect(readPendingPayment(store, "user-1", 1_000)).toEqual(pending)
+  })
+
+  it("records a mandate setup with the plan needed to route back to it", () => {
+    const store = memoryStore()
+    persistPendingPayment(store, pendingMandate)
+    expect(readPendingPayment(store, "user-1", 1_000)).toEqual(pendingMandate)
   })
 
   it("fails when the write throws, so the caller can abort the checkout", () => {
@@ -86,6 +102,29 @@ describe("readPendingPayment", () => {
   it("discards a record missing required fields", () => {
     const store = memoryStore()
     store.write(PENDING_PAYMENT_KEY, JSON.stringify({ paymentId: "payment-1" }))
+    expect(readPendingPayment(store, "user-1", 1_000)).toBeNull()
+    expect(store.map.has(PENDING_PAYMENT_KEY)).toBe(false)
+  })
+
+  it("discards a mandate setup with no plan to route back to", () => {
+    const store = memoryStore()
+    store.write(
+      PENDING_PAYMENT_KEY,
+      JSON.stringify({
+        kind: "mandate_setup",
+        paymentId: "payment-2",
+        orderId: "order-2",
+        ownerId: "user-1",
+        expiresAt: 2_000,
+      }),
+    )
+    expect(readPendingPayment(store, "user-1", 1_000)).toBeNull()
+    expect(store.map.has(PENDING_PAYMENT_KEY)).toBe(false)
+  })
+
+  it("discards a record whose kind it does not recognise", () => {
+    const store = memoryStore()
+    store.write(PENDING_PAYMENT_KEY, JSON.stringify({ ...pending, kind: "something_else" }))
     expect(readPendingPayment(store, "user-1", 1_000)).toBeNull()
     expect(store.map.has(PENDING_PAYMENT_KEY)).toBe(false)
   })

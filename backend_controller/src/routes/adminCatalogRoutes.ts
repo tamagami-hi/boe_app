@@ -4,6 +4,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
 import type { Kysely } from "kysely"
 import { z } from "zod"
 
+import { CACHE_PREFIXES, type Cache } from "../cache/cache.js"
 import type { UnitOfWork } from "../db/database.js"
 import type { IdempotencyRepository } from "../db/repositories.js"
 import type { Database, FundState } from "../db/types.js"
@@ -48,6 +49,7 @@ export interface AdminCatalogDeps {
   readonly aumRepository: FundAumRepository
   readonly auditRepository: AuditWriteRepository
   readonly idempotencyRepository: IdempotencyRepository
+  readonly cache: Cache
 }
 
 const FUNDS_ROUTE = "/v1/admin/funds"
@@ -697,6 +699,15 @@ const patchFundState = async (deps: AdminCatalogDeps, request: FastifyRequest, r
   )
 }
 
+export const invalidateFundCacheAfter = async <T,>(
+  cache: Cache,
+  mutation: () => Promise<T>,
+): Promise<T> => {
+  const result = await mutation()
+  await cache.invalidatePrefix(CACHE_PREFIXES.funds)
+  return result
+}
+
 export const registerAdminCatalogRoutes = (
   application: FastifyInstance,
   deps: AdminCatalogDeps,
@@ -705,19 +716,21 @@ export const registerAdminCatalogRoutes = (
   application.get(`${FUNDS_ROUTE}/:fundId`, async (request, reply) => getFund(deps, request, reply))
   application.post(FUNDS_ROUTE, async (request, reply) => createFund(deps, request, reply))
   application.post(`${FUNDS_ROUTE}/:fundId/versions`, async (request, reply) =>
-    publishVersion(deps, request, reply),
+    invalidateFundCacheAfter(deps.cache, async () => publishVersion(deps, request, reply)),
   )
   application.get(`${FUNDS_ROUTE}/:fundId/stocks`, async (request, reply) =>
     listStocks(deps, request, reply),
   )
-  application.post(`${FUNDS_ROUTE}/:fundId/stocks`, async (request, reply) => addStock(deps, request, reply))
+  application.post(`${FUNDS_ROUTE}/:fundId/stocks`, async (request, reply) =>
+    invalidateFundCacheAfter(deps.cache, async () => addStock(deps, request, reply)),
+  )
   application.patch(`${FUNDS_ROUTE}/:fundId/stocks/:stockId`, async (request, reply) =>
-    editStock(deps, request, reply),
+    invalidateFundCacheAfter(deps.cache, async () => editStock(deps, request, reply)),
   )
   application.delete(`${FUNDS_ROUTE}/:fundId/stocks/:stockId`, async (request, reply) =>
-    exitStock(deps, request, reply),
+    invalidateFundCacheAfter(deps.cache, async () => exitStock(deps, request, reply)),
   )
   application.patch(`${FUNDS_ROUTE}/:fundId`, async (request, reply) =>
-    patchFundState(deps, request, reply),
+    invalidateFundCacheAfter(deps.cache, async () => patchFundState(deps, request, reply)),
   )
 }

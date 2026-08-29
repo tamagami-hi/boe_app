@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 
 import { isApiError } from "~/api/errors"
@@ -7,10 +7,16 @@ import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
+import { useSession } from "~/app/providers/SessionProvider"
 import { formatDate, formatDateTime } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { mandateSetupState, mandateState, sipState } from "~/domain/status"
 import { CheckoutUrlRejected, decideCheckout } from "~/features/payments/checkout"
+import {
+  PENDING_PAYMENT_TTL_MS,
+  browserPendingPaymentStore,
+  persistPendingPayment,
+} from "~/features/payments/pendingPayment"
 import {
   useAutoPayPlan,
   useCancelAutoPay,
@@ -40,15 +46,19 @@ const AUTOPAY_HONESTY =
 
 type Confirming = "pause" | "resume" | "cancel" | "cancel-autopay" | null
 
+type Failure = Readonly<{ title: string; body: string }>
+
 const SipDetailScreen = (): React.ReactElement => {
   const { sipPlanId = "" } = useParams()
   const plans = useSipPlans()
   const funds = useFunds()
+  const { principal } = useSession()
   const transition = useSipTransition()
   const cancelAutoPay = useCancelAutoPay()
   const retrySetup = useRetryAutoPaySetup()
   const [confirming, setConfirming] = useState<Confirming>(null)
-  const [failure, setFailure] = useState<string | null>(null)
+  const [failure, setFailure] = useState<Failure | null>(null)
+  const store = useMemo(browserPendingPaymentStore, [])
 
   const plan = plans.data?.items.find((entry) => entry.sipId === sipPlanId) ?? null
   const looksAutoPay =
@@ -82,7 +92,7 @@ const SipDetailScreen = (): React.ReactElement => {
       { sipPlanId, transition: kind },
       {
         onError: (error) => {
-          setFailure(describeFailure(error))
+          setFailure({ title: "Nothing changed", body: describeFailure(error) })
         },
         onSettled: () => {
           setConfirming(null)
@@ -97,7 +107,7 @@ const SipDetailScreen = (): React.ReactElement => {
       { sipPlanId, idempotencyKey: mintIdempotencyKey() },
       {
         onError: (error) => {
-          setFailure(describeFailure(error))
+          setFailure({ title: "Nothing changed", body: describeFailure(error) })
         },
         onSettled: () => {
           setConfirming(null)
@@ -108,24 +118,45 @@ const SipDetailScreen = (): React.ReactElement => {
 
   const retry = (): void => {
     setFailure(null)
+    if (principal === null) return
     retrySetup.mutate(
       { sipPlanId, idempotencyKey: mintIdempotencyKey() },
       {
         onError: (error) => {
-          setFailure(describeFailure(error))
+          setFailure({ title: "Nothing changed", body: describeFailure(error) })
         },
         onSuccess: (setup) => {
+          let decision
           try {
-            const decision = decideCheckout({
+            decision = decideCheckout({
               orderId: setup.orderId,
               status: setup.status,
               paymentId: setup.paymentId,
               checkout: setup.checkout,
             })
-            if (decision.kind === "redirect") window.location.assign(decision.url)
           } catch (error) {
-            setFailure(describeFailure(error))
+            setFailure({ title: "Nothing changed", body: describeFailure(error) })
+            return
           }
+          if (decision.kind !== "redirect") return
+
+          try {
+            persistPendingPayment(store, {
+              kind: "mandate_setup",
+              paymentId: decision.paymentId,
+              orderId: setup.orderId,
+              sipPlanId: setup.sipPlanId,
+              ownerId: principal.userId,
+              expiresAt: Date.now() + PENDING_PAYMENT_TTL_MS,
+            })
+          } catch {
+            setFailure({
+              title: "We stopped before the mandate page",
+              body: "This device would not record the authorisation, so we did not send you to PhonePe. No mandate has been authorised and nothing has been debited. This attempt now has to expire before another one can start; try again on another device.",
+            })
+            return
+          }
+          window.location.assign(decision.url)
         },
       },
     )
@@ -210,8 +241,8 @@ const SipDetailScreen = (): React.ReactElement => {
               </Card>
 
               {failure === null ? null : (
-                <Alert tone="error" title="Nothing changed">
-                  {failure}
+                <Alert tone="error" title={failure.title}>
+                  {failure.body}
                 </Alert>
               )}
 

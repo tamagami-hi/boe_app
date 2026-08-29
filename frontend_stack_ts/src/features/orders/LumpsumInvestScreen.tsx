@@ -132,6 +132,7 @@ const LumpsumInvestScreen = (): React.ReactElement => {
 
                 try {
                   persistPendingPayment(store, {
+                    kind: "order_payment",
                     paymentId: decision.paymentId,
                     orderId: order.orderId,
                     ownerId: principal.userId,

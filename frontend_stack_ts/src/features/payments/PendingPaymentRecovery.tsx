@@ -12,6 +12,19 @@ import type { PendingPayment } from "./pendingPayment"
 import { PAYMENT_RECOVERY } from "./payments.recipe"
 import { ITEM_TITLE } from "~/ui/recipes/datalist"
 
+const RECOVERY_COPY = {
+  order_payment: {
+    title: "You have a payment in progress",
+    body: "You were handed to PhonePe and have not come back to a settled result yet. Open it to see where it stands — we will not know it settled until the provider tells us.",
+    action: "Open the payment",
+  },
+  mandate_setup: {
+    title: "You have a mandate authorisation in progress",
+    body: "You were handed to PhonePe to authorise an AutoPay mandate and have not come back to a settled result yet. Open the plan to see where it stands — returning from the UPI app does not authorise anything on its own.",
+    action: "Open the SIP plan",
+  },
+} as const
+
 export const PendingPaymentRecovery = (): React.ReactElement | null => {
   const { principal } = useSession()
   const store = useMemo(browserPendingPaymentStore, [])
@@ -27,17 +40,20 @@ export const PendingPaymentRecovery = (): React.ReactElement | null => {
 
   if (pending === null) return null
 
+  const copy = RECOVERY_COPY[pending.kind]
+  const destination =
+    pending.kind === "mandate_setup"
+      ? `/sips/${pending.sipPlanId}`
+      : `/activity/payments/${pending.paymentId}`
+
   return (
     <Card tone="feature">
       <div className={PAYMENT_RECOVERY}>
-        <span className={ITEM_TITLE}>You have a payment in progress</span>
-        <p className={HONESTY_TEXT}>
-          You were handed to PhonePe and have not come back to a settled result yet. Open it to see
-          where it stands — we will not know it settled until the provider tells us.
-        </p>
+        <span className={ITEM_TITLE}>{copy.title}</span>
+        <p className={HONESTY_TEXT}>{copy.body}</p>
         <div className={ACTION_ROW}>
-          <Link to={`/activity/payments/${pending.paymentId}`}>
-            <Button trailing>Open the payment</Button>
+          <Link to={destination}>
+            <Button trailing>{copy.action}</Button>
           </Link>
           <Button
             tone="ghost"

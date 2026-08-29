@@ -179,6 +179,11 @@ if bash "$RM_DIR/tests/bundle_selection.test.sh" >/dev/null 2>&1; then
 else
     fail "bundle selection ordering tests failed"
 fi
+if bash "$RM_DIR/tests/hermetic_branding.test.sh" >/dev/null 2>&1; then
+    pass "per-variant branding stays hermetic and is selected by -PboeVariant"
+else
+    fail "hermetic branding tests failed"
+fi
 
 for s in "${BOE_STACKS[@]}"; do
     pj="$STACKS/$s/paths.json"

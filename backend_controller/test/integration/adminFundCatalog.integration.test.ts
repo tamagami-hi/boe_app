@@ -20,6 +20,7 @@ import { createAuthSessionRepository } from "../../src/repositories/authSessionR
 import { createFundAumRepository } from "../../src/repositories/fundAumRepository.js"
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
 import { createUserRepository } from "../../src/repositories/userRepository.js"
+import { createUncachedCache } from "../../src/cache/cache.js"
 import { registerAdminCatalogRoutes } from "../../src/routes/adminCatalogRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
 import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
@@ -32,6 +33,7 @@ let app: FastifyInstance
 let adminToken: string
 let adminId: string
 let readOnlyToken: string
+let invalidatedPrefixes: string[]
 
 interface Injected {
   statusCode: number
@@ -200,6 +202,16 @@ beforeAll(async () => {
     config: { cookieSecure: false, originAllowlist: [] },
   }
 
+  invalidatedPrefixes = []
+  const base = createUncachedCache()
+  const recordingCache = {
+    ...base,
+    invalidatePrefix: async (prefix: string): Promise<void> => {
+      invalidatedPrefixes.push(prefix)
+      await base.invalidatePrefix(prefix)
+    },
+  }
+
   app = createApplication({
     logger: false,
     registerRoutes: (instance) => {
@@ -208,6 +220,7 @@ beforeAll(async () => {
         unitOfWork,
         database,
         clock,
+        cache: recordingCache,
         config: { cursorKey: randomBytes(32), idempotencyTtlMs: 86_400_000 },
         catalogRepository: createAdminCatalogRepository(),
         aumRepository: createFundAumRepository(),
@@ -323,6 +336,43 @@ describe("create fund (integration)", () => {
       `create-${randomUUID()}`,
     )
     expect(response.statusCode).toBe(403)
+  })
+})
+
+describe("catalogue cache invalidation (integration)", () => {
+  test("publishing a version evicts the funds cache family, so clients stop seeing the old catalogue", async () => {
+    const fundId = await createFund("cache-publish")
+    invalidatedPrefixes = []
+    const response = await post(
+      `/v1/admin/funds/${fundId}/versions`,
+      adminToken,
+      { ...TERMS, name: "Cache Evicting Fund" },
+      `version-${randomUUID()}`,
+    )
+    expect(response.statusCode).toBe(201)
+    expect(invalidatedPrefixes).toContain("funds:")
+  })
+
+  test("a lifecycle transition evicts the funds cache family", async () => {
+    const fundId = await createFund("cache-lifecycle")
+    await post(`/v1/admin/funds/${fundId}/versions`, adminToken, TERMS, `version-${randomUUID()}`)
+    invalidatedPrefixes = []
+    const response = await patch(
+      `/v1/admin/funds/${fundId}`,
+      adminToken,
+      { status: "published" },
+      `state-${randomUUID()}`,
+    )
+    expect(response.statusCode).toBe(200)
+    expect(invalidatedPrefixes).toContain("funds:")
+  })
+
+  test("a read does not evict anything", async () => {
+    const fundId = await createFund("cache-read")
+    invalidatedPrefixes = []
+    const response = await get(`/v1/admin/funds/${fundId}`, adminToken)
+    expect(response.statusCode).toBe(200)
+    expect(invalidatedPrefixes).toEqual([])
   })
 })
 

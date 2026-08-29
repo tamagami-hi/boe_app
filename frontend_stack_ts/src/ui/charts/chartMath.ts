@@ -86,5 +86,3 @@ export const buildDonut = (
 
 export const colourFor = (index: number): string =>
   DONUT_PALETTE[index % DONUT_PALETTE.length] ?? "#8a6428"
-
-export const formatShare = (share: number): string => `${(share * 100).toFixed(1)}%`

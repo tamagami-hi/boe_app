@@ -8,7 +8,11 @@ type AppTarget = "client" | "admin"
 
 const resolveAppTarget = (): AppTarget => {
   const requested = process.env.VITE_BEO_APP_TARGET
-  return requested === "client" ? "client" : "admin"
+  if (requested === "admin") return "admin"
+  if (requested === undefined || requested === "" || requested === "client") return "client"
+  throw new Error(
+    `VITE_BEO_APP_TARGET must be "client" or "admin", received ${JSON.stringify(requested)}`,
+  )
 }
 
 const appTarget = resolveAppTarget()

@@ -787,3 +787,143 @@ to remove.
 Worth recording separately: `check-android-dist.mjs` matches `CROSS_TARGET_PATTERNS` against
 `asset.name` only, never against contents. It has never verified cross-target leakage, and the
 argument above rests on the manual APK inspection, not on that gate.
+
+
+
+### D-036
+**One pending-recovery record with a `kind`, not two keys.** · DECIDED 2026-08-29
+
+Doc 07 §state classification sketches two localStorage keys, `boe.pendingPayment` and
+`boe.pendingAutoPaySetup`. The implementation has one, `beonedge.pending-payment.v1`, with one set of
+helpers and one reader (`PendingPaymentRecovery`). Closing the mandate-stranding defect needed a
+mandate record; it did not need a second store.
+
+`PendingPayment` is therefore a discriminated union on `kind` — `"order_payment"` as before,
+`"mandate_setup"` adding `sipPlanId` — persisted under the existing key through the existing
+`persistPendingPayment`, which already writes and then reads back to verify. One key means one banner and
+one thing to reason about, and the write-verify guarantee is inherited rather than re-implemented.
+
+Accepted consequences, both bounded by the 30-minute TTL:
+
+- A mandate setup started while a lump-sum payment is pending overwrites it, and vice versa. Only the
+  banner is lost; the payment itself is unaffected and remains in Activity.
+- `PaymentStatusScreen` clears the record when *its* payment settles, so it can clear a mandate record
+  belonging to a different flow.
+
+Rejected: a second key. It would duplicate the helpers and the reader to remove a banner collision no
+user has hit, and doc 07's sketch carries no authority over the shape once the helper exists.
+
+Also decided: `mandate_setup` recovers to `/sips/{sipPlanId}`, not to `/activity/payments/{paymentId}`.
+The payment row does exist — the backend creates a `sip_installment` order and payment during setup — but
+the payment screen's terminal affordances are wrong for a mandate: `payment_failed` there offers "Try
+again" into the lump-sum flow, while the correct action is "Authorise the mandate again" on the plan,
+which is also where the authoritative mandate state is shown.
+
+
+### D-037
+**~~Bearer secrets are persisted on native only, never in a browser.~~ REVERTED same day — see the correction at the end of this entry.** · DECIDED then REVERTED 2026-08-29
+
+`createClientRuntime` set `persistSecrets: true` unconditionally. On Android that is the intended
+behaviour, because the persistence port is Capacitor Secure Storage. The same constructor runs in a
+browser for the deployed client web build (`Dockerfile` defaults `VITE_BEO_APP_TARGET=client`), where
+the port is `createWebPersistence` — so `boe.client.accessToken` and `boe.client.refreshToken` were
+written to `localStorage`, readable by any injected script. `createAdminRuntime` already had this
+right with `persistSecrets: false`.
+
+`persistSecrets` is now `isNative()`, and `purgeLegacyLocalSecrets()` runs on both platforms rather
+than only native, so a browser that already holds leaked secrets from an earlier build is cleaned on
+the next load.
+
+Doc 07 line 547 already stated the rule this restores: Secure Storage on native, HttpOnly cookie on
+web, never `localStorage`. The client web build has no cookie session — `nativeLogin` returns bearer
+tokens — so on web the tokens now live in memory for the lifetime of the document and nothing more.
+
+**Correction — reverted the same day.** The reasoning above is sound and the exposure is real, but the
+change broke a shipped surface and was reverted to `persistSecrets: true` with
+`purgeLegacyLocalSecrets()` back inside the `native` guard.
+
+Why: the last sentence above — "the tokens now live in memory for the lifetime of the document" — is
+precisely the problem. A browser SPA loses that memory on **every full document load**, not merely on
+an explicit refresh. `export.sh` builds and ships a client web image, and `frontend-ts-smoke.mjs`
+navigates with `page.goto` throughout, so the session died on nearly every screen: the suite fell from
+71/71 to 44/49, failing on device security, statements, notifications and the fund catalogue. The
+purge made it worse rather than safer, because `purgeLegacyLocalSecrets` clears the *current* keys, so
+running it unconditionally wiped the tokens on each web start.
+
+`localStorage` was not a mistake to be corrected in the frontend; it is the only place a bearer session
+can survive a document load. Removing it without first providing the replacement mechanism traded a
+working product for a partial mitigation.
+
+The exposure stands as an open gap. Closing it properly needs an HttpOnly cookie refresh for the
+**client** scope, mirroring what `web-auth` already does for admin — a backend change, since
+`nativeLogin` returns bearer tokens by design. Until then the browser client keeps refresh tokens in
+`localStorage`, and `src/shells/client/clientRuntime.test.ts` pins that behaviour under a name that
+says so, so nobody can "fix" it again without noticing the cookie work is the prerequisite.
+
+What was kept from this decision: the native guarantee is now tested — secrets go to Secure Storage,
+never `localStorage`, and any localStorage secrets are purged on native start. That was risk R7's
+mitigation with no guard at all before today.
+
+**Accepted consequence.** The client web build no longer survives a reload. `principal` is still
+persisted (it is not a secret and admin persists it too), but `restore()` needs an access or refresh
+token, and after a reload it has neither, so the session resolves to `anonymous` and the user signs in
+again. Native is unaffected: Secure Storage still holds both tokens across process death. The
+alternative — a cookie-based refresh for the client scope on web, matching `webRefresh` — is a backend
+change (`web-auth` currently issues cookies for the admin scope only) and is not attempted here.
+
+Rejected: keeping `localStorage` persistence and relying on a short access-token TTL. A refresh token
+in `localStorage` is a full session-takeover primitive regardless of the access token's lifetime.
+
+### D-038
+**`emailVerificationState` is the one name for a client's verification state.** · DECIDED 2026-08-29
+
+`GET /v1/client/email-verification-status` returned `emailVerificationStatus`, while the contract
+operation `getEmailVerificationStatus` requires `emailVerificationState`. The transport validates
+every response against the contract, so the first caller would have taken a malformed-response error.
+It was latent only because `useEmailVerificationStatus` has no consumer — `VerificationStatusScreen`
+reads `useEligibility()` instead.
+
+The backend was the wrong side: `packages/contracts/src/operations/client.ts`, `db/types.ts`, the
+repositories, the eligibility payload and doc 04 line 247 all say `emailVerificationState`. Both
+`sendData` calls in `clientEmailVerificationRoutes.ts` were renamed; no contract changed, so no
+regeneration was needed and the contracted-operation count is still 94.
+
+The `/verify` response was renamed too even though its contract is `z.looseObject({})` and would have
+accepted either name. Leaving one route on `emailVerificationStatus` would have preserved exactly the
+inconsistency this closes.
+
+`admin-oversight.ts` deliberately keeps `emailVerificationStatus` in its own contract and matching
+route, so admin is internally consistent and was left alone.
+
+Rejected: deleting the hook and the contracted operation as dead. The endpoint is real, documented in
+doc 04, and the client verification surface is the natural consumer; removing a contracted operation to
+avoid renaming a field on the side that was already wrong is the larger change.
+
+### D-039
+**One percentage formatter, at two decimals.** · DECIDED 2026-08-29
+
+`ui/charts/chartMath.ts::formatShare` rendered one decimal while `DashboardScreen` and
+`PortfolioScreen` each hand-rolled `toFixed(2)` with their own sign handling. That is the legacy
+`formatReturnPct` (2 dp) versus `fmtPct` (1 dp) split that doc 10 and doc 11 exist to prevent,
+reintroduced with three copies instead of two.
+
+`domain/percent.ts::formatPercent` is now the only percentage formatter. It takes a percentage number
+(`12.34` → `12.34%`), returns the em-dash absent marker for `null` and non-finite input, and mirrors
+`formatINR`'s option name and sign rule: `showSign` adds `+` for strictly positive values only. It sits
+in `domain/` beside `money.ts` because D-029, as extended by “Percentages are money, for typographic purposes”, already treats a return percentage as a financial figure
+for typographic purposes; the same argument applies to its formatting.
+
+Two decimals, not one, because the figure that matters most here is a return percentage read beside a
+rupee amount, where a tenth of a percent is meaningful; an allocation share carrying a redundant
+decimal is only cosmetic. Precision is a module constant, deliberately not a parameter — an optional
+precision argument is how the legacy split happened.
+
+**User-visible changes.** Donut legends and the donut's `aria-label` (fund detail sector allocation,
+admin fund holdings) go from `42.3%` to `42.31%`. A return of exactly zero renders `0.00%` instead of
+`+0.00%`, matching what `MoneyValue` already does with zero growth in the cell beside it. Negative and
+non-zero positive returns are unchanged.
+
+Left alone: `FundHoldingsScreen` renders `weightPercent` raw, because the contract types it as a
+decimal *string* (`Decimal24x8`) and routing it through a `number` formatter would reintroduce the
+float conversion the string type exists to avoid. `DonutChart`'s `legendUnit` prop remains, still
+unused by any caller.

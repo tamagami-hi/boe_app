@@ -17,6 +17,11 @@ const CROSS_TARGET_PATTERNS = {
   admin: [/\bclient\b/i],
 }
 
+const CROSS_TARGET_MARKERS = {
+  client: ["Administrator console", "Collective AUM growth", "Email deliveries", "Audit log"],
+  admin: ["Good to see you", "Manage SIPs", "Value ledger", "Administrator-managed pools"],
+}
+
 const variantArgument = process.argv.find((argument) => argument.startsWith("--variant="))
 const variant = variantArgument?.slice("--variant=".length) ?? "client"
 
@@ -46,6 +51,30 @@ const checkCrossTargetLeakage = (assets) => {
         fail(`${variant} build contains a cross-target asset: ${asset.name} matched ${String(pattern)}`)
       }
     }
+  }
+}
+
+const checkCrossTargetContents = async (assets) => {
+  const markers = CROSS_TARGET_MARKERS[variant]
+  const scripts = assets.filter((asset) => asset.name.endsWith(".js"))
+  if (scripts.length === 0) {
+    fail("no JavaScript assets were emitted, so cross-target contents cannot be verified")
+    return
+  }
+  let sighted = 0
+  for (const asset of scripts) {
+    const source = await readFile(join(assetsRoot, asset.name), "utf8")
+    for (const marker of markers) {
+      if (source.includes(marker)) {
+        sighted += 1
+        fail(`${variant} build contains other-target copy: ${asset.name} contains ${JSON.stringify(marker)}`)
+      }
+    }
+  }
+  if (sighted === 0) {
+    console.log(
+      `cross-target contents: none of ${String(markers.length)} other-target markers found in ${String(scripts.length)} chunks.`,
+    )
   }
 }
 
@@ -128,6 +157,7 @@ const run = async () => {
   }
 
   checkCrossTargetLeakage(assets)
+  await checkCrossTargetContents(assets)
   checkBudgets(assets)
   checkFonts(assets)
 

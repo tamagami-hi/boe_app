@@ -239,7 +239,7 @@ export const CLIENT_GUARD_DESTINATIONS: readonly string[] = [
 ]
 
 export const CLIENT_LINK_MAP: Readonly<Record<string, readonly string[]>> = {
-  dashboard: ["funds", "portfolio", "activity", "notifications", "verify-email"],
+  dashboard: ["funds", "portfolio", "activity", "notifications", "verify-email", "sips"],
   funds: ["fund-detail"],
   "fund-detail": ["invest-lumpsum", "invest-sip", "investor-charter", "grievance"],
   portfolio: ["fund-detail", "sips"],

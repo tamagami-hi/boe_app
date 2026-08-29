@@ -194,7 +194,7 @@ needs the new job added to its expectations.
 **Acceptance.** `npm run typecheck && npm run lint && npm test && npm run build` all pass.
 `VITE_BEO_APP_TARGET=client npm run build` passes `check-android-dist.mjs` and
 `check-bundle-boots.mjs`. `docker build` produces an image that starts as UID 101 with a
-read-only root filesystem and answers `GET /health`. CI is green on all four jobs.
+read-only root filesystem and answers `GET /health`. CI is green on all three jobs (`backend`, `frontend`, `contracts`) — the planned fourth job became an adaptation of the existing `frontend` job to `frontend_stack_ts`.
 
 **Does not touch.** `frontend_stack/`. `release_manager/stacks/*` — deployment wiring waits for
 Phase 11.

@@ -69,8 +69,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 FRONTEND_DIR="$PROJECT_ROOT/frontend_stack_ts"
-APP_DIR="$FRONTEND_DIR/app"
-ANDROID_DIR="$APP_DIR/android"
+ANDROID_DIR="$FRONTEND_DIR/android"
 GRADLE_APK_DEBUG="$ANDROID_DIR/app/build/outputs/apk/debug/app-debug.apk"
 GRADLE_APK_RELEASE="$ANDROID_DIR/app/build/outputs/apk/release/app-release.apk"
 PACKAGE_NAME="com.beonedge.app"
@@ -271,7 +270,7 @@ fi
 
 AAPT_BIN="$(find "$ANDROID_HOME/build-tools" -maxdepth 2 -name aapt -type f 2>/dev/null | sort -V | tail -n1)"
 
-for d in "$FRONTEND_DIR" "$APP_DIR" "$ANDROID_DIR"; do
+for d in "$FRONTEND_DIR" "$ANDROID_DIR"; do
     [[ -d "$d" ]] || { err "missing directory: $d"; exit 1; }
 done
 [[ -x "$ANDROID_DIR/gradlew" ]] || { err "not executable: $ANDROID_DIR/gradlew  (chmod +x it)"; exit 1; }
@@ -375,11 +374,11 @@ build_variant() {
     section "BUILD · $variant" "$apk_name"
     field "applicationId" "$APP_ID"
 
-    # Launcher icon and splash come from app/resources/launcher/$variant, selected
+    # Launcher icon and splash come from frontend_stack_ts/resources/launcher/$variant, selected
     # by -PboeVariant below. Nothing is copied into the tracked res/ any more: that
     # left the last-built variant's branding in the worktree, so a --both run ended
     # with admin assets committed and a later bare Gradle build inherited them.
-    local ASSETS="$APP_DIR/resources/launcher/$variant"
+    local ASSETS="$FRONTEND_DIR/resources/launcher/$variant"
     [[ -d "$ASSETS" ]] || { err "no icon/splash set for '$variant' at $ASSETS"; return 1; }
     field "branding" "$ASSETS"
 
@@ -391,25 +390,32 @@ build_variant() {
     export VITE_BEO_ONBOARDING_URL="$ONBOARDING"
 
     step "vite build (mode=$VITE_MODE, target=$variant)"
-    ( cd "$APP_DIR" && npx --no-install vite build --mode "$VITE_MODE" ) \
+    ( cd "$FRONTEND_DIR" && npx --no-install vite build --mode "$VITE_MODE" ) \
         || { err "vite build failed for $variant"; return 1; }
 
-    if [[ -f "$APP_DIR/scripts/check-android-dist.mjs" ]]; then
+    if [[ -f "$FRONTEND_DIR/scripts/check-android-dist.mjs" ]]; then
         step "verifying the $variant bundle (chunk graph, budgets, fonts)"
-        ( cd "$APP_DIR" && node scripts/check-android-dist.mjs --variant="$variant" ) \
+        ( cd "$FRONTEND_DIR" && node scripts/check-android-dist.mjs --variant="$variant" ) \
             || { err "bundle guard failed for $variant"; return 1; }
         ok "bundle guard passed"
     fi
 
-    if [[ -f "$APP_DIR/scripts/check-bundle-boots.mjs" ]]; then
+    if [[ -f "$FRONTEND_DIR/scripts/check-bundle-boots.mjs" ]]; then
         step "executing the $variant bundle to prove it boots"
-        ( cd "$APP_DIR" && node scripts/check-bundle-boots.mjs ) \
+        ( cd "$FRONTEND_DIR" && node scripts/check-bundle-boots.mjs ) \
             || { err "the $variant bundle does not boot; refusing to package it"; return 1; }
         ok "bundle boots"
     fi
 
+    if [[ -f "$FRONTEND_DIR/scripts/check-phonepe-native-target.mjs" ]]; then
+        step "verifying no native PhonePe SDK and pinned plugin allowlists"
+        ( cd "$FRONTEND_DIR" && node scripts/check-phonepe-native-target.mjs ) \
+            || { err "phonepe native-target guard failed for $variant"; return 1; }
+        ok "phonepe native-target guard passed"
+    fi
+
     step "capacitor sync"
-    ( cd "$APP_DIR" && npx --no-install cap sync android ) \
+    ( cd "$FRONTEND_DIR" && npx --no-install cap sync android ) \
         || { err "cap sync failed"; return 1; }
 
     # Remove the previous output so a failed build cannot be mistaken for a

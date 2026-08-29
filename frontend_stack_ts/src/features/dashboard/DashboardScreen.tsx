@@ -6,6 +6,7 @@ import { Section } from "~/app/layouts/Section"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDate } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
+import { formatPercent } from "~/domain/percent"
 import { emailVerificationState } from "~/domain/status"
 import { PendingPaymentRecovery } from "~/features/payments/PendingPaymentRecovery"
 import { useEligibility, useFunds, usePortfolio, useSipPlans } from "~/features/shared/queries"
@@ -97,9 +98,7 @@ const DashboardScreen = (): React.ReactElement => {
                     <div className={RETURN_CELL}>
                       <span className={STAT_LABEL}>Return</span>
                       <span className={cx(MONEY_BASE, MONEY_SIZE.lg, MONEY_TONE.default)}>
-                        {data.returnPercent === null
-                          ? "—"
-                          : `${data.returnPercent >= 0 ? "+" : ""}${data.returnPercent.toFixed(2)}%`}
+                        {formatPercent(data.returnPercent, { showSign: true })}
                       </span>
                       <span className={META_TEXT}>
                         {data.lastUpdated === null

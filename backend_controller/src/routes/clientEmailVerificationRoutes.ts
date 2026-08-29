@@ -88,7 +88,7 @@ const postVerify = async (deps: ClientEmailVerificationDeps, request: FastifyReq
     return reply.sendData(
       {
         status: "verified",
-        emailVerificationStatus: verification.state,
+        emailVerificationState: verification.state,
         verifiedAt: verification.verifiedAt === null ? null : verification.verifiedAt.toISOString(),
       },
       { status: 200 },
@@ -105,7 +105,7 @@ const getStatus = async (deps: ClientEmailVerificationDeps, request: FastifyRequ
     deps.emailVerificationRepository.findLatestByUser(tx, principal.userId),
   )
   return reply.sendData({
-    emailVerificationStatus: verification?.state ?? "not_started",
+    emailVerificationState: verification?.state ?? "not_started",
     method: "email_otp",
     startedAt: verification?.submittedAt === null || verification === null ? null : new Date(verification.submittedAt).toISOString(),
     verifiedAt: verification?.verifiedAt === null || verification === null ? null : new Date(verification.verifiedAt).toISOString(),
@@ -117,7 +117,6 @@ export const registerClientEmailVerificationRoutes = (
   deps: ClientEmailVerificationDeps,
 ): void => {
   application.post("/v1/client/email-verification/start", async (request, reply) => issueCode(deps, request, reply))
-  application.post("/v1/client/email-verification/resend", async (request, reply) => issueCode(deps, request, reply))
   application.post("/v1/client/email-verification/verify", async (request, reply) => postVerify(deps, request, reply))
   application.get("/v1/client/email-verification-status", async (request, reply) => getStatus(deps, request, reply))
 }

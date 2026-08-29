@@ -43,8 +43,8 @@ called complete on the strength of tests alone.
 | R19 | Mandate admin screens broken where PhonePe is unconfigured | Medium | **High** — the routes are conditionally registered | Render a 404 on those routes as "not configured in this environment" | TESTABLE HERE (unit); **VPS ONLY** per environment |
 | R20 | Remote-supplied path or URL reaching the router or the browser unresolved | High, security | Medium — the legacy code has one live instance at `Notifications.jsx:89` | `resolveDestination` at all four call sites | TESTABLE HERE |
 | R21 | Feature regression during cutover | High | Medium | The parity checklist below | **VPS ONLY** |
-| R22 | Email verification vocabulary mismatch producing a blank status | Low | Medium | Resolve decision D8 before building the status UI | **VPS ONLY** to confirm the wire value |
-| R23 | AutoPay unbuildable on web, shipped as a broken button | Medium | **High without decision D1** | Resolve D1 in Phase 0 | TESTABLE HERE once decided |
+| R22 | Email verification vocabulary mismatch producing a blank status | Low | Medium | Resolve decision D-013 before building the status UI | **VPS ONLY** to confirm the wire value |
+| R23 | AutoPay unbuildable on web, shipped as a broken button | Medium | **High without decision D1** | Resolve D-011 in Phase 0 | TESTABLE HERE once decided |
 | R24 | Stale fund detail after a publish | Low | **Certain** — `invalidatePrefix` is never called | Accept it, or apply backend correction BC10 | **VPS ONLY** |
 | R25 | Rate limiting absent on login, OTP, `/newuser`, payments | Medium, security | Existing, pre-dating this work | Out of scope for the frontend; recorded so it is not lost | **VPS ONLY** |
 | R26 | APK self-update installs unverified bytes | Severe, security | Very low | The native plugin **rejects** a download without a `sha256`, rejects non-https, hashes in the same pass, and confines installs to `cacheDir/updates/` | **VPS ONLY** |
@@ -141,7 +141,7 @@ Nothing here is provable on the development machine.
 - [ ] A due installment appears in Activity and is payable through the standard flow
 - [ ] `debitDay` is constrained to 1–28
 - [ ] The UI states plainly that manual mode has no automatic debit
-- [ ] AutoPay behaves per decision D1 on web **and** on Android
+- [ ] AutoPay behaves per decision D-011 on web **and** on Android
 - [ ] Returning from the UPI app does not claim authorisation; only server state does
 - [ ] AutoPay setup retry within the token TTL replays rather than creating a second mandate
 
@@ -179,7 +179,7 @@ Nothing here is provable on the development machine.
 - [ ] Collective AUM preview then commit works, and a 409 clears the preview
 - [ ] Client growth individual and collective work, including the 409 path
 - [ ] Receipt acknowledgement works, including the `expectedVersion` conflict
-- [ ] Refund retry and reconcile work **if** decision D6 keeps the feature
+- [ ] Refund retry and reconcile work **if** decision D-014 keeps the feature
 - [ ] Mandate list and detail load; reconcile and cancel work with `finance.operate`
 - [ ] Where PhonePe is unconfigured, mandate routes read "not configured in this environment"
 - [ ] Audit log loads and paginates
@@ -212,7 +212,7 @@ Nothing here is provable on the development machine.
 - [ ] The client image uses the absolute origin
 - [ ] The APK's `Origin: https://localhost` is accepted by CORS and by `validateWebOrigin`
 - [ ] The new frontend origin is in `WEB_ORIGIN_ALLOWLIST`
-- [ ] All four CI jobs green, with the drift baseline regenerated
+- [ ] All three CI jobs green (`backend`, `frontend`, `contracts`), with the contract-bypass gate green (the drift baseline no longer exists — D-030)
 
 ## Minimum bar before replacing the old frontend
 
@@ -228,7 +228,7 @@ Cutover is permitted only when all of the following hold.
    permission sets.
 5. **No token or credential appears in `logcat`** during a complete client flow.
 6. **Migration 043 is applied** on the target environment, ahead of the code.
-7. **All four CI jobs are green** and the contract-drift baseline reflects the new frontend.
+7. **All three CI jobs are green** (`backend`, `frontend`, `contracts`) and the contract-bypass gate passes. The contract-drift baseline no longer exists (D-030).
 8. **The parity checklist is signed off by the maintainer**, not by an agent.
 9. **The previous images remain available for rollback**, and the rollback path has been
    exercised at least once on dev.
@@ -247,3 +247,43 @@ Two constraints:
   tooling by design.
 - `frontend_stack` is deleted only after production is verified and soaked. Until then the legacy
   images remain deployable, which is the real rollback path for the whole cutover.
+
+## Amendment — 2026-08-29
+
+Read this section before trusting the test table above.
+
+**Five named tests were never written**, and two of them cannot be until their components exist:
+
+| Named test | Reality |
+| --- | --- |
+| `app/routing/RequirePermission.test.tsx` | `RequirePermission` is implemented in `src/app/routing/guards.tsx`; no test exists |
+| `domain/status.test.ts` | Unnecessary as originally framed: `src/domain/status.ts` now derives its unions from the contract types (D-036), so a new backend status is a compile error. That was verified by adding a member to a contract enum and observing the error |
+| `ui/contracts.test.ts` | Partially replaced by `src/ui/recipes/recipes.test.ts`, which is narrower — it covers the recipe layer only. Unenforced: literals outside tokens across `src`, media queries outside `ui/`+`shells/`, breakpoint literals in TS, "only `Page` sets a content max-width", "only `PageHeader` renders `<h1>`" (already breached: `AuthLayout` also renders one) |
+| `features/admin/OptimisticVersionForm.test.tsx` | Component was never built |
+| `features/admin/PreviewCommitPanel.test.tsx` | Component was never built |
+
+**R17 and the client half of R18 therefore have no frontend guard**, on two admin flows that move
+money. The `basisHash` and `expectedVersion` protocols are implemented correctly, but inline in four
+screens rather than behind one pattern.
+
+**R12's named guard was vacuous and has been fixed.** `check-android-dist.mjs` matched
+`CROSS_TARGET_PATTERNS` against emitted asset *filenames*, and `manualChunks` can only ever produce
+`react`/`router`/`query`/`zod`/`vendor`/`app`, so no filename could ever match. It now also greps
+asset *contents* for other-target copy markers, and was negative-tested by checking a client build as
+`--variant=admin`, which fails with four specific matches.
+
+**R24 is now mitigated.** BC10 landed: every admin route that mutates fund visibility or content
+invalidates the `funds:` cache prefix after its transaction commits, with route-level integration
+tests asserting the eviction (and asserting a read evicts nothing).
+
+**R4's mitigation was satisfied at one of three redirect sites** and is now satisfied at all three
+(D-036). `persistPendingPayment` was called before the lump-sum redirect only; the two AutoPay
+mandate redirects navigated to a provider with nothing persisted, stranding the user on return.
+
+**R7's guard now exists** — `src/shells/client/clientRuntime.test.ts` asserts the browser never
+persists `accessToken`/`refreshToken` (D-037). Previously `persistSecrets: true` was unconditional,
+so the deployed client web build wrote refresh tokens into `localStorage`.
+
+`release_manager/tests/*.test.sh` are not run by any CI job; `verify.sh` runs them, and
+`hermetic_branding.test.sh` and `apk_logging_policy.test.sh` were not invoked by anything until
+2026-08-29.

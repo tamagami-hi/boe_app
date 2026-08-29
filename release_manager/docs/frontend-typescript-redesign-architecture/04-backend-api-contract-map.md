@@ -694,3 +694,38 @@ Small, specific, and each one blocks or degrades a frontend surface.
 | BC8 | *(consider)* No bulk `mark all notifications read` endpoint. | The legacy button does nothing | Either add `PATCH /v1/client/notifications` or drop the affordance. |
 | BC9 | *(consider)* `GET /v1/client/transactions` ignores a filter the UI wants. | Filtering happens client-side over `limit=100` | Add server-side filter parameters, or accept client-side filtering as the contract. |
 | BC10 | *(consider)* Fund detail cache is never invalidated on publish. | Stale fund data until TTL | Call `cache.invalidatePrefix(CACHE_PREFIXES.funds)` from `createFundVersion` and `patchFund`. The method already exists and is never called. |
+
+## Amendment — 2026-08-29 · read this before trusting anything above
+
+This document was written when `packages/contracts` covered 15 paths / 19 operations. **It now covers
+84 paths / 94 operations** and is generated into `packages/contracts/generated/openapi-v1.json`.
+Every endpoint this document lists under a "Missing:" heading is now contracted. For current
+coverage, read `packages/contracts` — it is machine-checked and this prose is not.
+
+Specific statements above that are now **wrong**:
+
+| This document says | Reality |
+| --- | --- |
+| `/v1/client/sips/autopay`, `…/autopay/:sipPlanId`, `…/cancel`, `…/setup/retry` | Renamed to `/v1/client/sip-autopay*` (D-032) — the old path was ambiguous against `/v1/client/sips/{sipPlanId}/pause` under the OpenAPI path model |
+| AutoPay returns `{checkout:{type:"phonepe_sdk", token, merchantId, environment}}`, "this is the blocker" | Hosted redirect. `checkout: HostedCheckout.nullable()`. The native SDK path, its token and the encrypted token storage were all removed (D-011) |
+| `MOBILE_CHECKOUT_DISABLED` is a live wire code missing from contracts | Removed from **both** sides. The AutoPay routes now throw `DEPENDENCY_UNAVAILABLE` |
+| Backend has 24 error codes, contracts 22 | Both are **23**, and the sets are identical |
+| FAQ publish/unpublish uses `PATCH /v1/admin/faqs/:faqId` with `{status}` | Split to `PATCH /v1/admin/faqs/:faqId/status` (D-032). The old route dispatched on body key-count, so `{"status":"published","order":3}` was silently reinterpreted then rejected |
+| The drift checker walks `frontend_stack/packages/{client,admin,shared}` with a 60-entry baseline | That script and its baseline were deleted (D-030). `check-frontend-contract-bypass.mjs` replaces them |
+| `If-Match` guards admin fund concurrency | `parseIfMatchVersion` has **zero callers**. `patchFundState` guards with a row lock plus a transition table instead, and the frontend sends `ifMatch` from exactly one hook, where it is inert |
+| Response field `emailVerificationStatus` on `/v1/client/email-verification-status` | The route now returns `emailVerificationState`, matching the contract and the rest of the app (D-038). `admin-oversight` deliberately keeps `emailVerificationStatus` and is self-consistent |
+
+### Mandatory backend corrections — final state
+
+| BC | Status |
+| --- | --- |
+| BC1 AutoPay browser path | done (D-011) |
+| BC2 `consent-documents` implemented | done, fails closed 503 on an absent or ambiguous pair |
+| BC3 error codes + `page` meta | done |
+| BC4 parameterise the drift checker | done, then superseded by D-030 |
+| BC5 `WEB_ORIGIN_ALLOWLIST` | deployment env. `.env.example` carries `http://localhost:5174` but **not** `:5175`, the admin dev port — admin dev login depends on an entry the example does not show |
+| BC6 remove the `/resend` alias | **done 2026-08-29** |
+| BC7 `?outcome=` on the decision route | not done, but mitigated: the query is now contracted as a strict enum, so a generated client cannot get it wrong |
+| BC8 bulk mark-all-read | not done; the frontend has no bulk affordance, so nothing is broken |
+| BC9 server-side transaction filtering | **not done, and moot as written.** It existed because the legacy frontend fetched everything and filtered locally. The new frontend has no ledger filter UI at all, so there is no client-side filtering to move. The real underlying defect is the absence of cursor pagination — see the README's open-gaps list |
+| BC10 invalidate the fund cache on publish | **done 2026-08-29**, with route-level integration tests. This closes risk R24 |

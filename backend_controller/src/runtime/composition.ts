@@ -426,6 +426,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       unitOfWork,
       database,
       clock,
+      cache,
       config: {
         cursorKey: serverConfig.cursorKey,
         idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,

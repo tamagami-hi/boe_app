@@ -6,10 +6,16 @@ import { useIdempotencyKey } from "~/api/idempotency"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
+import { useSession } from "~/app/providers/SessionProvider"
 import { DEBIT_DAY_MAX, DEBIT_DAY_MIN } from "~/domain/dates"
 import { comparePaise, formatINR, rupeesToPaise, toPaise } from "~/domain/money"
 import type { Paise } from "~/domain/money"
 import { CheckoutUrlRejected, decideCheckout } from "~/features/payments/checkout"
+import {
+  PENDING_PAYMENT_TTL_MS,
+  browserPendingPaymentStore,
+  persistPendingPayment,
+} from "~/features/payments/pendingPayment"
 import { useCreateSip, useFund, useStartAutoPay } from "~/features/shared/queries"
 import { isNative } from "~/platform/capacitor"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
@@ -34,10 +40,13 @@ const DEBIT_DAYS = [1, 5, 10, 15, 20, 25] as const
 
 type Mode = "manual_checkout" | "phonepe_autopay"
 
+type Failure = Readonly<{ title: string; body: string }>
+
 const SipStartScreen = (): React.ReactElement => {
   const { fundId = "" } = useParams()
   const fund = useFund(fundId)
   const navigate = useNavigate()
+  const { principal } = useSession()
   const createSip = useCreateSip()
   const startAutoPay = useStartAutoPay()
 
@@ -46,7 +55,8 @@ const SipStartScreen = (): React.ReactElement => {
   const [durationMonths, setDurationMonths] = useState<number>(12)
   const [debitDay, setDebitDay] = useState<number>(1)
   const [submitted, setSubmitted] = useState(false)
-  const [failure, setFailure] = useState<string | null>(null)
+  const [failure, setFailure] = useState<Failure | null>(null)
+  const store = useMemo(browserPendingPaymentStore, [])
 
   const minimum: Paise | null = useMemo(() => {
     const raw = fund.data?.fund.minimumSipPaise ?? null
@@ -108,14 +118,14 @@ const SipStartScreen = (): React.ReactElement => {
   const start = (): void => {
     setSubmitted(true)
     setFailure(null)
-    if (!ready || amountPaise === null) return
+    if (!ready || amountPaise === null || principal === null) return
 
     if (mode === "manual_checkout") {
       createSip.mutate(
         { fundId, amountPaise, debitDay, durationMonths },
         {
           onError: (error) => {
-            setFailure(describeFailure(error))
+            setFailure({ title: "Nothing was created", body: describeFailure(error) })
           },
           onSuccess: (plan) => {
             void navigate(`/sips/${plan.sipId}`, { replace: true })
@@ -129,7 +139,7 @@ const SipStartScreen = (): React.ReactElement => {
       { fundId, amountPaise, debitDay, durationMonths, idempotencyKey },
       {
         onError: (error) => {
-          setFailure(describeFailure(error))
+          setFailure({ title: "Nothing was created", body: describeFailure(error) })
         },
         onSuccess: (setup) => {
           let decision
@@ -141,11 +151,27 @@ const SipStartScreen = (): React.ReactElement => {
               checkout: setup.checkout,
             })
           } catch (error) {
-            setFailure(describeFailure(error))
+            setFailure({ title: "Nothing was created", body: describeFailure(error) })
             return
           }
 
           if (decision.kind === "redirect") {
+            try {
+              persistPendingPayment(store, {
+                kind: "mandate_setup",
+                paymentId: decision.paymentId,
+                orderId: setup.orderId,
+                sipPlanId: setup.sipPlanId,
+                ownerId: principal.userId,
+                expiresAt: Date.now() + PENDING_PAYMENT_TTL_MS,
+              })
+            } catch {
+              setFailure({
+                title: "We stopped before the mandate page",
+                body: "This device would not record the authorisation, so we did not send you to PhonePe. No mandate has been authorised and nothing has been debited. The plan exists and is waiting for authorisation — open it under SIP plans, or try again on another device.",
+              })
+              return
+            }
             window.location.assign(decision.url)
             return
           }
@@ -274,8 +300,8 @@ const SipStartScreen = (): React.ReactElement => {
             )}
 
             {failure === null ? null : (
-              <Alert tone="error" title="Nothing was created">
-                {failure}
+              <Alert tone="error" title={failure.title}>
+                {failure.body}
               </Alert>
             )}
 

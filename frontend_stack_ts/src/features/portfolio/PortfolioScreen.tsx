@@ -4,6 +4,7 @@ import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { toPaise } from "~/domain/money"
+import { formatPercent } from "~/domain/percent"
 import { useFunds, usePortfolio } from "~/features/shared/queries"
 import { cx } from "~/lib/cx"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
@@ -17,9 +18,6 @@ import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 
 import { HEADLINE_GRID, POOL_META, POOL_TOP } from "./portfolio.recipe"
-
-const percent = (value: number | null): string =>
-  value === null ? "—" : `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`
 
 const PortfolioScreen = (): React.ReactElement => {
   const query = usePortfolio()
@@ -78,7 +76,7 @@ const PortfolioScreen = (): React.ReactElement => {
                 <div className={STAT_ROOT}>
                   <span className={STAT_LABEL}>Return</span>
                   <span className={cx(MONEY_BASE, MONEY_SIZE.md, MONEY_TONE.default)}>
-                    {percent(data.returnPercent)}
+                    {formatPercent(data.returnPercent, { showSign: true })}
                   </span>
                 </div>
               </div>
@@ -113,7 +111,7 @@ const PortfolioScreen = (): React.ReactElement => {
                       />
                       <span>Return</span>
                       <span className={cx(MONEY_BASE, MONEY_SIZE.sm, MONEY_TONE.default)}>
-                        {percent(pool.returnPercent)}
+                        {formatPercent(pool.returnPercent, { showSign: true })}
                       </span>
                     </div>
                     <span className={META_TEXT}>

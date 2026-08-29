@@ -192,6 +192,7 @@ beforeAll(async () => {
         unitOfWork,
         database,
         clock,
+        cache: createUncachedCache(),
         config: { cursorKey: randomBytes(32), idempotencyTtlMs: 86_400_000 },
         catalogRepository: createAdminCatalogRepository(),
         aumRepository: fundAumRepository,

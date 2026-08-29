@@ -1,5 +1,7 @@
-import { buildDonut, colourFor, formatShare } from "./chartMath"
+import { buildDonut, colourFor } from "./chartMath"
 import type { Slice } from "./chartMath"
+
+import { formatPercent } from "~/domain/percent"
 
 import { DONUT_ARC, DONUT_CENTRE, DONUT_CENTRE_VALUE, DONUT_FIGURE, DONUT_SVG, DONUT_WRAP, LEGEND_LABEL, LEGEND_ROOT, LEGEND_ROW, LEGEND_SWATCH, LEGEND_VALUE } from "~/ui/recipes/chart"
 import { STAT_LABEL } from "~/ui/recipes/datalist"
@@ -31,7 +33,7 @@ export const DonutChart = ({
           viewBox={`0 0 ${String(VIEW_BOX)} ${String(VIEW_BOX)}`}
           role="img"
           aria-label={`${centreLabel}: ${arcs
-            .map((arc) => `${arc.label} ${formatShare(arc.share)}`)
+            .map((arc) => `${arc.label} ${formatPercent(arc.share * 100)}`)
             .join(", ")}`}
         >
           {arcs.map((arc, index) => (
@@ -58,7 +60,7 @@ export const DonutChart = ({
             <span className={LEGEND_LABEL}>{arc.label}</span>
             <span className={LEGEND_VALUE}>
               {legendUnit === undefined
-                ? formatShare(arc.share)
+                ? formatPercent(arc.share * 100)
                 : legendUnit({ key: arc.key, label: arc.label, value: arc.value }, arc.share)}
             </span>
           </li>

@@ -50,30 +50,52 @@ Read in this order. Documents 00, 04, 07 and 10 are the load-bearing ones.
 
 ## Current project status
 
-Nothing of the new frontend exists yet. `frontend_stack_ts/` has not been created.
+**All twelve phases have landed.** `frontend_stack_ts` is the only frontend in the repository;
+`frontend_stack/` was deleted in Phase 12 and survives only in git history.
 
-**Phase 0 is complete** (2026-08-27). Error-code parity with the backend (24 codes), `PageMeta`,
-a descriptor variant allowing `native-bearer` writes to require an idempotency key, the drift
-checker parameterised to scan the new tree, and the dead `.env.legacy-backup` removed.
+State as of 2026-08-29:
 
-**Phase 0 was amended.** Contracts and backend corrections are now extended **per feature phase**
-rather than as one ~7,000-line push up front. That is safe because the drift checker now fails CI
-the moment the new frontend calls an uncontracted path. The backend corrections in doc 04 are
-promoted from "consider" to **mandatory** — the application is pre-production, so the contract is
-shaped for the new frontend and the legacy frontend may break as a consequence — but each is made
-in the phase that consumes it, since an unconsumed API change is an unverified one.
+- `packages/contracts` describes **94 operations** across 84 paths. The drift checker was replaced
+  by `check-frontend-contract-bypass.mjs` (D-030), which fails on any `/v1/...` literal outside the
+  generated client and on any mismatch between the contracted and generated operation counts.
+- Every route in both manifests renders a real screen. There is no placeholder screen.
+- Styling is a token layer plus **Tailwind v4** utilities derived from it via `@theme inline`, plus a
+  typed recipe layer (D-033). All 35 CSS Modules are gone. `tokens-core.css` is still the sole
+  reader of `env(safe-area-inset-*)`.
+- Both APKs build, install and launch. R8/minification was exercised for the first time in
+  Entry 019; the release APKs are unsigned and were never installed.
+- Gates: `npm run check` in `frontend_stack_ts`, `npm run check` in `packages/contracts`, the backend
+  suite, and `release_manager/verify.sh`.
 
-The repository still holds an **uncommitted payment refactor** (31 files) replacing the PhonePe
-native mobile-SDK one-time checkout with hosted Standard Checkout, plus untracked migration
-`043_hosted_checkout_dispatch_claim.sql`. Verified read-only on the dev stack: 33 migrations
-applied, latest `042`, and `payment_attempts` still carries the 035 constraint that excludes
-`hosted_redirect`. Migration 043 is verified together with the new frontend at new-stack deploy
-time, with a schema backup, and gates **Phase 7** only.
+**Read `LOGS/implementation_log.md` for what actually landed, and `LOGS/risk_and_decision.md`
+(D-001 to D-039) for the decisions that constrain it.** Several statements in the numbered documents
+have been superseded; where a document and the decision log disagree, the log is authoritative.
+
+### Known gaps, still open
+
+These were required by the plan and have not landed. They are tracked here because the numbered
+documents still read as though they were done:
+
+1. **No cursor pagination anywhere.** `src/api/cursor.ts` has no consumer; every list — client
+   transactions, payments, orders, funds, notifications, support, and all admin queues including
+   audit — fetches one fixed page. This is the defect Phase 6 and Phase 10 wrote acceptance criteria
+   to prevent.
+2. **App-update gate absent.** No `AppUpdateGate`, no consumer of the contracted `getAppUpdate`;
+   `AppUpdatePlugin.java` has no web caller, so a mandatory update cannot be enforced.
+3. **Device security is a settings screen with no lock.** Nothing consumes `verifyDevicePin` outside
+   the settings screen, and the biometric dependency is never imported in `src/`.
+4. **Android admin has no bearer auth path.** `buildAdminDevice` does not exist and `adminRuntime`
+   is cookie-only, yet the admin APK targets ship.
+5. **`OptimisticVersionForm` / `PreviewCommitPanel` were never built.** The `basisHash` and
+   `expectedVersion` protocols are implemented correctly but inline in four admin screens, so there
+   is no single guard. `parseIfMatchVersion` in the backend has no callers.
+6. **Phase 13 backend cleanup is largely untouched** — see doc 10's "safe to remove" list.
+7. **`assertHttpMode()` is dead code**; D-009's configuration-error screen does not exist.
 
 ## Recommended starting point
 
-**Phase 1.** Phase 0 is done and nothing else blocks it. Phase 1 also closes B5 (origin
-allowlist) and B6 (the fourth CI job), both of which need the project directory to exist.
+The phased build is finished. Pick from "Known gaps, still open" above; item 1 (cursor pagination)
+has the widest blast radius because it silently truncates every list in the product.
 
 ## Implementation sequence
 

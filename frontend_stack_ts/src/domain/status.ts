@@ -1,3 +1,22 @@
+import type {
+  AdminApplicationState,
+  AdminEmailDeliveryState,
+  AdminFundState,
+  AdminMandateDetailData,
+  AdminOrderState,
+  AdminPaymentState,
+  AdminReceiptState,
+  AdminRefundState,
+  AdminUserAccountState,
+  ClientInvestmentStatus as ContractClientInvestmentStatus,
+  EmailVerificationStateValue,
+  FundSummary,
+  MandateSetupState as ContractMandateSetupState,
+  MandateState as ContractMandateState,
+  SipState as ContractSipState,
+  SupportRequestState as ContractSupportRequestState,
+} from "@beonedge/contracts"
+
 import { assertNever } from "~/lib/assertNever"
 
 export type StatusTone = "neutral" | "positive" | "negative" | "warning" | "info"
@@ -7,95 +26,37 @@ export type StatusPresentation = Readonly<{
   tone: StatusTone
 }>
 
-export type ClientInvestmentStatus =
-  | "payment_in_progress"
-  | "processing"
-  | "confirmed"
-  | "refund_in_progress"
-  | "support_required"
-  | "refunded"
-  | "payment_failed"
+export type ClientInvestmentStatus = ContractClientInvestmentStatus
 
-export type OrderState =
-  | "submitted"
-  | "payment_pending"
-  | "accepted"
-  | "refund_pending"
-  | "refunded"
-  | "refund_failed"
-  | "payment_failed"
-  | "cancelled"
+export type OrderState = AdminOrderState
 
-export type PaymentState =
-  | "created"
-  | "provider_pending"
-  | "succeeded"
-  | "failed"
-  | "expired"
-  | "reconciliation_required"
-  | "refund_pending"
-  | "refunded"
-  | "refund_failed"
+export type PaymentState = AdminPaymentState
 
-export type SipState =
-  | "draft"
-  | "pending_mandate"
-  | "active"
-  | "paused"
-  | "cancel_pending"
-  | "cancelled"
-  | "completed"
-  | "setup_failed"
-  | "mandate_failed"
-  | "expired"
-  | "revoked"
+export type SipState = ContractSipState
 
-export type SipCollectionMode = "manual_checkout" | "phonepe_autopay"
+export type SipCollectionMode = AdminMandateDetailData["sip"]["collectionMode"]
 
-export type MandateState =
-  | "setup_pending"
-  | "active"
-  | "pause_pending"
-  | "paused"
-  | "cancel_pending"
-  | "cancelled"
-  | "revoke_pending"
-  | "revoked"
-  | "expired"
-  | "failed"
+export type MandateState = ContractMandateState
 
-export type MandateSetupState =
-  | "created"
-  | "dispatching"
-  | "provider_pending"
-  | "authorized"
-  | "failed"
-  | "expired"
+export type MandateSetupState = ContractMandateSetupState
 
-export type RefundState = "pending" | "provider_pending" | "refunded" | "failed"
+export type RefundState = AdminRefundState
 
-export type UserAccountState = "invited" | "active" | "suspended" | "closed"
+export type UserAccountState = AdminUserAccountState
 
-export type ApplicationState = "submitted" | "approved" | "rejected" | "withdrawn"
+export type ApplicationState = AdminApplicationState
 
-export type EmailVerificationState = "not_started" | "pending" | "verified"
+export type EmailVerificationState = EmailVerificationStateValue
 
-export type EmailDeliveryState =
-  | "queued"
-  | "sending"
-  | "sent"
-  | "delivered"
-  | "retryable_failed"
-  | "permanent_failed"
-  | "cancelled"
+export type EmailDeliveryState = AdminEmailDeliveryState
 
-export type FundState = "draft" | "published" | "paused" | "archived"
+export type FundState = AdminFundState
 
-export type FundRiskLevel = "low" | "moderate" | "high" | "very_high"
+export type FundRiskLevel = FundSummary["riskLevel"]
 
-export type FundReceiptAcknowledgementState = "pending" | "acknowledged"
+export type FundReceiptAcknowledgementState = AdminReceiptState
 
-export type SupportRequestState = "open" | "in_progress" | "resolved" | "closed"
+export type SupportRequestState = ContractSupportRequestState
 
 export const clientInvestmentStatus = (value: ClientInvestmentStatus): StatusPresentation => {
   switch (value) {

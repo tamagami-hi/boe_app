@@ -1431,3 +1431,174 @@ merely trailing. The plugin count stays five, because `SystemBars` is core and n
 - `check-android-dist.mjs` matches its cross-target patterns against asset *names* only, never
   contents, so it has never actually verified leakage. See D-035.
 - `TASK/README.md` omits entries 005 onward.
+
+
+## Entry 020 — the mandate redirects could strand a user, and status exhaustiveness was fiction
+
+2026-08-29. Two audit findings closed. Both were defects of omission that every green gate had missed,
+because neither typecheck nor `vitest` nor the page audit can see a redirect that leaves the app.
+
+### Defect 1 — persist-verify-abort was applied to one redirect out of three
+
+Doc 07 payment safety rule 4 requires the pending record to be written **and the write verified**
+before navigating to a provider checkout URL, aborting the checkout if the write fails.
+`LumpsumInvestScreen` did this. The two AutoPay mandate redirects did not:
+`SipStartScreen` (`window.location.assign` after `startAutoPaySip`) and `SipDetailScreen`
+(the same after `retryAutoPaySetup`). `PendingPaymentRecovery` is the only recovery mechanism in the
+app, and it reads that record — so a user who left for PhonePe from either screen came back to nothing.
+
+`persistPendingPayment` is now called on both paths, with the same abort-on-failure shape as the
+reference implementation. The existing helpers are reused; no second store and no second key.
+
+The record needed one honest extension. A mandate authorisation and an order payment are not the same
+event and must not recover to the same place: `PendingPayment` is now a discriminated union on `kind`,
+`"order_payment"` carrying what it carried before, `"mandate_setup"` additionally carrying `sipPlanId`.
+`PendingPaymentRecovery` routes `mandate_setup` to `/sips/{sipPlanId}`, where the mandate state is
+authoritative, rather than to a payment screen whose failure affordance is "Try again" into the lump-sum
+flow. Existing order-payment copy and destination are byte-identical. See D-036.
+
+A record written by an older build has no `kind` and is now discarded as unrecognised rather than
+misread. That is forward-only and costs at most one 30-minute recovery banner.
+
+Both SIP screens' `failure` state grew a title, because the static alert titles lie about this branch:
+by the time the write fails the SIP plan and the setup attempt exist, so "Nothing was created" and
+"Nothing changed" would be false. Every pre-existing message keeps its previous title verbatim.
+
+Persist happens on the redirect branch only. The `checkout: null` poll branch stays as it was: it never
+leaves the app, and unlike the lump-sum poll path it lands on the plan screen, which has nothing that
+would ever clear the record.
+
+### Defect 2 — `domain/status.ts` proved exhaustiveness over its own copy
+
+Doc 07 promises that adding a backend status is a compile error. It was not. All sixteen unions were
+hand-written string literals, structurally identical to the contract enums and completely disconnected
+from them, so `assertNever` only ever proved the file was exhaustive over itself.
+
+Each union is now derived from the contract: `z.infer` aliases re-exported under the existing names
+(`ClientInvestmentStatus`, `SipState`, `MandateState`, `MandateSetupState` from the client operations;
+`AdminOrderState`, `AdminPaymentState`, `AdminRefundState`, `AdminReceiptState`, `AdminUserAccountState`,
+`AdminApplicationState`, `AdminEmailDeliveryState`, `AdminFundState` from the admin ones;
+`EmailVerificationStateValue` and `FundSummary["riskLevel"]` from the client contract;
+`SupportRequestState` from client-account). `SipCollectionMode` has no named contract enum — the
+contract declares it inline — so it is derived positionally as
+`AdminMandateDetailData["sip"]["collectionMode"]` rather than left as a copy.
+
+The presentation mappings are untouched. Only the type source changed, and the import is `import type`,
+so no additional zod schema is pulled into the bundle.
+
+### Verified — TESTED
+
+- `npx tsc -p tsconfig.json --noEmit` — clean.
+- `npx eslint .` — clean.
+- `npx vitest run` — 12 files, 134 tests, all passing (122 before; three new pending-record branches
+  plus the percentage work logged separately).
+- `VITE_BEO_APP_TARGET=client npx vite build` — built, `app` chunk 216.78 kB, CSS 84.26 kB unchanged.
+- The exhaustiveness guarantee was **negative-tested, not assumed**. Adding a `hibernating` member to
+  the contract `SipState` produced exactly `src/domain/status.ts(155,26): error TS2345: Argument of type
+  '"hibernating"' is not assignable to parameter of type 'never'.` The edit was reverted and typecheck
+  re-run clean. Before this change the same edit produced no error at all.
+
+### Not verified — UNVERIFIED
+
+The redirect itself. Nothing here proves the abort path fires on a real device, because that needs a
+`localStorage` write to actually fail, and nothing proves the recovery banner routes correctly after a
+real mandate authorisation, because that needs PhonePe credentials this machine does not have. On the
+VPS, with AutoPay configured: start a mandate from `SipStartScreen`, leave for PhonePe, return, and
+confirm the banner reads "You have a mandate authorisation in progress" and opens `/sips/{sipPlanId}`.
+For the abort path, fill the origin's storage quota (or deny storage for the origin) and confirm the
+button surfaces "We stopped before the mandate page" and no navigation occurs.
+
+Also unverified: that `mandate_setup` recovery is the right destination *for the first installment*.
+The backend creates a real `sip_installment` order and payment during setup, so that money is visible at
+`/activity/payments/{paymentId}` too; the plan screen was chosen because the mandate is the thing the
+user was authorising. Worth confirming against a real setup that the plan screen shows enough.
+
+
+## Entry 021 — refresh tokens were in `localStorage` on web, a contract field disagreed, and three percentage formatters
+
+Three audit findings between this blueprint and the tree, closed together. See D-037, D-038 and D-039.
+
+### Defect 1 — the client web build persisted bearer secrets to `localStorage`
+
+`shells/client/clientRuntime.ts` passed `persistSecrets: true` regardless of platform. The persistence
+port is chosen by platform (`createSecureStoragePersistence()` on native, `createWebPersistence()`
+otherwise) but the flag was not, so in a browser — which is a shipped configuration, `Dockerfile`
+defaults `VITE_BEO_APP_TARGET=client` — `boe.client.accessToken` and `boe.client.refreshToken` were
+written to `localStorage`. Any injected script could read a refresh token and mint sessions.
+`shells/admin/adminRuntime.ts` had it right at `persistSecrets: false`.
+
+`persistSecrets` is now `isNative()`. `purgeLegacyLocalSecrets()` moved out of the `if (native)` guard
+so a browser holding leaked secrets from an earlier build is cleaned on next load. Nothing else changed:
+the store already keeps every field in memory and consults `shouldPersist` per field, so on web the
+tokens live in memory for the document's lifetime and `principal` still persists as it does for admin.
+
+**Behaviour change.** The client *web* build no longer survives a reload — `restore()` finds a cached
+principal but no access token, the refresh attempt has no refresh token, and the session resolves to
+`anonymous`. Android is unaffected. There is no cookie session for the client scope to fall back on;
+`web-auth` issues cookies for admin only. D-037 records the accepted consequence and why a client-scope
+cookie refresh was not attempted here.
+
+### Defect 2 — `emailVerificationStatus` versus `emailVerificationState`
+
+`GET /v1/client/email-verification-status` returned `emailVerificationStatus`; the contract operation
+`getEmailVerificationStatus` requires `emailVerificationState`, and the transport validates responses,
+so the first caller would have taken a malformed-response failure. Latent only because
+`useEmailVerificationStatus` has no consumer — `VerificationStatusScreen` reads `useEligibility()`.
+
+The backend was the wrong side. Contracts, `db/types.ts`, the repositories, the eligibility payload and
+doc 04 line 247 all use `emailVerificationState`. Both `sendData` calls in
+`clientEmailVerificationRoutes.ts` were renamed — `/verify` too, whose contract is `z.looseObject({})`
+and would have tolerated either name. No contract changed, so no regeneration; the bypass check still
+reports 94 contracted operations. `admin-oversight` keeps `emailVerificationStatus` in its own contract
+and route and was left alone. The hook was kept rather than deleted with its contracted operation (see
+D-038), so it remains an unconsumed query.
+
+### Defect 3 — three percentage formatters
+
+`ui/charts/chartMath.ts::formatShare` (1 dp) plus hand-rolled `toFixed(2)` expressions in
+`DashboardScreen` and `PortfolioScreen` — the legacy `formatReturnPct`/`fmtPct` split with an extra copy.
+`formatShare` is deleted and `domain/percent.ts::formatPercent` is the only percentage formatter:
+percentage number in, two fixed decimals, `—` for `null` and non-finite, `showSign` following
+`formatINR`'s option name and its "+ only when strictly positive" rule. `DonutChart` converts its share
+at the call site (`arc.share * 100`); `PortfolioScreen`'s local `percent` alias is gone.
+
+**Behaviour change.** Donut legends and the donut `aria-label` render `42.31%` where they rendered
+`42.3%`, and a return of exactly zero renders `0.00%` where it rendered `+0.00%`. Everything else is
+byte-identical. Precision reasoning and what was deliberately left alone are in D-039.
+
+### Verified — TESTED
+
+From `frontend_stack_ts`:
+
+- `npx tsc -p tsconfig.json --noEmit` — clean.
+- `npx eslint .` — clean.
+- `npx vitest run` — 12 files, 134 tests. Two new files: `src/domain/percent.test.ts` (5) covering
+  precision, sign rule, absent marker and grouping, and `src/shells/client/clientRuntime.test.ts` (4)
+  asserting that a browser runtime keeps secrets out of `localStorage`, purges secrets an earlier build
+  left there, does not recover them on hydration, and that a stubbed native bridge receives them in
+  Secure Storage instead.
+- The three browser assertions were confirmed to fail against the pre-fix `persistSecrets: true` /
+  `if (native) purge` code before the fix was restored, so they are a real regression guard.
+- `VITE_BEO_APP_TARGET=client npx vite build` — built, `app` chunk 216.78 kB.
+
+From `packages/contracts`: `npm run check:frontend-contract-bypass` — no bypasses, 94 contracted
+operations. Contracts were not modified, so the rest of `npm run check` was not required.
+
+From `backend_controller`: `npx tsc -p tsconfig.json` reports nothing under `src/`, `npx vitest run`
+passes 74 files / 676 tests, and `npx eslint src/routes/clientEmailVerificationRoutes.ts` is clean.
+
+### Not verified — UNVERIFIED
+
+- **Nothing here proves a wire response.** The renamed field was never observed on a real response. On
+  the VPS, against a verified client session:
+  `curl -sS -H "authorization: Bearer $ACCESS" -H 'x-client-platform: android' -H 'x-app-version: 0.1.0' https://<host>/api/v1/client/email-verification-status | jq` — expect `emailVerificationState`, and no
+  `emailVerificationStatus` key.
+- **The web reload change was not observed in a browser.** Sign in to the deployed client web build,
+  confirm `localStorage` holds no `boe.client.accessToken` or `boe.client.refreshToken`, then reload and
+  confirm the app lands on sign-in rather than a broken authenticated shell.
+- **Native Secure Storage still works.** The native test stubs the plugin. An APK must sign in,
+  background, be killed and reopened to prove the token survives — `persistSecrets` is unchanged on
+  native, but the purge now also runs there on every start and only device execution proves it touches
+  `localStorage` alone.
+- **The rendered percentages were not seen.** Fund detail sector allocation, admin fund holdings,
+  dashboard and portfolio return cells were checked by type and test only, not on screen.

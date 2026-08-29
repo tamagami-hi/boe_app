@@ -3,12 +3,22 @@ import { PendingPaymentWriteFailed } from "~/features/payments/checkout"
 export const PENDING_PAYMENT_KEY = "beonedge.pending-payment.v1"
 export const PENDING_PAYMENT_TTL_MS = 30 * 60 * 1_000
 
-export type PendingPayment = Readonly<{
-  paymentId: string
-  orderId: string
-  ownerId: string
-  expiresAt: number
-}>
+export type PendingPayment =
+  | Readonly<{
+      kind: "order_payment"
+      paymentId: string
+      orderId: string
+      ownerId: string
+      expiresAt: number
+    }>
+  | Readonly<{
+      kind: "mandate_setup"
+      paymentId: string
+      orderId: string
+      sipPlanId: string
+      ownerId: string
+      expiresAt: number
+    }>
 
 export type PendingPaymentStore = Readonly<{
   read: (key: string) => string | null
@@ -39,13 +49,16 @@ export const browserPendingPaymentStore = (): PendingPaymentStore => ({
 const isPendingPayment = (value: unknown): value is PendingPayment => {
   if (typeof value !== "object" || value === null) return false
   const record = value as Record<string, unknown>
-  return (
+  const shared =
     typeof record.paymentId === "string" &&
     typeof record.orderId === "string" &&
     typeof record.ownerId === "string" &&
     typeof record.expiresAt === "number" &&
     Number.isSafeInteger(record.expiresAt)
-  )
+  if (!shared) return false
+  if (record.kind === "order_payment") return true
+  if (record.kind === "mandate_setup") return typeof record.sipPlanId === "string"
+  return false
 }
 
 export const persistPendingPayment = (
