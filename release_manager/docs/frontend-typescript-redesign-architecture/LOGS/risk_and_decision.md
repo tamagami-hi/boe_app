@@ -1684,3 +1684,66 @@ approved on its own host, delete it.
 orders, which made a genuinely fresh checkout look like a replayed one. Comparing tokens is not a valid
 way to tell them apart; compare `orderId` and `paymentId` from the `/pay` response body, which requires
 intercepting the response with `page.route` before the navigation to PhonePe destroys it.
+
+
+### D-058
+**PhonePe-facing URLs move to the approved host by reverse proxy, not by moving payment processing
+into `boe_landing`.** · DECIDED 2026-08-29
+
+The maintainer asked for the payment stack to be copied into `boe_landing` so that transactions
+originate from `www.beonedge.in`, the only host PhonePe has approved. The constraint driving it is real
+and decisive: re-approving `dev-app.beonedge.in` or `app.beonedge.in` takes 14+ days, and the landing
+domain is approved today.
+
+**Why moving the code would not have achieved it.** PhonePe's pay call is server-to-server: no `Origin`,
+no `Referer`, and both containers egress from the same VPS address. The only inputs PhonePe has are the
+merchant credentials, the pay payload — where `merchantUrls.redirectUrl` was experimentally ruled out in
+Entry 032 — and dashboard state. None of those change based on which of our processes opens the socket.
+PhonePe cannot distinguish `boe_landing` from `backend_controller`.
+
+**The decisive observation.** `grep callbackUrl src/providers/phonepe/*.ts` shows the callback URL is
+**never sent in any request**. The pay payload is exactly `merchantOrderId`, `amount`, `expireAfter`,
+`paymentFlow.merchantUrls.redirectUrl`. So the webhook URL reaches PhonePe only as **dashboard
+registration**, and its origin — `https://dev-app.beonedge.in/` — matches the reported `Transacting_URL`
+character for character, trailing slash included. That makes the registered webhook the best-supported
+source, and it is changed on PhonePe's dashboard, not by anything in this repository.
+
+**So the proxy and the migration are indistinguishable from PhonePe's side.** Both put the callback and
+the redirect on `www.beonedge.in`. The proxy therefore tests the migration's entire premise at a small
+fraction of the cost, and if `Transacting_URL` does not move, the migration would not have moved it
+either. That is the whole argument for doing this first, and it is reversible in minutes.
+
+**What the migration would have cost, had the premise held.** Merchant credentials living in the public
+marketing app; payment state either split across two services or `boe_landing` given write access to the
+app's Postgres; and the webhook → allocation step, which must be transactional with order state,
+spanning a service boundary. Idempotency keys, the `version` optimistic-concurrency columns and the
+reconciliation worker all live in `backend_controller`, and for a fintech the system of record should
+hold the payment rows. The existing landing→backend signup channel is not a precedent: it runs the
+opposite direction and is a one-way fire-and-forget notification.
+
+**Also corrected: "restrict the API to dev-app and app" is not expressible as an origin check.** The
+caller would be a server, which sends no `Origin` at all, and any client can forge one. Real controls are
+a shared-secret HMAC (as `x-signup-key` already does), mTLS, or a private Docker network. And the callback
+leg cannot be private in any case — PhonePe must reach it from the internet.
+
+**What was built.** `PHONEPE_PUBLIC_CALLBACK_ORIGIN`, which when set adds that host to the set
+`canonicalUrl` accepts for the two callback URLs. Only the host pin was relaxed, and only to a host we
+declare: https, the exact path per callback, no port, no credentials, no query and no fragment are all
+still enforced, and a foreign host is still refused. The pin exists so a callback cannot reach a stack
+that does not own the payment records; that property is preserved. Unset, behaviour is unchanged.
+
+Plus the nginx proxy on the approved host, which must be a **proxy and never a redirect** — PhonePe POSTs
+these callbacks and a 3xx would drop the body. It is placed as `location ^~ /api/v1/provider-events/phonepe/`
+so it wins over the apex `location /api/ { return 404; }`, and the `www` block's server-level
+`return 301` had to move into `location /` because a server-level `return` runs before location
+selection and would otherwise make the proxy unreachable.
+
+**Deployment ordering, which is load-bearing.** The new code must be deployed *before* the callback URLs
+are pointed at `www`. The running image predates `PHONEPE_PUBLIC_CALLBACK_ORIGIN`, so `canonicalUrl`
+there still pins to the stack's own host and the backend would refuse to start. Verified against the
+running container: the symbol is absent from `/app/dist`.
+
+**Still unproven.** Whether any of this moves `Transacting_URL`. The one change that plausibly does is
+re-registering the webhook on PhonePe's dashboard; nginx only makes that URL reachable. If it does not
+move, the value is bound to the onboarding record and PhonePe approval is the only route — and no
+architecture on our side changes that.
