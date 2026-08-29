@@ -871,3 +871,126 @@ Gates: all three projects exit 0.
   profile, legal and device-security surfaces.
 - No holdings are disclosed on any fund, so the client fund detail renders "Holdings not disclosed".
 - Nothing has run on the emulator; no APK exists; the container has never been built.
+
+
+## Entry 018 — the rest of the product, and the retirement of the legacy frontend
+
+2026-08-29. Phases 5 to 12.3. `frontend_stack_ts` is now the only frontend in the repository.
+
+### What was built
+
+**Contracts: 36 → 94 operations.** Every remaining backend surface is described. Written by reading
+the route handlers rather than inferring from the client: order create and hosted-redirect pay, order
+and payment reads, manual SIP lifecycle, PhonePe AutoPay setup/detail/cancel/retry, notifications,
+payment history with its alias filters, statements, support FAQs and tickets, research context, the
+three public legal documents, app config and app update, then the whole admin surface — applications,
+email deliveries, user directory and lifecycle, login events, audit, client growth, fund receipts,
+refunds, payments, mandates, FAQs, app config and fund stocks.
+
+Two backend paths were changed because they could not be modelled honestly (D-032): the AutoPay
+collection moved off `/v1/client/sips/`, and the FAQ PATCH was split into content and lifecycle.
+
+**Client: every route now has a real screen.** Orders and payments carry the phase 7 rules in
+`checkout.ts` and `pendingPayment.ts` with 20 tests over them — `checkout: null` polls rather than
+retrying the write, a checkout URL is validated a second time client-side against an origin allowlist,
+and a failed pending-payment write aborts the checkout instead of stranding the investor with no route
+back. Payment status polls only while the state is open and says plainly that returning from PhonePe
+is not settlement evidence. `/sips` is a first-class list, which closes the largest reachability hole
+in the legacy product. Statements, notifications with `resolveDestination`-gated deep links, support
+with FAQs and tickets, profile, device security, email-verification status and the legal hub are all
+real. Activity gained a payments tab with the filter in the URL. Fund detail gained a reflowing
+holdings donut, and the fund list became a sortable table at `lg`.
+
+**Admin: all 20 remaining screens.** Overview reads live queue counts. Applications decide with the
+outcome in the query string and an empty body. Users search server-side and can be suspended,
+reinstated or closed with the reason audited, and login events are surfaced for the first time.
+Holdings are CRUD with the quarter-label format enforced and exit rather than delete. AUM has an
+overview, a per-fund history and collective growth. Client values do individual and collective
+adjustment. Receipts acknowledge under the body-borne `expectedVersion`. Refunds, payments, mandates,
+audit, emails, FAQs and app config are all built.
+
+Both preview-then-commit protocols behave as specified: a `STATE_CONFLICT` on commit **clears the
+preview and demands a new one** rather than retrying against numbers that moved. Write affordances
+gate on the write permission, so `content.read` alone no longer shows a Publish button. A 404 on the
+conditionally-registered mandate routes renders "PhonePe is not configured in this environment",
+distinctly from "not found".
+
+`PendingScreen` is deleted. There is nothing left for it to hold.
+
+### Defects found by looking, not by testing
+
+1. **`useBreakpoint` and `Reveal` called `window.matchMedia` directly.** Any environment with a
+   `window` but no `matchMedia` failed to render the route. `check-bundle-boots.mjs` had been printing
+   `Route render failed TypeError: window.matchMedia is not a function` and still passing, because it
+   only fails on a thrown boot error. Both now go through `lib/media.ts`, which fails safe. The check
+   is now silent, which is the point.
+2. **Money was rendering in a fallback monospace.** Reading the screenshots, not the tests, found it.
+   See D-029.
+3. **Empty and error states hugged the left edge of a full-width card**, tab bars stretched across the
+   whole measure, and the admin topbar repeated the page title beside a sign-out button styled like a
+   disabled control. All four were only visible in a screenshot.
+4. **Both client navs carried `aria-label="Primary"`.** Two navigations with the same accessible name.
+   The bottom one is now `"Sections"`.
+5. **A stale harness test** sliced `composition.ts` between a `// KYC/transactional email sender:`
+   comment that no longer exists, so it asserted against an empty string and had been failing before
+   this session touched it.
+
+### The retirement — 370 files removed
+
+Ported out first, because these are artefacts the new frontend needs rather than legacy source to
+migrate (D-031): `android/`, `resources/launcher/`, `capacitor.config.ts` rewritten with every setting
+doc 10 marks verbatim, and a new `Dockerfile` plus `nginx.conf` whose build context is the repository
+root so `packages/contracts` can be built first. `check-phonepe-native-target.mjs` is new and asserts
+no native PhonePe SDK is linked into either variant.
+
+Every reference was followed: the CI `frontend` job now builds both variants of `frontend_stack_ts`
+and runs the PhonePe guard, the three `release_manager` shell tests point at the new paths,
+`emu/boe_update.sh` and `export.sh` follow, and `CLAUDE.md` describes the stack that exists rather
+than the one that did. Blocker B4 is closed by D-030 rather than by re-baselining a check that had
+become vacuous.
+
+### Verified — TESTED
+
+- `test_e2e/frontend-ts-smoke.mjs`, Chromium, **71 of 71 checks**, after the retirement. Every admin
+  surface renders its own `h1`; an unconfigured mandate provider is distinguished from a missing
+  screen; a new FAQ is created as a draft and only then offers Publish; publishing it appears in the
+  audit log under `content_item`. The admin→client money chain still asserts **exactly ₹51,25,000**
+  from a 250 basis-point growth on ₹50,00,000.
+- `test_e2e/onboarding-harness.test.mjs`, 7 of 7.
+- `release_manager/tests/{runtime_contract,hermetic_branding,apk_logging_policy}.test.sh` all pass
+  against the new paths.
+- Gates: backend `npm run check` exit 0 (74 files, 676 tests, 80.04% branch); contracts exit 0
+  (95 tests, valid OpenAPI, 94 operations, no contract bypasses); frontend exit 0 (110 tests, both
+  variant builds, dist 787 kB against a 2600 kB ceiling and CSS 55 kB against 640 kB).
+- 35 screenshots at 390px and 1512px were read, not just captured, and the visual defects above were
+  found that way.
+
+### Not verified — UNVERIFIED
+
+- **No money has moved.** `/pay` returns `DEPENDENCY_UNAVAILABLE` without PhonePe credentials, which
+  is the correct behaviour and also means the phase 7 acceptance criteria are unproven. Nothing
+  observed here says the hosted redirect works end to end.
+- **AutoPay has never been authorised.** The mandate routes are not registered locally, so every
+  mandate screen has only been seen in its unconfigured state.
+- **No APK exists.** `android/` is ported but `cap sync` has never run against it, no Gradle build has
+  been attempted, and nothing has been installed on the emulator. Safe-area insets, system-bar
+  contrast, keyboard resize, the five Back rules, the WebView checkout round-trip, the biometric
+  prompt, APK self-update and the absence of tokens in `logcat` are all still unverified.
+- **The containers have never been built.** `frontend_stack_ts/Dockerfile` is read by
+  `runtime_contract.test.sh` but has never been given to `docker build`.
+- No refund, mandate or support-ticket row exists locally, so those admin screens have only been seen
+  in their empty state.
+
+### Hand over to the VPS
+
+```
+# after deploying, on the dev stack
+docker compose -f docker-compose.dev_app.yml exec backend node dist/scripts/check-db.js
+
+# then, from the app: create a ₹2 lump-sum order, complete checkout, and confirm
+#   payments.state = 'succeeded'
+#   payment_attempts.state = 'succeeded' and provider_dispatch_started_at is set
+#   investment_orders.state = 'accepted'
+#   one investment_allocations row and one client_value_entries contribution
+#   one fund_receipt_acknowledgements row in state 'pending'
+```
