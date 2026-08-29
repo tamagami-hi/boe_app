@@ -2641,3 +2641,107 @@ the two production examples do not. 12 tests.
 - The deployed `.env` was **not** modified. If `PHONEPE_ENV` is ever set to `sandbox` on the VPS,
   `PHONEPE_CHECKOUT_ALLOWED_ORIGINS` in `/srv/dev_stack/BOE_APP/dev_release/.env` needs
   `https://mercury-uat.phonepe.com` appended by hand — the example files are not the deployed file.
+
+
+## Entry 028 — correcting Entry 027: payments did work, under sandbox credentials · 2026-08-29
+
+Entry 027 stands on its finding — `INTERNAL_SECURITY_BLOCK_1`, merchant onboarded for
+`www.beonedge.in`, transaction from `dev-app.beonedge.in` — and is **wrong in its framing**. It
+presented the block as a standing condition and listed "a payment has never completed" as merely
+unverified. The maintainer said payments used to pass through around v0.10.7, from this same host.
+They were right. Full timeline in `TASK/024-payment-regression-timeline.md`.
+
+### The correction
+
+Entry 027 only looked at the live database. That database was **created 2026-08-27 09:53** and holds
+no history before it, which is why it showed zero successful payments — absence of records, not
+absence of payments. `paths.json` on the VPS points at the real backup locations, and the pre-deploy
+dump for 0.11.6 contains:
+
+```
+payments: 24 rows, 7 succeeded          investment_allocations: 7 rows
+allocations 2026-08-25 13:37 → 2026-08-26 04:48, mostly source=system settlement:<uuid>
+```
+
+So order → payment → **allocation** has run on this stack. **VPS** — read with `pg_restore -f -`
+inside a `--rm` container against a read-only mount; no server was started and the live database was
+not touched.
+
+Cross-referencing the maintainer's timestamped `.env` copies: the stack ran `PHONEPE_ENV=sandbox`
+with an 11-character merchant id and `PHONEPE_CHECKOUT_ALLOWED_ORIGINS=https://mercury-uat.phonepe.com`
+from 08-25 11:54, and was switched to the production merchant (13-character id, different client-id
+fingerprint) at 08-26 11:25. **All seven successful payments fall inside that sandbox window.**
+Nothing has succeeded since the switch.
+
+Conclusion unchanged in substance, corrected in cause: no code regressed. A credential change on
+08-26 moved the stack from a sandbox merchant that does not enforce the onboarded-domain check to a
+production merchant that does.
+
+This also retro-justifies the allowlist change in Entry 027 more strongly than that entry could:
+the configuration that demonstrably worked listed `mercury-uat.phonepe.com`, and the repo examples
+had lost it. It is not a hypothetical.
+
+**To be unambiguous, because it caused confusion:** the deployed stack still redirects through
+`mercury-t2.phonepe.com`, and that is correct. `mercury-uat.phonepe.com` is only ever returned when
+`PHONEPE_ENV=sandbox`. Adding it to the allowlists changes nothing about today's behaviour; it only
+prevents a fail-closed `GatewayMalformedResponseError` if sandbox is selected later.
+
+### Reproduced under a hard spend cap
+
+The maintainer is testing with real money and capped test amounts at ₹2. `test_e2e/lib/amount-guard.mjs`
+now enforces that (D-055). Re-ran `vps-qr-400-body.mjs` at ₹1:
+
+- **VPS** PhonePe rendered "Beonedge LLP", `Total: ₹1.00`, UPI / Debit-Credit Card / Net Banking.
+- **VPS** `POST /apis/pg/checkout/ui/v2/pay` → 400, same `INTERNAL_SECURITY_BLOCK_1` body.
+- **VPS** order `92dd79b6` created at exactly `100` paise, so the cap held end to end.
+- The block is amount-independent: identical at ₹1, ₹500 and ₹50,000.
+
+The three over-cap orders from the Entry 027 run, including the unintended ₹50,000 `04bc5dca`, have
+all since moved to `payment_failed`. Nothing is left pending and no money moved.
+
+### A separate confirmed defect: paying from the APK returns to the browser
+
+Reported by the maintainer, confirmed **STATIC** by reading the code. Three independent causes:
+
+1. `clientOrderRoutes.ts:221` passes `redirectUrl: null`, so `phonePeCheckoutGateway.ts:313` falls
+   back to `new URL("/dashboard", config.callbackUrl)` → `https://dev-app.beonedge.in/dashboard`.
+2. The pay operation has no `redirectUrl` input in the contract, so the client cannot supply a deep
+   link.
+3. `android/app/src/main/AndroidManifest.xml` declares only `MAIN`/`LAUNCHER` — no `VIEW`,
+   `BROWSABLE`, `android:scheme` or `autoVerify` — and nothing in `src/` listens for `appUrlOpen`.
+
+Not fixed here: the choice between verified App Links and a custom scheme has a signing dependency
+and is recorded as the open question in D-055.
+
+### Also checked, and not a defect
+
+- `CLIENT_HOME_PATH = "/dashboard"` **is** a real route (`clientRoutes.ts:47` uses
+  `path: CLIENT_HOME_PATH`). The redirect target is not a 404. Checked before claiming it was.
+- `decideCheckout` / `assertAllowedCheckoutUrl` are **not** dead code — wired in from
+  `LumpsumInvestScreen`, `SipStartScreen` and `SipDetailScreen`.
+- `9b0ed63` deleted nginx `location = /payment-return` and `32e4764` never restored it, which looks
+  like a botched restore. It is not: the same commit deleted `paymentReturnRoutes.ts` and
+  `paymentReturnToken.ts` and those were not restored either. nginx and the backend agree the route
+  does not exist; re-adding the nginx block would proxy to nothing.
+
+### Verification
+
+- **TESTED** the spend cap refuses ₹3, ₹500, ₹50,000, `₹50,000`, `0`, empty and junk, allows ₹0.5–₹2,
+  and cannot be raised via `BOE_TEST_AMOUNT` (2.5 and 500 both refused).
+- **TESTED** the cap's first form was too blunt — it scanned the whole page body and so tripped on the
+  "Common amounts" preset chips (₹1,000). It now reads the payable total that follows the
+  "You are investing" label and **fails closed** if it cannot read it.
+- **TESTED** `frontend_stack_ts`: tsc clean, eslint clean, 186 tests. `backend_controller`: eslint
+  clean, 756 tests, branch coverage 80.08% ≥ 80% gate. `./release_manager/verify.sh` 108/0/1.
+- **VPS** all VPS reads were read-only: `.env` snapshots, `paths.json`, nginx configs, the live DB and
+  the 0.11.6/0.11.8 dumps. Nothing deployed, restarted or modified.
+
+### Not verified
+
+- **UNVERIFIED** that a payment completes against the **production** merchant. Still impossible from
+  this domain.
+- **UNVERIFIED** the sandbox path end to end *today*. It is evidenced by the 08-25 dump rather than by
+  a request made now; re-running it needs the sandbox credentials put back and
+  `https://mercury-uat.phonepe.com` added to the deployed `.env` by hand.
+- **UNVERIFIED** the APK return-to-app path, which currently cannot work at all — no deep link is
+  registered. Nothing about it has been changed, so there is nothing to test yet.

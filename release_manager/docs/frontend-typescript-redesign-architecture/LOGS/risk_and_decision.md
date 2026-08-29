@@ -1538,3 +1538,56 @@ file to confirm it fails when drifted.
 `dev-app.beonedge.in` are blocked by PhonePe with `INTERNAL_SECURITY_BLOCK_1` because the merchant is
 onboarded for `www.beonedge.in`; that is a merchant-dashboard change and no allowlist entry affects
 it. Recorded so a later reader does not connect the two.
+
+
+### D-055
+**Scripts that drive the live payment merchant carry a hard ₹2 spend cap, enforced against the
+screen's own total rather than the value typed.** · DECIDED 2026-08-29
+
+`test_e2e/vps-*.mjs` drive the real production PhonePe merchant, so a defaulted or fat-fingered
+amount spends real money. An earlier run created an unintended **₹50,000** order because the script
+clicked an amount *preset chip* instead of typing, and nothing checked the amount before submitting.
+
+`test_e2e/lib/amount-guard.mjs` now owns this. Three properties matter:
+
+1. **The cap is a module constant, not an env var.** `BOE_TEST_AMOUNT` may only lower it; `2.5` and
+   `500` are both refused. A cap that an env var can raise is not a cap.
+2. **It checks the rendered total, not the input.** `fillAmountUnderCap` types the value, reads the
+   field back, then reads the figure the screen shows after its "You are investing" label — the one
+   `LumpsumInvestScreen` renders from `amountPaise`, which is what the order is actually created for.
+3. **It fails closed.** If the total cannot be read, the run is refused rather than proceeding on the
+   strength of the input field.
+
+**Rejected: scanning the page for any `₹` figure.** That was the first implementation and it refused
+every run, because the invest screen also renders the "Common amounts" preset chips (₹1,000, ₹5,000 …)
+and the fund minimum. Checking everything looked stricter and was simply broken — it never once
+reached the payment. Precision is the safety property here, not breadth.
+
+Proven **TESTED**: refuses ₹3, ₹500, ₹50,000, `₹50,000`, `0`, empty, junk; allows ₹0.5–₹2; and the
+run that followed created order `92dd79b6` at exactly `100` paise.
+
+**Open question this entry does not settle: how the APK gets the user back into the app after paying.**
+Recorded here because the answer constrains the checkout contract. Today the backend sends
+`redirectUrl: https://dev-app.beonedge.in/dashboard` and Android has no deep link registered, so
+paying from the APK lands in a browser. The two candidate designs are not equivalent:
+
+- **Verified App Links** on `dev-app.beonedge.in`. Correct and invisible to the user, but needs
+  `/.well-known/assetlinks.json` served from that host and a *stable signing certificate* — the
+  release APKs are currently unsigned, so this cannot be completed until signing exists.
+- **A custom scheme** such as `beonedge://payment-return`. Works immediately with no hosting and no
+  signing, but PhonePe may reject a non-https `redirectUrl`, and a custom scheme is claimable by any
+  other installed app.
+
+Not decided. It needs the signing question answered first, and it needs the payment block lifted
+before any of it can be tested end to end.
+
+**Related, and separately unproven: `Transacting_URL` is derived from `merchantUrls.redirectUrl`.**
+Established by elimination, not by a successful request. `vps-referrer-probe.mjs` ruled the browser
+out — `Transacting_URL` stayed `https://dev-app.beonedge.in/` with no referrer at all and when
+claiming `https://www.beonedge.in/` — and `redirectUrl` is the only field in the entire pay payload
+that carries a domain, its origin matching what PhonePe reports character for character. If that
+inference holds, pointing the checkout redirect at the onboarded domain would lift the block without
+a dashboard change, which needs `redirectUrl` decoupled from `PHONEPE_CALLBACK_URL` (the webhook,
+which must stay on the stack that owns the payment records). Deliberately not implemented: the
+cheaper and already-proven route is the sandbox merchant, and adding a config seam on an untested
+inference would be speculation with a permanent maintenance cost.
