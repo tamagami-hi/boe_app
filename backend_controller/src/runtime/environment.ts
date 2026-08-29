@@ -115,6 +115,7 @@ const ServerConfigSchema = z.object({
   PAYMENT_RECONCILIATION_EXPIRY_GRACE_SECONDS: z.coerce.number().int().min(0).max(86400).default(300),
   PAYMENT_RECONCILIATION_CLAIM_LIMIT: z.coerce.number().int().min(1).max(200).default(25),
   PHONEPE_CALLBACK_URL: z.string().trim().optional(),
+  PHONEPE_PUBLIC_CALLBACK_ORIGIN: z.string().trim().optional(),
   PHONEPE_CHECKOUT_REDIRECT_URL: z.string().trim().optional(),
   PHONEPE_SUBSCRIPTION_CALLBACK_URL: z.string().trim().optional(),
   PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: z.string().trim().optional(),
@@ -402,6 +403,28 @@ const parsePhonePeConfig = (
     throw new Error("PHONEPE_CLIENT_VERSION must be a positive integer")
   }
   const expectedHost = parsed.NODE_ENV === "production" ? "app.beonedge.in" : "dev-app.beonedge.in"
+  const approvedCallbackHost = ((): string | null => {
+    if (!present(parsed.PHONEPE_PUBLIC_CALLBACK_ORIGIN)) return null
+    let url: URL
+    try {
+      url = new URL(parsed.PHONEPE_PUBLIC_CALLBACK_ORIGIN)
+    } catch {
+      throw new Error("PHONEPE_PUBLIC_CALLBACK_ORIGIN must be an exact HTTPS origin")
+    }
+    if (
+      url.protocol !== "https:" ||
+      url.origin !== parsed.PHONEPE_PUBLIC_CALLBACK_ORIGIN ||
+      url.hostname.includes("*") ||
+      url.username !== "" ||
+      url.password !== ""
+    ) {
+      throw new Error("PHONEPE_PUBLIC_CALLBACK_ORIGIN must be an exact HTTPS origin")
+    }
+    return url.hostname
+  })()
+  const allowedCallbackHosts = new Set(
+    approvedCallbackHost === null ? [expectedHost] : [expectedHost, approvedCallbackHost],
+  )
   const canonicalUrl = (name: string, value: string, expectedPath: string): string => {
     let url: URL
     try {
@@ -411,7 +434,7 @@ const parsePhonePeConfig = (
     }
     if (
       url.protocol !== "https:" ||
-      url.hostname !== expectedHost ||
+      !allowedCallbackHosts.has(url.hostname) ||
       url.port !== "" ||
       url.username !== "" ||
       url.password !== "" ||
@@ -419,7 +442,9 @@ const parsePhonePeConfig = (
       url.search !== "" ||
       url.hash !== ""
     ) {
-      throw new Error(`${name} must use the canonical ${expectedHost}${expectedPath} URL for NODE_ENV`)
+      throw new Error(
+        `${name} must use ${[...allowedCallbackHosts].join(" or ")}${expectedPath} for NODE_ENV`,
+      )
     }
     return url.toString()
   }

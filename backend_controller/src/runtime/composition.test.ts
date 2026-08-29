@@ -444,3 +444,96 @@ describe("PhonePe checkout redirect URL", () => {
     })).toThrow(/PHONEPE_CHECKOUT_REDIRECT_URL must not contain a fragment/u)
   })
 })
+
+
+describe("PhonePe callbacks on a PhonePe-approved host", () => {
+  const base = () => ({
+    ...validEnv(),
+    PHONEPE_CLIENT_ID: "client-id",
+    PHONEPE_CLIENT_SECRET: "client-secret",
+    PHONEPE_CLIENT_VERSION: "1",
+    PHONEPE_ENV: "sandbox",
+    PHONEPE_CALLBACK_USERNAME: "callback-user",
+    PHONEPE_CALLBACK_PASSWORD: "callback-password",
+    PHONEPE_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment",
+    PHONEPE_SUBSCRIPTION_CALLBACK_URL:
+      "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/subscription",
+    PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: "checkout.setup.order.completed",
+    PHONEPE_MERCHANT_ID: "merchant-id",
+    PHONEPE_AUTOPAY_ENABLED: "false",
+  })
+
+  const approved = {
+    PHONEPE_PUBLIC_CALLBACK_ORIGIN: "https://www.beonedge.in",
+    PHONEPE_CALLBACK_URL: "https://www.beonedge.in/api/v1/provider-events/phonepe/payment",
+    PHONEPE_SUBSCRIPTION_CALLBACK_URL:
+      "https://www.beonedge.in/api/v1/provider-events/phonepe/subscription",
+  }
+
+  const phonepeOf = (env: Record<string, string>) => {
+    const phonepe = parseServerConfig(env).payments.phonepe
+    if (phonepe === null) throw new Error("expected PhonePe to be configured")
+    return phonepe
+  }
+
+  test("rejects a foreign callback host when no approved origin is declared", () => {
+    expect(() => parseServerConfig({ ...base(), ...approved, PHONEPE_PUBLIC_CALLBACK_ORIGIN: "" }))
+      .toThrow(/PHONEPE_CALLBACK_URL/u)
+  })
+
+  test("accepts callbacks on the approved host once it is declared", () => {
+    const phonepe = phonepeOf({ ...base(), ...approved })
+
+    expect(phonepe.callbackUrl)
+      .toBe("https://www.beonedge.in/api/v1/provider-events/phonepe/payment")
+    expect(phonepe.subscriptionCallbackUrl)
+      .toBe("https://www.beonedge.in/api/v1/provider-events/phonepe/subscription")
+  })
+
+  test("still accepts the stack's own host when an approved origin is declared", () => {
+    expect(phonepeOf({ ...base(), PHONEPE_PUBLIC_CALLBACK_ORIGIN: "https://www.beonedge.in" })
+      .callbackUrl)
+      .toBe("https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment")
+  })
+
+  test("still pins the path, so a callback cannot be pointed at another route", () => {
+    expect(() => parseServerConfig({
+      ...base(),
+      ...approved,
+      PHONEPE_CALLBACK_URL: "https://www.beonedge.in/api/v1/provider-events/phonepe/subscription",
+    })).toThrow(/PHONEPE_CALLBACK_URL/u)
+  })
+
+  test("refuses a host that is neither the stack's nor the approved one", () => {
+    expect(() => parseServerConfig({
+      ...base(),
+      ...approved,
+      PHONEPE_CALLBACK_URL: "https://evil.test/api/v1/provider-events/phonepe/payment",
+    })).toThrow(/PHONEPE_CALLBACK_URL/u)
+  })
+
+  test("refuses an approved origin that is not a bare https origin", () => {
+    for (const origin of [
+      "http://www.beonedge.in",
+      "https://www.beonedge.in/",
+      "https://www.beonedge.in/pay",
+      "https://*.beonedge.in",
+      "https://user:pass@www.beonedge.in",
+      "not-a-url",
+    ]) {
+      expect(() => parseServerConfig({ ...base(), ...approved, PHONEPE_PUBLIC_CALLBACK_ORIGIN: origin }))
+        .toThrow(/PHONEPE_PUBLIC_CALLBACK_ORIGIN must be an exact HTTPS origin/u)
+    }
+  })
+
+  test("declaring an approved origin does not weaken the port and query pins", () => {
+    for (const callback of [
+      "https://www.beonedge.in:8443/api/v1/provider-events/phonepe/payment",
+      "https://www.beonedge.in/api/v1/provider-events/phonepe/payment?x=1",
+      "https://www.beonedge.in/api/v1/provider-events/phonepe/payment#f",
+    ]) {
+      expect(() => parseServerConfig({ ...base(), ...approved, PHONEPE_CALLBACK_URL: callback }))
+        .toThrow(/PHONEPE_CALLBACK_URL/u)
+    }
+  })
+})
