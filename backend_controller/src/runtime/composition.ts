@@ -34,6 +34,7 @@ import { createInvestmentSettlementRepository } from "../repositories/investment
 import { createProviderEventInboxRepository } from "../repositories/providerEventInboxRepository.js"
 import { withApprovedStart } from "../providers/approvedStartGateway.js"
 import { createRelayPaymentGateway } from "../providers/relay/relayPaymentGateway.js"
+import { createRelayRecurringGateway } from "../providers/relay/relayRecurringGateway.js"
 import { createPhonePeGateway } from "../providers/phonepe/phonePeCheckoutGateway.js"
 import { createPhonePeRecurringGateway } from "../providers/phonepe/phonePeRecurringGateway.js"
 import type { RecurringPaymentGateway } from "../providers/recurringPaymentGateway.js"
@@ -181,7 +182,9 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const certificateFetcher = createCertificateFetcher()
   const paymentGateway: PaymentGateway | null = selectPaymentGateway(serverConfig)
   const recurringPaymentGateway: RecurringPaymentGateway | null =
-    serverConfig.payments.phonepe !== null
+    serverConfig.payments.relay !== null
+      ? createRelayRecurringGateway({ config: serverConfig.payments.relay })
+      : serverConfig.payments.phonepe !== null
       ? createPhonePeRecurringGateway({
           checkoutAllowedOrigins: serverConfig.payments.phonepe.checkoutAllowedOrigins,
           config: {
@@ -719,7 +722,9 @@ export const composePaymentReconciliationWorker = (
 
   const gateway = selectPaymentGateway(serverConfig)
   const recurringGateway =
-    serverConfig.payments.phonepe !== null
+    serverConfig.payments.relay !== null
+      ? createRelayRecurringGateway({ config: serverConfig.payments.relay })
+      : serverConfig.payments.phonepe !== null
       ? createPhonePeRecurringGateway({
           checkoutAllowedOrigins: serverConfig.payments.phonepe.checkoutAllowedOrigins,
           config: {

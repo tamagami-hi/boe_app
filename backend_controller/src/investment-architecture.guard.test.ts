@@ -64,6 +64,7 @@ const MANDATE_MODULES: readonly string[] = [
   "routes/adminMandateRoutes.ts",
   "mandateReconciliationWorker.ts",
   "runtime/metrics.ts",
+  "providers/relay/relayRecurringGateway.ts",
 ]
 
 const MANDATE_TABLES: readonly string[] = [
