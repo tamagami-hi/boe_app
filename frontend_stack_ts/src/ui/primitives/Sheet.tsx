@@ -2,7 +2,16 @@ import { useEffect, useId, useRef } from "react"
 import type { ReactNode } from "react"
 import { createPortal } from "react-dom"
 
-import styles from "./Overlay.module.css"
+import {
+  SCRIM,
+  SHEET_ACTIONS,
+  SHEET_BODY,
+  SHEET_DESCRIPTION,
+  SHEET_GRIP,
+  SHEET_HEAD,
+  SHEET_PANEL,
+  SHEET_TITLE,
+} from "~/ui/recipes/overlay"
 
 export type SheetProps = Readonly<{
   open: boolean
@@ -33,30 +42,30 @@ export const Sheet = ({
 
   return createPortal(
     <div
-      className={styles.scrim}
+      className={SCRIM}
       onPointerDown={(event) => {
         if (event.target === event.currentTarget) onDismiss()
       }}
     >
       <div
         ref={panel}
-        className={styles.panel}
+        className={SHEET_PANEL}
         role="dialog"
         aria-modal="true"
         aria-labelledby={`${id}-title`}
         tabIndex={-1}
       >
-        <span className={styles.grip} aria-hidden="true" />
-        <div className={styles.head}>
-          <h2 className={styles.title} id={`${id}-title`}>
+        <span className={SHEET_GRIP} aria-hidden="true" />
+        <div className={SHEET_HEAD}>
+          <h2 className={SHEET_TITLE} id={`${id}-title`}>
             {title}
           </h2>
           {description === undefined ? null : (
-            <p className={styles.description}>{description}</p>
+            <p className={SHEET_DESCRIPTION}>{description}</p>
           )}
         </div>
-        {children === undefined ? null : <div className={styles.body}>{children}</div>}
-        {actions === undefined ? null : <div className={styles.actions}>{actions}</div>}
+        {children === undefined ? null : <div className={SHEET_BODY}>{children}</div>}
+        {actions === undefined ? null : <div className={SHEET_ACTIONS}>{actions}</div>}
       </div>
     </div>,
     document.body,

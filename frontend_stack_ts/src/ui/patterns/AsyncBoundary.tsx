@@ -6,7 +6,7 @@ import { Spinner } from "~/ui/primitives/Feedback"
 import { ErrorState } from "~/ui/patterns/ErrorState"
 import type { ErrorStateVariant } from "~/ui/patterns/ErrorState"
 
-import styles from "./States.module.css"
+import { STATE_REFRESHING, STATE_STACK } from "~/ui/recipes/state"
 
 export type AsyncQuery<TData> = Readonly<{
   data: TData | undefined
@@ -79,9 +79,9 @@ export const AsyncBoundary = <TData,>({
   const emptyRendering = empty !== undefined && isEmpty?.(data) === true ? empty : null
 
   return (
-    <div className={styles.stack}>
+    <div className={STATE_STACK}>
       {isFetching === true && !isPending ? (
-        <span className={styles.refreshing}>
+        <span className={STATE_REFRESHING}>
           <Spinner size="sm" label="Refreshing" />
           Refreshing
         </span>

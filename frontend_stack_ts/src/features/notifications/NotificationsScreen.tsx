@@ -6,14 +6,19 @@ import { CLIENT_ROUTES } from "~/app/routing/clientRoutes"
 import { resolveDestination } from "~/app/routing/resolveDestination"
 import { formatDateTime } from "~/domain/dates"
 import { useMarkNotificationRead, useNotifications } from "~/features/shared/queries"
+import { cx } from "~/lib/cx"
 import { openDestination } from "~/platform/openExternal"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
+import { ITEM_TITLE, PROSE_SM } from "~/ui/recipes/datalist"
+import { ACTION_ROW, ROW_BETWEEN, STACK_SM } from "~/ui/recipes/layout"
+import { CARD_STACK } from "~/ui/recipes/surface"
+import { COUNT_TEXT, META_ROW } from "~/ui/recipes/text"
 
-import styles from "./Notifications.module.css"
+import { NOTIFICATION_UNREAD } from "./notifications.recipe"
 
 const deepLinkOf = (payload: Record<string, unknown>): string | null => {
   const candidate = payload.deepLink ?? payload.link ?? payload.path
@@ -44,7 +49,7 @@ const NotificationsScreen = (): React.ReactElement => {
       <AsyncBoundary
         query={query}
         skeleton={
-          <div className={styles.list}>
+          <div className={CARD_STACK}>
             {[0, 1, 2].map((index) => (
               <Card key={index}>
                 <Skeleton height="1rem" width="55%" />
@@ -63,28 +68,30 @@ const NotificationsScreen = (): React.ReactElement => {
       >
         {(data) => (
           <>
-            <span className={styles.count}>
+            <span className={COUNT_TEXT}>
               {data.unreadCount === 0
                 ? `${String(data.items.length)} notification(s)`
                 : `${String(data.unreadCount)} unread of ${String(data.items.length)}`}
             </span>
-            <div className={styles.list}>
+            <div className={CARD_STACK}>
               {data.items.map((item) => {
                 const link = deepLinkOf(item.payload)
                 return (
                   <Card key={item.id} tone={item.read ? "default" : "elevated"}>
-                    <div className={styles.item}>
-                      <div className={styles.top}>
-                        <span className={item.read ? styles.title : styles.unread}>
+                    <div className={STACK_SM}>
+                      <div className={ROW_BETWEEN}>
+                        <span
+                          className={cx(ITEM_TITLE, item.read ? undefined : NOTIFICATION_UNREAD)}
+                        >
                           {item.title}
                         </span>
                       </div>
-                      <p className={styles.body}>{item.body}</p>
-                      <div className={styles.meta}>
+                      <p className={PROSE_SM}>{item.body}</p>
+                      <div className={META_ROW}>
                         <span>{formatDateTime(item.createdAt)}</span>
                         <span>{item.kind}</span>
                       </div>
-                      <div className={styles.actions}>
+                      <div className={cx(ACTION_ROW, "pt-1")}>
                         {link === null ? null : (
                           <Button
                             tone="secondary"

@@ -15,8 +15,7 @@ import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Alert } from "~/ui/primitives/Feedback"
 import { FormField, Input } from "~/ui/primitives/FormField"
-
-import styles from "./EmailVerification.module.css"
+import { STACK_LG } from "~/ui/recipes/layout"
 
 const CODE_LENGTH = 6
 
@@ -118,7 +117,7 @@ const EmailVerificationScreen = (): React.ReactElement => {
           </Alert>
         )}
 
-        <form onSubmit={submit} noValidate className={styles.form}>
+        <form onSubmit={submit} noValidate className={STACK_LG}>
           <FormField
             label="Verification code"
             hint="Six characters, case-sensitive. Enter it exactly as it appears."

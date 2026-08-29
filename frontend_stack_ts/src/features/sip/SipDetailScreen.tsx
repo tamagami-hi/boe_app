@@ -26,8 +26,11 @@ import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
+import { ITEM_TITLE, STAT_LABEL, STAT_ROOT } from "~/ui/recipes/datalist"
+import { ACTION_ROW } from "~/ui/recipes/layout"
+import { HONESTY_TEXT, SECTION_TITLE } from "~/ui/recipes/text"
 
-import styles from "./Sip.module.css"
+import { SIP_CARD_TOP, SIP_SUMMARY } from "./sip.recipe"
 
 const MANUAL_HONESTY =
   "This plan is paid manually. Nothing is ever debited automatically. On the debit day the backend creates an ordinary payable order, it appears in Activity, and you pay it like any lump sum."
@@ -150,7 +153,7 @@ const SipDetailScreen = (): React.ReactElement => {
           if (plan === null) {
             return (
               <Card>
-                <p className={styles.honesty}>
+                <p className={HONESTY_TEXT}>
                   This plan is not on your account, or it has been removed.
                 </p>
                 <Link to="/sips">
@@ -171,39 +174,39 @@ const SipDetailScreen = (): React.ReactElement => {
           return (
             <>
               <Card elevated>
-                <div className={styles.top}>
-                  <span className={styles.fundName}>{nameFor(plan.fundId)}</span>
+                <div className={SIP_CARD_TOP}>
+                  <span className={SECTION_TITLE}>{nameFor(plan.fundId)}</span>
                   <StatusBadge status={sipState(plan.status)} />
                 </div>
-                <span className={styles.label}>Each month</span>
+                <span className={STAT_LABEL}>Each month</span>
                 <MoneyValue amount={toPaise(plan.amountPaise)} size="xl" />
 
-                <div className={styles.summary}>
-                  <div>
-                    <span className={styles.label}>Debit day</span>
-                    <span className={styles.name}>{String(plan.debitDay)}</span>
+                <div className={SIP_SUMMARY}>
+                  <div className={STAT_ROOT}>
+                    <span className={STAT_LABEL}>Debit day</span>
+                    <span className={ITEM_TITLE}>{String(plan.debitDay)}</span>
                   </div>
-                  <div>
-                    <span className={styles.label}>Installments</span>
-                    <span className={styles.name}>
+                  <div className={STAT_ROOT}>
+                    <span className={STAT_LABEL}>Installments</span>
+                    <span className={ITEM_TITLE}>
                       {plan.durationMonths === null ? "Open" : String(plan.durationMonths)}
                     </span>
                   </div>
-                  <div>
-                    <span className={styles.label}>Next due</span>
-                    <span className={styles.name}>
+                  <div className={STAT_ROOT}>
+                    <span className={STAT_LABEL}>Next due</span>
+                    <span className={ITEM_TITLE}>
                       {plan.nextDueDate === null ? "—" : formatDate(plan.nextDueDate)}
                     </span>
                   </div>
-                  <div>
-                    <span className={styles.label}>Mode</span>
-                    <span className={styles.name}>{isAutoPay ? "AutoPay" : "Manual"}</span>
+                  <div className={STAT_ROOT}>
+                    <span className={STAT_LABEL}>Mode</span>
+                    <span className={ITEM_TITLE}>{isAutoPay ? "AutoPay" : "Manual"}</span>
                   </div>
                 </div>
               </Card>
 
               <Card>
-                <p className={styles.honesty}>{isAutoPay ? AUTOPAY_HONESTY : MANUAL_HONESTY}</p>
+                <p className={HONESTY_TEXT}>{isAutoPay ? AUTOPAY_HONESTY : MANUAL_HONESTY}</p>
               </Card>
 
               {failure === null ? null : (
@@ -252,7 +255,7 @@ const SipDetailScreen = (): React.ReactElement => {
               )}
 
               <Section title="Manage this plan">
-                <div className={styles.actions}>
+                <div className={ACTION_ROW}>
                   {canPause ? (
                     <Button
                       tone="secondary"

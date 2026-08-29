@@ -1,10 +1,11 @@
 import { MoneyPrecisionError, formatINR, isNegativePaise } from "~/domain/money"
 import type { Paise } from "~/domain/money"
 
-import styles from "./MoneyValue.module.css"
 import { cx } from "~/lib/cx"
+import { MONEY_BASE, MONEY_SIZE, MONEY_TONE } from "~/ui/recipes/text"
+import type { MoneySize } from "~/ui/recipes/text"
 
-export type MoneySize = "sm" | "md" | "lg" | "xl"
+export type { MoneySize }
 export type MoneyTone = "default" | "signed" | "muted"
 
 export type MoneyValueProps = Readonly<{
@@ -22,11 +23,14 @@ export const MoneyValue = ({
   showDecimals = false,
   showSign = false,
 }: MoneyValueProps): React.ReactElement => {
-  const classes = [styles.money, styles[size]]
-  if (tone === "muted") classes.push(styles.muted)
-  if (tone === "signed") {
-    classes.push(isNegativePaise(amount) ? styles.negative : styles.positive)
-  }
+  const toneClass =
+    tone === "muted"
+      ? MONEY_TONE.muted
+      : tone === "signed"
+        ? isNegativePaise(amount)
+          ? MONEY_TONE.negative
+          : MONEY_TONE.positive
+        : MONEY_TONE.default
 
   let rendered: string
   try {
@@ -34,11 +38,11 @@ export const MoneyValue = ({
   } catch (error) {
     if (!(error instanceof MoneyPrecisionError)) throw error
     return (
-      <span className={cx(styles.money, styles[size], styles.muted)}>
+      <span className={cx(MONEY_BASE, MONEY_SIZE[size], MONEY_TONE.muted)}>
         Amount unavailable
       </span>
     )
   }
 
-  return <span className={classes.join(" ")}>{rendered}</span>
+  return <span className={cx(MONEY_BASE, MONEY_SIZE[size], toneClass)}>{rendered}</span>
 }

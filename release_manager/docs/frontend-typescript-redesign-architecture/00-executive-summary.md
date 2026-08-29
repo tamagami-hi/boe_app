@@ -165,12 +165,15 @@ feature layer, two presentation shells.**
   v5 for all server state, React Context for session/overlay/toast only, `zod` for
   validation (already a transitive requirement via `packages/contracts`), `react-hook-form`
   for the six non-trivial money forms, `lucide-react` for icons. No Redux, no Zustand, no
-  UI component library, no CSS framework.
+  UI component library. Tailwind v4 is the styling layer (D-033).
 - **Styling:** one token layer (ported from `packages/design-tokens`, which already owns the
-  only correct safe-area contract in the repository) plus CSS Modules per component. One
-  class vocabulary. One breakpoint set. One page container. Tailwind is rejected: the
-  existing token contract is test-enforced and works, and the APK has a hard 160 kB CSS
-  budget.
+  only correct safe-area contract in the repository) plus **Tailwind v4 utilities derived from
+  that layer** via `@theme inline`, plus a typed recipe layer that declares each pattern once.
+  One class vocabulary. One breakpoint set. One page container. **Amended by D-033:** Tailwind
+  was originally rejected on the token contract and a 160 kB CSS budget. The budget was
+  superseded by D-028, and the token contract is preserved rather than replaced —
+  `tokens-core.css` is still the sole reader of `env(safe-area-inset-*)` and `safeArea.test.ts`
+  passes unchanged.
 - **API layer:** extend the existing root `packages/contracts` from 15 endpoints to full
   coverage using its own `defineOperation` descriptor, then generate the frontend client
   from it. Do not hand-write API shapes. This is the single highest-leverage decision in

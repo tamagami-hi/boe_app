@@ -14,7 +14,9 @@ import { Badge } from "~/ui/primitives/Badge"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import { ADMIN_CELL_LINK } from "~/ui/recipes/admin"
+import { ENTRY_TEXT } from "~/ui/recipes/datalist"
+import { META_TEXT } from "~/ui/recipes/text"
 
 const FILTERS = [
   { value: "submitted", label: "Waiting" },
@@ -80,14 +82,14 @@ const ApplicationQueueScreen = (): React.ReactElement => {
                 key: "applicant",
                 header: "Applicant",
                 render: (row) => (
-                  <span className={styles.cellStack}>
+                  <span className={ENTRY_TEXT}>
                     <Link
                       to={`/applications/${row.applicationId}`}
-                      className={styles.cellLink}
+                      className={ADMIN_CELL_LINK}
                     >
                       {row.fullName}
                     </Link>
-                    <span className={styles.faint}>{row.email}</span>
+                    <span className={META_TEXT}>{row.email}</span>
                   </span>
                 ),
               },

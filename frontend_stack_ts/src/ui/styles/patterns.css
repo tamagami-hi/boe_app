@@ -1,0 +1,106 @@
+@layer components {
+  .be-grain {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: var(--be-grain-opacity);
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .be-reveal {
+    opacity: 0;
+    transform: translate3d(0, 28px, 0);
+    filter: blur(6px);
+    transition:
+      opacity var(--be-dur-reveal) var(--be-ease-entry),
+      transform var(--be-dur-reveal) var(--be-ease-entry),
+      filter var(--be-dur-reveal) var(--be-ease-entry);
+    transition-delay: var(--be-reveal-delay, 0ms);
+    will-change: transform, opacity;
+  }
+
+  .be-reveal[data-shown="true"] {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+    filter: blur(0);
+    will-change: auto;
+  }
+
+  .be-skeleton {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    border-radius: var(--be-squircle-sm);
+    background: color-mix(in srgb, var(--be-sand) 52%, var(--be-parchment));
+  }
+
+  .be-skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translate3d(-100%, 0, 0);
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgb(255 255 255 / 58%) 50%,
+      transparent 100%
+    );
+    animation: be-shimmer var(--be-dur-drift) var(--be-ease-in-out) infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .be-skeleton::after {
+      animation: none;
+      opacity: 0;
+    }
+  }
+}
+
+@keyframes be-drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(0, -1.5%, 0) scale(1.04);
+  }
+}
+
+@keyframes be-shimmer {
+  0% {
+    transform: translate3d(-100%, 0, 0);
+  }
+  100% {
+    transform: translate3d(100%, 0, 0);
+  }
+}
+
+@keyframes be-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes be-fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes be-sheet-up {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}

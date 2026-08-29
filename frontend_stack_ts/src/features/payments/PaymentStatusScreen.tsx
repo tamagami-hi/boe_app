@@ -15,10 +15,13 @@ import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton, Spinner } from "~/ui/primitives/Feedback"
+import { STAT_LABEL } from "~/ui/recipes/datalist"
+import { ACTION_ROW } from "~/ui/recipes/layout"
+import { STATE_REFRESHING } from "~/ui/recipes/state"
+import { HONESTY_TEXT } from "~/ui/recipes/text"
 
 import { browserPendingPaymentStore, clearPendingPayment } from "./pendingPayment"
-
-import styles from "./Payments.module.css"
+import { PAYMENT_HERO, PAYMENT_STATUS_ROW } from "./payments.recipe"
 
 const COPY: Readonly<Record<string, string>> = {
   payment_in_progress:
@@ -71,13 +74,13 @@ const PaymentStatusScreen = (): React.ReactElement => {
           return (
             <>
               <Card elevated>
-                <div className={styles.hero}>
-                  <span className={styles.label}>Amount</span>
+                <div className={PAYMENT_HERO}>
+                  <span className={STAT_LABEL}>Amount</span>
                   <MoneyValue amount={toPaise(payment.amountPaise)} size="xl" />
-                  <div className={styles.statusRow}>
+                  <div className={PAYMENT_STATUS_ROW}>
                     <StatusBadge status={clientInvestmentStatus(payment.status)} />
                     {OPEN_PAYMENT_STATUSES.includes(payment.status) ? (
-                      <span className={styles.polling}>
+                      <span className={STATE_REFRESHING}>
                         <Spinner size="sm" label="Checking" />
                         Checking with the provider
                       </span>
@@ -85,7 +88,7 @@ const PaymentStatusScreen = (): React.ReactElement => {
                   </div>
                 </div>
 
-                <p className={styles.honesty}>{COPY[payment.status] ?? ""}</p>
+                <p className={HONESTY_TEXT}>{COPY[payment.status] ?? ""}</p>
               </Card>
 
               <Card>
@@ -117,7 +120,7 @@ const PaymentStatusScreen = (): React.ReactElement => {
               </Card>
 
               <Section>
-                <div className={styles.actions}>
+                <div className={ACTION_ROW}>
                   <Link to="/activity">
                     <Button tone="secondary">Back to activity</Button>
                   </Link>

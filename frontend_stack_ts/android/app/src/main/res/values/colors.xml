@@ -1,18 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!--
-      The single launch/window background colour.
-
-      Must stay byte-identical to three other places, or the launch sequence
-      flashes a different colour between them:
-        - frontend_stack/app/index.html   (inline <style> on html, body)
-        - frontend_stack/app/src/index.css (#root background)
-        - the be-ivory token in packages/design-tokens/src/tokens-core.css
-
-      Same value for the client and admin variants: their launcher icons and splash
-      artwork differ, but both apps render ivory chrome, so the post-splash window
-      background does not vary. This file is therefore NOT one of the per-variant
-      resources emu/boe_update.sh copies.
-    -->
-    <color name="launchBackground">#F7F7F5</color>
+    <color name="launchBackground">#F4F1E9</color>
 </resources>

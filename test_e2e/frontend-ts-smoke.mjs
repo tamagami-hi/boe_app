@@ -247,7 +247,7 @@ const runAdmin = async (browser) => {
   await page.waitForURL(/\/overview$/u, { timeout: 20000 })
   check("admin: cookie login lands on overview", true)
 
-  const sidebar = await page.locator("nav[aria-label='Sections'] a").allInnerTexts()
+  const sidebar = await page.locator("nav[aria-label='Primary'] a").allInnerTexts()
   check(
     "admin: sidebar renders permitted sections at desktop width",
     sidebar.length >= 8,

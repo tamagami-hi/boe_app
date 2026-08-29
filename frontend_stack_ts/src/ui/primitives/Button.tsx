@@ -1,11 +1,17 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react"
 
 import { cx } from "~/lib/cx"
+import {
+  BUTTON_BASE,
+  BUTTON_SIZE,
+  BUTTON_SPINNER,
+  BUTTON_TONE,
+  BUTTON_TRAIL,
+  type ButtonSize,
+  type ButtonTone,
+} from "~/ui/recipes/button"
 
-import styles from "./Button.module.css"
-
-export type ButtonTone = "primary" | "gold" | "secondary" | "ghost" | "danger"
-export type ButtonSize = "sm" | "md" | "lg"
+export type { ButtonSize, ButtonTone }
 
 export type ButtonProps = Readonly<{
   tone?: ButtonTone
@@ -17,10 +23,10 @@ export type ButtonProps = Readonly<{
 }> &
   Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className" | "children">
 
-const TrailingGlyph = (): React.ReactElement => (
-  <span className={styles.trail} aria-hidden="true">
+const TrailingGlyph = ({ tone }: Readonly<{ tone: ButtonTone }>): React.ReactElement => (
+  <span className={BUTTON_TRAIL[tone]} aria-hidden="true">
     <svg
-      className={styles.trailGlyph}
+      className="size-[13px]"
       viewBox="0 0 14 14"
       fill="none"
       stroke="currentColor"
@@ -48,12 +54,17 @@ export const Button = ({
   <button
     {...rest}
     type={type}
-    className={cx(styles.button, styles[tone], styles[size], fullWidth && styles.fullWidth)}
+    className={cx(
+      BUTTON_BASE,
+      BUTTON_TONE[tone],
+      BUTTON_SIZE[size],
+      fullWidth ? "w-full" : undefined,
+    )}
     disabled={disabled === true || loading}
     aria-busy={loading}
   >
-    {loading ? <span className={styles.spinner} /> : null}
+    {loading ? <span className={BUTTON_SPINNER} /> : null}
     {children}
-    {trailing && !loading ? <TrailingGlyph /> : null}
+    {trailing && !loading ? <TrailingGlyph tone={tone} /> : null}
   </button>
 )

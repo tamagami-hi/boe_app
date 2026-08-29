@@ -577,3 +577,213 @@ The same reasoning produced the earlier rename of the AutoPay collection from
 Fastify resolves static-before-parametric so nothing was broken at runtime, but a path that only
 works because of a framework's matching order is a shape worth fixing while the app is
 pre-production.
+
+
+## Percentages are money, for typographic purposes
+
+D-029 says a monetary figure uses the `money` utility and never `font-mono`. It was written about
+rupee amounts, and three screens read it that way and hand-rolled their own numeric styling for
+percentages instead: `Dashboard.returnValue`, `Portfolio.percent` and `Portfolio.percentSmall` each
+restated `--be-font-numeric` with `font-variant-numeric: tabular-nums lining-nums` and their own
+letter-spacing.
+
+That is the same decision made three times, and it drifted: the three had three different tracking
+values for the same kind of figure.
+
+A return percentage sits beside a rupee amount, is read as part of the same figure, and needs the same
+tabular alignment for the same reason. So D-029 is read as covering any financial figure, not only
+currency, and the three rules now compose `MONEY_BASE + MONEY_SIZE[…] + MONEY_TONE.default` from
+`ui/recipes/text.ts`. The practical consequence is that there is now one place to change if the
+numeric font stack ever moves, and one place a reviewer has to check to confirm nothing has fallen
+back to `font-mono`.
+
+## A shared recipe is a shared write, and parallel batches collide
+
+The sixteen CSS-module conversions were split into four parallel batches on disjoint feature
+directories, which is safe for the feature files and is not safe for `src/ui/recipes/`. Two batches
+independently decided that "a `Link` wrapping a whole card" deserved a shared constant and both added
+`CARD_LINK` to `surface.ts`, with different bodies — one included `h-full`, one did not. TypeScript
+caught it as a redeclaration rather than either silently winning.
+
+Resolved by keeping the narrower shared definition, `block text-inherit no-underline`, and expressing
+the one call site that needs the anchor to fill its grid cell as `FUND_CARD_LINK` in
+`dashboard.recipe.ts`. The general constant stays general; the exception is local and named.
+
+The transferable point: when work is parallelised by directory, the shared vocabulary layer is the
+contention point, and a batch that adds to it must re-read it before reporting done rather than
+trusting the state it read at the start.
+
+
+## A value-identical constant under a different name is a collision the compiler will not catch
+
+The parallel-batch note above records `CARD_LINK` being added twice with different bodies, caught as a
+TypeScript redeclaration. The profile/statements/notifications/support/device-security/legal batch hit
+the same contention four times, and only one of the four was a redeclaration.
+
+`ACTION_ROW` collided by name and failed the build. `ENTRY_LINK` vs `CARD_LINK`, `PROSE_RELAXED` vs
+`HONESTY_TEXT`, and `STACK_MD` vs `CARD_STACK` were byte-identical class strings under different
+names, in different files, added within minutes of each other. Every gate passed: typecheck, lint,
+tests, build, and the emitted CSS was correct because Tailwind deduplicates the utilities anyway.
+Nothing failed. The vocabulary simply grew two names for one thing, which is the exact defect this
+migration exists to remove.
+
+Found by diffing every `export const NAME = "…"` body across `src/ui/recipes/` and reporting bodies
+that appear more than once:
+
+```
+grep -rnE '^export const [A-Z_0-9]+ = "' src/ui/recipes/*.ts \
+  | sed -E 's/^([^:]+):[0-9]+:export const ([A-Z_0-9]+) = (".*")$/\3\t\2\t\1/' | sort
+```
+
+Run against the whole recipe layer it also surfaces long-standing pairs that are **not** defects —
+`RADIO_TEXT`/`SWITCH_TEXT`, `SECTION_HEAD`/`STAT_ROOT`, `AMOUNT_INVALID`/`TEXTAREA_INVALID`. Those are
+distinct concepts that currently need the same utilities, and merging them would couple unrelated
+components through a shared name. So the check does not produce a rule; it produces a list a human has
+to judge. The judgement is: same concept, one name; different concepts, separate names even when the
+strings match today.
+
+`ROW_BETWEEN_BASELINE` was added in full knowledge that it duplicates `SECTION_HEAD_ROW`, for that
+reason.
+
+
+## A console-wide stylesheet belongs in `ui/recipes/`, not in one of the features that reads it
+
+The convention established by the other conversion slices is that feature-local vocabulary goes in
+`features/<feature>/<feature>.recipe.ts`. `admin/shared/Admin.module.css` did not fit it. Thirteen
+sibling admin domains plus `admin/shared/` read that one file, so there is no `<feature>` to put it
+under: whichever one was chosen, the other thirteen would have had to import across a sibling feature
+boundary to get a filter chip or a table cell.
+
+Decided: a stylesheet whose consumers span an entire console is shared vocabulary, and shared
+vocabulary lives in `src/ui/recipes/`. It is now `ui/recipes/admin.ts`, sitting next to
+`shellAdmin.ts`, which already owns the admin chrome for the same reason.
+
+The test to apply next time is not "is this one feature's CSS" but "can one feature own this without
+the others reaching sideways for it". If the answer is no, it is a `ui/recipes/` file.
+
+## The shared recipe layer must be re-read at the end of a parallel slice, not only at the start
+
+An earlier entry recorded two slices colliding on `CARD_LINK` and TypeScript catching it as a
+redeclaration. The admin slice hit the quieter half of the same problem: not a name clash, but silent
+duplication. It began by reading `ui/recipes/` and correctly concluded that a card-wide link, a gap-4
+column, a wrapping button row, a baseline-spread row, a 16px semibold item title, a gap-0.5 stack, a
+small prose paragraph, a faint 12px caption and a mono reference style had no shared home yet, so it
+created nine admin-prefixed constants for them.
+
+By the time the slice finished, all nine existed in the shared layer, added by the three sibling
+slices while it was running: `ACTION_ROW`, `STACK_LG`, `ROW_BETWEEN_BASELINE` in `layout.ts`,
+`CARD_LINK` in `surface.ts`, `ITEM_TITLE`, `ENTRY_TEXT`, `PROSE_SM` in `datalist.ts`, `META_TEXT` and
+`REFERENCE_TEXT` in `text.ts`. Nothing failed. Two vocabularies for the same nine patterns would
+simply have shipped, and the admin-prefixed half would have looked deliberate.
+
+Resolved by deleting all nine and re-pointing roughly sixty call sites at the shared constants. Three
+of the substitutions are close rather than exact and are logged as such: `PROSE_SM` is 64ch and
+`leading-normal` where `.note` was 68ch and `leading-relaxed`; `META_TEXT` adds an explicit
+`leading-normal`; `REFERENCE_TEXT` adds `tracking-[0.06em]` to what was a plain mono slug.
+
+One duplicate was left standing on purpose. `STATE_REFERENCE` in `state.ts` is string-identical to
+what `ADMIN_CODE` needs, and folding both into a single shared constant means editing `state.ts`,
+which belongs to another slice's working tree in this round. Consolidating it now would trade a
+harmless duplicate for a live write conflict. It is recorded as a follow-up instead.
+
+The rule this produces: in a directory-parallelised change, the shared layer is not a fixed input. A
+slice that touches it must diff it again before reporting done, and must check for equal *values*, not
+only equal names — a name clash is caught by the compiler, a duplicated utility string is not.
+
+## `.mono` meant the opposite of monospace, and it was carrying money
+
+D-029 says a monetary figure uses the `money` utility and never `font-mono`. The admin stylesheet had
+a class named `.mono` whose body was `--be-font-numeric` with `font-variant-numeric: tabular-nums
+lining-nums` — the money treatment, under a name that states the opposite — and it was the class on
+the rupee amounts in the mandate list and mandate detail screens. A reviewer grepping for `mono` to
+audit D-029 would have found the compliant code and flagged it, and a developer reaching for a
+monospace identifier style would have found this and used it.
+
+Renamed on conversion: money-shaped figures are `ADMIN_FIGURE`, which composes `MONEY_BASE`, and the
+genuinely monospace class is `ADMIN_CODE`, which composes `REFERENCE_TEXT`. All 22 `ADMIN_CODE` call
+sites were read individually to confirm each is an identifier, hash, slug or request id, and none is
+an amount.
+
+The transferable point is that D-029 cannot be audited by grepping for `font-mono` alone. A class name
+can lie in either direction, and the check that actually holds is reading what each call site renders.
+
+
+### D-033
+**Tailwind v4 replaces CSS Modules, with the token layer as its theme source.** · DECIDED 2026-08-29
+
+Doc 07 rejected Tailwind on four grounds. The maintainer directed the change anyway, so each ground
+had to be either satisfied or shown to be spent:
+
+1. *The APK has a hard 160 kB CSS budget.* Already superseded by D-028, which raised the ceiling to
+   640 kB deliberately to fund a high-end visual layer. The migrated CSS is 84 kB.
+2. *The token contract is test-enforced, and `tokens-core.css` is the sole legal owner of
+   `env(safe-area-inset-*)`.* **This was the load-bearing objection and it is preserved.** The bridge
+   is `@theme inline`, which compiles every utility to `var(--be-*)` rather than copying the value.
+   `tokens-core.css` remains the only file that reads `env()`, and safe area is consumed exclusively
+   through named spacing keys (`pt-safe-top`, `pb-safe-bottom`) that resolve to `var(--be-safe-*)`.
+   `safeArea.test.ts` passes unchanged.
+3. *Locally-scoped class names structurally prevent the legacy four-vocabulary collision
+   (`be-*`/`apk-*`/`adm-*`/`ash-*`).* Moot: there is no hand-written global vocabulary left to
+   collide. The replacement guarantee is `src/ui/recipes/`, a typed layer where each pattern is
+   declared once, plus `recipes.test.ts`, which fails if two names share one non-structural class
+   string.
+4. *Zero new build dependencies.* No longer true: `tailwindcss` and `@tailwindcss/vite`, both pinned
+   exact. Accepted as the price of the directive.
+
+Two properties actually improved. Clearing `--breakpoint-*` to exactly the four canonical values
+makes a fifth breakpoint unrepresentable rather than merely forbidden — the 640 px media query that
+had drifted into `Charts.module.css` cannot recur. And clearing `--color-*` means an off-brand colour
+cannot be named at all.
+
+Rejected: keeping CSS Modules and layering Tailwind on top. Two styling systems is the condition this
+migration exists to remove, and a per-component stylesheet beside a utility class is exactly how the
+legacy frontend reached four vocabularies.
+
+### D-034
+**The launch/window colour is `#F4F1E9`, not `#F7F7F5`, and it is enforced by a test.** · DECIDED 2026-08-29
+
+Doc 08 required one colour in four places, byte-identical, to stop a flash during the
+native-splash → WebView → React handoff. The pinned colour was `#F7F7F5` (`--be-ivory`). But every
+screen that actually renders — `AuthLayout` and both app shells — paints `--be-parchment-2`
+(`#F4F1E9`). So the contract held the launch surfaces consistent with each other while all of them
+disagreed with the running app.
+
+That produced two visible defects. A launch flash, which is what the contract was written to prevent.
+And on Android a coloured seam: where the WebView is inset by the system bars, those strips are
+painted with the window background, so a 132 px band of `#F7F7F5` sat above a `#F4F1E9` page. Measured
+before and after on device, the strip-to-page delta fell from (7,12,19) to (4,6,7); the remainder is
+the mesh radial gradient, which a solid native bar cannot reproduce.
+
+`--be-bg` now aliases `--be-parchment-2`, and the shells consume `bg-bg` rather than
+`bg-parchment-2`, so the token is the single answer to "what colour is this app". The contract grew to
+five places — it had silently omitted `DEFAULT_BAR_BACKGROUND`, the value actually handed to the
+native bars — and `launchColour.test.ts` now follows the `var()` alias into the palette and checks all
+five. The prose comment in `colors.xml` that used to carry this knowledge is deleted: it was
+redundant once the test existed, and writing `--be-bg` into it broke the build, because `--` is
+illegal inside an XML comment.
+
+### D-035
+**Both variants ship the same stylesheet, and that is accepted.** · DECIDED 2026-08-29
+
+Under CSS Modules the two build targets emitted different stylesheets, because Rollup tree-shook by
+module graph. Tailwind scans the filesystem, so each variant now receives the union of every utility
+used anywhere and the two CSS files are byte-identical.
+
+Checked before accepting. No admin *screen* reaches the client bundle: searched the built client APK
+for user-visible admin strings and `Audit log` and `AUM` are absent, while `Good to see you`,
+`See portfolio`, `Manage SIPs` and `Value ledger` are absent from admin. Component identifiers are
+useless for this check because the bundle is minified and they are mangled. The `/admin/` strings that
+do appear are `@beonedge/contracts` operation descriptors, pre-existing under D-020, and the single
+`phonepe` match is a Zod enum literal (`provider: "phonepe"`, `phonepe_autopay`), not the native SDK,
+which is why `check-phonepe-native-target` passes.
+
+What leaks is therefore dead utility classes with semantically neutral names, at 84 kB against a
+640 kB budget.
+
+Rejected: variant-specific CSS entries using `@source not` plus a Vite alias. It would reintroduce a
+variant-dependent build path to save bytes nobody is short of — the divergence risk this work exists
+to remove.
+
+Worth recording separately: `check-android-dist.mjs` matches `CROSS_TARGET_PATTERNS` against
+`asset.name` only, never against contents. It has never verified cross-target leakage, and the
+argument above rests on the manual APK inspection, not on that gate.

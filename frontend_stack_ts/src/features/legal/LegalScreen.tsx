@@ -2,9 +2,12 @@ import { Link } from "react-router-dom"
 
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
+import { cx } from "~/lib/cx"
 import { Card } from "~/ui/primitives/Card"
-
-import styles from "./Legal.module.css"
+import { ENTRY_GLYPH, ENTRY_ROW, ENTRY_TEXT, ITEM_TITLE } from "~/ui/recipes/datalist"
+import { GRID_BASE, GRID_COLS_MD } from "~/ui/recipes/layout"
+import { CARD_LINK } from "~/ui/recipes/surface"
+import { HINT_MUTED } from "~/ui/recipes/text"
 
 const ENTRIES = [
   {
@@ -21,7 +24,7 @@ const ENTRIES = [
 
 const Chevron = (): React.ReactElement => (
   <svg
-    className={styles.entryGlyph}
+    className={ENTRY_GLYPH}
     viewBox="0 0 18 18"
     fill="none"
     stroke="currentColor"
@@ -41,14 +44,14 @@ const LegalScreen = (): React.ReactElement => (
       description="The regulatory documents that govern your account. Each one is published by BeOnEdge and served from the backend."
     />
 
-    <div className={styles.hub}>
+    <div className={cx(GRID_BASE, GRID_COLS_MD[2])}>
       {ENTRIES.map((entry) => (
-        <Link key={entry.to} to={entry.to} className={styles.entryLink}>
+        <Link key={entry.to} to={entry.to} className={CARD_LINK}>
           <Card>
-            <span className={styles.entry}>
-              <span className={styles.entryText}>
-                <span className={styles.entryTitle}>{entry.title}</span>
-                <span className={styles.entryHint}>{entry.hint}</span>
+            <span className={ENTRY_ROW}>
+              <span className={ENTRY_TEXT}>
+                <span className={ITEM_TITLE}>{entry.title}</span>
+                <span className={cx(HINT_MUTED, "max-w-[52ch]")}>{entry.hint}</span>
               </span>
               <Chevron />
             </span>

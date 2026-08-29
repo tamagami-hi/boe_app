@@ -18,7 +18,8 @@ import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import { PROSE_SM } from "~/ui/recipes/datalist"
+import { ACTION_ROW } from "~/ui/recipes/layout"
 
 type Confirming = "approved" | "rejected" | null
 
@@ -102,7 +103,7 @@ const ApplicationDetailScreen = (): React.ReactElement => {
                 description="Approving activates the account and emails the applicant a welcome with the app download. Rejecting emails them the rejection. Both are recorded in the audit log."
               >
                 {canDecide ? (
-                  <div className={styles.actions}>
+                  <div className={ACTION_ROW}>
                     <Button
                       disabled={decide.isPending}
                       onClick={() => {
@@ -132,7 +133,7 @@ const ApplicationDetailScreen = (): React.ReactElement => {
             <Section title="Consents">
               {data.consents.length === 0 ? (
                 <Card>
-                  <p className={styles.note}>No consent records are attached.</p>
+                  <p className={PROSE_SM}>No consent records are attached.</p>
                 </Card>
               ) : (
                 <Card>
@@ -150,7 +151,7 @@ const ApplicationDetailScreen = (): React.ReactElement => {
             <Section title="Decision history">
               {data.reviews.length === 0 ? (
                 <Card>
-                  <p className={styles.note}>This application has not been decided yet.</p>
+                  <p className={PROSE_SM}>This application has not been decided yet.</p>
                 </Card>
               ) : (
                 <AdminTable
@@ -181,7 +182,7 @@ const ApplicationDetailScreen = (): React.ReactElement => {
             >
               {data.deliveries.items.length === 0 ? (
                 <Card>
-                  <p className={styles.note}>No email has been sent for this application.</p>
+                  <p className={PROSE_SM}>No email has been sent for this application.</p>
                 </Card>
               ) : (
                 <AdminTable

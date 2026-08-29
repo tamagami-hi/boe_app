@@ -12,7 +12,8 @@ import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import { ADMIN_CODE } from "~/ui/recipes/admin"
+import { ENTRY_TEXT } from "~/ui/recipes/datalist"
 
 const PaymentEvidenceScreen = (): React.ReactElement => {
   const query = useAdminPayments()
@@ -50,9 +51,9 @@ const PaymentEvidenceScreen = (): React.ReactElement => {
                 key: "user",
                 header: "Investor",
                 render: (row) => (
-                  <span className={styles.cellStack}>
+                  <span className={ENTRY_TEXT}>
                     <span>{row.userEmail}</span>
-                    <span className={styles.code}>{row.orderId}</span>
+                    <span className={ADMIN_CODE}>{row.orderId}</span>
                   </span>
                 ),
               },
@@ -74,7 +75,7 @@ const PaymentEvidenceScreen = (): React.ReactElement => {
                 key: "reference",
                 header: "Provider reference",
                 render: (row) => (
-                  <span className={styles.code}>{row.providerReference ?? "—"}</span>
+                  <span className={ADMIN_CODE}>{row.providerReference ?? "—"}</span>
                 ),
               },
               {

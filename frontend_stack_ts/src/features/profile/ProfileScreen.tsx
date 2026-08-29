@@ -7,12 +7,23 @@ import { useSession } from "~/app/providers/SessionProvider"
 import { emailVerificationState, userAccountState } from "~/domain/status"
 import { useAuthPort } from "~/features/auth/authPort"
 import { useEligibility } from "~/features/shared/queries"
+import { cx } from "~/lib/cx"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
+import { ENTRY_GLYPH, ENTRY_ROW, ENTRY_TEXT, ITEM_TITLE } from "~/ui/recipes/datalist"
+import { GRID_BASE, GRID_COLS_MD } from "~/ui/recipes/layout"
+import { CARD_LINK } from "~/ui/recipes/surface"
+import { HINT_MUTED } from "~/ui/recipes/text"
 
-import styles from "./Profile.module.css"
+import {
+  IDENTITY_AVATAR,
+  IDENTITY_EMAIL,
+  IDENTITY_NAME,
+  IDENTITY_ROW,
+  IDENTITY_TEXT,
+} from "./profile.recipe"
 
 const ENTRIES = [
   {
@@ -49,7 +60,7 @@ const ENTRIES = [
 
 const Chevron = (): React.ReactElement => (
   <svg
-    className={styles.entryGlyph}
+    className={ENTRY_GLYPH}
     viewBox="0 0 18 18"
     fill="none"
     stroke="currentColor"
@@ -92,13 +103,13 @@ const ProfileScreen = (): React.ReactElement => {
       <PageHeader title="Profile" description="Your account, and everything that governs it." />
 
       <Card elevated>
-        <div className={styles.identity}>
-          <span className={styles.avatar} aria-hidden="true">
+        <div className={IDENTITY_ROW}>
+          <span className={IDENTITY_AVATAR} aria-hidden="true">
             {initialsOf(principal.fullName)}
           </span>
-          <span className={styles.identityText}>
-            <span className={styles.name}>{principal.fullName}</span>
-            <span className={styles.email}>{principal.email}</span>
+          <span className={IDENTITY_TEXT}>
+            <span className={IDENTITY_NAME}>{principal.fullName}</span>
+            <span className={IDENTITY_EMAIL}>{principal.email}</span>
           </span>
         </div>
 
@@ -120,14 +131,14 @@ const ProfileScreen = (): React.ReactElement => {
       </Card>
 
       <Section title="Manage">
-        <div className={styles.grid}>
+        <div className={cx(GRID_BASE, GRID_COLS_MD[2])}>
           {ENTRIES.map((entry) => (
-            <Link key={entry.to} to={entry.to} className={styles.entryLink}>
+            <Link key={entry.to} to={entry.to} className={CARD_LINK}>
               <Card>
-                <span className={styles.entry}>
-                  <span className={styles.entryText}>
-                    <span className={styles.entryTitle}>{entry.title}</span>
-                    <span className={styles.entryHint}>{entry.hint}</span>
+                <span className={ENTRY_ROW}>
+                  <span className={ENTRY_TEXT}>
+                    <span className={ITEM_TITLE}>{entry.title}</span>
+                    <span className={cx(HINT_MUTED, "max-w-[46ch]")}>{entry.hint}</span>
                   </span>
                   <Chevron />
                 </span>

@@ -14,7 +14,9 @@ import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 import { Input } from "~/ui/primitives/FormField"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import { ADMIN_CELL_LINK } from "~/ui/recipes/admin"
+import { ENTRY_TEXT } from "~/ui/recipes/datalist"
+import { META_TEXT } from "~/ui/recipes/text"
 
 const FILTERS = [
   { value: "any", label: "All" },
@@ -97,11 +99,11 @@ const UserDirectoryScreen = (): React.ReactElement => {
                 key: "user",
                 header: "User",
                 render: (row) => (
-                  <span className={styles.cellStack}>
-                    <Link to={`/users/${row.id}`} className={styles.cellLink}>
+                  <span className={ENTRY_TEXT}>
+                    <Link to={`/users/${row.id}`} className={ADMIN_CELL_LINK}>
                       {row.fullName}
                     </Link>
-                    <span className={styles.faint}>{row.email}</span>
+                    <span className={META_TEXT}>{row.email}</span>
                   </span>
                 ),
               },

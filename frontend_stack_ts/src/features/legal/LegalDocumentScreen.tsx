@@ -7,8 +7,15 @@ import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { Prose } from "~/ui/patterns/DataList"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
+import { STACK_SM } from "~/ui/recipes/layout"
+import { META_ROW, SUBHEAD_TITLE } from "~/ui/recipes/text"
 
-import styles from "./Legal.module.css"
+import {
+  CONTACT_LABEL,
+  CONTACT_LIST,
+  CONTACT_ROW,
+  CONTACT_VALUE,
+} from "./legal.recipe"
 
 export type LegalSection = Readonly<{ heading: string; body: string }>
 
@@ -84,7 +91,7 @@ export const LegalDocumentScreen = ({
 
           return (
             <Card>
-              <div className={styles.docMeta}>
+              <div className={META_ROW}>
                 <span>Version {String(data.version)}</span>
                 {data.updatedAt === null ? null : (
                   <span>Updated {formatDate(data.updatedAt)}</span>
@@ -94,18 +101,18 @@ export const LegalDocumentScreen = ({
               {body === null ? null : <Prose>{body}</Prose>}
 
               {sections.map((section) => (
-                <div key={section.heading} className={styles.section}>
-                  <h2 className={styles.sectionTitle}>{section.heading}</h2>
+                <div key={section.heading} className={STACK_SM}>
+                  <h2 className={SUBHEAD_TITLE}>{section.heading}</h2>
                   <Prose>{section.body}</Prose>
                 </div>
               ))}
 
               {contacts.length === 0 ? null : (
-                <ul className={styles.contactList}>
+                <ul className={CONTACT_LIST}>
                   {contacts.map((contact) => (
-                    <li key={contact.label} className={styles.contactRow}>
-                      <span className={styles.contactLabel}>{contact.label}</span>
-                      <span className={styles.contactValue}>{contact.value}</span>
+                    <li key={contact.label} className={CONTACT_ROW}>
+                      <span className={CONTACT_LABEL}>{contact.label}</span>
+                      <span className={CONTACT_VALUE}>{contact.value}</span>
                     </li>
                   ))}
                 </ul>

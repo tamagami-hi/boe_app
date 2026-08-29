@@ -19,7 +19,15 @@ import { Alert } from "~/ui/primitives/Feedback"
 import { FormField, Input } from "~/ui/primitives/FormField"
 import { Select } from "~/ui/primitives/Select"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import {
+  ADMIN_CODE,
+  ADMIN_FIGURE,
+  ADMIN_FORM_GRID,
+  ADMIN_LABEL,
+  ADMIN_SUMMARY_GRID,
+} from "~/ui/recipes/admin"
+import { PROSE_SM } from "~/ui/recipes/datalist"
+import { STACK_LG } from "~/ui/recipes/layout"
 
 const today = (): string => new Date().toISOString().slice(0, 10)
 
@@ -124,8 +132,8 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
       )}
 
       <Card elevated>
-        <div className={styles.form}>
-          <div className={styles.formGrid}>
+        <div className={STACK_LG}>
+          <div className={ADMIN_FORM_GRID}>
             <FormField label="Fund" required>
               {({ id }) => (
                 <Select
@@ -177,12 +185,12 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
         <>
           <Section title="What this would do">
             <Card>
-              <div className={styles.summaryGrid}>
+              <div className={ADMIN_SUMMARY_GRID}>
                 <Stat label="Positions adjusted">
-                  <span className={styles.mono}>{String(plan.targetCount)}</span>
+                  <span className={ADMIN_FIGURE}>{String(plan.targetCount)}</span>
                 </Stat>
                 <Stat label="Excluded" hint="Zero-value positions cannot take a rate.">
-                  <span className={styles.mono}>{String(plan.excludedCount)}</span>
+                  <span className={ADMIN_FIGURE}>{String(plan.excludedCount)}</span>
                 </Stat>
                 <Stat label="Total change">
                   <MoneyValue
@@ -196,9 +204,9 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
                   <span>{plan.mode === "percentage" ? "Rate" : "Explicit amounts"}</span>
                 </Stat>
               </div>
-              <span className={styles.label}>Basis</span>
-              <span className={styles.basis}>{plan.basisHash}</span>
-              <p className={styles.note}>
+              <span className={ADMIN_LABEL}>Basis</span>
+              <span className={ADMIN_CODE}>{plan.basisHash}</span>
+              <p className={PROSE_SM}>
                 These numbers are the server&apos;s, not this browser&apos;s. On commit the server
                 recomputes them from the same positions and refuses the write if the basis moved.
               </p>
@@ -214,7 +222,7 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
                 {
                   key: "user",
                   header: "Investor",
-                  render: (row) => <span className={styles.code}>{row.userId}</span>,
+                  render: (row) => <span className={ADMIN_CODE}>{row.userId}</span>,
                 },
                 {
                   key: "before",
@@ -250,8 +258,8 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
             description="This writes one growth entry per position and notifies every investor in it."
           >
             <Card>
-              <div className={styles.form}>
-                <div className={styles.formGrid}>
+              <div className={STACK_LG}>
+                <div className={ADMIN_FORM_GRID}>
                   <FormField
                     label="Effective date"
                     required

@@ -19,7 +19,10 @@ import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import { ADMIN_CODE } from "~/ui/recipes/admin"
+import { ENTRY_TEXT } from "~/ui/recipes/datalist"
+import { ACTION_ROW } from "~/ui/recipes/layout"
+import { META_TEXT } from "~/ui/recipes/text"
 
 const FILTERS = [
   { value: "failed", label: "Failed" },
@@ -124,9 +127,9 @@ const RefundQueueScreen = (): React.ReactElement => {
                 key: "client",
                 header: "Investor",
                 render: (row) => (
-                  <span className={styles.cellStack}>
+                  <span className={ENTRY_TEXT}>
                     <span>{row.client.name}</span>
-                    <span className={styles.faint}>{row.client.email}</span>
+                    <span className={META_TEXT}>{row.client.email}</span>
                   </span>
                 ),
               },
@@ -155,7 +158,7 @@ const RefundQueueScreen = (): React.ReactElement => {
               {
                 key: "reference",
                 header: "Merchant refund",
-                render: (row) => <span className={styles.code}>{row.merchantRefundId}</span>,
+                render: (row) => <span className={ADMIN_CODE}>{row.merchantRefundId}</span>,
               },
               {
                 key: "updated",
@@ -167,7 +170,7 @@ const RefundQueueScreen = (): React.ReactElement => {
                 header: "Actions",
                 render: (row) =>
                   canWrite ? (
-                    <span className={styles.actions}>
+                    <span className={ACTION_ROW}>
                       {row.state === "failed" ? (
                         <Button
                           tone="secondary"
@@ -192,7 +195,7 @@ const RefundQueueScreen = (): React.ReactElement => {
                       </Button>
                     </span>
                   ) : (
-                    <span className={styles.faint}>Read only</span>
+                    <span className={META_TEXT}>Read only</span>
                   ),
               },
             ]}

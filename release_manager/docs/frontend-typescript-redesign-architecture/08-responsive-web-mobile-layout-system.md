@@ -165,10 +165,20 @@ style other than `LIGHT`/`DARK` or a background not matching
 `/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/`. Chrome is re-applied on
 `platformLifecycle.onResume`, because Android can reset window appearance across resume.
 
-**One colour, four places, byte-identical.** `#F7F7F5` must be the same in
-`index.html`'s inline style, `src/index.css` `#root`, `values/colors.xml` `launchBackground`,
-and the `--be-ivory` token. Drift produces a visible flash during the
+**One colour, five places, byte-identical.** `#F4F1E9` must be the same in
+`index.html`'s inline style, `index.html`'s `theme-color`, `values/colors.xml`
+`launchBackground`, `DEFAULT_BAR_BACKGROUND` in `src/platform/systemChrome.ts`, and whatever
+`--be-bg` resolves to in the token layer. `src/ui/styles/base.css` paints `#root` with
+`var(--be-bg)` and must never restate a literal. Drift produces a visible flash during the
 native-splash → WebView → React handoff.
+
+**Amended (D-034).** This contract previously pinned `#F7F7F5` (`--be-ivory`), but every real
+screen — the auth layout and both app shells — paints `--be-parchment-2` (`#F4F1E9`). The
+contract therefore kept the launch surfaces consistent with each other while still mismatching
+the running app, which produced two visible defects: a launch flash, and on Android a coloured
+seam where the system-bar insets are painted with the window background. `--be-bg` now aliases
+`--be-parchment-2`, the shells consume `bg-bg` rather than `bg-parchment-2`, and
+`src/platform/launchColour.test.ts` enforces all five places automatically.
 
 ### Keyboard
 

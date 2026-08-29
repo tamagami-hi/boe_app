@@ -31,7 +31,7 @@
   --be-red-soft: color-mix(in srgb, var(--be-red) 10%, transparent);
   --be-amber-soft: color-mix(in srgb, var(--be-amber) 12%, transparent);
 
-  --be-bg: var(--be-ivory);
+  --be-bg: var(--be-parchment-2);
   --be-bg-elevated: var(--be-bone);
   --be-bg-sunken: var(--be-ivory-2);
   --be-bg-inverse: var(--be-ink);

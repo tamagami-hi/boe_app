@@ -994,3 +994,440 @@ docker compose -f docker-compose.dev_app.yml exec backend node dist/scripts/chec
 #   one investment_allocations row and one client_value_entries contribution
 #   one fund_receipt_acknowledgements row in state 'pending'
 ```
+
+
+## Tailwind v4 conversion — dashboard, portfolio, activity, orders
+
+One of four parallel, disjoint slices of the remaining CSS-module conversion in
+`frontend_stack_ts/src/features/`. Full narrative in
+`TASK/011-tailwind-batch-dashboard-portfolio-activity-orders.md`.
+
+### Changed
+
+- Converted and rewrote `DashboardScreen.tsx`, `PortfolioScreen.tsx`, `ActivityScreen.tsx`,
+  `LumpsumInvestScreen.tsx`, `RiskConsent.tsx`.
+- Deleted `Dashboard.module.css`, `Portfolio.module.css`, `Activity.module.css`,
+  `Orders.module.css`. No `styles.` reference remains in the four directories.
+- Added per-feature recipes: `dashboard.recipe.ts`, `portfolio.recipe.ts`, `activity.recipe.ts`,
+  `orders.recipe.ts`.
+- Added to shared recipes: `META_MUTED` (`ui/recipes/text.ts`); `CARD_STACK` and `CARD_ACTION`
+  (`ui/recipes/surface.ts`); `CHECKBOX_ROW`, `CHECKBOX_MARK_BASE`, `CHECKBOX_MARK_OFF`,
+  `CHECKBOX_MARK_ON`, `CHECKBOX_GLYPH` (`ui/recipes/field.ts`).
+
+### Why the shape it has
+
+The three percentage figures on these screens (`.returnValue`, `.percent`, `.percentSmall`) were
+hand-rolled duplicates of `--be-font-numeric` + `tabular-nums`. They now compose the `MONEY_*`
+recipes, so D-029 — money and financial figures never render in `font-mono` — is enforced in one
+place rather than restated in three stylesheets.
+
+`.statusRow + .statusRow` could not become `last:border-b-0`, because the last status row is not the
+last child of its card; a `Link` follows it. It is `border-t border-hairline first-of-type:border-t-0`,
+which reproduces the original without adding a wrapper element.
+
+A checkbox recipe went into `ui/recipes/field.ts` beside the existing switch and radio recipes rather
+than into `features/orders/`, since a checkbox is not specific to placing an order.
+
+### Verified — TESTED
+
+- `npx eslint src/features/{dashboard,portfolio,activity,orders}` clean.
+- `npx vitest run` — 8 files, 110 tests, all pass, including `src/ui/tokens/safeArea.test.ts`.
+- `npx tsc -p tsconfig.json --noEmit` — zero errors in this batch's files.
+- All 53 utility classes emitted by the four new recipe files were compiled through the Tailwind
+  engine against the real `src/ui/styles/index.css`; none unresolved. This is the check that a
+  typecheck cannot perform: it proves `size-4.5`, `first-of-type:border-t-0`, `border-rule` and
+  `grid-cols-[auto_1fr]` generate rules rather than silently nothing.
+
+### Not verified — UNVERIFIED
+
+- No browser has rendered any of these five screens. Nothing here says the dashboard bento collapses
+  correctly at 768px, that the account-card dividers land where the old sibling selector put them,
+  or that the consent checkmark is centred.
+- `vite build` was **not** run. The three parallel batches leave `src/features/admin/`,
+  `src/features/support/` and `src/ui/recipes/layout.ts` non-compiling while they work, so a build
+  now would fail for reasons unrelated to this batch. It must run once all sixteen conversions land:
+
+```
+cd frontend_stack_ts && npx tsc -p tsconfig.json --noEmit && npm run lint && npm test && npm run build
+```
+
+- Then, read at 390px and 1512px on the deployed stack: `/dashboard`, `/portfolio`, `/activity`,
+  `/funds/<fundId>/invest`.
+
+
+
+## Tailwind v4 conversion — funds, sip, payments
+
+One of four parallel, disjoint slices of the remaining CSS-module conversion in
+`frontend_stack_ts/src/features/`. Full narrative in
+`TASK/012-tailwind-batch-funds-sip-payments.md`.
+
+### Changed
+
+- Converted `FundListScreen.tsx`, `FundDetailScreen.tsx`, `FundTable.tsx`, `SipListScreen.tsx`,
+  `SipDetailScreen.tsx`, `SipStartScreen.tsx`, `PaymentStatusScreen.tsx`,
+  `PendingPaymentRecovery.tsx`.
+- Deleted `Funds.module.css`, `FundTable.module.css`, `Sip.module.css`, `Payments.module.css`.
+  No `styles.` reference remains in the three directories.
+- Added per-feature recipes: `funds/funds.recipe.ts`, `sip/sip.recipe.ts`,
+  `payments/payments.recipe.ts`.
+- Added to shared recipes: `HONESTY_TEXT` (`ui/recipes/text.ts`), `CARD_LINK`
+  (`ui/recipes/surface.ts`), `ACTION_ROW` (`ui/recipes/layout.ts`).
+
+### Why the shape it has
+
+The fund list's responsive split is preserved exactly: a real sortable `<table>` at `lg` and cards
+below, decided in TypeScript by `isCompact(useBreakpoint())`, never by CSS. It was not converted to
+an auto-fit grid.
+
+Every rupee figure on these screens already routed through `MoneyValue`, so D-029 holds by
+construction — `grep -rn font-mono` over the three directories returns nothing.
+
+`.sortActive` and `.headButtonActive` were `composes:` duplicates sitting on elements that already
+carried a correct `aria-pressed`. Both now derive from the `aria-pressed:` variant, so the class
+cannot drift from the attribute a screen reader reads.
+
+`FundTable`'s wrapper hardcoded `--be-squircle-lg` + `--be-shell-pad` with no `lg:` step while
+`Card` steps to `--be-squircle-xl` + `--be-shell-pad-lg` at 1024px. Since the table only renders at
+1024px and above, its bezel was permanently one size out of step with every card on the same page.
+It now composes `SHELL` and mirrors `CARD_BASE`'s `calc()` radius.
+
+One deliberate visual change: the SIP summary cells were bare `<div>`s holding two inline `<span>`s
+with no flex-column, so a 10px uppercase label rendered flush against its value (`DEBIT DAY15`).
+They now use `STAT_ROOT`, the same recipe `DataList`'s `Stat` uses.
+
+### Verified — TESTED
+
+- `npx tsc -p tsconfig.json --noEmit` — zero errors in `features/{funds,sip,payments}` and
+  `ui/recipes/`.
+- `npx eslint src/features/funds src/features/sip src/features/payments src/ui/recipes` — clean.
+- `npx vitest run` — 8 files, 110 tests pass.
+- `npx vite build` — succeeded, and the emitted stylesheet was read to confirm the new utilities
+  generate rules: the four `aria-pressed:` variants, `group-last:border-b-0`, `bg-sand/32`,
+  `bg-sand/22`, `size-[9px]`, `max-w-[64ch]`, `md:grid-cols-4`, `border-rule-strong`, `text-2xs`.
+  Cascade order was checked by byte offset, not assumed: base colour utilities precede their
+  `aria-pressed:` overrides, and `.border-b` precedes `.group-last\:border-b-0`.
+
+### Not verified — UNVERIFIED
+
+- No browser has rendered any of these screens. The 1024px card/table flip, the table's column
+  behaviour at exactly 1024px, the pressed sort-pill contrast, the row hover tint and the SIP
+  summary change above are all unobserved.
+- The payment status polling row needs a genuinely open PhonePe payment, not a fixture.
+- On the VPS: `cd frontend_stack_ts && npx tsc -p tsconfig.json --noEmit && npm run lint &&
+  npm test && npm run build`, then read `/funds`, `/funds/<fundId>`, `/sips`, `/sips/<sipPlanId>`,
+  `/funds/<fundId>/invest/sip`, `/activity/payments/<paymentId>` at 390px and 1512px.
+
+
+---
+
+## Tailwind v4 conversion — profile, statements, notifications, support, device security, legal, email verification
+
+Batch 3 of the four parallel CSS-module conversions. Seven stylesheets, 539 lines of CSS, ten
+components.
+
+### What changed
+
+- Converted `ProfileScreen.tsx`, `StatementsScreen.tsx`, `NotificationsScreen.tsx`,
+  `SupportScreen.tsx`, `DeviceSecurityScreen.tsx`, `PinPad.tsx`, `LegalScreen.tsx`,
+  `LegalDocumentScreen.tsx`, `GrievanceScreen.tsx`, `EmailVerificationScreen.tsx`.
+- Deleted `Profile.module.css`, `Statements.module.css`, `Notifications.module.css`,
+  `Support.module.css`, `DeviceSecurity.module.css`, `Legal.module.css`,
+  `EmailVerification.module.css`. No `styles.` reference remains in the seven directories.
+- Added per-feature recipes: `profile.recipe.ts`, `statements.recipe.ts`, `support.recipe.ts`,
+  `notifications.recipe.ts`, `device-security.recipe.ts`, `legal.recipe.ts`.
+- Added to shared recipes: `META_ROW`, `REFERENCE_TEXT`, `SUBHEAD_TITLE`, `COUNT_TEXT`
+  (`ui/recipes/text.ts`); `ITEM_TITLE`, `ITEM_HINT`, `PROSE_SM`, `PROSE_PRE`, `ENTRY_ROW`,
+  `ENTRY_TEXT`, `ENTRY_GLYPH` (`ui/recipes/datalist.ts`); `INSET_NOTE` (`ui/recipes/surface.ts`);
+  `STACK_SM`, `STACK_LG`, `ROW_BETWEEN`, `ROW_BETWEEN_BASELINE`, `GRID_COLS_MD`
+  (`ui/recipes/layout.ts`).
+
+### Defects found in the CSS being replaced
+
+- **Three dead rules.** `EmailVerification.module.css` `.statusRow` and `.statusLabel` had no
+  consumer at all; neither did `Profile.module.css` `.build` or `Statements.module.css` `.note`.
+  Four rules, 27 lines, styling nothing. They are not carried forward.
+- **`Profile.module.css` and `Legal.module.css` were the same file twice.** `.hub`/`.grid`,
+  `.entryLink`, `.entry`, `.entryText`, `.entryTitle`, `.entryHint` and `.entryGlyph` were
+  byte-identical in both apart from one `max-width` (46ch vs 52ch), and both screens declared their
+  own identical `Chevron` component. That is now one `ENTRY_*` vocabulary plus a `max-w-[…]` at the
+  two call sites, so the divergence that remains is visible rather than buried in two stylesheets.
+- **`Statements.module.css` `.label` wrote `font-size: 10px` raw**, while `--text-2xs` already
+  exists in `theme.css` for exactly that size — and the rule was otherwise identical to the
+  existing `STAT_LABEL` recipe. It now composes `STAT_LABEL`.
+- **Three near-identical `.meta` rows** across notifications, support and legal (`docMeta`) with
+  three different gap pairs and inconsistent `align-items`. Unified as `META_ROW`.
+- **`DeviceSecurity.module.css` carried a `prefers-reduced-motion` block that only disabled a
+  transition**, which `ui/styles/base.css` already forces globally. Deleted per the spec.
+
+### Why the shape it has
+
+`PinPad`'s `.key` box-shadow was `inset 0 0 0 1px var(--be-hairline-strong), var(--be-inner-lift-soft)`
+— character-for-character the existing `ring-inset-hairline-strong` utility in `ui/styles/status.css`.
+Reused rather than re-expressed as an arbitrary shadow, which is the difference between one owner of
+that shadow and two.
+
+The `.pad` grid, key sizing, dot indicators and prompt went into
+`features/device-security/device-security.recipe.ts` rather than a shared recipe. A numeric keypad is
+not a pattern another feature will grow; the avatar, contact list and statement flow grid are the same
+judgement.
+
+`ROW_BETWEEN_BASELINE` duplicates the string held by `SECTION_HEAD_ROW`. Kept separate deliberately:
+`SECTION_HEAD_ROW` describes a section header's title/actions row and is consumed by `Section.tsx`.
+A statement card's month/date-range row is a different concept that currently happens to need the
+same three utilities, and collapsing them would couple two unrelated things through a shared name.
+
+Both feature grids used `@media (min-width: 768px)`, which is `md`, while the existing `GRID_COLS`
+record starts at `sm` (480px). Rather than silently move the breakpoint to make an existing constant
+fit, `GRID_COLS_MD` was added beside it. Two entry cards side by side at 480px is a worse layout, not
+a neutral one.
+
+### Reconciling with the parallel batches
+
+Per the lesson recorded in `risk_and_decision.md`, `src/ui/recipes/` was re-read after the feature
+work rather than trusted from the start, and four collisions with concurrently-added constants were
+resolved by deleting the local one:
+
+| Added here | Kept instead | Where |
+|---|---|---|
+| `ACTION_ROW` (`flex flex-wrap gap-2 pt-1`) | `ACTION_ROW` (`flex flex-wrap gap-2`) + `pt-1` at the one call site | `layout.ts` |
+| `ENTRY_LINK` | `CARD_LINK` | `surface.ts` |
+| `PROSE_RELAXED` | `HONESTY_TEXT` | `text.ts` |
+| `STACK_MD` | `CARD_STACK` | `surface.ts` |
+
+Only the first was a hard TypeScript redeclaration; the other three were silent value-identical
+duplicates found by diffing every `export const` body across `ui/recipes/`. That check is worth
+keeping in the loop — a redeclaration fails the build, a synonym does not.
+
+### Verified — TESTED
+
+Repo-wide runs were taken at a moment when all four parallel batches were momentarily consistent. The
+admin batch has since resumed editing `ui/recipes/admin.ts`, so a repo-wide typecheck now reports
+errors in `features/admin/**` belonging to that batch. The scoped runs were re-taken afterwards.
+
+- `npx tsc -p tsconfig.json --noEmit` — zero errors in the seven directories and in `ui/recipes/`,
+  re-confirmed after the admin batch resumed; zero repo-wide at the consistent point.
+- `npx eslint` over the seven directories and `ui/recipes` — clean; `npx eslint src` clean repo-wide at
+  the consistent point.
+- `npx vitest run` — 8 files, 110 tests pass, including `src/ui/tokens/safeArea.test.ts`.
+- `npm run build` — succeeded; `check-bundle-boots` evaluated 7 chunks with no error.
+- `npm run build:client` — succeeded; `check-android-dist` passed for the client variant, 16 assets,
+  810,161 bytes.
+- The emitted stylesheet was read to confirm the new utilities generate rules rather than nothing:
+  `transition-duration:var(--be-dur-fast)`, `scale:.96`, `letter-spacing:-.015em`,
+  `letter-spacing:.06em`, the `160deg` avatar gradient, `inset 0 0 0 1.5px var(--be-hairline-strong)`,
+  `max-w-80`, `min-w-32`, `size-14`, `overflow-wrap:anywhere`, `md:grid-cols-4`, `color:inherit`, and
+  the `before:content-['']` unread dot. Two of these were initially read as absent — the minifier
+  strips the leading zero from `0.96` and `-0.015em`, so the first grep was wrong, not the CSS.
+- No `#hex`, `rgb(`, `env(safe-area-`, `2xl:`, `ease-in-out`, or source comment appears in any
+  converted file.
+
+### Not verified — UNVERIFIED
+
+- No browser has rendered any of these ten components. Specifically unobserved: whether the 56px
+  gold initials avatar centres its glyph, whether the statement flow grid reads correctly at exactly
+  768px, whether the unread gold dot aligns with the notification title's midline, and whether the
+  pin key's `active:` press feels the same at 120ms as the original transition did.
+- The `PinPad` has not been touched on a device. It is the one component here whose only real test is
+  a thumb.
+- On the VPS: `cd frontend_stack_ts && npx tsc -p tsconfig.json --noEmit && npm run lint &&
+  npm test && npm run build`, then read `/profile`, `/statements`, `/notifications`,
+  `/profile/support`, `/profile/security`, `/profile/legal`, `/profile/legal/investor-charter`,
+  `/profile/legal/grievance`, `/profile/email-verification` and `/verify-email` at 390px and 1512px.
+
+
+## Tailwind v4 conversion — the admin console (`features/admin/`)
+
+Third of four parallel slices of the remaining CSS-module conversion. This slice owned
+`features/admin/` and nothing else. Task file: `TASK/014-tailwind-batch-admin-console.md`.
+
+One stylesheet, `admin/shared/Admin.module.css` (354 lines), read by 29 files across thirteen admin
+domains. Deleted. Its vocabulary now lives in a new `src/ui/recipes/admin.ts` rather than a
+per-feature recipe file, because it was never one feature's stylesheet: `mandates/`, `refunds/`,
+`payments/`, `emails/`, `app-config/`, `applications/`, `audit/`, `fund-aum/`, `client-values/`,
+`receipts/`, `users/`, `content/`, `overview/`, `funds/` and `shared/` all read it. Putting it under
+any one of them would have made the other thirteen import across a sibling feature boundary.
+
+The money rule needed care here rather than holding by construction. The stylesheet had a class
+called `.mono` that was not monospace — it was `--be-font-numeric` with `tabular-nums lining-nums`,
+the money treatment under a name that says the opposite — and it carried the rupee figures on the
+mandate list and mandate detail screens. It now composes `MONEY_BASE` as `ADMIN_FIGURE`. The one
+genuine monospace class, `.code`, carried only identifiers; all 22 of its call sites were listed and
+read to confirm none is an amount. `grep -rn 'font-mono' src/features/admin` returns nothing.
+
+Four rules in the stylesheet were dead: `.list`, `.hint`, `.error` and `.previewTotals` had no call
+site in any of the 29 importers. Two pairs were byte-identical duplicates: `.counts`/`.meta` and
+`.code`/`.basis`. `.jsonArea` set `color: #f1ede4`, the only raw hex in the file, now
+`text-parchment`. `.select` and `.textarea` were hand-rolled duplicates of `SELECT_BASE` and
+`TEXTAREA_BASE`; the two raw `<select>`s and two raw `<textarea>`s in `FundTermsForm` now use the
+recipes, and stay raw elements rather than becoming `Select`/`Textarea` primitives, which would have
+changed the DOM.
+
+`.filterActive` was a `composes:` duplicate chosen by a ternary on four elements that already carried
+a correct `aria-pressed`. All four now derive from the `aria-pressed:` variant, so the class cannot
+drift from the attribute. Cascade order was read out of the emitted CSS by byte offset:
+`aria-pressed:text-fg-inverse` follows `hover:text-fg` at equal specificity, so a pressed chip does
+not go dark-on-dark under the cursor.
+
+Nine constants written early in this slice were deleted again at the end of it, because the three
+sibling slices had meanwhile added the same patterns to the shared layer. The admin screens now
+import `ACTION_ROW`, `STACK_LG` and `ROW_BETWEEN_BASELINE` from `layout.ts`, `CARD_LINK` from
+`surface.ts`, `ITEM_TITLE`, `ENTRY_TEXT` and `PROSE_SM` from `datalist.ts`, and `META_TEXT` and
+`REFERENCE_TEXT` from `text.ts`. See the decision log for why that had to be a second pass.
+
+One duplicate is knowingly left in place: `STATE_REFERENCE` in `state.ts` is string-identical to what
+`ADMIN_CODE` needs. It was not consolidated because `state.ts` is owned by another slice's working
+tree in this round. The follow-up is to fold both into one shared mono-identifier constant in
+`text.ts` once the four slices have landed.
+
+### Verified — TESTED
+
+- `npx tsc -p tsconfig.json --noEmit` — zero errors.
+- `npx eslint src/features/admin src/ui/recipes` — clean.
+- `npx vitest run` — 8 files, 110 tests pass.
+- `npx vite build` — succeeded, and the emitted stylesheet was read to confirm the unusual utilities
+  generate rules rather than being dropped: `aria-pressed\:bg-ink[aria-pressed=true]`,
+  `.sm\:\[\&\>\*\]\:flex-1>*{flex:1}`, `last\:\[\&\>td\]\:border-b-0:last-child>td`,
+  `min-width:42rem`, `tab-size:2`, `hover:underline-offset-[3px]`.
+- `grep -rn 'styles\.' src/features/admin` — nothing.
+
+### Not verified — UNVERIFIED
+
+- No browser has rendered any of the 29 admin screens. The `AdminTable` sideways scroll at 390px
+  (`min-width: 42rem` inside `overflow-x-auto`), the pressed-filter contrast, the row hover tint,
+  `ADMIN_JSON_AREA`'s light-on-espresso text and gold focus ring, and the 480px step in
+  `ADMIN_CONTROLS` are all unobserved.
+- Three reuse substitutions are close but not pixel-identical to what they replaced: `PROSE_SM` for
+  `.note` (64ch/`leading-normal` vs 68ch/`leading-relaxed`, 13 call sites), `META_TEXT` for `.faint`
+  (adds `leading-normal`, 14 call sites), `REFERENCE_TEXT` for `.slug` (adds `tracking-[0.06em]`,
+  1 call site).
+- `MandateListScreen` and `MandateDetailScreen` still format rupees with a local
+  `Intl.NumberFormat({ maximumFractionDigits: 0 })` instead of `MoneyValue`. Deliberately untouched —
+  switching would change the rendered text — but it means two admin screens format money differently
+  from every other screen in the app.
+- On the VPS: `cd frontend_stack_ts && npx tsc -p tsconfig.json --noEmit && npm run lint && npm test
+  && npm run build`, then read `/overview`, `/applications`, `/users`, `/funds`, `/funds/new`,
+  `/funds/<fundId>`, `/funds/<fundId>/holdings`, `/aum`, `/aum/collective`, `/funds/<fundId>/aum`,
+  `/client-values/individual`, `/client-values/collective`, `/receipts`, `/refunds`, `/payments`,
+  `/mandates`, `/emails`, `/audit`, `/content/faqs` and `/app-config` at 390px and 1512px.
+
+
+## Entry 019 — Tailwind v4, the recipe layer, a real page audit, and the Android seam
+
+2026-08-29. The styling foundation was replaced, every page was rendered and checked for the first
+time, and the one genuine native defect that survived was found and fixed.
+
+### What changed
+
+**All 35 CSS Modules are gone.** `find src -name '*.module.css'` returns nothing. The replacement is
+three layers: `src/ui/tokens/` holds tokens only and no longer contains a single selector;
+`src/ui/styles/` holds one entry plus `base`/`patterns`/`utilities`/`status` in a declared cascade;
+`src/ui/recipes/` holds the typed class vocabulary, where each pattern is declared once and imported
+rather than re-derived. `theme.css` bridges the two with `@theme inline`, so every utility compiles to
+`var(--be-*)` and the token layer stays the live source of truth. See D-033.
+
+The feature conversion ran as four parallel slices over disjoint directories, against a written spec.
+The slices are logged above; this entry records what came after them.
+
+**Deduplication the compiler could not see.** The slices independently created value-identical
+constants under different names in different files — invisible to `tsc`, `eslint`, the tests and the
+emitted CSS. Twenty-five duplicate groups were reduced by folding the genuinely-same concepts
+(`FUND_NAME`/`POOL_NAME`/`SIP_STRONG`/`PAYMENT_RECOVERY_TITLE` → `ITEM_TITLE`, and so on) and the two
+shells onto a shared `APP_SHELL`. What remains is trivial layout coincidence (`flex flex-col gap-3`),
+where forcing a shared name would couple unrelated components.
+
+`recipes.test.ts` now enforces this: one declaration per name, no two names sharing a non-structural
+class string, no `env()`, no hex literal, only the four canonical breakpoints, and no stale allowlist
+entry. The six deliberate coincidences each carry a machine-checked reason string.
+
+### The page audit
+
+`test_e2e/frontend-ts-audit.mjs` discovers routes from the route manifests, resolves dynamic segments
+from live links, and renders every route at 390, 834 and 1440 px on both variants — 141 page audits.
+Per page it checks console errors, page errors, failed requests, blank render, `h1` presence and
+count, document-level horizontal overflow, elements past the right edge, money in a monospace family,
+touch targets under 44 px, duplicate nav landmarks and unnamed buttons.
+
+It found real defects and now reports none. `admin/app-config` overflowed horizontally at 390 px
+because `LIST_VALUE` was `flex-none`, so a long config value could neither shrink nor wrap. Three
+controls sat below the 44 px touch floor on mobile despite `--be-target-min` existing for exactly that
+purpose: the amount preset chips, the client Activity tabs and the admin section-pages strip. Each now
+takes 44 px on touch and drops to 36 px only from `lg`.
+
+Three checks had to be taught what is intentional rather than broken: `AdminTable` is
+`min-w-[42rem]` inside an `overflow-x-auto` bezel and is *supposed* to scroll sideways on a phone;
+desktop nav links are 36 px by design, because `--be-target-compact` is the pointer-sized token; and
+text links inside table cells cannot be 44 px without wrecking table density.
+
+### The Android seam
+
+The status bar showed a 132 px band in a different colour from the page. The cause was not a bug in
+the app's inset handling. `SystemBars` — a core plugin bundled inside `@capacitor/android`, not a
+separate package, so its config block was always valid — takes a documented fallback on WebView below
+140: it pads the WebView's parent natively and sets the injected `--safe-area-inset-*` to zero, because
+Chromium's `env()` values are wrong on those versions. This emulator runs WebView 133. On the fallback
+path the inset strips are painted with the window background, and the window background was pinned to a
+colour no screen actually uses. Fixed in D-034.
+
+The token layer already matched the official recommendation byte for byte
+(`var(--safe-area-inset-top, env(safe-area-inset-top, 0px))`), so no third-party safe-area or
+edge-to-edge plugin was needed.
+
+### Dependencies
+
+Capacitor moved 8.3.4 → 8.5.0 (core, cli, android) with `app`, `browser`, `local-notifications` and
+`capacitor-native-biometric` to current, all pinned exact. Nothing was incompatible; the stack was
+merely trailing. The plugin count stays five, because `SystemBars` is core and not allowlisted.
+
+### Verified — TESTED
+
+- `npm run check` — typecheck, `eslint .`, 10 files / 122 tests, `generate:api:check`, both variant
+  builds, `check-phonepe-native-target`. All clean.
+- `check-bundle-boots` — 7 chunks, no error. `check-android-dist` — client 810,421 B, admin
+  828,393 B. CSS 84.26 kB.
+- `packages/contracts` `check-frontend-contract-bypass` — 94 operations, no bypass.
+- `test_e2e/frontend-ts-smoke.mjs` — 71/71. The money chain still reads exactly `₹51,25,000`.
+- `test_e2e/frontend-ts-audit.mjs` — 141 page audits, 0 errors, 0 warnings. It demonstrably fails:
+  its first run reported 7 errors and 303 warnings.
+- `runtime_contract`, `hermetic_branding` (13 checks), `apk_logging_policy` (12 checks) — pass.
+- Both new guards were negative-tested rather than assumed: injecting a duplicate constant, a hex
+  literal and a `2xl:` prefix failed exactly the three intended assertions in `recipes.test.ts`, and
+  reverting `colors.xml` to `#F7F7F5` failed exactly the Android assertion in `launchColour.test.ts`.
+- `assembleRelease` for both variants — `minifyReleaseWithR8`, `convertShrunkResourcesToBinaryRelease`
+  and `optimizeReleaseResources` all ran, BUILD SUCCESSFUL. Client 2,312,387 B, admin 2,307,119 B
+  against 8,666,647 B debug. **R8 had never been run against this stack before**, because
+  `minifyEnabled` is on the release build type only and the project only ever built debug.
+
+### Verified — on device (emulator-5554, WebView 133, SDK 36)
+
+- The seam is gone. Pixel probes read `srgba(244,241,233)` in both the status-bar and nav-bar strips,
+  equal to `#F4F1E9`, against `srgba(240,235,226)` for the page just below.
+- Client and admin both launch to `topResumedActivity=com.beonedge.app/.MainActivity` with no FATAL
+  and no token in logcat. Admin shows `ADMINISTRATOR CONSOLE` where client shows `CLIENT ACCESS`.
+- With the backend unreachable the app degrades honestly — "We cannot reach BeOnEdge", with a Try
+  again button — rather than painting a blank screen.
+- Landscape rotation survives with no FATAL. Back on the root screen exits to the launcher.
+
+### Not verified — UNVERIFIED
+
+- The true edge-to-edge passthrough path. It requires WebView ≥ 140 and this emulator has 133, so the
+  branch that populates `--safe-area-inset-*` with real values has never executed here. On a device
+  with a current WebView, confirm the page paints under the bars and that
+  `getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-top')` is non-zero.
+- R8 at runtime. The release APKs are unsigned, so nothing was installed from them. A signed build
+  must be launched and its plugin calls exercised before trusting minification.
+- Keyboard resize on the login inputs, the remaining Back rules beyond root-exit, the recents
+  thumbnail (`setRecentsScreenshotEnabled(false)` is present in `MainActivity` but the preview was
+  never observed), the biometric prompt, and APK self-update SHA-256 verification.
+- Anything requiring money to move. No PhonePe credentials exist locally, so AutoPay authorisation and
+  a completed payment remain unexercised, and the admin refund, mandate and support-ticket screens were
+  audited empty because no such rows exist.
+- `docker build` has still never been run for this frontend.
+
+### Follow-ups
+
+- `MandateListScreen` and `MandateDetailScreen` format rupees with a local `Intl.NumberFormat` instead
+  of `MoneyValue`, so two admin screens format money differently from every other screen.
+- `check-android-dist.mjs` matches its cross-target patterns against asset *names* only, never
+  contents, so it has never actually verified leakage. See D-035.
+- `TASK/README.md` omits entries 005 onward.

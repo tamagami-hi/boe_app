@@ -4,10 +4,26 @@ import type { ReactNode } from "react"
 import { CLIENT_HOME_PATH, CLIENT_ROUTES } from "~/app/routing/clientRoutes"
 import { findRoute, navRoutes } from "~/app/routing/routeManifest"
 import { useSession } from "~/app/providers/SessionProvider"
-import { cx } from "~/lib/cx"
 import { BackGlyph, BellGlyph, NAV_GLYPHS } from "~/shells/client/navGlyphs"
-
-import styles from "./ClientFrame.module.css"
+import {
+  CLIENT_BELL,
+  CLIENT_BOTTOM_NAV,
+  CLIENT_CONTENT,
+  CLIENT_HEADER,
+  CLIENT_ISLAND,
+  CLIENT_MESH,
+  CLIENT_NAV_GLYPH,
+  CLIENT_NAV_ITEM,
+  CLIENT_NAV_MARKER,
+  CLIENT_SHELL,
+  CLIENT_TITLE,
+  CLIENT_TOP_NAV,
+  CLIENT_TOP_NAV_ITEM,
+  CLIENT_TOP_NAV_LIST,
+  CLIENT_WORDMARK,
+  ICON_ACTION,
+  ICON_GLYPH,
+} from "~/ui/recipes/shellClient"
 
 const TABS = navRoutes(CLIENT_ROUTES)
 
@@ -27,18 +43,19 @@ export const ClientFrame = ({ children }: ClientFrameProps): React.ReactElement 
   const backTarget = route.back.kind === "parent" ? route.back.path : null
 
   return (
-    <div className={styles.shell}>
-      <div className="be-grain" />
+    <div className={CLIENT_SHELL}>
+      <div className={CLIENT_MESH} aria-hidden="true" />
+      <div className="be-grain" aria-hidden="true" />
 
-      <nav className={styles.topNav} aria-label="Primary">
-        <div className={styles.island}>
-          <span className={styles.wordmark}>BeOnEdge</span>
-          <ul className={styles.topNavList}>
+      <nav className={CLIENT_TOP_NAV} aria-label="Primary">
+        <div className={CLIENT_ISLAND}>
+          <span className={CLIENT_WORDMARK}>BeOnEdge</span>
+          <ul className={CLIENT_TOP_NAV_LIST}>
             {TABS.map((tab) => (
               <li key={tab.id}>
                 <Link
                   to={tab.path}
-                  className={cx(styles.topNavItem, tab.id === activeId && styles.topNavItemActive)}
+                  className={CLIENT_TOP_NAV_ITEM}
                   aria-current={tab.id === activeId ? "page" : undefined}
                 >
                   {tab.nav.label}
@@ -46,45 +63,45 @@ export const ClientFrame = ({ children }: ClientFrameProps): React.ReactElement 
               </li>
             ))}
           </ul>
-          <Link to="/notifications" className={styles.bell} aria-label="Notifications">
-            <BellGlyph className={styles.glyph} />
+          <Link to="/notifications" className={CLIENT_BELL} aria-label="Notifications">
+            <BellGlyph className={ICON_GLYPH} />
           </Link>
         </div>
       </nav>
 
-      <header className={styles.header}>
+      <header className={CLIENT_HEADER}>
         {backTarget === null ? null : (
           <button
             type="button"
-            className={styles.iconAction}
+            className={ICON_ACTION}
             aria-label="Go back"
             onClick={() => {
               void navigate(-1)
             }}
           >
-            <BackGlyph className={styles.glyph} />
+            <BackGlyph className={ICON_GLYPH} />
           </button>
         )}
-        <span className={styles.title}>{route.title}</span>
-        <Link to="/notifications" className={styles.iconAction} aria-label="Notifications">
-          <BellGlyph className={styles.glyph} />
+        <span className={CLIENT_TITLE}>{route.title}</span>
+        <Link to="/notifications" className={ICON_ACTION} aria-label="Notifications">
+          <BellGlyph className={ICON_GLYPH} />
         </Link>
       </header>
 
-      <div className={styles.content}>{children}</div>
+      <div className={CLIENT_CONTENT}>{children}</div>
 
-      <nav className={styles.bottomNav} aria-label="Sections">
+      <nav className={CLIENT_BOTTOM_NAV} aria-label="Sections">
         {TABS.map((tab) => {
           const Glyph = NAV_GLYPHS[tab.id] ?? NAV_GLYPHS.dashboard
           return (
             <Link
               key={tab.id}
               to={tab.path}
-              className={cx(styles.navItem, tab.id === activeId && styles.navItemActive)}
+              className={CLIENT_NAV_ITEM}
               aria-current={tab.id === activeId ? "page" : undefined}
             >
-              <span className={styles.navMarker} aria-hidden="true" />
-              {Glyph === undefined ? null : <Glyph className={styles.navGlyph} />}
+              <span className={CLIENT_NAV_MARKER} aria-hidden="true" />
+              {Glyph === undefined ? null : <Glyph className={CLIENT_NAV_GLYPH} />}
               {tab.nav.label}
             </Link>
           )

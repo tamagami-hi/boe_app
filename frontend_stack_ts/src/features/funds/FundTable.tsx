@@ -5,8 +5,11 @@ import { cx } from "~/lib/cx"
 import { fundRiskLevel } from "~/domain/status"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
+import { SHELL } from "~/ui/recipes/surface"
 
-import styles from "./FundTable.module.css"
+import { FUND_SORT_GLYPH, FUND_TABLE, FUND_TABLE_CELL, FUND_TABLE_HEAD_BUTTON, FUND_TABLE_HEAD_CELL, FUND_TABLE_HEAD_LABEL, FUND_TABLE_INNER, FUND_TABLE_MUTED, FUND_TABLE_NAME, FUND_TABLE_NAME_LINK, FUND_TABLE_ROW } from "./funds.recipe"
+import { ADMIN_NUMERIC } from "~/ui/recipes/admin"
+import { META_MUTED } from "~/ui/recipes/text"
 
 export type FundRow = Readonly<{
   id: string
@@ -27,7 +30,7 @@ export type FundTableProps = Readonly<{
 
 const SortGlyph = (): React.ReactElement => (
   <svg
-    className={styles.sortGlyph}
+    className={FUND_SORT_GLYPH}
     viewBox="0 0 9 9"
     fill="none"
     stroke="currentColor"
@@ -40,15 +43,15 @@ const SortGlyph = (): React.ReactElement => (
 )
 
 export const FundTable = ({ rows, sort, onSort }: FundTableProps): React.ReactElement => (
-  <div className={styles.wrap}>
-    <div className={styles.inner}>
-      <table className={styles.table}>
+  <div className={SHELL}>
+    <div className={FUND_TABLE_INNER}>
+      <table className={FUND_TABLE}>
         <thead>
           <tr>
-            <th scope="col" className={styles.headCell}>
+            <th scope="col" className={FUND_TABLE_HEAD_CELL}>
               <button
                 type="button"
-                className={sort === "name" ? styles.headButtonActive : styles.headButton}
+                className={FUND_TABLE_HEAD_BUTTON}
                 aria-pressed={sort === "name"}
                 onClick={() => {
                   onSort("name")
@@ -58,10 +61,10 @@ export const FundTable = ({ rows, sort, onSort }: FundTableProps): React.ReactEl
                 {sort === "name" ? <SortGlyph /> : null}
               </button>
             </th>
-            <th scope="col" className={styles.headCell}>
+            <th scope="col" className={FUND_TABLE_HEAD_CELL}>
               <button
                 type="button"
-                className={sort === "risk" ? styles.headButtonActive : styles.headButton}
+                className={FUND_TABLE_HEAD_BUTTON}
                 aria-pressed={sort === "risk"}
                 onClick={() => {
                   onSort("risk")
@@ -71,10 +74,10 @@ export const FundTable = ({ rows, sort, onSort }: FundTableProps): React.ReactEl
                 {sort === "risk" ? <SortGlyph /> : null}
               </button>
             </th>
-            <th scope="col" className={cx(styles.headCell, styles.numeric)}>
+            <th scope="col" className={cx(FUND_TABLE_HEAD_CELL, ADMIN_NUMERIC)}>
               <button
                 type="button"
-                className={sort === "size" ? styles.headButtonActive : styles.headButton}
+                className={FUND_TABLE_HEAD_BUTTON}
                 aria-pressed={sort === "size"}
                 onClick={() => {
                   onSort("size")
@@ -84,35 +87,35 @@ export const FundTable = ({ rows, sort, onSort }: FundTableProps): React.ReactEl
                 {sort === "size" ? <SortGlyph /> : null}
               </button>
             </th>
-            <th scope="col" className={cx(styles.headCell, styles.numeric)}>
-              <span className={styles.headStatic}>Holdings</span>
+            <th scope="col" className={cx(FUND_TABLE_HEAD_CELL, ADMIN_NUMERIC)}>
+              <span className={FUND_TABLE_HEAD_LABEL}>Holdings</span>
             </th>
           </tr>
         </thead>
         <tbody>
           {rows.map((fund) => (
-            <tr key={fund.id} className={styles.row}>
-              <td className={styles.cell}>
-                <Link to={`/funds/${fund.id}`} className={styles.nameLink}>
-                  <span className={styles.name}>{fund.name}</span>
-                  <span className={styles.category}>{fund.category}</span>
+            <tr key={fund.id} className={FUND_TABLE_ROW}>
+              <td className={FUND_TABLE_CELL}>
+                <Link to={`/funds/${fund.id}`} className={FUND_TABLE_NAME_LINK}>
+                  <span className={FUND_TABLE_NAME}>{fund.name}</span>
+                  <span className={META_MUTED}>{fund.category}</span>
                 </Link>
               </td>
-              <td className={styles.cell}>
+              <td className={FUND_TABLE_CELL}>
                 <StatusBadge status={fundRiskLevel(fund.riskLevel)} />
               </td>
-              <td className={cx(styles.cell, styles.numeric)}>
+              <td className={cx(FUND_TABLE_CELL, ADMIN_NUMERIC)}>
                 {fund.fundSize === null ? (
-                  <span className={styles.muted}>Not published</span>
+                  <span className={FUND_TABLE_MUTED}>Not published</span>
                 ) : (
                   <MoneyValue amount={toPaise(fund.fundSize.aumPaise)} size="md" />
                 )}
               </td>
-              <td className={cx(styles.cell, styles.numeric)}>
+              <td className={cx(FUND_TABLE_CELL, ADMIN_NUMERIC)}>
                 {fund.stockCount === 0 ? (
-                  <span className={styles.muted}>Not disclosed</span>
+                  <span className={FUND_TABLE_MUTED}>Not disclosed</span>
                 ) : (
-                  <span className={styles.name}>{String(fund.stockCount)}</span>
+                  <span className={FUND_TABLE_NAME}>{String(fund.stockCount)}</span>
                 )}
               </td>
             </tr>

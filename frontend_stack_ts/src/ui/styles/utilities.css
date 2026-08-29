@@ -1,0 +1,105 @@
+@utility money {
+  font-family: var(--be-font-numeric);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+  letter-spacing: -0.01em;
+}
+
+@utility tap-target {
+  min-inline-size: var(--be-target-min);
+  min-block-size: var(--be-target-min);
+}
+
+@utility z-header {
+  z-index: var(--be-z-header);
+}
+
+@utility z-nav {
+  z-index: var(--be-z-nav);
+}
+
+@utility z-sticky {
+  z-index: var(--be-z-sticky);
+}
+
+@utility z-overlay {
+  z-index: var(--be-z-overlay);
+}
+
+@utility z-toast {
+  z-index: var(--be-z-toast);
+}
+
+@utility shell-outer {
+  border-radius: var(--be-squircle-xl);
+  background: var(--be-shell);
+  padding: var(--be-shell-pad);
+  box-shadow: 0 0 0 1px var(--be-hairline);
+}
+
+@utility shell-outer-lg {
+  border-radius: var(--be-squircle-xl);
+  background: var(--be-shell-strong);
+  padding: var(--be-shell-pad-lg);
+  box-shadow: 0 0 0 1px var(--be-hairline);
+}
+
+@utility shell-inner {
+  border-radius: calc(var(--be-squircle-xl) - var(--be-shell-pad));
+  background: var(--be-parchment);
+  box-shadow: var(--be-inner-lift), var(--be-ambient-1);
+}
+
+@utility shell-inner-lg {
+  border-radius: calc(var(--be-squircle-xl) - var(--be-shell-pad-lg));
+  background: linear-gradient(180deg, rgb(255 255 255 / 94%) 0%, var(--be-parchment) 100%);
+  box-shadow: var(--be-inner-lift), var(--be-ambient-3);
+}
+
+@utility mesh-warm {
+  background-image: var(--be-mesh-gold), var(--be-mesh-sage), var(--be-mesh-clay);
+}
+
+@utility grad-solid {
+  background-image: var(--be-grad-solid);
+}
+
+@utility grad-gold {
+  background-image: var(--be-grad-gold);
+}
+
+@utility grad-quiet {
+  background-image: var(--be-grad-quiet);
+}
+
+@utility grad-danger {
+  background-image: var(--be-grad-danger);
+}
+
+@utility grad-core {
+  background-image: var(--be-grad-core);
+}
+
+@utility bg-field {
+  background-color: var(--be-field-bg);
+}
+
+@utility bg-field-hover {
+  background-color: var(--be-field-bg-hover);
+}
+
+@utility hairline-b {
+  box-shadow: inset 0 -1px 0 var(--be-hairline);
+}
+
+@utility hairline-t {
+  box-shadow: inset 0 1px 0 var(--be-hairline);
+}
+
+@utility scroll-gutter {
+  scrollbar-gutter: stable;
+}
+
+@utility no-tap-flash {
+  -webkit-tap-highlight-color: transparent;
+}

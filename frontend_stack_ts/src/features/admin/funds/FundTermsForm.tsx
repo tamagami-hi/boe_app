@@ -4,7 +4,9 @@ import { Button } from "~/ui/primitives/Button"
 import { FormField, Input } from "~/ui/primitives/FormField"
 import type { FieldErrors } from "~/api/errors"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import { ADMIN_FORM_GRID } from "~/ui/recipes/admin"
+import { SELECT_BASE, TEXTAREA_BASE } from "~/ui/recipes/field"
+import { ACTION_ROW } from "~/ui/recipes/layout"
 
 export const RISK_LEVELS = ["low", "moderate", "high", "very_high"] as const
 export const RETURN_TIERS = ["low", "moderate", "high"] as const
@@ -64,7 +66,7 @@ export const FundTermsFields = ({
   setTerms: (next: FundTerms) => void
 }>): React.ReactElement => (
   <>
-    <div className={styles.formGrid}>
+    <div className={ADMIN_FORM_GRID}>
       <FormField
         label="Name"
         required
@@ -104,7 +106,7 @@ export const FundTermsFields = ({
         {({ id }) => (
           <select
             id={id}
-            className={styles.select}
+            className={SELECT_BASE}
             value={terms.riskLevel}
             onChange={(event) => {
               setTerms({ ...terms, riskLevel: event.target.value as FundTerms["riskLevel"] })
@@ -123,7 +125,7 @@ export const FundTermsFields = ({
         {({ id }) => (
           <select
             id={id}
-            className={styles.select}
+            className={SELECT_BASE}
             value={terms.returnTier}
             onChange={(event) => {
               setTerms({ ...terms, returnTier: event.target.value as FundTerms["returnTier"] })
@@ -203,7 +205,7 @@ export const FundTermsFields = ({
       {({ id }) => (
         <textarea
           id={id}
-          className={styles.textarea}
+          className={TEXTAREA_BASE}
           value={terms.objective}
           onChange={(event) => {
             setTerms({ ...terms, objective: event.target.value })
@@ -233,7 +235,7 @@ export const FundTermsFields = ({
       {({ id }) => (
         <textarea
           id={id}
-          className={styles.textarea}
+          className={TEXTAREA_BASE}
           required
           value={terms.disclosure.body}
           onChange={(event) => {
@@ -252,7 +254,7 @@ export const SubmitRow = ({
   label,
   pending,
 }: Readonly<{ label: string; pending: boolean }>): React.ReactElement => (
-  <div className={styles.actions}>
+  <div className={ACTION_ROW}>
     <Button type="submit" size="lg" loading={pending}>
       {label}
     </Button>

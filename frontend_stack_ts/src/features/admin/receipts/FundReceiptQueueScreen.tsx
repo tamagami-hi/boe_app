@@ -16,7 +16,9 @@ import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import { ADMIN_CELL_LINK } from "~/ui/recipes/admin"
+import { ENTRY_TEXT } from "~/ui/recipes/datalist"
+import { META_TEXT } from "~/ui/recipes/text"
 
 const FILTERS = [
   { value: "pending", label: "To acknowledge" },
@@ -77,11 +79,11 @@ const FundReceiptQueueScreen = (): React.ReactElement => {
                 key: "client",
                 header: "Investor",
                 render: (row) => (
-                  <span className={styles.cellStack}>
-                    <Link to={`/receipts/${row.orderId}`} className={styles.cellLink}>
+                  <span className={ENTRY_TEXT}>
+                    <Link to={`/receipts/${row.orderId}`} className={ADMIN_CELL_LINK}>
                       {row.client.name}
                     </Link>
-                    <span className={styles.faint}>{row.client.email}</span>
+                    <span className={META_TEXT}>{row.client.email}</span>
                   </span>
                 ),
               },

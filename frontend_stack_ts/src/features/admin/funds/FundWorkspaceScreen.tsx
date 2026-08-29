@@ -28,7 +28,9 @@ import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import { ADMIN_FIGURE } from "~/ui/recipes/admin"
+import { LIST_LABEL, LIST_ROW, LIST_VALUE } from "~/ui/recipes/datalist"
+import { ACTION_ROW, STACK_LG } from "~/ui/recipes/layout"
 
 const ALLOWED_TRANSITIONS = {
   draft: ["published", "archived"],
@@ -58,9 +60,9 @@ const Row = ({
   label,
   children,
 }: Readonly<{ label: string; children: React.ReactNode }>): React.ReactElement => (
-  <div className={styles.detailRow}>
-    <span className={styles.detailLabel}>{label}</span>
-    <span className={styles.detailValue}>{children}</span>
+  <div className={LIST_ROW}>
+    <span className={LIST_LABEL}>{label}</span>
+    <span className={LIST_VALUE}>{children}</span>
   </div>
 )
 
@@ -146,11 +148,11 @@ const FundWorkspaceScreen = (): React.ReactElement => {
               <Row label="Versions">{String(data.versions.length)}</Row>
               <Row label="Last updated">{formatDateTime(data.fund.updatedAt)}</Row>
               <Row label="Concurrency version">
-                <span className={styles.mono}>{String(data.fund.version)}</span>
+                <span className={ADMIN_FIGURE}>{String(data.fund.version)}</span>
               </Row>
             </Section>
 
-            <div className={styles.actions}>
+            <div className={ACTION_ROW}>
               <Link to={`/funds/${fundId}/aum`}>
                 <Button tone="secondary" size="sm">
                   Manage AUM
@@ -193,7 +195,7 @@ const FundWorkspaceScreen = (): React.ReactElement => {
                 })
               }}
               noValidate
-              className={styles.form}
+              className={STACK_LG}
             >
               <Card>
                 <Section

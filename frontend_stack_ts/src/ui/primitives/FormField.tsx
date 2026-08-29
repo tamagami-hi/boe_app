@@ -1,7 +1,17 @@
 import { useId } from "react"
 import type { InputHTMLAttributes, ReactNode } from "react"
 
-import styles from "./Field.module.css"
+import { cx } from "~/lib/cx"
+import {
+  FIELD_ERROR,
+  FIELD_HINT,
+  FIELD_LABEL,
+  FIELD_REQUIRED,
+  FIELD_ROOT,
+  INPUT_BASE,
+  INPUT_INVALID,
+  INPUT_MONO,
+} from "~/ui/recipes/field"
 
 export type FormFieldRenderProps = Readonly<{
   id: string
@@ -33,23 +43,23 @@ export const FormField = ({
   const describedBy = describedByParts.length === 0 ? undefined : describedByParts.join(" ")
 
   return (
-    <div className={styles.field}>
-      <label className={styles.label} htmlFor={id}>
+    <div className={FIELD_ROOT}>
+      <label className={FIELD_LABEL} htmlFor={id}>
         {label}
         {required ? (
-          <span className={styles.required} aria-hidden="true">
+          <span className={FIELD_REQUIRED} aria-hidden="true">
             *
           </span>
         ) : null}
       </label>
       {children({ id, describedBy, invalid: error !== undefined })}
       {hint === undefined ? null : (
-        <span className={styles.hint} id={hintId}>
+        <span className={FIELD_HINT} id={hintId}>
           {hint}
         </span>
       )}
       {error === undefined ? null : (
-        <span className={styles.error} id={errorId} role="alert">
+        <span className={FIELD_ERROR} id={errorId} role="alert">
           {error}
         </span>
       )}
@@ -67,9 +77,10 @@ export const Input = ({
   invalid = false,
   mono = false,
   ...rest
-}: InputProps): React.ReactElement => {
-  const classes = [styles.input]
-  if (invalid) classes.push(styles.invalid)
-  if (mono) classes.push(styles.mono)
-  return <input {...rest} className={classes.join(" ")} aria-invalid={invalid} />
-}
+}: InputProps): React.ReactElement => (
+  <input
+    {...rest}
+    className={cx(INPUT_BASE, invalid ? INPUT_INVALID : undefined, mono ? INPUT_MONO : undefined)}
+    aria-invalid={invalid}
+  />
+)

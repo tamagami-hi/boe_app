@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
 import type { ReactNode } from "react"
 
-import styles from "./ToastProvider.module.css"
+import { cx } from "~/lib/cx"
+import { TOAST_BASE, TOAST_REGION, TOAST_TONE } from "~/ui/recipes/feedbackShell"
 
 export type ToastTone = "neutral" | "error"
 
@@ -51,11 +52,11 @@ export const ToastProvider = ({
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className={styles.region} role="status" aria-live="polite">
+      <div className={TOAST_REGION} role="status" aria-live="polite">
         {toasts.map((toast) => (
           <output
             key={toast.id}
-            className={toast.tone === "error" ? styles.toastError : styles.toast}
+            className={cx(TOAST_BASE, toast.tone === "error" ? TOAST_TONE.error : TOAST_TONE.default)}
           >
             {toast.message}
           </output>

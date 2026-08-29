@@ -33,13 +33,13 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@aparajita/capacitor-secure-storage": "8.0.1",
-    "@capacitor/android": "8.3.4",
-    "@capacitor/app": "8.1.0",
-    "@capacitor/browser": "8.0.3",
-    "@capacitor/core": "8.3.4",
-    "@capacitor/local-notifications": "8.2.1",
-    "@capgo/capacitor-native-biometric": "8.4.5",
+    "@aparajita/capacitor-secure-storage": "8.0.0",
+    "@capacitor/android": "8.5.0",
+    "@capacitor/app": "8.1.1",
+    "@capacitor/browser": "8.0.4",
+    "@capacitor/core": "8.5.0",
+    "@capacitor/local-notifications": "8.3.1",
+    "@capgo/capacitor-native-biometric": "8.6.7",
     "@fontsource-variable/fraunces": "5.3.0",
     "@fontsource-variable/instrument-sans": "5.3.0",
     "@fontsource/jetbrains-mono": "5.3.0",
@@ -50,8 +50,9 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@capacitor/cli": "8.3.4",
+    "@capacitor/cli": "8.5.0",
     "@eslint/js": "9.39.5",
+    "@tailwindcss/vite": "4.3.3",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.2",
     "@types/node": "22.20.1",
@@ -64,6 +65,7 @@
     "eslint": "9.39.5",
     "jsdom": "25.0.1",
     "lightningcss": "1.33.0",
+    "tailwindcss": "4.3.3",
     "typescript": "5.9.3",
     "vite": "6.4.3",
     "vitest": "3.2.6"

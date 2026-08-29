@@ -17,7 +17,10 @@ import { Stat } from "~/ui/patterns/DataList"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import { ADMIN_META, ADMIN_QUEUE_COUNT } from "~/ui/recipes/admin"
+import { PROSE_SM } from "~/ui/recipes/datalist"
+import { ACTION_ROW } from "~/ui/recipes/layout"
+import { CARD_LINK } from "~/ui/recipes/surface"
 
 const QUEUE_ENTRIES = [
   {
@@ -83,7 +86,7 @@ const OverviewScreen = (): React.ReactElement => {
           {QUEUE_ENTRIES.map((entry) => (
             <Card key={entry.id} elevated>
               <Stat label={entry.label} hint={entry.hint}>
-                <span className={styles.queueCount}>
+                <span className={ADMIN_QUEUE_COUNT}>
                   {counts[entry.id] === "unconfigured"
                     ? "n/a"
                     : counts[entry.id] === null
@@ -91,7 +94,7 @@ const OverviewScreen = (): React.ReactElement => {
                       : String(counts[entry.id])}
                 </span>
               </Stat>
-              <Link to={entry.to} className={styles.rowLink}>
+              <Link to={entry.to} className={CARD_LINK}>
                 <Button tone="ghost" size="sm" trailing>
                   Open
                 </Button>
@@ -106,21 +109,21 @@ const OverviewScreen = (): React.ReactElement => {
         description="These sections are open to you because of the permissions on your account."
       >
         <Card>
-          <div className={styles.meta}>
+          <div className={ADMIN_META}>
             {principal === null
               ? null
               : principal.roles.map((role) => <span key={role}>{role}</span>)}
           </div>
-          <div className={styles.actions}>
+          <div className={ACTION_ROW}>
             {reachable.map((route) => (
-              <Link key={route.id} to={route.path} className={styles.rowLink}>
+              <Link key={route.id} to={route.path} className={CARD_LINK}>
                 <Button tone="secondary" size="sm">
                   {route.nav?.label ?? route.title}
                 </Button>
               </Link>
             ))}
           </div>
-          <p className={styles.note}>
+          <p className={PROSE_SM}>
             {principal === null
               ? ""
               : `${String(principal.permissions.length)} permission(s) are active on this session. A section you cannot see is a permission you do not hold, not a missing feature.`}

@@ -13,7 +13,7 @@ because it is already correct · **Rebuilt** same responsibility, new implementa
 | `vite.config.ts` | target `define`, `manualChunks`, `cssMinify: 'lightningcss'` | Rebuilt | from `frontend_stack/app/vite.config.js` |
 | `vitest.config.ts` / `vitest.setup.ts` | jsdom, Testing Library | Ported | from `frontend_stack/vitest.config.js`. **Do not opt into `v7_relativeSplatPath`** — the splat-resolution tests depend on current behaviour |
 | `eslint.config.mjs` | flat config, `typescript-eslint`, import-boundary rules | New | the legacy frontend has **no lint tooling at all** |
-| `index.html` | `viewport-fit=cover`, `theme-color`, `color-scheme: light`, inline `#F7F7F5` launch style | Ported | four places must keep the same colour |
+| `index.html` | `viewport-fit=cover`, `theme-color`, `color-scheme: light`, inline `#F4F1E9` launch style | Ported | five places must keep the same colour, enforced by `src/platform/launchColour.test.ts` |
 | `Dockerfile` | 3 stages, digest-pinned, `ARG VITE_BEO_APP_TARGET`, nginx 8080, `USER 101:101` | Rebuilt | the `ARG` is grep-checked by `export.sh` |
 | `nginx.conf` | `listen 8080`, SPA fallback, `GET /health` | Ported | no cache or gzip headers — the host nginx owns those |
 | `capacitor.config.ts` | `BOE_CAPACITOR_VARIANT` gate, per-variant plugin lists | Ported | throws unless the variant is `client` or `admin` |
@@ -178,7 +178,7 @@ components.
 | `app/build.gradle` | Ported | per-variant `res.srcDirs`, injected id/version, release-signing guard, minify + shrink |
 | `build.gradle` / `variables.gradle` | Ported | AGP 8.13.0, scoped PhonePe repo, `minSdk 24` / `compileSdk 36` / `targetSdk 36` |
 | `res/values/styles.xml` | Ported | transparent bars, `windowDrawsSystemBarBackgrounds`, splash-theme handoff, `forceDarkAllowed=false` |
-| `res/values/colors.xml` | Ported | `launchBackground = #F7F7F5` |
+| `res/values/colors.xml` | Ported | `launchBackground = #F4F1E9`, equal to `--be-bg` |
 | `res/xml/network_security_config.xml` | Ported | `cleartextTrafficPermitted=false`, system trust anchors only, **no dev carve-out** |
 | `res/xml/file_paths.xml` | Ported | `cache-path app_updates path="updates/"` — narrowly scoped |
 | `res/xml/{backup_rules,data_extraction_rules}.xml` | Ported | belt-and-braces with backup off |

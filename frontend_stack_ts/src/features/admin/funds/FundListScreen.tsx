@@ -16,7 +16,16 @@ import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 import { Input } from "~/ui/primitives/FormField"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import {
+  ADMIN_CONTROLS,
+  ADMIN_FILTER,
+  ADMIN_FILTER_ROW,
+  ADMIN_META,
+} from "~/ui/recipes/admin"
+import { ITEM_TITLE } from "~/ui/recipes/datalist"
+import { ROW_BETWEEN_BASELINE } from "~/ui/recipes/layout"
+import { CARD_LINK } from "~/ui/recipes/surface"
+import { REFERENCE_TEXT } from "~/ui/recipes/text"
 
 const STATES = ["draft", "published", "paused", "archived"] as const
 type FundState = (typeof STATES)[number]
@@ -45,7 +54,7 @@ const FundListScreen = (): React.ReactElement => {
         }
       />
 
-      <div className={styles.controls}>
+      <div className={ADMIN_CONTROLS}>
         <Input
           type="search"
           placeholder="Search by name or slug"
@@ -55,10 +64,10 @@ const FundListScreen = (): React.ReactElement => {
             setSearch(event.target.value)
           }}
         />
-        <div className={styles.filters} role="group" aria-label="Filter by state">
+        <div className={ADMIN_FILTER_ROW} role="group" aria-label="Filter by state">
           <button
             type="button"
-            className={state === null ? styles.filterActive : styles.filter}
+            className={ADMIN_FILTER}
             aria-pressed={state === null}
             onClick={() => {
               setState(null)
@@ -70,7 +79,7 @@ const FundListScreen = (): React.ReactElement => {
             <button
               key={option}
               type="button"
-              className={state === option ? styles.filterActive : styles.filter}
+              className={ADMIN_FILTER}
               aria-pressed={state === option}
               onClick={() => {
                 setState(option)
@@ -107,7 +116,7 @@ const FundListScreen = (): React.ReactElement => {
       >
         {(data) => (
           <>
-            <div className={styles.counts}>
+            <div className={ADMIN_META}>
               <span>{String(data.summary.total)} total</span>
               {STATES.map((option) => (
                 <span key={option}>
@@ -117,14 +126,14 @@ const FundListScreen = (): React.ReactElement => {
             </div>
 
             {data.items.map((fund) => (
-              <Link key={fund.id} to={`/funds/${fund.id}`} className={styles.rowLink}>
+              <Link key={fund.id} to={`/funds/${fund.id}`} className={CARD_LINK}>
                 <Card>
-                  <div className={styles.rowTop}>
-                    <span className={styles.name}>{fund.name ?? "Unnamed draft"}</span>
+                  <div className={ROW_BETWEEN_BASELINE}>
+                    <span className={ITEM_TITLE}>{fund.name ?? "Unnamed draft"}</span>
                     <StatusBadge status={fundState(fund.status)} />
                   </div>
-                  <span className={styles.slug}>{fund.slug}</span>
-                  <div className={styles.meta}>
+                  <span className={REFERENCE_TEXT}>{fund.slug}</span>
+                  <div className={ADMIN_META}>
                     <span>{fund.category ?? "No category"}</span>
                     <span>
                       {fund.currentVersion === null

@@ -13,8 +13,10 @@ import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
+import { CARD_LINK } from "~/ui/recipes/surface"
 
-import styles from "./Sip.module.css"
+import { SIP_CARD_TOP, SIP_LIST, SIP_SCHEDULE } from "./sip.recipe"
+import { ITEM_TITLE } from "~/ui/recipes/datalist"
 
 const SipListScreen = (): React.ReactElement => {
   const query = useSipPlans()
@@ -33,7 +35,7 @@ const SipListScreen = (): React.ReactElement => {
       <AsyncBoundary
         query={query}
         skeleton={
-          <div className={styles.list}>
+          <div className={SIP_LIST}>
             {[0, 1].map((index) => (
               <Card key={index}>
                 <Skeleton height="1.1rem" width="55%" />
@@ -56,16 +58,16 @@ const SipListScreen = (): React.ReactElement => {
         }
       >
         {(data) => (
-          <div className={styles.list}>
+          <div className={SIP_LIST}>
             {data.items.map((plan) => (
-              <Link key={plan.sipId} to={`/sips/${plan.sipId}`} className={styles.cardLink}>
+              <Link key={plan.sipId} to={`/sips/${plan.sipId}`} className={CARD_LINK}>
                 <Card>
-                  <div className={styles.top}>
-                    <span className={styles.name}>{nameFor(plan.fundId)}</span>
+                  <div className={SIP_CARD_TOP}>
+                    <span className={ITEM_TITLE}>{nameFor(plan.fundId)}</span>
                     <StatusBadge status={sipState(plan.status)} />
                   </div>
                   <MoneyValue amount={toPaise(plan.amountPaise)} size="md" />
-                  <div className={styles.schedule}>
+                  <div className={SIP_SCHEDULE}>
                     <span>Day {String(plan.debitDay)} of the month</span>
                     <span>
                       {plan.durationMonths === null

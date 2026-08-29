@@ -18,6 +18,9 @@ import {
 import { useCreateOrder, useFund, usePayOrder } from "~/features/shared/queries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
+import { STAT_LABEL } from "~/ui/recipes/datalist"
+import { FIELD_ERROR } from "~/ui/recipes/field"
+import { META_MUTED, SECTION_TITLE } from "~/ui/recipes/text"
 import { AmountInput } from "~/ui/primitives/AmountInput"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
@@ -26,7 +29,7 @@ import { PresetChoice } from "~/ui/primitives/Toggle"
 
 import { RiskConsent } from "./RiskConsent"
 
-import styles from "./Orders.module.css"
+import { AMOUNT_BLOCK, FORM, FUND_LINE, RULE, RULES, RULE_DOT } from "./orders.recipe"
 
 const PRESETS = [1_000, 5_000, 10_000, 25_000, 50_000] as const
 
@@ -172,18 +175,18 @@ const LumpsumInvestScreen = (): React.ReactElement => {
         }
       >
         {(data) => (
-          <div className={styles.form}>
+          <div className={FORM}>
             <Card elevated>
-              <span className={styles.fundLine}>
-                <span className={styles.fundName}>{data.fund.name}</span>
-                <span className={styles.fundMeta}>
+              <span className={FUND_LINE}>
+                <span className={SECTION_TITLE}>{data.fund.name}</span>
+                <span className={META_MUTED}>
                   {data.fund.category}
                   {minimum === null ? "" : ` · minimum ${formatINR(minimum)}`}
                 </span>
               </span>
 
-              <div className={styles.amountBlock}>
-                <span className={styles.label}>Amount</span>
+              <div className={AMOUNT_BLOCK}>
+                <span className={STAT_LABEL}>Amount</span>
                 <AmountInput
                   value={rupees}
                   invalid={submitted && amountError !== undefined}
@@ -200,15 +203,15 @@ const LumpsumInvestScreen = (): React.ReactElement => {
                   }}
                 />
                 {submitted && amountError !== undefined ? (
-                  <span className={styles.error}>{amountError}</span>
+                  <span className={FIELD_ERROR}>{amountError}</span>
                 ) : (
-                  <span className={styles.hint}>Whole rupees only.</span>
+                  <span className={META_MUTED}>Whole rupees only.</span>
                 )}
               </div>
 
               {amountPaise === null ? null : (
                 <>
-                  <span className={styles.label}>You are investing</span>
+                  <span className={STAT_LABEL}>You are investing</span>
                   <MoneyValue amount={amountPaise} size="lg" />
                 </>
               )}
@@ -216,7 +219,7 @@ const LumpsumInvestScreen = (): React.ReactElement => {
 
             <RiskConsent checked={consented} onChange={setConsented} />
             {submitted && !consented ? (
-              <span className={styles.error}>
+              <span className={FIELD_ERROR}>
                 Please confirm you understand the risk before continuing.
               </span>
             ) : null}
@@ -232,15 +235,15 @@ const LumpsumInvestScreen = (): React.ReactElement => {
             </Button>
 
             <Section title="What happens next">
-              <ul className={styles.rules}>
+              <ul className={RULES}>
                 {[
                   "PhonePe takes the payment. We never see your UPI PIN or card details.",
                   "Returning to the app does not mean the money has moved. We show the payment as pending until the provider confirms it.",
                   "If you close the payment page, the order stays in Activity and expires on its own.",
                   "Submitting twice does not charge you twice. The request carries a key that makes a repeat a replay.",
                 ].map((rule) => (
-                  <li key={rule} className={styles.rule}>
-                    <span className={styles.ruleDot} aria-hidden="true" />
+                  <li key={rule} className={RULE}>
+                    <span className={RULE_DOT} aria-hidden="true" />
                     {rule}
                   </li>
                 ))}

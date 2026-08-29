@@ -19,7 +19,9 @@ import { Card } from "~/ui/primitives/Card"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 import { FormField, Input } from "~/ui/primitives/FormField"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import { ADMIN_CODE, ADMIN_FIGURE } from "~/ui/recipes/admin"
+import { PROSE_SM } from "~/ui/recipes/datalist"
+import { ACTION_ROW } from "~/ui/recipes/layout"
 
 const rupees = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -98,7 +100,7 @@ const MandateDetailScreen = (): React.ReactElement => {
                 <DetailRow label="Email">{data.user.email ?? "—"}</DetailRow>
                 <DetailRow label="Fund">{data.fund.name ?? "—"}</DetailRow>
                 <DetailRow label="Monthly amount">
-                  <span className={styles.mono}>
+                  <span className={ADMIN_FIGURE}>
                     {rupees.format(data.mandate.amountPaise / 100)}
                   </span>
                 </DetailRow>
@@ -111,10 +113,10 @@ const MandateDetailScreen = (): React.ReactElement => {
                 </DetailRow>
                 <DetailRow label="Collection mode">{data.sip.collectionMode}</DetailRow>
                 <DetailRow label="Merchant subscription">
-                  <span className={styles.code}>{data.mandate.merchantSubscriptionId}</span>
+                  <span className={ADMIN_CODE}>{data.mandate.merchantSubscriptionId}</span>
                 </DetailRow>
                 <DetailRow label="Provider subscription">
-                  <span className={styles.code}>
+                  <span className={ADMIN_CODE}>
                     {data.mandate.providerSubscriptionId ?? "not issued"}
                   </span>
                 </DetailRow>
@@ -155,7 +157,7 @@ const MandateDetailScreen = (): React.ReactElement => {
                         />
                       )}
                     </FormField>
-                    <div className={styles.actions}>
+                    <div className={ACTION_ROW}>
                       <Button
                         tone="secondary"
                         disabled={reasonMissing || action.isPending}
@@ -187,7 +189,7 @@ const MandateDetailScreen = (): React.ReactElement => {
             <Section title="Setup attempts">
               {data.setupAttempts.length === 0 ? (
                 <Card>
-                  <p className={styles.note}>No setup has been attempted.</p>
+                  <p className={PROSE_SM}>No setup has been attempted.</p>
                 </Card>
               ) : (
                 <AdminTable
@@ -208,7 +210,7 @@ const MandateDetailScreen = (): React.ReactElement => {
                       key: "provider",
                       header: "Provider order",
                       render: (row) => (
-                        <span className={styles.code}>{row.providerOrderId ?? "—"}</span>
+                        <span className={ADMIN_CODE}>{row.providerOrderId ?? "—"}</span>
                       ),
                     },
                     {
@@ -234,7 +236,7 @@ const MandateDetailScreen = (): React.ReactElement => {
             <Section title="Collection attempts">
               {data.collectionAttempts.length === 0 ? (
                 <Card>
-                  <p className={styles.note}>No installment has been collected yet.</p>
+                  <p className={PROSE_SM}>No installment has been collected yet.</p>
                 </Card>
               ) : (
                 <AdminTable
@@ -252,7 +254,7 @@ const MandateDetailScreen = (): React.ReactElement => {
                       header: "Amount",
                       numeric: true,
                       render: (row) => (
-                        <span className={styles.mono}>{rupees.format(row.amountPaise / 100)}</span>
+                        <span className={ADMIN_FIGURE}>{rupees.format(row.amountPaise / 100)}</span>
                       ),
                     },
                     { key: "notify", header: "Notification", render: (row) => row.notifyState },

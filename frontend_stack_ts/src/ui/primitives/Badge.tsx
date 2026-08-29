@@ -1,9 +1,8 @@
 import type { ReactNode } from "react"
 
-import type { StatusTone } from "~/domain/status"
-
-import styles from "./Surface.module.css"
 import { cx } from "~/lib/cx"
+import type { StatusTone } from "~/domain/status"
+import { BADGE_BASE, TONE_CLASS } from "~/ui/recipes/surface"
 
 export type BadgeProps = Readonly<{
   tone?: StatusTone
@@ -11,5 +10,5 @@ export type BadgeProps = Readonly<{
 }>
 
 export const Badge = ({ tone = "neutral", children }: BadgeProps): React.ReactElement => (
-  <span className={cx(styles.badge, styles[tone])}>{children}</span>
+  <span className={cx(BADGE_BASE, TONE_CLASS[tone])}>{children}</span>
 )

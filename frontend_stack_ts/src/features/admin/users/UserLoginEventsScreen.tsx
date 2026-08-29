@@ -11,7 +11,8 @@ import { Badge } from "~/ui/primitives/Badge"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import { ADMIN_CODE } from "~/ui/recipes/admin"
+import { META_TEXT } from "~/ui/recipes/text"
 
 const OUTCOME_LABEL: Readonly<Record<string, string>> = {
   success: "Signed in",
@@ -71,7 +72,7 @@ const UserLoginEventsScreen = (): React.ReactElement => {
                 key: "agent",
                 header: "Client",
                 render: (row) => (
-                  <span className={styles.faint}>{row.userAgent ?? "not reported"}</span>
+                  <span className={META_TEXT}>{row.userAgent ?? "not reported"}</span>
                 ),
               },
               {
@@ -82,7 +83,7 @@ const UserLoginEventsScreen = (): React.ReactElement => {
               {
                 key: "requestId",
                 header: "Request",
-                render: (row) => <span className={styles.code}>{row.requestId}</span>,
+                render: (row) => <span className={ADMIN_CODE}>{row.requestId}</span>,
               },
             ]}
           />

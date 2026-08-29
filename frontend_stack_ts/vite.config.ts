@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url"
 
 import react from "@vitejs/plugin-react"
+import tailwindcss from "@tailwindcss/vite"
 import { defineConfig } from "vite"
 
 type AppTarget = "client" | "admin"
@@ -13,7 +14,7 @@ const resolveAppTarget = (): AppTarget => {
 const appTarget = resolveAppTarget()
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   define: {
     "import.meta.env.VITE_BEO_APP_TARGET": JSON.stringify(appTarget),
   },

@@ -5,7 +5,7 @@ export const SYSTEM_BAR_STYLES = ["LIGHT", "DARK"] as const
 
 export type SystemBarStyle = (typeof SYSTEM_BAR_STYLES)[number]
 
-export const DEFAULT_BAR_BACKGROUND = "#F7F7F5"
+export const DEFAULT_BAR_BACKGROUND = "#F4F1E9"
 
 const HEX_COLOUR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/u
 

@@ -16,7 +16,9 @@ import { Card } from "~/ui/primitives/Card"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 import { FormField, Input } from "~/ui/primitives/FormField"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import { ADMIN_CODE, ADMIN_JSON_AREA } from "~/ui/recipes/admin"
+import { PROSE_SM } from "~/ui/recipes/datalist"
+import { STACK_LG } from "~/ui/recipes/layout"
 
 const TEMPLATE = {
   featureFlags: {},
@@ -117,11 +119,11 @@ const AppConfigBuilderScreen = (): React.ReactElement => {
                 </DetailRow>
                 <DetailRow label="Published by">{data.publishedBy ?? "—"}</DetailRow>
                 <DetailRow label="Content digest">
-                  <span className={styles.code}>{data.contentSha256 ?? "—"}</span>
+                  <span className={ADMIN_CODE}>{data.contentSha256 ?? "—"}</span>
                 </DetailRow>
               </DataList>
               {data.version === null ? (
-                <p className={styles.note}>
+                <p className={PROSE_SM}>
                   Nothing is published, and that is not an error. Apps fall back to their built-in
                   defaults until a configuration exists.
                 </p>
@@ -149,7 +151,7 @@ const AppConfigBuilderScreen = (): React.ReactElement => {
             >
               <Card>
                 {canPublish ? (
-                  <div className={styles.form}>
+                  <div className={STACK_LG}>
                     <FormField
                       label="Configuration"
                       hint="JSON. The backend applies defaults for any key you omit."
@@ -160,7 +162,7 @@ const AppConfigBuilderScreen = (): React.ReactElement => {
                       {({ id }) => (
                         <textarea
                           id={id}
-                          className={styles.jsonArea}
+                          className={ADMIN_JSON_AREA}
                           spellCheck={false}
                           value={draft ?? ""}
                           onChange={(event) => {

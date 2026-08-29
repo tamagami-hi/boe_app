@@ -1,8 +1,7 @@
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 
-import "~/ui/tokens/tokens.css"
-import "~/index.css"
+import "~/ui/styles/index.css"
 
 const mount = (node: React.ReactNode): void => {
   const container = document.querySelector("#root")

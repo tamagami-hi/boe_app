@@ -11,7 +11,9 @@ import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 import { Input } from "~/ui/primitives/FormField"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import { ADMIN_CODE, ADMIN_CONTROLS } from "~/ui/recipes/admin"
+import { ENTRY_TEXT } from "~/ui/recipes/datalist"
+import { META_TEXT } from "~/ui/recipes/text"
 
 const AuditLogScreen = (): React.ReactElement => {
   const [entityType, setEntityType] = useState("")
@@ -33,7 +35,7 @@ const AuditLogScreen = (): React.ReactElement => {
         description="Every administrative command, who ran it, what it touched and which request it belonged to. Filtering runs on the server, so it covers the whole log."
       />
 
-      <div className={styles.controls}>
+      <div className={ADMIN_CONTROLS}>
         <Input
           type="search"
           placeholder="Entity type, for example content_item"
@@ -93,9 +95,9 @@ const AuditLogScreen = (): React.ReactElement => {
                 key: "actor",
                 header: "Actor",
                 render: (row) => (
-                  <span className={styles.cellStack}>
+                  <span className={ENTRY_TEXT}>
                     <span>{row.actorEmail ?? row.actorType}</span>
-                    <span className={styles.faint}>{row.actorType}</span>
+                    <span className={META_TEXT}>{row.actorType}</span>
                   </span>
                 ),
               },
@@ -104,9 +106,9 @@ const AuditLogScreen = (): React.ReactElement => {
                 key: "entity",
                 header: "Entity",
                 render: (row) => (
-                  <span className={styles.cellStack}>
+                  <span className={ENTRY_TEXT}>
                     <span>{row.entityType}</span>
-                    <span className={styles.code}>{row.entityId}</span>
+                    <span className={ADMIN_CODE}>{row.entityId}</span>
                   </span>
                 ),
               },
@@ -127,7 +129,7 @@ const AuditLogScreen = (): React.ReactElement => {
               {
                 key: "request",
                 header: "Request",
-                render: (row) => <span className={styles.code}>{row.requestId}</span>,
+                render: (row) => <span className={ADMIN_CODE}>{row.requestId}</span>,
               },
             ]}
           />

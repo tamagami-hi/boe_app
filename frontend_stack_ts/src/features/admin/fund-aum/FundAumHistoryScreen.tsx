@@ -13,7 +13,7 @@ import { Badge } from "~/ui/primitives/Badge"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import { ADMIN_CODE } from "~/ui/recipes/admin"
 
 const FundAumHistoryScreen = (): React.ReactElement => {
   const { fundId = "" } = useParams()
@@ -75,7 +75,7 @@ const FundAumHistoryScreen = (): React.ReactElement => {
                 key: "batch",
                 header: "Growth batch",
                 render: (row) => (
-                  <span className={styles.code}>{row.growthBatchId ?? "direct entry"}</span>
+                  <span className={ADMIN_CODE}>{row.growthBatchId ?? "direct entry"}</span>
                 ),
               },
               { key: "reason", header: "Reason", render: (row) => row.reasonCode },

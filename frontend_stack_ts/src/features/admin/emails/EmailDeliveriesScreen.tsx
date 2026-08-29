@@ -13,7 +13,7 @@ import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Card } from "~/ui/primitives/Card"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import { ADMIN_CODE } from "~/ui/recipes/admin"
 
 const STATES = [
   { value: "any", label: "All" },
@@ -126,7 +126,7 @@ const EmailDeliveriesScreen = (): React.ReactElement => {
                 key: "provider",
                 header: "Provider message",
                 render: (row) => (
-                  <span className={styles.code}>{row.sesMessageId ?? "withheld"}</span>
+                  <span className={ADMIN_CODE}>{row.sesMessageId ?? "withheld"}</span>
                 ),
               },
               {

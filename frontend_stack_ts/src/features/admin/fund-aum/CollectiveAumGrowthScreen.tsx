@@ -25,7 +25,16 @@ import { Card } from "~/ui/primitives/Card"
 import { Alert } from "~/ui/primitives/Feedback"
 import { FormField, Input } from "~/ui/primitives/FormField"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import {
+  ADMIN_CODE,
+  ADMIN_FIGURE,
+  ADMIN_FILTER,
+  ADMIN_FILTER_ROW,
+  ADMIN_FORM_GRID,
+  ADMIN_LABEL,
+  ADMIN_SUMMARY_GRID,
+} from "~/ui/recipes/admin"
+import { STACK_LG } from "~/ui/recipes/layout"
 
 type PreviewInput = z.input<typeof previewAdminCollectiveAumGrowth.request.body>
 type CommitInput = z.input<typeof commitAdminCollectiveAumGrowth.request.body>
@@ -175,16 +184,16 @@ const CollectiveAumGrowthScreen = (): React.ReactElement => {
       )}
 
       <Card elevated>
-        <div className={styles.form}>
+        <div className={STACK_LG}>
           <FormField label="Funds" required hint="Only funds with a recorded size can be grown.">
             {() => (
-              <div className={styles.filters}>
+              <div className={ADMIN_FILTER_ROW}>
                 {initialised.map((fund) => (
                   <button
                     key={fund.id}
                     type="button"
                     aria-pressed={selected.includes(fund.id)}
-                    className={selected.includes(fund.id) ? styles.filterActive : styles.filter}
+                    className={ADMIN_FILTER}
                     onClick={() => {
                       toggle(fund.id)
                     }}
@@ -196,7 +205,7 @@ const CollectiveAumGrowthScreen = (): React.ReactElement => {
             )}
           </FormField>
 
-          <div className={styles.formGrid}>
+          <div className={ADMIN_FORM_GRID}>
             <FormField
               label="Rate in basis points"
               required
@@ -262,19 +271,19 @@ const CollectiveAumGrowthScreen = (): React.ReactElement => {
         <>
           <Section title="What this would do">
             <Card>
-              <div className={styles.summaryGrid}>
+              <div className={ADMIN_SUMMARY_GRID}>
                 <Stat label="Funds">
-                  <span className={styles.mono}>{String(plan.items.length)}</span>
+                  <span className={ADMIN_FIGURE}>{String(plan.items.length)}</span>
                 </Stat>
                 <Stat label="Rate">
-                  <span className={styles.mono}>{`${basisPoints} bps`}</span>
+                  <span className={ADMIN_FIGURE}>{`${basisPoints} bps`}</span>
                 </Stat>
                 <Stat label="As of">
                   <span>{asOfDate}</span>
                 </Stat>
               </div>
-              <span className={styles.label}>Basis</span>
-              <span className={styles.basis}>{plan.basisHash}</span>
+              <span className={ADMIN_LABEL}>Basis</span>
+              <span className={ADMIN_CODE}>{plan.basisHash}</span>
             </Card>
           </Section>
 
@@ -322,7 +331,7 @@ const CollectiveAumGrowthScreen = (): React.ReactElement => {
 
           <Section title="Commit the batch">
             <Card>
-              <div className={styles.form}>
+              <div className={STACK_LG}>
                 <FormField label="Note" hint="Internal. Recorded on every snapshot in the batch.">
                   {({ id }) => (
                     <Input

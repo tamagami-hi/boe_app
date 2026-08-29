@@ -1,15 +1,24 @@
 import type { ReactNode } from "react"
 
-import styles from "./Surface.module.css"
 import { cx } from "~/lib/cx"
+import {
+  ALERT_BASE,
+  ALERT_TITLE,
+  DIVIDER,
+  SKELETON,
+  SKELETON_CIRCLE,
+  SPINNER_BASE,
+  SPINNER_SIZE,
+  TONE_CLASS,
+} from "~/ui/recipes/surface"
 
-export const Divider = (): React.ReactElement => <hr className={styles.divider} />
+export const Divider = (): React.ReactElement => <hr className={DIVIDER} />
 
 export type SpinnerProps = Readonly<{ size?: "sm" | "md"; label?: string }>
 
 export const Spinner = ({ size = "sm", label = "Loading" }: SpinnerProps): React.ReactElement => (
   <span
-    className={cx(styles.spinner, size === "sm" ? styles.spinnerSm : styles.spinnerMd)}
+    className={cx(SPINNER_BASE, SPINNER_SIZE[size])}
     role="progressbar"
     aria-label={label}
   />
@@ -27,7 +36,7 @@ export const Skeleton = ({
   circle = false,
 }: SkeletonProps): React.ReactElement => (
   <span
-    className={cx(styles.skeleton, circle && styles.skeletonCircle)}
+    className={cx(SKELETON, circle ? SKELETON_CIRCLE : undefined)}
     style={{ width, height }}
     aria-hidden="true"
   />
@@ -41,19 +50,16 @@ export type AlertProps = Readonly<{
   children: ReactNode
 }>
 
-const ALERT_TONE_CLASS = {
-  info: "info",
-  warning: "warning",
-  error: "negative",
-  success: "positive",
+const ALERT_TONE = {
+  info: TONE_CLASS.info,
+  warning: TONE_CLASS.warning,
+  error: TONE_CLASS.negative,
+  success: TONE_CLASS.positive,
 } as const
 
 export const Alert = ({ tone = "info", title, children }: AlertProps): React.ReactElement => (
-  <div
-    className={cx(styles.alert, styles[ALERT_TONE_CLASS[tone]])}
-    role={tone === "error" ? "alert" : "status"}
-  >
-    {title === undefined ? null : <span className={styles.alertTitle}>{title}</span>}
+  <div className={cx(ALERT_BASE, ALERT_TONE[tone])} role={tone === "error" ? "alert" : "status"}>
+    {title === undefined ? null : <span className={ALERT_TITLE}>{title}</span>}
     <span>{children}</span>
   </div>
 )

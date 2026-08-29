@@ -1,9 +1,13 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react"
 
 import { cx } from "~/lib/cx"
-import type { ClassValue } from "~/lib/cx"
-
-import styles from "./Surface.module.css"
+import {
+  CARD_BASE,
+  CARD_INTERACTIVE,
+  CARD_TONE,
+  EYEBROW,
+  SHELL,
+} from "~/ui/recipes/surface"
 
 export type CardTone = "default" | "elevated" | "feature"
 
@@ -13,14 +17,18 @@ export type CardProps = Readonly<{
   children: ReactNode
 }>
 
-const toneClass = (tone: CardTone): ClassValue =>
-  tone === "elevated" ? styles.cardElevated : tone === "feature" ? styles.cardFeature : false
+const toneClass = (tone: CardTone): string =>
+  tone === "elevated"
+    ? CARD_TONE.elevated
+    : tone === "feature"
+      ? CARD_TONE.feature
+      : CARD_TONE.plain
 
 export const Card = ({ tone, elevated = false, children }: CardProps): React.ReactElement => {
   const resolved: CardTone = tone ?? (elevated ? "elevated" : "default")
   return (
-    <div className={styles.shell}>
-      <div className={cx(styles.card, toneClass(resolved))}>{children}</div>
+    <div className={SHELL}>
+      <div className={cx(CARD_BASE, toneClass(resolved))}>{children}</div>
     </div>
   )
 }
@@ -37,11 +45,12 @@ export const InteractiveCard = ({
   type = "button",
   ...rest
 }: InteractiveCardProps): React.ReactElement => (
-  <div className={styles.shell}>
+  <div className={SHELL}>
     <button
       {...rest}
       type={type}
-      className={cx(styles.card, styles.interactive, toneClass(tone))}
+      data-interactive=""
+      className={cx(CARD_BASE, toneClass(tone), CARD_INTERACTIVE)}
     >
       {children}
     </button>
@@ -49,5 +58,5 @@ export const InteractiveCard = ({
 )
 
 export const Eyebrow = ({ children }: Readonly<{ children: ReactNode }>): React.ReactElement => (
-  <span className={styles.eyebrow}>{children}</span>
+  <span className={EYEBROW}>{children}</span>
 )

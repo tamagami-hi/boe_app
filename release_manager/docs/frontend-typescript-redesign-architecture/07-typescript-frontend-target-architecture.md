@@ -40,14 +40,33 @@ never import from it. No adapter, bridge, or compatibility layer of any kind.
 | Client state | React Context, three providers only: session, overlay stack, toast | Nothing else in this app is genuinely global. No Redux, no Zustand |
 | Forms | `react-hook-form` + `zodResolver` | Six forms are non-trivial (fund create, fund profile, AUM growth, client growth, SIP start, support ticket). The rest are controlled inputs |
 | Validation | `zod` | Already the backend's and `packages/contracts`' validator; reusing the same schemas is the whole point |
-| Styling | CSS custom-property token layer + **CSS Modules** per component | See below |
+| Styling | CSS custom-property token layer + **Tailwind v4** utilities derived from it, plus a typed recipe layer | See below (superseded by D-033) |
 | Icons | `lucide-react`, named imports only | Already in use, tree-shakes, no icon-font payload |
 | Charts | one small purpose-built SVG module | The legacy `Charts.jsx` + `chartMath.js` are a line/area/donut renderer in about 300 lines. A charting library would blow the 320 kB chunk budget |
 | Native | Capacitor 8 + the three existing custom plugins | Ported verbatim, not reinvented |
 | Tests | Vitest + Testing Library + jsdom | Already the toolchain; `vitest.setup.js` is reusable |
 | Lint | ESLint 9 flat config + `typescript-eslint` | The legacy frontend has **no lint tooling at all** |
 
-### Why CSS Modules and not Tailwind
+### Why Tailwind v4, and what had to be preserved to get there
+
+**Superseded (D-033).** This section originally argued for CSS Modules over Tailwind. The maintainer
+directed the change to Tailwind; the four original objections are kept below with what happened to
+each, because the second one is load-bearing and its mitigation is the reason the migration is safe.
+
+The token layer is unchanged and still authoritative. `theme.css` bridges it with `@theme inline`, so
+every utility compiles to `var(--be-*)` rather than copying a value, and `tokens-core.css` remains the
+only file in the repository that reads `env(safe-area-inset-*)`. Safe area is consumable *only* through
+named spacing keys (`pt-safe-top`, `pb-safe-bottom`) that resolve to `var(--be-safe-*)`.
+
+The class vocabulary lives in `src/ui/recipes/` as typed constants, one declaration per pattern,
+imported by components rather than re-derived inline. `recipes.test.ts` enforces that, and
+`safeArea.test.ts` is untouched and still passes.
+
+Two guarantees are now stronger than they were under CSS Modules: `--breakpoint-*` is cleared to
+exactly the four canonical values, so a fifth breakpoint is unrepresentable rather than merely
+forbidden, and `--color-*` is cleared, so an off-brand colour cannot be named.
+
+The original objections:
 
 1. ~~The APK enforces largest CSS ≤ 160 kB~~ **Superseded (D-028): the CSS ceiling is raised to
    640 kB and total assets to 2600 kB at the maintainer's direction, to fund a high-end visual
@@ -692,7 +711,7 @@ with `ENOENT`.
 | A monorepo of new frontend packages | The legacy four-package split is precisely what let admin code lodge inside the client package. One package, enforced internal boundaries |
 | Redux / Zustand | Server state is TanStack Query's job; three contexts cover the rest |
 | A UI component library (MUI, Chakra, Radix-everything) | The 320 kB chunk budget, and the design language is specific. A handful of headless primitives will be hand-built |
-| Tailwind | See above — token contract and CSS budget |
+| ~~Tailwind~~ | **No longer rejected — adopted in D-033.** The CSS budget objection was spent by D-028, and the token/safe-area contract is preserved via `@theme inline` rather than replaced |
 | A charting library | 320 kB budget; the existing SVG maths is ~300 lines |
 | `openapi-fetch` as the client | The `defineOperation` descriptors carry auth channel, idempotency requirement and error codes, which OpenAPI paths alone do not |
 | Codegen from a running server | The contract package is the source of truth, and CI already diff-checks the generated artefacts |

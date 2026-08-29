@@ -1,6 +1,13 @@
 import type { ReactNode } from "react"
 
-import styles from "./Section.module.css"
+import {
+  SECTION_BODY,
+  SECTION_HEAD,
+  SECTION_HEAD_DESC,
+  SECTION_HEAD_ROW,
+  SECTION_HEAD_TITLE,
+  SECTION_ROOT,
+} from "~/ui/recipes/layout"
 
 export type SectionProps = Readonly<{
   title?: string
@@ -15,18 +22,18 @@ export const Section = ({
   actions,
   children,
 }: SectionProps): React.ReactElement => (
-  <section className={styles.section}>
+  <section className={SECTION_ROOT}>
     {title === undefined && description === undefined && actions === undefined ? null : (
-      <div className={styles.head}>
-        <div className={styles.headRow}>
-          {title === undefined ? <span /> : <h2 className={styles.title}>{title}</h2>}
+      <div className={SECTION_HEAD}>
+        <div className={SECTION_HEAD_ROW}>
+          {title === undefined ? <span /> : <h2 className={SECTION_HEAD_TITLE}>{title}</h2>}
           {actions}
         </div>
         {description === undefined ? null : (
-          <p className={styles.description}>{description}</p>
+          <p className={SECTION_HEAD_DESC}>{description}</p>
         )}
       </div>
     )}
-    <div className={styles.body}>{children}</div>
+    <div className={SECTION_BODY}>{children}</div>
   </section>
 )

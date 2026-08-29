@@ -14,16 +14,18 @@ import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
+import { LIST_LABEL, LIST_VALUE } from "~/ui/recipes/datalist"
 
-import styles from "./Funds.module.css"
+import { FUND_ACTIONS, FUND_DETAIL_LIST, FUND_DETAIL_ROW, FUND_DISCLOSURE_BODY } from "./funds.recipe"
+import { META_MUTED } from "~/ui/recipes/text"
 
 const Row = ({
   label,
   children,
 }: Readonly<{ label: string; children: React.ReactNode }>): React.ReactElement => (
-  <div className={styles.detailRow}>
-    <span className={styles.detailLabel}>{label}</span>
-    <span className={styles.detailValue}>{children}</span>
+  <div className={FUND_DETAIL_ROW}>
+    <span className={LIST_LABEL}>{label}</span>
+    <span className={LIST_VALUE}>{children}</span>
   </div>
 )
 
@@ -59,9 +61,9 @@ const FundDetailScreen = (): React.ReactElement => {
 
             {fund.fundSize === null ? null : (
               <Card elevated>
-                <span className={styles.sizeLabel}>Fund size</span>
+                <span className={META_MUTED}>Fund size</span>
                 <MoneyValue amount={toPaise(fund.fundSize.aumPaise)} size="xl" />
-                <span className={styles.category}>
+                <span className={META_MUTED}>
                   {fund.fundSize.asOfDate === null
                     ? "As-of date not published"
                     : `As of ${formatDate(`${fund.fundSize.asOfDate}T00:00:00Z`)}`}
@@ -70,7 +72,7 @@ const FundDetailScreen = (): React.ReactElement => {
             )}
 
             <Section title="Terms">
-              <div className={styles.detail}>
+              <div className={FUND_DETAIL_LIST}>
                 <Row label="Minimum lump sum">
                   {fund.minimumPurchasePaise === null ? (
                     "Not set"
@@ -111,7 +113,7 @@ const FundDetailScreen = (): React.ReactElement => {
               >
                 {weighted.length === 0 ? (
                   <Card>
-                    <div className={styles.detail}>
+                    <div className={FUND_DETAIL_LIST}>
                       {stocks.map((stock) => (
                         <Row key={stock.stockName} label={stock.stockName}>
                           Weight not disclosed
@@ -140,13 +142,13 @@ const FundDetailScreen = (): React.ReactElement => {
                 title={disclosure.title}
                 description={`Effective from ${formatDate(disclosure.effectiveFrom)}`}
               >
-                <p className={styles.disclosureBody}>{disclosure.body}</p>
+                <p className={FUND_DISCLOSURE_BODY}>{disclosure.body}</p>
               </Section>
             )}
 
             <Section title="Invest">
               {canInvest ? (
-                <div className={styles.actions}>
+                <div className={FUND_ACTIONS}>
                   <Link to={`/funds/${fund.id}/invest/lumpsum`}>
                     <Button size="lg" fullWidth>
                       Invest a lump sum
@@ -167,7 +169,7 @@ const FundDetailScreen = (): React.ReactElement => {
             </Section>
 
             <Section title="Regulatory">
-              <div className={styles.actions}>
+              <div className={FUND_ACTIONS}>
                 <Link to="/profile/legal/investor-charter">
                   <Button tone="ghost" size="sm">
                     Investor charter

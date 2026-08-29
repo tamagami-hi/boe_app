@@ -10,7 +10,7 @@ import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Alert } from "~/ui/primitives/Feedback"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import { CARD_LINK } from "~/ui/recipes/surface"
 
 const ENTRIES = [
   {
@@ -49,7 +49,7 @@ const ClientValuesScreen = (): React.ReactElement => {
               <Stat label={entry.title} hint={entry.hint}>
                 <span />
               </Stat>
-              <Link to={entry.to} className={styles.rowLink}>
+              <Link to={entry.to} className={CARD_LINK}>
                 <Button tone="secondary" size="sm" disabled={!canWrite} trailing>
                   Open
                 </Button>

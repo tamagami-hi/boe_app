@@ -6,9 +6,22 @@ import { findRoute, navRoutes } from "~/app/routing/routeManifest"
 import { useSession } from "~/app/providers/SessionProvider"
 import { useAuthPort } from "~/features/auth/authPort"
 import { hasAny } from "~/domain/permissions"
-import { cx } from "~/lib/cx"
-
-import styles from "./AdminFrame.module.css"
+import {
+  ADMIN_ACTION,
+  ADMIN_BODY,
+  ADMIN_BOTTOM_NAV,
+  ADMIN_CONTENT,
+  ADMIN_DOMAIN_LINK,
+  ADMIN_DOMAIN_STRIP,
+  ADMIN_MESH,
+  ADMIN_NAV_ITEM,
+  ADMIN_SHELL,
+  ADMIN_SIDEBAR,
+  ADMIN_SIDEBAR_LINK,
+  ADMIN_TITLE,
+  ADMIN_TOPBAR,
+  ADMIN_WORDMARK,
+} from "~/ui/recipes/shellAdmin"
 
 const NAV_ROUTES = navRoutes(ADMIN_ROUTES)
 const MOBILE_NAV_LIMIT = 5
@@ -36,9 +49,7 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
   const activeId = route.id
   const activeDomain = route.nav?.domain ?? null
   const siblings =
-    activeDomain === null
-      ? []
-      : permitted.filter((entry) => entry.nav.domain === activeDomain)
+    activeDomain === null ? [] : permitted.filter((entry) => entry.nav.domain === activeDomain)
 
   const signOut = (): void => {
     void port.logout().finally(() => {
@@ -48,16 +59,17 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
   }
 
   return (
-    <div className={styles.shell}>
-      <div className="be-grain" />
-      <div className={styles.body}>
-        <nav className={styles.sidebar} aria-label="Sections">
-          <span className={styles.wordmark}>BeOnEdge</span>
+    <div className={ADMIN_SHELL}>
+      <div className={ADMIN_MESH} aria-hidden="true" />
+      <div className="be-grain" aria-hidden="true" />
+      <div className={ADMIN_BODY}>
+        <nav className={ADMIN_SIDEBAR} aria-label="Primary">
+          <span className={ADMIN_WORDMARK}>BeOnEdge</span>
           {permitted.map((entry) => (
             <Link
               key={entry.id}
               to={entry.path}
-              className={cx(styles.sidebarLink, entry.id === activeId && styles.sidebarLinkActive)}
+              className={ADMIN_SIDEBAR_LINK}
               aria-current={entry.id === activeId ? "page" : undefined}
             >
               {entry.nav.label}
@@ -65,21 +77,22 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
           ))}
         </nav>
 
-        <div className={styles.content}>
-          <header className={styles.topbar}>
-            <span className={styles.title}>{route.title}</span>
-            <button type="button" className={styles.action} onClick={signOut}>
+        <div className={ADMIN_CONTENT}>
+          <header className={ADMIN_TOPBAR}>
+            <span className={ADMIN_TITLE}>{route.title}</span>
+            <button type="button" className={ADMIN_ACTION} onClick={signOut}>
               Sign out
             </button>
           </header>
 
           {siblings.length > 1 ? (
-            <nav className={styles.domainStrip} aria-label="Section pages">
+            <nav className={ADMIN_DOMAIN_STRIP} aria-label="Section pages">
               {siblings.map((entry) => (
                 <Link
                   key={entry.id}
                   to={entry.path}
-                  className={cx(styles.domainLink, entry.id === activeId && styles.domainLinkActive)}
+                  className={ADMIN_DOMAIN_LINK}
+                  aria-current={entry.id === activeId ? "page" : undefined}
                 >
                   {entry.nav.label}
                 </Link>
@@ -91,12 +104,12 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
         </div>
       </div>
 
-      <nav className={styles.bottomNav} aria-label="Sections">
+      <nav className={ADMIN_BOTTOM_NAV} aria-label="Sections">
         {permitted.slice(0, MOBILE_NAV_LIMIT).map((entry) => (
           <Link
             key={entry.id}
             to={entry.path}
-            className={cx(styles.navItem, entry.id === activeId && styles.navItemActive)}
+            className={ADMIN_NAV_ITEM}
             aria-current={entry.id === activeId ? "page" : undefined}
           >
             {entry.nav.label}

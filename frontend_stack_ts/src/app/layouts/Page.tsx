@@ -1,9 +1,10 @@
 import type { ReactNode } from "react"
 
-import styles from "./Page.module.css"
 import { cx } from "~/lib/cx"
+import { PAGE_BASE, PAGE_WIDTH } from "~/ui/recipes/layout"
+import type { PageWidth } from "~/ui/recipes/layout"
 
-export type PageWidth = "default" | "wide" | "form"
+export type { PageWidth }
 
 export type PageProps = Readonly<{
   width?: PageWidth
@@ -11,5 +12,5 @@ export type PageProps = Readonly<{
 }>
 
 export const Page = ({ width = "default", children }: PageProps): React.ReactElement => (
-  <main className={cx(styles.page, styles[width])}>{children}</main>
+  <main className={cx(PAGE_BASE, PAGE_WIDTH[width])}>{children}</main>
 )

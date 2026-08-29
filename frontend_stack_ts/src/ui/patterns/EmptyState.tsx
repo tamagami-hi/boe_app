@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 
-import styles from "./States.module.css"
+import { STATE_DESCRIPTION, STATE_PANEL, STATE_TITLE } from "~/ui/recipes/state"
 
 export type EmptyStateProps = Readonly<{
   title: string
@@ -13,9 +13,9 @@ export const EmptyState = ({
   description,
   action,
 }: EmptyStateProps): React.ReactElement => (
-  <div className={styles.state}>
-    <span className={styles.title}>{title}</span>
-    {description === undefined ? null : <p className={styles.description}>{description}</p>}
+  <div className={STATE_PANEL}>
+    <span className={STATE_TITLE}>{title}</span>
+    {description === undefined ? null : <p className={STATE_DESCRIPTION}>{description}</p>}
     {action}
   </div>
 )

@@ -23,7 +23,14 @@ import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { FormField, Input } from "~/ui/primitives/FormField"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import {
+  ADMIN_FILTER,
+  ADMIN_FILTER_ROW,
+  ADMIN_FORM_GRID,
+  ADMIN_META,
+} from "~/ui/recipes/admin"
+import { ITEM_TITLE, LIST_LABEL, LIST_VALUE } from "~/ui/recipes/datalist"
+import { ACTION_ROW, ROW_BETWEEN_BASELINE, STACK_LG } from "~/ui/recipes/layout"
 
 const today = (): string => new Date().toISOString().slice(0, 10)
 
@@ -90,13 +97,13 @@ const FundAumScreen = (): React.ReactElement => {
       )}
 
       <Card elevated>
-        <span className={styles.detailLabel}>Current fund size</span>
+        <span className={LIST_LABEL}>Current fund size</span>
         {current === null ? (
-          <span className={styles.detailValue}>Not set</span>
+          <span className={LIST_VALUE}>Not set</span>
         ) : (
           <>
             <MoneyValue amount={toPaise(current.aumPaise)} size="xl" />
-            <span className={styles.detailLabel}>
+            <span className={LIST_LABEL}>
               {current.asOfDate === null
                 ? "As-of date not recorded"
                 : `As of ${formatDate(`${current.asOfDate}T00:00:00Z`)}`}
@@ -133,17 +140,17 @@ const FundAumScreen = (): React.ReactElement => {
             )
           }}
           noValidate
-          className={styles.form}
+          className={STACK_LG}
         >
           <Card>
             <Section
               title="Record growth"
               description="Give either an absolute amount or a percentage in basis points, not both. A negative value records a fall."
             >
-              <div className={styles.filters} role="group" aria-label="Growth entry mode">
+              <div className={ADMIN_FILTER_ROW} role="group" aria-label="Growth entry mode">
                 <button
                   type="button"
-                  className={mode === "amount" ? styles.filterActive : styles.filter}
+                  className={ADMIN_FILTER}
                   aria-pressed={mode === "amount"}
                   onClick={() => {
                     setMode("amount")
@@ -153,7 +160,7 @@ const FundAumScreen = (): React.ReactElement => {
                 </button>
                 <button
                   type="button"
-                  className={mode === "percent" ? styles.filterActive : styles.filter}
+                  className={ADMIN_FILTER}
                   aria-pressed={mode === "percent"}
                   onClick={() => {
                     setMode("percent")
@@ -163,7 +170,7 @@ const FundAumScreen = (): React.ReactElement => {
                 </button>
               </div>
 
-              <div className={styles.formGrid}>
+              <div className={ADMIN_FORM_GRID}>
                 {mode === "amount" ? (
                   <FormField
                     label="Growth (paise)"
@@ -244,7 +251,7 @@ const FundAumScreen = (): React.ReactElement => {
                 </FormField>
               </div>
 
-              <div className={styles.actions}>
+              <div className={ACTION_ROW}>
                 <Button type="submit" size="lg" loading={growth.isPending}>
                   Record growth
                 </Button>
@@ -266,14 +273,14 @@ const FundAumScreen = (): React.ReactElement => {
             )
           }}
           noValidate
-          className={styles.form}
+          className={STACK_LG}
         >
           <Card>
             <Section
               title="Set opening AUM"
               description="This fund has no AUM yet. Record the absolute size once; every later change is a growth entry."
             >
-              <div className={styles.formGrid}>
+              <div className={ADMIN_FORM_GRID}>
                 <FormField label="Opening AUM (paise)" required>
                   {({ id }) => (
                     <Input
@@ -314,7 +321,7 @@ const FundAumScreen = (): React.ReactElement => {
                   )}
                 </FormField>
               </div>
-              <div className={styles.actions}>
+              <div className={ACTION_ROW}>
                 <Button type="submit" size="lg" loading={initialize.isPending}>
                   Record opening AUM
                 </Button>
@@ -340,13 +347,13 @@ const FundAumScreen = (): React.ReactElement => {
             <>
               {data.items.map((snapshot) => (
                 <Card key={snapshot.id}>
-                  <div className={styles.rowTop}>
-                    <span className={styles.name}>
+                  <div className={ROW_BETWEEN_BASELINE}>
+                    <span className={ITEM_TITLE}>
                       {formatDate(`${snapshot.asOfDate}T00:00:00Z`)}
                     </span>
                     <MoneyValue amount={toPaise(snapshot.aumPaise)} size="md" />
                   </div>
-                  <div className={styles.meta}>
+                  <div className={ADMIN_META}>
                     <span>Revision {String(snapshot.revision)}</span>
                     <span>{snapshot.reasonCode}</span>
                     {snapshot.note === null ? null : <span>{snapshot.note}</span>}

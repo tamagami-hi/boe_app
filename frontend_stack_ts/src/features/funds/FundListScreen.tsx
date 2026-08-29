@@ -15,10 +15,12 @@ import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 import { Input } from "~/ui/primitives/FormField"
+import { CARD_LINK } from "~/ui/recipes/surface"
 
 import { FundTable } from "./FundTable"
-
-import styles from "./Funds.module.css"
+import { FUND_CARD_TOP, FUND_CONTROLS, FUND_SIZE_ROW, FUND_SORT_BUTTON, FUND_SORT_GROUP } from "./funds.recipe"
+import { ITEM_TITLE } from "~/ui/recipes/datalist"
+import { META_MUTED } from "~/ui/recipes/text"
 
 const SORTS = ["name", "risk", "size"] as const
 type Sort = (typeof SORTS)[number]
@@ -52,7 +54,7 @@ const FundListScreen = (): React.ReactElement => {
         description="Administrator-managed pools. Every figure here is served by the backend; nothing is computed on this device."
       />
 
-      <div className={styles.controls}>
+      <div className={FUND_CONTROLS}>
         <Input
           type="search"
           placeholder="Search by name or category"
@@ -63,21 +65,21 @@ const FundListScreen = (): React.ReactElement => {
           }}
         />
         {!compact ? null : (
-        <div className={styles.sorts} role="group" aria-label="Sort funds">
-          {SORTS.map((option) => (
-            <button
-              key={option}
-              type="button"
-              className={option === sort ? styles.sortActive : styles.sort}
-              aria-pressed={option === sort}
-              onClick={() => {
-                setSort(option)
-              }}
-            >
-              {option === "name" ? "Name" : option === "risk" ? "Risk" : "Size"}
-            </button>
-          ))}
-        </div>
+          <div className={FUND_SORT_GROUP} role="group" aria-label="Sort funds">
+            {SORTS.map((option) => (
+              <button
+                key={option}
+                type="button"
+                className={FUND_SORT_BUTTON}
+                aria-pressed={option === sort}
+                onClick={() => {
+                  setSort(option)
+                }}
+              >
+                {option === "name" ? "Name" : option === "risk" ? "Risk" : "Size"}
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
@@ -125,22 +127,22 @@ const FundListScreen = (): React.ReactElement => {
           return (
             <ContentGrid columns={2}>
               {sorted.map((fund) => (
-                <Link key={fund.id} to={`/funds/${fund.id}`} className={styles.cardLink}>
+                <Link key={fund.id} to={`/funds/${fund.id}`} className={CARD_LINK}>
                   <Card>
-                    <div className={styles.cardTop}>
-                      <span className={styles.fundName}>{fund.name}</span>
+                    <div className={FUND_CARD_TOP}>
+                      <span className={ITEM_TITLE}>{fund.name}</span>
                       <StatusBadge status={fundRiskLevel(fund.riskLevel)} />
                     </div>
-                    <span className={styles.category}>{fund.category}</span>
+                    <span className={META_MUTED}>{fund.category}</span>
                     {fund.fundSize === null ? (
-                      <span className={styles.noSize}>Fund size not published</span>
+                      <span className={META_MUTED}>Fund size not published</span>
                     ) : (
-                      <div className={styles.sizeRow}>
-                        <span className={styles.sizeLabel}>Fund size</span>
+                      <div className={FUND_SIZE_ROW}>
+                        <span className={META_MUTED}>Fund size</span>
                         <MoneyValue amount={toPaise(fund.fundSize.aumPaise)} size="lg" />
                       </div>
                     )}
-                    <span className={styles.holdings}>
+                    <span className={META_MUTED}>
                       {fund.stockCount === 0
                         ? "Holdings not disclosed"
                         : `${String(fund.stockCount)} disclosed holdings`}

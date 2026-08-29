@@ -16,7 +16,8 @@ import { FormField, Input } from "~/ui/primitives/FormField"
 import { RadioGroup } from "~/ui/primitives/Toggle"
 import { Select } from "~/ui/primitives/Select"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import { ADMIN_CODE, ADMIN_FORM_GRID } from "~/ui/recipes/admin"
+import { STACK_LG } from "~/ui/recipes/layout"
 
 type Mode = "rate" | "amount"
 
@@ -97,7 +98,7 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
       )}
 
       <Card elevated>
-        <div className={styles.form}>
+        <div className={STACK_LG}>
           <FormField label="How are you adjusting it">
             {() => (
               <RadioGroup<Mode>
@@ -120,7 +121,7 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
             )}
           </FormField>
 
-          <div className={styles.formGrid}>
+          <div className={ADMIN_FORM_GRID}>
             <FormField label="Investor id" required hint="The user id from the Users screen.">
               {({ id }) => (
                 <Input
@@ -188,7 +189,7 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
             </FormField>
           )}
 
-          <div className={styles.formGrid}>
+          <div className={ADMIN_FORM_GRID}>
             <FormField
               label="Effective date"
               required
@@ -244,10 +245,10 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
           <Card>
             <DataList>
               <DetailRow label="Batch">
-                <span className={styles.code}>{growth.data.batchId}</span>
+                <span className={ADMIN_CODE}>{growth.data.batchId}</span>
               </DetailRow>
               <DetailRow label="Entry">
-                <span className={styles.code}>{growth.data.entryId}</span>
+                <span className={ADMIN_CODE}>{growth.data.entryId}</span>
               </DetailRow>
               <DetailRow label="Value before">
                 <MoneyValue amount={toPaise(growth.data.beforePaise)} size="sm" />

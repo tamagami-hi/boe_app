@@ -1,19 +1,18 @@
 import { useEffect, useRef, useState } from "react"
-import type { ReactNode } from "react"
+import type { CSSProperties, ReactNode } from "react"
 
 import { cx } from "~/lib/cx"
 import { mediaMatches } from "~/lib/media"
 
-import styles from "./Reveal.module.css"
-
 export type RevealProps = Readonly<{
   delayMs?: number
+  className?: string
   children: ReactNode
 }>
 
 const prefersReducedMotion = (): boolean => mediaMatches("(prefers-reduced-motion: reduce)")
 
-export const Reveal = ({ delayMs = 0, children }: RevealProps): React.ReactElement => {
+export const Reveal = ({ delayMs = 0, className, children }: RevealProps): React.ReactElement => {
   const node = useRef<HTMLDivElement>(null)
   const [shown, setShown] = useState(prefersReducedMotion)
 
@@ -42,12 +41,11 @@ export const Reveal = ({ delayMs = 0, children }: RevealProps): React.ReactEleme
     }
   }, [shown])
 
+  const style =
+    delayMs === 0 ? undefined : ({ "--be-reveal-delay": `${String(delayMs)}ms` } as CSSProperties)
+
   return (
-    <div
-      ref={node}
-      className={cx(styles.reveal, shown && styles.shown)}
-      style={delayMs === 0 ? undefined : { transitionDelay: `${String(delayMs)}ms` }}
-    >
+    <div ref={node} className={cx("be-reveal", className)} data-shown={shown} style={style}>
       {children}
     </div>
   )

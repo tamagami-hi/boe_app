@@ -30,7 +30,9 @@ import { Card } from "~/ui/primitives/Card"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 import { FormField, Input } from "~/ui/primitives/FormField"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import { ADMIN_FIGURE, ADMIN_FORM_GRID } from "~/ui/recipes/admin"
+import { ACTION_ROW, STACK_LG } from "~/ui/recipes/layout"
+import { META_TEXT } from "~/ui/recipes/text"
 
 type StockDraft = Readonly<{
   stockName: string
@@ -159,8 +161,8 @@ const FundHoldingsScreen = (): React.ReactElement => {
       {canWrite ? (
         <Section title={editing === null ? "Add a holding" : "Edit this holding"}>
           <Card elevated>
-            <div className={styles.form}>
-              <div className={styles.formGrid}>
+            <div className={STACK_LG}>
+              <div className={ADMIN_FORM_GRID}>
                 <FormField label="Stock name" required>
                   {({ id }) => (
                     <Input
@@ -193,7 +195,7 @@ const FundHoldingsScreen = (): React.ReactElement => {
                 </FormField>
               </div>
 
-              <div className={styles.formGrid}>
+              <div className={ADMIN_FORM_GRID}>
                 <FormField
                   label="Weight percent"
                   hint="Leave empty to disclose the holding without a weight."
@@ -226,7 +228,7 @@ const FundHoldingsScreen = (): React.ReactElement => {
                 </FormField>
               </div>
 
-              <div className={styles.actions}>
+              <div className={ACTION_ROW}>
                 <Button disabled={incomplete} loading={write.isPending} onClick={submit} trailing>
                   {editing === null ? "Add the holding" : "Save the holding"}
                 </Button>
@@ -303,9 +305,9 @@ const FundHoldingsScreen = (): React.ReactElement => {
                       numeric: true,
                       render: (row) =>
                         row.weightPercent === null ? (
-                          <span className={styles.faint}>Not disclosed</span>
+                          <span className={META_TEXT}>Not disclosed</span>
                         ) : (
-                          <span className={styles.mono}>{`${row.weightPercent}%`}</span>
+                          <span className={ADMIN_FIGURE}>{`${row.weightPercent}%`}</span>
                         ),
                     },
                     {
@@ -334,7 +336,7 @@ const FundHoldingsScreen = (): React.ReactElement => {
                       header: "Actions",
                       render: (row) =>
                         canWrite && row.state === "active" ? (
-                          <span className={styles.actions}>
+                          <span className={ACTION_ROW}>
                             <Button
                               tone="ghost"
                               size="sm"
@@ -364,7 +366,7 @@ const FundHoldingsScreen = (): React.ReactElement => {
                             </Button>
                           </span>
                         ) : (
-                          <span className={styles.faint}>—</span>
+                          <span className={META_TEXT}>—</span>
                         ),
                     },
                   ]}

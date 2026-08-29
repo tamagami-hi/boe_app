@@ -14,7 +14,9 @@ import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Card } from "~/ui/primitives/Card"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import { ADMIN_CELL_LINK, ADMIN_FIGURE } from "~/ui/recipes/admin"
+import { ENTRY_TEXT } from "~/ui/recipes/datalist"
+import { META_TEXT } from "~/ui/recipes/text"
 
 const FILTERS = [
   { value: "attention", label: "Needs attention" },
@@ -98,11 +100,11 @@ const MandateListScreen = (): React.ReactElement => {
                     key: "investor",
                     header: "Investor",
                     render: (row) => (
-                      <span className={styles.cellStack}>
-                        <Link to={`/mandates/${row.mandateId}`} className={styles.cellLink}>
+                      <span className={ENTRY_TEXT}>
+                        <Link to={`/mandates/${row.mandateId}`} className={ADMIN_CELL_LINK}>
                           {row.userName}
                         </Link>
-                        <span className={styles.faint}>{row.userEmail}</span>
+                        <span className={META_TEXT}>{row.userEmail}</span>
                       </span>
                     ),
                   },
@@ -112,7 +114,7 @@ const MandateListScreen = (): React.ReactElement => {
                     header: "Monthly",
                     numeric: true,
                     render: (row) => (
-                      <span className={styles.mono}>{rupees.format(row.amountPaise / 100)}</span>
+                      <span className={ADMIN_FIGURE}>{rupees.format(row.amountPaise / 100)}</span>
                     ),
                   },
                   {
@@ -137,7 +139,7 @@ const MandateListScreen = (): React.ReactElement => {
                     key: "attention",
                     header: "Attention",
                     render: (row) => (
-                      <span className={styles.faint}>{row.attentionReason ?? "—"}</span>
+                      <span className={META_TEXT}>{row.attentionReason ?? "—"}</span>
                     ),
                   },
                   {

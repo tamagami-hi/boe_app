@@ -1,0 +1,193 @@
+@theme inline {
+  --color-*: initial;
+
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-inherit: inherit;
+  --color-white: #fff;
+  --color-black: #000;
+
+  --color-ink: var(--be-ink);
+  --color-ink-2: var(--be-ink-2);
+  --color-ink-3: var(--be-ink-3);
+  --color-espresso: var(--be-espresso);
+  --color-espresso-2: var(--be-espresso-2);
+  --color-clay: var(--be-clay);
+
+  --color-ivory: var(--be-ivory);
+  --color-ivory-2: var(--be-ivory-2);
+  --color-bone: var(--be-bone);
+  --color-parchment: var(--be-parchment);
+  --color-parchment-2: var(--be-parchment-2);
+  --color-sand: var(--be-sand);
+
+  --color-slate: var(--be-slate);
+  --color-slate-2: var(--be-slate-2);
+
+  --color-gold: var(--be-gold);
+  --color-gold-2: var(--be-gold-2);
+  --color-gold-lift: var(--be-gold-lift);
+  --color-gold-deep: var(--be-gold-deep);
+
+  --color-green: var(--be-green);
+  --color-red: var(--be-red);
+  --color-amber: var(--be-amber);
+
+  --color-bg: var(--be-bg);
+  --color-bg-elevated: var(--be-bg-elevated);
+  --color-bg-sunken: var(--be-bg-sunken);
+  --color-bg-inverse: var(--be-bg-inverse);
+  --color-surface: var(--be-surface);
+  --color-fg: var(--be-fg);
+  --color-fg-muted: var(--be-fg-muted);
+  --color-fg-faint: var(--be-fg-faint);
+  --color-fg-inverse: var(--be-fg-inverse);
+  --color-accent: var(--be-accent);
+
+  --color-positive: var(--be-positive);
+  --color-positive-bg: var(--be-positive-bg);
+  --color-negative: var(--be-negative);
+  --color-negative-bg: var(--be-negative-bg);
+  --color-warning: var(--be-warning);
+  --color-warning-bg: var(--be-warning-bg);
+  --color-info: var(--be-info);
+  --color-info-bg: var(--be-info-bg);
+
+  --color-hairline: var(--be-hairline);
+  --color-hairline-strong: var(--be-hairline-strong);
+  --color-shell: var(--be-shell);
+  --color-shell-strong: var(--be-shell-strong);
+  --color-rule: var(--be-border-color);
+  --color-rule-strong: var(--be-border-strong-color);
+
+  --font-*: initial;
+  --font-display: var(--be-font-display);
+  --font-body: var(--be-font-body);
+  --font-ui: var(--be-font-ui);
+  --font-numeric: var(--be-font-numeric);
+  --font-mono: var(--be-font-mono);
+
+  --text-*: initial;
+  --text-2xs: 10px;
+  --text-2xs--line-height: 1.4;
+  --text-xs: var(--be-text-xs);
+  --text-xs--line-height: 1.45;
+  --text-sm: var(--be-text-sm);
+  --text-sm--line-height: var(--be-lh-normal);
+  --text-base: var(--be-text-base);
+  --text-base--line-height: var(--be-lh-normal);
+  --text-md: var(--be-text-md);
+  --text-md--line-height: var(--be-lh-relaxed);
+  --text-lg: var(--be-text-lg);
+  --text-lg--line-height: var(--be-lh-normal);
+  --text-xl: var(--be-text-xl);
+  --text-xl--line-height: var(--be-lh-snug);
+  --text-2xl: var(--be-text-2xl);
+  --text-2xl--line-height: var(--be-lh-snug);
+  --text-3xl: var(--be-text-3xl);
+  --text-3xl--line-height: var(--be-lh-tight);
+
+  --text-display-sm: clamp(1.75rem, 6vw, 2.25rem);
+  --text-display-sm--line-height: 1.06;
+  --text-display-sm--letter-spacing: -0.024em;
+  --text-page: clamp(2rem, 8.5vw, 2.6rem);
+  --text-page--line-height: 1.02;
+  --text-page--letter-spacing: -0.028em;
+  --text-page-lg: clamp(2.6rem, 3.4vw, 3.5rem);
+  --text-page-lg--line-height: 1.02;
+  --text-page-lg--letter-spacing: -0.028em;
+  --text-display: clamp(2.5rem, 12vw, 3.5rem);
+  --text-display--line-height: 0.96;
+  --text-display--letter-spacing: -0.032em;
+  --text-display-lg: clamp(3rem, 6.2vw, 4.5rem);
+  --text-display-lg--line-height: 0.94;
+  --text-display-lg--letter-spacing: -0.034em;
+  --text-display-xl: clamp(3.6rem, 7.4vw, 6rem);
+  --text-display-xl--line-height: 0.92;
+  --text-display-xl--letter-spacing: -0.036em;
+
+  --tracking-*: initial;
+  --tracking-display: var(--be-tracking-display);
+  --tracking-tight: var(--be-tracking-tight);
+  --tracking-normal: 0em;
+  --tracking-eyebrow: var(--be-tracking-eyebrow);
+  --tracking-wide: 0.2em;
+
+  --leading-*: initial;
+  --leading-tight: var(--be-lh-tight);
+  --leading-snug: var(--be-lh-snug);
+  --leading-normal: var(--be-lh-normal);
+  --leading-relaxed: var(--be-lh-relaxed);
+
+  --radius-*: initial;
+  --radius-sm: var(--be-radius-sm);
+  --radius-md: var(--be-radius-md);
+  --radius-lg: var(--be-radius-lg);
+  --radius-full: var(--be-radius-full);
+  --radius-squircle-sm: var(--be-squircle-sm);
+  --radius-squircle: var(--be-squircle);
+  --radius-squircle-lg: var(--be-squircle-lg);
+  --radius-squircle-xl: var(--be-squircle-xl);
+
+  --shadow-*: initial;
+  --shadow-elev-1: var(--be-elev-1);
+  --shadow-elev-2: var(--be-elev-2);
+  --shadow-elev-3: var(--be-elev-3);
+  --shadow-ambient-1: var(--be-ambient-1);
+  --shadow-ambient-2: var(--be-ambient-2);
+  --shadow-ambient-3: var(--be-ambient-3);
+  --shadow-ambient-gold: var(--be-ambient-gold);
+  --shadow-hairline: 0 0 0 1px var(--be-hairline);
+  --shadow-hairline-strong: 0 0 0 1px var(--be-hairline-strong);
+  --shadow-btn-solid: var(--be-btn-solid);
+  --shadow-btn-solid-hover: var(--be-btn-solid-hover);
+  --shadow-btn-gold: var(--be-btn-gold);
+  --shadow-btn-gold-hover: var(--be-btn-gold-hover);
+  --shadow-btn-quiet: var(--be-btn-quiet);
+  --shadow-btn-quiet-hover: var(--be-btn-quiet-hover);
+  --shadow-field: var(--be-field-rest);
+  --shadow-field-focus: var(--be-field-focus);
+  --shadow-field-invalid: var(--be-field-invalid);
+  --shadow-field-invalid-focus: var(--be-field-invalid-focus);
+
+  --inset-shadow-*: initial;
+  --inset-shadow-lift: var(--be-inner-lift);
+  --inset-shadow-lift-soft: var(--be-inner-lift-soft);
+
+  --ease-*: initial;
+  --ease-entry: var(--be-ease-entry);
+  --ease-spring: var(--be-ease-spring);
+  --ease-out: var(--be-ease-out);
+  --ease-in-out: var(--be-ease-in-out);
+
+  --breakpoint-*: initial;
+  --breakpoint-sm: 480px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1440px;
+
+  --container-*: initial;
+  --container-form: var(--be-content-max-form);
+  --container-content: var(--be-content-max);
+  --container-wide: var(--be-content-max-wide);
+  --container-panel: 480px;
+
+  --spacing-safe-top: var(--be-safe-top);
+  --spacing-safe-right: var(--be-safe-right);
+  --spacing-safe-bottom: var(--be-safe-bottom);
+  --spacing-safe-left: var(--be-safe-left);
+  --spacing-header: var(--be-header-h);
+  --spacing-nav: var(--be-nav-h);
+  --spacing-topnav: var(--be-topnav-h);
+  --spacing-sidebar: var(--be-sidebar-w);
+  --spacing-sidebar-rail: var(--be-sidebar-w-rail);
+  --spacing-target: var(--be-target-min);
+  --spacing-target-md: var(--be-target-md);
+  --spacing-target-compact: var(--be-target-compact);
+  --spacing-shell-pad: var(--be-shell-pad);
+  --spacing-shell-pad-lg: var(--be-shell-pad-lg);
+
+  --spacing-icon-sm: var(--be-icon-sm);
+  --spacing-icon-md: var(--be-icon-md);
+  --spacing-icon-lg: var(--be-icon-lg);
+}

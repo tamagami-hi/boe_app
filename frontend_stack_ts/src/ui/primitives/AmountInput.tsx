@@ -1,6 +1,5 @@
 import { cx } from "~/lib/cx"
-
-import styles from "./Controls.module.css"
+import { AMOUNT_INPUT, AMOUNT_INVALID, AMOUNT_SYMBOL, AMOUNT_WRAP } from "~/ui/recipes/field"
 
 export type AmountInputProps = Readonly<{
   id?: string
@@ -21,13 +20,13 @@ export const AmountInput = ({
   disabled = false,
   onChange,
 }: AmountInputProps): React.ReactElement => (
-  <span className={styles.amountWrap}>
-    <span className={styles.amountSymbol} aria-hidden="true">
+  <span className={AMOUNT_WRAP}>
+    <span className={AMOUNT_SYMBOL} aria-hidden="true">
       ₹
     </span>
     <input
       id={id}
-      className={cx(styles.amountInput, invalid && styles.amountInvalid)}
+      className={cx(AMOUNT_INPUT, invalid ? AMOUNT_INVALID : undefined)}
       type="text"
       inputMode="numeric"
       autoComplete="off"

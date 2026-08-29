@@ -1,6 +1,10 @@
 import { Button } from "~/ui/primitives/Button"
-
-import styles from "./States.module.css"
+import {
+  STATE_DESCRIPTION,
+  STATE_PANEL,
+  STATE_REFERENCE,
+  STATE_TITLE,
+} from "~/ui/recipes/state"
 
 export type ErrorStateVariant =
   | "offline"
@@ -61,11 +65,11 @@ export const ErrorState = ({
   const canRetry = onRetry !== undefined && variant !== "forbidden" && variant !== "notConfigured"
 
   return (
-    <div className={styles.state} role="alert">
-      <span className={styles.title}>{copy.title}</span>
-      <p className={styles.description}>{copy.description}</p>
+    <div className={STATE_PANEL} role="alert">
+      <span className={STATE_TITLE}>{copy.title}</span>
+      <p className={STATE_DESCRIPTION}>{copy.description}</p>
       {typeof requestId === "string" && requestId !== "" ? (
-        <span className={styles.reference}>Reference {requestId}</span>
+        <span className={STATE_REFERENCE}>Reference {requestId}</span>
       ) : null}
       {canRetry ? (
         <Button tone="secondary" size="sm" onClick={onRetry}>

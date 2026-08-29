@@ -17,7 +17,8 @@ import { Alert } from "~/ui/primitives/Feedback"
 import { Card } from "~/ui/primitives/Card"
 import { FormField, Input } from "~/ui/primitives/FormField"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import { ADMIN_FORM_GRID } from "~/ui/recipes/admin"
+import { STACK_LG } from "~/ui/recipes/layout"
 
 const today = (): string => new Date().toISOString().slice(0, 10)
 
@@ -86,7 +87,7 @@ const FundCreateScreen = (): React.ReactElement => {
         </Alert>
       )}
 
-      <form onSubmit={submit} noValidate className={styles.form}>
+      <form onSubmit={submit} noValidate className={STACK_LG}>
         <Card>
           <Section title="Identity">
             <FormField
@@ -123,7 +124,7 @@ const FundCreateScreen = (): React.ReactElement => {
             title="Opening AUM"
             description="The absolute fund size at a point in time. Later changes are recorded as growth entries, never edits."
           >
-            <div className={styles.formGrid}>
+            <div className={ADMIN_FORM_GRID}>
               <FormField label="Opening AUM (paise)" required hint="Integer paise.">
                 {({ id, invalid }) => (
                   <Input

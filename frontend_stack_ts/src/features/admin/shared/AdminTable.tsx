@@ -1,8 +1,17 @@
 import type { ReactNode } from "react"
 
 import { cx } from "~/lib/cx"
-
-import styles from "./Admin.module.css"
+import {
+  ADMIN_BODY_ROW,
+  ADMIN_CELL,
+  ADMIN_FILTER,
+  ADMIN_FILTER_ROW,
+  ADMIN_HEAD_CELL,
+  ADMIN_NUMERIC,
+  ADMIN_TABLE,
+  ADMIN_TABLE_INNER,
+  ADMIN_TABLE_WRAP,
+} from "~/ui/recipes/admin"
 
 export type AdminColumn<TRow> = Readonly<{
   key: string
@@ -24,17 +33,17 @@ export const AdminTable = <TRow,>({
   rowKey,
   caption,
 }: AdminTableProps<TRow>): React.ReactElement => (
-  <div className={styles.tableWrap}>
-    <div className={styles.tableInner}>
-      <table className={styles.table}>
-        <caption className="be-visually-hidden">{caption}</caption>
+  <div className={ADMIN_TABLE_WRAP}>
+    <div className={ADMIN_TABLE_INNER}>
+      <table className={ADMIN_TABLE}>
+        <caption className="sr-only">{caption}</caption>
         <thead>
           <tr>
             {columns.map((column) => (
               <th
                 key={column.key}
                 scope="col"
-                className={cx(styles.headCell, column.numeric === true && styles.numeric)}
+                className={cx(ADMIN_HEAD_CELL, column.numeric === true && ADMIN_NUMERIC)}
               >
                 {column.header}
               </th>
@@ -43,11 +52,11 @@ export const AdminTable = <TRow,>({
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={rowKey(row)} className={styles.bodyRow}>
+            <tr key={rowKey(row)} className={ADMIN_BODY_ROW}>
               {columns.map((column) => (
                 <td
                   key={column.key}
-                  className={cx(styles.cell, column.numeric === true && styles.numeric)}
+                  className={cx(ADMIN_CELL, column.numeric === true && ADMIN_NUMERIC)}
                 >
                   {column.render(row)}
                 </td>
@@ -64,7 +73,7 @@ export const FilterRow = ({
   label,
   children,
 }: Readonly<{ label: string; children: ReactNode }>): React.ReactElement => (
-  <div className={styles.filters} role="group" aria-label={label}>
+  <div className={ADMIN_FILTER_ROW} role="group" aria-label={label}>
     {children}
   </div>
 )
@@ -76,12 +85,7 @@ export type FilterChipProps = Readonly<{
 }>
 
 export const FilterChip = ({ active, label, onSelect }: FilterChipProps): React.ReactElement => (
-  <button
-    type="button"
-    aria-pressed={active}
-    className={active ? styles.filterActive : styles.filter}
-    onClick={onSelect}
-  >
+  <button type="button" aria-pressed={active} className={ADMIN_FILTER} onClick={onSelect}>
     {label}
   </button>
 )

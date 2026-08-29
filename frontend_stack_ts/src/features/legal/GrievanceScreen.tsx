@@ -13,8 +13,16 @@ import { Prose } from "~/ui/patterns/DataList"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
+import { STACK_SM } from "~/ui/recipes/layout"
+import { META_ROW, SUBHEAD_TITLE } from "~/ui/recipes/text"
 
-import styles from "./Legal.module.css"
+import {
+  CONTACT_ACTION,
+  CONTACT_LABEL,
+  CONTACT_LIST,
+  CONTACT_ROW,
+  CONTACT_VALUE,
+} from "./legal.recipe"
 
 const FALLBACK =
   "The grievance redressal policy has not been published to this environment yet. You can still raise a complaint through support and it will be recorded with a reference you can quote."
@@ -90,7 +98,7 @@ const GrievanceScreen = (): React.ReactElement => {
 
           return (
             <Card>
-              <div className={styles.docMeta}>
+              <div className={META_ROW}>
                 <span>Version {String(data.version)}</span>
                 {data.updatedAt === null ? null : <span>Updated {formatDate(data.updatedAt)}</span>}
               </div>
@@ -98,23 +106,23 @@ const GrievanceScreen = (): React.ReactElement => {
               {body === null ? null : <Prose>{body}</Prose>}
 
               {steps.map((step) => (
-                <div key={step.heading} className={styles.section}>
-                  <h2 className={styles.sectionTitle}>{step.heading}</h2>
+                <div key={step.heading} className={STACK_SM}>
+                  <h2 className={SUBHEAD_TITLE}>{step.heading}</h2>
                   <Prose>{step.body}</Prose>
                 </div>
               ))}
 
               {contacts.length === 0 ? null : (
-                <ul className={styles.contactList}>
+                <ul className={CONTACT_LIST}>
                   {contacts.map((contact) => (
-                    <li key={contact.label} className={styles.contactRow}>
-                      <span className={styles.contactLabel}>{contact.label}</span>
+                    <li key={contact.label} className={CONTACT_ROW}>
+                      <span className={CONTACT_LABEL}>{contact.label}</span>
                       {contact.href === null ? (
-                        <span className={styles.contactValue}>{contact.value}</span>
+                        <span className={CONTACT_VALUE}>{contact.value}</span>
                       ) : (
                         <button
                           type="button"
-                          className={styles.contactAction}
+                          className={CONTACT_ACTION}
                           onClick={() => {
                             follow(contact.href ?? "")
                           }}

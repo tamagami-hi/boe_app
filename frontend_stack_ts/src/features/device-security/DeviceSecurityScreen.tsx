@@ -9,6 +9,7 @@ import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Alert } from "~/ui/primitives/Feedback"
 import { Switch } from "~/ui/primitives/Toggle"
+import { HONESTY_TEXT } from "~/ui/recipes/text"
 
 import { PinPad } from "./PinPad"
 import {
@@ -22,8 +23,6 @@ import {
   setDevicePin,
   verifyDevicePin,
 } from "./securityStore"
-
-import styles from "./DeviceSecurity.module.css"
 
 const HONESTY =
   "This lock protects against casual access on a shared device. It is checked on this device only: it is not a password, it does not involve the server, and it does not encrypt anything. Anyone who can read this device's storage can bypass it. Your account password remains the thing that protects your money."
@@ -106,7 +105,7 @@ const DeviceSecurityScreen = (): React.ReactElement => {
       />
 
       <Card>
-        <p className={styles.honesty}>{HONESTY}</p>
+        <p className={HONESTY_TEXT}>{HONESTY}</p>
       </Card>
 
       {notice === null ? null : (

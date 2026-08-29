@@ -22,7 +22,10 @@ import { Card } from "~/ui/primitives/Card"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 import { FormField, Input } from "~/ui/primitives/FormField"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import { ENTRY_TEXT, PROSE_SM } from "~/ui/recipes/datalist"
+import { ACTION_ROW } from "~/ui/recipes/layout"
+import { CARD_LINK } from "~/ui/recipes/surface"
+import { META_TEXT } from "~/ui/recipes/text"
 
 const COPY: Readonly<Record<UserLifecycle, Readonly<{ title: string; description: string }>>> = {
   suspend: {
@@ -136,8 +139,8 @@ const UserDetailScreen = (): React.ReactElement => {
                 <DetailRow label="Version">{String(data.user.version)}</DetailRow>
               </DataList>
 
-              <div className={styles.actions}>
-                <Link to={`/users/${userId}/login-events`} className={styles.rowLink}>
+              <div className={ACTION_ROW}>
+                <Link to={`/users/${userId}/login-events`} className={CARD_LINK}>
                   <Button tone="secondary" size="sm" trailing>
                     Sign-in history
                   </Button>
@@ -166,7 +169,7 @@ const UserDetailScreen = (): React.ReactElement => {
                   )}
                 </FormField>
 
-                <div className={styles.actions}>
+                <div className={ACTION_ROW}>
                   {data.user.accountState === "active" && canSuspend ? (
                     <Button
                       tone="danger"
@@ -202,7 +205,7 @@ const UserDetailScreen = (): React.ReactElement => {
                 </div>
 
                 {!canSuspend && !canClose ? (
-                  <p className={styles.note}>
+                  <p className={PROSE_SM}>
                     Changing an account state needs the users.suspend or users.close permission.
                   </p>
                 ) : null}
@@ -215,7 +218,7 @@ const UserDetailScreen = (): React.ReactElement => {
             >
               {data.orders.length === 0 ? (
                 <Card>
-                  <p className={styles.note}>This account has never placed an order.</p>
+                  <p className={PROSE_SM}>This account has never placed an order.</p>
                 </Card>
               ) : (
                 <AdminTable
@@ -227,9 +230,9 @@ const UserDetailScreen = (): React.ReactElement => {
                       key: "fund",
                       header: "Fund",
                       render: (row) => (
-                        <span className={styles.cellStack}>
+                        <span className={ENTRY_TEXT}>
                           <span>{row.fundName ?? row.fundSlug}</span>
-                          <span className={styles.faint}>{row.type}</span>
+                          <span className={META_TEXT}>{row.type}</span>
                         </span>
                       ),
                     },

@@ -25,7 +25,10 @@ import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 import { FormField, Input } from "~/ui/primitives/FormField"
 import { Textarea } from "~/ui/primitives/Textarea"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import { ADMIN_CODE, ADMIN_FORM_GRID } from "~/ui/recipes/admin"
+import { ENTRY_TEXT, PROSE_SM } from "~/ui/recipes/datalist"
+import { ACTION_ROW, STACK_LG } from "~/ui/recipes/layout"
+import { META_TEXT } from "~/ui/recipes/text"
 
 const STATUS_TONE = {
   draft: "warning",
@@ -100,7 +103,7 @@ const FaqListScreen = (): React.ReactElement => {
       {canPublish ? (
         <Section title={editing === null ? "Add an answer" : "Edit this draft"}>
           <Card elevated>
-            <div className={styles.form}>
+            <div className={STACK_LG}>
               <FormField label="Question" required>
                 {({ id }) => (
                   <Input
@@ -125,7 +128,7 @@ const FaqListScreen = (): React.ReactElement => {
                   />
                 )}
               </FormField>
-              <div className={styles.formGrid}>
+              <div className={ADMIN_FORM_GRID}>
                 <FormField label="Category">
                   {({ id }) => (
                     <Input
@@ -153,7 +156,7 @@ const FaqListScreen = (): React.ReactElement => {
                   )}
                 </FormField>
               </div>
-              <div className={styles.actions}>
+              <div className={ACTION_ROW}>
                 <Button disabled={incomplete} loading={pending} onClick={submit} trailing>
                   {editing === null ? "Save as draft" : "Save the draft"}
                 </Button>
@@ -169,7 +172,7 @@ const FaqListScreen = (): React.ReactElement => {
                   </Button>
                 )}
               </div>
-              <p className={styles.note}>
+              <p className={PROSE_SM}>
                 A new answer is created as a draft. Investors see nothing until you publish it.
               </p>
             </div>
@@ -208,9 +211,9 @@ const FaqListScreen = (): React.ReactElement => {
                   key: "question",
                   header: "Question",
                   render: (row) => (
-                    <span className={styles.cellStack}>
+                    <span className={ENTRY_TEXT}>
                       <span>{row.question}</span>
-                      <span className={styles.code}>{row.contentKey}</span>
+                      <span className={ADMIN_CODE}>{row.contentKey}</span>
                     </span>
                   ),
                 },
@@ -243,7 +246,7 @@ const FaqListScreen = (): React.ReactElement => {
                   header: "Actions",
                   render: (row) =>
                     canPublish ? (
-                      <span className={styles.actions}>
+                      <span className={ACTION_ROW}>
                         {row.status === "draft" ? (
                           <Button
                             size="sm"
@@ -316,7 +319,7 @@ const FaqListScreen = (): React.ReactElement => {
                         )}
                       </span>
                     ) : (
-                      <span className={styles.faint}>Read only</span>
+                      <span className={META_TEXT}>Read only</span>
                     ),
                 },
               ]}

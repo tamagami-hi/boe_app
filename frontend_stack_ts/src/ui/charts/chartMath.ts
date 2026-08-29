@@ -13,14 +13,14 @@ export type Arc = Readonly<{
 }>
 
 export const DONUT_PALETTE: readonly string[] = [
-  "#8a6428",
-  "#c79a53",
-  "#4a6b52",
-  "#7d8b7f",
-  "#2a2522",
-  "#b08968",
-  "#5d6f7c",
-  "#9c8065",
+  "var(--be-series-1)",
+  "var(--be-series-2)",
+  "var(--be-series-3)",
+  "var(--be-series-4)",
+  "var(--be-series-5)",
+  "var(--be-series-6)",
+  "var(--be-series-7)",
+  "var(--be-series-8)",
 ]
 
 const TAU = Math.PI * 2

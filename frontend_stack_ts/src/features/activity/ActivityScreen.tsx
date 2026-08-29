@@ -10,13 +10,15 @@ import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
+import { CARD_LINK, CARD_STACK } from "~/ui/recipes/surface"
+import { META_MUTED } from "~/ui/recipes/text"
 import { Badge } from "~/ui/primitives/Badge"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 import { Tabs } from "~/ui/primitives/Toggle"
 
-import styles from "./Activity.module.css"
+import { FUND_LINK, ROW, ROW_LEFT, ROW_RIGHT } from "./activity.recipe"
 
 const LABEL = {
   lump_sum: "Lump sum",
@@ -112,27 +114,29 @@ const ActivityScreen = (): React.ReactElement => {
           }
         >
           {(data) => (
-            <div className={styles.list}>
+            <div className={CARD_STACK}>
               {[...data.items]
                 .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
                 .map((entry) => (
                   <Card key={entry.id}>
-                    <div className={styles.row}>
-                      <div className={styles.left}>
+                    <div className={ROW}>
+                      <div className={ROW_LEFT}>
                         <Badge tone={TONE[entry.type]}>{LABEL[entry.type]}</Badge>
-                        <Link to={`/funds/${entry.fundId}`} className={styles.fundLink}>
+                        <Link to={`/funds/${entry.fundId}`} className={FUND_LINK}>
                           {nameFor(entry.fundId)}
                         </Link>
-                        <span className={styles.date}>{formatDate(`${entry.date}T00:00:00Z`)}</span>
+                        <span className={META_MUTED}>
+                          {formatDate(`${entry.date}T00:00:00Z`)}
+                        </span>
                       </div>
-                      <div className={styles.right}>
+                      <div className={ROW_RIGHT}>
                         <MoneyValue
                           amount={toPaise(entry.valueDeltaPaise)}
                           size="md"
                           tone="signed"
                           showSign
                         />
-                        <span className={styles.sub}>value change</span>
+                        <span className={META_MUTED}>value change</span>
                       </div>
                     </div>
                   </Card>
@@ -169,23 +173,23 @@ const ActivityScreen = (): React.ReactElement => {
             }
           >
             {(data) => (
-              <div className={styles.list}>
+              <div className={CARD_STACK}>
                 {data.items.map((payment) => (
                   <Link
                     key={payment.id}
                     to={`/activity/payments/${payment.id}`}
-                    className={styles.fundLink}
+                    className={CARD_LINK}
                   >
                     <Card>
-                      <div className={styles.row}>
-                        <div className={styles.left}>
+                      <div className={ROW}>
+                        <div className={ROW_LEFT}>
                           <StatusBadge status={clientInvestmentStatus(payment.status)} />
-                          <span className={styles.fundLink}>{nameFor(payment.fundId)}</span>
-                          <span className={styles.date}>{formatDateTime(payment.createdAt)}</span>
+                          <span className={FUND_LINK}>{nameFor(payment.fundId)}</span>
+                          <span className={META_MUTED}>{formatDateTime(payment.createdAt)}</span>
                         </div>
-                        <div className={styles.right}>
+                        <div className={ROW_RIGHT}>
                           <MoneyValue amount={toPaise(payment.amountPaise)} size="md" />
-                          <span className={styles.sub}>
+                          <span className={META_MUTED}>
                             {payment.provider ?? "no provider attempt yet"}
                           </span>
                         </div>

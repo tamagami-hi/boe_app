@@ -17,7 +17,11 @@ import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import { ADMIN_CELL_LINK, ADMIN_CODE } from "~/ui/recipes/admin"
+import { ENTRY_TEXT, PROSE_SM } from "~/ui/recipes/datalist"
+import { ACTION_ROW } from "~/ui/recipes/layout"
+import { CARD_LINK } from "~/ui/recipes/surface"
+import { META_TEXT } from "~/ui/recipes/text"
 
 const AumOverviewScreen = (): React.ReactElement => {
   const query = useAdminFunds({})
@@ -31,7 +35,7 @@ const AumOverviewScreen = (): React.ReactElement => {
         description="The absolute size of every fund, and where to move it. Fund size is append-only: a correction is a new entry, never an edit."
         actions={
           canWrite ? (
-            <Link to="/aum/collective" className={styles.rowLink}>
+            <Link to="/aum/collective" className={CARD_LINK}>
               <Button trailing>Grow several funds</Button>
             </Link>
           ) : undefined
@@ -69,11 +73,11 @@ const AumOverviewScreen = (): React.ReactElement => {
                 key: "fund",
                 header: "Fund",
                 render: (row) => (
-                  <span className={styles.cellStack}>
-                    <Link to={`/funds/${row.id}/aum`} className={styles.cellLink}>
+                  <span className={ENTRY_TEXT}>
+                    <Link to={`/funds/${row.id}/aum`} className={ADMIN_CELL_LINK}>
                       {row.name ?? row.slug}
                     </Link>
-                    <span className={styles.code}>{row.slug}</span>
+                    <span className={ADMIN_CODE}>{row.slug}</span>
                   </span>
                 ),
               },
@@ -88,7 +92,7 @@ const AumOverviewScreen = (): React.ReactElement => {
                 numeric: true,
                 render: (row) =>
                   row.aum === null ? (
-                    <span className={styles.faint}>Not initialised</span>
+                    <span className={META_TEXT}>Not initialised</span>
                   ) : (
                     <MoneyValue amount={toPaise(row.aum.aumPaise)} size="md" />
                   ),
@@ -105,13 +109,13 @@ const AumOverviewScreen = (): React.ReactElement => {
                 key: "actions",
                 header: "Actions",
                 render: (row) => (
-                  <span className={styles.actions}>
-                    <Link to={`/funds/${row.id}/aum`} className={styles.rowLink}>
+                  <span className={ACTION_ROW}>
+                    <Link to={`/funds/${row.id}/aum`} className={CARD_LINK}>
                       <Button tone="secondary" size="sm">
                         {row.aum === null ? "Set opening size" : "Record growth"}
                       </Button>
                     </Link>
-                    <Link to={`/funds/${row.id}/aum/history`} className={styles.rowLink}>
+                    <Link to={`/funds/${row.id}/aum/history`} className={CARD_LINK}>
                       <Button tone="ghost" size="sm">
                         History
                       </Button>
@@ -126,7 +130,7 @@ const AumOverviewScreen = (): React.ReactElement => {
 
       <Section title="Why there is no edit button">
         <Card>
-          <p className={styles.note}>
+          <p className={PROSE_SM}>
             A fund&apos;s size is derived from an append-only chain of snapshots. Correcting a
             mistake appends a correction that references the snapshot it corrects, so the history
             still shows what was believed and when. Nothing overwrites anything.

@@ -45,6 +45,50 @@
 
   --be-grain-opacity: 0.038;
 
+  --be-series-1: #8a6428;
+  --be-series-2: #c79a53;
+  --be-series-3: #4a6b52;
+  --be-series-4: #7d8b7f;
+  --be-series-5: #2a2522;
+  --be-series-6: #b08968;
+  --be-series-7: #5d6f7c;
+  --be-series-8: #9c8065;
+
+  --be-lift-14: inset 0 1px 0 rgb(255 255 255 / 14%);
+  --be-lift-18: inset 0 1px 0 rgb(255 255 255 / 18%);
+  --be-lift-20: inset 0 1px 0 rgb(255 255 255 / 20%);
+  --be-lift-26: inset 0 1px 0 rgb(255 255 255 / 26%);
+
+  --be-btn-solid: var(--be-lift-14), var(--be-ambient-2);
+  --be-btn-solid-hover: var(--be-lift-20), var(--be-ambient-3);
+  --be-btn-gold: var(--be-lift-26), var(--be-ambient-gold);
+  --be-btn-gold-hover: var(--be-lift-26), var(--be-ambient-gold), var(--be-ambient-2);
+  --be-btn-quiet: 0 0 0 1px var(--be-hairline-strong), var(--be-inner-lift),
+    var(--be-ambient-1);
+  --be-btn-quiet-hover: 0 0 0 1px var(--be-hairline-strong), var(--be-inner-lift),
+    var(--be-ambient-2);
+
+  --be-field-rest: inset 0 0 0 1px var(--be-hairline-strong),
+    inset 0 2px 4px rgb(var(--be-tint-warm) / 5%);
+  --be-field-focus: inset 0 0 0 1px color-mix(in srgb, var(--be-gold) 58%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--be-gold) 15%, transparent);
+  --be-field-invalid: inset 0 0 0 1px color-mix(in srgb, var(--be-red) 55%, transparent),
+    inset 0 2px 4px rgb(var(--be-tint-warm) / 5%);
+  --be-field-invalid-focus: inset 0 0 0 1px color-mix(in srgb, var(--be-red) 65%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--be-red) 14%, transparent);
+
+  --be-grad-solid: linear-gradient(180deg, var(--be-clay) 0%, var(--be-espresso) 100%);
+  --be-grad-gold: linear-gradient(180deg, var(--be-gold-lift) 0%, var(--be-gold-deep) 100%);
+  --be-grad-quiet: linear-gradient(180deg, var(--be-parchment) 0%, var(--be-parchment-2) 100%);
+  --be-grad-danger: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--be-red) 88%, white) 0%,
+    var(--be-red) 100%
+  );
+  --be-grad-core: linear-gradient(180deg, rgb(255 255 255 / 94%) 0%, var(--be-parchment) 100%);
+  --be-field-bg: color-mix(in srgb, var(--be-sand) 26%, white);
+  --be-field-bg-hover: color-mix(in srgb, var(--be-sand) 18%, white);
+
   --be-mesh-gold: radial-gradient(
     62% 48% at 18% 8%,
     color-mix(in srgb, var(--be-gold) 18%, transparent) 0%,
@@ -60,29 +104,6 @@
     color-mix(in srgb, var(--be-clay) 10%, transparent) 0%,
     transparent 66%
   );
-}
-
-.be-shell {
-  border-radius: var(--be-squircle-xl);
-  background: var(--be-shell);
-  padding: var(--be-shell-pad);
-  box-shadow: 0 0 0 1px var(--be-hairline);
-}
-
-.be-core {
-  border-radius: calc(var(--be-squircle-xl) - var(--be-shell-pad));
-  background: var(--be-parchment);
-  box-shadow: var(--be-inner-lift), var(--be-ambient-1);
-}
-
-.be-grain {
-  position: fixed;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  opacity: var(--be-grain-opacity);
-  mix-blend-mode: multiply;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 @media (prefers-reduced-motion: reduce) {

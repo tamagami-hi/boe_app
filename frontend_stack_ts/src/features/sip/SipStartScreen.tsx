@@ -19,8 +19,11 @@ import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 import { PresetChoice, RadioGroup } from "~/ui/primitives/Toggle"
+import { ITEM_TITLE, STAT_LABEL, STAT_ROOT } from "~/ui/recipes/datalist"
+import { FIELD_ERROR } from "~/ui/recipes/field"
+import { HONESTY_TEXT, META_MUTED, SECTION_TITLE } from "~/ui/recipes/text"
 
-import styles from "./Sip.module.css"
+import { SIP_FIELD, SIP_FORM, SIP_HINT, SIP_SUMMARY } from "./sip.recipe"
 
 const AUTOPAY_MAX_RUPEES = 15_000
 const AUTOPAY_MAX_MONTHS = 360
@@ -169,16 +172,16 @@ const SipStartScreen = (): React.ReactElement => {
         }
       >
         {(data) => (
-          <div className={styles.form}>
+          <div className={SIP_FORM}>
             <Card elevated>
-              <span className={styles.fundName}>{data.fund.name}</span>
-              <span className={styles.fundMeta}>
+              <span className={SECTION_TITLE}>{data.fund.name}</span>
+              <span className={META_MUTED}>
                 {data.fund.category}
                 {minimum === null ? "" : ` · minimum ${formatINR(minimum)} a month`}
               </span>
 
-              <div className={styles.field}>
-                <span className={styles.label}>Monthly amount</span>
+              <div className={SIP_FIELD}>
+                <span className={STAT_LABEL}>Monthly amount</span>
                 <AmountInput
                   value={rupees}
                   invalid={submitted && amountError !== undefined}
@@ -186,15 +189,15 @@ const SipStartScreen = (): React.ReactElement => {
                   disabled={pending}
                 />
                 {submitted && amountError !== undefined ? (
-                  <span className={styles.error}>{amountError}</span>
+                  <span className={FIELD_ERROR}>{amountError}</span>
                 ) : (
-                  <span className={styles.hint}>Whole rupees only.</span>
+                  <span className={SIP_HINT}>Whole rupees only.</span>
                 )}
               </div>
             </Card>
 
             <Card>
-              <span className={styles.label}>How it is paid</span>
+              <span className={STAT_LABEL}>How it is paid</span>
               <RadioGroup<Mode>
                 legend="How the SIP is paid"
                 value={mode}
@@ -217,8 +220,8 @@ const SipStartScreen = (): React.ReactElement => {
             </Card>
 
             <Card>
-              <div className={styles.field}>
-                <span className={styles.label}>For how long</span>
+              <div className={SIP_FIELD}>
+                <span className={STAT_LABEL}>For how long</span>
                 <PresetChoice
                   label="Duration in months"
                   value={durationMonths}
@@ -227,12 +230,12 @@ const SipStartScreen = (): React.ReactElement => {
                   onChange={setDurationMonths}
                 />
                 {submitted && durationError !== undefined ? (
-                  <span className={styles.error}>{durationError}</span>
+                  <span className={FIELD_ERROR}>{durationError}</span>
                 ) : null}
               </div>
 
-              <div className={styles.field}>
-                <span className={styles.label}>Debit day</span>
+              <div className={SIP_FIELD}>
+                <span className={STAT_LABEL}>Debit day</span>
                 <PresetChoice
                   label="Day of the month"
                   value={debitDay}
@@ -240,7 +243,7 @@ const SipStartScreen = (): React.ReactElement => {
                   format={(value) => String(value)}
                   onChange={setDebitDay}
                 />
-                <span className={styles.hint}>
+                <span className={SIP_HINT}>
                   Any day from {String(DEBIT_DAY_MIN)} to {String(DEBIT_DAY_MAX)}. Later days do not
                   exist in every month, so we do not offer them.
                 </span>
@@ -249,20 +252,20 @@ const SipStartScreen = (): React.ReactElement => {
 
             {amountPaise === null ? null : (
               <Card>
-                <span className={styles.label}>Each month</span>
+                <span className={STAT_LABEL}>Each month</span>
                 <MoneyValue amount={amountPaise} size="lg" />
-                <div className={styles.summary}>
-                  <div>
-                    <span className={styles.label}>Installments</span>
-                    <span className={styles.name}>{String(durationMonths)}</span>
+                <div className={SIP_SUMMARY}>
+                  <div className={STAT_ROOT}>
+                    <span className={STAT_LABEL}>Installments</span>
+                    <span className={ITEM_TITLE}>{String(durationMonths)}</span>
                   </div>
-                  <div>
-                    <span className={styles.label}>Debit day</span>
-                    <span className={styles.name}>{String(debitDay)}</span>
+                  <div className={STAT_ROOT}>
+                    <span className={STAT_LABEL}>Debit day</span>
+                    <span className={ITEM_TITLE}>{String(debitDay)}</span>
                   </div>
-                  <div>
-                    <span className={styles.label}>Mode</span>
-                    <span className={styles.name}>
+                  <div className={STAT_ROOT}>
+                    <span className={STAT_LABEL}>Mode</span>
+                    <span className={ITEM_TITLE}>
                       {mode === "manual_checkout" ? "Manual" : "AutoPay"}
                     </span>
                   </div>
@@ -281,7 +284,7 @@ const SipStartScreen = (): React.ReactElement => {
             </Button>
 
             <Section title="What a SIP does not do">
-              <p className={styles.honesty}>
+              <p className={HONESTY_TEXT}>
                 A SIP does not average away risk and it does not promise a return. It commits you to
                 a monthly amount you can stop at any time. Returning from the UPI app does not mean a
                 mandate was authorised — only the mandate state we hold does.

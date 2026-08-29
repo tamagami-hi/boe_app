@@ -1,0 +1,85 @@
+@utility tone-neutral {
+  background-color: color-mix(in srgb, var(--be-slate) 9%, var(--be-parchment));
+  color: var(--be-fg-muted);
+  border-color: var(--be-hairline);
+}
+
+@utility tone-positive {
+  background-color: color-mix(in srgb, var(--be-green) 12%, var(--be-parchment));
+  color: color-mix(in srgb, var(--be-green) 82%, var(--be-espresso));
+  border-color: color-mix(in srgb, var(--be-green) 24%, transparent);
+}
+
+@utility tone-negative {
+  background-color: color-mix(in srgb, var(--be-red) 11%, var(--be-parchment));
+  color: color-mix(in srgb, var(--be-red) 84%, var(--be-espresso));
+  border-color: color-mix(in srgb, var(--be-red) 24%, transparent);
+}
+
+@utility tone-warning {
+  background-color: color-mix(in srgb, var(--be-amber) 13%, var(--be-parchment));
+  color: color-mix(in srgb, var(--be-amber) 84%, var(--be-espresso));
+  border-color: color-mix(in srgb, var(--be-amber) 26%, transparent);
+}
+
+@utility tone-info {
+  background-color: color-mix(in srgb, var(--be-slate) 11%, var(--be-parchment));
+  color: color-mix(in srgb, var(--be-slate) 88%, var(--be-espresso));
+  border-color: color-mix(in srgb, var(--be-slate) 22%, transparent);
+}
+
+@utility divider-fade {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--be-hairline-strong) 12%,
+    var(--be-hairline-strong) 88%,
+    transparent 100%
+  );
+}
+
+@utility select-caret {
+  background-image: linear-gradient(45deg, transparent 50%, var(--be-fg-muted) 50%),
+    linear-gradient(135deg, var(--be-fg-muted) 50%, transparent 50%);
+  background-position: calc(100% - 18px) center, calc(100% - 13px) center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+@utility card-face {
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--be-parchment) 96%, white) 0%,
+    var(--be-parchment) 100%
+  );
+}
+
+@utility card-face-feature {
+  background-image: var(--be-mesh-gold),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--be-parchment) 98%, white) 0%,
+      var(--be-parchment-2) 100%
+    );
+}
+
+@utility ring-focus-ink {
+  box-shadow: inset 0 0 0 1px var(--be-ink),
+    0 0 0 4px color-mix(in srgb, var(--be-ink) 9%, transparent);
+}
+
+@utility ring-inset-hairline {
+  box-shadow: inset 0 0 0 1px var(--be-hairline);
+}
+
+@utility ring-inset-hairline-strong {
+  box-shadow: inset 0 0 0 1px var(--be-hairline-strong), var(--be-inner-lift-soft);
+}
+
+@utility ring-inset-invalid {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--be-red) 55%, transparent);
+}
+
+@utility ring-inset-selected {
+  box-shadow: inset 0 0 0 1.5px var(--be-ink), var(--be-ambient-1);
+}

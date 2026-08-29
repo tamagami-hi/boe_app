@@ -20,7 +20,8 @@ import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 import { FormField } from "~/ui/primitives/FormField"
 import { Textarea } from "~/ui/primitives/Textarea"
 
-import styles from "~/features/admin/shared/Admin.module.css"
+import { ADMIN_CODE, ADMIN_LABEL } from "~/ui/recipes/admin"
+import { PROSE_SM } from "~/ui/recipes/datalist"
 
 const FundReceiptDetailScreen = (): React.ReactElement => {
   const { orderId = "" } = useParams()
@@ -83,7 +84,7 @@ const FundReceiptDetailScreen = (): React.ReactElement => {
             )}
 
             <Card elevated>
-              <span className={styles.label}>Amount received</span>
+              <span className={ADMIN_LABEL}>Amount received</span>
               <MoneyValue amount={toPaise(data.amountPaise)} size="xl" />
 
               <DataList>
@@ -98,10 +99,10 @@ const FundReceiptDetailScreen = (): React.ReactElement => {
                 </DetailRow>
                 <DetailRow label="Provider">{data.payment.provider}</DetailRow>
                 <DetailRow label="Merchant order">
-                  <span className={styles.code}>{data.payment.merchantOrderId ?? "—"}</span>
+                  <span className={ADMIN_CODE}>{data.payment.merchantOrderId ?? "—"}</span>
                 </DetailRow>
                 <DetailRow label="Provider reference">
-                  <span className={styles.code}>{data.payment.providerReference ?? "—"}</span>
+                  <span className={ADMIN_CODE}>{data.payment.providerReference ?? "—"}</span>
                 </DetailRow>
                 <DetailRow label="Settled">
                   {data.payment.succeededAt === null
@@ -157,7 +158,7 @@ const FundReceiptDetailScreen = (): React.ReactElement => {
                           />
                         )}
                       </FormField>
-                      <p className={styles.note}>
+                      <p className={PROSE_SM}>
                         This is sent with the receipt version we read above. If someone else
                         acknowledges it first, the request is refused rather than overwriting their
                         decision.

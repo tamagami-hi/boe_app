@@ -11,6 +11,7 @@ import {
   useSupportFaqs,
   useSupportTickets,
 } from "~/features/shared/queries"
+import { cx } from "~/lib/cx"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { Disclosure, Prose } from "~/ui/patterns/DataList"
 import { EmptyState } from "~/ui/patterns/EmptyState"
@@ -21,8 +22,14 @@ import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 import { FormField, Input } from "~/ui/primitives/FormField"
 import { Select } from "~/ui/primitives/Select"
 import { Textarea } from "~/ui/primitives/Textarea"
+import { ITEM_TITLE, PROSE_PRE, PROSE_SM } from "~/ui/recipes/datalist"
+import { ROW_BETWEEN, STACK_LG } from "~/ui/recipes/layout"
+import { CARD_STACK, INSET_NOTE } from "~/ui/recipes/surface"
+import { META_ROW, REFERENCE_TEXT } from "~/ui/recipes/text"
 
-import styles from "./Support.module.css"
+import { TICKET_COUNTER } from "./support.recipe"
+
+const TICKET_BODY = cx(PROSE_SM, PROSE_PRE)
 
 const MAX_SUBJECT = 200
 const MAX_BODY = 5_000
@@ -84,7 +91,7 @@ const SupportScreen = (): React.ReactElement => {
 
       <Section title="Raise a request">
         <Card elevated>
-          <div className={styles.form}>
+          <div className={STACK_LG}>
             {create.isSuccess && subject === "" && body === "" ? (
               <Alert tone="success" title="We have your request">
                 It appears below with its reference. We reply by email.
@@ -148,7 +155,7 @@ const SupportScreen = (): React.ReactElement => {
               )}
             </FormField>
 
-            <span className={styles.counter}>
+            <span className={TICKET_COUNTER}>
               {String(bodyTrimmed.length)} / {String(MAX_BODY)}
             </span>
 
@@ -177,16 +184,16 @@ const SupportScreen = (): React.ReactElement => {
           }
         >
           {(data) => (
-            <div className={styles.list}>
+            <div className={CARD_STACK}>
               {data.items.map((ticket) => (
                 <Card key={ticket.id}>
-                  <div className={styles.ticketTop}>
-                    <span className={styles.subject}>{ticket.subject}</span>
+                  <div className={ROW_BETWEEN}>
+                    <span className={ITEM_TITLE}>{ticket.subject}</span>
                     <StatusBadge status={supportRequestState(ticket.status)} />
                   </div>
-                  <span className={styles.reference}>{ticket.reference}</span>
-                  <p className={styles.body}>{ticket.body}</p>
-                  <div className={styles.meta}>
+                  <span className={REFERENCE_TEXT}>{ticket.reference}</span>
+                  <p className={TICKET_BODY}>{ticket.body}</p>
+                  <div className={META_ROW}>
                     <span>Raised {formatDateTime(ticket.createdAt)}</span>
                     <span>{ticket.category}</span>
                     {ticket.resolvedAt === null ? null : (
@@ -194,7 +201,7 @@ const SupportScreen = (): React.ReactElement => {
                     )}
                   </div>
                   {ticket.resolutionNote === null ? null : (
-                    <div className={styles.resolution}>{ticket.resolutionNote}</div>
+                    <div className={INSET_NOTE}>{ticket.resolutionNote}</div>
                   )}
                 </Card>
               ))}
@@ -222,7 +229,7 @@ const SupportScreen = (): React.ReactElement => {
         >
           {(data) => (
             <Card>
-              <div className={styles.faqs}>
+              <div className="flex flex-col">
                 {data.items.map((faq) => (
                   <Disclosure key={`${faq.key}-${String(faq.version)}`} title={faq.q}>
                     <Prose>{faq.a}</Prose>

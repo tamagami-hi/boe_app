@@ -1,0 +1,71 @@
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--be-bg);
+    color: var(--be-fg);
+    font-family: var(--be-font-ui);
+    font-size: var(--be-text-base);
+    line-height: var(--be-lh-normal);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-synthesis-weight: none;
+  }
+
+  #root {
+    min-height: 100dvh;
+    background: var(--be-bg);
+    isolation: isolate;
+  }
+
+  :where(button, [role="button"], a, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: var(--be-focus-ring);
+    outline-offset: var(--be-focus-ring-offset);
+  }
+
+  :where(img, svg, video, canvas) {
+    display: block;
+    max-width: 100%;
+  }
+
+  :where(input, textarea, select, button) {
+    font: inherit;
+    color: inherit;
+  }
+
+  :where(textarea) {
+    resize: vertical;
+  }
+
+  ::placeholder {
+    color: var(--be-fg-faint);
+    opacity: 1;
+  }
+
+  :where(table) {
+    border-collapse: collapse;
+    border-spacing: 0;
+  }
+
+  :where(dialog) {
+    max-width: none;
+    max-height: none;
+    border: 0;
+    padding: 0;
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
