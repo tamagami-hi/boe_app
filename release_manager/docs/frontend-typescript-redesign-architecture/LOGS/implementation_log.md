@@ -3210,3 +3210,106 @@ referrer probe in Entry 028 cost nothing and eliminated a candidate outright. Th
 each of these could have been settled by one ₹1 order and a `printenv` before any file was edited. The
 one genuine defect the detour did surface is real and worth keeping — `envPassthrough.test.ts`, closing
 the compose-passthrough gap that made a whole experiment silently test nothing.
+
+
+## Entry 034 — the full migration works, and does not lift the block · 2026-08-29
+
+The centralized payment service is live on the approved domain and `boe_app` makes **no PhonePe calls
+at all** for one-time payments. `Transacting_URL` is unchanged. This is the end of the investigation:
+every input we control has now been varied, including the one the whole architecture existed to vary.
+
+### What is deployed
+
+- `boe-payment-service` in the `boe_landing` stack, behind a compose `payments` profile: the PhonePe
+  adapter copied verbatim out of `boe_app`, HMAC service auth, event normalization, single-use browser
+  sessions. Healthy.
+- `boe_app` v0.12.4 selecting `relayPaymentGateway` via `PAYMENTS_SERVICE_URL` /
+  `PAYMENTS_SERVICE_SECRET` / `PAYMENTS_SERVICE_NAME`. Secrets confirmed matching across both stacks
+  (fingerprint `1cd48425d1c6`).
+- nginx on `www.beonedge.in` and the apex serving `/pay/start`, `/payment-return`, `/pay/go`,
+  `/pay/return/` and the two PhonePe callback paths. The `www` block serves them directly now, so the
+  earlier 301-to-apex hole is closed.
+- The payment service attached to `boe_dev_frontend`, so the backend reaches it by container name over
+  a private network. The internal API answers 404 on the apex and is not publicly routable.
+
+### It works, and that part is proven
+
+```
+POST /api/v1/client/orders/{id}/pay
+  → {"checkout":{"type":"redirect","url":"https://www.beonedge.in/pay/start?t=…"}}
+
+payment service log
+  merchantOrderId=boe_f6a4134814ed…  providerOrderId=OMO2608300159593833316455W  "checkout created"
+  merchantOrderId=boe_f6a4134814ed…  service=boe-dev  "payer handed to the provider from the approved origin"
+
+backend log, last 5 minutes
+  phonepe-related lines: 0
+```
+
+`boe_app` returned a URL on the approved domain, the service created the PhonePe order, and the
+backend made zero provider calls. That is spec §47's target for one-time payments, reached.
+
+### And the block is unchanged
+
+```json
+{"errorCode":"INTERNAL_SECURITY_BLOCK_1","isRetryEnabled":false,
+ "data":{"Onboarding_URL":["www.beonedge.in"],"Transacting_URL":"https://dev-app.beonedge.in/"}}
+```
+
+### Six inputs, all eliminated
+
+| input | varied to | entry |
+| --- | --- | --- |
+| browser `Referer` | absent, and `www.beonedge.in` | 028 |
+| `merchantUrls.redirectUrl` | the approved host, confirmed in-process | 032 |
+| browser request payload | inspected: no hostname of ours at all | 032 |
+| registered webhook URL | the approved host, on the dashboard | 033 |
+| the browser's whole origin chain | app → `www.beonedge.in/pay/go` → provider | (this session) |
+| **which server calls PhonePe** | the service on the approved domain; `boe_app` calls it zero times | **034** |
+
+`Transacting_URL` is state inside PhonePe's merchant record. It is not derived from the request, the
+browser, the dashboard webhook, or the identity of the calling process. Only PhonePe can change it.
+
+### So the only remaining actions are PhonePe's
+
+1. Approve `dev-app.beonedge.in` and `app.beonedge.in`, **and** ask them to reset the recorded
+   transacting URL, quoting the block body. Help → "Unable to receive customer payments?" → Contact Us
+   → Update URL.
+2. For the 3 September deadline, dev testing runs on sandbox credentials — the configuration proven
+   working on 2026-08-25 with 7 succeeded payments and 7 allocations. `PHONEPE_ENV=sandbox` plus
+   sandbox credentials; `mercury-uat.phonepe.com` is already allowlisted. Under the relay this is a
+   per-caller setting: `phonepeEnv` in `PAYMENT_CALLERS`, so dev can be sandbox while production stays
+   production without touching code.
+
+### What the migration is still worth
+
+It is not wasted, but it should be judged on its own merits rather than as a fix:
+
+- PhonePe credentials exist in one service instead of every app stack.
+- One integration point serves both the dev and production apps, so a second app costs no PhonePe work.
+- `boe_app` speaks a provider-neutral contract, which is §43's replaceability without building
+  multi-provider support.
+
+### Not verified, and the honest gaps
+
+- **UNVERIFIED** that a payment completes. It cannot, from this merchant, until PhonePe acts.
+- **UNVERIFIED** the callback leg through the service. Callbacks still route to the backend in nginx and
+  no payment has ever settled, so the normalization and forwarding path has only unit tests.
+- **UNVERIFIED** the settled chain: order → payment → **allocation** → acknowledgement. Still zero
+  allocations on this database.
+- **AutoPay is untouched.** `createPhonePeRecurringGateway` still calls PhonePe directly, so `PHONEPE_*`
+  remains required in `boe_app` and §5's "zero PhonePe knowledge" is not yet true. Deliberate: it
+  roughly doubles the surface and there is no reason to move it before the block is resolved.
+- The payment service's attachment to `boe_dev_frontend` was made with `docker network connect` and is
+  not declared in compose. It survived this deploy but will not survive the network being recreated.
+  It needs declaring as an external network before this is anything but a test rig.
+
+### The process lesson, recorded plainly
+
+Six hypotheses, tested in sequence, each one costing more than the last. The two cheapest — the
+referrer probe and the request-body capture — were pure observation and eliminated candidates outright.
+The three most expensive each produced code first: `PHONEPE_CHECKOUT_REDIRECT_URL`, the callback-host
+relaxation, and this migration. Every one of them could have been settled by an experiment before a
+file was edited, and in the case of the redirect URL the first experiment was invalid because a compose
+passthrough was missing, which cost a full retraction. The durable output is `envPassthrough.test.ts`:
+a key the backend reads that compose does not pass is now a failing test rather than a silent no-op.
