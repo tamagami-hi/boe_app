@@ -3313,3 +3313,657 @@ relaxation, and this migration. Every one of them could have been settled by an 
 file was edited, and in the case of the redirect URL the first experiment was invalid because a compose
 passthrough was missing, which cost a full retraction. The durable output is `envPassthrough.test.ts`:
 a key the backend reads that compose does not pass is now a failing test rather than a silent no-op.
+
+
+---
+
+## Entry 035 — the browser build stops being a stretched phone, and the admin APK gets its missing nine destinations · 2026-08-30
+
+**Task:** [`TASK/025-fluid-desktop-layout-and-admin-nav-completeness.md`](../TASK/025-fluid-desktop-layout-and-admin-nav-completeness.md)
+**Decisions:** [`risk_and_decision.md` D-059](risk_and_decision.md#d-059), [D-060](risk_and_decision.md#d-060), [D-061](risk_and_decision.md#d-061)
+
+Two problems, one pass. The web build was a phone layout allowed to stretch: doc 08's content caps
+were fixed at 960/1280 px, and — the part that mattered more — **there was not a single `xl:` prefix
+anywhere in `src/`**. Every responsive ladder terminated at `lg` (1024 px), so the whole 1024→2560 px
+range was one unstyled band. Separately, the admin bottom navigation rendered
+`permitted.slice(0, 5)`, which left **nine of fourteen admin destinations with no path on a phone at
+all**, and `/funds/:fundId/holdings` had no inbound link from anywhere in either shell.
+
+### Tokens
+
+`src/ui/tokens/tokens-core.css`:
+
+```css
+--be-content-max:      clamp(60rem, 82vw, 100rem);   /* was 960px  */
+--be-content-max-wide: clamp(80rem, 90vw, 150rem);   /* was 1280px */
+--be-content-max-form: 35rem;                        /* was 560px  */
+--be-page-pad-x-lg:    clamp(var(--be-space-7), 2vw, var(--be-space-10));  /* was --be-space-7 */
+```
+
+Every clamp floors at the value it replaces, so **no token changes value until a 1171 px viewport** —
+computed, not assumed. Client content now grows to 1600 px, admin to 2400 px. `--be-page-pad-x-lg`
+stays on the spacing scale rather than restating `2rem`/`4rem` as literals.
+
+The admin cap is mostly theoretical: the sidebar is a fixed 264 px (`w-sidebar` 240 + `ml-6`), so admin
+content is `100vw − 264px` and the 90vw cap only binds above a ~2640 px viewport. Below that the
+content column, not the token, sets the width.
+
+### Shared recipes — where the actual work is
+
+| File | Change | Reaches |
+|---|---|---|
+| `recipes/datalist.ts` | `LIST_ROW` gains `lg:grid lg:max-w-[44rem] lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-6`; `LIST_VALUE` gains `lg:text-left`; new `LIST_SPLIT` | every `DataList`, `DetailRow`, and `FundWorkspaceScreen`'s local `Row` |
+| `recipes/layout.ts` | new `CARD_COLUMNS`, `CARD_COLUMNS_WRAP`, `FEED_MEASURE`, `FIELD_MEASURE` | 8 screens |
+| `recipes/state.ts` | `STATE_PANEL` drops `max-w-content`, gains `lg:max-w-[46rem]` | every `EmptyState` and `ErrorState` |
+| `recipes/chart.ts` | donut grows `lg:w-56 xl:w-64`; legend becomes `lg:grid-cols-2 xl:grid-cols-3` | client `FundDetailScreen`, admin `FundHoldingsScreen` |
+| `recipes/admin.ts` | `ADMIN_FORM_GRID` gains `lg:max-w-[72rem]` and `xl:grid-cols-3` | 13 call sites |
+| `recipes/shellAdmin.ts` | topbar `lg:px-10` → `lg:px-[max(var(--be-page-pad-x-lg),var(--be-safe-right))]`; five new More-sheet constants | admin shell |
+| `activity.recipe.ts` | `ROW`/`ROW_LEFT`/`ROW_RIGHT` gain `lg:` horizontal composition | Activity, both tabs |
+
+`DataList` gained an optional `split` prop; it is set on the four long admin identity lists
+(`UserDetail` 11 rows, `MandateDetail` 12, `FundReceiptDetail` 11, `ApplicationDetail` 7) and nowhere
+else. Short lists and every `width="form"` page keep the single column, because two columns inside a
+560 px page is worse than one.
+
+### The bug the wrapper divs nearly shipped
+
+Three lists had no container to hang a grid on (`PortfolioScreen` positions, admin `FundListScreen`,
+admin `FundAumScreen` history), so a wrapping `<div>` was needed. The first version used
+`cx(CARD_STACK, CARD_COLUMNS[3])` — and `CARD_STACK` is `flex flex-col gap-3`, which **silently
+changed the phone gaps** from Section's `gap-4` and Page's `gap-8` to 12 px. Caught by the CSS diff
+below, not by any test.
+
+Fixed with `CARD_COLUMNS_WRAP`, which is `contents` at base and `lg:grid` above: below `lg` the wrapper
+is removed from layout entirely, so the children remain direct children of their original flex parent
+and the phone rendering is bit-identical. Verified in the emitted CSS that `.contents` (index 11715)
+precedes `.lg\:grid` inside `@media (min-width:1024px)` (index 57853), so source order resolves the
+`display` conflict the right way.
+
+### Admin navigation
+
+`AdminFrame` now builds the bottom bar from `navBarEntries(permitted, 4)` — manifest `primary: true`
+first, then fill — giving **Overview · Applications · Funds · Receipts · More**, which is what doc 08
+specified and what was never built. "More" opens `Modal` (not `Sheet`) with every permitted
+destination grouped by domain via the new `navGroups`, single-entry domains rendered without a
+heading. `Modal` was chosen deliberately: it registers with `OverlayStackProvider`, so Android
+hardware Back and `Escape` dismiss the sheet instead of navigating away. `Sheet` alone does not
+register, which is a pre-existing gap that still affects `OptionalUpdateSheet`.
+
+`navGroups` and `navBarEntries` live in `routeManifest.ts` so no numeric nav literal enters a shell.
+`ADMIN_NAV_DOMAINS` supplies the eight domain labels.
+
+`FundWorkspaceScreen` gained a Holdings link beside Manage AUM. `ADMIN_LINK_MAP` had declared
+`fund-workspace → fund-holdings` since Phase 10, and `routeIntegrity.test.ts` only checks that the
+declared ids exist — not that any component renders the link. So the test passed while the screen was
+reachable only by typing the URL. **A link map is a claim, not a guarantee.**
+
+### Verified
+
+- **TESTED** `npx tsc --noEmit` — clean.
+- **TESTED** `npm run lint` — clean.
+- **TESTED** `npm test` — 20 files, 197 tests. `recipes.test.ts` and `safeArea.test.ts` pass unchanged,
+  so the new `lg:max-w-*` measures did not introduce a duplicate class string, a fifth breakpoint, or a
+  second `env(safe-area-inset-*)` reader.
+- **TESTED** `npm run build` + `check-bundle-boots` — 7 chunks, no throw. CSS 85.68 kB against the
+  640 kB budget.
+- **TESTED** `npm run build:android` and `build:android:admin` — `check-android-dist` passes for both
+  variants (client 849 253 B, admin 870 773 B of 2 600 000), acyclic chunk graph, no cross-target
+  assets, `check-phonepe-native-target` clean.
+- **TESTED** `npm run generate:api:check` — 101 operations, no drift.
+- **TESTED** `release_manager/verify.sh` — 108 passed, 0 failed, 1 skipped (remote).
+- **TESTED, and the load-bearing one:** built HEAD in a throwaway `git worktree`, then diffed the two
+  emitted stylesheets with every `@media (min-width:1024px)` and `(min-width:1440px)` block stripped.
+  **745 sub-`lg` rules before, 745 after, identical except the single `:root` token block.** Combined
+  with the numeric clamp check, that is a mechanical demonstration that no phone or tablet width
+  renders differently.
+- **TESTED** route reachability, recomputed from the manifests plus a scan for rendered `to=` / `to:` /
+  `navigate()` targets: **zero orphans in both shells**. Before this entry, `fund-holdings` was the one
+  orphan.
+
+### Not verified
+
+- **UNVERIFIED — nothing here was looked at in a browser.** No dev server or preview may run on this
+  machine, so every width figure is arithmetic from the tokens. The desktop compositions at 1366 /
+  1920 / 2560 / 3840, the `display: contents` wrapper on a real phone, the More sheet on the admin
+  APK, and hardware Back dismissing it have all only been reasoned about. Handover commands are in the
+  task log.
+- **UNVERIFIED** the admin APK specifically. The More sheet is the only way most of the console is
+  reachable there now, and no APK was built or installed in this pass.
+- Two `width="default"` admin screens (`AppConfigBuilder`, `ClientPositions`, plus
+  `IndividualClientGrowth` and `FundReceiptDetail`) centre inside the content column rather than the
+  viewport, so they sit right of centre at very wide widths. Pre-existing and now less pronounced than
+  with the old 960 px cap, so left alone.
+- The seven admin detail screens are still single-column stacks. Doc 08 specifies a two-column layout
+  with a sticky summary rail for `≥ lg` and it has never been built. Explicitly deferred by the
+  maintainer; the `LIST_ROW` measure and `split` prop reduce the symptom without addressing it.
+
+
+---
+
+## Entry 036 — running Entry 035 on a device found a freeze that froze the whole admin console · 2026-08-30
+
+**Task:** [`TASK/025`](../TASK/025-fluid-desktop-layout-and-admin-nav-completeness.md)
+**Decisions:** [D-064](risk_and_decision.md#d-064), [D-065](risk_and_decision.md#d-065)
+
+Entry 035 landed with every gate green and everything about rendering marked UNVERIFIED. The
+maintainer then started an emulator (API 36 / Android 16, gesture navigation), and the first thing the
+device found was a defect that no test in the repository could have caught.
+
+### The freeze
+
+Tapping any destination **inside** the new admin "More" sheet changed the URL and then froze React
+permanently. The screen kept rendering the previous route, the sheet stayed open, subsequent taps
+advanced `location.pathname` with no effect, and there was no exception, no console error and only
+3.7 % CPU. Reproduced deterministically over CDP: bar links fine, sheet open fine, Escape fine,
+hardware Back fine — **only a navigation originating inside the portal**.
+
+Root cause, and it is not in the code this task wrote. `OverlayStackProvider` returns
+`useMemo(..., [register, dismissTop, ids])`, so the context object takes a **new identity on every
+`ids` change**. `Modal`'s registration effect listed the whole object:
+
+```ts
+useEffect(() => { … return overlays.register({ … }) }, [open, overlays, id])
+```
+
+so: register → `setIds` → new context identity → effect cleanup unregisters → effect re-registers →
+`setIds` → forever. An unbounded *effect* loop, not a render loop, which is why React never threw
+"Maximum update depth exceeded" and why the CPU stayed low.
+
+On its own it was survivable — discrete events still committed between cycles, which is why the sheet
+opened and closed correctly. But a route change to a `lazy()` screen starts a suspended transition,
+and a transition that is invalidated on every effect flush **never gets to commit**. Starvation, not
+crash. That is the exact signature observed.
+
+**Fix:** `Modal` depends on `register` alone, which is `useCallback(…, [])` and therefore stable
+forever. `register`/unregister were additionally made no-ops when the stack already holds the entry in
+that position, so the same class of loop cannot be reintroduced through the object.
+
+**This was latent, not new.** `ConfirmDialog` wraps `Modal` and has nine consumers;
+`ApplicationDetailScreen` navigates on confirm. The bug has been reachable since Phase 10 and the More
+sheet merely put it on the most-travelled path in the console.
+
+`src/app/overlays/overlayStack.test.tsx` now guards it. Under the old dependency list the test does
+not merely fail, it **hangs** — so the probe throws past a bounded number of context identities,
+turning the failure into a fast, named error. Verified by reverting the fix: 4 failures naming
+`overlay stack did not settle: 14 context identities for one overlay`, then passing again once
+restored.
+
+### Dark navigation surfaces
+
+The maintainer asked for the main navigation bar to be dark in both the browser and the mobile
+presentations. Six tokens were added (`--be-nav-bg`, `--be-nav-fg`, `--be-nav-fg-muted`,
+`--be-nav-hairline`, `--be-nav-surface`, `--be-nav-surface-strong`) so the colour is named once, and
+the four nav surfaces consume them: the shared bottom bar, the client desktop island, the admin
+sidebar, and their labels and hover/current states.
+
+Measured in the WebView, composited against the real page background:
+
+| Surface | Background | Inactive label | Active label |
+|---|---|---|---|
+| bottom bar, client and admin | `rgb(36,34,32)` | 7.32:1 | 15.07:1 |
+| client desktop island | `rgb(36,34,32)` | 7.32:1 | 8.53:1 on the current pill |
+| admin sidebar | `rgb(36,34,32)` | 7.32:1 | 15.07:1 |
+
+All pass WCAG 2.2 AA for small text, which matters because the bar labels are `text-2xs`.
+
+`recipes.test.ts` then caught something worth keeping: adding the missing `pl-safe-left pr-safe-right`
+to the admin bar made `ADMIN_BOTTOM_NAV` and `CLIENT_BOTTOM_NAV` byte-identical. Rather than
+allowlisting a duplicate, the bar is now declared once as `BOTTOM_NAV` in `recipes/layout.ts` and
+re-exported by both shells, the way `APP_SHELL` already was. The admin bar was previously missing the
+horizontal safe-area insets entirely — a landscape cutout defect doc 08 names explicitly.
+
+### The seam this exposed, which is not ours to fix here
+
+On the emulator the dark bar stops **above** a 63 px light strip at the bottom of the screen. Pixels
+from `adb exec-out screencap`: the strip is `rgb(244,241,233)` — exactly `#F4F1E9`, the window
+background — and the app's dark bar begins above it.
+
+The cause is not the bar. `--be-safe-bottom` computes to `0px` and `--be-safe-top` to `0px` on
+**API 36 with `targetSdkVersion 36`**, where edge-to-edge is mandatory and the safe-area chain is
+supposed to be load-bearing. The WebView is being inset natively instead, so the strip below it is
+painted by the window background and CSS cannot reach it. This is **pre-existing**: it was invisible
+only because the bottom bar used to be the same `#F4F1E9` as the window.
+
+It cannot be fixed by darkening the window, because `SystemChromePlugin.setBarBackground` sets one
+colour for the whole window and the status strip at the top correctly matches the light header (D-034).
+Verified: top strip is `rgb(244,241,233)` and blends; darkening it would move the seam to the top.
+
+Recorded as an open item rather than fixed. Doc 08 warns that every failure mode in this chain is
+silent, and the correct fix is an inset-handling investigation, not a colour change.
+
+### Verified — TESTED on the emulator over CDP
+
+- Admin bar renders **Overview · Applications · Funds · Receipts · More**; sidebar `display: none`
+  below `lg`.
+- More sheet: `aria-modal="true"`, 14 links, `Money` (4) and `System` (4) grouped with headings,
+  single-entry domains unheaded, scroll lock engaged.
+- Escape **and** real `adb shell input keyevent KEYCODE_BACK` both close the sheet without navigating.
+- All nine previously-unreachable destinations open, each with the right `h1`, sheet closed, no
+  horizontal overflow.
+- Token resolution measured with a probe element, not read from `getPropertyValue` (which returns the
+  specified value for custom properties): content 960 px at 1023 **and** at 1024, crossover at
+  **1171 px**, 1120 at 1366, 1574.4 at 1920, capped 1600 from 2560; wide 1280 → 2304 at 2560 → capped
+  2400 at 3840; form 560 at every width; gutter 32 → 38.4 → 51.2 → 64. **No horizontal overflow at
+  any of 375/390/430/768/1023/1024/1171/1366/1440/1920/2560/3840.**
+- `LIST_ROW`: below `lg` `flex`, no cap, value right-aligned, label→value gap growing to 748 px at
+  1023 — unchanged. At `lg`+ `grid`, capped 704 px, gap **24 px**, value left-aligned, and it stops
+  growing. The regression is measured as fixed.
+- Portfolio positions wrapper: `display: contents` at 412/768 (so phone gaps still come from
+  `Section`), `grid` with 2 tracks at 1024/1366 and 3 tracks at 1920/2560.
+- Notifications: 2 columns at 1024, 3 from 1440. Statements: 2 columns. Support: form stack capped at
+  608 px. Activity: feed capped at 1088 px.
+- Admin `UserDetail` split `DataList`: 1 column below `lg`, 2 columns from 1024, row capped 704 px.
+- Client shell: bottom bar visible only below `lg`, island only at `lg`+, both dark, all contrast AA.
+- Sub-`lg` CSS diffed against a HEAD worktree build again: 745 → 761 rules, and **every one of the 7
+  removed and 23 added rules is either a `--be-nav-*` token or a nav-surface utility**. The only
+  mobile visual change is the dark bar that was asked for.
+- `npm run check` green; `build:android` and `build:android:admin` green; `release_manager/verify.sh`
+  108 passed.
+
+### Not verified
+
+- **The admin APK was built with the client `applicationId`.** `npm run android:apk:admin` sets
+  `-PboeVariant=admin` for branding but **not** `applicationId`; only `emu/boe_update.sh` passes
+  `-PboeApplicationId`. So the admin bundle installs over `com.beonedge.app`. This was discovered by
+  installing it — `com.beonedge.app` on the emulator was overwritten and has been restored with a
+  client build against the dev API. **The maintainer should rebuild that package through
+  `emu/boe_update.sh` for whichever target it is meant to hold.** The npm script is misleading and
+  should either set the id or be renamed.
+- Landscape, browser zoom at 150/200 %, and pinch zoom were not exercised.
+- No release/minified APK, and nothing was installed on a physical handset.
+- The seam above, and the `--be-safe-*: 0px` finding behind it.
+
+
+---
+
+## Entry 037 — the remaining defects, fixed; and two corrections to Entry 036 · 2026-08-30
+
+### The admin APK was installing over the client app — fixed
+
+`npm run android:apk:admin` passed `-PboeVariant=admin`, which selects branding, but not
+`-PboeApplicationId`. `android/app/build.gradle` defaults `applicationId` to `com.beonedge.app` unless
+that property is set, and only `emu/boe_update.sh` was setting it. So the admin console installed
+**over the investor app**, replacing its code and orphaning nothing visibly — the launcher icon changed
+and the app became the admin console. That is how the emulator's `com.beonedge.app` was overwritten
+during Entry 036.
+
+```diff
+-"android:apk:admin": "... ./gradlew assembleDebug -PboeVariant=admin",
++"android:apk:admin": "... ./gradlew assembleDebug -PboeVariant=admin -PboeApplicationId=com.beonedge.app.admin",
+```
+
+`com.beonedge.app.admin` is the id doc 08 documents for the admin build and matches
+`boe_update.sh`'s `APP_ID_BASE + ".admin"`.
+
+**TESTED.** Built and installed both: `output-metadata.json` reports `com.beonedge.app.admin`, all four
+packages coexist on the emulator, the new admin package opens its own login screen with its own storage,
+and `com.beonedge.app` still runs the client shell (`/dashboard`, Home · Funds · Portfolio · Activity ·
+Profile). The clobbering is gone.
+
+Note the npm scripts still use the **prod** id base for the client (`com.beonedge.app`) while
+`boe_update.sh --dev` uses `com.beonedge.app.dev`. That is pre-existing and untouched, but it means a
+local `npm run android:apk` overwrites a prod-id install if one is present.
+
+### Correction 1 — the bottom seam is a WebView version fallback, not a broken safe-area chain
+
+Entry 036 reported `--be-safe-bottom: 0px` on API 36 as though the token chain were failing. It is not.
+Measured properly:
+
+- The WebView is **1082 × 2205** physical inside a **1080 × 2400** screen — inset by 132 px top and
+  63 px bottom, which is exactly the two system bars.
+- `--safe-area-inset-*` are **present and set to `0px`** (not absent), and the viewport meta does carry
+  `viewport-fit=cover`.
+- Emulator System WebView is **133.0.6943.137**. Capacitor's `SystemBars` requires
+  `WEBVIEW_VERSION_WITH_SAFE_AREA_FIX = 140` for `shouldPassthroughInsets`.
+
+Below 140 the plugin deliberately takes the other branch: it pads the WebView's parent by the system-bar
+insets and injects `0px`. So the app is letterboxed inside the bars and reports no insets — internally
+consistent and **correct plugin behaviour**, working around a Chromium bug. On WebView ≥ 140 the
+passthrough engages, the insets become real, and our dark bar paints under the gesture bar with no seam.
+
+So there is no defect in `tokens-core.css`, and nothing to fix there. What remains is the aesthetic
+consequence: on WebView < 140 a 63 px strip of window background (`#F4F1E9`) sits below the dark bar. It
+is not an accessibility problem — the gesture handle is `rgb(98,96,93)` on that light strip, which is
+visible.
+
+It cannot be closed by recolouring: on API 35+ `android:navigationBarColor` is a no-op, and
+`SystemChromePlugin.setBarBackground` paints the window and every WebView ancestor with **one** colour,
+so darkening the bottom strip darkens the top one, where it would clash with the light header (D-034).
+`SystemBars.setStyle` does accept a per-bar argument (`StatusBar` / `NavigationBar`), but that controls
+icon appearance only, not the background.
+
+Three ways out, all requiring a maintainer decision, so none taken:
+1. Accept it until WebView 140 is widespread; it self-heals with no code change.
+2. Make the bottom bar a floating inset pill, like the client desktop island — the light strip then reads
+   as page background rather than a seam. This changes the phone's visual language.
+3. Darken the header too, so one window colour serves both strips.
+
+### Correction 2 — `Sheet` does not affect `OptionalUpdateSheet`
+
+Entry 035 and D-063 claimed the missing overlay-stack registration on `Sheet` "still affects
+`OptionalUpdateSheet`". It does not. `~/ui/primitives/Sheet` has exactly one importer — `Modal` — and
+`OptionalUpdateSheet`, `ConfirmDialog` (nine consumers) and the admin More sheet all go through `Modal`,
+so all are registered and all are dismissed by hardware Back. The false claim came from grepping the
+word "Sheet", which matches `OptionalUpdateSheet`'s own name.
+
+What is true is narrower: `Sheet` is exported as a primitive, so a future consumer that bypasses `Modal`
+would silently lose Back handling. Left as a documented trap rather than a refactor, because collapsing
+`Modal` into `Sheet` would touch four files to fix something currently unreachable.
+
+D-063 and `TASK/025` have been corrected in place; this entry records the correction because the log is
+append-only.
+
+### Verified
+
+- **TESTED** `npm run check` — tsc, eslint, 21 files / 199 tests, contract check, build, bundle boots.
+- **TESTED** `npm run android:apk:admin` and `npm run android:apk` — both `check-android-dist` clean,
+  correct and distinct application ids, both install and launch.
+- **TESTED** on the emulator: four packages coexist; admin opens its own login; client shell intact.
+
+### Not verified
+
+- Whether the seam disappears on WebView ≥ 140. The emulator cannot show it without a WebView update,
+  and no physical device was available.
+- Landscape, browser zoom, pinch zoom, release/minified APKs — unchanged from Entry 036.
+
+
+---
+
+## Entry 038 — final verification pass: zoom, landscape, release APKs, and the applicationId guard · 2026-08-30
+
+**Task:** [`TASK/025`](../TASK/025-fluid-desktop-layout-and-admin-nav-completeness.md)
+**Decisions:** [D-067](risk_and_decision.md#d-067), [D-068](risk_and_decision.md#d-068)
+
+The maintainer settled the open questions: accept the WebView-133 seam (Option A), keep the mobile
+design frozen, disable pinch zoom in the APKs while preserving browser zoom, and finish the outstanding
+verification. This entry closes all of it.
+
+### Pinch zoom — already correct, and now proven rather than assumed
+
+The requirement needed **no code change**, and the reason is worth recording because it is easy to get
+wrong in the other direction. Two independent mechanisms, each scoped to one runtime:
+
+- `capacitor.config.ts` → `android.zoomEnabled: false`, which Capacitor turns into
+  `WebSettings.setBuiltInZoomControls(false)`. Android-only, so browsers never see it.
+- `index.html`'s viewport meta carries **no** `user-scalable=no` and no `maximum-scale`, and
+  `safeArea.test.ts` asserts both absences. So browser zoom is preserved by test.
+
+Note that `zoomEnabled` never calls `setSupportZoom`, so the config name understates what it does —
+`setBuiltInZoomControls(false)` is what actually removes the pinch gesture.
+
+**Measured over CDP with `Input.synthesizePinchGesture`, and with a positive control.** The control
+matters: a probe that reports "no zoom" is worthless if the synthetic gesture never lands. Rebuilt with
+`zoomEnabled: true` and pinch produced `visualViewport.scale = 2.5`. Restored to `false` and:
+
+| Gesture | Client APK | Admin APK |
+|---|---|---|
+| pinch outward 2.6× | scale 1 — blocked | scale 1 — blocked |
+| pinch inward 0.35× | scale 1 — blocked | scale 1 — blocked |
+| double tap | scale 1 — blocked | scale 1 — blocked |
+| after route change (×3 routes each) | scale 1 — blocked | scale 1 — blocked |
+| with an overlay open | n/a (no overflow sheet) | scale 1 — blocked, dialog open |
+| focusing a text field | scale 1 — no auto-zoom | scale 1 — no auto-zoom |
+| in landscape | scale 1 — blocked | — |
+
+Both **release** APKs were checked at the artifact level instead, since release builds are not
+debuggable: `assets/capacitor.config.json` reports `zoomEnabled: false` and
+`assets/public/index.html` carries the unrestricted viewport meta in both.
+
+### Browser zoom
+
+No browser may be served from this machine, so browser full-page zoom was reproduced the way the browser
+implements it — zoom at *Z* on a *W*-pixel window is a *W/Z* CSS viewport — and measured in the WebView
+at both 1920 and 1366 window widths, for 100 / 125 / 150 / 200 %.
+
+Every level, both surfaces: **no horizontal overflow, no clipped control, navigation usable**. The shell
+reflows down the breakpoint ladder as the CSS viewport shrinks — at 1920/200 % and 1366/150 % the CSS
+viewport falls below 1024 and the mobile shell takes over, which is correct responsive behaviour and the
+maintainer explicitly noted it is not a defect. Admin tables keep their local horizontal scroll as the
+column narrows; `ADMIN_FORM_GRID` and `LIST_ROW` return to their mobile presentation below 1024 CSS px.
+
+What this does **not** prove is that a browser *permits* zoom — that follows from the viewport meta and
+its test assertion, not from a measurement.
+
+### Landscape
+
+Rotation needed the emulator console (`adb shell settings put system user_rotation` and
+`cmd window set-user-rotation` were both ineffective — the latter does not exist on API 36). With
+`cutout.emulation.corner` enabled and the display rotated, the WebView reports **867 × 360**:
+
+- **No horizontal overflow on any route**, either surface.
+- The shared `BOTTOM_NAV` spans the full 867 px with no clipping.
+- The admin More sheet opens full-width and centred, all **14 links inside the panel**, the panel
+  scrolls, and hardware Back closes it.
+- Admin tables retain local horizontal scroll; pages scroll vertically.
+- Modal centred; forms reachable.
+
+On the cutout question the honest finding is that **CSS is not what protects the content here**. All four
+`--be-safe-*` read `0px`, and the WebView is physically inset — 2276 × 945 inside a 2400 × 1080 screen,
+124 px horizontally and 135 px vertically — because WebView 133 takes the plugin's native-padding branch
+(Entry 037). So the previously-missing `pl-safe-left pr-safe-right` on the admin bar is still worth
+having, but on this WebView the native inset is doing the work and the CSS insets are inert. On WebView
+≥ 140 the CSS path becomes load-bearing and the shared recipe is what will carry it.
+
+### Viewport sweep
+
+All twelve widths, both surfaces, behavioural rather than dimensional. **No horizontal overflow at any
+width on any route. No clipped controls. No overlapping text.** Selected evidence:
+
+- Shell switch is exact: bottom bar below 1024, sidebar/island at 1024 and above.
+- `LIST_ROW` label→value gap: 634 px at 1023 → **24 px at 1024** and 24 px at every width to 3840.
+- Admin tables: local scroll to 1366, **fit without scrolling from 1440** — the "expand before
+  scrolling" requirement, measured.
+- `STATE_PANEL`: tracks the viewport below 1024, capped at **736 px** from 1024 up.
+- Overlays reachable at every width: full-width sheet below `lg`, 480 px centred dialog above, always in
+  bounds.
+- Content maxima: client 960 → 1120 @1366 → 1574 @1920 → capped 1600; admin 1280 → 1728 @1920 → 2304
+  @2560 → capped 2400 @3840.
+
+### Release APKs
+
+Built through the intended path, `./emu/boe_update.sh --prod --both --install`: `assembleRelease`, R8
+minified, resource-shrunk, signed from `android/keystore/boe-release.jks`, sidecars record
+`signing=release`.
+
+| | client | admin |
+|---|---|---|
+| applicationId | `com.beonedge.app` | `com.beonedge.app.admin` |
+| launch activity | `com.beonedge.app/.MainActivity` | `com.beonedge.app.admin/com.beonedge.app.MainActivity` |
+| API base | `https://app.beonedge.in/api` | `https://app.beonedge.in/api` |
+| icon background | `#1800AD` | `#FF0000` |
+| `resources.arsc` | `e8d3a8ef6d5b53a7` | `9a9a277b3c4c3ffe` |
+| debuggable | no | no |
+
+Both install, coexist, and launch independently. Authentication and navigation were verified on
+debuggable builds against the dev stack rather than signing into production from a verification run.
+
+**Recovering `com.beonedge.app` exposed a second consequence of the Entry 037 defect.** The release APK
+would not install over it: `INSTALL_FAILED_UPDATE_INCOMPATIBLE — signatures do not match`, because the
+package still held a debug-certificate build. It had to be uninstalled first. So the original mistake
+did not merely replace the app, it left the package on a certificate that blocks every legitimate signed
+update. The maintainer's dev packages were never touched: `com.beonedge.app.dev` (0.11.5-debug) and
+`com.beonedge.app.dev.admin` (0.10.2) are byte-identical to before.
+
+### The applicationId guard
+
+Fixing the npm script was not enough — `./gradlew assembleDebug -PboeVariant=admin` still produced an
+admin bundle under the client id, and that is the shape the original mistake took. `build.gradle` now
+**refuses** it:
+
+```
+-PboeVariant=admin needs -PboeApplicationId set to an admin id, e.g. com.beonedge.app.admin.
+Building the admin console under the client applicationId installs it *over* the investor app…
+```
+
+Audited every path that can reach gradle: only `emu/boe_update.sh` (always injects the id, per target and
+variant) and the two npm scripts. `release_manager/export.sh` and `lib/apk_ship.sh` consume prebuilt APKs
+and sidecars and make no id decision; CI builds no APK. Verified all three directions: bare admin fails,
+admin with an id yields `com.beonedge.app.admin`, client is unaffected.
+
+### Verified
+
+- **TESTED** `npm run check`, `npm run typecheck`, `npm run lint`, `npm test` (21 files, **199 tests**),
+  `build:android`, `build:android:admin` — all green.
+- **TESTED** `release_manager/verify.sh` — 108 passed, 0 failed.
+- **TESTED** all 15 `release_manager/tests/*.test.sh`, including `hermetic_branding` (13 checks), which
+  covers the `applicationId` and branding wiring I changed.
+- **TESTED** on the emulator, as detailed above.
+
+### Not verified
+
+- Nothing was run on a physical handset; the emulator is API 36 with System WebView 133.
+- Whether the bottom seam disappears on WebView ≥ 140 — cannot be shown without a newer WebView.
+- Production authentication and payments: deliberately not exercised from a verification build.
+- Real browser zoom in a real browser, for the reason above.
+
+
+---
+
+## Entry 039 — "the admin console says I am offline": the prod stack is not deployed · 2026-08-30
+
+The maintainer reported the admin console showing offline on the emulator. It is not a frontend or
+connectivity defect.
+
+**Symptom.** `com.beonedge.app.admin` renders `AdminSplash`'s reachability screen — "Cannot connect / We
+cannot reach BeOnEdge. The app started but could not contact the server." That screen comes from
+`probeReachability()` → `getHealth`, which returns false on any throw.
+
+**Cause.** That package is the **prod-configured release APK** installed during Entry 038's release
+verification, so it points at `https://app.beonedge.in/api`. From this machine that host answers
+**HTTP 502** with a Cloudflare-style body. Read-only on the VPS, `docker ps -a` shows **no
+`boe-prod-*` containers at all** — the production stack is not running, so there is nothing behind the
+prod hostname. 502 is the edge reporting an empty origin.
+
+Note the classification detail: a 502 is an HTTP response, so `http.ts` reports
+`{ kind: "http", status: 502 }`, not `offline`. `NetworkStatusProvider.degraded` therefore stays false and
+the "You are offline" banner never appears — what the maintainer saw is the splash reachability gate,
+which treats any failure as unreachable. Both are behaving correctly.
+
+**The dev stack is entirely healthy.** Verified from outside and inside, read-only:
+
+| Check | Result |
+|---|---|
+| `https://dev-app.beonedge.in/api/v1/health` | 200 |
+| admin native login | 200 — `dev-admin@beonedge.in`, `superadmin`, 31 permissions, access + refresh issued |
+| `/v1/admin/session`, `/v1/admin/funds` | 200, 200 |
+| containers | 11 dev containers `running (healthy)`; `migrate` and `seed` exited 0 as one-shots |
+| backend, internal `127.0.0.1:47423/v1/health` | `{"ok":true,"status":"ok"}` |
+| web containers `47421` (app) / `47422` (admin) | 200, 200 |
+| postgres / redis | `pg_isready` ok · `PING → PONG` |
+| backend errors, last 30 min | none |
+
+`/v1/auth/web/csrf` answers 403 to a bare curl, which is expected — that route is gated on browser
+request metadata and curl sends none. The native bearer path is what the APK uses and it works.
+
+**Resolution, dev only.** Rebuilt and installed current dev-target APKs through the intended path,
+`./emu/boe_update.sh --dev --both --install`. Both now reach the backend and authenticate:
+
+- `com.beonedge.app.dev` → `/dashboard`, signed in, five tabs.
+- `com.beonedge.app.dev.admin` → `/overview`, connected, no offline banner, 14 sidebar entries and the
+  Overview · Applications · Funds · Receipts · More bar.
+
+All four packages are at `0.12.6` and coexist. The two prod-configured packages will keep showing the
+reachability screen until the production stack is deployed; that is correct behaviour, not a defect, and
+they were left installed as the Entry 038 release-verification artifacts.
+
+**Verified:** VPS inspection was read-only and confined to the dev stack at the maintainer's instruction —
+no production container, config or deployment was touched, and no prod credential was used.
+
+**Not verified:** why the prod stack is not deployed, and anything about its configuration. Out of scope
+by instruction.
+
+
+---
+
+## Entry 040 — the login fields were invisible because every shadow token in the app was invalid CSS · 2026-08-30
+
+**Decision:** [D-070](risk_and_decision.md#d-070)
+
+The maintainer reported that the login inputs on both apps are nearly the same colour as their
+surroundings — hard to identify, hard to know where to tap. Two causes, and the second is much larger
+than the first.
+
+### Cause 1 — the fill was 2 shades from the panel
+
+`--be-field-bg` was `color-mix(in srgb, var(--be-sand) 26%, white)` ≈ `#F9F8F5`, sitting on
+`AUTH_PANEL_CORE`'s `grad-core` face, which runs `#FDFDFC → #FBF9F4`. A per-channel delta of 2 to 4.
+There was nothing to see.
+
+### Cause 2 — the field ring, and every shadow in the application, computed to `none`
+
+`--be-field-rest` was supposed to draw a 1px inset ring. It never did, and neither did anything else:
+
+```
+--be-tint-warm: 28, 25, 23;                        /* comma separated */
+--be-ambient-1: 0 1px 2px rgb(var(--be-tint-warm) / 4%), …
+                        ↓ substitutes to
+                 rgb(28, 25, 23 / 4%)              /* invalid: commas + slash alpha */
+```
+
+Legacy comma `rgb()` cannot take a `/` alpha. The value is invalid, so the browser **drops the entire
+`box-shadow` declaration**. Measured in the device WebView by assigning each token to a probe element and
+reading the computed style — nine of nine came back `none`:
+
+`--be-ambient-1`, `-2`, `-3`, `--be-ambient-gold`, `--be-field-rest`, `--be-field-invalid`,
+`--be-btn-solid`, `--be-btn-gold`, `--be-btn-quiet`.
+
+So **no card elevation, no button elevation, no field ring, and no invalid-state ring has ever rendered in
+this frontend.** Fourteen call sites across `tokens-elevation.css`, `field.ts` and `layout.ts` all inherit
+the same broken substitution — including the nav-bar shadow added in Entry 036, which was equally dead.
+
+**Fix: one token, space-separated.**
+
+```diff
+- --be-tint-warm: 28, 25, 23;
+- --be-tint-gold: 181, 137, 74;
++ --be-tint-warm: 28 25 23;
++ --be-tint-gold: 181 137 74;
+```
+
+`rgb(28 25 23 / 4%)` is valid CSS Color 4, and all fourteen sites are repaired at once because every one
+of them uses the slash form. Re-measured on device: nine of nine now render.
+
+This is why the whole interface has looked flatter than its design intends. The visual layer D-028 raised
+the CSS budget to 640 kB to fund was never on screen.
+
+### What changed for fields
+
+- `--be-field-bg` 26% → **88% sand**, `--be-field-bg-hover` 18% → 70%.
+- New `--be-field-ring` at 42% espresso; `--be-field-rest` uses it.
+- New `ring-inset-field` utility, and `SELECT_BASE`, `TEXTAREA_BASE`, `AMOUNT_INPUT` moved from
+  `bg-parchment ring-inset-hairline-strong` to `bg-field ring-inset-field`, so every text-entry control
+  now shares one identifiable treatment instead of selects and textareas being invisible on a card.
+
+`ring-inset-hairline-strong` was **kept**: `SWITCH_OFF`, `CHECKBOX_MARK_OFF` and the PIN pad still use it,
+and those are not entry fields. An intermediate version of this change renamed it and would have silently
+dropped their rings — caught by grepping consumers before committing to the rename.
+
+### Measured on the device, from real screenshot pixels
+
+| | before | after |
+|---|---|---|
+| field fill | `#F9F8F5` | `rgb(235,230,220)` |
+| panel behind it | `rgb(253,252,248)` | `rgb(253,252,248)` |
+| fill vs panel | ~1.01:1 | **1.21:1** (visible well) |
+| boundary ring | not rendered | `rgb(141,137,130)` |
+| **ring vs panel** | — | **3.39:1 — passes WCAG 1.4.11** |
+| focus state | — | fill flips to `#FFFFFF` with a rendering gold focus ring |
+
+Two light neutrals cannot reach 3:1 by fill alone, which is why WCAG 1.4.11 is satisfied at the
+*boundary*. The control is now identifiable by fill **and** by a compliant border.
+
+### Verified
+
+- **TESTED** `npm run check` (tsc, eslint, 21 files / 199 tests, contract check, build, bundle boots),
+  `build:android`, `build:android:admin`, `release_manager/verify.sh` — 108 passed, 0 failed.
+- **TESTED** on the emulator, both apps, from screenshot pixels and computed styles as tabulated.
+- **TESTED** a sweep asserting every custom `@utility` referenced from `src/` is defined, after the
+  near-miss rename.
+
+### Not verified
+
+- The wider visual consequence of shadows rendering for the first time. Cards, buttons and the nav bar now
+  carry the elevation they were always specified to have; this was measured as *present*, not reviewed as
+  *good*. It is a real change in the app's appearance on every screen and deserves the maintainer's eye.
+- No test guards the shadow tokens. Per `README.md` §4 styling is outside the test policy, and the root
+  cause is now removed at the token rather than patched per site.

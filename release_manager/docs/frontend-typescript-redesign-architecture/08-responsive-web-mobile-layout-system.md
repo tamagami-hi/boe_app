@@ -64,6 +64,24 @@ That single rule removes eight competing container widths.
 <Page width="default" | "wide" | "form">
 ```
 
+**Amended (D-059, D-060).** The three caps are now fluid clamps whose floors are the fixed values
+above, so client content grows to 1600px and admin content to 2400px while nothing below a 1171px
+viewport changes:
+
+```css
+--be-content-max:      clamp(60rem, 82vw, 100rem);
+--be-content-max-wide: clamp(80rem, 90vw, 150rem);
+--be-content-max-form: 35rem;
+--be-page-pad-x-lg:    clamp(var(--be-space-7), 2vw, var(--be-space-10));
+```
+
+The "no screen may set its own `max-width`" rule is also refined, because it was already violated in
+eight places when it was written. **Page width** — the width of the content column — still belongs to
+`Page` alone, and is now enforced more strictly: `STATE_PANEL` no longer re-declares `max-w-content`. A
+**measure** — readable line length, or the width a control or figure should be regardless of the page —
+belongs to the component, and must be either a `ch` value or an `lg:`/`xl:`-gated cap so it can never
+reach the phone. See D-060 for the list.
+
 ## Safe area — port the contract verbatim
 
 This is the one part of the legacy styling layer that is correct, and every constraint in it
@@ -298,6 +316,15 @@ where the data supports it.
 `AdminMobileNav` + `AdminDomainStrip` model, which is sound — the failure was that
 `admin-responsive.css` still styles the sidebar IA the shell abandoned.
 
+**Amended (D-063).** This was specified and not built. Until 2026-08-30 `AdminFrame` rendered
+`permitted.slice(0, 5)` with no "More", which left **nine of fourteen destinations with no phone path at
+all** — every money screen and every system screen, on a surface that ships as its own APK with no
+sidebar to fall back on. The bar is now `navBarEntries(permitted, 4)`, primary-first, and "More" opens a
+`Modal` listing **every** permitted destination grouped by domain, not only the overflow: with Receipts
+promoted into the bar, a Money group missing Receipts reads as though it lives elsewhere. `Modal` rather
+than `Sheet` because only `Modal` registers with `OverlayStackProvider`, which is what makes Android
+hardware Back dismiss the sheet instead of navigating away from it.
+
 **The admin console is a real APK.** `emu/boe_update.sh:363-400` builds it with
 `applicationId = com.beonedge.app.admin` and its own launcher branding, and `AdminSplash`'s
 system-bar handling and reachability retry exist for that build. Note there is **no npm script**
@@ -338,6 +365,15 @@ Never diverges. Any divergence here is a bug.
 Touch targets are **44 × 44 px minimum below `lg`**, per WCAG 2.2 AA and the accessibility
 policy in `PRODUCT.md`. Above `lg`, pointer-precision targets are acceptable and hover
 affordances appear — gated on the capability query, not the size query.
+
+**Amended (D-059).** This table stops at `≥ lg`, and so did the implementation: until 2026-08-30 there
+was not a single `xl:` prefix in `src/`, which made the whole 1024→2560px range one unstyled band and is
+the reason the browser build looked like a stretched phone. `xl` (1440px) is now the large-desktop
+composition step and the only lever above `lg` — there is no `2xl`, and `--breakpoint-*` is cleared to
+exactly four values so a fifth is unrepresentable. Where it is used: independent-card grids go 2→3
+columns (`CARD_COLUMNS`), `ADMIN_FORM_GRID` goes 2→3, the holdings legend goes 2→3, and the donut grows.
+Grids whose semantic maximum is already reached at `lg` — `ADMIN_SUMMARY_GRID`, `ContentGrid` — are left
+alone; extra width goes to spacing, not to empty cells.
 
 ### Deliberately different representation
 
@@ -486,7 +522,7 @@ Modules so only a route's own CSS loads; no charting or component library.
 
 | Forbidden | Legacy evidence |
 |---|---|
-| A `max-width` on anything but `Page` | eight competing containers, seven in `auth.css` alone |
+| A `max-width` on anything but `Page` — see the D-060 amendment above: page width, not a `ch` or `lg:`-gated measure | eight competing containers, seven in `auth.css` alone |
 | A media query outside `ui/` and `shells/` | three mismatched client breakpoints, four admin thresholds |
 | A breakpoint value in TypeScript | `MOBILE_BREAKPOINT = 768` beside CSS `768px` in two other files |
 | A fixed pixel height on a content container | `explore.css:67` 220px and `:70` 190px for the same rail |

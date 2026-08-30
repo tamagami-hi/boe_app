@@ -13,6 +13,7 @@ Decisions are [`../LOGS/risk_and_decision.md`](../LOGS/risk_and_decision.md).
 | [002](002-blocker-remediation.md) | Blockers B1, B2 (structural), B4, B7 | Complete | 002–005 |
 | [003](003-phase0-amendment.md) | Phase 0 resequenced to per-phase contract extension | Complete | 006 |
 | [004](004-phase1-foundation.md) | Phase 1 — `frontend_stack_ts` foundation | In progress | 007+ |
+| [025](025-fluid-desktop-layout-and-admin-nav-completeness.md) | Fluid desktop layout, and admin navigation completeness | Complete, unverified on device | 035 |
 
 ## Conventions
 

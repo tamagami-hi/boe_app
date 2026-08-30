@@ -1747,3 +1747,322 @@ running container: the symbol is absent from `/app/dist`.
 re-registering the webhook on PhonePe's dashboard; nginx only makes that URL reachable. If it does not
 move, the value is bound to the onboarding record and PhonePe approval is the only route — and no
 architecture on our side changes that.
+
+
+
+### D-059
+**Content caps become fluid clamps whose floors are the old fixed values, so nothing below `lg`
+changes.** · DECIDED 2026-08-30
+
+Doc 08 fixed `--be-content-max` at 960 px and `--be-content-max-wide` at 1280 px. On an FHD or larger
+browser that produced a phone layout with margins, which is the complaint this work exists to answer.
+They are now `clamp(60rem, 82vw, 100rem)` and `clamp(80rem, 90vw, 150rem)`, and
+`--be-page-pad-x-lg` is `clamp(var(--be-space-7), 2vw, var(--be-space-10))`.
+
+The property that makes this safe is that **every clamp floors at the value it replaces**. 82vw does not
+exceed 60rem until a 1171 px viewport, so at every phone and tablet width — and at the 1024 px shell
+switch itself — the computed value is byte-identical to before. This was checked numerically across 21
+viewport widths from 320 to 3840 px, not asserted.
+
+`--be-content-max-form` moved from `560px` to `35rem`, identical at the default root font size. The
+change is deliberate: a form measure should track text size, so a reader who enlarges their root font
+gets a proportionally wider field rather than a cramped one.
+
+**Doc 08's "`px` only" rule is not violated.** That rule governs *breakpoints*, and its stated reason is
+that a `rem` media query moves when the root font size changes while `px` queries stay put. The four
+`--be-bp-*` tokens and the four Tailwind `--breakpoint-*` values remain `px`. Content *measures* are a
+different concern and `rem` is the correct unit for them.
+
+**Reversible:** yes, entirely. Restoring four token values restores the old behaviour with no other
+change.
+
+### D-060
+**`Page` owns page width; a component may own a `lg:`-gated measure.** · DECIDED 2026-08-30
+
+Doc 08 says "no screen may set its own `max-width`", and lists a `max-width` outside `Page` as a
+forbidden anti-pattern. Taken literally the codebase already violated it in eight places before this
+work — `STATE_PANEL`, `BLOCK_PANEL`, `SHEET_PANEL`, `PIN_PAD`, `DONUT_FIGURE`, `AUTH_PANEL_SLOT`,
+`TOAST_REGION`, plus every `ch` prose cap. Rather than pretend otherwise, the rule is split:
+
+- **Page width** — how wide the content column is — belongs to `Page` and to nothing else. This is the
+  property the rule was written to protect, and it is now stricter than before: `STATE_PANEL` no longer
+  re-declares `max-w-content`, which had silently inherited the 960→1600 px widening on every list
+  screen's empty and error state.
+- **A measure** — readable line length, or how wide a control or figure should be regardless of the page
+  — belongs to the component. It must be expressed in `ch` for prose, or as an `lg:`/`xl:`-gated cap for
+  layout, so it can never affect the phone.
+
+Introduced under that licence: `FEED_MEASURE` (`lg:max-w-[68rem]`, the Activity feed), `FIELD_MEASURE`
+(`lg:max-w-[38rem]`, form controls on a `default`-width page), `LIST_ROW`'s `lg:max-w-[44rem]`,
+`STATE_PANEL`'s `lg:max-w-[46rem]`, and `ADMIN_FORM_GRID`'s `lg:max-w-[72rem]`.
+
+**Risk accepted:** "measure" is a judgement, and a future change could smuggle a page container in under
+the name. The guard is that anything unprefixed is a phone change and shows up in the sub-`lg` CSS diff
+described in Entry 035.
+
+### D-061
+**A newly introduced grid wrapper is `display: contents` below `lg`.** · DECIDED 2026-08-30
+
+Three lists needed a container that did not exist, so a `<div>` had to be added around children that
+were previously direct children of a flex column. Any class on that wrapper that sets `display` or
+`gap` at base width **changes the phone layout**, because the children's gaps then come from the wrapper
+instead of from `Section` (`gap-4`) or `Page` (`gap-8`). The first attempt did exactly that and moved
+three lists to 12 px gaps on every phone.
+
+`CARD_COLUMNS_WRAP` is therefore `contents lg:grid …`. Below `lg` the wrapper is removed from layout and
+the children reparent to their original flex container, so the phone rendering is unchanged by
+construction rather than by matching values by hand. Above `lg` the media-query rule wins on source
+order — verified in the emitted stylesheet, `.contents` at byte 11715 against `.lg\:grid` at 57853
+inside `@media (min-width:1024px)`.
+
+`CARD_COLUMNS` (no `contents`) remains for containers that already exist, where the base classes must be
+left exactly as they are.
+
+**Constraint this places on later work:** do not add a base-width utility to a wrapper introduced purely
+to host a desktop grid. If a wrapper needs base styling it is not a layout-only wrapper, and the change
+must be justified against the phone design.
+
+### D-062
+**A route link map is a declaration, not a guarantee; reachability is measured from rendered
+links.** · DECIDED 2026-08-30
+
+`ADMIN_LINK_MAP` declared `fund-workspace → fund-holdings`, and `routeIntegrity.test.ts` asserts only
+that both ids exist in the manifest. No component rendered the link, so `/funds/:fundId/holdings` was
+reachable only by typing the URL — through Phase 10, cutover, and every green suite since.
+
+The audit that found it does not read the link map at all. It resolves each manifest path, including the
+exported `*_PATH` constants, and scans `src/` for a rendered `to=`, `to:` or `navigate()` target,
+scoped so client screens are not credited to the admin shell or vice versa. Result after this pass:
+**zero orphans in both manifests.**
+
+The link map is kept — it is what `routeIntegrity` uses to prove intent, and it documents the intended
+graph — but it must not be read as evidence that a path exists in the UI. The measurement is the
+evidence. Re-run it whenever a route is added; the method is recorded in
+[`TASK/025`](../TASK/025-fluid-desktop-layout-and-admin-nav-completeness.md).
+
+### D-063
+**Admin mobile navigation is primary-four plus a complete "All sections" sheet, and it uses `Modal`
+rather than `Sheet`.** · DECIDED 2026-08-30
+
+`AdminFrame` rendered `permitted.slice(0, 5)`, which by manifest order gave Overview, Applications,
+Users, Funds, AUM — and left **client values, receipts, refunds, payments, mandates, audit, emails,
+FAQs and app config with no navigation path whatsoever on a phone**, including on the admin APK where
+there is no sidebar to fall back on. Doc 08 had specified "Overview · Apps · Funds · Money · More" with
+a sheet holding the remainder; the sheet was never built.
+
+The bar is now `navBarEntries(permitted, 4)` — manifest `primary: true` first, then fill from the rest,
+so the bar is never sparse for an operator with narrow permissions. `primary` had been dead data read
+only by `backPolicy`; it now also drives navigation, which is what it was for.
+
+**The sheet lists every permitted destination, not only the overflow.** Doc 08 said "the remaining
+permitted destinations", and that was rejected: with Receipts promoted into the bar, a Money group
+showing only Refunds/Payments/Mandates reads as though Receipts is somewhere else. A complete map is
+also the answer to the actual complaint, which was that the console's surface is not discoverable.
+Single-entry domains render without a heading, so "Users" is not printed twice.
+
+**`Modal`, not `Sheet`, and this is not cosmetic.** `Sheet` does not register with
+`OverlayStackProvider`; `Modal` wraps `Sheet` and does. Registration is what makes Android hardware Back
+and `Escape` dismiss the overlay instead of navigating. Using `Sheet` here would have produced a sheet
+that Back closes by leaving the page — on the surface whose entire purpose is navigation.
+
+**Corrected 2026-08-30.** This entry first claimed the gap "still affects `OptionalUpdateSheet`". It does
+not: `~/ui/primitives/Sheet` has exactly one importer, `Modal`, and every overlay in the application —
+`ConfirmDialog`'s nine consumers, `OptionalUpdateSheet`, and this sheet — goes through `Modal` and is
+therefore registered. The original claim came from grepping the word "Sheet", which matches
+`OptionalUpdateSheet`'s own name. What remains true is narrower and forward-looking: `Sheet` is exported
+as a primitive, so a future consumer that reaches past `Modal` would silently lose Back handling.
+
+`navGroups` and `navBarEntries` live in `routeManifest.ts`, and the slot count is the only numeric
+literal, held in the shell. No breakpoint value entered TypeScript.
+
+
+
+### D-064
+**A context consumer depends on the stable callback, never on the context object.** · DECIDED 2026-08-30
+
+`OverlayStackProvider` publishes `useMemo(..., [register, dismissTop, ids])`, so its value takes a new
+identity every time the stack changes. `Modal`'s registration effect listed the whole object as a
+dependency, which made registration self-perpetuating: register → `setIds` → new identity → cleanup
+unregisters → effect re-registers → `setIds` → without end.
+
+It never threw. Effects are not renders, so React's update-depth guard never fired, CPU stayed at
+3.7 %, and while only discrete events were arriving everything still worked. What it broke was
+**suspense**: a `lazy()` route transition invalidated on every effect flush never reaches commit, so
+the admin console froze with the URL advancing and the tree stuck on the previous screen. Found by
+tapping a link in the new More sheet on a device; invisible to all 197 tests.
+
+Rule adopted: **a component that registers with a provider depends on the registrar, not on the
+context value.** `register` is `useCallback(…, [])` and stable for the provider's lifetime.
+`register`/unregister were additionally made no-ops when the stack is already in the requested state,
+so the loop is unreachable even through the object.
+
+**Latent since Phase 10, not introduced here.** `ConfirmDialog` wraps `Modal` and has nine consumers,
+one of which (`ApplicationDetailScreen`) navigates on confirm.
+
+`overlayStack.test.tsx` guards it. The important property of that test is that it **fails fast**: under
+the old dependency list the render never settles, so a plain assertion would hang CI. The probe throws
+once it has seen more than twelve context identities for a single overlay, which names the failure
+instead. Validated by reverting the fix and watching it fail, then pass again.
+
+**Reversible:** yes, but do not. Re-adding the object to those deps reintroduces a freeze that no
+static check can see.
+
+### D-065
+**The navigation surfaces are dark, and their colour is six named tokens rather than a literal per
+recipe.** · DECIDED 2026-08-30 (maintainer)
+
+The maintainer asked for the main navigation bar to be dark in both the browser and the mobile
+presentations. A dark background is not a one-line change: every foreground on those surfaces was
+chosen for parchment, and `--be-fg` on espresso is invisible. So the change is a surface *pair*, and it
+is expressed as tokens — `--be-nav-bg`, `--be-nav-fg`, `--be-nav-fg-muted`, `--be-nav-hairline`,
+`--be-nav-surface`, `--be-nav-surface-strong` — consumed by the shared bottom bar, the client desktop
+island, the admin sidebar, and their labels, hover and `aria-current` states.
+
+Contrast was measured in the WebView against the composited background, not estimated: inactive labels
+7.32:1, active 15.07:1, the client island's current pill 8.53:1. All clear WCAG 2.2 AA for small text,
+which is the relevant threshold because the bar labels are `text-2xs`.
+
+**This is the one deliberate exception to "do not change the phone design".** The sub-`lg` CSS diff is
+7 rules removed and 23 added, and every one of them is a `--be-nav-*` token or a nav-surface utility.
+Nothing else about the phone moved.
+
+**Consequence accepted, and it is visible.** On Android the dark bar cannot paint the system
+navigation-bar inset, because `--be-safe-bottom` resolves to `0px` on API 36 and the WebView is inset
+natively rather than drawing under the bars. A 63 px strip of window background (`#F4F1E9`) therefore
+sits below the dark bar. It cannot be closed by recolouring the window:
+`SystemChromePlugin.setBarBackground` applies one colour to the whole window, and the top strip
+correctly matches the light header per D-034 — darkening it moves the seam rather than removing it.
+The seam is logged as open in Entry 036. Fixing it is an inset-handling change, and doc 08 is explicit
+that every failure mode in that chain is silent.
+
+### D-066
+**One bottom bar, declared once, re-exported by both shells.** · DECIDED 2026-08-30
+
+`ADMIN_BOTTOM_NAV` was missing `pl-safe-left pr-safe-right` — the landscape-cutout defect doc 08 names
+explicitly. Adding them made it byte-identical to `CLIENT_BOTTOM_NAV`, and `recipes.test.ts` refused
+the duplicate.
+
+The duplicate was not allowlisted. Two identical bars are one bar: `BOTTOM_NAV` now lives in
+`recipes/layout.ts` and both shell recipe modules re-export it under their own name, exactly as
+`APP_SHELL` already was. Re-exports are invisible to the duplicate-value check, which is correct — the
+check exists to catch two *declarations* of one appearance, and there is now one declaration.
+
+The two `*_NAV_ITEM` recipes stay separate: the client's carries a glyph and a current-marker the
+admin's does not.
+
+
+
+### D-067
+**User zoom is disabled in the APKs and preserved in browsers, by two mechanisms that are each scoped to
+one runtime.** · DECIDED 2026-08-30 (maintainer)
+
+The product requirement is that the APKs feel native — no pinch, no double-tap zoom, no page scaling —
+while the same bundle in a browser keeps full accessibility zoom. Those two things are in tension only if
+you reach for the viewport meta, which is global. The correct split already existed:
+
+| Runtime | Mechanism | Scope |
+|---|---|---|
+| Capacitor Android | `android.zoomEnabled: false` → `setBuiltInZoomControls(false)` | native WebView setting; browsers cannot see it |
+| Browser | viewport meta with **no** `user-scalable=no` and no `maximum-scale` | asserted by `safeArea.test.ts` |
+
+**So no code changed, and that is the finding.** The rule going forward: never disable zoom through the
+viewport meta. `user-scalable=no` and `maximum-scale` are forbidden in `index.html` and test-enforced,
+because they would take browser zoom away from users who need it in order to solve a native-only problem.
+If the APK ever needs more than `zoomEnabled` provides, the fix belongs in native settings or a
+runtime-conditioned hook behind `isNative()` — never in the static meta.
+
+Two traps recorded for whoever revisits this. First, `zoomEnabled` does **not** call `setSupportZoom`; it
+sets `setBuiltInZoomControls`, which is what actually removes the gesture, so the config name understates
+it and grepping for `setSupportZoom` finds nothing. Second, verifying "zoom is disabled" requires a
+**positive control** — a probe that reports no zoom is meaningless unless it has been shown to detect
+zoom. Rebuilding with `zoomEnabled: true` produced `visualViewport.scale = 2.5` under the same synthetic
+pinch, which is what makes the negative result evidence.
+
+Measured blocked in both APKs for: pinch out, pinch in, double tap, after route changes, with an overlay
+open, in landscape, and on input focus. Both release APKs were confirmed at the artifact level
+(`assets/capacitor.config.json`), since release builds are not debuggable.
+
+### D-068
+**Gradle refuses to build the admin variant under the client applicationId.** · DECIDED 2026-08-30
+
+Entry 037 fixed `npm run android:apk:admin`, which was necessary and insufficient:
+`./gradlew assembleDebug -PboeVariant=admin` still defaulted to `com.beonedge.app` and produced an admin
+bundle that installs **over the investor app**. One corrected call site does not remove a class of
+mistake when the default is the dangerous value.
+
+`build.gradle` now throws when `boeVariant == 'admin'` and the resolved applicationId is still the client
+id, with a message naming the consequence and the two commands that inject correctly.
+
+The blast radius justifies a hard failure rather than a warning. Same applicationId means Android treats
+the admin console as an *update* to the investor app: the client app is replaced, its data orphaned, and
+— as recovering the emulator showed — the package is left on the wrong signing certificate, so every
+subsequent legitimately-signed update is refused with `INSTALL_FAILED_UPDATE_INCOMPATIBLE` until someone
+uninstalls it. On a real user's device that is data loss plus a broken update path.
+
+Audit of every route to gradle: `emu/boe_update.sh` (injects per target × variant — prod
+`com.beonedge.app` / `.admin`, dev and local `com.beonedge.app.dev` / `.dev.admin`), and the two npm
+scripts. `release_manager/export.sh` and `lib/apk_ship.sh` consume prebuilt APKs and sidecars and make no
+id decision; CI builds no APK. `hermetic_branding.test.sh` still passes, so the wiring it guards is intact.
+
+**Not extended to the client variant.** `com.beonedge.app` is the correct client default and a bare IDE
+build should keep working.
+
+### D-069
+**The WebView-133 bottom seam is accepted as an environment limitation, not designed around.**
+· DECIDED 2026-08-30 (maintainer)
+
+Option A of the three in Entry 037. On System WebView below 140 the Capacitor `SystemBars` plugin insets
+the WebView natively and reports `0px` CSS insets, so a ~63 px strip of window background sits below the
+dark bottom bar. The alternatives were to float the bar as an inset pill or to darken the header — both of
+which change the phone's visual design permanently to compensate for one outdated WebView.
+
+Explicitly rejected: converting the bottom nav to a floating pill, darkening the header, redesigning
+mobile navigation, and any CSS or layout hack whose only purpose is hiding the strip.
+
+It is not an accessibility defect — the gesture handle renders `rgb(98,96,93)` on the light strip and is
+clearly visible — and it self-resolves on WebView ≥ 140, where the plugin's passthrough branch makes the
+CSS safe-area insets real and the dark bar paints under the gesture bar as designed. That is the preferred
+outcome and it needs no code.
+
+**Consequence to hold onto:** because the CSS insets are inert on this WebView, the safe-area contract is
+currently unexercised on the emulator. `pl-safe-left`/`pr-safe-right` on the shared `BOTTOM_NAV` (D-066)
+and the whole `--be-safe-*` chain are therefore verified as *present and correct*, not as *observed
+working*. The first WebView-140 device to run this app is the first real test of doc 08's safe-area
+contract, and it should be treated as such.
+
+
+
+### D-070
+**Channel-list colour tokens are space-separated, and a form control is identified by its boundary, not
+its fill.** · DECIDED 2026-08-30
+
+Two rules from one defect. The maintainer reported the login fields being indistinguishable from their
+surroundings; investigating it found that `--be-tint-warm: 28, 25, 23` made every
+`rgb(var(--be-tint-warm) / X%)` expand to `rgb(28, 25, 23 / 4%)` — commas plus a slash alpha, which is
+invalid — so the browser dropped the whole `box-shadow` declaration. **Nine of nine shadow tokens computed
+to `none`**: all three ambient elevations, the gold ambient, both field rings, and all the button shadows.
+Fourteen call sites, every one of them dead since the token layer was written.
+
+**Rule 1: a token holding colour channels for `rgb()`/`hsl()` is space-separated.** `28 25 23`, never
+`28, 25, 23`. The modern slash-alpha form is the only one used in this codebase, and it is incompatible
+with the legacy comma form. The failure mode is the worst kind — no error, no warning, no failing test,
+just a silently absent visual layer. It is also self-similar: any new token following the existing
+(broken) pattern would have been equally dead.
+
+**Rule 2: a form control's identifiability rests on its boundary.** Two light neutrals cannot reach the
+3:1 that WCAG 1.4.11 requires for non-text contrast — the fill went from `#F9F8F5` to
+`rgb(235,230,220)` against a `rgb(253,252,248)` panel, which is 1.21:1 and clearly visible but nowhere
+near 3:1. So the *ring* carries the requirement: `--be-field-ring` at 42% espresso renders
+`rgb(141,137,130)`, which is **3.39:1** against the panel. Darkening a fill is a legitimate response to
+"I cannot see the field", but on a light theme it is never sufficient on its own.
+
+Applied consistently: `SELECT_BASE`, `TEXTAREA_BASE` and `AMOUNT_INPUT` moved off `bg-parchment`
+(identical to the card face they sit on) onto the same `bg-field` + `ring-inset-field` pair, so no
+text-entry control in the app is invisible. `ring-inset-hairline-strong` was deliberately **kept** for
+switches, checkboxes and the PIN pad, which are not entry fields — an intermediate version renamed it and
+would have silently removed their rings, which is the same class of failure as the one being fixed.
+
+**Consequence to review, not a risk to accept.** Card, button and navigation elevation now render for the
+first time. Every screen in both apps looks different from how it has ever looked. That is the design
+being applied rather than a new choice, but it has never been seen and should be reviewed on a device
+before release.

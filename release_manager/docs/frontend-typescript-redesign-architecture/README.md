@@ -53,7 +53,7 @@ Read in this order. Documents 00, 04, 07 and 10 are the load-bearing ones.
 **All twelve phases have landed.** `frontend_stack_ts` is the only frontend in the repository;
 `frontend_stack/` was deleted in Phase 12 and survives only in git history.
 
-State as of 2026-08-29:
+State as of 2026-08-30:
 
 - `packages/contracts` describes **101 operations** across 91 paths. The drift checker was replaced
   by `check-frontend-contract-bypass.mjs` (D-030), which fails on any `/v1/...` literal outside the
@@ -62,13 +62,35 @@ State as of 2026-08-29:
 - Styling is a token layer plus **Tailwind v4** utilities derived from it via `@theme inline`, plus a
   typed recipe layer (D-033). All 35 CSS Modules are gone. `tokens-core.css` is still the sole
   reader of `env(safe-area-inset-*)`.
-- Both APKs build, install and launch. R8/minification was exercised for the first time in
-  Entry 019; the release APKs are unsigned and were never installed.
+- Both APKs build, install and launch. **Signed, R8-minified release APKs were built and installed
+  for the first time in Entry 038** — `com.beonedge.app` and `com.beonedge.app.admin` coexist, and
+  `build.gradle` now refuses an admin build under the client applicationId (D-068).
+- The browser build is a **purpose-built desktop composition**, not a stretched phone layout: fluid
+  content tokens (D-059), an `xl` composition step, and per-component measures (D-060). Below the
+  1024 px shell switch the phone rendering is byte-identical apart from the dark navigation surfaces
+  (D-065). Entries 035 to 038.
+- Navigation is complete on both surfaces: **zero orphan routes in either manifest**, and every admin
+  destination is reachable on a phone through the primary bar plus a grouped "All sections" sheet
+  (D-063). A route link map is a declaration, not evidence — reachability is measured from rendered
+  links (D-062).
+- **User zoom is disabled in the APKs and preserved in browsers** by two runtime-scoped mechanisms;
+  never disable zoom through the viewport meta (D-067).
 - Gates: `npm run check` in `frontend_stack_ts`, `npm run check` in `packages/contracts`, the backend
-  suite, and `release_manager/verify.sh`.
+  suite, `release_manager/verify.sh`, and the 15 `release_manager/tests/*.test.sh`.
+
+Three defects that only a running device exposed, all fixed, all invisible to the suite:
+
+1. **The admin console froze permanently** on any navigation out of an open overlay — a context-identity
+   effect loop starved the suspended route transition. Latent since Phase 10 (D-064).
+2. **Nine of fourteen admin destinations had no phone navigation path**, and `/funds/:fundId/holdings`
+   had no inbound link anywhere in the UI.
+3. **Every shadow token in the application computed to `none`.** `--be-tint-warm` held comma-separated
+   channels, so `rgb(28, 25, 23 / 4%)` was invalid and the browser dropped each declaration. No card,
+   button, field or navigation elevation had ever rendered (D-070). Fixed at the token; the visual
+   consequence across every screen has not yet been reviewed.
 
 **Read `LOGS/implementation_log.md` for what actually landed, and `LOGS/risk_and_decision.md`
-(D-001 to D-052) for the decisions that constrain it.** Several statements in the numbered documents
+(D-001 to D-070) for the decisions that constrain it.** Several statements in the numbered documents
 have been superseded; where a document and the decision log disagree, the log is authoritative. This
 applies with particular force to **doc 10's Phase 13 tables**, four rows of which were disproved in
 Entry 024 — see known gap 6.
