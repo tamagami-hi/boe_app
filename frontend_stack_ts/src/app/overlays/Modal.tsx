@@ -21,20 +21,20 @@ export const Modal = ({
   onDismiss,
   children,
 }: ModalProps): React.ReactElement | null => {
-  const overlays = useOverlayStack()
+  const { register } = useOverlayStack()
   const id = useId()
   const dismiss = useRef(onDismiss)
   dismiss.current = onDismiss
 
   useEffect(() => {
     if (!open) return
-    return overlays.register({
+    return register({
       id,
       dismiss: () => {
         dismiss.current()
       },
     })
-  }, [open, overlays, id])
+  }, [open, register, id])
 
   return (
     <Sheet

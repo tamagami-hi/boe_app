@@ -25,10 +25,10 @@ export const OverlayStackProvider = ({
 
   const register = useCallback((entry: OverlayEntry): (() => void) => {
     entries.current.set(entry.id, entry)
-    setIds((current) => [...current.filter((id) => id !== entry.id), entry.id])
+    setIds((current) => (current.at(-1) === entry.id ? current : [...current.filter((id) => id !== entry.id), entry.id]))
     return () => {
       entries.current.delete(entry.id)
-      setIds((current) => current.filter((id) => id !== entry.id))
+      setIds((current) => (current.includes(entry.id) ? current.filter((id) => id !== entry.id) : current))
     }
   }, [])
 
