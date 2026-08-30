@@ -14,6 +14,8 @@ import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 import { CARD_LINK } from "~/ui/recipes/surface"
+import { CARD_COLUMNS } from "~/ui/recipes/layout"
+import { cx } from "~/lib/cx"
 
 import { SIP_CARD_TOP, SIP_LIST, SIP_SCHEDULE } from "./sip.recipe"
 import { ITEM_TITLE } from "~/ui/recipes/datalist"
@@ -35,7 +37,7 @@ const SipListScreen = (): React.ReactElement => {
       <AsyncBoundary
         query={query}
         skeleton={
-          <div className={SIP_LIST}>
+          <div className={cx(SIP_LIST, CARD_COLUMNS[2])}>
             {[0, 1].map((index) => (
               <Card key={index}>
                 <Skeleton height="1.1rem" width="55%" />
@@ -58,7 +60,7 @@ const SipListScreen = (): React.ReactElement => {
         }
       >
         {(data) => (
-          <div className={SIP_LIST}>
+          <div className={cx(SIP_LIST, CARD_COLUMNS[2])}>
             {data.items.map((plan) => (
               <Link key={plan.sipId} to={`/sips/${plan.sipId}`} className={CARD_LINK}>
                 <Card>

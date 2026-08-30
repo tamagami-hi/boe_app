@@ -12,6 +12,8 @@ import { LoadMore } from "~/ui/patterns/LoadMore"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { CARD_LINK, CARD_STACK } from "~/ui/recipes/surface"
+import { FEED_MEASURE } from "~/ui/recipes/layout"
+import { cx } from "~/lib/cx"
 import { META_MUTED } from "~/ui/recipes/text"
 import { Badge } from "~/ui/primitives/Badge"
 import { Button } from "~/ui/primitives/Button"
@@ -116,7 +118,7 @@ const ActivityScreen = (): React.ReactElement => {
           }
         >
           {(data) => (
-            <div className={CARD_STACK}>
+            <div className={cx(CARD_STACK, FEED_MEASURE)}>
               {[...data.items]
                 .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
                 .map((entry) => (
@@ -177,7 +179,7 @@ const ActivityScreen = (): React.ReactElement => {
             }
           >
             {(data) => (
-              <div className={CARD_STACK}>
+              <div className={cx(CARD_STACK, FEED_MEASURE)}>
                 {data.items.map((payment) => (
                   <Link
                     key={payment.id}

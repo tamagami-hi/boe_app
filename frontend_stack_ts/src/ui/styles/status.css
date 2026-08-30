@@ -76,6 +76,10 @@
   box-shadow: inset 0 0 0 1px var(--be-hairline-strong), var(--be-inner-lift-soft);
 }
 
+@utility ring-inset-field {
+  box-shadow: inset 0 0 0 1px var(--be-field-ring), inset 0 2px 4px rgb(var(--be-tint-warm) / 6%);
+}
+
 @utility ring-inset-invalid {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--be-red) 55%, transparent);
 }

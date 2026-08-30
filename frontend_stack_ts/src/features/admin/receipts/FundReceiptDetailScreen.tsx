@@ -87,7 +87,7 @@ const FundReceiptDetailScreen = (): React.ReactElement => {
               <span className={ADMIN_LABEL}>Amount received</span>
               <MoneyValue amount={toPaise(data.amountPaise)} size="xl" />
 
-              <DataList>
+              <DataList split>
                 <DetailRow label="Investor">{data.client.name}</DetailRow>
                 <DetailRow label="Email">{data.client.email}</DetailRow>
                 <DetailRow label="Fund">{data.selectedFund.name}</DetailRow>

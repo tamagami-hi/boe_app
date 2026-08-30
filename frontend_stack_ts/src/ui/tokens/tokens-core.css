@@ -113,12 +113,12 @@
   --be-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --be-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
 
-  --be-content-max: 960px;
-  --be-content-max-wide: 1280px;
-  --be-content-max-form: 560px;
+  --be-content-max: clamp(60rem, 82vw, 100rem);
+  --be-content-max-wide: clamp(80rem, 90vw, 150rem);
+  --be-content-max-form: 35rem;
   --be-page-pad-x: var(--be-space-4);
   --be-page-pad-x-md: var(--be-space-6);
-  --be-page-pad-x-lg: var(--be-space-7);
+  --be-page-pad-x-lg: clamp(var(--be-space-7), 2vw, var(--be-space-10));
   --be-page-pad-y: var(--be-space-6);
 
   --be-header-h: 56px;

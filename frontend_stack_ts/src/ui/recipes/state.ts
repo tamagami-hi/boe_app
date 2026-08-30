@@ -1,7 +1,8 @@
 export const STATE_PANEL = [
-  "mx-auto flex w-full max-w-content flex-col items-center gap-3 text-center",
+  "mx-auto flex w-full flex-col items-center gap-3 text-center",
   "rounded-squircle-lg bg-parchment px-5 py-10",
   "shadow-hairline inset-shadow-lift-soft",
+  "lg:max-w-[46rem]",
 ].join(" ")
 
 export const STATE_TITLE =

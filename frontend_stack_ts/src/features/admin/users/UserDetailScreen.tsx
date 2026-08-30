@@ -103,7 +103,7 @@ const UserDetailScreen = (): React.ReactElement => {
             )}
 
             <Card elevated>
-              <DataList>
+              <DataList split>
                 <DetailRow label="Name">{data.user.fullName}</DetailRow>
                 <DetailRow label="Email">{data.user.email}</DetailRow>
                 <DetailRow label="Phone">{data.user.phone}</DetailRow>

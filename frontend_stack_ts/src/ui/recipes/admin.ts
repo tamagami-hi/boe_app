@@ -19,7 +19,11 @@ export const ADMIN_FILTER = [
 
 export const ADMIN_META = "flex flex-wrap gap-4 font-ui text-xs text-fg-muted"
 
-export const ADMIN_FORM_GRID = "grid grid-cols-1 gap-4 lg:grid-cols-2"
+export const ADMIN_FORM_GRID = [
+  "grid grid-cols-1 gap-4",
+  "lg:max-w-[72rem] lg:grid-cols-2",
+  "xl:grid-cols-3",
+].join(" ")
 
 export const ADMIN_SUMMARY_GRID = "grid grid-cols-2 gap-4 lg:grid-cols-4"
 

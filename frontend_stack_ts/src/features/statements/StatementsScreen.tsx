@@ -10,7 +10,7 @@ import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 import { STAT_LABEL } from "~/ui/recipes/datalist"
-import { ROW_BETWEEN_BASELINE } from "~/ui/recipes/layout"
+import { CARD_COLUMNS, ROW_BETWEEN_BASELINE } from "~/ui/recipes/layout"
 import { CARD_STACK } from "~/ui/recipes/surface"
 import { META_TEXT, SUBHEAD_TITLE } from "~/ui/recipes/text"
 
@@ -31,7 +31,7 @@ const StatementsScreen = (): React.ReactElement => {
       <AsyncBoundary
         query={query}
         skeleton={
-          <div className={CARD_STACK}>
+          <div className={cx(CARD_STACK, CARD_COLUMNS[2])}>
             {[0, 1].map((index) => (
               <Card key={index}>
                 <Skeleton height="1.2rem" width="35%" />
@@ -49,7 +49,7 @@ const StatementsScreen = (): React.ReactElement => {
         }
       >
         {(data) => (
-          <div className={CARD_STACK}>
+          <div className={cx(CARD_STACK, CARD_COLUMNS[2])}>
             {data.items.map((period) => (
               <Card key={period.id}>
                 <div className={ROW_BETWEEN_BASELINE}>

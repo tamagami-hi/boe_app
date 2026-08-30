@@ -3,12 +3,15 @@ export const LIST_ROOT = "m-0 flex list-none flex-col p-0"
 export const LIST_ROW = [
   "flex items-baseline justify-between gap-4 py-3",
   "border-b border-hairline last:border-b-0",
+  "lg:grid lg:max-w-[44rem] lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-6",
 ].join(" ")
 
 export const LIST_LABEL = "min-w-0 shrink font-ui text-sm text-fg-muted"
 
 export const LIST_VALUE =
-  "min-w-0 text-right font-ui text-sm font-semibold text-fg [overflow-wrap:anywhere]"
+  "min-w-0 text-right font-ui text-sm font-semibold text-fg [overflow-wrap:anywhere] lg:text-left"
+
+export const LIST_SPLIT = "lg:grid lg:grid-cols-2 lg:gap-x-12"
 
 export const STAT_ROOT = "flex flex-col gap-1"
 

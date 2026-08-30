@@ -95,7 +95,7 @@ const MandateDetailScreen = (): React.ReactElement => {
             )}
 
             <Card elevated>
-              <DataList>
+              <DataList split>
                 <DetailRow label="Investor">{data.user.name ?? "—"}</DetailRow>
                 <DetailRow label="Email">{data.user.email ?? "—"}</DetailRow>
                 <DetailRow label="Fund">{data.fund.name ?? "—"}</DetailRow>

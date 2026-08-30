@@ -24,7 +24,7 @@ import {
   ADMIN_META,
 } from "~/ui/recipes/admin"
 import { ITEM_TITLE } from "~/ui/recipes/datalist"
-import { ROW_BETWEEN_BASELINE } from "~/ui/recipes/layout"
+import { CARD_COLUMNS_WRAP, ROW_BETWEEN_BASELINE } from "~/ui/recipes/layout"
 import { CARD_LINK } from "~/ui/recipes/surface"
 import { REFERENCE_TEXT } from "~/ui/recipes/text"
 
@@ -126,8 +126,9 @@ const FundListScreen = (): React.ReactElement => {
               ))}
             </div>
 
-            {data.items.map((fund) => (
-              <Link key={fund.id} to={`/funds/${fund.id}`} className={CARD_LINK}>
+            <div className={CARD_COLUMNS_WRAP[3]}>
+              {data.items.map((fund) => (
+                <Link key={fund.id} to={`/funds/${fund.id}`} className={CARD_LINK}>
                 <Card>
                   <div className={ROW_BETWEEN_BASELINE}>
                     <span className={ITEM_TITLE}>{fund.name ?? "Unnamed draft"}</span>
@@ -149,9 +150,10 @@ const FundListScreen = (): React.ReactElement => {
                       </span>
                     )}
                   </div>
-                </Card>
-              </Link>
-            ))}
+                  </Card>
+                </Link>
+              ))}
+            </div>
           </>
         )}
       </AsyncBoundary>

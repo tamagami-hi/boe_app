@@ -27,17 +27,17 @@ export const INPUT_MONO = "font-mono text-lg tracking-[0.16em]"
 export const SELECT_BASE = [
   "w-full min-h-target px-3 pr-8",
   "appearance-none cursor-pointer select-caret",
-  "rounded-squircle-sm border-0 bg-parchment text-fg font-ui text-base",
-  "ring-inset-hairline-strong",
+  "rounded-squircle-sm border-0 bg-field text-fg font-ui text-base",
+  "ring-inset-field",
   "focus:outline-none focus:ring-focus-ink",
   "disabled:cursor-not-allowed disabled:opacity-55",
 ].join(" ")
 
 export const TEXTAREA_BASE = [
   "w-full min-h-30 p-3",
-  "rounded-squircle-sm border-0 bg-parchment text-fg",
+  "rounded-squircle-sm border-0 bg-field text-fg",
   "font-ui text-base leading-normal resize-y",
-  "ring-inset-hairline-strong",
+  "ring-inset-field",
   "focus:outline-none focus:ring-focus-ink",
 ].join(" ")
 
@@ -52,9 +52,9 @@ export const AMOUNT_SYMBOL = [
 
 export const AMOUNT_INPUT = [
   "w-full min-h-16 pl-7 pr-3",
-  "rounded-squircle border-0 bg-parchment text-fg",
+  "rounded-squircle border-0 bg-field text-fg",
   "money text-[clamp(1.75rem,7vw,2.25rem)] font-semibold tracking-[-0.024em]",
-  "ring-inset-hairline-strong",
+  "ring-inset-field",
   "focus:outline-none focus:ring-focus-ink",
 ].join(" ")
 

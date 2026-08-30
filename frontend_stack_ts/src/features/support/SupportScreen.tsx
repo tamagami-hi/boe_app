@@ -24,7 +24,7 @@ import { FormField, Input } from "~/ui/primitives/FormField"
 import { Select } from "~/ui/primitives/Select"
 import { Textarea } from "~/ui/primitives/Textarea"
 import { ITEM_TITLE, PROSE_PRE, PROSE_SM } from "~/ui/recipes/datalist"
-import { ROW_BETWEEN, STACK_LG } from "~/ui/recipes/layout"
+import { CARD_COLUMNS, FIELD_MEASURE, ROW_BETWEEN, STACK_LG } from "~/ui/recipes/layout"
 import { CARD_STACK, INSET_NOTE } from "~/ui/recipes/surface"
 import { META_ROW, REFERENCE_TEXT } from "~/ui/recipes/text"
 
@@ -92,7 +92,7 @@ const SupportScreen = (): React.ReactElement => {
 
       <Section title="Raise a request">
         <Card elevated>
-          <div className={STACK_LG}>
+          <div className={cx(STACK_LG, FIELD_MEASURE)}>
             {create.isSuccess && subject === "" && body === "" ? (
               <Alert tone="success" title="We have your request">
                 It appears below with its reference. We reply by email.
@@ -185,7 +185,7 @@ const SupportScreen = (): React.ReactElement => {
           }
         >
           {(data) => (
-            <div className={CARD_STACK}>
+            <div className={cx(CARD_STACK, CARD_COLUMNS[2])}>
               {data.items.map((ticket) => (
                 <Card key={ticket.id}>
                   <div className={ROW_BETWEEN}>

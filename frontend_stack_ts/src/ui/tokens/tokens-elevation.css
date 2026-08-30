@@ -8,13 +8,20 @@
   --be-gold-lift: #c79a53;
   --be-gold-deep: #8a6428;
 
-  --be-tint-warm: 28, 25, 23;
-  --be-tint-gold: 181, 137, 74;
+  --be-tint-warm: 28 25 23;
+  --be-tint-gold: 181 137 74;
 
   --be-shell: color-mix(in srgb, var(--be-espresso) 4%, transparent);
   --be-shell-strong: color-mix(in srgb, var(--be-espresso) 7%, transparent);
   --be-hairline: color-mix(in srgb, var(--be-espresso) 8%, transparent);
   --be-hairline-strong: color-mix(in srgb, var(--be-espresso) 14%, transparent);
+
+  --be-nav-bg: color-mix(in srgb, var(--be-espresso) 92%, transparent);
+  --be-nav-fg: var(--be-parchment);
+  --be-nav-fg-muted: color-mix(in srgb, var(--be-parchment) 66%, transparent);
+  --be-nav-hairline: color-mix(in srgb, var(--be-parchment) 14%, transparent);
+  --be-nav-surface: color-mix(in srgb, var(--be-parchment) 10%, transparent);
+  --be-nav-surface-strong: color-mix(in srgb, var(--be-parchment) 18%, transparent);
 
   --be-inner-lift: inset 0 1px 0 rgb(255 255 255 / 78%),
     inset 0 0 0 1px rgb(255 255 255 / 42%);
@@ -68,8 +75,9 @@
   --be-btn-quiet-hover: 0 0 0 1px var(--be-hairline-strong), var(--be-inner-lift),
     var(--be-ambient-2);
 
-  --be-field-rest: inset 0 0 0 1px var(--be-hairline-strong),
-    inset 0 2px 4px rgb(var(--be-tint-warm) / 5%);
+  --be-field-ring: color-mix(in srgb, var(--be-espresso) 42%, transparent);
+  --be-field-rest: inset 0 0 0 1px var(--be-field-ring),
+    inset 0 2px 4px rgb(var(--be-tint-warm) / 6%);
   --be-field-focus: inset 0 0 0 1px color-mix(in srgb, var(--be-gold) 58%, transparent),
     0 0 0 4px color-mix(in srgb, var(--be-gold) 15%, transparent);
   --be-field-invalid: inset 0 0 0 1px color-mix(in srgb, var(--be-red) 55%, transparent),
@@ -86,8 +94,8 @@
     var(--be-red) 100%
   );
   --be-grad-core: linear-gradient(180deg, rgb(255 255 255 / 94%) 0%, var(--be-parchment) 100%);
-  --be-field-bg: color-mix(in srgb, var(--be-sand) 26%, white);
-  --be-field-bg-hover: color-mix(in srgb, var(--be-sand) 18%, white);
+  --be-field-bg: color-mix(in srgb, var(--be-sand) 88%, white);
+  --be-field-bg-hover: color-mix(in srgb, var(--be-sand) 70%, white);
 
   --be-mesh-gold: radial-gradient(
     62% 48% at 18% 8%,

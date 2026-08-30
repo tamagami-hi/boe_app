@@ -55,6 +55,12 @@
 
   --color-hairline: var(--be-hairline);
   --color-hairline-strong: var(--be-hairline-strong);
+  --color-nav-bg: var(--be-nav-bg);
+  --color-nav-fg: var(--be-nav-fg);
+  --color-nav-fg-muted: var(--be-nav-fg-muted);
+  --color-nav-hairline: var(--be-nav-hairline);
+  --color-nav-surface: var(--be-nav-surface);
+  --color-nav-surface-strong: var(--be-nav-surface-strong);
   --color-shell: var(--be-shell);
   --color-shell-strong: var(--be-shell-strong);
   --color-rule: var(--be-border-color);
@@ -138,6 +144,7 @@
   --shadow-ambient-3: var(--be-ambient-3);
   --shadow-ambient-gold: var(--be-ambient-gold);
   --shadow-hairline: 0 0 0 1px var(--be-hairline);
+  --shadow-nav-hairline: 0 0 0 1px var(--be-nav-hairline);
   --shadow-hairline-strong: 0 0 0 1px var(--be-hairline-strong);
   --shadow-btn-solid: var(--be-btn-solid);
   --shadow-btn-solid-hover: var(--be-btn-solid-hover);
@@ -153,6 +160,7 @@
   --inset-shadow-*: initial;
   --inset-shadow-lift: var(--be-inner-lift);
   --inset-shadow-lift-soft: var(--be-inner-lift-soft);
+  --inset-shadow-nav: var(--be-lift-18);
 
   --ease-*: initial;
   --ease-entry: var(--be-ease-entry);

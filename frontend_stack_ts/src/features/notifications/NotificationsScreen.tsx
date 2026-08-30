@@ -15,7 +15,7 @@ import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 import { ITEM_TITLE, PROSE_SM } from "~/ui/recipes/datalist"
-import { ACTION_ROW, ROW_BETWEEN, STACK_SM } from "~/ui/recipes/layout"
+import { ACTION_ROW, CARD_COLUMNS, ROW_BETWEEN, STACK_SM } from "~/ui/recipes/layout"
 import { CARD_STACK } from "~/ui/recipes/surface"
 import { COUNT_TEXT, META_ROW } from "~/ui/recipes/text"
 
@@ -50,7 +50,7 @@ const NotificationsScreen = (): React.ReactElement => {
       <AsyncBoundary
         query={query}
         skeleton={
-          <div className={CARD_STACK}>
+          <div className={cx(CARD_STACK, CARD_COLUMNS[3])}>
             {[0, 1, 2].map((index) => (
               <Card key={index}>
                 <Skeleton height="1rem" width="55%" />
@@ -74,7 +74,7 @@ const NotificationsScreen = (): React.ReactElement => {
                 ? `${String(data.items.length)} loaded`
                 : `${String(data.unreadCount)} unread on this account`}
             </span>
-            <div className={CARD_STACK}>
+            <div className={cx(CARD_STACK, CARD_COLUMNS[3])}>
               {data.items.map((item) => {
                 const link = deepLinkOf(item.payload)
                 return (

@@ -31,7 +31,7 @@ import {
   ADMIN_META,
 } from "~/ui/recipes/admin"
 import { ITEM_TITLE, LIST_LABEL, LIST_VALUE } from "~/ui/recipes/datalist"
-import { ACTION_ROW, ROW_BETWEEN_BASELINE, STACK_LG } from "~/ui/recipes/layout"
+import { ACTION_ROW, CARD_COLUMNS_WRAP, ROW_BETWEEN_BASELINE, STACK_LG } from "~/ui/recipes/layout"
 
 const today = (): string => new Date().toISOString().slice(0, 10)
 
@@ -345,7 +345,7 @@ const FundAumScreen = (): React.ReactElement => {
           empty={<EmptyState title="No AUM entries yet" />}
         >
           {(data) => (
-            <>
+            <div className={CARD_COLUMNS_WRAP[3]}>
               {data.items.map((snapshot) => (
                 <Card key={snapshot.id}>
                   <div className={ROW_BETWEEN_BASELINE}>
@@ -361,7 +361,7 @@ const FundAumScreen = (): React.ReactElement => {
                   </div>
                 </Card>
               ))}
-            </>
+            </div>
           )}
         </AsyncBoundary>
         <LoadMore list={history} noun="entries" />

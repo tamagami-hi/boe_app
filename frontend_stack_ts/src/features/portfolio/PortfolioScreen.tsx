@@ -11,6 +11,7 @@ import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { ITEM_TITLE, STAT_LABEL, STAT_ROOT } from "~/ui/recipes/datalist"
+import { CARD_COLUMNS_WRAP } from "~/ui/recipes/layout"
 import { CARD_LINK } from "~/ui/recipes/surface"
 import { META_MUTED, META_TEXT, MONEY_BASE, MONEY_SIZE, MONEY_TONE } from "~/ui/recipes/text"
 import { Button } from "~/ui/primitives/Button"
@@ -92,7 +93,8 @@ const PortfolioScreen = (): React.ReactElement => {
                 </Link>
               }
             >
-              {data.pools.map((pool) => (
+              <div className={CARD_COLUMNS_WRAP[3]}>
+                {data.pools.map((pool) => (
                 <Link key={pool.fundId} to={`/funds/${pool.fundId}`} className={CARD_LINK}>
                   <Card>
                     <div className={POOL_TOP}>
@@ -120,8 +122,9 @@ const PortfolioScreen = (): React.ReactElement => {
                         : `${String(pool.sipInstallmentCount)} SIP installment(s), ${String(pool.lumpSumCount)} lump sum(s)`}
                     </span>
                   </Card>
-                </Link>
-              ))}
+                  </Link>
+                ))}
+              </div>
             </Section>
           </>
         )}

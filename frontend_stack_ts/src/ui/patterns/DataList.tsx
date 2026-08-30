@@ -2,7 +2,7 @@ import { useState } from "react"
 import type { ReactNode } from "react"
 
 import { cx } from "~/lib/cx"
-import { DISCLOSURE_BUTTON, DISCLOSURE_GLYPH, DISCLOSURE_GLYPH_OPEN, DISCLOSURE_PANEL, DISCLOSURE_ROOT, LIST_LABEL, LIST_ROOT, LIST_ROW, LIST_VALUE, PROSE_BODY, STAT_LABEL, STAT_ROOT } from "~/ui/recipes/datalist"
+import { DISCLOSURE_BUTTON, DISCLOSURE_GLYPH, DISCLOSURE_GLYPH_OPEN, DISCLOSURE_PANEL, DISCLOSURE_ROOT, LIST_LABEL, LIST_ROOT, LIST_ROW, LIST_SPLIT, LIST_VALUE, PROSE_BODY, STAT_LABEL, STAT_ROOT } from "~/ui/recipes/datalist"
 import { META_MUTED } from "~/ui/recipes/text"
 
 export type DetailRowProps = Readonly<{
@@ -17,10 +17,13 @@ export const DetailRow = ({ label, children }: DetailRowProps): React.ReactEleme
   </li>
 )
 
-export type DataListProps = Readonly<{ children: ReactNode }>
+export type DataListProps = Readonly<{
+  split?: boolean
+  children: ReactNode
+}>
 
-export const DataList = ({ children }: DataListProps): React.ReactElement => (
-  <ul className={LIST_ROOT}>{children}</ul>
+export const DataList = ({ split = false, children }: DataListProps): React.ReactElement => (
+  <ul className={cx(LIST_ROOT, split ? LIST_SPLIT : undefined)}>{children}</ul>
 )
 
 export type StatProps = Readonly<{

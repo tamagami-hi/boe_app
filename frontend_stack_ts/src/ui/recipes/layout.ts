@@ -37,6 +37,20 @@ export const GRID_COLS: Readonly<Record<2 | 3 | 4, string>> = {
   4: "sm:grid-cols-2 lg:grid-cols-4",
 }
 
+export const CARD_COLUMNS: Readonly<Record<2 | 3, string>> = {
+  2: "lg:grid lg:grid-cols-2 lg:items-start lg:gap-4",
+  3: "lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 xl:grid-cols-3",
+}
+
+export const CARD_COLUMNS_WRAP: Readonly<Record<2 | 3, string>> = {
+  2: `contents ${CARD_COLUMNS[2]}`,
+  3: `contents ${CARD_COLUMNS[3]}`,
+}
+
+export const FEED_MEASURE = "lg:max-w-[68rem]"
+
+export const FIELD_MEASURE = "lg:max-w-[38rem]"
+
 export const PAGE_HEADER_ROOT = "flex flex-col gap-3 lg:gap-4"
 
 export const PAGE_HEADER_ROW = [
@@ -72,5 +86,12 @@ export const PAGE_HEADER_RULE =
   "h-px w-11 bg-gradient-to-r from-gold to-transparent"
 
 export const ACTION_ROW = "flex flex-wrap gap-2"
+
+export const BOTTOM_NAV = [
+  "sticky bottom-0 z-nav grid grid-flow-col auto-cols-fr lg:hidden",
+  "bg-nav-bg backdrop-blur-[22px] backdrop-saturate-[1.6]",
+  "shadow-[0_-1px_0_var(--be-nav-hairline),0_-18px_40px_-28px_rgb(var(--be-tint-warm)/34%)]",
+  "pb-safe-bottom pl-safe-left pr-safe-right",
+].join(" ")
 
 export const APP_SHELL = "relative flex min-h-dvh flex-col bg-bg"

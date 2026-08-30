@@ -1,4 +1,6 @@
-export { APP_SHELL as ADMIN_SHELL } from "~/ui/recipes/layout"
+import { STAT_LABEL } from "~/ui/recipes/datalist"
+
+export { APP_SHELL as ADMIN_SHELL, BOTTOM_NAV as ADMIN_BOTTOM_NAV } from "~/ui/recipes/layout"
 
 export const ADMIN_MESH = [
   "pointer-events-none fixed inset-0 z-0",
@@ -13,7 +15,8 @@ export const ADMIN_TOPBAR = [
   "bg-[color-mix(in_srgb,var(--be-parchment-2)_78%,transparent)]",
   "backdrop-blur-[18px] backdrop-saturate-150",
   "shadow-[0_1px_0_var(--be-hairline)]",
-  "lg:min-h-0 lg:justify-end lg:bg-transparent lg:px-10 lg:pt-8 lg:pb-4",
+  "lg:min-h-0 lg:justify-end lg:bg-transparent lg:pt-8 lg:pb-4",
+  "lg:px-[max(var(--be-page-pad-x-lg),var(--be-safe-right))]",
   "lg:shadow-none lg:backdrop-blur-none lg:backdrop-saturate-100",
 ].join(" ")
 
@@ -52,35 +55,46 @@ export const ADMIN_SIDEBAR = [
   "hidden lg:sticky lg:top-6 lg:flex lg:flex-none lg:flex-col lg:gap-0.5 lg:self-start",
   "lg:w-sidebar lg:px-4 lg:py-8 lg:my-6 lg:ml-6",
   "lg:rounded-squircle-xl",
-  "lg:bg-[color-mix(in_srgb,var(--be-parchment)_66%,transparent)]",
-  "lg:backdrop-blur-[20px] lg:backdrop-saturate-150",
-  "lg:shadow-hairline lg:inset-shadow-lift-soft",
+  "lg:bg-nav-bg lg:backdrop-blur-[20px] lg:backdrop-saturate-150",
+  "lg:shadow-nav-hairline lg:inset-shadow-nav",
 ].join(" ")
 
 export const ADMIN_WORDMARK =
-  "mb-5 px-3 font-display text-md font-medium tracking-display text-fg"
+  "mb-5 px-3 font-display text-md font-medium tracking-display text-nav-fg"
 
 export const ADMIN_SIDEBAR_LINK = [
   "block rounded-full px-3 py-2 no-underline",
-  "font-ui text-sm font-semibold text-fg-muted",
+  "font-ui text-sm font-semibold text-nav-fg-muted",
   "transition-[color,background-color,transform] duration-200 ease-spring",
-  "hover:translate-x-0.5 hover:bg-shell hover:text-fg",
+  "hover:translate-x-0.5 hover:bg-nav-surface hover:text-nav-fg",
   "motion-reduce:hover:translate-x-0",
-  "aria-[current=page]:grad-quiet aria-[current=page]:text-fg",
-  "aria-[current=page]:shadow-hairline",
-].join(" ")
-
-export const ADMIN_BOTTOM_NAV = [
-  "sticky bottom-0 z-nav grid grid-flow-col auto-cols-fr lg:hidden",
-  "bg-[color-mix(in_srgb,var(--be-parchment)_82%,transparent)]",
-  "backdrop-blur-[22px] backdrop-saturate-[1.6]",
-  "shadow-[0_-1px_0_var(--be-hairline),0_-18px_40px_-28px_rgb(var(--be-tint-warm)/22%)]",
-  "pb-safe-bottom",
+  "aria-[current=page]:bg-nav-surface-strong aria-[current=page]:text-nav-fg",
+  "aria-[current=page]:shadow-nav-hairline",
 ].join(" ")
 
 export const ADMIN_NAV_ITEM = [
   "flex min-h-nav items-center justify-center px-1 py-2",
-  "text-center no-underline font-ui text-2xs font-semibold tracking-[0.03em] text-fg-faint",
+  "text-center no-underline font-ui text-2xs font-semibold tracking-[0.03em] text-nav-fg-muted",
   "transition-colors duration-200 ease-out",
-  "aria-[current=page]:text-fg",
+  "aria-[current=page]:text-nav-fg",
+].join(" ")
+
+export const ADMIN_NAV_MORE = [
+  ADMIN_NAV_ITEM,
+  "cursor-pointer border-0 bg-transparent no-tap-flash",
+].join(" ")
+
+export const ADMIN_MORE_GROUP = "flex flex-col gap-2"
+
+export const ADMIN_MORE_GROUP_LABEL = ["px-1", STAT_LABEL].join(" ")
+
+export const ADMIN_MORE_LIST = "m-0 flex list-none flex-col gap-1 p-0"
+
+export const ADMIN_MORE_LINK = [
+  "flex min-h-target items-center rounded-full px-4 no-underline",
+  "bg-shell text-fg-muted shadow-hairline",
+  "font-ui text-sm font-semibold",
+  "transition-[color,background-color] duration-200 ease-out",
+  "hover:text-fg",
+  "aria-[current=page]:grad-quiet aria-[current=page]:text-fg",
 ].join(" ")

@@ -78,7 +78,7 @@ const ApplicationDetailScreen = (): React.ReactElement => {
             )}
 
             <Card elevated>
-              <DataList>
+              <DataList split>
                 <DetailRow label="Name">{data.application.fullName}</DetailRow>
                 <DetailRow label="Email">{data.application.email}</DetailRow>
                 <DetailRow label="Phone">{data.application.phone}</DetailRow>
