@@ -8,8 +8,8 @@ import {
   GatewayNotFoundError,
   GatewayThrottledError,
   type PaymentGateway,
-} from "./providers/phonepe/paymentGateway.js"
-import { logGatewayFailure, type GatewayFailureLogger } from "./providers/phonepe/gatewayFailure.js"
+} from "./providers/paymentGateway.js"
+import { logGatewayFailure, type GatewayFailureLogger } from "./providers/gatewayFailure.js"
 import {
   resolveFailureDelayMs,
   resolvePendingDelayMs,

@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from "vitest"
 
 import type { Transaction } from "../../db/repositories.js"
-import type { VerifiedCallback } from "../../providers/phonepe/paymentGateway.js"
+import type { VerifiedCallback } from "../../providers/paymentGateway.js"
 import { applyRefundOutcome, type ApplyRefundOutcomeDeps } from "./applyRefundOutcome.js"
 
 describe("applyRefundOutcome", () => {

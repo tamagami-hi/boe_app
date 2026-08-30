@@ -130,7 +130,7 @@ Nothing here is provable on the development machine.
 - [ ] Killing the app during checkout and reopening recovers to the payment status screen
 - [ ] An abandoned checkout expires and reconciles to a terminal state
 - [ ] A payment failure surfaces a retry that creates a **new attempt**, not a duplicate payment
-- [ ] `PHONEPE_CHECKOUT_ALLOWED_ORIGINS` is enforced — a non-allowlisted URL is refused client-side
+- [ ] The provider checkout origin allowlist is enforced — a non-allowlisted URL is refused client-side (the allowlist itself now lives in the payment service, not this backend)
 - [ ] Migration 043 is applied and no CHECK violation appears in the backend logs
 
 ### SIP and AutoPay

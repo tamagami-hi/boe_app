@@ -1,5 +1,5 @@
 import type { Transaction } from "../../db/repositories.js"
-import type { VerifiedCallback } from "../../providers/phonepe/paymentGateway.js"
+import type { VerifiedCallback } from "../../providers/paymentGateway.js"
 import type { PaymentsRepository } from "../../repositories/paymentsRepository.js"
 import type { RefundRepository } from "../../repositories/refundRepository.js"
 import { isRefundEvidenceCorrelated } from "./refundEvidence.js"

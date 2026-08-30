@@ -39,8 +39,8 @@ import {
   type PaymentCallbackVerifier,
 } from "../providers/phonepe/phonePeCallbackVerifier.js"
 import type { RecurringPaymentGateway } from "../providers/recurringPaymentGateway.js"
-import type { GatewayFailureLogger } from "../providers/phonepe/gatewayFailure.js"
-import type { PaymentGateway } from "../providers/phonepe/paymentGateway.js"
+import type { GatewayFailureLogger } from "../providers/gatewayFailure.js"
+import type { PaymentGateway } from "../providers/paymentGateway.js"
 import { runReconciliationPass, type ReconciliationSummary } from "../paymentReconciliationWorker.js"
 import { resolveWakeDelayMs } from "../domain/payments/reconciliationCadence.js"
 import { runMandateReconciliationPass } from "../mandateReconciliationWorker.js"

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto"
 
 import { describe, expect, test } from "vitest"
 
-import { GatewayAuthenticationError, GatewayMalformedCallbackError } from "./paymentGateway.js"
+import { GatewayAuthenticationError, GatewayMalformedCallbackError } from "../paymentGateway.js"
 import { createPhonePeCallbackVerifier } from "./phonePeCallbackVerifier.js"
 
 const CONFIG = {

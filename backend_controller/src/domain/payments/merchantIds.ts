@@ -1,5 +1,5 @@
 /**
- * Merchant reference generation (spec §5.2/§5.3, §7). Both PhonePe-facing ids
+ * Merchant reference generation (spec §5.2/§5.3, §7). Both provider-facing ids
  * are server-generated, unique, at most 63 characters, and restricted to
  * letters, digits, `_`, and `-` (the same rule the schema CHECKs enforce), so a
  * generated id can never fail the insert. They are immutable once written and

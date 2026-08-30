@@ -243,6 +243,10 @@ Requesting a new code consumes the previous one. Audit rows
 
 ### Payments
 
+> **Superseded 2026-08-30.** PhonePe egress was retired from this backend. The
+> paragraph below describes the pre-retirement shape; see §Payments in the note at
+> the end of this section for what is true now.
+
 **One PhonePe one-time implementation**, config-selected. `src/providers/phonepe/`
 now holds `paymentGateway.ts` (interface + error taxonomy), `phonePeApiClient.ts`,
 `phonePeCheckoutGateway.ts` (`StandardCheckoutClient` from `@phonepe-pg/pg-sdk-node`),
@@ -250,6 +254,15 @@ now holds `paymentGateway.ts` (interface + error taxonomy), `phonePeApiClient.ts
 `z.enum(["sandbox","production"])` mapped to the SDK's `Env`. **Sandbox and production
 differ by configuration only; there is no dev-only or prod-only source branch.**
 `parsePhonePeConfig` fails closed on any missing credential.
+
+**What is true now:** the only gateway implementation is
+`src/providers/relay/relayPaymentGateway.ts`, which calls the payment service in
+`boe_landing` over HMAC-signed HTTP. The port and error taxonomy moved to
+`src/providers/paymentGateway.ts` and `src/providers/gatewayFailure.ts`;
+`src/providers/phonepe/` retains only `phonePeCallbackVerifier.ts`, because PhonePe
+still posts callbacks to this backend. `PHONEPE_ENV` is no longer read here — the
+provider environment is declared per caller in the payment service's
+`PAYMENT_CALLERS`. Without `PAYMENTS_SERVICE_URL` there is no gateway at all.
 
 **AutoPay is a second, separate rail** — `providers/recurringPaymentGateway.ts`
 (`createMandateSdkOrder`, `getSetupOrderStatus`, `getMandateStatus`, `notifyCollection`,

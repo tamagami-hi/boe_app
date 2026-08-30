@@ -69,11 +69,11 @@ export const logGatewayFailure = (
   logger.warn(
     {
       requestId: fields.requestId,
-      provider: "phonepe",
+      provider: "payment_service",
       operation: fields.operation,
       failureKind: classifyGatewayFailure(error),
     },
-    "phonepe provider call failed",
+    "payment service call failed",
   )
 }
 
@@ -85,10 +85,10 @@ export const logGatewayUnconfigured = (
   logger.warn(
     {
       requestId: fields.requestId,
-      provider: "phonepe",
+      provider: "payment_service",
       operation: fields.operation,
       failureKind: "gateway_unconfigured",
     },
-    "phonepe gateway is not configured",
+    "the payment service is not configured",
   )
 }

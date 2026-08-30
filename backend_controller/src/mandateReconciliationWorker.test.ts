@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from "vitest"
 
 import { runMandateReconciliationPass, type MandateReconciliationDeps } from "./mandateReconciliationWorker.js"
-import { GatewayRejectedError, GatewayUnavailableError } from "./providers/phonepe/paymentGateway.js"
+import { GatewayRejectedError, GatewayUnavailableError } from "./providers/paymentGateway.js"
 
 const command = {
   id: "command-1",

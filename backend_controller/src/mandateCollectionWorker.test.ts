@@ -2,7 +2,7 @@ import { describe, expect, test, vi } from "vitest"
 
 import { reconcileCollectionFact } from "./domain/payments/reconcileCollectionFact.js"
 import { runMandateCollectionPass, scheduledDebitAt, type MandateCollectionDeps } from "./mandateCollectionWorker.js"
-import { GatewayRejectedError } from "./providers/phonepe/paymentGateway.js"
+import { GatewayRejectedError } from "./providers/paymentGateway.js"
 
 describe("mandate collection timing", () => {
   test("rejects an uncorrelated provider collection fact without changing payment truth", async () => {

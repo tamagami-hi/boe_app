@@ -6,7 +6,7 @@ import {
   GatewayNotFoundError,
   GatewayThrottledError,
   type PaymentGateway,
-} from "./providers/phonepe/paymentGateway.js"
+} from "./providers/paymentGateway.js"
 import type { PaymentsRepository } from "./repositories/paymentsRepository.js"
 import type { RefundRepository } from "./repositories/refundRepository.js"
 

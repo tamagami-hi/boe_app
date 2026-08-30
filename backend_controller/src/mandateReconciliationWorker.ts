@@ -1,12 +1,12 @@
 import type { UnitOfWork } from "./db/database.js"
 import { reconcileMandateFact, reconcileSetupFact } from "./domain/payments/reconcileMandateFacts.js"
-import { GatewayNotFoundError, GatewayRejectedError } from "./providers/phonepe/paymentGateway.js"
+import { GatewayNotFoundError, GatewayRejectedError } from "./providers/paymentGateway.js"
 import type { RecurringPaymentGateway } from "./providers/recurringPaymentGateway.js"
 import type { MandatesRepository } from "./repositories/mandatesRepository.js"
 import type { PaymentsRepository } from "./repositories/paymentsRepository.js"
 import type { InvestmentSettlementRepository } from "./repositories/investmentSettlementRepository.js"
 import type { MandateSetupAttempt } from "./db/repositories.js"
-import { logGatewayFailure, type GatewayFailureLogger } from "./providers/phonepe/gatewayFailure.js"
+import { logGatewayFailure, type GatewayFailureLogger } from "./providers/gatewayFailure.js"
 
 export interface MandateReconciliationSummary {
   readonly setupsChecked: number

@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest"
 
 import {
   GatewayMalformedResponseError,
+  GatewayCredentialError,
   GatewayNotFoundError,
+  GatewayThrottledError,
   GatewayRejectedError,
   GatewayUnavailableError,
-} from "../phonepe/paymentGateway.js"
+} from "../paymentGateway.js"
+import { classifyGatewayFailure } from "../gatewayFailure.js"
 import { createRelayPaymentGateway } from "./relayPaymentGateway.js"
 import type { RelayHttpClient } from "./relayPaymentGateway.js"
 import { signRelayRequest } from "./relayServiceAuth.js"
@@ -176,12 +179,31 @@ describe("relay payment gateway", () => {
     }
   })
 
-  it("maps 404 to not found and 5xx to unavailable", async () => {
+  it("surfaces provider throttling as its own error, not as generic unavailability", async () => {
+    const { gateway } = build(async () => new Response("{}", { status: 429 }))
+
+    const error = await gateway.getOrderStatus("boe-dev_ORDER-1").catch((thrown: unknown) => thrown)
+
+    expect(error).toBeInstanceOf(GatewayThrottledError)
+  })
+
+  it("distinguishes a provider credential rejection from an outage, so a rotation is diagnosable", async () => {
+    const { gateway } = build(async () => new Response("{}", { status: 502 }))
+
+    const error = await gateway.getOrderStatus("boe-dev_ORDER-1").catch((thrown: unknown) => thrown)
+
+    expect(error).toBeInstanceOf(GatewayCredentialError)
+    expect(classifyGatewayFailure(error)).toBe("provider_auth_rejected")
+  })
+
+  it("maps 404 to not found and an unavailable service to unavailable", async () => {
     const missing = build(async () => new Response("{}", { status: 404 }))
     await expect(missing.gateway.getOrderStatus("x")).rejects.toBeInstanceOf(GatewayNotFoundError)
 
-    const broken = build(async () => new Response("{}", { status: 502 }))
-    await expect(broken.gateway.getOrderStatus("x")).rejects.toBeInstanceOf(GatewayUnavailableError)
+    for (const status of [500, 503, 504]) {
+      const broken = build(async () => new Response("{}", { status }))
+      await expect(broken.gateway.getOrderStatus("x")).rejects.toBeInstanceOf(GatewayUnavailableError)
+    }
   })
 
   it("refuses an envelope it cannot trust", async () => {

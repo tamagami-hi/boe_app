@@ -92,11 +92,11 @@ const ServerConfigSchema = z.object({
   FUND_AUM_MAX_GROWTH_BASIS_POINTS: z.coerce.number().int().min(1).max(10_000_000).default(100_000),
   FUND_AUM_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().min(1_000).default(60_000),
   FUND_AUM_RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().min(1).default(30),
-  // PhonePe payment gateway. The provider callback (the payment confirmation
-  // channel) is basic-auth protected by credentials issued in the PhonePe
-  // dashboard; the API client credentials drive status checks and refunds.
-  // The config is complete only when every credential is present; in production
-  // an incomplete set refuses to boot.
+  // PhonePe provider callbacks. The callback (the payment confirmation channel)
+  // is basic-auth protected by credentials issued in the PhonePe dashboard, and
+  // is the only PhonePe integration this backend still holds: checkout, status
+  // and refunds all go through the payment service. The config is complete only
+  // when both callback credentials are present.
   PAYMENT_PROVIDER: z.literal("phonepe").default("phonepe"),
   PHONEPE_CALLBACK_USERNAME: z.string().trim().optional(),
   PHONEPE_CALLBACK_PASSWORD: z.string().optional(),
@@ -212,9 +212,9 @@ export interface ServerConfig {
   readonly payments: {
     readonly provider: "phonepe"
     /**
-     * The PhonePe integration, or null when unconfigured. Present iff every
-     * client credential and both callback credentials are set. An incomplete
-     * set fails the boot rather than half-wiring money movement.
+     * The PhonePe callback integration, or null when unconfigured. Present iff
+     * both callback credentials are set. An incomplete set fails the boot
+     * rather than half-wiring money movement.
      */
     readonly phonepe: {
       readonly callbackUsername: string
@@ -354,10 +354,10 @@ const parseVerificationKeys = (raw: string): Record<string, string> => {
 }
 
 /**
- * The PhonePe integration is configured iff every client credential and both
- * callback credentials are present. A partial set is a misconfiguration and
- * refuses to boot. PHONEPE_ENV selects the provider environment independently
- * of NODE_ENV.
+ * The payment service relay is configured iff both PAYMENTS_SERVICE_URL and
+ * PAYMENTS_SERVICE_SECRET are present. A partial set is a misconfiguration and
+ * refuses to boot. Without it there is no payment gateway at all, rather than a
+ * fallback that would call the provider from an unapproved origin.
  */
 const relayConfig = (
   parsed: z.infer<typeof ServerConfigSchema>,

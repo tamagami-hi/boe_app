@@ -625,9 +625,9 @@ Non-negotiable, and each has a recorded reason.
 1. **Return from PhonePe is never settlement evidence.** Browser navigation, UPI app return and
    the hosted page confirm nothing. Only authenticated provider callbacks and server-to-server
    reconciliation settle money. The UI shows *pending* on return, always.
-2. **Validate `checkout.url` before navigating**, even though the backend already validated it
-   against `PHONEPE_CHECKOUT_ALLOWED_ORIGINS`. Two independent checks on a URL that leaves the
-   app.
+2. **Validate `checkout.url` before navigating**, even though the payment service already
+   validated the provider URL against its own origin allowlist before returning it. Two
+   independent checks on a URL that leaves the app.
 3. **`checkout: null` means poll, not retry.** The dispatch claim is a one-writer lock; a
    second `/pay` for the same attempt returns `null` and the client must go to canonical status
    recovery.

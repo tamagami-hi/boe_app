@@ -12,7 +12,7 @@ import { newMerchantOrderId, newMerchantSubscriptionId } from "../domain/payment
 import { AppError } from "../http/errorCatalog.js"
 import { executeIdempotent } from "../http/idempotencyProtocol.js"
 import { parseOrThrow } from "../http/validation.js"
-import { logGatewayFailure, logGatewayUnconfigured } from "../providers/phonepe/gatewayFailure.js"
+import { logGatewayFailure, logGatewayUnconfigured } from "../providers/gatewayFailure.js"
 import type { RecurringPaymentGateway } from "../providers/recurringPaymentGateway.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
 import type { MandatesRepository } from "../repositories/mandatesRepository.js"

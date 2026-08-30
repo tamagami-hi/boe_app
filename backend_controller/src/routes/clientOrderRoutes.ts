@@ -5,18 +5,18 @@
  * committed result without a second side effect.
  *
  *   POST /v1/client/orders              create a lump-sum order for a published fund
- *   POST /v1/client/orders/:orderId/pay begin (or resume) a PhonePe checkout
+ *   POST /v1/client/orders/:orderId/pay begin (or resume) a provider checkout
  *
  * Amounts travel as decimal paise strings (integer money never crosses the wire
  * as a float). Order responses expose only the client-safe status projection
  * (spec §9.2), never the raw internal state enum.
  *
  * `/pay` is the two-transaction checkout orchestrator (spec §7): transaction A
- * persists the payment/attempt and a stable `merchantOrderId`; the PhonePe adapter
- * call happens after that transaction commits; transaction B persists the
+ * persists the payment/attempt and a stable `merchantOrderId`; the payment
+ * service call happens after that transaction commits; transaction B persists the
  * checkout result. A crash between the provider call and transaction B is recovered
- * by a retry that reuses the same non-terminal attempt and asks PhonePe for its
- * status before ever creating a second one — the whole point of the stable id.
+ * by a retry that reuses the same non-terminal attempt and asks the payment
+ * service for its status before ever creating a second one — the point of the stable id.
  */
 import { createHash } from "node:crypto"
 
@@ -33,8 +33,8 @@ import { checkoutSecondsRemaining } from "../domain/payments/checkoutExpiry.js"
 import { AppError } from "../http/errorCatalog.js"
 import { executeIdempotent } from "../http/idempotencyProtocol.js"
 import { parseOrThrow } from "../http/validation.js"
-import type { PaymentGateway } from "../providers/phonepe/paymentGateway.js"
-import { logGatewayFailure, logGatewayUnconfigured } from "../providers/phonepe/gatewayFailure.js"
+import type { PaymentGateway } from "../providers/paymentGateway.js"
+import { logGatewayFailure, logGatewayUnconfigured } from "../providers/gatewayFailure.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
 import type { OrderWriteRepository } from "../repositories/orderRepository.js"
 import type { PaymentsRepository } from "../repositories/paymentsRepository.js"
@@ -54,7 +54,7 @@ export interface ClientOrderDeps extends ClientRequestAuthDeps {
   readonly auditRepository: AuditWriteRepository
   readonly idempotencyRepository: IdempotencyRepository
   readonly paymentsRepository: PaymentsRepository
-  /** Null when PhonePe is unconfigured; `/pay` fails closed rather than stub out a checkout. */
+  /** Null when the payment service is unconfigured; `/pay` fails closed rather than stub out a checkout. */
   readonly paymentGateway: PaymentGateway | null
   readonly config: ClientOrderConfig
 }

@@ -8,7 +8,7 @@ import { reconcileMandateFact, reconcileSetupFact } from "../domain/payments/rec
 import { reconcileCollectionFact } from "../domain/payments/reconcileCollectionFact.js"
 import { AppError } from "../http/errorCatalog.js"
 import type { RecurringPaymentGateway } from "../providers/recurringPaymentGateway.js"
-import { GatewayAuthenticationError, GatewayMalformedCallbackError } from "../providers/phonepe/paymentGateway.js"
+import { GatewayAuthenticationError, GatewayMalformedCallbackError } from "../providers/paymentGateway.js"
 import type { PaymentCallbackVerifier } from "../providers/phonepe/phonePeCallbackVerifier.js"
 import type { MandatesRepository } from "../repositories/mandatesRepository.js"
 import type { PaymentsRepository } from "../repositories/paymentsRepository.js"

@@ -1,9 +1,11 @@
 import {
   GatewayMalformedResponseError,
+  GatewayCredentialError,
   GatewayNotFoundError,
   GatewayRejectedError,
+  GatewayThrottledError,
   GatewayUnavailableError,
-} from "../phonepe/paymentGateway.js"
+} from "../paymentGateway.js"
 import type {
   CheckoutCreated,
   CreateCheckoutCommand,
@@ -14,7 +16,7 @@ import type {
   ProviderPaymentDetailFact,
   RefundInitiated,
   RefundStatusFact,
-} from "../phonepe/paymentGateway.js"
+} from "../paymentGateway.js"
 import { relayRequestHeaders } from "./relayServiceAuth.js"
 
 export interface RelayGatewayConfig {
@@ -134,6 +136,12 @@ export const createRelayPaymentGateway = (deps: RelayGatewayDeps): PaymentGatewa
     }
     if (response.status === 400 || response.status === 422) {
       throw new GatewayRejectedError("the payment service rejected the request")
+    }
+    if (response.status === 429) {
+      throw new GatewayThrottledError("the payment service reported provider throttling")
+    }
+    if (response.status === 502) {
+      throw new GatewayCredentialError("the provider rejected the payment service's credentials")
     }
     if (!response.ok) {
       throw new GatewayUnavailableError(`the payment service answered ${String(response.status)}`)

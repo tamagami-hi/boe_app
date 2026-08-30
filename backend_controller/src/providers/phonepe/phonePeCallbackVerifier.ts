@@ -6,7 +6,7 @@ import {
   type ProviderOutcome,
   type ProviderPaymentDetailFact,
   type VerifiedCallback,
-} from "./paymentGateway.js"
+} from "../paymentGateway.js"
 
 const MAX_SPLIT_INSTRUMENTS = 16
 const MAX_PROVIDER_EVIDENCE_LENGTH = 256

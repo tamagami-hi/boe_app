@@ -18,7 +18,7 @@ import { reconcileMandateFact, type MandateFactDeps } from "../domain/payments/r
 import { AppError } from "../http/errorCatalog.js"
 import { paginate, readKeysetValues } from "../http/pagination.js"
 import { parseOrThrow } from "../http/validation.js"
-import { logGatewayFailure } from "../providers/phonepe/gatewayFailure.js"
+import { logGatewayFailure } from "../providers/gatewayFailure.js"
 import type { RecurringPaymentGateway } from "../providers/recurringPaymentGateway.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
 import type { PaymentsRepository } from "../repositories/paymentsRepository.js"

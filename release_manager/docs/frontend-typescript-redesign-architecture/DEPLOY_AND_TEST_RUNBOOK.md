@@ -193,9 +193,10 @@ No PhonePe credentials exist outside the VPS, so `/pay` returns
 - the admin refund, mandate and support-ticket screens with real rows — they have only
   ever been audited empty
 
-Set `PHONEPE_CLIENT_ID`, `PHONEPE_CLIENT_SECRET`, `PHONEPE_MERCHANT_ID`,
-`PHONEPE_ENV`, `PHONEPE_CALLBACK_USERNAME`, `PHONEPE_CALLBACK_PASSWORD` on the target
-and walk one real payment. Two admin screens (`MandateListScreen`,
+Set `PAYMENTS_SERVICE_URL`, `PAYMENTS_SERVICE_SECRET`, `PHONEPE_MERCHANT_ID`,
+`PHONEPE_CALLBACK_USERNAME` and `PHONEPE_CALLBACK_PASSWORD` on the target and walk one
+real payment. The PhonePe API credentials live on the payment service in `boe_landing`,
+not here: this backend holds only the callback credentials. Two admin screens (`MandateListScreen`,
 `MandateDetailScreen`) still format rupees with a local `Intl.NumberFormat` instead of
 `MoneyValue`, so check they agree with the rest of the app once real amounts appear.
 

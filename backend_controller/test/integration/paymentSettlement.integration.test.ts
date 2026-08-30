@@ -22,8 +22,8 @@ import type {
   RefundInitiated,
   RefundStatusFact,
   VerifiedCallback,
-} from "../../src/providers/phonepe/paymentGateway.js"
-import { GatewayNotFoundError, GatewayRejectedError, GatewayUnavailableError } from "../../src/providers/phonepe/paymentGateway.js"
+} from "../../src/providers/paymentGateway.js"
+import { GatewayNotFoundError, GatewayRejectedError, GatewayUnavailableError } from "../../src/providers/paymentGateway.js"
 import type { PaymentCallbackVerifier } from "../../src/providers/phonepe/phonePeCallbackVerifier.js"
 import type { RecurringPaymentGateway } from "../../src/providers/recurringPaymentGateway.js"
 import { runReconciliationPass } from "../../src/paymentReconciliationWorker.js"

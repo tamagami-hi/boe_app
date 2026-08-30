@@ -5,7 +5,7 @@ import {
   GatewayNotFoundError,
   GatewayRejectedError,
   GatewayUnavailableError,
-} from "../phonepe/paymentGateway.js"
+} from "../paymentGateway.js"
 import type { RelayHttpClient } from "./relayPaymentGateway.js"
 import { createRelayRecurringGateway } from "./relayRecurringGateway.js"
 

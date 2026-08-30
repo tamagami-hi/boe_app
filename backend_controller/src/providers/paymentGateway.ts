@@ -1,9 +1,9 @@
 /**
  * PaymentGateway domain port (spec §7). The narrow contract the rest of the
- * backend depends on; the PhonePe HTTP adapter in this directory is the only
- * implementation. Provider DTOs never leave `providers/phonepe/` — every
- * type here is ours, and money crosses the boundary as decimal paise strings
- * (never as an unconstrained JS number).
+ * backend depends on; the relay adapter in `providers/relay/` is the only
+ * implementation. Provider DTOs never cross this boundary — every type here is
+ * ours, and money crosses as decimal paise strings (never as an unconstrained
+ * JS number).
  *
  * Terminality mapping is fixed by the spec: the provider's `COMPLETED` is a
  * success, `FAILED` is a failure, `PENDING` (and anything unrecognised) is
@@ -25,6 +25,11 @@ export class GatewayError extends Error {
  */
 export class GatewayAuthenticationError extends GatewayError {}
 
+/**
+ * The provider rejected the payment service's own API credentials. Not a
+ * transient outage: retrying cannot fix it, a human must correct the
+ * credentials, so it is classified apart from provider unavailability.
+ */
 export class GatewayCredentialError extends GatewayError {}
 
 /**
