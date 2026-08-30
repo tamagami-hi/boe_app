@@ -319,6 +319,17 @@ export const ADMIN_ROUTES: RouteManifest = [
 
 export const ADMIN_GUARD_DESTINATIONS: readonly string[] = ["not-found"]
 
+export const ADMIN_NAV_DOMAINS: Readonly<Record<string, string>> = {
+  overview: "Overview",
+  applications: "Applications",
+  users: "Users",
+  funds: "Funds",
+  aum: "AUM",
+  "client-values": "Client values",
+  money: "Money",
+  system: "System",
+}
+
 export const ADMIN_LINK_MAP: Readonly<Record<string, readonly string[]>> = {
   overview: ["applications", "users", "funds", "receipts", "payments", "audit"],
   applications: ["application-detail"],

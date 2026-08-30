@@ -153,6 +153,11 @@ const FundWorkspaceScreen = (): React.ReactElement => {
             </Section>
 
             <div className={ACTION_ROW}>
+              <Link to={`/funds/${fundId}/holdings`}>
+                <Button tone="secondary" size="sm">
+                  Holdings
+                </Button>
+              </Link>
               <Link to={`/funds/${fundId}/aum`}>
                 <Button tone="secondary" size="sm">
                   Manage AUM

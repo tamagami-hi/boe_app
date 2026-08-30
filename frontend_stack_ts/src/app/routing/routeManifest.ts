@@ -108,3 +108,39 @@ export const navRoutes = (manifest: RouteManifest): readonly NavRoute[] =>
   manifest
     .filter((route): route is NavRoute => route.nav !== undefined)
     .sort((left, right) => left.nav.order - right.nav.order)
+
+export type NavGroup = Readonly<{
+  domain: string
+  label: string
+  entries: readonly NavRoute[]
+}>
+
+export const navGroups = (
+  entries: readonly NavRoute[],
+  labels: Readonly<Record<string, string>>,
+): readonly NavGroup[] => {
+  const order: string[] = []
+  const byDomain = new Map<string, NavRoute[]>()
+  for (const entry of entries) {
+    const existing = byDomain.get(entry.nav.domain)
+    if (existing === undefined) {
+      order.push(entry.nav.domain)
+      byDomain.set(entry.nav.domain, [entry])
+      continue
+    }
+    existing.push(entry)
+  }
+  return order.map((domain) => ({
+    domain,
+    label: labels[domain] ?? domain,
+    entries: byDomain.get(domain) ?? [],
+  }))
+}
+
+export const navBarEntries = (
+  entries: readonly NavRoute[],
+  slots: number,
+): readonly NavRoute[] => [
+  ...entries.filter((entry) => entry.nav.primary === true),
+  ...entries.filter((entry) => entry.nav.primary !== true),
+].slice(0, Math.max(0, slots))
