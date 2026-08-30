@@ -14,7 +14,7 @@
   },
   "scripts": {
     "android:apk": "npm run android:sync && cd android && ./gradlew assembleDebug -PboeVariant=client",
-    "android:apk:admin": "npm run android:sync:admin && cd android && ./gradlew assembleDebug -PboeVariant=admin",
+    "android:apk:admin": "npm run android:sync:admin && cd android && ./gradlew assembleDebug -PboeVariant=admin -PboeApplicationId=com.beonedge.app.admin",
     "android:sync": "npm run build:android && BOE_CAPACITOR_VARIANT=client cap sync android",
     "android:sync:admin": "npm run build:android:admin && BOE_CAPACITOR_VARIANT=admin cap sync android",
     "build": "vite build && node scripts/check-bundle-boots.mjs",

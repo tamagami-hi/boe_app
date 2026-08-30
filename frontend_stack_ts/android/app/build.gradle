@@ -42,6 +42,16 @@ android {
     if (!brandingDir.isDirectory()) {
         throw new GradleException("Missing branding resources for '${boeVariant}': ${brandingDir}")
     }
+    def boeClientApplicationId = "com.beonedge.app"
+    def boeApplicationId = project.hasProperty('boeApplicationId') ? project.boeApplicationId : boeClientApplicationId
+    if (boeVariant == 'admin' && boeApplicationId == boeClientApplicationId) {
+        throw new GradleException(
+            "-PboeVariant=admin needs -PboeApplicationId set to an admin id, e.g. com.beonedge.app.admin.\n" +
+            "Building the admin console under the client applicationId installs it *over* the investor app:\n" +
+            "same id means Android treats it as an update, so the client app is replaced and its data orphaned.\n" +
+            "Use `npm run android:apk:admin`, or emu/boe_update.sh, which both inject the id."
+        )
+    }
 
     sourceSets {
         main {
@@ -53,7 +63,7 @@ android {
         // emu/boe_update.sh injects -PboeApplicationId so dev/prod and
         // client/admin APKs get distinct IDs and can coexist on one device;
         // the literal is only a fallback for bare IDE builds.
-        applicationId project.hasProperty('boeApplicationId') ? boeApplicationId : "com.beonedge.app"
+        applicationId boeApplicationId
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // emu/boe_update.sh injects -PboeVersionCode/-PboeVersionName; the
