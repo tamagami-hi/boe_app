@@ -40,7 +40,7 @@ export const runPaymentReconciliationPass = async (
     if (!worker.gatewayConfigured) {
       logger.warn(
         { errorCode: "PAYMENT_GATEWAY_NOT_CONFIGURED" },
-        "No PhonePe gateway is configured: this pass will resolve nothing. Set PHONEPE_CLIENT_ID and the other PHONEPE_* variables.",
+        "No payment gateway is configured: this pass will resolve nothing. Set PAYMENTS_SERVICE_URL and PAYMENTS_SERVICE_SECRET.",
       )
     }
     summary = (await worker.runOnce()) as unknown as Record<string, unknown>

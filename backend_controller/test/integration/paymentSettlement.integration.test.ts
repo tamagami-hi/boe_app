@@ -24,6 +24,7 @@ import type {
   VerifiedCallback,
 } from "../../src/providers/phonepe/paymentGateway.js"
 import { GatewayNotFoundError, GatewayRejectedError, GatewayUnavailableError } from "../../src/providers/phonepe/paymentGateway.js"
+import type { PaymentCallbackVerifier } from "../../src/providers/phonepe/phonePeCallbackVerifier.js"
 import type { RecurringPaymentGateway } from "../../src/providers/recurringPaymentGateway.js"
 import { runReconciliationPass } from "../../src/paymentReconciliationWorker.js"
 import { runMandateReconciliationPass } from "../../src/mandateReconciliationWorker.js"
@@ -224,6 +225,13 @@ const createHostedCheckout = async (command: {
     }
 }
 
+const stubCallbackVerifier: PaymentCallbackVerifier = {
+  validateShaCallback: (authorizationHeader: string, rawBody: string): VerifiedCallback => {
+    if (authorizationHeader !== CALLBACK_AUTH) throw new Error("bad auth")
+    return JSON.parse(rawBody) as VerifiedCallback
+  },
+}
+
 const stubGateway: PaymentGateway = {
   createCheckout: createHostedCheckout,
   getOrderStatus: (merchantOrderId): Promise<OrderStatusFact> => {
@@ -244,10 +252,6 @@ const stubGateway: PaymentGateway = {
         amountPaise: "1000000",
       }] : [],
     })
-  },
-  validateShaCallback: (authorizationHeader, rawBody): VerifiedCallback => {
-    if (authorizationHeader !== CALLBACK_AUTH) throw new Error("bad auth")
-    return JSON.parse(rawBody) as VerifiedCallback
   },
   initiateRefund: (command): Promise<RefundInitiated> => {
     stubRefundOriginalMerchantOrderId = command.originalMerchantOrderId
@@ -420,6 +424,7 @@ beforeAll(async () => {
         unitOfWork,
         clock: () => new Date(),
         paymentGateway: stubGateway,
+        callbackVerifier: stubCallbackVerifier,
         config: {
           payloadEncryptionKey: randomBytes(32),
           payloadKeyVersion: "ek1",
@@ -434,7 +439,7 @@ beforeAll(async () => {
       registerPhonePeMandateEventRoutes(instance, {
         unitOfWork,
         clock: () => new Date(),
-        paymentGateway: stubGateway,
+        callbackVerifier: stubCallbackVerifier,
         recurringPaymentGateway: stubRecurringGateway,
         mandatesRepository: createMandatesRepository(),
         paymentsRepository,

@@ -205,12 +205,6 @@ describe("relay payment gateway", () => {
     })).rejects.toBeInstanceOf(GatewayMalformedResponseError)
   })
 
-  it("refuses to verify provider callbacks, because that is the service's job now", () => {
-    const { gateway } = build(async () => checkoutOk())
-
-    expect(() => gateway.validateShaCallback("sha256-x", "{}")).toThrow(GatewayRejectedError)
-  })
-
   it("initiates a refund and reads its status", async () => {
     const initiated = build(async () => envelope({
       merchantRefundId: "BOE-REFUND-1",

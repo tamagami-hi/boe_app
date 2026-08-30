@@ -14,7 +14,6 @@ import type {
   ProviderPaymentDetailFact,
   RefundInitiated,
   RefundStatusFact,
-  VerifiedCallback,
 } from "../phonepe/paymentGateway.js"
 import { relayRequestHeaders } from "./relayServiceAuth.js"
 
@@ -179,12 +178,6 @@ export const createRelayPaymentGateway = (deps: RelayGatewayDeps): PaymentGatewa
         currency: optionalString(data.currency),
         details: detailsOf(data.details),
       }
-    },
-
-    validateShaCallback: (): VerifiedCallback => {
-      throw new GatewayRejectedError(
-        "provider callbacks are verified by the payment service, not by this backend",
-      )
     },
 
     initiateRefund: async (command: InitiateRefundCommand): Promise<RefundInitiated> => {

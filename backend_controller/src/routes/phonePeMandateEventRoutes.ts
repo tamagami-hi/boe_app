@@ -8,7 +8,8 @@ import { reconcileMandateFact, reconcileSetupFact } from "../domain/payments/rec
 import { reconcileCollectionFact } from "../domain/payments/reconcileCollectionFact.js"
 import { AppError } from "../http/errorCatalog.js"
 import type { RecurringPaymentGateway } from "../providers/recurringPaymentGateway.js"
-import { GatewayAuthenticationError, GatewayMalformedCallbackError, type PaymentGateway } from "../providers/phonepe/paymentGateway.js"
+import { GatewayAuthenticationError, GatewayMalformedCallbackError } from "../providers/phonepe/paymentGateway.js"
+import type { PaymentCallbackVerifier } from "../providers/phonepe/phonePeCallbackVerifier.js"
 import type { MandatesRepository } from "../repositories/mandatesRepository.js"
 import type { PaymentsRepository } from "../repositories/paymentsRepository.js"
 import type { InvestmentSettlementRepository } from "../repositories/investmentSettlementRepository.js"
@@ -43,7 +44,7 @@ interface ParsedMandateCallback {
 export interface PhonePeMandateEventDeps {
   readonly unitOfWork: UnitOfWork
   readonly clock: () => Date
-  readonly paymentGateway: PaymentGateway
+  readonly callbackVerifier: PaymentCallbackVerifier
   readonly recurringPaymentGateway: RecurringPaymentGateway
   readonly mandatesRepository: MandatesRepository
   readonly paymentsRepository: PaymentsRepository
@@ -141,7 +142,7 @@ export const registerPhonePeMandateEventRoutes = (application: FastifyInstance, 
         throw new AppError("PROVIDER_CALLBACK_UNVERIFIED")
       }
       try {
-        deps.paymentGateway.validateShaCallback(request.headers.authorization, request.body)
+        deps.callbackVerifier.validateShaCallback(request.headers.authorization, request.body)
       } catch (error) {
         if (error instanceof GatewayAuthenticationError || error instanceof GatewayMalformedCallbackError) {
           throw new AppError("PROVIDER_CALLBACK_UNVERIFIED")

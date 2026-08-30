@@ -278,7 +278,7 @@ boe_validate_app_key_material() {
 }
 
 boe_validate_app_policy() {
-    local issuer allowlist origin provider phonepe_version smtp_host smtp_port smtp_secure smtp_user smtp_password from_address seed_enabled key value
+    local issuer allowlist origin provider smtp_host smtp_port smtp_secure smtp_user smtp_password from_address seed_enabled key value
     local -a origins
     issuer="$(env_get ACCESS_TOKEN_ISSUER "$BOE_EFFECTIVE_ENV")"
     [[ "$issuer" == https://* ]] || die "ACCESS_TOKEN_ISSUER must use https://"
@@ -326,18 +326,15 @@ boe_validate_app_policy() {
     [[ -n "$provider" ]] || provider="phonepe"
     if [[ -n "$provider" ]]; then
         [[ "$provider" == "phonepe" ]] || die "PAYMENT_PROVIDER must be phonepe"
-        boe_assert_env_keys PHONEPE_CLIENT_ID PHONEPE_CLIENT_SECRET PHONEPE_CLIENT_VERSION \
-            PHONEPE_ENV PHONEPE_CALLBACK_USERNAME PHONEPE_CALLBACK_PASSWORD \
-            PHONEPE_CALLBACK_URL PHONEPE_CHECKOUT_ALLOWED_ORIGINS PHONEPE_SUBSCRIPTION_CALLBACK_URL \
+        boe_assert_env_keys PAYMENTS_SERVICE_URL PAYMENTS_SERVICE_SECRET \
+            PHONEPE_CALLBACK_USERNAME PHONEPE_CALLBACK_PASSWORD \
+            PHONEPE_CALLBACK_URL PHONEPE_SUBSCRIPTION_CALLBACK_URL \
             PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST PHONEPE_MERCHANT_ID
-        phonepe_version="$(env_get PHONEPE_CLIENT_VERSION "$BOE_EFFECTIVE_ENV")"
         phonepe_subscription_events="$(env_get PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST "$BOE_EFFECTIVE_ENV")"
         phonepe_autopay_enabled="$(env_get PHONEPE_AUTOPAY_ENABLED "$BOE_EFFECTIVE_ENV")"
         phonepe_autopay_collection_enabled="$(env_get PHONEPE_AUTOPAY_COLLECTION_ENABLED "$BOE_EFFECTIVE_ENV")"
         [[ -n "$phonepe_autopay_enabled" ]] || phonepe_autopay_enabled="false"
         [[ -n "$phonepe_autopay_collection_enabled" ]] || phonepe_autopay_collection_enabled="false"
-        [[ "$phonepe_version" =~ ^[1-9][0-9]*$ ]] \
-            || die "PHONEPE_CLIENT_VERSION must be a positive integer"
         [[ -n "$phonepe_subscription_events" ]] \
             || die "PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST must list exact event names"
         local phonepe_subscription_event phonepe_subscription_event_values

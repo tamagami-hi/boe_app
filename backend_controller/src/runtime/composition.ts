@@ -32,11 +32,12 @@ import { createRefundRepository } from "../repositories/refundRepository.js"
 import { createFundReceiptAcknowledgementRepository } from "../repositories/fundReceiptAcknowledgementRepository.js"
 import { createInvestmentSettlementRepository } from "../repositories/investmentSettlementRepository.js"
 import { createProviderEventInboxRepository } from "../repositories/providerEventInboxRepository.js"
-import { withApprovedStart } from "../providers/approvedStartGateway.js"
 import { createRelayPaymentGateway } from "../providers/relay/relayPaymentGateway.js"
 import { createRelayRecurringGateway } from "../providers/relay/relayRecurringGateway.js"
-import { createPhonePeGateway } from "../providers/phonepe/phonePeCheckoutGateway.js"
-import { createPhonePeRecurringGateway } from "../providers/phonepe/phonePeRecurringGateway.js"
+import {
+  createPhonePeCallbackVerifier,
+  type PaymentCallbackVerifier,
+} from "../providers/phonepe/phonePeCallbackVerifier.js"
 import type { RecurringPaymentGateway } from "../providers/recurringPaymentGateway.js"
 import type { GatewayFailureLogger } from "../providers/phonepe/gatewayFailure.js"
 import type { PaymentGateway } from "../providers/phonepe/paymentGateway.js"
@@ -105,26 +106,15 @@ import { parseServerConfig } from "./environment.js"
 
 const selectPaymentGateway = (serverConfig: ServerConfigForGateway) => {
   const relay = serverConfig.payments.relay
-  if (relay !== null) return createRelayPaymentGateway({ config: relay })
-  const phonepe = serverConfig.payments.phonepe
-  if (phonepe === null) return null
-  return applyApprovedStart(phonepe.approvedStart, createPhonePeGateway({ config: phonepe }))
+  if (relay === null) return null
+  return createRelayPaymentGateway({ config: relay })
 }
 
 type ServerConfigForGateway = Readonly<{
   payments: Readonly<{
     relay: Readonly<{ baseUrl: string; service: string; secret: string }> | null
-    phonepe: Parameters<typeof createPhonePeGateway>[0]["config"] & {
-      approvedStart: Readonly<{ startUrl: string; secret: string; ttlMs: number }> | null
-    } | null
   }>
 }>
-
-const applyApprovedStart = <T extends { createCheckout: unknown }>(
-  approved: Readonly<{ startUrl: string; secret: string; ttlMs: number }> | null,
-  gateway: T,
-): T =>
-  approved === null ? gateway : (withApprovedStart(gateway as never, approved) as unknown as T)
 
 export interface BackendServices {
   readonly registerRoutes: (application: FastifyInstance) => void
@@ -182,25 +172,14 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const breachChecker = createBreachChecker(breachMode)
   const certificateFetcher = createCertificateFetcher()
   const paymentGateway: PaymentGateway | null = selectPaymentGateway(serverConfig)
-  const callbackVerifier: PaymentGateway | null =
+  const callbackVerifier: PaymentCallbackVerifier | null =
     serverConfig.payments.phonepe === null
       ? null
-      : createPhonePeGateway({ config: serverConfig.payments.phonepe })
+      : createPhonePeCallbackVerifier(serverConfig.payments.phonepe)
   const recurringPaymentGateway: RecurringPaymentGateway | null =
-    serverConfig.payments.relay !== null
-      ? createRelayRecurringGateway({ config: serverConfig.payments.relay })
-      : serverConfig.payments.phonepe !== null
-      ? createPhonePeRecurringGateway({
-          checkoutAllowedOrigins: serverConfig.payments.phonepe.checkoutAllowedOrigins,
-          config: {
-            clientId: serverConfig.payments.phonepe.clientId,
-            clientSecret: serverConfig.payments.phonepe.clientSecret,
-            clientVersion: serverConfig.payments.phonepe.clientVersion,
-            env: serverConfig.payments.phonepe.env,
-            requestTimeoutMs: serverConfig.payments.recurring.requestTimeoutMs,
-          },
-        })
-      : null
+    serverConfig.payments.relay === null
+      ? null
+      : createRelayRecurringGateway({ config: serverConfig.payments.relay })
 
   const applicationRepository = createApplicationRepository()
   const applicationReviewRepository = createApplicationReviewRepository()
@@ -595,11 +574,12 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       })
     }
 
-    if (callbackVerifier !== null) {
+    if (callbackVerifier !== null && paymentGateway !== null) {
       registerPhonePeProviderEventRoutes(application, {
         unitOfWork,
         clock,
-        paymentGateway: callbackVerifier,
+        paymentGateway,
+        callbackVerifier,
         config: {
           payloadEncryptionKey: cryptoKeys.recipientEncryptionKey,
           payloadKeyVersion: cryptoKeys.recipientEncryptionKeyVersion,
@@ -616,7 +596,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       registerPhonePeMandateEventRoutes(application, {
         unitOfWork,
         clock,
-        paymentGateway: callbackVerifier,
+        callbackVerifier,
         recurringPaymentGateway,
         mandatesRepository: createMandatesRepository(),
         paymentsRepository,
@@ -728,20 +708,9 @@ export const composePaymentReconciliationWorker = (
 
   const gateway = selectPaymentGateway(serverConfig)
   const recurringGateway =
-    serverConfig.payments.relay !== null
-      ? createRelayRecurringGateway({ config: serverConfig.payments.relay })
-      : serverConfig.payments.phonepe !== null
-      ? createPhonePeRecurringGateway({
-          checkoutAllowedOrigins: serverConfig.payments.phonepe.checkoutAllowedOrigins,
-          config: {
-            clientId: serverConfig.payments.phonepe.clientId,
-            clientSecret: serverConfig.payments.phonepe.clientSecret,
-            clientVersion: serverConfig.payments.phonepe.clientVersion,
-            env: serverConfig.payments.phonepe.env,
-            requestTimeoutMs: serverConfig.payments.recurring.requestTimeoutMs,
-          },
-        })
-      : null
+    serverConfig.payments.relay === null
+      ? null
+      : createRelayRecurringGateway({ config: serverConfig.payments.relay })
 
   return {
     runOnce: async () => {
@@ -833,18 +802,9 @@ export const composeMandateCollectionWorker = (
   const database = createDatabase(pool)
   const unitOfWork = createUnitOfWork(database)
   const serverConfig = parseServerConfig(source)
-  const gateway = serverConfig.payments.phonepe === null
+  const gateway = serverConfig.payments.relay === null
     ? null
-    : createPhonePeRecurringGateway({
-        checkoutAllowedOrigins: serverConfig.payments.phonepe.checkoutAllowedOrigins,
-        config: {
-          clientId: serverConfig.payments.phonepe.clientId,
-          clientSecret: serverConfig.payments.phonepe.clientSecret,
-          clientVersion: serverConfig.payments.phonepe.clientVersion,
-          env: serverConfig.payments.phonepe.env,
-          requestTimeoutMs: serverConfig.payments.recurring.requestTimeoutMs,
-        },
-      })
+    : createRelayRecurringGateway({ config: serverConfig.payments.relay })
   return {
     runOnce: () => gateway === null
       ? Promise.resolve({ plansChecked: 0, collectionsCreated: 0, notificationsDispatched: 0, collectionsResolved: 0 })

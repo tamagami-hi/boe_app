@@ -7,6 +7,7 @@ import { applyCanonicalPaymentOutcome } from "../domain/payments/applyCanonicalP
 import { applyRefundOutcome } from "../domain/payments/applyRefundOutcome.js"
 import { encryptGcm } from "../crypto/primitives.js"
 import { GatewayAuthenticationError, GatewayMalformedCallbackError, type PaymentGateway, type VerifiedCallback } from "../providers/phonepe/paymentGateway.js"
+import type { PaymentCallbackVerifier } from "../providers/phonepe/phonePeCallbackVerifier.js"
 import { AppError } from "../http/errorCatalog.js"
 import type { PaymentsRepository } from "../repositories/paymentsRepository.js"
 import type { InvestmentSettlementRepository } from "../repositories/investmentSettlementRepository.js"
@@ -26,6 +27,7 @@ export interface PhonePeProviderEventDeps {
   readonly unitOfWork: UnitOfWork
   readonly clock: () => Date
   readonly paymentGateway: PaymentGateway
+  readonly callbackVerifier: PaymentCallbackVerifier
   readonly config: PhonePeProviderEventConfig
   readonly providerEventInboxRepository: ProviderEventInboxRepository
   readonly paymentsRepository: PaymentsRepository
@@ -128,7 +130,7 @@ const registerChannel = (
 
     let callback: VerifiedCallback
     try {
-      callback = deps.paymentGateway.validateShaCallback(authorization, raw.toString("utf8"))
+      callback = deps.callbackVerifier.validateShaCallback(authorization, raw.toString("utf8"))
     } catch (error) {
       if (error instanceof GatewayAuthenticationError || error instanceof GatewayMalformedCallbackError) {
         throw new AppError("PROVIDER_CALLBACK_UNVERIFIED")

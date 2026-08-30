@@ -126,12 +126,6 @@ export interface RefundStatusFact {
 export interface PaymentGateway {
   createCheckout: (command: CreateCheckoutCommand) => Promise<CheckoutCreated>
   getOrderStatus: (merchantOrderId: string) => Promise<OrderStatusFact>
-  /**
-   * Verify the SHA callback authorization against the exact raw body and map
-   * the payload. Throws {@link GatewayAuthenticationError} on an authorization
-   * mismatch and {@link GatewayMalformedCallbackError} on an unusable body.
-   */
-  validateShaCallback: (authorizationHeader: string, rawBody: string) => VerifiedCallback
   initiateRefund: (command: InitiateRefundCommand) => Promise<RefundInitiated>
   getRefundStatus: (merchantRefundId: string) => Promise<RefundStatusFact>
 }

@@ -37,7 +37,6 @@ const validEnv = (): Record<string, string> => ({
   SNS_TOPIC_ARN: "arn:aws:sns:us-east-1:000000000000:test",
   SES_CONFIGURATION_SET: "test-set",
   PASSWORD_BREACH_CHECK_MODE: "bypass",
-  PHONEPE_CHECKOUT_ALLOWED_ORIGINS: "https://mercury-uat.phonepe.com",
   NODE_ENV: "test",
 })
 
@@ -112,10 +111,6 @@ describe("parseServerConfig", () => {
     expect(() => parseServerConfig({ ...validEnv(), PHONEPE_AUTOPAY_ENABLED: "true" })).toThrow(/PHONEPE_MERCHANT_ID/u)
     expect(parseServerConfig({
       ...validEnv(),
-      PHONEPE_CLIENT_ID: "client-id",
-      PHONEPE_CLIENT_SECRET: "client-secret",
-      PHONEPE_CLIENT_VERSION: "1",
-      PHONEPE_ENV: "sandbox",
       PHONEPE_CALLBACK_USERNAME: "callback-user",
       PHONEPE_CALLBACK_PASSWORD: "callback-password",
       PHONEPE_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment",
@@ -129,10 +124,6 @@ describe("parseServerConfig", () => {
   test("requires subscription reconciliation metadata whenever PhonePe credentials are configured", () => {
     const phonePeCredentials = {
       ...validEnv(),
-      PHONEPE_CLIENT_ID: "client-id",
-      PHONEPE_CLIENT_SECRET: "client-secret",
-      PHONEPE_CLIENT_VERSION: "1",
-      PHONEPE_ENV: "sandbox",
       PHONEPE_CALLBACK_USERNAME: "callback-user",
       PHONEPE_CALLBACK_PASSWORD: "callback-password",
       PHONEPE_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment",
@@ -211,10 +202,6 @@ describe("parseServerConfig", () => {
   test("accepts canonical sandbox PhonePe callback URLs", () => {
     const config = parseServerConfig({
       ...validEnv(),
-      PHONEPE_CLIENT_ID: "client-id",
-      PHONEPE_CLIENT_SECRET: "client-secret",
-      PHONEPE_CLIENT_VERSION: "1",
-      PHONEPE_ENV: "sandbox",
       PHONEPE_CALLBACK_USERNAME: "callback-user",
       PHONEPE_CALLBACK_PASSWORD: "callback-password",
       PHONEPE_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment",
@@ -228,25 +215,6 @@ describe("parseServerConfig", () => {
     )
   })
 
-  test("uses PHONEPE_ENV as authoritative independently of NODE_ENV", () => {
-    const config = parseServerConfig({
-      ...validEnv(),
-      NODE_ENV: "development",
-      PHONEPE_CLIENT_ID: "client-id",
-      PHONEPE_CLIENT_SECRET: "client-secret",
-      PHONEPE_CLIENT_VERSION: "1",
-      PHONEPE_ENV: "production",
-      PHONEPE_CALLBACK_USERNAME: "callback-user",
-      PHONEPE_CALLBACK_PASSWORD: "callback-password",
-      PHONEPE_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment",
-      PHONEPE_SUBSCRIPTION_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/subscription",
-      PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: "subscription.status.updated",
-      PHONEPE_MERCHANT_ID: "merchant-id",
-    })
-
-    expect(config.payments.phonepe?.env).toBe("production")
-  })
-
   test.each([
     ["development", "https://app.beonedge.in/api/v1/provider-events/phonepe/payment"],
     ["production", "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment"],
@@ -254,10 +222,6 @@ describe("parseServerConfig", () => {
     expect(() => parseServerConfig({
       ...validEnv(),
       NODE_ENV: nodeEnvironment,
-      PHONEPE_CLIENT_ID: "client-id",
-      PHONEPE_CLIENT_SECRET: "client-secret",
-      PHONEPE_CLIENT_VERSION: "1",
-      PHONEPE_ENV: "sandbox",
       PHONEPE_CALLBACK_USERNAME: "callback-user",
       PHONEPE_CALLBACK_PASSWORD: "callback-password",
       PHONEPE_CALLBACK_URL: callbackUrl,
@@ -269,10 +233,6 @@ describe("parseServerConfig", () => {
     ["PHONEPE_CALLBACK_URL", "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/subscription"],
   ])("rejects non-canonical PhonePe wiring in %s", (name, value) => {
     const phonePe = {
-      PHONEPE_CLIENT_ID: "client-id",
-      PHONEPE_CLIENT_SECRET: "client-secret",
-      PHONEPE_CLIENT_VERSION: "1",
-      PHONEPE_ENV: "sandbox",
       PHONEPE_CALLBACK_USERNAME: "callback-user",
       PHONEPE_CALLBACK_PASSWORD: "callback-password",
       PHONEPE_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment",
@@ -287,10 +247,6 @@ describe("parseServerConfig", () => {
   test("rejects a configured gateway without a callback URL", () => {
     expect(() => parseServerConfig({
       ...validEnv(),
-      PHONEPE_CLIENT_ID: "client-id",
-      PHONEPE_CLIENT_SECRET: "client-secret",
-      PHONEPE_CLIENT_VERSION: "1",
-      PHONEPE_ENV: "sandbox",
       PHONEPE_CALLBACK_USERNAME: "callback-user",
       PHONEPE_CALLBACK_PASSWORD: "callback-password",
     })).toThrow(/PHONEPE_CALLBACK_URL/u)
@@ -348,13 +304,11 @@ describe("worker composers", () => {
     expect(summary).toEqual({ plansChecked: 0, collectionsCreated: 0, notificationsDispatched: 0, collectionsResolved: 0 })
   })
 
-  test("composeMandateCollectionWorker composes with PhonePe configured", () => {
+  test("composeMandateCollectionWorker collects through the payment service, not PhonePe", () => {
     const worker = composeMandateCollectionWorker({
       ...validEnv(),
-      PHONEPE_CLIENT_ID: "client-id",
-      PHONEPE_CLIENT_SECRET: "client-secret",
-      PHONEPE_CLIENT_VERSION: "1",
-      PHONEPE_ENV: "sandbox",
+      PAYMENTS_SERVICE_URL: "http://boe-payment-service:47430",
+      PAYMENTS_SERVICE_SECRET: "0123456789abcdef0123456789abcdef0123456789abcdef",
       PHONEPE_CALLBACK_USERNAME: "callback-user",
       PHONEPE_CALLBACK_PASSWORD: "callback-password",
       PHONEPE_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment",
@@ -364,6 +318,20 @@ describe("worker composers", () => {
     })
     dispose.push(worker.dispose)
     expect(worker.gatewayConfigured).toBe(true)
+  })
+
+  test("composeMandateCollectionWorker has no gateway without the payment service", () => {
+    const worker = composeMandateCollectionWorker({
+      ...validEnv(),
+      PHONEPE_CALLBACK_USERNAME: "callback-user",
+      PHONEPE_CALLBACK_PASSWORD: "callback-password",
+      PHONEPE_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment",
+      PHONEPE_SUBSCRIPTION_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/subscription",
+      PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: "subscription.status.updated",
+      PHONEPE_MERCHANT_ID: "merchant-id",
+    })
+    dispose.push(worker.dispose)
+    expect(worker.gatewayConfigured).toBe(false)
   })
 
   test("composeSipScheduleWorker composes and exposes a runOnce function", () => {
@@ -377,10 +345,6 @@ describe("worker composers", () => {
 describe("PhonePe checkout redirect URL", () => {
   const configured = () => ({
     ...validEnv(),
-    PHONEPE_CLIENT_ID: "client-id",
-    PHONEPE_CLIENT_SECRET: "client-secret",
-    PHONEPE_CLIENT_VERSION: "1",
-    PHONEPE_ENV: "sandbox",
     PHONEPE_CALLBACK_USERNAME: "callback-user",
     PHONEPE_CALLBACK_PASSWORD: "callback-password",
     PHONEPE_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment",
@@ -449,10 +413,6 @@ describe("PhonePe checkout redirect URL", () => {
 describe("PhonePe callbacks on a PhonePe-approved host", () => {
   const base = () => ({
     ...validEnv(),
-    PHONEPE_CLIENT_ID: "client-id",
-    PHONEPE_CLIENT_SECRET: "client-secret",
-    PHONEPE_CLIENT_VERSION: "1",
-    PHONEPE_ENV: "sandbox",
     PHONEPE_CALLBACK_USERNAME: "callback-user",
     PHONEPE_CALLBACK_PASSWORD: "callback-password",
     PHONEPE_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment",
@@ -544,10 +504,6 @@ describe("payment service selection", () => {
 
   const withPhonePe = () => ({
     ...validEnv(),
-    PHONEPE_CLIENT_ID: "client-id",
-    PHONEPE_CLIENT_SECRET: "client-secret",
-    PHONEPE_CLIENT_VERSION: "1",
-    PHONEPE_ENV: "sandbox",
     PHONEPE_CALLBACK_USERNAME: "callback-user",
     PHONEPE_CALLBACK_PASSWORD: "callback-password",
     PHONEPE_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment",
@@ -638,10 +594,6 @@ describe("inbound callback verification survives the relay being selected", () =
 
   const configured = (extra: Record<string, string> = {}) => ({
     ...validEnv(),
-    PHONEPE_CLIENT_ID: "client-id",
-    PHONEPE_CLIENT_SECRET: "client-secret",
-    PHONEPE_CLIENT_VERSION: "1",
-    PHONEPE_ENV: "sandbox",
     PHONEPE_CALLBACK_USERNAME: "callback-user",
     PHONEPE_CALLBACK_PASSWORD: "callback-password",
     PHONEPE_CALLBACK_URL: "https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment",
@@ -651,15 +603,6 @@ describe("inbound callback verification survives the relay being selected", () =
     PHONEPE_MERCHANT_ID: "merchant-id",
     PHONEPE_AUTOPAY_ENABLED: "false",
     ...extra,
-  })
-
-  test("the relay refuses to verify callbacks, so it must never be the verifier", async () => {
-    const { createRelayPaymentGateway } = await import("../providers/relay/relayPaymentGateway.js")
-    const relay = createRelayPaymentGateway({
-      config: { baseUrl: "http://boe-payment-service:47430", service: "boe-dev", secret: RELAY_SECRET },
-    })
-
-    expect(() => relay.validateShaCallback("sha256-anything", "{}")).toThrow()
   })
 
   test("PhonePe credentials remain required while callbacks land on this backend", () => {
@@ -673,14 +616,16 @@ describe("inbound callback verification survives the relay being selected", () =
     expect(config.payments.phonepe?.callbackUsername).toBe("callback-user")
   })
 
-  test("the direct adapter can still verify, which is what the callback routes use", async () => {
-    const { createPhonePeGateway } = await import("../providers/phonepe/phonePeCheckoutGateway.js")
+  test("the callback verifier is the only PhonePe code left, and it still verifies", async () => {
+    const { createPhonePeCallbackVerifier } = await import(
+      "../providers/phonepe/phonePeCallbackVerifier.js"
+    )
     const phonepe = parseServerConfig(configured()).payments.phonepe
-    if (phonepe === null) throw new Error("expected PhonePe to be configured")
+    if (phonepe === null) throw new Error("expected PhonePe callback credentials to be configured")
 
-    const gateway = createPhonePeGateway({ config: phonepe })
+    const verifier = createPhonePeCallbackVerifier(phonepe)
 
-    expect(() => gateway.validateShaCallback("not-a-valid-sha", "{}")).toThrow()
-    expect(typeof gateway.validateShaCallback).toBe("function")
+    expect(() => verifier.validateShaCallback("not-a-valid-sha", "{}")).toThrow()
+    expect(typeof verifier.validateShaCallback).toBe("function")
   })
 })

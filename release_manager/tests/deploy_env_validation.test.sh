@@ -66,14 +66,11 @@ CRYPTO_RECIPIENT_ENC_KEY=$base64_key
 CRYPTO_RECIPIENT_ENC_KEY_VERSION=ek1
 NEWUSER_SHARED_SECRET=test-only-newuser-shared-secret-0123456789
 PAYMENT_PROVIDER=phonepe
-PHONEPE_CLIENT_ID=test-client
-PHONEPE_CLIENT_SECRET=test-secret
-PHONEPE_CLIENT_VERSION=1
-PHONEPE_ENV=sandbox
+PAYMENTS_SERVICE_URL=http://boe-payment-service:47430
+PAYMENTS_SERVICE_SECRET=0123456789abcdef0123456789abcdef0123456789abcdef
 PHONEPE_CALLBACK_USERNAME=test-callback-user
 PHONEPE_CALLBACK_PASSWORD=test-callback-password
 PHONEPE_CALLBACK_URL=https://dev-app.beonedge.in/api/v1/provider-events/phonepe/payment
-PHONEPE_CHECKOUT_ALLOWED_ORIGINS=https://mercury.phonepe.com,https://mercury-t2.phonepe.com
 PHONEPE_SUBSCRIPTION_CALLBACK_URL=https://dev-app.beonedge.in/api/v1/provider-events/phonepe/subscription
 PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST=checkout.setup.order.completed,checkout.setup.order.failed,checkout.order.completed,checkout.order.failed,subscription.notification.completed,subscription.notification.failed,subscription.redemption.order.completed,subscription.redemption.order.failed,subscription.redemption.transaction.completed,subscription.redemption.transaction.failed
 PHONEPE_MERCHANT_ID=test-merchant
@@ -104,6 +101,16 @@ BOE_EFFECTIVE_ENV="$phonepe_env"
 boe_deploy_assert_env >/dev/null \
     || { printf 'FAIL: deploy rejected canonical PhonePe wiring\n' >&2; exit 1; }
 
+missing_relay="$TEST_DIR/missing-relay.env"
+grep -v '^PAYMENTS_SERVICE_URL=' "$phonepe_env" > "$missing_relay"
+chmod 600 "$missing_relay"
+BOE_EFFECTIVE_ENV="$missing_relay"
+if (boe_deploy_assert_env >/dev/null 2>&1); then
+    printf 'FAIL: deploy accepted a stack with no payment service to relay through\n' >&2
+    exit 1
+fi
+BOE_EFFECTIVE_ENV="$phonepe_env"
+
 bad_autopay_flag="$TEST_DIR/bad-autopay-flag.env"
 sed 's/^PHONEPE_AUTOPAY_ENABLED=.*/PHONEPE_AUTOPAY_ENABLED=yes/' "$phonepe_env" > "$bad_autopay_flag"
 chmod 600 "$bad_autopay_flag"
@@ -119,20 +126,6 @@ chmod 600 "$bad_subscription_callback"
 BOE_EFFECTIVE_ENV="$bad_subscription_callback"
 boe_deploy_assert_env >/dev/null \
     || { printf 'FAIL: deploy script interpreted the PhonePe subscription callback environment\n' >&2; exit 1; }
-
-development_with_production_phonepe="$TEST_DIR/development-with-production-phonepe.env"
-sed 's/^PHONEPE_ENV=.*/PHONEPE_ENV=production/' "$phonepe_env" > "$development_with_production_phonepe"
-chmod 600 "$development_with_production_phonepe"
-BOE_EFFECTIVE_ENV="$development_with_production_phonepe"
-boe_deploy_assert_env >/dev/null \
-    || { printf 'FAIL: development deploy rejected PhonePe production credentials with development callbacks\n' >&2; exit 1; }
-
-application_owned_phonepe_env="$TEST_DIR/application-owned-phonepe.env"
-sed 's/^PHONEPE_ENV=.*/PHONEPE_ENV=application-defined/' "$phonepe_env" > "$application_owned_phonepe_env"
-chmod 600 "$application_owned_phonepe_env"
-BOE_EFFECTIVE_ENV="$application_owned_phonepe_env"
-boe_deploy_assert_env >/dev/null \
-    || { printf 'FAIL: deploy script interpreted PHONEPE_ENV instead of deferring to the application\n' >&2; exit 1; }
 
 wrong_node_environment="$TEST_DIR/wrong-node-environment.env"
 sed 's/^NODE_ENV=.*/NODE_ENV=production/' "$phonepe_env" > "$wrong_node_environment"
@@ -152,7 +145,6 @@ fi
 
 production_phonepe_env="$TEST_DIR/production-phonepe.env"
 sed \
-    -e 's/^PHONEPE_ENV=.*/PHONEPE_ENV=production/' \
     -e 's#^PHONEPE_CALLBACK_URL=.*#PHONEPE_CALLBACK_URL=https://app.beonedge.in/api/v1/provider-events/phonepe/payment#' \
     -e 's#^PHONEPE_SUBSCRIPTION_CALLBACK_URL=.*#PHONEPE_SUBSCRIPTION_CALLBACK_URL=https://app.beonedge.in/api/v1/provider-events/phonepe/subscription#' \
     -e 's#^APK_DOWNLOAD_BASE_URL=.*#APK_DOWNLOAD_BASE_URL=https://app.beonedge.in/downloads#' \

@@ -115,57 +115,6 @@ describe("committed origin allowlists", () => {
     expect(APK_ORIGIN).not.toMatch(/\s/)
   })
 })
-const CHECKOUT_HOST_PRODUCTION = "https://mercury-t2.phonepe.com"
-
-const CHECKOUT_HOST_SANDBOX = "https://mercury-uat.phonepe.com"
-
-const CHECKOUT_KEY = "PHONEPE_CHECKOUT_ALLOWED_ORIGINS"
-
-const sandboxCapableExamples = [
-  "backend_controller/.env.example",
-  "release_manager/stacks/dev_release/.env.example",
-] as const
-
-const productionOnlyExamples = [
-  "backend_controller/.env.production.example",
-  "release_manager/stacks/prod_release/.env.example",
-] as const
-
-describe("committed PhonePe checkout allowlists", () => {
-  for (const file of [...sandboxCapableExamples, ...productionOnlyExamples]) {
-    test(`${file} → ${CHECKOUT_KEY} allows the production checkout host`, () => {
-      const origins = originsOf(repoFile(file), CHECKOUT_KEY)
-
-      expect(origins.length).toBeGreaterThan(0)
-      expect(origins).toContain(CHECKOUT_HOST_PRODUCTION)
-    })
-
-    test(`${file} → ${CHECKOUT_KEY} stays explicit and https-only`, () => {
-      const origins = originsOf(repoFile(file), CHECKOUT_KEY)
-
-      for (const origin of origins) {
-        expect(origin).not.toBe("*")
-        expect(origin.startsWith("*")).toBe(false)
-        expect(origin.startsWith("https://")).toBe(true)
-        expect(origin).not.toMatch(/\s/)
-        expect(new URL(origin).origin).toBe(origin)
-      }
-    })
-  }
-
-  for (const file of sandboxCapableExamples) {
-    test(`${file} → ${CHECKOUT_KEY} also allows the sandbox checkout host`, () => {
-      expect(originsOf(repoFile(file), CHECKOUT_KEY)).toContain(CHECKOUT_HOST_SANDBOX)
-    })
-  }
-
-  for (const file of productionOnlyExamples) {
-    test(`${file} → ${CHECKOUT_KEY} does not trust the sandbox host`, () => {
-      expect(originsOf(repoFile(file), CHECKOUT_KEY)).not.toContain(CHECKOUT_HOST_SANDBOX)
-    })
-  }
-})
-
 const REDIRECT_KEY = "PHONEPE_CHECKOUT_REDIRECT_URL"
 
 const redirectExamples = [

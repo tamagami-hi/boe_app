@@ -98,13 +98,8 @@ const ServerConfigSchema = z.object({
   // The config is complete only when every credential is present; in production
   // an incomplete set refuses to boot.
   PAYMENT_PROVIDER: z.literal("phonepe").default("phonepe"),
-  PHONEPE_CLIENT_ID: z.string().trim().optional(),
-  PHONEPE_CLIENT_SECRET: z.string().optional(),
-  PHONEPE_CLIENT_VERSION: z.string().trim().optional(),
-  PHONEPE_ENV: z.enum(["sandbox", "production"]).optional(),
   PHONEPE_CALLBACK_USERNAME: z.string().trim().optional(),
   PHONEPE_CALLBACK_PASSWORD: z.string().optional(),
-  PHONEPE_CHECKOUT_ALLOWED_ORIGINS: z.string().trim().optional(),
   PHONEPE_MERCHANT_ID: z.string().trim().optional(),
   PHONEPE_AUTOPAY_ENABLED: z.enum(["true", "false"]).default("false"),
   PHONEPE_AUTOPAY_COLLECTION_ENABLED: z.enum(["true", "false"]).default("false"),
@@ -124,9 +119,6 @@ const ServerConfigSchema = z.object({
   PAYMENTS_SERVICE_URL: z.string().trim().optional(),
   PAYMENTS_SERVICE_SECRET: z.string().trim().optional(),
   PAYMENTS_SERVICE_NAME: z.string().trim().default("boe-dev"),
-  PAYMENT_START_URL: z.string().trim().optional(),
-  PAYMENT_START_SECRET: z.string().trim().optional(),
-  PAYMENT_START_TTL_MS: z.coerce.number().int().min(60_000).max(3_600_000).default(900_000),
   PHONEPE_SUBSCRIPTION_CALLBACK_URL: z.string().trim().optional(),
   PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: z.string().trim().optional(),
   PHONEPE_PAYMENT_EVENT_ALLOWLIST: z.string().trim().default("checkout.order.completed,checkout.order.failed"),
@@ -225,18 +217,11 @@ export interface ServerConfig {
      * set fails the boot rather than half-wiring money movement.
      */
     readonly phonepe: {
-      readonly clientId: string
-      readonly clientSecret: string
-      readonly clientVersion: string
-      readonly env: "sandbox" | "production"
       readonly callbackUsername: string
       readonly callbackPassword: string
-      readonly checkoutAllowedOrigins: readonly string[]
       readonly callbackUrl: string
       readonly checkoutRedirectUrl: string
-      readonly approvedStart: Readonly<{ startUrl: string; secret: string; ttlMs: number }> | null
       readonly subscriptionCallbackUrl: string | null
-      readonly requestTimeoutMs: number
     } | null
     readonly relay: {
       readonly baseUrl: string
@@ -413,48 +398,18 @@ const parsePhonePeConfig = (
   const present = (value: string | undefined): value is string =>
     value !== undefined && value.trim().length > 0
   const credentials = [
-    parsed.PHONEPE_CLIENT_ID,
-    parsed.PHONEPE_CLIENT_SECRET,
-    parsed.PHONEPE_CLIENT_VERSION,
     parsed.PHONEPE_CALLBACK_USERNAME,
     parsed.PHONEPE_CALLBACK_PASSWORD,
   ]
   const configuredCount = credentials.filter(present).length
   if (configuredCount === 0) return null
-  if (configuredCount < credentials.length || !present(parsed.PHONEPE_ENV)) {
+  if (configuredCount < credentials.length) {
     throw new Error(
-      "PHONEPE_* configuration is incomplete: set PHONEPE_CLIENT_ID, PHONEPE_CLIENT_SECRET, " +
-        "PHONEPE_CLIENT_VERSION, PHONEPE_ENV, PHONEPE_CALLBACK_USERNAME and PHONEPE_CALLBACK_PASSWORD together",
+      "PHONEPE_* configuration is incomplete: set PHONEPE_CALLBACK_USERNAME and " +
+        "PHONEPE_CALLBACK_PASSWORD together",
     )
   }
   if (!present(parsed.PHONEPE_CALLBACK_URL)) throw new Error("PHONEPE_CALLBACK_URL is required when PhonePe is configured")
-  if (!present(parsed.PHONEPE_CHECKOUT_ALLOWED_ORIGINS)) {
-    throw new Error("PHONEPE_CHECKOUT_ALLOWED_ORIGINS is required when PhonePe is configured")
-  }
-  const checkoutAllowedOrigins = parsed.PHONEPE_CHECKOUT_ALLOWED_ORIGINS
-    .split(",")
-    .map((value) => value.trim())
-  if (checkoutAllowedOrigins.some((value) => value.length === 0)) {
-    throw new Error("PHONEPE_CHECKOUT_ALLOWED_ORIGINS must contain exact HTTPS origins")
-  }
-  for (const origin of checkoutAllowedOrigins) {
-    let url: URL
-    try {
-      url = new URL(origin)
-    } catch {
-      throw new Error("PHONEPE_CHECKOUT_ALLOWED_ORIGINS must contain exact HTTPS origins")
-    }
-    if (
-      url.protocol !== "https:" || url.origin !== origin || url.hostname.includes("*") ||
-      url.username !== "" || url.password !== "" || url.pathname !== "/" ||
-      url.search !== "" || url.hash !== ""
-    ) {
-      throw new Error("PHONEPE_CHECKOUT_ALLOWED_ORIGINS must contain exact HTTPS origins")
-    }
-  }
-  if (!/^[1-9][0-9]*$/u.test(parsed.PHONEPE_CLIENT_VERSION as string)) {
-    throw new Error("PHONEPE_CLIENT_VERSION must be a positive integer")
-  }
   const expectedHost = parsed.NODE_ENV === "production" ? "app.beonedge.in" : "dev-app.beonedge.in"
   const approvedCallbackHost = ((): string | null => {
     if (!present(parsed.PHONEPE_PUBLIC_CALLBACK_ORIGIN)) return null
@@ -513,45 +468,18 @@ const parsePhonePeConfig = (
     if (url.hash !== "") throw new Error(`${name} must not contain a fragment`)
     return url.toString()
   }
-  const approvedStartConfig = (
-    values: z.infer<typeof ServerConfigSchema>,
-  ): Readonly<{ startUrl: string; secret: string; ttlMs: number }> | null => {
-    const declared = present(values.PAYMENT_START_URL)
-    const secret = present(values.PAYMENT_START_SECRET)
-    if (!declared && !secret) return null
-    if (!declared || !secret) {
-      throw new Error("PAYMENT_START_URL and PAYMENT_START_SECRET must be set together")
-    }
-    const startSecret = values.PAYMENT_START_SECRET as string
-    const startUrlValue = values.PAYMENT_START_URL as string
-    if (startSecret.length < 32) {
-      throw new Error("PAYMENT_START_SECRET must be at least 32 characters")
-    }
-    return Object.freeze({
-      startUrl: browserRedirectUrl("PAYMENT_START_URL", startUrlValue),
-      secret: startSecret,
-      ttlMs: values.PAYMENT_START_TTL_MS,
-    })
-  }
   const callbackUrl = canonicalUrl(
     "PHONEPE_CALLBACK_URL",
     parsed.PHONEPE_CALLBACK_URL,
     "/api/v1/provider-events/phonepe/payment",
   )
   return Object.freeze({
-    clientId: parsed.PHONEPE_CLIENT_ID as string,
-    clientSecret: parsed.PHONEPE_CLIENT_SECRET as string,
-    clientVersion: parsed.PHONEPE_CLIENT_VERSION as string,
-    env: parsed.PHONEPE_ENV,
     callbackUsername: parsed.PHONEPE_CALLBACK_USERNAME as string,
     callbackPassword: parsed.PHONEPE_CALLBACK_PASSWORD as string,
-    checkoutAllowedOrigins: Object.freeze([...new Set(checkoutAllowedOrigins)]),
-    requestTimeoutMs: parsed.PHONEPE_API_TIMEOUT_MS,
     callbackUrl,
     checkoutRedirectUrl: present(parsed.PHONEPE_CHECKOUT_REDIRECT_URL)
       ? browserRedirectUrl("PHONEPE_CHECKOUT_REDIRECT_URL", parsed.PHONEPE_CHECKOUT_REDIRECT_URL)
       : new URL("/dashboard", callbackUrl).toString(),
-    approvedStart: approvedStartConfig(parsed),
     subscriptionCallbackUrl: present(parsed.PHONEPE_SUBSCRIPTION_CALLBACK_URL)
       ? canonicalUrl(
           "PHONEPE_SUBSCRIPTION_CALLBACK_URL",
