@@ -7,14 +7,17 @@ import type { UnitOfWork } from "../db/database.js"
 import type { IdempotencyRepository, IdempotencyScope, UserId } from "../db/repositories.js"
 import { resolveClientPrincipal, type ClientRequestAuthDeps } from "../domain/auth/clientWebAuth.js"
 import { deriveInvestingEligibility } from "../domain/client/investingEligibility.js"
+import { applyCanonicalPaymentOutcome } from "../domain/payments/applyCanonicalPaymentOutcome.js"
 import { checkoutSecondsRemaining } from "../domain/payments/checkoutExpiry.js"
 import { newMerchantOrderId, newMerchantSubscriptionId } from "../domain/payments/merchantIds.js"
 import { AppError } from "../http/errorCatalog.js"
 import { executeIdempotent } from "../http/idempotencyProtocol.js"
 import { parseOrThrow } from "../http/validation.js"
 import { logGatewayFailure, logGatewayUnconfigured } from "../providers/gatewayFailure.js"
+import { GatewayCredentialError, GatewayNotFoundError, GatewayRejectedError } from "../providers/paymentGateway.js"
 import type { RecurringPaymentGateway } from "../providers/recurringPaymentGateway.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
+import type { InvestmentSettlementRepository } from "../repositories/investmentSettlementRepository.js"
 import type { MandatesRepository } from "../repositories/mandatesRepository.js"
 import type { OrderWriteRepository } from "../repositories/orderRepository.js"
 import type { PaymentsRepository } from "../repositories/paymentsRepository.js"
@@ -58,6 +61,7 @@ export interface ClientAutoPaySipDeps extends ClientRequestAuthDeps {
   readonly mandatesRepository: MandatesRepository
   readonly orderRepository: OrderWriteRepository
   readonly paymentsRepository: PaymentsRepository
+  readonly settlementRepository: InvestmentSettlementRepository
   readonly userRepository: UserWriteRepository
   readonly auditRepository: AuditWriteRepository
   readonly idempotencyRepository: IdempotencyRepository
@@ -238,6 +242,42 @@ const prepareAutoPay = async (
   return outcome.body
 })
 
+const PROVIDER_REFUSED = "PROVIDER_REFUSED"
+
+const isDefinitiveProviderRefusal = (error: unknown): boolean =>
+  error instanceof GatewayRejectedError ||
+  error instanceof GatewayCredentialError ||
+  error instanceof GatewayNotFoundError
+
+const failRefusedSetup = async (
+  deps: ClientAutoPaySipDeps,
+  prepared: PreparedAutoPay,
+  claimedVersion: string,
+): Promise<void> => {
+  const now = deps.clock()
+  await deps.unitOfWork.execute(async (tx) => {
+    await applyCanonicalPaymentOutcome(tx, deps.paymentsRepository, {
+      merchantOrderId: prepared.merchantOrderId,
+      providerMerchantOrderId: prepared.merchantOrderId,
+      outcome: "failed",
+      providerState: PROVIDER_REFUSED,
+      providerOrderId: null,
+      amountPaise: null,
+      currency: "INR",
+      details: [],
+    }, now, deps.settlementRepository)
+    await deps.mandatesRepository.applyProviderSetupState(tx, {
+      merchantOrderId: prepared.merchantOrderId,
+      providerOrderId: null,
+      expectedVersion: claimedVersion,
+      fromState: "dispatching",
+      toState: "failed",
+      failureCode: PROVIDER_REFUSED,
+      now,
+    })
+  })
+}
+
 const dispatchSetup = async (
   deps: ClientAutoPaySipDeps,
   request: FastifyRequest,
@@ -288,6 +328,17 @@ const dispatchSetup = async (
     })
   } catch (error) {
     logGatewayFailure(request.log, error, { requestId: request.requestId, operation: "create_mandate_checkout" })
+    if (isDefinitiveProviderRefusal(error)) {
+      try {
+        await failRefusedSetup(deps, prepared, claimed.version)
+      } catch (rollbackError) {
+        request.log.error({
+          requestId: request.requestId,
+          setupAttemptId: prepared.setupAttemptId,
+          err: (rollbackError as Error).name,
+        }, "refused mandate setup could not be marked failed")
+      }
+    }
     throw new AppError("DEPENDENCY_UNAVAILABLE", { cause: error })
   }
   const checkoutExpiresAt = created.expiresAt.getTime() < new Date(prepared.setupExpiresAt).getTime()

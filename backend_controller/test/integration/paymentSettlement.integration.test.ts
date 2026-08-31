@@ -409,6 +409,7 @@ beforeAll(async () => {
         mandatesRepository: createMandatesRepository(),
         orderRepository: createOrderRepository(),
         paymentsRepository,
+        settlementRepository,
         userRepository: createUserRepository(),
         auditRepository: createAuditRepository(),
         idempotencyRepository: createIdempotencyRepository(),

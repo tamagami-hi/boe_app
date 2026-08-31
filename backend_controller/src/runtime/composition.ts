@@ -338,6 +338,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       mandatesRepository: createMandatesRepository(),
       orderRepository,
       paymentsRepository,
+      settlementRepository,
       userRepository,
       auditRepository,
       idempotencyRepository,
