@@ -2066,3 +2066,53 @@ would have silently removed their rings, which is the same class of failure as t
 first time. Every screen in both apps looks different from how it has ever looked. That is the design
 being applied rather than a new choice, but it has never been seen and should be reviewed on a device
 before release.
+
+
+### D-071
+**A gateway failure is rolled back only when the provider definitively refused; an indeterminate failure
+stays in flight for reconciliation. And a provider's "not found" is identified by its error code, not by
+HTTP 404.** · DECIDED 2026-08-31
+
+Two rules from the AutoPay investigation in Entry 041.
+
+**Rule 1: only a definitive refusal may be written as a failure.** `dispatchSetup` commits the SIP plan,
+mandate, order, payment and setup attempt before it calls the gateway, so a throw leaves committed rows
+mid-flight. The obvious fix — mark them failed in the catch — is wrong in general, because a timeout or a
+5xx does not tell us the mandate was *not* created. A UPI mandate that exists at PhonePe while our ledger
+records `failed` is the worst outcome available: we would offer a retry that creates a second mandate for
+the same plan.
+
+So the rollback is gated on the error class. `GatewayRejectedError`, `GatewayCredentialError` and
+`GatewayNotFoundError` mean the provider processed the request and refused it — nothing was created, and
+marking it `failed` is a statement of fact. `GatewayUnavailableError` and its subclasses
+(`GatewayThrottledError`, `GatewayMalformedResponseError`) mean we do not know, so the attempt is left at
+`dispatching` and the reconciliation worker resolves it against the provider's own record. The 503 the
+client receives is identical either way; the difference is entirely in what we are willing to assert.
+Failing to roll back a *refusal* is what produced two permanently wedged plans; rolling back an
+*indeterminate* failure would be worse than that.
+
+The rollback also reuses `applyCanonicalPaymentOutcome` with `outcome: "failed"` rather than calling
+`markAttemptFailed`/`markPaymentFailed`/`markOrderPaymentFailed` directly. Same primitive as the
+reconciliation path, so a refusal recorded synchronously and one recorded by the worker are
+indistinguishable in the ledger, and `postRetry`'s preconditions (`setup.state === "failed"` and
+`payment.state === "failed"`) are satisfied by construction rather than by coincidence.
+
+**Rule 2: map provider not-found from the error code, not the status.** PhonePe answers an unknown
+reference with **HTTP 400 and `{"code":"ORDER_NOT_FOUND"}`**, not 404. The payment service keyed
+`GatewayNotFoundError` off the status alone, so every not-found arrived as `GatewayRejectedError`, and
+`mandateReconciliationWorker` — which reaches its grace-expiry path only for `GatewayNotFoundError` —
+could never resolve an attempt whose order the provider had never created. The loop ran every 5 seconds
+for 21 hours against production PhonePe. `bodyOf` now inspects the body on any sub-500 response and treats
+a `code` matching `/_NOT_FOUND$/` as not-found; the suffix match rather than a literal covers
+`SUBSCRIPTION_NOT_FOUND` and `TRANSACTION_NOT_FOUND` without swallowing genuine rejections, which is
+asserted both ways in `phonePeRecurringGateway.test.ts`.
+
+**The generalisable point:** a permanent wedge is created not by the upstream failure but by a state
+machine with no edge out of its in-flight state. `dispatching` had exactly one exit — a provider fact we
+could never obtain. Any state entered before an external call needs both a definitive-refusal edge and a
+reconciliation edge, and the reconciliation edge has to be reachable for the errors the provider actually
+emits, not the ones the HTTP spec suggests it should.
+
+**Known and accepted:** `phonePeCheckoutGateway.ts` has the same status-only mapping for one-time
+payments. It has no wedged rows today and was left alone rather than widened without a test to justify it;
+it is recorded in Entry 041 as a latent defect of this class.

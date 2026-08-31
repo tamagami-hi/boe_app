@@ -3967,3 +3967,122 @@ Two light neutrals cannot reach 3:1 by fill alone, which is why WCAG 1.4.11 is s
   *good*. It is a real change in the app's appearance on every screen and deserves the maintainer's eye.
 - No test guards the shadow tokens. Per `README.md` §4 styling is outside the test policy, and the root
   cause is now removed at the token rather than patched per site.
+
+
+## Entry 041 — SIP AutoPay: PhonePe has not enabled subscriptions, and three defects turned that into a permanently wedged plan · 2026-08-31
+
+The maintainer reported AutoPay "giving errors and not even opening the payments page", and asked for
+the flow to be driven on the emulator against the deployed dev stack.
+
+Installed `boe.dev.client.0.12.7.apk` and `boe.dev.admin.0.12.7.apk` on `emulator-5554` — both
+byte-identical by sha256 to what `dev_release/dev_apk/` and `dev_release/dev_admin_apk/` publish, so the
+APK under test is the deployed artifact. Drove the client over the WebView CDP socket
+(`adb forward tcp:9222 localabstract:webview_devtools_remote_<pid>`) rather than by blind taps, which is
+how the network trail below was captured.
+
+### The cause is not in this repository
+
+Fund → Start a SIP → ₹1, PhonePe UPI AutoPay, 12 months, day 1 → *Authorise the mandate*:
+
+```
+POST https://dev-app.beonedge.in/api/v1/client/sip-autopay → 503
+{"ok":false,"error":{"code":"DEPENDENCY_UNAVAILABLE",...},"meta":{"requestId":"bdad556f-…"}}
+```
+
+That request id in `boe-dev-backend`:
+
+```
+{"level":40,"requestId":"bdad556f-…","provider":"payment_service",
+ "operation":"create_mandate_checkout","failureKind":"provider_unavailable"}
+```
+
+and in `boe-payment-service`:
+
+```
+{"level":50,"merchantOrderId":"boe_4b95ca3c…","err":"GatewayCredentialError","msg":"mandate checkout failed"}
+```
+
+Calling PhonePe directly with the service's own credentials from inside its container settles it. OAuth
+succeeds; the subscription call does not:
+
+```
+oauth                                              → 200
+POST /checkout/v2/pay  SUBSCRIPTION_CHECKOUT_SETUP → 401
+{"success":false,"code":"AUTHORIZATION_FAILED",
+ "message":"Subscription not enabled for merchant: M23X2SH2ZC4S1"}
+GET /checkout/v2/order/<unknown-id>/status         → 400 {"code":"ORDER_NOT_FOUND",…}
+```
+
+The dev stack points at **PhonePe production** (`phonepeEnv: "production"`). That merchant is provisioned
+for one-time PG checkout — the account's three ₹1 lump sums settled — but not for UPI AutoPay. Enabling it
+is a PhonePe onboarding request, not a code change. This is the same shape as Entry 033/034 and Task 023:
+the input we control is correct and the block is on PhonePe's record.
+
+### Three defects made a clean refusal permanent
+
+1. **Plans wedged at `dispatching` forever.** `prepareAutoPay` commits the SIP plan, mandate, order,
+   payment and setup attempt, and only then does `dispatchSetup` call the gateway. Nothing rolled the
+   setup attempt back when the call threw, so `mandate_setup_attempts` held two rows in `dispatching`
+   with `not_found_first_observed_at` NULL, both past `setup_expires_at`.
+2. **No retry button could ever appear.** `canRetrySetup` requires `setup.state === "failed" &&
+   payment.state === "failed"`. An attempt that dies at `dispatching` never reaches `failed`, so
+   `SipDetailScreen` offered only *Cancel the mandate*.
+3. **Reconciliation could not self-heal, and hammered PhonePe production.** PhonePe reports not-found as
+   **HTTP 400 `ORDER_NOT_FOUND`**, but the payment service's `bodyOf` mapped only `404` to
+   `GatewayNotFoundError`; 400 became `GatewayRejectedError` → 422 → `GatewayRejectedError` in the relay.
+   `mandateReconciliationWorker` calls `reconcileNotFound` only for `GatewayNotFoundError`, so the
+   grace-expiry path was unreachable. Result: a 5-second loop, ~4 failed calls per pass against a live
+   payment gateway, for 21 hours.
+
+### What changed
+
+`boe_landing` · `payment-service/src/provider/phonepe/phonePeRecurringGateway.ts` — `bodyOf` now reads the
+error body on a sub-500 response and maps a `code` matching `/_NOT_FOUND$/` to `GatewayNotFoundError`.
+This is what makes reconciliation able to expire a setup that the provider never created.
+
+`backend_controller/src/routes/clientAutoPaySipRoutes.ts` — on a **definitive** provider refusal
+(`GatewayRejectedError`, `GatewayCredentialError`, `GatewayNotFoundError`) `dispatchSetup` now marks the
+setup attempt `failed` and drives the payment through the same `applyCanonicalPaymentOutcome` "failed"
+path the reconciliation worker uses, so `canRetrySetup` becomes true and *Authorise the mandate again*
+appears. An **indeterminate** failure (timeout, 5xx, throttle, malformed) is deliberately left at
+`dispatching` for reconciliation — see D-071. Needs `settlementRepository`, added to
+`ClientAutoPaySipDeps` and wired in `runtime/composition.ts`.
+
+`frontend_stack_ts/src/features/sip/SipStartScreen.tsx` — the AutoPay failure title was "Nothing was
+created", which was false: the plan, order, payment and setup attempt were all committed before the
+gateway call. It is now "The mandate was not authorised", and `describeFailure` is mode-aware so the
+manual path keeps its (correct) "Nothing was created". The `DEPENDENCY_UNAVAILABLE` body no longer claims
+"AutoPay is not configured in this environment" — misleading, since it is a merchant provisioning refusal,
+not local config.
+
+### Verified
+
+- **TESTED** `payment-service`: `npm run typecheck`, `npx vitest run` — 5 files / 65 tests passed.
+  New `phonePeRecurringGateway.test.ts` (3 tests) covers the not-found classification; confirmed
+  non-vacuous by reverting the mapping and watching 2 of 3 fail.
+- **TESTED** `backend_controller`: `npx tsc -p tsconfig.json --noEmit`, `npx vitest run` — 79 files /
+  794 tests passed. `eslint` clean on the touched files.
+- **TESTED** `frontend_stack_ts`: `npm run typecheck`, `npx vitest run` — 21 files / 199 tests passed,
+  `eslint` clean.
+- **VPS** the root cause, read-only: container logs, the direct PhonePe probe, and
+  `select state, count(*) from mandate_setup_attempts` showing `dispatching | 2`.
+
+### Not verified
+
+- **UNVERIFIED — none of the three fixes has been exercised at runtime.** The tests prove the not-found
+  classification and that nothing regressed; they do not prove the rollback fires, because that needs a
+  refusal from a real gateway. AutoPay will keep returning 503 until PhonePe enables subscriptions, so the
+  *observable* improvement after deploy is the retry button appearing on a refused plan. Commands to
+  confirm it are in Task 026.
+- The two wedged rows (`8a696ab0-…`, `092e539c-…`) are **not** repaired by this change. They should drain
+  on their own once the payment service ships: reconciliation will start seeing `GatewayNotFoundError`,
+  record `not_found_first_observed_at`, and expire them after the grace window. That sequence has not been
+  observed and is the first thing to watch after deploy.
+- `phonePeCheckoutGateway.ts` (`responseBody`, `mapCallError`) has the **identical** 400-vs-404 defect for
+  one-time payments. Not touched — out of the approved scope, no live symptom, and the one-time path has
+  no wedged rows. It is a latent permanent-wedge of the same class and should be fixed deliberately.
+- Pressing *Authorise the mandate* twice with unchanged inputs now returns 409 `STATE_CONFLICT` instead of
+  503, because the idempotency key is derived from the form inputs and the replayed attempt is spent. The
+  contract pins `status` to the single literal `"mandate_setup_in_progress"`, so there is no truthful
+  success shape to return; the `STATE_CONFLICT` copy was made accurate and actionable instead. A proper
+  fix routes the user to the plan on failure and belongs with the contract change.
