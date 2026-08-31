@@ -100,17 +100,24 @@ const SipStartScreen = (): React.ReactElement => {
   const ready = amountError === undefined && durationError === undefined && !pending
 
   const describeFailure = (error: unknown): string => {
+    const autoPay = mode === "phonepe_autopay"
     if (error instanceof CheckoutUrlRejected) {
-      return "The mandate page we were sent is not one we will open. No mandate has been authorised."
+      return "The mandate page we were sent is not one we will open. No mandate has been authorised and nothing has been debited. The plan is waiting for authorisation under SIP plans."
     }
     if (!isApiError(error)) {
-      return "We could not reach the service. No SIP has been created."
+      return autoPay
+        ? "We could not reach the service, so we cannot say whether the plan was created. Check SIP plans before trying again. No mandate has been authorised and nothing has been debited."
+        : "We could not reach the service. No SIP has been created."
     }
     if (error.code === "DEPENDENCY_UNAVAILABLE") {
-      return "AutoPay is not configured in this environment. Manual checkout still works: a due installment becomes an ordinary payable order."
+      return autoPay
+        ? "PhonePe would not accept the mandate, so no mandate is active and nothing has been debited. Check SIP plans: if the plan was created it is there, waiting for authorisation, and you can try authorising it again. Manual checkout works in the meantime — each installment becomes an ordinary payable order."
+        : "The service is not accepting SIP plans right now. Nothing has been created."
     }
     if (error.code === "STATE_CONFLICT") {
-      return "This fund cannot take a SIP right now, or your account is not yet eligible."
+      return autoPay
+        ? "We could not start this authorisation. If the plan was already created it is under SIP plans, waiting for authorisation — open it there and authorise it again. Otherwise this fund cannot take a SIP right now, or your account is not yet eligible."
+        : "This fund cannot take a SIP right now, or your account is not yet eligible."
     }
     return error.message
   }
@@ -139,7 +146,7 @@ const SipStartScreen = (): React.ReactElement => {
       { fundId, amountPaise, debitDay, durationMonths, idempotencyKey },
       {
         onError: (error) => {
-          setFailure({ title: "Nothing was created", body: describeFailure(error) })
+          setFailure({ title: "The mandate was not authorised", body: describeFailure(error) })
         },
         onSuccess: (setup) => {
           let decision
@@ -151,7 +158,7 @@ const SipStartScreen = (): React.ReactElement => {
               checkout: setup.checkout,
             })
           } catch (error) {
-            setFailure({ title: "Nothing was created", body: describeFailure(error) })
+            setFailure({ title: "The mandate was not authorised", body: describeFailure(error) })
             return
           }
 
