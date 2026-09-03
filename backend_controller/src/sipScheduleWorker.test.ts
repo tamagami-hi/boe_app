@@ -45,7 +45,6 @@ const buildDeps = (overrides: Partial<Record<string, unknown>> = {}): SipSchedul
       create: vi.fn(),
       listByUser: vi.fn(),
       lockById: vi.fn(),
-      lockByIdUnscoped: vi.fn(),
       markPaused: vi.fn(),
       markResumed: vi.fn(),
       markCancelled: vi.fn(),
@@ -69,7 +68,6 @@ const buildDeps = (overrides: Partial<Record<string, unknown>> = {}): SipSchedul
       }),
       latestCompliance: async () => ({ emailVerificationState: "verified" as const }),
       createPurchase: vi.fn(),
-      findOpenInstallment: vi.fn(),
       lockById: vi.fn(),
     },
     userRepository: {

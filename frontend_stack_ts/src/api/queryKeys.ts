@@ -36,7 +36,6 @@ export const qk = {
     supportTickets: () => ["client", "support", "tickets"] as const,
     research: () => ["client", "research"] as const,
     emailVerification: () => ["client", "email-verification"] as const,
-    appConfig: () => ["client", "app-config"] as const,
   },
   admin: {
     session: () => ["admin", "session"] as const,

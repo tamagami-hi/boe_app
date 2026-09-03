@@ -74,10 +74,10 @@ export interface RefundRepository {
   ) => Promise<void>
   /** Admin retry: failed -> pending so the worker dispatches the same stable id. */
   requeue: (tx: Transaction, refundId: string, now: Date) => Promise<RefundOperation | null>
-  /** Worker claim: open refunds, oldest first, locked SKIP LOCKED. */
+  /** Worker claim: open refunds whose status check is due, oldest first, locked SKIP LOCKED. */
   lockDueRefunds: (
     tx: Transaction,
-    input: Readonly<{ limit: number }>,
+    input: Readonly<{ limit: number; checkedBefore: Date }>,
   ) => Promise<readonly RefundOperation[]>
 }
 
@@ -217,6 +217,12 @@ export const createRefundRepository = (): RefundRepository => ({
       .selectFrom("refund_operations")
       .selectAll()
       .where("state", "in", REFUND_OPEN_STATES)
+      .where((eb) =>
+        eb.or([
+          eb("last_status_checked_at", "is", null),
+          eb("last_status_checked_at", "<", input.checkedBefore),
+        ]),
+      )
       .orderBy("created_at")
       .orderBy("id")
       .limit(input.limit)

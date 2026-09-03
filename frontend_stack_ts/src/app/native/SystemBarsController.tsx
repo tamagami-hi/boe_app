@@ -1,16 +1,12 @@
 import { useEffect } from "react"
 
 import { onResume } from "~/platform/lifecycle"
-import { applySystemChrome, getSystemChrome, subscribeToSystemChrome } from "~/platform/systemChrome"
+import { applySystemChrome, getSystemChrome } from "~/platform/systemChrome"
 
 export const SystemBarsController = (): null => {
-  useEffect(
-    () =>
-      subscribeToSystemChrome((chrome) => {
-        void applySystemChrome(chrome)
-      }),
-    [],
-  )
+  useEffect(() => {
+    void applySystemChrome(getSystemChrome())
+  }, [])
 
   useEffect(
     () =>

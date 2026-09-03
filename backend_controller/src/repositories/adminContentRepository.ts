@@ -63,7 +63,6 @@ export interface AdminContentRepository {
     kind: string,
     query: ContentPageQuery,
   ) => Promise<readonly ContentItem[]>
-  findContentItem: (tx: Transaction, id: string) => Promise<ContentItem | null>
   lockContentItem: (tx: Transaction, id: string) => Promise<ContentItem | null>
   contentKeyExists: (tx: Transaction, contentKey: string) => Promise<boolean>
   insertContentItem: (tx: Transaction, input: InsertContentItemInput) => Promise<ContentItem>
@@ -100,9 +99,6 @@ export const createAdminContentRepository = (): AdminContentRepository => ({
     `.execute(tx)
     return result.rows
   },
-
-  findContentItem: async (tx, id) =>
-    (await tx.selectFrom("content_items").selectAll().where("id", "=", id).executeTakeFirst()) ?? null,
 
   lockContentItem: async (tx, id) => {
     const result = await sql<ContentItem>`select * from content_items where id = ${id} for update`.execute(tx)

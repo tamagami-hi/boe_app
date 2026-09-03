@@ -28,6 +28,7 @@ export interface PaymentReconciliationConfig {
   readonly fastIntervalMs?: number
   readonly fastWindowMs?: number
   readonly quarantineFailureThreshold?: number
+  readonly refundIntervalMs?: number
 }
 
 export interface PaymentReconciliationDeps {
@@ -201,6 +202,14 @@ const reconcileAttempt = async (
   })
 }
 
+const recordRefundCheck = async (
+  deps: PaymentReconciliationDeps,
+  refundId: string,
+): Promise<void> => {
+  const now = deps.clock()
+  await deps.unitOfWork.execute((tx) => deps.refundRepository.markStatusChecked(tx, { refundId, now }))
+}
+
 const reconcileRefund = async (
   deps: PaymentReconciliationDeps,
   refundId: string,
@@ -215,7 +224,10 @@ const reconcileRefund = async (
     const attempt = await deps.unitOfWork.execute((tx) =>
       deps.paymentsRepository.latestAttempt(tx, paymentId),
     )
-    if (attempt === null || attempt.state !== "succeeded") return false
+    if (attempt === null || attempt.state !== "succeeded") {
+      await recordRefundCheck(deps, refundId)
+      return false
+    }
 
     let providerRefundId: string | null = null
     try {
@@ -227,6 +239,7 @@ const reconcileRefund = async (
       providerRefundId = initiated.providerRefundId
     } catch (error) {
       logGatewayFailure(deps.logger, error, { requestId: randomUUID(), operation: "initiate_refund" })
+      await recordRefundCheck(deps, refundId)
       return false
     }
     const now = deps.clock()
@@ -273,6 +286,7 @@ const reconcileRefund = async (
     fact = await deps.paymentGateway.getRefundStatus(merchantRefundId)
   } catch (error) {
     logGatewayFailure(deps.logger, error, { requestId: randomUUID(), operation: "get_refund_status" })
+    await recordRefundCheck(deps, refundId)
     return false
   }
 
@@ -366,8 +380,12 @@ export const runReconciliationPass = async (
     if (resolved) attemptsResolved += 1
   }
 
+  const refundCheckIntervalMs = deps.config.refundIntervalMs ?? deps.config.pendingIntervalMs ?? 0
   const refunds = await deps.unitOfWork.execute((tx) =>
-    deps.refundRepository.lockDueRefunds(tx, { limit: deps.config.claimLimit }),
+    deps.refundRepository.lockDueRefunds(tx, {
+      limit: deps.config.claimLimit,
+      checkedBefore: new Date(deps.clock().getTime() - refundCheckIntervalMs),
+    }),
   )
 
   let refundsResolved = 0

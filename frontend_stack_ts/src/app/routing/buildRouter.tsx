@@ -1,4 +1,4 @@
-import { Suspense, lazy, useMemo } from "react"
+import { Suspense, lazy } from "react"
 import { Navigate, Route, Routes } from "react-router-dom"
 import type { ComponentType } from "react"
 
@@ -102,13 +102,5 @@ export const buildRouter = (config: RouterConfig): React.ReactElement => {
         </Routes>
       </Suspense>
     </RouteErrorBoundary>
-  )
-}
-
-export const useRouter = (config: RouterConfig): React.ReactElement => {
-  const { manifest, targets, indexRedirect, eligibility } = config
-  return useMemo(
-    () => buildRouter({ manifest, targets, indexRedirect, eligibility }),
-    [manifest, targets, indexRedirect, eligibility],
   )
 }

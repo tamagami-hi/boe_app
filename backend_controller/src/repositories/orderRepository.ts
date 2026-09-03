@@ -47,7 +47,6 @@ export interface OrderWriteRepository {
   latestCompliance: (tx: Transaction, userId: string) => Promise<LatestComplianceRow>
   createPurchase: (tx: Transaction, input: CreateOrderInput) => Promise<InvestmentOrder>
   createSipInstallment: (tx: Transaction, input: CreateSipInstallmentInput) => Promise<InvestmentOrder | null>
-  findOpenInstallment: (tx: Transaction, sipPlanId: string) => Promise<InvestmentOrder | null>
   findInstallmentByPeriod: (
     tx: Transaction,
     input: Readonly<{ sipPlanId: string; duePeriod: string }>,
@@ -116,19 +115,6 @@ export const createOrderRepository = (): OrderWriteRepository => ({
       .onConflict((builder) => builder.columns(["sip_plan_id", "due_period"])
         .where("type", "=", "sip_installment").doNothing())
       .returningAll()
-      .executeTakeFirst()
-    return row ?? null
-  },
-
-  findOpenInstallment: async (tx, sipPlanId) => {
-    const row = await tx
-      .selectFrom("investment_orders")
-      .selectAll()
-      .where("sip_plan_id", "=", sipPlanId)
-      .where("type", "=", "sip_installment")
-      .where("state", "in", ["submitted", "payment_pending"])
-      .orderBy("due_period", "desc")
-      .limit(1)
       .executeTakeFirst()
     return row ?? null
   },

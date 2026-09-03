@@ -7,7 +7,7 @@ import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { useSession } from "~/app/providers/SessionProvider"
-import { comparePaise, formatINR, rupeesToPaise, toPaise } from "~/domain/money"
+import { comparePaise, formatINR, formatRupees, rupeesToPaise, toPaise } from "~/domain/money"
 import type { Paise } from "~/domain/money"
 import { CheckoutUrlRejected, decideCheckout } from "~/features/payments/checkout"
 import {
@@ -32,12 +32,6 @@ import { RiskConsent } from "./RiskConsent"
 import { AMOUNT_BLOCK, FORM, FUND_LINE, RULE, RULES, RULE_DOT } from "./orders.recipe"
 
 const PRESETS = [1_000, 5_000, 10_000, 25_000, 50_000] as const
-
-const rupeeFormatter = new Intl.NumberFormat("en-IN", {
-  style: "currency",
-  currency: "INR",
-  maximumFractionDigits: 0,
-})
 
 const LumpsumInvestScreen = (): React.ReactElement => {
   const { fundId = "" } = useParams()
@@ -198,7 +192,7 @@ const LumpsumInvestScreen = (): React.ReactElement => {
                   label="Common amounts"
                   value={Number(rupees)}
                   options={PRESETS}
-                  format={(value) => rupeeFormatter.format(value)}
+                  format={(value) => formatRupees(value)}
                   onChange={(value) => {
                     setRupees(String(value))
                   }}

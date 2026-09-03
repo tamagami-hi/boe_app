@@ -43,7 +43,7 @@ import type { GatewayFailureLogger } from "../providers/gatewayFailure.js"
 import type { PaymentGateway } from "../providers/paymentGateway.js"
 import { runReconciliationPass, type ReconciliationSummary } from "../paymentReconciliationWorker.js"
 import { resolveWakeDelayMs } from "../domain/payments/reconciliationCadence.js"
-import { runMandateReconciliationPass } from "../mandateReconciliationWorker.js"
+import { runMandateReconciliationPass, type MandateReconciliationSummary } from "../mandateReconciliationWorker.js"
 import { runMandateCollectionPass, type MandateCollectionSummary } from "../mandateCollectionWorker.js"
 import { runSipSchedulePass, type SipScheduleSummary } from "../sipScheduleWorker.js"
 import { createApplicationReviewRepository } from "../repositories/applicationReviewRepository.js"
@@ -99,7 +99,6 @@ import { registerAdminNativeAuthRoutes } from "../routes/adminNativeAuthRoutes.j
 import type { ClientWebOriginConfig } from "../domain/auth/clientWebAuth.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 
-const PAYMENT_NOT_FOUND_GRACE_MS = 60_000
 import { createReadinessCheck, registerHealthRoutes, type ReadinessReport } from "./health.js"
 import { createMetricsRepository } from "../repositories/metricsRepository.js"
 import { parseServerConfig } from "./environment.js"
@@ -689,8 +688,12 @@ export const composeEmailDispatchWorker = (
   }
 }
 
+export interface PaymentReconciliationPassSummary extends ReconciliationSummary {
+  readonly mandateReconciliation: MandateReconciliationSummary | null
+}
+
 export interface PaymentReconciliationWorker {
-  readonly runOnce: () => Promise<ReconciliationSummary>
+  readonly runOnce: () => Promise<PaymentReconciliationPassSummary>
   readonly gatewayConfigured: boolean
   readonly dispose: () => Promise<void>
   readonly database: Kysely<Database>
@@ -716,7 +719,13 @@ export const composePaymentReconciliationWorker = (
   return {
     runOnce: async () => {
       if (gateway === null) {
-        return { attemptsChecked: 0, attemptsResolved: 0, refundsChecked: 0, refundsResolved: 0 }
+        return {
+          attemptsChecked: 0,
+          attemptsResolved: 0,
+          refundsChecked: 0,
+          refundsResolved: 0,
+          mandateReconciliation: null,
+        }
       }
       const summary = await runReconciliationPass({
         unitOfWork,
@@ -738,24 +747,23 @@ export const composePaymentReconciliationWorker = (
             serverConfig.payments.reconciliation.quarantineFailureThreshold,
         },
       })
-      if (recurringGateway !== null) {
-        await runMandateReconciliationPass({
-          unitOfWork,
-          clock: (): Date => new Date(),
-          recurringPaymentGateway: recurringGateway,
-          mandatesRepository: createMandatesRepository(),
-          paymentsRepository: createPaymentsRepository(),
-          settlementRepository: createInvestmentSettlementRepository(),
-          logger,
-          config: {
-            claimLimit: 25,
-            notFoundGraceMs: PAYMENT_NOT_FOUND_GRACE_MS,
-            cancelDispatchGraceMs: PAYMENT_NOT_FOUND_GRACE_MS,
-            cancelDispatchInFlightTimeoutMs: serverConfig.payments.recurring.requestTimeoutMs,
-          },
-        })
-      }
-      return summary
+      if (recurringGateway === null) return { ...summary, mandateReconciliation: null }
+      const mandateReconciliation = await runMandateReconciliationPass({
+        unitOfWork,
+        clock: (): Date => new Date(),
+        recurringPaymentGateway: recurringGateway,
+        mandatesRepository: createMandatesRepository(),
+        paymentsRepository: createPaymentsRepository(),
+        settlementRepository: createInvestmentSettlementRepository(),
+        logger,
+        config: {
+          claimLimit: serverConfig.payments.reconciliation.claimLimit,
+          notFoundGraceMs: serverConfig.payments.reconciliation.expiryGraceMs,
+          cancelDispatchGraceMs: serverConfig.payments.reconciliation.expiryGraceMs,
+          cancelDispatchInFlightTimeoutMs: serverConfig.payments.recurring.requestTimeoutMs,
+        },
+      })
+      return { ...summary, mandateReconciliation }
     },
     gatewayConfigured: gateway !== null,
     dispose: async () => {
@@ -808,7 +816,13 @@ export const composeMandateCollectionWorker = (
     : createRelayRecurringGateway({ config: serverConfig.payments.relay })
   return {
     runOnce: () => gateway === null
-      ? Promise.resolve({ plansChecked: 0, collectionsCreated: 0, notificationsDispatched: 0, collectionsResolved: 0 })
+      ? Promise.resolve({
+          plansChecked: 0,
+          collectionsCreated: 0,
+          notificationsDispatched: 0,
+          collectionsResolved: 0,
+          collectionsExpired: 0,
+        })
       : runMandateCollectionPass({
           unitOfWork,
           clock: (): Date => new Date(),
@@ -822,7 +836,11 @@ export const composeMandateCollectionWorker = (
           auditRepository: createAuditRepository(),
           notificationRepository: createNotificationRepository(),
           logger,
-          config: { claimLimit: 100, commandEnabled: serverConfig.payments.autoPay.collectionEnabled },
+          config: {
+            claimLimit: 100,
+            commandEnabled: serverConfig.payments.autoPay.collectionEnabled,
+            expiryGraceMs: serverConfig.payments.reconciliation.expiryGraceMs,
+          },
         }),
     gatewayConfigured: gateway !== null,
     dispose: async () => pool.end(),

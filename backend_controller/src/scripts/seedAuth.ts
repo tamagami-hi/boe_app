@@ -62,8 +62,8 @@ const trimmedOrNull = (value: string | undefined): string | null => {
 
 /** Resolve the seed-auth configuration from an environment source (pure). */
 export const resolveSeedAuthConfig = (source: Readonly<Record<string, string | undefined>>): SeedAuthConfig => {
-  const firstName = trimmedOrNull(source.ADMIN_FIRST_NAME) ?? "BeOnEdge"
-  const lastName = trimmedOrNull(source.ADMIN_LAST_NAME) ?? "Admin"
+  const firstName = trimmedOrNull(source.SEED_ADMIN_FIRST_NAME) ?? trimmedOrNull(source.ADMIN_FIRST_NAME) ?? "BeOnEdge"
+  const lastName = trimmedOrNull(source.SEED_ADMIN_LAST_NAME) ?? trimmedOrNull(source.ADMIN_LAST_NAME) ?? "Admin"
   const clientFirstName = trimmedOrNull(source.SEED_CLIENT_FIRST_NAME) ?? "BeOnEdge"
   const clientLastName = trimmedOrNull(source.SEED_CLIENT_LAST_NAME) ?? "Client"
   return {
@@ -73,7 +73,7 @@ export const resolveSeedAuthConfig = (source: Readonly<Record<string, string | u
     isProduction: source.NODE_ENV === "production",
     adminEmail: (trimmedOrNull(source.SEED_ADMIN_EMAIL) ?? trimmedOrNull(source.ADMIN_LOGIN_ID))?.toLowerCase() ?? null,
     adminPassword: trimmedOrNull(source.SEED_ADMIN_PASSWORD) ?? trimmedOrNull(source.ADMIN_PASSWORD),
-    adminPhone: trimmedOrNull(source.ADMIN_PHONE) ?? DEFAULT_ADMIN_PHONE,
+    adminPhone: trimmedOrNull(source.SEED_ADMIN_PHONE) ?? trimmedOrNull(source.ADMIN_PHONE) ?? DEFAULT_ADMIN_PHONE,
     adminFullName: `${firstName} ${lastName}`,
     clientEmail: trimmedOrNull(source.SEED_CLIENT_EMAIL)?.toLowerCase() ?? null,
     clientPassword: trimmedOrNull(source.SEED_CLIENT_PASSWORD),

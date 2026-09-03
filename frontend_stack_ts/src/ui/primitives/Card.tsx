@@ -1,11 +1,9 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react"
+import type { ReactNode } from "react"
 
 import { cx } from "~/lib/cx"
 import {
   CARD_BASE,
-  CARD_INTERACTIVE,
   CARD_TONE,
-  EYEBROW,
   SHELL,
 } from "~/ui/recipes/surface"
 
@@ -33,30 +31,3 @@ export const Card = ({ tone, elevated = false, children }: CardProps): React.Rea
   )
 }
 
-export type InteractiveCardProps = Readonly<{
-  tone?: CardTone
-  children: ReactNode
-}> &
-  Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className" | "children">
-
-export const InteractiveCard = ({
-  tone = "default",
-  children,
-  type = "button",
-  ...rest
-}: InteractiveCardProps): React.ReactElement => (
-  <div className={SHELL}>
-    <button
-      {...rest}
-      type={type}
-      data-interactive=""
-      className={cx(CARD_BASE, toneClass(tone), CARD_INTERACTIVE)}
-    >
-      {children}
-    </button>
-  </div>
-)
-
-export const Eyebrow = ({ children }: Readonly<{ children: ReactNode }>): React.ReactElement => (
-  <span className={EYEBROW}>{children}</span>
-)

@@ -1,5 +1,12 @@
 # Product
 
+> **Scope.** This document specifies the **public marketing site** at `beonedge.in`, which is
+> a separate application on separate infrastructure (AWS) and is **not in this repository**.
+> Its only interface to this repository is `POST /api/newuser`. It is **not** the scope
+> statement for the authenticated investment application built here — that product does
+> carry invest / SIP / portfolio / returns surfaces, and the education-only boundary below
+> applies to the public site alone.
+
 ## Register
 
 brand

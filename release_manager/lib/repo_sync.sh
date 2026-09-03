@@ -71,29 +71,3 @@ repo_sync_eval() {
     return 0   # populates globals only; never leak a falsy status to `set -e` callers
 }
 
-# repo_sync_notice [indent] — prints a human notice from the RS_* globals.
-repo_sync_notice() {
-    local pad="${1:-   }"
-    local b d g y r x
-    b=$'\033[1m'; d=$'\033[2m'; g=$'\033[32m'; y=$'\033[33m'; r=$'\033[31m'; x=$'\033[0m'
-    [[ -t 1 ]] || { b=''; d=''; g=''; y=''; r=''; x=''; }
-
-    printf '%s%slocal main %s%s  ↔  remote main %s%s\n' "$pad" "$d" "$RS_LOCAL_SHA" "$x" "$RS_REMOTE_SHA" "$x"
-    [[ "$RS_FETCHED" == true ]] || printf '%s%s! could not fetch origin — comparison may be stale%s\n' "$pad" "$y" "$x"
-
-    if [[ "$RS_HAS_REMOTE" != true ]]; then
-        printf '%s%s! origin/main not found — cannot compare%s\n' "$pad" "$y" "$x"; return 0
-    fi
-    if [[ "$RS_IDENTICAL" == true ]]; then
-        if [[ "$RS_DIRTY" -eq 0 ]]; then
-            printf '%s%s✓ in sync — local and remote main are identical%s\n' "$pad" "$g" "$x"
-        else
-            printf '%s%s✓ commits identical, but %s uncommitted change(s) in the main worktree%s\n' "$pad" "$y" "$RS_DIRTY" "$x"
-        fi
-    else
-        [[ "$RS_AHEAD"  -gt 0 ]] && printf '%s%s↑ local is AHEAD of remote by %s commit(s) — push to remote main%s\n' "$pad" "$y" "$RS_AHEAD" "$x"
-        [[ "$RS_BEHIND" -gt 0 ]] && printf '%s%s↓ local is BEHIND remote by %s commit(s) — pull/rebase from remote main%s\n' "$pad" "$r" "$RS_BEHIND" "$x"
-        [[ "$RS_DIRTY"  -gt 0 ]] && printf '%s%s● %s uncommitted change(s) in the main worktree%s\n' "$pad" "$y" "$RS_DIRTY" "$x"
-    fi
-    return 0
-}

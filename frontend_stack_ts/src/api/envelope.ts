@@ -39,11 +39,6 @@ export const readResponseMeta = (body: unknown): ResponseMeta => {
   }
 }
 
-export const isSuccessEnvelope = (body: unknown): boolean => {
-  const envelope = asRecord(body)
-  return envelope !== null && envelope.ok === true
-}
-
 export const readError = (body: unknown): ParsedError | null => {
   const parsed = ErrorEnvelope.safeParse(body)
   if (parsed.success) {

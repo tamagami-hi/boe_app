@@ -47,7 +47,7 @@ const NOTIFY_TRANSITIONS = {
   created: ["dispatching", "failed"],
   dispatching: ["notified", "failed"],
   notified: [],
-  failed: ["dispatching"],
+  failed: [],
 } as const satisfies Readonly<Record<MandateNotifyState, readonly MandateNotifyState[]>>
 
 const transition = <State extends string>(

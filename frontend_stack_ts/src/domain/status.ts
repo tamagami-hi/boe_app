@@ -156,17 +156,6 @@ export const sipState = (value: SipState): StatusPresentation => {
   }
 }
 
-export const sipCollectionMode = (value: SipCollectionMode): StatusPresentation => {
-  switch (value) {
-    case "manual_checkout":
-      return { label: "Pay each installment", tone: "neutral" }
-    case "phonepe_autopay":
-      return { label: "AutoPay", tone: "info" }
-    default:
-      return assertNever(value)
-  }
-}
-
 export const mandateState = (value: MandateState): StatusPresentation => {
   switch (value) {
     case "setup_pending":

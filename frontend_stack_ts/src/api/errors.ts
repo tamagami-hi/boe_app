@@ -80,6 +80,3 @@ export const isOutage = (value: unknown): boolean => {
   if (isTransportError(value)) return value.kind === "timeout" || value.kind === "offline"
   return isApiError(value) && value.status >= 500
 }
-
-export const definitionFor = (code: ErrorCode): (typeof ERROR_DEFINITIONS)[ErrorCode] =>
-  ERROR_DEFINITIONS[code]

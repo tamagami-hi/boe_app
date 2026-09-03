@@ -29,19 +29,10 @@ export const CARD_TONE: Readonly<Record<CardTone, string>> = {
   feature: "card-face-feature shadow-ambient-3 inset-shadow-lift",
 }
 
-export const CARD_INTERACTIVE = [
-  "w-full cursor-pointer border-0 text-left font-inherit text-inherit",
-  "transition-[transform,box-shadow] duration-200 ease-spring",
-  "hover:-translate-y-[3px] hover:shadow-ambient-3",
-  "active:translate-y-0 active:scale-[0.994]",
-  "motion-reduce:hover:translate-y-0",
-].join(" ")
-
 export const CARD_STACK = "flex flex-col gap-3"
 
 export const CARD_ACTION = "mt-3 self-start no-underline"
 
-export const DIVIDER = "m-0 h-px w-full border-0 divider-fade"
 
 export const CARD_LINK = "block text-inherit no-underline"
 

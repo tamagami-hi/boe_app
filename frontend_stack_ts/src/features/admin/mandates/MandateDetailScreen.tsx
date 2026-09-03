@@ -8,6 +8,7 @@ import { Section } from "~/app/layouts/Section"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDate, formatDateTime } from "~/domain/dates"
+import { formatRupees } from "~/domain/money"
 import { mandateSetupState, mandateState, sipState } from "~/domain/status"
 import { useAdminMandate, useMandateAction } from "~/features/admin/shared/adminQueries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
@@ -22,12 +23,6 @@ import { FormField, Input } from "~/ui/primitives/FormField"
 import { ADMIN_CODE, ADMIN_FIGURE } from "~/ui/recipes/admin"
 import { PROSE_SM } from "~/ui/recipes/datalist"
 import { ACTION_ROW } from "~/ui/recipes/layout"
-
-const rupees = new Intl.NumberFormat("en-IN", {
-  style: "currency",
-  currency: "INR",
-  maximumFractionDigits: 0,
-})
 
 type Confirming = "reconcile" | "cancel" | null
 
@@ -101,7 +96,7 @@ const MandateDetailScreen = (): React.ReactElement => {
                 <DetailRow label="Fund">{data.fund.name ?? "—"}</DetailRow>
                 <DetailRow label="Monthly amount">
                   <span className={ADMIN_FIGURE}>
-                    {rupees.format(data.mandate.amountPaise / 100)}
+                    {formatRupees(data.mandate.amountPaise / 100)}
                   </span>
                 </DetailRow>
                 <DetailRow label="Debit day">{String(data.sip.debitDay)}</DetailRow>
@@ -254,7 +249,7 @@ const MandateDetailScreen = (): React.ReactElement => {
                       header: "Amount",
                       numeric: true,
                       render: (row) => (
-                        <span className={ADMIN_FIGURE}>{rupees.format(row.amountPaise / 100)}</span>
+                        <span className={ADMIN_FIGURE}>{formatRupees(row.amountPaise / 100)}</span>
                       ),
                     },
                     { key: "notify", header: "Notification", render: (row) => row.notifyState },

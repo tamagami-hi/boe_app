@@ -5,4 +5,6 @@ coverage
 android/build
 android/app/build
 android/.gradle
+.kotlin
+android/.kotlin
 *.local

@@ -23,21 +23,6 @@ rollback/*
 !recent_builds/.gitkeep
 !rollback/.gitkeep
 
-BOE_APP/.env
-BOE_APP/.env.bak-*
-BOE_APP/.env.production
-BOE_APP/images/*
-!BOE_APP/images/.gitkeep
-BOE_APP/releases/*
-!BOE_APP/releases/.gitkeep
-BOE_APP/version.json
-BOE_APP/current-version.json
-BOE_APP/manifest.json
-BOE_APP/README.txt
-
-# Local copies of the VPS Postgres database — contains real user data.
-BOE_APP/db_records/
-
 # ── never, anywhere ─────────────────────────────────────────────────────────
 # Image and database archives.
 *.tar.gz

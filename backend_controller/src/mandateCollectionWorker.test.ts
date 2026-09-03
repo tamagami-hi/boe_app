@@ -111,13 +111,14 @@ describe("mandate collection timing", () => {
       auditRepository: { append: vi.fn().mockResolvedValue(undefined) },
       notificationRepository: { create: vi.fn().mockResolvedValue(undefined) },
       logger: null,
-      config: { claimLimit: 10, commandEnabled: true },
+      config: { claimLimit: 10, commandEnabled: true, expiryGraceMs: 300_000 },
     } as unknown as MandateCollectionDeps
     await expect(runMandateCollectionPass(deps)).resolves.toEqual({
       plansChecked: 1,
       collectionsCreated: 1,
       notificationsDispatched: 1,
       collectionsResolved: 0,
+      collectionsExpired: 0,
     })
     expect(notifyCollection).toHaveBeenCalledWith({
       merchantOrderId: "merchant-order-1",
@@ -212,13 +213,14 @@ describe("mandate collection timing", () => {
       auditRepository: { append: vi.fn().mockResolvedValue(undefined) },
       notificationRepository: { create: vi.fn().mockResolvedValue(undefined) },
       logger: null,
-      config: { claimLimit: 10, commandEnabled: true },
+      config: { claimLimit: 10, commandEnabled: true, expiryGraceMs: 300_000 },
     } as unknown as MandateCollectionDeps
     await expect(runMandateCollectionPass(deps)).resolves.toEqual({
       plansChecked: 1,
       collectionsCreated: 1,
       notificationsDispatched: 0,
       collectionsResolved: 0,
+      collectionsExpired: 0,
     })
     expect(applyProviderNotificationOutcome).toHaveBeenCalledWith(expect.anything(), {
       paymentAttemptId: "attempt-1",
@@ -291,15 +293,133 @@ describe("mandate collection timing", () => {
       paymentsRepository,
       settlementRepository,
       logger: null,
-      config: { claimLimit: 10, commandEnabled: false },
+      config: { claimLimit: 10, commandEnabled: false, expiryGraceMs: 300_000 },
     } as unknown as MandateCollectionDeps
     await expect(runMandateCollectionPass(deps)).resolves.toEqual({
       plansChecked: 0,
       collectionsCreated: 0,
       notificationsDispatched: 0,
       collectionsResolved: 1,
+      collectionsExpired: 0,
     })
     expect(settlementRepository.createPendingFundReceiptAcknowledgement).toHaveBeenCalledOnce()
     expect(deps.sipPlanRepository.listAutoPayDue).not.toHaveBeenCalled()
+  })
+
+  test("expires a collection the provider never resolved instead of polling it forever", async () => {
+    const now = new Date("2026-09-10T04:30:00.000Z")
+    const collection = {
+      id: "collection-1",
+      mandate_id: "mandate-1",
+      order_id: "order-1",
+      payment_attempt_id: "attempt-1",
+      amount_paise: "10000",
+      notify_state: "dispatching",
+      version: "3",
+    }
+    const attempt = {
+      id: "attempt-1",
+      payment_id: "payment-1",
+      merchant_order_id: "merchant-order-1",
+      state: "created",
+      checkout_expires_at: new Date("2026-09-08T04:30:00.000Z"),
+    }
+    const getCollectionStatus = vi.fn()
+    const applyProviderNotificationOutcome = vi.fn().mockResolvedValue({ ...collection, notify_state: "failed" })
+    const markAttemptExpired = vi.fn().mockResolvedValue(attempt)
+    const markPaymentExpired = vi.fn().mockResolvedValue({ id: "payment-1" })
+    const markOrderPaymentFailed = vi.fn().mockResolvedValue({ id: "order-1" })
+    const deps = {
+      unitOfWork: { execute: (work: (tx: never) => unknown) => work({} as never) },
+      clock: () => now,
+      recurringPaymentGateway: { getCollectionStatus },
+      sipPlanRepository: {
+        listAutoPayTermCompletionCandidates: vi.fn().mockResolvedValue([]),
+        listAutoPayDue: vi.fn().mockResolvedValue([]),
+      },
+      mandatesRepository: {
+        listCollectionReconciliationCandidates: vi.fn().mockResolvedValue([collection]),
+        applyProviderNotificationOutcome,
+      },
+      paymentsRepository: {
+        lockAttemptById: vi.fn().mockResolvedValue(attempt),
+        markAttemptExpired,
+        markPaymentExpired,
+        markOrderPaymentFailed,
+      },
+      settlementRepository: {},
+      logger: null,
+      config: { claimLimit: 10, commandEnabled: false, expiryGraceMs: 300_000 },
+    } as unknown as MandateCollectionDeps
+
+    await expect(runMandateCollectionPass(deps)).resolves.toEqual({
+      plansChecked: 0,
+      collectionsCreated: 0,
+      notificationsDispatched: 0,
+      collectionsResolved: 0,
+      collectionsExpired: 1,
+    })
+    expect(getCollectionStatus).not.toHaveBeenCalled()
+    expect(applyProviderNotificationOutcome).toHaveBeenCalledWith(expect.anything(), {
+      paymentAttemptId: "attempt-1",
+      expectedVersion: "3",
+      toState: "failed",
+      failureCode: "COLLECTION_EXPIRED",
+      now,
+    })
+    expect(markAttemptExpired).toHaveBeenCalledWith(expect.anything(), {
+      attemptId: "attempt-1",
+      providerState: "COLLECTION_EXPIRED",
+      now,
+    })
+    expect(markPaymentExpired).toHaveBeenCalledWith(expect.anything(), "payment-1", now)
+    expect(markOrderPaymentFailed).toHaveBeenCalledWith(expect.anything(), {
+      orderId: "order-1",
+      failureCode: "COLLECTION_EXPIRED",
+      now,
+    })
+  })
+
+  test("keeps polling a collection whose checkout has not yet expired", async () => {
+    const now = new Date("2026-09-07T04:30:00.000Z")
+    const collection = {
+      id: "collection-1",
+      order_id: "order-1",
+      payment_attempt_id: "attempt-1",
+      amount_paise: "10000",
+      notify_state: "notified",
+      version: "3",
+    }
+    const markAttemptExpired = vi.fn()
+    const getCollectionStatus = vi.fn().mockRejectedValue(new Error("provider unreachable"))
+    const deps = {
+      unitOfWork: { execute: (work: (tx: never) => unknown) => work({} as never) },
+      clock: () => now,
+      recurringPaymentGateway: { getCollectionStatus },
+      sipPlanRepository: {
+        listAutoPayTermCompletionCandidates: vi.fn().mockResolvedValue([]),
+        listAutoPayDue: vi.fn().mockResolvedValue([]),
+      },
+      mandatesRepository: {
+        listCollectionReconciliationCandidates: vi.fn().mockResolvedValue([collection]),
+      },
+      paymentsRepository: {
+        lockAttemptById: vi.fn().mockResolvedValue({
+          id: "attempt-1",
+          payment_id: "payment-1",
+          merchant_order_id: "merchant-order-1",
+          state: "provider_pending",
+          checkout_expires_at: new Date("2026-09-08T04:30:00.000Z"),
+        }),
+        markAttemptExpired,
+      },
+      settlementRepository: {},
+      logger: null,
+      config: { claimLimit: 10, commandEnabled: false, expiryGraceMs: 300_000 },
+    } as unknown as MandateCollectionDeps
+
+    await expect(runMandateCollectionPass(deps)).resolves.toMatchObject({ collectionsExpired: 0 })
+    expect(getCollectionStatus).toHaveBeenCalledOnce()
+    expect(markAttemptExpired).not.toHaveBeenCalled()
   })
 })

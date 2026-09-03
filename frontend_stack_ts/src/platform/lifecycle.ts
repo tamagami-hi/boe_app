@@ -58,14 +58,3 @@ export const onAppStateChange = (handler: (active: boolean) => void): Unsubscrib
   subscribe("appStateChange", (payload) => {
     handler(payload.isActive === true)
   })
-
-export const onVisibilityChange = (handler: (visible: boolean) => void): Unsubscribe => {
-  if (typeof document === "undefined") return () => undefined
-  const listener = (): void => {
-    handler(document.visibilityState === "visible")
-  }
-  document.addEventListener("visibilitychange", listener)
-  return () => {
-    document.removeEventListener("visibilitychange", listener)
-  }
-}

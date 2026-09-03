@@ -7,20 +7,16 @@ import {
   createClientOrder,
   createClientSip,
   createSupportTicket,
-  getAppConfig,
   getAutoPaySip,
   getClientEligibility,
   getClientFund,
-  getClientOrder,
   getClientPayment,
   getClientPortfolio,
-  getEmailVerificationStatus,
   getPublicDisclosures,
   getPublicGrievance,
   getPublicInvestorCharter,
   listClientFunds,
   listClientNotifications,
-  listClientOrders,
   listClientPayments,
   listClientSips,
   listClientStatements,
@@ -114,26 +110,6 @@ export const useTransactions = (): PagedQuery<DataOf<typeof listClientTransactio
   })
 }
 
-export const useOrders = (): PagedQuery<DataOf<typeof listClientOrders>> => {
-  const api = useApi()
-  return usePagedQuery({
-    queryKey: qk.client.orders(),
-    staleTime: STALE.MONEY,
-    fetchPage: async (after) =>
-      api.request(listClientOrders, { query: { limit: LIST_PAGE_LIMIT, after } }),
-  })
-}
-
-export const useOrder = (orderId: string): UseQueryResult<DataOf<typeof getClientOrder>> => {
-  const api = useApi()
-  return useQuery({
-    queryKey: [...qk.client.orders(), orderId],
-    enabled: orderId !== "",
-    staleTime: STALE.MONEY,
-    queryFn: async () => (await api.request(getClientOrder, { params: { orderId } })).data,
-  })
-}
-
 export const usePayments = (status: string): PagedQuery<DataOf<typeof listClientPayments>> => {
   const api = useApi()
   return usePagedQuery({
@@ -190,15 +166,6 @@ export const useSupportTickets = (): PagedQuery<DataOf<typeof listSupportTickets
   })
 }
 
-export const useAppConfig = (): UseQueryResult<DataOf<typeof getAppConfig>> => {
-  const api = useApi()
-  return useQuery({
-    queryKey: qk.client.appConfig(),
-    staleTime: STALE.CONFIG,
-    queryFn: async () => (await api.request(getAppConfig, { unauthenticated: true })).data,
-  })
-}
-
 export type LegalDocumentKind = "disclosures" | "investor-charter" | "grievance"
 
 const LEGAL_OPERATIONS = {
@@ -217,17 +184,6 @@ export const useLegalDocument = (
     retry: false,
     queryFn: async () =>
       (await api.request(LEGAL_OPERATIONS[kind], { unauthenticated: true })).data,
-  })
-}
-
-export const useEmailVerificationStatus = (): UseQueryResult<
-  DataOf<typeof getEmailVerificationStatus>
-> => {
-  const api = useApi()
-  return useQuery({
-    queryKey: qk.client.emailVerification(),
-    staleTime: STALE.ELIGIBILITY,
-    queryFn: async () => (await api.request(getEmailVerificationStatus)).data,
   })
 }
 

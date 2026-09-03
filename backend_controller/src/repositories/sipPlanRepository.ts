@@ -22,7 +22,6 @@ export interface SipPlanRepository {
     tx: Transaction,
     input: Readonly<{ sipPlanId: string; userId: string }>,
   ) => Promise<SipPlan | null>
-  lockByIdUnscoped: (tx: Transaction, sipPlanId: string) => Promise<SipPlan | null>
   markPaused: (tx: Transaction, sipPlanId: string, now: Date) => Promise<SipPlan | null>
   markResumed: (tx: Transaction, sipPlanId: string, now: Date) => Promise<SipPlan | null>
   markCancelled: (tx: Transaction, sipPlanId: string, now: Date) => Promise<SipPlan | null>
@@ -109,16 +108,6 @@ export const createSipPlanRepository = (): SipPlanRepository => ({
       .selectAll()
       .where("id", "=", input.sipPlanId)
       .where("user_id", "=", input.userId)
-      .forUpdate()
-      .executeTakeFirst()
-    return row ?? null
-  },
-
-  lockByIdUnscoped: async (tx, sipPlanId) => {
-    const row = await tx
-      .selectFrom("sip_plans")
-      .selectAll()
-      .where("id", "=", sipPlanId)
       .forUpdate()
       .executeTakeFirst()
     return row ?? null

@@ -36,13 +36,6 @@ const dateTimeFormatter = new Intl.DateTimeFormat(LOCALE, {
   hour12: false,
 })
 
-const timeFormatter = new Intl.DateTimeFormat(LOCALE, {
-  timeZone: TIME_ZONE,
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-})
-
 const monthFormatter = new Intl.DateTimeFormat(LOCALE, {
   timeZone: TIME_ZONE,
   month: "short",
@@ -54,8 +47,6 @@ export const formatDate = (value: string): string => dateFormatter.format(parseI
 export const formatDateTime = (value: string): string =>
   dateTimeFormatter.format(parseIsoDateTime(value))
 
-export const formatTime = (value: string): string => timeFormatter.format(parseIsoDateTime(value))
-
 export const formatMonth = (value: string): string => monthFormatter.format(parseIsoDateTime(value))
 
 const startOfUtcDay = (date: Date): number =>
@@ -63,23 +54,6 @@ const startOfUtcDay = (date: Date): number =>
 
 export const daysBetween = (from: Date, to: Date): number =>
   Math.round((startOfUtcDay(to) - startOfUtcDay(from)) / MS_PER_DAY)
-
-export const formatRelativeDay = (value: string, now: Date = new Date()): string => {
-  const target = parseIsoDateTime(value)
-  const difference = daysBetween(now, target)
-  if (difference === 0) return "Today"
-  if (difference === -1) return "Yesterday"
-  if (difference === 1) return "Tomorrow"
-  return formatDate(value)
-}
-
-export const secondsUntil = (value: string, now: Date = new Date()): number => {
-  const target = parseIsoDateTime(value)
-  return Math.max(0, Math.ceil((target.getTime() - now.getTime()) / 1000))
-}
-
-export const hasElapsed = (value: string, now: Date = new Date()): boolean =>
-  parseIsoDateTime(value).getTime() <= now.getTime()
 
 export const formatCountdown = (totalSeconds: number): string => {
   if (!Number.isFinite(totalSeconds) || totalSeconds < 0) {
@@ -93,6 +67,3 @@ export const formatCountdown = (totalSeconds: number): string => {
 
 export const DEBIT_DAY_MIN = 1
 export const DEBIT_DAY_MAX = 28
-
-export const isDebitDay = (value: number): boolean =>
-  Number.isInteger(value) && value >= DEBIT_DAY_MIN && value <= DEBIT_DAY_MAX

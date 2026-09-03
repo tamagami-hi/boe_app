@@ -269,3 +269,83 @@ describe("runReconciliationPass", () => {
     expect(harness.rescheduleAttemptReconciliation).toHaveBeenCalledOnce()
   })
 })
+
+describe("refund reconciliation cadence", () => {
+  const refundHarness = (input: Readonly<{
+    latestAttemptState: string
+    pendingIntervalMs?: number
+  }>) => {
+    const lockDueRefunds = vi.fn().mockResolvedValue([{
+      id: "refund-1",
+      merchant_refund_id: "BOE_REFUND_1",
+      payment_id: PAYMENT_ID,
+      order_id: "order-1",
+      amount_paise: "1000",
+      state: "pending",
+      provider_refund_id: null,
+    }])
+    const markStatusChecked = vi.fn().mockResolvedValue(undefined)
+    const initiateRefund = vi.fn()
+    const deps = {
+      unitOfWork: {
+        execute: <Result>(operation: (tx: Transaction) => Promise<Result>): Promise<Result> =>
+          operation({} as Transaction),
+      },
+      clock: () => NOW,
+      paymentGateway: { getOrderStatus: vi.fn(), initiateRefund } as unknown as PaymentGateway,
+      paymentsRepository: {
+        lockAttemptsForReconciliation: vi.fn().mockResolvedValue([]),
+        latestAttempt: vi.fn().mockResolvedValue({
+          id: ATTEMPT_ID,
+          merchant_order_id: MERCHANT_ORDER_ID,
+          state: input.latestAttemptState,
+        }),
+      } as unknown as PaymentsRepository,
+      refundRepository: { lockDueRefunds, markStatusChecked } as unknown as RefundRepository,
+      logger: null,
+      config: {
+        claimLimit: 2,
+        notFoundGraceMs: 300_000,
+        pendingIntervalMs: input.pendingIntervalMs ?? 30_000,
+      },
+    } as PaymentReconciliationDeps
+    return { deps, lockDueRefunds, markStatusChecked, initiateRefund }
+  }
+
+  test("claims only refunds whose status check is due", async () => {
+    const harness = refundHarness({ latestAttemptState: "succeeded" })
+    harness.initiateRefund.mockRejectedValue(new Error("provider unreachable"))
+
+    await runReconciliationPass(harness.deps)
+
+    expect(harness.lockDueRefunds).toHaveBeenCalledWith(expect.anything(), {
+      limit: 2,
+      checkedBefore: new Date(NOW.getTime() - 30_000),
+    })
+  })
+
+  test("records a status check when a refund cannot progress, so it is not re-polled immediately", async () => {
+    const harness = refundHarness({ latestAttemptState: "created" })
+
+    const summary = await runReconciliationPass(harness.deps)
+
+    expect(summary.refundsResolved).toBe(0)
+    expect(harness.initiateRefund).not.toHaveBeenCalled()
+    expect(harness.markStatusChecked).toHaveBeenCalledWith(expect.anything(), {
+      refundId: "refund-1",
+      now: NOW,
+    })
+  })
+
+  test("records a status check when the provider refuses the refund dispatch", async () => {
+    const harness = refundHarness({ latestAttemptState: "succeeded" })
+    harness.initiateRefund.mockRejectedValue(new Error("provider unreachable"))
+
+    await runReconciliationPass(harness.deps)
+
+    expect(harness.markStatusChecked).toHaveBeenCalledWith(expect.anything(), {
+      refundId: "refund-1",
+      now: NOW,
+    })
+  })
+})

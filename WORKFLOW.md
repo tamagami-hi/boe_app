@@ -64,7 +64,7 @@ git tag -a vX.Y.Z -m "release X.Y.Z" && git push origin vX.Y.Z   # 5. mark it
 
 ### How do I know what's released?
 - `./release_manager/status.sh` — branch, divergence, worktrees, **deployed version**, staged build, rollback count.
-- `release_manager/BOE_APP/current-version.json` — the version actually running.
+- `release_manager/stacks/<stack>/paths.json` names that stack's `version_file` (`dev-version.json` / `release-version.json`) — the version actually running.
 - `git tag --list 'v*'` — every published release.
 - Roll back: `./release_manager/rollback.sh`.
 
@@ -75,9 +75,12 @@ git tag -a vX.Y.Z -m "release X.Y.Z" && git push origin vX.Y.Z   # 5. mark it
    frequently**. Treat unmerged worktree work as "exists on one disk only."
    (Optional hard backup: `git bundle create ~/backups/boe-$(date +%F).bundle --all`.)
 
-2. **CI gate.** `main` is protected by `.github/workflows/ci.yml` (tests + the
-   `authz:*` invariant guards). Don't merge a surface into `main` and push if CI is
-   red — for auth/payment code that gate is the substitute for PR review.
+2. **CI gate.** `main` is protected by `.github/workflows/ci.yml`, which runs three
+   jobs — `backend`, `frontend` and `contracts`. Each runs that unit's `npm run check`,
+   which includes the architecture and scope-isolation guard tests. Don't merge a surface
+   into `main` and push if CI is red — for auth/payment code that gate is the substitute
+   for PR review. Note that `release_manager/tests/*.test.sh` and `verify.sh` are **not**
+   in CI and must be run by hand.
 
 ## Cheat sheet
 

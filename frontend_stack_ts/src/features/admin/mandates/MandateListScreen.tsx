@@ -5,6 +5,7 @@ import { isApiError } from "~/api/errors"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { formatDateTime } from "~/domain/dates"
+import { formatRupees } from "~/domain/money"
 import { mandateState, sipState } from "~/domain/status"
 import { useAdminMandates } from "~/features/admin/shared/adminQueries"
 import { AdminTable, FilterChip, FilterRow } from "~/features/admin/shared/AdminTable"
@@ -30,12 +31,6 @@ const FILTERS = [
 ] as const
 
 type Filter = (typeof FILTERS)[number]["value"]
-
-const rupees = new Intl.NumberFormat("en-IN", {
-  style: "currency",
-  currency: "INR",
-  maximumFractionDigits: 0,
-})
 
 const MandateListScreen = (): React.ReactElement => {
   const [filter, setFilter] = useState<Filter>("attention")
@@ -115,7 +110,7 @@ const MandateListScreen = (): React.ReactElement => {
                     header: "Monthly",
                     numeric: true,
                     render: (row) => (
-                      <span className={ADMIN_FIGURE}>{rupees.format(row.amountPaise / 100)}</span>
+                      <span className={ADMIN_FIGURE}>{formatRupees(row.amountPaise / 100)}</span>
                     ),
                   },
                   {

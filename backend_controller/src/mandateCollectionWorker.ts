@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 
 import type { UnitOfWork } from "./db/database.js"
-import type { SipPlan } from "./db/repositories.js"
+import type { MandateCollectionAttempt, PaymentAttempt, SipPlan } from "./db/repositories.js"
 import { createSipInstallmentOrder } from "./domain/client/createSipInstallmentOrder.js"
 import { reconcileCollectionFact } from "./domain/payments/reconcileCollectionFact.js"
 import { applyCanonicalPaymentOutcome } from "./domain/payments/applyCanonicalPaymentOutcome.js"
@@ -24,10 +24,12 @@ const NOTIFY_LEAD_MS = 24 * HOUR_MS
 const COLLECTION_EXPIRY_MS = 48 * HOUR_MS
 const IST_OFFSET_MS = 5.5 * HOUR_MS
 const DEBIT_HOUR_IST = 10
+const COLLECTION_EXPIRED_CODE = "COLLECTION_EXPIRED"
 
 export interface MandateCollectionConfig {
   readonly claimLimit: number
   readonly commandEnabled: boolean
+  readonly expiryGraceMs: number
 }
 
 export interface MandateCollectionDeps {
@@ -51,6 +53,7 @@ export interface MandateCollectionSummary {
   readonly collectionsCreated: number
   readonly notificationsDispatched: number
   readonly collectionsResolved: number
+  readonly collectionsExpired: number
 }
 
 export const scheduledDebitAt = (dueDate: Date | string): Date => {
@@ -234,20 +237,69 @@ const dispatchCollection = async (deps: MandateCollectionDeps, prepared: NonNull
   }
 }
 
-const reconcileCollections = async (deps: MandateCollectionDeps): Promise<number> => {
+const isCollectionPastExpiry = (
+  attempt: PaymentAttempt,
+  now: Date,
+  expiryGraceMs: number,
+): boolean => {
+  if (attempt.checkout_expires_at === null) return false
+  const expiresAtMs = new Date(attempt.checkout_expires_at).getTime()
+  if (!Number.isFinite(expiresAtMs)) return false
+  return now.getTime() > expiresAtMs + expiryGraceMs
+}
+
+const expireStaleCollection = async (
+  deps: MandateCollectionDeps,
+  collection: MandateCollectionAttempt,
+  attempt: PaymentAttempt,
+): Promise<boolean> => deps.unitOfWork.execute(async (tx) => {
+  const now = deps.clock()
+  if (collection.notify_state === "dispatching") {
+    const failed = await deps.mandatesRepository.applyProviderNotificationOutcome(tx, {
+      paymentAttemptId: collection.payment_attempt_id,
+      expectedVersion: collection.version,
+      toState: "failed",
+      failureCode: COLLECTION_EXPIRED_CODE,
+      now,
+    })
+    if (failed === null) return false
+  }
+  const expired = await deps.paymentsRepository.markAttemptExpired(tx, {
+    attemptId: attempt.id,
+    providerState: COLLECTION_EXPIRED_CODE,
+    now,
+  })
+  if (expired === null) return false
+  await deps.paymentsRepository.markPaymentExpired(tx, attempt.payment_id, now)
+  await deps.paymentsRepository.markOrderPaymentFailed(tx, {
+    orderId: collection.order_id,
+    failureCode: COLLECTION_EXPIRED_CODE,
+    now,
+  })
+  return true
+})
+
+const reconcileCollections = async (
+  deps: MandateCollectionDeps,
+): Promise<{ resolved: number; expired: number }> => {
   const candidates = await deps.unitOfWork.execute((tx) => deps.mandatesRepository.listCollectionReconciliationCandidates(tx, deps.config.claimLimit))
   let resolved = 0
+  let expired = 0
   for (const collection of candidates) {
     try {
       const attempt = await deps.unitOfWork.execute((tx) => deps.paymentsRepository.lockAttemptById(tx, collection.payment_attempt_id))
       if (attempt === null) continue
+      if (isCollectionPastExpiry(attempt, deps.clock(), deps.config.expiryGraceMs)) {
+        if (await expireStaleCollection(deps, collection, attempt)) expired += 1
+        continue
+      }
       const fact = await deps.recurringPaymentGateway.getCollectionStatus(attempt.merchant_order_id)
       if (await deps.unitOfWork.execute((tx) => reconcileCollectionFact(tx, deps, fact, deps.clock()))) resolved += 1
     } catch (error) {
       logGatewayFailure(deps.logger, error, { requestId: randomUUID(), operation: "get_collection_status" })
     }
   }
-  return resolved
+  return { resolved, expired }
 }
 
 const confirmActiveBeforeCollectionCreation = async (deps: MandateCollectionDeps, plan: SipPlan): Promise<boolean> => {
@@ -285,6 +337,12 @@ export const runMandateCollectionPass = async (deps: MandateCollectionDeps): Pro
     collectionsCreated += 1
     if (await dispatchCollection(deps, prepared)) notificationsDispatched += 1
   }
-  const collectionsResolved = await reconcileCollections(deps)
-  return { plansChecked: plans.length, collectionsCreated, notificationsDispatched, collectionsResolved }
+  const collections = await reconcileCollections(deps)
+  return {
+    plansChecked: plans.length,
+    collectionsCreated,
+    notificationsDispatched,
+    collectionsResolved: collections.resolved,
+    collectionsExpired: collections.expired,
+  }
 }

@@ -43,15 +43,6 @@ const main = async () => {
   }
 
   const importList = discovered.map((entry) => `  ${entry.exportName},`).join("\n")
-  const registryList = [...discovered]
-    .sort((left, right) => left.operationId.localeCompare(right.operationId))
-    .map((entry) => {
-      const key = /^[A-Za-z_$][A-Za-z0-9_$]*$/u.test(entry.operationId)
-        ? entry.operationId
-        : JSON.stringify(entry.operationId)
-      return `  ${key}: ${entry.exportName},`
-    })
-    .join("\n")
   const reexportList = discovered.map((entry) => `  ${entry.exportName},`).join("\n")
 
   const contents = `import {
@@ -61,14 +52,6 @@ ${importList}
 export {
 ${reexportList}
 }
-
-export const OPERATIONS = {
-${registryList}
-} as const
-
-export type OperationId = keyof typeof OPERATIONS
-
-export const OPERATION_IDS = Object.keys(OPERATIONS) as readonly OperationId[]
 `
 
   await writeFile(OUTPUT, contents, "utf8")

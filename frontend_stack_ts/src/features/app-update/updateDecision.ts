@@ -50,5 +50,3 @@ export const decideAppUpdate = (feed: AppUpdateFeed | null): AppUpdateDecision =
 
   return release === null ? { kind: "none" } : { kind: "optional", release }
 }
-
-export const isBlocking = (decision: AppUpdateDecision): boolean => decision.kind === "mandatory"

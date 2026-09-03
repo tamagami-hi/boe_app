@@ -1,189 +1,211 @@
 # BeOnEdge — VPS deployment
 
-The VPS runs the **backend_controller** API, the **user SPA**, the **admin SPA**, and
-**PostgreSQL** — orchestrated from `release_manager/BOE_APP/`. The marketing site is
-**not** here: it is a separate application on separate infrastructure (AWS, `beonedge.in`)
-that only posts new signups to `POST /api/newuser`. The client APK connects to this same
-backend over the public domain.
+Three independent stacks are deployed from `release_manager/`, each with its own compose
+file, `.env`, remote directory and lock:
 
-**One env file drives everything:** `release_manager/BOE_APP/.env`. Its defaults target
-localhost; going live means swapping the localhost URLs in its **PUBLIC SURFACE** block
-for your domain. Internal container wiring uses Docker service names, so nothing else moves.
+| Stack | Flag | Remote directory | What it runs |
+| ----- | ---- | ---------------- | ------------ |
+| `dev_release` | `--dev` | `/srv/dev_stack/BOE_APP/dev_release` | the development app stack |
+| `prod_release` | `--prod` | `/srv/dev_stack/BOE_APP/prod_release` | the production app stack |
+| `monitor_service` | `--monitor` | `/srv/dev_stack/BOE_APP/monitor_service` | Prometheus, Grafana, Alertmanager, Blackbox |
+
+Every remote path comes from that stack's tracked `paths.json` (schema 3). No script in
+`release_manager/` derives a remote path itself, and `verify.sh` compares each `paths.json`
+against `lib/stacks.sh` so a drifted copy fails before a deploy.
+
+The marketing site is **not** in this repository: it is a separate application on separate
+infrastructure (AWS, `beonedge.in`) whose only inbound call is `POST /api/newuser`.
+
+## What an app stack actually runs
+
+Nine services, not four. The four workers are where money and mail move.
 
 ```
                  Internet :443
                        │
-              ┌────────▼─────────┐   host nginx (TLS, NOT a container)
-              │   host nginx     │   release_manager/nginx/app.beonedge.in.conf
-              └───┬──────────┬───┘
-            /     │          │  /api/
-        ┌─────────▼──┐   ┌───▼────────┐
-        │ user SPA   │   │ backend    │◄── admin SPA + client APK connect here
-        │ :8080      │   │ :47502     │◄── AWS beonedge.in POSTs /api/newuser
-        └────────────┘   └─────┬──────┘
-                               │
-                         ┌─────▼──────┐
-                         │ postgres   │  (pgdata volume; internal network)
-                         └────────────┘
+              ┌────────▼─────────┐  host nginx (TLS, NOT a container)
+              │   host nginx     │  release_manager/nginx/*.conf
+              └──┬────────┬──────┘
+           /     │        │  /api/
+    ┌────────────▼─┐  ┌───▼──────────┐
+    │ app SPA      │  │ backend      │◄── admin SPA + both APKs
+    │ 127.0.0.1    │  │ 127.0.0.1    │◄── AWS beonedge.in POSTs /api/newuser
+    │ :47411 prod  │  │ :47413 prod  │
+    │ :47421 dev   │  │ :47423 dev   │
+    └──────────────┘  └───┬──────────┘
+    ┌──────────────┐      │
+    │ admin SPA    │      │
+    │ :47412 prod  │      │
+    │ :47422 dev   │      │
+    └──────────────┘      │
+                    ┌─────▼───────────────────────────────┐
+                    │ postgres (pgdata volume)  ·  redis  │
+                    └─────▲───────────────────────────────┘
+                          │
+   ┌──────────────────────┴──────────────────────────────────────────┐
+   │ migrate → seed → then four long-running workers:                │
+   │   payments-worker      paymentReconciliationEntrypoint.js       │
+   │   email-worker         emailWorker.js         (loop, 15 s)      │
+   │   collections-worker   mandateCollectionEntrypoint.js (60 s)    │
+   │   sips-worker          sipScheduleEntrypoint.js       (300 s)   │
+   └─────────────────────────────────────────────────────────────────┘
 ```
 
-Both app containers bind to `127.0.0.1` only; the host nginx is the sole public entry.
+`migrate` runs `npm run migrate` from the backend image with `depends_on: postgres healthy`,
+ahead of the backend, so a pending migration applies automatically on the next deploy once
+it is in the image. **Migrations are ordered before code**: a release whose code writes a
+column added by a pending migration must have that migration in the same image.
 
-## Release flow (image-based, via release_manager)
+Each worker's healthcheck reads its own `worker_heartbeats` row through
+`dist/scripts/check-worker-health.js <worker> <maxAgeSeconds>` — 120 s for payments, 60 s
+for email, 180 s for collections, 900 s for SIPs. A green healthcheck means the pass
+completed without throwing; it does **not** prove the pass did any work, because an
+unconfigured gateway or absent SMTP transport returns a zero summary and still reports
+success.
+
+Both SPA containers and the backend bind to `127.0.0.1` only; the host nginx is the sole
+public entry.
+
+## Release flow
+
+Three scripts, in this order. Only `export.sh` advances the version.
 
 ```bash
-# 1. Build machine — build + bundle the images
-./release_manager/export.sh --version 1.0.0     # or --patch / --minor / --major
+# 1. Build machine — build images and stage a bundle under release_manager/build/<stack>/
+./release_manager/export.sh --prod                 # or --dev / --monitor
+#   --with-apk     also build and stage the Android APKs for this stack
+#   --skip-build   reuse already-built images (development/monitoring only)
+#   --keep N       bundles retained per stack (default 3)
 
-# 2. Ship release_manager/ to the VPS (rsync/scp/git), then on the VPS:
-cd release_manager/BOE_APP
-cp .env.example .env            # first time only
-#   Edit .env:
-#     - PUBLIC SURFACE block: swap localhost URLs -> https://<your-domain>
-#       PUBLIC_API_BASE_URL=https://<your-domain>
-#       CORS_ORIGIN=https://<your-domain>,https://beonedge.in,https://localhost
-#       WEB_ORIGIN_ALLOWLIST=https://<your-domain>,https://localhost
-#       (WEB_ORIGIN_ALLOWLIST is authoritative; CORS_ORIGIN is the legacy fallback.
-#        `https://localhost` is the APK's own content origin — see the client note
-#        below. Never use `*`.)
-#     - Fill every CHANGE_ME secret (production hard-fails on placeholders):
-#         openssl rand -hex 48   # ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET
-#         openssl rand -hex 32   # NEWUSER_SHARED_SECRET (give it to the beonedge.in site)
-#         strong values for POSTGRES_PASSWORD, ADMIN_PASSWORD, SEED_CLIENT_PASSWORD
+# 2. Ship the newest staged bundle and run that stack's native deploy script on the VPS
+./release_manager/deploy.sh --prod
+#   --bundle DIR   ship a specific bundle instead of the newest
+#   --ship-only    upload the artifacts but do not run the remote deploy
+#   --yes, -y      skip local confirmation, and pass --yes to the remote script
+#   --force        redeploy the same version
+#   --skip-checks  pass --skip-checks to the remote script
 
-# 3. Deploy (postgres -> migrate -> seed -> backend -> SPAs, with health checks)
-cd ../..
-./release_manager/deploy.sh
-
-# Roll back if needed
-./release_manager/rollback.sh
+# 3. Roll back if needed — start with --list
+./release_manager/rollback.sh --prod --list
+./release_manager/rollback.sh --prod --to 0.12.6
+#   --latest       newest archived version that is not running
+#   --restore-db   ALSO restore that release's pre-deploy database snapshot
 ```
 
-`deploy.sh` reuses an existing `BOE_APP/.env`; the bundle's `.env` is only a first-deploy
-fallback. During VPS shipping, the script archives the active `BOE_APP/` directory and
-replaces the remote `BOE_APP/` after `docker compose down`. The VPS `.env` is restored
-into the new directory with only `BOE_VERSION` advanced, so compose uses the newly
-loaded image tags while keeping the VPS secrets/domains intact. Postgres data persists
-in the `pgdata` volume across deploys and rollbacks.
+Version labelling: a clean tree on the exact `vX.Y.Z` tag produces a stable `X.Y.Z`;
+anything else produces `<next>-dev.N.gSHA[.dirty]`. **Production deploys refuse any version
+containing `-`**, so cut a release in `status.sh` before exporting a production bundle.
+
+`release_manager/verify.sh` checks the whole contract locally (108 assertions; add
+`--remote` for the VPS checks). `release_manager/status.sh` is the interactive console for
+version state, git workflow and stack status.
+
+## Database rollback semantics
+
+**Restoring data is opt-in, not opt-out.** `rollback.sh` swaps images only unless you pass
+`--restore-db`, which is destructive: it discards transactions committed since the
+snapshot and requires typing `RESTORE` at the remote prompt.
+
+A deploy runs migrations forward before the new app starts, so an images-only rollback
+points the previous app at an already-migrated schema. That is safe only while migrations
+stay backward-compatible — see the expand/contract rule below. When a migration cannot be
+made backward-compatible, say so in the release notes: rolling back that release *requires*
+`--restore-db` and its matching snapshot.
+
+Per-stack backup roots live under `/srv/backup/BOE_APP/` (`PROD_ROLLBACK/`, `DB_BACKUPS/`,
+`LOGS/`) and are addressed through `paths.json`, never by literal path.
 
 ## Host nginx + TLS (one-time, on the VPS)
 
+`release_manager/lib/nginx_ship.sh` owns the repo-name → install-path mapping. Use it;
+installing a differently-named vhost by hand leaves two configs serving the same host.
+
+| Repository file | Installed as |
+| --------------- | ------------ |
+| `app.beonedge.in.conf` | `sites-available/boe-app` |
+| `dev-app.beonedge.in.conf` | `sites-available/boe-dev-app` |
+| `admin.tailscale.conf` | `sites-available/boe-admin-tailscale` |
+| `boe-shared.conf` | `conf.d/boe-shared.conf` |
+| `boe-security-headers.conf` | `snippets/boe-security-headers.conf` |
+
+A config in `release_manager/nginx/` with no row is reported as unroutable rather than
+shipped. After any change:
+
 ```bash
-sudo cp release_manager/nginx/app.beonedge.in.conf /etc/nginx/sites-available/beonedge.conf
-sudo sed -i 's/your-domain.tld/<your-domain>/g' /etc/nginx/sites-available/beonedge.conf
-sudo ln -s /etc/nginx/sites-available/beonedge.conf /etc/nginx/sites-enabled/
-sudo certbot --nginx -d <your-domain>        # provisions + wires TLS certs
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-`server_name` MUST equal the domain in `BOE_APP/.env` `PUBLIC_API_BASE_URL`.
-It proxies `/api/` → the backend (the `/api` prefix is stripped) and `/` → the user SPA.
+`boe-shared.conf` holds the `limit_req_zone` definitions, which are only valid in the http
+context: `boe_general` 20 r/s, `boe_auth` 5 r/m, `boe_signup` 60 r/m, `boe_monitor` 10 r/s.
+The site configs put all four login endpoints —
+`/v1/auth/{native,web,client/web,admin/native}/login` — in `boe_auth`. A new login route
+that is not added to that regex silently falls through to `boe_general`.
 
-## How admin / client connect (not containerized)
+Readiness is never public: `location /api/health/` is restricted to loopback, because
+readiness leaks dependency state and gives an unauthenticated caller a cheap liveness
+oracle. `GET /metrics` has no nginx location at all — it is guarded inside the application
+by `isPrivateRequest` (`runtime/metrics.ts:50`), which admits loopback, the Docker bridge
+and RFC1918 ranges so the monitoring stack can scrape it.
 
-- **Admin** (local `npm run dev` or app build): point its API base at `https://<your-domain>`
-  (calls hit `/v1/...`). Its dev origin (`http://localhost:5173`) is only in the local
-  `backend_controller/.env` allowlist — do not add a cleartext origin to a deployed stack.
-- **Client / Admin APK**: build with the API base = `https://<your-domain>`. The APK's own
+## How admin and the APKs connect
+
+- **Admin console in a browser**: served by the admin SPA container behind
+  `admin.tailscale.conf`. It authenticates with HttpOnly cookies on the `web` session
+  channel plus a CSRF synchroniser token.
+- **Both APKs**: built with the API base pointed at the stack's public host. The APK's own
   content origin is **`https://localhost`** (Capacitor serves the bundle over
-  `androidScheme=https`), so every request it makes carries `Origin: https://localhost`.
-  That exact string must be in `WEB_ORIGIN_ALLOWLIST` on any backend serving an APK, or
-  CORS drops every reply and the app looks entirely offline. It is not present by default
-  in a fresh `.env` — check it. `capacitor://localhost` and `http://localhost` are **not**
-  the current origins and should not be added.
+  `androidScheme=https`), so every request carries `Origin: https://localhost`. That exact
+  string must be in `WEB_ORIGIN_ALLOWLIST` on any backend serving an APK, or CORS drops
+  every reply and the app looks entirely offline. `capacitor://localhost` and
+  `http://localhost` are not the current origins and must not be added.
+  `originExamples.test.ts` pins this across all four env examples.
+- The client APK uses the `native` bearer channel; the admin APK uses `admin_native`. They
+  are separate session channels on purpose — an investor bearer token must not satisfy
+  admin authentication.
 
-## Security checklist (enforced)
+## Configuration
 
-- backend + postgres bound to `127.0.0.1`; only nginx is public (TLS-only, HTTP→HTTPS redirect).
-- `NODE_ENV=production` hard-fails on placeholder/weak secrets — fill real values.
-- Real secrets live only in the VPS's untracked `BOE_APP/.env`; the committed `.env.example`
-  keeps `CHANGE_ME` placeholders (see `release_manager/.gitignore`).
-- `POST /api/newuser` is the signup door for the AWS-hosted marketing site. Only that
-  site may call it: it presents `NEWUSER_SHARED_SECRET` in the `x-signup-key` header,
-  compared in constant time, and the route fails closed if the secret is unconfigured.
-  Origin/Referer are deliberately not used — the call is server-to-server, so those
-  headers are absent or attacker-controlled. It is additionally throttled by the
-  `boe_signup` nginx zone (10r/m per address). Signup creates a submitted application
-  but sends no email; approval queues the welcome/download email.
-- Back up Postgres: `docker compose exec postgres pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"`.
+Each stack's `.env` is created once on the VPS from the shipped `.env.example` and is never
+overwritten by a deploy:
 
-## DB-safe rollback (dump on deploy, restore on rollback)
+```bash
+cd /srv/dev_stack/BOE_APP/prod_release && cp .env.example .env && chmod 600 .env
+```
 
-A deploy runs migrations **forward** before the new app starts. If a rollback only
-restored the old *images*, the old app would be pointed at the newer, already-migrated
-schema — which can break. So the snapshot carries the data too:
+Real secrets exist only in those untracked `.env` files. `NODE_ENV=production` hard-fails
+on placeholder or weak secrets. Token signing is asymmetric ES256:
+`ACCESS_TOKEN_SIGNING_KEY` plus `ACCESS_TOKEN_VERIFICATION_KEYS`, with `REFRESH_HMAC_KEY`
+for deterministic refresh derivation — generate them with
+`npm run keys:generate` in `backend_controller`.
 
-- **`deploy.sh`** — at the *ROLLBACK SNAPSHOT* step (before the new stack migrates), it
-  `pg_dump`s the still-running database into the snapshot as `db.sql.gz`, pinned to the
-  exact release being replaced. Skipped cleanly on the first deploy (no DB yet); a dump
-  failure is non-fatal (snapshot keeps images only).
-- **`rollback.sh`** — if the chosen snapshot has a `db.sql.gz`, it brings up **Postgres
-  alone** (app down, no writers), then — after an explicit destructive-overwrite confirm —
-  drops + recreates the database and reloads the dump onto a clean schema, then starts the
-  full stack. Use `--skip-db-restore` for an images-only rollback that keeps current data.
+`envPassthrough.test.ts` enforces both directions: every backend-read key declared in a
+stack `.env.example` must be substituted into that stack's compose file, and no example may
+declare a setting nothing consumes.
 
-The `pgdata` volume still persists across deploys/rollbacks; the dump/restore is a
-point-in-time data rewind layered on top, used only when you actually roll back.
+`POST /api/newuser` is the signup door for the AWS marketing site. It presents
+`NEWUSER_SHARED_SECRET` in `x-signup-key`, compared in constant time, and fails closed if
+the secret is unconfigured. Origin and Referer are deliberately not used — the call is
+server-to-server, so those headers are absent or attacker-controlled. Signup creates a
+`submitted` application and sends no email; approval is what queues the welcome mail.
 
-## VPS DB sync on `--ship` (consistent across updates *and* migrations)
+## Migration rule: expand/contract
 
-The VPS Postgres lives in a Docker named volume. That volume survives `compose down`
-on the **same** VPS, but it does **not** travel when you move to a **different** VPS —
-a fresh host starts with an empty database. To keep data consistent across both,
-`deploy.sh --ship` synchronizes the database around the stack swap:
+Every migration must be backward-compatible with the previous app version, so the prior
+release can run against the new schema. That is what makes an images-only rollback safe.
 
-1. **Pull (always, before touching the remote):** it probes the live VPS DB and, if it
-   has data, `pg_dump`s it back to `release_manager/BOE_APP/db_records/<version>-<ts>.sql.gz`
-   (with a `latest.sql.gz` pointer; the newest `DB_RECORDS_KEEP=10` are retained). Your
-   local machine thus always holds the freshest production snapshot. *(db_records/ is
-   gitignored — it contains real user data — and is excluded from the shipped archive.)*
-2. **Seed a fresh VPS (migration):** after the stack is loaded, Postgres is brought up
-   **alone**, and if the remote DB is **empty** (new host / new volume) the latest local
-   snapshot is restored into it **before** migrations run. `compose up` then runs migrate
-   forward over that restored data, so a brand-new VPS comes up with the old VPS's data,
-   schema-upgraded to the shipped release.
-3. **Never clobbers a populated remote:** if the VPS already has data, it is left intact
-   (it was just backed up in step 1, and its `pgdata` volume persists anyway).
-
-Flags:
-
-- `--skip-db-sync` — ship the stack only; no pull, no seed.
-- `--db-force-restore` — **DESTRUCTIVE.** Restore the latest local `db_records` snapshot
-  onto the VPS *even if it already has data*, overwriting it. Use only when you
-  deliberately want local to become the source of truth.
-
-Migration in practice: ship to the old VPS once (this pulls its DB into `db_records/`),
-then point `SHIP_HOST` at the new VPS and ship again — the fresh host is detected as
-empty and seeded from that local snapshot automatically.
-
-## Migration rule: expand/contract (backward-compatible)
-
-Every migration must be **backward-compatible with the previous app version**, so the
-prior release can run against the new schema. This is what makes an *images-only* rollback
-(`--skip-db-restore`, no data rewind) safe.
-
-- **Expand (the release that needs the change):** add-only. New tables, new **nullable**
+- **Expand**, in the release that needs the change: add-only. New tables, new nullable
   columns (or columns with a default), new indexes. Never drop or rename in the same
   release that starts depending on the change.
-- **Contract (a *later* release, once nothing rolls back to the old app):** drop/rename the
-  now-unused columns or tables.
+- **Contract**, in a later release once nothing rolls back to the old app: drop or rename
+  the now-unused columns and tables.
 - Backfills run as their own step and tolerate both old and new code reading the row.
 
-When a migration genuinely cannot be made backward-compatible, treat it as a
-**data-restoring rollback only** — i.e. rolling back *requires* `db.sql.gz` (do not use
-`--skip-db-restore`), and call that out in the release notes.
+## Scaling roadmap
 
-## Scaling roadmap (build → registry → pull-deploy → staging)
+Images are built locally and shipped as tarballs over SSH. The path to scale:
 
-Today images are built locally and shipped as tarballs over SSH. The path to scale:
-
-1. **CI builds from a tag.** Pushing a release tag (e.g. `v1.2.0`) triggers CI to build the
-   backend + frontend images reproducibly from that commit — no more build-machine drift,
-   and provenance is the tag itself.
-2. **GHCR registry.** CI pushes the images to GitHub Container Registry
-   (`ghcr.io/<org>/boe-backend:<tag>`, `…/boe-app:<tag>`) instead of producing tarballs.
-3. **`compose pull` deploy.** The VPS deploy becomes `docker compose pull && up -d` against
-   the pinned tag — no `docker load`, no SSH tar upload. Rollback = pull the previous tag
-   (the DB dump/restore flow above still applies).
-4. **Staging environment.** A staging stack (own domain + DB) deploys every tag first;
-   promotion to production is re-using the *same* registry image, not a rebuild.
+1. **CI builds from a tag**, so provenance is the tag rather than a build machine.
+2. **A registry** (e.g. GHCR) receives those images instead of producing tarballs.
+3. **`compose pull` deploy** replaces `docker load` and the tar upload; rollback becomes
+   pulling the previous tag, with the snapshot flow above unchanged.
+4. **A staging stack** takes every tag first; promotion re-uses the same image.

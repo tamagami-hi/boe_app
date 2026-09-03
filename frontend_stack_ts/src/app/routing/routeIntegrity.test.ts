@@ -99,8 +99,7 @@ describe.each(MANIFESTS)("%s route manifest integrity", (_name, manifest, linkMa
   })
 })
 
-describe("client route map fixes the legacy reachability hole", () => {
-  it("gives SIP detail a list parent rather than only programmatic entry", () => {
+describe("client route map fixes the legacy reachability hole", () => {  it("gives SIP detail a list parent rather than only programmatic entry", () => {
     const detail = CLIENT_ROUTES.find((route) => route.id === "sip-detail")
     expect(detail?.back).toEqual({ kind: "parent", path: "/sips" })
     expect(CLIENT_LINK_MAP.sips).toContain("sip-detail")

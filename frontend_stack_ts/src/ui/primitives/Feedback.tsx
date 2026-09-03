@@ -4,15 +4,12 @@ import { cx } from "~/lib/cx"
 import {
   ALERT_BASE,
   ALERT_TITLE,
-  DIVIDER,
   SKELETON,
   SKELETON_CIRCLE,
   SPINNER_BASE,
   SPINNER_SIZE,
   TONE_CLASS,
 } from "~/ui/recipes/surface"
-
-export const Divider = (): React.ReactElement => <hr className={DIVIDER} />
 
 export type SpinnerProps = Readonly<{ size?: "sm" | "md"; label?: string }>
 

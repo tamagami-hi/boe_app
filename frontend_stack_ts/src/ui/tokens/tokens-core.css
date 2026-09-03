@@ -4,11 +4,6 @@
   --be-safe-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
   --be-safe-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
 
-  --be-bp-sm: 480px;
-  --be-bp-md: 768px;
-  --be-bp-lg: 1024px;
-  --be-bp-xl: 1440px;
-
   --be-ink: #0e1116;
   --be-ink-2: #1a1f27;
   --be-ink-3: #262c36;
@@ -26,7 +21,6 @@
   --be-slate-soft: color-mix(in srgb, var(--be-slate) 12%, transparent);
   --be-slate-rule: color-mix(in srgb, var(--be-slate) 16%, transparent);
   --be-slate-rule-strong: color-mix(in srgb, var(--be-slate) 28%, transparent);
-  --be-gold-soft: color-mix(in srgb, var(--be-gold) 12%, transparent);
   --be-green-soft: color-mix(in srgb, var(--be-green) 10%, transparent);
   --be-red-soft: color-mix(in srgb, var(--be-red) 10%, transparent);
   --be-amber-soft: color-mix(in srgb, var(--be-amber) 12%, transparent);
@@ -45,7 +39,6 @@
   --be-border-color: var(--be-slate-rule);
   --be-border-strong-color: var(--be-slate-rule-strong);
   --be-border-1: 1px solid var(--be-border-color);
-  --be-border-1-strong: 1px solid var(--be-border-strong-color);
   --be-focus-ring: 2px solid var(--be-ink);
   --be-focus-ring-offset: 2px;
 
@@ -64,8 +57,6 @@
   --be-font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
   --be-font-numeric: var(--be-font-body);
   --be-font-ui: var(--be-font-body);
-  --be-font-brand: var(--be-font-display);
-  --be-font-code: var(--be-font-mono);
 
   --be-text-xs: 12px;
   --be-text-sm: 13px;
@@ -84,9 +75,7 @@
   --be-tracking-tight: -0.01em;
   --be-tracking-display: -0.02em;
 
-  --be-space-1: 4px;
   --be-space-2: 8px;
-  --be-space-3: 12px;
   --be-space-4: 16px;
   --be-space-5: 20px;
   --be-space-6: 24px;
@@ -119,7 +108,6 @@
   --be-page-pad-x: var(--be-space-4);
   --be-page-pad-x-md: var(--be-space-6);
   --be-page-pad-x-lg: clamp(var(--be-space-7), 2vw, var(--be-space-10));
-  --be-page-pad-y: var(--be-space-6);
 
   --be-header-h: 56px;
   --be-nav-h: 56px;
@@ -141,6 +129,4 @@
   --be-z-overlay: 900;
   --be-z-toast: 1000;
 
-  --be-opacity-disabled: 0.4;
-  --be-opacity-backdrop: 0.5;
 }

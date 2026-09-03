@@ -59,7 +59,8 @@ describe("mandate state transitions", () => {
   test("tracks notification acknowledgement independently from collection truth", () => {
     expect(transitionNotifyState("created", "dispatching")).toBe("dispatching")
     expect(transitionNotifyState("dispatching", "notified")).toBe("notified")
-    expect(transitionNotifyState("failed", "dispatching")).toBe("dispatching")
+    expect(transitionNotifyState("dispatching", "failed")).toBe("failed")
+    expect(() => transitionNotifyState("failed", "dispatching")).toThrow("failed -> dispatching")
     expect(() => transitionNotifyState("notified", "failed")).toThrow("notified -> failed")
   })
 })

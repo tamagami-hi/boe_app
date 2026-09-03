@@ -125,7 +125,6 @@ export interface UserDetail {
 
 export interface AdminOversightRepository {
   listUsers: (tx: Transaction, query: UserListQuery) => Promise<readonly UserListRow[]>
-  findUser: (tx: Transaction, userId: string) => Promise<UserListRow | null>
   userDetail: (tx: Transaction, userId: string) => Promise<UserDetail | null>
   lockUser: (tx: Transaction, userId: string) => Promise<User | null>
   setUserAccountState: (
@@ -234,13 +233,6 @@ export const createAdminOversightRepository = (): AdminOversightRepository => ({
       limit ${query.limit}
     `.execute(tx)
     return result.rows
-  },
-
-  findUser: async (tx, userId) => {
-    const result = await sql<UserListRow>`
-      select ${USER_COLUMNS} ${USER_JOINS} where u.id = ${userId}
-    `.execute(tx)
-    return result.rows[0] ?? null
   },
 
   userDetail: async (tx, userId) => {

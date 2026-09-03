@@ -84,7 +84,3 @@ export const resolveDestination = (
 
   return { kind: "external", url: parsed.toString() }
 }
-
-export const createDestinationResolver = (
-  manifest: RouteManifest,
-): ((value: unknown) => Destination) => (value) => resolveDestination(value, manifest)

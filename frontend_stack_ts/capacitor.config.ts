@@ -4,7 +4,6 @@ export const ADMIN_ANDROID_PLUGINS = [
   "@aparajita/capacitor-secure-storage",
   "@capacitor/app",
   "@capacitor/browser",
-  "@capacitor/local-notifications",
   "@capgo/capacitor-native-biometric",
 ]
 

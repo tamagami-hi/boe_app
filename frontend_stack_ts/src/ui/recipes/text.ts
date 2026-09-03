@@ -25,8 +25,6 @@ export const SECTION_TITLE =
 
 export const CARD_TITLE = "font-display text-lg font-medium leading-snug tracking-tight text-fg"
 
-export const HERO_TITLE = "font-display text-display font-light tracking-display text-fg"
-
 export const HERO_ACCENT = "italic font-normal text-gold-deep"
 
 export const BODY_TEXT = "font-ui text-base leading-relaxed text-fg-muted"

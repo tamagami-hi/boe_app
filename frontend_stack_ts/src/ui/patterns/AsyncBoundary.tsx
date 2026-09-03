@@ -1,7 +1,6 @@
 import type { ReactNode } from "react"
 
-import { ApiError, isApiError, isTransportError } from "~/api/errors"
-import type { TransportError } from "~/api/errors"
+import { ApiError, isApiError, isSessionEnded, isTransportError } from "~/api/errors"
 import { Spinner } from "~/ui/primitives/Feedback"
 import { ErrorState } from "~/ui/patterns/ErrorState"
 import type { ErrorStateVariant } from "~/ui/patterns/ErrorState"
@@ -39,10 +38,6 @@ export const errorVariantOf = (error: unknown, notConfigured: boolean): ErrorSta
   return error.status >= 500 ? "server" : "unknown"
 }
 
-const isSessionEndingError = (error: unknown): boolean =>
-  isApiError(error) &&
-  (error.code === "AUTHENTICATION_REQUIRED" || error.code === "SESSION_INVALID")
-
 export const AsyncBoundary = <TData,>({
   query,
   skeleton,
@@ -55,7 +50,7 @@ export const AsyncBoundary = <TData,>({
   const { data, error, isPending, isFetching, refetch } = query
 
   if (error !== null && error !== undefined && data === undefined) {
-    if (isSessionEndingError(error)) return null
+    if (isSessionEnded(error)) return null
     if (fallback !== undefined && isApiError(error) && error.code === "RESOURCE_NOT_FOUND") {
       return <>{fallback}</>
     }
@@ -90,6 +85,3 @@ export const AsyncBoundary = <TData,>({
     </div>
   )
 }
-
-export const transportErrorVariant = (error: TransportError): ErrorStateVariant =>
-  errorVariantOf(error, false)

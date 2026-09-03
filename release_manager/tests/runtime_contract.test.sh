@@ -122,8 +122,10 @@ for stack in dev_release prod_release; do
         || fail_test "$stack image metadata does not declare port 8080 for app and admin"
 
     compose_file="$ROOT_DIR/release_manager/stacks/$stack/$(stack_attr "$stack" compose)"
-    grep -qF 'test: ["CMD-SHELL", "test -f /tmp/boe-worker-ready"]' "$compose_file" \
-        || fail_test "$stack has no first-pass worker readiness probe"
+    for worker in payments email collections sips; do
+        grep -qF "node dist/scripts/check-worker-health.js" "$compose_file" \
+            || fail_test "$stack has no heartbeat-based worker health probe"
+    done
     for service in app_frontend admin_frontend; do
         block="$(service_block "$compose_file" "$service")"
         grep -qE '127\.0\.0\.1:\$\{(APP|ADMIN)_FRONTEND_PORT\}:8080' <<< "$block" \
@@ -140,7 +142,7 @@ for stack in dev_release prod_release; do
     for service in payments-worker email-worker sips-worker; do
         block="$(service_block "$compose_file" "$service")"
         grep -qE 'healthcheck: \*[a-z0-9_-]+-worker-health' <<< "$block" \
-            || fail_test "$stack/$service has no first-pass readiness healthcheck"
+            || fail_test "$stack/$service has no heartbeat readiness healthcheck"
         if grep -qE '^[[:space:]]+disable:[[:space:]]+true$' <<< "$block"; then
             fail_test "$stack/$service disables worker readiness checks"
         fi
@@ -152,10 +154,6 @@ for stack in dev_release prod_release; do
         else
             grep -qE 'command: \["sh", "-ec",' <<< "$block" \
                 || fail_test "$stack/$service does not exit when a worker pass fails"
-            grep -qF 'rm -f /tmp/boe-worker-ready' <<< "$block" \
-                || fail_test "$stack/$service does not clear stale readiness on restart"
-            grep -qF 'touch /tmp/boe-worker-ready' <<< "$block" \
-                || fail_test "$stack/$service does not record a successful first pass"
         fi
         if grep -qF '|| true' <<< "$block"; then
             fail_test "$stack/$service masks worker pass failures"

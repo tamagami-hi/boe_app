@@ -104,7 +104,6 @@ export interface AuthSessionWriteRepository {
     tx: Transaction,
     input: Readonly<{ userId: UserId; channel: BearerSessionChannel }>,
   ) => Promise<readonly AuthSession[]>
-  lockActiveBySid: (tx: Transaction, sessionId: string) => Promise<AuthSession | null>
   createWebSession: (tx: Transaction, input: CreateWebSessionInput) => Promise<CreatedSession>
   rotateRefresh: (tx: Transaction, input: RotateRefreshInput) => Promise<void>
   rotateWebRefresh: (tx: Transaction, input: RotateWebRefreshInput) => Promise<void>
@@ -237,17 +236,6 @@ export const createAuthSessionRepository = (): AuthSessionWriteRepository => ({
       .orderBy("created_at", "asc")
       .orderBy("id", "asc")
       .execute(),
-
-  lockActiveBySid: async (tx, sessionId) => {
-    const row = await tx
-      .selectFrom("auth_sessions")
-      .selectAll()
-      .where("id", "=", sessionId)
-      .where("state", "=", "active")
-      .forUpdate()
-      .executeTakeFirst()
-    return row ?? null
-  },
 
   createWebSession: async (tx, input) => {
     const session = await tx

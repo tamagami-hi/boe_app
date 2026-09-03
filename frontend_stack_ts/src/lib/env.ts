@@ -44,11 +44,3 @@ export const resolveApiBase = (): string => {
 
   return `${stripTrailingSlash(window.location.origin)}/api`
 }
-
-export const assertHttpMode = (): void => {
-  if (import.meta.env.VITE_BEO_API_MODE !== "http") {
-    throw new ConfigurationError(
-      "VITE_BEO_API_MODE must be 'http'. This application has no fixture or demo mode.",
-    )
-  }
-}

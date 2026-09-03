@@ -19,7 +19,7 @@ import {
 } from "~/api/session/tokenStore"
 import type { TokenStore } from "~/api/session/tokenStore"
 import type { Principal } from "~/app/providers/SessionProvider"
-import { isAndroid, isNative } from "~/platform/capacitor"
+import { isNative } from "~/platform/capacitor"
 import { buildClientDevice, NATIVE_COMPATIBILITY_HEADERS } from "~/platform/nativeDevice"
 import { createSecureStoragePersistence } from "~/platform/secureStorage"
 
@@ -268,5 +268,3 @@ export const createClientRuntime = (): ClientRuntime => {
     },
   }
 }
-
-export const clientRequiresNativeDevice = (): boolean => isNative() && !isAndroid()

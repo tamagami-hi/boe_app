@@ -156,7 +156,6 @@ export interface MandatesRepository {
   }>) => Promise<MandateCancelCommand | null>
   createSetupAttempt: (tx: Transaction, input: CreateSetupAttemptInput) => Promise<MandateSetupAttempt>
   findSetupAttemptForOwner: (tx: Transaction, input: Readonly<{ attemptId: string; userId: string }>) => Promise<MandateSetupAttempt | null>
-  findSetupAttemptForAdmin: (tx: Transaction, attemptId: string) => Promise<MandateSetupAttempt | null>
   findSetupAttemptByMerchantOrder: (tx: Transaction, merchantOrderId: string) => Promise<MandateSetupAttempt | null>
   findLatestSetupForOwner: (tx: Transaction, input: Readonly<{ sipPlanId: string; userId: string }>) => Promise<MandateSetupAttempt | null>
   listSetupReconciliationCandidates: (tx: Transaction, limit: number) => Promise<readonly MandateSetupAttempt[]>
@@ -169,12 +168,11 @@ export interface MandatesRepository {
   recordSetupNotFound: (tx: Transaction, input: Readonly<{ merchantOrderId: string; expectedVersion: string; now: Date }>) => Promise<MandateSetupAttempt | null>
   expireSetupAfterNotFoundGrace: (tx: Transaction, input: Readonly<{ merchantOrderId: string; expectedVersion: string; notFoundObservedBefore: Date; now: Date }>) => Promise<MandateSetupAttempt | null>
   createCollectionAttempt: (tx: Transaction, input: CreateCollectionAttemptInput) => Promise<MandateCollectionAttempt>
-  findCollectionAttemptForOwner: (tx: Transaction, input: Readonly<{ attemptId: string; userId: string }>) => Promise<MandateCollectionAttempt | null>
   findCollectionAttemptForAdmin: (tx: Transaction, attemptId: string) => Promise<MandateCollectionAttempt | null>
   markCollectionAttemptReconciled: (tx: Transaction, input: Readonly<{ attemptId: string; now: Date }>) => Promise<MandateCollectionAttempt | null>
   findCollectionAttemptByMerchantOrder: (tx: Transaction, merchantOrderId: string) => Promise<MandateCollectionAttempt | null>
   listCollectionReconciliationCandidates: (tx: Transaction, limit: number) => Promise<readonly MandateCollectionAttempt[]>
-  claimCollectionNotification: (tx: Transaction, input: ClaimDispatchInput & Readonly<{ fromState: "created" | "failed" }>) => Promise<MandateCollectionAttempt | null>
+  claimCollectionNotification: (tx: Transaction, input: ClaimDispatchInput & Readonly<{ fromState: "created" }>) => Promise<MandateCollectionAttempt | null>
   applyProviderNotificationOutcome: (tx: Transaction, input: ProviderNotifyOutcomeInput) => Promise<MandateCollectionAttempt | null>
   failCollectionBeforeNotify: (tx: Transaction, input: Readonly<{
     attemptId: string
@@ -260,7 +258,7 @@ const collectionIsValid = async (tx: Transaction, input: CreateCollectionAttempt
 
 const lockCollectionNotificationChain = async (
   tx: Transaction,
-  input: ClaimDispatchInput & Readonly<{ fromState: "created" | "failed" }>,
+  input: ClaimDispatchInput & Readonly<{ fromState: "created" }>,
 ): Promise<MandateCollectionAttempt | null> => {
   const candidate = await tx.selectFrom("mandate_collection_attempts").selectAll()
     .where("id", "=", input.attemptId).where("user_id", "=", input.userId).executeTakeFirst()
@@ -603,7 +601,6 @@ export const createMandatesRepository = (): MandatesRepository => ({
   }).returningAll().executeTakeFirstOrThrow(),
 
   findSetupAttemptForOwner: async (tx, input) => (await tx.selectFrom("mandate_setup_attempts").selectAll().where("id", "=", input.attemptId).where("user_id", "=", input.userId).executeTakeFirst()) ?? null,
-  findSetupAttemptForAdmin: async (tx, attemptId) => (await tx.selectFrom("mandate_setup_attempts").selectAll().where("id", "=", attemptId).executeTakeFirst()) ?? null,
   findSetupAttemptByMerchantOrder: async (tx, merchantOrderId) => (await tx.selectFrom("mandate_setup_attempts").selectAll()
     .where("merchant_order_id", "=", merchantOrderId).executeTakeFirst()) ?? null,
   findLatestSetupForOwner: async (tx, input) => (await tx.selectFrom("mandate_setup_attempts").selectAll()
@@ -724,7 +721,6 @@ export const createMandatesRepository = (): MandatesRepository => ({
     }).returningAll().executeTakeFirstOrThrow()
   },
 
-  findCollectionAttemptForOwner: async (tx, input) => (await tx.selectFrom("mandate_collection_attempts").selectAll().where("id", "=", input.attemptId).where("user_id", "=", input.userId).executeTakeFirst()) ?? null,
   findCollectionAttemptForAdmin: async (tx, attemptId) => (await tx.selectFrom("mandate_collection_attempts").selectAll().where("id", "=", attemptId).executeTakeFirst()) ?? null,
   markCollectionAttemptReconciled: async (tx, input) => (await tx.updateTable("mandate_collection_attempts").set({
     updated_at: input.now,

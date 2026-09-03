@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import type { ReactNode } from "react"
 
-import { CLIENT_HOME_PATH, CLIENT_ROUTES } from "~/app/routing/clientRoutes"
+import { CLIENT_ROUTES } from "~/app/routing/clientRoutes"
 import { findRoute, navRoutes } from "~/app/routing/routeManifest"
 import { useSession } from "~/app/providers/SessionProvider"
 import { BackGlyph, BellGlyph, NAV_GLYPHS } from "~/shells/client/navGlyphs"
@@ -110,6 +110,3 @@ export const ClientFrame = ({ children }: ClientFrameProps): React.ReactElement 
     </div>
   )
 }
-
-export const CLIENT_TAB_IDS: readonly string[] = TABS.map((tab) => tab.id)
-export const CLIENT_DEFAULT_PATH = CLIENT_HOME_PATH

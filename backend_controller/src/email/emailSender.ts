@@ -6,8 +6,8 @@
  *  - `createSmtpEmailSender` — sends through a company mailbox over SMTP
  *    (`nodemailer`), with host/port/credentials and the `from` address supplied
  *    from the environment. This is what actually delivers Email OTP codes.
- *  - `createLogEmailSender` — a safe local/test fallback used when SMTP is not
- *    configured. It records only non-secret metadata (never the body/code).
+ *  - `createUnconfiguredEmailSender` — the fail-closed adapter used when SMTP is
+ *    not configured. It rejects rather than reporting a send that never happened.
  *
  * BE-023's Amazon SES sender can implement this same interface later so the two
  * transports coexist or swap without touching the domain.
@@ -71,17 +71,6 @@ export const createSmtpEmailSender = (config: SmtpEmailConfig): EmailSender => {
   }
 }
 
-/** Metadata-only sink for dev/test (never logs the recipient body or any code). */
-export interface EmailSendLog {
-  (metadata: Readonly<{ to: string; subject: string; fromAddress: string }>): void
-}
-
-export const createLogEmailSender = (fromAddress: string, log?: EmailSendLog): EmailSender => ({
-  send: (message) => {
-    log?.({ to: message.to, subject: message.subject, fromAddress })
-    return Promise.resolve({ messageId: null })
-  },
-})
 
 
 /**
@@ -102,7 +91,7 @@ export class EmailTransportNotConfiguredError extends Error {
  * The sender used by the outbox worker when no SMTP transport is configured. It
  * *fails* rather than quietly succeeding.
  *
- * `createLogEmailSender` was previously used for this, and it resolves
+ * A metadata-logging sender was previously used for this, and it resolved
  * successfully — so `dispatchDueDeliveries` recorded the delivery as `sent` and
  * settled the outbox event as `delivered` for a message that never left the
  * process. The database then asserted that a confirmation link had been sent to

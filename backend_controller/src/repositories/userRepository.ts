@@ -55,16 +55,15 @@ export interface UserWriteRepository {
    * the moment the decision commits. There is no invited state to pass through.
    */
   createActive: (tx: Transaction, input: CreateActiveUserInput) => Promise<User>
-  lockByEmailWithCredential: (tx: Transaction, emailNormalized: string) => Promise<UserWithCredential | null>
   /**
    * Non-locking login lookup by email, for use *outside* a transaction.
    *
-   * `lockByEmailWithCredential` takes `FOR UPDATE` on the user and credential
-   * rows, which the native login used to hold across the Argon2id verification —
-   * so two sign-ins for the same account serialized for the full verify, and each
-   * one occupied a pooled connection while doing pure CPU work. Login reads these
-   * rows and writes neither, so no lock is warranted; `findLoginIdentityById` is
-   * used to re-check the facts inside the short transaction that follows.
+   * The superseded locking variant took `FOR UPDATE` on the user and credential
+   * rows, which the native login held across the Argon2id verification — so two
+   * sign-ins for the same account serialized for the full verify, and each one
+   * occupied a pooled connection while doing pure CPU work. Login reads these
+   * rows and writes neither, so no lock is warranted; `findPasswordHash` is used
+   * to re-check the facts inside the short transaction that follows.
    */
   findLoginIdentityByEmail: (db: Transaction, emailNormalized: string) => Promise<UserLoginIdentity | null>
   /**
@@ -96,23 +95,6 @@ export const createUserRepository = (): UserWriteRepository => ({
       })
       .returningAll()
       .executeTakeFirstOrThrow(),
-
-  lockByEmailWithCredential: async (tx, emailNormalized) => {
-    const user = await tx
-      .selectFrom("users")
-      .selectAll()
-      .where("email_normalized", "=", emailNormalized)
-      .forUpdate()
-      .executeTakeFirst()
-    if (user === undefined) return null
-    const credential = await tx
-      .selectFrom("user_credentials")
-      .selectAll()
-      .where("user_id", "=", user.id)
-      .forUpdate()
-      .executeTakeFirst()
-    return { user, credential: credential ?? null }
-  },
 
   findLoginIdentityByEmail: async (db, emailNormalized) => {
     const row = await db

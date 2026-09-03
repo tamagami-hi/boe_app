@@ -1,5 +1,3 @@
-import { sql } from "kysely"
-
 import type { Transaction } from "../db/repositories.js"
 import type { WorkerHeartbeatsTable } from "../db/types.js"
 
@@ -21,7 +19,6 @@ export interface RecordHeartbeatInput {
 export interface WorkerHeartbeatRepository {
   recordHeartbeat: (tx: Transaction, input: RecordHeartbeatInput) => Promise<HeartbeatRow>
   findLatestByWorker: (tx: Transaction, workerName: string) => Promise<HeartbeatRow | null>
-  findLatestAllWorkers: (tx: Transaction) => Promise<readonly HeartbeatRow[]>
 }
 
 export const createWorkerHeartbeatRepository = (): WorkerHeartbeatRepository => ({
@@ -48,11 +45,4 @@ export const createWorkerHeartbeatRepository = (): WorkerHeartbeatRepository => 
       .orderBy("id", "desc")
       .limit(1)
       .executeTakeFirst()) as unknown as HeartbeatRow | undefined) ?? null,
-
-  findLatestAllWorkers: async (tx) =>
-    (await sql<HeartbeatRow>`
-      SELECT DISTINCT ON (worker_name) *
-      FROM worker_heartbeats
-      ORDER BY worker_name, pass_completed_at DESC, id DESC
-    `.execute(tx)).rows,
 })

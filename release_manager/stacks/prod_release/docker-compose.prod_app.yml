@@ -41,13 +41,6 @@ x-security: &security
       max-size: "10m"
       max-file: "5"
 
-x-worker-health: &worker-health
-  test: ["CMD-SHELL", "test -f /tmp/boe-worker-ready"]
-  interval: 5s
-  timeout: 2s
-  retries: 3
-  start_period: 30s
-
 x-payments-worker-health: &payments-worker-health
   test: ["CMD-SHELL", "node dist/scripts/check-worker-health.js payment_reconciliation 120"]
   interval: 30s
@@ -85,12 +78,6 @@ x-backend-env: &backend-env
   DATA_STORE: postgres
   DB_DRIVER: postgres
   DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-  DATABASE_HOST: postgres
-  DATABASE_PORT: "5432"
-  DATABASE_NAME: ${POSTGRES_DB}
-  DATABASE_USER: ${POSTGRES_USER}
-  DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
-  DATABASE_SSL: "false"
   MIGRATIONS_DIR: ./db/migrations
 
   PUBLIC_API_BASE_URL: ${PUBLIC_API_BASE_URL}
@@ -351,7 +338,7 @@ services:
     container_name: ${BOE_CONTAINER_PREFIX:-boe}-email-worker
     <<: *security
     restart: unless-stopped
-    command: ["sh", "-ec", "rm -f /tmp/boe-worker-ready; while true; do node dist/emailWorker.js; touch /tmp/boe-worker-ready; sleep ${EMAIL_WORKER_INTERVAL_SECONDS:-15}; done"]
+    command: ["sh", "-ec", "while true; do node dist/emailWorker.js; sleep ${EMAIL_WORKER_INTERVAL_SECONDS:-15}; done"]
     environment: *backend-env
     healthcheck: *email-worker-health
     depends_on:
@@ -368,7 +355,7 @@ services:
     container_name: ${BOE_CONTAINER_PREFIX:-boe}-collections-worker
     <<: *security
     restart: unless-stopped
-    command: ["sh", "-ec", "rm -f /tmp/boe-worker-ready; while true; do node dist/mandateCollectionEntrypoint.js; touch /tmp/boe-worker-ready; sleep ${COLLECTION_WORKER_INTERVAL_SECONDS:-60}; done"]
+    command: ["sh", "-ec", "while true; do node dist/mandateCollectionEntrypoint.js; sleep ${COLLECTION_WORKER_INTERVAL_SECONDS:-60}; done"]
     environment: *backend-env
     healthcheck: *collections-worker-health
     depends_on:
@@ -383,7 +370,7 @@ services:
     container_name: ${BOE_CONTAINER_PREFIX:-boe}-sips-worker
     <<: *security
     restart: unless-stopped
-    command: ["sh", "-ec", "rm -f /tmp/boe-worker-ready; while true; do node dist/sipScheduleEntrypoint.js; touch /tmp/boe-worker-ready; sleep ${SIP_WORKER_INTERVAL_SECONDS:-300}; done"]
+    command: ["sh", "-ec", "while true; do node dist/sipScheduleEntrypoint.js; sleep ${SIP_WORKER_INTERVAL_SECONDS:-300}; done"]
     environment: *backend-env
     healthcheck: *sips-worker-health
     depends_on:

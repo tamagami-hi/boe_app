@@ -301,7 +301,7 @@ describe("worker composers", () => {
     dispose.push(worker.dispose)
     expect(worker.gatewayConfigured).toBe(false)
     const summary = await worker.runOnce()
-    expect(summary).toEqual({ plansChecked: 0, collectionsCreated: 0, notificationsDispatched: 0, collectionsResolved: 0 })
+    expect(summary).toEqual({ plansChecked: 0, collectionsCreated: 0, notificationsDispatched: 0, collectionsResolved: 0, collectionsExpired: 0 })
   })
 
   test("composeMandateCollectionWorker collects through the payment service, not PhonePe", () => {

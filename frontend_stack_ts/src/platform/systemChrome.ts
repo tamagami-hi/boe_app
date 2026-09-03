@@ -31,39 +31,7 @@ const assertValidChrome = (chrome: SystemChrome): void => {
   }
 }
 
-const stack: SystemChrome[] = []
-const subscribers = new Set<(chrome: SystemChrome) => void>()
-
-export const getSystemChrome = (): SystemChrome => stack.at(-1) ?? DEFAULT_CHROME
-
-const notify = (): void => {
-  const chrome = getSystemChrome()
-  for (const subscriber of subscribers) subscriber(chrome)
-}
-
-export const pushSystemChrome = (chrome: SystemChrome): (() => void) => {
-  assertValidChrome(chrome)
-  stack.push(chrome)
-  notify()
-  let popped = false
-  return () => {
-    if (popped) return
-    popped = true
-    const index = stack.lastIndexOf(chrome)
-    if (index >= 0) stack.splice(index, 1)
-    notify()
-  }
-}
-
-export const subscribeToSystemChrome = (
-  subscriber: (chrome: SystemChrome) => void,
-): (() => void) => {
-  subscribers.add(subscriber)
-  subscriber(getSystemChrome())
-  return () => {
-    subscribers.delete(subscriber)
-  }
-}
+export const getSystemChrome = (): SystemChrome => DEFAULT_CHROME
 
 export const applySystemChrome = async (chrome: SystemChrome): Promise<void> => {
   assertValidChrome(chrome)

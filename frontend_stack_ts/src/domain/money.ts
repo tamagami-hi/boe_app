@@ -93,11 +93,15 @@ const rupeeFormatter = (showDecimals: boolean): Intl.NumberFormat =>
     maximumFractionDigits: showDecimals ? 2 : 0,
   })
 
-export const formatINR = (paise: Paise, options: FormatOptions = {}): string => {
-  const showDecimals = options.showDecimals ?? false
-  const rupees = paiseToRupees(paise)
-  const formatted = rupeeFormatter(showDecimals).format(Math.abs(rupees))
+export const formatRupees = (rupees: number, options: FormatOptions = {}): string => {
+  if (!Number.isFinite(rupees)) {
+    throw new MoneyFormatError("Amount must be a finite number")
+  }
+  const formatted = rupeeFormatter(options.showDecimals ?? false).format(Math.abs(rupees))
   if (options.showSign === true && rupees > 0) return `+${formatted}`
   if (rupees < 0) return `-${formatted}`
   return formatted
 }
+
+export const formatINR = (paise: Paise, options: FormatOptions = {}): string =>
+  formatRupees(paiseToRupees(paise), options)

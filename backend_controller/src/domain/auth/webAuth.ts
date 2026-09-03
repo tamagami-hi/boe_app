@@ -287,10 +287,10 @@ type WebIssueOutcome<TPrincipal> =
  * transaction to re-check and write.
  *
  * This path had the identical pathology — the route opened the transaction and
- * `lockByEmailWithCredential` took `FOR UPDATE` on the users row before the
- * Argon2id verification, so every in-flight admin sign-in occupied a pooled
- * connection for the duration of a hash. Fewer people hit it than the client app,
- * but the shape is the same and so is the fix.
+ * took `FOR UPDATE` on the users row before the Argon2id verification, so every
+ * in-flight admin sign-in occupied a pooled connection for the duration of a hash.
+ * Fewer people hit it than the client app, but the shape is the same and so is the
+ * fix.
  *
  * Every outcome is recorded in `auth_login_events` with the scope's channel, so
  * each browser surface has the same sign-in history the client APK has.

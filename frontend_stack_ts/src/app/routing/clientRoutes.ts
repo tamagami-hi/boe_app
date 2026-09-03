@@ -256,6 +256,6 @@ export const CLIENT_LINK_MAP: Readonly<Record<string, readonly string[]>> = {
   "profile-legal": ["investor-charter", "grievance"],
   blocked: ["profile-support", "login"],
   "invest-lumpsum": ["payment-status"],
-  "invest-sip": ["sip-detail", "payment-status"],
-  "sip-detail": ["payment-status"],
+  "invest-sip": ["sip-detail"],
+  "sip-detail": ["activity"],
 }
