@@ -21,7 +21,6 @@ export const AppUpdateGate = ({ children }: AppUpdateGateProps): React.ReactElem
     return (
       <MandatoryUpdateScreen
         release={decision.release}
-        minimumSupportedVersion={decision.minimumSupportedVersion}
         installer={installer}
         rechecking={feed.isFetching}
         onRecheck={() => {

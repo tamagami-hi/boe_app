@@ -1,3 +1,4 @@
+import { supportReference } from "~/domain/reference"
 import { Button } from "~/ui/primitives/Button"
 import {
   STATE_DESCRIPTION,
@@ -24,34 +25,32 @@ export type ErrorStateProps = Readonly<{
 
 const COPY: Readonly<Record<ErrorStateVariant, Readonly<{ title: string; description: string }>>> = {
   offline: {
-    title: "We cannot reach BeOnEdge",
-    description:
-      "Your device appears to be offline. Nothing has been lost — check your connection and try again.",
+    title: "No connection",
+    description: "We can't reach BeOnEdge. Check your connection and try again.",
   },
   timeout: {
     title: "That took too long",
-    description: "The request did not finish in time. Nothing was changed. Try again.",
+    description: "The request didn't finish in time. Nothing was changed. Please try again.",
   },
   server: {
-    title: "Something went wrong on our side",
-    description: "This is not your fault. Try again in a moment.",
+    title: "Something went wrong",
+    description: "This is on our side, not yours. Please try again in a moment.",
   },
   forbidden: {
-    title: "You do not have access to this",
-    description: "Your account does not carry the permission this screen needs.",
+    title: "Not available on this account",
+    description: "This account doesn't have access to this. Contact support if you think it should.",
   },
   notFound: {
     title: "Not found",
-    description: "This does not exist, or it is not available to your account.",
+    description: "This isn't available on your account. It may have moved or been removed.",
   },
   notConfigured: {
-    title: "Not configured in this environment",
-    description:
-      "This capability depends on a payment provider that is not set up here. It is not an error.",
+    title: "Not available right now",
+    description: "This isn't available at the moment. Please try again later.",
   },
   unknown: {
-    title: "We could not load this",
-    description: "Something unexpected happened. Quote the reference below if you contact support.",
+    title: "We couldn't load this",
+    description: "Something unexpected happened. Please try again.",
   },
 }
 
@@ -63,14 +62,12 @@ export const ErrorState = ({
 }: ErrorStateProps): React.ReactElement => {
   const copy = COPY[variant]
   const canRetry = onRetry !== undefined && variant !== "forbidden" && variant !== "notConfigured"
+  const reference = supportReference(requestId)
 
   return (
     <div className={STATE_PANEL} role="alert">
       <span className={STATE_TITLE}>{copy.title}</span>
       <p className={STATE_DESCRIPTION}>{copy.description}</p>
-      {typeof requestId === "string" && requestId !== "" ? (
-        <span className={STATE_REFERENCE}>Reference {requestId}</span>
-      ) : null}
       {canRetry ? (
         <Button tone="secondary" size="sm" onClick={onRetry}>
           {typeof retryAfterSeconds === "number" && retryAfterSeconds > 0
@@ -78,6 +75,11 @@ export const ErrorState = ({
             : "Try again"}
         </Button>
       ) : null}
+      {reference === null ? null : (
+        <span className={STATE_REFERENCE} data-support-reference={reference}>
+          Reference {reference}
+        </span>
+      )}
     </div>
   )
 }

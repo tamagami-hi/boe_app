@@ -38,10 +38,13 @@ const MAX_BODY = 5_000
 const CATEGORIES = [
   { value: "general", label: "General question" },
   { value: "payments", label: "A payment or refund" },
-  { value: "sip", label: "A SIP or mandate" },
+  { value: "sip", label: "A SIP or AutoPay" },
   { value: "account", label: "My account or sign-in" },
   { value: "statement", label: "Statements and values" },
 ] as const
+
+const categoryLabel = (value: string): string | null =>
+  CATEGORIES.find((category) => category.value === value)?.label ?? null
 
 const SupportScreen = (): React.ReactElement => {
   const faqs = useSupportFaqs()
@@ -66,7 +69,7 @@ const SupportScreen = (): React.ReactElement => {
       ? null
       : isApiError(failure)
         ? failure.message
-        : "We could not send that. Nothing was recorded — try again."
+        : "We could not send your request. Nothing was sent \u2014 please try again."
 
   const submit = (): void => {
     setSubmitted(true)
@@ -87,15 +90,15 @@ const SupportScreen = (): React.ReactElement => {
     <Page width="default">
       <PageHeader
         title="Support"
-        description="Read the published answers first, then raise a request. Every request gets a reference you can quote."
+        description="Find an answer below, or send us a message."
       />
 
       <Section title="Raise a request">
         <Card elevated>
           <div className={cx(STACK_LG, FIELD_MEASURE)}>
             {create.isSuccess && subject === "" && body === "" ? (
-              <Alert tone="success" title="We have your request">
-                It appears below with its reference. We reply by email.
+              <Alert tone="success" title="Message sent">
+                We reply by email. You can follow it below.
               </Alert>
             ) : null}
             {failureMessage === null ? null : (
@@ -156,9 +159,11 @@ const SupportScreen = (): React.ReactElement => {
               )}
             </FormField>
 
-            <span className={TICKET_COUNTER}>
-              {String(bodyTrimmed.length)} / {String(MAX_BODY)}
-            </span>
+            {bodyTrimmed.length === 0 ? null : (
+              <span className={TICKET_COUNTER}>
+                {`${String(MAX_BODY - bodyTrimmed.length)} characters left`}
+              </span>
+            )}
 
             <Button loading={create.isPending} onClick={submit} trailing>
               Send request
@@ -179,8 +184,8 @@ const SupportScreen = (): React.ReactElement => {
           isEmpty={(data) => data.items.length === 0}
           empty={
             <EmptyState
-              title="You have not raised anything yet"
-              description="Requests you send appear here with their status and our reply."
+              title="No requests yet"
+              description="Messages you send appear here, along with our reply."
             />
           }
         >
@@ -196,7 +201,9 @@ const SupportScreen = (): React.ReactElement => {
                   <p className={TICKET_BODY}>{ticket.body}</p>
                   <div className={META_ROW}>
                     <span>Raised {formatDateTime(ticket.createdAt)}</span>
-                    <span>{ticket.category}</span>
+                    {categoryLabel(ticket.category) === null ? null : (
+                      <span>{categoryLabel(ticket.category)}</span>
+                    )}
                     {ticket.resolvedAt === null ? null : (
                       <span>Resolved {formatDateTime(ticket.resolvedAt)}</span>
                     )}
@@ -224,8 +231,8 @@ const SupportScreen = (): React.ReactElement => {
           isEmpty={(data) => data.items.length === 0}
           empty={
             <EmptyState
-              title="No answers are published yet"
-              description="When an administrator publishes an FAQ it appears here."
+              title="No answers yet"
+              description="Answers to common questions will appear here."
             />
           }
         >

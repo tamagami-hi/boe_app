@@ -2,15 +2,19 @@ import { useNavigate } from "react-router-dom"
 
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
+import { useToast } from "~/app/providers/ToastProvider"
 import { CLIENT_ROUTES } from "~/app/routing/clientRoutes"
 import { resolveDestination } from "~/app/routing/resolveDestination"
 import { formatDateTime } from "~/domain/dates"
+import { describeClientFailure } from "~/domain/failure"
+import { notificationCategory } from "~/domain/notifications"
 import { useMarkNotificationRead, useNotifications } from "~/features/shared/queries"
 import { cx } from "~/lib/cx"
 import { openDestination } from "~/platform/openExternal"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { LoadMore } from "~/ui/patterns/LoadMore"
 import { EmptyState } from "~/ui/patterns/EmptyState"
+import { Badge } from "~/ui/primitives/Badge"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
@@ -30,6 +34,7 @@ const NotificationsScreen = (): React.ReactElement => {
   const query = useNotifications()
   const markRead = useMarkNotificationRead()
   const navigate = useNavigate()
+  const toast = useToast()
 
   const follow = (candidate: string): void => {
     const destination = resolveDestination(candidate, CLIENT_ROUTES)
@@ -37,15 +42,15 @@ const NotificationsScreen = (): React.ReactElement => {
       void navigate(destination.path)
       return
     }
-    void openDestination(destination)
+    void openDestination(destination).then((result) => {
+      if (result.ok) return
+      toast.show("We couldn't open that link on this device.", "error")
+    })
   }
 
   return (
     <Page width="default">
-      <PageHeader
-        title="Notifications"
-        description="Everything the backend has told your account about, newest first."
-      />
+      <PageHeader title="Notifications" description="Updates about your account and investments." />
 
       <AsyncBoundary
         query={query}
@@ -69,14 +74,13 @@ const NotificationsScreen = (): React.ReactElement => {
       >
         {(data) => (
           <>
-            <span className={COUNT_TEXT}>
-              {data.unreadCount === 0
-                ? `${String(data.items.length)} loaded`
-                : `${String(data.unreadCount)} unread on this account`}
-            </span>
+            {data.unreadCount === 0 ? null : (
+              <span className={COUNT_TEXT}>{`${String(data.unreadCount)} unread`}</span>
+            )}
             <div className={cx(CARD_STACK, CARD_COLUMNS[3])}>
               {data.items.map((item) => {
                 const link = deepLinkOf(item.payload)
+                const category = notificationCategory(item.kind)
                 return (
                   <Card key={item.id} tone={item.read ? "default" : "elevated"}>
                     <div className={STACK_SM}>
@@ -86,11 +90,13 @@ const NotificationsScreen = (): React.ReactElement => {
                         >
                           {item.title}
                         </span>
+                        {category === null ? null : (
+                          <Badge tone={category.tone}>{category.label}</Badge>
+                        )}
                       </div>
                       <p className={PROSE_SM}>{item.body}</p>
                       <div className={META_ROW}>
                         <span>{formatDateTime(item.createdAt)}</span>
-                        <span>{item.kind}</span>
                       </div>
                       <div className={cx(ACTION_ROW, "pt-1")}>
                         {link === null ? null : (
@@ -110,7 +116,14 @@ const NotificationsScreen = (): React.ReactElement => {
                             size="sm"
                             loading={markRead.isPending && markRead.variables === item.id}
                             onClick={() => {
-                              markRead.mutate(item.id)
+                              markRead.mutate(item.id, {
+                                onError: (error) => {
+                                  toast.show(
+                                    describeClientFailure(error, "markNotificationRead").message,
+                                    "error",
+                                  )
+                                },
+                              })
                             }}
                           >
                             Mark read

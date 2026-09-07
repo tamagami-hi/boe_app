@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import type { ReactNode } from "react"
 
@@ -27,12 +28,30 @@ import {
 
 const TABS = navRoutes(CLIENT_ROUTES)
 
+const TITLE_REVEAL_OFFSET = 56
+
 export type ClientFrameProps = Readonly<{ children: ReactNode }>
 
 export const ClientFrame = ({ children }: ClientFrameProps): React.ReactElement => {
   const location = useLocation()
   const navigate = useNavigate()
   const session = useSession()
+  const [titleVisible, setTitleVisible] = useState(false)
+
+  useEffect(() => {
+    const sync = (): void => {
+      setTitleVisible(window.scrollY > TITLE_REVEAL_OFFSET)
+    }
+    sync()
+    window.addEventListener("scroll", sync, { passive: true })
+    return () => {
+      window.removeEventListener("scroll", sync)
+    }
+  }, [])
+
+  useEffect(() => {
+    setTitleVisible(false)
+  }, [location.pathname])
 
   const route = findRoute(CLIENT_ROUTES, location.pathname)
   const isPublicSurface = route === null || route.access === "public"
@@ -82,7 +101,7 @@ export const ClientFrame = ({ children }: ClientFrameProps): React.ReactElement 
             <BackGlyph className={ICON_GLYPH} />
           </button>
         )}
-        <span className={CLIENT_TITLE}>{route.title}</span>
+        <span className={CLIENT_TITLE}>{titleVisible ? route.title : ""}</span>
         <Link to="/notifications" className={ICON_ACTION} aria-label="Notifications">
           <BellGlyph className={ICON_GLYPH} />
         </Link>

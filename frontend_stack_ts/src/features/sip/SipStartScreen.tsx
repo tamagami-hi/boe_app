@@ -1,13 +1,17 @@
 import { useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 
-import { isApiError } from "~/api/errors"
 import { useIdempotencyKey } from "~/api/idempotency"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { useSession } from "~/app/providers/SessionProvider"
-import { DEBIT_DAY_MAX, DEBIT_DAY_MIN } from "~/domain/dates"
+import {
+  AUTOPAY_NOT_RECORDED,
+  PAYMENT_LINK_REJECTED,
+  describeClientFailure,
+} from "~/domain/failure"
+import type { ClientFailure } from "~/domain/failure"
 import { comparePaise, formatINR, rupeesToPaise, toPaise } from "~/domain/money"
 import type { Paise } from "~/domain/money"
 import { CheckoutUrlRejected, decideCheckout } from "~/features/payments/checkout"
@@ -40,8 +44,6 @@ const DEBIT_DAYS = [1, 5, 10, 15, 20, 25] as const
 
 type Mode = "manual_checkout" | "phonepe_autopay"
 
-type Failure = Readonly<{ title: string; body: string }>
-
 const SipStartScreen = (): React.ReactElement => {
   const { fundId = "" } = useParams()
   const fund = useFund(fundId)
@@ -55,7 +57,7 @@ const SipStartScreen = (): React.ReactElement => {
   const [durationMonths, setDurationMonths] = useState<number>(12)
   const [debitDay, setDebitDay] = useState<number>(1)
   const [submitted, setSubmitted] = useState(false)
-  const [failure, setFailure] = useState<Failure | null>(null)
+  const [failure, setFailure] = useState<ClientFailure | null>(null)
   const store = useMemo(browserPendingPaymentStore, [])
 
   const minimum: Paise | null = useMemo(() => {
@@ -81,12 +83,12 @@ const SipStartScreen = (): React.ReactElement => {
       : minimum !== null && comparePaise(amountPaise, minimum) < 0
         ? `The minimum for this fund is ${formatINR(minimum)} a month.`
         : overAutoPayCap
-          ? `AutoPay mandates are capped at ₹${AUTOPAY_MAX_RUPEES.toLocaleString("en-IN")} a month. Use manual checkout for more.`
+          ? `AutoPay is limited to ₹${AUTOPAY_MAX_RUPEES.toLocaleString("en-IN")} a month. Choose manual payments for more.`
           : undefined
 
   const durationError =
     durationMonths < 1 || durationMonths > maxMonths
-      ? `Choose between 1 and ${String(maxMonths)} months.`
+      ? `Choose a length between 1 and ${String(maxMonths)} months.`
       : undefined
 
   const idempotencyKey = useIdempotencyKey({
@@ -99,28 +101,10 @@ const SipStartScreen = (): React.ReactElement => {
   const pending = createSip.isPending || startAutoPay.isPending
   const ready = amountError === undefined && durationError === undefined && !pending
 
-  const describeFailure = (error: unknown): string => {
-    const autoPay = mode === "phonepe_autopay"
-    if (error instanceof CheckoutUrlRejected) {
-      return "The mandate page we were sent is not one we will open. No mandate has been authorised and nothing has been debited. The plan is waiting for authorisation under SIP plans."
-    }
-    if (!isApiError(error)) {
-      return autoPay
-        ? "We could not reach the service, so we cannot say whether the plan was created. Check SIP plans before trying again. No mandate has been authorised and nothing has been debited."
-        : "We could not reach the service. No SIP has been created."
-    }
-    if (error.code === "DEPENDENCY_UNAVAILABLE") {
-      return autoPay
-        ? "PhonePe would not accept the mandate, so no mandate is active and nothing has been debited. Check SIP plans: if the plan was created it is there, waiting for authorisation, and you can try authorising it again. Manual checkout works in the meantime — each installment becomes an ordinary payable order."
-        : "The service is not accepting SIP plans right now. Nothing has been created."
-    }
-    if (error.code === "STATE_CONFLICT") {
-      return autoPay
-        ? "We could not start this authorisation. If the plan was already created it is under SIP plans, waiting for authorisation — open it there and authorise it again. Otherwise this fund cannot take a SIP right now, or your account is not yet eligible."
-        : "This fund cannot take a SIP right now, or your account is not yet eligible."
-    }
-    return error.message
-  }
+  const describeFailure = (error: unknown): ClientFailure =>
+    error instanceof CheckoutUrlRejected
+      ? PAYMENT_LINK_REJECTED
+      : describeClientFailure(error, mode === "phonepe_autopay" ? "authoriseAutoPay" : "createSip")
 
   const start = (): void => {
     setSubmitted(true)
@@ -132,7 +116,7 @@ const SipStartScreen = (): React.ReactElement => {
         { fundId, amountPaise, debitDay, durationMonths },
         {
           onError: (error) => {
-            setFailure({ title: "Nothing was created", body: describeFailure(error) })
+            setFailure(describeFailure(error))
           },
           onSuccess: (plan) => {
             void navigate(`/sips/${plan.sipId}`, { replace: true })
@@ -146,7 +130,7 @@ const SipStartScreen = (): React.ReactElement => {
       { fundId, amountPaise, debitDay, durationMonths, idempotencyKey },
       {
         onError: (error) => {
-          setFailure({ title: "The mandate was not authorised", body: describeFailure(error) })
+          setFailure(describeFailure(error))
         },
         onSuccess: (setup) => {
           let decision
@@ -158,7 +142,7 @@ const SipStartScreen = (): React.ReactElement => {
               checkout: setup.checkout,
             })
           } catch (error) {
-            setFailure({ title: "The mandate was not authorised", body: describeFailure(error) })
+            setFailure(describeFailure(error))
             return
           }
 
@@ -173,10 +157,7 @@ const SipStartScreen = (): React.ReactElement => {
                 expiresAt: Date.now() + PENDING_PAYMENT_TTL_MS,
               })
             } catch {
-              setFailure({
-                title: "We stopped before the mandate page",
-                body: "This device would not record the authorisation, so we did not send you to PhonePe. No mandate has been authorised and nothing has been debited. The plan exists and is waiting for authorisation — open it under SIP plans, or try again on another device.",
-              })
+              setFailure(AUTOPAY_NOT_RECORDED)
               return
             }
             window.location.assign(decision.url)
@@ -192,7 +173,7 @@ const SipStartScreen = (): React.ReactElement => {
     <Page width="form">
       <PageHeader
         title="Start a SIP"
-        description="A standing plan to invest the same amount every month. You choose how it is paid."
+        description="Invest the same amount in this fund every month."
       />
 
       <AsyncBoundary
@@ -238,15 +219,15 @@ const SipStartScreen = (): React.ReactElement => {
                 options={[
                   {
                     value: "manual_checkout",
-                    label: "Manual checkout",
-                    hint: "Nothing is ever debited automatically. Each month's installment becomes an ordinary payable order in Activity and you pay it like a lump sum.",
+                    label: "Pay each month myself",
+                    hint: "Nothing is taken automatically. Each month you get an instalment to pay in Activity, just like a one-off investment.",
                   },
                   {
                     value: "phonepe_autopay",
                     label: "PhonePe UPI AutoPay",
                     hint: isNative()
-                      ? "You authorise a mandate once. PhonePe notifies you 24 hours ahead and debits at 10:00 IST. Capped at ₹15,000 a month."
-                      : "Authorising a mandate needs the Android app. You can still choose it here, but the authorisation step will ask you to continue on the app.",
+                      ? "Authorise once, then each instalment is collected on your chosen day. PhonePe tells you a day before. Up to ₹15,000 a month."
+                      : "Setting up AutoPay needs the BeOnEdge Android app. You can choose it here and finish the setup there.",
                   },
                 ]}
               />
@@ -268,7 +249,7 @@ const SipStartScreen = (): React.ReactElement => {
               </div>
 
               <div className={SIP_FIELD}>
-                <span className={STAT_LABEL}>Debit day</span>
+                <span className={STAT_LABEL}>Collection day</span>
                 <PresetChoice
                   label="Day of the month"
                   value={debitDay}
@@ -277,8 +258,7 @@ const SipStartScreen = (): React.ReactElement => {
                   onChange={setDebitDay}
                 />
                 <span className={SIP_HINT}>
-                  Any day from {String(DEBIT_DAY_MIN)} to {String(DEBIT_DAY_MAX)}. Later days do not
-                  exist in every month, so we do not offer them.
+                  The day each month your instalment is collected.
                 </span>
               </div>
             </Card>
@@ -289,17 +269,17 @@ const SipStartScreen = (): React.ReactElement => {
                 <MoneyValue amount={amountPaise} size="lg" />
                 <div className={SIP_SUMMARY}>
                   <div className={STAT_ROOT}>
-                    <span className={STAT_LABEL}>Installments</span>
+                    <span className={STAT_LABEL}>Instalments</span>
                     <span className={ITEM_TITLE}>{String(durationMonths)}</span>
                   </div>
                   <div className={STAT_ROOT}>
-                    <span className={STAT_LABEL}>Debit day</span>
+                    <span className={STAT_LABEL}>Collection day</span>
                     <span className={ITEM_TITLE}>{String(debitDay)}</span>
                   </div>
                   <div className={STAT_ROOT}>
-                    <span className={STAT_LABEL}>Mode</span>
+                    <span className={STAT_LABEL}>Paid by</span>
                     <span className={ITEM_TITLE}>
-                      {mode === "manual_checkout" ? "Manual" : "AutoPay"}
+                      {mode === "manual_checkout" ? "You, each month" : "AutoPay"}
                     </span>
                   </div>
                 </div>
@@ -308,19 +288,18 @@ const SipStartScreen = (): React.ReactElement => {
 
             {failure === null ? null : (
               <Alert tone="error" title={failure.title}>
-                {failure.body}
+                {failure.message}
               </Alert>
             )}
 
             <Button fullWidth loading={pending} onClick={start} trailing>
-              {mode === "manual_checkout" ? "Create the SIP" : "Authorise the mandate"}
+              {mode === "manual_checkout" ? "Create the SIP" : "Set up AutoPay"}
             </Button>
 
-            <Section title="What a SIP does not do">
+            <Section title="Worth knowing">
               <p className={HONESTY_TEXT}>
-                A SIP does not average away risk and it does not promise a return. It commits you to
-                a monthly amount you can stop at any time. Returning from the UPI app does not mean a
-                mandate was authorised — only the mandate state we hold does.
+                A SIP does not remove risk and it does not promise a return. It commits you to a
+                monthly amount, and you can pause or stop it at any time.
               </p>
             </Section>
           </div>

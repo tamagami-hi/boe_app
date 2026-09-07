@@ -34,8 +34,16 @@ export const backPolicy = (input: BackPolicyInput): BackPolicy => resolveClientB
 
 export const probeReachability = (): Promise<boolean> => createClientRuntime().probeReachability()
 
-const confirmTransactionalBack = (): boolean =>
-  !window.confirm("Leave this screen? Your entry will not be submitted.")
+const UNSAVED_ENTRY_PROMPTS: Readonly<Record<string, string>> = {
+  "/invest/lumpsum": "Leave without investing? Nothing will be submitted.",
+  "/invest/sip": "Leave without setting up this SIP? Nothing will be submitted.",
+}
+
+const confirmTransactionalBack = ({ pathname }: Readonly<{ pathname: string }>): boolean => {
+  const suffix = Object.keys(UNSAVED_ENTRY_PROMPTS).find((candidate) => pathname.endsWith(candidate))
+  if (suffix === undefined) return false
+  return !window.confirm(UNSAVED_ENTRY_PROMPTS[suffix] ?? "")
+}
 
 const ClientShellRoot = (): React.ReactElement => {
   const [runtime] = useState(createClientRuntime)

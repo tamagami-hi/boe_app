@@ -88,15 +88,15 @@ export const LegalDocumentScreen = ({
           const sections = readSections(document)
           const contacts = readContacts(document)
           const body = asString(document.body)
+          const isPublished = body !== null || sections.length > 0 || contacts.length > 0
 
           return (
             <Card>
-              <div className={META_ROW}>
-                <span>Version {String(data.version)}</span>
-                {data.updatedAt === null ? null : (
+              {!isPublished || data.updatedAt === null ? null : (
+                <div className={META_ROW}>
                   <span>Updated {formatDate(data.updatedAt)}</span>
-                )}
-              </div>
+                </div>
+              )}
 
               {body === null ? null : <Prose>{body}</Prose>}
 
@@ -118,9 +118,7 @@ export const LegalDocumentScreen = ({
                 </ul>
               )}
 
-              {body === null && sections.length === 0 && contacts.length === 0 ? (
-                <Prose>{fallback}</Prose>
-              ) : null}
+              {isPublished ? null : <Prose>{fallback}</Prose>}
             </Card>
           )
         }}

@@ -61,15 +61,15 @@ export type SupportRequestState = ContractSupportRequestState
 export const clientInvestmentStatus = (value: ClientInvestmentStatus): StatusPresentation => {
   switch (value) {
     case "payment_in_progress":
-      return { label: "Payment in progress", tone: "info" }
+      return { label: "Awaiting payment", tone: "info" }
     case "processing":
-      return { label: "Processing", tone: "info" }
+      return { label: "Being invested", tone: "info" }
     case "confirmed":
-      return { label: "Confirmed", tone: "positive" }
+      return { label: "Invested", tone: "positive" }
     case "refund_in_progress":
       return { label: "Refund in progress", tone: "warning" }
     case "support_required":
-      return { label: "Needs support", tone: "warning" }
+      return { label: "Needs review", tone: "warning" }
     case "refunded":
       return { label: "Refunded", tone: "neutral" }
     case "payment_failed":

@@ -77,8 +77,8 @@ export const AsyncBoundary = <TData,>({
     <div className={STATE_STACK}>
       {isFetching === true && !isPending ? (
         <span className={STATE_REFRESHING}>
-          <Spinner size="sm" label="Refreshing" />
-          Refreshing
+          <Spinner size="sm" label="Updating" />
+          Updating
         </span>
       ) : null}
       {emptyRendering ?? children(data)}

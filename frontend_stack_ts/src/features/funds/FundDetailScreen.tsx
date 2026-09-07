@@ -4,6 +4,7 @@ import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { formatDate } from "~/domain/dates"
+import { monthsLabel } from "~/domain/plural"
 import { toPaise } from "~/domain/money"
 import { fundRiskLevel } from "~/domain/status"
 import { useEligibility, useFund } from "~/features/shared/queries"
@@ -22,10 +23,10 @@ import { META_MUTED } from "~/ui/recipes/text"
 const Row = ({
   label,
   children,
-}: Readonly<{ label: string; children: React.ReactNode }>): React.ReactElement => (
+}: Readonly<{ label: string; children?: React.ReactNode }>): React.ReactElement => (
   <div className={FUND_DETAIL_ROW}>
     <span className={LIST_LABEL}>{label}</span>
-    <span className={LIST_VALUE}>{children}</span>
+    {children === undefined ? null : <span className={LIST_VALUE}>{children}</span>}
   </div>
 )
 
@@ -63,61 +64,47 @@ const FundDetailScreen = (): React.ReactElement => {
               <Card elevated>
                 <span className={META_MUTED}>Fund size</span>
                 <MoneyValue amount={toPaise(fund.fundSize.aumPaise)} size="xl" />
-                <span className={META_MUTED}>
-                  {fund.fundSize.asOfDate === null
-                    ? "As-of date not published"
-                    : `As of ${formatDate(`${fund.fundSize.asOfDate}T00:00:00Z`)}`}
-                </span>
+                {fund.fundSize.asOfDate === null ? null : (
+                  <span className={META_MUTED}>
+                    {`As of ${formatDate(`${fund.fundSize.asOfDate}T00:00:00Z`)}`}
+                  </span>
+                )}
               </Card>
             )}
 
-            <Section title="Terms">
+            <Section title="What you need to know">
               <div className={FUND_DETAIL_LIST}>
-                <Row label="Minimum lump sum">
-                  {fund.minimumPurchasePaise === null ? (
-                    "Not set"
-                  ) : (
+                {fund.minimumPurchasePaise === null ? null : (
+                  <Row label="Minimum one-off investment">
                     <MoneyValue amount={toPaise(fund.minimumPurchasePaise)} size="sm" />
-                  )}
-                </Row>
-                <Row label="Minimum SIP">
-                  {fund.minimumSipPaise === null ? (
-                    "Not set"
-                  ) : (
+                  </Row>
+                )}
+                {fund.minimumSipPaise === null ? null : (
+                  <Row label="Minimum monthly SIP">
                     <MoneyValue amount={toPaise(fund.minimumSipPaise)} size="sm" />
-                  )}
-                </Row>
-                <Row label="Minimum duration">
-                  {fund.minimumDurationMonths === null
-                    ? "Not set"
-                    : `${String(fund.minimumDurationMonths)} months`}
-                </Row>
-                <Row label="Recommended holding">
-                  {fund.recommendedHoldingMonths === null
-                    ? "Not set"
-                    : `${String(fund.recommendedHoldingMonths)} months`}
-                </Row>
-                <Row label="Disclosed holdings">{String(fund.stockCount)}</Row>
-                <Row label="Published version">{String(fund.version)}</Row>
+                  </Row>
+                )}
+                {fund.minimumDurationMonths === null ? null : (
+                  <Row label="Minimum term">{monthsLabel(fund.minimumDurationMonths)}</Row>
+                )}
+                {fund.recommendedHoldingMonths === null ? null : (
+                  <Row label="Suggested holding period">
+                    {monthsLabel(fund.recommendedHoldingMonths)}
+                  </Row>
+                )}
               </div>
             </Section>
 
             {stocks.length === 0 ? null : (
               <Section
-                title="Disclosed holdings"
-                description={
-                  quarter === null
-                    ? "Published by the fund administrator."
-                    : `Published by the fund administrator for ${quarter}.`
-                }
+                title="Holdings"
+                {...(quarter === null ? {} : { description: `As disclosed for ${quarter}.` })}
               >
                 {weighted.length === 0 ? (
                   <Card>
                     <div className={FUND_DETAIL_LIST}>
                       {stocks.map((stock) => (
-                        <Row key={stock.stockName} label={stock.stockName}>
-                          Weight not disclosed
-                        </Row>
+                        <Row key={stock.stockName} label={stock.stockName} />
                       ))}
                     </div>
                   </Card>
@@ -162,13 +149,13 @@ const FundDetailScreen = (): React.ReactElement => {
                 </div>
               ) : (
                 <Alert tone="warning" title="Verify your email to invest">
-                  Investing unlocks once your email is verified. Nothing about this fund is hidden
-                  from you in the meantime.
+                  You can read everything about this fund now. Verifying your email unlocks
+                  investing.
                 </Alert>
               )}
             </Section>
 
-            <Section title="Regulatory">
+            <Section title="Investor information">
               <div className={FUND_ACTIONS}>
                 <Link to="/profile/legal/investor-charter">
                   <Button tone="ghost" size="sm">

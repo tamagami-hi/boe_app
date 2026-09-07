@@ -1,12 +1,17 @@
 import { useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 
-import { isApiError } from "~/api/errors"
 import { useIdempotencyKey } from "~/api/idempotency"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { useSession } from "~/app/providers/SessionProvider"
+import {
+  PAYMENT_LINK_REJECTED,
+  PAYMENT_NOT_RECORDED,
+  describeClientFailure,
+} from "~/domain/failure"
+import type { ClientFailure } from "~/domain/failure"
 import { comparePaise, formatINR, formatRupees, rupeesToPaise, toPaise } from "~/domain/money"
 import type { Paise } from "~/domain/money"
 import { CheckoutUrlRejected, decideCheckout } from "~/features/payments/checkout"
@@ -44,7 +49,7 @@ const LumpsumInvestScreen = (): React.ReactElement => {
   const [rupees, setRupees] = useState("")
   const [consented, setConsented] = useState(false)
   const [submitted, setSubmitted] = useState(false)
-  const [failure, setFailure] = useState<string | null>(null)
+  const [failure, setFailure] = useState<ClientFailure | null>(null)
   const store = useMemo(browserPendingPaymentStore, [])
 
   const minimum: Paise | null = useMemo(() => {
@@ -76,21 +81,10 @@ const LumpsumInvestScreen = (): React.ReactElement => {
   const pending = createOrder.isPending || payOrder.isPending
   const ready = amountError === undefined && consented && !pending
 
-  const describeFailure = (error: unknown): string => {
-    if (error instanceof CheckoutUrlRejected) {
-      return "The payment page we were sent is not one we will open. Nothing has been charged. Contact support with the reference on this screen."
-    }
-    if (!isApiError(error)) {
-      return "We could not reach the payment service. Nothing has been charged. Check your connection and try again."
-    }
-    if (error.code === "DEPENDENCY_UNAVAILABLE") {
-      return "The payment provider is not available right now. Your order exists; open it from Activity to try paying again."
-    }
-    if (error.code === "STATE_CONFLICT") {
-      return "This order is no longer payable. Open it from Activity to see where it stands."
-    }
-    return error.message
-  }
+  const describeFailure = (error: unknown, stage: "createInvestmentOrder" | "payInvestmentOrder"): ClientFailure =>
+    error instanceof CheckoutUrlRejected
+      ? PAYMENT_LINK_REJECTED
+      : describeClientFailure(error, stage)
 
   const start = (): void => {
     setSubmitted(true)
@@ -101,21 +95,21 @@ const LumpsumInvestScreen = (): React.ReactElement => {
       { fundId, amountPaise, idempotencyKey },
       {
         onError: (error) => {
-          setFailure(describeFailure(error))
+          setFailure(describeFailure(error, "createInvestmentOrder"))
         },
         onSuccess: (order) => {
           payOrder.mutate(
             { orderId: order.orderId, idempotencyKey: `${idempotencyKey}-pay` },
             {
               onError: (error) => {
-                setFailure(describeFailure(error))
+                setFailure(describeFailure(error, "payInvestmentOrder"))
               },
               onSuccess: (outcome) => {
                 let decision
                 try {
                   decision = decideCheckout(outcome)
                 } catch (error) {
-                  setFailure(describeFailure(error))
+                  setFailure(describeFailure(error, "payInvestmentOrder"))
                   return
                 }
 
@@ -133,9 +127,7 @@ const LumpsumInvestScreen = (): React.ReactElement => {
                     expiresAt: Date.now() + PENDING_PAYMENT_TTL_MS,
                   })
                 } catch {
-                  setFailure(
-                    "This device would not record the payment, so we stopped before sending you to the payment page. Nothing has been charged. Try again, or use another device.",
-                  )
+                  setFailure(PAYMENT_NOT_RECORDED)
                   return
                 }
 
@@ -157,7 +149,7 @@ const LumpsumInvestScreen = (): React.ReactElement => {
     <Page width="form">
       <PageHeader
         title="Invest a lump sum"
-        description="You will be handed to PhonePe to pay. Coming back does not confirm the payment; only the settlement does."
+        description="A one-off investment in this fund, paid securely through PhonePe."
       />
 
       <AsyncBoundary
@@ -220,8 +212,8 @@ const LumpsumInvestScreen = (): React.ReactElement => {
             ) : null}
 
             {failure === null ? null : (
-              <Alert tone="error" title="We stopped before charging you">
-                {failure}
+              <Alert tone="error" title={failure.title}>
+                {failure.message}
               </Alert>
             )}
 
@@ -232,10 +224,9 @@ const LumpsumInvestScreen = (): React.ReactElement => {
             <Section title="What happens next">
               <ul className={RULES}>
                 {[
-                  "PhonePe takes the payment. We never see your UPI PIN or card details.",
-                  "Returning to the app does not mean the money has moved. We show the payment as pending until the provider confirms it.",
-                  "If you close the payment page, the order stays in Activity and expires on its own.",
-                  "Submitting twice does not charge you twice. The request carries a key that makes a repeat a replay.",
+                  "PhonePe handles the payment. We never see your UPI PIN or card details.",
+                  "You can follow the payment in Activity until it is confirmed.",
+                  "Tapping twice will not charge you twice.",
                 ].map((rule) => (
                   <li key={rule} className={RULE}>
                     <span className={RULE_DOT} aria-hidden="true" />

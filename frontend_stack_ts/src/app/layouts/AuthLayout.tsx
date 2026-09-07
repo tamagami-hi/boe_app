@@ -23,9 +23,9 @@ const DEFAULT_HEADLINE = (
 )
 
 const DEFAULT_MARKERS = [
-  "Server-derived valuations",
-  "Append-only ledger",
-  "Idempotent money movement",
+  "Managed fund pools",
+  "One-time and monthly investing",
+  "A statement every month",
 ] as const
 
 export const AuthLayout = ({
@@ -84,7 +84,8 @@ export const AuthLayout = ({
     </section>
 
     <p className={AUTH_FOOTNOTE}>
-      Administrator-managed fund pools. Values are derived server-side from an append-only ledger.
+      Investments are market-linked. Their value can fall as well as rise, and BeOnEdge does not
+      guarantee a return.
     </p>
   </div>
 )

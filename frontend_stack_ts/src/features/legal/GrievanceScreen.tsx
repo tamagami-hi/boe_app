@@ -2,6 +2,7 @@ import { Link } from "react-router-dom"
 
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
+import { useToast } from "~/app/providers/ToastProvider"
 import { Section } from "~/app/layouts/Section"
 import { CLIENT_ROUTES, CLIENT_SUPPORT_PATH } from "~/app/routing/clientRoutes"
 import { resolveDestination } from "~/app/routing/resolveDestination"
@@ -25,7 +26,7 @@ import {
 } from "./legal.recipe"
 
 const FALLBACK =
-  "The grievance redressal policy has not been published to this environment yet. You can still raise a complaint through support and it will be recorded with a reference you can quote."
+  "The full grievance policy is not available yet. You can still raise a complaint through support, and we will give you a reference for it."
 
 type Step = Readonly<{ heading: string; body: string }>
 type Contact = Readonly<{ label: string; value: string; href: string | null }>
@@ -64,16 +65,20 @@ const readContacts = (document: Record<string, unknown>): readonly Contact[] => 
 
 const GrievanceScreen = (): React.ReactElement => {
   const query = useLegalDocument("grievance")
+  const toast = useToast()
 
   const follow = (candidate: string): void => {
-    void openDestination(resolveDestination(candidate, CLIENT_ROUTES))
+    void openDestination(resolveDestination(candidate, CLIENT_ROUTES)).then((result) => {
+      if (result.ok) return
+      toast.show("We couldn't open that on this device.", "error")
+    })
   }
 
   return (
     <Page width="default">
       <PageHeader
         title="Grievance redressal"
-        description="How to raise a complaint, what happens next, and how to escalate if we do not resolve it."
+        description="How to raise a complaint and what happens next."
       />
 
       <AsyncBoundary
@@ -95,13 +100,15 @@ const GrievanceScreen = (): React.ReactElement => {
           const steps = readSteps(document)
           const contacts = readContacts(document)
           const body = asString(document.body)
+          const isPublished = body !== null || steps.length > 0 || contacts.length > 0
 
           return (
             <Card>
-              <div className={META_ROW}>
-                <span>Version {String(data.version)}</span>
-                {data.updatedAt === null ? null : <span>Updated {formatDate(data.updatedAt)}</span>}
-              </div>
+              {!isPublished || data.updatedAt === null ? null : (
+                <div className={META_ROW}>
+                  <span>Updated {formatDate(data.updatedAt)}</span>
+                </div>
+              )}
 
               {body === null ? null : <Prose>{body}</Prose>}
 
@@ -135,9 +142,7 @@ const GrievanceScreen = (): React.ReactElement => {
                 </ul>
               )}
 
-              {body === null && steps.length === 0 && contacts.length === 0 ? (
-                <Prose>{FALLBACK}</Prose>
-              ) : null}
+              {isPublished ? null : <Prose>{FALLBACK}</Prose>}
             </Card>
           )
         }}
@@ -145,7 +150,7 @@ const GrievanceScreen = (): React.ReactElement => {
 
       <Section
         title="Raise it with us first"
-        description="Every complaint you raise through support is recorded with a reference you can quote later."
+        description="Send us the details and we will give you a reference to follow it."
       >
         <Link to={CLIENT_SUPPORT_PATH}>
           <Button trailing>Open support</Button>

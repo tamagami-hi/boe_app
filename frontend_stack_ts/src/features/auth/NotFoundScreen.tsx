@@ -12,10 +12,10 @@ const NotFoundScreen = (): React.ReactElement => {
 
   return (
     <Page width="form">
-      <PageHeader title="We could not find that page" />
+      <PageHeader title="Page not found" />
       <EmptyState
-        title="This address does not exist"
-        description="The link may be out of date, or the screen may have moved."
+        title="We could not find that page"
+        description="The link may be out of date."
         action={
           <Button
             onClick={() => {

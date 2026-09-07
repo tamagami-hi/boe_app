@@ -1,6 +1,5 @@
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
-import { Alert } from "~/ui/primitives/Feedback"
 import { ACTION_ROW } from "~/ui/recipes/layout"
 import { BLOCK_HEAD, BLOCK_LAYER, BLOCK_MARK, BLOCK_PANEL } from "~/ui/recipes/overlay"
 import { BODY_TEXT, HONESTY_TEXT, PAGE_TITLE } from "~/ui/recipes/text"
@@ -10,14 +9,13 @@ import type { UpdateRelease } from "./updateDecision"
 import type { UpdateInstaller } from "./useUpdateInstaller"
 
 export const MANDATORY_EXPLANATION =
-  "This build of BeOnEdge is older than the minimum version the service supports, so it has been stopped rather than left to fail against the server in ways you cannot see."
+  "This version of BeOnEdge is out of date and can no longer be used safely. Update to carry on."
 
 export const NO_RELEASE_EXPLANATION =
-  "There is no newer build published for this device yet, so there is nothing to download here. Ask support for an APK, or try again once one is published."
+  "A newer version isn't ready for this device yet. Check again shortly, or contact support if you need help."
 
 export type MandatoryUpdateScreenProps = Readonly<{
   release: UpdateRelease | null
-  minimumSupportedVersion: string | null
   installer: UpdateInstaller
   onRecheck: () => void
   rechecking: boolean
@@ -25,7 +23,6 @@ export type MandatoryUpdateScreenProps = Readonly<{
 
 export const MandatoryUpdateScreen = ({
   release,
-  minimumSupportedVersion,
   installer,
   onRecheck,
   rechecking,
@@ -34,7 +31,7 @@ export const MandatoryUpdateScreen = ({
     className={BLOCK_LAYER}
     role="dialog"
     aria-modal="true"
-    aria-label="This version of BeOnEdge must be updated"
+    aria-label="BeOnEdge needs updating"
   >
     <div className={BLOCK_PANEL}>
       <div className={BLOCK_HEAD}>
@@ -43,12 +40,6 @@ export const MandatoryUpdateScreen = ({
       </div>
 
       <p className={BODY_TEXT}>{MANDATORY_EXPLANATION}</p>
-
-      {minimumSupportedVersion === null ? null : (
-        <Alert tone="info" title="Minimum supported version">
-          {minimumSupportedVersion}
-        </Alert>
-      )}
 
       <Card elevated>
         {release === null ? (

@@ -23,12 +23,12 @@ import {
 
 const BIOMETRIC_MESSAGES: Readonly<Record<"cancelled" | "unavailable" | "failed", string>> = {
   cancelled: "Biometric unlock was cancelled. Enter your PIN instead.",
-  unavailable: "This device is no longer offering biometric unlock. Enter your PIN instead.",
-  failed: "Biometric unlock did not succeed. Enter your PIN instead.",
+  unavailable: "Biometric unlock isn't available right now. Enter your PIN instead.",
+  failed: "Biometric unlock didn't work. Enter your PIN instead.",
 }
 
 export const FORGOTTEN_PIN_CONSEQUENCE =
-  "The device PIN will be removed and you will be signed out on this device. Nothing about your account changes: you sign in again with your email and password."
+  "We will remove the PIN and sign you out on this device. Your account itself is unchanged \u2014 sign in again with your email and password."
 
 export type LockScreenProps = Readonly<{ onUnlocked: () => void }>
 
@@ -88,7 +88,7 @@ export const LockScreen = ({ onUnlocked }: LockScreenProps): React.ReactElement 
     void verifyDevicePin(store, entry).then((ok) => {
       if (!ok) {
         setEntry("")
-        setFailure("That PIN is not right.")
+        setFailure("That PIN is not correct.")
         return
       }
       setEntry("")
@@ -152,11 +152,11 @@ export const LockScreen = ({ onUnlocked }: LockScreenProps): React.ReactElement 
 
         {abandoning ? (
           <Card>
-            <span className={CARD_TITLE}>Remove the PIN and sign out?</span>
+            <span className={CARD_TITLE}>Forgotten your PIN?</span>
             <p className={HONESTY_TEXT}>{FORGOTTEN_PIN_CONSEQUENCE}</p>
             <div className={ACTION_ROW}>
               <Button tone="danger" onClick={abandon}>
-                Remove it and sign out
+                Remove PIN and sign out
               </Button>
               <Button
                 tone="ghost"
@@ -164,7 +164,7 @@ export const LockScreen = ({ onUnlocked }: LockScreenProps): React.ReactElement 
                   setAbandoning(false)
                 }}
               >
-                Leave it as it is
+                Go back
               </Button>
             </div>
           </Card>

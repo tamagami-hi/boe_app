@@ -5,6 +5,7 @@ import { isCompact, useBreakpoint } from "~/lib/useBreakpoint"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { ContentGrid } from "~/app/layouts/ContentGrid"
+import { countOf } from "~/domain/plural"
 import { fundRiskLevel } from "~/domain/status"
 import { toPaise } from "~/domain/money"
 import { useFundCatalogue } from "~/features/shared/queries"
@@ -51,7 +52,7 @@ const FundListScreen = (): React.ReactElement => {
     <Page width="default">
       <PageHeader
         title="Funds"
-        description="Administrator-managed pools. Every figure here is served by the backend; nothing is computed on this device."
+        description="Fund pools managed by BeOnEdge."
       />
 
       <div className={FUND_CONTROLS}>
@@ -89,8 +90,8 @@ const FundListScreen = (): React.ReactElement => {
         isEmpty={(data) => data.items.length === 0}
         empty={
           <EmptyState
-            title="No funds are published yet"
-            description="When an administrator publishes a fund it appears here."
+            title="No funds available yet"
+            description="New funds will appear here as soon as they open."
           />
         }
       >
@@ -134,19 +135,15 @@ const FundListScreen = (): React.ReactElement => {
                       <StatusBadge status={fundRiskLevel(fund.riskLevel)} />
                     </div>
                     <span className={META_MUTED}>{fund.category}</span>
-                    {fund.fundSize === null ? (
-                      <span className={META_MUTED}>Fund size not published</span>
-                    ) : (
+                    {fund.fundSize === null ? null : (
                       <div className={FUND_SIZE_ROW}>
                         <span className={META_MUTED}>Fund size</span>
                         <MoneyValue amount={toPaise(fund.fundSize.aumPaise)} size="lg" />
                       </div>
                     )}
-                    <span className={META_MUTED}>
-                      {fund.stockCount === 0
-                        ? "Holdings not disclosed"
-                        : `${String(fund.stockCount)} disclosed holdings`}
-                    </span>
+                    {fund.stockCount === 0 ? null : (
+                      <span className={META_MUTED}>{countOf(fund.stockCount, "holding")}</span>
+                    )}
                   </Card>
                 </Link>
               ))}

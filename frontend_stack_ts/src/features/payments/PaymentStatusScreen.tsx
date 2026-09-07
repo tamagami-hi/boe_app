@@ -6,8 +6,16 @@ import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { formatDateTime } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
+import { paymentFailureReason } from "~/domain/paymentReason"
+import { paymentPartnerName } from "~/domain/provider"
+import { supportReference } from "~/domain/reference"
 import { clientInvestmentStatus } from "~/domain/status"
-import { OPEN_PAYMENT_STATUSES, useInvalidateMoney, usePayment } from "~/features/shared/queries"
+import {
+  OPEN_PAYMENT_STATUSES,
+  useFundCatalogue,
+  useInvalidateMoney,
+  usePayment,
+} from "~/features/shared/queries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
@@ -15,7 +23,7 @@ import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton, Spinner } from "~/ui/primitives/Feedback"
-import { STAT_LABEL } from "~/ui/recipes/datalist"
+import { ITEM_TITLE, STAT_LABEL } from "~/ui/recipes/datalist"
 import { ACTION_ROW } from "~/ui/recipes/layout"
 import { STATE_REFRESHING } from "~/ui/recipes/state"
 import { HONESTY_TEXT } from "~/ui/recipes/text"
@@ -25,18 +33,18 @@ import { PAYMENT_HERO, PAYMENT_STATUS_ROW } from "./payments.recipe"
 
 const COPY: Readonly<Record<string, string>> = {
   payment_in_progress:
-    "We have not been told the money moved. Returning from PhonePe, or seeing a success screen there, is not settlement evidence — only the provider's own confirmation is. This screen updates itself.",
+    "We're waiting for confirmation of this payment. This page updates on its own.",
   processing:
-    "PhonePe has taken the money and we are allocating it to the fund. Your units and value appear once the allocation is written to the ledger.",
+    "Your payment has arrived and is being invested in the fund. Your units appear once that is done.",
   confirmed:
-    "This payment is settled and allocated. It is part of your portfolio and appears in your statement for the month.",
+    "This payment is complete and invested. It appears in your portfolio and in this month's statement.",
   refund_in_progress:
-    "A refund has been started for this payment. It returns to the account you paid from; the provider decides how long that takes.",
+    "A refund is on its way back to the account you paid from. How long it takes depends on your bank.",
   refunded: "This payment has been refunded in full.",
   support_required:
-    "This payment needs a human to look at it. Nothing more will happen automatically. Raise it with support and quote the reference below.",
+    "This payment needs a closer look from our team. Contact support with the reference below and we will sort it out.",
   payment_failed:
-    "This payment did not go through and nothing was taken. You can start a new one from the fund.",
+    "This payment did not go through and nothing was taken from your account. You can try investing again.",
 }
 
 const PaymentStatusScreen = (): React.ReactElement => {
@@ -45,6 +53,7 @@ const PaymentStatusScreen = (): React.ReactElement => {
   const invalidateMoney = useInvalidateMoney()
 
   const query = usePayment(paymentId)
+  const funds = useFundCatalogue()
   const status = query.data?.payment.status ?? null
 
   useEffect(() => {
@@ -55,10 +64,7 @@ const PaymentStatusScreen = (): React.ReactElement => {
 
   return (
     <Page width="form">
-      <PageHeader
-        title="Payment"
-        description="The authoritative state of this payment, as the backend reports it."
-      />
+      <PageHeader title="Payment" description="Where this payment has got to." />
 
       <AsyncBoundary
         query={query}
@@ -71,18 +77,29 @@ const PaymentStatusScreen = (): React.ReactElement => {
       >
         {(data) => {
           const payment = data.payment
+          const fundName = funds.data?.items.find((fund) => fund.id === payment.fundId)?.name ?? null
+          const partner = paymentPartnerName(payment.provider)
+          const reason = paymentFailureReason(payment.failureCode)
+          const reference = supportReference(payment.paymentId)
+          const isOpen = OPEN_PAYMENT_STATUSES.includes(payment.status)
+
           return (
             <>
               <Card elevated>
                 <div className={PAYMENT_HERO}>
+                  {fundName === null ? null : (
+                    <Link to={`/funds/${payment.fundId}`} className={ITEM_TITLE}>
+                      {fundName}
+                    </Link>
+                  )}
                   <span className={STAT_LABEL}>Amount</span>
                   <MoneyValue amount={toPaise(payment.amountPaise)} size="xl" />
                   <div className={PAYMENT_STATUS_ROW}>
                     <StatusBadge status={clientInvestmentStatus(payment.status)} />
-                    {OPEN_PAYMENT_STATUSES.includes(payment.status) ? (
+                    {isOpen ? (
                       <span className={STATE_REFRESHING}>
-                        <Spinner size="sm" label="Checking" />
-                        Checking with the provider
+                        <Spinner size="sm" label="Checking for an update" />
+                        Checking for an update
                       </span>
                     ) : null}
                   </div>
@@ -93,28 +110,25 @@ const PaymentStatusScreen = (): React.ReactElement => {
 
               <Card>
                 <DataList>
-                  <DetailRow label="Payment reference">{payment.paymentId}</DetailRow>
-                  <DetailRow label="Order">{payment.orderId}</DetailRow>
-                  <DetailRow label="Provider">{payment.provider ?? "—"}</DetailRow>
                   <DetailRow label="Started">{formatDateTime(payment.createdAt)}</DetailRow>
-                  {payment.expiresAt === null ? null : (
-                    <DetailRow label="Checkout expires">
-                      {formatDateTime(payment.expiresAt)}
-                    </DetailRow>
-                  )}
                   {payment.succeededAt === null ? null : (
-                    <DetailRow label="Taken by provider">
+                    <DetailRow label="Payment received">
                       {formatDateTime(payment.succeededAt)}
                     </DetailRow>
                   )}
                   {payment.confirmedAt === null ? null : (
-                    <DetailRow label="Allocated">{formatDateTime(payment.confirmedAt)}</DetailRow>
+                    <DetailRow label="Invested">{formatDateTime(payment.confirmedAt)}</DetailRow>
                   )}
                   {payment.refundedAt === null ? null : (
                     <DetailRow label="Refunded">{formatDateTime(payment.refundedAt)}</DetailRow>
                   )}
-                  {payment.failureCode === null ? null : (
-                    <DetailRow label="Reported reason">{payment.failureCode}</DetailRow>
+                  {isOpen && payment.expiresAt !== null ? (
+                    <DetailRow label="Pay by">{formatDateTime(payment.expiresAt)}</DetailRow>
+                  ) : null}
+                  {partner === null ? null : <DetailRow label="Paid with">{partner}</DetailRow>}
+                  {reason === null ? null : <DetailRow label="Reason">{reason}</DetailRow>}
+                  {reference === null ? null : (
+                    <DetailRow label="Reference ID">{reference}</DetailRow>
                   )}
                 </DataList>
               </Card>
@@ -126,7 +140,7 @@ const PaymentStatusScreen = (): React.ReactElement => {
                   </Link>
                   {payment.status === "support_required" ? (
                     <Link to="/profile/support">
-                      <Button>Raise it with support</Button>
+                      <Button>Contact support</Button>
                     </Link>
                   ) : null}
                   {payment.status === "confirmed" ? (

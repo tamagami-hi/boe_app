@@ -2,6 +2,7 @@ import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { formatDate, formatMonth } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
+import { countOf } from "~/domain/plural"
 import { useStatements } from "~/features/shared/queries"
 import { cx } from "~/lib/cx"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
@@ -25,7 +26,7 @@ const StatementsScreen = (): React.ReactElement => {
     <Page width="default">
       <PageHeader
         title="Statements"
-        description="Each month is derived by the backend from your append-only ledger. There is nothing to download; this is the record."
+        description="A month-by-month record of your investments and their value."
       />
 
       <AsyncBoundary
@@ -43,8 +44,8 @@ const StatementsScreen = (): React.ReactElement => {
         isEmpty={(data) => data.items.length === 0}
         empty={
           <EmptyState
-            title="No statement periods yet"
-            description="A month appears here once your ledger has an entry in it."
+            title="No statements yet"
+            description="Your first statement appears once you have invested."
           />
         }
       >
@@ -88,9 +89,9 @@ const StatementsScreen = (): React.ReactElement => {
 
                 <span className={META_TEXT}>
                   {period.entryCount === 1
-                    ? "1 ledger entry"
-                    : `${String(period.entryCount)} ledger entries`}
-                  {period.reversalsPaise === "0" ? "" : " · includes a reversal"}
+                    ? "1 entry"
+                    : countOf(period.entryCount, "entry", "entries")}
+                  {period.reversalsPaise === "0" ? "" : " · includes a correction"}
                 </span>
               </Card>
             ))}

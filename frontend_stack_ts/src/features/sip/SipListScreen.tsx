@@ -3,8 +3,9 @@ import { Link } from "react-router-dom"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { formatDate } from "~/domain/dates"
+import { countOf } from "~/domain/plural"
 import { toPaise } from "~/domain/money"
-import { sipState } from "~/domain/status"
+import { clientSipStatus } from "~/domain/clientStatus"
 import { useFundCatalogue, useSipPlans } from "~/features/shared/queries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { EmptyState } from "~/ui/patterns/EmptyState"
@@ -31,7 +32,7 @@ const SipListScreen = (): React.ReactElement => {
     <Page width="default">
       <PageHeader
         title="SIP plans"
-        description="Every standing plan on your account, whether it is paid manually or by mandate."
+        description="Your monthly investment plans."
       />
 
       <AsyncBoundary
@@ -50,7 +51,7 @@ const SipListScreen = (): React.ReactElement => {
         empty={
           <EmptyState
             title="You have no SIP plans"
-            description="A SIP invests the same amount every month. You can start one from any fund."
+            description="A SIP invests the same amount every month. Start one from any fund."
             action={
               <Link to="/funds">
                 <Button trailing>Browse funds</Button>
@@ -66,18 +67,18 @@ const SipListScreen = (): React.ReactElement => {
                 <Card>
                   <div className={SIP_CARD_TOP}>
                     <span className={ITEM_TITLE}>{nameFor(plan.fundId)}</span>
-                    <StatusBadge status={sipState(plan.status)} />
+                    <StatusBadge status={clientSipStatus(plan.status)} />
                   </div>
                   <MoneyValue amount={toPaise(plan.amountPaise)} size="md" />
                   <div className={SIP_SCHEDULE}>
-                    <span>Day {String(plan.debitDay)} of the month</span>
+                    <span>Collected on day {String(plan.debitDay)}</span>
                     <span>
                       {plan.durationMonths === null
-                        ? "No end date"
-                        : `${String(plan.durationMonths)} installments`}
+                        ? "Until you stop it"
+                        : countOf(plan.durationMonths, "instalment")}
                     </span>
                     {plan.nextDueDate === null ? null : (
-                      <span>Next due {formatDate(plan.nextDueDate)}</span>
+                      <span>Next on {formatDate(plan.nextDueDate)}</span>
                     )}
                   </div>
                 </Card>

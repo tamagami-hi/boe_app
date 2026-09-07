@@ -22,7 +22,7 @@ export const ConfirmDialog = ({
   title,
   description,
   confirmLabel,
-  cancelLabel = "Leave it as it is",
+  cancelLabel = "Go back",
   confirmTone = "primary",
   pending = false,
   onConfirm,

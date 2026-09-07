@@ -26,10 +26,11 @@ export type UpdateInstaller = Readonly<{
   allowInstalls: () => void
 }>
 
-const messageOf = (error: unknown): string =>
-  error instanceof Error && error.message !== ""
-    ? error.message
-    : "The update could not be downloaded."
+const DOWNLOAD_FAILED = "We couldn't download the update. Check your connection and try again."
+
+const INSTALL_FAILED = "We couldn't start the installer. Please try again."
+
+const PERMISSION_FAILED = "We couldn't open the permission setting. Please try again."
 
 export const useUpdateInstaller = (release: UpdateRelease | null): UpdateInstaller => {
   const [state, setState] = useState<InstallerState>({ phase: "idle" })
@@ -75,8 +76,8 @@ export const useUpdateInstaller = (release: UpdateRelease | null): UpdateInstall
       sizeBytes: release.sizeBytes,
     })
       .then(afterDownload)
-      .catch((error: unknown) => {
-        settle({ phase: "failed", message: messageOf(error) })
+      .catch(() => {
+        settle({ phase: "failed", message: DOWNLOAD_FAILED })
       })
       .finally(() => {
         stopProgress()
@@ -100,8 +101,8 @@ export const useUpdateInstaller = (release: UpdateRelease | null): UpdateInstall
         await installUpdate(download)
         settle({ phase: "ready", download })
       })
-      .catch((error: unknown) => {
-        settle({ phase: "failed", message: messageOf(error) })
+      .catch(() => {
+        settle({ phase: "failed", message: INSTALL_FAILED })
       })
       .finally(() => {
         busy.current = false
@@ -119,8 +120,8 @@ export const useUpdateInstaller = (release: UpdateRelease | null): UpdateInstall
             : { phase: "needs-permission", download, settingsOpened: true },
         )
       })
-      .catch((error: unknown) => {
-        settle({ phase: "failed", message: messageOf(error) })
+      .catch(() => {
+        settle({ phase: "failed", message: PERMISSION_FAILED })
       })
   }, [state, settle])
 

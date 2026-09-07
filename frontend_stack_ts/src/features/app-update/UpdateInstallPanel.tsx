@@ -8,12 +8,12 @@ import type { UpdateRelease } from "./updateDecision"
 import type { UpdateInstaller } from "./useUpdateInstaller"
 
 export const VERIFICATION_NOTE =
-  "The download is checked against the SHA-256 digest published with the release before Android is asked to install it. A file that does not match is discarded, not installed."
+  "Every update is checked before it is installed. Anything that does not match what BeOnEdge published is discarded."
 
 const MEGABYTE = 1_048_576
 
 const sizeLabel = (sizeBytes: number): string =>
-  sizeBytes <= 0 ? "size unknown" : `${(sizeBytes / MEGABYTE).toFixed(1)} MB`
+  sizeBytes <= 0 ? "Size unavailable" : `${(sizeBytes / MEGABYTE).toFixed(1)} MB`
 
 export type UpdateInstallPanelProps = Readonly<{
   release: UpdateRelease
@@ -62,34 +62,34 @@ export const UpdateInstallPanel = ({
       ) : null}
 
       {state.phase === "failed" ? (
-        <Alert tone="error" title="Not installed">
+        <Alert tone="error" title="Update not installed">
           {state.message}
         </Alert>
       ) : null}
 
       {state.phase === "needs-permission" ? (
-        <Alert tone="warning" title="Android needs your permission">
+        <Alert tone="warning" title="One permission needed">
           {state.settingsOpened
-            ? "Allow BeOnEdge to install unknown apps in the settings screen that opened, then come back and choose Install."
-            : "Android will not install an app downloaded outside the Play Store until you allow it for BeOnEdge."}
+            ? "Allow BeOnEdge to install apps in the settings screen that just opened, then come back and choose Install."
+            : "Android needs your permission to install this update. We will take you to the setting."}
         </Alert>
       ) : null}
 
       <div className={ACTION_ROW}>
         {state.phase === "idle" || state.phase === "failed" ? (
           <Button onClick={installer.start}>
-            {state.phase === "failed" ? "Try the download again" : "Download the update"}
+            {state.phase === "failed" ? "Try again" : "Download update"}
           </Button>
         ) : null}
         {state.phase === "downloading" || state.phase === "installing" ? (
           <Button loading disabled>
-            {state.phase === "installing" ? "Opening the installer" : "Downloading"}
+            {state.phase === "installing" ? "Opening installer" : "Downloading"}
           </Button>
         ) : null}
         {state.phase === "ready" ? <Button onClick={installer.install}>Install now</Button> : null}
         {state.phase === "needs-permission" ? (
           <>
-            <Button onClick={installer.allowInstalls}>Open the permission setting</Button>
+            <Button onClick={installer.allowInstalls}>Open settings</Button>
             <Button tone="secondary" onClick={installer.install}>
               I have allowed it
             </Button>

@@ -106,14 +106,14 @@ export const FundTable = ({ rows, sort, onSort }: FundTableProps): React.ReactEl
               </td>
               <td className={cx(FUND_TABLE_CELL, ADMIN_NUMERIC)}>
                 {fund.fundSize === null ? (
-                  <span className={FUND_TABLE_MUTED}>Not published</span>
+                  <span className={FUND_TABLE_MUTED}>Not available</span>
                 ) : (
                   <MoneyValue amount={toPaise(fund.fundSize.aumPaise)} size="md" />
                 )}
               </td>
               <td className={cx(FUND_TABLE_CELL, ADMIN_NUMERIC)}>
                 {fund.stockCount === 0 ? (
-                  <span className={FUND_TABLE_MUTED}>Not disclosed</span>
+                  <span className={FUND_TABLE_MUTED}>Not available</span>
                 ) : (
                   <span className={FUND_TABLE_NAME}>{String(fund.stockCount)}</span>
                 )}

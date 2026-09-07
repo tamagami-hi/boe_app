@@ -6,7 +6,7 @@ import { Section } from "~/app/layouts/Section"
 import { CLIENT_VERIFY_EMAIL_PATH } from "~/app/routing/clientRoutes"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDateTime } from "~/domain/dates"
-import { emailVerificationState } from "~/domain/status"
+import { clientEmailVerification } from "~/domain/clientStatus"
 import { useEligibility } from "~/features/shared/queries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { DataList, DetailRow, Prose } from "~/ui/patterns/DataList"
@@ -16,12 +16,9 @@ import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 
 const REASON_COPY: Readonly<Record<string, string>> = {
-  email_verification_required:
-    "Investing is locked until your email address is verified. Verification takes one code and about a minute.",
-  account_suspended:
-    "Your account is suspended, so investing is locked regardless of email verification. Support can explain why.",
-  account_not_active:
-    "Your account is not active, so investing is locked. Support can explain what is needed.",
+  email_verification_required: "Verify your email address to start investing.",
+  account_suspended: "Your account is on hold, so investing is paused. Support can explain what is needed.",
+  account_not_active: "Your account is not active yet. Support can explain what is needed.",
 }
 
 const VerificationStatusScreen = (): React.ReactElement => {
@@ -32,7 +29,7 @@ const VerificationStatusScreen = (): React.ReactElement => {
     <Page width="form">
       <PageHeader
         title="Email verification"
-        description="Whether investing is unlocked on this account, and why."
+        description="Whether you can invest, and what to do if you cannot."
       />
 
       <AsyncBoundary
@@ -53,28 +50,25 @@ const VerificationStatusScreen = (): React.ReactElement => {
                   {data.emailVerificationState === null ? (
                     "—"
                   ) : (
-                    <StatusBadge status={emailVerificationState(data.emailVerificationState)} />
+                    <StatusBadge status={clientEmailVerification(data.emailVerificationState)} />
                   )}
                 </DetailRow>
                 <DetailRow label="Investing">
-                  {data.canInvest ? "Unlocked" : "Locked"}
+                  {data.canInvest ? "Available" : "Not yet available"}
                 </DetailRow>
-                <DetailRow label="Evaluated">{formatDateTime(data.evaluatedAt)}</DetailRow>
+                <DetailRow label="Last checked">{formatDateTime(data.evaluatedAt)}</DetailRow>
               </DataList>
             </Card>
 
             {data.canInvest ? (
-              <Section title="Nothing to do">
-                <Prose>
-                  This account is verified and investing is unlocked. Requesting another code is not
-                  necessary.
-                </Prose>
+              <Section title="You are all set">
+                <Prose>Your email is verified and you can invest.</Prose>
               </Section>
             ) : (
-              <Section title="What is blocking investing">
+              <Section title="What is needed">
                 <Prose>
                   {REASON_COPY[data.reason ?? ""] ??
-                    "Investing is locked on this account. Support can explain what is needed."}
+                    "Investing is not available yet. Support can explain what is needed."}
                 </Prose>
                 {data.reason === "email_verification_required" ? (
                   <Link to={CLIENT_VERIFY_EMAIL_PATH}>

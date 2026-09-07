@@ -41,7 +41,7 @@ const LegalScreen = (): React.ReactElement => (
   <Page width="default">
     <PageHeader
       title="Legal"
-      description="The regulatory documents that govern your account. Each one is published by BeOnEdge and served from the backend."
+      description="Documents published by BeOnEdge about your rights as an investor."
     />
 
     <div className={cx(GRID_BASE, GRID_COLS_MD[2])}>

@@ -4,6 +4,7 @@ import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { toPaise } from "~/domain/money"
+import { countOf } from "~/domain/plural"
 import { formatPercent } from "~/domain/percent"
 import { useFundCatalogue, usePortfolio } from "~/features/shared/queries"
 import { cx } from "~/lib/cx"
@@ -31,7 +32,7 @@ const PortfolioScreen = (): React.ReactElement => {
     <Page width="default">
       <PageHeader
         title="Portfolio"
-        description="Every figure is derived by the backend from an append-only ledger. Nothing is calculated on this device."
+        description="What you own today, and how it has grown."
       />
 
       <AsyncBoundary
@@ -46,7 +47,7 @@ const PortfolioScreen = (): React.ReactElement => {
         empty={
           <EmptyState
             title="You have not invested yet"
-            description="Once a payment settles, your holdings and their value appear here."
+            description="Your holdings will appear here once your first investment is complete."
             action={
               <Link to="/funds">
                 <Button>Browse funds</Button>
@@ -118,8 +119,8 @@ const PortfolioScreen = (): React.ReactElement => {
                     </div>
                     <span className={META_TEXT}>
                       {pool.sipInstallmentCount === 0
-                        ? `${String(pool.lumpSumCount)} lump-sum contribution(s)`
-                        : `${String(pool.sipInstallmentCount)} SIP installment(s), ${String(pool.lumpSumCount)} lump sum(s)`}
+                        ? countOf(pool.lumpSumCount, "one-off investment")
+                        : `${countOf(pool.sipInstallmentCount, "SIP instalment")}, ${countOf(pool.lumpSumCount, "one-off investment")}`}
                     </span>
                   </Card>
                   </Link>

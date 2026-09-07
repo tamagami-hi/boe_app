@@ -12,16 +12,9 @@ export const LoadMore = ({ list, noun }: LoadMoreProps): React.ReactElement | nu
   if (!list.hasMore) return null
   return (
     <div className={LOAD_MORE_ROOT}>
-      <span className={META_MUTED}>
-        {`Showing the first ${String(list.loadedCount)} ${noun}. There are more.`}
-      </span>
-      <Button
-        tone="secondary"
-        size="sm"
-        loading={list.isLoadingMore}
-        onClick={list.loadMore}
-      >
-        Load more
+      <span className={META_MUTED}>{`${String(list.loadedCount)} ${noun} so far`}</span>
+      <Button tone="secondary" size="sm" loading={list.isLoadingMore} onClick={list.loadMore}>
+        Show more
       </Button>
     </div>
   )

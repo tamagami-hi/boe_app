@@ -4,7 +4,8 @@ import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { useSession } from "~/app/providers/SessionProvider"
-import { emailVerificationState, userAccountState } from "~/domain/status"
+import { clientEmailVerification } from "~/domain/clientStatus"
+import { userAccountState } from "~/domain/status"
 import { useAuthPort } from "~/features/auth/authPort"
 import { useEligibility } from "~/features/shared/queries"
 import { cx } from "~/lib/cx"
@@ -29,7 +30,7 @@ const ENTRIES = [
   {
     to: "/statements",
     title: "Statements",
-    hint: "A month-by-month derivation of your value from the ledger.",
+    hint: "A month-by-month record of your investments.",
   },
   {
     to: "/notifications",
@@ -100,7 +101,7 @@ const ProfileScreen = (): React.ReactElement => {
 
   return (
     <Page width="default">
-      <PageHeader title="Profile" description="Your account, and everything that governs it." />
+      <PageHeader title="Profile" description="Your details and account settings." />
 
       <Card elevated>
         <div className={IDENTITY_ROW}>
@@ -121,7 +122,7 @@ const ProfileScreen = (): React.ReactElement => {
             {verification === null ? (
               "—"
             ) : (
-              <StatusBadge status={emailVerificationState(verification)} />
+              <StatusBadge status={clientEmailVerification(verification)} />
             )}
           </DetailRow>
           <DetailRow label="Investing">
@@ -150,7 +151,7 @@ const ProfileScreen = (): React.ReactElement => {
 
       <Section
         title="Sign out"
-        description="This ends the session on this device. Your account and its values are untouched."
+        description="You will be signed out on this device only. Your investments are unaffected."
       >
         <Button tone="secondary" onClick={signOut}>
           Sign out

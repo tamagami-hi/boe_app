@@ -23,11 +23,10 @@ const issueMessage = (error: unknown): string => {
   if (isTransportError(error)) return "We could not reach BeOnEdge. Try again."
   if (!isApiError(error)) return "We could not send the code. Try again."
   if (error.code === "RATE_LIMITED") {
-    const seconds = error.retryAfterSeconds ?? 60
-    return `A code was sent recently. You can ask for another in ${formatCountdown(seconds)}.`
+    return "A code was sent recently. You can ask for another shortly."
   }
   if (error.code === "DEPENDENCY_UNAVAILABLE") {
-    return "We could not send the email. The code was created, so try resend shortly rather than starting over."
+    return "We could not send the email just now. Try again shortly."
   }
   if (error.code === "STATE_CONFLICT") return "This email is already verified."
   return "We could not send the code. Try again."
@@ -39,7 +38,7 @@ const verifyMessage = (error: unknown): string => {
   if (error.code === "TOKEN_INVALID") return "That code is not correct. Check it and try again."
   if (error.code === "TOKEN_EXPIRED") return "That code has expired. Ask for a new one."
   if (error.code === "STATE_CONFLICT") {
-    return "Too many attempts on this code, or there is no code waiting. Ask for a new one."
+    return "That code is no longer valid. Ask for a new one."
   }
   return "We could not check that code. Try again."
 }
@@ -97,13 +96,13 @@ const EmailVerificationScreen = (): React.ReactElement => {
     <Page width="form">
       <PageHeader
         title="Verify your email"
-        description={`We send a ${String(CODE_LENGTH)}-character code to ${session.principal?.email ?? "your email"}. Investing unlocks once it is verified.`}
+        description={`We will email a six-character code to ${session.principal?.email ?? "your email address"}. Verifying it lets you start investing.`}
       />
 
       <Card>
         {start.isSuccess ? (
           <Alert tone="info" title="Code sent">
-            Check your inbox. The code is case-sensitive and valid for ten minutes.
+            Check your inbox. The code lasts ten minutes.
           </Alert>
         ) : null}
         {start.error === null ? null : (
@@ -120,7 +119,7 @@ const EmailVerificationScreen = (): React.ReactElement => {
         <form onSubmit={submit} noValidate className={STACK_LG}>
           <FormField
             label="Verification code"
-            hint="Six characters, case-sensitive. Enter it exactly as it appears."
+            hint="Six characters, exactly as they appear in the email."
             required
           >
             {({ id, describedBy, invalid }) => (
@@ -161,7 +160,7 @@ const EmailVerificationScreen = (): React.ReactElement => {
           disabled={cooldown > 0}
           onClick={requestCode}
         >
-          {cooldown > 0 ? `Resend in ${formatCountdown(cooldown)}` : "Send me a code"}
+          {cooldown > 0 ? `Send another in ${formatCountdown(cooldown)}` : "Email me a code"}
         </Button>
       </Card>
     </Page>

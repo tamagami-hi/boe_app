@@ -42,13 +42,12 @@ const SplashScreen = (): React.ReactElement => {
   return (
     <AuthLayout
       eyebrow={port.audienceLabel}
-      panelTitle={reachability === "unreachable" ? "Cannot connect" : "Starting"}
+      panelTitle={reachability === "unreachable" ? "No connection" : "Starting BeOnEdge"}
     >
       {reachability === "unreachable" ? (
         <>
-          <Alert tone="error" title="We cannot reach BeOnEdge">
-            The app started but could not contact the service. This is usually a connection
-            problem.
+          <Alert tone="error" title="We can\u2019t reach BeOnEdge">
+            Check your connection and try again.
           </Alert>
           <Button
             size="lg"

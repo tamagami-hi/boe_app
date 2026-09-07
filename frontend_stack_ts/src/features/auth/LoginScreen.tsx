@@ -1,30 +1,14 @@
 import { useState } from "react"
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom"
 
-import { ApiError, isApiError, isTransportError } from "~/api/errors"
+import { ApiError } from "~/api/errors"
 import { AuthLayout } from "~/app/layouts/AuthLayout"
+import { describeClientFailure } from "~/domain/failure"
 import { useSession } from "~/app/providers/SessionProvider"
 import { useAuthPort } from "~/features/auth/authPort"
 import { Button } from "~/ui/primitives/Button"
 import { Alert } from "~/ui/primitives/Feedback"
 import { FormField, Input } from "~/ui/primitives/FormField"
-
-const messageFor = (error: unknown): string => {
-  if (isTransportError(error)) {
-    return error.kind === "timeout"
-      ? "That took too long. Nothing was changed — try again."
-      : "We cannot reach BeOnEdge. Check your connection and try again."
-  }
-  if (!isApiError(error)) return "We could not sign you in. Try again."
-  const byCode: Partial<Record<string, string>> = {
-    INVALID_CREDENTIALS: "That email and password combination is not correct.",
-    ACCOUNT_NOT_ACTIVE: "This account is not active. Contact support to continue.",
-    RATE_LIMITED: "Too many attempts just now. Wait a moment and try again.",
-    VALIDATION_FAILED: error.message,
-    DEPENDENCY_UNAVAILABLE: "Sign-in is temporarily unavailable. Try again shortly.",
-  }
-  return byCode[error.code] ?? "We could not sign you in. Try again."
-}
 
 const LoginScreen = (): React.ReactElement => {
   const port = useAuthPort()
@@ -61,7 +45,7 @@ const LoginScreen = (): React.ReactElement => {
   return (
     <AuthLayout
       eyebrow={port.audienceLabel}
-      tagline="Fund pools managed by an administrator, valued from an append-only ledger. No projections, no guesswork."
+      tagline="Managed fund pools, with your value updated for you every month."
       panelTitle="Sign in"
       panelHint="Use the email and password your account was created with."
     >
@@ -73,8 +57,8 @@ const LoginScreen = (): React.ReactElement => {
         </Alert>
       )}
       {error === null ? null : (
-        <Alert tone="error" title="Sign-in failed">
-          {messageFor(error)}
+        <Alert tone="error" title={describeClientFailure(error, "signIn").title}>
+          {describeClientFailure(error, "signIn").message}
         </Alert>
       )}
       <form

@@ -1,16 +1,22 @@
 import { useMemo, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 
-import { isApiError } from "~/api/errors"
 import { mintIdempotencyKey } from "~/api/idempotency"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
+import { clientAutoPayStatus, clientSipStatus } from "~/domain/clientStatus"
 import { formatDate, formatDateTime } from "~/domain/dates"
+import {
+  AUTOPAY_NOT_RECORDED,
+  PAYMENT_LINK_REJECTED,
+  describeClientFailure,
+} from "~/domain/failure"
+import type { ClientFailure } from "~/domain/failure"
 import { toPaise } from "~/domain/money"
-import { mandateSetupState, mandateState, sipState } from "~/domain/status"
+import { paymentFailureReason } from "~/domain/paymentReason"
 import { CheckoutUrlRejected, decideCheckout } from "~/features/payments/checkout"
 import {
   PENDING_PAYMENT_TTL_MS,
@@ -38,15 +44,13 @@ import { HONESTY_TEXT, SECTION_TITLE } from "~/ui/recipes/text"
 
 import { SIP_CARD_TOP, SIP_SUMMARY } from "./sip.recipe"
 
-const MANUAL_HONESTY =
-  "This plan is paid manually. Nothing is ever debited automatically. On the debit day the backend creates an ordinary payable order, it appears in Activity, and you pay it like any lump sum."
+const MANUAL_EXPLANATION =
+  "You pay this plan yourself. Nothing is ever taken automatically — each month an instalment appears in Activity for you to pay."
 
-const AUTOPAY_HONESTY =
-  "This plan is paid by a PhonePe UPI AutoPay mandate. PhonePe notifies you 24 hours before each debit and collects at 10:00 IST, with a 48-hour collection window. Returning from the UPI app does not authorise anything on its own — only the mandate state below does."
+const AUTOPAY_EXPLANATION =
+  "This plan is collected by PhonePe UPI AutoPay. PhonePe lets you know a day before each collection."
 
 type Confirming = "pause" | "resume" | "cancel" | "cancel-autopay" | null
-
-type Failure = Readonly<{ title: string; body: string }>
 
 const SipDetailScreen = (): React.ReactElement => {
   const { sipPlanId = "" } = useParams()
@@ -57,7 +61,7 @@ const SipDetailScreen = (): React.ReactElement => {
   const cancelAutoPay = useCancelAutoPay()
   const retrySetup = useRetryAutoPaySetup()
   const [confirming, setConfirming] = useState<Confirming>(null)
-  const [failure, setFailure] = useState<Failure | null>(null)
+  const [failure, setFailure] = useState<ClientFailure | null>(null)
   const store = useMemo(browserPendingPaymentStore, [])
 
   const plan = plans.data?.items.find((entry) => entry.sipId === sipPlanId) ?? null
@@ -72,19 +76,8 @@ const SipDetailScreen = (): React.ReactElement => {
   const nameFor = (fundId: string): string =>
     funds.data?.items.find((fund) => fund.id === fundId)?.name ?? "Fund"
 
-  const describeFailure = (error: unknown): string => {
-    if (error instanceof CheckoutUrlRejected) {
-      return "The mandate page we were sent is not one we will open."
-    }
-    if (!isApiError(error)) return "We could not reach the service. Nothing changed."
-    if (error.code === "DEPENDENCY_UNAVAILABLE") {
-      return "PhonePe is not configured in this environment, so mandate actions are unavailable here."
-    }
-    if (error.code === "STATE_CONFLICT") {
-      return "This plan is not in a state that allows that. Reload to see where it stands."
-    }
-    return error.message
-  }
+  const failureFor = (error: unknown, context: "changeSipPlan" | "cancelAutoPay" | "authoriseAutoPay"): ClientFailure =>
+    error instanceof CheckoutUrlRejected ? PAYMENT_LINK_REJECTED : describeClientFailure(error, context)
 
   const run = (kind: "pause" | "resume" | "cancel"): void => {
     setFailure(null)
@@ -92,7 +85,7 @@ const SipDetailScreen = (): React.ReactElement => {
       { sipPlanId, transition: kind },
       {
         onError: (error) => {
-          setFailure({ title: "Nothing changed", body: describeFailure(error) })
+          setFailure(failureFor(error, "changeSipPlan"))
         },
         onSettled: () => {
           setConfirming(null)
@@ -107,7 +100,7 @@ const SipDetailScreen = (): React.ReactElement => {
       { sipPlanId, idempotencyKey: mintIdempotencyKey() },
       {
         onError: (error) => {
-          setFailure({ title: "Nothing changed", body: describeFailure(error) })
+          setFailure(failureFor(error, "cancelAutoPay"))
         },
         onSettled: () => {
           setConfirming(null)
@@ -123,7 +116,7 @@ const SipDetailScreen = (): React.ReactElement => {
       { sipPlanId, idempotencyKey: mintIdempotencyKey() },
       {
         onError: (error) => {
-          setFailure({ title: "Nothing changed", body: describeFailure(error) })
+          setFailure(failureFor(error, "authoriseAutoPay"))
         },
         onSuccess: (setup) => {
           let decision
@@ -135,7 +128,7 @@ const SipDetailScreen = (): React.ReactElement => {
               checkout: setup.checkout,
             })
           } catch (error) {
-            setFailure({ title: "Nothing changed", body: describeFailure(error) })
+            setFailure(failureFor(error, "authoriseAutoPay"))
             return
           }
           if (decision.kind !== "redirect") return
@@ -150,10 +143,7 @@ const SipDetailScreen = (): React.ReactElement => {
               expiresAt: Date.now() + PENDING_PAYMENT_TTL_MS,
             })
           } catch {
-            setFailure({
-              title: "We stopped before the mandate page",
-              body: "This device would not record the authorisation, so we did not send you to PhonePe. No mandate has been authorised and nothing has been debited. This attempt now has to expire before another one can start; try again on another device.",
-            })
+            setFailure(AUTOPAY_NOT_RECORDED)
             return
           }
           window.location.assign(decision.url)
@@ -166,10 +156,7 @@ const SipDetailScreen = (): React.ReactElement => {
 
   return (
     <Page width="default">
-      <PageHeader
-        title="SIP plan"
-        description="Everything this plan does, and everything you can do to it."
-      />
+      <PageHeader title="SIP plan" description="Your monthly plan and how it is paid." />
 
       <AsyncBoundary
         query={plans}
@@ -185,7 +172,7 @@ const SipDetailScreen = (): React.ReactElement => {
             return (
               <Card>
                 <p className={HONESTY_TEXT}>
-                  This plan is not on your account, or it has been removed.
+                  We could not find this plan on your account. It may have been removed.
                 </p>
                 <Link to="/sips">
                   <Button tone="secondary">Back to SIP plans</Button>
@@ -193,6 +180,11 @@ const SipDetailScreen = (): React.ReactElement => {
               </Card>
             )
           }
+
+          const status = clientSipStatus(plan.status)
+          const autoPayStatus =
+            autopay.data === undefined ? null : clientAutoPayStatus(autopay.data.mandate.status)
+          const setupReason = paymentFailureReason(autopay.data?.setup?.failureCode ?? null)
 
           const canPause = plan.status === "active" && !isAutoPay
           const canResume = plan.status === "paused" && !isAutoPay
@@ -207,78 +199,77 @@ const SipDetailScreen = (): React.ReactElement => {
               <Card elevated>
                 <div className={SIP_CARD_TOP}>
                   <span className={SECTION_TITLE}>{nameFor(plan.fundId)}</span>
-                  <StatusBadge status={sipState(plan.status)} />
+                  <StatusBadge status={status} />
                 </div>
                 <span className={STAT_LABEL}>Each month</span>
                 <MoneyValue amount={toPaise(plan.amountPaise)} size="xl" />
 
                 <div className={SIP_SUMMARY}>
                   <div className={STAT_ROOT}>
-                    <span className={STAT_LABEL}>Debit day</span>
+                    <span className={STAT_LABEL}>Collection day</span>
                     <span className={ITEM_TITLE}>{String(plan.debitDay)}</span>
                   </div>
                   <div className={STAT_ROOT}>
-                    <span className={STAT_LABEL}>Installments</span>
+                    <span className={STAT_LABEL}>Instalments</span>
                     <span className={ITEM_TITLE}>
-                      {plan.durationMonths === null ? "Open" : String(plan.durationMonths)}
+                      {plan.durationMonths === null
+                        ? "Until you stop it"
+                        : String(plan.durationMonths)}
                     </span>
                   </div>
                   <div className={STAT_ROOT}>
-                    <span className={STAT_LABEL}>Next due</span>
+                    <span className={STAT_LABEL}>Next instalment</span>
                     <span className={ITEM_TITLE}>
-                      {plan.nextDueDate === null ? "—" : formatDate(plan.nextDueDate)}
+                      {plan.nextDueDate === null ? "Not scheduled" : formatDate(plan.nextDueDate)}
                     </span>
                   </div>
                   <div className={STAT_ROOT}>
-                    <span className={STAT_LABEL}>Mode</span>
-                    <span className={ITEM_TITLE}>{isAutoPay ? "AutoPay" : "Manual"}</span>
+                    <span className={STAT_LABEL}>Paid by</span>
+                    <span className={ITEM_TITLE}>{isAutoPay ? "AutoPay" : "You, each month"}</span>
                   </div>
                 </div>
+                {status.detail === undefined ? null : (
+                  <p className={HONESTY_TEXT}>{status.detail}</p>
+                )}
               </Card>
 
               <Card>
-                <p className={HONESTY_TEXT}>{isAutoPay ? AUTOPAY_HONESTY : MANUAL_HONESTY}</p>
+                <p className={HONESTY_TEXT}>
+                  {isAutoPay ? AUTOPAY_EXPLANATION : MANUAL_EXPLANATION}
+                </p>
               </Card>
 
               {failure === null ? null : (
                 <Alert tone="error" title={failure.title}>
-                  {failure.body}
+                  {failure.message}
                 </Alert>
               )}
 
-              {autopay.data === undefined ? null : (
-                <Section title="Mandate">
+              {autoPayStatus === null ? null : (
+                <Section title="AutoPay">
                   <Card>
                     <DataList>
-                      <DetailRow label="Mandate">
-                        <StatusBadge status={mandateState(autopay.data.mandate.status)} />
+                      <DetailRow label="Status">
+                        <StatusBadge status={autoPayStatus} />
                       </DetailRow>
-                      {autopay.data.mandate.authorizedAt === null ? null : (
-                        <DetailRow label="Authorised">
+                      {autopay.data?.mandate.authorizedAt === undefined ||
+                      autopay.data.mandate.authorizedAt === null ? null : (
+                        <DetailRow label="Set up on">
                           {formatDateTime(autopay.data.mandate.authorizedAt)}
                         </DetailRow>
                       )}
-                      {autopay.data.setup === null ? null : (
-                        <DetailRow label="Latest setup attempt">
-                          <StatusBadge status={mandateSetupState(autopay.data.setup.status)} />
-                        </DetailRow>
-                      )}
-                      {autopay.data.setup?.failureCode === null ||
-                      autopay.data.setup === null ? null : (
-                        <DetailRow label="Reported reason">
-                          {autopay.data.setup.failureCode}
-                        </DetailRow>
-                      )}
-                      {autopay.data.cancellation === null ? null : (
-                        <DetailRow label="Cancellation">
-                          {autopay.data.cancellation.status}
-                        </DetailRow>
+                      {setupReason === null ? null : (
+                        <DetailRow label="Reason">{setupReason}</DetailRow>
                       )}
                     </DataList>
 
-                    {autopay.data.canRetrySetup ? (
+                    {autoPayStatus.detail === undefined ? null : (
+                      <p className={HONESTY_TEXT}>{autoPayStatus.detail}</p>
+                    )}
+
+                    {autopay.data?.canRetrySetup === true ? (
                       <Button loading={retrySetup.isPending} onClick={retry} trailing>
-                        Authorise the mandate again
+                        Set up AutoPay again
                       </Button>
                     ) : null}
                   </Card>
@@ -316,7 +307,7 @@ const SipDetailScreen = (): React.ReactElement => {
                         setConfirming("cancel")
                       }}
                     >
-                      Cancel the plan
+                      Cancel this plan
                     </Button>
                   ) : null}
                   {canStopMandate ? (
@@ -327,11 +318,11 @@ const SipDetailScreen = (): React.ReactElement => {
                         setConfirming("cancel-autopay")
                       }}
                     >
-                      Cancel the mandate
+                      Turn off AutoPay
                     </Button>
                   ) : null}
                   <Link to="/activity">
-                    <Button tone="ghost">See installments in Activity</Button>
+                    <Button tone="ghost">See instalments in Activity</Button>
                   </Link>
                 </div>
               </Section>
@@ -339,8 +330,9 @@ const SipDetailScreen = (): React.ReactElement => {
               <ConfirmDialog
                 open={confirming === "pause"}
                 title="Pause this SIP?"
-                description="No installment is created while it is paused. You can resume at any time and nothing is lost."
-                confirmLabel="Pause it"
+                description="No instalment is collected while it is paused. You can resume whenever you like."
+                confirmLabel="Pause plan"
+                cancelLabel="Keep it running"
                 pending={transition.isPending}
                 onConfirm={() => {
                   run("pause")
@@ -353,8 +345,9 @@ const SipDetailScreen = (): React.ReactElement => {
               <ConfirmDialog
                 open={confirming === "resume"}
                 title="Resume this SIP?"
-                description="The next installment is created on the next debit day."
-                confirmLabel="Resume it"
+                description="Your next instalment will be collected on your usual collection day."
+                confirmLabel="Resume plan"
+                cancelLabel="Keep it paused"
                 pending={transition.isPending}
                 onConfirm={() => {
                   run("resume")
@@ -367,8 +360,9 @@ const SipDetailScreen = (): React.ReactElement => {
               <ConfirmDialog
                 open={confirming === "cancel"}
                 title="Cancel this SIP?"
-                description="Cancelling is permanent. What you have already invested stays invested; only future installments stop."
-                confirmLabel="Cancel the plan"
+                description="This cannot be undone. What you have already invested stays invested — only future instalments stop."
+                confirmLabel="Cancel plan"
+                cancelLabel="Keep plan"
                 confirmTone="danger"
                 pending={transition.isPending}
                 onConfirm={() => {
@@ -381,9 +375,10 @@ const SipDetailScreen = (): React.ReactElement => {
 
               <ConfirmDialog
                 open={confirming === "cancel-autopay"}
-                title="Cancel this mandate?"
-                description="We ask PhonePe to revoke the mandate. Until PhonePe confirms, the mandate shows as cancellation pending — it is not cancelled because this screen says so."
-                confirmLabel="Cancel the mandate"
+                title="Turn off AutoPay?"
+                description="We will ask PhonePe to stop collecting. It shows as cancelled once PhonePe confirms."
+                confirmLabel="Turn off AutoPay"
+                cancelLabel="Keep AutoPay"
                 confirmTone="danger"
                 pending={cancelAutoPay.isPending}
                 onConfirm={stopMandate}

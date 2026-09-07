@@ -36,7 +36,7 @@ import {
 
 const IDLE_MINUTES = Math.round(IDLE_LOCK_THRESHOLD_MS / 60_000)
 
-const LOCK_BEHAVIOUR = `Once a PIN is set, the Android app asks for it when it starts and again when you return to it after ${String(IDLE_MINUTES)} minutes or more in the background. On the web nothing is locked.`
+const LOCK_BEHAVIOUR = `You will be asked for it when you open the app, and again after ${String(IDLE_MINUTES)} minutes away from it.`
 
 type Mode = "idle" | "set" | "confirm" | "verify"
 
@@ -75,7 +75,7 @@ const DeviceSecurityScreen = (): React.ReactElement => {
   const submitSet = (): void => {
     setFailure(null)
     if (!isPinShaped(entry)) {
-      setFailure(`Choose ${String(MIN_PIN_LENGTH)} to 6 digits.`)
+      setFailure(`Your PIN needs ${String(MIN_PIN_LENGTH)} to 6 digits.`)
       return
     }
     setFirstEntry(entry)
@@ -86,7 +86,7 @@ const DeviceSecurityScreen = (): React.ReactElement => {
   const submitConfirm = (): void => {
     setFailure(null)
     if (entry !== firstEntry) {
-      setFailure("Those did not match. Start again.")
+      setFailure("Those PINs did not match. Try again.")
       setEntry("")
       setFirstEntry("")
       setMode("set")
@@ -94,7 +94,7 @@ const DeviceSecurityScreen = (): React.ReactElement => {
     }
     void setDevicePin(store, entry).then(() => {
       setEnrolled(true)
-      setNotice("This device now asks for your PIN.")
+      setNotice("This device will now ask for your PIN.")
       reset()
     })
   }
@@ -103,7 +103,7 @@ const DeviceSecurityScreen = (): React.ReactElement => {
     setFailure(null)
     void verifyDevicePin(store, entry).then((ok) => {
       if (!ok) {
-        setFailure("That PIN is not right.")
+        setFailure("That PIN is not correct.")
         setEntry("")
         return
       }
@@ -119,7 +119,7 @@ const DeviceSecurityScreen = (): React.ReactElement => {
     setEnrolled(false)
     setBiometric(false)
     setRemoving(false)
-    setNotice("The device PIN has been removed.")
+    setNotice("Your device PIN has been removed.")
     reset()
   }
 
@@ -139,12 +139,12 @@ const DeviceSecurityScreen = (): React.ReactElement => {
       </Card>
 
       {notice === null ? null : (
-        <Alert tone="success" title="Done">
+        <Alert tone="success" title="Saved">
           {notice}
         </Alert>
       )}
       {failure === null ? null : (
-        <Alert tone="error" title="Not saved">
+        <Alert tone="error" title="Not changed">
           {failure}
         </Alert>
       )}
@@ -209,8 +209,8 @@ const DeviceSecurityScreen = (): React.ReactElement => {
                 mode === "verify"
                   ? "Enter your current PIN"
                   : mode === "confirm"
-                    ? "Enter it once more"
-                    : "Choose 4 to 6 digits"
+                    ? "Enter your new PIN again"
+                    : "Choose a 4 to 6 digit PIN"
               }
               value={entry}
               onChange={setEntry}
@@ -233,8 +233,9 @@ const DeviceSecurityScreen = (): React.ReactElement => {
       <ConfirmDialog
         open={removing}
         title="Remove the device PIN?"
-        description="This device will stop asking for a PIN. Biometric unlock is switched off with it."
-        confirmLabel="Remove it"
+        description="This device will stop asking for a PIN, and biometric unlock switches off with it. Your account password is unchanged."
+        confirmLabel="Remove PIN"
+        cancelLabel="Keep my PIN"
         confirmTone="danger"
         onConfirm={remove}
         onCancel={() => {

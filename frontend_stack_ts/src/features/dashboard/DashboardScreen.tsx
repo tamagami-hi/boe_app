@@ -7,7 +7,7 @@ import { useSession } from "~/app/providers/SessionProvider"
 import { formatDate } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { formatPercent } from "~/domain/percent"
-import { emailVerificationState } from "~/domain/status"
+import { clientEmailVerification } from "~/domain/clientStatus"
 import { PendingPaymentRecovery } from "~/features/payments/PendingPaymentRecovery"
 import { useEligibility, useFunds, usePortfolio, useSipPlans } from "~/features/shared/queries"
 import { cx } from "~/lib/cx"
@@ -63,9 +63,9 @@ const DashboardScreen = (): React.ReactElement => {
 
       {verificationState !== null && verificationState !== "verified" ? (
         <Reveal delayMs={60}>
-          <Alert tone="warning" title="Investing is locked">
+          <Alert tone="warning" title="Verify your email to start investing">
             <span className={GATE_ROW}>
-              Verify your email to start investing.
+              It takes one code and about a minute.
               <Link to="/verify-email">
                 <Button size="sm" tone="gold" trailing>
                   Verify now
@@ -102,7 +102,7 @@ const DashboardScreen = (): React.ReactElement => {
                       </span>
                       <span className={META_TEXT}>
                         {data.lastUpdated === null
-                          ? "No ledger entries yet"
+                          ? "No investments yet"
                           : `As at ${formatDate(`${data.lastUpdated}T00:00:00Z`)}`}
                       </span>
                     </div>
@@ -137,24 +137,22 @@ const DashboardScreen = (): React.ReactElement => {
           <Reveal delayMs={180}>
             <Card>
               <span className={STAT_LABEL}>Account</span>
-              <div className={STATUS_ROW}>
-                <span className={META_MUTED}>Email verification</span>
-                {verificationState === null ? (
-                  <span className={META_MUTED}>Unknown</span>
-                ) : (
-                  <StatusBadge status={emailVerificationState(verificationState)} />
-                )}
-              </div>
+              {verificationState === null ? null : (
+                <div className={STATUS_ROW}>
+                  <span className={META_MUTED}>Email</span>
+                  <StatusBadge status={clientEmailVerification(verificationState)} />
+                </div>
+              )}
               <div className={STATUS_ROW}>
                 <span className={META_MUTED}>Investing</span>
-                <span className={META_MUTED}>{canInvest ? "Unlocked" : "Locked"}</span>
+                <span className={META_MUTED}>{canInvest ? "Available" : "Locked"}</span>
               </div>
-              <div className={STATUS_ROW}>
-                <span className={META_MUTED}>SIP plans</span>
-                <span className={META_MUTED}>
-                  {sips.data === undefined ? "—" : String(sips.data.items.length)}
-                </span>
-              </div>
+              {sips.data === undefined ? null : (
+                <div className={STATUS_ROW}>
+                  <span className={META_MUTED}>SIP plans</span>
+                  <span className={META_MUTED}>{String(sips.data.items.length)}</span>
+                </div>
+              )}
               <Link to="/sips" className={CARD_ACTION}>
                 <Button tone="ghost" size="sm" trailing>
                   Manage SIPs
@@ -167,7 +165,7 @@ const DashboardScreen = (): React.ReactElement => {
 
       <Section
         title="Funds"
-        description="Administrator-managed pools, valued server-side."
+        description="Fund pools managed by BeOnEdge."
         actions={
           <Link to="/funds">
             <Button tone="ghost" size="sm" trailing>

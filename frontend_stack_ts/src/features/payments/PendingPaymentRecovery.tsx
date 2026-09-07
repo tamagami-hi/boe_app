@@ -14,13 +14,13 @@ import { ITEM_TITLE } from "~/ui/recipes/datalist"
 
 const RECOVERY_COPY = {
   order_payment: {
-    title: "You have a payment in progress",
-    body: "You were handed to PhonePe and have not come back to a settled result yet. Open it to see where it stands — we will not know it settled until the provider tells us.",
+    title: "A payment is still in progress",
+    body: "We don't have a final result for this payment yet. Open it to see where it stands.",
     action: "Open the payment",
   },
   mandate_setup: {
-    title: "You have a mandate authorisation in progress",
-    body: "You were handed to PhonePe to authorise an AutoPay mandate and have not come back to a settled result yet. Open the plan to see where it stands — returning from the UPI app does not authorise anything on its own.",
+    title: "An AutoPay setup is still in progress",
+    body: "We don't have a final result for this AutoPay authorisation yet. Open the plan to see where it stands.",
     action: "Open the SIP plan",
   },
 } as const

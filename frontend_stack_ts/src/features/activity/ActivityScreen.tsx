@@ -18,16 +18,17 @@ import { META_MUTED } from "~/ui/recipes/text"
 import { Badge } from "~/ui/primitives/Badge"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
+import { paymentPartnerName } from "~/domain/provider"
 import { Skeleton } from "~/ui/primitives/Feedback"
 import { Tabs } from "~/ui/primitives/Toggle"
 
 import { FUND_LINK, ROW, ROW_LEFT, ROW_RIGHT } from "./activity.recipe"
 
 const LABEL = {
-  lump_sum: "Lump sum",
-  sip_installment: "SIP installment",
+  lump_sum: "One-off investment",
+  sip_installment: "SIP instalment",
   gain_allocation: "Growth",
-  adjustment: "Adjustment",
+  adjustment: "Correction",
 } as const
 
 const TONE = {
@@ -38,7 +39,7 @@ const TONE = {
 } as const
 
 const TABS = [
-  { value: "ledger", label: "Value ledger" },
+  { value: "ledger", label: "Investments" },
   { value: "payments", label: "Payments" },
 ] as const
 
@@ -46,15 +47,17 @@ type Tab = (typeof TABS)[number]["value"]
 
 const PAYMENT_FILTERS = [
   { value: "all", label: "All" },
-  { value: "payment_in_progress", label: "In progress" },
-  { value: "processing", label: "Processing" },
-  { value: "confirmed", label: "Confirmed" },
+  { value: "payment_in_progress", label: "Awaiting payment" },
+  { value: "processing", label: "Being invested" },
+  { value: "confirmed", label: "Invested" },
   { value: "payment_failed", label: "Failed" },
-  { value: "support_required", label: "Needs support" },
+  { value: "support_required", label: "Needs review" },
   { value: "refunded", label: "Refunded" },
 ] as const
 
 type PaymentFilter = (typeof PAYMENT_FILTERS)[number]["value"]
+
+const partnerLabel = (provider: string | null): string | null => paymentPartnerName(provider)
 
 const asTab = (value: string | null): Tab => (value === "payments" ? "payments" : "ledger")
 
@@ -72,7 +75,7 @@ const ActivityScreen = (): React.ReactElement => {
 
   const nameFor = (fundId: string | null): string =>
     fundId === null
-      ? "Fund"
+      ? "Your portfolio"
       : (funds.data?.items.find((fund) => fund.id === fundId)?.name ?? "Fund")
 
   const setTab = (next: Tab): void => {
@@ -89,7 +92,7 @@ const ActivityScreen = (): React.ReactElement => {
     <Page width="default">
       <PageHeader
         title="Activity"
-        description="Every movement in your value ledger, and every payment behind it."
+        description="Everything that has happened to your investments, and every payment behind it."
       />
 
       <Tabs label="Activity view" value={tab} items={TABS} onChange={setTab} />
@@ -107,8 +110,8 @@ const ActivityScreen = (): React.ReactElement => {
           isEmpty={(data) => data.items.length === 0}
           empty={
             <EmptyState
-              title="Nothing has happened yet"
-              description="Contributions, growth adjustments and corrections appear here once they settle."
+              title="Nothing here yet"
+              description="Your investments and their growth will appear here once your first payment is complete."
               action={
                 <Link to="/funds">
                   <Button trailing>Browse funds</Button>
@@ -140,7 +143,7 @@ const ActivityScreen = (): React.ReactElement => {
                           tone="signed"
                           showSign
                         />
-                        <span className={META_MUTED}>value change</span>
+                        <span className={META_MUTED}>change in value</span>
                       </div>
                     </div>
                   </Card>
@@ -148,7 +151,7 @@ const ActivityScreen = (): React.ReactElement => {
             </div>
           )}
         </AsyncBoundary>
-        <LoadMore list={ledger} noun="ledger entries" />
+        <LoadMore list={ledger} noun="entries" />
         </>
       ) : (
         <>
@@ -172,8 +175,8 @@ const ActivityScreen = (): React.ReactElement => {
                 title="No payments here"
                 description={
                   filter === "all"
-                    ? "Payments appear once you invest. Coming back from a checkout does not settle a payment; the provider does."
-                    : "No payment on this account is in that state right now."
+                    ? "Your payments will appear here once you make your first investment."
+                    : "You have no payments with this status right now."
                 }
               />
             }
@@ -195,9 +198,9 @@ const ActivityScreen = (): React.ReactElement => {
                         </div>
                         <div className={ROW_RIGHT}>
                           <MoneyValue amount={toPaise(payment.amountPaise)} size="md" />
-                          <span className={META_MUTED}>
-                            {payment.provider ?? "no provider attempt yet"}
-                          </span>
+                          {partnerLabel(payment.provider) === null ? null : (
+                            <span className={META_MUTED}>{partnerLabel(payment.provider)}</span>
+                          )}
                         </div>
                       </div>
                     </Card>
