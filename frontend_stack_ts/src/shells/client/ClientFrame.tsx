@@ -40,9 +40,9 @@ export const ClientFrame = ({ children }: ClientFrameProps): React.ReactElement 
   const notifications = useNotifications()
 
   const route = findRoute(CLIENT_ROUTES, location.pathname)
-  const isPublicSurface = route === null || route.access === "public"
+  const isBareSurface = route === null || route.access === "public" || route.chrome === "none"
 
-  if (isPublicSurface || session.status !== "authenticated") return <>{children}</>
+  if (isBareSurface || session.status !== "authenticated") return <>{children}</>
 
   const activeId = route.id
   const backPath =

@@ -63,8 +63,8 @@ const BlockedScreen = (): React.ReactElement => {
         </Button>
       )}
       <Button
-        tone="ghost"
-        size="md"
+        tone="secondary"
+        size="lg"
         fullWidth
         loading={signingOut}
         onClick={() => {

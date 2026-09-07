@@ -45,18 +45,18 @@ export const AuthLayout = ({
       <Reveal>
         <span className={EYEBROW}>{eyebrow}</span>
       </Reveal>
-      <Reveal delayMs={90}>
+      <Reveal delayMs={50}>
         <h1 className={AUTH_HEADLINE}>{headline}</h1>
       </Reveal>
-      <Reveal delayMs={160}>
+      <Reveal delayMs={90}>
         <span className={RULE_GOLD} />
       </Reveal>
       {tagline === undefined ? null : (
-        <Reveal delayMs={210}>
+        <Reveal delayMs={120}>
           <p className={AUTH_TAGLINE}>{tagline}</p>
         </Reveal>
       )}
-      <Reveal delayMs={280}>
+      <Reveal delayMs={160}>
         <ul className={AUTH_MARKERS}>
           {markers.map((marker) => (
             <li key={marker} className={AUTH_MARKER}>
@@ -69,7 +69,7 @@ export const AuthLayout = ({
     </section>
 
     <section className={AUTH_PANEL_AREA}>
-      <Reveal delayMs={180} className={AUTH_PANEL_SLOT}>
+      <Reveal delayMs={100} className={AUTH_PANEL_SLOT}>
         <div className={AUTH_PANEL_SHELL}>
           <div className={AUTH_PANEL_CORE}>
             <div className={AUTH_PANEL_HEAD}>

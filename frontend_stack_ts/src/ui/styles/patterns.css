@@ -11,12 +11,10 @@
 
   .be-reveal {
     opacity: 0;
-    transform: translate3d(0, 28px, 0);
-    filter: blur(6px);
+    transform: translate3d(0, 14px, 0);
     transition:
       opacity var(--be-dur-reveal) var(--be-ease-entry),
-      transform var(--be-dur-reveal) var(--be-ease-entry),
-      filter var(--be-dur-reveal) var(--be-ease-entry);
+      transform var(--be-dur-reveal) var(--be-ease-entry);
     transition-delay: var(--be-reveal-delay, 0ms);
     will-change: transform, opacity;
   }
@@ -24,7 +22,6 @@
   .be-reveal[data-shown="true"] {
     opacity: 1;
     transform: translate3d(0, 0, 0);
-    filter: blur(0);
     will-change: auto;
   }
 

@@ -52,7 +52,7 @@ export const CLIENT_NAV_ITEM = [
 ].join(" ")
 
 export const CLIENT_NAV_GLYPH = [
-  "size-[21px] transition-transform duration-200 ease-spring",
+  "size-icon-md transition-transform duration-200 ease-spring",
   "group-aria-[current=page]:-translate-y-px",
 ].join(" ")
 

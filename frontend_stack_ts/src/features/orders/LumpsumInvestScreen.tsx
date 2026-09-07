@@ -22,7 +22,6 @@ import {
 } from "~/features/payments/pendingPayment"
 import { useCreateOrder, useFund, usePayOrder } from "~/features/shared/queries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
-import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { ITEM_TITLE, STAT_LABEL } from "~/ui/recipes/datalist"
 import { FIELD_ERROR, FORM_ROOT } from "~/ui/recipes/field"
 import { META_MUTED } from "~/ui/recipes/text"
@@ -192,17 +191,12 @@ const LumpsumInvestScreen = (): React.ReactElement => {
                   />
                   {submitted && amountError !== undefined ? (
                     <span className={FIELD_ERROR}>{amountError}</span>
-                  ) : (
+                  ) : amountPaise === null ? (
                     <span className={META_MUTED}>Whole rupees only.</span>
+                  ) : (
+                    <span className={META_MUTED}>{`You are investing ${formatINR(amountPaise)}.`}</span>
                   )}
                 </div>
-
-                {amountPaise === null ? null : (
-                  <>
-                    <span className={STAT_LABEL}>You are investing</span>
-                    <MoneyValue amount={amountPaise} size="lg" />
-                  </>
-                )}
               </Card>
 
               <RiskConsent checked={consented} onChange={setConsented} />

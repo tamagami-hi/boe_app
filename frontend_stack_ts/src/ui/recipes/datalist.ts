@@ -38,7 +38,7 @@ export const DISCLOSURE_BUTTON = [
 ].join(" ")
 
 export const DISCLOSURE_GLYPH = [
-  "size-[18px] flex-none text-fg-faint",
+  "size-icon-sm flex-none text-fg-faint",
   "transition-transform duration-200 ease-out",
 ].join(" ")
 
@@ -63,4 +63,4 @@ export const NAV_ROW = [
 
 export const ENTRY_TEXT = "flex flex-col gap-0.5"
 
-export const ENTRY_GLYPH = "size-[18px] flex-none text-fg-faint"
+export const ENTRY_GLYPH = "size-icon-sm flex-none text-fg-faint"

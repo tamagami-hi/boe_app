@@ -26,6 +26,7 @@ export type RouteDef = Readonly<{
   permissions?: readonly PermissionCode[]
   requiresAll?: readonly PermissionCode[]
   allowTerminalAccount?: boolean
+  chrome?: "none"
   nav?: NavPlacement
   back: BackTarget
   transactional?: boolean

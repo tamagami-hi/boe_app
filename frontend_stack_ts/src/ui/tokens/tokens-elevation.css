@@ -45,7 +45,7 @@
   --be-shell-pad: 6px;
   --be-shell-pad-lg: 8px;
 
-  --be-dur-reveal: 820ms;
+  --be-dur-reveal: 420ms;
   --be-dur-drift: 1400ms;
   --be-ease-entry: cubic-bezier(0.16, 1, 0.3, 1);
   --be-ease-spring: cubic-bezier(0.32, 0.72, 0, 1);

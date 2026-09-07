@@ -10,13 +10,25 @@
     Standard for banking and investing apps. The two rule files below are belt and
     braces: they keep the exclusions in place if backup is ever turned on.
 
-  android:windowSoftInputMode="adjustResize"
-    Without this the keyboard behaviour is whatever the platform picks, and Android
-    12+ defaults can leave a focused input behind the bottom chrome (the bottom nav
-    or a sticky action bar) with no way to scroll to it. `adjustResize` shrinks the
-    WebView so the layout — which is already `100dvh`-based — reflows above the IME.
-    Capacitor's SystemBars inset listener explicitly corrects for a shown IME, so
-    this is the mode it is written against.
+  android:windowSoftInputMode="adjustNothing"
+    The interface must not move when the keyboard opens. `adjustResize` resized the
+    window, which shrank the WebView, which moved the sticky bottom navigation up
+    and reflowed every `dvh`-based shell. `adjustNothing` leaves the window alone
+    and lets the IME overlay it.
+
+    Two other changes are required for this to hold, because each one shrinks the
+    viewport independently:
+      - index.html carries `interactive-widget=overlays-content`, so Chromium
+        resizes neither the layout nor the visual viewport.
+      - MainActivity strips the IME inset before it reaches Capacitor's SystemBars
+        listener, which otherwise pads the WebView's parent by the keyboard height.
+
+    The accepted cost: a focused field low on a long page can sit behind the
+    keyboard, and the user scrolls to it. Nothing on screen moves on its own.
+
+    `adjustNothing` is API 30+. On API 24-29 the value matches neither
+    ADJUST_RESIZE nor ADJUST_PAN, so the platform applies no adjustment, which is
+    the behaviour wanted here.
 
   Screenshots are deliberately NOT blocked.
     FLAG_SECURE would also blank the recents preview, but it stops users
@@ -44,7 +56,7 @@
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
-            android:windowSoftInputMode="adjustResize"
+            android:windowSoftInputMode="adjustNothing"
             android:exported="true">
 
             <intent-filter>

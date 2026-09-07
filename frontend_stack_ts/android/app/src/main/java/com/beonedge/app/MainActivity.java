@@ -2,6 +2,11 @@ package com.beonedge.app;
 
 import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
+
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import com.getcapacitor.BridgeActivity;
 
@@ -34,5 +39,32 @@ public class MainActivity extends BridgeActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             setRecentsScreenshotEnabled(false);
         }
+
+        // Keep the interface still when the keyboard opens.
+        //
+        // Capacitor's SystemBars listener pads the WebView's parent by the full IME
+        // height whenever the keyboard is visible, which shrinks the web viewport,
+        // lifts the sticky bottom navigation and reflows every dvh-based shell. The
+        // manifest's adjustNothing stops the *window* resizing and the viewport meta's
+        // interactive-widget=overlays-content stops *Chromium* resizing, but neither
+        // reaches that padding.
+        //
+        // Clearing the IME inset here, at the decor view where dispatch starts, makes
+        // the plugin see no keyboard at all, so it applies its system-bar padding
+        // unchanged. Insets are re-dispatched to children via onApplyWindowInsets, so
+        // safe-area handling, cutout handling and the injected --safe-area-inset-*
+        // variables all behave exactly as before.
+        //
+        // insetsHandling is deliberately left on "css": Capacitor only passes insets
+        // through to Chromium on WebView 140+, so "disable" would lose safe-area
+        // handling on the far larger population below that.
+        ViewCompat.setOnApplyWindowInsetsListener(getWindow().getDecorView(), (view, insets) -> {
+            WindowInsetsCompat withoutIme = new WindowInsetsCompat.Builder(insets)
+                .setInsets(WindowInsetsCompat.Type.ime(), Insets.NONE)
+                .setVisible(WindowInsetsCompat.Type.ime(), false)
+                .build();
+
+            return ViewCompat.onApplyWindowInsets(view, withoutIme);
+        });
     }
 }

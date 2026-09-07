@@ -30,6 +30,7 @@ export const CLIENT_ROUTES: RouteManifest = [
     title: "Account unavailable",
     access: "session",
     allowTerminalAccount: true,
+    chrome: "none",
     element: () => import("~/features/auth/BlockedScreen"),
     back: { kind: "exit" },
   },

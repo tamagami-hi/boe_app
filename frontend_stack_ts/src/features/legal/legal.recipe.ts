@@ -1,3 +1,7 @@
+export const DOC_LIST = "flex flex-col gap-6"
+
+export const DOC_SECTION = "flex flex-col gap-2"
+
 export const CONTACT_LIST = "m-0 flex list-none flex-col gap-2 p-0"
 
 export const CONTACT_ROW = "flex flex-wrap items-baseline gap-x-3 gap-y-2"

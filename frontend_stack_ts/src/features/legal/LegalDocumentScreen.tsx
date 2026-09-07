@@ -8,13 +8,14 @@ import { Prose } from "~/ui/patterns/DataList"
 import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
-import { STACK_SM } from "~/ui/recipes/layout"
 import { PROSE_PANEL } from "~/ui/recipes/surface"
 import { CARD_TITLE, META_ROW } from "~/ui/recipes/text"
 
 import {
   CONTACT_LABEL,
   CONTACT_LIST,
+  DOC_LIST,
+  DOC_SECTION,
   CONTACT_ROW,
   CONTACT_VALUE,
 } from "./legal.recipe"
@@ -105,12 +106,16 @@ export const LegalDocumentScreen = ({
 
               {body === null ? null : <Prose>{body}</Prose>}
 
-              {sections.map((section) => (
-                <div key={section.heading} className={STACK_SM}>
-                  <h2 className={CARD_TITLE}>{section.heading}</h2>
-                  <Prose>{section.body}</Prose>
+              {sections.length === 0 ? null : (
+                <div className={DOC_LIST}>
+                  {sections.map((section) => (
+                    <div key={section.heading} className={DOC_SECTION}>
+                      <h2 className={CARD_TITLE}>{section.heading}</h2>
+                      <Prose>{section.body}</Prose>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
 
               {contacts.length === 0 ? null : (
                 <ul className={CONTACT_LIST}>

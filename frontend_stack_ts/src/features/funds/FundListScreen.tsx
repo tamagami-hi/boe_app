@@ -20,7 +20,7 @@ import { CARD_LINK } from "~/ui/recipes/surface"
 
 import { FundTable } from "./FundTable"
 import { FUND_CARD_TOP, FUND_CONTROLS, FUND_SIZE_ROW, FUND_SORT_BUTTON, FUND_SORT_GROUP } from "./funds.recipe"
-import { ITEM_TITLE } from "~/ui/recipes/datalist"
+import { ITEM_TITLE, STAT_LABEL } from "~/ui/recipes/datalist"
 import { META_MUTED } from "~/ui/recipes/text"
 
 const SORTS = ["name", "risk", "size"] as const
@@ -144,8 +144,8 @@ const FundListScreen = (): React.ReactElement => {
                     <span className={META_MUTED}>{fund.category}</span>
                     {fund.fundSize === null ? null : (
                       <div className={FUND_SIZE_ROW}>
-                        <span className={META_MUTED}>Fund size</span>
-                        <MoneyValue amount={toPaise(fund.fundSize.aumPaise)} size="lg" />
+                        <span className={STAT_LABEL}>Fund size</span>
+                        <MoneyValue amount={toPaise(fund.fundSize.aumPaise)} size="md" tone="muted" />
                       </div>
                     )}
                     {fund.stockCount === 0 ? null : (

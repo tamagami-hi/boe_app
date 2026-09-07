@@ -60,4 +60,4 @@ export const FUND_TABLE_NAME_LINK = "flex flex-col gap-0.5 text-inherit no-under
 
 export const FUND_TABLE_MUTED = "font-ui text-sm text-fg-faint"
 
-export const FUND_SORT_GLYPH = "size-[9px]"
+export const FUND_SORT_GLYPH = "size-2.5"

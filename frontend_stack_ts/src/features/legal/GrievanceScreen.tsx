@@ -15,13 +15,14 @@ import { Prose } from "~/ui/patterns/DataList"
 import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
-import { STACK_SM } from "~/ui/recipes/layout"
 import { PROSE_PANEL } from "~/ui/recipes/surface"
 import { CARD_TITLE, LINK_TEXT_SM, META_ROW } from "~/ui/recipes/text"
 
 import {
   CONTACT_LABEL,
   CONTACT_LIST,
+  DOC_LIST,
+  DOC_SECTION,
   CONTACT_ROW,
   CONTACT_VALUE,
 } from "./legal.recipe"
@@ -113,12 +114,16 @@ const GrievanceScreen = (): React.ReactElement => {
 
               {body === null ? null : <Prose>{body}</Prose>}
 
-              {steps.map((step) => (
-                <div key={step.heading} className={STACK_SM}>
-                  <h2 className={CARD_TITLE}>{step.heading}</h2>
-                  <Prose>{step.body}</Prose>
+              {steps.length === 0 ? null : (
+                <div className={DOC_LIST}>
+                  {steps.map((step) => (
+                    <div key={step.heading} className={DOC_SECTION}>
+                      <h2 className={CARD_TITLE}>{step.heading}</h2>
+                      <Prose>{step.body}</Prose>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
 
               {contacts.length === 0 ? null : (
                 <ul className={CONTACT_LIST}>
