@@ -28,12 +28,13 @@ import { AmountInput } from "~/ui/primitives/AmountInput"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
+import { FormActions } from "~/ui/primitives/Form"
 import { PresetChoice, RadioGroup } from "~/ui/primitives/Toggle"
-import { ITEM_TITLE, STAT_LABEL, STAT_ROOT } from "~/ui/recipes/datalist"
-import { FIELD_ERROR } from "~/ui/recipes/field"
+import { ITEM_TITLE, STAT_LABEL, STAT_ROOT, SUMMARY_GRID } from "~/ui/recipes/datalist"
+import { FIELD_ERROR, FORM_ROOT } from "~/ui/recipes/field"
 import { HONESTY_TEXT, META_MUTED, SECTION_TITLE } from "~/ui/recipes/text"
 
-import { SIP_FIELD, SIP_FORM, SIP_HINT, SIP_SUMMARY } from "./sip.recipe"
+import { SIP_FIELD, SIP_HINT } from "./sip.recipe"
 
 const AUTOPAY_MAX_RUPEES = 15_000
 const AUTOPAY_MAX_MONTHS = 360
@@ -186,125 +187,127 @@ const SipStartScreen = (): React.ReactElement => {
         }
       >
         {(data) => (
-          <div className={SIP_FORM}>
-            <Card elevated>
-              <span className={SECTION_TITLE}>{data.fund.name}</span>
-              <span className={META_MUTED}>
-                {data.fund.category}
-                {minimum === null ? "" : ` · minimum ${formatINR(minimum)} a month`}
-              </span>
-
-              <div className={SIP_FIELD}>
-                <span className={STAT_LABEL}>Monthly amount</span>
-                <AmountInput
-                  value={rupees}
-                  invalid={submitted && amountError !== undefined}
-                  onChange={setRupees}
-                  disabled={pending}
-                />
-                {submitted && amountError !== undefined ? (
-                  <span className={FIELD_ERROR}>{amountError}</span>
-                ) : (
-                  <span className={SIP_HINT}>Whole rupees only.</span>
-                )}
-              </div>
-            </Card>
-
-            <Card>
-              <span className={STAT_LABEL}>How it is paid</span>
-              <RadioGroup<Mode>
-                legend="How the SIP is paid"
-                value={mode}
-                onChange={setMode}
-                options={[
-                  {
-                    value: "manual_checkout",
-                    label: "Pay each month myself",
-                    hint: "Nothing is taken automatically. Each month you get an instalment to pay in Activity, just like a one-off investment.",
-                  },
-                  {
-                    value: "phonepe_autopay",
-                    label: "PhonePe UPI AutoPay",
-                    hint: isNative()
-                      ? "Authorise once, then each instalment is collected on your chosen day. PhonePe tells you a day before. Up to ₹15,000 a month."
-                      : "Setting up AutoPay needs the BeOnEdge Android app. You can choose it here and finish the setup there.",
-                  },
-                ]}
-              />
-            </Card>
-
-            <Card>
-              <div className={SIP_FIELD}>
-                <span className={STAT_LABEL}>For how long</span>
-                <PresetChoice
-                  label="Duration in months"
-                  value={durationMonths}
-                  options={DURATIONS}
-                  format={(value) => `${String(value)} mo`}
-                  onChange={setDurationMonths}
-                />
-                {submitted && durationError !== undefined ? (
-                  <span className={FIELD_ERROR}>{durationError}</span>
-                ) : null}
-              </div>
-
-              <div className={SIP_FIELD}>
-                <span className={STAT_LABEL}>Collection day</span>
-                <PresetChoice
-                  label="Day of the month"
-                  value={debitDay}
-                  options={DEBIT_DAYS}
-                  format={(value) => String(value)}
-                  onChange={setDebitDay}
-                />
-                <span className={SIP_HINT}>
-                  The day each month your instalment is collected.
+          <div className={FORM_ROOT}>
+              <Card elevated>
+                <span className={SECTION_TITLE}>{data.fund.name}</span>
+                <span className={META_MUTED}>
+                  {data.fund.category}
+                  {minimum === null ? "" : ` · minimum ${formatINR(minimum)} a month`}
                 </span>
-              </div>
-            </Card>
 
-            {amountPaise === null ? null : (
-              <Card>
-                <span className={STAT_LABEL}>Each month</span>
-                <MoneyValue amount={amountPaise} size="lg" />
-                <div className={SIP_SUMMARY}>
-                  <div className={STAT_ROOT}>
-                    <span className={STAT_LABEL}>Instalments</span>
-                    <span className={ITEM_TITLE}>{String(durationMonths)}</span>
-                  </div>
-                  <div className={STAT_ROOT}>
-                    <span className={STAT_LABEL}>Collection day</span>
-                    <span className={ITEM_TITLE}>{String(debitDay)}</span>
-                  </div>
-                  <div className={STAT_ROOT}>
-                    <span className={STAT_LABEL}>Paid by</span>
-                    <span className={ITEM_TITLE}>
-                      {mode === "manual_checkout" ? "You, each month" : "AutoPay"}
-                    </span>
-                  </div>
+                <div className={SIP_FIELD}>
+                  <span className={STAT_LABEL}>Monthly amount</span>
+                  <AmountInput
+                    value={rupees}
+                    invalid={submitted && amountError !== undefined}
+                    onChange={setRupees}
+                    disabled={pending}
+                  />
+                  {submitted && amountError !== undefined ? (
+                    <span className={FIELD_ERROR}>{amountError}</span>
+                  ) : (
+                    <span className={SIP_HINT}>Whole rupees only.</span>
+                  )}
                 </div>
               </Card>
-            )}
 
-            {failure === null ? null : (
-              <Alert tone="error" title={failure.title}>
-                {failure.message}
-              </Alert>
-            )}
+              <Card>
+                <span className={STAT_LABEL}>How it is paid</span>
+                <RadioGroup<Mode>
+                  legend="How the SIP is paid"
+                  value={mode}
+                  onChange={setMode}
+                  options={[
+                    {
+                      value: "manual_checkout",
+                      label: "Pay each month myself",
+                      hint: "Nothing is taken automatically. Each month you get an instalment to pay in Activity, just like a one-off investment.",
+                    },
+                    {
+                      value: "phonepe_autopay",
+                      label: "PhonePe UPI AutoPay",
+                      hint: isNative()
+                        ? "Authorise once, then each instalment is collected on your chosen day. PhonePe tells you a day before. Up to ₹15,000 a month."
+                        : "Setting up AutoPay needs the BeOnEdge Android app. You can choose it here and finish the setup there.",
+                    },
+                  ]}
+                />
+              </Card>
 
-            <Button fullWidth loading={pending} onClick={start} trailing>
-              {mode === "manual_checkout" ? "Create the SIP" : "Set up AutoPay"}
-            </Button>
+              <Card>
+                <div className={SIP_FIELD}>
+                  <span className={STAT_LABEL}>For how long</span>
+                  <PresetChoice
+                    label="Duration in months"
+                    value={durationMonths}
+                    options={DURATIONS}
+                    format={(value) => `${String(value)} mo`}
+                    onChange={setDurationMonths}
+                  />
+                  {submitted && durationError !== undefined ? (
+                    <span className={FIELD_ERROR}>{durationError}</span>
+                  ) : null}
+                </div>
 
-            <Section title="Worth knowing">
-              <p className={HONESTY_TEXT}>
-                A SIP does not remove risk and it does not promise a return. It commits you to a
-                monthly amount, and you can pause or stop it at any time.
-              </p>
-            </Section>
-          </div>
-        )}
-      </AsyncBoundary>
+                <div className={SIP_FIELD}>
+                  <span className={STAT_LABEL}>Collection day</span>
+                  <PresetChoice
+                    label="Day of the month"
+                    value={debitDay}
+                    options={DEBIT_DAYS}
+                    format={(value) => String(value)}
+                    onChange={setDebitDay}
+                  />
+                  <span className={SIP_HINT}>
+                    The day each month your instalment is collected.
+                  </span>
+                </div>
+              </Card>
+
+              {amountPaise === null ? null : (
+                <Card>
+                  <span className={STAT_LABEL}>Each month</span>
+                  <MoneyValue amount={amountPaise} size="lg" />
+                  <div className={SUMMARY_GRID}>
+                    <div className={STAT_ROOT}>
+                      <span className={STAT_LABEL}>Instalments</span>
+                      <span className={ITEM_TITLE}>{String(durationMonths)}</span>
+                    </div>
+                    <div className={STAT_ROOT}>
+                      <span className={STAT_LABEL}>Collection day</span>
+                      <span className={ITEM_TITLE}>{String(debitDay)}</span>
+                    </div>
+                    <div className={STAT_ROOT}>
+                      <span className={STAT_LABEL}>Paid by</span>
+                      <span className={ITEM_TITLE}>
+                        {mode === "manual_checkout" ? "You, each month" : "AutoPay"}
+                      </span>
+                    </div>
+                  </div>
+                </Card>
+              )}
+
+              {failure === null ? null : (
+                <Alert tone="error" title={failure.title}>
+                  {failure.message}
+                </Alert>
+              )}
+
+              <FormActions>
+                <Button fullWidth loading={pending} onClick={start} trailing>
+                  {mode === "manual_checkout" ? "Create the SIP" : "Set up AutoPay"}
+                </Button>
+              </FormActions>
+            </div>
+          )}
+        </AsyncBoundary>
+
+        <Section title="Worth knowing">
+          <p className={HONESTY_TEXT}>
+            A SIP does not remove risk and it does not promise a return. It commits you to a
+            monthly amount, and you can pause or stop it at any time.
+          </p>
+        </Section>
     </Page>
   )
 }

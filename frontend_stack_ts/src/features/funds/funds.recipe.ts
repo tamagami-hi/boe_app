@@ -17,19 +17,14 @@ export const FUND_CARD_TOP = "flex items-start justify-between gap-2"
 
 export const FUND_SIZE_ROW = "flex flex-col gap-0.5"
 
-export const FUND_DETAIL_LIST = "flex flex-col gap-2"
-
-export const FUND_DETAIL_ROW = [
-  "flex items-baseline justify-between gap-3 py-2",
-  "border-b border-rule",
-].join(" ")
-
 export const FUND_DISCLOSURE_BODY = [
   "m-0 max-w-[68ch] whitespace-pre-wrap",
   "font-ui text-sm leading-relaxed text-fg-muted",
 ].join(" ")
 
 export const FUND_ACTIONS = "flex flex-col gap-2 sm:flex-row"
+
+export const FUND_ACTION_LINK = "flex-1 no-underline"
 
 export const FUND_TABLE_INNER = [
   "overflow-hidden bg-parchment inset-shadow-lift-soft shadow-ambient-1",

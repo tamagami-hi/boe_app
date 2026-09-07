@@ -10,14 +10,10 @@ import { EmptyState } from "~/ui/patterns/EmptyState"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
-import { STAT_LABEL } from "~/ui/recipes/datalist"
+import { STAT_LABEL, STAT_ROOT, SUMMARY_GRID } from "~/ui/recipes/datalist"
 import { CARD_COLUMNS, ROW_BETWEEN_BASELINE } from "~/ui/recipes/layout"
 import { CARD_STACK } from "~/ui/recipes/surface"
 import { META_TEXT, SUBHEAD_TITLE } from "~/ui/recipes/text"
-
-import { STATEMENT_FLOW, STATEMENT_FLOW_LABEL } from "./statements.recipe"
-
-const FLOW_LABEL = cx(STAT_LABEL, STATEMENT_FLOW_LABEL)
 
 const StatementsScreen = (): React.ReactElement => {
   const query = useStatements()
@@ -60,20 +56,22 @@ const StatementsScreen = (): React.ReactElement => {
                   </span>
                 </div>
 
-                <span className={FLOW_LABEL}>Closing value</span>
-                <MoneyValue amount={toPaise(period.closingValuePaise)} size="lg" />
+                <div className={STAT_ROOT}>
+                  <span className={STAT_LABEL}>Closing value</span>
+                  <MoneyValue amount={toPaise(period.closingValuePaise)} size="lg" />
+                </div>
 
-                <div className={STATEMENT_FLOW}>
-                  <div>
-                    <span className={FLOW_LABEL}>Opening</span>
+                <div className={SUMMARY_GRID}>
+                  <div className={STAT_ROOT}>
+                    <span className={STAT_LABEL}>Opening</span>
                     <MoneyValue amount={toPaise(period.openingValuePaise)} size="sm" tone="muted" />
                   </div>
-                  <div>
-                    <span className={FLOW_LABEL}>Contributions</span>
+                  <div className={STAT_ROOT}>
+                    <span className={STAT_LABEL}>Contributions</span>
                     <MoneyValue amount={toPaise(period.contributionsPaise)} size="sm" />
                   </div>
-                  <div>
-                    <span className={FLOW_LABEL}>Growth</span>
+                  <div className={STAT_ROOT}>
+                    <span className={STAT_LABEL}>Growth</span>
                     <MoneyValue
                       amount={toPaise(period.growthPaise)}
                       size="sm"
@@ -81,8 +79,8 @@ const StatementsScreen = (): React.ReactElement => {
                       showSign
                     />
                   </div>
-                  <div>
-                    <span className={FLOW_LABEL}>Invested to date</span>
+                  <div className={STAT_ROOT}>
+                    <span className={STAT_LABEL}>Invested to date</span>
                     <MoneyValue amount={toPaise(period.totalInvestmentPaise)} size="sm" />
                   </div>
                 </div>

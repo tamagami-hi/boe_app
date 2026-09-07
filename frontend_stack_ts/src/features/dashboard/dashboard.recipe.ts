@@ -5,9 +5,9 @@ export const BENTO = `${GRID_BASE} md:grid-cols-6 lg:gap-5`
 
 export const FUND_CARD_LINK = `${CARD_LINK} h-full`
 
-export const SPAN_HERO = "md:col-span-6 lg:col-span-4"
+export const SPAN_HERO = "md:col-span-4 lg:col-span-4"
 
-export const SPAN_ASIDE = "md:col-span-3 lg:col-span-2"
+export const SPAN_ASIDE = "md:col-span-2 lg:col-span-2"
 
 export const SPAN_THIRD = "md:col-span-2"
 
@@ -25,5 +25,3 @@ export const STATUS_ROW = [
 ].join(" ")
 
 export const FUND_ROW = "flex items-baseline justify-between gap-3"
-
-export const GATE_ROW = "flex flex-wrap items-center gap-4"

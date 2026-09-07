@@ -10,25 +10,16 @@ import { fundRiskLevel } from "~/domain/status"
 import { useEligibility, useFund } from "~/features/shared/queries"
 import { DonutChart } from "~/ui/charts/DonutChart"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
+import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
-import { LIST_LABEL, LIST_VALUE } from "~/ui/recipes/datalist"
-
-import { FUND_ACTIONS, FUND_DETAIL_LIST, FUND_DETAIL_ROW, FUND_DISCLOSURE_BODY } from "./funds.recipe"
+import { ITEM_TITLE, STAT_LABEL, STAT_ROOT, SUMMARY_GRID } from "~/ui/recipes/datalist"
 import { META_MUTED } from "~/ui/recipes/text"
 
-const Row = ({
-  label,
-  children,
-}: Readonly<{ label: string; children?: React.ReactNode }>): React.ReactElement => (
-  <div className={FUND_DETAIL_ROW}>
-    <span className={LIST_LABEL}>{label}</span>
-    {children === undefined ? null : <span className={LIST_VALUE}>{children}</span>}
-  </div>
-)
+import { FUND_ACTIONS, FUND_ACTION_LINK, FUND_DISCLOSURE_BODY } from "./funds.recipe"
 
 const FundDetailScreen = (): React.ReactElement => {
   const { fundId = "" } = useParams()
@@ -60,56 +51,94 @@ const FundDetailScreen = (): React.ReactElement => {
               actions={<StatusBadge status={fundRiskLevel(fund.riskLevel)} />}
             />
 
-            {fund.fundSize === null ? null : (
-              <Card elevated>
-                <span className={META_MUTED}>Fund size</span>
-                <MoneyValue amount={toPaise(fund.fundSize.aumPaise)} size="xl" />
-                {fund.fundSize.asOfDate === null ? null : (
-                  <span className={META_MUTED}>
-                    {`As of ${formatDate(`${fund.fundSize.asOfDate}T00:00:00Z`)}`}
-                  </span>
-                )}
-              </Card>
-            )}
+            <Card elevated>
+              {fund.minimumPurchasePaise === null ? null : (
+                <div className={STAT_ROOT}>
+                  <span className={STAT_LABEL}>Minimum one-off investment</span>
+                  <MoneyValue amount={toPaise(fund.minimumPurchasePaise)} size="lg" />
+                </div>
+              )}
 
-            <Section title="What you need to know">
-              <div className={FUND_DETAIL_LIST}>
-                {fund.minimumPurchasePaise === null ? null : (
-                  <Row label="Minimum one-off investment">
-                    <MoneyValue amount={toPaise(fund.minimumPurchasePaise)} size="sm" />
-                  </Row>
-                )}
+              <div className={SUMMARY_GRID}>
                 {fund.minimumSipPaise === null ? null : (
-                  <Row label="Minimum monthly SIP">
-                    <MoneyValue amount={toPaise(fund.minimumSipPaise)} size="sm" />
-                  </Row>
+                  <div className={STAT_ROOT}>
+                    <span className={STAT_LABEL}>Minimum monthly SIP</span>
+                    <MoneyValue amount={toPaise(fund.minimumSipPaise)} size="md" />
+                  </div>
                 )}
                 {fund.minimumDurationMonths === null ? null : (
-                  <Row label="Minimum term">{monthsLabel(fund.minimumDurationMonths)}</Row>
+                  <div className={STAT_ROOT}>
+                    <span className={STAT_LABEL}>Minimum term</span>
+                    <span className={ITEM_TITLE}>{monthsLabel(fund.minimumDurationMonths)}</span>
+                  </div>
                 )}
                 {fund.recommendedHoldingMonths === null ? null : (
-                  <Row label="Suggested holding period">
-                    {monthsLabel(fund.recommendedHoldingMonths)}
-                  </Row>
+                  <div className={STAT_ROOT}>
+                    <span className={STAT_LABEL}>Suggested holding</span>
+                    <span className={ITEM_TITLE}>
+                      {monthsLabel(fund.recommendedHoldingMonths)}
+                    </span>
+                  </div>
+                )}
+                {fund.fundSize === null ? null : (
+                  <div className={STAT_ROOT}>
+                    <span className={STAT_LABEL}>Fund size</span>
+                    <MoneyValue amount={toPaise(fund.fundSize.aumPaise)} size="md" tone="muted" />
+                    {fund.fundSize.asOfDate === null ? null : (
+                      <span className={META_MUTED}>
+                        {`As of ${formatDate(`${fund.fundSize.asOfDate}T00:00:00Z`)}`}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
-            </Section>
+
+              {canInvest ? (
+                <div className={FUND_ACTIONS}>
+                  <Link to={`/funds/${fund.id}/invest/lumpsum`} className={FUND_ACTION_LINK}>
+                    <Button size="lg" fullWidth>
+                      Invest a lump sum
+                    </Button>
+                  </Link>
+                  <Link to={`/funds/${fund.id}/invest/sip`} className={FUND_ACTION_LINK}>
+                    <Button size="lg" tone="secondary" fullWidth>
+                      Start a SIP
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <Alert
+                  tone="warning"
+                  title="Verify your email to invest"
+                  action={
+                    <Link to="/verify-email">
+                      <Button size="sm" tone="secondary" trailing>
+                        Verify now
+                      </Button>
+                    </Link>
+                  }
+                >
+                  You can read everything about this fund now. Verifying your email unlocks
+                  investing.
+                </Alert>
+              )}
+            </Card>
 
             {stocks.length === 0 ? null : (
               <Section
                 title="Holdings"
                 {...(quarter === null ? {} : { description: `As disclosed for ${quarter}.` })}
               >
-                {weighted.length === 0 ? (
-                  <Card>
-                    <div className={FUND_DETAIL_LIST}>
+                <Card>
+                  {weighted.length === 0 ? (
+                    <DataList>
                       {stocks.map((stock) => (
-                        <Row key={stock.stockName} label={stock.stockName} />
+                        <DetailRow key={stock.stockName} label={stock.stockName}>
+                          {null}
+                        </DetailRow>
                       ))}
-                    </div>
-                  </Card>
-                ) : (
-                  <Card>
+                    </DataList>
+                  ) : (
                     <DonutChart
                       centreLabel="Holdings"
                       centreValue={String(weighted.length)}
@@ -119,8 +148,8 @@ const FundDetailScreen = (): React.ReactElement => {
                         value: Number(stock.weightPercent ?? "0"),
                       }))}
                     />
-                  </Card>
-                )}
+                  )}
+                </Card>
               </Section>
             )}
 
@@ -132,28 +161,6 @@ const FundDetailScreen = (): React.ReactElement => {
                 <p className={FUND_DISCLOSURE_BODY}>{disclosure.body}</p>
               </Section>
             )}
-
-            <Section title="Invest">
-              {canInvest ? (
-                <div className={FUND_ACTIONS}>
-                  <Link to={`/funds/${fund.id}/invest/lumpsum`}>
-                    <Button size="lg" fullWidth>
-                      Invest a lump sum
-                    </Button>
-                  </Link>
-                  <Link to={`/funds/${fund.id}/invest/sip`}>
-                    <Button size="lg" tone="secondary" fullWidth>
-                      Start a SIP
-                    </Button>
-                  </Link>
-                </div>
-              ) : (
-                <Alert tone="warning" title="Verify your email to invest">
-                  You can read everything about this fund now. Verifying your email unlocks
-                  investing.
-                </Alert>
-              )}
-            </Section>
 
             <Section title="Investor information">
               <div className={FUND_ACTIONS}>

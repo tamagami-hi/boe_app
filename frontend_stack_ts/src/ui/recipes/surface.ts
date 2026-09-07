@@ -54,10 +54,11 @@ export const ALERT_BASE = [
   "flex flex-col gap-1",
   "rounded-squircle border px-5 py-4",
   "font-ui text-sm leading-relaxed",
-  "inset-shadow-lift-soft shadow-ambient-1",
 ].join(" ")
 
 export const ALERT_TITLE = "font-semibold tracking-tight"
+
+export const ALERT_ACTION = "mt-1 flex flex-wrap items-center gap-2 self-start"
 
 export const INSET_NOTE = [
   "rounded-squircle-sm bg-shell p-3",

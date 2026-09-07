@@ -11,7 +11,7 @@ import { cx } from "~/lib/cx"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
-import { ITEM_TITLE, STAT_LABEL, STAT_ROOT } from "~/ui/recipes/datalist"
+import { ITEM_TITLE, STAT_LABEL, STAT_ROOT, SUMMARY_GRID } from "~/ui/recipes/datalist"
 import { CARD_COLUMNS_WRAP } from "~/ui/recipes/layout"
 import { CARD_LINK } from "~/ui/recipes/surface"
 import { META_MUTED, META_TEXT, MONEY_BASE, MONEY_SIZE, MONEY_TONE } from "~/ui/recipes/text"
@@ -19,7 +19,7 @@ import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 
-import { HEADLINE_GRID, POOL_META, POOL_TOP } from "./portfolio.recipe"
+import { POOL_META, POOL_TOP } from "./portfolio.recipe"
 
 const PortfolioScreen = (): React.ReactElement => {
   const query = usePortfolio()
@@ -61,7 +61,7 @@ const PortfolioScreen = (): React.ReactElement => {
             <Card elevated>
               <span className={STAT_LABEL}>Current value</span>
               <MoneyValue amount={toPaise(data.currentValuePaise)} size="xl" />
-              <div className={HEADLINE_GRID}>
+              <div className={SUMMARY_GRID}>
                 <div className={STAT_ROOT}>
                   <span className={STAT_LABEL}>Invested</span>
                   <MoneyValue amount={toPaise(data.totalInvestmentPaise)} size="md" />

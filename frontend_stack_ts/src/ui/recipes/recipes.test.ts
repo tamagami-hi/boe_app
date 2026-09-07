@@ -121,14 +121,6 @@ const ALLOWED_DUPLICATES: readonly Readonly<{ names: readonly string[]; reason: 
     reason:
       "An empty/error panel title and the account holder's name are independent typographic roles.",
   },
-  {
-    names: [
-      "src/features/sip/sip.recipe.ts::SIP_SUMMARY",
-      "src/features/statements/statements.recipe.ts::STATEMENT_FLOW",
-    ],
-    reason:
-      "Two summary grids with the same column rhythm today; they describe different data shapes and are expected to diverge.",
-  },
 ]
 
 const allowKey = (names: readonly string[]): string => [...names].sort().join("|")

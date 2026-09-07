@@ -20,15 +20,14 @@ import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
+import { Form } from "~/ui/primitives/Form"
 import { FormField, Input } from "~/ui/primitives/FormField"
 import { Select } from "~/ui/primitives/Select"
 import { Textarea } from "~/ui/primitives/Textarea"
 import { ITEM_TITLE, PROSE_PRE, PROSE_SM } from "~/ui/recipes/datalist"
-import { CARD_COLUMNS, FIELD_MEASURE, ROW_BETWEEN, STACK_LG } from "~/ui/recipes/layout"
+import { CARD_COLUMNS, FIELD_MEASURE, ROW_BETWEEN } from "~/ui/recipes/layout"
 import { CARD_STACK, INSET_NOTE } from "~/ui/recipes/surface"
 import { META_ROW, REFERENCE_TEXT } from "~/ui/recipes/text"
-
-import { TICKET_COUNTER } from "./support.recipe"
 
 const TICKET_BODY = cx(PROSE_SM, PROSE_PRE)
 
@@ -95,79 +94,82 @@ const SupportScreen = (): React.ReactElement => {
 
       <Section title="Raise a request">
         <Card elevated>
-          <div className={cx(STACK_LG, FIELD_MEASURE)}>
-            {create.isSuccess && subject === "" && body === "" ? (
-              <Alert tone="success" title="Message sent">
-                We reply by email. You can follow it below.
-              </Alert>
-            ) : null}
-            {failureMessage === null ? null : (
-              <Alert tone="error" title="That did not send">
-                {failureMessage}
-              </Alert>
-            )}
-
-            <FormField label="What is it about" required>
-              {({ id }) => (
-                <Select
-                  id={id}
-                  options={CATEGORIES}
-                  value={category}
-                  onChange={(event) => {
-                    setCategory(event.target.value)
-                  }}
-                />
-              )}
-            </FormField>
-
-            <FormField
-              label="Subject"
-              required
-              {...(submitted && subjectError !== undefined ? { error: subjectError } : {})}
+          <div className={FIELD_MEASURE}>
+            <Form
+              onSubmit={submit}
+              actions={
+                <Button type="submit" loading={create.isPending} trailing>
+                  Send request
+                </Button>
+              }
             >
-              {({ id, describedBy, invalid }) => (
-                <Input
-                  id={id}
-                  aria-describedby={describedBy}
-                  invalid={invalid}
-                  maxLength={MAX_SUBJECT}
-                  value={subject}
-                  onChange={(event) => {
-                    setSubject(event.target.value)
-                  }}
-                />
+              {create.isSuccess && subject === "" && body === "" ? (
+                <Alert tone="success" title="Message sent">
+                  We reply by email. You can follow it below.
+                </Alert>
+              ) : null}
+              {failureMessage === null ? null : (
+                <Alert tone="error" title="That did not send">
+                  {failureMessage}
+                </Alert>
               )}
-            </FormField>
 
-            <FormField
-              label="What happened"
-              hint="Include amounts, dates and any reference you already have."
-              required
-              {...(submitted && bodyError !== undefined ? { error: bodyError } : {})}
-            >
-              {({ id, describedBy, invalid }) => (
-                <Textarea
-                  id={id}
-                  aria-describedby={describedBy}
-                  invalid={invalid}
-                  maxLength={MAX_BODY}
-                  value={body}
-                  onChange={(event) => {
-                    setBody(event.target.value)
-                  }}
-                />
-              )}
-            </FormField>
+              <FormField label="What is it about" required>
+                {({ id }) => (
+                  <Select
+                    id={id}
+                    options={CATEGORIES}
+                    value={category}
+                    onChange={(event) => {
+                      setCategory(event.target.value)
+                    }}
+                  />
+                )}
+              </FormField>
 
-            {bodyTrimmed.length === 0 ? null : (
-              <span className={TICKET_COUNTER}>
-                {`${String(MAX_BODY - bodyTrimmed.length)} characters left`}
-              </span>
-            )}
+              <FormField
+                label="Subject"
+                required
+                {...(submitted && subjectError !== undefined ? { error: subjectError } : {})}
+              >
+                {({ id, describedBy, invalid }) => (
+                  <Input
+                    id={id}
+                    aria-describedby={describedBy}
+                    invalid={invalid}
+                    maxLength={MAX_SUBJECT}
+                    value={subject}
+                    onChange={(event) => {
+                      setSubject(event.target.value)
+                    }}
+                  />
+                )}
+              </FormField>
 
-            <Button loading={create.isPending} onClick={submit} trailing>
-              Send request
-            </Button>
+              <FormField
+                label="What happened"
+                hint={
+                  bodyTrimmed.length === 0
+                    ? "Include amounts, dates and any reference you already have."
+                    : `${String(MAX_BODY - bodyTrimmed.length)} characters left`
+                }
+                required
+                {...(submitted && bodyError !== undefined ? { error: bodyError } : {})}
+              >
+                {({ id, describedBy, invalid }) => (
+                  <Textarea
+                    id={id}
+                    aria-describedby={describedBy}
+                    invalid={invalid}
+                    maxLength={MAX_BODY}
+                    value={body}
+                    onChange={(event) => {
+                      setBody(event.target.value)
+                    }}
+                  />
+                )}
+              </FormField>
+            </Form>
           </div>
         </Card>
       </Section>

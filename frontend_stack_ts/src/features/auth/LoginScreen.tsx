@@ -8,6 +8,7 @@ import { useSession } from "~/app/providers/SessionProvider"
 import { useAuthPort } from "~/features/auth/authPort"
 import { Button } from "~/ui/primitives/Button"
 import { Alert } from "~/ui/primitives/Feedback"
+import { Form } from "~/ui/primitives/Form"
 import { FormField, Input } from "~/ui/primitives/FormField"
 
 const LoginScreen = (): React.ReactElement => {
@@ -27,8 +28,7 @@ const LoginScreen = (): React.ReactElement => {
 
   const fieldErrors = error instanceof ApiError ? error.fields : null
 
-  const submit = async (event: { preventDefault: () => void }): Promise<void> => {
-    event.preventDefault()
+  const submit = async (): Promise<void> => {
     setSubmitting(true)
     setError(null)
     try {
@@ -61,11 +61,15 @@ const LoginScreen = (): React.ReactElement => {
           {describeClientFailure(error, "signIn").message}
         </Alert>
       )}
-      <form
-        onSubmit={(event) => {
-          void submit(event)
+      <Form
+        onSubmit={() => {
+          void submit()
         }}
-        noValidate
+        actions={
+          <Button type="submit" fullWidth size="lg" loading={submitting}>
+            Sign in
+          </Button>
+        }
       >
         <FormField label="Email" required {...(fieldErrors?.email?.[0] === undefined ? {} : { error: fieldErrors.email[0] })}>
           {({ id, describedBy, invalid }) => (
@@ -106,10 +110,7 @@ const LoginScreen = (): React.ReactElement => {
             />
           )}
         </FormField>
-        <Button type="submit" fullWidth size="lg" loading={submitting}>
-          Sign in
-        </Button>
-      </form>
+      </Form>
     </AuthLayout>
   )
 }

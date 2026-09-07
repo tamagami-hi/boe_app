@@ -1,5 +1,9 @@
 export const FIELD_ROOT = "flex flex-col gap-2"
 
+export const FORM_ROOT = "flex flex-col gap-4"
+
+export const FORM_ACTIONS = "flex flex-col gap-2 pt-2"
+
 export const FIELD_LABEL =
   "font-ui text-xs font-semibold uppercase tracking-[0.06em] text-fg-muted"
 

@@ -14,8 +14,8 @@ import {
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Alert } from "~/ui/primitives/Feedback"
+import { Form } from "~/ui/primitives/Form"
 import { FormField, Input } from "~/ui/primitives/FormField"
-import { STACK_LG } from "~/ui/recipes/layout"
 
 const CODE_LENGTH = 6
 
@@ -83,8 +83,7 @@ const EmailVerificationScreen = (): React.ReactElement => {
     })
   }
 
-  const submit = (event: { preventDefault: () => void }): void => {
-    event.preventDefault()
+  const submit = (): void => {
     verify.mutate(code, {
       onSuccess: () => {
         void navigate(destination, { replace: true })
@@ -116,7 +115,33 @@ const EmailVerificationScreen = (): React.ReactElement => {
           </Alert>
         )}
 
-        <form onSubmit={submit} noValidate className={STACK_LG}>
+        <Form
+          onSubmit={submit}
+          actions={
+            <>
+              <Button
+                type="submit"
+                size="lg"
+                fullWidth
+                loading={verify.isPending}
+                disabled={code.length !== CODE_LENGTH}
+              >
+                Verify
+              </Button>
+              <Button
+                type="button"
+                tone="secondary"
+                size="lg"
+                fullWidth
+                loading={start.isPending}
+                disabled={cooldown > 0}
+                onClick={requestCode}
+              >
+                {cooldown > 0 ? `Send another in ${formatCountdown(cooldown)}` : "Email me a code"}
+              </Button>
+            </>
+          }
+        >
           <FormField
             label="Verification code"
             hint="Six characters, exactly as they appear in the email."
@@ -140,28 +165,7 @@ const EmailVerificationScreen = (): React.ReactElement => {
               />
             )}
           </FormField>
-
-          <Button
-            type="submit"
-            size="lg"
-            fullWidth
-            loading={verify.isPending}
-            disabled={code.length !== CODE_LENGTH}
-          >
-            Verify
-          </Button>
-        </form>
-
-        <Button
-          tone="secondary"
-          size="md"
-          fullWidth
-          loading={start.isPending}
-          disabled={cooldown > 0}
-          onClick={requestCode}
-        >
-          {cooldown > 0 ? `Send another in ${formatCountdown(cooldown)}` : "Email me a code"}
-        </Button>
+        </Form>
       </Card>
     </Page>
   )

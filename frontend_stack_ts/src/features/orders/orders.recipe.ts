@@ -1,5 +1,3 @@
-export const FORM = "flex flex-col gap-5"
-
 export const FUND_LINE = "flex flex-col gap-0.5"
 
 export const AMOUNT_BLOCK = "flex flex-col gap-3"

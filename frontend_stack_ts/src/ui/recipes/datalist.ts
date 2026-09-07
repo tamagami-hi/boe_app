@@ -15,6 +15,11 @@ export const LIST_SPLIT = "lg:grid lg:grid-cols-2 lg:gap-x-12"
 
 export const STAT_ROOT = "flex flex-col gap-1"
 
+export const SUMMARY_GRID = [
+  "grid grid-cols-2 gap-3 md:grid-cols-4",
+  "border-t border-hairline pt-3",
+].join(" ")
+
 export const STAT_LABEL =
   "font-ui text-2xs font-semibold uppercase tracking-[0.16em] text-fg-faint"
 

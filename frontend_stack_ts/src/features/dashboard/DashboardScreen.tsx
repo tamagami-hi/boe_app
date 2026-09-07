@@ -33,7 +33,6 @@ import {
   BENTO,
   FUND_CARD_LINK,
   FUND_ROW,
-  GATE_ROW,
   HEADLINE_CELL,
   HEADLINE_ROW,
   RETURN_CELL,
@@ -63,15 +62,18 @@ const DashboardScreen = (): React.ReactElement => {
 
       {verificationState !== null && verificationState !== "verified" ? (
         <Reveal delayMs={60}>
-          <Alert tone="warning" title="Verify your email to start investing">
-            <span className={GATE_ROW}>
-              It takes one code and about a minute.
+          <Alert
+            tone="warning"
+            title="Verify your email to start investing"
+            action={
               <Link to="/verify-email">
-                <Button size="sm" tone="gold" trailing>
+                <Button size="sm" tone="secondary" trailing>
                   Verify now
                 </Button>
               </Link>
-            </span>
+            }
+          >
+            It takes one code and about a minute.
           </Alert>
         </Reveal>
       ) : null}

@@ -38,11 +38,11 @@ import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
-import { ITEM_TITLE, STAT_LABEL, STAT_ROOT } from "~/ui/recipes/datalist"
+import { ITEM_TITLE, STAT_LABEL, STAT_ROOT, SUMMARY_GRID } from "~/ui/recipes/datalist"
 import { ACTION_ROW } from "~/ui/recipes/layout"
 import { HONESTY_TEXT, SECTION_TITLE } from "~/ui/recipes/text"
 
-import { SIP_CARD_TOP, SIP_SUMMARY } from "./sip.recipe"
+import { SIP_CARD_TOP } from "./sip.recipe"
 
 const MANUAL_EXPLANATION =
   "You pay this plan yourself. Nothing is ever taken automatically — each month an instalment appears in Activity for you to pay."
@@ -204,7 +204,7 @@ const SipDetailScreen = (): React.ReactElement => {
                 <span className={STAT_LABEL}>Each month</span>
                 <MoneyValue amount={toPaise(plan.amountPaise)} size="xl" />
 
-                <div className={SIP_SUMMARY}>
+                <div className={SUMMARY_GRID}>
                   <div className={STAT_ROOT}>
                     <span className={STAT_LABEL}>Collection day</span>
                     <span className={ITEM_TITLE}>{String(plan.debitDay)}</span>

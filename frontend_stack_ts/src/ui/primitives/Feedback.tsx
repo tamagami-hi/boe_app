@@ -1,15 +1,7 @@
 import type { ReactNode } from "react"
 
 import { cx } from "~/lib/cx"
-import {
-  ALERT_BASE,
-  ALERT_TITLE,
-  SKELETON,
-  SKELETON_CIRCLE,
-  SPINNER_BASE,
-  SPINNER_SIZE,
-  TONE_CLASS,
-} from "~/ui/recipes/surface"
+import { ALERT_ACTION, ALERT_BASE, ALERT_TITLE, SKELETON, SKELETON_CIRCLE, SPINNER_BASE, SPINNER_SIZE, TONE_CLASS } from "~/ui/recipes/surface"
 
 export type SpinnerProps = Readonly<{ size?: "sm" | "md"; label?: string }>
 
@@ -44,6 +36,7 @@ export type AlertTone = "info" | "warning" | "error" | "success"
 export type AlertProps = Readonly<{
   tone?: AlertTone
   title?: string
+  action?: ReactNode
   children: ReactNode
 }>
 
@@ -54,9 +47,10 @@ const ALERT_TONE = {
   success: TONE_CLASS.positive,
 } as const
 
-export const Alert = ({ tone = "info", title, children }: AlertProps): React.ReactElement => (
+export const Alert = ({ tone = "info", title, action, children }: AlertProps): React.ReactElement => (
   <div className={cx(ALERT_BASE, ALERT_TONE[tone])} role={tone === "error" ? "alert" : "status"}>
     {title === undefined ? null : <span className={ALERT_TITLE}>{title}</span>}
     <span>{children}</span>
+    {action === undefined ? null : <span className={ALERT_ACTION}>{action}</span>}
   </div>
 )

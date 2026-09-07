@@ -115,6 +115,9 @@
   --be-sidebar-w: 240px;
   --be-sidebar-w-rail: 64px;
 
+  --be-chrome-offset: 0px;
+  --be-chrome-safe-top: var(--be-safe-top);
+
   --be-target-min: 44px;
   --be-target-md: 40px;
   --be-target-compact: 36px;

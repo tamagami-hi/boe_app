@@ -24,17 +24,18 @@ import { useCreateOrder, useFund, usePayOrder } from "~/features/shared/queries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { STAT_LABEL } from "~/ui/recipes/datalist"
-import { FIELD_ERROR } from "~/ui/recipes/field"
+import { FIELD_ERROR, FORM_ROOT } from "~/ui/recipes/field"
 import { META_MUTED, SECTION_TITLE } from "~/ui/recipes/text"
 import { AmountInput } from "~/ui/primitives/AmountInput"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
+import { FormActions } from "~/ui/primitives/Form"
 import { PresetChoice } from "~/ui/primitives/Toggle"
 
 import { RiskConsent } from "./RiskConsent"
 
-import { AMOUNT_BLOCK, FORM, FUND_LINE, RULE, RULES, RULE_DOT } from "./orders.recipe"
+import { AMOUNT_BLOCK, FUND_LINE, RULE, RULES, RULE_DOT } from "./orders.recipe"
 
 const PRESETS = [1_000, 5_000, 10_000, 25_000, 50_000] as const
 
@@ -162,82 +163,84 @@ const LumpsumInvestScreen = (): React.ReactElement => {
         }
       >
         {(data) => (
-          <div className={FORM}>
-            <Card elevated>
-              <span className={FUND_LINE}>
-                <span className={SECTION_TITLE}>{data.fund.name}</span>
-                <span className={META_MUTED}>
-                  {data.fund.category}
-                  {minimum === null ? "" : ` · minimum ${formatINR(minimum)}`}
+          <div className={FORM_ROOT}>
+              <Card elevated>
+                <span className={FUND_LINE}>
+                  <span className={SECTION_TITLE}>{data.fund.name}</span>
+                  <span className={META_MUTED}>
+                    {data.fund.category}
+                    {minimum === null ? "" : ` · minimum ${formatINR(minimum)}`}
+                  </span>
                 </span>
-              </span>
 
-              <div className={AMOUNT_BLOCK}>
-                <span className={STAT_LABEL}>Amount</span>
-                <AmountInput
-                  value={rupees}
-                  invalid={submitted && amountError !== undefined}
-                  onChange={setRupees}
-                  disabled={pending}
-                />
-                <PresetChoice
-                  label="Common amounts"
-                  value={Number(rupees)}
-                  options={PRESETS}
-                  format={(value) => formatRupees(value)}
-                  onChange={(value) => {
-                    setRupees(String(value))
-                  }}
-                />
-                {submitted && amountError !== undefined ? (
-                  <span className={FIELD_ERROR}>{amountError}</span>
-                ) : (
-                  <span className={META_MUTED}>Whole rupees only.</span>
+                <div className={AMOUNT_BLOCK}>
+                  <span className={STAT_LABEL}>Amount</span>
+                  <AmountInput
+                    value={rupees}
+                    invalid={submitted && amountError !== undefined}
+                    onChange={setRupees}
+                    disabled={pending}
+                  />
+                  <PresetChoice
+                    label="Common amounts"
+                    value={Number(rupees)}
+                    options={PRESETS}
+                    format={(value) => formatRupees(value)}
+                    onChange={(value) => {
+                      setRupees(String(value))
+                    }}
+                  />
+                  {submitted && amountError !== undefined ? (
+                    <span className={FIELD_ERROR}>{amountError}</span>
+                  ) : (
+                    <span className={META_MUTED}>Whole rupees only.</span>
+                  )}
+                </div>
+
+                {amountPaise === null ? null : (
+                  <>
+                    <span className={STAT_LABEL}>You are investing</span>
+                    <MoneyValue amount={amountPaise} size="lg" />
+                  </>
                 )}
-              </div>
+              </Card>
 
-              {amountPaise === null ? null : (
-                <>
-                  <span className={STAT_LABEL}>You are investing</span>
-                  <MoneyValue amount={amountPaise} size="lg" />
-                </>
+              <RiskConsent checked={consented} onChange={setConsented} />
+              {submitted && !consented ? (
+                <span className={FIELD_ERROR}>
+                  Please confirm you understand the risk before continuing.
+                </span>
+              ) : null}
+
+              {failure === null ? null : (
+                <Alert tone="error" title={failure.title}>
+                  {failure.message}
+                </Alert>
               )}
-            </Card>
 
-            <RiskConsent checked={consented} onChange={setConsented} />
-            {submitted && !consented ? (
-              <span className={FIELD_ERROR}>
-                Please confirm you understand the risk before continuing.
-              </span>
-            ) : null}
+              <FormActions>
+                <Button fullWidth loading={pending} onClick={start} trailing>
+                  Continue to PhonePe
+                </Button>
+              </FormActions>
+            </div>
+          )}
+        </AsyncBoundary>
 
-            {failure === null ? null : (
-              <Alert tone="error" title={failure.title}>
-                {failure.message}
-              </Alert>
-            )}
-
-            <Button fullWidth loading={pending} onClick={start} trailing>
-              Continue to PhonePe
-            </Button>
-
-            <Section title="What happens next">
-              <ul className={RULES}>
-                {[
-                  "PhonePe handles the payment. We never see your UPI PIN or card details.",
-                  "You can follow the payment in Activity until it is confirmed.",
-                  "Tapping twice will not charge you twice.",
-                ].map((rule) => (
-                  <li key={rule} className={RULE}>
-                    <span className={RULE_DOT} aria-hidden="true" />
-                    {rule}
-                  </li>
-                ))}
-              </ul>
-            </Section>
-          </div>
-        )}
-      </AsyncBoundary>
+        <Section title="What happens next">
+          <ul className={RULES}>
+            {[
+              "PhonePe handles the payment. We never see your UPI PIN or card details.",
+              "You can follow the payment in Activity until it is confirmed.",
+              "Tapping twice will not charge you twice.",
+            ].map((rule) => (
+              <li key={rule} className={RULE}>
+                <span className={RULE_DOT} aria-hidden="true" />
+                {rule}
+              </li>
+            ))}
+          </ul>
+        </Section>
     </Page>
   )
 }

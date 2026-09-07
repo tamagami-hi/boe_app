@@ -6,10 +6,10 @@ export const CLIENT_MESH = [
 ].join(" ")
 
 export const CLIENT_HEADER = [
-  "sticky top-0 z-header flex items-center gap-2 lg:hidden",
-  "min-h-[calc(var(--be-header-h)+var(--be-safe-top))]",
+  "sticky top-[var(--be-chrome-offset)] z-header flex items-center gap-2 lg:hidden",
+  "min-h-[calc(var(--be-header-h)+var(--be-chrome-safe-top))]",
   "px-[max(var(--be-space-4),var(--be-safe-left))]",
-  "pt-[calc(var(--be-space-2)+var(--be-safe-top))] pb-2",
+  "pt-[calc(var(--be-space-2)+var(--be-chrome-safe-top))] pb-2",
   "bg-[color-mix(in_srgb,var(--be-parchment-2)_78%,transparent)]",
   "backdrop-blur-[18px] backdrop-saturate-150",
   "shadow-[0_1px_0_var(--be-hairline)]",
@@ -51,7 +51,7 @@ export const CLIENT_NAV_MARKER = [
 ].join(" ")
 
 export const CLIENT_TOP_NAV = [
-  "hidden lg:sticky lg:top-0 lg:z-header lg:flex lg:justify-center",
+  "hidden lg:sticky lg:top-[var(--be-chrome-offset)] lg:z-header lg:flex lg:justify-center",
   "lg:pointer-events-none lg:px-8 lg:pt-6 lg:pb-2",
 ].join(" ")
 
