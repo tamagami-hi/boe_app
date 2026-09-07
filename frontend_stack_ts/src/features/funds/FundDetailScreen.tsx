@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router-dom"
+import { useParams } from "react-router-dom"
 
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
@@ -14,12 +14,13 @@ import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
-import { Button } from "~/ui/primitives/Button"
+
+import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 import { ITEM_TITLE, STAT_LABEL, STAT_ROOT, SUMMARY_GRID } from "~/ui/recipes/datalist"
 import { META_MUTED } from "~/ui/recipes/text"
 
-import { FUND_ACTIONS, FUND_ACTION_LINK, FUND_DISCLOSURE_BODY } from "./funds.recipe"
+import { FUND_ACTIONS, FUND_DISCLOSURE_BODY } from "./funds.recipe"
 
 const FundDetailScreen = (): React.ReactElement => {
   const { fundId = "" } = useParams()
@@ -95,27 +96,26 @@ const FundDetailScreen = (): React.ReactElement => {
 
               {canInvest ? (
                 <div className={FUND_ACTIONS}>
-                  <Link to={`/funds/${fund.id}/invest/lumpsum`} className={FUND_ACTION_LINK}>
-                    <Button size="lg" fullWidth>
-                      Invest a lump sum
-                    </Button>
-                  </Link>
-                  <Link to={`/funds/${fund.id}/invest/sip`} className={FUND_ACTION_LINK}>
-                    <Button size="lg" tone="secondary" fullWidth>
-                      Start a SIP
-                    </Button>
-                  </Link>
+                  <ButtonLink to={`/funds/${fund.id}/invest/lumpsum`} size="lg" fullWidth>
+                    Invest a lump sum
+                  </ButtonLink>
+                  <ButtonLink
+                    to={`/funds/${fund.id}/invest/sip`}
+                    size="lg"
+                    tone="secondary"
+                    fullWidth
+                  >
+                    Start a SIP
+                  </ButtonLink>
                 </div>
               ) : (
                 <Alert
                   tone="warning"
                   title="Verify your email to invest"
                   action={
-                    <Link to="/verify-email">
-                      <Button size="sm" tone="secondary" trailing>
-                        Verify now
-                      </Button>
-                    </Link>
+                    <ButtonLink to="/verify-email" tone="secondary" size="sm" trailing>
+Verify now
+</ButtonLink>
                   }
                 >
                   You can read everything about this fund now. Verifying your email unlocks
@@ -164,16 +164,12 @@ const FundDetailScreen = (): React.ReactElement => {
 
             <Section title="Investor information">
               <div className={FUND_ACTIONS}>
-                <Link to="/profile/legal/investor-charter">
-                  <Button tone="ghost" size="sm">
-                    Investor charter
-                  </Button>
-                </Link>
-                <Link to="/profile/legal/grievance">
-                  <Button tone="ghost" size="sm">
-                    Grievance redressal
-                  </Button>
-                </Link>
+                <ButtonLink to="/profile/legal/investor-charter" tone="ghost" size="sm">
+Investor charter
+</ButtonLink>
+                <ButtonLink to="/profile/legal/grievance" tone="ghost" size="sm">
+Grievance redressal
+</ButtonLink>
               </div>
             </Section>
           </Page>

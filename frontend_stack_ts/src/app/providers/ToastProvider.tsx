@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from "react"
 
 import { cx } from "~/lib/cx"
-import { TOAST_BASE, TOAST_REGION, TOAST_TONE } from "~/ui/recipes/feedbackShell"
+import { TOAST_BASE, TOAST_DISMISS, TOAST_MESSAGE, TOAST_REGION, TOAST_TONE } from "~/ui/recipes/feedbackShell"
 
 export type ToastTone = "neutral" | "error"
 
@@ -58,7 +58,28 @@ export const ToastProvider = ({
             key={toast.id}
             className={cx(TOAST_BASE, toast.tone === "error" ? TOAST_TONE.error : TOAST_TONE.default)}
           >
-            {toast.message}
+            <span className={TOAST_MESSAGE}>{toast.message}</span>
+            <button
+              type="button"
+              className={TOAST_DISMISS}
+              aria-label="Dismiss"
+              onClick={() => {
+                dismiss(toast.id)
+              }}
+            >
+              <svg
+                className="size-icon-sm"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <path d="M4 4l8 8" />
+                <path d="M12 4l-8 8" />
+              </svg>
+            </button>
           </output>
         ))}
       </div>

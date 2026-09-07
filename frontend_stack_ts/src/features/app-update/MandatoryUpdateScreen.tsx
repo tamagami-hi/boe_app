@@ -2,7 +2,8 @@ import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { ACTION_ROW } from "~/ui/recipes/layout"
 import { BLOCK_HEAD, BLOCK_LAYER, BLOCK_MARK, BLOCK_PANEL } from "~/ui/recipes/overlay"
-import { BODY_TEXT, HONESTY_TEXT, PAGE_TITLE } from "~/ui/recipes/text"
+import { BODY_TEXT, HONESTY_TEXT } from "~/ui/recipes/text"
+import { GATE_TITLE } from "~/ui/recipes/layout"
 
 import { UpdateInstallPanel } from "./UpdateInstallPanel"
 import type { UpdateRelease } from "./updateDecision"
@@ -36,7 +37,7 @@ export const MandatoryUpdateScreen = ({
     <div className={BLOCK_PANEL}>
       <div className={BLOCK_HEAD}>
         <span className={BLOCK_MARK}>BeOnEdge</span>
-        <h1 className={PAGE_TITLE}>Update required</h1>
+        <h1 className={GATE_TITLE}>Update required</h1>
       </div>
 
       <p className={BODY_TEXT}>{MANDATORY_EXPLANATION}</p>

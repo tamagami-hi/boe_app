@@ -31,8 +31,7 @@ export const CARD_TONE: Readonly<Record<CardTone, string>> = {
 
 export const CARD_STACK = "flex flex-col gap-3"
 
-export const CARD_ACTION = "mt-3 self-start no-underline"
-
+export const CARD_SECTION = "flex flex-col gap-3 border-t border-hairline pt-4"
 
 export const CARD_LINK = "block text-inherit no-underline"
 
@@ -59,6 +58,12 @@ export const ALERT_BASE = [
 export const ALERT_TITLE = "font-semibold tracking-tight"
 
 export const ALERT_ACTION = "mt-1 flex flex-wrap items-center gap-2 self-start"
+
+export const PROSE_PANEL = [
+  "flex flex-col gap-3",
+  "rounded-squircle-lg bg-shell p-5 md:p-6",
+  "shadow-hairline",
+].join(" ")
 
 export const INSET_NOTE = [
   "rounded-squircle-sm bg-shell p-3",

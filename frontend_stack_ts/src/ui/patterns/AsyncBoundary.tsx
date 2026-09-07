@@ -5,7 +5,7 @@ import { Spinner } from "~/ui/primitives/Feedback"
 import { ErrorState } from "~/ui/patterns/ErrorState"
 import type { ErrorStateVariant } from "~/ui/patterns/ErrorState"
 
-import { STATE_REFRESHING, STATE_STACK } from "~/ui/recipes/state"
+import { STATE_REFRESHING, STATE_REFRESH_SLOT, STATE_STACK } from "~/ui/recipes/state"
 
 export type AsyncQuery<TData> = Readonly<{
   data: TData | undefined
@@ -75,12 +75,14 @@ export const AsyncBoundary = <TData,>({
 
   return (
     <div className={STATE_STACK}>
-      {isFetching === true && !isPending ? (
-        <span className={STATE_REFRESHING}>
-          <Spinner size="sm" label="Updating" />
-          Updating
-        </span>
-      ) : null}
+      <span className={STATE_REFRESH_SLOT} aria-hidden={isFetching !== true || isPending}>
+        {isFetching === true && !isPending ? (
+          <span className={STATE_REFRESHING}>
+            <Spinner size="sm" label="Updating" />
+            Updating
+          </span>
+        ) : null}
+      </span>
       {emptyRendering ?? children(data)}
     </div>
   )

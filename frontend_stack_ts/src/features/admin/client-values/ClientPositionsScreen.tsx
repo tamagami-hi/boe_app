@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom"
+
 
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
@@ -6,11 +6,10 @@ import { Section } from "~/app/layouts/Section"
 import { ContentGrid } from "~/app/layouts/ContentGrid"
 import { useSession } from "~/app/providers/SessionProvider"
 import { Prose, Stat } from "~/ui/patterns/DataList"
-import { Button } from "~/ui/primitives/Button"
+
+import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 import { Alert } from "~/ui/primitives/Feedback"
-
-import { CARD_LINK } from "~/ui/recipes/surface"
 
 const ENTRIES = [
   {
@@ -49,11 +48,9 @@ const ClientValuesScreen = (): React.ReactElement => {
               <Stat label={entry.title} hint={entry.hint}>
                 <span />
               </Stat>
-              <Link to={entry.to} className={CARD_LINK}>
-                <Button tone="secondary" size="sm" disabled={!canWrite} trailing>
-                  Open
-                </Button>
-              </Link>
+              <ButtonLink to={entry.to} tone="secondary" size="sm" disabled={!canWrite} trailing>
+Open
+</ButtonLink>
             </Card>
           ))}
         </ContentGrid>

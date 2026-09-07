@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { Link, useParams } from "react-router-dom"
+import { useParams } from "react-router-dom"
 
 import { ApiError, isApiError, isTransportError } from "~/api/errors"
 import { Page } from "~/app/layouts/Page"
@@ -26,6 +26,7 @@ import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 import { Button } from "~/ui/primitives/Button"
+import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 
 import { ADMIN_FIGURE } from "~/ui/recipes/admin"
@@ -153,16 +154,12 @@ const FundWorkspaceScreen = (): React.ReactElement => {
             </Section>
 
             <div className={ACTION_ROW}>
-              <Link to={`/funds/${fundId}/holdings`}>
-                <Button tone="secondary" size="sm">
-                  Holdings
-                </Button>
-              </Link>
-              <Link to={`/funds/${fundId}/aum`}>
-                <Button tone="secondary" size="sm">
-                  Manage AUM
-                </Button>
-              </Link>
+              <ButtonLink to={`/funds/${fundId}/holdings`} tone="secondary" size="sm">
+                Holdings
+              </ButtonLink>
+              <ButtonLink to={`/funds/${fundId}/aum`} tone="secondary" size="sm">
+                Manage AUM
+              </ButtonLink>
               {canWrite
                 ? ALLOWED_TRANSITIONS[data.fund.status].map((status) => (
                     <Button

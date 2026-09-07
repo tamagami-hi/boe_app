@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom"
+
 
 import { isApiError } from "~/api/errors"
 import type { PagedQuery } from "~/api/paged"
@@ -15,13 +15,13 @@ import {
 } from "~/features/admin/shared/adminQueries"
 import { ContentGrid } from "~/app/layouts/ContentGrid"
 import { Stat } from "~/ui/patterns/DataList"
-import { Button } from "~/ui/primitives/Button"
+
+import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 
 import { ADMIN_META, ADMIN_QUEUE_COUNT } from "~/ui/recipes/admin"
 import { PROSE_SM } from "~/ui/recipes/datalist"
 import { ACTION_ROW } from "~/ui/recipes/layout"
-import { CARD_LINK } from "~/ui/recipes/surface"
 
 const QUEUE_ENTRIES = [
   {
@@ -97,11 +97,9 @@ const OverviewScreen = (): React.ReactElement => {
               <Stat label={entry.label} hint={entry.hint}>
                 <span className={ADMIN_QUEUE_COUNT}>{counts[entry.id] ?? "—"}</span>
               </Stat>
-              <Link to={entry.to} className={CARD_LINK}>
-                <Button tone="ghost" size="sm" trailing>
-                  Open
-                </Button>
-              </Link>
+              <ButtonLink to={entry.to} tone="ghost" size="sm" trailing>
+Open
+</ButtonLink>
             </Card>
           ))}
         </ContentGrid>
@@ -119,11 +117,9 @@ const OverviewScreen = (): React.ReactElement => {
           </div>
           <div className={ACTION_ROW}>
             {reachable.map((route) => (
-              <Link key={route.id} to={route.path} className={CARD_LINK}>
-                <Button tone="secondary" size="sm">
-                  {route.nav?.label ?? route.title}
-                </Button>
-              </Link>
+              <ButtonLink to={route.path} tone="secondary" size="sm">
+{route.nav?.label ?? route.title}
+</ButtonLink>
             ))}
           </div>
           <p className={PROSE_SM}>

@@ -1,12 +1,15 @@
-import { useEffect, useState } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import type { ReactNode } from "react"
 
-import { CLIENT_ROUTES } from "~/app/routing/clientRoutes"
+import { CLIENT_HOME_PATH, CLIENT_ROUTES } from "~/app/routing/clientRoutes"
 import { findRoute, navRoutes } from "~/app/routing/routeManifest"
 import { useSession } from "~/app/providers/SessionProvider"
+import { useNotifications } from "~/features/shared/queries"
 import { BackGlyph, BellGlyph, NAV_GLYPHS } from "~/shells/client/navGlyphs"
 import {
+  BELL_DOT,
+  BELL_DOT_NAV,
+  BELL_WRAP,
   CLIENT_BELL,
   CLIENT_BOTTOM_NAV,
   CLIENT_CONTENT,
@@ -17,7 +20,7 @@ import {
   CLIENT_NAV_ITEM,
   CLIENT_NAV_MARKER,
   CLIENT_SHELL,
-  CLIENT_TITLE,
+  CLIENT_SPACER,
   CLIENT_TOP_NAV,
   CLIENT_TOP_NAV_ITEM,
   CLIENT_TOP_NAV_LIST,
@@ -28,30 +31,13 @@ import {
 
 const TABS = navRoutes(CLIENT_ROUTES)
 
-const TITLE_REVEAL_OFFSET = 56
-
 export type ClientFrameProps = Readonly<{ children: ReactNode }>
 
 export const ClientFrame = ({ children }: ClientFrameProps): React.ReactElement => {
   const location = useLocation()
   const navigate = useNavigate()
   const session = useSession()
-  const [titleVisible, setTitleVisible] = useState(false)
-
-  useEffect(() => {
-    const sync = (): void => {
-      setTitleVisible(window.scrollY > TITLE_REVEAL_OFFSET)
-    }
-    sync()
-    window.addEventListener("scroll", sync, { passive: true })
-    return () => {
-      window.removeEventListener("scroll", sync)
-    }
-  }, [])
-
-  useEffect(() => {
-    setTitleVisible(false)
-  }, [location.pathname])
+  const notifications = useNotifications()
 
   const route = findRoute(CLIENT_ROUTES, location.pathname)
   const isPublicSurface = route === null || route.access === "public"
@@ -59,7 +45,13 @@ export const ClientFrame = ({ children }: ClientFrameProps): React.ReactElement 
   if (isPublicSurface || session.status !== "authenticated") return <>{children}</>
 
   const activeId = route.id
-  const backTarget = route.back.kind === "parent" ? route.back.path : null
+  const backPath =
+    route.back.kind === "parent"
+      ? route.back.path
+      : route.back.kind === "home"
+        ? CLIENT_HOME_PATH
+        : null
+  const hasUnread = (notifications.data?.unreadCount ?? 0) > 0
 
   return (
     <div className={CLIENT_SHELL}>
@@ -82,29 +74,35 @@ export const ClientFrame = ({ children }: ClientFrameProps): React.ReactElement 
               </li>
             ))}
           </ul>
-          <Link to="/notifications" className={CLIENT_BELL} aria-label="Notifications">
-            <BellGlyph className={ICON_GLYPH} />
-          </Link>
+          <span className={BELL_WRAP}>
+            <Link to="/notifications" className={CLIENT_BELL} aria-label="Notifications">
+              <BellGlyph className={ICON_GLYPH} />
+            </Link>
+            {hasUnread ? <span className={BELL_DOT_NAV} aria-hidden="true" /> : null}
+          </span>
         </div>
       </nav>
 
       <header className={CLIENT_HEADER}>
-        {backTarget === null ? null : (
+        {backPath === null ? null : (
           <button
             type="button"
             className={ICON_ACTION}
             aria-label="Go back"
             onClick={() => {
-              void navigate(-1)
+              void navigate(backPath)
             }}
           >
             <BackGlyph className={ICON_GLYPH} />
           </button>
         )}
-        <span className={CLIENT_TITLE}>{titleVisible ? route.title : ""}</span>
-        <Link to="/notifications" className={ICON_ACTION} aria-label="Notifications">
-          <BellGlyph className={ICON_GLYPH} />
-        </Link>
+        <span className={CLIENT_SPACER} />
+        <span className={BELL_WRAP}>
+          <Link to="/notifications" className={ICON_ACTION} aria-label="Notifications">
+            <BellGlyph className={ICON_GLYPH} />
+          </Link>
+          {hasUnread ? <span className={BELL_DOT} aria-hidden="true" /> : null}
+        </span>
       </header>
 
       <div className={CLIENT_CONTENT}>{children}</div>

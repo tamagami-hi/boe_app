@@ -7,7 +7,8 @@ import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { SHELL } from "~/ui/recipes/surface"
 
-import { FUND_SORT_GLYPH, FUND_TABLE, FUND_TABLE_CELL, FUND_TABLE_HEAD_BUTTON, FUND_TABLE_HEAD_CELL, FUND_TABLE_HEAD_LABEL, FUND_TABLE_INNER, FUND_TABLE_MUTED, FUND_TABLE_NAME, FUND_TABLE_NAME_LINK, FUND_TABLE_ROW } from "./funds.recipe"
+import { ITEM_TITLE } from "~/ui/recipes/datalist"
+import { FUND_SORT_GLYPH, FUND_TABLE, FUND_TABLE_CELL, FUND_TABLE_HEAD_BUTTON, FUND_TABLE_HEAD_CELL, FUND_TABLE_HEAD_LABEL, FUND_TABLE_INNER, FUND_TABLE_MUTED, FUND_TABLE_NAME_LINK, FUND_TABLE_ROW } from "./funds.recipe"
 import { ADMIN_NUMERIC } from "~/ui/recipes/admin"
 import { META_MUTED } from "~/ui/recipes/text"
 
@@ -97,7 +98,7 @@ export const FundTable = ({ rows, sort, onSort }: FundTableProps): React.ReactEl
             <tr key={fund.id} className={FUND_TABLE_ROW}>
               <td className={FUND_TABLE_CELL}>
                 <Link to={`/funds/${fund.id}`} className={FUND_TABLE_NAME_LINK}>
-                  <span className={FUND_TABLE_NAME}>{fund.name}</span>
+                  <span className={ITEM_TITLE}>{fund.name}</span>
                   <span className={META_MUTED}>{fund.category}</span>
                 </Link>
               </td>
@@ -115,7 +116,7 @@ export const FundTable = ({ rows, sort, onSort }: FundTableProps): React.ReactEl
                 {fund.stockCount === 0 ? (
                   <span className={FUND_TABLE_MUTED}>Not available</span>
                 ) : (
-                  <span className={FUND_TABLE_NAME}>{String(fund.stockCount)}</span>
+                  <span className={ITEM_TITLE}>{String(fund.stockCount)}</span>
                 )}
               </td>
             </tr>

@@ -5,10 +5,12 @@ import { useLegalDocument } from "~/features/shared/queries"
 import type { LegalDocumentKind } from "~/features/shared/queries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { Prose } from "~/ui/patterns/DataList"
+import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 import { STACK_SM } from "~/ui/recipes/layout"
-import { META_ROW, SUBHEAD_TITLE } from "~/ui/recipes/text"
+import { PROSE_PANEL } from "~/ui/recipes/surface"
+import { CARD_TITLE, META_ROW } from "~/ui/recipes/text"
 
 import {
   CONTACT_LABEL,
@@ -78,9 +80,12 @@ export const LegalDocumentScreen = ({
           </Card>
         }
         fallback={
-          <Card>
+          <div className={PROSE_PANEL}>
             <Prose>{fallback}</Prose>
-          </Card>
+            <ButtonLink to="/profile/support" tone="secondary" size="sm" trailing>
+              Contact support
+            </ButtonLink>
+          </div>
         }
       >
         {(data) => {
@@ -102,7 +107,7 @@ export const LegalDocumentScreen = ({
 
               {sections.map((section) => (
                 <div key={section.heading} className={STACK_SM}>
-                  <h2 className={SUBHEAD_TITLE}>{section.heading}</h2>
+                  <h2 className={CARD_TITLE}>{section.heading}</h2>
                   <Prose>{section.body}</Prose>
                 </div>
               ))}
@@ -118,7 +123,14 @@ export const LegalDocumentScreen = ({
                 </ul>
               )}
 
-              {isPublished ? null : <Prose>{fallback}</Prose>}
+              {isPublished ? null : (
+                <>
+                  <Prose>{fallback}</Prose>
+                  <ButtonLink to="/profile/support" tone="secondary" size="sm" trailing>
+                    Contact support
+                  </ButtonLink>
+                </>
+              )}
             </Card>
           )
         }}

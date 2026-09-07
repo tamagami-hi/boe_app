@@ -9,8 +9,10 @@ import { NO_BIOMETRIC, readBiometricCapability } from "~/platform/biometric"
 import type { BiometricCapability } from "~/platform/biometric"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
+import { ACTION_DANGER_ROW, ACTION_ROW } from "~/ui/recipes/layout"
 import { Alert } from "~/ui/primitives/Feedback"
 import { Switch } from "~/ui/primitives/Toggle"
+import { PROSE_PANEL } from "~/ui/recipes/surface"
 import { HONESTY_TEXT } from "~/ui/recipes/text"
 
 import { PinPad } from "./PinPad"
@@ -133,10 +135,10 @@ const DeviceSecurityScreen = (): React.ReactElement => {
     <Page width="form">
       <PageHeader title="Device security" description={DEVICE_PIN_SUBTITLE} />
 
-      <Card>
+      <div className={PROSE_PANEL}>
         <p className={HONESTY_TEXT}>{DEVICE_PIN_HONESTY}</p>
         <p className={HONESTY_TEXT}>{LOCK_BEHAVIOUR}</p>
-      </Card>
+      </div>
 
       {notice === null ? null : (
         <Alert tone="success" title="Saved">
@@ -168,24 +170,28 @@ const DeviceSecurityScreen = (): React.ReactElement => {
                     setBiometric(next)
                   }}
                 />
-                <Button
-                  tone="secondary"
-                  onClick={() => {
-                    setNotice(null)
-                    setFailure(null)
-                    setMode("verify")
-                  }}
-                >
-                  Change PIN
-                </Button>
-                <Button
-                  tone="ghost"
-                  onClick={() => {
-                    setRemoving(true)
-                  }}
-                >
-                  Remove PIN
-                </Button>
+                <div className={ACTION_ROW}>
+                  <Button
+                    tone="secondary"
+                    onClick={() => {
+                      setNotice(null)
+                      setFailure(null)
+                      setMode("verify")
+                    }}
+                  >
+                    Change PIN
+                  </Button>
+                </div>
+                <div className={ACTION_DANGER_ROW}>
+                  <Button
+                    tone="danger"
+                    onClick={() => {
+                      setRemoving(true)
+                    }}
+                  >
+                    Remove PIN
+                  </Button>
+                </div>
               </>
             ) : (
               <Button

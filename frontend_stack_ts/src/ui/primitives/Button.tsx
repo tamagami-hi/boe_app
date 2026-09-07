@@ -3,6 +3,8 @@ import type { ButtonHTMLAttributes, ReactNode } from "react"
 import { cx } from "~/lib/cx"
 import {
   BUTTON_BASE,
+  BUTTON_BUSY,
+  BUTTON_DISABLED,
   BUTTON_SIZE,
   BUTTON_SPINNER,
   BUTTON_TONE,
@@ -59,6 +61,8 @@ export const Button = ({
       BUTTON_TONE[tone],
       BUTTON_SIZE[size],
       fullWidth ? "w-full" : undefined,
+      loading ? BUTTON_BUSY : undefined,
+      disabled === true && !loading ? BUTTON_DISABLED : undefined,
     )}
     disabled={disabled === true || loading}
     aria-busy={loading}

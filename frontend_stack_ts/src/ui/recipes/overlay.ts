@@ -20,7 +20,17 @@ export const SHEET_PANEL = [
 export const SHEET_GRIP =
   "self-center h-1 w-10 rounded-full bg-hairline-strong lg:hidden"
 
-export const SHEET_HEAD = "flex flex-col gap-1"
+export const SHEET_HEAD_ROW = "flex items-start justify-between gap-3"
+
+export const SHEET_HEAD = "flex min-w-0 flex-col gap-1"
+
+export const SHEET_CLOSE = [
+  "-mr-2 -mt-1 flex-none tap-target rounded-full",
+  "inline-flex items-center justify-center",
+  "border-0 bg-transparent text-fg-muted cursor-pointer no-tap-flash",
+  "transition-[background-color,color] duration-200 ease-out",
+  "hover:bg-shell hover:text-fg",
+].join(" ")
 
 export const SHEET_TITLE = "m-0 font-display text-xl font-normal tracking-display text-fg"
 
@@ -28,14 +38,14 @@ export const SHEET_DESCRIPTION = "m-0 font-ui text-sm leading-normal text-fg-mut
 
 export const SHEET_BODY = "flex flex-col gap-3"
 
-export const SHEET_ACTIONS = "flex flex-col gap-2 lg:flex-row lg:justify-end"
+export const SHEET_ACTIONS = "flex flex-col-reverse gap-2 lg:flex-row lg:justify-end"
 
 export const BLOCK_LAYER = [
   "fixed inset-0 z-toast flex justify-center overflow-y-auto",
   "bg-bg",
   "px-[max(var(--be-page-pad-x),var(--be-safe-left))]",
-  "pt-[calc(var(--be-space-8)+var(--be-safe-top))]",
-  "pb-[calc(var(--be-space-8)+var(--be-safe-bottom))]",
+  "pt-[calc(var(--be-space-10)+var(--be-safe-top))]",
+  "pb-[calc(var(--be-space-10)+var(--be-safe-bottom))]",
   "motion-safe:animate-[be-fade-in_var(--be-dur-base)_var(--be-ease-out)_both]",
 ].join(" ")
 

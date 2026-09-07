@@ -87,23 +87,9 @@ const isStructural = (value: string): boolean =>
 
 const ALLOWED_DUPLICATES: readonly Readonly<{ names: readonly string[]; reason: string }>[] = [
   {
-    names: [
-      "src/ui/recipes/field.ts::SWITCH_LABEL",
-      "src/ui/recipes/field.ts::RADIO_LABEL",
-      "src/features/funds/funds.recipe.ts::FUND_TABLE_NAME",
-    ],
-    reason:
-      "A control label and a table cell name coincide today but answer to different owners: control labels track the form system, table names track the fund table's density.",
-  },
-  {
     names: ["src/ui/recipes/field.ts::FIELD_HINT", "src/ui/recipes/text.ts::META_TEXT"],
     reason:
       "A form hint is bound to the field system and must be able to change tone independently of generic metadata text.",
-  },
-  {
-    names: ["src/ui/recipes/field.ts::TEXTAREA_INVALID", "src/ui/recipes/field.ts::AMOUNT_INVALID"],
-    reason:
-      "Both currently reduce to the shared invalid ring utility, but the amount input carries a larger control and may need a heavier invalid treatment.",
   },
   {
     names: [

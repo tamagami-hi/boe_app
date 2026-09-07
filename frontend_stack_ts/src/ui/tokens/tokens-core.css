@@ -40,6 +40,7 @@
   --be-border-strong-color: var(--be-slate-rule-strong);
   --be-border-1: 1px solid var(--be-border-color);
   --be-focus-ring: 2px solid var(--be-ink);
+  --be-focus-ring-inverse: var(--be-fg-inverse);
   --be-focus-ring-offset: 2px;
 
   --be-positive: var(--be-green);
@@ -75,14 +76,16 @@
   --be-tracking-tight: -0.01em;
   --be-tracking-display: -0.02em;
 
+  --be-space-1: 4px;
   --be-space-2: 8px;
+  --be-space-3: 12px;
   --be-space-4: 16px;
   --be-space-5: 20px;
   --be-space-6: 24px;
-  --be-space-7: 32px;
-  --be-space-8: 40px;
-  --be-space-9: 48px;
-  --be-space-10: 64px;
+  --be-space-8: 32px;
+  --be-space-10: 40px;
+  --be-space-12: 48px;
+  --be-space-16: 64px;
 
   --be-radius-sm: 6px;
   --be-radius-md: 10px;
@@ -107,7 +110,7 @@
   --be-content-max-form: 35rem;
   --be-page-pad-x: var(--be-space-4);
   --be-page-pad-x-md: var(--be-space-6);
-  --be-page-pad-x-lg: clamp(var(--be-space-7), 2vw, var(--be-space-10));
+  --be-page-pad-x-lg: clamp(var(--be-space-8), 2vw, var(--be-space-16));
 
   --be-header-h: 56px;
   --be-nav-h: 56px;

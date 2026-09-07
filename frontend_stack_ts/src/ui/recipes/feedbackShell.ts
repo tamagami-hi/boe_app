@@ -13,11 +13,22 @@ export const TOAST_REGION = [
 ].join(" ")
 
 export const TOAST_BASE = [
-  "pointer-events-auto block w-full rounded-md border px-4 py-3",
-  "font-ui text-sm leading-snug shadow-elev-2",
+  "pointer-events-auto flex w-full items-start gap-3",
+  "rounded-squircle px-4 py-3",
+  "font-ui text-sm leading-snug",
+  "inset-shadow-nav shadow-ambient-3",
 ].join(" ")
 
 export const TOAST_TONE = {
-  default: "border-rule bg-bg-inverse text-fg-inverse",
-  error: "border-negative bg-negative text-fg-inverse",
+  default: "bg-nav-bg text-nav-fg",
+  error: "bg-negative text-fg-inverse",
 } as const
+
+export const TOAST_MESSAGE = "min-w-0 flex-1"
+
+export const TOAST_DISMISS = [
+  "-my-1 -mr-2 flex-none tap-target rounded-full",
+  "border-0 bg-transparent text-current opacity-70 cursor-pointer no-tap-flash",
+  "transition-opacity duration-200 ease-out hover:opacity-100",
+  "focus-visible:outline-focus-inverse",
+].join(" ")

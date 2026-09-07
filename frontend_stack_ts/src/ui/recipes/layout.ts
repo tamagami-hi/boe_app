@@ -6,7 +6,7 @@ export const PAGE_BASE = [
   "md:px-[max(var(--be-page-pad-x-md),var(--be-safe-left))]",
   "lg:px-[max(var(--be-page-pad-x-lg),var(--be-safe-left))]",
   "pt-8 md:pt-10 lg:pt-16",
-  "pb-[calc(var(--be-nav-h)+var(--be-safe-bottom)+var(--be-space-9))] lg:pb-16",
+  "pb-[var(--be-space-12)] lg:pb-16",
   "gap-8 md:gap-10 lg:gap-12",
 ].join(" ")
 
@@ -22,7 +22,8 @@ export const SECTION_HEAD = "flex flex-col gap-1"
 
 export const SECTION_HEAD_ROW = "flex items-baseline justify-between gap-3"
 
-export const SECTION_HEAD_TITLE = "font-ui text-lg font-semibold leading-snug text-fg"
+export const SECTION_HEAD_TITLE =
+  "font-display text-xl font-normal leading-snug tracking-display text-fg"
 
 export const SECTION_HEAD_DESC =
   "max-w-[62ch] font-ui text-sm leading-normal text-fg-muted"
@@ -63,6 +64,11 @@ export const PAGE_HEADER_TITLE = [
   "[text-wrap:balance]",
 ].join(" ")
 
+export const GATE_TITLE = [
+  "m-0 font-display font-light text-page text-fg",
+  "[text-wrap:balance]",
+].join(" ")
+
 export const PAGE_HEADER_DESC =
   "m-0 max-w-[58ch] font-ui text-base lg:text-md leading-relaxed text-fg-muted"
 
@@ -76,16 +82,17 @@ export const ROW_BETWEEN = "flex items-start justify-between gap-3"
 
 export const ROW_BETWEEN_BASELINE = "flex items-baseline justify-between gap-3"
 
-export const GRID_COLS_MD: Readonly<Record<2 | 3 | 4, string>> = {
-  2: "md:grid-cols-2",
-  3: "md:grid-cols-2 lg:grid-cols-3",
-  4: "md:grid-cols-2 lg:grid-cols-4",
-}
-
 export const PAGE_HEADER_RULE =
   "h-px w-11 bg-gradient-to-r from-gold to-transparent"
 
 export const ACTION_ROW = "flex flex-wrap gap-2"
+
+export const ACTION_GROUP = "flex flex-col gap-3"
+
+export const ACTION_DANGER_ROW = [
+  "flex flex-col gap-2 sm:flex-row sm:flex-wrap",
+  "border-t border-hairline pt-3",
+].join(" ")
 
 export const BOTTOM_NAV = [
   "sticky bottom-0 z-nav grid grid-flow-col auto-cols-fr lg:hidden",

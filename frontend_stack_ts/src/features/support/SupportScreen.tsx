@@ -92,6 +92,37 @@ const SupportScreen = (): React.ReactElement => {
         description="Find an answer below, or send us a message."
       />
 
+      <Section title="Published answers">
+        <AsyncBoundary
+          query={faqs}
+          skeleton={
+            <Card>
+              <Skeleton height="1rem" width="60%" />
+              <Skeleton height="1rem" width="45%" />
+            </Card>
+          }
+          isEmpty={(data) => data.items.length === 0}
+          empty={
+            <EmptyState
+              title="No answers yet"
+              description="Answers to common questions will appear here."
+            />
+          }
+        >
+          {(data) => (
+            <Card>
+              <div className="flex flex-col">
+                {data.items.map((faq) => (
+                  <Disclosure key={`${faq.key}-${String(faq.version)}`} title={faq.q}>
+                    <Prose>{faq.a}</Prose>
+                  </Disclosure>
+                ))}
+              </div>
+            </Card>
+          )}
+        </AsyncBoundary>
+      </Section>
+
       <Section title="Raise a request">
         <Card elevated>
           <div className={FIELD_MEASURE}>
@@ -221,36 +252,6 @@ const SupportScreen = (): React.ReactElement => {
         <LoadMore list={tickets} noun="requests" />
       </Section>
 
-      <Section title="Published answers">
-        <AsyncBoundary
-          query={faqs}
-          skeleton={
-            <Card>
-              <Skeleton height="1rem" width="60%" />
-              <Skeleton height="1rem" width="45%" />
-            </Card>
-          }
-          isEmpty={(data) => data.items.length === 0}
-          empty={
-            <EmptyState
-              title="No answers yet"
-              description="Answers to common questions will appear here."
-            />
-          }
-        >
-          {(data) => (
-            <Card>
-              <div className="flex flex-col">
-                {data.items.map((faq) => (
-                  <Disclosure key={`${faq.key}-${String(faq.version)}`} title={faq.q}>
-                    <Prose>{faq.a}</Prose>
-                  </Disclosure>
-                ))}
-              </div>
-            </Card>
-          )}
-        </AsyncBoundary>
-      </Section>
     </Page>
   )
 }

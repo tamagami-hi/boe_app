@@ -12,7 +12,8 @@ import { LoadMore } from "~/ui/patterns/LoadMore"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
-import { Button } from "~/ui/primitives/Button"
+
+import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 import { Input } from "~/ui/primitives/FormField"
@@ -48,9 +49,9 @@ const FundListScreen = (): React.ReactElement => {
         description="Create a fund with its opening AUM, publish new terms, and pause or archive it."
         actions={
           canCreate ? (
-            <Link to="/funds/new">
-              <Button size="sm">New fund</Button>
-            </Link>
+            <ButtonLink to="/funds/new" size="sm">
+New fund
+</ButtonLink>
           ) : null
         }
       />
@@ -107,9 +108,9 @@ const FundListScreen = (): React.ReactElement => {
             description="Create a fund, or clear the filters to see everything."
             action={
               canCreate ? (
-                <Link to="/funds/new">
-                  <Button>New fund</Button>
-                </Link>
+                <ButtonLink to="/funds/new">
+New fund
+</ButtonLink>
               ) : undefined
             }
           />

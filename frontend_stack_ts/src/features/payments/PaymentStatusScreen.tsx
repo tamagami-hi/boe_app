@@ -20,16 +20,17 @@ import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
-import { Button } from "~/ui/primitives/Button"
+
+import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton, Spinner } from "~/ui/primitives/Feedback"
-import { ITEM_TITLE, STAT_LABEL } from "~/ui/recipes/datalist"
+import { STAT_LABEL, STAT_ROOT, SUMMARY_GRID } from "~/ui/recipes/datalist"
 import { ACTION_ROW } from "~/ui/recipes/layout"
 import { STATE_REFRESHING } from "~/ui/recipes/state"
-import { HONESTY_TEXT } from "~/ui/recipes/text"
+import { LINK_TEXT } from "~/ui/recipes/text"
 
 import { browserPendingPaymentStore, clearPendingPayment } from "./pendingPayment"
-import { PAYMENT_HERO, PAYMENT_STATUS_ROW } from "./payments.recipe"
+import { PAYMENT_ANSWER, PAYMENT_HERO, PAYMENT_STATUS_ROW } from "./payments.recipe"
 
 const COPY: Readonly<Record<string, string>> = {
   payment_in_progress:
@@ -87,13 +88,6 @@ const PaymentStatusScreen = (): React.ReactElement => {
             <>
               <Card elevated>
                 <div className={PAYMENT_HERO}>
-                  {fundName === null ? null : (
-                    <Link to={`/funds/${payment.fundId}`} className={ITEM_TITLE}>
-                      {fundName}
-                    </Link>
-                  )}
-                  <span className={STAT_LABEL}>Amount</span>
-                  <MoneyValue amount={toPaise(payment.amountPaise)} size="xl" />
                   <div className={PAYMENT_STATUS_ROW}>
                     <StatusBadge status={clientInvestmentStatus(payment.status)} />
                     {isOpen ? (
@@ -103,9 +97,23 @@ const PaymentStatusScreen = (): React.ReactElement => {
                       </span>
                     ) : null}
                   </div>
+                  <p className={PAYMENT_ANSWER}>{COPY[payment.status] ?? ""}</p>
                 </div>
 
-                <p className={HONESTY_TEXT}>{COPY[payment.status] ?? ""}</p>
+                <div className={SUMMARY_GRID}>
+                  <div className={STAT_ROOT}>
+                    <span className={STAT_LABEL}>Amount</span>
+                    <MoneyValue amount={toPaise(payment.amountPaise)} size="lg" />
+                  </div>
+                  {fundName === null ? null : (
+                    <div className={STAT_ROOT}>
+                      <span className={STAT_LABEL}>Fund</span>
+                      <Link to={`/funds/${payment.fundId}`} className={LINK_TEXT}>
+                        {fundName}
+                      </Link>
+                    </div>
+                  )}
+                </div>
               </Card>
 
               <Card>
@@ -126,7 +134,11 @@ const PaymentStatusScreen = (): React.ReactElement => {
                     <DetailRow label="Pay by">{formatDateTime(payment.expiresAt)}</DetailRow>
                   ) : null}
                   {partner === null ? null : <DetailRow label="Paid with">{partner}</DetailRow>}
-                  {reason === null ? null : <DetailRow label="Reason">{reason}</DetailRow>}
+                  {reason === null ? null : (
+                    <DetailRow label="Reason" emphasis="lead">
+                      {reason}
+                    </DetailRow>
+                  )}
                   {reference === null ? null : (
                     <DetailRow label="Reference ID">{reference}</DetailRow>
                   )}
@@ -135,23 +147,23 @@ const PaymentStatusScreen = (): React.ReactElement => {
 
               <Section>
                 <div className={ACTION_ROW}>
-                  <Link to="/activity">
-                    <Button tone="secondary">Back to activity</Button>
-                  </Link>
+                  <ButtonLink to="/activity" tone="secondary">
+Back to activity
+</ButtonLink>
                   {payment.status === "support_required" ? (
-                    <Link to="/profile/support">
-                      <Button>Contact support</Button>
-                    </Link>
+                    <ButtonLink to="/profile/support">
+Contact support
+</ButtonLink>
                   ) : null}
                   {payment.status === "confirmed" ? (
-                    <Link to="/portfolio">
-                      <Button trailing>See my portfolio</Button>
-                    </Link>
+                    <ButtonLink to="/portfolio" trailing>
+See my portfolio
+</ButtonLink>
                   ) : null}
                   {payment.status === "payment_failed" ? (
-                    <Link to={`/funds/${payment.fundId}`}>
-                      <Button trailing>Try again</Button>
-                    </Link>
+                    <ButtonLink to={`/funds/${payment.fundId}`} trailing>
+                      Try again
+                    </ButtonLink>
                   ) : null}
                 </div>
               </Section>

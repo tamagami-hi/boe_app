@@ -15,7 +15,8 @@ import { ITEM_TITLE, STAT_LABEL, STAT_ROOT, SUMMARY_GRID } from "~/ui/recipes/da
 import { CARD_COLUMNS_WRAP } from "~/ui/recipes/layout"
 import { CARD_LINK } from "~/ui/recipes/surface"
 import { META_MUTED, META_TEXT, MONEY_BASE, MONEY_SIZE, MONEY_TONE } from "~/ui/recipes/text"
-import { Button } from "~/ui/primitives/Button"
+
+import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 
@@ -49,9 +50,9 @@ const PortfolioScreen = (): React.ReactElement => {
             title="You have not invested yet"
             description="Your holdings will appear here once your first investment is complete."
             action={
-              <Link to="/funds">
-                <Button>Browse funds</Button>
-              </Link>
+              <ButtonLink to="/funds">
+Browse funds
+</ButtonLink>
             }
           />
         }
@@ -87,11 +88,9 @@ const PortfolioScreen = (): React.ReactElement => {
             <Section
               title="Positions"
               actions={
-                <Link to="/sips">
-                  <Button tone="ghost" size="sm">
-                    SIP plans
-                  </Button>
-                </Link>
+                <ButtonLink to="/sips" tone="secondary" size="sm">
+SIP plans
+</ButtonLink>
               }
             >
               <div className={CARD_COLUMNS_WRAP[3]}>

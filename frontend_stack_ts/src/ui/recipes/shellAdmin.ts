@@ -70,6 +70,7 @@ export const ADMIN_SIDEBAR_LINK = [
   "motion-reduce:hover:translate-x-0",
   "aria-[current=page]:bg-nav-surface-strong aria-[current=page]:text-nav-fg",
   "aria-[current=page]:shadow-nav-hairline",
+  "focus-visible:outline-focus-inverse",
 ].join(" ")
 
 export const ADMIN_NAV_ITEM = [
@@ -77,6 +78,7 @@ export const ADMIN_NAV_ITEM = [
   "text-center no-underline font-ui text-2xs font-semibold tracking-[0.03em] text-nav-fg-muted",
   "transition-colors duration-200 ease-out",
   "aria-[current=page]:text-nav-fg",
+  "focus-visible:outline-focus-inverse",
 ].join(" ")
 
 export const ADMIN_NAV_MORE = [

@@ -17,14 +17,6 @@ export const MONEY_TONE: Readonly<Record<MoneyTone, string>> = {
   muted: "text-fg-muted",
 }
 
-export const PAGE_TITLE =
-  "font-display text-2xl lg:text-3xl font-normal leading-snug tracking-display text-fg"
-
-export const SECTION_TITLE =
-  "font-display text-xl font-normal leading-snug tracking-display text-fg"
-
-export const CARD_TITLE = "font-display text-lg font-medium leading-snug tracking-tight text-fg"
-
 export const HERO_ACCENT = "italic font-normal text-gold-deep"
 
 export const BODY_TEXT = "font-ui text-base leading-relaxed text-fg-muted"
@@ -35,7 +27,7 @@ export const META_TEXT = "font-ui text-xs leading-normal text-fg-faint"
 
 export const META_MUTED = "font-ui text-xs text-fg-muted"
 
-export const LABEL_TEXT = "font-ui text-xs font-semibold uppercase tracking-eyebrow text-fg-muted"
+export const CARD_TITLE = "font-display text-lg font-medium leading-snug tracking-tight text-fg"
 
 export const HONESTY_TEXT = "m-0 max-w-[64ch] font-ui text-sm leading-relaxed text-fg-muted"
 
@@ -44,9 +36,6 @@ export const META_ROW =
 
 export const REFERENCE_TEXT = "font-mono text-xs tracking-[0.06em] text-fg-faint"
 
-export const SUBHEAD_TITLE =
-  "m-0 font-display text-lg font-normal tracking-[-0.015em] text-fg"
-
 export const COUNT_TEXT =
   "font-numeric text-sm font-semibold [font-variant-numeric:tabular-nums] text-fg-muted"
 
@@ -54,3 +43,19 @@ export const RULE_GOLD =
   "block h-0.5 w-16 rounded-full bg-gradient-to-r from-gold to-transparent"
 
 export const HINT_MUTED = "font-ui text-xs leading-normal text-fg-muted"
+
+export const LINK_TEXT = [
+  "inline-flex items-center -mx-1 min-h-target-compact px-1",
+  "cursor-pointer border-0 bg-transparent",
+  "font-ui text-md font-semibold text-gold-deep",
+  "underline underline-offset-[3px] decoration-1",
+  "transition-colors duration-200 ease-out hover:text-gold-2",
+].join(" ")
+
+export const LINK_TEXT_SM = [
+  "inline-flex items-center -mx-1 min-h-target-compact px-1",
+  "cursor-pointer border-0 bg-transparent",
+  "font-ui text-sm font-semibold text-gold-deep",
+  "underline underline-offset-[3px] decoration-1",
+  "transition-colors duration-200 ease-out hover:text-gold-2",
+].join(" ")

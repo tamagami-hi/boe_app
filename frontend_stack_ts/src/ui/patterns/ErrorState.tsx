@@ -2,7 +2,7 @@ import { supportReference } from "~/domain/reference"
 import { Button } from "~/ui/primitives/Button"
 import {
   STATE_DESCRIPTION,
-  STATE_PANEL,
+  STATE_PANEL_ERROR,
   STATE_REFERENCE,
   STATE_TITLE,
 } from "~/ui/recipes/state"
@@ -65,7 +65,7 @@ export const ErrorState = ({
   const reference = supportReference(requestId)
 
   return (
-    <div className={STATE_PANEL} role="alert">
+    <div className={STATE_PANEL_ERROR} role="alert">
       <span className={STATE_TITLE}>{copy.title}</span>
       <p className={STATE_DESCRIPTION}>{copy.description}</p>
       {canRetry ? (

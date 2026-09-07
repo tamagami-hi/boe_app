@@ -5,7 +5,7 @@ export const FORM_ROOT = "flex flex-col gap-4"
 export const FORM_ACTIONS = "flex flex-col gap-2 pt-2"
 
 export const FIELD_LABEL =
-  "font-ui text-xs font-semibold uppercase tracking-[0.06em] text-fg-muted"
+  "font-ui text-xs font-semibold uppercase tracking-eyebrow text-fg-muted"
 
 export const FIELD_REQUIRED = "ml-[3px] text-gold-deep"
 
@@ -13,10 +13,8 @@ export const FIELD_HINT = "font-ui text-xs leading-normal text-fg-faint"
 
 export const FIELD_ERROR = "font-ui text-xs font-semibold text-negative"
 
-export const INPUT_BASE = [
-  "w-full min-h-[50px] lg:min-h-[46px] px-4",
-  "rounded-squircle-sm border-0 bg-field text-fg",
-  "font-ui text-md",
+const FIELD_SURFACE = [
+  "w-full rounded-squircle-sm border-0 bg-field text-fg",
   "shadow-field",
   "transition-[box-shadow,background-color] duration-200 ease-out",
   "enabled:hover:bg-field-hover",
@@ -24,45 +22,37 @@ export const INPUT_BASE = [
   "disabled:cursor-not-allowed disabled:opacity-40",
 ].join(" ")
 
-export const INPUT_INVALID = "shadow-field-invalid focus:shadow-field-invalid-focus"
+const FIELD_HEIGHT = "min-h-[50px] lg:min-h-[46px]"
+
+export const FIELD_INVALID = "shadow-field-invalid focus:shadow-field-invalid-focus"
+
+export const INPUT_BASE = [FIELD_SURFACE, FIELD_HEIGHT, "px-4 font-ui text-md"].join(" ")
 
 export const INPUT_MONO = "font-mono text-lg tracking-[0.16em]"
 
 export const SELECT_BASE = [
-  "w-full min-h-target px-3 pr-8",
-  "appearance-none cursor-pointer select-caret",
-  "rounded-squircle-sm border-0 bg-field text-fg font-ui text-base",
-  "ring-inset-field",
-  "focus:outline-none focus:ring-focus-ink",
-  "disabled:cursor-not-allowed disabled:opacity-55",
+  FIELD_SURFACE,
+  FIELD_HEIGHT,
+  "pl-4 pr-9 appearance-none cursor-pointer select-caret font-ui text-md",
 ].join(" ")
 
 export const TEXTAREA_BASE = [
-  "w-full min-h-30 p-3",
-  "rounded-squircle-sm border-0 bg-field text-fg",
-  "font-ui text-base leading-normal resize-y",
-  "ring-inset-field",
-  "focus:outline-none focus:ring-focus-ink",
+  FIELD_SURFACE,
+  "min-h-30 px-4 py-3 font-ui text-md leading-normal resize-y",
 ].join(" ")
-
-export const TEXTAREA_INVALID = "ring-inset-invalid"
 
 export const AMOUNT_WRAP = "relative flex items-center"
 
 export const AMOUNT_SYMBOL = [
-  "pointer-events-none absolute left-3",
-  "font-numeric text-xl font-semibold text-fg-muted",
+  "pointer-events-none absolute left-4",
+  "font-numeric text-[clamp(1.375rem,5.5vw,1.75rem)] font-semibold text-fg-muted",
 ].join(" ")
 
 export const AMOUNT_INPUT = [
-  "w-full min-h-16 pl-7 pr-3",
-  "rounded-squircle border-0 bg-field text-fg",
+  FIELD_SURFACE,
+  "min-h-16 pl-10 pr-4",
   "money text-[clamp(1.75rem,7vw,2.25rem)] font-semibold tracking-[-0.024em]",
-  "ring-inset-field",
-  "focus:outline-none focus:ring-focus-ink",
 ].join(" ")
-
-export const AMOUNT_INVALID = "ring-inset-invalid"
 
 export const PRESET_ROW = "flex flex-wrap gap-2"
 
@@ -80,14 +70,17 @@ export const SWITCH_ROW = "flex items-center justify-between gap-4 py-3"
 
 export const SWITCH_TEXT = "flex flex-col gap-0.5"
 
-export const SWITCH_LABEL = "font-ui text-base font-semibold text-fg"
-
 export const SWITCH_HINT = "font-ui text-xs text-fg-muted max-w-[46ch]"
 
-export const SWITCH_BASE = [
-  "relative flex-none w-[46px] h-7 rounded-full border-0 cursor-pointer",
-  "transition-colors duration-200 ease-out",
+export const SWITCH_HIT = [
+  "flex-none inline-flex tap-target items-center justify-end",
+  "border-0 bg-transparent cursor-pointer no-tap-flash",
   "disabled:cursor-not-allowed disabled:opacity-50",
+].join(" ")
+
+export const SWITCH_BASE = [
+  "relative block flex-none w-[46px] h-7 rounded-full",
+  "transition-colors duration-200 ease-out",
 ].join(" ")
 
 export const SWITCH_OFF = "bg-sand ring-inset-hairline-strong"
@@ -106,7 +99,7 @@ export const RADIO_GROUP = "flex flex-col gap-2"
 
 export const RADIO_BASE = [
   "flex items-start gap-3 p-3 text-left cursor-pointer",
-  "rounded-squircle-sm border-0 bg-parchment",
+  "rounded-squircle-sm border-0 bg-shell",
   "transition-shadow duration-200 ease-out",
 ].join(" ")
 
@@ -122,7 +115,7 @@ export const RADIO_MARK_ACTIVE = "shadow-[inset_0_0_0_5px_var(--be-ink)]"
 
 export const RADIO_TEXT = "flex flex-col gap-0.5"
 
-export const RADIO_LABEL = "font-ui text-base font-semibold text-fg"
+export const CONTROL_LABEL = "font-ui text-base font-semibold text-fg"
 
 export const CHECKBOX_ROW = [
   "flex w-full items-start gap-3 p-3 text-left cursor-pointer",
@@ -152,3 +145,5 @@ export const TAB_BASE = [
 export const TAB_REST = "bg-transparent text-fg-muted hover:text-fg"
 
 export const TAB_ACTIVE = "bg-parchment text-fg inset-shadow-lift-soft shadow-ambient-1"
+
+export const TAB_PANEL = "flex flex-col gap-8 focus-visible:outline-none"

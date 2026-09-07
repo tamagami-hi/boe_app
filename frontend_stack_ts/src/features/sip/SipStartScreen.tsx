@@ -27,12 +27,13 @@ import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { AmountInput } from "~/ui/primitives/AmountInput"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
+import { CARD_SECTION } from "~/ui/recipes/surface"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 import { FormActions } from "~/ui/primitives/Form"
 import { PresetChoice, RadioGroup } from "~/ui/primitives/Toggle"
 import { ITEM_TITLE, STAT_LABEL, STAT_ROOT, SUMMARY_GRID } from "~/ui/recipes/datalist"
 import { FIELD_ERROR, FORM_ROOT } from "~/ui/recipes/field"
-import { HONESTY_TEXT, META_MUTED, SECTION_TITLE } from "~/ui/recipes/text"
+import { HONESTY_TEXT, META_MUTED } from "~/ui/recipes/text"
 
 import { SIP_FIELD, SIP_HINT } from "./sip.recipe"
 
@@ -189,7 +190,7 @@ const SipStartScreen = (): React.ReactElement => {
         {(data) => (
           <div className={FORM_ROOT}>
               <Card elevated>
-                <span className={SECTION_TITLE}>{data.fund.name}</span>
+                <span className={ITEM_TITLE}>{data.fund.name}</span>
                 <span className={META_MUTED}>
                   {data.fund.category}
                   {minimum === null ? "" : ` · minimum ${formatINR(minimum)} a month`}
@@ -209,9 +210,7 @@ const SipStartScreen = (): React.ReactElement => {
                     <span className={SIP_HINT}>Whole rupees only.</span>
                   )}
                 </div>
-              </Card>
-
-              <Card>
+              <div className={CARD_SECTION}>
                 <span className={STAT_LABEL}>How it is paid</span>
                 <RadioGroup<Mode>
                   legend="How the SIP is paid"
@@ -232,9 +231,9 @@ const SipStartScreen = (): React.ReactElement => {
                     },
                   ]}
                 />
-              </Card>
+              </div>
 
-              <Card>
+              <div className={CARD_SECTION}>
                 <div className={SIP_FIELD}>
                   <span className={STAT_LABEL}>For how long</span>
                   <PresetChoice
@@ -262,10 +261,10 @@ const SipStartScreen = (): React.ReactElement => {
                     The day each month your instalment is collected.
                   </span>
                 </div>
-              </Card>
+              </div>
 
               {amountPaise === null ? null : (
-                <Card>
+                <div className={CARD_SECTION}>
                   <span className={STAT_LABEL}>Each month</span>
                   <MoneyValue amount={amountPaise} size="lg" />
                   <div className={SUMMARY_GRID}>
@@ -284,8 +283,9 @@ const SipStartScreen = (): React.ReactElement => {
                       </span>
                     </div>
                   </div>
-                </Card>
+                </div>
               )}
+              </Card>
 
               {failure === null ? null : (
                 <Alert tone="error" title={failure.title}>

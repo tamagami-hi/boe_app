@@ -1,5 +1,5 @@
 import { cx } from "~/lib/cx"
-import { AMOUNT_INPUT, AMOUNT_INVALID, AMOUNT_SYMBOL, AMOUNT_WRAP } from "~/ui/recipes/field"
+import { AMOUNT_INPUT, AMOUNT_SYMBOL, AMOUNT_WRAP, FIELD_INVALID } from "~/ui/recipes/field"
 
 export type AmountInputProps = Readonly<{
   id?: string
@@ -26,7 +26,7 @@ export const AmountInput = ({
     </span>
     <input
       id={id}
-      className={cx(AMOUNT_INPUT, invalid ? AMOUNT_INVALID : undefined)}
+      className={cx(AMOUNT_INPUT, invalid ? FIELD_INVALID : undefined)}
       type="text"
       inputMode="numeric"
       autoComplete="off"

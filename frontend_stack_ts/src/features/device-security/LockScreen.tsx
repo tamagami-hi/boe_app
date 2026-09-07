@@ -9,7 +9,8 @@ import { Card } from "~/ui/primitives/Card"
 import { Alert } from "~/ui/primitives/Feedback"
 import { ACTION_ROW, STACK_LG } from "~/ui/recipes/layout"
 import { BLOCK_HEAD, BLOCK_LAYER, BLOCK_MARK, BLOCK_PANEL } from "~/ui/recipes/overlay"
-import { CARD_TITLE, HONESTY_TEXT, PAGE_TITLE } from "~/ui/recipes/text"
+import { CARD_TITLE, HONESTY_TEXT } from "~/ui/recipes/text"
+import { GATE_TITLE } from "~/ui/recipes/layout"
 
 import { PinPad } from "./PinPad"
 import { DEVICE_PIN_HONESTY } from "./copy"
@@ -110,7 +111,7 @@ export const LockScreen = ({ onUnlocked }: LockScreenProps): React.ReactElement 
       <div className={BLOCK_PANEL}>
         <div className={BLOCK_HEAD}>
           <span className={BLOCK_MARK}>BeOnEdge</span>
-          <h1 className={PAGE_TITLE}>Locked</h1>
+          <h1 className={GATE_TITLE}>Locked</h1>
         </div>
 
         {failure === null ? null : (

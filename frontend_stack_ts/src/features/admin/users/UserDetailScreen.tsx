@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Link, useParams } from "react-router-dom"
+import { useParams } from "react-router-dom"
 
 import { isApiError } from "~/api/errors"
 import { Page } from "~/app/layouts/Page"
@@ -18,13 +18,14 @@ import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Button } from "~/ui/primitives/Button"
+import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 import { FormField, Input } from "~/ui/primitives/FormField"
 
 import { ENTRY_TEXT, PROSE_SM } from "~/ui/recipes/datalist"
 import { ACTION_ROW } from "~/ui/recipes/layout"
-import { CARD_LINK } from "~/ui/recipes/surface"
+
 import { META_TEXT } from "~/ui/recipes/text"
 
 const COPY: Readonly<Record<UserLifecycle, Readonly<{ title: string; description: string }>>> = {
@@ -140,11 +141,9 @@ const UserDetailScreen = (): React.ReactElement => {
               </DataList>
 
               <div className={ACTION_ROW}>
-                <Link to={`/users/${userId}/login-events`} className={CARD_LINK}>
-                  <Button tone="secondary" size="sm" trailing>
-                    Sign-in history
-                  </Button>
-                </Link>
+                <ButtonLink to={`/users/${userId}/login-events`} tone="secondary" size="sm" trailing>
+                  Sign-in history
+                </ButtonLink>
               </div>
             </Card>
 

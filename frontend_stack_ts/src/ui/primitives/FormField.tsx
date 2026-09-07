@@ -8,8 +8,8 @@ import {
   FIELD_LABEL,
   FIELD_REQUIRED,
   FIELD_ROOT,
+  FIELD_INVALID,
   INPUT_BASE,
-  INPUT_INVALID,
   INPUT_MONO,
 } from "~/ui/recipes/field"
 
@@ -80,7 +80,7 @@ export const Input = ({
 }: InputProps): React.ReactElement => (
   <input
     {...rest}
-    className={cx(INPUT_BASE, invalid ? INPUT_INVALID : undefined, mono ? INPUT_MONO : undefined)}
+    className={cx(INPUT_BASE, invalid ? FIELD_INVALID : undefined, mono ? INPUT_MONO : undefined)}
     aria-invalid={invalid}
   />
 )

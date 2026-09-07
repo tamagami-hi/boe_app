@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { Link, useParams } from "react-router-dom"
+import { useParams } from "react-router-dom"
 
 import { mintIdempotencyKey } from "~/api/idempotency"
 import { Page } from "~/app/layouts/Page"
@@ -36,11 +36,13 @@ import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Button } from "~/ui/primitives/Button"
+import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
+import { PROSE_PANEL } from "~/ui/recipes/surface"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 import { ITEM_TITLE, STAT_LABEL, STAT_ROOT, SUMMARY_GRID } from "~/ui/recipes/datalist"
-import { ACTION_ROW } from "~/ui/recipes/layout"
-import { HONESTY_TEXT, SECTION_TITLE } from "~/ui/recipes/text"
+import { ACTION_DANGER_ROW, ACTION_GROUP, ACTION_ROW } from "~/ui/recipes/layout"
+import { HONESTY_TEXT } from "~/ui/recipes/text"
 
 import { SIP_CARD_TOP } from "./sip.recipe"
 
@@ -174,9 +176,9 @@ const SipDetailScreen = (): React.ReactElement => {
                 <p className={HONESTY_TEXT}>
                   We could not find this plan on your account. It may have been removed.
                 </p>
-                <Link to="/sips">
-                  <Button tone="secondary">Back to SIP plans</Button>
-                </Link>
+                <ButtonLink to="/sips" tone="secondary">
+Back to SIP plans
+</ButtonLink>
               </Card>
             )
           }
@@ -198,7 +200,7 @@ const SipDetailScreen = (): React.ReactElement => {
             <>
               <Card elevated>
                 <div className={SIP_CARD_TOP}>
-                  <span className={SECTION_TITLE}>{nameFor(plan.fundId)}</span>
+                  <span className={ITEM_TITLE}>{nameFor(plan.fundId)}</span>
                   <StatusBadge status={status} />
                 </div>
                 <span className={STAT_LABEL}>Each month</span>
@@ -233,11 +235,11 @@ const SipDetailScreen = (): React.ReactElement => {
                 )}
               </Card>
 
-              <Card>
+              <div className={PROSE_PANEL}>
                 <p className={HONESTY_TEXT}>
                   {isAutoPay ? AUTOPAY_EXPLANATION : MANUAL_EXPLANATION}
                 </p>
-              </Card>
+              </div>
 
               {failure === null ? null : (
                 <Alert tone="error" title={failure.title}>
@@ -277,6 +279,7 @@ const SipDetailScreen = (): React.ReactElement => {
               )}
 
               <Section title="Manage this plan">
+                <div className={ACTION_GROUP}>
                 <div className={ACTION_ROW}>
                   {canPause ? (
                     <Button
@@ -299,31 +302,36 @@ const SipDetailScreen = (): React.ReactElement => {
                       Resume
                     </Button>
                   ) : null}
-                  {canCancel ? (
-                    <Button
-                      tone="danger"
-                      disabled={busy}
-                      onClick={() => {
-                        setConfirming("cancel")
-                      }}
-                    >
-                      Cancel this plan
-                    </Button>
-                  ) : null}
-                  {canStopMandate ? (
-                    <Button
-                      tone="danger"
-                      disabled={busy}
-                      onClick={() => {
-                        setConfirming("cancel-autopay")
-                      }}
-                    >
-                      Turn off AutoPay
-                    </Button>
-                  ) : null}
-                  <Link to="/activity">
-                    <Button tone="ghost">See instalments in Activity</Button>
-                  </Link>
+                  <ButtonLink to="/activity" tone="ghost">
+                    See instalments in Activity
+                  </ButtonLink>
+                </div>
+                {canCancel || canStopMandate ? (
+                  <div className={ACTION_DANGER_ROW}>
+                    {canCancel ? (
+                      <Button
+                        tone="danger"
+                        disabled={busy}
+                        onClick={() => {
+                          setConfirming("cancel")
+                        }}
+                      >
+                        Cancel this plan
+                      </Button>
+                    ) : null}
+                    {canStopMandate ? (
+                      <Button
+                        tone="danger"
+                        disabled={busy}
+                        onClick={() => {
+                          setConfirming("cancel-autopay")
+                        }}
+                      >
+                        Turn off AutoPay
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
                 </div>
               </Section>
 

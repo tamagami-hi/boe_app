@@ -14,14 +14,15 @@ import { LoadMore } from "~/ui/patterns/LoadMore"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
-import { Button } from "~/ui/primitives/Button"
+
+import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 
 import { ADMIN_CELL_LINK, ADMIN_CODE } from "~/ui/recipes/admin"
 import { ENTRY_TEXT, PROSE_SM } from "~/ui/recipes/datalist"
 import { ACTION_ROW } from "~/ui/recipes/layout"
-import { CARD_LINK } from "~/ui/recipes/surface"
+
 import { META_TEXT } from "~/ui/recipes/text"
 
 const AumOverviewScreen = (): React.ReactElement => {
@@ -36,9 +37,9 @@ const AumOverviewScreen = (): React.ReactElement => {
         description="The absolute size of every fund, and where to move it. Fund size is append-only: a correction is a new entry, never an edit."
         actions={
           canWrite ? (
-            <Link to="/aum/collective" className={CARD_LINK}>
-              <Button trailing>Grow several funds</Button>
-            </Link>
+            <ButtonLink to="/aum/collective" trailing>
+Grow several funds
+</ButtonLink>
           ) : undefined
         }
       />
@@ -57,9 +58,9 @@ const AumOverviewScreen = (): React.ReactElement => {
             title="No funds exist yet"
             description="Create a fund before recording its size."
             action={
-              <Link to="/funds/new">
-                <Button trailing>Create a fund</Button>
-              </Link>
+              <ButtonLink to="/funds/new" trailing>
+Create a fund
+</ButtonLink>
             }
           />
         }
@@ -111,16 +112,12 @@ const AumOverviewScreen = (): React.ReactElement => {
                 header: "Actions",
                 render: (row) => (
                   <span className={ACTION_ROW}>
-                    <Link to={`/funds/${row.id}/aum`} className={CARD_LINK}>
-                      <Button tone="secondary" size="sm">
-                        {row.aum === null ? "Set opening size" : "Record growth"}
-                      </Button>
-                    </Link>
-                    <Link to={`/funds/${row.id}/aum/history`} className={CARD_LINK}>
-                      <Button tone="ghost" size="sm">
-                        History
-                      </Button>
-                    </Link>
+                    <ButtonLink to={`/funds/${row.id}/aum`} tone="secondary" size="sm">
+                      {row.aum === null ? "Set opening size" : "Record growth"}
+                    </ButtonLink>
+                    <ButtonLink to={`/funds/${row.id}/aum/history`} tone="ghost" size="sm">
+                      History
+                    </ButtonLink>
                   </span>
                 ),
               },

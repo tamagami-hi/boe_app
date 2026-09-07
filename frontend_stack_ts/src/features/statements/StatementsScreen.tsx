@@ -13,7 +13,7 @@ import { Skeleton } from "~/ui/primitives/Feedback"
 import { STAT_LABEL, STAT_ROOT, SUMMARY_GRID } from "~/ui/recipes/datalist"
 import { CARD_COLUMNS, ROW_BETWEEN_BASELINE } from "~/ui/recipes/layout"
 import { CARD_STACK } from "~/ui/recipes/surface"
-import { META_TEXT, SUBHEAD_TITLE } from "~/ui/recipes/text"
+import { CARD_TITLE, META_TEXT } from "~/ui/recipes/text"
 
 const StatementsScreen = (): React.ReactElement => {
   const query = useStatements()
@@ -50,7 +50,7 @@ const StatementsScreen = (): React.ReactElement => {
             {data.items.map((period) => (
               <Card key={period.id}>
                 <div className={ROW_BETWEEN_BASELINE}>
-                  <span className={SUBHEAD_TITLE}>{formatMonth(`${period.period}-01`)}</span>
+                  <span className={CARD_TITLE}>{formatMonth(`${period.period}-01`)}</span>
                   <span className={META_TEXT}>
                     {formatDate(period.periodStart)} — {formatDate(period.periodEnd)}
                   </span>

@@ -2,18 +2,25 @@ import { useState } from "react"
 import type { ReactNode } from "react"
 
 import { cx } from "~/lib/cx"
-import { DISCLOSURE_BUTTON, DISCLOSURE_GLYPH, DISCLOSURE_GLYPH_OPEN, DISCLOSURE_PANEL, DISCLOSURE_ROOT, LIST_LABEL, LIST_ROOT, LIST_ROW, LIST_SPLIT, LIST_VALUE, PROSE_BODY, STAT_LABEL, STAT_ROOT } from "~/ui/recipes/datalist"
+import { DISCLOSURE_BUTTON, DISCLOSURE_GLYPH, DISCLOSURE_GLYPH_OPEN, DISCLOSURE_PANEL, DISCLOSURE_ROOT, LIST_LABEL, LIST_ROOT, LIST_ROW, LIST_SPLIT, LIST_VALUE, LIST_VALUE_LEAD, PROSE_BODY, STAT_LABEL, STAT_ROOT } from "~/ui/recipes/datalist"
 import { META_MUTED } from "~/ui/recipes/text"
+
+export type DetailRowEmphasis = "default" | "lead"
 
 export type DetailRowProps = Readonly<{
   label: string
+  emphasis?: DetailRowEmphasis
   children: ReactNode
 }>
 
-export const DetailRow = ({ label, children }: DetailRowProps): React.ReactElement => (
+export const DetailRow = ({
+  label,
+  emphasis = "default",
+  children,
+}: DetailRowProps): React.ReactElement => (
   <li className={LIST_ROW}>
     <span className={LIST_LABEL}>{label}</span>
-    <span className={LIST_VALUE}>{children}</span>
+    <span className={emphasis === "lead" ? LIST_VALUE_LEAD : LIST_VALUE}>{children}</span>
   </li>
 )
 

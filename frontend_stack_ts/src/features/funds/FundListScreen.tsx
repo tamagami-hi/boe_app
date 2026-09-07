@@ -34,18 +34,25 @@ const FundListScreen = (): React.ReactElement => {
   const [sort, setSort] = useState<Sort>("name")
 
   const skeleton = useMemo(
-    () => (
-      <ContentGrid columns={3}>
-        {[0, 1, 2, 3, 4, 5].map((index) => (
-          <Card key={index}>
-            <Skeleton height="1.2rem" width="70%" />
-            <Skeleton height="0.9rem" width="40%" />
-            <Skeleton height="2rem" width="55%" />
-          </Card>
-        ))}
-      </ContentGrid>
-    ),
-    [],
+    () =>
+      compact ? (
+        <Card>
+          {[0, 1, 2, 3, 4, 5].map((index) => (
+            <Skeleton key={index} height="2.6rem" />
+          ))}
+        </Card>
+      ) : (
+        <ContentGrid columns={3}>
+          {[0, 1, 2, 3, 4, 5].map((index) => (
+            <Card key={index}>
+              <Skeleton height="1.2rem" width="70%" />
+              <Skeleton height="0.9rem" width="40%" />
+              <Skeleton height="2rem" width="55%" />
+            </Card>
+          ))}
+        </ContentGrid>
+      ),
+    [compact],
   )
 
   return (

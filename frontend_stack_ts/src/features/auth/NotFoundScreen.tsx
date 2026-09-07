@@ -11,7 +11,7 @@ const NotFoundScreen = (): React.ReactElement => {
   const navigate = useNavigate()
 
   return (
-    <Page width="form">
+    <Page width="default">
       <PageHeader title="Page not found" />
       <EmptyState
         title="We could not find that page"

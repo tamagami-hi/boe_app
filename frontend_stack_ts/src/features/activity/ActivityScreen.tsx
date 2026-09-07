@@ -14,15 +14,17 @@ import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { CARD_LINK, CARD_STACK } from "~/ui/recipes/surface"
 import { FEED_MEASURE } from "~/ui/recipes/layout"
 import { cx } from "~/lib/cx"
-import { META_MUTED } from "~/ui/recipes/text"
+import { ITEM_TITLE } from "~/ui/recipes/datalist"
+import { LINK_TEXT, META_MUTED } from "~/ui/recipes/text"
 import { Badge } from "~/ui/primitives/Badge"
-import { Button } from "~/ui/primitives/Button"
+
+import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 import { paymentPartnerName } from "~/domain/provider"
 import { Skeleton } from "~/ui/primitives/Feedback"
-import { Tabs } from "~/ui/primitives/Toggle"
+import { TabPanel, Tabs } from "~/ui/primitives/Toggle"
 
-import { FUND_LINK, ROW, ROW_LEFT, ROW_RIGHT } from "./activity.recipe"
+import { ROW, ROW_LEFT, ROW_RIGHT } from "./activity.recipe"
 
 const LABEL = {
   lump_sum: "One-off investment",
@@ -64,6 +66,10 @@ const asTab = (value: string | null): Tab => (value === "payments" ? "payments" 
 const asFilter = (value: string | null): PaymentFilter =>
   PAYMENT_FILTERS.some((filter) => filter.value === value) ? (value as PaymentFilter) : "all"
 
+const ACTIVITY_TABS_ID = "activity-view"
+
+const PAYMENT_FILTER_TABS_ID = "activity-payment-status"
+
 const ActivityScreen = (): React.ReactElement => {
   const [params, setParams] = useSearchParams()
   const tab = asTab(params.get("tab"))
@@ -95,10 +101,10 @@ const ActivityScreen = (): React.ReactElement => {
         description="Everything that has happened to your investments, and every payment behind it."
       />
 
-      <Tabs label="Activity view" value={tab} items={TABS} onChange={setTab} />
+      <Tabs id={ACTIVITY_TABS_ID} label="Activity view" value={tab} items={TABS} onChange={setTab} />
 
       {tab === "ledger" ? (
-        <>
+        <TabPanel id={ACTIVITY_TABS_ID} value="ledger">
         <AsyncBoundary
           query={ledger}
           skeleton={
@@ -113,9 +119,9 @@ const ActivityScreen = (): React.ReactElement => {
               title="Nothing here yet"
               description="Your investments and their growth will appear here once your first payment is complete."
               action={
-                <Link to="/funds">
-                  <Button trailing>Browse funds</Button>
-                </Link>
+                <ButtonLink to="/funds" trailing>
+Browse funds
+</ButtonLink>
               }
             />
           }
@@ -129,7 +135,7 @@ const ActivityScreen = (): React.ReactElement => {
                     <div className={ROW}>
                       <div className={ROW_LEFT}>
                         <Badge tone={TONE[entry.type]}>{LABEL[entry.type]}</Badge>
-                        <Link to={`/funds/${entry.fundId}`} className={FUND_LINK}>
+                        <Link to={`/funds/${entry.fundId}`} className={LINK_TEXT}>
                           {nameFor(entry.fundId)}
                         </Link>
                         <span className={META_MUTED}>
@@ -152,10 +158,11 @@ const ActivityScreen = (): React.ReactElement => {
           )}
         </AsyncBoundary>
         <LoadMore list={ledger} noun="entries" />
-        </>
+        </TabPanel>
       ) : (
-        <>
+        <TabPanel id={ACTIVITY_TABS_ID} value="payments">
           <Tabs
+            id={PAYMENT_FILTER_TABS_ID}
             label="Payment status"
             value={filter}
             items={PAYMENT_FILTERS}
@@ -193,7 +200,7 @@ const ActivityScreen = (): React.ReactElement => {
                       <div className={ROW}>
                         <div className={ROW_LEFT}>
                           <StatusBadge status={clientInvestmentStatus(payment.status)} />
-                          <span className={FUND_LINK}>{nameFor(payment.fundId)}</span>
+                          <span className={ITEM_TITLE}>{nameFor(payment.fundId)}</span>
                           <span className={META_MUTED}>{formatDateTime(payment.createdAt)}</span>
                         </div>
                         <div className={ROW_RIGHT}>
@@ -210,7 +217,7 @@ const ActivityScreen = (): React.ReactElement => {
             )}
           </AsyncBoundary>
           <LoadMore list={payments} noun="payments" />
-        </>
+        </TabPanel>
       )}
     </Page>
   )

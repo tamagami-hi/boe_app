@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom"
+
 
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
@@ -11,9 +11,11 @@ import { useEligibility } from "~/features/shared/queries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { DataList, DetailRow, Prose } from "~/ui/patterns/DataList"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
-import { Button } from "~/ui/primitives/Button"
+
+import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
+import { STAT_LABEL, STAT_ROOT } from "~/ui/recipes/datalist"
 
 const REASON_COPY: Readonly<Record<string, string>> = {
   email_verification_required: "Verify your email address to start investing.",
@@ -44,18 +46,20 @@ const VerificationStatusScreen = (): React.ReactElement => {
         {(data) => (
           <>
             <Card elevated>
+              <div className={STAT_ROOT}>
+                <span className={STAT_LABEL}>Verification</span>
+                {data.emailVerificationState === null ? null : (
+                  <StatusBadge status={clientEmailVerification(data.emailVerificationState)} />
+                )}
+              </div>
+
               <DataList>
-                <DetailRow label="Email">{principal?.email ?? "—"}</DetailRow>
-                <DetailRow label="Verification">
-                  {data.emailVerificationState === null ? (
-                    "—"
-                  ) : (
-                    <StatusBadge status={clientEmailVerification(data.emailVerificationState)} />
-                  )}
-                </DetailRow>
-                <DetailRow label="Investing">
+                <DetailRow label="Investing" emphasis="lead">
                   {data.canInvest ? "Available" : "Not yet available"}
                 </DetailRow>
+                {principal?.email === undefined ? null : (
+                  <DetailRow label="Email">{principal.email}</DetailRow>
+                )}
                 <DetailRow label="Last checked">{formatDateTime(data.evaluatedAt)}</DetailRow>
               </DataList>
             </Card>
@@ -71,13 +75,13 @@ const VerificationStatusScreen = (): React.ReactElement => {
                     "Investing is not available yet. Support can explain what is needed."}
                 </Prose>
                 {data.reason === "email_verification_required" ? (
-                  <Link to={CLIENT_VERIFY_EMAIL_PATH}>
-                    <Button trailing>Verify my email</Button>
-                  </Link>
+                  <ButtonLink to={CLIENT_VERIFY_EMAIL_PATH} trailing>
+Verify my email
+</ButtonLink>
                 ) : (
-                  <Link to="/profile/support">
-                    <Button tone="secondary">Contact support</Button>
-                  </Link>
+                  <ButtonLink to="/profile/support" tone="secondary">
+Contact support
+</ButtonLink>
                 )}
               </Section>
             )}

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react"
-import { Link } from "react-router-dom"
 
 import { useSession } from "~/app/providers/SessionProvider"
 import { Button } from "~/ui/primitives/Button"
+import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 import { ACTION_ROW } from "~/ui/recipes/layout"
 import { HONESTY_TEXT } from "~/ui/recipes/text"
@@ -52,9 +52,9 @@ export const PendingPaymentRecovery = (): React.ReactElement | null => {
         <span className={ITEM_TITLE}>{copy.title}</span>
         <p className={HONESTY_TEXT}>{copy.body}</p>
         <div className={ACTION_ROW}>
-          <Link to={destination}>
-            <Button trailing>{copy.action}</Button>
-          </Link>
+          <ButtonLink to={destination} trailing>
+{copy.action}
+</ButtonLink>
           <Button
             tone="ghost"
             onClick={() => {

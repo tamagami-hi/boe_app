@@ -15,10 +15,9 @@ import { Reveal } from "~/ui/motion/Reveal"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
-import { STAT_LABEL, STAT_ROOT } from "~/ui/recipes/datalist"
-import { CARD_ACTION } from "~/ui/recipes/surface"
+import { ITEM_TITLE, STAT_LABEL, STAT_ROOT } from "~/ui/recipes/datalist"
+
 import {
-  CARD_TITLE,
   META_MUTED,
   META_TEXT,
   MONEY_BASE,
@@ -26,7 +25,8 @@ import {
   MONEY_TONE,
 } from "~/ui/recipes/text"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
-import { Button } from "~/ui/primitives/Button"
+
+import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 
 import {
@@ -66,11 +66,9 @@ const DashboardScreen = (): React.ReactElement => {
             tone="warning"
             title="Verify your email to start investing"
             action={
-              <Link to="/verify-email">
-                <Button size="sm" tone="secondary" trailing>
-                  Verify now
-                </Button>
-              </Link>
+              <ButtonLink to="/verify-email" tone="secondary" size="sm" trailing>
+Verify now
+</ButtonLink>
             }
           >
             It takes one code and about a minute.
@@ -124,11 +122,9 @@ const DashboardScreen = (): React.ReactElement => {
                       />
                     </div>
                   </div>
-                  <Link to="/portfolio" className={CARD_ACTION}>
-                    <Button tone="secondary" size="sm" trailing>
-                      See portfolio
-                    </Button>
-                  </Link>
+                  <ButtonLink to="/portfolio" tone="secondary" size="sm" trailing>
+See portfolio
+</ButtonLink>
                 </Card>
               )}
             </AsyncBoundary>
@@ -155,11 +151,9 @@ const DashboardScreen = (): React.ReactElement => {
                   <span className={META_MUTED}>{String(sips.data.items.length)}</span>
                 </div>
               )}
-              <Link to="/sips" className={CARD_ACTION}>
-                <Button tone="ghost" size="sm" trailing>
-                  Manage SIPs
-                </Button>
-              </Link>
+              <ButtonLink to="/sips" tone="secondary" size="sm" trailing>
+Manage SIPs
+</ButtonLink>
             </Card>
           </Reveal>
         </div>
@@ -169,11 +163,9 @@ const DashboardScreen = (): React.ReactElement => {
         title="Funds"
         description="Fund pools managed by BeOnEdge."
         actions={
-          <Link to="/funds">
-            <Button tone="ghost" size="sm" trailing>
-              See all
-            </Button>
-          </Link>
+          <ButtonLink to="/funds" tone="ghost" size="sm" trailing>
+See all
+</ButtonLink>
         }
       >
         <AsyncBoundary
@@ -199,7 +191,7 @@ const DashboardScreen = (): React.ReactElement => {
                     <Link to={`/funds/${fund.id}`} className={FUND_CARD_LINK}>
                       <Card>
                         <div className={FUND_ROW}>
-                          <span className={CARD_TITLE}>{fund.name}</span>
+                          <span className={ITEM_TITLE}>{fund.name}</span>
                         </div>
                         <span className={META_MUTED}>{fund.category}</span>
                         {fund.fundSize === null ? null : (

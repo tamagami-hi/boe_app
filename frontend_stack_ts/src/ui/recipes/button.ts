@@ -8,7 +8,7 @@ export const BUTTON_BASE = [
   "cursor-pointer select-none no-underline",
   "transition-[transform,box-shadow,background-color,color] duration-200 ease-spring",
   "enabled:active:scale-[0.978] enabled:hover:-translate-y-[1.5px]",
-  "disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none",
+  "disabled:cursor-not-allowed disabled:shadow-none",
 ].join(" ")
 
 export const BUTTON_TONE: Readonly<Record<ButtonTone, string>> = {
@@ -39,6 +39,10 @@ export const BUTTON_TRAIL: Readonly<Record<ButtonTone, string>> = {
   secondary: `${TRAIL_BASE} bg-shell-strong shadow-hairline`,
   ghost: `${TRAIL_BASE} bg-shell-strong shadow-hairline`,
 }
+
+export const BUTTON_DISABLED = "bg-none bg-shell-strong text-fg-faint shadow-none"
+
+export const BUTTON_BUSY = "opacity-90"
 
 export const BUTTON_SPINNER = [
   "size-icon-sm rounded-full border-[1.5px] border-current border-t-transparent",

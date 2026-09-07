@@ -23,9 +23,9 @@ import {
 import { useCreateOrder, useFund, usePayOrder } from "~/features/shared/queries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
-import { STAT_LABEL } from "~/ui/recipes/datalist"
+import { ITEM_TITLE, STAT_LABEL } from "~/ui/recipes/datalist"
 import { FIELD_ERROR, FORM_ROOT } from "~/ui/recipes/field"
-import { META_MUTED, SECTION_TITLE } from "~/ui/recipes/text"
+import { META_MUTED } from "~/ui/recipes/text"
 import { AmountInput } from "~/ui/primitives/AmountInput"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
@@ -166,7 +166,7 @@ const LumpsumInvestScreen = (): React.ReactElement => {
           <div className={FORM_ROOT}>
               <Card elevated>
                 <span className={FUND_LINE}>
-                  <span className={SECTION_TITLE}>{data.fund.name}</span>
+                  <span className={ITEM_TITLE}>{data.fund.name}</span>
                   <span className={META_MUTED}>
                     {data.fund.category}
                     {minimum === null ? "" : ` · minimum ${formatINR(minimum)}`}

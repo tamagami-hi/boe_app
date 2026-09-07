@@ -19,7 +19,7 @@ import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 import { ITEM_TITLE, PROSE_SM } from "~/ui/recipes/datalist"
-import { ACTION_ROW, CARD_COLUMNS, ROW_BETWEEN, STACK_SM } from "~/ui/recipes/layout"
+import { ACTION_ROW, FEED_MEASURE, ROW_BETWEEN, STACK_SM } from "~/ui/recipes/layout"
 import { CARD_STACK } from "~/ui/recipes/surface"
 import { COUNT_TEXT, META_ROW } from "~/ui/recipes/text"
 
@@ -55,7 +55,7 @@ const NotificationsScreen = (): React.ReactElement => {
       <AsyncBoundary
         query={query}
         skeleton={
-          <div className={cx(CARD_STACK, CARD_COLUMNS[3])}>
+          <div className={cx(CARD_STACK, FEED_MEASURE)}>
             {[0, 1, 2].map((index) => (
               <Card key={index}>
                 <Skeleton height="1rem" width="55%" />
@@ -77,7 +77,7 @@ const NotificationsScreen = (): React.ReactElement => {
             {data.unreadCount === 0 ? null : (
               <span className={COUNT_TEXT}>{`${String(data.unreadCount)} unread`}</span>
             )}
-            <div className={cx(CARD_STACK, CARD_COLUMNS[3])}>
+            <div className={cx(CARD_STACK, FEED_MEASURE)}>
               {data.items.map((item) => {
                 const link = deepLinkOf(item.payload)
                 const category = notificationCategory(item.kind)

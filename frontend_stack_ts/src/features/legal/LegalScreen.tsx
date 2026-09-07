@@ -4,9 +4,7 @@ import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { cx } from "~/lib/cx"
 import { Card } from "~/ui/primitives/Card"
-import { ENTRY_GLYPH, ENTRY_ROW, ENTRY_TEXT, ITEM_TITLE } from "~/ui/recipes/datalist"
-import { GRID_BASE, GRID_COLS_MD } from "~/ui/recipes/layout"
-import { CARD_LINK } from "~/ui/recipes/surface"
+import { ENTRY_GLYPH, ENTRY_TEXT, ITEM_TITLE, NAV_LIST, NAV_ROW } from "~/ui/recipes/datalist"
 import { HINT_MUTED } from "~/ui/recipes/text"
 
 const ENTRIES = [
@@ -44,21 +42,21 @@ const LegalScreen = (): React.ReactElement => (
       description="Documents published by BeOnEdge about your rights as an investor."
     />
 
-    <div className={cx(GRID_BASE, GRID_COLS_MD[2])}>
-      {ENTRIES.map((entry) => (
-        <Link key={entry.to} to={entry.to} className={CARD_LINK}>
-          <Card>
-            <span className={ENTRY_ROW}>
+    <Card>
+      <ul className={NAV_LIST}>
+        {ENTRIES.map((entry) => (
+          <li key={entry.to}>
+            <Link to={entry.to} className={NAV_ROW}>
               <span className={ENTRY_TEXT}>
                 <span className={ITEM_TITLE}>{entry.title}</span>
                 <span className={cx(HINT_MUTED, "max-w-[52ch]")}>{entry.hint}</span>
               </span>
               <Chevron />
-            </span>
-          </Card>
-        </Link>
-      ))}
-    </div>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </Card>
   </Page>
 )
 

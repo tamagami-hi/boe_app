@@ -2,7 +2,8 @@ import { Button } from "~/ui/primitives/Button"
 import { Alert } from "~/ui/primitives/Feedback"
 import { ACTION_ROW, ROW_BETWEEN_BASELINE, STACK_LG, STACK_SM } from "~/ui/recipes/layout"
 import { BLOCK_PROGRESS_FILL, BLOCK_PROGRESS_TRACK } from "~/ui/recipes/overlay"
-import { HONESTY_TEXT, LABEL_TEXT, META_MUTED } from "~/ui/recipes/text"
+import { HONESTY_TEXT, META_MUTED } from "~/ui/recipes/text"
+import { STAT_LABEL } from "~/ui/recipes/datalist"
 
 import type { UpdateRelease } from "./updateDecision"
 import type { UpdateInstaller } from "./useUpdateInstaller"
@@ -31,11 +32,11 @@ export const UpdateInstallPanel = ({
     <div className={STACK_LG}>
       <div className={STACK_SM}>
         <div className={ROW_BETWEEN_BASELINE}>
-          <span className={LABEL_TEXT}>Version</span>
+          <span className={STAT_LABEL}>Version</span>
           <span className={META_MUTED}>{release.versionName}</span>
         </div>
         <div className={ROW_BETWEEN_BASELINE}>
-          <span className={LABEL_TEXT}>Download</span>
+          <span className={STAT_LABEL}>Download</span>
           <span className={META_MUTED}>{sizeLabel(release.sizeBytes)}</span>
         </div>
       </div>

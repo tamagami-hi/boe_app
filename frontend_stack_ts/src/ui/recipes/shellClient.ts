@@ -15,9 +15,7 @@ export const CLIENT_HEADER = [
   "shadow-[0_1px_0_var(--be-hairline)]",
 ].join(" ")
 
-export const CLIENT_TITLE = [
-  "flex-1 truncate font-display text-lg font-normal tracking-display text-fg",
-].join(" ")
+export const CLIENT_SPACER = "flex-1"
 
 export const ICON_ACTION = [
   "inline-flex items-center justify-center tap-target rounded-full",
@@ -26,7 +24,21 @@ export const ICON_ACTION = [
   "hover:text-fg hover:bg-shell active:scale-[0.94]",
 ].join(" ")
 
-export const ICON_GLYPH = "size-[19px]"
+export const ICON_GLYPH = "size-icon-md"
+
+export const BELL_WRAP = "relative inline-flex"
+
+export const BELL_DOT = [
+  "pointer-events-none absolute right-[9px] top-[9px]",
+  "size-2 rounded-full bg-gold",
+  "shadow-[0_0_0_2px_var(--be-parchment-2)]",
+].join(" ")
+
+export const BELL_DOT_NAV = [
+  "pointer-events-none absolute right-1 top-1",
+  "size-2 rounded-full bg-gold",
+  "shadow-[0_0_0_2px_color-mix(in_srgb,var(--be-espresso)_92%,transparent)]",
+].join(" ")
 
 export const CLIENT_CONTENT = "relative z-1 flex flex-1 flex-col"
 
@@ -35,6 +47,7 @@ export const CLIENT_NAV_ITEM = [
   "border-0 bg-transparent px-1 py-2 no-underline cursor-pointer no-tap-flash",
   "font-ui text-2xs font-semibold tracking-[0.03em] text-nav-fg-muted",
   "transition-colors duration-200 ease-out",
+  "focus-visible:outline-focus-inverse",
   "aria-[current=page]:text-nav-fg",
 ].join(" ")
 
@@ -74,6 +87,7 @@ export const CLIENT_TOP_NAV_ITEM = [
   "hover:bg-nav-surface hover:text-nav-fg",
   "aria-[current=page]:text-nav-fg aria-[current=page]:bg-nav-surface-strong",
   "aria-[current=page]:shadow-nav-hairline",
+  "focus-visible:outline-focus-inverse",
 ].join(" ")
 
 export const CLIENT_BELL = [
@@ -81,4 +95,5 @@ export const CLIENT_BELL = [
   "bg-nav-surface shadow-nav-hairline text-nav-fg-muted",
   "transition-[transform,color] duration-200 ease-spring",
   "hover:-translate-y-px hover:text-nav-fg",
+  "focus-visible:outline-focus-inverse",
 ].join(" ")

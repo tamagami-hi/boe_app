@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom"
+
 
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
@@ -11,14 +11,15 @@ import { openDestination } from "~/platform/openExternal"
 import { useLegalDocument } from "~/features/shared/queries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { Prose } from "~/ui/patterns/DataList"
-import { Button } from "~/ui/primitives/Button"
+
+import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 import { STACK_SM } from "~/ui/recipes/layout"
-import { META_ROW, SUBHEAD_TITLE } from "~/ui/recipes/text"
+import { PROSE_PANEL } from "~/ui/recipes/surface"
+import { CARD_TITLE, LINK_TEXT_SM, META_ROW } from "~/ui/recipes/text"
 
 import {
-  CONTACT_ACTION,
   CONTACT_LABEL,
   CONTACT_LIST,
   CONTACT_ROW,
@@ -90,9 +91,9 @@ const GrievanceScreen = (): React.ReactElement => {
           </Card>
         }
         fallback={
-          <Card>
+          <div className={PROSE_PANEL}>
             <Prose>{FALLBACK}</Prose>
-          </Card>
+          </div>
         }
       >
         {(data) => {
@@ -114,7 +115,7 @@ const GrievanceScreen = (): React.ReactElement => {
 
               {steps.map((step) => (
                 <div key={step.heading} className={STACK_SM}>
-                  <h2 className={SUBHEAD_TITLE}>{step.heading}</h2>
+                  <h2 className={CARD_TITLE}>{step.heading}</h2>
                   <Prose>{step.body}</Prose>
                 </div>
               ))}
@@ -129,7 +130,7 @@ const GrievanceScreen = (): React.ReactElement => {
                       ) : (
                         <button
                           type="button"
-                          className={CONTACT_ACTION}
+                          className={LINK_TEXT_SM}
                           onClick={() => {
                             follow(contact.href ?? "")
                           }}
@@ -152,9 +153,9 @@ const GrievanceScreen = (): React.ReactElement => {
         title="Raise it with us first"
         description="Send us the details and we will give you a reference to follow it."
       >
-        <Link to={CLIENT_SUPPORT_PATH}>
-          <Button trailing>Open support</Button>
-        </Link>
+        <ButtonLink to={CLIENT_SUPPORT_PATH} trailing>
+Open support
+</ButtonLink>
       </Section>
     </Page>
   )

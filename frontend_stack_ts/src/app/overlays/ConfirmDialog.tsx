@@ -36,7 +36,7 @@ export const ConfirmDialog = ({
     onDismiss={onCancel}
     actions={
       <>
-        <Button tone="ghost" onClick={onCancel} disabled={pending}>
+        <Button tone="secondary" onClick={onCancel} disabled={pending}>
           {cancelLabel}
         </Button>
         <Button tone={confirmTone} onClick={onConfirm} loading={pending}>

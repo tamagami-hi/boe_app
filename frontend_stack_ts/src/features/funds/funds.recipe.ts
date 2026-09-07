@@ -22,9 +22,7 @@ export const FUND_DISCLOSURE_BODY = [
   "font-ui text-sm leading-relaxed text-fg-muted",
 ].join(" ")
 
-export const FUND_ACTIONS = "flex flex-col gap-2 sm:flex-row"
-
-export const FUND_ACTION_LINK = "flex-1 no-underline"
+export const FUND_ACTIONS = "flex flex-col gap-2 sm:flex-row [&>*]:sm:flex-1"
 
 export const FUND_TABLE_INNER = [
   "overflow-hidden bg-parchment inset-shadow-lift-soft shadow-ambient-1",
@@ -59,8 +57,6 @@ export const FUND_TABLE_CELL = [
 ].join(" ")
 
 export const FUND_TABLE_NAME_LINK = "flex flex-col gap-0.5 text-inherit no-underline"
-
-export const FUND_TABLE_NAME = "font-ui text-base font-semibold text-fg"
 
 export const FUND_TABLE_MUTED = "font-ui text-sm text-fg-faint"
 

@@ -11,7 +11,8 @@ import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
-import { Button } from "~/ui/primitives/Button"
+
+import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 import { CARD_LINK } from "~/ui/recipes/surface"
@@ -53,9 +54,9 @@ const SipListScreen = (): React.ReactElement => {
             title="You have no SIP plans"
             description="A SIP invests the same amount every month. Start one from any fund."
             action={
-              <Link to="/funds">
-                <Button trailing>Browse funds</Button>
-              </Link>
+              <ButtonLink to="/funds" trailing>
+Browse funds
+</ButtonLink>
             }
           />
         }

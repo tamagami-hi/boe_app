@@ -13,4 +13,3 @@ export const ROW_RIGHT = [
   "lg:flex-row lg:items-baseline lg:gap-3",
 ].join(" ")
 
-export const FUND_LINK = "font-ui text-base font-semibold text-fg no-underline"

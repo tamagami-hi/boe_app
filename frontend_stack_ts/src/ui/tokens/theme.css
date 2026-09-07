@@ -63,6 +63,7 @@
   --color-nav-surface-strong: var(--be-nav-surface-strong);
   --color-shell: var(--be-shell);
   --color-shell-strong: var(--be-shell-strong);
+  --color-focus-inverse: var(--be-focus-ring-inverse);
   --color-rule: var(--be-border-color);
   --color-rule-strong: var(--be-border-strong-color);
 

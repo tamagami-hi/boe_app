@@ -8,7 +8,7 @@ export const AUTH_MESH = "pointer-events-none absolute inset-0 z-0 mesh-warm lg:
 export const AUTH_NARRATIVE = [
   "relative z-2 flex flex-col justify-center gap-4 lg:gap-6",
   "px-[max(var(--be-space-5),var(--be-safe-left))]",
-  "pt-[calc(var(--be-space-8)+var(--be-safe-top))] pb-5",
+  "pt-[calc(var(--be-space-10)+var(--be-safe-top))] pb-5",
   "lg:px-10 lg:py-12 lg:pt-12",
   "lg:bg-gradient-to-b lg:from-[color-mix(in_srgb,var(--be-sand)_46%,transparent)] lg:to-transparent",
   "lg:shadow-[inset_-1px_0_0_var(--be-hairline)]",
