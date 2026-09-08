@@ -6,6 +6,7 @@ export const CLIENT_SPLASH_PATH = "/splash"
 export const CLIENT_VERIFY_EMAIL_PATH = "/verify-email"
 export const CLIENT_BLOCKED_PATH = "/blocked"
 export const CLIENT_SUPPORT_PATH = "/profile/support"
+export const CLIENT_PAYMENT_RETURN_PATH = "/pay/return"
 
 export const CLIENT_ROUTES: RouteManifest = [
   {
@@ -22,6 +23,14 @@ export const CLIENT_ROUTES: RouteManifest = [
     title: "Sign in",
     access: "public",
     element: () => import("~/features/auth/LoginScreen"),
+    back: { kind: "exit" },
+  },
+  {
+    id: "payment-return",
+    path: CLIENT_PAYMENT_RETURN_PATH,
+    title: "Back from PhonePe",
+    access: "public",
+    element: () => import("~/features/payments/PaymentReturnScreen"),
     back: { kind: "exit" },
   },
   {
