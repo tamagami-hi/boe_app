@@ -29,6 +29,7 @@ import { ACTION_ROW } from "~/ui/recipes/layout"
 import { STATE_REFRESHING } from "~/ui/recipes/state"
 import { LINK_TEXT } from "~/ui/recipes/text"
 
+import { closeCheckout } from "./openCheckout"
 import { browserPendingPaymentStore, clearPendingPayment } from "./pendingPayment"
 import { PAYMENT_ANSWER, PAYMENT_HERO, PAYMENT_STATUS_ROW } from "./payments.recipe"
 
@@ -61,6 +62,13 @@ const PaymentStatusScreen = (): React.ReactElement => {
     if (status === null || OPEN_PAYMENT_STATUSES.includes(status)) return
     clearPendingPayment(store)
     void invalidateMoney()
+
+    // The payer may still be looking at the provider's return page in the checkout tab.
+    // The result is in, this screen is already showing it underneath, so dismiss the tab
+    // and reveal it. This is what makes the return work without an App Link: verification
+    // can fail, the domain can be unverified on an older install, or the provider can
+    // finish inside its own web view, and the app still comes forward.
+    void closeCheckout()
   }, [status, store, invalidateMoney])
 
   return (

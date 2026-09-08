@@ -227,6 +227,10 @@ export const usePayment = (
     queryKey: qk.client.payment(paymentId),
     enabled: paymentId !== "",
     staleTime: 0,
+    // The checkout tab covers the app while the payer is with the provider, which makes
+    // this document hidden and would otherwise pause the poll — exactly when the result
+    // arrives. Without this the app cannot notice the payment settled and dismiss the tab.
+    refetchIntervalInBackground: true,
     refetchInterval: (query) => {
       const status = query.state.data?.payment.status
       if (status === undefined) return PAYMENT_POLL_INTERVAL_MS

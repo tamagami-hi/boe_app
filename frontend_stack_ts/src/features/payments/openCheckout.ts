@@ -8,3 +8,9 @@ export const openCheckout = async (url: string): Promise<void> => {
 
   window.location.assign(url)
 }
+
+export const closeCheckout = async (): Promise<void> => {
+  if (!isNative()) return
+
+  await tryCallPlugin("Browser", "close")
+}
