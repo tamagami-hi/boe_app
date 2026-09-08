@@ -15,6 +15,7 @@ import type { ClientFailure } from "~/domain/failure"
 import { comparePaise, formatINR, formatRupees, rupeesToPaise, toPaise } from "~/domain/money"
 import type { Paise } from "~/domain/money"
 import { CheckoutUrlRejected, decideCheckout } from "~/features/payments/checkout"
+import { openCheckout } from "~/features/payments/openCheckout"
 import {
   PENDING_PAYMENT_TTL_MS,
   browserPendingPaymentStore,
@@ -133,12 +134,11 @@ const LumpsumInvestScreen = (): React.ReactElement => {
                   return
                 }
 
-                if (decision.kind === "poll") {
-                  void navigate(`/activity/payments/${decision.paymentId}`, { replace: true })
-                  return
-                }
+                void navigate(`/activity/payments/${decision.paymentId}`, { replace: true })
 
-                window.location.assign(decision.url)
+                if (decision.kind === "redirect") {
+                  void openCheckout(decision.url)
+                }
               },
             },
           )

@@ -15,6 +15,7 @@ import type { ClientFailure } from "~/domain/failure"
 import { comparePaise, formatINR, rupeesToPaise, toPaise } from "~/domain/money"
 import type { Paise } from "~/domain/money"
 import { CheckoutUrlRejected, decideCheckout } from "~/features/payments/checkout"
+import { openCheckout } from "~/features/payments/openCheckout"
 import {
   PENDING_PAYMENT_TTL_MS,
   browserPendingPaymentStore,
@@ -163,7 +164,8 @@ const SipStartScreen = (): React.ReactElement => {
               setFailure(AUTOPAY_NOT_RECORDED)
               return
             }
-            window.location.assign(decision.url)
+            void navigate(`/sips/${setup.sipPlanId}`, { replace: true })
+            void openCheckout(decision.url)
             return
           }
           void navigate(`/sips/${setup.sipPlanId}`, { replace: true })

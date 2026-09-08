@@ -18,6 +18,7 @@ import type { ClientFailure } from "~/domain/failure"
 import { toPaise } from "~/domain/money"
 import { paymentFailureReason } from "~/domain/paymentReason"
 import { CheckoutUrlRejected, decideCheckout } from "~/features/payments/checkout"
+import { openCheckout } from "~/features/payments/openCheckout"
 import {
   PENDING_PAYMENT_TTL_MS,
   browserPendingPaymentStore,
@@ -148,7 +149,7 @@ const SipDetailScreen = (): React.ReactElement => {
             setFailure(AUTOPAY_NOT_RECORDED)
             return
           }
-          window.location.assign(decision.url)
+          void openCheckout(decision.url)
         },
       },
     )
