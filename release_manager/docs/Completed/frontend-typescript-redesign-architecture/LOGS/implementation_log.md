@@ -4221,3 +4221,174 @@ backend / API / database / payment / SIP / auth-eligibility changes:  none
 ```
 
 Everything is under `frontend_stack_ts/src/` — 39 files modified, 7 added.
+
+
+## Entry 043 — the payer was shown an internal order id, and the return landed on the wrong screen twice over · 2026-09-08
+
+Two defects reported from a live ₹1.00 payment on a real handset.
+
+### Defect 1 — "Payment for boe_b02d2cb1372a449c92c9a0863f0dc08f" on the UPI sheet
+
+The remark slot on the PhonePe/UPI confirm sheet showed the raw merchant order id. Nothing in
+this repository or in `payment-service` builds that string; grepping the whole service for
+`Payment for`, `remark`, `transactionNote` and `message` found only unrelated matches.
+
+`POST /checkout/v2/pay` accepts `paymentFlow.message`, documented for collect requests.
+The request built in `phonePeCheckoutGateway.ts` never sent it. The screenshot shows an order
+reference in the payment remark, but whether this field replaces that exact UPI intent remark
+remains unverified; the documentation does not establish that mapping.
+
+Fixed by making the message a required part of the gateway config and sending it on every
+`PG_CHECKOUT` pay request. The value is one constant, `CHECKOUT_MESSAGE = "BeOnEdge investment"`
+in `gateways.ts` — letters and one space, short enough to survive the UPI transaction-note field.
+
+Deliberately **not** applied to the recurring gateway. `SUBSCRIPTION_CHECKOUT_SETUP` and
+`SUBSCRIPTION_CHECKOUT_REDEMPTION` are not documented as accepting `message`, and PhonePe answers
+an unexpected field with `BAD_REQUEST`. Adding it there would risk breaking AutoPay setup to
+improve a screen nobody has reported. See D-073.
+
+### Defect 2 — after payment the browser stayed on a web page
+
+The live chain was:
+
+```text
+PhonePe → www.beonedge.in/payment-return → <app-host>/dashboard → SPA renders in the tab
+```
+
+Three separate causes, all of which had to go.
+
+**a. The return destination was `/dashboard`.** `PAYMENT_CALLERS[].returnUrl` is deployment
+config and pointed at the dashboard, which is an ordinary page and claims no App Link, so the
+tab simply rendered a second copy of the app. The return path is not a deployment choice — it
+has to equal the path the Android manifest claims — so it is now derived in code:
+`config/env.ts` keeps the configured value's **origin** and replaces the path with
+`APP_RETURN_PATH = "/pay/return"`. This needs no `.env` edit; deploying the stack is enough.
+See D-074.
+
+**b. The redirect URL named no caller.** `server.ts` already reads `?s=` on the return route and
+resolves it through `deps.runtimes`, so it was never an open redirect — but nothing ever sent
+`s`, so every payer fell through to `runtimes[0]`. `returnUrlFor()` in `gateways.ts` is now the
+single place that builds the return URL and it tags it with the authenticated caller's service
+name, for both the checkout and the mandate flow.
+
+**c. The App Link opened the app onto the wrong screen.** This is the part that made the payer
+say there was no confirmation page. The invest screens already persist the pending payment and
+`navigate("/activity/payments/<paymentId>", { replace: true })` *before* opening the tab, so the
+confirmation screen is sitting underneath the whole time, polling, and it dismisses the tab
+itself once the status is terminal. `AppLinkRouter` was then navigating to `/pay/return` on the
+incoming link — replacing that live confirmation with a static page reading "We do not have the
+final result of this payment yet." and losing the payment id.
+
+`AppLinkRouter` now resolves the persisted pending payment instead: `/activity/payments/<id>`
+for an order payment, `/sips/<id>` for a mandate setup, and **no navigation at all** when
+nothing is in flight, because in that case the app is either already showing the resolved result
+or had nothing to show. The tab is closed either way. `internalDestinationFor` is gone,
+replaced by `isClaimedPaymentReturn` (a claim check) and `pendingPaymentDestination` (the
+decision).
+
+`/pay/return` stays exactly as it is as the **web** fallback: it is what a browser sees when App
+Link verification is not in force, and its copy is correct for that audience.
+
+### Found, not fixed
+
+`newMerchantOrderId()` mints `boe_<uuid>` with a hard-coded prefix, while
+`PAYMENTS_SERVICE_NAME` defaults to `boe-dev`. `routeEventTo()` in `payment-service` routes a
+provider event by `merchantOrderId.startsWith(\`${service}_\`)`, so with a service named
+`boe-dev` that test never matches and every event falls back to `runtimes[0]`. Harmless while
+one caller is configured. With a dev and a prod caller on one payment-service it is a
+cross-environment misroute of provider events. Not fixed here because it needs a decision about
+which of the two names is canonical, and because the return flow no longer depends on it.
+
+### Files
+
+`boe_landing` — `payment-service/src/gateways.ts`, `payment-service/src/config/env.ts`,
+`payment-service/src/server.ts`, `payment-service/src/provider/phonepe/phonePeCheckoutGateway.ts`,
+`payment-service/src/server.test.ts`, plus new
+`payment-service/src/config/env.test.ts` and
+`payment-service/src/provider/phonepe/phonePeCheckoutGateway.test.ts`.
+
+`boe_app` — `frontend_stack_ts/src/app/native/AppLinkRouter.tsx`, plus new
+`frontend_stack_ts/src/app/native/appLinkRouter.test.ts`.
+
+No `.env` file was read or written in either repository.
+
+### Verified
+
+- **TESTED** `payment-service`: `npm run typecheck` silent, `npm test` 7 files / 76 tests
+  (was 5 / 65), `npm run build` clean. The five new gateway tests assert the pay body carries
+  `paymentFlow.message`, that the message contains neither the merchant order id, nor `boe_`,
+  nor `Payment for`, and that the merchant order id is still sent where PhonePe needs it.
+  The five new env tests assert the derived return URL is `<configured-origin>/pay/return`, that
+  each caller keeps its own origin, that it is idempotent, and that http and credential-bearing
+  destinations are still refused.
+- **TESTED** `payment-service` return routing: a new two-caller test proves `?s=boe-dev` and
+  `?s=boe-prod` resolve to different origins rather than both falling to the first caller.
+- **TESTED** `boe_landing` root: `npx tsc --noEmit` silent, `npm test` 7 files / 102 tests,
+  `npm run build` compiles and still lists `ƒ /pay/return/[target]`.
+- **TESTED** `boe_app`: `npm run typecheck` and `npx eslint .` silent, `npx vitest run`
+  22 files / 206 tests (was 21 / 199), `npm run build:client` including check-android-dist and
+  check-bundle-boots; `release_manager` 15/15 `tests/*.test.sh`.
+- **STATIC** the `paymentFlow.message` field name and collect-request purpose are taken from
+  PhonePe's Create Payment reference and Node SDK reference, not from a live response.
+
+### Not verified
+
+- **The UPI sheet has not been seen again.** That the remark now reads "BeOnEdge investment"
+  rather than `Payment for boe_…` is inferred from the documented behaviour of a field we now
+  send. It needs one real ₹1 payment after deploy to confirm.
+- **Deployment is still required.** Follow-up checks confirmed that the development host
+  serves a valid association file and Android verifies its domain. The earlier SPA catch-all
+  diagnosis was stale. The live payment service still redirects to `/dashboard`.
+- Nothing was deployed or pushed by this work. Subsequent emulator checks verified warm and
+  cold return links and session restoration. A maintainer-completed payment showed `Invested`
+  inside the APK but returned to the browser login under the old service. Task 028 records
+  the final implementation, 212 frontend tests, 79 payment-service tests, and device evidence.
+
+### Backend
+
+```text
+backend / API / database / auth-eligibility changes:  none
+payment changes:  boe_landing/payment-service only — PhonePe pay payload gains `message`,
+                  return URL gains `?s=<caller>`, caller return path derived in code
+```
+
+
+## Entry 044 — the PIN pad was oversized on a handset · 2026-09-08
+
+Reported from a device: the PIN screen "is too big for the screen, not like normal other apps".
+
+Entry 042 made the PIN keys square by pairing `aspect-square` with `w-full`, which fixed a
+stretched, letterbox-shaped key. It also made the key **height** track the container width, and
+the container was `max-w-80` — so each key came out at `(320 − 2×12) / 3 ≈ 99 px` and the pad
+alone stood about 431 px tall before the prompt, the dots, the Unlock button and the two
+secondary actions were added. `BLOCK_LAYER` scrolls, so nothing was clipped, but the payer had to
+scroll a lock screen.
+
+`PIN_PAD` is now `max-w-64` — 16rem against 20rem, a 20% reduction, which the maintainer asked
+for as 15–25%. Because the keys are `aspect-square` in a three-column grid the pad shrinks in
+both axes: keys land at `(256 − 24) / 3 ≈ 77 px` and the pad at roughly 345 px. That is in the
+range native passcode pads use. `min-h-target` is untouched, so the touch-target floor still
+holds.
+
+One token changed, in `features/device-security/device-security.recipe.ts`. It reaches both
+callers of `PinPad` — `LockScreen` and `DeviceSecurityScreen` — because the size lives in the
+recipe rather than in either screen.
+
+### Verified
+
+Nothing. The maintainer explicitly waived tests and verification for this change. It is a single
+Tailwind max-width token in a recipe string, so it cannot affect typecheck, and the arithmetic
+above is the whole argument.
+
+### Not verified
+
+- **UNVERIFIED** the rendered result on a device or emulator. The 77 px figure is computed from
+  the token, not measured. Confirm on the next APK: open the lock screen and the PIN setup screen
+  in `Profile → Device security`.
+- No screenshot sweep was rerun, so the audit records from Entry 042 still describe the old size.
+
+### Backend
+
+```text
+backend / API / database / payment / SIP / auth-eligibility changes:  none
+```

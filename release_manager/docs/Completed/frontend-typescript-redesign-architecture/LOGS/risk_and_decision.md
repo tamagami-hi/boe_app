@@ -2166,3 +2166,55 @@ currently has one; a new screen must too.
 returns a boolean. Making it an in-app dialog is a coordinator change and was deliberately not
 bundled into a content pass. It is now scoped to the two routes that actually hold unsaved
 entry, so it no longer claims data loss on the payment-status screen.
+
+
+### D-073
+
+**The payer-visible remark is sent only on `PG_CHECKOUT`, not on the subscription flows.**
+
+The UPI sheet displayed an internal merchant order reference. `CHECKOUT_MESSAGE` in
+`gateways.ts` is now sent on every one-time checkout as `paymentFlow.message`, which PhonePe
+documents for collect requests. Its effect on the exact UPI intent remark in the screenshot
+remains unverified; this is a candidate display fix, not an observed result.
+
+It is **not** sent on `SUBSCRIPTION_CHECKOUT_SETUP` or `SUBSCRIPTION_CHECKOUT_REDEMPTION`.
+`message` is documented for the standard checkout create-payment request; it is not documented
+for the subscription flows, and PhonePe rejects unexpected fields with `BAD_REQUEST`. Adding it
+speculatively would put AutoPay mandate setup — which is already the most fragile path in the
+system — at risk of a hard failure in order to improve a screen nobody has reported a problem
+with.
+
+The consequence to accept: a mandate setup sheet may still show PhonePe's default remark. If
+that is ever reported, confirm the field against a sandbox mandate setup **before** adding it,
+and do not assume it behaves as it does for `PG_CHECKOUT`.
+
+### D-074
+
+**The checkout return path is code, the return origin is config.**
+
+`PAYMENT_CALLERS[].returnUrl` used to be honoured whole, and pointed at `<app-host>/dashboard`.
+That is why a completed payment left the payer looking at a web page: the dashboard claims no
+Android App Link, so the checkout tab just rendered a second copy of the app.
+
+The return path is not a deployment choice. It must equal the `pathPrefix` the Android manifest
+claims, or the handoff cannot work — and a value that must agree with a manifest constant does
+not belong in an environment variable, where it can drift silently and take payments down. So
+`config/env.ts` now keeps only the **origin** of the configured `returnUrl` and supplies the path
+itself from `APP_RETURN_PATH = "/pay/return"`.
+
+What this buys: the fix ships with the code. No `.env` edit, no maintainer step, no window in
+which the deployed path disagrees with the deployed manifest.
+
+What it costs, and the rules that follow:
+
+1. **A path configured in `PAYMENT_CALLERS[].returnUrl` is ignored.** Only its scheme, host and
+   port are read. `https://app.beonedge.in/anything` and `https://app.beonedge.in` behave
+   identically. This is asserted in `config/env.test.ts` so it cannot be mistaken for a bug and
+   "fixed" later.
+2. **Changing the App Link path is a two-repo change.** `APP_RETURN_PATH` in
+   `boe_landing/payment-service`, `CLIENT_PAYMENT_RETURN_PATH` in `boe_app`, and the
+   `android:pathPrefix` in `AndroidManifest.xml` must move together.
+3. **The caller is still named explicitly.** `returnUrlFor()` tags the redirect with
+   `?s=<service>`; the origin comes from that caller's own config. Do not reintroduce a
+   merchant-order-id prefix heuristic for the return — the ids are minted `boe_…` regardless of
+   the caller's service name, so that heuristic does not work (see Entry 043, "Found, not fixed").

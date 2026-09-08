@@ -1,4 +1,4 @@
-import { plugin } from "~/platform/capacitor"
+import { isNative, plugin, tryCallPlugin } from "~/platform/capacitor"
 
 type Unsubscribe = () => void
 
@@ -65,3 +65,10 @@ export const onAppUrlOpen = (handler: (url: string) => void): Unsubscribe =>
     if (typeof payload.url !== "string") return
     handler(payload.url)
   })
+
+export const getLaunchUrl = async (): Promise<string | null> => {
+  if (!isNative()) return null
+  const result = await tryCallPlugin("App", "getLaunchUrl")
+  if (typeof result !== "object" || result === null || !("url" in result)) return null
+  return typeof result.url === "string" ? result.url : null
+}

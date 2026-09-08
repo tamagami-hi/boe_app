@@ -5,7 +5,7 @@ const PIN_KEY_BASE = [
   "active:scale-[0.96] active:bg-sand",
 ].join(" ")
 
-export const PIN_PAD = "mx-auto grid w-full max-w-80 grid-cols-3 gap-3"
+export const PIN_PAD = "mx-auto grid w-full max-w-64 grid-cols-3 gap-3"
 
 export const PIN_KEY = `${PIN_KEY_BASE} font-numeric text-xl [font-variant-numeric:tabular-nums]`
 
