@@ -61,6 +61,6 @@ export const BLOCK_PROGRESS_TRACK = [
 ].join(" ")
 
 export const BLOCK_PROGRESS_FILL = [
-  "h-full w-full origin-left rounded-full grad-gold",
+  "block h-full w-full origin-left rounded-full grad-gold",
   "transition-transform duration-[var(--be-dur-base)] ease-out",
 ].join(" ")

@@ -1,11 +1,11 @@
 const PIN_KEY_BASE = [
-  "min-h-14 cursor-pointer rounded-squircle border-0 bg-parchment text-fg",
+  "aspect-square min-h-target cursor-pointer rounded-squircle border-0 bg-parchment text-fg",
   "ring-inset-hairline-strong font-semibold",
   "transition-[transform,background-color] duration-[var(--be-dur-fast)] ease-out",
   "active:scale-[0.96] active:bg-sand",
 ].join(" ")
 
-export const PIN_PAD = "mx-auto grid max-w-80 grid-cols-3 gap-3"
+export const PIN_PAD = "mx-auto grid w-full max-w-80 grid-cols-3 gap-3"
 
 export const PIN_KEY = `${PIN_KEY_BASE} font-numeric text-xl [font-variant-numeric:tabular-nums]`
 

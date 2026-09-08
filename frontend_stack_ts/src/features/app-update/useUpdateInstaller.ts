@@ -37,12 +37,12 @@ export const useUpdateInstaller = (release: UpdateRelease | null): UpdateInstall
   const busy = useRef(false)
   const mounted = useRef(true)
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mounted.current = true
+    return () => {
       mounted.current = false
-    },
-    [],
-  )
+    }
+  }, [])
 
   const settle = useCallback((next: InstallerState): void => {
     if (!mounted.current) return
