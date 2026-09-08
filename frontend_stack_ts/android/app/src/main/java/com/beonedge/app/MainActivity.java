@@ -4,10 +4,13 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 
+import java.util.Locale;
+
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.getcapacitor.Bridge;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
@@ -59,6 +62,12 @@ public class MainActivity extends BridgeActivity {
         // through to Chromium on WebView 140+, so "disable" would lose safe-area
         // handling on the far larger population below that.
         ViewCompat.setOnApplyWindowInsetsListener(getWindow().getDecorView(), (view, insets) -> {
+            publishKeyboardHeight(
+                insets.isVisible(WindowInsetsCompat.Type.ime())
+                    ? insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+                    : 0
+            );
+
             WindowInsetsCompat withoutIme = new WindowInsetsCompat.Builder(insets)
                 .setInsets(WindowInsetsCompat.Type.ime(), Insets.NONE)
                 .setVisible(WindowInsetsCompat.Type.ime(), false)
@@ -67,4 +76,37 @@ public class MainActivity extends BridgeActivity {
             return ViewCompat.onApplyWindowInsets(view, withoutIme);
         });
     }
+
+    // Publish the keyboard height without letting it move anything.
+    //
+    // The inset is stripped above so that nothing resizes, which also leaves the web
+    // layer with no signal at all: env(keyboard-inset-height) stays 0px, measured. One
+    // surface does need to move — the sign-in panel, which the keyboard would otherwise
+    // cover with no way to scroll to it — so the height is published as a CSS variable
+    // and only that surface consumes it.
+    //
+    // Density-scaled to CSS pixels, matching how Capacitor injects --safe-area-inset-*.
+    //
+    // Published on every dispatch rather than only on change. The first dispatch happens
+    // before the document exists, so that write is lost; Capacitor re-requests insets on
+    // DOM ready, and an unconditional write is what makes the value land then. Inset
+    // dispatch is not a hot path.
+    private void publishKeyboardHeight(int bottomPx) {
+        int cssPx = Math.round(bottomPx / getResources().getDisplayMetrics().density);
+
+        Bridge bridge = getBridge();
+        if (bridge == null || bridge.getWebView() == null) return;
+
+        String script = String.format(
+            Locale.US,
+            "try {"
+                + " document.documentElement.style.setProperty('--be-keyboard-height', '%dpx');"
+                + " window.dispatchEvent(new CustomEvent('be:keyboard', { detail: { height: %d } }))"
+                + " } catch (e) {}",
+            cssPx,
+            cssPx
+        );
+        bridge.getWebView().evaluateJavascript(script, null);
+    }
+
 }

@@ -36,13 +36,7 @@ const FundListScreen = (): React.ReactElement => {
   const skeleton = useMemo(
     () =>
       compact ? (
-        <Card>
-          {[0, 1, 2, 3, 4, 5].map((index) => (
-            <Skeleton key={index} height="2.6rem" />
-          ))}
-        </Card>
-      ) : (
-        <ContentGrid columns={3}>
+        <ContentGrid columns={2}>
           {[0, 1, 2, 3, 4, 5].map((index) => (
             <Card key={index}>
               <Skeleton height="1.2rem" width="70%" />
@@ -51,6 +45,12 @@ const FundListScreen = (): React.ReactElement => {
             </Card>
           ))}
         </ContentGrid>
+      ) : (
+        <Card>
+          {[0, 1, 2, 3, 4, 5].map((index) => (
+            <Skeleton key={index} height="2.6rem" />
+          ))}
+        </Card>
       ),
     [compact],
   )

@@ -12,9 +12,8 @@ const NotFoundScreen = (): React.ReactElement => {
 
   return (
     <Page width="default">
-      <PageHeader title="Page not found" />
+      <PageHeader title="We could not find that page" />
       <EmptyState
-        title="We could not find that page"
         description="The link may be out of date."
         action={
           <Button

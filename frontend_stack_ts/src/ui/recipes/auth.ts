@@ -1,5 +1,6 @@
 export const AUTH_SHELL = [
-  "relative grid min-h-dvh grid-cols-1 grid-rows-[auto_1fr_auto] overflow-hidden bg-bg",
+  "relative grid min-h-dvh grid-cols-1 grid-rows-[auto_1fr_auto] overflow-x-hidden bg-bg",
+  "pb-[var(--be-keyboard-height)]",
   "lg:grid-cols-[1.02fr_0.98fr] lg:grid-rows-1 lg:items-stretch",
 ].join(" ")
 

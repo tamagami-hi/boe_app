@@ -9,7 +9,7 @@ export type { MoneySize }
 export type MoneyTone = "default" | "signed" | "muted"
 
 export type MoneyValueProps = Readonly<{
-  amount: Paise
+  amount: Paise | null
   size?: MoneySize
   tone?: MoneyTone
   showDecimals?: boolean
@@ -23,6 +23,10 @@ export const MoneyValue = ({
   showDecimals = false,
   showSign = false,
 }: MoneyValueProps): React.ReactElement => {
+  if (amount === null) {
+    return <span className={cx(MONEY_BASE, MONEY_SIZE[size], MONEY_TONE.muted)}>&mdash;</span>
+  }
+
   const toneClass =
     tone === "muted"
       ? MONEY_TONE.muted

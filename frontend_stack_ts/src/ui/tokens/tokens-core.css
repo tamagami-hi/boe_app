@@ -3,6 +3,7 @@
   --be-safe-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
   --be-safe-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
   --be-safe-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+  --be-keyboard-height: 0px;
 
   --be-ink: #0e1116;
   --be-ink-2: #1a1f27;

@@ -147,24 +147,22 @@ const PaymentStatusScreen = (): React.ReactElement => {
 
               <Section>
                 <div className={ACTION_ROW}>
-                  <ButtonLink to="/activity" tone="secondary">
-Back to activity
-</ButtonLink>
                   {payment.status === "support_required" ? (
-                    <ButtonLink to="/profile/support">
-Contact support
-</ButtonLink>
+                    <ButtonLink to="/profile/support">Contact support</ButtonLink>
                   ) : null}
                   {payment.status === "confirmed" ? (
                     <ButtonLink to="/portfolio" trailing>
-See my portfolio
-</ButtonLink>
+                      See my portfolio
+                    </ButtonLink>
                   ) : null}
                   {payment.status === "payment_failed" ? (
                     <ButtonLink to={`/funds/${payment.fundId}`} trailing>
                       Try again
                     </ButtonLink>
                   ) : null}
+                  <ButtonLink to="/activity" tone="secondary">
+                    Back to activity
+                  </ButtonLink>
                 </div>
               </Section>
             </>

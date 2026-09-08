@@ -21,9 +21,9 @@ export type FormFieldRenderProps = Readonly<{
 
 export type FormFieldProps = Readonly<{
   label: string
-  hint?: string
-  error?: string
-  required?: boolean
+  hint?: string | undefined
+  error?: string | undefined
+  required?: boolean | undefined
   children: (props: FormFieldRenderProps) => ReactNode
 }>
 

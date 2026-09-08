@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import type { ReactNode } from "react"
 
 import { Reveal } from "~/ui/motion/Reveal"
@@ -36,56 +37,80 @@ export const AuthLayout = ({
   panelHint,
   markers = DEFAULT_MARKERS,
   children,
-}: AuthLayoutProps): React.ReactElement => (
-  <div className={AUTH_SHELL}>
-    <div className={AUTH_MESH} aria-hidden="true" />
-    <div className="be-grain" aria-hidden="true" />
+}: AuthLayoutProps): React.ReactElement => {
+  useEffect(() => {
+    const onKeyboard = (event: Event): void => {
+      const height = (event as CustomEvent<{ height: number }>).detail.height
+      if (height <= 0) return
 
-    <section className={AUTH_NARRATIVE}>
-      <Reveal>
-        <span className={EYEBROW}>{eyebrow}</span>
-      </Reveal>
-      <Reveal delayMs={50}>
-        <h1 className={AUTH_HEADLINE}>{headline}</h1>
-      </Reveal>
-      <Reveal delayMs={90}>
-        <span className={RULE_GOLD} />
-      </Reveal>
-      {tagline === undefined ? null : (
-        <Reveal delayMs={120}>
-          <p className={AUTH_TAGLINE}>{tagline}</p>
+      const active = document.activeElement
+      if (!(active instanceof HTMLElement)) return
+      if (active.tagName !== "INPUT" && active.tagName !== "TEXTAREA") return
+
+      const visible = window.innerHeight - height
+      if (visible <= 0) return
+
+      const box = active.getBoundingClientRect()
+      window.scrollBy({ top: box.top + box.height / 2 - visible / 2, behavior: "smooth" })
+    }
+
+    window.addEventListener("be:keyboard", onKeyboard)
+    return () => {
+      window.removeEventListener("be:keyboard", onKeyboard)
+    }
+  }, [])
+
+  return (
+    <div className={AUTH_SHELL}>
+      <div className={AUTH_MESH} aria-hidden="true" />
+      <div className="be-grain" aria-hidden="true" />
+
+      <section className={AUTH_NARRATIVE}>
+        <Reveal>
+          <span className={EYEBROW}>{eyebrow}</span>
         </Reveal>
-      )}
-      <Reveal delayMs={160}>
-        <ul className={AUTH_MARKERS}>
-          {markers.map((marker) => (
-            <li key={marker} className={AUTH_MARKER}>
-              <span className={AUTH_MARKER_DOT} aria-hidden="true" />
-              {marker}
-            </li>
-          ))}
-        </ul>
-      </Reveal>
-    </section>
+        <Reveal delayMs={50}>
+          <h1 className={AUTH_HEADLINE}>{headline}</h1>
+        </Reveal>
+        <Reveal delayMs={90}>
+          <span className={RULE_GOLD} />
+        </Reveal>
+        {tagline === undefined ? null : (
+          <Reveal delayMs={120}>
+            <p className={AUTH_TAGLINE}>{tagline}</p>
+          </Reveal>
+        )}
+        <Reveal delayMs={160}>
+          <ul className={AUTH_MARKERS}>
+            {markers.map((marker) => (
+              <li key={marker} className={AUTH_MARKER}>
+                <span className={AUTH_MARKER_DOT} aria-hidden="true" />
+                {marker}
+              </li>
+            ))}
+          </ul>
+        </Reveal>
+      </section>
 
-    <section className={AUTH_PANEL_AREA}>
-      <Reveal delayMs={100} className={AUTH_PANEL_SLOT}>
-        <div className={AUTH_PANEL_SHELL}>
-          <div className={AUTH_PANEL_CORE}>
-            <div className={AUTH_PANEL_HEAD}>
-              <span className={AUTH_WORDMARK}>BeOnEdge</span>
-              <h2 className={AUTH_PANEL_TITLE}>{panelTitle}</h2>
-              {panelHint === undefined ? null : <p className={SHEET_DESCRIPTION}>{panelHint}</p>}
+      <section className={AUTH_PANEL_AREA}>
+        <Reveal delayMs={100} className={AUTH_PANEL_SLOT}>
+          <div className={AUTH_PANEL_SHELL}>
+            <div className={AUTH_PANEL_CORE}>
+              <div className={AUTH_PANEL_HEAD}>
+                <span className={AUTH_WORDMARK}>BeOnEdge</span>
+                <h2 className={AUTH_PANEL_TITLE}>{panelTitle}</h2>
+                {panelHint === undefined ? null : <p className={SHEET_DESCRIPTION}>{panelHint}</p>}
+              </div>
+              {children}
             </div>
-            {children}
           </div>
-        </div>
-      </Reveal>
-    </section>
+        </Reveal>
+      </section>
 
-    <p className={AUTH_FOOTNOTE}>
-      Investments are market-linked. Their value can fall as well as rise, and BeOnEdge does not
-      guarantee a return.
-    </p>
-  </div>
-)
+      <p className={AUTH_FOOTNOTE}>
+        Investments are market-linked. Their value can fall as well as rise, and BeOnEdge does not
+        guarantee a return.
+      </p>
+    </div>
+  )
+}

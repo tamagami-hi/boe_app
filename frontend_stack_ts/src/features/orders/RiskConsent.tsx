@@ -2,6 +2,7 @@ import { cx } from "~/lib/cx"
 import {
   CHECKBOX_GLYPH,
   CHECKBOX_MARK_BASE,
+  CHECKBOX_MARK_INVALID,
   CHECKBOX_MARK_OFF,
   CHECKBOX_MARK_ON,
   CHECKBOX_ROW,
@@ -10,21 +11,33 @@ import { BODY_SM } from "~/ui/recipes/text"
 
 export type RiskConsentProps = Readonly<{
   checked: boolean
+  invalid?: boolean | undefined
+  describedBy?: string | undefined
   onChange: (next: boolean) => void
 }>
 
-export const RiskConsent = ({ checked, onChange }: RiskConsentProps): React.ReactElement => (
+export const RiskConsent = ({
+  checked,
+  invalid = false,
+  describedBy,
+  onChange,
+}: RiskConsentProps): React.ReactElement => (
   <button
     type="button"
     role="checkbox"
     aria-checked={checked}
+    aria-invalid={invalid}
+    aria-describedby={describedBy}
     className={CHECKBOX_ROW}
     onClick={() => {
       onChange(!checked)
     }}
   >
     <span
-      className={cx(CHECKBOX_MARK_BASE, checked ? CHECKBOX_MARK_ON : CHECKBOX_MARK_OFF)}
+      className={cx(
+        CHECKBOX_MARK_BASE,
+        checked ? CHECKBOX_MARK_ON : invalid ? CHECKBOX_MARK_INVALID : CHECKBOX_MARK_OFF,
+      )}
       aria-hidden="true"
     >
       {checked ? (

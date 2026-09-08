@@ -3,9 +3,9 @@ import type { ReactNode } from "react"
 import { STATE_DESCRIPTION, STATE_PANEL, STATE_TITLE } from "~/ui/recipes/state"
 
 export type EmptyStateProps = Readonly<{
-  title: string
-  description?: string
-  action?: ReactNode
+  title?: string | undefined
+  description?: string | undefined
+  action?: ReactNode | undefined
 }>
 
 export const EmptyState = ({
@@ -14,7 +14,7 @@ export const EmptyState = ({
   action,
 }: EmptyStateProps): React.ReactElement => (
   <div className={STATE_PANEL}>
-    <span className={STATE_TITLE}>{title}</span>
+    {title === undefined ? null : <span className={STATE_TITLE}>{title}</span>}
     {description === undefined ? null : <p className={STATE_DESCRIPTION}>{description}</p>}
     {action}
   </div>

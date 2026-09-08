@@ -1,6 +1,5 @@
 export const FUND_LINE = "flex flex-col gap-0.5"
 
-export const AMOUNT_BLOCK = "flex flex-col gap-3"
 
 export const RULES = "m-0 flex list-none flex-col gap-2 p-0"
 

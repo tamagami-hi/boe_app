@@ -5,7 +5,7 @@ export type AmountInputProps = Readonly<{
   id?: string
   value: string
   invalid?: boolean
-  describedBy?: string
+  describedBy?: string | undefined
   disabled?: boolean
   onChange: (next: string) => void
 }>

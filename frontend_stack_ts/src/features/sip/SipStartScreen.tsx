@@ -25,6 +25,7 @@ import { isNative } from "~/platform/capacitor"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { AmountInput } from "~/ui/primitives/AmountInput"
+import { FormField } from "~/ui/primitives/FormField"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { CARD_SECTION } from "~/ui/recipes/surface"
@@ -196,20 +197,22 @@ const SipStartScreen = (): React.ReactElement => {
                   {minimum === null ? "" : ` · minimum ${formatINR(minimum)} a month`}
                 </span>
 
-                <div className={SIP_FIELD}>
-                  <span className={STAT_LABEL}>Monthly amount</span>
-                  <AmountInput
-                    value={rupees}
-                    invalid={submitted && amountError !== undefined}
-                    onChange={setRupees}
-                    disabled={pending}
-                  />
-                  {submitted && amountError !== undefined ? (
-                    <span className={FIELD_ERROR}>{amountError}</span>
-                  ) : (
-                    <span className={SIP_HINT}>Whole rupees only.</span>
+                <FormField
+                  label="Monthly amount"
+                  error={submitted ? amountError : undefined}
+                  hint={submitted && amountError !== undefined ? undefined : "Whole rupees only."}
+                >
+                  {({ id, describedBy, invalid }) => (
+                    <AmountInput
+                      id={id}
+                      describedBy={describedBy}
+                      value={rupees}
+                      invalid={invalid}
+                      onChange={setRupees}
+                      disabled={pending}
+                    />
                   )}
-                </div>
+                </FormField>
               <div className={CARD_SECTION}>
                 <span className={STAT_LABEL}>How it is paid</span>
                 <RadioGroup<Mode>
@@ -263,28 +266,26 @@ const SipStartScreen = (): React.ReactElement => {
                 </div>
               </div>
 
-              {amountPaise === null ? null : (
-                <div className={CARD_SECTION}>
-                  <span className={STAT_LABEL}>Each month</span>
-                  <MoneyValue amount={amountPaise} size="lg" />
-                  <div className={SUMMARY_GRID}>
-                    <div className={STAT_ROOT}>
-                      <span className={STAT_LABEL}>Instalments</span>
-                      <span className={ITEM_TITLE}>{String(durationMonths)}</span>
-                    </div>
-                    <div className={STAT_ROOT}>
-                      <span className={STAT_LABEL}>Collection day</span>
-                      <span className={ITEM_TITLE}>{String(debitDay)}</span>
-                    </div>
-                    <div className={STAT_ROOT}>
-                      <span className={STAT_LABEL}>Paid by</span>
-                      <span className={ITEM_TITLE}>
-                        {mode === "manual_checkout" ? "You, each month" : "AutoPay"}
-                      </span>
-                    </div>
+              <div className={CARD_SECTION}>
+                <span className={STAT_LABEL}>Each month</span>
+                <MoneyValue amount={amountPaise} size="lg" />
+                <div className={SUMMARY_GRID}>
+                  <div className={STAT_ROOT}>
+                    <span className={STAT_LABEL}>Instalments</span>
+                    <span className={ITEM_TITLE}>{String(durationMonths)}</span>
+                  </div>
+                  <div className={STAT_ROOT}>
+                    <span className={STAT_LABEL}>Collection day</span>
+                    <span className={ITEM_TITLE}>{String(debitDay)}</span>
+                  </div>
+                  <div className={STAT_ROOT}>
+                    <span className={STAT_LABEL}>Paid by</span>
+                    <span className={ITEM_TITLE}>
+                      {mode === "manual_checkout" ? "You, each month" : "AutoPay"}
+                    </span>
                   </div>
                 </div>
-              )}
+              </div>
               </Card>
 
               {failure === null ? null : (

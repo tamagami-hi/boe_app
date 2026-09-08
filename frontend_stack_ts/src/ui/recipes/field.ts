@@ -126,6 +126,8 @@ export const CHECKBOX_MARK_BASE = "mt-px size-4.5 flex-none rounded-sm"
 
 export const CHECKBOX_MARK_OFF = "bg-parchment ring-inset-hairline-strong"
 
+export const CHECKBOX_MARK_INVALID = "bg-parchment ring-inset-invalid"
+
 export const CHECKBOX_MARK_ON = "grid place-items-center bg-ink text-fg-inverse shadow-none"
 
 export const CHECKBOX_GLYPH = "size-3"

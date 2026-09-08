@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useId, useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 
 import { useIdempotencyKey } from "~/api/idempotency"
@@ -22,10 +22,11 @@ import {
 } from "~/features/payments/pendingPayment"
 import { useCreateOrder, useFund, usePayOrder } from "~/features/shared/queries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
-import { ITEM_TITLE, STAT_LABEL } from "~/ui/recipes/datalist"
+import { ITEM_TITLE } from "~/ui/recipes/datalist"
 import { FIELD_ERROR, FORM_ROOT } from "~/ui/recipes/field"
 import { META_MUTED } from "~/ui/recipes/text"
 import { AmountInput } from "~/ui/primitives/AmountInput"
+import { FormField } from "~/ui/primitives/FormField"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
@@ -34,7 +35,7 @@ import { PresetChoice } from "~/ui/primitives/Toggle"
 
 import { RiskConsent } from "./RiskConsent"
 
-import { AMOUNT_BLOCK, FUND_LINE, RULE, RULES, RULE_DOT } from "./orders.recipe"
+import { FUND_LINE, RULE, RULES, RULE_DOT } from "./orders.recipe"
 
 const PRESETS = [1_000, 5_000, 10_000, 25_000, 50_000] as const
 
@@ -49,6 +50,7 @@ const LumpsumInvestScreen = (): React.ReactElement => {
   const [rupees, setRupees] = useState("")
   const [consented, setConsented] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const consentErrorId = useId()
   const [failure, setFailure] = useState<ClientFailure | null>(null)
   const store = useMemo(browserPendingPaymentStore, [])
 
@@ -172,36 +174,49 @@ const LumpsumInvestScreen = (): React.ReactElement => {
                   </span>
                 </span>
 
-                <div className={AMOUNT_BLOCK}>
-                  <span className={STAT_LABEL}>Amount</span>
-                  <AmountInput
-                    value={rupees}
-                    invalid={submitted && amountError !== undefined}
-                    onChange={setRupees}
-                    disabled={pending}
-                  />
-                  <PresetChoice
-                    label="Common amounts"
-                    value={Number(rupees)}
-                    options={PRESETS}
-                    format={(value) => formatRupees(value)}
-                    onChange={(value) => {
-                      setRupees(String(value))
-                    }}
-                  />
-                  {submitted && amountError !== undefined ? (
-                    <span className={FIELD_ERROR}>{amountError}</span>
-                  ) : amountPaise === null ? (
-                    <span className={META_MUTED}>Whole rupees only.</span>
-                  ) : (
-                    <span className={META_MUTED}>{`You are investing ${formatINR(amountPaise)}.`}</span>
+                <FormField
+                  label="Amount"
+                  error={submitted ? amountError : undefined}
+                  hint={
+                    submitted && amountError !== undefined
+                      ? undefined
+                      : amountPaise === null
+                        ? "Whole rupees only."
+                        : `You are investing ${formatINR(amountPaise)}.`
+                  }
+                >
+                  {({ id, describedBy, invalid }) => (
+                    <>
+                      <AmountInput
+                        id={id}
+                        describedBy={describedBy}
+                        value={rupees}
+                        invalid={invalid}
+                        onChange={setRupees}
+                        disabled={pending}
+                      />
+                      <PresetChoice
+                        label="Common amounts"
+                        value={Number(rupees)}
+                        options={PRESETS}
+                        format={(value) => formatRupees(value)}
+                        onChange={(value) => {
+                          setRupees(String(value))
+                        }}
+                      />
+                    </>
                   )}
-                </div>
+                </FormField>
               </Card>
 
-              <RiskConsent checked={consented} onChange={setConsented} />
+              <RiskConsent
+                checked={consented}
+                invalid={submitted && !consented}
+                describedBy={submitted && !consented ? consentErrorId : undefined}
+                onChange={setConsented}
+              />
               {submitted && !consented ? (
-                <span className={FIELD_ERROR}>
+                <span className={FIELD_ERROR} id={consentErrorId} role="alert">
                   Please confirm you understand the risk before continuing.
                 </span>
               ) : null}
