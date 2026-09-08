@@ -5,9 +5,12 @@ import { PageHeader } from "~/app/layouts/PageHeader"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { ButtonLink } from "~/ui/primitives/ButtonLink"
 
+const IDENTIFIER = /^[A-Za-z0-9_-]{1,64}$/u
+
 const PaymentReturnScreen = (): React.ReactElement => {
   const [params] = useSearchParams()
-  const paymentId = params.get("paymentId")
+  const candidate = params.get("paymentId")
+  const paymentId = candidate !== null && IDENTIFIER.test(candidate) ? candidate : null
 
   return (
     <Page width="form">
