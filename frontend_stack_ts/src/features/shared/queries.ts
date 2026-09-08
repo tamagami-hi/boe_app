@@ -135,11 +135,14 @@ export const useStatements = (): UseQueryResult<DataOf<typeof listClientStatemen
   })
 }
 
-export const useNotifications = (): PagedQuery<DataOf<typeof listClientNotifications>> => {
+export const useNotifications = (
+  enabled = true,
+): PagedQuery<DataOf<typeof listClientNotifications>> => {
   const api = useApi()
   return usePagedQuery({
     queryKey: qk.client.notifications(),
     staleTime: STALE.MONEY,
+    enabled,
     fetchPage: async (after) =>
       api.request(listClientNotifications, {
         query: { limit: LIST_PAGE_LIMIT, after },

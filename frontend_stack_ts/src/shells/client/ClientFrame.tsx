@@ -37,12 +37,18 @@ export const ClientFrame = ({ children }: ClientFrameProps): React.ReactElement 
   const location = useLocation()
   const navigate = useNavigate()
   const session = useSession()
-  const notifications = useNotifications()
 
   const route = findRoute(CLIENT_ROUTES, location.pathname)
   const isBareSurface = route === null || route.access === "public" || route.chrome === "none"
+  const showsChrome = !isBareSurface && session.status === "authenticated"
 
-  if (isBareSurface || session.status !== "authenticated") return <>{children}</>
+  // Hooks cannot sit behind the early return, so the query is told when it is wanted
+  // rather than being skipped. Without this it ran on /login, where there is no session:
+  // the request 401s, the failure feeds back into a re-render, and the page refetches in a
+  // loop tight enough to stop anyone typing their credentials.
+  const notifications = useNotifications(showsChrome)
+
+  if (!showsChrome) return <>{children}</>
 
   const activeId = route.id
   const backPath =
