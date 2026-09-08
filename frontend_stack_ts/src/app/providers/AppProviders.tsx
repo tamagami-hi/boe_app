@@ -4,6 +4,7 @@ import type { ReactNode } from "react"
 
 import { ConnectivityBanner } from "~/app/native/ConnectivityBanner"
 import { DeviceLockGate } from "~/app/native/DeviceLockGate"
+import { AppLinkRouter } from "~/app/native/AppLinkRouter"
 import { NativeBackCoordinator } from "~/app/native/NativeBackCoordinator"
 import type { TransactionalBackHandler } from "~/app/native/NativeBackCoordinator"
 import { SystemBarsController } from "~/app/native/SystemBarsController"
@@ -44,6 +45,7 @@ export const AppProviders = ({
             <DeviceLockGate>
               <ToastProvider>
                 <SystemBarsController />
+                <AppLinkRouter />
                 <NativeBackCoordinator
                   resolvePolicy={backPolicy}
                   {...(onTransactionalBack === undefined ? {} : { onTransactionalBack })}

@@ -64,6 +64,39 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!--
+              Android App Link for the PhonePe checkout return.
+
+              PhonePe returns the payer to the approved merchant origin
+              (www.beonedge.in), which hands them on to this host's /pay/return. With
+              autoVerify and a matching /.well-known/assetlinks.json on the same host,
+              Android opens that URL in this app instead of a browser, so the payer lands
+              back on the running app rather than a web page.
+
+              The host is a manifest placeholder, never a literal: build.gradle derives it
+              from the applicationId being built (dev-app.beonedge.in for the .dev family,
+              app.beonedge.in otherwise) and fails the build if the two disagree. A shared
+              manifest naming one environment's host is exactly how a dev APK ends up
+              claiming production return URLs.
+
+              The path prefix is deliberately narrow. This claims only /pay/return, not
+              the whole host, so ordinary links to the site keep opening in the browser.
+
+              Verification is an enhancement, not a dependency: if it fails, or the app is
+              not installed, /pay/return is a public page that works in any browser.
+            -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:scheme="https"
+                    android:host="${boeAppLinkHost}"
+                    android:pathPrefix="/pay/return" />
+            </intent-filter>
+
         </activity>
 
         <provider

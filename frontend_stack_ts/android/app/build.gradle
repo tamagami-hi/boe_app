@@ -59,11 +59,43 @@ android {
         }
     }
 
+    // App Link host, derived from the applicationId rather than declared twice.
+    //
+    // The App Link and the applicationId have to describe the same environment: a dev
+    // APK claiming app.beonedge.in would intercept production return URLs, and a prod
+    // APK claiming dev-app.beonedge.in would silently fail to. Deriving the host from
+    // the id makes that pairing impossible to get wrong by omission, which keeps bare
+    // `npm run android:apk` builds correct too.
+    //
+    // emu/boe_update.sh still passes -PboeAppLinkHost explicitly. It is cross-checked
+    // rather than trusted: if the builder's intent and the applicationId disagree, the
+    // build fails here instead of shipping an APK that cannot verify its own links.
+    def boeDevApplicationIdBase = "${boeClientApplicationId}.dev"
+    def boeIsDevFamily = boeApplicationId == boeDevApplicationIdBase ||
+        boeApplicationId.startsWith("${boeDevApplicationIdBase}.")
+    def boeExpectedAppLinkHost = boeIsDevFamily ? 'dev-app.beonedge.in' : 'app.beonedge.in'
+    def boeAppLinkHost = project.hasProperty('boeAppLinkHost') ? project.boeAppLinkHost : boeExpectedAppLinkHost
+    if (boeAppLinkHost != boeExpectedAppLinkHost) {
+        throw new GradleException(
+            "App Link host does not match the applicationId being built.\n" +
+            "  applicationId:      ${boeApplicationId}\n" +
+            "  -PboeAppLinkHost:   ${boeAppLinkHost}\n" +
+            "  expected for that id: ${boeExpectedAppLinkHost}\n" +
+            "A development APK must never claim app.beonedge.in, and a production APK must\n" +
+            "never claim dev-app.beonedge.in: the wrong pairing either hijacks the other\n" +
+            "environment's return URLs or fails Digital Asset Links verification outright."
+        )
+    }
+
+
     defaultConfig {
         // emu/boe_update.sh injects -PboeApplicationId so dev/prod and
         // client/admin APKs get distinct IDs and can coexist on one device;
         // the literal is only a fallback for bare IDE builds.
         applicationId boeApplicationId
+        // Consumed by the App Link intent-filter in AndroidManifest.xml. Never a literal
+        // there: the shared manifest must not name one environment's host.
+        manifestPlaceholders = [boeAppLinkHost: boeAppLinkHost]
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // emu/boe_update.sh injects -PboeVersionCode/-PboeVersionName; the

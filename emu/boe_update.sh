@@ -192,6 +192,32 @@ else
     APP_ID_BASE="com.beonedge.app.dev"
 fi
 
+# App Link host per target, chosen by the same prod-vs-not rule as APP_ID_BASE so the
+# two can never describe different environments. This is the host whose
+# /.well-known/assetlinks.json must name the applicationId above, and whose
+# /pay/return the PhonePe checkout return resolves to.
+if [[ "$TARGET" == "prod" ]]; then
+    APP_LINK_HOST="app.beonedge.in"
+else
+    APP_LINK_HOST="dev-app.beonedge.in"
+fi
+
+# Fail before building rather than shipping an APK that claims the wrong environment's
+# return URLs. build.gradle re-derives this from the applicationId and refuses a
+# mismatch too; this check exists so the error names the target the operator chose.
+case "$TARGET:$APP_ID_BASE:$APP_LINK_HOST" in
+    prod:com.beonedge.app:app.beonedge.in) ;;
+    local:com.beonedge.app.dev:dev-app.beonedge.in|dev:com.beonedge.app.dev:dev-app.beonedge.in) ;;
+    *)
+        err "inconsistent build identity for target '$TARGET'"
+        err "  applicationId base: $APP_ID_BASE"
+        err "  App Link host:      $APP_LINK_HOST"
+        err "development builds must never claim app.beonedge.in, and production builds"
+        err "must never claim dev-app.beonedge.in"
+        exit 1 ;;
+esac
+field "app link" "https://$APP_LINK_HOST/pay/return"
+
 # Every APK carries the same strict network policy, so every target — including
 # --local — must use an https origin. A cleartext origin would build and then fail
 # every request at runtime, which is far more confusing than failing here.
@@ -428,7 +454,8 @@ build_variant() {
         step "gradle assembleRelease (signed, minified)"
         ( cd "$ANDROID_DIR" && ./gradlew assembleRelease --console=plain \
             -PboeVersionName="$BUILD_LABEL" -PboeVersionCode="$VERSION_CODE" \
-            -PboeApplicationId="$APP_ID" -PboeVariant="$variant" ) \
+            -PboeApplicationId="$APP_ID" -PboeVariant="$variant" \
+            -PboeAppLinkHost="$APP_LINK_HOST" ) \
             || { err "gradle build failed"; return 1; }
         gradle_apk="$GRADLE_APK_RELEASE"
     else
@@ -437,6 +464,7 @@ build_variant() {
         ( cd "$ANDROID_DIR" && ./gradlew assembleDebug --console=plain \
             -PboeVersionName="$BUILD_LABEL" -PboeVersionCode="$VERSION_CODE" \
             -PboeApplicationId="$APP_ID" -PboeVariant="$variant" \
+            -PboeAppLinkHost="$APP_LINK_HOST" \
             -PboeSignDebugWithRelease="$RELEASE_SIGNING" ) \
             || { err "gradle build failed"; return 1; }
         gradle_apk="$GRADLE_APK_DEBUG"

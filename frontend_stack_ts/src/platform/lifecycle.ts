@@ -58,3 +58,10 @@ export const onAppStateChange = (handler: (active: boolean) => void): Unsubscrib
   subscribe("appStateChange", (payload) => {
     handler(payload.isActive === true)
   })
+
+
+export const onAppUrlOpen = (handler: (url: string) => void): Unsubscribe =>
+  subscribe("appUrlOpen", (payload) => {
+    if (typeof payload.url !== "string") return
+    handler(payload.url)
+  })
