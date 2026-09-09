@@ -74,6 +74,10 @@
 
 .be-splash-footer {
   grid-row: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   color: var(--be-fg-muted);
   font-size: 12px;
   text-align: center;
@@ -95,4 +99,13 @@
   .be-splash-role {
     animation: none;
   }
+}
+
+.be-splash-version {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--be-ink);
+  color: white;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }

@@ -5,6 +5,7 @@ import logoMark from "~/assets/logo-mark.svg"
 import logoAdmin from "~/assets/logo-admin.svg"
 import { useSession } from "~/app/providers/SessionProvider"
 import { useAuthPort } from "~/features/auth/authPort"
+import { canCheckForUpdates, readInstalledApp } from "~/platform/appUpdate"
 import { Button } from "~/ui/primitives/Button"
 import { Alert, Spinner } from "~/ui/primitives/Feedback"
 
@@ -20,8 +21,22 @@ const SplashScreen = (): React.ReactElement => {
   const [reachability, setReachability] = useState<Reachability>("probing")
   const [attempt, setAttempt] = useState(0)
   const [hasShownBrand, setHasShownBrand] = useState(false)
+  const [version, setVersion] = useState<string | null>(null)
   const isAdmin = session.scope === "admin"
   const needsRetry = reachability === "unreachable" || (session.status === "restoring" && session.error !== null)
+
+  useEffect(() => {
+    if (!canCheckForUpdates()) return
+    let cancelled = false
+    void readInstalledApp()
+      .then((installed) => {
+        if (!cancelled) setVersion(installed.versionName.trim() || null)
+      })
+      .catch(() => {
+        if (!cancelled) setVersion(null)
+      })
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
     const timer = window.setTimeout(() => { setHasShownBrand(true) }, SPLASH_MIN_VISIBLE_MS)
@@ -80,9 +95,10 @@ const SplashScreen = (): React.ReactElement => {
           </>
         ) : hasShownBrand ? <Spinner size="md" label="Connecting to BeOnEdge" /> : null}
       </div>
-      <p className="be-splash-footer">
-        {isAdmin ? "Internal operations console." : "Investments are subject to market risk."}
-      </p>
+      <footer className="be-splash-footer">
+        {version !== null && <span className="be-splash-version">{`v${version}`}</span>}
+        <p>{isAdmin ? "Internal operations console." : "Investments are subject to market risk."}</p>
+      </footer>
     </main>
   )
 }
