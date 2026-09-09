@@ -10,6 +10,7 @@ import { deriveInvestingEligibility } from "../domain/client/investingEligibilit
 import { applyCanonicalPaymentOutcome } from "../domain/payments/applyCanonicalPaymentOutcome.js"
 import { checkoutSecondsRemaining } from "../domain/payments/checkoutExpiry.js"
 import { newMerchantOrderId, newMerchantSubscriptionId } from "../domain/payments/merchantIds.js"
+import { isProviderRevocableSetup, isUncompletableSetup } from "../domain/payments/mandateStates.js"
 import { AppError } from "../http/errorCatalog.js"
 import { executeIdempotent } from "../http/idempotencyProtocol.js"
 import { parseOrThrow } from "../http/validation.js"
@@ -440,7 +441,6 @@ const getAutoPay = async (deps: ClientAutoPaySipDeps, request: FastifyRequest, r
 
 const postCancel = async (deps: ClientAutoPaySipDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveClientPrincipal(request, deps)
-  if (deps.recurringPaymentGateway === null) throw new AppError("DEPENDENCY_UNAVAILABLE")
   const params = parseOrThrow(paramsSchema, request.params)
   const key = requireIdempotencyKey(request)
   const now = deps.clock()
@@ -511,7 +511,20 @@ const postCancel = async (deps: ClientAutoPaySipDeps, request: FastifyRequest, r
           if (cancelled === null) throw new AppError("STATE_CONFLICT")
           return { status: 200, body: { mandateId: mandate.id, status: "cancelled" } }
         }
-        if (!["dispatching", "provider_pending", "authorized"].includes(setup.state)) {
+        if (isUncompletableSetup(setup.state) && mandate.provider_subscription_id === null) {
+          const cancelled = await deps.mandatesRepository.applyProviderMandateState(tx, {
+            merchantSubscriptionId: mandate.merchant_subscription_id,
+            providerSubscriptionId: mandate.provider_subscription_id,
+            expectedVersion: mandate.version,
+            expectedSipVersion: sip.version,
+            fromState: "setup_pending",
+            toState: "cancelled",
+            now,
+          })
+          if (cancelled === null) throw new AppError("STATE_CONFLICT")
+          return { status: 200, body: { mandateId: mandate.id, status: "cancelled" } }
+        }
+        if (!isProviderRevocableSetup(setup.state) && !isUncompletableSetup(setup.state)) {
           throw new AppError("STATE_CONFLICT")
         }
         const abandoned = await deps.mandatesRepository.requestSetupAbandonment(tx, {

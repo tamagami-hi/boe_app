@@ -13,6 +13,7 @@ import type {
 } from "../db/types.js"
 import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adminAccess.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
+import { isUncompletableSetup } from "../domain/payments/mandateStates.js"
 import { reconcileCollectionFact } from "../domain/payments/reconcileCollectionFact.js"
 import { reconcileMandateFact, type MandateFactDeps } from "../domain/payments/reconcileMandateFacts.js"
 import { AppError } from "../http/errorCatalog.js"
@@ -506,13 +507,34 @@ const cancelMandate = async (deps: AdminMandateDeps, request: FastifyRequest, re
       let transitionedMandate = mandate
 
       if (mandate.state === "setup_pending") {
-        const abandoned = await deps.mandatesRepository.requestSetupAbandonment(tx, {
-          mandateId: mandate.id,
-          expectedVersion: mandate.version,
-          now: deps.clock(),
+        const setup = await deps.mandatesRepository.findLatestSetupForOwner(tx, {
+          sipPlanId: sip.id,
+          userId: mandate.user_id,
         })
-        if (abandoned === null) throw new AppError("STATE_CONFLICT")
-        transitionedMandate = abandoned
+        const nothingToRevoke =
+          mandate.provider_subscription_id === null &&
+          (setup === null || isUncompletableSetup(setup.state))
+        if (nothingToRevoke) {
+          const cancelled = await deps.mandatesRepository.applyProviderMandateState(tx, {
+            merchantSubscriptionId: mandate.merchant_subscription_id,
+            providerSubscriptionId: mandate.provider_subscription_id,
+            expectedVersion: mandate.version,
+            expectedSipVersion: sip.version,
+            fromState: "setup_pending",
+            toState: "cancelled",
+            now: deps.clock(),
+          })
+          if (cancelled === null) throw new AppError("STATE_CONFLICT")
+          transitionedMandate = cancelled.mandate
+        } else {
+          const abandoned = await deps.mandatesRepository.requestSetupAbandonment(tx, {
+            mandateId: mandate.id,
+            expectedVersion: mandate.version,
+            now: deps.clock(),
+          })
+          if (abandoned === null) throw new AppError("STATE_CONFLICT")
+          transitionedMandate = abandoned
+        }
       } else {
         const transitioned = await deps.mandatesRepository.applyProviderMandateState(tx, {
           merchantSubscriptionId: mandate.merchant_subscription_id,

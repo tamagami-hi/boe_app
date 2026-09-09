@@ -7,6 +7,20 @@ import type {
 
 export type { MandateNotifyState, MandateSetupState, MandateState }
 
+export const PROVIDER_REVOCABLE_SETUP_STATES: readonly MandateSetupState[] = [
+  "dispatching",
+  "provider_pending",
+  "authorized",
+]
+
+export const UNCOMPLETABLE_SETUP_STATES: readonly MandateSetupState[] = ["expired", "failed"]
+
+export const isUncompletableSetup = (state: MandateSetupState): boolean =>
+  UNCOMPLETABLE_SETUP_STATES.includes(state)
+
+export const isProviderRevocableSetup = (state: MandateSetupState): boolean =>
+  PROVIDER_REVOCABLE_SETUP_STATES.includes(state)
+
 const AUTOPAY_SIP_TRANSITIONS = {
   draft: ["pending_mandate", "cancelled"],
   pending_mandate: ["active", "setup_failed", "cancelled", "revoked", "expired"],

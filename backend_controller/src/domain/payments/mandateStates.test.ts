@@ -2,11 +2,14 @@ import { describe, expect, test } from "vitest"
 
 import {
   deriveSipStateForMandate,
+  isProviderRevocableSetup,
+  isUncompletableSetup,
   transitionMandateState,
   transitionNotifyState,
   transitionSetupState,
   transitionAutoPaySipState,
 } from "./mandateStates.js"
+import type { MandateSetupState } from "./mandateStates.js"
 
 describe("mandate state transitions", () => {
   test("permits only provider-authoritative mandate transitions", () => {
@@ -62,5 +65,56 @@ describe("mandate state transitions", () => {
     expect(transitionNotifyState("dispatching", "failed")).toBe("failed")
     expect(() => transitionNotifyState("failed", "dispatching")).toThrow("failed -> dispatching")
     expect(() => transitionNotifyState("notified", "failed")).toThrow("notified -> failed")
+  })
+})
+
+
+describe("setup state classification for cancellation", () => {
+  const ALL_SETUP_STATES: readonly MandateSetupState[] = [
+    "created",
+    "dispatching",
+    "provider_pending",
+    "authorized",
+    "failed",
+    "expired",
+  ]
+
+  test("treats a setup that can never complete as having nothing to revoke", () => {
+    expect(isUncompletableSetup("expired")).toBe(true)
+    expect(isUncompletableSetup("failed")).toBe(true)
+  })
+
+  test("does not treat a live or finished setup as uncompletable", () => {
+    expect(isUncompletableSetup("created")).toBe(false)
+    expect(isUncompletableSetup("dispatching")).toBe(false)
+    expect(isUncompletableSetup("provider_pending")).toBe(false)
+    expect(isUncompletableSetup("authorized")).toBe(false)
+  })
+
+  test("asks the provider only for setups it may already know about", () => {
+    expect(isProviderRevocableSetup("dispatching")).toBe(true)
+    expect(isProviderRevocableSetup("provider_pending")).toBe(true)
+    expect(isProviderRevocableSetup("authorized")).toBe(true)
+    expect(isProviderRevocableSetup("created")).toBe(false)
+    expect(isProviderRevocableSetup("expired")).toBe(false)
+    expect(isProviderRevocableSetup("failed")).toBe(false)
+  })
+
+  test("classifies the two groups as mutually exclusive", () => {
+    for (const state of ALL_SETUP_STATES) {
+      expect(
+        isUncompletableSetup(state) && isProviderRevocableSetup(state),
+        `${state} cannot be both`,
+      ).toBe(false)
+    }
+  })
+
+  test("leaves no setup state unhandled by cancellation", () => {
+    const unhandled = ALL_SETUP_STATES.filter(
+      (state) =>
+        state !== "created" && !isUncompletableSetup(state) && !isProviderRevocableSetup(state),
+    )
+
+    expect(unhandled).toEqual([])
   })
 })
