@@ -28,15 +28,19 @@ export const ICON_GLYPH = "size-icon-md"
 
 export const BELL_WRAP = "relative inline-flex"
 
-export const BELL_DOT = [
-  "pointer-events-none absolute right-[9px] top-[9px]",
-  "size-2 rounded-full bg-gold",
+export const BELL_COUNT = [
+  "pointer-events-none absolute right-[3px] top-[3px]",
+  "inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1",
+  "bg-gold text-espresso font-numeric text-2xs font-semibold leading-none",
+  "[font-variant-numeric:tabular-nums]",
   "shadow-[0_0_0_2px_var(--be-parchment-2)]",
 ].join(" ")
 
-export const BELL_DOT_NAV = [
-  "pointer-events-none absolute right-1 top-1",
-  "size-2 rounded-full bg-gold",
+export const BELL_COUNT_NAV = [
+  "pointer-events-none absolute -right-1 -top-1",
+  "inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1",
+  "bg-gold text-espresso font-numeric text-2xs font-semibold leading-none",
+  "[font-variant-numeric:tabular-nums]",
   "shadow-[0_0_0_2px_color-mix(in_srgb,var(--be-espresso)_92%,transparent)]",
 ].join(" ")
 

@@ -7,8 +7,8 @@ import { useSession } from "~/app/providers/SessionProvider"
 import { useNotifications } from "~/features/shared/queries"
 import { BackGlyph, BellGlyph, NAV_GLYPHS } from "~/shells/client/navGlyphs"
 import {
-  BELL_DOT,
-  BELL_DOT_NAV,
+  BELL_COUNT,
+  BELL_COUNT_NAV,
   BELL_WRAP,
   CLIENT_BELL,
   CLIENT_BOTTOM_NAV,
@@ -57,7 +57,11 @@ export const ClientFrame = ({ children }: ClientFrameProps): React.ReactElement 
       : route.back.kind === "home"
         ? CLIENT_HOME_PATH
         : null
-  const hasUnread = (notifications.data?.unreadCount ?? 0) > 0
+  const unreadCount = notifications.data?.unreadCount ?? 0
+  const unreadLabel = unreadCount === 0
+    ? "Notifications"
+    : `Notifications, ${String(unreadCount)} unread`
+  const unreadBadge = unreadCount > 99 ? "99+" : String(unreadCount)
 
   return (
     <div className={CLIENT_SHELL}>
@@ -81,10 +85,14 @@ export const ClientFrame = ({ children }: ClientFrameProps): React.ReactElement 
             ))}
           </ul>
           <span className={BELL_WRAP}>
-            <Link to="/notifications" className={CLIENT_BELL} aria-label="Notifications">
+            <Link to="/notifications" className={CLIENT_BELL} aria-label={unreadLabel}>
               <BellGlyph className={ICON_GLYPH} />
             </Link>
-            {hasUnread ? <span className={BELL_DOT_NAV} aria-hidden="true" /> : null}
+            {unreadCount === 0 ? null : (
+              <span className={BELL_COUNT_NAV} aria-hidden="true">
+                {unreadBadge}
+              </span>
+            )}
           </span>
         </div>
       </nav>
@@ -104,10 +112,14 @@ export const ClientFrame = ({ children }: ClientFrameProps): React.ReactElement 
         )}
         <span className={CLIENT_SPACER} />
         <span className={BELL_WRAP}>
-          <Link to="/notifications" className={ICON_ACTION} aria-label="Notifications">
+          <Link to="/notifications" className={ICON_ACTION} aria-label={unreadLabel}>
             <BellGlyph className={ICON_GLYPH} />
           </Link>
-          {hasUnread ? <span className={BELL_DOT} aria-hidden="true" /> : null}
+          {unreadCount === 0 ? null : (
+            <span className={BELL_COUNT} aria-hidden="true">
+              {unreadBadge}
+            </span>
+          )}
         </span>
       </header>
 
