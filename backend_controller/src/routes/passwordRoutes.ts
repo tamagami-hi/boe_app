@@ -1,3 +1,5 @@
+import { setTimeout as delay } from "node:timers/promises"
+
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
 import { z } from "zod"
 
@@ -12,6 +14,7 @@ import {
   type PasswordCredentialConfig,
   type PasswordCredentialDeps,
 } from "../domain/auth/passwordCredential.js"
+import { latestPublishedApkUrl, type ReleaseFeed } from "../release/releaseFeed.js"
 import type { EmailSender } from "../email/emailSender.js"
 import { AppError } from "../http/errorCatalog.js"
 import { parseOrThrow } from "../http/validation.js"
@@ -26,6 +29,7 @@ export interface PasswordRoutesConfig extends PasswordCredentialConfig {
 }
 
 export interface PasswordRoutesDeps extends ClientRequestAuthDeps {
+  readonly appUpdate: ReleaseFeed
   readonly unitOfWork: UnitOfWork
   readonly clock: () => Date
   readonly crypto: CryptoContext
@@ -141,6 +145,44 @@ const forgot = async (deps: PasswordRoutesDeps, request: FastifyRequest, reply: 
   return reply.sendData({ status: "accepted" }, { status: 202 })
 }
 
+const DOWNLOAD_EMAIL_WAIT_MS = 5_000
+
+const sendResetDownload = async (deps: PasswordRoutesDeps, request: FastifyRequest, email: string) => {
+  let downloadUrl: string | null = null
+  try {
+    downloadUrl = await latestPublishedApkUrl(deps.appUpdate, "client")
+    if (downloadUrl === null) {
+      request.log.warn({ requestId: request.requestId }, "password set but no published client APK is available")
+      return { downloadEmailStatus: "unavailable" as const, downloadUrl }
+    }
+    const controller = new AbortController()
+    const accepted = await Promise.race([deps.emailSender.send({
+      to: email,
+      subject: "Your BeOnEdge password is set — download the app",
+      text: [
+        "Your BeOnEdge password has been set successfully.",
+        "",
+        "Download the BeOnEdge Android app using the official link below:",
+        downloadUrl,
+        "",
+        "Download and install the app, then sign in with your email address and new password.",
+        "If the app is already installed, you can sign in with your new password now.",
+        "",
+        "If you did not change your password, contact BeOnEdge support immediately.",
+      ].join("\n"),
+    }).then(() => true), delay(DOWNLOAD_EMAIL_WAIT_MS, false, { signal: controller.signal })])
+      .finally(() => { controller.abort() })
+    if (!accepted) {
+      request.log.warn({ requestId: request.requestId }, "password set; app download email confirmation timed out")
+      return { downloadEmailStatus: "unconfirmed" as const, downloadUrl }
+    }
+    return { downloadEmailStatus: "sent" as const, downloadUrl }
+  } catch {
+    request.log.error({ requestId: request.requestId }, "password set but app download email could not be sent")
+    return { downloadEmailStatus: "unconfirmed" as const, downloadUrl }
+  }
+}
+
 const reset = async (deps: PasswordRoutesDeps, request: FastifyRequest, reply: FastifyReply) => {
   const body = parseOrThrow(resetBodySchema, request.body)
   const outcome = await deps.unitOfWork.execute((tx) =>
@@ -152,7 +194,8 @@ const reset = async (deps: PasswordRoutesDeps, request: FastifyRequest, reply: F
   )
 
   if (outcome.kind !== "redeemed") throw new AppError("INVALID_CREDENTIALS")
-  return reply.sendData({ status: "password_set" }, { status: 200 })
+  const download = await sendResetDownload(deps, request, outcome.email)
+  return reply.sendData({ status: "password_set", ...download }, { status: 200 })
 }
 
 const change = async (deps: PasswordRoutesDeps, request: FastifyRequest, reply: FastifyReply) => {

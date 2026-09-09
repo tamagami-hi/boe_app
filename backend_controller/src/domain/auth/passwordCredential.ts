@@ -96,7 +96,7 @@ export const issuePasswordToken = async (
 }
 
 export type RedeemPasswordTokenOutcome =
-  | { readonly kind: "redeemed"; readonly userId: string; readonly purpose: PasswordTokenPurpose }
+  | { readonly kind: "redeemed"; readonly userId: string; readonly purpose: PasswordTokenPurpose; readonly email: string }
   | { readonly kind: "unknown_token" }
   | { readonly kind: "expired" }
   | { readonly kind: "locked" }
@@ -133,7 +133,7 @@ export const redeemPasswordToken = async (
     requestId: input.requestId,
   })
 
-  return { kind: "redeemed", userId: token.userId, purpose: token.purpose }
+  return { kind: "redeemed", userId: token.userId, purpose: token.purpose, email: user.email_normalized }
 }
 
 export type ChangePasswordOutcome =

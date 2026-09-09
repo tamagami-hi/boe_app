@@ -6632,6 +6632,9 @@ export interface operations {
                         data: {
                             /** @enum {string} */
                             status: "password_set";
+                            /** @enum {string} */
+                            downloadEmailStatus: "sent" | "unconfirmed" | "unavailable";
+                            downloadUrl: string | null;
                         };
                         error: null;
                         meta: {

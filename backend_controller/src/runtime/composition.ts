@@ -381,6 +381,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
     })
 
     registerPasswordRoutes(application, {
+      appUpdate: serverConfig.appUpdate,
       accessTokenService,
       database,
       clientWeb,

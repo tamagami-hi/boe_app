@@ -64,13 +64,26 @@ const ResetPasswordScreen = (): React.ReactElement => {
       <AuthLayout
         eyebrow="BeOnEdge"
         panelTitle="Password set"
-        panelHint="You can sign in with it now."
+        panelHint="Download the app, install it, and sign in with your new password."
       >
         <Alert tone="success" title="Your password has been changed">
           Every other device that was signed in has been signed out.
         </Alert>
-        <ButtonLink to="/login" fullWidth>
-          Sign in
+        <Alert
+          tone={redeem.data?.downloadEmailStatus === "sent" ? "success" : "warning"}
+          title={redeem.data?.downloadEmailStatus === "sent" ? "App download link sent" : "Download email not confirmed"}
+        >
+          {redeem.data?.downloadEmailStatus === "sent"
+            ? "We sent the app download link to your email. Check your inbox or spam folder, download and install the app, then sign in with your email address and new password."
+            : redeem.data?.downloadEmailStatus === "unavailable"
+              ? "Your password is set, but an app download is not available yet. Contact support for the installer, or sign in if you already have the app."
+              : "Your password is set, but we could not confirm sending the download email. Use the download link below if available, or contact support for the installer."}
+        </Alert>
+        {redeem.data?.downloadUrl == null ? null : (
+          <a href={redeem.data.downloadUrl} className="underline" referrerPolicy="no-referrer">Download the Android app</a>
+        )}
+        <ButtonLink to="/login" tone="secondary" fullWidth>
+          Continue to web sign in
         </ButtonLink>
       </AuthLayout>
     )

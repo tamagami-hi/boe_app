@@ -114,6 +114,27 @@ grep -qE 'check-phonepe-native-target' <<< "$frontend_ci_block" \
 grep -qE '^[[:space:]]+- run: npm run check$' <<< "$contracts_ci_block" \
     || fail_test 'contracts CI job does not run contract verification'
 
+for hostname in app.beonedge.in dev-app.beonedge.in; do
+    public_nginx="$ROOT_DIR/release_manager/nginx/$hostname.conf"
+    admin_download_block="$(awk '
+        /location ~ "\^\/downloads\/admin\// { active=1 }
+        active { print }
+        active && /^[[:space:]]*}/ { exit }
+    ' "$public_nginx")"
+    grep -qF 'location ~ "^/downloads/admin/([A-Za-z0-9][A-Za-z0-9._-]*\.apk)$" {' <<< "$admin_download_block" \
+        || fail_test "$hostname admin downloads must allow only plain APK filenames"
+    if grep -qE '^[[:space:]]*(allow|deny)[[:space:]]|autoindex[[:space:]]+on' <<< "$admin_download_block"; then
+        fail_test "$hostname admin APK downloads must be public without directory listings"
+    fi
+    unknown_download_block="$(awk '
+        /location \/downloads\/ {/ { active=1 }
+        active { print }
+        active && /^[[:space:]]*}/ { exit }
+    ' "$public_nginx")"
+    grep -qE '^[[:space:]]*return 404;' <<< "$unknown_download_block" \
+        || fail_test "$hostname must reject unknown download paths and sidecar files"
+done
+
 # shellcheck source=../lib/stacks.sh
 source "$STACKS_LIB"
 for stack in dev_release prod_release; do

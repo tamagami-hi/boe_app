@@ -282,14 +282,14 @@ export const useRequestPasswordReset = (): UseMutationResult<void, Error, string
 export type RedeemPasswordResetInput = Readonly<{ token: string; newPassword: string }>
 
 export const useRedeemPasswordReset = (): UseMutationResult<
-  void,
+  DataOf<typeof redeemPasswordReset>,
   Error,
   RedeemPasswordResetInput
 > => {
   const api = useApi()
   return useMutation({
     mutationFn: async (input: RedeemPasswordResetInput) => {
-      await api.request(redeemPasswordReset, { body: input })
+      return (await api.request(redeemPasswordReset, { body: input })).data
     },
   })
 }

@@ -10465,10 +10465,27 @@
                           "enum": [
                             "password_set"
                           ]
+                        },
+                        "downloadEmailStatus": {
+                          "type": "string",
+                          "enum": [
+                            "sent",
+                            "unconfirmed",
+                            "unavailable"
+                          ]
+                        },
+                        "downloadUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "pattern": "^https:\\/\\/(?:dev-app|app)\\.beonedge\\.in\\/downloads\\/client\\/[A-Za-z0-9][A-Za-z0-9._-]*\\.apk$/u"
                         }
                       },
                       "required": [
-                        "status"
+                        "status",
+                        "downloadEmailStatus",
+                        "downloadUrl"
                       ],
                       "additionalProperties": false
                     },
