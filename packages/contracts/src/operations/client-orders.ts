@@ -7,7 +7,7 @@ import { defineOperation, MAX_JSON_BODY_BYTES } from "./descriptor.js"
 
 const NullableIsoDateTime = IsoDateTime.nullable()
 
-export const OrderType = z.enum(["lump_sum", "sip_installment"])
+export const OrderType = z.enum(["lump_sum", "sip_installment", "recorded_offline"])
 export type OrderType = z.infer<typeof OrderType>
 
 export const PaymentAttemptState = z.enum([

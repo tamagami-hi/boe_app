@@ -29,15 +29,21 @@ import { ROW, ROW_LEFT, ROW_RIGHT } from "./activity.recipe"
 const LABEL = {
   lump_sum: "One-off investment",
   sip_installment: "SIP instalment",
+  recorded_offline: "Earlier investment",
   gain_allocation: "Growth",
   adjustment: "Correction",
+  withdrawal: "Withdrawal",
+  maturity_reinvestment: "Maturity reinvestment",
 } as const
 
 const TONE = {
   lump_sum: "info",
   sip_installment: "info",
+  recorded_offline: "info",
   gain_allocation: "positive",
   adjustment: "neutral",
+  withdrawal: "neutral",
+  maturity_reinvestment: "info",
 } as const
 
 const TABS = [

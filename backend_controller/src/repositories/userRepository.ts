@@ -46,6 +46,13 @@ export interface CreateActiveUserInput {
   readonly activatedAt: Date
 }
 
+export interface CreateAdminClientInput {
+  readonly emailNormalized: string
+  readonly phoneE164: string
+  readonly fullName: string
+  readonly activatedAt: Date
+}
+
 export interface UserWriteRepository {
   lockById: (tx: Transaction, userId: UserId) => Promise<User | null>
   /**
@@ -55,6 +62,7 @@ export interface UserWriteRepository {
    * the moment the decision commits. There is no invited state to pass through.
    */
   createActive: (tx: Transaction, input: CreateActiveUserInput) => Promise<User>
+  createAdminCreatedActive: (tx: Transaction, input: CreateAdminClientInput) => Promise<User>
   /**
    * Non-locking login lookup by email, for use *outside* a transaction.
    *
@@ -87,6 +95,20 @@ export const createUserRepository = (): UserWriteRepository => ({
       .insertInto("users")
       .values({
         application_id: input.applicationId,
+        email_normalized: input.emailNormalized,
+        phone_e164: input.phoneE164,
+        full_name: input.fullName,
+        account_state: "active",
+        activated_at: input.activatedAt,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow(),
+
+  createAdminCreatedActive: async (tx, input) =>
+    tx
+      .insertInto("users")
+      .values({
+        application_id: null,
         email_normalized: input.emailNormalized,
         phone_e164: input.phoneE164,
         full_name: input.fullName,

@@ -14,11 +14,14 @@
  */
 import { sql } from "kysely"
 
+import { lockClientPosition } from "./clientPositionLock.js"
+
 import type { Transaction } from "../db/repositories.js"
 import type { GrowthInstructionType, GrowthScope } from "../db/types.js"
 
 export interface ClientPositionBasisRow {
   readonly userId: string
+  readonly principalPaise: string
   /** bigint as text; convert with `BigInt(...)` before arithmetic. */
   readonly currentValuePaise: string
   readonly latestEntryId: string | null
@@ -26,9 +29,7 @@ export interface ClientPositionBasisRow {
 
 export interface ClientUserPositionRow {
   readonly fundId: string
-  /** bigint as text; convert with `BigInt(...)` before arithmetic. */
   readonly principalPaise: string
-  /** bigint as text; convert with `BigInt(...)` before arithmetic. */
   readonly currentValuePaise: string
   readonly latestEntryId: string | null
 }
@@ -72,7 +73,6 @@ export interface ClientGrowthRepository {
     tx: Transaction,
     fundId: string,
   ) => Promise<readonly ClientPositionBasisRow[]>
-  /** Every contribution-bearing position one investor holds, sorted by fund_id. */
   listUserPositions: (
     tx: Transaction,
     userId: string,
@@ -95,7 +95,7 @@ export interface ClientGrowthRepository {
 
 const positionBasisQuery = (fundId: string, userId: string | null) => sql<ClientPositionBasisRow>`
   with visible as (
-    select e.id, e.user_id, e.value_delta_paise, e.entry_type, e.created_at
+    select e.id, e.user_id, e.principal_delta_paise, e.value_delta_paise, e.entry_type, e.created_at
     from client_value_entries e
     where e.fund_id = ${fundId}
       ${userId === null ? sql`` : sql`and e.user_id = ${userId}`}
@@ -106,6 +106,7 @@ const positionBasisQuery = (fundId: string, userId: string | null) => sql<Client
   )
   select
     v.user_id as "userId",
+    sum(v.principal_delta_paise)::text as "principalPaise",
     sum(v.value_delta_paise)::text as "currentValuePaise",
     (array_agg(v.id order by v.created_at desc, v.id desc))[1] as "latestEntryId"
   from visible v
@@ -136,13 +137,7 @@ const userPositionsQuery = (userId: string) => sql<ClientUserPositionRow>`
 `
 
 export const createClientGrowthRepository = (): ClientGrowthRepository => ({
-  lockPosition: async (tx, userId, fundId) => {
-    // Two-int form namespaces the lock away from the idempotency subsystem's
-    // sha256-derived bigint keys.
-    await sql`
-      select pg_advisory_xact_lock(hashtext('client-growth-position'), hashtext(${userId} || ':' || ${fundId}))
-    `.execute(tx)
-  },
+  lockPosition: lockClientPosition,
 
   findPositionBasis: async (tx, userId, fundId) => {
     const result = await positionBasisQuery(fundId, userId).execute(tx)

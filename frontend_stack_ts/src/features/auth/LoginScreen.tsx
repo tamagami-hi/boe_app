@@ -6,7 +6,9 @@ import { AuthLayout } from "~/app/layouts/AuthLayout"
 import { describeClientFailure } from "~/domain/failure"
 import { useSession } from "~/app/providers/SessionProvider"
 import { useAuthPort } from "~/features/auth/authPort"
+import { CLIENT_FORGOT_PASSWORD_PATH } from "~/app/routing/clientRoutes"
 import { Button } from "~/ui/primitives/Button"
+import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Alert } from "~/ui/primitives/Feedback"
 import { Form } from "~/ui/primitives/Form"
 import { FormField, Input } from "~/ui/primitives/FormField"
@@ -110,6 +112,9 @@ const LoginScreen = (): React.ReactElement => {
             />
           )}
         </FormField>
+        <ButtonLink to={CLIENT_FORGOT_PASSWORD_PATH} tone="ghost" size="sm">
+          Forgot your password?
+        </ButtonLink>
       </Form>
     </AuthLayout>
   )

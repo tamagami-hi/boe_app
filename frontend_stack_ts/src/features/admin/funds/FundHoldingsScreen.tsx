@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, type SyntheticEvent } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import type { UseMutationResult } from "@tanstack/react-query"
 import { useParams } from "react-router-dom"
@@ -21,7 +21,7 @@ import { formatDateTime } from "~/domain/dates"
 import { useAdminFundStocks } from "~/features/admin/shared/adminQueries"
 import { useAdminFund } from "~/features/admin/shared/queries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
-import { DonutChart } from "~/ui/charts/DonutChart"
+import { FundStockAllocation } from "~/features/funds/FundStockAllocation"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { Badge } from "~/ui/primitives/Badge"
@@ -41,7 +41,17 @@ type StockDraft = Readonly<{
   sortOrder: number
 }>
 
-const EMPTY: StockDraft = { stockName: "", quarterLabel: "", weightPercent: "", sortOrder: 0 }
+const FISCAL_YEAR_START_MONTH = 3
+const MONTHS_PER_QUARTER = 3
+const MONTHS_PER_YEAR = 12
+
+const emptyDraft = (): StockDraft => {
+  const now = new Date()
+  const month = now.getMonth()
+  const quarter = Math.floor(((month - FISCAL_YEAR_START_MONTH + MONTHS_PER_YEAR) % MONTHS_PER_YEAR) / MONTHS_PER_QUARTER) + 1
+  const year = now.getFullYear() + (month >= FISCAL_YEAR_START_MONTH ? 1 : 0)
+  return { stockName: "", quarterLabel: `Q${String(quarter)} FY${String(year).slice(-2)}`, weightPercent: "", sortOrder: 0 }
+}
 
 const QUARTER_PATTERN = /^Q[1-4] FY[0-9]{2}$/u
 
@@ -77,8 +87,11 @@ const useStockWrite = (
       })
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: qk.admin.fundStocks(fundId) })
-      await queryClient.invalidateQueries({ queryKey: qk.admin.fund(fundId) })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: qk.admin.fund(fundId) }),
+        queryClient.invalidateQueries({ queryKey: ["admin", "funds"] }),
+        queryClient.invalidateQueries({ queryKey: qk.client.fund(fundId) }),
+      ])
     },
   })
 }
@@ -94,8 +107,11 @@ const useStockExit = (fundId: string): UseMutationResult<void, Error, string> =>
       })
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: qk.admin.fundStocks(fundId) })
-      await queryClient.invalidateQueries({ queryKey: qk.admin.fund(fundId) })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: qk.admin.fund(fundId) }),
+        queryClient.invalidateQueries({ queryKey: ["admin", "funds"] }),
+        queryClient.invalidateQueries({ queryKey: qk.client.fund(fundId) }),
+      ])
     },
   })
 }
@@ -108,28 +124,37 @@ const FundHoldingsScreen = (): React.ReactElement => {
   const exit = useStockExit(fundId)
   const { hasAnyPermission } = useSession()
 
-  const [draft, setDraft] = useState<StockDraft>(EMPTY)
+  const [draft, setDraft] = useState<StockDraft>(emptyDraft)
   const [editing, setEditing] = useState<string | null>(null)
   const [exiting, setExiting] = useState<string | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [hasSubmitted, setHasSubmitted] = useState(false)
 
   const canWrite = hasAnyPermission(["funds.write"])
-  const badQuarter = draft.quarterLabel !== "" && !QUARTER_PATTERN.test(draft.quarterLabel.trim())
+  const badQuarter = !QUARTER_PATTERN.test(draft.quarterLabel.trim())
   const weight = Number(draft.weightPercent)
   const badWeight =
     draft.weightPercent.trim() !== "" &&
     (!Number.isFinite(weight) || weight < 0 || weight > 100)
-  const incomplete = draft.stockName.trim() === "" || badQuarter || badWeight || draft.quarterLabel === ""
+  const badName = draft.stockName.trim() === ""
+  const badSortOrder = !Number.isInteger(draft.sortOrder) || draft.sortOrder < 0 || draft.sortOrder > 100_000
+  const incomplete = badName || badQuarter || badWeight || badSortOrder
+  const isArchived = fund.data?.fund.status === "archived"
 
   const describe = (error: unknown): string =>
     isApiError(error)
       ? error.code === "STATE_CONFLICT"
         ? "This holding changed while you were editing it. Reload and try again."
-        : error.message
-      : "We could not save that. Nothing has changed."
+        : Object.values(error.fields ?? {}).flat().join(" ") || error.message
+      : "We could not confirm the save. Refresh the list before trying again."
 
-  const submit = (): void => {
+  const submit = (event: SyntheticEvent<HTMLFormElement>): void => {
+    event.preventDefault()
+    setHasSubmitted(true)
     setFailure(null)
+    setSuccess(null)
+    if (incomplete || !canWrite || isArchived || write.isPending) return
     write.mutate(
       { ...(editing === null ? {} : { stockId: editing }), body: draft },
       {
@@ -137,8 +162,10 @@ const FundHoldingsScreen = (): React.ReactElement => {
           setFailure(describe(error))
         },
         onSuccess: () => {
-          setDraft(EMPTY)
+          setSuccess(`${draft.stockName.trim()} ${editing === null ? "added to" : "updated in"} this fund’s holdings.`)
+          setDraft({ ...emptyDraft(), quarterLabel: draft.quarterLabel.trim() })
           setEditing(null)
+          setHasSubmitted(false)
         },
       },
     )
@@ -153,20 +180,25 @@ const FundHoldingsScreen = (): React.ReactElement => {
       />
 
       {failure === null ? null : (
-        <Alert tone="error" title="Nothing changed">
+        <Alert tone="error" title="Save not confirmed">
           {failure}
         </Alert>
       )}
 
+      {success === null ? null : <Alert tone="success" title="Holding saved">{success}</Alert>}
+      {isArchived ? <Alert tone="info" title="Archived fund">This fund’s disclosures can no longer be changed.</Alert> : null}
+
       {canWrite ? (
         <Section title={editing === null ? "Add a holding" : "Edit this holding"}>
           <Card elevated>
-            <div className={STACK_LG}>
+            <form className={STACK_LG} onSubmit={submit} noValidate>
               <div className={ADMIN_FORM_GRID}>
-                <FormField label="Stock name" required>
-                  {({ id }) => (
+                <FormField label="Stock name" required error={hasSubmitted && badName ? "Enter the stock name." : undefined}>
+                  {({ id, describedBy, invalid }) => (
                     <Input
                       id={id}
+                      aria-describedby={describedBy}
+                      invalid={invalid}
                       value={draft.stockName}
                       maxLength={200}
                       onChange={(event) => {
@@ -179,16 +211,18 @@ const FundHoldingsScreen = (): React.ReactElement => {
                 <FormField
                   label="Quarter"
                   required
-                  hint="Exactly like Q1 FY26."
-                  {...(badQuarter ? { error: "Use the form Q1 FY26." } : {})}
+                  hint="Reporting quarter, prefilled for the current financial year. You can change it."
+                  {...(badQuarter && (hasSubmitted || draft.quarterLabel !== "") ? { error: "Enter a reporting quarter like Q1 FY26." } : {})}
                 >
-                  {({ id }) => (
+                  {({ id, describedBy, invalid }) => (
                     <Input
                       id={id}
+                      aria-describedby={describedBy}
+                      invalid={invalid}
                       value={draft.quarterLabel}
                       placeholder="Q1 FY26"
                       onChange={(event) => {
-                        setDraft({ ...draft, quarterLabel: event.target.value })
+                        setDraft({ ...draft, quarterLabel: event.target.value.toUpperCase() })
                       }}
                     />
                   )}
@@ -201,9 +235,11 @@ const FundHoldingsScreen = (): React.ReactElement => {
                   hint="Leave empty to disclose the holding without a weight."
                   {...(badWeight ? { error: "Enter a percentage between 0 and 100." } : {})}
                 >
-                  {({ id }) => (
+                  {({ id, describedBy, invalid }) => (
                     <Input
                       id={id}
+                      aria-describedby={describedBy}
+                      invalid={invalid}
                       value={draft.weightPercent}
                       onChange={(event) => {
                         setDraft({ ...draft, weightPercent: event.target.value })
@@ -212,10 +248,12 @@ const FundHoldingsScreen = (): React.ReactElement => {
                   )}
                 </FormField>
 
-                <FormField label="Sort order" hint="Lower numbers appear first.">
-                  {({ id }) => (
+                <FormField label="Sort order" hint="Lower numbers appear first." error={badSortOrder ? "Enter a whole number from 0 to 100,000." : undefined}>
+                  {({ id, describedBy, invalid }) => (
                     <Input
                       id={id}
+                      aria-describedby={describedBy}
+                      invalid={invalid}
                       type="number"
                       min={0}
                       max={100_000}
@@ -229,7 +267,7 @@ const FundHoldingsScreen = (): React.ReactElement => {
               </div>
 
               <div className={ACTION_ROW}>
-                <Button disabled={incomplete} loading={write.isPending} onClick={submit} trailing>
+                <Button type="submit" disabled={isArchived} loading={write.isPending} trailing>
                   {editing === null ? "Add the holding" : "Save the holding"}
                 </Button>
                 {editing === null ? null : (
@@ -237,14 +275,14 @@ const FundHoldingsScreen = (): React.ReactElement => {
                     tone="ghost"
                     onClick={() => {
                       setEditing(null)
-                      setDraft(EMPTY)
+                      setDraft(emptyDraft())
                     }}
                   >
                     Cancel
                   </Button>
                 )}
               </div>
-            </div>
+            </form>
           </Card>
         </Section>
       ) : (
@@ -271,23 +309,13 @@ const FundHoldingsScreen = (): React.ReactElement => {
       >
         {(data) => {
           const active = data.items.filter(
-            (stock) => stock.state === "active" && stock.weightPercent !== null,
+            (stock) => stock.state === "active",
           )
           return (
             <>
               {active.length === 0 ? null : (
                 <Section title="What investors see">
-                  <Card>
-                    <DonutChart
-                      centreLabel="Holdings"
-                      centreValue={String(active.length)}
-                      slices={active.map((stock) => ({
-                        key: stock.id,
-                        label: stock.stockName,
-                        value: Number(stock.weightPercent ?? "0"),
-                      }))}
-                    />
-                  </Card>
+                  <FundStockAllocation stocks={active} />
                 </Section>
               )}
 
@@ -335,7 +363,7 @@ const FundHoldingsScreen = (): React.ReactElement => {
                       key: "actions",
                       header: "Actions",
                       render: (row) =>
-                        canWrite && row.state === "active" ? (
+                        canWrite && !isArchived && row.state === "active" ? (
                           <span className={ACTION_ROW}>
                             <Button
                               tone="ghost"
@@ -343,6 +371,8 @@ const FundHoldingsScreen = (): React.ReactElement => {
                               disabled={write.isPending}
                               onClick={() => {
                                 setFailure(null)
+                                setSuccess(null)
+                                setHasSubmitted(false)
                                 setEditing(row.id)
                                 setDraft({
                                   stockName: row.stockName,
@@ -359,6 +389,8 @@ const FundHoldingsScreen = (): React.ReactElement => {
                               size="sm"
                               disabled={exit.isPending}
                               onClick={() => {
+                                setFailure(null)
+                                setSuccess(null)
                                 setExiting(row.id)
                               }}
                             >

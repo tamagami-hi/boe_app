@@ -215,11 +215,14 @@ export const AdminAumGrowthBody = z
   .strictObject({
     growthPaise: NonZeroSignedPaise.optional(),
     growthBasisPoints: GrowthBasisPoints.optional(),
+    targetAumPaise: Paise.optional(),
     asOfDate: AsOfDate,
     reasonCode: AdminReasonCode,
     note: AdminNote,
   })
-  .refine((body) => (body.growthPaise === undefined) !== (body.growthBasisPoints === undefined))
+  .refine((body) => [body.growthPaise, body.growthBasisPoints, body.targetAumPaise]
+    .filter((value) => value !== undefined).length === 1,
+  "Provide exactly one of growthPaise, growthBasisPoints or targetAumPaise.")
 export type AdminAumGrowthBody = z.infer<typeof AdminAumGrowthBody>
 
 export const AdminAumCorrectionBody = z.strictObject({

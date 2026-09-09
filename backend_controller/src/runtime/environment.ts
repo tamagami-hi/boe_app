@@ -86,9 +86,6 @@ const ServerConfigSchema = z.object({
   SES_CONFIGURATION_SET: z.string().trim().optional(),
   PROVIDER_EVENT_TTL_MS: z.coerce.number().int().min(1).default(7 * DAY_MS),
   IDEMPOTENCY_TTL_MS: z.coerce.number().int().min(1).default(DAY_MS),
-  // Client growth business cap: the largest positive rate an admin may post
-  // (spec §8.1; default +1000.00%). The -100.00% floor is not configurable.
-  CLIENT_GROWTH_MAX_BASIS_POINTS: z.coerce.number().int().min(1).max(10_000_000).default(100_000),
   FUND_AUM_MAX_GROWTH_BASIS_POINTS: z.coerce.number().int().min(1).max(10_000_000).default(100_000),
   FUND_AUM_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().min(1_000).default(60_000),
   FUND_AUM_RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().min(1).default(30),
@@ -273,13 +270,6 @@ export interface ServerConfig {
   }
   readonly ttls: {
     readonly idempotencyTtlMs: number
-  }
-  readonly clientGrowth: {
-    /**
-     * Positive business maximum for a signed client growth rate in basis
-     * points (spec §8.1; the lower bound is fixed at -10,000 = -100.00%).
-     */
-    readonly maxBasisPoints: number
   }
   readonly fundAum: {
     readonly maxGrowthBasisPoints: number
@@ -633,9 +623,6 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
     },
     ttls: {
       idempotencyTtlMs: parsed.IDEMPOTENCY_TTL_MS,
-    },
-    clientGrowth: {
-      maxBasisPoints: parsed.CLIENT_GROWTH_MAX_BASIS_POINTS,
     },
     fundAum: {
       maxGrowthBasisPoints: parsed.FUND_AUM_MAX_GROWTH_BASIS_POINTS,

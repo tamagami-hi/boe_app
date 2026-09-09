@@ -4,7 +4,7 @@ import { isApiError } from "~/api/errors"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
-import { toPaise } from "~/domain/money"
+import { applyBasisPoints, toPaise } from "~/domain/money"
 import {
   useAdminInvestorPositions,
   useAdminUsers,
@@ -26,12 +26,18 @@ import { STACK_LG } from "~/ui/recipes/layout"
 
 type Mode = "rate" | "amount"
 
+const MIN_BASIS_POINTS = -2_000
+const MAX_BASIS_POINTS = 2_000
+
 const REASON_OPTIONS = [
   { value: "weekly", label: "Weekly" },
   { value: "monthly", label: "Monthly" },
   { value: "quarterly", label: "Quarterly" },
   { value: "yearly", label: "Yearly" },
 ] as const
+
+const formatRate = (basisPoints: number): string =>
+  `${basisPoints > 0 ? "+" : ""}${String(basisPoints / 100)}%`
 
 const today = (): string => new Date().toISOString().slice(0, 10)
 
@@ -88,7 +94,8 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
   const selectedPosition = positionItems.find((position) => position.fundId === fundId) ?? null
 
   const rate = Number(basisPoints)
-  const invalidRate = mode === "rate" && (!Number.isInteger(rate) || rate === 0)
+  const rateInBand = Number.isInteger(rate) && rate !== 0 && rate >= MIN_BASIS_POINTS && rate <= MAX_BASIS_POINTS
+  const invalidRate = mode === "rate" && !rateInBand
   const invalidAmount = mode === "amount" && !/^-?[1-9][0-9]*$/u.test(amountPaise)
   const incomplete =
     userId === "" ||
@@ -98,15 +105,17 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
     invalidRate ||
     invalidAmount
 
-  const projected = useMemo(() => {
+  const adjustment = useMemo(() => {
     if (selectedPosition === null) return null
     const current = BigInt(selectedPosition.currentValuePaise)
     if (mode === "amount") {
       if (invalidAmount) return null
-      return current + BigInt(amountPaise)
+      const delta = BigInt(amountPaise)
+      return { delta, projected: current + delta }
     }
     if (invalidRate) return null
-    return current + (current * BigInt(rate)) / 10_000n
+    const delta = BigInt(applyBasisPoints(toPaise(selectedPosition.principalPaise), rate))
+    return { delta, projected: current + delta }
   }, [selectedPosition, mode, amountPaise, invalidAmount, invalidRate, rate])
 
   const submit = (): void => {
@@ -138,7 +147,7 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
     <Page width="default">
       <PageHeader
         title="Adjust one investor"
-        description="Appends a growth entry against one position. The amount invested is unchanged; the investor's current value moves by the adjustment, and the difference is their gain."
+        description="Appends a growth entry against one position. A rate is measured against the amount invested, so it does not compound; the amount invested itself never moves. Read the projected value before committing — the server recalculates it authoritatively and its response is the truth."
       />
 
       {failure === null ? null : (
@@ -165,7 +174,7 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
                   {
                     value: "rate",
                     label: "By a rate",
-                    hint: "Basis points. 250 is +2.5%. The server computes the amount and refuses a rate that rounds to nothing.",
+                    hint: "A percentage of the amount invested, in basis points. 250 is +2.5%. The rate never applies to the current value, so repeated adjustments do not compound.",
                   },
                   {
                     value: "amount",
@@ -234,10 +243,27 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
                   showSign
                 />
               </DetailRow>
-              {projected === null ? null : (
-                <DetailRow label="Value after this adjustment">
-                  <MoneyValue amount={toPaise(projected.toString())} size="sm" />
-                </DetailRow>
+              {mode === "rate" && rateInBand ? (
+                <DetailRow label="Growth percentage">{formatRate(rate)}</DetailRow>
+              ) : null}
+              {adjustment === null ? null : (
+                <>
+                  <DetailRow
+                    label={
+                      mode === "rate" ? "Growth amount, taken from the invested amount" : "Growth amount"
+                    }
+                  >
+                    <MoneyValue
+                      amount={toPaise(adjustment.delta.toString())}
+                      size="sm"
+                      tone="signed"
+                      showSign
+                    />
+                  </DetailRow>
+                  <DetailRow label="Projected value after this adjustment">
+                    <MoneyValue amount={toPaise(adjustment.projected.toString())} size="sm" />
+                  </DetailRow>
+                </>
               )}
             </DataList>
           )}
@@ -246,15 +272,17 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
             <FormField
               label="Rate in basis points"
               required
-              hint="Between -10000 and 100000, and not zero. 1000 is +10%."
+              hint="Between -2000 and 2000, and not zero. 500 is +5% of the amount invested."
               {...(invalidRate && basisPoints !== ""
-                ? { error: "Enter a whole non-zero number of basis points." }
+                ? { error: "Enter a whole non-zero rate between -2000 and 2000 basis points." }
                 : {})}
             >
               {({ id }) => (
                 <Input
                   id={id}
                   type="number"
+                  min={MIN_BASIS_POINTS}
+                  max={MAX_BASIS_POINTS}
                   value={basisPoints}
                   onChange={(event) => {
                     setBasisPoints(event.target.value)
@@ -343,6 +371,9 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
               </DetailRow>
               <DetailRow label="Entry">
                 <span className={ADMIN_CODE}>{growth.data.entryId}</span>
+              </DetailRow>
+              <DetailRow label="Amount invested">
+                <MoneyValue amount={toPaise(growth.data.principalPaise)} size="sm" />
               </DetailRow>
               <DetailRow label="Value before">
                 <MoneyValue amount={toPaise(growth.data.beforePaise)} size="sm" />

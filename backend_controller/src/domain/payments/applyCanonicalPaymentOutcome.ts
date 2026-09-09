@@ -110,6 +110,7 @@ export const applyCanonicalPaymentOutcome = async (
       })
       return
     }
+    await settlementRepository.lockPosition(tx, order.user_id, order.fund_id)
     await recordDetails(tx, paymentsRepository, attempt, outcome.details)
     if (await paymentsRepository.markAttemptSucceeded(tx, {
       attemptId: attempt.id,

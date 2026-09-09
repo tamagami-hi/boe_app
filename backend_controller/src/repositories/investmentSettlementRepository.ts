@@ -1,4 +1,5 @@
 import type { InvestmentAllocation, Transaction } from "../db/repositories.js"
+import { lockClientPosition } from "./clientPositionLock.js"
 
 export interface SystemAllocationInput {
   readonly orderId: string
@@ -25,6 +26,7 @@ export interface SystemInvestmentSettlementAuditInput {
 }
 
 export interface InvestmentSettlementRepository {
+  lockPosition: (tx: Transaction, userId: string, fundId: string) => Promise<void>
   createPendingFundReceiptAcknowledgement: (tx: Transaction, orderId: string) => Promise<void>
   insertSystemAllocation: (tx: Transaction, input: SystemAllocationInput) => Promise<InvestmentAllocation>
   insertSystemContribution: (tx: Transaction, input: SystemContributionInput) => Promise<void>
@@ -39,6 +41,7 @@ export interface InvestmentSettlementRepository {
 }
 
 export const createInvestmentSettlementRepository = (): InvestmentSettlementRepository => ({
+  lockPosition: lockClientPosition,
   createPendingFundReceiptAcknowledgement: async (tx, orderId) => {
     await tx
       .insertInto("fund_receipt_acknowledgements")

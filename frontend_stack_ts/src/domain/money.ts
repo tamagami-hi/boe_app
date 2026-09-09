@@ -80,6 +80,16 @@ export const comparePaise = (left: Paise, right: Paise): -1 | 0 | 1 => {
 
 export const isNegativePaise = (paise: Paise): boolean => paise.startsWith("-")
 
+const BASIS_POINT_SCALE = 10_000n
+const HALF_BASIS_POINT_SCALE = 5_000n
+
+export const applyBasisPoints = (basis: Paise, basisPoints: number): Paise => {
+  const product = BigInt(basis) * BigInt(basisPoints)
+  const magnitude = product < 0n ? -product : product
+  const rounded = (magnitude + HALF_BASIS_POINT_SCALE) / BASIS_POINT_SCALE
+  return String(basisPoints < 0 ? -rounded : rounded) as Paise
+}
+
 type FormatOptions = Readonly<{
   showDecimals?: boolean
   showSign?: boolean

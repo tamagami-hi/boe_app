@@ -1,24 +1,8 @@
-/**
- * Monthly investor statements, derived from the client value ledger.
- *
- * There is no statements table and no generation job: a statement is a view over
- * the same entries the dashboard reads, cut by calendar month. That keeps a
- * statement from ever disagreeing with the live figures, and means a statement
- * for a past month reflects corrections made later — which is what an
- * admin-managed money model needs.
- *
- * Each period reports what moved and where it left the investor:
- *
- *   opening value  closing value of the previous period (0 for the first)
- *   contributions  accepted contribution value in
- *   growth         admin-posted growth adjustments, net of any loss
- *   reversals      corrections reversing earlier entries (signed)
- *   closing value  opening + contributions + growth + reversals
- *
- * The identity above is the statement's own arithmetic check: it holds because
- * every entry moves value by exactly `value_delta`.
- */
 import type { LedgerEntry } from "./portfolioLedger.js"
+
+const assertNever = (value: never): never => {
+  throw new Error(`unhandled client value entry type: ${String(value)}`)
+}
 
 export interface StatementPeriod {
   /** Calendar month the statement covers, as `YYYY-MM`. */
@@ -31,6 +15,7 @@ export interface StatementPeriod {
   readonly growthPaise: bigint
   /** Signed: negative when a reversal removes value. */
   readonly reversalsPaise: bigint
+  readonly withdrawalsPaise: bigint
   readonly closingValuePaise: bigint
   /** Total principal the investor has put in, as at the end of the period. */
   readonly totalInvestmentPaise: bigint
@@ -70,6 +55,7 @@ export const deriveStatements = (entries: readonly LedgerEntry[]): readonly Stat
     let contributions = 0n
     let growth = 0n
     let reversals = 0n
+    let withdrawals = 0n
 
     for (const entry of bucket) {
       switch (entry.entryType) {
@@ -77,18 +63,23 @@ export const deriveStatements = (entries: readonly LedgerEntry[]): readonly Stat
           contributions += entry.valueDeltaPaise
           break
         case "growth_adjustment":
-          // A loss adjustment is negative; it nets down the period's growth.
           growth += entry.valueDeltaPaise
           break
         case "reversal":
-          // A correction is its own signed bucket so reversals stay visible.
           reversals += entry.valueDeltaPaise
           break
+        case "withdrawal":
+          withdrawals += entry.valueDeltaPaise
+          break
+        case "maturity_reinvestment":
+          break
+        default:
+          assertNever(entry.entryType)
       }
       totalInvestment += entry.principalDeltaPaise
     }
 
-    const closingValue = openingValue + contributions + growth + reversals
+    const closingValue = openingValue + contributions + growth + reversals + withdrawals
     periods.push({
       period,
       periodStart: `${period}-01`,
@@ -97,6 +88,7 @@ export const deriveStatements = (entries: readonly LedgerEntry[]): readonly Stat
       contributionsPaise: contributions,
       growthPaise: growth,
       reversalsPaise: reversals,
+      withdrawalsPaise: withdrawals,
       closingValuePaise: closingValue,
       totalInvestmentPaise: totalInvestment,
       entryCount: bucket.length,

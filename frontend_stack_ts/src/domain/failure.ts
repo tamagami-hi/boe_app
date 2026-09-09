@@ -19,6 +19,9 @@ export type FailureContext =
   | "authoriseAutoPay"
   | "changeSipPlan"
   | "cancelAutoPay"
+  | "requestPasswordReset"
+  | "resetPassword"
+  | "changePassword"
   | "sendSupportRequest"
   | "markNotificationRead"
   | "openLink"
@@ -185,6 +188,50 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
       DEPENDENCY_UNAVAILABLE: { message: "AutoPay isn't available right now. Nothing changed." },
     },
     fallback: { message: "We couldn't cancel AutoPay. Nothing changed." },
+  },
+
+  requestPasswordReset: {
+    title: "We couldn't send that",
+    codes: {
+      VALIDATION_FAILED: { message: "Enter the email address on your account." },
+      RATE_LIMITED: { message: "A link was requested recently. You can ask for another shortly." },
+      DEPENDENCY_UNAVAILABLE: { message: "We couldn't send the email just now. Try again shortly." },
+    },
+    transport: {
+      offline: { message: "We can't reach BeOnEdge. Check your connection and try again." },
+      timeout: { message: "That took too long. Try again." },
+    },
+    fallback: { message: "We couldn't send a reset link. Please try again." },
+  },
+
+  resetPassword: {
+    title: "That didn't work",
+    codes: {
+      INVALID_CREDENTIALS: {
+        message: "This link is no longer valid. Ask for a new one and use the newest email.",
+      },
+      VALIDATION_FAILED: { message: "Use at least 12 characters." },
+      RATE_LIMITED: { message: "Too many attempts. Ask for a new link." },
+    },
+    transport: {
+      offline: { message: "We can't reach BeOnEdge. Check your connection and try again." },
+      timeout: { message: "That took too long. Your password may not have changed — try signing in." },
+    },
+    fallback: { message: "We couldn't set that password. Please try again." },
+  },
+
+  changePassword: {
+    title: "Password not changed",
+    codes: {
+      INVALID_CREDENTIALS: { message: "That current password is not right." },
+      VALIDATION_FAILED: { message: "Use at least 12 characters for the new password." },
+      RATE_LIMITED: { message: "Too many attempts. Try again shortly." },
+    },
+    transport: {
+      offline: { message: "We can't reach BeOnEdge. Check your connection and try again." },
+      timeout: { message: "That took too long. Nothing was changed — try again." },
+    },
+    fallback: { message: "We couldn't change your password. Please try again." },
   },
 
   sendSupportRequest: {

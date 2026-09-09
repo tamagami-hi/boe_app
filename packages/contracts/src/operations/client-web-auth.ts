@@ -143,9 +143,108 @@ export const clientWebLogout = defineOperation({
   ],
 })
 
+export const PasswordForgotBody = z.strictObject({ email: EmailInput })
+export type PasswordForgotBody = z.infer<typeof PasswordForgotBody>
+
+export const PasswordForgotData = z.strictObject({ status: z.literal("accepted") })
+export type PasswordForgotData = z.infer<typeof PasswordForgotData>
+
+export const PasswordResetBody = z.strictObject({
+  token: z.string().min(16).max(512),
+  newPassword: PasswordInput,
+})
+export type PasswordResetBody = z.infer<typeof PasswordResetBody>
+
+export const PasswordChangeBody = z.strictObject({
+  currentPassword: PasswordInput,
+  newPassword: PasswordInput,
+})
+export type PasswordChangeBody = z.infer<typeof PasswordChangeBody>
+
+export const PasswordWriteData = z.strictObject({ status: z.literal("password_set") })
+export type PasswordWriteData = z.infer<typeof PasswordWriteData>
+
+export const requestPasswordReset = defineOperation({
+  operationId: "requestPasswordReset",
+  method: "POST",
+  path: "/v1/auth/password/forgot",
+  authChannel: "public",
+  credentialPolicy: "none",
+  idempotency: "none",
+  request: {
+    body: PasswordForgotBody,
+    mediaType: "application/json",
+    maxBodyBytes: MAX_JSON_BODY_BYTES,
+  },
+  success: { status: 202, schema: createSuccessEnvelopeSchema(PasswordForgotData) },
+  errorCodes: [
+    "VALIDATION_FAILED",
+    "PAYLOAD_TOO_LARGE",
+    "UNSUPPORTED_MEDIA_TYPE",
+    "RATE_LIMITED",
+    "INTERNAL_ERROR",
+    "DEPENDENCY_UNAVAILABLE",
+  ],
+})
+
+export const redeemPasswordReset = defineOperation({
+  operationId: "redeemPasswordReset",
+  method: "POST",
+  path: "/v1/auth/password/reset",
+  authChannel: "public",
+  credentialPolicy: "none",
+  idempotency: "none",
+  request: {
+    body: PasswordResetBody,
+    mediaType: "application/json",
+    maxBodyBytes: MAX_JSON_BODY_BYTES,
+  },
+  success: { status: 200, schema: createSuccessEnvelopeSchema(PasswordWriteData) },
+  errorCodes: [
+    "VALIDATION_FAILED",
+    "INVALID_CREDENTIALS",
+    "PAYLOAD_TOO_LARGE",
+    "UNSUPPORTED_MEDIA_TYPE",
+    "RATE_LIMITED",
+    "INTERNAL_ERROR",
+    "DEPENDENCY_UNAVAILABLE",
+  ],
+})
+
+export const changeClientPassword = defineOperation({
+  operationId: "changeClientPassword",
+  method: "POST",
+  path: "/v1/auth/password/change",
+  authChannel: "client-web",
+  credentialPolicy: "client-session-cookie-and-csrf",
+  idempotency: "none",
+  request: {
+    body: PasswordChangeBody,
+    mediaType: "application/json",
+    maxBodyBytes: MAX_JSON_BODY_BYTES,
+  },
+  success: { status: 200, schema: createSuccessEnvelopeSchema(PasswordWriteData) },
+  errorCodes: [
+    "VALIDATION_FAILED",
+    "AUTHENTICATION_REQUIRED",
+    "SESSION_INVALID",
+    "ACCOUNT_NOT_ACTIVE",
+    "INVALID_CREDENTIALS",
+    "CSRF_INVALID",
+    "PAYLOAD_TOO_LARGE",
+    "UNSUPPORTED_MEDIA_TYPE",
+    "RATE_LIMITED",
+    "INTERNAL_ERROR",
+    "DEPENDENCY_UNAVAILABLE",
+  ],
+})
+
 export const CLIENT_WEB_AUTH_OPERATIONS = Object.freeze([
   clientWebLogin,
   clientWebRefresh,
   getClientWebCsrf,
   clientWebLogout,
+  requestPasswordReset,
+  redeemPasswordReset,
+  changeClientPassword,
 ])

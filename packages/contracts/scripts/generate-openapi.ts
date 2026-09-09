@@ -9,6 +9,7 @@ import { ERROR_DEFINITIONS } from "../src/errors.js"
 import type { ErrorCode } from "../src/errors.js"
 import { ADMIN_CONTENT_OPERATIONS } from "../src/operations/admin-content.js"
 import { ADMIN_FUND_AUM_OPERATIONS } from "../src/operations/admin-fund-aum.js"
+import { ADMIN_MATURITY_OPERATIONS } from "../src/operations/admin-maturity.js"
 import { ADMIN_MONEY_OPERATIONS } from "../src/operations/admin-money.js"
 import { ADMIN_NATIVE_AUTH_OPERATIONS } from "../src/operations/admin-native-auth.js"
 import { ADMIN_OVERSIGHT_OPERATIONS } from "../src/operations/admin-oversight.js"
@@ -58,6 +59,7 @@ export const ALL_OPERATIONS: readonly GeneratableOperation[] = Object.freeze([
   ...ADMIN_FUND_AUM_OPERATIONS,
   ...ADMIN_CONTENT_OPERATIONS,
   ...ADMIN_MONEY_OPERATIONS,
+  ...ADMIN_MATURITY_OPERATIONS,
   ...ADMIN_OVERSIGHT_OPERATIONS,
 ])
 

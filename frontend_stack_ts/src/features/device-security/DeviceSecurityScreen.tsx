@@ -16,6 +16,7 @@ import { PROSE_PANEL } from "~/ui/recipes/surface"
 import { HONESTY_TEXT } from "~/ui/recipes/text"
 
 import { PinPad } from "./PinPad"
+import { AccountPasswordPanel } from "./AccountPasswordPanel"
 import {
   BIOMETRIC_HINT_NATIVE,
   BIOMETRIC_HINT_UNENROLLED,
@@ -133,9 +134,15 @@ const DeviceSecurityScreen = (): React.ReactElement => {
 
   return (
     <Page width="form">
-      <PageHeader title="Device security" description={DEVICE_PIN_SUBTITLE} />
+      <PageHeader
+        title="Security"
+        description="Your account password, and an optional lock for this device."
+      />
+
+      <AccountPasswordPanel />
 
       <div className={PROSE_PANEL}>
+        <p className={HONESTY_TEXT}>{DEVICE_PIN_SUBTITLE}</p>
         <p className={HONESTY_TEXT}>{DEVICE_PIN_HONESTY}</p>
         <p className={HONESTY_TEXT}>{LOCK_BEHAVIOUR}</p>
       </div>

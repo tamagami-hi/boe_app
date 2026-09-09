@@ -24,6 +24,13 @@ const basis = (fundId: string, aumPaise: bigint, revision = 1): AumFundBasis => 
 })
 
 describe("aumGrowthDelta", () => {
+  test("target mode derives increases, decreases and zero closure from the current basis", () => {
+    expect(aumGrowthDelta(1_000_000n, { kind: "target", targetAumPaise: 1_250_000n })).toBe(250_000n)
+    expect(aumGrowthDelta(1_400_000n, { kind: "target", targetAumPaise: 1_250_000n })).toBe(-150_000n)
+    expect(aumGrowthDelta(1_000_000n, { kind: "target", targetAumPaise: 0n })).toBe(-1_000_000n)
+    expect(aumGrowthDelta(0n, { kind: "target", targetAumPaise: 0n })).toBe(0n)
+  })
+
   test("amount mode is the signed delta verbatim", () => {
     expect(aumGrowthDelta(1_000_000n, { kind: "amount", growthPaise: 250_000n })).toBe(250_000n)
     expect(aumGrowthDelta(1_000_000n, { kind: "amount", growthPaise: -400_000n })).toBe(-400_000n)

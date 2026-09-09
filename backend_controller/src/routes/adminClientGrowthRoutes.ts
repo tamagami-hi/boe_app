@@ -25,6 +25,7 @@ import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adm
 import {
   computeClientGrowthBasisHash,
   MAX_COLLECTIVE_CLIENT_TARGETS,
+  MAX_GROWTH_BASIS_POINTS,
   MIN_GROWTH_BASIS_POINTS,
   planCollectiveClientGrowth,
   planIndividualGrowth,
@@ -55,8 +56,6 @@ import {
 
 export interface AdminClientGrowthConfig {
   readonly idempotencyTtlMs: number
-  /** Positive business maximum for a signed growth rate in basis points (§8.1). */
-  readonly maxBasisPoints: number
 }
 
 export interface AdminClientGrowthDeps {
@@ -99,12 +98,12 @@ const basisHashSchema = z
   .string()
   .regex(/^[0-9a-f]{64}$/u, "must be the basis hash returned by the preview")
 
-const buildSchemas = (maxBasisPoints: number) => {
+const buildSchemas = () => {
   const growthBasisPointsSchema = z.coerce
     .number()
     .int()
     .min(MIN_GROWTH_BASIS_POINTS)
-    .max(maxBasisPoints)
+    .max(MAX_GROWTH_BASIS_POINTS)
 
   const individualSchema = z
     .object({
@@ -158,6 +157,7 @@ const buildSchemas = (maxBasisPoints: number) => {
 /** Admin console reads defensively across both legacy and current key names. */
 const mapTarget = (target: PlannedGrowthTarget): Record<string, unknown> => ({
   userId: target.userId,
+  principalPaise: target.principalPaise.toString(),
   beforePaise: target.beforePaise.toString(),
   currentValuePaise: target.beforePaise.toString(),
   deltaPaise: target.deltaPaise.toString(),
@@ -168,6 +168,7 @@ const mapTarget = (target: PlannedGrowthTarget): Record<string, unknown> => ({
 
 const toDomainBasis = (row: ClientPositionBasisRow): ClientPositionBasis => ({
   userId: row.userId,
+  principalPaise: BigInt(row.principalPaise),
   currentValuePaise: BigInt(row.currentValuePaise),
   latestEntryId: row.latestEntryId,
 })
@@ -293,13 +294,15 @@ const individual = async (
       // §8.5: lock the position, then recalculate from the current server
       // basis — the commit response is authoritative.
       await deps.clientGrowthRepository.lockPosition(tx, body.userId, body.fundId)
-      const basis = await deps.clientGrowthRepository.findPositionBasis(tx, body.userId, body.fundId)
-      if (basis === null) throw new AppError("RESOURCE_NOT_FOUND")
-      const currentValue = BigInt(basis.currentValuePaise)
-      const plan = planIndividualGrowth(currentValue, instruction, BigInt(deps.config.maxBasisPoints))
-      const basisHash = computeClientGrowthBasisHash(COMMAND_INDIVIDUAL, body.fundId, [
-        { userId: body.userId, currentValuePaise: currentValue, latestEntryId: basis.latestEntryId },
-      ])
+      const basisRow = await deps.clientGrowthRepository.findPositionBasis(
+        tx,
+        body.userId,
+        body.fundId,
+      )
+      if (basisRow === null) throw new AppError("RESOURCE_NOT_FOUND")
+      const basis = toDomainBasis(basisRow)
+      const plan = planIndividualGrowth(basis, instruction)
+      const basisHash = computeClientGrowthBasisHash(COMMAND_INDIVIDUAL, body.fundId, [basis])
 
       const batch = await deps.clientGrowthRepository.insertBatch(tx, {
         scope: "individual",
@@ -405,7 +408,6 @@ const collectivePreview = async (
   const positions = rows.map(toDomainBasis)
   const plan = planCollectiveClientGrowth(positions, instruction, {
     maxTargets: MAX_COLLECTIVE_CLIENT_TARGETS,
-    maxBasisPoints: BigInt(deps.config.maxBasisPoints),
   })
   const basisHash = computeClientGrowthBasisHash(collectiveCommand(instruction), body.fundId, positions)
 
@@ -469,7 +471,6 @@ const collectiveCommit = async (
       // Deltas are always recomputed on the server; browser deltas are never trusted.
       const plan = planCollectiveClientGrowth(positions, instruction, {
         maxTargets: MAX_COLLECTIVE_CLIENT_TARGETS,
-        maxBasisPoints: BigInt(deps.config.maxBasisPoints),
       })
 
       const batch = await deps.clientGrowthRepository.insertBatch(tx, {
@@ -580,7 +581,7 @@ export const registerAdminClientGrowthRoutes = (
   application: FastifyInstance,
   deps: AdminClientGrowthDeps,
 ): void => {
-  const schemas = buildSchemas(deps.config.maxBasisPoints)
+  const schemas = buildSchemas()
   application.get(INVESTOR_POSITIONS_ROUTE, (request, reply) => investorPositions(deps, request, reply))
   application.post(INDIVIDUAL_ROUTE, (request, reply) => individual(deps, schemas, request, reply))
   application.post(COLLECTIVE_PREVIEW_ROUTE, (request, reply) =>

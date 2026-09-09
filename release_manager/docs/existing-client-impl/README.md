@@ -1,6 +1,11 @@
 # Onboarding and administering existing clients — implementation plan
 
-Status: **plan. Nothing implemented.**
+Status: **implemented and verified in the working tree; not deployed or committed.**
+
+Features A–D from the interrupted implementation are present. Feature E now includes maturity
+marking, withdrawal/reinvestment, payout tracking, contracts and admin controls.
+See [`10-completion-plan.md`](./10-completion-plan.md) for the completion work and validation record.
+The descriptions below document the original baseline, not the current implementation.
 Written 2026-09-08 against `boe_app@v0.13.5` (`4083ef4`, clean tree).
 
 Every claim about current behaviour was checked against source at that commit. Where something was
@@ -63,6 +68,7 @@ Read in this order. `00` is load-bearing for everything else.
 | [`06-sequencing-and-migrations.md`](./06-sequencing-and-migrations.md) | Build order, every migration, and the deploy-ordering rule. |
 | [`07-open-decisions.md`](./07-open-decisions.md) | Decision register. Two entries block work. |
 | [`08-evidence.md`](./08-evidence.md) | What was verified, with the commands; and what was assumed. |
+| [`09-maturity-and-withdrawals.md`](./09-maturity-and-withdrawals.md) | **Feature E.** Maturity, withdrawal and reinvestment — the one place the money-ledger enum is extended, and why. |
 
 ## Build order
 

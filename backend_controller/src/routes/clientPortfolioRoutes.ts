@@ -103,13 +103,26 @@ const mapOrder = (row: OrderRow): Record<string, unknown> => ({
   version: Number(row.version),
 })
 
+const ledgerEntryLabel = (row: ClientValueEntryRow): string => {
+  switch (row.entryType) {
+    case "contribution":
+      return row.orderType ?? "lump_sum"
+    case "growth_adjustment":
+      return "gain_allocation"
+    case "withdrawal":
+      return "withdrawal"
+    case "maturity_reinvestment":
+      return "maturity_reinvestment"
+    case "reversal":
+      return "adjustment"
+  }
+}
+
 /** One ledger row as the investor's transaction list shows it. */
 const mapTransaction = (row: ClientValueEntryRow): Record<string, unknown> => ({
   id: row.id,
   fundId: row.fundId,
-  type: row.entryType === "contribution"
-    ? row.orderType ?? "lump_sum"
-    : row.entryType === "growth_adjustment" ? "gain_allocation" : "adjustment",
+  type: ledgerEntryLabel(row),
   // Signed deltas explain how the row moved each headline figure.
   principalDeltaPaise: row.principalDeltaPaise,
   valueDeltaPaise: row.valueDeltaPaise,
@@ -177,14 +190,14 @@ const getPortfolio = async (deps: ClientPortfolioDeps, request: FastifyRequest, 
   const contributionBreakdown = (sourceRows: readonly ClientValueEntryRow[]) => {
     const contributions = sourceRows.filter((row) => row.entryType === "contribution")
     const sipRows = contributions.filter((row) => row.orderType === "sip_installment")
-    const lumpRows = contributions.filter((row) => row.orderType === "lump_sum")
+    const oneOffRows = contributions.filter((row) => row.orderType !== "sip_installment")
     const total = (items: readonly ClientValueEntryRow[]) =>
       items.reduce((sum, row) => sum + BigInt(row.principalDeltaPaise), 0n).toString()
     return {
       sipInstallmentCount: sipRows.length,
       sipTotalPaise: total(sipRows),
-      lumpSumCount: lumpRows.length,
-      lumpSumTotalPaise: total(lumpRows),
+      lumpSumCount: oneOffRows.length,
+      lumpSumTotalPaise: total(oneOffRows),
     }
   }
   const pools = fundIds.map((fundId) => {
@@ -203,7 +216,8 @@ const getPortfolio = async (deps: ClientPortfolioDeps, request: FastifyRequest, 
       lastActivityDate: perFund.lastActivityDate,
       firstInvestmentDate: perFund.firstContributionDate,
       allocatedGainPaise: perFund.growthAdjustmentTotalPaise.toString(),
-      redeemedTotalPaise: "0",
+      withdrawnTotalPaise: (-perFund.withdrawalTotalPaise).toString(),
+      maturityReinvestmentTotalPaise: perFund.maturityReinvestmentTotalPaise.toString(),
       ...breakdown,
     }
   })
@@ -223,8 +237,9 @@ const getPortfolio = async (deps: ClientPortfolioDeps, request: FastifyRequest, 
         growthAdjustmentTotalPaise: summary.growthAdjustmentTotalPaise.toString(),
         reversalCount: summary.reversalCount,
         allocatedGainPaise: summary.growthAdjustmentTotalPaise.toString(),
-        redeemedTotalPaise: "0",
-        redemptionCount: 0,
+        withdrawnTotalPaise: (-summary.withdrawalTotalPaise).toString(),
+        withdrawalCount: summary.withdrawalCount,
+        maturityReinvestmentTotalPaise: summary.maturityReinvestmentTotalPaise.toString(),
         ...breakdown,
       },
       pools,

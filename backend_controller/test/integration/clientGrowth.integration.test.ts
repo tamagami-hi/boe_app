@@ -44,7 +44,6 @@ import { runSeed } from "../../src/scripts/seed.js"
 
 const PASSWORD = "correct horse battery staple"
 const ORIGIN = "https://admin.beonedge.test"
-const MAX_BASIS_POINTS = 100_000
 
 let container: StartedPostgreSqlContainer
 let pool: Pool
@@ -311,7 +310,7 @@ beforeAll(async () => {
         unitOfWork,
         database,
         clock: () => new Date(),
-        config: { idempotencyTtlMs: 86_400_000, maxBasisPoints: MAX_BASIS_POINTS },
+        config: { idempotencyTtlMs: 86_400_000 },
         clientGrowthRepository: createClientGrowthRepository(),
         auditRepository: createAuditRepository(),
         idempotencyRepository: createIdempotencyRepository(),

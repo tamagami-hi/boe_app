@@ -26,15 +26,17 @@ export interface AumFundBasis {
 export type AumGrowthInstruction =
   | { readonly kind: "amount"; readonly growthPaise: bigint }
   | { readonly kind: "percentage"; readonly growthBasisPoints: bigint }
+  | { readonly kind: "target"; readonly targetAumPaise: bigint }
 
 /**
  * Signed delta for one fund (spec §8.3): amount mode is the delta verbatim;
  * percentage mode is `symmetricHalfUp(basis * basisPoints / 10,000)`.
  */
-export const aumGrowthDelta = (basisAumPaise: bigint, instruction: AumGrowthInstruction): bigint =>
-  instruction.kind === "amount"
-    ? instruction.growthPaise
-    : symmetricHalfUpBasisPoints(basisAumPaise, instruction.growthBasisPoints)
+export const aumGrowthDelta = (basisAumPaise: bigint, instruction: AumGrowthInstruction): bigint => {
+  if (instruction.kind === "target") return instruction.targetAumPaise - basisAumPaise
+  if (instruction.kind === "amount") return instruction.growthPaise
+  return symmetricHalfUpBasisPoints(basisAumPaise, instruction.growthBasisPoints)
+}
 
 export const assertAumDeltaNonZero = (deltaPaise: bigint): void => {
   if (deltaPaise === 0n) {

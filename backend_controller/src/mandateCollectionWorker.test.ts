@@ -262,6 +262,7 @@ describe("mandate collection timing", () => {
       markOrderAcceptedOnSettlement: vi.fn().mockResolvedValue({ id: "order-1", user_id: "user-1", fund_id: "fund-1" }),
     }
     const settlementRepository = {
+      lockPosition: vi.fn().mockResolvedValue(undefined),
       insertSystemAllocation: vi.fn().mockResolvedValue({ id: "allocation-1" }),
       insertSystemContribution: vi.fn().mockResolvedValue(undefined),
       createPendingFundReceiptAcknowledgement: vi.fn().mockResolvedValue(undefined),

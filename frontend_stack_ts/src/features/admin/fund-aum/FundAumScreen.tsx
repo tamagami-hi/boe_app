@@ -12,7 +12,6 @@ import { toPaise } from "~/domain/money"
 import {
   useAdminAumHistory,
   useAdminFund,
-  useAppendAumGrowth,
   useInitializeAum,
 } from "~/features/admin/shared/queries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
@@ -25,18 +24,18 @@ import { Card } from "~/ui/primitives/Card"
 import { FormField, Input } from "~/ui/primitives/FormField"
 
 import {
-  ADMIN_FILTER,
-  ADMIN_FILTER_ROW,
   ADMIN_FORM_GRID,
   ADMIN_META,
 } from "~/ui/recipes/admin"
 import { ITEM_TITLE, LIST_LABEL, LIST_VALUE } from "~/ui/recipes/datalist"
 import { ACTION_ROW, CARD_COLUMNS_WRAP, ROW_BETWEEN_BASELINE, STACK_LG } from "~/ui/recipes/layout"
 
+import { FundSizeAdjustmentForm } from "./FundSizeAdjustmentForm"
+
 const today = (): string => new Date().toISOString().slice(0, 10)
 
 const failureMessage = (error: unknown): string => {
-  if (isTransportError(error)) return "We could not reach the backend. Nothing was recorded."
+  if (isTransportError(error)) return "The response was interrupted. Reload the fund to check whether the opening AUM was recorded."
   if (!isApiError(error)) return "That did not work."
   if (error.code === "VALIDATION_FAILED") return error.message
   if (error.code === "STATE_CONFLICT") {
@@ -52,14 +51,11 @@ const failureMessage = (error: unknown): string => {
   return "That did not work."
 }
 
-type GrowthMode = "amount" | "percent"
-
 const FundAumScreen = (): React.ReactElement => {
   const { fundId = "" } = useParams()
   const fund = useAdminFund(fundId)
   const history = useAdminAumHistory(fundId)
   const initialize = useInitializeAum(fundId)
-  const growth = useAppendAumGrowth(fundId)
   const toast = useToast()
   const { hasAnyPermission } = useSession()
   const canWrite = hasAnyPermission(["aum.write"])
@@ -67,13 +63,6 @@ const FundAumScreen = (): React.ReactElement => {
   const [openingPaise, setOpeningPaise] = useState("0")
   const [openingDate, setOpeningDate] = useState(today)
   const [openingReason, setOpeningReason] = useState("initial_aum")
-
-  const [mode, setMode] = useState<GrowthMode>("amount")
-  const [growthPaise, setGrowthPaise] = useState("")
-  const [basisPoints, setBasisPoints] = useState("")
-  const [growthDate, setGrowthDate] = useState(today)
-  const [growthReason, setGrowthReason] = useState("periodic_growth")
-  const [note, setNote] = useState("")
 
   const current = fund.data?.fund.aum ?? null
   const initialised = current !== null
@@ -83,7 +72,7 @@ const FundAumScreen = (): React.ReactElement => {
       <PageHeader
         eyebrow={fund.data?.fund.slug ?? ""}
         title="Fund AUM"
-        description="The absolute fund size, and the growth entries that move it. Every entry is append-only and audited."
+        description="Set the fund size or record an increase or decrease. Every change is saved in the history."
       />
 
       {initialize.error === null ? null : (
@@ -91,11 +80,7 @@ const FundAumScreen = (): React.ReactElement => {
           {failureMessage(initialize.error)}
         </Alert>
       )}
-      {growth.error === null ? null : (
-        <Alert tone="error" title="Growth not recorded">
-          {failureMessage(growth.error)}
-        </Alert>
-      )}
+
 
       <Card elevated>
         <span className={LIST_LABEL}>Current fund size</span>
@@ -118,148 +103,11 @@ const FundAumScreen = (): React.ReactElement => {
           Recording AUM needs the aum.write permission.
         </Alert>
       ) : initialised ? (
-        <form
-          onSubmit={(event) => {
-            event.preventDefault()
-            growth.mutate(
-              {
-                ...(mode === "amount"
-                  ? { growthPaise }
-                  : { growthBasisPoints: Number.parseInt(basisPoints, 10) }),
-                asOfDate: growthDate,
-                reasonCode: growthReason,
-                ...(note.trim() === "" ? {} : { note: note.trim() }),
-              },
-              {
-                onSuccess: () => {
-                  toast.show("Growth recorded.")
-                  setGrowthPaise("")
-                  setBasisPoints("")
-                  setNote("")
-                },
-              },
-            )
-          }}
-          noValidate
-          className={STACK_LG}
-        >
-          <Card>
-            <Section
-              title="Record growth"
-              description="Give either an absolute amount or a percentage in basis points, not both. A negative value records a fall."
-            >
-              <div className={ADMIN_FILTER_ROW} role="group" aria-label="Growth entry mode">
-                <button
-                  type="button"
-                  className={ADMIN_FILTER}
-                  aria-pressed={mode === "amount"}
-                  onClick={() => {
-                    setMode("amount")
-                  }}
-                >
-                  Amount
-                </button>
-                <button
-                  type="button"
-                  className={ADMIN_FILTER}
-                  aria-pressed={mode === "percent"}
-                  onClick={() => {
-                    setMode("percent")
-                  }}
-                >
-                  Percentage
-                </button>
-              </div>
-
-              <div className={ADMIN_FORM_GRID}>
-                {mode === "amount" ? (
-                  <FormField
-                    label="Growth (paise)"
-                    required
-                    hint="Signed integer paise. Prefix with a minus for a fall."
-                  >
-                    {({ id }) => (
-                      <Input
-                        id={id}
-                        required
-                        mono
-                        inputMode="numeric"
-                        value={growthPaise}
-                        onChange={(event) => {
-                          setGrowthPaise(event.target.value.replace(/[^0-9-]/gu, ""))
-                        }}
-                      />
-                    )}
-                  </FormField>
-                ) : (
-                  <FormField
-                    label="Growth (basis points)"
-                    required
-                    hint="100 basis points is 1%. Range -10000 to 100000, and never 0."
-                  >
-                    {({ id }) => (
-                      <Input
-                        id={id}
-                        required
-                        mono
-                        inputMode="numeric"
-                        value={basisPoints}
-                        onChange={(event) => {
-                          setBasisPoints(event.target.value.replace(/[^0-9-]/gu, ""))
-                        }}
-                      />
-                    )}
-                  </FormField>
-                )}
-
-                <FormField label="As of date" required>
-                  {({ id }) => (
-                    <Input
-                      id={id}
-                      type="date"
-                      required
-                      value={growthDate}
-                      onChange={(event) => {
-                        setGrowthDate(event.target.value)
-                      }}
-                    />
-                  )}
-                </FormField>
-
-                <FormField label="Reason code" required>
-                  {({ id }) => (
-                    <Input
-                      id={id}
-                      required
-                      value={growthReason}
-                      onChange={(event) => {
-                        setGrowthReason(event.target.value)
-                      }}
-                    />
-                  )}
-                </FormField>
-
-                <FormField label="Note">
-                  {({ id }) => (
-                    <Input
-                      id={id}
-                      value={note}
-                      onChange={(event) => {
-                        setNote(event.target.value)
-                      }}
-                    />
-                  )}
-                </FormField>
-              </div>
-
-              <div className={ACTION_ROW}>
-                <Button type="submit" size="lg" loading={growth.isPending}>
-                  Record growth
-                </Button>
-              </div>
-            </Section>
-          </Card>
-        </form>
+        <FundSizeAdjustmentForm
+          fundId={fundId}
+          currentAumPaise={current.aumPaise}
+          currentAsOfDate={current.asOfDate}
+        />
       ) : (
         <form
           onSubmit={(event) => {
@@ -279,7 +127,7 @@ const FundAumScreen = (): React.ReactElement => {
           <Card>
             <Section
               title="Set opening AUM"
-              description="This fund has no AUM yet. Record the absolute size once; every later change is a growth entry."
+              description="This fund has no AUM yet. Record the absolute size once; you can increase or decrease it afterward."
             >
               <div className={ADMIN_FORM_GRID}>
                 <FormField label="Opening AUM (paise)" required>

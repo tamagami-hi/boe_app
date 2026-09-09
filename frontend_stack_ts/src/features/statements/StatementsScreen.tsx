@@ -80,6 +80,10 @@ const StatementsScreen = (): React.ReactElement => {
                     />
                   </div>
                   <div className={STAT_ROOT}>
+                    <span className={STAT_LABEL}>Withdrawals</span>
+                    <MoneyValue amount={toPaise(period.withdrawalsPaise)} size="sm" tone="signed" showSign />
+                  </div>
+                  <div className={STAT_ROOT}>
                     <span className={STAT_LABEL}>Invested to date</span>
                     <MoneyValue amount={toPaise(period.totalInvestmentPaise)} size="sm" />
                   </div>

@@ -101,6 +101,26 @@ describe("derivePortfolio", () => {
     expect(summary.growthAdjustmentTotalPaise).toBe(rupees(-15000))
   })
 
+  test("withdrawal and maturity rollover preserve their separate money breakdowns", () => {
+    const summary = derivePortfolio([
+      contribution(1000, "2026-01-01"),
+      growth(200, "2026-02-01"),
+      { id: "withdrawal", fundId: "fund-1", entryType: "withdrawal", effectiveDate: "2026-03-01", principalDeltaPaise: 0n, valueDeltaPaise: -10_000n },
+      { id: "rollover", fundId: "fund-1", entryType: "maturity_reinvestment", effectiveDate: "2026-04-01", principalDeltaPaise: 10_000n, valueDeltaPaise: 0n },
+    ])
+    expect(summary).toMatchObject({
+      totalInvestmentPaise: 110_000n,
+      currentValuePaise: 110_000n,
+      totalGrowthPaise: 0n,
+      contributionCount: 1,
+      contributionTotalPaise: 100_000n,
+      withdrawalCount: 1,
+      withdrawalTotalPaise: -10_000n,
+      maturityReinvestmentTotalPaise: 10_000n,
+      reversalCount: 0,
+    })
+  })
+
   test("the fold is order-independent", () => {
     const entries = [
       contribution(100000, "2026-01-01"),

@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
 import type { Kysely } from "kysely"
 import { z } from "zod"
 
+import { CACHE_PREFIXES, type Cache } from "../cache/cache.js"
 import type { UnitOfWork } from "../db/database.js"
 import type { IdempotencyRepository, Transaction } from "../db/repositories.js"
 import type { Database, FundState } from "../db/types.js"
@@ -47,6 +48,7 @@ export interface AdminAumConfig {
 }
 
 export interface AdminAumDeps {
+  readonly cache: Cache
   readonly webAuth: WebAuthDeps
   readonly unitOfWork: UnitOfWork
   readonly database: Kysely<Database>
@@ -73,10 +75,13 @@ const nonZeroBasisPointsSchema = (maxBasisPoints: number) =>
     .min(-10_000)
     .max(maxBasisPoints)
     .refine((value) => value !== 0, "must not be zero — a growth command has to change the figure")
+const MAX_AUM_PAISE = 9_223_372_036_854_775_807n
+
 const nonNegativePaiseSchema = z
   .string()
   .trim()
   .regex(/^(0|[1-9]\d{0,18})$/u, "must be a non-negative decimal paise string")
+  .refine((value) => /^\d+$/u.test(value) && BigInt(value) <= MAX_AUM_PAISE, "must be within the supported fund size range")
 const asOfDateSchema = z.iso.date()
 const noteSchema = z.string().trim().min(1).max(2000).optional()
 
@@ -89,19 +94,21 @@ const initializeBodySchema = z
   })
   .strict()
 
-const growthBodySchema = (maxBasisPoints: number) =>
+export const growthBodySchema = (maxBasisPoints: number) =>
   z
     .object({
       growthPaise: nonZeroSignedPaiseSchema.optional(),
       growthBasisPoints: nonZeroBasisPointsSchema(maxBasisPoints).optional(),
+      targetAumPaise: nonNegativePaiseSchema.optional(),
       asOfDate: asOfDateSchema,
       reasonCode: reasonCodeSchema,
       note: noteSchema,
     })
     .strict()
     .refine(
-      (body) => (body.growthPaise === undefined) !== (body.growthBasisPoints === undefined),
-      { message: "Provide exactly one of growthPaise or growthBasisPoints." },
+      (body) => [body.growthPaise, body.growthBasisPoints, body.targetAumPaise]
+        .filter((value) => value !== undefined).length === 1,
+      { message: "Provide exactly one of growthPaise, growthBasisPoints or targetAumPaise." },
     )
 
 const correctionBodySchema = z
@@ -299,6 +306,7 @@ const initializeAum = async (deps: AdminAumDeps, request: FastifyRequest, reply:
       return { status: 201, body: { snapshot: mapSnapshot(snapshot), growthBatchId: batch.id } }
     },
   })
+  await deps.cache.invalidatePrefix(CACHE_PREFIXES.funds)
   return reply.sendData(result.body, {
     status: result.status,
     ...(result.replay ? { idempotencyReplay: true } : {}),
@@ -331,17 +339,29 @@ const growAum = async (deps: AdminAumDeps, request: FastifyRequest, reply: Fasti
       }
 
       const instruction: AumGrowthInstruction =
-        body.growthPaise !== undefined
-          ? { kind: "amount", growthPaise: BigInt(body.growthPaise) }
-          : { kind: "percentage", growthBasisPoints: BigInt(body.growthBasisPoints ?? 0) }
+        body.targetAumPaise !== undefined
+          ? { kind: "target", targetAumPaise: BigInt(body.targetAumPaise) }
+          : body.growthPaise !== undefined
+            ? { kind: "amount", growthPaise: BigInt(body.growthPaise) }
+            : { kind: "percentage", growthBasisPoints: BigInt(body.growthBasisPoints ?? 0) }
       const before = BigInt(latest.aumPaise)
       const delta = aumGrowthDelta(before, instruction)
+      if (instruction.kind === "target" && delta === 0n) {
+        throw new AppError("VALIDATION_FAILED", {
+          fields: { targetAumPaise: ["The new fund size must differ from its current size."] },
+        })
+      }
       assertAumDeltaNonZero(delta)
       const after = before + delta
       if (after < 0n) throw new AppError("STATE_CONFLICT")
+      if (after > MAX_AUM_PAISE) {
+        throw new AppError("VALIDATION_FAILED", {
+          fields: { targetAumPaise: ["The resulting fund size exceeds the supported amount."] },
+        })
+      }
 
       const revision = ((await deps.aumRepository.findHighestRevision(tx, fundId, body.asOfDate)) ?? 0) + 1
-      const instructionType = instruction.kind === "amount" ? "amount" : "percentage"
+      const instructionType = instruction.kind === "percentage" ? "percentage" : "amount"
       const batch = await deps.aumRepository.insertBatch(tx, {
         scope: "individual",
         instructionType,
@@ -383,6 +403,7 @@ const growAum = async (deps: AdminAumDeps, request: FastifyRequest, reply: Fasti
           asOfDate: body.asOfDate,
           instructionType,
           deltaPaise: delta.toString(),
+          ...(body.targetAumPaise === undefined ? {} : { targetAumPaise: body.targetAumPaise }),
           reasonCode: body.reasonCode,
           growthBatchId: batch.id,
           propagatedToClients: false,
@@ -394,6 +415,7 @@ const growAum = async (deps: AdminAumDeps, request: FastifyRequest, reply: Fasti
       }
     },
   })
+  await deps.cache.invalidatePrefix(CACHE_PREFIXES.funds)
   return reply.sendData(result.body, {
     status: result.status,
     ...(result.replay ? { idempotencyReplay: true } : {}),
@@ -454,6 +476,7 @@ const correctSnapshot = async (deps: AdminAumDeps, request: FastifyRequest, repl
       return { status: 201, body: { snapshot: mapSnapshot(correction) } }
     },
   })
+  await deps.cache.invalidatePrefix(CACHE_PREFIXES.funds)
   return reply.sendData(result.body, {
     status: result.status,
     ...(result.replay ? { idempotencyReplay: true } : {}),
@@ -611,6 +634,7 @@ const commitCollectiveGrowth = async (deps: AdminAumDeps, request: FastifyReques
       }
     },
   })
+  await deps.cache.invalidatePrefix(CACHE_PREFIXES.funds)
   return reply.sendData(result.body, {
     status: result.status,
     ...(result.replay ? { idempotencyReplay: true } : {}),

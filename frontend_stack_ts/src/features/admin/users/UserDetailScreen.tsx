@@ -28,6 +28,12 @@ import { ACTION_ROW } from "~/ui/recipes/layout"
 
 import { META_TEXT } from "~/ui/recipes/text"
 
+const ORDER_TYPE_LABEL = {
+  lump_sum: "One-off investment",
+  sip_installment: "SIP instalment",
+  recorded_offline: "Recorded earlier investment",
+} as const
+
 const COPY: Readonly<Record<UserLifecycle, Readonly<{ title: string; description: string }>>> = {
   suspend: {
     title: "Suspend this account?",
@@ -231,7 +237,7 @@ const UserDetailScreen = (): React.ReactElement => {
                       render: (row) => (
                         <span className={ENTRY_TEXT}>
                           <span>{row.fundName ?? row.fundSlug}</span>
-                          <span className={META_TEXT}>{row.type}</span>
+                          <span className={META_TEXT}>{ORDER_TYPE_LABEL[row.type]}</span>
                         </span>
                       ),
                     },

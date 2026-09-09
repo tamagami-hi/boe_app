@@ -7,6 +7,8 @@ export const PERMISSION_CODES = [
   "aum.read",
   "aum.write",
   "client_growth.write",
+  "client_position.write",
+  "clients.create",
   "client_values.read",
   "config.read",
   "config.publish",

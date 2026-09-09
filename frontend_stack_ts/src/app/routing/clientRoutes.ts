@@ -7,6 +7,8 @@ export const CLIENT_VERIFY_EMAIL_PATH = "/verify-email"
 export const CLIENT_BLOCKED_PATH = "/blocked"
 export const CLIENT_SUPPORT_PATH = "/profile/support"
 export const CLIENT_PAYMENT_RETURN_PATH = "/pay/return"
+export const CLIENT_FORGOT_PASSWORD_PATH = "/password/forgot"
+export const CLIENT_RESET_PASSWORD_PATH = "/reset-password"
 
 export const CLIENT_ROUTES: RouteManifest = [
   {
@@ -24,6 +26,22 @@ export const CLIENT_ROUTES: RouteManifest = [
     access: "public",
     element: () => import("~/features/auth/LoginScreen"),
     back: { kind: "exit" },
+  },
+  {
+    id: "forgot-password",
+    path: CLIENT_FORGOT_PASSWORD_PATH,
+    title: "Reset your password",
+    access: "public",
+    element: () => import("~/features/auth/ForgotPasswordScreen"),
+    back: { kind: "parent", path: CLIENT_LOGIN_PATH },
+  },
+  {
+    id: "reset-password",
+    path: CLIENT_RESET_PASSWORD_PATH,
+    title: "Choose a new password",
+    access: "public",
+    element: () => import("~/features/auth/ResetPasswordScreen"),
+    back: { kind: "parent", path: CLIENT_LOGIN_PATH },
   },
   {
     id: "payment-return",
@@ -189,7 +207,7 @@ export const CLIENT_ROUTES: RouteManifest = [
   {
     id: "profile-security",
     path: "/profile/security",
-    title: "Device security",
+    title: "Security",
     access: "session",
     role: "client",
     element: () => import("~/features/device-security/DeviceSecurityScreen"),
@@ -249,6 +267,9 @@ export const CLIENT_GUARD_DESTINATIONS: readonly string[] = [
 ]
 
 export const CLIENT_LINK_MAP: Readonly<Record<string, readonly string[]>> = {
+  login: ["forgot-password"],
+  "forgot-password": ["reset-password", "login"],
+  "reset-password": ["login"],
   dashboard: ["funds", "portfolio", "activity", "notifications", "verify-email", "sips"],
   funds: ["fund-detail"],
   "fund-detail": ["invest-lumpsum", "invest-sip", "investor-charter", "grievance"],

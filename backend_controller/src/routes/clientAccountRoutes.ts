@@ -408,6 +408,7 @@ const listStatements = async (
         contributionsPaise: period.contributionsPaise.toString(),
         growthPaise: period.growthPaise.toString(),
         reversalsPaise: period.reversalsPaise.toString(),
+        withdrawalsPaise: period.withdrawalsPaise.toString(),
         closingValuePaise: period.closingValuePaise.toString(),
         totalInvestmentPaise: period.totalInvestmentPaise.toString(),
         entryCount: period.entryCount,

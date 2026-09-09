@@ -3,6 +3,8 @@ import { Link } from "react-router-dom"
 
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
+import { useSession } from "~/app/providers/SessionProvider"
+import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { formatDate } from "~/domain/dates"
 import { emailVerificationState, userAccountState } from "~/domain/status"
 import { useAdminUsers } from "~/features/admin/shared/adminQueries"
@@ -30,6 +32,8 @@ const FILTERS = [
 type Filter = (typeof FILTERS)[number]["value"]
 
 const UserDirectoryScreen = (): React.ReactElement => {
+  const { hasAnyPermission } = useSession()
+  const canCreateClient = hasAnyPermission(["clients.create"])
   const [filter, setFilter] = useState<Filter>("any")
   const [search, setSearch] = useState("")
   const [applied, setApplied] = useState("")
@@ -43,6 +47,13 @@ const UserDirectoryScreen = (): React.ReactElement => {
       <PageHeader
         title="Users"
         description="Every account on the platform. Search runs on the server, so it covers every user, not just the page in front of you."
+        actions={
+          canCreateClient ? (
+            <ButtonLink to="/users/create" tone="secondary" size="sm" trailing>
+              Create a client
+            </ButtonLink>
+          ) : null
+        }
       />
 
       <Input

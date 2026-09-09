@@ -61,6 +61,7 @@ const completedOutcome = (overrides: Partial<CompletedOutcome> = {}): CompletedO
 })
 
 const createSettlementHarness = () => {
+  const lockPosition = vi.fn().mockResolvedValue(undefined)
   const markAttemptSucceeded = vi.fn().mockResolvedValue(attempt)
   const markPaymentSucceeded = vi.fn().mockResolvedValue({ ...payment, succeeded_at: NOW })
   const markOrderAcceptedOnSettlement = vi.fn().mockResolvedValue({
@@ -102,6 +103,7 @@ const createSettlementHarness = () => {
     markOrderPaymentFailed,
   } as unknown as PaymentsRepository
   const settlementRepository = {
+    lockPosition,
     insertSystemAllocation,
     insertSystemContribution,
     hasCompletedInvestmentSettlement,
@@ -110,6 +112,7 @@ const createSettlementHarness = () => {
   } as unknown as InvestmentSettlementRepository
   return {
     repository,
+    lockPosition,
     settlementRepository,
     markAttemptSucceeded,
     markPaymentSucceeded,
@@ -199,6 +202,8 @@ describe("applyCanonicalPaymentOutcome", () => {
 
     await applyOutcome(harness, completedOutcome())
 
+    expect(harness.lockPosition).toHaveBeenCalledWith(expect.anything(), USER_ID, "00000000-0000-4000-8000-000000000006")
+    expect(harness.lockPosition.mock.invocationCallOrder[0]).toBeLessThan(harness.recordPaymentDetail.mock.invocationCallOrder[0]!)
     expect(harness.recordPaymentDetail).toHaveBeenCalledOnce()
     expect(harness.markAttemptSucceeded).toHaveBeenCalledOnce()
     expect(harness.markPaymentSucceeded).toHaveBeenCalledOnce()

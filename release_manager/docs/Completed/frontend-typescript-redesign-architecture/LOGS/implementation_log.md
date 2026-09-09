@@ -4392,3 +4392,134 @@ above is the whole argument.
 ```text
 backend / API / database / payment / SIP / auth-eligibility changes:  none
 ```
+
+
+## Entry 045 — Feature D: the credential lifecycle, and two corrections to its own plan · 2026-09-08
+
+First feature from `release_manager/docs/existing-client-impl/`, built in the order that plan sets:
+D before A, because an admin-created account has no password and no way to get one until this
+exists. It also closes a live gap — until now no password could be changed and a client who forgot
+one had no recovery path at all. `CredentialWriteRepository` had `exists` and `create` and nothing
+else.
+
+### What was built
+
+One token primitive behind three entry points, all sharing one consume path:
+
+```
+POST /v1/auth/password/forgot    { email }                        -> 202 always
+POST /v1/auth/password/reset     { token, newPassword }           -> 200
+POST /v1/auth/password/change    { currentPassword, newPassword } -> 200   session + CSRF
+```
+
+`048_password_credential_tokens.sql` is modelled on `email_verification_codes` deliberately, so the
+discipline is identical: the token stored only as a keyed HMAC with its key version, an
+`octet_length = 32` CHECK, an attempt counter, an expiry, a single consume, and a partial unique
+index on `(user_id) WHERE consumed_at IS NULL` so issuing a new token retires the previous one.
+
+`domain/auth/passwordCredential.ts` mirrors `emailVerification.ts`: lock the row, check expiry, check
+the attempt cap, compare with the constant-time `bytesEqual`, consume only on success, and return a
+discriminated union so the route maps outcomes rather than catching exceptions.
+
+### Two corrections to the plan
+
+**The plan said delivery goes through the outbox and email worker. It must not.** The outbox stores
+its payload as a JSON column, so a reset link in an outbox event would put a
+credential-equivalent secret in the database in the clear, readable by anything with a database
+read. The established precedent is better than the plan's own recommendation:
+`clientEmailVerificationRoutes.ts` sends the verification code with
+`deps.emailSender.send({ to, subject, text })` directly, after the transaction commits, so the
+secret never lands in a row. Feature D follows that instead. It also means no migration to
+`email_deliveries_template_check` and no new `emailTemplates.ts` entry.
+
+**The reset link needed no new environment variable.** The plan implied one. The client web origin is
+already configured for cookies and CORS as `serverConfig.web.originAllowlist`, so
+`passwordResetUrlBase()` derives the link base from it and appends `/reset-password`. Where no origin
+is configured the flow logs and still answers 202, because the endpoint must not become an oracle
+even when it is misconfigured. Nothing was added to any `.env`.
+
+### The enumeration boundary
+
+`forgot` answers `202 { status: "accepted" }` with the same body whether or not the address exists.
+Three separate leaks were closed, not one:
+
+- An unknown address still performs Argon2id work through the existing `verifyDummyPassword`, which
+  exists precisely to equalise that timing class.
+- A `RATE_LIMITED` refusal from the cooldown is caught and answered as 202, so a cooldown cannot be
+  used to probe which addresses exist. The cooldown still protects the mail path.
+- A send failure is logged, not surfaced, for the same reason.
+
+### Two things that happen on every credential write
+
+`applyNewPassword` is the only path to a credential change, and it always does both:
+`authSessionRepository.revokeAllForUser` in the **same transaction**, and an audit row carrying the
+revoked session and refresh-token counts. A reset means either the client suspected compromise or an
+admin just handed over an account; a surviving refresh token would defeat the point.
+
+`credentialRepository.replace` is an upsert, which matters more than it looks: an admin-created
+account has no credential row at all, so the set-password flow inserts, while reset and change
+update. It also clears `failed_attempt_count` and `failed_attempt_window_started_at` — without that,
+a client locked out by failed attempts would still be locked out after successfully resetting, so
+recovery would not actually recover access. The plan did not mention this.
+
+**Deliberately not coupled to email verification.** Consuming a set-password token proves control of
+the mailbox, so it is tempting to mark the email verified. That would move the money gate behind a
+credential flow. `PasswordCredentialDeps` has no email-verification repository, so the coupling is
+structurally impossible rather than merely absent.
+
+### Files
+
+`backend_controller`: `db/migrations/048_password_credential_tokens.sql`,
+`src/repositories/passwordTokenRepository.ts`, `src/domain/auth/passwordCredential.ts`,
+`src/routes/passwordRoutes.ts` (all new); `src/repositories/credentialRepository.ts`,
+`src/db/types.ts`, `src/runtime/composition.ts`.
+
+`packages/contracts`: `src/operations/client-web-auth.ts`.
+
+`frontend_stack_ts`: `src/features/auth/ForgotPasswordScreen.tsx`,
+`src/features/auth/ResetPasswordScreen.tsx` (new); `src/features/auth/LoginScreen.tsx`,
+`src/features/shared/queries.ts`, `src/domain/failure.ts`, `src/app/routing/clientRoutes.ts`,
+`src/api/generated/operations.ts`.
+
+### Verified
+
+- **TESTED** `backend_controller`: typecheck clean, 818 tests / 80 files (was 809 / 79).
+  Nine new tests in `domain/auth/passwordCredential.test.ts`, scoped to what the root `README.md`
+  §3 sanctions — authentication, replay prevention, session invalidation — and nothing else. They
+  pin: an already-consumed token is refused so a link cannot be replayed; an expired token is
+  refused; a token past its attempt cap is refused; an unknown token is refused; in every refusal
+  the credential is *not* touched; a successful redeem revokes sessions; a wrong current password is
+  refused **without** revoking sessions; an account with no stored credential is refused.
+- **TESTED** `packages/contracts`: build clean, 95 tests. Frontend client regenerated, 105
+  operations.
+- **TESTED** `frontend_stack_ts`: typecheck and eslint clean, 212 tests / 22 files,
+  `build:client` with check-android-dist and check-bundle-boots.
+  `routeIntegrity.test.ts` passes with the two new public routes, which required adding them to
+  `CLIENT_LINK_MAP` — the suite enforces reachability, so an unlinked screen fails it. The login
+  screen now carries a "Forgot your password?" link, which is what makes the flow reachable at all.
+- **TESTED** `release_manager`: 15/15.
+- **STATIC** the migration has not been applied anywhere. It is schema-only and additive.
+
+### Not verified
+
+- **No email has been sent.** The reset and invite bodies, the link shape, and the SMTP path are
+  source-verified only. This is exactly the class the local rules call out: mail can be recorded as
+  sent by a transport that discards it. Needs a real request on the deployed stack.
+- **No token has been redeemed end to end.** The unit tests stub the repository, so the SQL in
+  `passwordTokenRepository` — in particular the partial unique index behaviour when a second token
+  is issued — has not run against Postgres.
+- **The reset screen has not been rendered.** No browser or device run.
+- `sendPasswordInvite` is exported and unused until Feature A consumes it.
+
+### Sequencing
+
+Migration `048` must be applied **before** the code that reads `password_credential_tokens`, per
+`06-sequencing-and-migrations.md`. It is additive, so applying it early is safe.
+
+### Backend
+
+```text
+payment / SIP / ledger / AUM changes:  none
+auth changes:  new password token table, credential replace, three password endpoints,
+               session revocation on every credential write
+```

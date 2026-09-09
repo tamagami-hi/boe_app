@@ -153,6 +153,7 @@ export const StatementPeriod = z.strictObject({
   contributionsPaise: SignedPaise,
   growthPaise: SignedPaise,
   reversalsPaise: SignedPaise,
+  withdrawalsPaise: SignedPaise,
   closingValuePaise: SignedPaise,
   totalInvestmentPaise: SignedPaise,
   entryCount: z.number().int(),

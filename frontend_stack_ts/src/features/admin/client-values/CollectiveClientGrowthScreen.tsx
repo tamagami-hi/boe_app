@@ -29,6 +29,9 @@ import {
 import { PROSE_SM } from "~/ui/recipes/datalist"
 import { STACK_LG } from "~/ui/recipes/layout"
 
+const MIN_BASIS_POINTS = -2_000
+const MAX_BASIS_POINTS = 2_000
+
 const today = (): string => new Date().toISOString().slice(0, 10)
 
 const CollectiveClientGrowthScreen = (): React.ReactElement => {
@@ -50,7 +53,8 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
   ]
 
   const rate = Number(basisPoints)
-  const invalidRate = !Number.isInteger(rate) || rate === 0
+  const invalidRate =
+    !Number.isInteger(rate) || rate === 0 || rate < MIN_BASIS_POINTS || rate > MAX_BASIS_POINTS
   const plan = staleBasis ? null : (preview.data ?? null)
 
   const clearPreview = (): void => {
@@ -116,7 +120,7 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
     <Page width="wide">
       <PageHeader
         title="Adjust a whole fund"
-        description="Preview every position first. Committing sends the preview's basis back; if anything in the fund moved since, the commit is refused rather than applied to different numbers."
+        description="A rate is measured against each investor's own amount invested, so it does not compound. Preview every position first. Committing sends the preview's basis back; if anything in the fund moved since, the commit is refused rather than applied to different numbers."
       />
 
       {failure === null ? null : (
@@ -151,15 +155,17 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
             <FormField
               label="Rate in basis points"
               required
-              hint="250 is +2.5%. Applied to every eligible position."
+              hint="Between -2000 and 2000. 250 is +2.5% of each investor's amount invested."
               {...(invalidRate && basisPoints !== ""
-                ? { error: "Enter a whole non-zero number of basis points." }
+                ? { error: "Enter a whole non-zero rate between -2000 and 2000 basis points." }
                 : {})}
             >
               {({ id }) => (
                 <Input
                   id={id}
                   type="number"
+                  min={MIN_BASIS_POINTS}
+                  max={MAX_BASIS_POINTS}
                   value={basisPoints}
                   onChange={(event) => {
                     setBasisPoints(event.target.value)
@@ -223,6 +229,12 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
                   key: "user",
                   header: "Investor",
                   render: (row) => <span className={ADMIN_CODE}>{row.userId}</span>,
+                },
+                {
+                  key: "principal",
+                  header: "Invested",
+                  numeric: true,
+                  render: (row) => <MoneyValue amount={toPaise(row.principalPaise)} size="sm" />,
                 },
                 {
                   key: "before",

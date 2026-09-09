@@ -98,9 +98,10 @@ export type MandateState =
   | "expired"
   | "failed"
 export type MandateSetupState = "created" | "dispatching" | "provider_pending" | "authorized" | "failed" | "expired"
+export type PasswordTokenPurpose = "set" | "reset"
 export type MandateNotifyState = "created" | "dispatching" | "notified" | "failed"
 export type MandateCancelCommandState = "queued" | "dispatching" | "accepted" | "rejected" | "reconciliation_required"
-export type OrderType = "lump_sum" | "sip_installment"
+export type OrderType = "lump_sum" | "sip_installment" | "recorded_offline"
 export type OrderState =
   | "submitted"
   | "payment_pending"
@@ -123,7 +124,15 @@ export type PaymentState =
 export type ProviderEventState = "received" | "processing" | "processed" | "dead_lettered"
 export type RefundState = "pending" | "provider_pending" | "refunded" | "failed"
 export type FundReceiptAcknowledgementState = "pending" | "acknowledged"
-export type ClientValueEntryType = "contribution" | "growth_adjustment" | "reversal"
+export type ClientValueEntryType =
+  | "contribution"
+  | "growth_adjustment"
+  | "reversal"
+  | "withdrawal"
+  | "maturity_reinvestment"
+export type MaturityState = "pending" | "settled"
+export type MaturitySettlement = "withdrawal" | "reinvestment"
+export type WithdrawalState = "pending" | "paid" | "failed"
 export type LedgerActorType = "admin" | "system"
 export type GrowthScope = "individual" | "collective"
 export type GrowthInstructionType = "amount" | "percentage" | "explicit_deltas"
@@ -456,6 +465,18 @@ export interface EmailVerificationCodesTable {
   user_id: string
   code_hash: Bytea
   code_key_version: string
+  attempt_count: Generated<number>
+  expires_at: Timestamp
+  consumed_at: NullableTimestamp
+  created_at: TimestampDefault
+}
+
+export interface PasswordCredentialTokensTable {
+  id: Generated<string>
+  user_id: string
+  purpose: PasswordTokenPurpose
+  token_hash: Bytea
+  token_key_version: string
   attempt_count: Generated<number>
   expires_at: Timestamp
   consumed_at: NullableTimestamp
@@ -900,6 +921,51 @@ export interface ClientValueEntriesTable {
   created_at: TimestampDefault
 }
 
+export interface ClientPositionMaturitiesTable {
+  id: Generated<string>
+  user_id: string
+  fund_id: string
+  state: Generated<MaturityState>
+  matured_on: DateColumn
+  principal_at_maturity_paise: BigIntString
+  value_at_maturity_paise: BigIntString
+  settlement: Nullable<MaturitySettlement>
+  settled_at: NullableTimestamp
+  settlement_entry_id: Nullable<string>
+  reason_code: string
+  note: Nullable<string>
+  marked_by_user_id: string
+  request_id: string
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
+export interface WithdrawalOperationsTable {
+  id: Generated<string>
+  user_id: string
+  fund_id: string
+  maturity_id: string
+  ledger_entry_id: string
+  state: Generated<WithdrawalState>
+  amount_paise: BigIntString
+  growth_portion_paise: BigIntString
+  principal_portion_paise: BigIntString
+  currency: Generated<string>
+  effective_date: DateColumn
+  transfer_reference: Nullable<string>
+  failure_code: Nullable<string>
+  paid_at: NullableTimestamp
+  failed_at: NullableTimestamp
+  reason_code: string
+  note: Nullable<string>
+  created_by_user_id: string
+  request_id: string
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
 export interface NotificationsTable {
   id: Generated<string>
   user_id: string
@@ -977,7 +1043,10 @@ export interface Database {
   refund_operations: RefundOperationsTable
   provider_events: ProviderEventsTable
   client_value_entries: ClientValueEntriesTable
+  client_position_maturities: ClientPositionMaturitiesTable
+  withdrawal_operations: WithdrawalOperationsTable
   notifications: NotificationsTable
   email_verification_codes: EmailVerificationCodesTable
+  password_credential_tokens: PasswordCredentialTokensTable
   support_requests: SupportRequestsTable
 }

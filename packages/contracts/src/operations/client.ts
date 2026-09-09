@@ -73,7 +73,8 @@ export const PortfolioPool = z.strictObject({
   lastActivityDate: NullableIsoDate,
   firstInvestmentDate: NullableIsoDate,
   allocatedGainPaise: SignedPaise,
-  redeemedTotalPaise: Paise,
+  withdrawnTotalPaise: Paise,
+  maturityReinvestmentTotalPaise: SignedPaise,
   ...ContributionBreakdown,
 })
 export type PortfolioPool = z.infer<typeof PortfolioPool>
@@ -91,8 +92,9 @@ export const PortfolioData = z.strictObject({
     growthAdjustmentTotalPaise: SignedPaise,
     reversalCount: z.number().int(),
     allocatedGainPaise: SignedPaise,
-    redeemedTotalPaise: Paise,
-    redemptionCount: z.number().int(),
+    withdrawnTotalPaise: Paise,
+    withdrawalCount: z.number().int(),
+    maturityReinvestmentTotalPaise: SignedPaise,
     ...ContributionBreakdown,
   }),
   pools: z.array(PortfolioPool),
@@ -115,8 +117,11 @@ export const getClientPortfolio = defineOperation({
 export const LedgerEntryType = z.enum([
   "lump_sum",
   "sip_installment",
+  "recorded_offline",
   "gain_allocation",
   "adjustment",
+  "withdrawal",
+  "maturity_reinvestment",
 ])
 
 export const TransactionItem = z.strictObject({

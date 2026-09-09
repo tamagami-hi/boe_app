@@ -22,11 +22,16 @@ const ENTRIES = [
     title: "A whole fund",
     hint: "Preview every position in a fund, then commit the exact numbers the server recomputed.",
   },
+  {
+    to: "/client-values/position",
+    title: "One investor's record",
+    hint: "See every position and ledger entry, record an investment made before the app, and reverse an entry that should not be there.",
+  },
 ] as const
 
 const ClientValuesScreen = (): React.ReactElement => {
   const { hasAnyPermission } = useSession()
-  const canWrite = hasAnyPermission(["client_growth.write"])
+  const canWrite = hasAnyPermission(["client_growth.write", "client_position.write"])
 
   return (
     <Page width="default">
@@ -37,7 +42,8 @@ const ClientValuesScreen = (): React.ReactElement => {
 
       {canWrite ? null : (
         <Alert tone="info" title="You can read this but not adjust values">
-          Adjusting investor value needs the client_growth.write permission.
+          Adjusting investor value needs the client_growth.write permission. Recording an earlier
+          investment or reversing an entry needs client_position.write.
         </Alert>
       )}
 

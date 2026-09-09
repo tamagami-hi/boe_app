@@ -6,6 +6,7 @@ import {
   AUM_ELIGIBLE_FUND_STATES,
   collectiveCommitBodySchema,
   collectivePlanBodySchema,
+  growthBodySchema,
   isAumEligible,
 } from "./adminAumRoutes.js"
 
@@ -14,6 +15,18 @@ const plan = collectivePlanBodySchema(MAX)
 const commit = collectiveCommitBodySchema(MAX)
 
 const base = { asOfDate: "2026-08-01", reasonCode: "monthly_valuation" }
+
+test("individual AUM accepts a nonnegative target exclusively from signed or percentage adjustments", () => {
+  const schema = growthBodySchema(MAX)
+  expect(schema.safeParse({ ...base, targetAumPaise: "0" }).success).toBe(true)
+  expect(schema.safeParse({ ...base, targetAumPaise: "1250000" }).success).toBe(true)
+  expect(schema.safeParse({ ...base, targetAumPaise: "-1" }).success).toBe(false)
+  expect(schema.safeParse({ ...base, targetAumPaise: "9223372036854775807" }).success).toBe(true)
+  expect(schema.safeParse({ ...base, targetAumPaise: "9223372036854775808" }).success).toBe(false)
+  expect(schema.safeParse({ ...base, targetAumPaise: "100", growthPaise: "1" }).success).toBe(false)
+  expect(schema.safeParse({ ...base, targetAumPaise: "100", growthBasisPoints: 100 }).success).toBe(false)
+  expect(schema.safeParse(base).success).toBe(false)
+})
 
 const codeOf = (run: () => unknown): string => {
   try {

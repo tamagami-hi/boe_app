@@ -100,11 +100,30 @@ describe("deriveStatements", () => {
 
     for (const period of periods) {
       expect(period.closingValuePaise).toBe(
-        period.openingValuePaise + period.contributionsPaise + period.growthPaise + period.reversalsPaise,
+        period.openingValuePaise +
+          period.contributionsPaise +
+          period.growthPaise +
+          period.reversalsPaise +
+          period.withdrawalsPaise,
       )
     }
     // A loss nets the period's growth negative rather than showing a reversal.
     expect(periods.at(-1)).toMatchObject({ growthPaise: -500_000n, reversalsPaise: 0n })
+  })
+
+  test("withdrawals carry into later months and rollover changes principal without inventing a contribution", () => {
+    const entries: LedgerEntry[] = [
+      contribution("2026-01-01", 100_000n),
+      growth("2026-02-01", 20_000n),
+      entry({ entryType: "withdrawal", effectiveDate: "2026-03-01", valueDeltaPaise: -10_000n }),
+      entry({ entryType: "maturity_reinvestment", effectiveDate: "2026-04-01", principalDeltaPaise: 10_000n }),
+      growth("2026-05-01", -1_000n),
+    ]
+    const periods = deriveStatements(entries)
+    expect(periods[2]).toMatchObject({ withdrawalsPaise: -10_000n, closingValuePaise: 110_000n, totalInvestmentPaise: 100_000n })
+    expect(periods[3]).toMatchObject({ openingValuePaise: 110_000n, closingValuePaise: 110_000n, totalInvestmentPaise: 110_000n, contributionsPaise: 0n })
+    expect(periods[4]).toMatchObject({ openingValuePaise: 110_000n, closingValuePaise: 109_000n })
+    expect(periods.at(-1)?.closingValuePaise).toBe(entries.reduce((total, item) => total + item.valueDeltaPaise, 0n))
   })
 
   test("months are ordered oldest first and short months end correctly", () => {

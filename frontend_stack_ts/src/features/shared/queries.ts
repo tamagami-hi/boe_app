@@ -29,6 +29,9 @@ import {
   resumeClientSip,
   retryAutoPaySetup,
   startAutoPaySip,
+  changeClientPassword,
+  redeemPasswordReset,
+  requestPasswordReset,
   startEmailVerification,
   verifyEmail,
 } from "~/api/generated/operations"
@@ -67,7 +70,7 @@ export const useFunds = (): PagedQuery<DataOf<typeof listClientFunds>> => {
   const api = useApi()
   return usePagedQuery({
     queryKey: qk.client.funds(),
-    staleTime: STALE.CATALOGUE,
+    staleTime: 0,
     fetchPage: async (after) =>
       api.request(listClientFunds, { query: { limit: LIST_PAGE_LIMIT, after } }),
   })
@@ -81,7 +84,7 @@ export const useFundCatalogue = (): PagedQuery<DataOf<typeof listClientFunds>> =
   const api = useApi()
   return usePagedQuery({
     queryKey: qk.client.funds(),
-    staleTime: STALE.CATALOGUE,
+    staleTime: 0,
     loadAll: true,
     fetchPage: async (after) =>
       api.request(listClientFunds, { query: { limit: LIST_PAGE_LIMIT, after } }),
@@ -93,7 +96,7 @@ export const useFund = (fundId: string): UseQueryResult<DataOf<typeof getClientF
   return useQuery({
     queryKey: qk.client.fund(fundId),
     enabled: fundId !== "",
-    staleTime: STALE.CATALOGUE,
+    staleTime: 0,
     queryFn: async () => (await api.request(getClientFund, { params: { fundId } })).data,
   })
 }
@@ -263,6 +266,41 @@ export const useMarkNotificationRead = (): UseMutationResult<void, Error, string
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: qk.client.notifications() })
+    },
+  })
+}
+
+export const useRequestPasswordReset = (): UseMutationResult<void, Error, string> => {
+  const api = useApi()
+  return useMutation({
+    mutationFn: async (email: string) => {
+      await api.request(requestPasswordReset, { body: { email } })
+    },
+  })
+}
+
+export type RedeemPasswordResetInput = Readonly<{ token: string; newPassword: string }>
+
+export const useRedeemPasswordReset = (): UseMutationResult<
+  void,
+  Error,
+  RedeemPasswordResetInput
+> => {
+  const api = useApi()
+  return useMutation({
+    mutationFn: async (input: RedeemPasswordResetInput) => {
+      await api.request(redeemPasswordReset, { body: input })
+    },
+  })
+}
+
+export type ChangePasswordInput = Readonly<{ currentPassword: string; newPassword: string }>
+
+export const useChangePassword = (): UseMutationResult<void, Error, ChangePasswordInput> => {
+  const api = useApi()
+  return useMutation({
+    mutationFn: async (input: ChangePasswordInput) => {
+      await api.request(changeClientPassword, { body: input })
     },
   })
 }

@@ -17,6 +17,10 @@
  */
 import type { ClientValueEntryType } from "../../db/types.js"
 
+const assertNever = (value: never): never => {
+  throw new Error(`unhandled client value entry type: ${String(value)}`)
+}
+
 export interface LedgerEntry {
   readonly id: string
   readonly fundId: string
@@ -37,6 +41,9 @@ export interface PortfolioSummary {
   readonly contributionCount: number
   readonly contributionTotalPaise: bigint
   readonly growthAdjustmentTotalPaise: bigint
+  readonly withdrawalCount: number
+  readonly withdrawalTotalPaise: bigint
+  readonly maturityReinvestmentTotalPaise: bigint
   readonly reversalCount: number
   readonly firstContributionDate: string | null
   readonly lastActivityDate: string | null
@@ -67,6 +74,9 @@ export const derivePortfolio = (entries: readonly LedgerEntry[]): PortfolioSumma
   let contributionCount = 0
   let contributionTotalPaise = 0n
   let growthAdjustmentTotalPaise = 0n
+  let withdrawalCount = 0
+  let withdrawalTotalPaise = 0n
+  let maturityReinvestmentTotalPaise = 0n
   let reversalCount = 0
   let firstContributionDate: string | null = null
   let lastActivityDate: string | null = null
@@ -86,6 +96,15 @@ export const derivePortfolio = (entries: readonly LedgerEntry[]): PortfolioSumma
       case "reversal":
         reversalCount += 1
         break
+      case "withdrawal":
+        withdrawalCount += 1
+        withdrawalTotalPaise += entry.valueDeltaPaise
+        break
+      case "maturity_reinvestment":
+        maturityReinvestmentTotalPaise += entry.principalDeltaPaise
+        break
+      default:
+        assertNever(entry.entryType)
     }
 
     if (entry.entryType === "contribution") {
@@ -108,6 +127,9 @@ export const derivePortfolio = (entries: readonly LedgerEntry[]): PortfolioSumma
     contributionCount,
     contributionTotalPaise,
     growthAdjustmentTotalPaise,
+    withdrawalCount,
+    withdrawalTotalPaise,
+    maturityReinvestmentTotalPaise,
     reversalCount,
     firstContributionDate,
     lastActivityDate,

@@ -8,9 +8,8 @@ import { monthsLabel } from "~/domain/plural"
 import { toPaise } from "~/domain/money"
 import { fundRiskLevel } from "~/domain/status"
 import { useEligibility, useFund } from "~/features/shared/queries"
-import { DonutChart } from "~/ui/charts/DonutChart"
+import { FundStockAllocation } from "./FundStockAllocation"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
-import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
@@ -40,8 +39,6 @@ const FundDetailScreen = (): React.ReactElement => {
       {(data) => {
         const { fund, disclosure, stocks } = data
         const canInvest = eligibility.data?.canInvest === true
-        const weighted = stocks.filter((stock) => stock.weightPercent !== null)
-        const quarter = stocks[0]?.quarterLabel ?? null
 
         return (
           <Page width="default">
@@ -124,34 +121,11 @@ Verify now
               )}
             </Card>
 
-            {stocks.length === 0 ? null : (
-              <Section
-                title="Holdings"
-                {...(quarter === null ? {} : { description: `As disclosed for ${quarter}.` })}
-              >
-                <Card>
-                  {weighted.length === 0 ? (
-                    <DataList>
-                      {stocks.map((stock) => (
-                        <DetailRow key={stock.stockName} label={stock.stockName}>
-                          {null}
-                        </DetailRow>
-                      ))}
-                    </DataList>
-                  ) : (
-                    <DonutChart
-                      centreLabel="Holdings"
-                      centreValue={String(weighted.length)}
-                      slices={weighted.map((stock) => ({
-                        key: stock.stockName,
-                        label: stock.stockName,
-                        value: Number(stock.weightPercent ?? "0"),
-                      }))}
-                    />
-                  )}
-                </Card>
-              </Section>
-            )}
+            <Section title="Holdings" description="Stocks held by this fund, grouped by reporting quarter.">
+              {stocks.length === 0 ? (
+                <p className={META_MUTED}>Holdings have not been disclosed for this fund yet.</p>
+              ) : <FundStockAllocation stocks={stocks} />}
+            </Section>
 
             {disclosure === null ? null : (
               <Section

@@ -26,7 +26,7 @@ import { registerAdminAumRoutes, type AdminAumDeps } from "../../src/routes/admi
 import { registerAdminCatalogRoutes } from "../../src/routes/adminCatalogRoutes.js"
 import { registerAdminFundGrowthPreviewRoutes } from "../../src/routes/adminFundGrowthPreviewRoutes.js"
 import { registerClientCatalogRoutes } from "../../src/routes/clientCatalogRoutes.js"
-import { createUncachedCache } from "../../src/cache/cache.js"
+import { createRedisCache, type Cache } from "../../src/cache/cache.js"
 import { createApplication } from "../../src/runtime/application.js"
 import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
 import { runSeed } from "../../src/scripts/seed.js"
@@ -34,6 +34,25 @@ import { runSeed } from "../../src/scripts/seed.js"
 let container: StartedPostgreSqlContainer
 let pool: Pool
 let app: FastifyInstance
+let cache: Cache
+
+const createCatalogTestCache = (): Cache => {
+  let entries: Readonly<Record<string, string>> = {}
+  return createRedisCache({
+    namespace: "aum-integration",
+    client: {
+      isReady: () => true,
+      get: async (key) => entries[key] ?? null,
+      set: async (key, value) => { entries = { ...entries, [key]: value }; return "OK" },
+      del: async (...keys) => {
+        entries = Object.fromEntries(Object.entries(entries).filter(([key]) => !keys.includes(key)))
+        return keys.length
+      },
+      scan: async (_cursor, _match, pattern) => ["0", Object.keys(entries).filter((key) => key.startsWith(pattern.slice(0, -1)))],
+      quit: async () => "OK",
+    },
+  })
+}
 
 let adminToken: string
 let adminId: string
@@ -50,6 +69,7 @@ const bearer = (token: string): Record<string, string> => ({ authorization: `Bea
 const makeUser = async (
   access: AccessTokenService,
   email: string,
+  channel: "admin_native" | "native" = "admin_native",
 ): Promise<{ userId: string; token: string }> => {
   const user = await pool.query<{ id: string }>(
     "insert into users (email_normalized, phone_e164, full_name, account_state, activated_at) " +
@@ -59,8 +79,8 @@ const makeUser = async (
   const userId = user.rows[0]!.id
   const session = await pool.query<{ id: string }>(
     "insert into auth_sessions (user_id, channel, refresh_key_version, expires_at) " +
-      "values ($1,'native','rt1', now() + interval '90 days') returning id",
-    [userId],
+      "values ($1,$2,'rt1', now() + interval '90 days') returning id",
+    [userId, channel],
   )
   const token = await access.sign({ sub: userId, sid: session.rows[0]!.id })
   return { userId, token }
@@ -170,7 +190,9 @@ beforeAll(async () => {
     config: { cookieSecure: false, originAllowlist: [] },
   }
   const fundAumRepository = createFundAumRepository()
+  cache = createCatalogTestCache()
   const aumDeps: AdminAumDeps = {
+    cache,
     webAuth,
     unitOfWork,
     database,
@@ -192,7 +214,7 @@ beforeAll(async () => {
         unitOfWork,
         database,
         clock,
-        cache: createUncachedCache(),
+        cache,
         config: { cursorKey: randomBytes(32), idempotencyTtlMs: 86_400_000 },
         catalogRepository: createAdminCatalogRepository(),
         aumRepository: fundAumRepository,
@@ -204,8 +226,8 @@ beforeAll(async () => {
         database,
         clientWeb: { originAllowlist: [] },
         clock,
-        cache: createUncachedCache(),
-        config: { cursorKey: randomBytes(32), catalogTtlMs: 0 },
+        cache,
+        config: { cursorKey: randomBytes(32), catalogTtlMs: 60_000 },
         clientCatalogRepository: createClientCatalogRepository(),
       })
     },
@@ -220,7 +242,7 @@ beforeAll(async () => {
   supportToken = support.token
   await grantRole(support.userId, "support")
 
-  const client = await makeUser(accessTokenService, "aum-client@example.com")
+  const client = await makeUser(accessTokenService, "aum-client@example.com", "native")
   clientToken = client.token
 }, 200_000)
 
@@ -341,6 +363,32 @@ describe("initialize (integration)", () => {
 })
 
 describe("individual growth (integration)", () => {
+  test("absolute fund size changes derive audited deltas from the latest value and replay safely", async () => {
+    const fundId = await seedFund("aum-target")
+    await initialize(fundId, "1000", `target-init-${randomUUID()}`)
+    const url = `/v1/admin/aum/funds/${fundId}/growth`
+    const body = { targetAumPaise: "1500", asOfDate: "2026-08-01", reasonCode: "fund_size_adjustment" }
+    const key = `target-${randomUUID()}`
+    const increased = asInjected(await postAum(url, adminToken, body, key))
+    expect(increased.statusCode).toBe(201)
+    expect(dataOf(increased)).toMatchObject({ snapshot: { aumPaise: "1500" }, deltaPaise: "500" })
+    const replay = asInjected(await postAum(url, adminToken, body, key))
+    expect(replay.statusCode).toBe(201)
+    expect(metaOf(replay).idempotencyReplay).toBe(true)
+    const reduced = asInjected(await postAum(url, adminToken, { ...body, targetAumPaise: "250" }, `target-down-${randomUUID()}`))
+    expect(reduced.statusCode).toBe(201)
+    expect(dataOf(reduced)).toMatchObject({ snapshot: { aumPaise: "250" }, deltaPaise: "-1250" })
+    const zero = asInjected(await postAum(url, adminToken, { ...body, targetAumPaise: "0" }, `target-zero-${randomUUID()}`))
+    expect(zero.statusCode).toBe(201)
+    expect(dataOf(zero)).toMatchObject({ snapshot: { aumPaise: "0" }, deltaPaise: "-250" })
+    const unchanged = asInjected(await postAum(url, adminToken, { ...body, targetAumPaise: "0" }, `target-same-${randomUUID()}`))
+    expect(unchanged.statusCode).toBe(400)
+    expect(errorOf(unchanged)).toBe("VALIDATION_FAILED")
+    expect(await snapshotCount(fundId)).toBe(4)
+    const denied = asInjected(await postAum(url, supportToken, body, `target-denied-${randomUUID()}`))
+    expect(denied.statusCode).toBe(403)
+  })
+
   test("growth cannot be dated before the basis it grows from", async () => {
     const fundId = await seedFund("aum-grow-backdate")
     await initialize(fundId, "10000000", `bd0-${randomUUID()}`, "2026-07-31")
@@ -836,13 +884,24 @@ describe("catalogue AUM projections (integration)", () => {
     )
     await pool.query("update funds set current_published_version_id = $1 where id = $2", [version.rows[0]!.id, fundId])
 
+    const clientDetail = async () => {
+      const response = asInjected(await app.inject({ method: "GET", url: `/v1/client/funds/${fundId}`, headers: bearer(clientToken) }))
+      expect(response.statusCode).toBe(200)
+      return dataOf<{ fund: { fundSize: { aumPaise: string } | null } }>(response).fund.fundSize
+    }
+    expect(await clientDetail()).toBeNull()
+    const hitsBefore = cache.stats().hits
+    await clientDetail()
+    expect(cache.stats().hits).toBeGreaterThan(hitsBefore)
     await initialize(fundId, "1000", `p0-${randomUUID()}`, "2026-06-30")
+    expect((await clientDetail())?.aumPaise).toBe("1000")
     const grown = asInjected(await postAum(`/v1/admin/aum/funds/${fundId}/growth`, adminToken, {
       growthPaise: "250",
       asOfDate: "2026-07-31",
       reasonCode: "monthly_mark",
     }, `p1-${randomUUID()}`))
     expect(grown.statusCode).toBe(201)
+    expect((await clientDetail())?.aumPaise).toBe("1250")
     const juneId = dataOf<{ items: { asOfDate: string; id: string }[] }>(
       asInjected(await app.inject({
         method: "GET",
@@ -878,5 +937,12 @@ describe("catalogue AUM projections (integration)", () => {
     )
     expect(listed?.fundSize).toMatchObject({ aumPaise: "1250", asOfDate: "2026-07-31" })
     expect((listed?.fundSize as { lastUpdatedAt: string | null }).lastUpdatedAt).not.toBeNull()
+    const resized = asInjected(await postAum(`/v1/admin/aum/funds/${fundId}/growth`, adminToken, {
+      targetAumPaise: "750",
+      asOfDate: "2026-08-01",
+      reasonCode: "fund_size_adjustment",
+    }, `p3-${randomUUID()}`))
+    expect(resized.statusCode).toBe(201)
+    expect((await clientDetail())?.aumPaise).toBe("750")
   })
 })

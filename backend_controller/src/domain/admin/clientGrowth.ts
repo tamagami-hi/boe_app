@@ -1,28 +1,11 @@
-/**
- * Client growth domain rules (core mechanism spec §8.1/§8.2/§8.5).
- *
- * An admin adjusts client-displayed values by posting `growth_adjustment`
- * entries to the client value ledger, grouped under a `client_growth_batches`
- * header. This module is the pure computation half of that: signed delta
- * calculation (reusing the shared symmetric half-up basis-point rounding),
- * eligibility and preflight rules for collective batches, and the preview basis
- * hash a commit must reproduce.
- *
- * Boundary rules enforced by the architecture guard:
- *   - nothing here reads or writes fund AUM — client value only;
- *   - no proportional distribution of a shared currency total exists: a
- *     collective batch is either one rate applied independently per position or
- *     an explicit signed amount per named position, preserved exactly.
- */
 import { createHash } from "node:crypto"
 
 import { AppError } from "../../http/errorCatalog.js"
 import { symmetricHalfUpBasisPoints } from "../shared/moneyRounding.js"
 
-/** Lowest permitted signed rate: -10,000 bps = -100.00% (§8.1). */
-export const MIN_GROWTH_BASIS_POINTS = -10_000
+export const MIN_GROWTH_BASIS_POINTS = -2_000
+export const MAX_GROWTH_BASIS_POINTS = 2_000
 
-/** Largest collective batch; bigger requests are rejected, never chunked (§8.2). */
 export const MAX_COLLECTIVE_CLIENT_TARGETS = 500
 
 export type GrowthInstruction =
@@ -36,15 +19,19 @@ export type CollectiveGrowthInstruction =
       items: readonly Readonly<{ userId: string; growthPaise: bigint }>[]
     }>
 
-/** One contribution-bearing ledger position: the basis a delta applies to. */
-export interface ClientPositionBasis {
-  readonly userId: string
+export interface GrowthBasis {
+  readonly principalPaise: bigint
   readonly currentValuePaise: bigint
+}
+
+export interface ClientPositionBasis extends GrowthBasis {
+  readonly userId: string
   readonly latestEntryId: string | null
 }
 
 export interface PlannedGrowthTarget {
   readonly userId: string
+  readonly principalPaise: bigint
   readonly beforePaise: bigint
   readonly deltaPaise: bigint
   readonly afterPaise: bigint
@@ -52,31 +39,28 @@ export interface PlannedGrowthTarget {
 
 export interface CollectiveGrowthPlan {
   readonly instructionType: "percentage" | "explicit_deltas"
-  /** Targets in deterministic (userId-sorted) order; doubles as lock order. */
   readonly targets: readonly PlannedGrowthTarget[]
-  /** Contribution-bearing positions skipped because their value is not > 0. */
   readonly excludedCount: number
   readonly totalDeltaPaise: bigint
 }
 
 export interface CollectiveGrowthLimits {
   readonly maxTargets: number
-  readonly maxBasisPoints: bigint
 }
 
 const byUserId = <T extends { readonly userId: string }>(left: T, right: T): number =>
   left.userId < right.userId ? -1 : left.userId > right.userId ? 1 : 0
 
-const assertBasisPointsInRange = (growthBasisPoints: bigint, maxBasisPoints: bigint): void => {
+const assertBasisPointsInRange = (growthBasisPoints: bigint): void => {
   if (
     growthBasisPoints === 0n ||
     growthBasisPoints < BigInt(MIN_GROWTH_BASIS_POINTS) ||
-    growthBasisPoints > maxBasisPoints
+    growthBasisPoints > BigInt(MAX_GROWTH_BASIS_POINTS)
   ) {
     throw new AppError("VALIDATION_FAILED", {
       fields: {
         growthBasisPoints: [
-          `Must be a non-zero rate between ${MIN_GROWTH_BASIS_POINTS} and ${maxBasisPoints.toString()} basis points.`,
+          `Must be a non-zero rate between ${String(MIN_GROWTH_BASIS_POINTS)} and ${String(MAX_GROWTH_BASIS_POINTS)} basis points.`,
         ],
       },
     })
@@ -99,22 +83,27 @@ const assertNonNegativeAfter = (afterPaise: bigint): void => {
   }
 }
 
-/**
- * The signed value delta one growth instruction produces against a position
- * basis. Zero deltas are rejected: the ledger never stores zero rows.
- */
-export const computeGrowthDelta = (
-  basisPaise: bigint,
-  instruction: GrowthInstruction,
-  maxBasisPoints: bigint,
-): bigint => {
+const assertPositivePrincipal = (principalPaise: bigint): void => {
+  if (principalPaise <= 0n) {
+    throw new AppError("VALIDATION_FAILED", {
+      fields: {
+        growthBasisPoints: [
+          "A rate needs an invested amount to measure against. Use an exact amount instead.",
+        ],
+      },
+    })
+  }
+}
+
+const computeGrowthDelta = (basis: GrowthBasis, instruction: GrowthInstruction): bigint => {
   let delta: bigint
   if (instruction.kind === "amount") {
     assertNonZeroAmount(instruction.growthPaise)
     delta = instruction.growthPaise
   } else {
-    assertBasisPointsInRange(instruction.growthBasisPoints, maxBasisPoints)
-    delta = symmetricHalfUpBasisPoints(basisPaise, instruction.growthBasisPoints)
+    assertBasisPointsInRange(instruction.growthBasisPoints)
+    assertPositivePrincipal(basis.principalPaise)
+    delta = symmetricHalfUpBasisPoints(basis.principalPaise, instruction.growthBasisPoints)
   }
   if (delta === 0n) {
     throw new AppError("VALIDATION_FAILED", {
@@ -124,16 +113,24 @@ export const computeGrowthDelta = (
   return delta
 }
 
-/** §8.1: one (userId, fundId) position; the principal delta is always zero. */
 export const planIndividualGrowth = (
-  currentValuePaise: bigint,
+  basis: GrowthBasis,
   instruction: GrowthInstruction,
-  maxBasisPoints: bigint,
-): Readonly<{ beforePaise: bigint; deltaPaise: bigint; afterPaise: bigint }> => {
-  const deltaPaise = computeGrowthDelta(currentValuePaise, instruction, maxBasisPoints)
-  const afterPaise = currentValuePaise + deltaPaise
+): Readonly<{
+  principalPaise: bigint
+  beforePaise: bigint
+  deltaPaise: bigint
+  afterPaise: bigint
+}> => {
+  const deltaPaise = computeGrowthDelta(basis, instruction)
+  const afterPaise = basis.currentValuePaise + deltaPaise
   assertNonNegativeAfter(afterPaise)
-  return { beforePaise: currentValuePaise, deltaPaise, afterPaise }
+  return {
+    principalPaise: basis.principalPaise,
+    beforePaise: basis.currentValuePaise,
+    deltaPaise,
+    afterPaise,
+  }
 }
 
 const NO_ELIGIBLE_POSITIONS = (): AppError =>
@@ -141,14 +138,6 @@ const NO_ELIGIBLE_POSITIONS = (): AppError =>
     message: "The fund has no eligible client positions for a growth batch.",
   })
 
-/**
- * §8.2: plan one collective batch within a single fund. `positions` is every
- * contribution-bearing position in the fund (the repository pre-filters to
- * unreversed rows); eligible positions are those with current value > 0.
- *
- * Any rule violation throws and produces no plan, so a commit that applies the
- * plan row-by-row is all-or-nothing by construction.
- */
 export const planCollectiveClientGrowth = (
   positions: readonly ClientPositionBasis[],
   instruction: CollectiveGrowthInstruction,
@@ -158,25 +147,31 @@ export const planCollectiveClientGrowth = (
   const excludedCount = positions.length - eligible.length
 
   if (instruction.kind === "percentage") {
-    assertBasisPointsInRange(instruction.growthBasisPoints, limits.maxBasisPoints)
+    assertBasisPointsInRange(instruction.growthBasisPoints)
     if (eligible.length === 0) throw NO_ELIGIBLE_POSITIONS()
     if (eligible.length > limits.maxTargets) {
       throw new AppError("VALIDATION_FAILED", {
-        fields: { fundId: [`The fund has more than ${limits.maxTargets} eligible positions.`] },
+        fields: { fundId: [`The fund has more than ${String(limits.maxTargets)} eligible positions.`] },
       })
     }
     const targets = eligible
       .map((p) => ({
         userId: p.userId,
+        principalPaise: p.principalPaise,
         beforePaise: p.currentValuePaise,
-        deltaPaise: symmetricHalfUpBasisPoints(p.currentValuePaise, instruction.growthBasisPoints),
+        deltaPaise: symmetricHalfUpBasisPoints(p.principalPaise, instruction.growthBasisPoints),
       }))
-      // A rate in [-100%, max] can never drive a positive basis negative, so
-      // the only preflight here is dropping calculated zero deltas (§8.2).
       .filter((target) => target.deltaPaise !== 0n)
       .map((target) => ({ ...target, afterPaise: target.beforePaise + target.deltaPaise }))
       .sort(byUserId)
     if (targets.length === 0) throw NO_ELIGIBLE_POSITIONS()
+    if (targets.some((target) => target.afterPaise < 0n)) {
+      throw new AppError("VALIDATION_FAILED", {
+        fields: {
+          growthBasisPoints: ["This rate would take at least one position below zero."],
+        },
+      })
+    }
     return {
       instructionType: "percentage",
       targets,
@@ -190,7 +185,7 @@ export const planCollectiveClientGrowth = (
   }
   if (instruction.items.length > limits.maxTargets) {
     throw new AppError("VALIDATION_FAILED", {
-      fields: { items: [`Must list at most ${limits.maxTargets} targets.`] },
+      fields: { items: [`Must list at most ${String(limits.maxTargets)} targets.`] },
     })
   }
   const seen = new Set<string>()
@@ -217,6 +212,7 @@ export const planCollectiveClientGrowth = (
     assertNonNegativeAfter(afterPaise)
     return {
       userId: item.userId,
+      principalPaise: position.principalPaise,
       beforePaise: position.currentValuePaise,
       deltaPaise: item.growthPaise,
       afterPaise,
@@ -231,12 +227,6 @@ export const planCollectiveClientGrowth = (
   }
 }
 
-/**
- * §8.5 preview/commit hash. The input is the command identity, the fund, and
- * every contribution-bearing position's (userId, currentValue, latestEntryId)
- * sorted by userId — including zero-value positions, so a basis change
- * anywhere in the fund invalidates the preview.
- */
 export const computeClientGrowthBasisHash = (
   command: string,
   fundId: string,
@@ -248,7 +238,12 @@ export const computeClientGrowthBasisHash = (
       JSON.stringify({
         command,
         fundId,
-        positions: sorted.map((p) => [p.userId, p.currentValuePaise.toString(), p.latestEntryId]),
+        positions: sorted.map((p) => [
+          p.userId,
+          p.principalPaise.toString(),
+          p.currentValuePaise.toString(),
+          p.latestEntryId,
+        ]),
       }),
     )
     .digest("hex")

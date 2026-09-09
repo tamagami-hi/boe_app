@@ -42,8 +42,8 @@ const ENTRIES = [
   },
   {
     to: "/profile/security",
-    title: "Device security",
-    hint: "A PIN and biometric lock for this device only.",
+    title: "Security",
+    hint: "Change your password, and lock this device with a PIN.",
   },
   {
     to: "/profile/support",

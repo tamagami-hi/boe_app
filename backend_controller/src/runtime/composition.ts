@@ -74,9 +74,16 @@ import { createAdminCatalogRepository } from "../repositories/adminCatalogReposi
 import { createFundAumRepository } from "../repositories/fundAumRepository.js"
 import { createAdminContentRepository } from "../repositories/adminContentRepository.js"
 import { createAdminOversightRepository } from "../repositories/adminOversightRepository.js"
+import { createMaturityRepository } from "../repositories/maturityRepository.js"
+import { registerAdminMaturityRoutes } from "../routes/adminMaturityRoutes.js"
 import { createClientGrowthRepository } from "../repositories/clientGrowthRepository.js"
+import { createClientPositionRepository } from "../repositories/clientPositionRepository.js"
+import { registerAdminClientPositionRoutes } from "../routes/adminClientPositionRoutes.js"
 import { registerClientAccountRoutes } from "../routes/clientAccountRoutes.js"
 import { registerClientEmailVerificationRoutes } from "../routes/clientEmailVerificationRoutes.js"
+import { passwordResetUrlBase, registerPasswordRoutes } from "../routes/passwordRoutes.js"
+import { registerAdminClientOnboardingRoutes } from "../routes/adminClientOnboardingRoutes.js"
+import { createPasswordTokenRepository } from "../repositories/passwordTokenRepository.js"
 import { registerClientOrderRoutes } from "../routes/clientOrderRoutes.js"
 import { registerClientSipPlanRoutes } from "../routes/clientSipPlanRoutes.js"
 import { registerClientAutoPaySipRoutes } from "../routes/clientAutoPaySipRoutes.js"
@@ -185,6 +192,9 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
   const consentRepository = createConsentRepository()
   const userRepository = createUserRepository()
   const credentialRepository = createCredentialRepository()
+  const passwordTokenRepository = createPasswordTokenRepository()
+  const clientGrowthRepository = createClientGrowthRepository()
+  const clientPositionRepository = createClientPositionRepository()
   const authSessionRepository = createAuthSessionRepository()
   const auditRepository = createAuditRepository()
   const loginEventRepository = createLoginEventRepository()
@@ -370,6 +380,50 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       },
     })
 
+    registerPasswordRoutes(application, {
+      accessTokenService,
+      database,
+      clientWeb,
+      unitOfWork,
+      clock,
+      crypto,
+      passwordTokenRepository,
+      credentialRepository,
+      authSessionRepository,
+      userRepository,
+      auditRepository,
+      emailSender,
+      config: {
+        tokenTtlMs: serverConfig.emailVerification.codeTtlMs,
+        maxAttempts: serverConfig.emailVerification.maxAttempts,
+        requestCooldownMs: serverConfig.emailVerification.resendCooldownMs,
+        resetUrlBase: passwordResetUrlBase(serverConfig.web.originAllowlist),
+      },
+    })
+
+    registerAdminClientOnboardingRoutes(application, {
+      webAuth,
+      unitOfWork,
+      idempotencyRepository,
+      clock,
+      crypto,
+      applicationRepository,
+      emailVerificationRepository,
+      passwordTokenRepository,
+      credentialRepository,
+      authSessionRepository,
+      userRepository,
+      auditRepository,
+      emailSender,
+      config: {
+        tokenTtlMs: serverConfig.emailVerification.codeTtlMs,
+        maxAttempts: serverConfig.emailVerification.maxAttempts,
+        requestCooldownMs: serverConfig.emailVerification.resendCooldownMs,
+        resetUrlBase: passwordResetUrlBase(serverConfig.web.originAllowlist),
+        idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
+      },
+    })
+
     registerClientAccountRoutes(application, {
       accessTokenService,
       database,
@@ -488,6 +542,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
     })
 
     const adminAumDeps = {
+      cache,
       webAuth,
       unitOfWork,
       database,
@@ -534,9 +589,35 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       clock,
       config: {
         idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
-        maxBasisPoints: serverConfig.clientGrowth.maxBasisPoints,
       },
-      clientGrowthRepository: createClientGrowthRepository(),
+      clientGrowthRepository,
+      auditRepository,
+      idempotencyRepository,
+      notificationRepository,
+    })
+
+    registerAdminClientPositionRoutes(application, {
+      webAuth,
+      unitOfWork,
+      database,
+      clock,
+      config: { idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
+      clientPositionRepository,
+      clientGrowthRepository,
+      userRepository,
+      auditRepository,
+      idempotencyRepository,
+      notificationRepository,
+    })
+
+    registerAdminMaturityRoutes(application, {
+      webAuth,
+      unitOfWork,
+      database,
+      clock,
+      config: { idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
+      maturityRepository: createMaturityRepository(),
+      clientGrowthRepository,
       auditRepository,
       idempotencyRepository,
       notificationRepository,

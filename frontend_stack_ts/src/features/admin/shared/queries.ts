@@ -163,8 +163,12 @@ export const useInitializeAum = (fundId: string) => {
       })
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: qk.admin.fundAumHistory(fundId, "all") })
-      await queryClient.invalidateQueries({ queryKey: qk.admin.fund(fundId) })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: qk.admin.fund(fundId) }),
+        queryClient.invalidateQueries({ queryKey: ["admin", "funds"] }),
+        queryClient.invalidateQueries({ queryKey: qk.client.fund(fundId) }),
+        queryClient.invalidateQueries({ queryKey: qk.client.funds() }),
+      ])
     },
   })
 }
@@ -173,16 +177,20 @@ export const useAppendAumGrowth = (fundId: string) => {
   const api = useApi()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (body: AumGrowthInput) => {
+    mutationFn: async ({ body, idempotencyKey }: Readonly<{ body: AumGrowthInput; idempotencyKey: string }>) => {
       await api.request(appendAdminFundAumGrowth, {
         params: { fundId },
         body,
-        idempotencyKey: mintIdempotencyKey(),
+        idempotencyKey,
       })
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: qk.admin.fundAumHistory(fundId, "all") })
-      await queryClient.invalidateQueries({ queryKey: qk.admin.fund(fundId) })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: qk.admin.fund(fundId) }),
+        queryClient.invalidateQueries({ queryKey: ["admin", "funds"] }),
+        queryClient.invalidateQueries({ queryKey: qk.client.fund(fundId) }),
+        queryClient.invalidateQueries({ queryKey: qk.client.funds() }),
+      ])
     },
   })
 }

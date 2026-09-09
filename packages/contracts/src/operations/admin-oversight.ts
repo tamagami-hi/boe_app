@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 import { createSuccessEnvelopeSchema } from "../envelope.js"
-import { IsoDateTime, Paise, Uuid } from "../scalars.js"
+import { EmailInput, FullName, IsoDateTime, Paise, Uuid } from "../scalars.js"
 import {
   ADMIN_PAGED_READ_ERRORS,
   ADMIN_READ_ERRORS,
@@ -15,6 +15,7 @@ import {
   OptionalAdminMutationHeaders,
   RequiredAdminMutationHeaders,
 } from "./admin-shared.js"
+import { OrderType } from "./client-orders.js"
 import { defineOperation, MAX_JSON_BODY_BYTES } from "./descriptor.js"
 
 const NullableIsoDateTime = IsoDateTime.nullable()
@@ -261,7 +262,7 @@ export const AdminUserOrder = z.strictObject({
   fundSlug: z.string(),
   fundName: z.string().nullable(),
   sipPlanId: Uuid.nullable(),
-  type: z.enum(["lump_sum", "sip_installment"]),
+  type: OrderType,
   status: AdminOrderState,
   amountPaise: Paise,
   currency: z.string(),
@@ -436,6 +437,37 @@ export const listAdminAuditEvents = defineOperation({
   errorCodes: [...ADMIN_PAGED_READ_ERRORS],
 })
 
+export const AdminCreateClientBody = z.strictObject({
+  fullName: FullName,
+  email: EmailInput,
+  phone: z.string().trim().min(8).max(32),
+})
+export type AdminCreateClientBody = z.infer<typeof AdminCreateClientBody>
+
+export const AdminCreatedClientData = z.strictObject({
+  userId: Uuid,
+  accountState: z.literal("active"),
+  emailVerification: z.literal("pending"),
+})
+export type AdminCreatedClientData = z.infer<typeof AdminCreatedClientData>
+
+export const createAdminClient = defineOperation({
+  operationId: "createAdminClient",
+  method: "POST",
+  path: "/v1/admin/clients",
+  authChannel: "admin-web",
+  credentialPolicy: "admin-session-cookie-and-csrf",
+  idempotency: "required-key",
+  request: {
+    body: AdminCreateClientBody,
+    headers: RequiredAdminMutationHeaders,
+    mediaType: "application/json",
+    maxBodyBytes: MAX_JSON_BODY_BYTES,
+  },
+  success: { status: 201, schema: createSuccessEnvelopeSchema(AdminCreatedClientData) },
+  errorCodes: [...ADMIN_WRITE_ERRORS, "STATE_CONFLICT"],
+})
+
 export const ADMIN_OVERSIGHT_OPERATIONS = Object.freeze([
   listAdminApplications,
   getAdminApplication,
@@ -448,4 +480,5 @@ export const ADMIN_OVERSIGHT_OPERATIONS = Object.freeze([
   reinstateAdminUser,
   closeAdminUser,
   listAdminAuditEvents,
+  createAdminClient,
 ])
