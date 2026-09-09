@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" viewBox="258.988 105.645 292.122 598.707" height="1080" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <defs>
+    <clipPath id="a">
+      <path d="M258.988 155.645H551.11v228.69H258.99Zm0 0"/>
+    </clipPath>
+    <clipPath id="b">
+      <path d="M541.14 308.066c5.962 -11.726 9.872 -25.054 9.872 -38.136s-3.356 -25.672 -9.313 -37.274c-0.187 -0.246 -0.187 -0.492 -0.375 -0.738 -23.84 -43.566 -86.793 -75.656 -157.5 -76.273H258.988v228.69H383.73c71.176 -0.616 134.13 -32.21 157.41 -76.269m0 0"/>
+    </clipPath>
+    <clipPath id="d">
+      <path d="M0.988 0.645H293.04v228.69H0.99Zm0 0"/>
+    </clipPath>
+    <clipPath id="e">
+      <path d="M283.14 153.066c5.962 -11.726 9.872 -25.054 9.872 -38.136s-3.356 -25.672 -9.313 -37.274c-0.187 -0.246 -0.187 -0.492 -0.375 -0.738 -23.84 -43.566 -86.793 -75.656 -157.5 -76.273H0.988v228.69H125.73c71.176 -0.616 134.13 -32.21 157.41 -76.269m0 0"/>
+    </clipPath>
+    <clipPath id="c">
+      <path d="M0 0h294v230H0z"/>
+    </clipPath>
+    <clipPath id="f">
+      <path d="M258.988 425.66H551.11v228.692H258.99Zm0 0"/>
+    </clipPath>
+    <clipPath id="g">
+      <path d="M541.14 578.082c5.962 -11.727 9.872 -25.055 9.872 -38.137s-3.356 -25.672 -9.313 -37.273c-0.187 -0.246 -0.187 -0.492 -0.375 -0.738 -23.84 -43.567 -86.793 -75.657 -157.5 -76.274H258.988v228.692H383.73c71.176 -0.618 134.13 -32.211 157.41 -76.27m0 0"/>
+    </clipPath>
+    <clipPath id="i">
+      <path d="M0.988 0.66H293.04v228.692H0.99Zm0 0"/>
+    </clipPath>
+    <clipPath id="j">
+      <path d="M283.14 153.082c5.962 -11.727 9.872 -25.055 9.872 -38.137s-3.356 -25.672 -9.313 -37.273c-0.187 -0.246 -0.187 -0.492 -0.375 -0.738 -23.84 -43.567 -86.793 -75.657 -157.5 -76.274H0.988v228.692H125.73c71.176 -0.618 134.13 -32.211 157.41 -76.27m0 0"/>
+    </clipPath>
+    <clipPath id="h">
+      <path d="M0 0h294v230H0z"/>
+    </clipPath>
+    <clipPath id="k">
+      <path d="M279 250h252v178H279Zm0 0"/>
+    </clipPath>
+    <clipPath id="l">
+      <path d="m279.68 318.691 135.3 -106.28L530.395 359.34 395.094 465.617Zm0 0"/>
+    </clipPath>
+    <clipPath id="m">
+      <path d="m366.035 250.86 -86.355 67.83 164.289 108.391 86.355 -67.832Zm0 0"/>
+    </clipPath>
+    <clipPath id="o">
+      <path d="M0.602 0.8h250.796v176.4H0.602Zm0 0"/>
+    </clipPath>
+    <clipPath id="p">
+      <path d="m0.68 68.691 135.3 -106.28L251.395 109.34 116.094 215.617Zm0 0"/>
+    </clipPath>
+    <clipPath id="q">
+      <path d="M87.035 0.86 0.68 68.69l164.289 108.391 86.355 -67.832Zm0 0"/>
+    </clipPath>
+    <clipPath id="n">
+      <path d="M0 0h252v178H0z"/>
+    </clipPath>
+    <clipPath id="r">
+      <path d="M267 366h276v201H267Zm0 0"/>
+    </clipPath>
+    <clipPath id="s">
+      <path d="m381.715 324.746 160.387 99.73 -114.145 183.567 -160.383 -99.73Zm0 0"/>
+    </clipPath>
+    <clipPath id="t">
+      <path d="m448.434 366.234 93.668 58.243 -180.54 141.562 -93.667 -58.242Zm0 0"/>
+    </clipPath>
+    <clipPath id="v">
+      <path d="M0.84 0h274.32v200.16H0.84Zm0 0"/>
+    </clipPath>
+    <clipPath id="w">
+      <path d="m114.715 -41.254 160.387 99.73 -114.145 183.567L0.574 142.313Zm0 0"/>
+    </clipPath>
+    <clipPath id="x">
+      <path d="m181.434 0.234 93.668 58.243 -180.54 141.562L0.895 141.797Zm0 0"/>
+    </clipPath>
+    <clipPath id="u">
+      <path d="M0 0h276v201H0z"/>
+    </clipPath>
+  </defs>
+  <path fill="#fff" d="M-81 -81h972v972H-81z"/>
+  <path fill="#ff0000" d="M-81 -81h972v972H-81z"/>
+  <g clip-path="url(#a)">
+    <g clip-path="url(#b)">
+      <g clip-path="url(#c)" transform="translate(258 155)">
+        <g clip-path="url(#d)">
+          <g clip-path="url(#e)">
+            <path fill="#fff" d="M0.988 229.336V0.645H293.11v228.69Zm0 0"/>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+  <g clip-path="url(#f)">
+    <g clip-path="url(#g)">
+      <g clip-path="url(#h)" transform="translate(258 425)">
+        <g clip-path="url(#i)">
+          <g clip-path="url(#j)">
+            <path fill="#fff" d="M0.988 229.352V0.66H293.11v228.692Zm0 0"/>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+  <g clip-path="url(#k)">
+    <g clip-path="url(#l)">
+      <g clip-path="url(#m)">
+        <g clip-path="url(#n)" transform="translate(279 250)">
+          <g clip-path="url(#o)">
+            <g clip-path="url(#p)">
+              <g clip-path="url(#q)">
+                <path fill="#ff0000" d="m0.68 68.691 135.3 -106.28L251.395 109.34 116.094 215.617Zm0 0"/>
+              </g>
+            </g>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+  <g clip-path="url(#r)">
+    <g clip-path="url(#s)">
+      <g clip-path="url(#t)">
+        <g clip-path="url(#u)" transform="translate(259 375)">
+          <g clip-path="url(#v)">
+            <g clip-path="url(#w)">
+              <g clip-path="url(#x)">
+                <path fill="#ff0000" d="m0.68 109.336 135.3 106.281 115.415 -146.93L116.094 -37.59Zm0 0"/>
+              </g>
+            </g>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

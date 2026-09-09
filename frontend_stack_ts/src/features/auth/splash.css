@@ -1,0 +1,98 @@
+.be-splash {
+  position: fixed;
+  inset: 0;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: 1fr auto minmax(9rem, 1fr) auto;
+  justify-items: center;
+  overflow: auto;
+  padding: calc(24px + var(--be-safe-top)) calc(24px + var(--be-safe-right)) calc(24px + var(--be-safe-bottom)) calc(24px + var(--be-safe-left));
+  background: var(--be-bg);
+  color: var(--be-fg);
+}
+
+.be-splash-brand {
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.be-splash-logo {
+  display: block;
+  width: 52px;
+  height: 104px;
+  object-fit: contain;
+  flex-shrink: 0;
+  animation: be-splash-logo-in 640ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.be-splash-wordmark {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.be-splash-mask {
+  overflow: hidden;
+  padding-block: 4px;
+}
+
+.be-splash-name {
+  display: block;
+  font-family: var(--be-font-display);
+  font-size: clamp(28px, 9vw, 40px);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  animation: be-splash-name-in 720ms cubic-bezier(0.22, 1, 0.36, 1) 560ms both;
+}
+
+.be-splash-role {
+  display: block;
+  color: var(--be-fg-muted);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  animation: be-splash-name-in 720ms cubic-bezier(0.22, 1, 0.36, 1) 760ms both;
+}
+
+.be-splash-status {
+  grid-row: 3;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: min(100%, 340px);
+  margin-top: 32px;
+}
+
+.be-splash-footer {
+  grid-row: 4;
+  color: var(--be-fg-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+@keyframes be-splash-logo-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes be-splash-name-in {
+  from { opacity: 0; transform: translateX(-100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .be-splash-logo,
+  .be-splash-name,
+  .be-splash-role {
+    animation: none;
+  }
+}

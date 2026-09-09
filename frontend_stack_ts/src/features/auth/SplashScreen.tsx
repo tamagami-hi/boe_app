@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react"
 import { Navigate } from "react-router-dom"
 
-import { AuthLayout } from "~/app/layouts/AuthLayout"
+import logoMark from "~/assets/logo-mark.svg"
+import logoAdmin from "~/assets/logo-admin.svg"
 import { useSession } from "~/app/providers/SessionProvider"
 import { useAuthPort } from "~/features/auth/authPort"
 import { Button } from "~/ui/primitives/Button"
 import { Alert, Spinner } from "~/ui/primitives/Feedback"
+
+import "./splash.css"
+
+const SPLASH_MIN_VISIBLE_MS = 1_600
 
 type Reachability = "probing" | "reachable" | "unreachable"
 
@@ -14,6 +19,14 @@ const SplashScreen = (): React.ReactElement => {
   const session = useSession()
   const [reachability, setReachability] = useState<Reachability>("probing")
   const [attempt, setAttempt] = useState(0)
+  const [hasShownBrand, setHasShownBrand] = useState(false)
+  const isAdmin = session.scope === "admin"
+  const needsRetry = reachability === "unreachable" || (session.status === "restoring" && session.error !== null)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => { setHasShownBrand(true) }, SPLASH_MIN_VISIBLE_MS)
+    return () => { window.clearTimeout(timer) }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -31,38 +44,46 @@ const SplashScreen = (): React.ReactElement => {
     }
   }, [port, attempt])
 
-  if (reachability === "reachable" && session.status === "authenticated") {
+  if (hasShownBrand && reachability === "reachable" && session.status === "authenticated") {
     return <Navigate to={port.homePath} replace />
   }
 
-  if (reachability === "reachable" && session.status === "anonymous") {
+  if (hasShownBrand && reachability === "reachable" && session.status === "anonymous") {
     return <Navigate to={port.loginPath} replace />
   }
 
   return (
-    <AuthLayout
-      eyebrow={port.audienceLabel}
-      panelTitle={reachability === "unreachable" ? "No connection" : "Starting BeOnEdge"}
-    >
-      {reachability === "unreachable" ? (
-        <>
-          <Alert tone="error" title="We can\u2019t reach BeOnEdge">
-            Check your connection and try again.
-          </Alert>
-          <Button
-            size="lg"
-            fullWidth
-            onClick={() => {
-              setAttempt((current) => current + 1)
-            }}
-          >
-            Try again
-          </Button>
-        </>
-      ) : (
-        <Spinner size="md" label="Starting BeOnEdge" />
-      )}
-    </AuthLayout>
+    <main className="be-splash" aria-label={isAdmin ? "Starting BeOnEdge admin" : "Starting BeOnEdge"}>
+      <div className="be-splash-brand">
+        <img className="be-splash-logo" src={isAdmin ? logoAdmin : logoMark} width={52} height={104} alt="" aria-hidden="true" />
+        <div className="be-splash-wordmark">
+          <div className="be-splash-mask"><span className="be-splash-name">BeOnEdge</span></div>
+          {isAdmin ? <div className="be-splash-mask"><span className="be-splash-role">Admin</span></div> : null}
+        </div>
+      </div>
+      <div className="be-splash-status" role="status" aria-live="polite">
+        {hasShownBrand && needsRetry ? (
+          <>
+            <Alert tone="error" title="We can’t reach BeOnEdge">
+              Check your connection and try again.
+            </Alert>
+            <Button
+              size="lg"
+              fullWidth
+              onClick={() => {
+                setAttempt((current) => current + 1)
+                if (session.error !== null) session.retryRestore()
+              }}
+            >
+              Try again
+            </Button>
+          </>
+        ) : hasShownBrand ? <Spinner size="md" label="Connecting to BeOnEdge" /> : null}
+      </div>
+      <p className="be-splash-footer">
+        {isAdmin ? "Internal operations console." : "Investments are subject to market risk."}
+      </p>
+    </main>
   )
 }
 
