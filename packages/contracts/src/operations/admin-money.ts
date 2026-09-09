@@ -260,6 +260,33 @@ export const listAdminFundReceipts = defineOperation({
   errorCodes: [...ADMIN_PAGED_READ_ERRORS],
 })
 
+export const AdminInvestorPosition = z.strictObject({
+  fundId: Uuid,
+  principalPaise: SignedPaise,
+  currentValuePaise: SignedPaise,
+  totalGrowthPaise: SignedPaise,
+  latestEntryId: Uuid.nullable(),
+})
+export type AdminInvestorPosition = z.infer<typeof AdminInvestorPosition>
+
+export const AdminInvestorPositionsData = z.strictObject({
+  userId: Uuid,
+  items: z.array(AdminInvestorPosition),
+})
+export type AdminInvestorPositionsData = z.infer<typeof AdminInvestorPositionsData>
+
+export const listAdminInvestorPositions = defineOperation({
+  operationId: "listAdminInvestorPositions",
+  method: "GET",
+  path: "/v1/admin/client-growth/investors/{userId}/positions",
+  authChannel: "admin-web",
+  credentialPolicy: "admin-session-cookie-and-csrf",
+  idempotency: "none",
+  request: { params: z.strictObject({ userId: Uuid }) },
+  success: { status: 200, schema: createSuccessEnvelopeSchema(AdminInvestorPositionsData) },
+  errorCodes: [...ADMIN_READ_ERRORS, "RESOURCE_NOT_FOUND"],
+})
+
 export const getAdminFundReceipt = defineOperation({
   operationId: "getAdminFundReceipt",
   method: "GET",
@@ -672,6 +699,7 @@ export const reconcileAdminMandateCollection = defineOperation({
 
 export const ADMIN_MONEY_OPERATIONS = Object.freeze([
   appendAdminIndividualClientGrowth,
+  listAdminInvestorPositions,
   previewAdminCollectiveClientGrowth,
   commitAdminCollectiveClientGrowth,
   listAdminFundReceipts,

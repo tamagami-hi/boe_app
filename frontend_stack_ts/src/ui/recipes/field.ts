@@ -41,6 +41,29 @@ export const TEXTAREA_BASE = [
   "min-h-30 px-4 py-3 font-ui text-md leading-normal resize-y",
 ].join(" ")
 
+export const COMBOBOX_WRAP = "relative flex flex-col"
+
+export const COMBOBOX_INPUT = [FIELD_SURFACE, FIELD_HEIGHT, "pl-4 pr-9 select-caret font-ui text-md"].join(" ")
+
+export const COMBOBOX_PANEL = [
+  "absolute left-0 right-0 top-[calc(100%+4px)] z-dropdown",
+  "max-h-64 overflow-y-auto overscroll-contain",
+  "rounded-squircle-sm bg-parchment shadow-ambient-2 ring-inset-hairline-strong",
+  "py-1",
+].join(" ")
+
+export const COMBOBOX_OPTION = [
+  "flex w-full flex-col gap-0.5 px-4 py-2 text-left",
+  "border-0 bg-transparent cursor-pointer no-tap-flash",
+  "transition-colors duration-150 ease-out",
+].join(" ")
+
+export const COMBOBOX_OPTION_ACTIVE = "bg-shell-strong"
+
+export const COMBOBOX_OPTION_HINT = "font-ui text-xs text-fg-faint"
+
+export const COMBOBOX_EMPTY = "px-4 py-3 font-ui text-sm text-fg-muted"
+
 export const AMOUNT_WRAP = "relative flex items-center"
 
 export const AMOUNT_SYMBOL = [

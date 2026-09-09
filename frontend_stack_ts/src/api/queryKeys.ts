@@ -44,6 +44,7 @@ export const qk = {
     users: (filter: string) => ["admin", "users", filter] as const,
     user: (userId: string) => ["admin", "user", userId] as const,
     userLoginEvents: (userId: string) => ["admin", "user", userId, "login-events"] as const,
+    investorPositions: (userId: string) => ["admin", "investor", userId, "positions"] as const,
     funds: (filter: string) => ["admin", "funds", filter] as const,
     fund: (fundId: string) => ["admin", "fund", fundId] as const,
     fundStocks: (fundId: string) => ["admin", "fund", fundId, "stocks"] as const,

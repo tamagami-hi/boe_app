@@ -24,6 +24,15 @@ export interface ClientPositionBasisRow {
   readonly latestEntryId: string | null
 }
 
+export interface ClientUserPositionRow {
+  readonly fundId: string
+  /** bigint as text; convert with `BigInt(...)` before arithmetic. */
+  readonly principalPaise: string
+  /** bigint as text; convert with `BigInt(...)` before arithmetic. */
+  readonly currentValuePaise: string
+  readonly latestEntryId: string | null
+}
+
 export interface InsertClientGrowthBatchInput {
   readonly scope: GrowthScope
   readonly instructionType: GrowthInstructionType
@@ -63,6 +72,11 @@ export interface ClientGrowthRepository {
     tx: Transaction,
     fundId: string,
   ) => Promise<readonly ClientPositionBasisRow[]>
+  /** Every contribution-bearing position one investor holds, sorted by fund_id. */
+  listUserPositions: (
+    tx: Transaction,
+    userId: string,
+  ) => Promise<readonly ClientUserPositionRow[]>
   insertBatch: (
     tx: Transaction,
     input: InsertClientGrowthBatchInput,
@@ -100,6 +114,27 @@ const positionBasisQuery = (fundId: string, userId: string | null) => sql<Client
   order by v.user_id asc
 `
 
+const userPositionsQuery = (userId: string) => sql<ClientUserPositionRow>`
+  with visible as (
+    select e.id, e.fund_id, e.principal_delta_paise, e.value_delta_paise, e.entry_type, e.created_at
+    from client_value_entries e
+    where e.user_id = ${userId}
+      and e.entry_type <> 'reversal'
+      and not exists (
+        select 1 from client_value_entries r where r.reverses_entry_id = e.id
+      )
+  )
+  select
+    v.fund_id as "fundId",
+    sum(v.principal_delta_paise)::text as "principalPaise",
+    sum(v.value_delta_paise)::text as "currentValuePaise",
+    (array_agg(v.id order by v.created_at desc, v.id desc))[1] as "latestEntryId"
+  from visible v
+  group by v.fund_id
+  having bool_or(v.entry_type = 'contribution')
+  order by v.fund_id asc
+`
+
 export const createClientGrowthRepository = (): ClientGrowthRepository => ({
   lockPosition: async (tx, userId, fundId) => {
     // Two-int form namespaces the lock away from the idempotency subsystem's
@@ -116,6 +151,11 @@ export const createClientGrowthRepository = (): ClientGrowthRepository => ({
 
   listFundPositionBases: async (tx, fundId) => {
     const result = await positionBasisQuery(fundId, null).execute(tx)
+    return result.rows
+  },
+
+  listUserPositions: async (tx, userId) => {
+    const result = await userPositionsQuery(userId).execute(tx)
     return result.rows
   },
 

@@ -72,6 +72,7 @@ export interface AdminClientGrowthDeps {
 }
 
 const INDIVIDUAL_ROUTE = "/v1/admin/client-growth/individual"
+const INVESTOR_POSITIONS_ROUTE = "/v1/admin/client-growth/investors/:userId/positions"
 const COLLECTIVE_PREVIEW_ROUTE = "/v1/admin/client-growth/collective/preview"
 const COLLECTIVE_ROUTE = "/v1/admin/client-growth/collective"
 
@@ -548,11 +549,39 @@ const collectiveCommit = async (
   })
 }
 
+const investorPositions = async (
+  deps: AdminClientGrowthDeps,
+  request: FastifyRequest,
+  reply: FastifyReply,
+) => {
+  const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: false })
+  requireAnyPermission(principal, ["client_growth.write", "client_values.read"])
+  const userId = parseOrThrow(uuidParam, (request.params as { userId?: unknown }).userId)
+
+  const rows = await deps.clientGrowthRepository.listUserPositions(deps.database, userId)
+  return reply.sendData(
+    {
+      userId,
+      items: rows.map((row) => ({
+        fundId: row.fundId,
+        principalPaise: row.principalPaise,
+        currentValuePaise: row.currentValuePaise,
+        totalGrowthPaise: (
+          BigInt(row.currentValuePaise) - BigInt(row.principalPaise)
+        ).toString(),
+        latestEntryId: row.latestEntryId,
+      })),
+    },
+    { status: 200 },
+  )
+}
+
 export const registerAdminClientGrowthRoutes = (
   application: FastifyInstance,
   deps: AdminClientGrowthDeps,
 ): void => {
   const schemas = buildSchemas(deps.config.maxBasisPoints)
+  application.get(INVESTOR_POSITIONS_ROUTE, (request, reply) => investorPositions(deps, request, reply))
   application.post(INDIVIDUAL_ROUTE, (request, reply) => individual(deps, schemas, request, reply))
   application.post(COLLECTIVE_PREVIEW_ROUTE, (request, reply) =>
     collectivePreview(deps, schemas, request, reply),

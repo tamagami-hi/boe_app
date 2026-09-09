@@ -5,6 +5,7 @@ import type { z } from "zod"
 import {
   acknowledgeAdminFundReceipt,
   appendAdminIndividualClientGrowth,
+  listAdminInvestorPositions,
   archiveAdminFaq,
   cancelAdminMandate,
   closeAdminUser,
@@ -536,6 +537,19 @@ export const usePublishAppConfig = (): UseMutationResult<void, Error, AppConfigI
 }
 
 export type IndividualGrowthInput = z.input<typeof appendAdminIndividualClientGrowth.request.body>
+
+export const useAdminInvestorPositions = (
+  userId: string,
+): UseQueryResult<DataOf<typeof listAdminInvestorPositions>> => {
+  const api = useApi()
+  return useQuery({
+    queryKey: qk.admin.investorPositions(userId),
+    enabled: userId !== "",
+    staleTime: STALE.MONEY,
+    queryFn: async () =>
+      (await api.request(listAdminInvestorPositions, { params: { userId } })).data,
+  })
+}
 
 export const useIndividualClientGrowth = (): UseMutationResult<
   DataOf<typeof appendAdminIndividualClientGrowth>,

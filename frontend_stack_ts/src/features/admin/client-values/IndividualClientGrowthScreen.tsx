@@ -1,16 +1,21 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 
 import { isApiError } from "~/api/errors"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { toPaise } from "~/domain/money"
-import { useIndividualClientGrowth } from "~/features/admin/shared/adminQueries"
+import {
+  useAdminInvestorPositions,
+  useAdminUsers,
+  useIndividualClientGrowth,
+} from "~/features/admin/shared/adminQueries"
 import { useAdminFundCatalogue } from "~/features/admin/shared/queries"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
+import { Combobox } from "~/ui/primitives/Combobox"
 import { Alert } from "~/ui/primitives/Feedback"
 import { FormField, Input } from "~/ui/primitives/FormField"
 import { RadioGroup } from "~/ui/primitives/Toggle"
@@ -21,6 +26,13 @@ import { STACK_LG } from "~/ui/recipes/layout"
 
 type Mode = "rate" | "amount"
 
+const REASON_OPTIONS = [
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+  { value: "quarterly", label: "Quarterly" },
+  { value: "yearly", label: "Yearly" },
+] as const
+
 const today = (): string => new Date().toISOString().slice(0, 10)
 
 const IndividualClientGrowthScreen = (): React.ReactElement => {
@@ -29,18 +41,51 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
 
   const [mode, setMode] = useState<Mode>("rate")
   const [userId, setUserId] = useState("")
+  const [investorQuery, setInvestorQuery] = useState("")
   const [fundId, setFundId] = useState("")
   const [basisPoints, setBasisPoints] = useState("")
   const [amountPaise, setAmountPaise] = useState("")
   const [effectiveDate, setEffectiveDate] = useState(today)
-  const [reasonCode, setReasonCode] = useState("quarterly_valuation")
+  const [reasonCode, setReasonCode] = useState<string>("quarterly")
   const [note, setNote] = useState("")
   const [failure, setFailure] = useState<string | null>(null)
 
+  const investors = useAdminUsers(investorQuery.trim() === "" ? {} : { q: investorQuery.trim() })
+  const positions = useAdminInvestorPositions(userId)
+
+  const fundName = (id: string): string => {
+    const fund = (funds.data?.items ?? []).find((entry) => entry.id === id)
+    return fund?.name ?? fund?.slug ?? id
+  }
+
+  const investorOptions = useMemo(
+    () =>
+      (investors.data?.items ?? []).map((user) => ({
+        value: user.id,
+        label: user.fullName === "" ? user.email : user.fullName,
+        hint: [user.email, user.phone].filter((part) => part !== "").join(" · "),
+      })),
+    [investors.data],
+  )
+
+  const positionItems = positions.data?.items ?? []
   const fundOptions = [
-    { value: "", label: "Choose a fund" },
-    ...(funds.data?.items ?? []).map((fund) => ({ value: fund.id, label: fund.name ?? fund.slug })),
+    {
+      value: "",
+      label:
+        userId === ""
+          ? "Choose an investor first"
+          : positionItems.length === 0
+            ? "This investor holds no fund"
+            : "Choose a fund",
+    },
+    ...positionItems.map((position) => ({
+      value: position.fundId,
+      label: fundName(position.fundId),
+    })),
   ]
+
+  const selectedPosition = positionItems.find((position) => position.fundId === fundId) ?? null
 
   const rate = Number(basisPoints)
   const invalidRate = mode === "rate" && (!Number.isInteger(rate) || rate === 0)
@@ -48,10 +93,21 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
   const incomplete =
     userId === "" ||
     fundId === "" ||
-    reasonCode.trim() === "" ||
+    reasonCode === "" ||
     effectiveDate === "" ||
     invalidRate ||
     invalidAmount
+
+  const projected = useMemo(() => {
+    if (selectedPosition === null) return null
+    const current = BigInt(selectedPosition.currentValuePaise)
+    if (mode === "amount") {
+      if (invalidAmount) return null
+      return current + BigInt(amountPaise)
+    }
+    if (invalidRate) return null
+    return current + (current * BigInt(rate)) / 10_000n
+  }, [selectedPosition, mode, amountPaise, invalidAmount, invalidRate, rate])
 
   const submit = (): void => {
     setFailure(null)
@@ -60,7 +116,7 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
         userId,
         fundId,
         effectiveDate,
-        reasonCode: reasonCode.trim(),
+        reasonCode,
         ...(note.trim() === "" ? {} : { note: note.trim() }),
         ...(mode === "rate" ? { growthBasisPoints: rate } : { growthPaise: amountPaise }),
       },
@@ -82,7 +138,7 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
     <Page width="default">
       <PageHeader
         title="Adjust one investor"
-        description="Appends a single growth entry against one position. The investor is notified that their value changed, without an amount."
+        description="Appends a growth entry against one position. The amount invested is unchanged; the investor's current value moves by the adjustment, and the difference is their gain."
       />
 
       {failure === null ? null : (
@@ -121,38 +177,76 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
             )}
           </FormField>
 
-          <div className={ADMIN_FORM_GRID}>
-            <FormField label="Investor id" required hint="The user id from the Users screen.">
-              {({ id }) => (
-                <Input
-                  id={id}
-                  value={userId}
-                  onChange={(event) => {
-                    setUserId(event.target.value.trim())
-                  }}
-                />
-              )}
-            </FormField>
+          <FormField
+            label="Investor"
+            required
+            hint="Search by name, email or phone. Only investors with a holding can be adjusted."
+          >
+            {({ id }) => (
+              <Combobox
+                id={id}
+                options={investorOptions}
+                value={userId}
+                onChange={(next) => {
+                  setUserId(next)
+                  setFundId("")
+                }}
+                query={investorQuery}
+                onQueryChange={setInvestorQuery}
+                placeholder="Start typing a name"
+                loading={investors.isFetching}
+                emptyLabel="No investor matches that"
+              />
+            )}
+          </FormField>
 
-            <FormField label="Fund" required>
-              {({ id }) => (
-                <Select
-                  id={id}
-                  options={fundOptions}
-                  value={fundId}
-                  onChange={(event) => {
-                    setFundId(event.target.value)
-                  }}
+          <FormField
+            label="Fund"
+            required
+            hint="Only the funds this investor has actually invested in."
+          >
+            {({ id }) => (
+              <Select
+                id={id}
+                options={fundOptions}
+                value={fundId}
+                disabled={userId === "" || positionItems.length === 0}
+                onChange={(event) => {
+                  setFundId(event.target.value)
+                }}
+              />
+            )}
+          </FormField>
+
+          {selectedPosition === null ? null : (
+            <DataList>
+              <DetailRow label="Amount invested">
+                <MoneyValue amount={toPaise(selectedPosition.principalPaise)} size="sm" />
+              </DetailRow>
+              <DetailRow label="Current value">
+                <MoneyValue amount={toPaise(selectedPosition.currentValuePaise)} size="sm" />
+              </DetailRow>
+              <DetailRow label="Gain so far">
+                <MoneyValue
+                  amount={toPaise(selectedPosition.totalGrowthPaise)}
+                  size="sm"
+                  tone="signed"
+                  showSign
                 />
+              </DetailRow>
+              {projected === null ? null : (
+                <DetailRow label="Value after this adjustment">
+                  <MoneyValue amount={toPaise(projected.toString())} size="sm" />
+                </DetailRow>
               )}
-            </FormField>
-          </div>
+            </DataList>
+          )}
 
           {mode === "rate" ? (
             <FormField
               label="Rate in basis points"
               required
-              hint="Between -10000 and 100000, and not zero."
+              hint="Between -10000 and 100000, and not zero. 1000 is +10%."
               {...(invalidRate && basisPoints !== ""
                 ? { error: "Enter a whole non-zero number of basis points." }
                 : {})}
@@ -207,12 +301,12 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
               )}
             </FormField>
 
-            <FormField label="Reason code" required>
+            <FormField label="Reason code" required hint="The period this growth covers.">
               {({ id }) => (
-                <Input
+                <Select
                   id={id}
+                  options={REASON_OPTIONS.map((option) => ({ ...option }))}
                   value={reasonCode}
-                  maxLength={80}
                   onChange={(event) => {
                     setReasonCode(event.target.value)
                   }}
