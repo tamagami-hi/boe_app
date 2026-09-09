@@ -16,7 +16,7 @@ export const CLIENT_ROUTES: RouteManifest = [
     path: CLIENT_SPLASH_PATH,
     title: "Starting",
     access: "public",
-    element: () => import("~/features/auth/SplashScreen"),
+    element: () => import("~/features/auth/ClientSplashScreen"),
     back: { kind: "exit" },
   },
   {

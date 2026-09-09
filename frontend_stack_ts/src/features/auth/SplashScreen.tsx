@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react"
 import { Navigate } from "react-router-dom"
 
-import logoMark from "~/assets/logo-mark.svg"
-import logoAdmin from "~/assets/logo-admin.svg"
 import { useSession } from "~/app/providers/SessionProvider"
 import { useAuthPort } from "~/features/auth/authPort"
 import { canCheckForUpdates, readInstalledApp } from "~/platform/appUpdate"
@@ -15,7 +13,9 @@ const SPLASH_MIN_VISIBLE_MS = 1_600
 
 type Reachability = "probing" | "reachable" | "unreachable"
 
-const SplashScreen = (): React.ReactElement => {
+type SplashScreenProps = Readonly<{ logoSrc: string }>
+
+const SplashScreen = ({ logoSrc }: SplashScreenProps): React.ReactElement => {
   const port = useAuthPort()
   const session = useSession()
   const [reachability, setReachability] = useState<Reachability>("probing")
@@ -70,7 +70,7 @@ const SplashScreen = (): React.ReactElement => {
   return (
     <main className="be-splash" aria-label={isAdmin ? "Starting BeOnEdge admin" : "Starting BeOnEdge"}>
       <div className="be-splash-brand">
-        <img className="be-splash-logo" src={isAdmin ? logoAdmin : logoMark} width={52} height={104} alt="" aria-hidden="true" />
+        <img className="be-splash-logo" src={logoSrc} width={52} height={104} alt="" aria-hidden="true" />
         <div className="be-splash-wordmark">
           <div className="be-splash-mask"><span className="be-splash-name">BeOnEdge</span></div>
           {isAdmin ? <div className="be-splash-mask"><span className="be-splash-role">Admin</span></div> : null}

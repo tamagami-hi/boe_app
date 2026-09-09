@@ -510,6 +510,10 @@ build_variant() {
         fi
         return 1
     fi
+    if [[ "$ANDROID_BUILD_TYPE" == "debug" && "$debuggable" != true ]]; then
+        err "development APK must be verified as debuggable by aapt: $gradle_apk"
+        return 1
+    fi
 
     cp "$gradle_apk" "$out_apk"
 

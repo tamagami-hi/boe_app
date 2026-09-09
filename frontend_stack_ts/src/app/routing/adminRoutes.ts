@@ -10,7 +10,7 @@ export const ADMIN_ROUTES: RouteManifest = [
     path: ADMIN_SPLASH_PATH,
     title: "Starting",
     access: "public",
-    element: () => import("~/features/auth/SplashScreen"),
+    element: () => import("~/features/admin/auth/AdminSplashScreen"),
     back: { kind: "exit" },
   },
   {
