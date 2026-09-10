@@ -44,7 +44,7 @@
 #   8. REAL VERSIONING + RELEASE SIGNING. build.gradle now reads the injected
 #      -PboeVersionName/-PboeVersionCode (versionCode 1 / "1.0" are only an
 #      IDE fallback), declares a release signingConfig fed by the gitignored
-#      android/keystore.properties, and minifies/shrinks release builds. When
+#      android/keystore.properties, while release builds remain non-debuggable. When
 #      production builds use assembleRelease and the sidecar records
 #      signing="release", which unblocks the prod gate in
 #      release_manager/lib/apk_ship.sh. Development builds remain debuggable
@@ -371,7 +371,7 @@ if [[ "$TARGET" != "local" && "$RELEASE_SIGNING" != true ]]; then
     exit 1
 fi
 if [[ "$ANDROID_BUILD_TYPE" == "release" ]]; then
-    field "signing" "release (assembleRelease, minified)"
+    field "signing" "release (assembleRelease)"
 elif [[ "$RELEASE_SIGNING" == true ]]; then
     field "signing" "release certificate (assembleDebug, debuggable)"
 else
@@ -451,7 +451,7 @@ build_variant() {
     local gradle_apk signing
     if [[ "$ANDROID_BUILD_TYPE" == "release" ]]; then
         signing="release"
-        step "gradle assembleRelease (signed, minified)"
+        step "gradle assembleRelease (signed)"
         ( cd "$ANDROID_DIR" && ./gradlew assembleRelease --console=plain \
             -PboeVersionName="$BUILD_LABEL" -PboeVersionCode="$VERSION_CODE" \
             -PboeApplicationId="$APP_ID" -PboeVariant="$variant" \

@@ -199,7 +199,7 @@ Reported by the tooling rather than silently worked around:
 
 - No Gradle product flavors, so dev and prod APKs cannot be co-installed.
   Release signing and version injection are done: `emu/boe_update.sh` builds a
-  signed, minified release APK whenever `android/keystore.properties` exists.
+  signed, non-debuggable release APK whenever `android/keystore.properties` exists.
 - No backend `/metrics`, so Prometheus has no application-level series.
 - No WebSocket support; the `/ws/` nginx blocks are commented out.
 - Backend health routes have no `/api` prefix; nginx strips it. See
