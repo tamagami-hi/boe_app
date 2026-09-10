@@ -110,6 +110,7 @@ boe_load_paths() {
           ["stack",            .stack],
           ["environment",      .environment],
           ["short",            .short],
+          ["vps_root",         .vps.root],
           ["stack_dir",        .vps.stack_dir],
           ["images_dir",       .vps.images_dir],
           ["compose_file",     .vps.compose_file],
@@ -145,7 +146,7 @@ boe_load_paths() {
     [[ -n "${P[stack_dir]:-}" ]] || die "paths.json missing vps.stack_dir"
 
     # Recheck every path value before it is interpolated into a command.
-    local path_keys=(stack_dir images_dir compose_file env_file env_example
+    local path_keys=(vps_root stack_dir images_dir compose_file env_file env_example
         version_file manifest_file checksums_file registry lock_file
         backup_mount backup_root rollback_root rollback_images rollback_apk
         rollback_db db_backups deploy_log image_log db_log
@@ -177,6 +178,42 @@ boe_apk_destinations() {
             || die "unsafe APK destination in paths.json for variant $variant"
         printf '%s\t%s\t%s\n' "$variant" "$current_dir" "$rollback_dir"
     done < <(jq -r '.apk.destinations[]? | [.variant, .current_dir, .rollback_dir] | @tsv' "$BOE_PATHS_FILE")
+}
+
+boe_ensure_apk_download_access() {
+    local variant current_dir rollback_dir directory named_acl default_acl
+    local -a holders=()
+    while IFS=$'\t' read -r variant current_dir rollback_dir; do
+        [[ -n "$current_dir" ]] && holders+=("$current_dir")
+    done < <(boe_apk_destinations)
+    (( ${#holders[@]} > 0 )) || return 0
+
+    require_cmds chmod getfacl setfacl
+    for directory in "${P[vps_root]}" "${P[stack_dir]}"; do
+        named_acl="$(getfacl -cp "$directory" | awk -F: '($1 == "user" || $1 == "group") && $2 != "" { print }')"
+        [[ -z "$named_acl" || "$named_acl" == "user:www-data:--x" ]] \
+            || die "unexpected extended ACL on APK path: $directory"
+        [[ -z "$named_acl" ]] || setfacl -x u:www-data "$directory" \
+            || die "could not remove legacy nginx ACL from $directory"
+        chmod o=x "$directory" || die "could not restrict APK path listing: $directory"
+    done
+
+    for current_dir in "${holders[@]}"; do
+        boe_assert_writable "$current_dir"
+        named_acl="$(getfacl -cp "$current_dir" | awk -F: '($1 == "user" || $1 == "group") && $2 != "" { print }')"
+        default_acl="$(getfacl -cp "$current_dir" | awk -F: '$1 == "default" && $2 == "user" && $3 != "" { print }')"
+        [[ -z "$named_acl" || "$named_acl" == "user:www-data:r-x" ]] \
+            || die "unexpected extended ACL on APK holder: $current_dir"
+        [[ -z "$default_acl" || "$default_acl" == "default:user:www-data:r-x" ]] \
+            || die "unexpected default ACL on APK holder: $current_dir"
+        [[ -z "$named_acl" ]] || setfacl -x u:www-data "$current_dir" \
+            || die "could not remove legacy nginx ACL from $current_dir"
+        [[ -z "$default_acl" ]] || setfacl -x d:u:www-data "$current_dir" \
+            || die "could not remove legacy nginx default ACL from $current_dir"
+        chmod o=x "$current_dir" || die "could not restrict APK holder listing: $current_dir"
+    done
+
+    ok "APK download access ready for ${#holders[@]} holder directory(ies)"
 }
 
 # ── locking (plan §18: deploy and rollback share one lock) ──────────────────

@@ -238,7 +238,7 @@ apk_contract_keep_releases() {
 apk_ship_prepare_remote_dir() {
     local remote_dir="$1"
     assert_safe_remote_dir "$remote_dir" || return 1
-    boe_ssh "test ! -L '$remote_dir' && install -d -m 755 -- '$remote_dir'"
+    boe_ssh "test ! -L '$remote_dir' && install -d -m 751 -- '$remote_dir'"
 }
 
 apk_ship_transfer_file() {

@@ -284,4 +284,53 @@ boe_ensure_payment_network >/dev/null \
 [[ ! -s "$network_calls" ]] \
     || { printf 'FAIL: stack without payment_api modified Docker networks\n' >&2; exit 1; }
 
+apk_access_root="$TEST_DIR/apk-access"
+apk_access_stack="$apk_access_root/stack"
+apk_access_client="$apk_access_stack/client"
+apk_access_admin="$apk_access_stack/admin"
+apk_access_paths="$TEST_DIR/apk-access-paths.json"
+apk_access_calls="$TEST_DIR/apk-access-calls"
+mkdir -p "$apk_access_stack"
+chmod 750 "$apk_access_root" "$apk_access_stack"
+jq -n \
+    --arg root "$apk_access_root" \
+    --arg stack "$apk_access_stack" \
+    --arg client "$apk_access_client" \
+    --arg admin "$apk_access_admin" \
+    '{apk: {destinations: [
+        {variant: "client", current_dir: $client, rollback_dir: ($root + "/rollback-client")},
+        {variant: "admin", current_dir: $admin, rollback_dir: ($root + "/rollback-admin")}
+    ]}}' > "$apk_access_paths"
+P[vps_root]="$apk_access_root"
+P[stack_dir]="$apk_access_stack"
+BOE_PATHS_FILE="$apk_access_paths"
+boe_ensure_apk_download_access >/dev/null \
+    || { printf 'FAIL: deployment did not provision APK download access\n' >&2; exit 1; }
+for directory in "$apk_access_root" "$apk_access_stack" "$apk_access_client" "$apk_access_admin"; do
+    [[ "$(stat -c '%a' "$directory")" == *1 ]] \
+        || { printf 'FAIL: APK download path is enumerable by nginx: %s\n' "$directory" >&2; exit 1; }
+done
+setfacl -m u:www-data:--x "$apk_access_root"
+boe_ensure_apk_download_access >/dev/null \
+    || { printf 'FAIL: deployment could not clear the legacy APK ACL\n' >&2; exit 1; }
+if getfacl -cp "$apk_access_root" | grep -q '^user:www-data:'; then
+    printf 'FAIL: deployment left a legacy APK ACL on the environment path\n' >&2
+    exit 1
+fi
+
+apk_empty_root="$TEST_DIR/apk-empty"
+apk_empty_stack="$apk_empty_root/stack"
+apk_empty_paths="$TEST_DIR/apk-empty-paths.json"
+mkdir -p "$apk_empty_stack"
+chmod 750 "$apk_empty_root" "$apk_empty_stack"
+jq -n --arg root "$apk_empty_root" --arg stack "$apk_empty_stack" \
+    '{apk: {destinations: []}}' > "$apk_empty_paths"
+P[vps_root]="$apk_empty_root"
+P[stack_dir]="$apk_empty_stack"
+BOE_PATHS_FILE="$apk_empty_paths"
+boe_ensure_apk_download_access >/dev/null \
+    || { printf 'FAIL: deployment rejected a stack without APK holders\n' >&2; exit 1; }
+[[ "$(stat -c '%a' "$apk_empty_root")" == "750" ]] \
+    || { printf 'FAIL: deployment changed a stack without APK holders\n' >&2; exit 1; }
+
 printf 'PASS: deployment validates complete application security configuration\n'

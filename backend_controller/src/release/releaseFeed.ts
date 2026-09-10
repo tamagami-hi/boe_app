@@ -224,7 +224,7 @@ export const downloadUrl = (
   base: string | null,
   variant: ReleaseVariant,
   artifact: ReleaseArtifact,
-): string | null => (base === null ? null : `${base}/${variant}/${artifact.apk}`)
+): string | null => (base === null ? null : `${base}/${variant}/${artifact.apk}?v=${artifact.versionCode}`)
 
 /**
  * Newest published build for an applicationId, or null.

@@ -11,6 +11,7 @@ PATCHED_NODE_BASE='node:22.23.2-alpine3.24@sha256:c610fcdfb1d5b4740dd70c284ed3cb
 PATCHED_NGINX_BASE='nginxinc/nginx-unprivileged:1.31.1-alpine3.23-slim@sha256:762e8e4e5e103817c4158400fc3753c8e713ff8153b8c3afbb458ae4572bc9a3'
 STACKS_LIB="$ROOT_DIR/release_manager/lib/stacks.sh"
 EXPORT_SCRIPT="$ROOT_DIR/release_manager/export.sh"
+VERIFY_SCRIPT="$ROOT_DIR/release_manager/verify.sh"
 CI_WORKFLOW="$ROOT_DIR/.github/workflows/ci.yml"
 
 fail_test() {
@@ -88,6 +89,8 @@ assert_file_contains "$EXPORT_SCRIPT" 'for key in app admin;' \
     'release export does not test both frontend runtime images'
 assert_file_contains "$EXPORT_SCRIPT" 'BOE_RUNTIME_IMAGE="\$tag" bash' \
     'release export does not execute the hardened runtime acceptance test'
+assert_file_contains "$VERIFY_SCRIPT" 'getfacl setfacl openssl' \
+    'remote release verification does not require ACL tooling'
 assert_file_contains "$CI_WORKFLOW" '^  backend:$' \
     'CI does not define a backend verification job'
 assert_file_contains "$CI_WORKFLOW" '^  frontend:$' \

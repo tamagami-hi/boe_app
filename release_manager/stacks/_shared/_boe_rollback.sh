@@ -89,6 +89,7 @@ boe_rollback_main() {
 
     # ── lock and preflight ──────────────────────────────────────────────────
     boe_lock
+    boe_ensure_apk_download_access
     boe_assert_backup_mounted
     boe_assert_writable "${P[deploy_log]}"
     boe_open_log rollback

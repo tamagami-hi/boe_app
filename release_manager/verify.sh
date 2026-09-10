@@ -461,7 +461,7 @@ if [[ "$CHECK_REMOTE" == true ]]; then
         done < <(find "$STACKS" -name '*.sh' | sort)
         (( rf == 0 )) && pass "all VPS-native scripts parse with the VPS's own bash"
 
-        for c in docker jq sha256sum flock mountpoint rsync gzip curl numfmt getfacl openssl base64; do
+        for c in docker jq sha256sum flock mountpoint rsync gzip curl numfmt getfacl setfacl openssl base64; do
             if boe_ssh "command -v $c >/dev/null" 2>/dev/null; then pass "remote tool: $c"
             else fail "remote tool MISSING: $c"; fi
         done

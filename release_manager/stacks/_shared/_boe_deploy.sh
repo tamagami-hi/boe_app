@@ -46,6 +46,7 @@ boe_deploy_main() {
     [[ -d "${P[stack_dir]}" ]]     || die "stack directory missing: ${P[stack_dir]}"
     [[ -f "${P[compose_file]}" ]]  || die "compose file missing: ${P[compose_file]}"
     [[ -f "${P[manifest_file]}" ]] || die "manifest.json missing — has deploy.sh shipped a bundle yet?"
+    boe_ensure_apk_download_access
     ok "release directory present"
 
     # ── 3. backup disk mounted (plan §32) ───────────────────────────────────

@@ -141,7 +141,7 @@ describe("GET /v1/app/update", () => {
     expect(body.data.updateAvailable).toBe(true)
     expect(body.data.latest?.versionCode).toBe(703)
     expect(body.data.latest?.url).toBe(
-      "https://dev-app.beonedge.in/downloads/client/boe.dev.client.0.7.3.apk",
+      "https://dev-app.beonedge.in/downloads/client/boe.dev.client.0.7.3.apk?v=703",
     )
     // The digest must be passed through untouched: the app verifies against it.
     expect(body.data.latest?.sha256).toBe(sidecar().sha256)
@@ -202,7 +202,7 @@ describe("GET /v1/app/update", () => {
     )
 
     expect(body.data.latest?.versionCode).toBe(703)
-    expect(approvalUrl).toBe("https://dev-app.beonedge.in/downloads/client/boe.dev.client.0.7.3.apk")
+    expect(approvalUrl).toBe("https://dev-app.beonedge.in/downloads/client/boe.dev.client.0.7.3.apk?v=703")
   })
 
   test("approval mail ignores a higher production artifact in the dev holder", async () => {
@@ -218,7 +218,7 @@ describe("GET /v1/app/update", () => {
       "client",
     )
 
-    expect(approvalUrl).toBe("https://dev-app.beonedge.in/downloads/client/boe.dev.client.0.7.3.apk")
+    expect(approvalUrl).toBe("https://dev-app.beonedge.in/downloads/client/boe.dev.client.0.7.3.apk?v=703")
   })
 
   test("approval mail ignores an artifact with the wrong applicationId", async () => {
@@ -233,7 +233,7 @@ describe("GET /v1/app/update", () => {
       "client",
     )
 
-    expect(approvalUrl).toBe("https://dev-app.beonedge.in/downloads/client/boe.dev.client.0.7.3.apk")
+    expect(approvalUrl).toBe("https://dev-app.beonedge.in/downloads/client/boe.dev.client.0.7.3.apk?v=703")
   })
 
   test("ignores a sidecar whose APK is not on disk yet", async () => {
