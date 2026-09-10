@@ -381,6 +381,36 @@ compose() {
         -f "${P[compose_file]}" "$@"
 }
 
+boe_compose_file() {
+    compose "$@"
+}
+
+boe_ensure_payment_network() {
+    local rendered network inspected
+    rendered="$(boe_compose_file config --format json)" \
+        || die "could not inspect Compose networks: ${P[compose_file]}"
+    network="$(jq -r '.networks.payment_api | select(.external == true) | .name // empty' <<<"$rendered")"
+    [[ -n "$network" ]] || return 0
+    [[ "$network" == "boe_payments" ]] \
+        || die "payment network must be named boe_payments, found: $network"
+
+    if ! inspected="$("$(docker_bin)" network inspect "$network" 2>/dev/null)"; then
+        "$(docker_bin)" network create --driver bridge --internal "$network" >/dev/null 2>&1 || true
+        inspected="$("$(docker_bin)" network inspect "$network" 2>/dev/null)" \
+            || die "could not create the required private payment network: $network"
+    fi
+
+    jq -e --arg network "$network" '
+        length == 1
+        and .[0].Name == $network
+        and .[0].Driver == "bridge"
+        and .[0].Scope == "local"
+        and .[0].Internal == true
+    ' <<<"$inspected" >/dev/null \
+        || die "payment network $network must be a local internal bridge; refusing to use its current configuration"
+    ok "private payment network ready: $network"
+}
+
 boe_pending_destructive_migration() {
     [[ "${P[has_database]:-false}" == "true" ]] || return 1
     local status

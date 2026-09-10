@@ -224,4 +224,64 @@ if (boe_deploy_assert_env >/dev/null 2>&1); then
     exit 1
 fi
 
+network_state="$TEST_DIR/network-state"
+network_calls="$TEST_DIR/network-calls"
+network_config='{"networks":{"payment_api":{"name":"boe_payments","external":true}}}'
+network_create_fails=false
+boe_compose_file() {
+    [[ "$1 $2 $3" == 'config --format json' ]] || return 1
+    printf '%s\n' "$network_config"
+}
+docker() {
+    printf '%s\n' "$*" >> "$network_calls"
+    case "$*" in
+        'network inspect boe_payments')
+            [[ -f "$network_state" ]] || return 1
+            cat "$network_state"
+            ;;
+        'network create --driver bridge --internal boe_payments')
+            [[ "$network_create_fails" == false ]] || return 1
+            printf '%s\n' '[{"Name":"boe_payments","Driver":"bridge","Scope":"local","Internal":true}]' > "$network_state"
+            ;;
+        *) return 1 ;;
+    esac
+}
+P[compose_file]="$TEST_DIR/compose.yml"
+P[docker]=docker
+
+boe_ensure_payment_network >/dev/null \
+    || { printf 'FAIL: deployment did not provision the missing private payment network\n' >&2; exit 1; }
+[[ "$(grep -c '^network create ' "$network_calls")" == 1 ]] || exit 1
+boe_ensure_payment_network >/dev/null \
+    || { printf 'FAIL: existing private payment network was rejected\n' >&2; exit 1; }
+[[ "$(grep -c '^network create ' "$network_calls")" == 1 ]] \
+    || { printf 'FAIL: network provisioning is not idempotent\n' >&2; exit 1; }
+
+for unsafe_network in \
+    '[{"Name":"boe_payments","Driver":"bridge","Scope":"local","Internal":false}]' \
+    '[{"Name":"boe_payments","Driver":"overlay","Scope":"swarm","Internal":true}]'; do
+    printf '%s\n' "$unsafe_network" > "$network_state"
+    : > "$network_calls"
+    if (boe_ensure_payment_network >/dev/null 2>&1); then
+        printf 'FAIL: deployment accepted an unsafe payment network\n' >&2
+        exit 1
+    fi
+    [[ "$(cat "$network_calls")" == 'network inspect boe_payments' ]] \
+        || { printf 'FAIL: deployment modified an unsafe existing network\n' >&2; exit 1; }
+done
+
+rm "$network_state"
+network_create_fails=true
+if (boe_ensure_payment_network >/dev/null 2>&1); then
+    printf 'FAIL: deployment continued after payment network creation failed\n' >&2
+    exit 1
+fi
+
+network_config='{"networks":{"internal":{"internal":true}}}'
+: > "$network_calls"
+boe_ensure_payment_network >/dev/null \
+    || { printf 'FAIL: stack without a payment network requirement was rejected\n' >&2; exit 1; }
+[[ ! -s "$network_calls" ]] \
+    || { printf 'FAIL: stack without payment_api modified Docker networks\n' >&2; exit 1; }
+
 printf 'PASS: deployment validates complete application security configuration\n'

@@ -91,6 +91,7 @@ boe_deploy_main() {
     boe_deploy_assert_env
     BOE_VERSION_FOR_COMPOSE="$incoming"
     boe_validate_compose
+    boe_ensure_payment_network
 
     # Confirmation gate — production only, and only when a human is present.
     if [[ "${BOE_REQUIRE_CONFIRM:-false}" == true && "$ASSUME_YES" != true ]]; then
@@ -512,6 +513,7 @@ boe_deploy_fail() {
     [[ -f "$rb/${P[compose_name]}" ]] && cp "$rb/${P[compose_name]}" "${P[compose_file]}"
 
     BOE_VERSION_FOR_COMPOSE="$previous"
+    boe_ensure_payment_network
     if compose up -d --remove-orphans >/dev/null 2>&1; then
         if boe_wait_compose_healthy 30; then
             boe_write_version "$previous" "$attempted" "rolled-back"

@@ -159,6 +159,7 @@ boe_rollback_main() {
     BOE_VERSION_FOR_COMPOSE="$TARGET"
     boe_assert_images_present "$TARGET"
     boe_validate_compose
+    boe_ensure_payment_network
 
     # ── restore/start ───────────────────────────────────────────────────────
     if [[ "${P[has_database]}" == "true" ]]; then
