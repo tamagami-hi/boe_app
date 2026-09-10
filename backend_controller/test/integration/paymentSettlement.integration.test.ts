@@ -387,6 +387,7 @@ beforeAll(async () => {
         config: {
           idempotencyTtlMs: 86_400_000,
           attemptTtlMs: 900_000,
+          merchantService: "boe-dev",
         },
       })
       registerClientPortfolioRoutes(instance, {
@@ -418,6 +419,7 @@ beforeAll(async () => {
           get enabled() { return stubAutoPayEnabled },
           idempotencyTtlMs: 86_400_000,
           attemptTtlMs: 900_000,
+          merchantService: "boe-dev",
           redirectUrl: "https://dev-app.beonedge.in/dashboard",
         },
       })

@@ -27,6 +27,7 @@ const DEBIT_HOUR_IST = 10
 const COLLECTION_EXPIRED_CODE = "COLLECTION_EXPIRED"
 
 export interface MandateCollectionConfig {
+  readonly merchantService: string | null
   readonly claimLimit: number
   readonly commandEnabled: boolean
   readonly expiryGraceMs: number
@@ -116,7 +117,7 @@ const prepareCollection = async (deps: MandateCollectionDeps, plan: SipPlan) => 
       amountPaise: locked.amount_paise,
       currency: created.order.currency,
     })
-    const merchantOrderId = newMerchantOrderId()
+    const merchantOrderId = newMerchantOrderId(deps.config.merchantService)
     const expiresAt = new Date(notifyAt.getTime() + COLLECTION_EXPIRY_MS)
     const paymentAttempt = await deps.paymentsRepository.createAttempt(tx, {
       paymentId: payment.id,

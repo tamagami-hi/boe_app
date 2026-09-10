@@ -322,6 +322,7 @@ services:
     ports:
       - "127.0.0.1:${BACKEND_PORT}:${BACKEND_PORT}"
     networks:
+      - payment_api
       - dev_frontend
       - dev_internal
     healthcheck:
@@ -344,6 +345,7 @@ services:
       seed:
         condition: service_completed_successfully
     networks:
+      - payment_api
       - dev_egress
       - dev_internal
 
@@ -376,6 +378,7 @@ services:
       seed:
         condition: service_completed_successfully
     networks:
+      - payment_api
       - dev_egress
       - dev_internal
 
@@ -433,6 +436,9 @@ services:
       - dev_frontend
 
 networks:
+  payment_api:
+    name: boe_payments
+    external: true
   # Reachable from the host loopback via published ports; fronted by nginx.
   dev_frontend:
     name: ${COMPOSE_PROJECT_NAME:-boe_dev}_frontend

@@ -321,6 +321,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       config: {
         idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
         attemptTtlMs: serverConfig.payments.attemptTtlMs,
+        merchantService: serverConfig.payments.relay?.service ?? null,
       },
     })
 
@@ -356,6 +357,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         enabled: serverConfig.payments.autoPay.enabled,
         idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
         attemptTtlMs: serverConfig.payments.attemptTtlMs,
+        merchantService: serverConfig.payments.relay?.service ?? null,
         redirectUrl: serverConfig.payments.phonepe === null
           ? "https://invalid.local/dashboard"
           : serverConfig.payments.phonepe.checkoutRedirectUrl,
@@ -921,6 +923,7 @@ export const composeMandateCollectionWorker = (
           config: {
             claimLimit: 100,
             commandEnabled: serverConfig.payments.autoPay.collectionEnabled,
+            merchantService: serverConfig.payments.relay?.service ?? null,
             expiryGraceMs: serverConfig.payments.reconciliation.expiryGraceMs,
           },
         }),

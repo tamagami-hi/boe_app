@@ -532,9 +532,33 @@ describe("payment service selection", () => {
     })
   })
 
-  test("carries the configured service identity, which selects credentials on the far side", () => {
-    expect(parseServerConfig({
+  test.each(["boe", "boe-staging", "boe-prod"])("rejects a relay identity outside the development environment: %s", (service) => {
+    expect(() => parseServerConfig({
       ...withPhonePe(),
+      PAYMENTS_SERVICE_URL: "http://boe-payment-service:47430",
+      PAYMENTS_SERVICE_SECRET: RELAY_SECRET,
+      PAYMENTS_SERVICE_NAME: service,
+    })).toThrow(/PAYMENTS_SERVICE_NAME/u)
+  })
+
+  test.each([undefined, "boe-dev"])("production refuses missing or development relay identity: %s", (service) => {
+    expect(() => parseServerConfig({
+      ...withPhonePe(),
+      NODE_ENV: "production",
+      PHONEPE_CALLBACK_URL: "https://app.beonedge.in/api/v1/provider-events/phonepe/payment",
+      PHONEPE_CHECKOUT_REDIRECT_URL: "https://app.beonedge.in/dashboard",
+      PHONEPE_SUBSCRIPTION_CALLBACK_URL: "https://app.beonedge.in/api/v1/provider-events/phonepe/subscription",
+      PAYMENTS_SERVICE_URL: "http://boe-payment-service:47430",
+      PAYMENTS_SERVICE_SECRET: RELAY_SECRET,
+      PAYMENTS_SERVICE_NAME: service,
+    })).toThrow(/PAYMENTS_SERVICE_NAME/u)
+  })
+
+  test("production accepts its own relay identity", () => {
+    expect(parseServerConfig({
+      ...validEnv(),
+      NODE_ENV: "production",
+      PASSWORD_BREACH_CHECK_MODE: "hibp",
       PAYMENTS_SERVICE_URL: "http://boe-payment-service:47430",
       PAYMENTS_SERVICE_SECRET: RELAY_SECRET,
       PAYMENTS_SERVICE_NAME: "boe-prod",

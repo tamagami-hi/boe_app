@@ -161,6 +161,7 @@ beforeAll(async () => {
         config: {
           idempotencyTtlMs: 86_400_000,
           attemptTtlMs: 900_000,
+          merchantService: "boe-dev",
         },
       })
     },

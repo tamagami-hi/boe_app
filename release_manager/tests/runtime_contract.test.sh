@@ -181,6 +181,27 @@ for stack in dev_release prod_release; do
         fi
     done
 
+    for service in backend payments-worker collections-worker; do
+        block="$(service_block "$compose_file" "$service")"
+        grep -qE '^[[:space:]]+- payment_api$' <<< "$block" \
+            || fail_test "$stack/$service cannot reach the shared payment service"
+    done
+    for service in postgres redis email-worker sips-worker app_frontend admin_frontend; do
+        block="$(service_block "$compose_file" "$service")"
+        if grep -qE '^[[:space:]]+- payment_api$' <<< "$block"; then
+            fail_test "$stack/$service must not join the shared payment network"
+        fi
+    done
+    payment_network_block="$(awk '
+        $0 == "  payment_api:" { in_network=1; print; next }
+        in_network && /^  [[:alnum:]_-]+:/ { exit }
+        in_network { print }
+    ' "$compose_file")"
+    grep -qE '^[[:space:]]+name: boe_payments$' <<< "$payment_network_block" \
+        || fail_test "$stack must use the common payment network name"
+    grep -qE '^[[:space:]]+external: true$' <<< "$payment_network_block" \
+        || fail_test "$stack must not own the shared payment network lifecycle"
+
     email_block="$(service_block "$compose_file" email-worker)"
     stack_name="${stack%%_release}"
     egress_network="${stack_name}_egress"

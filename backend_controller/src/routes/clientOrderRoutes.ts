@@ -42,6 +42,7 @@ import type { UserWriteRepository } from "../repositories/userRepository.js"
 import { requireIdempotencyKey } from "./adminRouteKit.js"
 
 export interface ClientOrderConfig {
+  readonly merchantService: string | null
   readonly idempotencyTtlMs: number
   readonly attemptTtlMs: number
 }
@@ -317,7 +318,7 @@ const prepareAttempt = async (
     paymentId: payment.id,
     userId,
     attemptNumber: (latest?.attempt_number ?? 0) + 1,
-    merchantOrderId: newMerchantOrderId(),
+    merchantOrderId: newMerchantOrderId(deps.config.merchantService),
     checkoutExpiresAt: new Date(now.getTime() + deps.config.attemptTtlMs),
     checkoutChannel,
   })

@@ -68,6 +68,7 @@ export interface ClientAutoPaySipDeps extends ClientRequestAuthDeps {
   readonly idempotencyRepository: IdempotencyRepository
   readonly recurringPaymentGateway: RecurringPaymentGateway | null
   readonly config: Readonly<{
+    merchantService: string | null
     enabled: boolean
     idempotencyTtlMs: number
     attemptTtlMs: number
@@ -170,7 +171,7 @@ const prepareAutoPay = async (
         durationMonths: body.durationMonths,
         now,
       })
-      const merchantSubscriptionId = newMerchantSubscriptionId()
+      const merchantSubscriptionId = newMerchantSubscriptionId(deps.config.merchantService)
       const mandate = await deps.mandatesRepository.createMandate(tx, {
         sipPlanId: sip.id,
         userId,
@@ -198,7 +199,7 @@ const prepareAutoPay = async (
         amountPaise: body.amountPaise,
         currency: terms.currency,
       })
-      const merchantOrderId = newMerchantOrderId()
+      const merchantOrderId = newMerchantOrderId(deps.config.merchantService)
       const setupExpiresAt = new Date(now.getTime() + deps.config.attemptTtlMs)
       const paymentAttempt = await deps.paymentsRepository.createAttempt(tx, {
         paymentId: payment.id,
@@ -615,7 +616,7 @@ const postRetry = async (deps: ClientAutoPaySipDeps, request: FastifyRequest, re
       if (await deps.paymentsRepository.markPaymentRetryCreated(tx, payment.id, now) === null) throw new AppError("STATE_CONFLICT")
       if (await deps.paymentsRepository.markOrderPaymentPending(tx, previous.order_id, now) === null) throw new AppError("STATE_CONFLICT")
       const latestAttempt = await deps.paymentsRepository.latestAttempt(tx, payment.id)
-      const merchantOrderId = newMerchantOrderId()
+      const merchantOrderId = newMerchantOrderId(deps.config.merchantService)
       const setupExpiresAt = new Date(now.getTime() + deps.config.attemptTtlMs)
       const paymentAttempt = await deps.paymentsRepository.createAttempt(tx, {
         paymentId: payment.id,

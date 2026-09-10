@@ -112,7 +112,7 @@ x-backend-env: &backend-env
   PHONEPE_CHECKOUT_REDIRECT_URL: ${PHONEPE_CHECKOUT_REDIRECT_URL:-}
   PAYMENTS_SERVICE_URL: ${PAYMENTS_SERVICE_URL:-}
   PAYMENTS_SERVICE_SECRET: ${PAYMENTS_SERVICE_SECRET:-}
-  PAYMENTS_SERVICE_NAME: ${PAYMENTS_SERVICE_NAME:-boe-dev}
+  PAYMENTS_SERVICE_NAME: ${PAYMENTS_SERVICE_NAME:-boe-prod}
   PHONEPE_SUBSCRIPTION_CALLBACK_URL: ${PHONEPE_SUBSCRIPTION_CALLBACK_URL}
   PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: ${PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST}
   PHONEPE_MERCHANT_ID: ${PHONEPE_MERCHANT_ID:-}
@@ -308,6 +308,7 @@ services:
     ports:
       - "127.0.0.1:${BACKEND_PORT}:${BACKEND_PORT}"
     networks:
+      - payment_api
       - prod_frontend
       - prod_internal
     healthcheck:
@@ -330,6 +331,7 @@ services:
       seed:
         condition: service_completed_successfully
     networks:
+      - payment_api
       - prod_egress
       - prod_internal
 
@@ -362,6 +364,7 @@ services:
       seed:
         condition: service_completed_successfully
     networks:
+      - payment_api
       - prod_egress
       - prod_internal
 
@@ -419,6 +422,9 @@ services:
       - prod_frontend
 
 networks:
+  payment_api:
+    name: boe_payments
+    external: true
   # Reachable from the host loopback via published ports; fronted by nginx.
   prod_frontend:
     name: ${COMPOSE_PROJECT_NAME:-boe_prod}_frontend

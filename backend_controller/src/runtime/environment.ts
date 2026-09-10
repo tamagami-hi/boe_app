@@ -115,7 +115,7 @@ const ServerConfigSchema = z.object({
   PHONEPE_CHECKOUT_REDIRECT_URL: z.string().trim().optional(),
   PAYMENTS_SERVICE_URL: z.string().trim().optional(),
   PAYMENTS_SERVICE_SECRET: z.string().trim().optional(),
-  PAYMENTS_SERVICE_NAME: z.string().trim().default("boe-dev"),
+  PAYMENTS_SERVICE_NAME: z.enum(["boe-dev", "boe-prod"]).default("boe-dev"),
   PHONEPE_SUBSCRIPTION_CALLBACK_URL: z.string().trim().optional(),
   PHONEPE_SUBSCRIPTION_EVENT_ALLOWLIST: z.string().trim().optional(),
   PHONEPE_PAYMENT_EVENT_ALLOWLIST: z.string().trim().default("checkout.order.completed,checkout.order.failed"),
@@ -359,6 +359,10 @@ const relayConfig = (
   if (!declaredUrl && !declaredSecret) return null
   if (!declaredUrl || !declaredSecret) {
     throw new Error("PAYMENTS_SERVICE_URL and PAYMENTS_SERVICE_SECRET must be set together")
+  }
+  const expectedService = parsed.NODE_ENV === "production" ? "boe-prod" : "boe-dev"
+  if (parsed.PAYMENTS_SERVICE_NAME !== expectedService) {
+    throw new Error(`PAYMENTS_SERVICE_NAME must be ${expectedService} for NODE_ENV=${parsed.NODE_ENV}`)
   }
   if (secret.length < 32) {
     throw new Error("PAYMENTS_SERVICE_SECRET must be at least 32 characters")

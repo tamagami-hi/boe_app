@@ -111,7 +111,7 @@ describe("mandate collection timing", () => {
       auditRepository: { append: vi.fn().mockResolvedValue(undefined) },
       notificationRepository: { create: vi.fn().mockResolvedValue(undefined) },
       logger: null,
-      config: { claimLimit: 10, commandEnabled: true, expiryGraceMs: 300_000 },
+      config: { merchantService: "boe-dev", claimLimit: 10, commandEnabled: true, expiryGraceMs: 300_000 },
     } as unknown as MandateCollectionDeps
     await expect(runMandateCollectionPass(deps)).resolves.toEqual({
       plansChecked: 1,
@@ -213,7 +213,7 @@ describe("mandate collection timing", () => {
       auditRepository: { append: vi.fn().mockResolvedValue(undefined) },
       notificationRepository: { create: vi.fn().mockResolvedValue(undefined) },
       logger: null,
-      config: { claimLimit: 10, commandEnabled: true, expiryGraceMs: 300_000 },
+      config: { merchantService: "boe-dev", claimLimit: 10, commandEnabled: true, expiryGraceMs: 300_000 },
     } as unknown as MandateCollectionDeps
     await expect(runMandateCollectionPass(deps)).resolves.toEqual({
       plansChecked: 1,
@@ -294,7 +294,7 @@ describe("mandate collection timing", () => {
       paymentsRepository,
       settlementRepository,
       logger: null,
-      config: { claimLimit: 10, commandEnabled: false, expiryGraceMs: 300_000 },
+      config: { merchantService: "boe-dev", claimLimit: 10, commandEnabled: false, expiryGraceMs: 300_000 },
     } as unknown as MandateCollectionDeps
     await expect(runMandateCollectionPass(deps)).resolves.toEqual({
       plansChecked: 0,
@@ -350,7 +350,7 @@ describe("mandate collection timing", () => {
       },
       settlementRepository: {},
       logger: null,
-      config: { claimLimit: 10, commandEnabled: false, expiryGraceMs: 300_000 },
+      config: { merchantService: "boe-dev", claimLimit: 10, commandEnabled: false, expiryGraceMs: 300_000 },
     } as unknown as MandateCollectionDeps
 
     await expect(runMandateCollectionPass(deps)).resolves.toEqual({
@@ -416,7 +416,7 @@ describe("mandate collection timing", () => {
       },
       settlementRepository: {},
       logger: null,
-      config: { claimLimit: 10, commandEnabled: false, expiryGraceMs: 300_000 },
+      config: { merchantService: "boe-dev", claimLimit: 10, commandEnabled: false, expiryGraceMs: 300_000 },
     } as unknown as MandateCollectionDeps
 
     await expect(runMandateCollectionPass(deps)).resolves.toMatchObject({ collectionsExpired: 0 })
