@@ -22,6 +22,13 @@ import { AppError } from "./errorCatalog.js"
 /** `Idempotency-Key` header scalar (spec 04 §2.1). */
 export const idempotencyKeySchema = z.string().regex(/^[A-Za-z0-9._:-]{8,128}$/u)
 
+export type IdempotencyRetention = "ordinary" | "durable"
+
+export const DURABLE_RECEIPT_EXPIRES_AT = "9999-12-31T00:00:00.000Z"
+
+export const receiptExpiresAt = (retention: IdempotencyRetention, now: Date, ttlMs: number): string =>
+  retention === "durable" ? DURABLE_RECEIPT_EXPIRES_AT : new Date(now.getTime() + ttlMs).toISOString()
+
 export interface IdempotentOutcome<TBody> {
   readonly status: number
   readonly body: TBody
@@ -35,6 +42,7 @@ export interface IdempotentExecution<TBody> {
   readonly requestHash: Uint8Array
   readonly now: string
   readonly expiresAt: string
+  readonly rejectExpiredKey?: boolean
   readonly execute: () => Promise<{ readonly status: number; readonly body: TBody }>
 }
 
@@ -73,6 +81,12 @@ export const executeIdempotent = async <TBody>(
 
   const alreadyCompleted = await replayIfCompleted()
   if (alreadyCompleted !== null) return alreadyCompleted
+
+  if (params.rejectExpiredKey === true && (await repository.hasExpiredRecord(tx, scope))) {
+    throw new AppError("IDEMPOTENCY_KEY_REUSED", {
+      message: "The idempotency key was already used and its replay window has ended",
+    })
+  }
 
   const acquired = await repository.tryAcquireTransactionLock(tx, scope)
   if (!acquired) {

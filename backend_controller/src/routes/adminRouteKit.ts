@@ -8,7 +8,12 @@ import type { IdempotencyRepository, IdempotencyScope, Transaction } from "../db
 import { computeFilterHash } from "../http/cursor.js"
 import { MAX_PAGE_LIMIT } from "../http/pagination.js"
 import { AppError } from "../http/errorCatalog.js"
-import { executeIdempotent, idempotencyKeySchema } from "../http/idempotencyProtocol.js"
+import {
+  executeIdempotent,
+  idempotencyKeySchema,
+  receiptExpiresAt,
+  type IdempotencyRetention,
+} from "../http/idempotencyProtocol.js"
 
 export const MAX_ADMIN_LIMIT = MAX_PAGE_LIMIT
 
@@ -106,6 +111,7 @@ export interface AdminMutationOptions<TBody> {
   readonly idempotencyRepository: IdempotencyRepository
   readonly now: Date
   readonly idempotencyTtlMs: number
+  readonly retention?: IdempotencyRetention
   readonly scope: IdempotencyScope
   readonly requestHash: Buffer
   readonly execute: (tx: Transaction) => Promise<{ readonly status: number; readonly body: TBody }>
@@ -127,7 +133,8 @@ export const runAdminMutation = async <TBody extends Record<string, unknown>>(
       scope: options.scope,
       requestHash: options.requestHash,
       now: options.now.toISOString(),
-      expiresAt: new Date(options.now.getTime() + options.idempotencyTtlMs).toISOString(),
+      expiresAt: receiptExpiresAt(options.retention ?? "ordinary", options.now, options.idempotencyTtlMs),
+      rejectExpiredKey: true,
       execute: async () => options.execute(tx),
     }),
   )

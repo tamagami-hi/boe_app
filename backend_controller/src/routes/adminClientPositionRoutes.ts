@@ -104,6 +104,7 @@ const recordedContribution = async (
     idempotencyRepository: deps.idempotencyRepository,
     now,
     idempotencyTtlMs: deps.config.idempotencyTtlMs,
+    retention: "durable",
     scope: adminIdempotencyScope(principal.userId, RECORDED_CONTRIBUTIONS_ROUTE, key),
     requestHash: hashRequest({
       userId,

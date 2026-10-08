@@ -489,7 +489,9 @@ Each step records here what changed, the exact verification (commands and counts
 | Step | Status |
 | --- | --- |
 | 1. Shared professional emails and OTP presentation | Done and committed; not deployed. Details below |
-| 2 to 10 | Not started |
+| 2a. Durable creation and contribution receipts (step 2, task 2) | Done and committed; not deployed. Details below |
+| 2b. Durable email queue: enqueue, lease fencing, recovery, cancellation, SMTP timeouts (step 2, tasks 1 and 3 to 7) | Not started |
+| 3 to 10 | Not started |
 
 ### Step 1 handoff (2026-10-08)
 
@@ -508,3 +510,15 @@ For the maintainer to review:
 - Copy changed: the approval and app-download subjects, "immediately" and the em dashes are gone, links sit behind a button with a fallback URL, expiry reads "N minutes" or "N seconds", and there is no greeting because no name is available. The rejection line "nothing has been charged" was already in the old copy and has not been verified.
 
 Remaining risks: stale comments remain in `email/ports.ts` and in the header of `transactionalEmailSender.ts`; they were left alone under rule 9. The `from` address is not CR/LF-checked because it comes from configuration, and failing it would dead-letter queued mail.
+
+### Step 2a handoff (2026-10-08)
+
+Changed, backend only, with no migration and no contract change. Client creation and recorded contributions pass `retention: "durable"` to `runAdminMutation`, which stores their receipt with the fixed expiry `9999-12-31T00:00:00.000Z` instead of now plus the TTL. `idempotency_records.expires_at` is `timestamptz NOT NULL` (migration 012), `findCompleted` is the only reader of it, and the repository has no `DELETE`, so nothing purges receipts. The previous release only checks `expires_at > now`, so it replays a durable row and rejects a different body on the same key; rolling back is safe. Every `runAdminMutation` caller also answers a reused key whose receipt has expired with the existing 409 `IDEMPOTENCY_KEY_REUSED` (a specific message, `retryable: false`), checked before the lock and before the mutation runs. Public signup, client orders and SIPs, and the application decision call `executeIdempotent` directly and are unchanged, because `/newuser` derives its key from applicant content and a repeat after 24 hours is a normal path there.
+
+Verified (TESTED): `npm run check` in `backend_controller/` exits 0 with 87 test files and 951 tests (16 added), coverage 84.96% statements, 83.92% branches, and 91.42% functions, plus the build and both boot smokes. Each new guard was shown failing with its fix undone: durable ignored, expiry guard removed, retention removed from either route, durable made the default, request-hash comparison neutralised, a token added to the stored body, and the guard applied to every caller. UNVERIFIED: the SQL of `hasExpiredRecord` and the insert of the 9999 value against real PostgreSQL. The new tests use an in-memory repository that models the SQL, and no container was started (rule 3). The existing integration tests that touch the store are `database`, `adminFundCatalog`, `adminAum`, `adminMandate`, and `maturitySettlement` under `test/integration/`; run them with `cd backend_controller && npm run test:integration`.
+
+Corrected beliefs: a retry of an expired key did not execute the mutation twice. The re-run happened inside the transaction, hit `idempotency_records_scope_uk`, surfaced as a 500, and rolled back, so no duplicate was committed. It would become a real duplicate if a purge were ever added. The 24-hour value is only the code default (`IDEMPOTENCY_TTL_MS`); the deployed value is unverified. The creation receipt holds only the user id, account state, and verification state, and the invite token is never stored, so a replay does not re-send the mail.
+
+For the maintainer: other money or identity operations still use the 24-hour window and now return the 409 on an expired key. They are ledger reversal, maturity mark, withdrawal, reinvestment, and payout status, fund receipt acknowledgement and refund retry and reconcile, mandate cancel and reconcile, fund AUM writes, and user suspend, reinstate, and close. Decide which of them should become durable. Client growth keeps its own inline copy of the protocol, and its receipts are referenced by a foreign key. If a purge of ordinary receipts is ever added, it removes this rejection for them; durable rows are excluded automatically.
+
+For step 4: the admin UI maps `IDEMPOTENCY_KEY_REUSED` to "Give it a moment" (`frontend_stack_ts/src/domain/failure.ts:72`), which will mislead on this 409. The UI must resolve an unknown outcome by reading current state with the original key, never by minting a new one.

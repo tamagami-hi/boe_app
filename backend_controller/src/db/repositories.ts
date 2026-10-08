@@ -72,6 +72,7 @@ export type CompleteIdempotencyInput = ReadonlyDeep<{
 export interface IdempotencyRepository {
   tryAcquireTransactionLock(tx: Transaction, scope: Readonly<IdempotencyScope>): Promise<boolean>
   findCompleted(tx: Transaction, scope: Readonly<IdempotencyScope>): Promise<IdempotencyRecord | null>
+  hasExpiredRecord(tx: Transaction, scope: Readonly<IdempotencyScope>): Promise<boolean>
   insertCompleted(tx: Transaction, input: Readonly<CompleteIdempotencyInput>): Promise<IdempotencyRecord>
 }
 

@@ -45,6 +45,19 @@ export const createIdempotencyRepository = (): IdempotencyRepository => ({
     return row ?? null
   },
 
+  hasExpiredRecord: async (tx: Transaction, scope: IdempotencyScope): Promise<boolean> => {
+    const row = await tx
+      .selectFrom("idempotency_records")
+      .select("id")
+      .where("actor_scope", "=", scope.actorScope)
+      .where("http_method", "=", scope.method)
+      .where("route_template", "=", scope.routeTemplate)
+      .where("key", "=", scope.key)
+      .where("expires_at", "<=", new Date())
+      .executeTakeFirst()
+    return row !== undefined
+  },
+
   insertCompleted: async (
     tx: Transaction,
     input: CompleteIdempotencyInput,

@@ -78,6 +78,7 @@ const createClient = async (
     idempotencyRepository: deps.idempotencyRepository,
     now: deps.clock(),
     idempotencyTtlMs: deps.config.idempotencyTtlMs,
+    retention: "durable",
     scope: adminIdempotencyScope(principal.userId, CLIENTS_ROUTE, key),
     requestHash: hashRequest({ emailNormalized, phoneE164, fullName: body.fullName }),
     execute: async (tx) => {

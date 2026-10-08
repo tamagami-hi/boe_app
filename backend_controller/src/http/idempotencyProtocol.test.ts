@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest"
+import { describe, expect, test, vi } from "vitest"
 
 import type {
   IdempotencyRecord,
@@ -8,7 +8,7 @@ import type {
 } from "../db/repositories.js"
 
 import { AppError } from "./errorCatalog.js"
-import { executeIdempotent, idempotencyKeySchema } from "./idempotencyProtocol.js"
+import { executeIdempotent, idempotencyKeySchema, type IdempotentExecution } from "./idempotencyProtocol.js"
 
 const TX = {} as Transaction
 const SCOPE: IdempotencyScope = {
@@ -33,6 +33,7 @@ class FakeRepo implements IdempotencyRepository {
   constructor(
     private readonly lockAcquired: boolean,
     private readonly completed: IdempotencyRecord | null = null,
+    private readonly expired = false,
   ) {}
   tryAcquireTransactionLock(): Promise<boolean> {
     return Promise.resolve(this.lockAcquired)
@@ -40,14 +41,24 @@ class FakeRepo implements IdempotencyRepository {
   findCompleted(): Promise<IdempotencyRecord | null> {
     return Promise.resolve(this.completed)
   }
+  hasExpiredRecord(): Promise<boolean> {
+    return Promise.resolve(this.expired)
+  }
   insertCompleted(): Promise<IdempotencyRecord> {
     this.inserted += 1
     return Promise.resolve(record({}))
   }
 }
 
-const run = (repository: IdempotencyRepository) =>
-  executeIdempotent({
+interface Accepted {
+  accepted: boolean
+}
+
+const run = (
+  repository: IdempotencyRepository,
+  overrides: Partial<Pick<IdempotentExecution<Accepted>, "execute" | "rejectExpiredKey">> = {},
+) =>
+  executeIdempotent<Accepted>({
     repository,
     tx: TX,
     scope: SCOPE,
@@ -55,6 +66,7 @@ const run = (repository: IdempotencyRepository) =>
     now: "2026-01-01T00:00:00.000Z",
     expiresAt: "2026-01-02T00:00:00.000Z",
     execute: () => Promise.resolve({ status: 202, body: { accepted: true } }),
+    ...overrides,
   })
 
 describe("idempotencyKeySchema", () => {
@@ -82,6 +94,24 @@ describe("executeIdempotent", () => {
   test("rejects a different request hash as reused", async () => {
     const mismatched = record({ request_hash: new Uint8Array(32).fill(9) })
     await expect(run(new FakeRepo(false, mismatched))).rejects.toMatchObject({ code: "IDEMPOTENCY_KEY_REUSED" })
+  })
+
+  test("rejects an expired key without running the mutation when the caller opts in", async () => {
+    const execute = vi.fn(() => Promise.resolve({ status: 202, body: { accepted: true } }))
+    const repo = new FakeRepo(true, null, true)
+    await expect(run(repo, { execute, rejectExpiredKey: true })).rejects.toMatchObject({
+      code: "IDEMPOTENCY_KEY_REUSED",
+      httpStatus: 409,
+    })
+    expect(execute).not.toHaveBeenCalled()
+    expect(repo.inserted).toBe(0)
+  })
+
+  test("leaves expired-key behaviour unchanged for callers that have not opted in", async () => {
+    const execute = vi.fn(() => Promise.resolve({ status: 202, body: { accepted: true } }))
+    const outcome = await run(new FakeRepo(true, null, true), { execute })
+    expect(outcome).toEqual({ status: 202, body: { accepted: true }, replay: false })
+    expect(execute).toHaveBeenCalledTimes(1)
   })
 
   test("reports an in-progress request when no record exists", async () => {
