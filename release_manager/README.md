@@ -1,5 +1,9 @@
 # BOE_APP Release Manager
 
+This is an operator reference, not agent permission to run a release. Root
+[RULES.md](../RULES.md) governs safety, exports, VPS access, deployment, and the
+production data and migration policy.
+
 Air-gapped, operator-controlled deployment for the three BeOnEdge VPS stacks.
 
 You build here. The VPS runs. Artifacts move deliberately, by rsync over SSH.
@@ -161,7 +165,10 @@ automatic image rollback.
 
 **Application rollback and database restore are separate.** Rollback swaps images
 without restoring the database. The current stack `.env` is reused, so config
-changes must remain backward-compatible across the retained rollback window.
+changes must remain backward-compatible across the retained rollback window, and
+migrations must stay compatible with the previous release unless they are registered
+destructive boundaries (`RULES.md` rule 11; migration policy in `DEPLOY.md`).
+Crossing a registered boundary requires `--restore-db`.
 Keep an encrypted recovery copy outside ordinary rollback/log directories.
 Database restore discards committed transactions, so it is opt-in
 (`--restore-db`), backs up the current database first, and requires typing

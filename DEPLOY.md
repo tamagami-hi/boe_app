@@ -1,5 +1,9 @@
 # BeOnEdge — VPS deployment
 
+Operator reference only. Root [RULES.md](RULES.md) owns safety and permissions;
+these commands do not authorize an agent to export, connect to the VPS, deploy,
+restore data, or run a migration against a deployed database.
+
 Three independent stacks are deployed from `release_manager/`, each with its own compose
 file, `.env`, remote directory and lock:
 
@@ -108,9 +112,11 @@ snapshot and requires typing `RESTORE` at the remote prompt.
 
 A deploy runs migrations forward before the new app starts, so an images-only rollback
 points the previous app at an already-migrated schema. That is safe only while migrations
-stay backward-compatible — see the expand/contract rule below. When a migration cannot be
-made backward-compatible, say so in the release notes: rolling back that release *requires*
-`--restore-db` and its matching snapshot.
+stay backward-compatible; see the migration policy below. A migration that cannot be made
+backward-compatible is a destructive boundary: rolling back across it *requires*
+`--restore-db` and its matching snapshot, which discards every transaction committed since,
+including customer activity. Such a migration needs maintainer approval under `RULES.md`
+rule 11 and must be registered as a rollback boundary (migrations 025 and 042 are).
 
 Per-stack backup roots live under `/srv/backup/BOE_APP/` (`PROD_ROLLBACK/`, `DB_BACKUPS/`,
 `LOGS/`) and are addressed through `paths.json`, never by literal path.
@@ -188,17 +194,40 @@ the secret is unconfigured. Origin and Referer are deliberately not used — the
 server-to-server, so those headers are absent or attacker-controlled. Signup creates a
 `submitted` application and sends no email; approval is what queues the welcome mail.
 
-## Migration rule: expand/contract
+## Migration policy
 
-Every migration must be backward-compatible with the previous app version, so the prior
-release can run against the new schema. That is what makes an images-only rollback safe.
+Production holds customer, financial, consent, and audit data. Root `RULES.md` rule 11 is
+the authority; this section is the mechanics.
 
-- **Expand**, in the release that needs the change: add-only. New tables, new nullable
-  columns (or columns with a default), new indexes. Never drop or rename in the same
-  release that starts depending on the change.
-- **Contract**, in a later release once nothing rolls back to the old app: drop or rename
-  the now-unused columns and tables.
-- Backfills run as their own step and tolerate both old and new code reading the row.
+- **Expand**, in the release that needs the change, is add-only: new tables, new nullable
+  columns (or columns with a default), and indexes or constraints that every existing row
+  already satisfies. Never drop or rename in the release that starts depending on the
+  change. The previous release must keep working against the migrated schema, because
+  `migrate` completes before the new backend starts and an images-only rollback reuses the
+  old image.
+- **Contract**, in a later release once nothing rolls back to the old app and the
+  maintainer has approved it, drops or renames the now-unused columns and tables. A
+  contract step that can lose data is a destructive migration.
+- **Backfills** run as their own step, are idempotent, touch only the rows they must, and
+  tolerate both old and new code reading the row. They never re-trigger mail, payments, or
+  ledger writes for historical rows.
+- **Destructive migrations refuse instead of deleting.** Check for existing rows first and
+  raise, as `042_remove_legacy_compliance_tables.sql` does for non-empty tables. Register
+  the boundary in `release_manager/stacks/_shared/_boe_lib.sh` (rollback) and
+  `_boe_deploy.sh` (backup policy), with tests in `release_manager/tests/database_backup.test.sh`.
+- **Applied migrations are immutable.** `migrate` stores each file's checksum but does not
+  verify it, so an edited applied migration never re-runs and silently diverges
+  environments. Correct one with a new migration.
+- Each file runs inside one transaction, so a statement that cannot (such as
+  `CREATE INDEX CONCURRENTLY`) needs a deliberate runner change.
+- Every production deploy over an existing database takes a pre-deploy `pg_dump` snapshot
+  (`--skip-db-backup` is refused for production) and aborts if the dump fails. A snapshot is
+  a recovery aid, not a rollback plan: restoring it discards later transactions.
+
+Where a release cannot be made compatible with the previous one, the maintainer decides the
+cut (for example a schema-only release ahead of the behaviour release, as in
+`release_manager/docs/existing-client-impl/06-sequencing-and-migrations.md`) and states the
+rollback implication in the release notes.
 
 ## Scaling roadmap
 
