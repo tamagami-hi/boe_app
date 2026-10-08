@@ -326,6 +326,7 @@ const growAum = async (deps: AdminAumDeps, request: FastifyRequest, reply: Fasti
     idempotencyRepository: deps.idempotencyRepository,
     now: deps.clock(),
     idempotencyTtlMs: deps.config.idempotencyTtlMs,
+    retention: "durable",
     scope: adminIdempotencyScope(principal.userId, `${AUM_ROUTE}/funds/:fundId/growth`, key),
     requestHash: hashRequest({ fundId, ...body }),
     execute: async (tx) => {

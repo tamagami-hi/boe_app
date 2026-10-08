@@ -13,6 +13,7 @@ import { createClientAccount } from "../domain/admin/createClientAccount.js"
 import { recordContribution } from "../domain/admin/recordContribution.js"
 import { reverseLedgerEntry } from "../domain/admin/reverseLedgerEntry.js"
 import { createApplication } from "../runtime/application.js"
+import { registerAdminAumRoutes, type AdminAumDeps } from "./adminAumRoutes.js"
 import {
   registerAdminClientOnboardingRoutes,
   type AdminClientOnboardingDeps,
@@ -106,6 +107,9 @@ const CLIENT_ID = "3f1c2a54-8d3e-4b7a-9c61-5e2d7f0a1b94"
 const FUND_ID = "7a9d4c1e-2b6f-4e83-8a15-0c3e9f7b2d46"
 const LEDGER_ENTRY_ID = "b2e8f6a0-5c47-4d19-b3a2-9e1f6d8c0a57"
 const REVERSAL_ENTRY_ID = "c9d3e7f1-6a28-4b50-8e4c-1f7a2b9d3c68"
+const AUM_SNAPSHOT_ID = "d1f4a8c2-7b39-4e65-8a0d-3c5e9b7f2a14"
+const GROWN_SNAPSHOT_ID = "e2a5b9d3-8c4a-4f76-9b1e-4d6f0c8a3b25"
+const GROWTH_BATCH_ID = "f3b6c0e4-9d5b-4a87-8c2f-5e7a1d9b4c36"
 const INVITE_TOKEN = "invite-secret-token-9d41"
 
 const CREATE_CLIENT = {
@@ -122,6 +126,19 @@ const REVERSE_ENTRY = {
   url: `/v1/admin/clients/${CLIENT_ID}/ledger-entries/${LEDGER_ENTRY_ID}/reversal`,
   key: "reverse-entry-0001",
   payload: { reasonCode: "entered_in_error" },
+}
+const GROW_FUND_AUM = {
+  url: `/v1/admin/aum/funds/${FUND_ID}/growth`,
+  key: "grow-fund-aum-0001",
+  payload: { growthPaise: "50000000", asOfDate: "2025-12-15", reasonCode: "monthly_update" },
+}
+
+const aumRepository = {
+  lockFund: vi.fn(),
+  findLatestSnapshot: vi.fn(),
+  findHighestRevision: vi.fn(),
+  insertBatch: vi.fn(),
+  insertSnapshot: vi.fn(),
 }
 
 let nowMs = T0
@@ -150,6 +167,17 @@ const buildApp = (): FastifyInstance =>
         webAuth: {},
         config: { idempotencyTtlMs: WINDOW_MS },
       } as unknown as AdminClientPositionDeps)
+      registerAdminAumRoutes(instance, {
+        cache: { invalidatePrefix: vi.fn() },
+        webAuth: {},
+        unitOfWork,
+        clock,
+        config: { cursorKey: Buffer.alloc(32), idempotencyTtlMs: WINDOW_MS },
+        aumRepository,
+        auditRepository: { append: vi.fn() },
+        idempotencyRepository: repository,
+        rateLimiter: { hit: vi.fn() },
+      } as unknown as AdminAumDeps)
     },
   })
 
@@ -200,6 +228,27 @@ beforeEach(() => {
     principalPaise: 0n,
     currentValuePaise: 0n,
   })
+  aumRepository.lockFund.mockResolvedValue({ id: FUND_ID, state: "published" })
+  aumRepository.findLatestSnapshot.mockResolvedValue({
+    id: AUM_SNAPSHOT_ID,
+    fundId: FUND_ID,
+    asOfDate: "2025-12-01",
+    revision: 1,
+    aumPaise: "1000000000",
+  })
+  aumRepository.findHighestRevision.mockResolvedValue(1)
+  aumRepository.insertBatch.mockResolvedValue({ id: GROWTH_BATCH_ID })
+  aumRepository.insertSnapshot.mockResolvedValue({
+    id: GROWN_SNAPSHOT_ID,
+    fundId: FUND_ID,
+    asOfDate: "2025-12-15",
+    revision: 2,
+    aumPaise: "1050000000",
+    reasonCode: "monthly_update",
+    note: null,
+    growthBatchId: GROWTH_BATCH_ID,
+    createdAt: new Date(T0),
+  })
   app = buildApp()
 })
 
@@ -219,6 +268,12 @@ describe.each([
     operation: RECORD_CONTRIBUTION,
     changedPayload: { ...RECORD_CONTRIBUTION.payload, amountPaise: "500001" },
     mutation: recordContribution,
+  },
+  {
+    name: "fund AUM growth",
+    operation: GROW_FUND_AUM,
+    changedPayload: { ...GROW_FUND_AUM.payload, growthPaise: "50000001" },
+    mutation: aumRepository.insertSnapshot,
   },
 ])("$name receipt", ({ operation, changedPayload, mutation }) => {
   test("is stored once and replays unchanged while the ordinary window is open", async () => {

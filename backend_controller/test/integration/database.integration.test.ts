@@ -17,6 +17,7 @@ import { createPool } from "../../src/db/pool.js"
 import { SEED_PERMISSIONS, SEED_ROLES } from "../../src/db/seedCatalog.js"
 import { SEED_CONTENT_DOCUMENTS } from "../../src/db/seedContent.js"
 import type { Database } from "../../src/db/types.js"
+import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
 import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
 import { runSeed } from "../../src/scripts/seed.js"
 
@@ -326,6 +327,83 @@ describe("canonical public-onboarding schema (BE-007a)", () => {
         [entityId, makerId],
       ),
     ).rejects.toThrow()
+  })
+
+  test("replays a durable idempotency receipt and tells an expired one from an unused key", async () => {
+    const unitOfWork = createUnitOfWork(database)
+    const repository = createIdempotencyRepository()
+    const actorScope = `admin:${randomUUID()}`
+    const scopeFor = (key: string) => ({
+      actorScope,
+      actorScopeKeyVersion: null,
+      candidateActorScopes: [actorScope],
+      method: "POST",
+      routeTemplate: "/v1/admin/clients",
+      key,
+    })
+    const durableScope = scopeFor("durable-receipt-0001")
+    const ordinaryScope = scopeFor("ordinary-receipt-0001")
+    const unusedScope = scopeFor("unused-key-0001")
+    const durableBody = { userId: "3f1c2a54-8d3e-4b7a-9c61-5e2d7f0a1b94", accountState: "active" }
+    const dayMs = 86_400_000
+    const nowMs = Date.now()
+
+    await unitOfWork.execute(async (transaction) => {
+      await repository.insertCompleted(transaction, {
+        scope: durableScope,
+        requestHash: Buffer.alloc(32, 7),
+        responseStatus: 201,
+        responseBody: durableBody,
+        completedAt: new Date(nowMs).toISOString(),
+        expiresAt: "9999-12-31T00:00:00.000Z",
+      })
+      await repository.insertCompleted(transaction, {
+        scope: ordinaryScope,
+        requestHash: Buffer.alloc(32, 8),
+        responseStatus: 201,
+        responseBody: { userId: "7a9d4c1e-2b6f-4e83-8a15-0c3e9f7b2d46", accountState: "active" },
+        completedAt: new Date(nowMs).toISOString(),
+        expiresAt: new Date(nowMs + dayMs).toISOString(),
+      })
+    })
+
+    const whileOpen = await unitOfWork.execute(async (transaction) => ({
+      found: await repository.findCompleted(transaction, ordinaryScope),
+      expired: await repository.hasExpiredRecord(transaction, ordinaryScope),
+    }))
+    expect(whileOpen.found?.response_status).toBe(201)
+    expect(whileOpen.expired).toBe(false)
+
+    await database
+      .updateTable("idempotency_records")
+      .set({
+        created_at: new Date(nowMs - 2 * dayMs),
+        completed_at: new Date(nowMs - 2 * dayMs),
+        expires_at: new Date(nowMs - dayMs),
+      })
+      .where("actor_scope", "=", actorScope)
+      .where("key", "=", ordinaryScope.key)
+      .execute()
+
+    const durable = await unitOfWork.execute(async (transaction) => ({
+      found: await repository.findCompleted(transaction, durableScope),
+      expired: await repository.hasExpiredRecord(transaction, durableScope),
+    }))
+    expect(durable.found?.response_body).toEqual(durableBody)
+    expect(durable.found?.expires_at.getUTCFullYear()).toBe(9999)
+    expect(durable.expired).toBe(false)
+
+    const aged = await unitOfWork.execute(async (transaction) => ({
+      found: await repository.findCompleted(transaction, ordinaryScope),
+      expired: await repository.hasExpiredRecord(transaction, ordinaryScope),
+    }))
+    expect(aged.found).toBeNull()
+    expect(aged.expired).toBe(true)
+
+    const unused = await unitOfWork.execute((transaction) =>
+      repository.hasExpiredRecord(transaction, unusedScope),
+    )
+    expect(unused).toBe(false)
   })
 
   test("enforces outbox and email-delivery invariants (BE-007e)", async () => {
