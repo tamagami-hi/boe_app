@@ -171,7 +171,14 @@ const workerDeps = (sender: SesEmailSender) => ({
   sender,
   crypto,
   clock: () => new Date(),
-  config: { topic: "email", workerId: "worker-1", leaseMs: 30_000, claimLimit: 10 },
+  config: {
+    topic: "email",
+    workerId: "worker-1",
+    leaseMs: 30_000,
+    claimLimit: 10,
+    messageBudgetMs: 25_000,
+    passBudgetMs: 35_000,
+  },
 })
 
 const deliveryState = async (deliveryId: string): Promise<Record<string, unknown>> =>

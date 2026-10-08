@@ -5,6 +5,7 @@ import {
   type DispatchSummary,
 } from "../domain/email/dispatchDueDeliveries.js"
 import { createTransactionalEmailSender } from "../email/transactionalEmailSender.js"
+import { deriveEmailSendTiming, EMAIL_PASS_BUDGET_MS } from "../email/sendTiming.js"
 import { createDatabase, createUnitOfWork } from "../db/database.js"
 import type { Database } from "../db/types.js"
 import { parseDatabaseConfig } from "../db/config.js"
@@ -64,9 +65,10 @@ export const composeEmailDispatchWorker = (
   const crypto = createCryptoContext(parseCryptoKeys(source))
 
   const fromAddress = serverConfig.email.fromAddress ?? serverConfig.email.smtp?.user ?? "no-reply@localhost"
+  const timing = deriveEmailSendTiming(serverConfig.email.worker.leaseMs)
   const transport: EmailSender =
     serverConfig.email.smtp !== null
-      ? createSmtpEmailSender({ ...serverConfig.email.smtp, fromAddress })
+      ? createSmtpEmailSender({ ...serverConfig.email.smtp, fromAddress, timeouts: timing.smtp })
       : createUnconfiguredEmailSender()
 
   const deps = {
@@ -80,8 +82,10 @@ export const composeEmailDispatchWorker = (
     config: {
       topic: "email",
       workerId: source.WORKER_ID ?? "email-worker",
-      leaseMs: serverConfig.email.worker.leaseMs,
+      leaseMs: timing.leaseMs,
       claimLimit: serverConfig.email.worker.claimLimit,
+      messageBudgetMs: timing.messageBudgetMs,
+      passBudgetMs: EMAIL_PASS_BUDGET_MS,
     },
   }
 

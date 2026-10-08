@@ -36,6 +36,13 @@ export interface EmailSender {
   send: (message: EmailMessage) => Promise<EmailSendResult>
 }
 
+export interface SmtpTimeouts {
+  readonly dnsTimeoutMs: number
+  readonly connectionTimeoutMs: number
+  readonly greetingTimeoutMs: number
+  readonly socketTimeoutMs: number
+}
+
 export interface SmtpEmailConfig {
   readonly host: string
   readonly port: number
@@ -44,6 +51,7 @@ export interface SmtpEmailConfig {
   readonly password: string
   /** The company `From` address used for Email OTP Verification. */
   readonly fromAddress: string
+  readonly timeouts?: SmtpTimeouts
 }
 
 const isLoopbackSmtp = (host: string): boolean =>
@@ -58,6 +66,14 @@ export const createSmtpEmailSender = (config: SmtpEmailConfig): EmailSender => {
     // implement STARTTLS, so plaintext is allowed only on the loopback device.
     requireTLS: !config.secure && !isLoopbackSmtp(config.host),
     auth: { user: config.user, pass: config.password },
+    ...(config.timeouts === undefined
+      ? {}
+      : {
+          dnsTimeout: config.timeouts.dnsTimeoutMs,
+          connectionTimeout: config.timeouts.connectionTimeoutMs,
+          greetingTimeout: config.timeouts.greetingTimeoutMs,
+          socketTimeout: config.timeouts.socketTimeoutMs,
+        }),
   })
   return {
     send: async (message) => {

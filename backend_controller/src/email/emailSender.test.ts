@@ -4,7 +4,8 @@ import { createSmtpEmailSender } from "./emailSender.js"
 
 const sendMail = vi.hoisted(() => vi.fn<(options: Record<string, unknown>) => Promise<{ messageId: string }>>())
 
-vi.mock("nodemailer", () => ({ default: { createTransport: () => ({ sendMail }) } }))
+const createTransport = vi.hoisted(() => vi.fn<(options: Record<string, unknown>) => { sendMail: typeof sendMail }>(() => ({ sendMail })))
+vi.mock("nodemailer", () => ({ default: { createTransport } }))
 
 const sender = createSmtpEmailSender({
   host: "smtp.example.com",
@@ -48,5 +49,27 @@ describe("createSmtpEmailSender", () => {
       text: "Body",
       html: "<p>Body</p>",
     })
+  })
+
+  test("hands the derived timeouts to the transport and leaves nodemailer defaults when none are given", () => {
+    const smtp = { host: "smtp.example.com", port: 465, secure: true, user: "mailer", password: "not-a-real-password", fromAddress: "no-reply@example.com" }
+    createTransport.mockClear()
+
+    createSmtpEmailSender({
+      ...smtp,
+      timeouts: { dnsTimeoutMs: 2_000, connectionTimeoutMs: 4_000, greetingTimeoutMs: 4_000, socketTimeoutMs: 10_000 },
+    })
+    createSmtpEmailSender(smtp)
+
+    expect(createTransport.mock.calls[0]?.[0]).toMatchObject({
+      dnsTimeout: 2_000,
+      connectionTimeout: 4_000,
+      greetingTimeout: 4_000,
+      socketTimeout: 10_000,
+    })
+    const untimed = createTransport.mock.calls[1]?.[0] ?? {}
+    for (const option of ["dnsTimeout", "connectionTimeout", "greetingTimeout", "socketTimeout"]) {
+      expect(untimed).not.toHaveProperty(option)
+    }
   })
 })

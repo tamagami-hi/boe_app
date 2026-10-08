@@ -18,12 +18,15 @@ import type { SesEmailSender, SesSendResult } from "../../email/ports.js"
 import type { EmailDeliveryWriteRepository } from "../../repositories/emailDeliveryRepository.js"
 import type { EmailSuppressionWriteRepository } from "../../repositories/emailSuppressionRepository.js"
 import type { OutboxWriteRepository } from "../../repositories/outboxRepository.js"
+import { recoverExpiredDeliveries } from "./recoverExpiredDeliveries.js"
 
 export interface DispatchConfig {
   readonly topic: string
   readonly workerId: string
   readonly leaseMs: number
   readonly claimLimit: number
+  readonly messageBudgetMs: number
+  readonly passBudgetMs: number
 }
 
 export interface DispatchDeps {
@@ -44,6 +47,8 @@ export interface DispatchSummary {
   readonly deadLettered: number
   readonly cancelled: number
   readonly skipped: number
+  readonly superseded: number
+  readonly recovered: number
 }
 
 type PreparedSend =
@@ -58,6 +63,7 @@ type PreparedSend =
     }
   | { readonly kind: "cancelled" }
   | { readonly kind: "skipped" }
+  | { readonly kind: "superseded" }
 
 /** The enqueued payload, which carries the token the message needs. */
 const templateDataOf = (event: OutboxEvent): Readonly<Record<string, unknown>> => {
@@ -70,13 +76,19 @@ const templateDataOf = (event: OutboxEvent): Readonly<Record<string, unknown>> =
 const prepare = async (deps: DispatchDeps, event: OutboxEvent): Promise<PreparedSend> =>
   deps.unitOfWork.execute(async (tx) => {
     const now = deps.clock()
+    const claim = { outboxEventId: event.id, generation: event.lease_generation }
     const delivery = await deps.emailDeliveryRepository.lockByOutboxEventId(tx, event.id)
 
     if (delivery === null || delivery.recipient_ciphertext === null || delivery.recipient_nonce === null) {
       // No sendable delivery for this event: release it terminally so it is not
       // reclaimed. This is a structural no-op, not a delivery.
-      await deps.outboxRepository.cancel(tx, { outboxEventId: event.id, now })
-      return { kind: "skipped" }
+      const owned = await deps.outboxRepository.cancel(tx, { ...claim, now })
+      return { kind: owned ? "skipped" : "superseded" }
+    }
+
+    if (delivery.state === "sending") {
+      const owned = await deps.outboxRepository.release(tx, { ...claim, now })
+      return { kind: owned ? "skipped" : "superseded" }
     }
 
     const suppression = await deps.emailSuppressionRepository.findActive(tx, {
@@ -85,13 +97,15 @@ const prepare = async (deps: DispatchDeps, event: OutboxEvent): Promise<Prepared
     })
     const isSendable = delivery.state === "queued" || delivery.state === "retryable_failed"
     if (suppression !== null || !isSendable) {
+      const owned = await deps.outboxRepository.cancel(tx, { ...claim, now })
+      if (!owned) return { kind: "superseded" }
       await deps.emailDeliveryRepository.cancel(tx, { deliveryId: delivery.id, now })
-      await deps.outboxRepository.cancel(tx, { outboxEventId: event.id, now })
       return { kind: "cancelled" }
     }
 
+    const started = await deps.outboxRepository.markSending(tx, { ...claim, workerId: deps.config.workerId, now })
+    if (!started) return { kind: "superseded" }
     await deps.emailDeliveryRepository.transitionSending(tx, { deliveryId: delivery.id, now })
-    await deps.outboxRepository.markSending(tx, { outboxEventId: event.id, now })
 
     return {
       kind: "ready",
@@ -120,7 +134,7 @@ const callSes = async (deps: DispatchDeps, prepared: Extract<PreparedSend, { kin
   }
 }
 
-type SettleOutcome = "sent" | "retried" | "deadLettered"
+type SettleOutcome = "sent" | "retried" | "deadLettered" | "superseded"
 
 const settle = async (
   deps: DispatchDeps,
@@ -128,61 +142,96 @@ const settle = async (
   deliveryId: string,
   result: SesSendResult,
 ): Promise<SettleOutcome> => {
+  const claim = { outboxEventId: event.id, generation: event.lease_generation }
   const attempts = event.attempt_count + 1
   const now = deps.clock()
 
   if (result.outcome === "accepted") {
-    await deps.unitOfWork.execute(async (tx) => {
-      await deps.emailDeliveryRepository.recordSent(tx, {
-        deliveryId,
-        sesMessageId: result.sesMessageId,
-        sesRequestId: result.sesRequestId,
+    return deps.unitOfWork.execute(async (tx) => {
+      await deps.emailDeliveryRepository.lockByOutboxEventId(tx, event.id)
+      const owned = await deps.outboxRepository.settleDelivered(tx, { ...claim, now })
+      if (owned) {
+        await deps.emailDeliveryRepository.recordSent(tx, {
+          deliveryId,
+          sesMessageId: result.sesMessageId,
+          sesRequestId: result.sesRequestId,
+          now,
+        })
+      }
+      await deps.outboxRepository.recordAttemptResult(tx, {
+        ...claim,
+        outcome: "accepted",
+        errorCode: null,
+        messageId: result.sesMessageId,
         now,
       })
-      await deps.outboxRepository.settleDelivered(tx, { outboxEventId: event.id, now })
+      return owned ? "sent" : "superseded"
     })
-    return "sent"
   }
 
   const terminal = result.disposition === "permanent" || isExhausted(attempts)
-  await deps.unitOfWork.execute(async (tx) => {
-    await deps.emailDeliveryRepository.recordSendFailure(tx, {
-      deliveryId,
-      errorCode: result.errorCode,
-      permanent: terminal,
-      now,
-    })
-    if (terminal) {
-      await deps.outboxRepository.deadLetter(tx, { outboxEventId: event.id, errorCode: result.errorCode, now })
-    } else {
-      const delayMs = nextRetryDelayMs(attempts, event.id) ?? 0
-      await deps.outboxRepository.scheduleRetry(tx, {
-        outboxEventId: event.id,
-        availableAt: new Date(now.getTime() + delayMs),
+  return deps.unitOfWork.execute(async (tx) => {
+    await deps.emailDeliveryRepository.lockByOutboxEventId(tx, event.id)
+    const owned = terminal
+      ? await deps.outboxRepository.deadLetter(tx, { ...claim, errorCode: result.errorCode, now })
+      : await deps.outboxRepository.scheduleRetry(tx, {
+          ...claim,
+          availableAt: new Date(now.getTime() + (nextRetryDelayMs(attempts, event.id) ?? 0)),
+          errorCode: result.errorCode,
+          now,
+        })
+    if (owned) {
+      await deps.emailDeliveryRepository.recordSendFailure(tx, {
+        deliveryId,
         errorCode: result.errorCode,
+        permanent: terminal,
         now,
       })
     }
+    await deps.outboxRepository.recordAttemptResult(tx, {
+      ...claim,
+      outcome: result.disposition,
+      errorCode: result.errorCode,
+      messageId: null,
+      now,
+    })
+    if (!owned) return "superseded"
+    return terminal ? "deadLettered" : "retried"
   })
-  return terminal ? "deadLettered" : "retried"
 }
 
-export const dispatchDueDeliveries = async (deps: DispatchDeps): Promise<DispatchSummary> => {
-  const now = deps.clock()
-  const claimed = await deps.unitOfWork.execute(async (tx) => {
-    await deps.outboxRepository.recoverExpiredLeases(tx, { now })
-    return deps.outboxRepository.claimDue(tx, {
+const claimNext = (deps: DispatchDeps): Promise<OutboxEvent | null> =>
+  deps.unitOfWork.execute(async (tx) => {
+    const claimed = await deps.outboxRepository.claimDue(tx, {
       topic: deps.config.topic,
       workerId: deps.config.workerId,
       leaseMs: deps.config.leaseMs,
-      limit: deps.config.claimLimit,
-      now,
+      limit: 1,
+      now: deps.clock(),
     })
+    return claimed[0] ?? null
   })
 
-  const summary = { claimed: claimed.length, sent: 0, retried: 0, deadLettered: 0, cancelled: 0, skipped: 0 }
+const hasTimeForAnotherMessage = (deps: DispatchDeps, passStartedAtMs: number, claimed: number): boolean =>
+  claimed === 0 || deps.clock().getTime() - passStartedAtMs + deps.config.messageBudgetMs <= deps.config.passBudgetMs
 
-  for (const event of claimed) {
+export const dispatchDueDeliveries = async (deps: DispatchDeps): Promise<DispatchSummary> => {
+  const passStartedAtMs = deps.clock().getTime()
+  const summary = { claimed: 0, sent: 0, retried: 0, deadLettered: 0, cancelled: 0, skipped: 0, superseded: 0, recovered: 0 }
+
+  summary.recovered = await recoverExpiredDeliveries({
+    unitOfWork: deps.unitOfWork,
+    outboxRepository: deps.outboxRepository,
+    emailDeliveryRepository: deps.emailDeliveryRepository,
+    clock: deps.clock,
+    batchLimit: deps.config.claimLimit,
+  })
+
+  while (summary.claimed < deps.config.claimLimit && hasTimeForAnotherMessage(deps, passStartedAtMs, summary.claimed)) {
+    const event = await claimNext(deps)
+    if (event === null) break
+    summary.claimed += 1
+
     const prepared = await prepare(deps, event)
     if (prepared.kind === "cancelled") {
       summary.cancelled += 1
@@ -192,11 +241,13 @@ export const dispatchDueDeliveries = async (deps: DispatchDeps): Promise<Dispatc
       summary.skipped += 1
       continue
     }
+    if (prepared.kind === "superseded") {
+      summary.superseded += 1
+      continue
+    }
     const result = await callSes(deps, prepared)
     const outcome = await settle(deps, event, prepared.deliveryId, result)
-    if (outcome === "sent") summary.sent += 1
-    else if (outcome === "retried") summary.retried += 1
-    else summary.deadLettered += 1
+    summary[outcome] += 1
   }
 
   return summary

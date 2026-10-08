@@ -69,6 +69,8 @@ describe("createTransactionalEmailSender", () => {
     for (const error of [
       new Error("ECONNRESET"),
       Object.assign(new Error("try later"), { responseCode: 451 }),
+      Object.assign(new Error("Connection timeout"), { code: "ETIMEDOUT" }),
+      Object.assign(new Error("Timeout"), { code: "ETIMEDOUT" }),
     ]) {
       const transport: EmailSender = { send: () => Promise.reject(error) }
       const result = await createTransactionalEmailSender({ sender: transport, templates: TEMPLATES }).send(

@@ -67,6 +67,15 @@ completed without throwing; it does **not** prove the pass did any work, because
 unconfigured gateway or absent SMTP transport returns a zero summary and still reports
 success.
 
+The email worker writes its heartbeat only at the end of a pass, so a pass must finish
+well inside that 60 s. `backend_controller/src/email/sendTiming.ts` budgets a pass at 35 s
+(60 s minus the 15 s loop sleep minus 10 s overhead) and stops starting new messages when
+the next one could not finish inside it. A test ties those two numbers to the compose files,
+so changing the email healthcheck age or `EMAIL_WORKER_INTERVAL_SECONDS` default means
+changing that file too. The SMTP timeouts and the lease are derived from
+`EMAIL_WORKER_LEASE_MS` (default 60000): a lease below 20 s is raised to 20 s, and the
+socket idle timeout is 10 s at the default. There are no separate timeout settings.
+
 Both SPA containers and the backend bind to `127.0.0.1` only; the host nginx is the sole
 public entry.
 

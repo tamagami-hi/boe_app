@@ -21,6 +21,8 @@ export type EmailDeliveryState =
 
 export type EmailProviderEventState = "received" | "processed" | "ignored" | "unmatched"
 
+export type EmailSendAttemptOutcome = "accepted" | "retryable" | "permanent" | "unknown"
+
 export interface OutboxEventsTable {
   id: Generated<string>
   topic: string
@@ -36,6 +38,7 @@ export interface OutboxEventsTable {
   payload: Json
   state: Generated<OutboxState>
   attempt_count: Generated<number>
+  lease_generation: Generated<number>
   available_at: TimestampDefault
   locked_at: NullableTimestamp
   locked_by: Nullable<string>
@@ -45,6 +48,17 @@ export interface OutboxEventsTable {
   last_error_code: Nullable<string>
   created_at: TimestampDefault
   updated_at: TimestampDefault
+}
+
+export interface EmailSendAttemptsTable {
+  outbox_event_id: string
+  generation: number
+  worker_id: string
+  started_at: Timestamp
+  finished_at: NullableTimestamp
+  outcome: Nullable<EmailSendAttemptOutcome>
+  error_code: Nullable<string>
+  message_id: Nullable<string>
 }
 
 export interface EmailDeliveriesTable {
