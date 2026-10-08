@@ -1,7 +1,7 @@
 import { pathToFileURL } from "node:url"
 
 import { createUnitOfWork } from "./db/database.js"
-import { composeMandateCollectionWorker, type MandateCollectionWorker } from "./runtime/composition.js"
+import { composeMandateCollectionWorker, type MandateCollectionWorker } from "./runtime/workerComposition.js"
 import { parseRuntimeEnvironment } from "./runtime/environment.js"
 import { createRuntimeLogger } from "./runtime/logger.js"
 import { createWorkerHeartbeatRepository } from "./repositories/workerHeartbeatRepository.js"

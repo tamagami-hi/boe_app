@@ -10,7 +10,7 @@
 import { pathToFileURL } from "node:url"
 
 import { createUnitOfWork } from "./db/database.js"
-import { composeEmailDispatchWorker, type EmailDispatchWorker } from "./runtime/composition.js"
+import { composeEmailDispatchWorker, type EmailDispatchWorker } from "./runtime/workerComposition.js"
 import { parseRuntimeEnvironment } from "./runtime/environment.js"
 import { createRuntimeLogger } from "./runtime/logger.js"
 import { createWorkerHeartbeatRepository } from "./repositories/workerHeartbeatRepository.js"

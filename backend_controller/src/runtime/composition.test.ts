@@ -2,7 +2,8 @@ import { generateKeyPairSync, randomBytes } from "node:crypto"
 
 import { afterEach, describe, expect, test } from "vitest"
 
-import { composeBackend, composeMandateCollectionWorker, composeSipScheduleWorker } from "./composition.js"
+import { composeBackend } from "./composition.js"
+import { composeMandateCollectionWorker, composeSipScheduleWorker } from "./workerComposition.js"
 import { parseServerConfig } from "./environment.js"
 import { createApplication } from "./application.js"
 

@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest"
 
-import type { PaymentReconciliationWorker } from "./runtime/composition.js"
+import type { PaymentReconciliationWorker } from "./runtime/workerComposition.js"
 import {
   runPaymentReconciliationLoop,
   runPaymentReconciliationPass,
