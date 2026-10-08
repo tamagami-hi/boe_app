@@ -72,7 +72,7 @@ const makeUser = async (
   const userId = user.rows[0]!.id
   const session = await pool.query<{ id: string }>(
     "insert into auth_sessions (user_id, channel, refresh_key_version, expires_at) " +
-      "values ($1,'native','rt1', now() + interval '90 days') returning id",
+      "values ($1,'admin_native','rt1', now() + interval '90 days') returning id",
     [userId],
   )
   const token = await access.sign({ sub: userId, sid: session.rows[0]!.id })
