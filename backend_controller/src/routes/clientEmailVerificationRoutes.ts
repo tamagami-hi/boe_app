@@ -10,6 +10,7 @@ import {
   type EmailVerificationConfig,
 } from "../domain/client/emailVerification.js"
 import type { EmailSender } from "../email/emailSender.js"
+import { emailVerificationCodeEmail } from "../email/emailTemplates.js"
 import { AppError } from "../http/errorCatalog.js"
 import { parseOrThrow } from "../http/validation.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
@@ -24,6 +25,7 @@ export interface ClientEmailVerificationDeps extends ClientRequestAuthDeps {
   readonly userRepository: UserWriteRepository
   readonly auditRepository: AuditWriteRepository
   readonly emailSender: EmailSender
+  readonly supportAddress?: string | null
   readonly config: EmailVerificationConfig
 }
 
@@ -48,15 +50,13 @@ const issueCode = async (deps: ClientEmailVerificationDeps, request: FastifyRequ
   )
 
   if (!result.alreadyVerified && result.rawCode !== null) {
-    const minutes = Math.round(deps.config.codeTtlMs / 60_000)
     try {
       await deps.emailSender.send({
         to: result.email,
-        subject: "Your BeOnEdge email verification code",
-        text:
-          `Your BeOnEdge email verification code is ${result.rawCode}.\n` +
-          `It is a 6-character, case-sensitive code that expires in ${minutes} minutes. ` +
-          `If you did not request this, ignore this email.`,
+        ...emailVerificationCodeEmail(
+          { code: result.rawCode, validForMs: deps.config.codeTtlMs },
+          { supportAddress: deps.supportAddress ?? null },
+        ),
       })
     } catch {
       throw new AppError("DEPENDENCY_UNAVAILABLE")

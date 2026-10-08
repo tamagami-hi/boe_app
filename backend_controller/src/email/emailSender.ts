@@ -14,6 +14,8 @@
  */
 import nodemailer from "nodemailer"
 
+import { assertHeaderValue } from "./emailValidation.js"
+
 export interface EmailMessage {
   readonly to: string
   readonly subject: string
@@ -61,8 +63,8 @@ export const createSmtpEmailSender = (config: SmtpEmailConfig): EmailSender => {
     send: async (message) => {
       const info = await transporter.sendMail({
         from: config.fromAddress,
-        to: message.to,
-        subject: message.subject,
+        to: assertHeaderValue(message.to),
+        subject: assertHeaderValue(message.subject),
         text: message.text,
         ...(message.html === undefined ? {} : { html: message.html }),
       })

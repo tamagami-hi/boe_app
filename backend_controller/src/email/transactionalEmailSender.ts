@@ -15,6 +15,7 @@ import { randomUUID } from "node:crypto"
 
 import { EmailTransportNotConfiguredError, type EmailSender } from "./emailSender.js"
 import { renderEmailTemplate, type EmailTemplateConfig } from "./emailTemplates.js"
+import { EmailValidationError } from "./emailValidation.js"
 import type { SesEmailSender, SesSendRequest, SesSendResult } from "./ports.js"
 
 export interface TransactionalSenderDeps {
@@ -38,6 +39,9 @@ const classify = (error: unknown): SesSendResult => {
   if (error instanceof EmailTransportNotConfiguredError) {
     return { outcome: "rejected", disposition: "retryable", errorCode: error.code }
   }
+  if (error instanceof EmailValidationError) {
+    return { outcome: "rejected", disposition: "permanent", errorCode: error.code }
+  }
   const responseCode = (error as { responseCode?: unknown }).responseCode
   if (typeof responseCode === "number" && responseCode >= 500 && responseCode < 600) {
     return { outcome: "rejected", disposition: "permanent", errorCode: "SMTP_PERMANENT_REJECT" }
@@ -58,6 +62,7 @@ export const createTransactionalEmailSender = (deps: TransactionalSenderDeps): S
         to: request.toAddress,
         subject: rendered.email.subject,
         text: rendered.email.text,
+        html: rendered.email.html,
       })
       return {
         outcome: "accepted",

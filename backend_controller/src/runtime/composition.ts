@@ -350,6 +350,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       userRepository,
       auditRepository,
       emailSender,
+      supportAddress: serverConfig.email.links.supportAddress,
       config: {
         codeTtlMs: serverConfig.emailVerification.codeTtlMs,
         maxAttempts: serverConfig.emailVerification.maxAttempts,
@@ -376,6 +377,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         maxAttempts: serverConfig.emailVerification.maxAttempts,
         requestCooldownMs: serverConfig.emailVerification.resendCooldownMs,
         resetUrlBase: passwordResetUrlBase(serverConfig.web.originAllowlist),
+        supportAddress: serverConfig.email.links.supportAddress,
       },
     })
 
@@ -398,6 +400,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         maxAttempts: serverConfig.emailVerification.maxAttempts,
         requestCooldownMs: serverConfig.emailVerification.resendCooldownMs,
         resetUrlBase: passwordResetUrlBase(serverConfig.web.originAllowlist),
+        supportAddress: serverConfig.email.links.supportAddress,
         idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
       },
     })

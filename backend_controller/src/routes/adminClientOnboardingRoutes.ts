@@ -28,6 +28,7 @@ export interface AdminClientOnboardingDeps extends CreateClientAccountDeps {
   readonly emailSender: PasswordRoutesDeps["emailSender"]
   readonly config: CreateClientAccountDeps["config"] & { readonly idempotencyTtlMs: number } & {
     readonly resetUrlBase: string | null
+    readonly supportAddress: string | null
   }
 }
 

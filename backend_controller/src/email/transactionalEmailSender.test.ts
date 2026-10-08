@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from "vitest"
 
 import type { EmailMessage, EmailSender } from "./emailSender.js"
 import type { EmailTemplateConfig } from "./emailTemplates.js"
+import { EmailValidationError } from "./emailValidation.js"
 import { createTransactionalEmailSender } from "./transactionalEmailSender.js"
 
 const TEMPLATES: EmailTemplateConfig = {
@@ -75,6 +76,20 @@ describe("createTransactionalEmailSender", () => {
       )
       expect(result).toMatchObject({ disposition: "retryable", errorCode: "SMTP_TRANSPORT_ERROR" })
     }
+  })
+
+  test("a header the transport refuses for a line break is permanent, not retried", async () => {
+    const transport: EmailSender = {
+      send: () => Promise.reject(new EmailValidationError("EMAIL_HEADER_INVALID")),
+    }
+    const result = await createTransactionalEmailSender({ sender: transport, templates: TEMPLATES }).send(
+      REQUEST,
+    )
+    expect(result).toEqual({
+      outcome: "rejected",
+      disposition: "permanent",
+      errorCode: "EMAIL_HEADER_INVALID",
+    })
   })
 
   test("an unrenderable template is permanent and never touches the transport", async () => {

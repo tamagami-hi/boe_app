@@ -488,5 +488,23 @@ Each step records here what changed, the exact verification (commands and counts
 
 | Step | Status |
 | --- | --- |
-| 1. Shared professional emails and OTP presentation | In progress: written, not yet reviewed, verified, or committed |
+| 1. Shared professional emails and OTP presentation | Done and committed; not deployed. Details below |
 | 2 to 10 | Not started |
+
+### Step 1 handoff (2026-10-08)
+
+Changed, backend only, with no schema, API, or configuration change. One pure renderer, `renderEmail` in `email/emailLayout.ts`, returns subject, plain text, and HTML. `email/emailValidation.ts` holds the HTML escaping, the CR/LF header guard, the http/https-only action-URL guard, and the plain-address check for the support line. `email/emailTemplates.ts` holds the copy for approval, rejection, password set, password reset, app download, and the email-verification code. The outbox adapter and the SMTP sender now carry the HTML body, and the inline body builders in `passwordRoutes.ts` and `clientEmailVerificationRoutes.ts` are gone. The `SUPPORT_EMAIL` setting that only outbox mail used now reaches the password and code mail too. Template keys and stored payload shapes are unchanged, so queued rows still render. A preparatory refactor moved the worker compositions out of `runtime/composition.ts`, which was 963 lines, into `runtime/workerComposition.ts` and `runtime/paymentGatewaySelection.ts`; `composition.ts` is now 703 lines.
+
+Verified (TESTED): `npm run check` in `backend_controller/` exits 0 with 86 test files and 935 tests (34 added), coverage 84.94% statements, 83.74% branches, and 91.39% functions against an 80% threshold, plus the build and both boot smokes (`smoke:source`, `smoke:dist`). The refactor was verified alone on its staged tree: typecheck, lint, 84 files and 901 tests, build, and both smokes. The worker block moved byte-identical to HEAD. The implementing agent showed each new guard failing with its fix undone (escaping, http/https only, whitespace and control characters in URLs, CR/LF in headers and recipients, support-address validation, OTP expiry and wording and case-sensitivity text, no code or link in a subject); those controls were not repeated. STATIC: every text color has at least 5.3:1 contrast, every table has `role="presentation"`, `lang="en"` is set, and there are no images, scripts, or comments in the HTML. Previews rendered from synthetic data are in `.agents/tasks/step1-preview/` (git-ignored).
+
+Not verified (UNVERIFIED): `npm run test:integration` (needs the container runtime, rule 3), the `test_e2e` Mailpit scripts, real mail clients (Gmail, Outlook, Apple Mail, dark mode, mobile), and real SMTP. The deployed `SUPPORT_EMAIL` value was not read; the tracked stack examples set `support@beonedge.in`.
+
+Corrected beliefs: the plan said the old OTP mail covered attempts and cooldown; it said only the six-character, case-sensitive code and its expiry, and that content is kept. `dispatchDueDeliveries.ts` does not render mail; the outbox adapter does. A support contact already existed in configuration.
+
+For the maintainer to review:
+
+- A stored approval whose `downloadUrl` is not an http or https URL now dead-letters with `EMAIL_ACTION_URL_INVALID` instead of sending without the link. The producer emits only https URLs from two fixed bases, so no legitimate row is affected. The alternative is to send the approval without the link.
+- A `SUPPORT_EMAIL` that is not a plain address renders no support line.
+- Copy changed: the approval and app-download subjects, "immediately" and the em dashes are gone, links sit behind a button with a fallback URL, expiry reads "N minutes" or "N seconds", and there is no greeting because no name is available. The rejection line "nothing has been charged" was already in the old copy and has not been verified.
+
+Remaining risks: stale comments remain in `email/ports.ts` and in the header of `transactionalEmailSender.ts`; they were left alone under rule 9. The `from` address is not CR/LF-checked because it comes from configuration, and failing it would dead-letter queued mail.

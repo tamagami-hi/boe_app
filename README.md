@@ -39,6 +39,6 @@ defined in [RULES.md](RULES.md#verification-boundaries).
 - [DEPLOY.md](DEPLOY.md): deployment/configuration reference, not permission to deploy.
 - [App feature proposal](plans/app-onboarding-contact-investment-email.md): onboarding
   recovery, contacts, earlier investments, and email improvements; implementation
-  remains paused pending explicit approval.
+  is approved and under way step by step; status is in section 8 of the plan.
 - [Prior implementation records](release_manager/docs/): topic-specific evidence;
   completed/dated records are historical, not standing rulebooks.

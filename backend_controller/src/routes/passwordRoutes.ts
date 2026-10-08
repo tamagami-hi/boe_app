@@ -16,6 +16,12 @@ import {
 } from "../domain/auth/passwordCredential.js"
 import { latestPublishedApkUrl, type ReleaseFeed } from "../release/releaseFeed.js"
 import type { EmailSender } from "../email/emailSender.js"
+import {
+  appDownloadEmail,
+  passwordInviteEmail,
+  passwordResetEmail,
+  type EmailTemplateConfig,
+} from "../email/emailTemplates.js"
 import { AppError } from "../http/errorCatalog.js"
 import { parseOrThrow } from "../http/validation.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
@@ -26,6 +32,7 @@ import type { UserWriteRepository } from "../repositories/userRepository.js"
 
 export interface PasswordRoutesConfig extends PasswordCredentialConfig {
   readonly resetUrlBase: string | null
+  readonly supportAddress: string | null
 }
 
 export interface PasswordRoutesDeps extends ClientRequestAuthDeps {
@@ -77,28 +84,9 @@ export const buildPasswordResetLink = (base: string | null, rawToken: string): s
   return url.toString()
 }
 
-const resetEmailBody = (link: string, minutes: number): string =>
-  [
-    "Someone asked to reset the password on your BeOnEdge account.",
-    "",
-    "Open this link to choose a new password:",
-    link,
-    "",
-    `The link works once and expires in ${String(minutes)} minutes.`,
-    "If you did not ask for this, ignore this email — nothing has changed.",
-  ].join("\n")
-
-const inviteEmailBody = (link: string, minutes: number): string =>
-  [
-    "An account has been opened for you on BeOnEdge.",
-    "",
-    "Choose your password here:",
-    link,
-    "",
-    `The link works once and expires in ${String(minutes)} minutes.`,
-    "After signing in you will be asked to verify your email address before you",
-    "can invest.",
-  ].join("\n")
+const templateConfig = (deps: Pick<PasswordRoutesDeps, "config">): EmailTemplateConfig => ({
+  supportAddress: deps.config.supportAddress,
+})
 
 const forgot = async (deps: PasswordRoutesDeps, request: FastifyRequest, reply: FastifyReply) => {
   const body = parseOrThrow(forgotBodySchema, request.body)
@@ -129,12 +117,10 @@ const forgot = async (deps: PasswordRoutesDeps, request: FastifyRequest, reply: 
         "password reset requested but no client web origin is configured",
       )
     } else {
-      const minutes = Math.round(deps.config.tokenTtlMs / 60_000)
       try {
         await deps.emailSender.send({
           to: issued.email,
-          subject: "Reset your BeOnEdge password",
-          text: resetEmailBody(link, minutes),
+          ...passwordResetEmail({ link, validForMs: deps.config.tokenTtlMs }, templateConfig(deps)),
         })
       } catch {
         request.log.error({ requestId: request.requestId }, "password reset mail could not be sent")
@@ -158,18 +144,7 @@ const sendResetDownload = async (deps: PasswordRoutesDeps, request: FastifyReque
     const controller = new AbortController()
     const accepted = await Promise.race([deps.emailSender.send({
       to: email,
-      subject: "Your BeOnEdge password is set — download the app",
-      text: [
-        "Your BeOnEdge password has been set successfully.",
-        "",
-        "Download the BeOnEdge Android app using the official link below:",
-        downloadUrl,
-        "",
-        "Download and install the app, then sign in with your email address and new password.",
-        "If the app is already installed, you can sign in with your new password now.",
-        "",
-        "If you did not change your password, contact BeOnEdge support immediately.",
-      ].join("\n"),
+      ...appDownloadEmail(downloadUrl, templateConfig(deps)),
     }).then(() => true), delay(DOWNLOAD_EMAIL_WAIT_MS, false, { signal: controller.signal })])
       .finally(() => { controller.abort() })
     if (!accepted) {
@@ -220,11 +195,9 @@ export const sendPasswordInvite = async (
 ): Promise<void> => {
   const link = buildPasswordResetLink(deps.config.resetUrlBase, issued.rawToken)
   if (link === null) return
-  const minutes = Math.round(deps.config.tokenTtlMs / 60_000)
   await deps.emailSender.send({
     to: issued.email,
-    subject: "Set your BeOnEdge password",
-    text: inviteEmailBody(link, minutes),
+    ...passwordInviteEmail({ link, validForMs: deps.config.tokenTtlMs }, templateConfig(deps)),
   })
 }
 
