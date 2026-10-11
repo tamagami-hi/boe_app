@@ -68,6 +68,7 @@ import { createClientPositionRepository } from "../repositories/clientPositionRe
 import { registerAdminClientPositionRoutes } from "../routes/adminClientPositionRoutes.js"
 import { registerClientAccountRoutes } from "../routes/clientAccountRoutes.js"
 import { registerClientEmailVerificationRoutes } from "../routes/clientEmailVerificationRoutes.js"
+import { createEmailChangeRepository } from "../repositories/emailChangeRepository.js"
 import { registerClientProfileRoutes } from "../routes/clientProfileRoutes.js"
 import { registerPasswordRoutes } from "../routes/passwordRoutes.js"
 import { registerAdminClientOnboardingRoutes } from "../routes/adminClientOnboardingRoutes.js"
@@ -372,12 +373,20 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       userRepository,
       credentialRepository,
       emailVerificationRepository,
+      emailChangeRepository: createEmailChangeRepository(),
+      passwordTokenRepository,
+      authSessionRepository,
       applicationRepository,
       identityLockRepository,
       auditRepository,
       outboxRepository,
       emailDeliveryRepository,
-      config: { sesConfigurationSet: serverConfig.sesConfigurationSet },
+      config: {
+        sesConfigurationSet: serverConfig.sesConfigurationSet,
+        codeTtlMs: serverConfig.emailVerification.codeTtlMs,
+        maxAttempts: serverConfig.emailVerification.maxAttempts,
+        resendCooldownMs: serverConfig.emailVerification.resendCooldownMs,
+      },
     })
 
     registerPasswordRoutes(application, {

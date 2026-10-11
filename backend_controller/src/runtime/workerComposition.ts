@@ -5,7 +5,9 @@ import {
   type DispatchSummary,
 } from "../domain/email/dispatchDueDeliveries.js"
 import { CLAIMED_EMAIL_TOPICS } from "../domain/email/emailTopics.js"
+import { createEmailChangeMailGuard } from "../domain/email/emailChangeMailGuard.js"
 import { createPasswordLinkMailGuard } from "../domain/email/passwordLinkMailGuard.js"
+import { createEmailChangeRepository } from "../repositories/emailChangeRepository.js"
 import { createTransactionalEmailSender } from "../email/transactionalEmailSender.js"
 import { deriveEmailSendTiming, EMAIL_PASS_BUDGET_MS } from "../email/sendTiming.js"
 import { createDatabase, createUnitOfWork } from "../db/database.js"
@@ -75,6 +77,7 @@ export const composeEmailDispatchWorker = (
       : createUnconfiguredEmailSender()
 
   const passwordLinkGuard = createPasswordLinkMailGuard({ passwordTokenRepository: createPasswordTokenRepository() })
+  const emailChangeGuard = createEmailChangeMailGuard({ emailChangeRepository: createEmailChangeRepository() })
 
   const deps = {
     unitOfWork,
@@ -86,6 +89,7 @@ export const composeEmailDispatchWorker = (
     sendGuards: new Map([
       ["password_set_link", passwordLinkGuard],
       ["password_reset_link", passwordLinkGuard],
+      ["email_change_code", emailChangeGuard],
     ]),
     clock: (): Date => new Date(),
     config: {

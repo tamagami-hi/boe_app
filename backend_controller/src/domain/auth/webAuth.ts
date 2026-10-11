@@ -366,6 +366,9 @@ const issueWebLoginSession = async <TPrincipal>(
   const user = await deps.userRepository.lockById(tx, verified.user.id as UserId)
   if (user === null) return { kind: "rejected", outcome: "invalid_credentials" }
   if (user.account_state !== "active") return { kind: "rejected", outcome: "account_not_active" }
+  if (user.email_normalized !== verified.user.email_normalized || user.email_revision !== verified.user.email_revision) {
+    return { kind: "rejected", outcome: "invalid_credentials" }
+  }
 
   const currentHash = await deps.userRepository.findPasswordHash(tx, user.id as UserId)
   if (currentHash === null) return { kind: "rejected", outcome: "invalid_credentials" }

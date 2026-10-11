@@ -65,6 +65,8 @@ const createDelivery = (
     case "password_reset_link":
     case "password_app_download":
     case "contact_phone_changed":
+    case "email_change_code":
+    case "contact_email_changed":
       return deps.emailDeliveryRepository.createUserMailDelivery(tx, {
         templateKey: template.templateKey,
         userId: template.userId,

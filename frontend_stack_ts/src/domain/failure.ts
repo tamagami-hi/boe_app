@@ -23,6 +23,8 @@ export type FailureContext =
   | "resetPassword"
   | "changePassword"
   | "changePhone"
+  | "requestEmailChange"
+  | "confirmEmailChange"
   | "sendSupportRequest"
   | "markNotificationRead"
   | "openLink"
@@ -251,6 +253,42 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
       },
     },
     fallback: { message: "We couldn't change your phone number. Please try again." },
+  },
+
+  requestEmailChange: {
+    title: "Code not sent",
+    codes: {
+      INVALID_CREDENTIALS: { message: "That current password is not right." },
+      VALIDATION_FAILED: { message: "Enter a full email address, like name@example.com." },
+      STATE_CONFLICT: { message: "That email address is already used by another account or a pending application." },
+      RATE_LIMITED: { message: "A code was sent moments ago. Wait a minute, then ask again." },
+    },
+    transport: {
+      offline: { message: "We can't reach BeOnEdge. Check your connection and try again." },
+      timeout: {
+        title: "Not confirmed",
+        message: "The reply did not arrive. Check the new inbox for a code, or reload this page to see whether a code is waiting.",
+      },
+    },
+    fallback: { message: "We couldn't send a code. Please try again." },
+  },
+
+  confirmEmailChange: {
+    title: "Email not changed",
+    codes: {
+      TOKEN_INVALID: { message: "That code is not right. Check the letters and their case, and try again." },
+      TOKEN_EXPIRED: { message: "That code has expired. Ask for a new one." },
+      STATE_CONFLICT: { message: "This change can no longer be confirmed. Ask for a new code." },
+      VALIDATION_FAILED: { message: "Enter the 6-character code from the email." },
+    },
+    transport: {
+      offline: { message: "We can't reach BeOnEdge. Check your connection and try again." },
+      timeout: {
+        title: "Not confirmed",
+        message: "The reply did not arrive, so we can't tell whether your email changed. Sign in with the new address; if that is refused, sign in with your old one.",
+      },
+    },
+    fallback: { message: "We couldn't confirm the change. Please try again." },
   },
 
   sendSupportRequest: {

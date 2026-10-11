@@ -23,7 +23,10 @@ import { createAuditRepository } from "../../src/repositories/auditRepository.js
 import { createConsentRepository } from "../../src/repositories/consentRepository.js"
 import { createCredentialRepository } from "../../src/repositories/credentialRepository.js"
 import { createEmailDeliveryRepository } from "../../src/repositories/emailDeliveryRepository.js"
+import { createAuthSessionRepository } from "../../src/repositories/authSessionRepository.js"
+import { createEmailChangeRepository } from "../../src/repositories/emailChangeRepository.js"
 import { createEmailVerificationRepository } from "../../src/repositories/emailVerificationRepository.js"
+import { createPasswordTokenRepository } from "../../src/repositories/passwordTokenRepository.js"
 import { createIdentityLockRepository, identityLockKeys } from "../../src/repositories/identityLockRepository.js"
 import { createOutboxRepository } from "../../src/repositories/outboxRepository.js"
 import { createUserRepository } from "../../src/repositories/userRepository.js"
@@ -175,7 +178,10 @@ beforeAll(async () => {
         clientWeb: { originAllowlist: [] },
         unitOfWork,
         emailVerificationRepository: createEmailVerificationRepository(),
-        config: { sesConfigurationSet: "boe-transactional" },
+        emailChangeRepository: createEmailChangeRepository(),
+        passwordTokenRepository: createPasswordTokenRepository(),
+        authSessionRepository: createAuthSessionRepository(),
+        config: { sesConfigurationSet: "boe-transactional", codeTtlMs: 600_000, maxAttempts: 5, resendCooldownMs: 60_000 },
       })
     },
   })

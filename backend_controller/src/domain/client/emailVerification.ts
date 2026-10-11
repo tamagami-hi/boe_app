@@ -29,7 +29,7 @@ export interface EmailVerificationDeps {
 const CODE_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 const CODE_LENGTH = 6
 
-const generateVerificationCode = (): string => {
+export const generateVerificationCode = (): string => {
   let code = ""
   for (let index = 0; index < CODE_LENGTH; index += 1) {
     code += CODE_ALPHABET[randomInt(0, CODE_ALPHABET.length)]

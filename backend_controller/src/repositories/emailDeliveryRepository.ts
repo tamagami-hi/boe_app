@@ -58,6 +58,8 @@ export type UserMailTemplateKey =
   | "password_reset_link"
   | "password_app_download"
   | "contact_phone_changed"
+  | "email_change_code"
+  | "contact_email_changed"
 
 export interface CreateUserMailDeliveryInput {
   readonly outboxEventId: string

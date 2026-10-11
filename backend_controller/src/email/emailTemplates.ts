@@ -18,6 +18,8 @@ const TEMPLATE_VERSIONS: ReadonlyMap<string, readonly string[]> = new Map([
   ["password_reset_link", ["v1"]],
   ["password_app_download", ["v1"]],
   ["contact_phone_changed", ["v1"]],
+  ["email_change_code", ["v1"]],
+  ["contact_email_changed", ["v1"]],
 ])
 
 export interface PasswordLinkInput {
@@ -212,6 +214,64 @@ const phoneEndingField = (data: Readonly<Record<string, unknown>>): string => {
   return ending
 }
 
+export const emailChangeCodeEmail = (input: VerificationCodeInput, config: EmailTemplateConfig): RenderedEmail =>
+  renderEmail({
+    subject: "Confirm your new BeOnEdge email address",
+    preheader: "Use this code to confirm your new email address in BeOnEdge.",
+    heading: "Confirm your new email address",
+    supportAddress: config.supportAddress,
+    blocks: [
+      { kind: "code", lead: "Your BeOnEdge confirmation code is", code: input.code },
+      {
+        kind: "text",
+        text: `This is a ${String(input.code.length)}-character code. It is case-sensitive, so enter it exactly as shown, with the same upper and lower case letters.`,
+      },
+      { kind: "text", text: `The code expires in ${describeDuration(input.validForMs)}.` },
+      { kind: "text", text: "Do not share this code with anyone." },
+      {
+        kind: "text",
+        text: "If you did not ask to change your email address, ignore this email. Your account stays unchanged.",
+      },
+    ],
+  })
+
+export const emailChangedEmail = (
+  input: Readonly<{ role: "previous" | "current"; newEmail: string }>,
+  config: EmailTemplateConfig,
+): RenderedEmail =>
+  input.role === "previous"
+    ? renderEmail({
+        subject: "Your BeOnEdge email address was changed",
+        preheader: "The sign-in email on your BeOnEdge account was changed.",
+        heading: "Your email address was changed",
+        supportAddress: config.supportAddress,
+        blocks: [
+          {
+            kind: "text",
+            text: `The sign-in email on your BeOnEdge account was changed to ${input.newEmail}. Every device was signed out.`,
+          },
+          { kind: "text", text: "If you made this change, you do not need to do anything." },
+          { kind: "text", text: "If you did not, contact BeOnEdge support straight away." },
+        ],
+      })
+    : renderEmail({
+        subject: "This is now your BeOnEdge sign-in email",
+        preheader: "Your BeOnEdge account now uses this email address.",
+        heading: "Your new sign-in email",
+        supportAddress: config.supportAddress,
+        blocks: [
+          { kind: "text", text: "Your BeOnEdge account now uses this email address to sign in." },
+          { kind: "text", text: "Sign in again with this address and your existing password." },
+          { kind: "text", text: "If you did not make this change, contact BeOnEdge support straight away." },
+        ],
+      })
+
+const changeRole = (data: Readonly<Record<string, unknown>>): "previous" | "current" => {
+  const role = data.role
+  if (role !== "previous" && role !== "current") throw new EmailValidationError("EMAIL_TEMPLATE_DATA_INVALID")
+  return role
+}
+
 const buildTemplate = (
   templateKey: string,
   templateData: Readonly<Record<string, unknown>>,
@@ -230,6 +290,13 @@ const buildTemplate = (
       return appDownloadEmail(requiredString(templateData, "downloadUrl"), config)
     case "contact_phone_changed":
       return phoneChangedEmail(phoneEndingField(templateData), config)
+    case "email_change_code":
+      return emailChangeCodeEmail(
+        { code: requiredString(templateData, "code"), validForMs: requiredDuration(templateData, "validForMs") },
+        config,
+      )
+    case "contact_email_changed":
+      return emailChangedEmail({ role: changeRole(templateData), newEmail: requiredString(templateData, "newEmail") }, config)
     default:
       return null
   }

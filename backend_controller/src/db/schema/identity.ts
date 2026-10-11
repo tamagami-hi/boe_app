@@ -198,3 +198,19 @@ export interface PasswordCredentialTokensTable {
   bound_email_revision: NullableBigIntString
   bound_credential_version: NullableBigIntString
 }
+
+export interface EmailChangeRequestsTable {
+  id: Generated<string>
+  user_id: string
+  target_ciphertext: Bytea
+  target_nonce: Bytea
+  target_key_version: string
+  code_hash: Bytea
+  code_key_version: string
+  bound_email_revision: BigIntString
+  bound_credential_version: BigIntString
+  attempt_count: Generated<number>
+  expires_at: Timestamp
+  created_at: TimestampDefault
+  consumed_at: NullableTimestamp
+}

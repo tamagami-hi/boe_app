@@ -60,6 +60,10 @@ export interface UserWriteRepository {
     tx: Transaction,
     input: Readonly<{ userId: UserId; phoneE164: string; expectedVersion: string; now: Date }>,
   ) => Promise<User | null>
+  replaceEmail: (
+    tx: Transaction,
+    input: Readonly<{ userId: UserId; emailNormalized: string; expectedVersion: string; now: Date }>,
+  ) => Promise<User | null>
   /**
    * Create the active user for an approved application. Approval is the only
    * door to an account now — the signup password is copied into
@@ -97,6 +101,23 @@ export const createUserRepository = (): UserWriteRepository => ({
 
   findById: async (tx, userId) =>
     (await tx.selectFrom("users").selectAll().where("id", "=", userId).executeTakeFirst()) ?? null,
+
+  replaceEmail: async (tx, input) =>
+    (await tx
+      .updateTable("users")
+      .set({
+        email_normalized: input.emailNormalized,
+        email_revision: sql<string>`email_revision + 1`,
+        email_verification_state: "verified",
+        email_verification_started_at: sql<Date>`coalesce(email_verification_started_at, ${input.now})`,
+        email_verified_at: input.now,
+        updated_at: input.now,
+        version: sql<string>`version + 1`,
+      })
+      .where("id", "=", input.userId)
+      .where("version", "=", input.expectedVersion)
+      .returningAll()
+      .executeTakeFirst()) ?? null,
 
   updatePhone: async (tx, input) =>
     (await tx

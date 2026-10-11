@@ -1,7 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query"
 
-import { changeClientPhone, getClientProfile } from "~/api/generated/operations"
+import {
+  changeClientPhone,
+  confirmClientEmailChange,
+  getClientProfile,
+  requestClientEmailChange,
+} from "~/api/generated/operations"
 import type { DataOf } from "~/api/http"
 import { STALE, qk } from "~/api/queryKeys"
 import { useApi } from "~/app/providers/ApiProvider"
@@ -34,5 +39,35 @@ export const useChangeClientPhone = (): UseMutationResult<
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: qk.client.profile() })
     },
+  })
+}
+
+export type EmailChangeRequested = DataOf<typeof requestClientEmailChange>
+
+export const useRequestEmailChange = (): UseMutationResult<
+  EmailChangeRequested,
+  Error,
+  Readonly<{ newEmail: string; currentPassword: string }>
+> => {
+  const api = useApi()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (body: Readonly<{ newEmail: string; currentPassword: string }>) =>
+      (await api.request(requestClientEmailChange, { body })).data,
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: qk.client.profile() })
+    },
+  })
+}
+
+export const useConfirmEmailChange = (): UseMutationResult<
+  DataOf<typeof confirmClientEmailChange>,
+  Error,
+  Readonly<{ code: string }>
+> => {
+  const api = useApi()
+  return useMutation({
+    mutationFn: async (body: Readonly<{ code: string }>) =>
+      (await api.request(confirmClientEmailChange, { body })).data,
   })
 }

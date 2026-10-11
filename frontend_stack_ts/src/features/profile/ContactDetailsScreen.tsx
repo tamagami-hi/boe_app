@@ -15,6 +15,7 @@ import { Form } from "~/ui/primitives/Form"
 import { FormField, Input } from "~/ui/primitives/FormField"
 import { HONESTY_TEXT } from "~/ui/recipes/text"
 
+import { EmailChangePanel } from "./EmailChangePanel"
 import { useChangeClientPhone, useClientProfile } from "./profileQueries"
 
 const E164 = /^\+[1-9][0-9]{7,14}$/u
@@ -55,7 +56,7 @@ const ContactDetailsScreen = (): React.ReactElement => {
     <Page width="default">
       <PageHeader
         title="Contact details"
-        description="The email address and phone number on your BeOnEdge account."
+        description="The email address and phone number on your BeOnEdge account. Your email address is how you sign in."
       />
 
       <AsyncBoundary query={profile} skeleton={<Skeleton height="4rem" />}>
@@ -72,6 +73,8 @@ const ContactDetailsScreen = (): React.ReactElement => {
           </Card>
         )}
       </AsyncBoundary>
+
+      {profile.data === undefined ? null : <EmailChangePanel pending={profile.data.pendingEmailChange} />}
 
       <Section
         title="Change your phone number"
