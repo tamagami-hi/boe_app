@@ -22,6 +22,7 @@ move funds, change identity authority, send customer mail, or deploy.
 | Q-011 | Permission codes for the new capabilities. Proposed: `clients.password_links.send` for step 3, and one code each for template editing and for test send plus send-to-client, named before steps 8 and 9 (for example `email_templates.write` and `email_messages.send`) | Step 3 uses the dedicated code named in this plan; steps 8 and 9 wait for names. The single superadmin receives every catalog code, so a dedicated code widens nobody's access. |
 | Q-012 | Grant propagation for a new permission code: the operator confirms the seed flags, or `seedAuth.ts` is changed to reconcile superadmin grants even when the admin bootstrap is skipped | Change nothing in `seedAuth.ts`, because that alters what "catalog only" means. Before relying on a new code the operator checks that `SEED_AUTH_ENABLED` is not `false` and, with `NODE_ENV=production`, that `SEED_AUTH_ALLOW_PRODUCTION` is `true` on each stack. `backend_controller/.env.production.example` sets `SEED_AUTH_ENABLED=false` while both stack examples set it to `true`. |
 | Q-013 | Self-protection for the sole admin, which can suspend or close its own account with no in-app or seed recovery | Out of scope for this plan; no change. Steps 3 and 4 add actions to the same screen and must not make this worse. |
+| Q-014 | The admin mandate cancel route still inserts a queued cancel command in the local-cancel branch (a `setup_pending` mandate with no provider subscription and no live setup attempt), although the mandate is already cancelled and nothing is asked of the provider. Skip the command there, as the client route does, or keep it and document it | No route change. The reconciliation worker marks the row accepted without a provider call; until its next pass the admin list shows the cancel as queued. |
 
 ### Decision record
 
@@ -522,7 +523,7 @@ Corrected beliefs: a retry of an expired key did not execute the mutation twice.
 
 Decided (maintainer, 2026-10-08): keep the other money writes on the 24-hour window. Each has a state guard that rejects a second execution under a new key, checked in source: ledger reversal, maturity settlement and payout status, refund retry and reconcile, receipt acknowledgement, mandate cancel, fund AUM initialize, correction, and collective growth, and user suspend, reinstate, and close. Mandate and collection reconcile are safe no-ops. The one exception was fund AUM growth by amount or percentage, which a repeat under a new key stacked as another snapshot revision, so it is durable too (`adminAumRoutes.ts`, `retention: "durable"`); the target form already rejects a zero delta. An expired key on any of the others returns the 409 and the admin reads current state. The reconcile routes read the provider before `runAdminMutation`, so an expired key still costs one read-only provider call. Client growth keeps its own inline copy of the protocol, and its receipts are referenced by a foreign key. Catalog, content, and user-lifecycle writes run with no receipt when the key is absent, and their state guards were not checked. If a purge of ordinary receipts is ever added, it removes this rejection for them; durable rows are excluded automatically.
 
-Repaired (2026-10-08): `adminFundCatalog.integration.test.ts` and `adminMandate.integration.test.ts` created `native` sessions in their `makeUser` helpers, but admin authentication has accepted only `admin_native` since commit `5bec7a6` (2026-08-29), before this work began, and no commit had touched either file since. All 45 of their tests returned 401, and CI runs the integration suite (`.github/workflows/ci.yml:29`). Both helpers create only admin users, so the repair is the session channel in each. Verified in a container run on PostgreSQL 16: `adminFundCatalog` went from 0 of 29 to 29 of 29, and `adminMandate` from 0 of 16 to 15 of 16. The one remaining failure, `admin mandate cancel > requests abandonment and enqueues cancel for setup_pending mandate`, was hidden by the 401 and is a stale expectation, not a code defect. Since `c01254c` (2026-09-09, "let an expired mandate setup be cancelled"), a `setup_pending` mandate with no provider subscription and no live setup attempt is cancelled locally (the `nothingToRevoke` branch in `adminMandateRoutes.ts`), and the test's fixture builds exactly that mandate, so the route returns `cancelled`, not `setup_pending`. The test should build a mandate with a live setup attempt to cover the abandonment path and gain a case for the local cancel; both need a container run to verify, which needs the maintainer's permission. The rest of the integration suite was not run in this work, so its state is unknown.
+Repaired (2026-10-08): `adminFundCatalog.integration.test.ts` and `adminMandate.integration.test.ts` created `native` sessions in their `makeUser` helpers, but admin authentication has accepted only `admin_native` since commit `5bec7a6` (2026-08-29), before this work began, and no commit had touched either file since. All 45 of their tests returned 401, and CI runs the integration suite (`.github/workflows/ci.yml:29`). Both helpers create only admin users, so the repair is the session channel in each. Verified in a container run on PostgreSQL 16: `adminFundCatalog` went from 0 of 29 to 29 of 29, and `adminMandate` from 0 of 16 to 15 of 16. The one remaining failure, `requests abandonment and enqueues cancel for setup_pending mandate`, had been hidden by the 401 and was a stale expectation, not a code defect: since `c01254c` (2026-09-09) a `setup_pending` mandate with no provider subscription and no live setup attempt is cancelled locally, and the test's fixture built exactly that mandate. It is now repaired too (see the baseline section below); `adminMandate` passes 17 of 17.
 
 For step 4: the admin UI maps `IDEMPOTENCY_KEY_REUSED` to "Give it a moment" (`frontend_stack_ts/src/domain/failure.ts:72`), which will mislead on this 409. The UI must resolve an unknown outcome by reading current state with the original key, never by minting a new one.
 
@@ -542,3 +543,41 @@ Recorded by decision and by design:
 - Watching the SMTP timeouts on the dev stack is the maintainer's step. At the default lease the budget is 20 s per send: 2 s DNS, 4 s connect, 4 s greeting, and a 10 s socket idle timeout (nodemailer's defaults were 2 minutes, 30 seconds, and 10 minutes). A slow server now produces an ambiguous timeout and a retry sooner than before. The ceiling is fixed at 20 s, so raising `EMAIL_WORKER_LEASE_MS` does not raise it.
 
 Behavior to know: a pass now sends roughly 5 to 10 messages instead of up to 25, because it must finish inside the 60 s heartbeat; the outbox carries little volume today. Unknown outcomes reuse the error code `SMTP_TRANSPORT_ERROR`; the attempts table tells them apart, and nothing reads that table yet. The recorded SMTP response code is not stored because the sender result does not carry it. Rollback is safe: the previous release ignores the new column and table and needs no boundary. A row it finds left in `sending` by a new-release crash is cancelled by its old recovery, the bug this step fixes.
+
+### Integration suite baseline and mandate cancel test (2026-10-08)
+
+The stale `adminMandate` cancel test is repaired, tests only. Its fixture now gives the mandate a live `provider_pending` setup attempt, so it exercises the abandonment path it names, and it also asserts the queued cancel command row. One new test covers the local-cancel branch from `c01254c`: an expired setup attempt and no provider subscription leave the mandate `cancelled` and the SIP plan `cancelled`, with no gateway call. The expected values come from the `c01254c` message and the transition tables in `mandateStates.ts`, not from the route's output. The pair separates the two branches only by setup-attempt state, so it was not shown failing under a source mutation. Two container runs of the file (the implementing agent's and the maintainer-side re-run) each passed 17 of 17.
+
+One full run of the integration suite on PostgreSQL 16 (`npm run test:integration`, 10.06 s) gives 21 files and 233 tests, 229 passed and 4 failed:
+
+| File | Passed | Failed | Total |
+| --- | --- | --- | --- |
+| adminAum | 25 | 0 | 25 |
+| adminFundCatalog | 29 | 0 | 29 |
+| adminIdentity | 17 | 1 | 18 |
+| adminMandate | 17 | 0 | 17 |
+| authDeviceLimit | 4 | 0 | 4 |
+| authNative | 7 | 0 | 7 |
+| authRepositories | 3 | 0 | 3 |
+| authWeb | 9 | 0 | 9 |
+| clientCatalog | 5 | 0 | 5 |
+| clientEmailVerification | 7 | 3 | 10 |
+| clientGrowth | 14 | 0 | 14 |
+| database | 14 | 0 | 14 |
+| deployBoot | 5 | 0 | 5 |
+| emailDelivery | 9 | 0 | 9 |
+| emailQueueMigration | 5 | 0 | 5 |
+| emailVerificationMigration | 1 | 0 | 1 |
+| mandatePersistence | 6 | 0 | 6 |
+| maturitySettlement | 11 | 0 | 11 |
+| metrics | 2 | 0 | 2 |
+| paymentSettlement | 25 | 0 | 25 |
+| publicRoutes | 14 | 0 | 14 |
+
+Findings, none fixed (unrelated stale expectations from deliberate code changes):
+
+- `clientEmailVerification.integration.test.ts:251` expects `emailVerificationStatus`, but the route returns `emailVerificationState` (`clientEmailVerificationRoutes.ts:108`), which is also the contract name. Renamed in `5dc90fc` (2026-08-29).
+- `clientEmailVerification.integration.test.ts:334` and `:352` post to `/v1/client/email-verification/resend` and get 404; the routes module has no resend handler. Removed in `5dc90fc`.
+- `adminIdentity.integration.test.ts:440` expects the approval mail's `downloadUrl` without a query string, but `releaseFeed.ts:227` has appended `?v=<versionCode>` since `24a7449` (2026-09-10).
+
+Finding on route behavior (decision Q-014): the admin cancel route calls `createCancelCommand` after its if/else in every branch (`adminMandateRoutes.ts:552`), so the local-cancel branch still inserts a `mandate_cancel_commands` row (default state `queued`, `previous_mandate_state` `setup_pending`), which the response returns. The client route's local-cancel branches create no command. The provider is not asked: the reconciliation worker finds the mandate already `cancelled` and marks the row accepted (`mandateReconciliationWorker.ts:152`, `markCancelSatisfied` in `mandatesRepository.ts`), and `claimCancelDispatch` refuses any command whose mandate has no provider subscription (`mandatesRepository.ts:492`). Side effects: until the next pass the admin list shows the cancel as queued, afterwards the row reads accepted with `accepted_at` set though the provider accepted nothing, and the worker counts it in `cancelCommandsDispatched`. This is STATIC; no test runs the worker over a locally cancelled mandate.

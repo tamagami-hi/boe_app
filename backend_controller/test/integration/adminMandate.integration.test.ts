@@ -177,6 +177,31 @@ const activateMandate = async (
   return { providerSubscriptionId }
 }
 
+const createSetupAttempt = async (
+  mandate: { userId: string; sipPlanId: string; mandateId: string },
+  state: "provider_pending" | "expired",
+): Promise<void> => {
+  const attempt = await createUnitOfWork(database).execute((tx) =>
+    createMandatesRepository().createSetupAttempt(tx, {
+      mandateId: mandate.mandateId,
+      sipPlanId: mandate.sipPlanId,
+      userId: mandate.userId,
+      attemptNumber: 1,
+      merchantOrderId: `MO_${randomUUID()}`,
+      setupExpiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    }),
+  )
+  if (state === "expired") {
+    await pool.query("update mandate_setup_attempts set state = 'expired', updated_at = now() where id = $1", [attempt.id])
+    return
+  }
+  await pool.query(
+    "update mandate_setup_attempts set state = 'provider_pending', provider_dispatch_started_at = now(), " +
+      "provider_order_id = $2, updated_at = now() where id = $1",
+    [attempt.id, `PO_${randomUUID()}`],
+  )
+}
+
 const createCollectionAttempt = async (
   mandateId: string,
   sipPlanId: string,
@@ -241,7 +266,9 @@ const fakeRecurringGateway = {
     return { state: "NOTIFIED", merchantOrderId, providerOrderId: null, merchantSubscriptionId: "", amountPaise: "50000", expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000), paymentDetails: [] }
   },
   notifyCollection: async () => ({ providerOrderId: "po", providerState: "NOTIFICATION_IN_PROGRESS" as const, expiresAt: new Date() }),
-  cancelMandate: async () => undefined,
+  cancelMandate: async (merchantSubscriptionId: string): Promise<void> => {
+    gatewayCalls.push({ operation: "cancelMandate", merchantId: merchantSubscriptionId })
+  },
 }
 
 const trackTransactionDepth = (unitOfWork: UnitOfWork): UnitOfWork =>
@@ -529,7 +556,9 @@ describe("admin mandate cancel", () => {
 
   test("requests abandonment and enqueues cancel for setup_pending mandate", async () => {
     const { fundId } = await seedFund("mandate-cancel-setup")
-    const { mandateId } = await createSipAndMandate(fundId)
+    const created = await createSipAndMandate(fundId)
+    const { mandateId, merchantSubscriptionId } = created
+    await createSetupAttempt(created, "provider_pending")
 
     const response = asInjected(await postJson(`/v1/admin/mandates/${mandateId}/cancel`, adminToken, { reason: "Abandon setup" }, `cancel-setup-${randomUUID()}`))
     expect(response.statusCode).toBe(200)
@@ -542,6 +571,37 @@ describe("admin mandate cancel", () => {
     )
     expect(mandate.rows[0]?.state).toBe("setup_pending")
     expect(mandate.rows[0]?.abandonment_requested_at).not.toBeNull()
+
+    const command = await pool.query<{ mandate_id: string; previous_mandate_state: string; merchant_subscription_id: string }>(
+      "select mandate_id, previous_mandate_state, merchant_subscription_id from mandate_cancel_commands where id = $1",
+      [body.commandId],
+    )
+    expect(command.rows[0]?.mandate_id).toBe(mandateId)
+    expect(command.rows[0]?.previous_mandate_state).toBe("setup_pending")
+    expect(command.rows[0]?.merchant_subscription_id).toBe(merchantSubscriptionId)
+  })
+
+  test("cancels a setup_pending mandate locally when its setup expired and no provider subscription exists", async () => {
+    const { fundId } = await seedFund("mandate-cancel-expired-setup")
+    const created = await createSipAndMandate(fundId)
+    const { mandateId, sipPlanId } = created
+    await createSetupAttempt(created, "expired")
+    gatewayCalls.length = 0
+
+    const response = asInjected(await postJson(`/v1/admin/mandates/${mandateId}/cancel`, adminToken, { reason: "Setup expired" }, `cancel-expired-${randomUUID()}`))
+    expect(response.statusCode).toBe(200)
+
+    const mandate = await pool.query<{ state: string; abandonment_requested_at: Date | null }>(
+      "select state, abandonment_requested_at from payment_mandates where id = $1",
+      [mandateId],
+    )
+    expect(mandate.rows[0]?.state).toBe("cancelled")
+    expect(mandate.rows[0]?.abandonment_requested_at).toBeNull()
+
+    const sip = await pool.query<{ state: string }>("select state from sip_plans where id = $1", [sipPlanId])
+    expect(sip.rows[0]?.state).toBe("cancelled")
+
+    expect(gatewayCalls).toEqual([])
   })
 
   test("rejects duplicate cancel attempts", async () => {
