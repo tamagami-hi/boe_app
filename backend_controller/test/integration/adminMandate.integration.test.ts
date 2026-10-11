@@ -590,6 +590,8 @@ describe("admin mandate cancel", () => {
 
     const response = asInjected(await postJson(`/v1/admin/mandates/${mandateId}/cancel`, adminToken, { reason: "Setup expired" }, `cancel-expired-${randomUUID()}`))
     expect(response.statusCode).toBe(200)
+    const body = dataOf<{ commandId: string; state: string }>(response)
+    expect(body.state).toBe("queued")
 
     const mandate = await pool.query<{ state: string; abandonment_requested_at: Date | null }>(
       "select state, abandonment_requested_at from payment_mandates where id = $1",
@@ -600,6 +602,13 @@ describe("admin mandate cancel", () => {
 
     const sip = await pool.query<{ state: string }>("select state from sip_plans where id = $1", [sipPlanId])
     expect(sip.rows[0]?.state).toBe("cancelled")
+
+    const command = await pool.query<{ mandate_id: string; state: string; previous_mandate_state: string }>(
+      "select mandate_id, state, previous_mandate_state from mandate_cancel_commands where id = $1",
+      [body.commandId],
+    )
+    expect(command.rows).toHaveLength(1)
+    expect(command.rows[0]).toMatchObject({ mandate_id: mandateId, state: "queued", previous_mandate_state: "setup_pending" })
 
     expect(gatewayCalls).toEqual([])
   })
