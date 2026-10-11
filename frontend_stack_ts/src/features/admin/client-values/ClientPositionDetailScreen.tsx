@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 
-import { isApiError } from "~/api/errors"
+import { isApiError, isUnknownWriteOutcome } from "~/api/errors"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
@@ -11,7 +11,6 @@ import {
   useAdminClientLedgerEntries,
   useAdminInvestorPositions,
   useAdminUsers,
-  useRecordClientContribution,
   useReverseClientLedgerEntry,
 } from "~/features/admin/shared/adminQueries"
 import { useAdminFundCatalogue } from "~/features/admin/shared/queries"
@@ -22,12 +21,11 @@ import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Combobox } from "~/ui/primitives/Combobox"
 import { Alert } from "~/ui/primitives/Feedback"
-import { FormField, Input } from "~/ui/primitives/FormField"
-import { Select } from "~/ui/primitives/Select"
+import { FormField } from "~/ui/primitives/FormField"
 
-import { ADMIN_CODE, ADMIN_FORM_GRID } from "~/ui/recipes/admin"
-import { STACK_LG } from "~/ui/recipes/layout"
+import { ADMIN_CODE } from "~/ui/recipes/admin"
 
+import { EarlierInvestmentForm } from "./EarlierInvestmentForm"
 import { MaturityPanel } from "./MaturityPanel"
 
 const ENTRY_LABEL: Readonly<Record<string, string>> = {
@@ -44,30 +42,19 @@ const ORDER_LABEL: Readonly<Record<string, string>> = {
   recorded_offline: "Recorded earlier",
 }
 
-const REASON_OPTIONS = [
-  { value: "recorded_offline_investment", label: "Investment made before the app" },
-  { value: "recorded_offline_correction", label: "Correction to an earlier record" },
-] as const
-
 const REVERSAL_REASON = "admin_correction_reversal"
 
-const today = (): string => new Date().toISOString().slice(0, 10)
+type ReversalFailure = Readonly<{ tone: "warning" | "error"; title: string; message: string }>
 
 const ClientPositionDetailScreen = (): React.ReactElement => {
   const { hasAnyPermission } = useSession()
   const canWrite = hasAnyPermission(["client_position.write"])
   const funds = useAdminFundCatalogue()
-  const record = useRecordClientContribution()
   const reverse = useReverseClientLedgerEntry()
 
   const [userId, setUserId] = useState("")
   const [investorQuery, setInvestorQuery] = useState("")
-  const [fundId, setFundId] = useState("")
-  const [amountPaise, setAmountPaise] = useState("")
-  const [effectiveDate, setEffectiveDate] = useState("")
-  const [reasonCode, setReasonCode] = useState<string>(REASON_OPTIONS[0].value)
-  const [note, setNote] = useState("")
-  const [failure, setFailure] = useState<string | null>(null)
+  const [failure, setFailure] = useState<ReversalFailure | null>(null)
   const [pendingReversal, setPendingReversal] = useState<string | null>(null)
 
   const investors = useAdminUsers(investorQuery.trim() === "" ? {} : { q: investorQuery.trim() })
@@ -92,54 +79,32 @@ const ClientPositionDetailScreen = (): React.ReactElement => {
 
   const positionItems = positions.data?.items ?? []
   const ledgerItems = ledger.data?.items ?? []
-
-  const fundOptions = [
-    { value: "", label: userId === "" ? "Choose an investor first" : "Choose a fund" },
-    ...fundCatalogue.map((fund) => ({ value: fund.id, label: fund.name ?? fund.slug })),
-  ]
-
-  const invalidAmount = !/^[1-9][0-9]*$/u.test(amountPaise)
-  const futureDated = effectiveDate !== "" && effectiveDate > today()
-  const incomplete =
-    !canWrite ||
-    userId === "" ||
-    fundId === "" ||
-    effectiveDate === "" ||
-    futureDated ||
-    invalidAmount
+  const investorLabel =
+    investorOptions.find((option) => option.value === userId)?.label ?? "The selected investor"
 
   const resetInvestor = (next: string): void => {
     setUserId(next)
-    setFundId("")
     setFailure(null)
-    record.reset()
     reverse.reset()
   }
 
-  const describe = (error: unknown, fallback: string): string =>
-    isApiError(error)
-      ? error.code === "RESOURCE_NOT_FOUND"
-        ? "That investor or fund could not be resolved. Check the selection and try again."
-        : error.message
-      : fallback
-
-  const submitContribution = (): void => {
-    setFailure(null)
-    record.mutate(
-      {
-        userId,
-        fundId,
-        amountPaise,
-        effectiveDate,
-        reasonCode,
-        ...(note.trim() === "" ? {} : { note: note.trim() }),
-      },
-      {
-        onError: (error) => {
-          setFailure(describe(error, "We could not record that investment. Nothing was written."))
-        },
-      },
-    )
+  const describeReversalFailure = (error: unknown): ReversalFailure => {
+    if (isUnknownWriteOutcome(error)) {
+      return {
+        tone: "warning",
+        title: "Not confirmed",
+        message:
+          "The reply did not arrive, so it is not known whether the reversal was appended. Check the ledger entries before trying again. An entry can only be reversed once.",
+      }
+    }
+    return {
+      tone: "error",
+      title: "Not reversed",
+      message:
+        isApiError(error) && error.code !== "RESOURCE_NOT_FOUND"
+          ? error.message
+          : "That entry could not be found for this investor. Refresh the ledger and try again.",
+    }
   }
 
   const confirmReversal = (): void => {
@@ -151,7 +116,7 @@ const ClientPositionDetailScreen = (): React.ReactElement => {
       { userId, entryId, reasonCode: REVERSAL_REASON },
       {
         onError: (error) => {
-          setFailure(describe(error, "We could not reverse that entry. Nothing was written."))
+          setFailure(describeReversalFailure(error))
         },
       },
     )
@@ -171,17 +136,8 @@ const ClientPositionDetailScreen = (): React.ReactElement => {
       )}
 
       {failure === null ? null : (
-        <Alert tone="error" title="Nothing was written">
-          {failure}
-        </Alert>
-      )}
-
-      {record.data === undefined ? null : (
-        <Alert tone="success" title="Earlier investment recorded">
-          {`The investor has been notified. Their amount invested in this fund is now ${record.data.principalPaise} paise and their current value ${record.data.currentValuePaise} paise.`}
-          {record.data.fundVersionEffectiveOnDate
-            ? ""
-            : " No fund version existed on that date, so the current published version was recorded instead."}
+        <Alert tone={failure.tone} title={failure.title}>
+          {failure.message}
         </Alert>
       )}
 
@@ -261,102 +217,7 @@ const ClientPositionDetailScreen = (): React.ReactElement => {
             title="Record an investment made before the app"
             description="Written as what it was: an accepted order, a succeeded payment, an allocation and an ordinary contribution, all dated by the real investment date so the statement for that period is right. The investor is notified."
           >
-            <Card elevated>
-              <div className={STACK_LG}>
-                <div className={ADMIN_FORM_GRID}>
-                  <FormField label="Fund" required>
-                    {({ id }) => (
-                      <Select
-                        id={id}
-                        options={fundOptions}
-                        value={fundId}
-                        onChange={(event) => {
-                          setFundId(event.target.value)
-                        }}
-                      />
-                    )}
-                  </FormField>
-
-                  <FormField
-                    label="Amount in paise"
-                    required
-                    hint="Positive integer paise. 50000000 is ₹5,00,000."
-                    {...(invalidAmount && amountPaise !== ""
-                      ? { error: "Enter a positive integer number of paise." }
-                      : {})}
-                  >
-                    {({ id }) => (
-                      <Input
-                        id={id}
-                        value={amountPaise}
-                        onChange={(event) => {
-                          setAmountPaise(event.target.value.trim())
-                        }}
-                      />
-                    )}
-                  </FormField>
-                </div>
-
-                <div className={ADMIN_FORM_GRID}>
-                  <FormField
-                    label="Date of the investment"
-                    required
-                    hint="The real historical date, not today. It decides which statement period the entry lands in."
-                    {...(futureDated ? { error: "A past investment cannot be in the future." } : {})}
-                  >
-                    {({ id }) => (
-                      <Input
-                        id={id}
-                        type="date"
-                        max={today()}
-                        value={effectiveDate}
-                        onChange={(event) => {
-                          setEffectiveDate(event.target.value)
-                        }}
-                      />
-                    )}
-                  </FormField>
-
-                  <FormField label="Reason code" required>
-                    {({ id }) => (
-                      <Select
-                        id={id}
-                        options={REASON_OPTIONS.map((option) => ({ ...option }))}
-                        value={reasonCode}
-                        onChange={(event) => {
-                          setReasonCode(event.target.value)
-                        }}
-                      />
-                    )}
-                  </FormField>
-                </div>
-
-                <FormField
-                  label="Note"
-                  hint="Internal. Recorded on the ledger entry, never shown to the investor."
-                >
-                  {({ id }) => (
-                    <Input
-                      id={id}
-                      value={note}
-                      maxLength={2_000}
-                      onChange={(event) => {
-                        setNote(event.target.value)
-                      }}
-                    />
-                  )}
-                </FormField>
-
-                <Button
-                  disabled={incomplete}
-                  loading={record.isPending}
-                  onClick={submitContribution}
-                  trailing
-                >
-                  Record this investment
-                </Button>
-              </div>
-            </Card>
+            <EarlierInvestmentForm key={userId} userId={userId} investorLabel={investorLabel} />
           </Section>
 
           <Section

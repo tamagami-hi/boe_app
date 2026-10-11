@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import { reasonCodeSchema, reasonDetailSchema, uuidParam } from "./adminRouteKit.js"
+import { positivePaiseSchema, reasonCodeSchema, reasonDetailSchema, uuidParam } from "./adminRouteKit.js"
 
 const dateSchema = z.iso.date()
 const settlementFields = {
@@ -10,9 +10,6 @@ const settlementFields = {
   note: reasonDetailSchema.optional(),
 }
 const versionSchema = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER)
-const POSTGRES_BIGINT_MAX = 9223372036854775807n
-const positivePaiseSchema = z.string().regex(/^[1-9][0-9]{0,18}$/u)
-  .refine((value) => /^[1-9][0-9]{0,18}$/u.test(value) && BigInt(value) <= POSTGRES_BIGINT_MAX)
 
 export const AdminMarkMaturityBody = z.strictObject({
   fundId: uuidParam,

@@ -29,6 +29,16 @@ export const slugSchema = z
   .max(120)
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/u, "must be a lowercase hyphenated slug")
 
+const POSTGRES_BIGINT_MAX = 9223372036854775807n
+const CANONICAL_POSITIVE_PAISE = /^[1-9][0-9]{0,18}$/u
+export const positivePaiseSchema = z
+  .string()
+  .regex(CANONICAL_POSITIVE_PAISE, "must be a positive whole number of paise")
+  .refine(
+    (value) => CANONICAL_POSITIVE_PAISE.test(value) && BigInt(value) <= POSTGRES_BIGINT_MAX,
+    "must be at most 9223372036854775807 paise",
+  )
+
 export const iso = (value: Date | string): string => new Date(value).toISOString()
 export const isoOrNull = (value: Date | string | null): string | null =>
   value === null ? null : iso(value)

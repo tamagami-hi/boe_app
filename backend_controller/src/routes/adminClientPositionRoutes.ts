@@ -21,6 +21,7 @@ import {
   adminIdempotencyScope,
   hashRequest,
   limitSchema,
+  positivePaiseSchema,
   reasonCodeSchema,
   reasonDetailSchema,
   requireIdempotencyKey,
@@ -47,12 +48,7 @@ export interface AdminClientPositionDeps extends RecordContributionDeps, Reverse
   readonly config: AdminClientPositionConfig
 }
 
-const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/u, "must be a YYYY-MM-DD date")
-
-const positivePaiseSchema = z
-  .string()
-  .trim()
-  .regex(/^[1-9][0-9]{0,18}$/u, "must be a positive integer paise string")
+const dateSchema = z.iso.date()
 
 const recordedContributionSchema = z
   .object({

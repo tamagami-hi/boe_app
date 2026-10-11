@@ -9,6 +9,7 @@ import {
   isPaise,
   isWirePaise,
   paiseToRupees,
+  rupeeTextToPaise,
   rupeesToPaise,
   subtractPaise,
   toPaise,
@@ -127,5 +128,64 @@ describe("display formatting", () => {
     expect(formatINR(toPaise("200"), { showSign: true })).toBe("+₹2")
     expect(formatINR(toPaise("-200"), { showSign: true })).toBe("-₹2")
     expect(formatINR(toPaise("0"), { showSign: true })).toBe("₹0")
+  })
+})
+
+describe("typed rupee text to paise, exactly", () => {
+  it("converts whole rupees and one or two decimal places without floating-point rounding", () => {
+    const cases: readonly (readonly [string, string])[] = [
+      ["1", "100"],
+      ["0.01", "1"],
+      ["0.1", "10"],
+      ["0.29", "29"],
+      ["19.99", "1999"],
+      ["1.1", "110"],
+      ["500000", "50000000"],
+      ["12345678.91", "1234567891"],
+      ["90071992547409.93", "9007199254740993"],
+      ["92233720368547758.07", "9223372036854775807"],
+    ]
+    for (const [text, paise] of cases) {
+      expect(rupeeTextToPaise(text), text).toBe(paise)
+    }
+  })
+
+  it("keeps precision beyond the range where a number-based conversion drifts", () => {
+    expect(Number.isSafeInteger(Number("90071992547409.93") * 100)).toBe(false)
+    expect(rupeeTextToPaise("90071992547409.93")).toBe("9007199254740993")
+  })
+
+  it("rejects text that is not plain rupees with at most two decimal places", () => {
+    for (const text of [
+      "",
+      " ",
+      ".",
+      ".5",
+      "5.",
+      "1.005",
+      "01",
+      "00.50",
+      "-1",
+      "+1",
+      "1e3",
+      "1,000",
+      "₹100",
+      "100 ",
+      " 100",
+      "1.2.3",
+      "NaN",
+      "Infinity",
+    ]) {
+      expect(() => rupeeTextToPaise(text), JSON.stringify(text)).toThrow(MoneyFormatError)
+    }
+  })
+
+  it("rejects an amount one paisa beyond the PostgreSQL bigint maximum", () => {
+    expect(() => rupeeTextToPaise("92233720368547758.08")).toThrow(MoneyFormatError)
+  })
+
+  it("returns zero for zero so the caller decides whether zero is allowed", () => {
+    expect(rupeeTextToPaise("0")).toBe("0")
+    expect(rupeeTextToPaise("0.00")).toBe("0")
   })
 })

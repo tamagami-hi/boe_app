@@ -57,6 +57,19 @@ export const rupeesToPaise = (rupees: number): Paise => {
   return String(paise) as Paise
 }
 
+const RUPEE_TEXT_PATTERN = /^(0|[1-9][0-9]*)(?:\.([0-9]{1,2}))?$/u
+const PAISE_PER_RUPEE_BIGINT = 100n
+
+export const rupeeTextToPaise = (text: string): Paise => {
+  const match = RUPEE_TEXT_PATTERN.exec(text)
+  if (match === null) {
+    throw new MoneyFormatError("Amount must be rupees with at most two decimal places")
+  }
+  const [, whole = "", fraction = ""] = match
+  const paise = BigInt(whole) * PAISE_PER_RUPEE_BIGINT + BigInt(fraction.padEnd(2, "0"))
+  return toPaise(paise.toString())
+}
+
 export const paiseToRupees = (paise: Paise): number => {
   const parsed = BigInt(paise)
   if (parsed > BigInt(Number.MAX_SAFE_INTEGER) || parsed < BigInt(Number.MIN_SAFE_INTEGER)) {

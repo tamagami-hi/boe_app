@@ -10753,6 +10753,7 @@ export interface operations {
                     /** Format: uuid */
                     fundId: string;
                     amountPaise: string;
+                    /** Format: date */
                     effectiveDate: string;
                     reasonCode: string;
                     note?: string;
