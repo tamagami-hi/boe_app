@@ -400,7 +400,7 @@ for s in "${BOE_STACKS[@]}"; do
             # stack so dev and prod cannot collide on a shared cache. It must stay
             # populated in the template; blanking it to satisfy a pattern match
             # would erase the isolation it exists to provide.
-            REDIS_KEY_NAMESPACE) ;;
+            REDIS_KEY_NAMESPACE|CLIENT_PASSWORD_LINK_URL) ;;
             *PASSWORD*|*SECRET*|*_KEY|*_KEY_*|*DSN*|*TOKEN*)
                 if [[ -n "$v" ]]; then
                     fail "$s/.env.example has a non-empty value for $k"
@@ -430,7 +430,7 @@ for s in "${BOE_STACKS[@]}"; do
     if (( ${#missing[@]} == 0 )); then pass "$s has every required artifact"
     else fail "$s is missing: ${missing[*]}"; fi
 done
-for f in _boe_lib.sh _boe_deploy.sh _boe_rollback.sh; do
+for f in _boe_lib.sh _boe_deploy.sh _boe_rollback.sh maintenance.html; do
     [[ -f "$STACKS/_shared/$f" ]] && pass "shared: $f" || fail "shared library missing: $f"
 done
 

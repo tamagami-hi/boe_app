@@ -6,6 +6,7 @@ import { AppProviders } from "~/app/providers/AppProviders"
 import { TransportReporter } from "~/app/providers/TransportReporter"
 import { createBackPolicyResolver } from "~/app/native/backPolicy"
 import { AppUpdateGate } from "~/app/native/AppUpdateGate"
+import { AppNoticeGate } from "~/features/app-notice/AppNoticeGate"
 import type { BackPolicy, BackPolicyInput } from "~/app/native/backPolicy"
 import {
   CLIENT_BLOCKED_PATH,
@@ -74,11 +75,13 @@ const ClientShellRoot = (): React.ReactElement => {
       <TransportReporter bind={runtime.setOutcomeReporter} />
       <ApiProvider value={runtime.http}>
         <AuthPortProvider value={port}>
-          <AppUpdateGate>
-            <ClientFrame>
-              <ClientRoutes targets={TARGETS} />
-            </ClientFrame>
-          </AppUpdateGate>
+          <AppNoticeGate>
+            <AppUpdateGate>
+              <ClientFrame>
+                <ClientRoutes targets={TARGETS} />
+              </ClientFrame>
+            </AppUpdateGate>
+          </AppNoticeGate>
         </AuthPortProvider>
       </ApiProvider>
     </AppProviders>

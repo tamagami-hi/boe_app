@@ -7,6 +7,7 @@ export type NetworkStatus = Readonly<{
   online: boolean
   lastOutcome: TransportOutcome | null
   degraded: boolean
+  maintenance: boolean
   report: (outcome: TransportOutcome) => void
 }>
 
@@ -48,6 +49,7 @@ export const NetworkStatusProvider = ({
       online,
       lastOutcome,
       degraded: !online || lastOutcome?.kind === "offline" || lastOutcome?.kind === "timeout",
+      maintenance: lastOutcome?.kind === "maintenance",
       report,
     }),
     [online, lastOutcome, report],

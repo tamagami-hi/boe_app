@@ -388,3 +388,45 @@ describe("deadline", () => {
     expect((failure as TransportError).kind).toBe("timeout")
   })
 })
+
+describe("maintenance responses", () => {
+  const maintenanceClient = () => {
+    const fetchImpl = vi.fn()
+    const outcomes: unknown[] = []
+    const client = createHttpClient({
+      scope: "client",
+      tokenStore: newTokenStore(),
+      refreshCoordinator: createRefreshCoordinator(vi.fn(() => Promise.resolve("rotated" as RefreshOutcome))),
+      baseUrl: () => "https://api.test",
+      fetchImpl,
+      sleep: vi.fn(() => Promise.resolve()),
+      reportOutcome: (outcome) => {
+        outcomes.push(outcome)
+      },
+    })
+    return { fetchImpl, outcomes, client }
+  }
+
+  const maintenanceBody = { ok: false, error: { code: "SERVICE_MAINTENANCE", message: "Updating" } }
+
+  it("turns a 503 marked as maintenance into SERVICE_MAINTENANCE and reports it", async () => {
+    const { fetchImpl, outcomes, client } = maintenanceClient()
+    fetchImpl.mockResolvedValue(jsonResponse(maintenanceBody, 503, { "x-boe-maintenance": "1" }))
+
+    const failure = await client.request(writeOperation, { body: { amountPaise: "100" }, idempotencyKey: "maintenance-key-1" }).catch((error: unknown) => error)
+
+    expect(failure).toBeInstanceOf(ApiError)
+    expect(failure).toMatchObject({ code: "SERVICE_MAINTENANCE", status: 503, retryable: true })
+    expect(outcomes.at(-1)).toEqual({ ok: false, kind: "maintenance", status: 503 })
+  })
+
+  it("leaves an ordinary 503 without the marker as the server's own error", async () => {
+    const { fetchImpl, outcomes, client } = maintenanceClient()
+    fetchImpl.mockResolvedValue(jsonResponse(errorBody("DEPENDENCY_UNAVAILABLE", true), 503))
+
+    const failure = await client.request(writeOperation, { body: { amountPaise: "100" }, idempotencyKey: "maintenance-key-2" }).catch((error: unknown) => error)
+
+    expect(failure).toMatchObject({ code: "DEPENDENCY_UNAVAILABLE", status: 503 })
+    expect(outcomes.at(-1)).toEqual({ ok: false, kind: "http", status: 503 })
+  })
+})

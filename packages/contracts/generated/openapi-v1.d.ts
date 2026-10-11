@@ -1703,7 +1703,7 @@ export interface components {
                 retryable: false;
             } | {
                 /** @enum {string} */
-                code: "STATE_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "RATE_LIMITED" | "INTERNAL_ERROR" | "DEPENDENCY_UNAVAILABLE";
+                code: "STATE_CONFLICT" | "IDEMPOTENCY_IN_PROGRESS" | "RATE_LIMITED" | "INTERNAL_ERROR" | "DEPENDENCY_UNAVAILABLE" | "SERVICE_MAINTENANCE";
                 message: string;
                 /** @enum {boolean} */
                 retryable: true;
@@ -10008,6 +10008,7 @@ export interface operations {
                             android?: string;
                             ios?: string;
                             web?: string;
+                            message?: string;
                         };
                         downloads?: {
                             /** Format: uri */
@@ -10018,6 +10019,8 @@ export interface operations {
                         maintenance?: {
                             enabled?: boolean;
                             message?: string;
+                            /** Format: date-time */
+                            scheduledFor?: string;
                         };
                         presentation?: {
                             [key: string]: string | number | boolean;

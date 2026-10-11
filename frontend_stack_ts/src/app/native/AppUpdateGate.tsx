@@ -1,6 +1,8 @@
 import { useState } from "react"
 import type { ReactNode } from "react"
 
+import { useAppConfigFeed } from "~/features/app-notice/appNoticeQuery"
+import { readAppNotices } from "~/features/app-notice/appNotices"
 import { useAppUpdateFeed } from "~/features/app-update/appUpdateQuery"
 import { MandatoryUpdateScreen } from "~/features/app-update/MandatoryUpdateScreen"
 import { OptionalUpdateSheet } from "~/features/app-update/OptionalUpdateSheet"
@@ -11,6 +13,7 @@ export type AppUpdateGateProps = Readonly<{ children: ReactNode }>
 
 export const AppUpdateGate = ({ children }: AppUpdateGateProps): React.ReactElement => {
   const feed = useAppUpdateFeed()
+  const config = useAppConfigFeed(false)
   const [dismissedVersionCode, setDismissedVersionCode] = useState<number | null>(null)
 
   const decision = decideAppUpdate(feed.data ?? null)
@@ -20,6 +23,7 @@ export const AppUpdateGate = ({ children }: AppUpdateGateProps): React.ReactElem
   if (decision.kind === "mandatory") {
     return (
       <MandatoryUpdateScreen
+        message={readAppNotices(config.data?.config ?? null, new Date()).updateMessage}
         release={decision.release}
         installer={installer}
         rechecking={feed.isFetching}

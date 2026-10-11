@@ -95,7 +95,12 @@ const appConfigPayloadSchema = z
   .object({
     featureFlags: z.record(z.string().max(80), z.boolean()).default({}),
     minimumSupportedVersion: z
-      .object({ android: semverish.optional(), ios: semverish.optional(), web: semverish.optional() })
+      .object({
+        android: semverish.optional(),
+        ios: semverish.optional(),
+        web: semverish.optional(),
+        message: z.string().trim().min(1).max(500).optional(),
+      })
       .strict()
       .default({}),
     downloads: z
@@ -106,7 +111,11 @@ const appConfigPayloadSchema = z
       .strict()
       .default({}),
     maintenance: z
-      .object({ enabled: z.boolean().default(false), message: longText.optional() })
+      .object({
+        enabled: z.boolean().default(false),
+        message: longText.optional(),
+        scheduledFor: z.iso.datetime({ offset: true }).optional(),
+      })
       .strict()
       .default({ enabled: false }),
     presentation: z

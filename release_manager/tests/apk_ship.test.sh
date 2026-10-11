@@ -787,7 +787,7 @@ TRACKED_DEV_PATHS="$ROOT_DIR/release_manager/stacks/dev_release/paths.json"
 jq -n '{version: "9.9.9", kind: "dev", git_sha: "unknown", images: {}}' \
     > "$DEPLOY_BUNDLE/manifest.json"
 for f in "$(stack_attr dev_release compose)" "$(stack_attr dev_release deploy)" \
-         "$(stack_attr dev_release rollback)" _boe_lib.sh _boe_deploy.sh _boe_rollback.sh; do
+         "$(stack_attr dev_release rollback)" _boe_lib.sh _boe_deploy.sh _boe_rollback.sh maintenance.html; do
     : > "$DEPLOY_BUNDLE/$f"
 done
 
@@ -825,7 +825,7 @@ jq -n '{
                        archive: "images/backend.tar.gz", sha256: ""}}
 }' > "$DIGEST_BUNDLE/manifest.json"
 for f in "$(stack_attr dev_release compose)" "$(stack_attr dev_release deploy)" \
-         "$(stack_attr dev_release rollback)" _boe_lib.sh _boe_deploy.sh _boe_rollback.sh; do
+         "$(stack_attr dev_release rollback)" _boe_lib.sh _boe_deploy.sh _boe_rollback.sh maintenance.html; do
     : > "$DIGEST_BUNDLE/$f"
 done
 cp "$TRACKED_DEV_PATHS" "$DIGEST_BUNDLE/paths.json"

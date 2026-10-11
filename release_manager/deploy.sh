@@ -155,7 +155,7 @@ if [[ -z "$BUNDLE_ARG" && -f "$BUNDLE/manifest.json" ]]; then
 fi
 
 for f in manifest.json paths.json "$COMPOSE_NAME" "$DEPLOY_NAME" "$ROLLBACK_NAME" \
-         _boe_lib.sh _boe_deploy.sh _boe_rollback.sh; do
+         _boe_lib.sh _boe_deploy.sh _boe_rollback.sh maintenance.html; do
     [[ -f "$BUNDLE/$f" ]] || { err "bundle is incomplete, missing: $f"; exit 1; }
 done
 
@@ -386,6 +386,10 @@ rsync -az --checksum --chmod=F755,D755 -e "$RSYNC_SSH" \
     "$BUNDLE/_boe_lib.sh" "$BUNDLE/_boe_deploy.sh" "$BUNDLE/_boe_rollback.sh" \
     "${BOE_SSH_ALIAS}:${REMOTE_DIR}/" \
     || { err "failed to upload native scripts"; exit 1; }
+
+rsync -az --checksum --chmod=F644 -e "$RSYNC_SSH" \
+    "$BUNDLE/maintenance.html" "${BOE_SSH_ALIAS}:${REMOTE_DIR}/" \
+    || { err "failed to upload the maintenance page"; exit 1; }
 
 if [[ -f "$BUNDLE/$(stack_attr "$STACK" guide)" ]]; then
     rsync -az --checksum --chmod=F644 -e "$RSYNC_SSH" \

@@ -59,7 +59,7 @@ export type Result<TOperation extends AnyOperation> = Readonly<{
 
 export type TransportOutcome = Readonly<{
   ok: boolean
-  kind: "success" | "http" | "timeout" | "offline" | "malformed"
+  kind: "success" | "http" | "timeout" | "offline" | "malformed" | "maintenance"
   status: number | null
 }>
 
@@ -124,6 +124,13 @@ const isRetryableFailure = (error: unknown): boolean => {
   if (error instanceof ApiError) return error.status >= 500 && error.retryable
   return false
 }
+
+export const MAINTENANCE_HEADER = "x-boe-maintenance"
+
+export const MAINTENANCE_MESSAGE = "BeOnEdge is being updated. Please try again in a few minutes."
+
+const isMaintenanceResponse = (response: Response): boolean =>
+  response.status === 503 && response.headers.get(MAINTENANCE_HEADER) === "1"
 
 export const createHttpClient = (deps: HttpClientDeps): HttpClient => {
   const fetchImpl = deps.fetchImpl ?? globalThis.fetch.bind(globalThis)
@@ -259,6 +266,18 @@ export const createHttpClient = (deps: HttpClientDeps): HttpClient => {
         }
         report({ ok: false, kind: "malformed", status: response.status })
         throw cause
+      }
+
+      if (isMaintenanceResponse(response)) {
+        report({ ok: false, kind: "maintenance", status: response.status })
+        const retryAfterSeconds = retryAfterFrom(response)
+        throw new ApiError({
+          code: "SERVICE_MAINTENANCE",
+          message: MAINTENANCE_MESSAGE,
+          status: response.status,
+          retryable: true,
+          ...(retryAfterSeconds === undefined ? {} : { retryAfterSeconds }),
+        })
       }
 
       if (!response.ok) {

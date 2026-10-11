@@ -131,6 +131,8 @@ boe_rollback_main() {
 
     # ── database: back up now, restore only if explicitly asked ─────────────
     step "database handling"
+    boe_maintenance_on
+    trap 'boe_cleanup_effective_env; boe_maintenance_on_exit' EXIT
     if [[ "${P[has_database]}" != "true" ]]; then
         info "stack has no database"
     elif [[ "$RESTORE_DB" == true ]]; then
@@ -148,6 +150,7 @@ boe_rollback_main() {
     # database consumer before boe_rollback_load replaces that file; otherwise
     # a service removed from the target release could survive the restore.
     if [[ "$RESTORE_DB" == true && "${P[has_database]}" == "true" ]]; then
+        boe_maintenance_switching
         boe_stop_database_consumers
     fi
 
@@ -163,6 +166,7 @@ boe_rollback_main() {
     boe_ensure_payment_network
 
     # ── restore/start ───────────────────────────────────────────────────────
+    boe_maintenance_switching
     if [[ "${P[has_database]}" == "true" ]]; then
         compose up -d postgres || die "failed to start postgres"
         boe_wait_postgres
@@ -188,6 +192,7 @@ boe_rollback_main() {
 
     boe_write_version "$TARGET" "$current" active
     boe_update_registry "$TARGET"
+    boe_maintenance_off
 
     boe_summary "Rollback complete" \
         "stack=${P[stack]}" \

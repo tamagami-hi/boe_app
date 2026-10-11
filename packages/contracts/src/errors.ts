@@ -34,6 +34,7 @@ export const ERROR_DEFINITIONS = Object.freeze({
   RATE_LIMITED: createErrorDefinition(429, true),
   INTERNAL_ERROR: createErrorDefinition(500, true),
   DEPENDENCY_UNAVAILABLE: createErrorDefinition(503, true),
+  SERVICE_MAINTENANCE: createErrorDefinition(503, true),
 } as const satisfies Readonly<Record<string, ErrorDefinition>>)
 
 type CatalogErrorCode = keyof typeof ERROR_DEFINITIONS

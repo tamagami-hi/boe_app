@@ -5,6 +5,13 @@ export const CONNECTIVITY_BANNER = [
   "bg-warning text-fg-inverse font-ui text-xs font-semibold",
 ].join(" ")
 
+export const NOTICE_BANNER = [
+  "sticky top-0 z-sticky text-center",
+  "px-[max(var(--be-space-4),var(--be-safe-left))]",
+  "pt-[calc(var(--be-space-2)+var(--be-safe-top))] pb-2",
+  "tone-info font-ui text-xs font-semibold",
+].join(" ")
+
 export const TOAST_REGION = [
   "pointer-events-none fixed left-1/2 z-toast flex -translate-x-1/2 flex-col items-center gap-2",
   "bottom-[calc(var(--be-nav-h)+var(--be-safe-bottom)+var(--be-space-5))]",

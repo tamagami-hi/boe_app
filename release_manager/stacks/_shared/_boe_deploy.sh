@@ -19,9 +19,11 @@
 boe_deploy_main() {
     local paths_file="$1"; shift
 
-    local ASSUME_YES=false SKIP_CHECKS=false SKIP_DB_BACKUP=false FORCE=false
+    local ASSUME_YES=false SKIP_CHECKS=false SKIP_DB_BACKUP=false FORCE=false MAINTENANCE=""
     while [[ $# -gt 0 ]]; do
         case "$1" in
+            --maintenance-on)  MAINTENANCE=on; shift ;;
+            --maintenance-off) MAINTENANCE=off; shift ;;
             --yes|-y)         ASSUME_YES=true; shift ;;
             --skip-checks)    SKIP_CHECKS=true; shift ;;
             --skip-db-backup) SKIP_DB_BACKUP=true; shift ;;
@@ -33,6 +35,13 @@ boe_deploy_main() {
 
     require_cmds jq sha256sum gzip tar curl flock mountpoint sed awk
     boe_load_paths "$paths_file"
+
+    if [[ -n "$MAINTENANCE" ]]; then
+        boe_lock
+        if [[ "$MAINTENANCE" == on ]]; then boe_maintenance_on; else boe_maintenance_off; fi
+        BOE_MAINTENANCE_STAGE=none
+        return 0
+    fi
 
     printf '\n%s═══ BOE_APP deploy · %s (%s) ═══%s\n' \
         "$_c_bold" "${P[stack]}" "${P[environment]}" "$_c_rst"
@@ -147,11 +156,14 @@ boe_deploy_main() {
     boe_deploy_assert_backup_policy "$SKIP_DB_BACKUP" "$current"
 
     step "15/16 pre-deployment database backup"
+    boe_maintenance_on
+    trap 'boe_cleanup_effective_env; boe_maintenance_on_exit' EXIT
     if [[ "${P[has_database]}" != "true" ]]; then
         info "stack has no database"
     elif [[ -z "$current" ]]; then
         info "first deploy — no database to back up yet"
     elif [[ "${BOE_DESTRUCTIVE_MIGRATION_PENDING:-false}" == true ]]; then
+        boe_maintenance_switching
         boe_deploy_stop_database_consumers
         boe_assert_writable "${P[rollback_db]}/$current"
         boe_backup_database "${P[rollback_db]}/$current" "pre-deploy" true >/dev/null
@@ -163,6 +175,7 @@ boe_deploy_main() {
     fi
 
     step "16/16 start stack"
+    boe_maintenance_switching
     log "bringing up the full stack (migrations run in-band)"
     compose up -d --remove-orphans || boe_deploy_fail "$current" "$incoming" "compose up failed"
     compose ps
@@ -182,6 +195,7 @@ boe_deploy_main() {
 
     boe_write_version "$incoming" "$current" active
     boe_update_registry "$incoming"
+    boe_maintenance_off
 
     # Retention last, so a failure above never destroys a rollback target.
     boe_prune_rollbacks "${P[rollback_images]}" "${P[keep_releases]}"
@@ -204,6 +218,8 @@ Deploy the staged release in this directory.
   --skip-checks       start the stack but do not gate on health checks
   --skip-db-backup    do not take a pre-deployment database snapshot
   --force             redeploy even if this version is already active
+  --maintenance-on    show the maintenance page and answer the API with 503, then exit
+  --maintenance-off   lift maintenance mode, then exit
   --help, -h          this message
 
 The release bundle (manifest.json, compose file, images/*.tar.gz) must already
@@ -519,10 +535,54 @@ boe_deploy_fail() {
         if boe_wait_compose_healthy 30; then
             boe_write_version "$previous" "$attempted" "rolled-back"
             boe_update_registry "$previous"
+            boe_maintenance_off
             die "deployment failed ($reason) — automatically rolled back to $previous"
         fi
     fi
 
     boe_write_version "$previous" "" failed "$attempted"
     die "deployment failed ($reason) AND automatic rollback did not come up healthy — manual intervention required"
+}
+
+BOE_MAINTENANCE_STAGE=none
+
+boe_maintenance_dir() { printf '%s/maintenance\n' "${P[stack_dir]}"; }
+
+boe_maintenance_on() {
+    local dir page
+    dir="$(boe_maintenance_dir)"
+    page="${P[stack_dir]}/maintenance.html"
+    if [[ ! -f "$page" ]]; then
+        warn "no maintenance page at $page; visitors will see errors while the stack restarts"
+        return 0
+    fi
+    install -d -m 0755 "$dir" || die "cannot create $dir"
+    install -m 0644 "$page" "$dir/index.html" || die "cannot install the maintenance page"
+    install -m 0644 /dev/null "$dir/active" || die "cannot raise the maintenance flag"
+    BOE_MAINTENANCE_STAGE=holding
+    ok "maintenance mode on: the web apps show the maintenance page and the API answers 503"
+}
+
+boe_maintenance_switching() {
+    [[ "$BOE_MAINTENANCE_STAGE" == none ]] || BOE_MAINTENANCE_STAGE=switching
+}
+
+boe_maintenance_off() {
+    rm -f -- "$(boe_maintenance_dir)/active"
+    BOE_MAINTENANCE_STAGE=none
+    ok "maintenance mode off"
+}
+
+boe_maintenance_on_exit() {
+    case "$BOE_MAINTENANCE_STAGE" in
+        holding)
+            rm -f -- "$(boe_maintenance_dir)/active"
+            BOE_MAINTENANCE_STAGE=none
+            warn "maintenance mode lifted again; the running release was not touched"
+            ;;
+        switching)
+            warn "maintenance mode is still ON because the stack may be down"
+            warn "once it is healthy, lift it with: ${P[stack_dir]}/${P[short]}_deploy.sh --maintenance-off"
+            ;;
+    esac
 }

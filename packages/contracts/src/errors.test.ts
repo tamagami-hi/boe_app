@@ -28,6 +28,7 @@ const EXPECTED_ERROR_DEFINITIONS = {
   RATE_LIMITED: { httpStatus: 429, retryable: true },
   INTERNAL_ERROR: { httpStatus: 500, retryable: true },
   DEPENDENCY_UNAVAILABLE: { httpStatus: 503, retryable: true },
+  SERVICE_MAINTENANCE: { httpStatus: 503, retryable: true },
 } as const
 type ExpectedErrorCode = keyof typeof EXPECTED_ERROR_DEFINITIONS
 

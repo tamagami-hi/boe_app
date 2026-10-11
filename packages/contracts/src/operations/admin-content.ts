@@ -143,6 +143,7 @@ export const AdminAppConfigPayload = z.strictObject({
       android: Semverish.optional(),
       ios: Semverish.optional(),
       web: Semverish.optional(),
+      message: z.string().trim().min(1).max(500).optional(),
     })
     .optional(),
   downloads: z
@@ -155,6 +156,7 @@ export const AdminAppConfigPayload = z.strictObject({
     .strictObject({
       enabled: z.boolean().optional(),
       message: LongText.optional(),
+      scheduledFor: IsoDateTime.optional(),
     })
     .optional(),
   presentation: z

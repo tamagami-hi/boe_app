@@ -162,6 +162,45 @@ oracle. `GET /metrics` has no nginx location at all — it is guarded inside the
 by `isPrivateRequest` (`runtime/metrics.ts:50`), which admits loopback, the Docker bridge
 and RFC1918 ranges so the monitoring stack can scrape it.
 
+## Maintenance mode and required updates
+
+A deploy or rollback raises a maintenance flag for its stack, `<stack_dir>/maintenance/active`,
+and installs the stack's `maintenance.html` (shipped in every bundle) as
+`<stack_dir>/maintenance/index.html`. While the flag exists, the site configs in
+`release_manager/nginx/` answer every web-app request with that page and a 503, and every API
+request with a 503 JSON error `SERVICE_MAINTENANCE` plus the header `X-BOE-Maintenance: 1` and
+`Retry-After: 60`. APK downloads, `/.well-known/assetlinks.json`, and the localhost health probes
+keep working, so a client can still download an update. Apps from v0.15.0 recognize the header
+and show a "We are updating BeOnEdge" screen that checks again every 30 seconds and closes by
+itself; older APKs show their generic temporary error.
+
+When the flag goes up and down:
+
+- Deploy: raised at step 15, before the pre-deploy database backup, so no customer write lands
+  after the snapshot. Lowered once the health checks pass, or once an automatic rollback comes
+  up healthy. If the deploy fails before anything is stopped or replaced, it is lowered again on
+  exit because the running release was never touched. If it fails after the stack was stopped or
+  replaced, it stays up and the log says how to lower it.
+- Rollback: raised before the database step, lowered after the health checks pass, with the same
+  exit rule.
+- By hand: `<stack>_deploy.sh --maintenance-on` and `--maintenance-off` raise or lower it under
+  the deployment lock and exit.
+
+The nginx part only takes effect once the updated site configs are installed in `/etc/nginx`
+(the deploy prints the commands; see Host nginx). Until then the flag has no visible effect.
+
+Advance notice and required updates are published app configuration (Admin, App configuration,
+`config.publish`), read by the apps from `GET /v1/app-config` when they open or regain focus (at most every five minutes):
+
+- `maintenance.message` with `maintenance.scheduledFor` (an ISO date-time) shows a "Planned
+  maintenance from <time>" banner until that time passes. `maintenance.enabled: true` shows
+  "Maintenance in progress" with the message, without blocking the app.
+- `minimumSupportedVersion.android` (a dotted version) makes every older APK show its blocking
+  "Update required" screen with the install button; this already works for APKs up to v0.14.7.
+  `minimumSupportedVersion.message` adds an extra line to that screen on apps from v0.15.0. Raise
+  the floor to the new version when the v0.15.0 APK is published, so older APKs update before
+  they meet the changed API.
+
 ## How admin and the APKs connect
 
 - **Admin console in a browser**: served by the admin SPA container behind

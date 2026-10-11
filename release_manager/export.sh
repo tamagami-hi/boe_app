@@ -313,6 +313,7 @@ cp "$STACKS_SRC/$STACK/.env.example"    "$BUNDLE/.env.example"
 cp "$STACKS_SRC/_shared/_boe_lib.sh"      "$BUNDLE/_boe_lib.sh"
 cp "$STACKS_SRC/_shared/_boe_deploy.sh"   "$BUNDLE/_boe_deploy.sh"
 cp "$STACKS_SRC/_shared/_boe_rollback.sh" "$BUNDLE/_boe_rollback.sh"
+cp "$STACKS_SRC/_shared/maintenance.html" "$BUNDLE/maintenance.html"
 chmod +x "$BUNDLE/$DEPLOY_NAME" "$BUNDLE/$ROLLBACK_NAME"
 
 # The nginx site configs travel in the bundle too, so they are covered by

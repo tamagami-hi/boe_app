@@ -10,12 +10,13 @@ import type { UpdateRelease } from "./updateDecision"
 import type { UpdateInstaller } from "./useUpdateInstaller"
 
 export const MANDATORY_EXPLANATION =
-  "This version of BeOnEdge is out of date and can no longer be used safely. Update to carry on."
+  "This update is required. This version of BeOnEdge can no longer be used, so please install the update now to carry on."
 
 export const NO_RELEASE_EXPLANATION =
   "A newer version isn't ready for this device yet. Check again shortly, or contact support if you need help."
 
 export type MandatoryUpdateScreenProps = Readonly<{
+  message: string | null
   release: UpdateRelease | null
   installer: UpdateInstaller
   onRecheck: () => void
@@ -23,6 +24,7 @@ export type MandatoryUpdateScreenProps = Readonly<{
 }>
 
 export const MandatoryUpdateScreen = ({
+  message,
   release,
   installer,
   onRecheck,
@@ -41,6 +43,7 @@ export const MandatoryUpdateScreen = ({
       </div>
 
       <p className={BODY_TEXT}>{MANDATORY_EXPLANATION}</p>
+      {message === null ? null : <p className={BODY_TEXT}>{message}</p>}
 
       <Card elevated>
         {release === null ? (

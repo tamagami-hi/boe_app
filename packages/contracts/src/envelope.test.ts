@@ -235,6 +235,7 @@ describe("error envelopes", () => {
             "RATE_LIMITED",
             "INTERNAL_ERROR",
             "DEPENDENCY_UNAVAILABLE",
+            "SERVICE_MAINTENANCE",
           ],
         },
         retryable: { const: true },
