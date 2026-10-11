@@ -28,6 +28,23 @@ export interface PasswordTokenValidityContext {
   readonly credential: LockedCredential | null
 }
 
+export interface PasswordLinkDeliveryStatus {
+  readonly deliveryId: string
+  readonly state: string
+  readonly lastErrorCode: string | null
+  readonly sentAt: Date | null
+  readonly updatedAt: Date
+}
+
+export interface LatestPasswordLink {
+  readonly tokenId: string
+  readonly purpose: PasswordTokenPurpose
+  readonly createdAt: Date
+  readonly expiresAt: Date
+  readonly consumedAt: Date | null
+  readonly delivery: PasswordLinkDeliveryStatus | null
+}
+
 export interface CreatePasswordTokenInput {
   readonly userId: string
   readonly purpose: PasswordTokenPurpose
@@ -44,6 +61,7 @@ export interface PasswordTokenRepository {
   lockActiveByHash: (tx: Transaction, tokenHash: Buffer) => Promise<PasswordCredentialToken | null>
   latestCreatedAt: (tx: Transaction, userId: string) => Promise<Date | null>
   findValidityContext: (tx: Transaction, tokenId: string) => Promise<PasswordTokenValidityContext | null>
+  findLatestLink: (tx: Transaction, userId: string) => Promise<LatestPasswordLink | null>
   consumeActive: (tx: Transaction, input: Readonly<{ userId: string; now: Date }>) => Promise<void>
   consume: (tx: Transaction, input: Readonly<{ tokenId: string; now: Date }>) => Promise<boolean>
   incrementAttempt: (tx: Transaction, tokenId: string) => Promise<void>
@@ -176,6 +194,50 @@ export const createPasswordTokenRepository = (): PasswordTokenRepository => ({
         row.credential_version === null
           ? null
           : { version: row.credential_version, hasPassword: row.has_password },
+    }
+  },
+
+  findLatestLink: async (tx, userId) => {
+    const row = await tx
+      .selectFrom("password_credential_tokens as t")
+      .leftJoin("outbox_events as o", (join) =>
+        join.on("o.deduplication_key", "=", sql<string>`'password_link:' || t.id::text`),
+      )
+      .leftJoin("email_deliveries as d", "d.outbox_event_id", "o.id")
+      .select([
+        "t.id as token_id",
+        "t.purpose",
+        "t.created_at",
+        "t.expires_at",
+        "t.consumed_at",
+        "d.id as delivery_id",
+        "d.state as delivery_state",
+        "d.last_error_code",
+        "d.sent_at",
+        "d.updated_at as delivery_updated_at",
+      ])
+      .where("t.user_id", "=", userId)
+      .orderBy("t.created_at", "desc")
+      .orderBy("t.id", "desc")
+      .limit(1)
+      .executeTakeFirst()
+    if (row === undefined) return null
+    return {
+      tokenId: row.token_id,
+      purpose: row.purpose,
+      createdAt: new Date(row.created_at),
+      expiresAt: new Date(row.expires_at),
+      consumedAt: row.consumed_at === null ? null : new Date(row.consumed_at),
+      delivery:
+        row.delivery_id === null || row.delivery_state === null || row.delivery_updated_at === null
+          ? null
+          : {
+              deliveryId: row.delivery_id,
+              state: row.delivery_state,
+              lastErrorCode: row.last_error_code,
+              sentAt: row.sent_at === null ? null : new Date(row.sent_at),
+              updatedAt: new Date(row.delivery_updated_at),
+            },
     }
   },
 

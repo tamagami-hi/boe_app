@@ -83,7 +83,7 @@ test("queues the app download mail in the redemption's own transaction and never
   expect(response?.statusCode).toBe(200)
   expect(response?.json<{ data: unknown }>().data).toEqual({
     status: "password_set",
-    downloadEmailStatus: "unconfirmed",
+    downloadEmailStatus: "queued",
     downloadUrl: apkUrl,
   })
   const redeemTransaction = vi.mocked(redeemPasswordToken).mock.calls[0]?.[0]

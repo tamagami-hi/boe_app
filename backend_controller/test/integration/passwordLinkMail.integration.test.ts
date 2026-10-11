@@ -101,7 +101,7 @@ const buildApp = (options: AppOptions = {}): FastifyInstance => {
   })
 }
 
-const createAdmin = async (): Promise<string> => {
+const createRoleAdmin = async (role: string): Promise<{ readonly id: string; readonly session: Session }> => {
   const email = `admin-${randomUUID()}@example.com`
   const id = (
     await stack.pool.query<{ id: string }>(
@@ -115,16 +115,16 @@ const createAdmin = async (): Promise<string> => {
     id,
     await hashPassword(PASSWORD),
   ])
-  for (const permission of SEED_ROLE_PERMISSIONS.onboarding ?? []) {
+  for (const permission of SEED_ROLE_PERMISSIONS[role] ?? []) {
     await stack.pool.query(
       "insert into role_permissions (role_id, permission_id, granted_by_user_id) " +
-        "select r.id, p.id, $1 from roles r, permissions p where r.code = 'onboarding' and p.code = $2 on conflict do nothing",
-      [id, permission],
+        "select r.id, p.id, $1 from roles r, permissions p where r.code = $3 and p.code = $2 on conflict do nothing",
+      [id, permission, role],
     )
   }
   await stack.pool.query(
-    "insert into user_roles (user_id, role_id, granted_by_user_id) select $1, id, $1 from roles where code = 'onboarding'",
-    [id],
+    "insert into user_roles (user_id, role_id, granted_by_user_id) select $1, id, $1 from roles where code = $2",
+    [id, role],
   )
   const login = await app.inject({
     method: "POST",
@@ -133,13 +133,21 @@ const createAdmin = async (): Promise<string> => {
     payload: { email, password: PASSWORD },
   })
   expect(login.statusCode).toBe(200)
-  session = {
-    cookie: Object.entries(cookieJar(login.headers["set-cookie"]))
-      .map(([name, value]) => `${name}=${value}`)
-      .join("; "),
-    csrf: dataOf<{ csrfToken: string }>(login).csrfToken,
+  return {
+    id,
+    session: {
+      cookie: Object.entries(cookieJar(login.headers["set-cookie"]))
+        .map(([name, value]) => `${name}=${value}`)
+        .join("; "),
+      csrf: dataOf<{ csrfToken: string }>(login).csrfToken,
+    },
   }
-  return id
+}
+
+const createAdmin = async (): Promise<string> => {
+  const created = await createRoleAdmin("onboarding")
+  session = created.session
+  return created.id
 }
 
 interface NewClient {
@@ -255,10 +263,16 @@ describe("admin client creation queues the invite", () => {
     const response = await createClient(app, "create-client-0001", client)
 
     expect(response.statusCode).toBe(201)
-    const created = dataOf<{ userId: string }>(response)
-    expect(Object.keys(created).sort()).toEqual(["accountState", "emailVerification", "userId"])
+    const created = dataOf<{ userId: string; passwordLink: Record<string, unknown> }>(response)
+    expect(Object.keys(created).sort()).toEqual(["accountState", "emailVerification", "passwordLink", "userId"])
     expect(created).toMatchObject({ accountState: "active", emailVerification: "pending" })
     const { tokens, deliveries } = await userRows(created.userId)
+    expect(created.passwordLink).toEqual({
+      purpose: "set",
+      expiresAt: new Date(tokens[0]?.expires_at as Date).toISOString(),
+      deliveryId: deliveries[0]?.id,
+      deliveryState: "queued",
+    })
     expect(tokens).toMatchObject([
       { purpose: "set", consumed_at: null, bound_email_revision: "1", bound_credential_version: "0" },
     ])
@@ -450,7 +464,7 @@ describe("redeeming a link queues the app download mail", () => {
     const response = await redeem(app, rawToken)
 
     expect(response.statusCode).toBe(200)
-    expect(dataOf(response)).toEqual({ status: "password_set", downloadEmailStatus: "unconfirmed", downloadUrl: APK_URL })
+    expect(dataOf(response)).toEqual({ status: "password_set", downloadEmailStatus: "queued", downloadUrl: APK_URL })
     expect((await stack.tokenRow(queued.tokenId)).consumed_at).toBeInstanceOf(Date)
     expect((await stack.first("select version from user_credentials where user_id = $1", [user.id])).version).toBe("2")
     const download = (await userRows(user.id)).deliveries.filter((delivery) => delivery.template_key === "password_app_download")
@@ -517,5 +531,153 @@ describe("redeeming a link queues the app download mail", () => {
     expect(errorOf(stale)).toEqual(errorOf(unknown))
     expect((await tableCounts()).slice(2)).toEqual(before.slice(2))
     expect((await stack.tokenRow(queued.tokenId)).consumed_at).toBeNull()
+  })
+})
+
+describe("an admin resends a client's password link", () => {
+  const linkUrl = (userId: string): string => `/v1/admin/clients/${userId}/password-link`
+
+  const resend = (target: FastifyInstance, userId: string, key: string, as: Session = session) =>
+    target.inject({
+      method: "POST",
+      url: linkUrl(userId),
+      headers: { origin: ORIGIN, cookie: as.cookie, "x-csrf-token": as.csrf, "idempotency-key": key },
+      payload: {},
+    })
+
+  const status = (userId: string, as: Session = session) =>
+    app.inject({ method: "GET", url: linkUrl(userId), headers: { origin: ORIGIN, cookie: as.cookie } })
+
+  const pastCooldown = async (userId: string): Promise<void> => {
+    await stack.pool.query(
+      "update password_credential_tokens set created_at = created_at - interval '2 minutes' where user_id = $1",
+      [userId],
+    )
+  }
+
+  test("queues a fresh link, retires the one it replaces, and shows it in the status", async () => {
+    const created = dataOf<{ userId: string }>(await createClient(app, `create-${randomUUID()}`, newClient()))
+    const [firstToken] = (await userRows(created.userId)).tokens
+    await pastCooldown(created.userId)
+
+    const response = await resend(app, created.userId, `resend-${randomUUID()}`)
+
+    expect(response.statusCode).toBe(201)
+    const sent = dataOf<{ userId: string; purpose: string; deliveryId: string; deliveryState: string; expiresAt: string }>(response)
+    expect(sent).toMatchObject({ userId: created.userId, purpose: "set", deliveryState: "queued" })
+    const { tokens, deliveries } = await userRows(created.userId)
+    expect(tokens).toHaveLength(2)
+    expect((await stack.tokenRow(String(firstToken?.id))).consumed_at).toBeInstanceOf(Date)
+    expect(deliveries.map((delivery) => delivery.id)).toContain(sent.deliveryId)
+    const audited = await stack.pool.query<Row>(
+      "select actor_type, actor_user_id from audit_events where entity_id = $1 and command = 'password.set_requested' order by occurred_at",
+      [created.userId],
+    )
+    expect(audited.rows).toEqual([
+      { actor_type: "admin", actor_user_id: adminId },
+      { actor_type: "admin", actor_user_id: adminId },
+    ])
+
+    const shown = await status(created.userId)
+    expect(shown.statusCode).toBe(200)
+    expect(dataOf(shown)).toMatchObject({
+      userId: created.userId,
+      hasPassword: false,
+      latestLink: {
+        purpose: "set",
+        state: "active",
+        expiresAt: sent.expiresAt,
+        delivery: { deliveryId: sent.deliveryId, state: "queued", lastErrorCode: null, sentAt: null },
+      },
+    })
+    expect(dataOf<{ nextLinkAllowedAt: string | null }>(shown).nextLinkAllowedAt).not.toBeNull()
+    expect(JSON.stringify(dataOf(shown))).not.toMatch(/token/iu)
+  })
+
+  test("replays the same answer for the same key and issues no second link", async () => {
+    const user = await stack.seedUser({ password: true })
+    const key = `resend-${randomUUID()}`
+    const first = await resend(app, user.id, key)
+    const before = await tableCounts()
+
+    const replay = await resend(app, user.id, key)
+
+    expect(first.statusCode).toBe(201)
+    expect(dataOf(first)).toMatchObject({ purpose: "reset" })
+    expect(replay.statusCode).toBe(201)
+    expect(dataOf(replay)).toEqual(dataOf(first))
+    expect(replay.json<{ meta: { idempotencyReplay?: boolean } }>().meta.idempotencyReplay).toBe(true)
+    expect(await tableCounts()).toEqual(before)
+  })
+
+  test("answers RATE_LIMITED inside the cooldown with a new key and changes nothing", async () => {
+    const user = await stack.seedUser({ password: true })
+    expect((await resend(app, user.id, `resend-${randomUUID()}`)).statusCode).toBe(201)
+    const before = await tableCounts()
+
+    const again = await resend(app, user.id, `resend-${randomUUID()}`)
+
+    expect(again.statusCode).toBe(429)
+    expect(errorOf(again).code).toBe("RATE_LIMITED")
+    expect(await tableCounts()).toEqual(before)
+  })
+
+  test.each([
+    ["an admin account", async () => adminId],
+    ["a suspended client", async () => (await stack.seedUser({ password: true, state: "suspended" })).id],
+    ["a closed client", async () => (await stack.seedUser({ password: true, state: "closed" })).id],
+  ])("refuses %s with STATE_CONFLICT and writes nothing", async (_name, target) => {
+    const userId = await target()
+    const before = await tableCounts()
+
+    const response = await resend(app, userId, `resend-${randomUUID()}`)
+
+    expect(response.statusCode).toBe(409)
+    expect(errorOf(response).code).toBe("STATE_CONFLICT")
+    expect(await tableCounts()).toEqual(before)
+  })
+
+  test("answers RESOURCE_NOT_FOUND for an unknown user, on both routes", async () => {
+    const unknown = randomUUID()
+
+    expect(errorOf(await resend(app, unknown, `resend-${randomUUID()}`)).code).toBe("RESOURCE_NOT_FOUND")
+    expect(errorOf(await status(unknown)).code).toBe("RESOURCE_NOT_FOUND")
+  })
+
+  test("answers 503 naming the setting and writes nothing when the link address is unusable", async () => {
+    const user = await stack.seedUser({ password: true })
+    const broken = buildApp({ passwordLinks: { clientUrl: null, requireHttps: true } })
+    const before = await tableCounts()
+
+    const response = await resend(broken, user.id, `resend-${randomUUID()}`)
+    await broken.close()
+
+    expect(response.statusCode).toBe(503)
+    expect(errorOf(response)).toMatchObject({ code: "DEPENDENCY_UNAVAILABLE" })
+    expect(errorOf(response).message).toContain("CLIENT_PASSWORD_LINK_URL")
+    expect(await tableCounts()).toEqual(before)
+  })
+
+  test("denies a support admin on both routes and writes nothing", async () => {
+    const support = await createRoleAdmin("support")
+    const user = await stack.seedUser({ password: true })
+    const before = await tableCounts()
+
+    const sent = await resend(app, user.id, `resend-${randomUUID()}`, support.session)
+    const read = await status(user.id, support.session)
+
+    expect(sent.statusCode).toBe(403)
+    expect(errorOf(sent).code).toBe("AUTHORIZATION_DENIED")
+    expect(read.statusCode).toBe(403)
+    expect(errorOf(read).code).toBe("AUTHORIZATION_DENIED")
+    expect((await tableCounts()).slice(0, 6)).toEqual(before.slice(0, 6))
+  })
+
+  test("reports a client with a password and no link yet", async () => {
+    const user = await stack.seedUser({ password: true })
+
+    const shown = await status(user.id)
+
+    expect(dataOf(shown)).toEqual({ userId: user.id, hasPassword: true, nextLinkAllowedAt: null, latestLink: null })
   })
 })

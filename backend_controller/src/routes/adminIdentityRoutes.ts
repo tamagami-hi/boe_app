@@ -87,7 +87,13 @@ const deliveryStateEnum = z.enum([
   "permanent_failed",
   "cancelled",
 ])
-const templateKeyEnum = z.enum(["application_rejected", "account_approved"])
+const templateKeyEnum = z.enum([
+  "application_rejected",
+  "account_approved",
+  "password_set_link",
+  "password_reset_link",
+  "password_app_download",
+])
 const limitSchema = z.coerce.number().int().min(1).max(100).default(25)
 
 const applicationsQuerySchema = z

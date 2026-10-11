@@ -31,6 +31,9 @@ const TEMPLATES = [
   { value: "any", label: "Any template" },
   { value: "account_approved", label: "Account approved" },
   { value: "application_rejected", label: "Application rejected" },
+  { value: "password_set_link", label: "Password set link" },
+  { value: "password_reset_link", label: "Password reset link" },
+  { value: "password_app_download", label: "App download after password" },
 ] as const
 
 const EmailDeliveriesScreen = (): React.ReactElement => {

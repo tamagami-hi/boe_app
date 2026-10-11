@@ -144,10 +144,13 @@ const redeem = (deps: PasswordRoutesDeps, request: FastifyRequest, body: z.infer
     return { outcome, download, mail }
   })
 
-const downloadReport = (download: DownloadLookup) => {
-  if (download.kind === "found") return { downloadEmailStatus: "unconfirmed" as const, downloadUrl: download.url }
+const downloadReport = (download: DownloadLookup, mail: AppDownloadMailOutcome | null) => {
   if (download.kind === "none") return { downloadEmailStatus: "unavailable" as const, downloadUrl: null }
-  return { downloadEmailStatus: "unconfirmed" as const, downloadUrl: null }
+  if (download.kind === "failed") return { downloadEmailStatus: "unconfirmed" as const, downloadUrl: null }
+  return {
+    downloadEmailStatus: mail?.kind === "queued" ? ("queued" as const) : ("unconfirmed" as const),
+    downloadUrl: download.url,
+  }
 }
 
 const reset = async (deps: PasswordRoutesDeps, request: FastifyRequest, reply: FastifyReply) => {
@@ -162,7 +165,7 @@ const reset = async (deps: PasswordRoutesDeps, request: FastifyRequest, reply: F
   } else if (mail?.kind === "failed") {
     request.log.error({ requestId: request.requestId }, "password set but the app download email could not be queued")
   }
-  return reply.sendData({ status: "password_set", ...downloadReport(download) }, { status: 200 })
+  return reply.sendData({ status: "password_set", ...downloadReport(download, mail) }, { status: 200 })
 }
 
 const change = async (deps: PasswordRoutesDeps, request: FastifyRequest, reply: FastifyReply) => {

@@ -10469,7 +10469,7 @@
                         "downloadEmailStatus": {
                           "type": "string",
                           "enum": [
-                            "sent",
+                            "queued",
                             "unconfirmed",
                             "unavailable"
                           ]
@@ -10479,7 +10479,7 @@
                             "string",
                             "null"
                           ],
-                          "pattern": "^https:\\/\\/(?:dev-app|app)\\.beonedge\\.in\\/downloads\\/client\\/[A-Za-z0-9][A-Za-z0-9._-]*\\.apk$/u"
+                          "pattern": "^https:\\/\\/(?:dev-app|app)\\.beonedge\\.in\\/downloads\\/client\\/[A-Za-z0-9][A-Za-z0-9._-]*\\.apk(?:\\?v=[1-9][0-9]*)?$/u"
                         }
                       },
                       "required": [
@@ -25110,7 +25110,10 @@
               "type": "string",
               "enum": [
                 "application_rejected",
-                "account_approved"
+                "account_approved",
+                "password_set_link",
+                "password_reset_link",
+                "password_app_download"
               ]
             },
             "required": false,
@@ -27520,6 +27523,39 @@
                           "enum": [
                             "pending"
                           ]
+                        },
+                        "passwordLink": {
+                          "type": "object",
+                          "properties": {
+                            "purpose": {
+                              "type": "string",
+                              "enum": [
+                                "set",
+                                "reset"
+                              ]
+                            },
+                            "expiresAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "deliveryId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "deliveryState": {
+                              "type": "string",
+                              "enum": [
+                                "queued"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "purpose",
+                            "expiresAt",
+                            "deliveryId",
+                            "deliveryState"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "required": [
@@ -27674,6 +27710,488 @@
             }
           }
         ]
+      }
+    },
+    "/v1/admin/clients/{userId}/password-link": {
+      "post": {
+        "operationId": "sendAdminClientPasswordLink",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "purpose": {
+                          "type": "string",
+                          "enum": [
+                            "set",
+                            "reset"
+                          ]
+                        },
+                        "expiresAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "deliveryId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "deliveryState": {
+                          "type": "string",
+                          "enum": [
+                            "queued"
+                          ]
+                        },
+                        "userId": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      },
+                      "required": [
+                        "purpose",
+                        "expiresAt",
+                        "deliveryId",
+                        "deliveryState",
+                        "userId"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "getAdminClientPasswordAccess",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "userId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "hasPassword": {
+                          "type": "boolean"
+                        },
+                        "nextLinkAllowedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time"
+                        },
+                        "latestLink": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "purpose": {
+                              "type": "string",
+                              "enum": [
+                                "set",
+                                "reset"
+                              ]
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "active",
+                                "expired",
+                                "closed"
+                              ]
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "expiresAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "delivery": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "deliveryId": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "state": {
+                                  "type": "string",
+                                  "enum": [
+                                    "queued",
+                                    "sending",
+                                    "sent",
+                                    "delivered",
+                                    "retryable_failed",
+                                    "permanent_failed",
+                                    "cancelled"
+                                  ]
+                                },
+                                "lastErrorCode": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "sentAt": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ],
+                                  "format": "date-time"
+                                },
+                                "updatedAt": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                }
+                              },
+                              "required": [
+                                "deliveryId",
+                                "state",
+                                "lastErrorCode",
+                                "sentAt",
+                                "updatedAt"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "purpose",
+                            "state",
+                            "createdAt",
+                            "expiresAt",
+                            "delivery"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "userId",
+                        "hasPassword",
+                        "nextLinkAllowedAt",
+                        "latestLink"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
       }
     }
   },

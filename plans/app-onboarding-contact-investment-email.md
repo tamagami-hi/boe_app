@@ -1,6 +1,6 @@
 # BeOnEdge app: onboarding, contact details, earlier investments, and email
 
-Status: **Approved for implementation by the maintainer on 2026-10-08, in dependency order. Steps 1, 2a, 2b, and 2c are done and committed (section 8). Step 3 is in progress as three verified slices (3a and 3b are done; 3c is next), then step 4, and steps 5 to 9 follow in dependency order. Since 2026-10-11 the remaining steps are implemented by a single maintainer-assisted session after the coding agent's limit ran out. All plan work ships together as v0.15.0 (release decision, 2026-10-11). Q-002, Q-003, Q-004, Q-011, Q-012, Q-015, and Q-016 are answered (decision record). Q-013 stays out of scope, and Q-017 is open without gating a step.**
+Status: **Approved for implementation by the maintainer on 2026-10-08, in dependency order. Steps 1, 2a, 2b, and 2c are done and committed (section 8). Step 3 is done as three verified slices (3a, 3b, and 3c). Step 4 is next, and steps 5 to 9 follow in dependency order. Since 2026-10-11 the remaining steps are implemented by a single maintainer-assisted session after the coding agent's limit ran out. All plan work ships together as v0.15.0 (release decision, 2026-10-11). Q-002, Q-003, Q-004, Q-011, Q-012, Q-015, and Q-016 are answered (decision record). Q-013 stays out of scope, and Q-017 is open without gating a step.**
 
 Prepared: 2026-10-08. Investigation is source-level only; no production diagnosis, test runs, builds, mail sends, or deployments were performed. Since then only the admin authorization and seeding claims have been checked against source (section 2F). Every other claim in section 2 is unverified, and each step verifies the claims it depends on before it changes code.
 
@@ -501,7 +501,7 @@ Each step records here what changed, the exact verification (commands and counts
 | 2a. Durable creation and contribution receipts (step 2, task 2) | Done and committed; not deployed. Details below |
 | 2b. Email queue fencing, recovery, cancellation, and SMTP timeouts (step 2, tasks 3 to 6) | Done and committed; not deployed. Details below |
 | 2c. Transactional enqueue with encrypted payloads and scrubbing (step 2, tasks 1 and 7) | Done and committed; not deployed. Details below |
-| 3. Password-link authority, queueing, and resend API | In progress. 3a (token binding, redemption safety, retirement of other links, lock order) and 3b (queued link mail, the link-address setting, the template-key migration, honest cancellation, and the unreadable-recipient fix) are done and committed; 3c (resend API, permission, contracts, frontend handling) is next. Details below |
+| 3. Password-link authority, queueing, and resend API | Done and committed in three slices; not deployed. 3a token binding, redemption safety, retirement of other links, and lock order; 3b queued link mail, the link-address setting, the template-key migration, honest cancellation, and the unreadable-recipient fix; 3c the resend and status API, the permission, contracts, and frontend handling. Details below |
 | 4 to 10 | Not started |
 
 ### Step 1 handoff (2026-10-08)
@@ -741,3 +741,23 @@ Deploy window (STATIC): migration 055 only widens a CHECK. While the v0.14.7 bac
 Corrected beliefs: none beyond the unreadable-recipient behavior above, which `DEPLOY.md` described as a throwing pass.
 
 Not verified (UNVERIFIED): real SMTP, the mail as rendered in real clients, the deployed `.env` values, and the production delivery volume.
+
+### Step 3c handoff (2026-10-12)
+
+Slice 3c of step 3: the admin resend and status API, its permission, contracts, and the frontend handling. No migration.
+
+Changed:
+
+- `POST /v1/admin/clients/{userId}/password-link` (`sendAdminClientPasswordLink`): CSRF, `clients.password_links.send`, a required idempotency key (ordinary retention; a repeat with a new key only issues a newer link that retires the older one), and an empty body. It refuses an account with any active role grant (`STATE_CONFLICT`, "only for client accounts"), and turns issuance's `ACCOUNT_NOT_ACTIVE` for the target into `STATE_CONFLICT` so it is not confused with the admin's own session state. It shares the per-user cooldown with the forgot route (`RATE_LIMITED` 429) and answers 503 naming `CLIENT_PASSWORD_LINK_URL` before writing anything when the link address is unusable. The answer is the user, purpose, expiry, delivery id, and `deliveryState: "queued"`. The audit actor is the admin (3a).
+- `GET /v1/admin/clients/{userId}/password-link` (`getAdminClientPasswordAccess`): `users.read` or the new permission. It reports whether a password exists, when the next link is allowed (the cooldown end, or null), and the latest link's purpose, state (`active`, `expired`, or `closed` for used or replaced), times, and its delivery's state, last error code, and sent time. No token material. The delivery is found through the outbox deduplication key `password_link:<token id>`.
+- Client creation's response adds `passwordLink` (purpose, expiry, delivery id, `queued`). It is optional in the contract only because creation receipts stored by v0.14.7 lack it and replay as stored.
+- The permission `clients.password_links.send` is in `seedCatalog.ts` (superadmin through the full catalog, and the onboarding role) and the frontend `PERMISSION_CODES`.
+- Delivery filters accept and label the three password-mail template keys (backend query schema, contract enum, admin screen).
+- The reset response reports `queued` when the app-download mail was queued, `unconfirmed` when queueing or the APK lookup failed, and `unavailable` when no APK is published; `sent`, which nothing produces any more, is gone. The reset screen says the link is on its way rather than sent.
+- Fixed a live bug (STATIC, since `24a7449`, 2026-09-10): the reset response contract only accepted a download URL ending in `.apk`, but the backend appends `?v=<versionCode>`. The web client validates every response, so whenever an APK was published, a successful password set was shown to the client as a failure. The pattern now accepts an optional `?v=<positive integer>` and still refuses other hosts, paths, queries, and fragments.
+
+These response changes are allowed by the 2026-10-11 decision that new APKs ship with v0.15.0.
+
+Verified (TESTED): `packages/contracts` `npm run check` exits 0 with 98 tests and a valid OpenAPI file. `backend_controller` `npm run check` exits 0 with 93 files and 1104 tests, coverage 84.91% statements, 84.31% branches, and 91.54% functions, plus both boot smokes. The full integration suite on PostgreSQL 16 passes 28 files and 323 tests; `passwordLinkMail` gained 10 cases: a fresh link retires the replaced one and appears in the status, same-key replay issues nothing, the cooldown answers 429 and writes nothing, an admin account and suspended and closed clients are refused with nothing written, unknown users get 404 on both routes, an unusable link address gives 503 with nothing written, a support admin is denied on both routes, and a client with a password and no link reports exactly that. `frontend_stack_ts` `npm run check` exits 0 with 22 files and 212 tests and the bundle boot check. Negative controls, each restored by checksum: removing the client-only check fails the admin-account case; widening the send guard to `users.read_limited` fails the support case; the old download-URL pattern fails 2 of the 3 new contract tests. Two existing tests were updated for intended changes: the creation response now has four fields (the stored receipt still holds no token), and a successfully queued download mail now reports `queued`.
+
+Not verified (UNVERIFIED): the admin screens that use these endpoints (step 4), and any browser run.

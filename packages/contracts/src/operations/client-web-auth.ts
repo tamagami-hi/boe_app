@@ -189,8 +189,8 @@ export const requestPasswordReset = defineOperation({
 
 export const PasswordResetData = z.strictObject({
   status: z.literal("password_set"),
-  downloadEmailStatus: z.enum(["sent", "unconfirmed", "unavailable"]),
-  downloadUrl: z.url().regex(/^https:\/\/(?:dev-app|app)\.beonedge\.in\/downloads\/client\/[A-Za-z0-9][A-Za-z0-9._-]*\.apk$/u).nullable(),
+  downloadEmailStatus: z.enum(["queued", "unconfirmed", "unavailable"]),
+  downloadUrl: z.url().regex(/^https:\/\/(?:dev-app|app)\.beonedge\.in\/downloads\/client\/[A-Za-z0-9][A-Za-z0-9._-]*\.apk(?:\?v=[1-9][0-9]*)?$/u).nullable(),
 })
 export type PasswordResetData = z.infer<typeof PasswordResetData>
 

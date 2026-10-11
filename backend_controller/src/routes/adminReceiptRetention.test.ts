@@ -325,18 +325,29 @@ describe.each([
 })
 
 describe("client creation receipt contents", () => {
-  test("stores exactly the response the released admin clients parse, and a replay queues no second invite", async () => {
+  test("stores the creation response with its queued link but no token, and a replay queues no second invite", async () => {
+    const expected = {
+      userId: CLIENT_ID,
+      accountState: "active",
+      emailVerification: "pending",
+      passwordLink: {
+        purpose: "set",
+        expiresAt: new Date(T0 + 7 * DAY_MS).toISOString(),
+        deliveryId: "b4d8f2a6-7c30-4e95-8f14-3a9c5b7d2e68",
+        deliveryState: "queued",
+      },
+    }
     const first = await post(CREATE_CLIENT, CREATE_CLIENT.payload)
-    expect(first.envelope.data).toEqual({ userId: CLIENT_ID, accountState: "active", emailVerification: "pending" })
+    expect(first.envelope.data).toEqual(expected)
 
     nowMs = T0 + JUST_PAST_WINDOW_MS
     const replay = await post(CREATE_CLIENT, CREATE_CLIENT.payload)
 
     expect(replay.envelope.data).toEqual(first.envelope.data)
     expect(createClientAccount).toHaveBeenCalledTimes(1)
-    expect([...repository.receipts.values()].map((receipt) => receipt.body)).toEqual([
-      { userId: CLIENT_ID, accountState: "active", emailVerification: "pending" },
-    ])
+    const stored = [...repository.receipts.values()].map((receipt) => receipt.body)
+    expect(stored).toEqual([expected])
+    expect(JSON.stringify(stored)).not.toContain("a3c7e1f5-6b29-4d84-9e03-2f8b4a6c1d57")
   })
 })
 

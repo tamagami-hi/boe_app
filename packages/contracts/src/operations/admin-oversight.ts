@@ -73,7 +73,13 @@ export const AdminEmailDeliveryState = z.enum([
 ])
 export type AdminEmailDeliveryState = z.infer<typeof AdminEmailDeliveryState>
 
-export const AdminEmailTemplateKey = z.enum(["application_rejected", "account_approved"])
+export const AdminEmailTemplateKey = z.enum([
+  "application_rejected",
+  "account_approved",
+  "password_set_link",
+  "password_reset_link",
+  "password_app_download",
+])
 export type AdminEmailTemplateKey = z.infer<typeof AdminEmailTemplateKey>
 
 export const AdminEmailDelivery = z.looseObject({
@@ -444,10 +450,22 @@ export const AdminCreateClientBody = z.strictObject({
 })
 export type AdminCreateClientBody = z.infer<typeof AdminCreateClientBody>
 
+export const AdminPasswordLinkPurpose = z.enum(["set", "reset"])
+export type AdminPasswordLinkPurpose = z.infer<typeof AdminPasswordLinkPurpose>
+
+export const AdminQueuedPasswordLink = z.strictObject({
+  purpose: AdminPasswordLinkPurpose,
+  expiresAt: IsoDateTime,
+  deliveryId: Uuid,
+  deliveryState: z.literal("queued"),
+})
+export type AdminQueuedPasswordLink = z.infer<typeof AdminQueuedPasswordLink>
+
 export const AdminCreatedClientData = z.strictObject({
   userId: Uuid,
   accountState: z.literal("active"),
   emailVerification: z.literal("pending"),
+  passwordLink: AdminQueuedPasswordLink.optional(),
 })
 export type AdminCreatedClientData = z.infer<typeof AdminCreatedClientData>
 
@@ -468,6 +486,63 @@ export const createAdminClient = defineOperation({
   errorCodes: [...ADMIN_WRITE_ERRORS, "STATE_CONFLICT"],
 })
 
+export const AdminSentPasswordLinkData = AdminQueuedPasswordLink.extend({ userId: Uuid })
+export type AdminSentPasswordLinkData = z.infer<typeof AdminSentPasswordLinkData>
+
+export const sendAdminClientPasswordLink = defineOperation({
+  operationId: "sendAdminClientPasswordLink",
+  method: "POST",
+  path: "/v1/admin/clients/{userId}/password-link",
+  authChannel: "admin-web",
+  credentialPolicy: "admin-session-cookie-and-csrf",
+  idempotency: "required-key",
+  request: {
+    params: z.strictObject({ userId: Uuid }),
+    body: z.strictObject({}).optional(),
+    headers: RequiredAdminMutationHeaders,
+    mediaType: "application/json",
+    maxBodyBytes: MAX_JSON_BODY_BYTES,
+  },
+  success: { status: 201, schema: createSuccessEnvelopeSchema(AdminSentPasswordLinkData) },
+  errorCodes: [...ADMIN_WRITE_ERRORS, "RESOURCE_NOT_FOUND", "STATE_CONFLICT"],
+})
+
+export const AdminPasswordLinkDelivery = z.strictObject({
+  deliveryId: Uuid,
+  state: AdminEmailDeliveryState,
+  lastErrorCode: z.string().nullable(),
+  sentAt: NullableIsoDateTime,
+  updatedAt: IsoDateTime,
+})
+
+export const AdminClientPasswordAccessData = z.strictObject({
+  userId: Uuid,
+  hasPassword: z.boolean(),
+  nextLinkAllowedAt: NullableIsoDateTime,
+  latestLink: z
+    .strictObject({
+      purpose: AdminPasswordLinkPurpose,
+      state: z.enum(["active", "expired", "closed"]),
+      createdAt: IsoDateTime,
+      expiresAt: IsoDateTime,
+      delivery: AdminPasswordLinkDelivery.nullable(),
+    })
+    .nullable(),
+})
+export type AdminClientPasswordAccessData = z.infer<typeof AdminClientPasswordAccessData>
+
+export const getAdminClientPasswordAccess = defineOperation({
+  operationId: "getAdminClientPasswordAccess",
+  method: "GET",
+  path: "/v1/admin/clients/{userId}/password-link",
+  authChannel: "admin-web",
+  credentialPolicy: "admin-session-cookie-and-csrf",
+  idempotency: "none",
+  request: { params: z.strictObject({ userId: Uuid }) },
+  success: { status: 200, schema: createSuccessEnvelopeSchema(AdminClientPasswordAccessData) },
+  errorCodes: [...ADMIN_READ_ERRORS, "RESOURCE_NOT_FOUND"],
+})
+
 export const ADMIN_OVERSIGHT_OPERATIONS = Object.freeze([
   listAdminApplications,
   getAdminApplication,
@@ -481,4 +556,6 @@ export const ADMIN_OVERSIGHT_OPERATIONS = Object.freeze([
   closeAdminUser,
   listAdminAuditEvents,
   createAdminClient,
+  sendAdminClientPasswordLink,
+  getAdminClientPasswordAccess,
 ])

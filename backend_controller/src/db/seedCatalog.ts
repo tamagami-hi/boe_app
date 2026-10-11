@@ -70,6 +70,7 @@ export const SEED_PERMISSIONS: readonly SeedPermission[] = [
   { code: "refunds.write", description: "Initiate and manage refund operations" },
   { code: "client_values.read", description: "Read client value entries" },
   { code: "clients.create", description: "Create a client account without a public signup" },
+  { code: "clients.password_links.send", description: "Send a client a new password set or reset link" },
   { code: "client_growth.write", description: "Post client growth adjustment batches" },
   { code: "client_position.write", description: "Record contributions, settle maturities, manage payouts and reverse ledger entries" },
   { code: "aum.read", description: "Read fund AUM snapshots" },
@@ -99,6 +100,7 @@ export const SEED_ROLE_PERMISSIONS: Readonly<Record<string, readonly string[]>> 
     "email_deliveries.read",
     "users.read",
     "clients.create",
+    "clients.password_links.send",
   ],
   finance: [
     "funds.read",

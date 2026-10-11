@@ -9,6 +9,7 @@ export const PERMISSION_CODES = [
   "client_growth.write",
   "client_position.write",
   "clients.create",
+  "clients.password_links.send",
   "client_values.read",
   "config.read",
   "config.publish",
