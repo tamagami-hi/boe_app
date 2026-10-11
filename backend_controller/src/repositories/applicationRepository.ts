@@ -105,6 +105,7 @@ export interface ApplicationWriteRepository {
   ) => Promise<Application | null>
   listConsentDetails: (tx: Transaction, applicationId: string) => Promise<readonly ApplicationConsentDetailRow[]>
   listReviews: (tx: Transaction, applicationId: string) => Promise<readonly ApplicationReview[]>
+  findLinkedUserId: (tx: Transaction, applicationId: string) => Promise<string | null>
 }
 
 export const createApplicationRepository = (): ApplicationWriteRepository => ({
@@ -269,6 +270,10 @@ export const createApplicationRepository = (): ApplicationWriteRepository => ({
       .where("ac.application_id", "=", applicationId)
       .orderBy("cd.kind", "asc")
       .execute(),
+
+  findLinkedUserId: async (tx, applicationId) =>
+    (await tx.selectFrom("users").select("id").where("application_id", "=", applicationId).executeTakeFirst())?.id ??
+    null,
 
   listReviews: async (tx, applicationId) =>
     tx

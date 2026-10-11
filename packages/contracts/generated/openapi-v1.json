@@ -24504,6 +24504,13 @@
                           ],
                           "additionalProperties": false
                         },
+                        "linkedUserId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
                         "consents": {
                           "type": "array",
                           "items": {
@@ -24717,6 +24724,7 @@
                       },
                       "required": [
                         "application",
+                        "linkedUserId",
                         "consents",
                         "reviews",
                         "deliveries"

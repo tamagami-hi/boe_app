@@ -1,6 +1,6 @@
 # BeOnEdge app: onboarding, contact details, earlier investments, and email
 
-Status: **Approved for implementation by the maintainer on 2026-10-08, in dependency order. Steps 1, 2a, 2b, and 2c are done and committed (section 8). Step 3 is done as three verified slices (3a, 3b, and 3c). Step 4 is next, and steps 5 to 9 follow in dependency order. Since 2026-10-11 the remaining steps are implemented by a single maintainer-assisted session after the coding agent's limit ran out. All plan work ships together as v0.15.0 (release decision, 2026-10-11). Q-002, Q-003, Q-004, Q-011, Q-012, Q-015, and Q-016 are answered (decision record). Q-013 stays out of scope, and Q-017 is open without gating a step.**
+Status: **Approved for implementation by the maintainer on 2026-10-08, in dependency order. Steps 1, 2a, 2b, and 2c are done and committed (section 8). Steps 3 (three verified slices), 4, and 7 are done. Step 5 is next, and steps 5 to 9 follow in dependency order. Since 2026-10-11 the remaining steps are implemented by a single maintainer-assisted session after the coding agent's limit ran out. All plan work ships together as v0.15.0 (release decision, 2026-10-11). Q-002, Q-003, Q-004, Q-011, Q-012, Q-015, and Q-016 are answered (decision record). Q-013 stays out of scope, and Q-017 is open without gating a step.**
 
 Prepared: 2026-10-08. Investigation is source-level only; no production diagnosis, test runs, builds, mail sends, or deployments were performed. Since then only the admin authorization and seeding claims have been checked against source (section 2F). Every other claim in section 2 is unverified, and each step verifies the claims it depends on before it changes code.
 
@@ -502,8 +502,9 @@ Each step records here what changed, the exact verification (commands and counts
 | 2b. Email queue fencing, recovery, cancellation, and SMTP timeouts (step 2, tasks 3 to 6) | Done and committed; not deployed. Details below |
 | 2c. Transactional enqueue with encrypted payloads and scrubbing (step 2, tasks 1 and 7) | Done and committed; not deployed. Details below |
 | 3. Password-link authority, queueing, and resend API | Done and committed in three slices; not deployed. 3a token binding, redemption safety, retirement of other links, and lock order; 3b queued link mail, the link-address setting, the template-key migration, honest cancellation, and the unreadable-recipient fix; 3c the resend and status API, the permission, contracts, and frontend handling. Details below |
-| 7a. Earlier-investment form, exact rupee entry, and server validation (step 7, tasks 1, 4, 5, and 6) | Done and merged into `main` (commits `6794cfb` and `9c34137`); not deployed. Step 7 tasks 2 and 3 and the screen gates of task 8 follow step 4. Details below |
-| 4 to 10 (except 7a) | Not started |
+| 4. Admin creation recovery and resend controls | Done and committed; not deployed. Details below |
+| 7. Earlier principal during onboarding | Done and committed in two parts (7a, then tasks 2, 3, and 8 with step 4); not deployed. Details below |
+| 5, 6, 8, 9, 10 | Not started |
 
 ### Step 1 handoff (2026-10-08)
 
@@ -782,3 +783,18 @@ Findings for the maintainer:
 - Any single amount up to the bigint maximum is accepted. Adding it to an already large position could overflow the position sum in the database, which fails and rolls back rather than corrupting data.
 
 Merge into `main` after step 3: keep both entries in this section, regenerate `packages/contracts/generated/` instead of hand-merging it, update the header status, and run the contracts, backend, and frontend checks and both builds before committing the merge.
+
+### Step 4 and step 7 (tasks 2, 3, and 8) handoff (2026-10-12)
+
+Changed, frontend plus one backend read field:
+
+- Create client (`CreateClientScreen.tsx`): the idempotency key comes from `useIdempotencyKey` over the trimmed body plus an attempt counter, minted at the submission boundary and held across retries (step 4 task 1). A definite refusal unlocks the form; an unknown outcome (transport failure, 5xx, idempotency conflict, per `isUnknownWriteOutcome`) holds the form on the exact request and offers Check again (same key and body; the durable creation receipt from step 2a returns the account even after 24 hours), Find the account (the directory, prefilled through `?q=`), and Start a new attempt behind a confirmation (task 3). "Nothing created" and "The invite has been emailed" are gone: refusals say "Not created", a duplicate identity says it may be the earlier attempt's account and links to the directory rather than treating it as proof (task 5), and success says the link is queued and shows its purpose and expiry from the creation response (task 2).
+- `PasswordLinkPanel.tsx` (new), on the creation success view and on user details for client accounts: whether a password exists, the latest link's purpose, state, and expiry, its email's delivery state and error code, and when the next link is allowed; Send a new password link behind a confirmation that says the earlier link stops working and the password does not change; the same unknown-outcome handling; Refresh. The action needs `clients.password_links.send` in the component (task 6) and an active client account; without the permission it says which one is needed. Queries live in `passwordLinkQueries.ts` because `adminQueries.ts` is near the 800-line limit; the resend invalidates the status query.
+- `UserDirectoryScreen.tsx` seeds its search from `?q=` (trimmed, at most 120 characters).
+- Step 7 task 2: the shared `EarlierInvestmentForm` (7a) appears on creation success and on user details for client accounts that are not closed, gated by `client_position.write` (task 8). Task 3: application details now carry `linkedUserId` (backend `findLinkedUserId`, contract `AdminApplicationDetailData.linkedUserId`), and an approved application shows Open the client account, which leads to user details and the form.
+
+Verified (TESTED): contracts check 98 tests; backend check 94 files and 1127 tests (coverage 84.94% statements, 84.52% branches, 91.54% functions) plus both boot smokes; the integration suite on PostgreSQL 16 passes 28 files and 323 tests; frontend check 25 files and 230 tests; `build:client` (17 assets, 844606 bytes, Android budget and boot check) and `build:admin` pass. New component tests: `CreateClientScreen.test.tsx` (a lost reply holds the form and Check again sends the identical key and body; a gateway failure is unknown too; only a confirmed new attempt changes the key; a refusal unlocks the form, keeps the key for the same body, and changes it for a corrected body) and `PasswordLinkPanel.test.tsx` (the send action appears only with the permission and for an account that can receive a link). Negative control: minting a new key on every render fails 2 of the 4 screen tests; restored by checksum (`401c95d70915c7c4`).
+
+Not verified (UNVERIFIED): a browser session against a running stack, keyboard and focus order in the new dialogs beyond the existing primitives, and the plan's runtime check of a committed creation with a lost reply (needs a persistent local stack).
+
+Findings: the client app's generic `IDEMPOTENCY_KEY_REUSED` copy in `domain/failure.ts` ("Give it a moment") is still used by client screens; the admin screens no longer reach it for these actions, because they classify that code as an unknown outcome.

@@ -10,6 +10,7 @@ import { useSession } from "~/app/providers/SessionProvider"
 import { formatDate, formatDateTime } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { emailVerificationState, orderState, userAccountState } from "~/domain/status"
+import { EarlierInvestmentForm } from "~/features/admin/client-values/EarlierInvestmentForm"
 import { useAdminUser, useUserLifecycle } from "~/features/admin/shared/adminQueries"
 import type { UserLifecycle } from "~/features/admin/shared/adminQueries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
@@ -27,6 +28,8 @@ import { ENTRY_TEXT, PROSE_SM } from "~/ui/recipes/datalist"
 import { ACTION_ROW } from "~/ui/recipes/layout"
 
 import { META_TEXT } from "~/ui/recipes/text"
+
+import { PasswordLinkPanel } from "./PasswordLinkPanel"
 
 const ORDER_TYPE_LABEL = {
   lump_sum: "One-off investment",
@@ -62,6 +65,7 @@ const UserDetailScreen = (): React.ReactElement => {
 
   const canSuspend = hasAnyPermission(["users.suspend"])
   const canClose = hasAnyPermission(["users.close"])
+  const canRecordInvestment = hasAnyPermission(["client_position.write"])
 
   const run = (action: UserLifecycle): void => {
     setFailure(null)
@@ -152,6 +156,31 @@ const UserDetailScreen = (): React.ReactElement => {
                 </ButtonLink>
               </div>
             </Card>
+
+            {data.roles.length === 0 ? (
+              <Section
+                title="Password link"
+                description="Whether this client has a password, the latest set or reset link, and whether its email went out."
+              >
+                <PasswordLinkPanel
+                  userId={userId}
+                  email={data.user.email}
+                  canReceive={data.user.accountState === "active"}
+                />
+              </Section>
+            ) : null}
+
+            {data.roles.length === 0 && canRecordInvestment && data.user.accountState !== "closed" ? (
+              <Section
+                title="Record an earlier investment"
+                description="Records money this client invested before using BeOnEdge, one fund at a time. It is not a charge and not growth."
+              >
+                <EarlierInvestmentForm
+                  userId={userId}
+                  investorLabel={data.user.fullName === "" ? data.user.email : data.user.fullName}
+                />
+              </Section>
+            ) : null}
 
             <Section
               title="Account lifecycle"

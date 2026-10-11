@@ -44,6 +44,7 @@ export const qk = {
     users: (filter: string) => ["admin", "users", filter] as const,
     user: (userId: string) => ["admin", "user", userId] as const,
     userLoginEvents: (userId: string) => ["admin", "user", userId, "login-events"] as const,
+    clientPasswordAccess: (userId: string) => ["admin", "user", userId, "password-link"] as const,
     investorPositions: (userId: string) => ["admin", "investor", userId, "positions"] as const,
     clientLedgerEntries: (userId: string, fundId: string) =>
       ["admin", "investor", userId, "ledger-entries", fundId] as const,

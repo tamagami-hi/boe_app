@@ -543,6 +543,7 @@ export const usePublishAppConfig = (): UseMutationResult<void, Error, AppConfigI
 export type IndividualGrowthInput = z.input<typeof appendAdminIndividualClientGrowth.request.body>
 
 export type CreateAdminClientInput = Readonly<{
+  idempotencyKey: string
   fullName: string
   email: string
   phone: string
@@ -556,14 +557,14 @@ export const useCreateAdminClient = (): UseMutationResult<
   const api = useApi()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (body: CreateAdminClientInput) =>
+    mutationFn: async ({ idempotencyKey, ...body }: CreateAdminClientInput) =>
       (
         await api.request(createAdminClient, {
           body,
-          idempotencyKey: mintIdempotencyKey(),
+          idempotencyKey,
         })
       ).data,
-    onSuccess: async () => {
+    onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: ["admin", "users"] })
     },
   })

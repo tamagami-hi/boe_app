@@ -118,6 +118,7 @@ export const AdminApplicationReview = z.strictObject({
 
 export const AdminApplicationDetailData = z.strictObject({
   application: AdminApplication,
+  linkedUserId: Uuid.nullable(),
   consents: z.array(AdminApplicationConsent),
   reviews: z.array(AdminApplicationReview),
   deliveries: z.strictObject({

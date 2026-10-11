@@ -13874,6 +13874,8 @@ export interface operations {
                                 createdAt: string;
                                 version: number;
                             };
+                            /** Format: uuid */
+                            linkedUserId: string | null;
                             consents: {
                                 /** @enum {string} */
                                 kind: "terms" | "privacy";

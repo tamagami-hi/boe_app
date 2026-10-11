@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
@@ -34,9 +34,11 @@ type Filter = (typeof FILTERS)[number]["value"]
 const UserDirectoryScreen = (): React.ReactElement => {
   const { hasAnyPermission } = useSession()
   const canCreateClient = hasAnyPermission(["clients.create"])
+  const [searchParams] = useSearchParams()
+  const initialSearch = (searchParams.get("q") ?? "").trim().slice(0, 120)
   const [filter, setFilter] = useState<Filter>("any")
-  const [search, setSearch] = useState("")
-  const [applied, setApplied] = useState("")
+  const [search, setSearch] = useState(initialSearch)
+  const [applied, setApplied] = useState(initialSearch)
   const query = useAdminUsers({
     ...(filter === "any" ? {} : { status: filter }),
     ...(applied === "" ? {} : { q: applied }),

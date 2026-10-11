@@ -15,6 +15,7 @@ import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Button } from "~/ui/primitives/Button"
+import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 
@@ -95,6 +96,13 @@ const ApplicationDetailScreen = (): React.ReactElement => {
                 </DetailRow>
                 <DetailRow label="Version">{String(data.application.version)}</DetailRow>
               </DataList>
+              {data.linkedUserId === null ? null : (
+                <div className={ACTION_ROW}>
+                  <ButtonLink to={`/users/${data.linkedUserId}`} tone="secondary" size="sm" trailing>
+                    Open the client account
+                  </ButtonLink>
+                </div>
+              )}
             </Card>
 
             {data.application.status === "submitted" ? (

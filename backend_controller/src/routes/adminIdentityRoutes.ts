@@ -270,9 +270,10 @@ const getApplicationDetail = async (deps: AdminIdentityDeps, request: FastifyReq
   const filterHash = computeFilterHash({ applicationId })
   const keyset = keysetFor(deps, query.deliveryAfter, `${APPLICATIONS_ROUTE}/:id/deliveries`, filterHash, now)
 
-  const [consents, reviews, deliveryRows] = await Promise.all([
+  const [consents, reviews, linkedUserId, deliveryRows] = await Promise.all([
     deps.applicationRepository.listConsentDetails(deps.database, applicationId),
     deps.applicationRepository.listReviews(deps.database, applicationId),
+    deps.applicationRepository.findLinkedUserId(deps.database, applicationId),
     deps.emailDeliveryRepository.listByApplication(deps.database, {
       applicationId,
       ...keyset,
@@ -292,6 +293,7 @@ const getApplicationDetail = async (deps: AdminIdentityDeps, request: FastifyReq
   return reply.sendData(
     {
       application: mapApplicationListItem(application),
+      linkedUserId,
       consents: consents.map((consent) => ({
         kind: consent.kind,
         version: consent.version,
