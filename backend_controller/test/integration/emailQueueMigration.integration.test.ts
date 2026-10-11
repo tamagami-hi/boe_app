@@ -12,7 +12,7 @@ import type { CryptoContext } from "../../src/crypto/context.js"
 import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import type { UnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
-import { dispatchDueDeliveries } from "../../src/domain/email/dispatchDueDeliveries.js"
+import { dispatchDueDeliveries, type SendGuard } from "../../src/domain/email/dispatchDueDeliveries.js"
 import { recoverExpiredDeliveries } from "../../src/domain/email/recoverExpiredDeliveries.js"
 import type { SesEmailSender } from "../../src/email/ports.js"
 import { createEmailDeliveryRepository } from "../../src/repositories/emailDeliveryRepository.js"
@@ -256,6 +256,7 @@ describe("email queue populated upgrade", () => {
       emailSuppressionRepository,
       sender,
       crypto,
+      sendGuards: new Map<string, SendGuard>(),
       clock: () => new Date(),
       config: {
         topics: ["email"],

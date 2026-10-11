@@ -1,4 +1,7 @@
-export type EmailValidationCode = "EMAIL_HEADER_INVALID" | "EMAIL_ACTION_URL_INVALID"
+export type EmailValidationCode =
+  | "EMAIL_HEADER_INVALID"
+  | "EMAIL_ACTION_URL_INVALID"
+  | "EMAIL_TEMPLATE_DATA_INVALID"
 
 export class EmailValidationError extends Error {
   readonly code: EmailValidationCode

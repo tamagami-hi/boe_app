@@ -147,6 +147,7 @@ const ServerConfigSchema = z.object({
   EMAIL_SMTP_SECURE: z.enum(["true", "false"]).default("false"),
   // Where onboarding emails point.
   SUPPORT_EMAIL: z.string().trim().optional(),
+  CLIENT_PASSWORD_LINK_URL: z.string().trim().optional(),
   // Outbox email delivery worker knobs (mirrors the payment worker).
   EMAIL_WORKER_CLAIM_LIMIT: z.coerce.number().int().min(1).max(200).default(25),
   EMAIL_WORKER_LEASE_MS: z.coerce.number().int().min(1000).default(60_000),
@@ -262,6 +263,10 @@ export interface ServerConfig {
       readonly supportAddress: string | null
     }
     readonly worker: { readonly claimLimit: number; readonly leaseMs: number }
+  }
+  readonly passwordLinks: {
+    readonly clientUrl: string | null
+    readonly requireHttps: boolean
   }
   readonly emailVerification: {
     readonly codeTtlMs: number
@@ -619,6 +624,10 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
         claimLimit: parsed.EMAIL_WORKER_CLAIM_LIMIT,
         leaseMs: parsed.EMAIL_WORKER_LEASE_MS,
       },
+    },
+    passwordLinks: {
+      clientUrl: nonEmpty(parsed.CLIENT_PASSWORD_LINK_URL),
+      requireHttps: parsed.NODE_ENV === "production",
     },
     emailVerification: {
       codeTtlMs: parsed.EMAIL_VERIFICATION_CODE_TTL_MS,

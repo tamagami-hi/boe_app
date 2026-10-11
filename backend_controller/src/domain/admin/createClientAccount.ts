@@ -5,12 +5,13 @@ import type { AuditWriteRepository } from "../../repositories/auditRepository.js
 import type { EmailVerificationRepository } from "../../repositories/emailVerificationRepository.js"
 import type { UserWriteRepository } from "../../repositories/userRepository.js"
 import {
-  issuePasswordToken,
-  type IssuedPasswordToken,
-  type PasswordCredentialDeps,
-} from "../auth/passwordCredential.js"
+  issuePasswordLinkMail,
+  type PasswordLinkMailDeps,
+  type QueuedPasswordLink,
+} from "../auth/passwordLinkMail.js"
+import { requirePasswordLinkBase } from "../auth/passwordLinkUrl.js"
 
-export interface CreateClientAccountDeps extends PasswordCredentialDeps {
+export interface CreateClientAccountDeps extends PasswordLinkMailDeps {
   readonly applicationRepository: ApplicationWriteRepository
   readonly emailVerificationRepository: EmailVerificationRepository
   readonly userRepository: UserWriteRepository
@@ -27,7 +28,7 @@ export interface CreateClientAccountInput {
 
 export interface CreatedClientAccount {
   readonly userId: string
-  readonly invite: IssuedPasswordToken
+  readonly passwordLink: QueuedPasswordLink
 }
 
 export const createClientAccount = async (
@@ -35,6 +36,8 @@ export const createClientAccount = async (
   deps: CreateClientAccountDeps,
   input: CreateClientAccountInput,
 ): Promise<CreatedClientAccount> => {
+  const linkBase = requirePasswordLinkBase(deps.config.passwordLinks)
+
   const conflict = await deps.applicationRepository.findActiveConflict(tx, {
     emailNormalized: input.emailNormalized,
     phoneE164: input.phoneE164,
@@ -62,10 +65,11 @@ export const createClientAccount = async (
   const started = await deps.emailVerificationRepository.start(tx, { userId: user.id, now })
   if (started === null) throw new AppError("STATE_CONFLICT")
 
-  const invite = await issuePasswordToken(tx, deps, {
+  const passwordLink = await issuePasswordLinkMail(tx, deps, {
     userId: user.id,
     requestId: input.requestId,
     requester: { kind: "admin", userId: input.actorUserId },
+    linkBase,
   })
 
   await deps.auditRepository.append(tx, {
@@ -84,5 +88,5 @@ export const createClientAccount = async (
     },
   })
 
-  return { userId: user.id, invite }
+  return { userId: user.id, passwordLink }
 }

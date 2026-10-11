@@ -11,7 +11,6 @@ import {
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { AppError } from "../http/errorCatalog.js"
 import { parseOrThrow } from "../http/validation.js"
-import { sendPasswordInvite, type PasswordRoutesDeps } from "./passwordRoutes.js"
 import {
   adminIdempotencyScope,
   hashRequest,
@@ -25,11 +24,7 @@ export interface AdminClientOnboardingDeps extends CreateClientAccountDeps {
   readonly webAuth: WebAuthDeps
   readonly unitOfWork: UnitOfWork
   readonly idempotencyRepository: IdempotencyRepository
-  readonly emailSender: PasswordRoutesDeps["emailSender"]
-  readonly config: CreateClientAccountDeps["config"] & { readonly idempotencyTtlMs: number } & {
-    readonly resetUrlBase: string | null
-    readonly supportAddress: string | null
-  }
+  readonly config: CreateClientAccountDeps["config"] & { readonly idempotencyTtlMs: number }
 }
 
 const bodySchema = z
@@ -71,8 +66,6 @@ const createClient = async (
   const emailNormalized = body.email.toLowerCase()
   const phoneE164 = normalizePhone(body.phone)
 
-  const pendingInvites: Readonly<{ email: string; rawToken: string }>[] = []
-
   const result = await runAdminMutation({
     unitOfWork: deps.unitOfWork,
     idempotencyRepository: deps.idempotencyRepository,
@@ -89,7 +82,6 @@ const createClient = async (
         actorUserId: principal.userId,
         requestId: request.requestId,
       })
-      pendingInvites.push({ email: created.invite.email, rawToken: created.invite.rawToken })
       return {
         status: 201,
         body: {
@@ -100,18 +92,6 @@ const createClient = async (
       }
     },
   })
-
-  const invite = pendingInvites[0]
-  if (invite !== undefined) {
-    try {
-      await sendPasswordInvite(deps, invite)
-    } catch {
-      request.log.error(
-        { requestId: request.requestId, userId: result.body.userId },
-        "client account created but the invite mail could not be sent",
-      )
-    }
-  }
 
   return reply.sendData(result.body, {
     status: result.status,

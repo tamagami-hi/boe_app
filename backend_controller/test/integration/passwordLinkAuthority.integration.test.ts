@@ -6,7 +6,7 @@ import type { StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import type { FastifyInstance } from "fastify"
 import type { Pool } from "pg"
 import { Wait } from "testcontainers"
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest"
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest"
 
 import { hashPassword, verifyPassword } from "../../src/auth/passwordHasher.js"
 import { createCryptoContext, parseCryptoKeys } from "../../src/crypto/context.js"
@@ -21,10 +21,11 @@ import {
   type PasswordCredentialDeps,
   type PasswordLinkRequester,
 } from "../../src/domain/auth/passwordCredential.js"
-import type { EmailSender } from "../../src/email/emailSender.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
 import { createAuthSessionRepository } from "../../src/repositories/authSessionRepository.js"
 import { createCredentialRepository } from "../../src/repositories/credentialRepository.js"
+import { createEmailDeliveryRepository } from "../../src/repositories/emailDeliveryRepository.js"
+import { createOutboxRepository } from "../../src/repositories/outboxRepository.js"
 import { createPasswordTokenRepository } from "../../src/repositories/passwordTokenRepository.js"
 import { createUserRepository } from "../../src/repositories/userRepository.js"
 import { registerPasswordRoutes, type PasswordRoutesDeps } from "../../src/routes/passwordRoutes.js"
@@ -497,29 +498,23 @@ describe("concurrent resend and redemption on two connections", () => {
 
 describe("password routes on PostgreSQL", () => {
   let app: FastifyInstance
-  const sent: Array<{ to: string; text: string }> = []
 
   beforeAll(() => {
-    const emailSender: EmailSender = {
-      send: (message) => {
-        sent.push({ to: message.to, text: message.text })
-        return Promise.resolve({ messageId: randomUUID() })
-      },
-    }
     app = createApplication({
       logger: false,
       registerRoutes: (instance) =>
         registerPasswordRoutes(instance, {
           ...baseDeps(),
           unitOfWork,
-          emailSender,
+          outboxRepository: createOutboxRepository(),
+          emailDeliveryRepository: createEmailDeliveryRepository(),
           appUpdate: { releaseRoot: "/nonexistent", downloadBaseUrl: "https://app.test/downloads" },
           config: {
             tokenTtlMs: TTL_MS,
             maxAttempts: 5,
             requestCooldownMs: COOLDOWN_MS,
-            resetUrlBase: "https://app.test/reset-password",
-            supportAddress: null,
+            passwordLinks: { clientUrl: "https://app.test/reset-password", requireHttps: true },
+            sesConfigurationSet: "boe-transactional",
           },
         } as unknown as PasswordRoutesDeps),
     })
@@ -529,12 +524,18 @@ describe("password routes on PostgreSQL", () => {
     await app.close()
   })
 
-  afterEach(() => {
-    sent.length = 0
-  })
-
   const forgot = (email: string) =>
     app.inject({ method: "POST", url: "/v1/auth/password/forgot", payload: { email } })
+
+  const queuedLinks = async (userIds: readonly string[]): Promise<Row[]> =>
+    (
+      await pool.query<Row>(
+        "select d.id, d.template_key, d.state, d.user_id, p.ciphertext, p.nonce, p.key_version " +
+          "from email_deliveries d join email_delivery_payloads p on p.email_delivery_id = d.id " +
+          "where d.user_id = any($1::uuid[]) order by d.created_at",
+        [userIds],
+      )
+    ).rows
 
   test("answers a forgot request the same for an unknown address, an inactive account, a throttled one and a mailed one", async () => {
     const active = await seedUser({ password: true })
@@ -552,8 +553,15 @@ describe("password routes on PostgreSQL", () => {
     }
     expect(await tokenRows(suspended.id)).toHaveLength(0)
     expect(await tokenRows(active.id)).toHaveLength(1)
-    expect(sent.map((message) => message.to)).toEqual([active.email])
-    const rawToken = new URL(/https:\/\/\S+/u.exec(sent[0]?.text ?? "")?.[0] ?? "").searchParams.get("token") ?? ""
+    const queued = await queuedLinks([active.id, suspended.id])
+    expect(queued).toMatchObject([{ template_key: "password_reset_link", state: "queued", user_id: active.id }])
+    const opened = crypto.decryptDeliveryPayload(String(queued[0]?.id), {
+      ciphertext: queued[0]?.ciphertext as Buffer,
+      nonce: queued[0]?.nonce as Buffer,
+      keyVersion: String(queued[0]?.key_version),
+    })
+    if (opened.kind !== "opened") throw new Error("the sealed link could not be opened")
+    const rawToken = new URL(String(opened.payload.link)).searchParams.get("token") ?? ""
     expect((await tokenByRaw(rawToken)).id).toBe((await tokenRows(active.id))[0]?.id)
   })
 

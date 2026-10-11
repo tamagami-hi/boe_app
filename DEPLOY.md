@@ -203,6 +203,19 @@ the secret is unconfigured. Origin and Referer are deliberately not used — the
 server-to-server, so those headers are absent or attacker-controlled. Signup creates a
 `submitted` application and sends no email; approval is what queues the welcome mail.
 
+`CLIENT_PASSWORD_LINK_URL` is the client web page that password set and reset links open, for
+example `https://app.beonedge.in/reset-password` on production. A link is this URL with
+`?token=` added, so the value must be an absolute URL with no query, no fragment and no
+username or password, and `NODE_ENV=production` also requires https. It replaces the first
+`WEB_ORIGIN_ALLOWLIST` origin that older backends used. The backend reads it when a link is
+issued, never at boot, so a missing or invalid value does not stop the backend. Instead
+admin client creation answers 503 `DEPENDENCY_UNAVAILABLE`, names the setting in the message
+and saves nothing, and the forgot-password route keeps its uniform 202 but logs the problem
+and issues and queues nothing. A deploy never overwrites a stack `.env`, so add the key to
+each stack's `.env` before the release that queues password mail goes out. Password mail is
+queued, not sent by the web request, and leaves only while `email-worker` runs with SMTP
+configured.
+
 ### Rotating `CRYPTO_RECIPIENT_ENC_KEY`
 
 One key, `CRYPTO_RECIPIENT_ENC_KEY` with its `CRYPTO_RECIPIENT_ENC_KEY_VERSION`, encrypts the
@@ -210,9 +223,9 @@ recipient address of every queued mail message, the sealed payload of messages t
 secret such as a password link, and the PhonePe callback payloads kept for audit. There is no
 keyring, so queued mail can be opened only under the version it was written with. A sealed
 message under another version is dead-lettered with `EMAIL_PAYLOAD_KEY_MISMATCH`. A recipient
-address under another key cannot be decrypted at all, so the email worker's pass throws
-(`EMAIL_WORKER_FAILURE`, an unsuccessful heartbeat) each time it claims that message. Rotate
-only when no mail is queued:
+address under another key cannot be decrypted at all, so that message is dead-lettered with
+`EMAIL_RECIPIENT_UNREADABLE` and never sent, while the rest of the queue carries on. Either way
+the mail is lost, so rotate only when no mail is queued:
 
 1. Choose a maintenance window and stop the `backend` service so nothing new is queued. Leave
    Postgres and `email-worker` running.

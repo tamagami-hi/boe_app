@@ -1,7 +1,8 @@
 import { sql } from "kysely"
 
-import type { Transaction } from "../db/repositories.js"
+import type { Transaction, User } from "../db/repositories.js"
 import type { PasswordTokenPurpose } from "../db/types.js"
+import type { LockedCredential } from "./credentialRepository.js"
 
 export interface PasswordTokenBinding {
   readonly emailRevision: string
@@ -21,6 +22,12 @@ export interface PasswordCredentialToken {
   readonly binding: PasswordTokenBinding | null
 }
 
+export interface PasswordTokenValidityContext {
+  readonly token: Pick<PasswordCredentialToken, "id" | "userId" | "purpose" | "expiresAt" | "consumedAt" | "binding">
+  readonly user: Pick<User, "account_state" | "email_revision">
+  readonly credential: LockedCredential | null
+}
+
 export interface CreatePasswordTokenInput {
   readonly userId: string
   readonly purpose: PasswordTokenPurpose
@@ -36,6 +43,7 @@ export interface PasswordTokenRepository {
   findActiveByHash: (tx: Transaction, tokenHash: Buffer) => Promise<PasswordCredentialToken | null>
   lockActiveByHash: (tx: Transaction, tokenHash: Buffer) => Promise<PasswordCredentialToken | null>
   latestCreatedAt: (tx: Transaction, userId: string) => Promise<Date | null>
+  findValidityContext: (tx: Transaction, tokenId: string) => Promise<PasswordTokenValidityContext | null>
   consumeActive: (tx: Transaction, input: Readonly<{ userId: string; now: Date }>) => Promise<void>
   consume: (tx: Transaction, input: Readonly<{ tokenId: string; now: Date }>) => Promise<boolean>
   incrementAttempt: (tx: Transaction, tokenId: string) => Promise<void>
@@ -128,6 +136,47 @@ export const createPasswordTokenRepository = (): PasswordTokenRepository => ({
       .limit(1)
       .executeTakeFirst()
     return row === undefined ? null : new Date(row.created_at)
+  },
+
+  findValidityContext: async (tx, tokenId) => {
+    const row = await tx
+      .selectFrom("password_credential_tokens as t")
+      .innerJoin("users as u", "u.id", "t.user_id")
+      .leftJoin("user_credentials as c", "c.user_id", "t.user_id")
+      .select([
+        "t.id as token_id",
+        "t.user_id",
+        "t.purpose",
+        "t.expires_at",
+        "t.consumed_at",
+        "t.bound_email_revision",
+        "t.bound_credential_version",
+        "u.account_state",
+        "u.email_revision",
+        "c.version as credential_version",
+        sql<boolean>`c.password_hash is not null`.as("has_password"),
+      ])
+      .where("t.id", "=", tokenId)
+      .executeTakeFirst()
+    if (row === undefined) return null
+    return {
+      token: {
+        id: row.token_id,
+        userId: row.user_id,
+        purpose: row.purpose,
+        expiresAt: row.expires_at,
+        consumedAt: row.consumed_at,
+        binding:
+          row.bound_email_revision !== null && row.bound_credential_version !== null
+            ? { emailRevision: row.bound_email_revision, credentialVersion: row.bound_credential_version }
+            : null,
+      },
+      user: { account_state: row.account_state, email_revision: row.email_revision },
+      credential:
+        row.credential_version === null
+          ? null
+          : { version: row.credential_version, hasPassword: row.has_password },
+    }
   },
 
   consumeActive: async (tx, input) => {

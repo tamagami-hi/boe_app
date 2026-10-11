@@ -19,7 +19,7 @@ import type { UnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
 import { SEED_ROLE_PERMISSIONS } from "../../src/db/seedCatalog.js"
 import type { WebAuthDeps } from "../../src/domain/auth/webAuth.js"
-import { dispatchDueDeliveries } from "../../src/domain/email/dispatchDueDeliveries.js"
+import { dispatchDueDeliveries, type SendGuard } from "../../src/domain/email/dispatchDueDeliveries.js"
 import { CLAIMED_EMAIL_TOPICS, SEALED_EMAIL_TOPIC } from "../../src/domain/email/emailTopics.js"
 import { enqueueEmail } from "../../src/domain/email/enqueueEmail.js"
 import { recoverExpiredDeliveries } from "../../src/domain/email/recoverExpiredDeliveries.js"
@@ -189,6 +189,7 @@ const dispatch = (sender: EmailSender, clock: () => Date = () => new Date()) =>
     emailSuppressionRepository,
     sender: createTransactionalEmailSender({ sender, templates: { supportAddress: null } }),
     crypto,
+    sendGuards: new Map<string, SendGuard>(),
     clock,
     config: {
       topics: CLAIMED_EMAIL_TOPICS,

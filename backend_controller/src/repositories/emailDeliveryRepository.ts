@@ -53,6 +53,22 @@ export interface CreateRejectionDeliveryInput {
   readonly templateVersion: string
 }
 
+export type PasswordMailTemplateKey = "password_set_link" | "password_reset_link" | "password_app_download"
+
+export interface CreatePasswordMailDeliveryInput {
+  readonly outboxEventId: string
+  readonly templateKey: PasswordMailTemplateKey
+  readonly userId: string
+  readonly recipientCiphertext: Buffer
+  readonly recipientNonce: Buffer
+  readonly recipientHmac: Buffer
+  readonly recipientMasked: string
+  readonly recipientEncryptionKeyVersion: string
+  readonly suppressionHmacKeyVersion: string
+  readonly sesConfigurationSet: string
+  readonly templateVersion: string
+}
+
 export interface InsertSealedPayloadInput {
   readonly deliveryId: string
   readonly ciphertext: Buffer
@@ -81,6 +97,7 @@ export interface EmailDeliveryWriteRepository {
     input: CreateAccountApprovedDeliveryInput,
   ) => Promise<EmailDelivery>
   createRejectionDelivery: (tx: Transaction, input: CreateRejectionDeliveryInput) => Promise<EmailDelivery>
+  createPasswordMailDelivery: (tx: Transaction, input: CreatePasswordMailDeliveryInput) => Promise<EmailDelivery>
   insertSealedPayload: (tx: Transaction, input: InsertSealedPayloadInput) => Promise<void>
   findSealedPayload: (tx: Transaction, deliveryId: string) => Promise<EmailDeliveryPayload | null>
   adminList: (tx: Transaction, query: AdminEmailDeliveryQuery) => Promise<readonly EmailDelivery[]>
@@ -147,6 +164,25 @@ export const createEmailDeliveryRepository = (): EmailDeliveryWriteRepository =>
         outbox_event_id: input.outboxEventId,
         application_id: input.applicationId,
         template_key: "application_rejected",
+        template_version: input.templateVersion,
+        recipient_ciphertext: input.recipientCiphertext,
+        recipient_nonce: input.recipientNonce,
+        recipient_hmac: input.recipientHmac,
+        recipient_masked: input.recipientMasked,
+        recipient_encryption_key_version: input.recipientEncryptionKeyVersion,
+        suppression_hmac_key_version: input.suppressionHmacKeyVersion,
+        ses_configuration_set: input.sesConfigurationSet,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow(),
+
+  createPasswordMailDelivery: async (tx, input) =>
+    tx
+      .insertInto("email_deliveries")
+      .values({
+        outbox_event_id: input.outboxEventId,
+        user_id: input.userId,
+        template_key: input.templateKey,
         template_version: input.templateVersion,
         recipient_ciphertext: input.recipientCiphertext,
         recipient_nonce: input.recipientNonce,

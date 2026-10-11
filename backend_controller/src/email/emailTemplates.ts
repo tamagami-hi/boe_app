@@ -14,6 +14,9 @@ export type TemplateRenderResult =
 const TEMPLATE_VERSIONS: ReadonlyMap<string, readonly string[]> = new Map([
   ["application_rejected", ["v1"]],
   ["account_approved", ["v1"]],
+  ["password_set_link", ["v1"]],
+  ["password_reset_link", ["v1"]],
+  ["password_app_download", ["v1"]],
 ])
 
 export interface PasswordLinkInput {
@@ -30,6 +33,25 @@ const stringField = (data: Readonly<Record<string, unknown>>, key: string): stri
   const value = data[key]
   return typeof value === "string" && value.length > 0 ? value : null
 }
+
+const requiredString = (data: Readonly<Record<string, unknown>>, key: string): string => {
+  const value = stringField(data, key)
+  if (value === null) throw new EmailValidationError("EMAIL_TEMPLATE_DATA_INVALID")
+  return value
+}
+
+const requiredDuration = (data: Readonly<Record<string, unknown>>, key: string): number => {
+  const value = data[key]
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    throw new EmailValidationError("EMAIL_TEMPLATE_DATA_INVALID")
+  }
+  return value
+}
+
+const passwordLinkInput = (data: Readonly<Record<string, unknown>>): PasswordLinkInput => ({
+  link: requiredString(data, "link"),
+  validForMs: requiredDuration(data, "validForMs"),
+})
 
 const plural = (count: number, unit: string): string =>
   `${String(count)} ${unit}${count === 1 ? "" : "s"}`
@@ -174,6 +196,12 @@ const buildTemplate = (
       return applicationRejectedEmail(config)
     case "account_approved":
       return accountApprovedEmail(stringField(templateData, "downloadUrl"), config)
+    case "password_set_link":
+      return passwordInviteEmail(passwordLinkInput(templateData), config)
+    case "password_reset_link":
+      return passwordResetEmail(passwordLinkInput(templateData), config)
+    case "password_app_download":
+      return appDownloadEmail(requiredString(templateData, "downloadUrl"), config)
     default:
       return null
   }

@@ -181,6 +181,25 @@ describe("parseServerConfig", () => {
     expect(() => parseServerConfig({ ...validEnv(), NEWUSER_SHARED_SECRET: "short" })).toThrow()
   })
 
+  test("boots without a password link address and leaves judging it to link issuance", () => {
+    expect(parseServerConfig(validEnv()).passwordLinks).toEqual({ clientUrl: null, requireHttps: false })
+    expect(parseServerConfig({ ...validEnv(), CLIENT_PASSWORD_LINK_URL: "  " }).passwordLinks.clientUrl).toBeNull()
+    expect(
+      parseServerConfig({ ...validEnv(), CLIENT_PASSWORD_LINK_URL: "not a url, and not checked at boot" }).passwordLinks,
+    ).toEqual({ clientUrl: "not a url, and not checked at boot", requireHttps: false })
+  })
+
+  test("requires https for password links only in production", () => {
+    const url = "https://app.beonedge.example/reset-password"
+
+    expect(parseServerConfig({ ...validEnv(), CLIENT_PASSWORD_LINK_URL: url }).passwordLinks).toEqual({
+      clientUrl: url,
+      requireHttps: false,
+    })
+    expect(parseServerConfig({ ...validEnv(), NODE_ENV: "production", CLIENT_PASSWORD_LINK_URL: url }).passwordLinks)
+      .toEqual({ clientUrl: url, requireHttps: true })
+  })
+
   test.each([
     "http://dev-app.beonedge.in/downloads",
     "https://evil.example/downloads",

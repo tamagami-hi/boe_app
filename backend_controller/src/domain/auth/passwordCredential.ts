@@ -34,6 +34,7 @@ export interface PasswordCredentialDeps {
 }
 
 export interface IssuedPasswordToken {
+  readonly tokenId: string
   readonly userId: string
   readonly email: string
   readonly rawToken: string
@@ -80,7 +81,7 @@ export const issuePasswordToken = async (
 
   const minted = deps.crypto.generateVerificationToken()
   const expiresAt = new Date(now.getTime() + deps.config.tokenTtlMs)
-  await deps.passwordTokenRepository.create(tx, {
+  const created = await deps.passwordTokenRepository.create(tx, {
     userId: input.userId,
     purpose,
     tokenHash: minted.hash,
@@ -101,6 +102,7 @@ export const issuePasswordToken = async (
   })
 
   return {
+    tokenId: created.id,
     userId: input.userId,
     email: user.email_normalized,
     rawToken: minted.token,
@@ -110,7 +112,13 @@ export const issuePasswordToken = async (
 }
 
 export type RedeemPasswordTokenOutcome =
-  | { readonly kind: "redeemed"; readonly userId: string; readonly purpose: PasswordTokenPurpose; readonly email: string }
+  | {
+      readonly kind: "redeemed"
+      readonly tokenId: string
+      readonly userId: string
+      readonly purpose: PasswordTokenPurpose
+      readonly email: string
+    }
   | { readonly kind: "unknown_token" }
   | { readonly kind: "expired" }
   | { readonly kind: "locked" }
@@ -154,7 +162,13 @@ export const redeemPasswordToken = async (
     requestId: input.requestId,
   })
 
-  return { kind: "redeemed", userId: token.userId, purpose: token.purpose, email: user.email_normalized }
+  return {
+    kind: "redeemed",
+    tokenId: token.id,
+    userId: token.userId,
+    purpose: token.purpose,
+    email: user.email_normalized,
+  }
 }
 
 export type ChangePasswordOutcome =

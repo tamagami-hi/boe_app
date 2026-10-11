@@ -8,7 +8,7 @@ import type { EmailDelivery, EmailDeliveryPayload, EmailSuppression, OutboxEvent
 import type { SesEmailSender, SesSendRequest } from "../../email/ports.js"
 import type { EmailDeliveryWriteRepository } from "../../repositories/emailDeliveryRepository.js"
 import type { OutboxWriteRepository } from "../../repositories/outboxRepository.js"
-import { dispatchDueDeliveries } from "./dispatchDueDeliveries.js"
+import { dispatchDueDeliveries, type SendGuard } from "./dispatchDueDeliveries.js"
 
 const key = (): string => randomBytes(32).toString("base64")
 
@@ -115,6 +115,10 @@ interface Scenario {
   readonly started?: boolean
   readonly suppressed?: boolean
   readonly stored?: EmailDeliveryPayload | null
+  readonly delivery?: Partial<EmailDelivery> | null
+  readonly guards?: Readonly<Record<string, SendGuard>>
+  readonly unsentCancellable?: boolean
+  readonly claimCancellable?: boolean
 }
 
 const run = async (scenario: Scenario) => {
@@ -142,9 +146,12 @@ const run = async (scenario: Scenario) => {
     settleDelivered: vi.fn(() => Promise.resolve(true)),
     scheduleRetry: vi.fn(() => Promise.resolve(true)),
     deadLetter: vi.fn(() => Promise.resolve(true)),
-    cancel: vi.fn(() => Promise.resolve(true)),
+    cancel: vi.fn(() => Promise.resolve(scenario.claimCancellable ?? true)),
     release: vi.fn(() => Promise.resolve(true)),
-    cancelUnsent: vi.fn(),
+    cancelUnsent: vi.fn(() => {
+      order.push("cancelUnsent")
+      return Promise.resolve(scenario.unsentCancellable ?? true)
+    }),
     recordAttemptResult: vi.fn(() => Promise.resolve()),
     recoverExpiredProcessing: vi.fn(() => Promise.resolve(0)),
     findExpiredSending: vi.fn(() => Promise.resolve([])),
@@ -153,6 +160,7 @@ const run = async (scenario: Scenario) => {
   const emailDeliveryRepository: EmailDeliveryWriteRepository = {
     createAccountApprovedDelivery: vi.fn(),
     createRejectionDelivery: vi.fn(),
+    createPasswordMailDelivery: vi.fn(),
     insertSealedPayload: vi.fn(),
     findSealedPayload: vi.fn(() => {
       order.push("findSealedPayload")
@@ -160,7 +168,9 @@ const run = async (scenario: Scenario) => {
     }),
     adminList: vi.fn(),
     listByApplication: vi.fn(),
-    lockByOutboxEventId: vi.fn(() => Promise.resolve(deliveryRow())),
+    lockByOutboxEventId: vi.fn(() =>
+      Promise.resolve(scenario.delivery === null ? null : { ...deliveryRow(), ...scenario.delivery }),
+    ),
     lockById: vi.fn(),
     lockBySesMessageId: vi.fn(),
     transitionSending: vi.fn(() => Promise.resolve()),
@@ -179,6 +189,15 @@ const run = async (scenario: Scenario) => {
     },
     sender,
     crypto: { ...crypto, decryptDeliveryPayload: decrypt },
+    sendGuards: new Map(
+      Object.entries(scenario.guards ?? {}).map(([templateKey, guard]): [string, SendGuard] => [
+        templateKey,
+        (tx, context) => {
+          order.push("guard")
+          return guard(tx, context)
+        },
+      ]),
+    ),
     clock: () => T0,
     config: {
       topics: ["email", SEALED_TOPIC],
@@ -268,4 +287,144 @@ describe("dispatchDueDeliveries sealed payloads", () => {
     expect(result.decrypt).not.toHaveBeenCalled()
     expect(result.sent[0]?.templateData).toEqual({ template: "account_approved" })
   })
+})
+
+const CANCEL: SendGuard = () => Promise.resolve({ kind: "cancel", reason: "consumed" })
+const SEND: SendGuard = () => Promise.resolve({ kind: "send" })
+
+describe("dispatchDueDeliveries send guards", () => {
+  test("a guard that cancels stops the mail unsent, through the unsent fence, before the sidecar is read", async () => {
+    const result = await run({ topic: SEALED_TOPIC, stored: sealedRow(), guards: { account_approved: CANCEL } })
+
+    expect(result.summary).toMatchObject({ claimed: 1, cancelled: 1, sent: 0 })
+    expect(result.order).toEqual(["guard", "cancelUnsent"])
+    expect(result.outboxRepository.cancelUnsent).toHaveBeenCalledWith(transaction, {
+      outboxEventId: "outbox-1",
+      generation: 1,
+      now: T0,
+    })
+    expect(result.outboxRepository.markSending).not.toHaveBeenCalled()
+    expect(result.decrypt).not.toHaveBeenCalled()
+    expect(result.sent).toEqual([])
+  })
+
+  test("a guard that cancels for a claim that was lost cancels nothing and is counted as superseded", async () => {
+    const result = await run({
+      topic: SEALED_TOPIC,
+      stored: sealedRow(),
+      guards: { account_approved: CANCEL },
+      unsentCancellable: false,
+    })
+
+    expect(result.summary).toMatchObject({ claimed: 1, superseded: 1, cancelled: 0, sent: 0 })
+    expect(result.order).toEqual(["guard", "cancelUnsent"])
+    expect(result.sent).toEqual([])
+  })
+
+  test("a guard that allows the send runs before the claim is committed and changes nothing else", async () => {
+    const result = await run({ topic: SEALED_TOPIC, stored: sealedRow(), guards: { account_approved: SEND } })
+
+    expect(result.summary).toMatchObject({ claimed: 1, sent: 1, cancelled: 0 })
+    expect(result.order).toEqual(["guard", "markSending", "findSealedPayload", "decrypt", "send"])
+  })
+
+  test("runs again for a message that already failed once and is being retried", async () => {
+    const result = await run({
+      topic: SEALED_TOPIC,
+      stored: sealedRow(),
+      delivery: { state: "retryable_failed", attempt_count: 1 },
+      guards: { account_approved: CANCEL },
+    })
+
+    expect(result.summary).toMatchObject({ claimed: 1, cancelled: 1, sent: 0 })
+    expect(result.order).toEqual(["guard", "cancelUnsent"])
+  })
+
+  test("is chosen by template key, so another key's guard never judges the message", async () => {
+    const result = await run({ topic: SEALED_TOPIC, stored: sealedRow(), guards: { password_set_link: CANCEL } })
+
+    expect(result.summary).toMatchObject({ claimed: 1, sent: 1 })
+    expect(result.order).toEqual(["markSending", "findSealedPayload", "decrypt", "send"])
+  })
+})
+
+describe("dispatchDueDeliveries missing or erased recipient", () => {
+  const ERASED = {
+    recipient_ciphertext: null,
+    recipient_nonce: null,
+    recipient_encryption_key_version: null,
+    erased_at: T0,
+  } satisfies Partial<EmailDelivery>
+
+  test("cancels the delivery together with its outbox event through the unsent fence and reads nothing", async () => {
+    const result = await run({ topic: SEALED_TOPIC, stored: sealedRow(), delivery: ERASED })
+
+    expect(result.summary).toMatchObject({ claimed: 1, cancelled: 1, skipped: 0, sent: 0 })
+    expect(result.outboxRepository.cancelUnsent).toHaveBeenCalledWith(transaction, {
+      outboxEventId: "outbox-1",
+      generation: 1,
+      now: T0,
+    })
+    expect(result.outboxRepository.cancel).not.toHaveBeenCalled()
+    expect(result.order).toEqual(["cancelUnsent"])
+    expect(result.decrypt).not.toHaveBeenCalled()
+    expect(result.sent).toEqual([])
+  })
+
+  test("counts an event with no delivery at all as skipped, not as a cancelled delivery", async () => {
+    const result = await run({ topic: SEALED_TOPIC, delivery: null })
+
+    expect(result.summary).toMatchObject({ claimed: 1, skipped: 1, cancelled: 0, sent: 0 })
+    expect(result.order).toEqual(["cancelUnsent"])
+  })
+
+  test("still ends the outbox claim when the delivery is past cancelling, so the event is not reclaimed forever", async () => {
+    const closed = await run({
+      topic: SEALED_TOPIC,
+      delivery: { ...ERASED, state: "cancelled" },
+      unsentCancellable: false,
+    })
+    const lost = await run({
+      topic: SEALED_TOPIC,
+      delivery: ERASED,
+      unsentCancellable: false,
+      claimCancellable: false,
+    })
+
+    expect(closed.summary).toMatchObject({ claimed: 1, skipped: 1, cancelled: 0 })
+    expect(closed.outboxRepository.cancel).toHaveBeenCalledWith(transaction, {
+      outboxEventId: "outbox-1",
+      generation: 1,
+      now: T0,
+    })
+    expect(lost.summary).toMatchObject({ claimed: 1, superseded: 1, skipped: 0 })
+  })
+})
+
+describe("dispatchDueDeliveries unreadable recipient", () => {
+  const tamperedRecipient = (): Partial<EmailDelivery> => {
+    const ciphertext = Buffer.from(deliveryRow().recipient_ciphertext ?? Buffer.alloc(0))
+    ciphertext[0] = (ciphertext[0] ?? 0) ^ 0xff
+    return { recipient_ciphertext: ciphertext }
+  }
+
+  test.each([["the plain topic", "email"], ["the sealed topic", SEALED_TOPIC]])(
+    "on %s fails the message permanently instead of aborting the pass, and sends nothing",
+    async (_name, topic) => {
+      const result = await run({ topic, stored: sealedRow(), delivery: tamperedRecipient() })
+
+      expect(result.summary).toMatchObject({ claimed: 1, deadLettered: 1, retried: 0, sent: 0 })
+      expect(result.sent).toEqual([])
+      expect(result.outboxRepository.deadLetter).toHaveBeenCalledWith(
+        transaction,
+        expect.objectContaining({ outboxEventId: "outbox-1", generation: 1, errorCode: "EMAIL_RECIPIENT_UNREADABLE" }),
+      )
+      expect(result.emailDeliveryRepository.recordSendFailure).toHaveBeenCalledWith(transaction, {
+        deliveryId: DELIVERY_ID,
+        errorCode: "EMAIL_RECIPIENT_UNREADABLE",
+        permanent: true,
+        now: T0,
+      })
+    },
+  )
 })

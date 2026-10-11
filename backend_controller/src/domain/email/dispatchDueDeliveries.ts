@@ -12,7 +12,7 @@
  */
 import type { CryptoContext } from "../../crypto/context.js"
 import type { UnitOfWork } from "../../db/database.js"
-import type { OutboxEvent } from "../../db/repositories.js"
+import type { EmailDelivery, OutboxEvent, Transaction } from "../../db/repositories.js"
 import { isExhausted, nextRetryDelayMs } from "../../email/retrySchedule.js"
 import type { SesEmailSender, SesSendResult } from "../../email/ports.js"
 import type { EmailDeliveryWriteRepository } from "../../repositories/emailDeliveryRepository.js"
@@ -30,6 +30,18 @@ export interface DispatchConfig {
   readonly passBudgetMs: number
 }
 
+export interface SendGuardContext {
+  readonly event: OutboxEvent
+  readonly delivery: EmailDelivery
+  readonly now: Date
+}
+
+export type SendVerdict =
+  | { readonly kind: "send" }
+  | { readonly kind: "cancel"; readonly reason: string }
+
+export type SendGuard = (tx: Transaction, context: SendGuardContext) => Promise<SendVerdict>
+
 export interface DispatchDeps {
   readonly unitOfWork: UnitOfWork
   readonly outboxRepository: OutboxWriteRepository
@@ -37,6 +49,7 @@ export interface DispatchDeps {
   readonly emailSuppressionRepository: EmailSuppressionWriteRepository
   readonly sender: SesEmailSender
   readonly crypto: CryptoContext
+  readonly sendGuards: ReadonlyMap<string, SendGuard>
   readonly clock: () => Date
   readonly config: DispatchConfig
 }
@@ -73,6 +86,21 @@ const templateDataOf = (event: OutboxEvent): Readonly<Record<string, unknown>> =
   return typeof payload === "object" && payload !== null ? (payload as Record<string, unknown>) : {}
 }
 
+const RECIPIENT_UNREADABLE_ERROR_CODE = "EMAIL_RECIPIENT_UNREADABLE"
+
+const openRecipient = (crypto: CryptoContext, ciphertext: Buffer, nonce: Buffer): string | null => {
+  try {
+    return crypto.decryptRecipient(ciphertext, nonce)
+  } catch {
+    return null
+  }
+}
+
+const verdictFor = (deps: DispatchDeps, tx: Transaction, context: SendGuardContext): Promise<SendVerdict> => {
+  const guard = deps.sendGuards.get(context.delivery.template_key)
+  return guard === undefined ? Promise.resolve({ kind: "send" }) : guard(tx, context)
+}
+
 // Lock the delivery + outbox, validate, and either cancel obsolete work or
 // commit both to `sending`. Returns what SES should be called with, if anything.
 const prepare = async (deps: DispatchDeps, event: OutboxEvent): Promise<PreparedSend> =>
@@ -82,8 +110,9 @@ const prepare = async (deps: DispatchDeps, event: OutboxEvent): Promise<Prepared
     const delivery = await deps.emailDeliveryRepository.lockByOutboxEventId(tx, event.id)
 
     if (delivery === null || delivery.recipient_ciphertext === null || delivery.recipient_nonce === null) {
-      // No sendable delivery for this event: release it terminally so it is not
-      // reclaimed. This is a structural no-op, not a delivery.
+      if (await deps.outboxRepository.cancelUnsent(tx, { ...claim, now })) {
+        return { kind: delivery === null ? "skipped" : "cancelled" }
+      }
       const owned = await deps.outboxRepository.cancel(tx, { ...claim, now })
       return { kind: owned ? "skipped" : "superseded" }
     }
@@ -105,6 +134,12 @@ const prepare = async (deps: DispatchDeps, event: OutboxEvent): Promise<Prepared
       return { kind: "cancelled" }
     }
 
+    const verdict = await verdictFor(deps, tx, { event, delivery, now })
+    if (verdict.kind === "cancel") {
+      const cancelled = await deps.outboxRepository.cancelUnsent(tx, { ...claim, now })
+      return { kind: cancelled ? "cancelled" : "superseded" }
+    }
+
     const started = await deps.outboxRepository.markSending(tx, { ...claim, workerId: deps.config.workerId, now })
     if (!started) return { kind: "superseded" }
     await deps.emailDeliveryRepository.transitionSending(tx, { deliveryId: delivery.id, now })
@@ -112,10 +147,15 @@ const prepare = async (deps: DispatchDeps, event: OutboxEvent): Promise<Prepared
     const sealed = await openSealedPayload(deps, tx, event, delivery.id)
     if (sealed.kind === "failed") return { kind: "unsendable", deliveryId: delivery.id, errorCode: sealed.errorCode }
 
+    const recipient = openRecipient(deps.crypto, delivery.recipient_ciphertext, delivery.recipient_nonce)
+    if (recipient === null) {
+      return { kind: "unsendable", deliveryId: delivery.id, errorCode: RECIPIENT_UNREADABLE_ERROR_CODE }
+    }
+
     return {
       kind: "ready",
       deliveryId: delivery.id,
-      recipient: deps.crypto.decryptRecipient(delivery.recipient_ciphertext, delivery.recipient_nonce),
+      recipient,
       templateKey: delivery.template_key,
       templateVersion: delivery.template_version,
       configurationSet: delivery.ses_configuration_set,

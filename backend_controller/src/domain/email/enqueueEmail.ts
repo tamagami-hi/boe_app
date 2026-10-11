@@ -1,6 +1,9 @@
 import type { CryptoContext, DeliveryPayload } from "../../crypto/context.js"
 import type { EmailDelivery, OutboxEvent, Transaction } from "../../db/repositories.js"
-import type { EmailDeliveryWriteRepository } from "../../repositories/emailDeliveryRepository.js"
+import type {
+  EmailDeliveryWriteRepository,
+  PasswordMailTemplateKey,
+} from "../../repositories/emailDeliveryRepository.js"
 import type { EnqueueOutboxInput, OutboxWriteRepository } from "../../repositories/outboxRepository.js"
 import { EMAIL_TOPIC, SEALED_EMAIL_TOPIC } from "./emailTopics.js"
 
@@ -13,6 +16,7 @@ export interface EnqueueEmailDeps {
 export type EmailTemplateSubject =
   | { readonly templateKey: "account_approved"; readonly userId: string; readonly applicationId: string }
   | { readonly templateKey: "application_rejected"; readonly applicationId: string }
+  | { readonly templateKey: PasswordMailTemplateKey; readonly userId: string }
 
 export interface EnqueueEmailInput extends Omit<EnqueueOutboxInput, "topic"> {
   readonly recipient: string
@@ -25,6 +29,47 @@ export interface EnqueueEmailInput extends Omit<EnqueueOutboxInput, "topic"> {
 export interface EnqueuedEmail {
   readonly outbox: OutboxEvent
   readonly delivery: EmailDelivery
+}
+
+interface RecipientEvidence {
+  readonly outboxEventId: string
+  readonly recipientCiphertext: Buffer
+  readonly recipientNonce: Buffer
+  readonly recipientHmac: Buffer
+  readonly recipientMasked: string
+  readonly recipientEncryptionKeyVersion: string
+  readonly suppressionHmacKeyVersion: string
+  readonly sesConfigurationSet: string
+  readonly templateVersion: string
+}
+
+const createDelivery = (
+  tx: Transaction,
+  deps: EnqueueEmailDeps,
+  template: EmailTemplateSubject,
+  evidence: RecipientEvidence,
+): Promise<EmailDelivery> => {
+  switch (template.templateKey) {
+    case "account_approved":
+      return deps.emailDeliveryRepository.createAccountApprovedDelivery(tx, {
+        userId: template.userId,
+        applicationId: template.applicationId,
+        ...evidence,
+      })
+    case "application_rejected":
+      return deps.emailDeliveryRepository.createRejectionDelivery(tx, {
+        applicationId: template.applicationId,
+        ...evidence,
+      })
+    case "password_set_link":
+    case "password_reset_link":
+    case "password_app_download":
+      return deps.emailDeliveryRepository.createPasswordMailDelivery(tx, {
+        templateKey: template.templateKey,
+        userId: template.userId,
+        ...evidence,
+      })
+  }
 }
 
 export const enqueueEmail = async (
@@ -44,7 +89,7 @@ export const enqueueEmail = async (
   })
 
   const envelope = deps.crypto.encryptRecipient(input.recipient)
-  const recipientEvidence = {
+  const delivery = await createDelivery(tx, deps, input.template, {
     outboxEventId: outbox.id,
     recipientCiphertext: envelope.ciphertext,
     recipientNonce: envelope.nonce,
@@ -54,19 +99,7 @@ export const enqueueEmail = async (
     suppressionHmacKeyVersion: deps.crypto.suppressionHmacKeyVersion,
     sesConfigurationSet: input.sesConfigurationSet,
     templateVersion: input.templateVersion,
-  }
-  const { template } = input
-  const delivery =
-    template.templateKey === "account_approved"
-      ? await deps.emailDeliveryRepository.createAccountApprovedDelivery(tx, {
-          userId: template.userId,
-          applicationId: template.applicationId,
-          ...recipientEvidence,
-        })
-      : await deps.emailDeliveryRepository.createRejectionDelivery(tx, {
-          applicationId: template.applicationId,
-          ...recipientEvidence,
-        })
+  })
 
   if (input.sealedPayload !== undefined) {
     const sealed = deps.crypto.encryptDeliveryPayload(delivery.id, input.sealedPayload)

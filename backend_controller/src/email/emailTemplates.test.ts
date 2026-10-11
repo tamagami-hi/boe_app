@@ -91,6 +91,64 @@ describe("renderEmailTemplate", () => {
   })
 })
 
+describe("queued password mail", () => {
+  const LINK = "https://app.beonedge.example/reset-password?token=SECRETTOKEN123"
+  const queued = { link: LINK, validForMs: 600_000 }
+
+  test("renders the set and reset links with their own wording and the sealed link in both bodies", () => {
+    const set = renderEmailTemplate("password_set_link", "v1", queued, CONFIG)
+    const reset = renderEmailTemplate("password_reset_link", "v1", queued, CONFIG)
+
+    if (set.kind !== "rendered" || reset.kind !== "rendered") throw new Error("expected rendered emails")
+    expect(set.email.subject).toBe(passwordInviteEmail({ link: LINK, validForMs: 600_000 }, CONFIG).subject)
+    expect(reset.email.subject).toBe(passwordResetEmail({ link: LINK, validForMs: 600_000 }, CONFIG).subject)
+    expect(set.email.subject).not.toBe(reset.email.subject)
+    for (const rendered of [set, reset]) {
+      expect(rendered.email.text).toContain(LINK)
+      expect(rendered.email.html).toContain(LINK)
+      expect(rendered.email.text).toContain("expires in 10 minutes")
+      expect(rendered.email.subject).not.toContain("SECRETTOKEN123")
+    }
+  })
+
+  test("renders the app download mail from the plain payload", () => {
+    const result = renderEmailTemplate("password_app_download", "v1", { downloadUrl: APK_URL }, CONFIG)
+
+    if (result.kind !== "rendered") throw new Error("expected a rendered email")
+    expect(result.email.subject).toBe(appDownloadEmail(APK_URL, CONFIG).subject)
+    expect(result.email.text).toContain(APK_URL)
+  })
+
+  test.each([
+    ["password_set_link", { validForMs: 600_000 }],
+    ["password_set_link", { link: LINK }],
+    ["password_set_link", { link: LINK, validForMs: 0 }],
+    ["password_set_link", { link: LINK, validForMs: "600000" }],
+    ["password_reset_link", { link: "", validForMs: 600_000 }],
+    ["password_app_download", {}],
+  ] as const)("%s with unusable data is refused permanently and renders nothing", (templateKey, data) => {
+    expect(renderEmailTemplate(templateKey, "v1", data, CONFIG)).toEqual({
+      kind: "unrenderable",
+      errorCode: "EMAIL_TEMPLATE_DATA_INVALID",
+    })
+  })
+
+  test("a queued link whose address is not http or https is refused", () => {
+    expect(
+      renderEmailTemplate("password_reset_link", "v1", { link: "javascript:alert(1)", validForMs: 600_000 }, CONFIG),
+    ).toEqual({ kind: "unrenderable", errorCode: "EMAIL_ACTION_URL_INVALID" })
+  })
+
+  test("a version the key was never recorded with is refused", () => {
+    for (const key of ["password_set_link", "password_reset_link", "password_app_download"] as const) {
+      expect(renderEmailTemplate(key, "v2", { ...queued, downloadUrl: APK_URL }, CONFIG)).toEqual({
+        kind: "unrenderable",
+        errorCode: "TEMPLATE_VERSION_UNSUPPORTED",
+      })
+    }
+  })
+})
+
 describe("emailVerificationCodeEmail", () => {
   const CODE = "aB3dE9"
 

@@ -13,7 +13,7 @@ import type { CryptoContext } from "../../src/crypto/context.js"
 import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import type { UnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
-import { dispatchDueDeliveries } from "../../src/domain/email/dispatchDueDeliveries.js"
+import { dispatchDueDeliveries, type SendGuard } from "../../src/domain/email/dispatchDueDeliveries.js"
 import type { SesEmailSender, SesSendResult } from "../../src/email/ports.js"
 import { createTransactionalEmailSender } from "../../src/email/transactionalEmailSender.js"
 import { buildCanonicalMessage } from "../../src/email/snsProvenance.js"
@@ -170,6 +170,7 @@ const workerDeps = (sender: SesEmailSender) => ({
   emailSuppressionRepository,
   sender,
   crypto,
+  sendGuards: new Map<string, SendGuard>(),
   clock: () => new Date(),
   config: {
     topics: ["email"],

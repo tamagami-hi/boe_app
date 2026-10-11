@@ -12,7 +12,7 @@ import type { CryptoContext } from "../../src/crypto/context.js"
 import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import type { UnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
-import { dispatchDueDeliveries } from "../../src/domain/email/dispatchDueDeliveries.js"
+import { dispatchDueDeliveries, type SendGuard } from "../../src/domain/email/dispatchDueDeliveries.js"
 import { CLAIMED_EMAIL_TOPICS, SEALED_EMAIL_TOPIC } from "../../src/domain/email/emailTopics.js"
 import { enqueueEmail } from "../../src/domain/email/enqueueEmail.js"
 import type { SesEmailSender, SesSendRequest } from "../../src/email/ports.js"
@@ -307,6 +307,7 @@ const dispatchBothTopics = (sender: SesEmailSender, now: () => Date) =>
     emailSuppressionRepository,
     sender,
     crypto,
+    sendGuards: new Map<string, SendGuard>(),
     clock: now,
     config: {
       topics: CLAIMED_EMAIL_TOPICS,

@@ -1,5 +1,3 @@
-import { setTimeout as delay } from "node:timers/promises"
-
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify"
 import { z } from "zod"
 
@@ -9,31 +7,29 @@ import type { UnitOfWork } from "../db/database.js"
 import { resolveClientPrincipal, type ClientRequestAuthDeps } from "../domain/auth/clientWebAuth.js"
 import {
   changePassword,
-  issuePasswordToken,
   redeemPasswordToken,
-  type PasswordCredentialConfig,
-  type PasswordCredentialDeps,
+  type RedeemPasswordTokenOutcome,
 } from "../domain/auth/passwordCredential.js"
-import { latestPublishedApkUrl, type ReleaseFeed } from "../release/releaseFeed.js"
-import type { EmailSender } from "../email/emailSender.js"
 import {
-  appDownloadEmail,
-  passwordInviteEmail,
-  passwordResetEmail,
-  type EmailTemplateConfig,
-} from "../email/emailTemplates.js"
+  issuePasswordLinkMail,
+  queueAppDownloadMail,
+  type AppDownloadMailOutcome,
+  type PasswordLinkMailConfig,
+  type PasswordLinkMailDeps,
+} from "../domain/auth/passwordLinkMail.js"
+import { describePasswordLinkProblem, resolvePasswordLinkBase } from "../domain/auth/passwordLinkUrl.js"
+import { latestPublishedApkUrl, type ReleaseFeed } from "../release/releaseFeed.js"
 import { AppError } from "../http/errorCatalog.js"
 import { parseOrThrow } from "../http/validation.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
 import type { AuthSessionWriteRepository } from "../repositories/authSessionRepository.js"
 import type { CredentialWriteRepository } from "../repositories/credentialRepository.js"
+import type { EmailDeliveryWriteRepository } from "../repositories/emailDeliveryRepository.js"
+import type { OutboxWriteRepository } from "../repositories/outboxRepository.js"
 import type { PasswordTokenRepository } from "../repositories/passwordTokenRepository.js"
 import type { UserWriteRepository } from "../repositories/userRepository.js"
 
-export interface PasswordRoutesConfig extends PasswordCredentialConfig {
-  readonly resetUrlBase: string | null
-  readonly supportAddress: string | null
-}
+export type PasswordRoutesConfig = PasswordLinkMailConfig
 
 export interface PasswordRoutesDeps extends ClientRequestAuthDeps {
   readonly appUpdate: ReleaseFeed
@@ -45,7 +41,8 @@ export interface PasswordRoutesDeps extends ClientRequestAuthDeps {
   readonly authSessionRepository: AuthSessionWriteRepository
   readonly userRepository: UserWriteRepository
   readonly auditRepository: AuditWriteRepository
-  readonly emailSender: EmailSender
+  readonly outboxRepository: OutboxWriteRepository
+  readonly emailDeliveryRepository: EmailDeliveryWriteRepository
   readonly config: PasswordRoutesConfig
 }
 
@@ -59,120 +56,113 @@ const changeBodySchema = z
   .object({ currentPassword: passwordInputSchema, newPassword: passwordInputSchema })
   .strict()
 
-const domainDeps = (deps: PasswordRoutesDeps): PasswordCredentialDeps => ({
+const domainDeps = (deps: PasswordRoutesDeps): PasswordLinkMailDeps => ({
   passwordTokenRepository: deps.passwordTokenRepository,
   credentialRepository: deps.credentialRepository,
   authSessionRepository: deps.authSessionRepository,
   userRepository: deps.userRepository,
   auditRepository: deps.auditRepository,
+  outboxRepository: deps.outboxRepository,
+  emailDeliveryRepository: deps.emailDeliveryRepository,
   crypto: deps.crypto,
   clock: deps.clock,
   config: deps.config,
 })
 
-export const PASSWORD_RESET_PATH = "/reset-password"
-
-export const passwordResetUrlBase = (originAllowlist: readonly string[]): string | null => {
-  const origin = originAllowlist[0]
-  return origin === undefined ? null : `${origin.replace(/\/+$/u, "")}${PASSWORD_RESET_PATH}`
-}
-
-export const buildPasswordResetLink = (base: string | null, rawToken: string): string | null => {
-  if (base === null) return null
-  const url = new URL(base)
-  url.searchParams.set("token", rawToken)
-  return url.toString()
-}
-
-const templateConfig = (deps: Pick<PasswordRoutesDeps, "config">): EmailTemplateConfig => ({
-  supportAddress: deps.config.supportAddress,
-})
-
 const forgot = async (deps: PasswordRoutesDeps, request: FastifyRequest, reply: FastifyReply) => {
   const body = parseOrThrow(forgotBodySchema, request.body)
   const emailNormalized = body.email.toLowerCase()
+  const linkBase = resolvePasswordLinkBase(deps.config.passwordLinks)
 
-  const issued = await deps.unitOfWork.execute(async (tx) => {
-    const identity = await deps.userRepository.findLoginIdentityByEmail(tx, emailNormalized)
-    if (identity === null) return null
-    try {
-      return await issuePasswordToken(tx, domainDeps(deps), {
-        userId: identity.user.id,
-        requestId: request.requestId,
-        requester: { kind: "user", userId: identity.user.id },
-      })
-    } catch (error) {
-      if (error instanceof AppError && (error.code === "RATE_LIMITED" || error.code === "ACCOUNT_NOT_ACTIVE")) {
-        return null
-      }
-      throw error
-    }
-  })
-
-  if (issued === null) {
-    await verifyDummyPassword(emailNormalized)
+  if (linkBase.kind === "unusable") {
+    request.log.error(
+      { requestId: request.requestId },
+      `password reset requested but ${describePasswordLinkProblem(linkBase.problem)}; no link was issued`,
+    )
   } else {
-    const link = buildPasswordResetLink(deps.config.resetUrlBase, issued.rawToken)
-    if (link === null) {
-      request.log.error(
-        { requestId: request.requestId },
-        "password reset requested but no client web origin is configured",
-      )
-    } else {
+    await deps.unitOfWork.execute(async (tx) => {
+      const identity = await deps.userRepository.findLoginIdentityByEmail(tx, emailNormalized)
+      if (identity === null) return
       try {
-        await deps.emailSender.send({
-          to: issued.email,
-          ...passwordResetEmail({ link, validForMs: deps.config.tokenTtlMs }, templateConfig(deps)),
+        await issuePasswordLinkMail(tx, domainDeps(deps), {
+          userId: identity.user.id,
+          requestId: request.requestId,
+          requester: { kind: "user", userId: identity.user.id },
+          linkBase: linkBase.base,
         })
-      } catch {
-        request.log.error({ requestId: request.requestId }, "password reset mail could not be sent")
+      } catch (error) {
+        if (error instanceof AppError && (error.code === "RATE_LIMITED" || error.code === "ACCOUNT_NOT_ACTIVE")) {
+          return
+        }
+        throw error
       }
-    }
+    })
   }
 
+  await verifyDummyPassword(emailNormalized)
   return reply.sendData({ status: "accepted" }, { status: 202 })
 }
 
-const DOWNLOAD_EMAIL_WAIT_MS = 5_000
+type DownloadLookup =
+  | { readonly kind: "found"; readonly url: string }
+  | { readonly kind: "none" }
+  | { readonly kind: "failed" }
 
-const sendResetDownload = async (deps: PasswordRoutesDeps, request: FastifyRequest, email: string) => {
-  let downloadUrl: string | null = null
+const lookupDownload = async (deps: PasswordRoutesDeps): Promise<DownloadLookup> => {
   try {
-    downloadUrl = await latestPublishedApkUrl(deps.appUpdate, "client")
-    if (downloadUrl === null) {
-      request.log.warn({ requestId: request.requestId }, "password set but no published client APK is available")
-      return { downloadEmailStatus: "unavailable" as const, downloadUrl }
-    }
-    const controller = new AbortController()
-    const accepted = await Promise.race([deps.emailSender.send({
-      to: email,
-      ...appDownloadEmail(downloadUrl, templateConfig(deps)),
-    }).then(() => true), delay(DOWNLOAD_EMAIL_WAIT_MS, false, { signal: controller.signal })])
-      .finally(() => { controller.abort() })
-    if (!accepted) {
-      request.log.warn({ requestId: request.requestId }, "password set; app download email confirmation timed out")
-      return { downloadEmailStatus: "unconfirmed" as const, downloadUrl }
-    }
-    return { downloadEmailStatus: "sent" as const, downloadUrl }
+    const url = await latestPublishedApkUrl(deps.appUpdate, "client")
+    return url === null ? { kind: "none" } : { kind: "found", url }
   } catch {
-    request.log.error({ requestId: request.requestId }, "password set but app download email could not be sent")
-    return { downloadEmailStatus: "unconfirmed" as const, downloadUrl }
+    return { kind: "failed" }
   }
+}
+
+interface Redemption {
+  readonly outcome: RedeemPasswordTokenOutcome
+  readonly download: DownloadLookup
+  readonly mail: AppDownloadMailOutcome | null
+}
+
+const redeem = (deps: PasswordRoutesDeps, request: FastifyRequest, body: z.infer<typeof resetBodySchema>) =>
+  deps.unitOfWork.execute(async (tx): Promise<Redemption> => {
+    const outcome = await redeemPasswordToken(tx, domainDeps(deps), {
+      rawToken: body.token,
+      newPassword: body.newPassword,
+      requestId: request.requestId,
+    })
+    if (outcome.kind !== "redeemed") return { outcome, download: { kind: "none" }, mail: null }
+
+    const download = await lookupDownload(deps)
+    if (download.kind !== "found") return { outcome, download, mail: null }
+    const mail = await queueAppDownloadMail(tx, domainDeps(deps), {
+      tokenId: outcome.tokenId,
+      userId: outcome.userId,
+      email: outcome.email,
+      downloadUrl: download.url,
+      requestId: request.requestId,
+    })
+    return { outcome, download, mail }
+  })
+
+const downloadReport = (download: DownloadLookup) => {
+  if (download.kind === "found") return { downloadEmailStatus: "unconfirmed" as const, downloadUrl: download.url }
+  if (download.kind === "none") return { downloadEmailStatus: "unavailable" as const, downloadUrl: null }
+  return { downloadEmailStatus: "unconfirmed" as const, downloadUrl: null }
 }
 
 const reset = async (deps: PasswordRoutesDeps, request: FastifyRequest, reply: FastifyReply) => {
   const body = parseOrThrow(resetBodySchema, request.body)
-  const outcome = await deps.unitOfWork.execute((tx) =>
-    redeemPasswordToken(tx, domainDeps(deps), {
-      rawToken: body.token,
-      newPassword: body.newPassword,
-      requestId: request.requestId,
-    }),
-  )
+  const { outcome, download, mail } = await redeem(deps, request, body)
 
   if (outcome.kind !== "redeemed") throw new AppError("INVALID_CREDENTIALS")
-  const download = await sendResetDownload(deps, request, outcome.email)
-  return reply.sendData({ status: "password_set", ...download }, { status: 200 })
+  if (download.kind === "none") {
+    request.log.warn({ requestId: request.requestId }, "password set but no published client APK is available")
+  } else if (download.kind === "failed") {
+    request.log.error({ requestId: request.requestId }, "password set but the app download link could not be resolved")
+  } else if (mail?.kind === "failed") {
+    request.log.error({ requestId: request.requestId }, "password set but the app download email could not be queued")
+  }
+  return reply.sendData({ status: "password_set", ...downloadReport(download) }, { status: 200 })
 }
 
 const change = async (deps: PasswordRoutesDeps, request: FastifyRequest, reply: FastifyReply) => {
@@ -189,18 +179,6 @@ const change = async (deps: PasswordRoutesDeps, request: FastifyRequest, reply: 
 
   if (outcome.kind !== "changed") throw new AppError("INVALID_CREDENTIALS")
   return reply.sendData({ status: "password_set" }, { status: 200 })
-}
-
-export const sendPasswordInvite = async (
-  deps: Pick<PasswordRoutesDeps, "emailSender" | "config">,
-  issued: Readonly<{ email: string; rawToken: string }>,
-): Promise<void> => {
-  const link = buildPasswordResetLink(deps.config.resetUrlBase, issued.rawToken)
-  if (link === null) return
-  await deps.emailSender.send({
-    to: issued.email,
-    ...passwordInviteEmail({ link, validForMs: deps.config.tokenTtlMs }, templateConfig(deps)),
-  })
 }
 
 export const registerPasswordRoutes = (

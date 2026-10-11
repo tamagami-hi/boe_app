@@ -5,6 +5,7 @@ import {
   type DispatchSummary,
 } from "../domain/email/dispatchDueDeliveries.js"
 import { CLAIMED_EMAIL_TOPICS } from "../domain/email/emailTopics.js"
+import { createPasswordLinkMailGuard } from "../domain/email/passwordLinkMailGuard.js"
 import { createTransactionalEmailSender } from "../email/transactionalEmailSender.js"
 import { deriveEmailSendTiming, EMAIL_PASS_BUDGET_MS } from "../email/sendTiming.js"
 import { createDatabase, createUnitOfWork } from "../db/database.js"
@@ -44,6 +45,7 @@ import { createEmailDeliveryRepository } from "../repositories/emailDeliveryRepo
 import { createEmailSuppressionRepository } from "../repositories/emailSuppressionRepository.js"
 import { createMandatesRepository } from "../repositories/mandatesRepository.js"
 import { createOutboxRepository } from "../repositories/outboxRepository.js"
+import { createPasswordTokenRepository } from "../repositories/passwordTokenRepository.js"
 import { createUserRepository } from "../repositories/userRepository.js"
 import { createSipPlanRepository } from "../repositories/sipPlanRepository.js"
 import { parseServerConfig } from "./environment.js"
@@ -72,6 +74,8 @@ export const composeEmailDispatchWorker = (
       ? createSmtpEmailSender({ ...serverConfig.email.smtp, fromAddress, timeouts: timing.smtp })
       : createUnconfiguredEmailSender()
 
+  const passwordLinkGuard = createPasswordLinkMailGuard({ passwordTokenRepository: createPasswordTokenRepository() })
+
   const deps = {
     unitOfWork,
     outboxRepository: createOutboxRepository(),
@@ -79,6 +83,10 @@ export const composeEmailDispatchWorker = (
     emailSuppressionRepository: createEmailSuppressionRepository(),
     sender: createTransactionalEmailSender({ sender: transport, templates: serverConfig.email.links }),
     crypto,
+    sendGuards: new Map([
+      ["password_set_link", passwordLinkGuard],
+      ["password_reset_link", passwordLinkGuard],
+    ]),
     clock: (): Date => new Date(),
     config: {
       topics: CLAIMED_EMAIL_TOPICS,

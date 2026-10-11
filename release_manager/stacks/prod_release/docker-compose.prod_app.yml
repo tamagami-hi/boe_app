@@ -145,6 +145,7 @@ x-backend-env: &backend-env
   EMAIL_VERIFICATION_RESEND_COOLDOWN_MS: ${EMAIL_VERIFICATION_RESEND_COOLDOWN_MS:-60000}
 
   SUPPORT_EMAIL: ${SUPPORT_EMAIL}
+  CLIENT_PASSWORD_LINK_URL: ${CLIENT_PASSWORD_LINK_URL:-}
 
   # The only credential on POST /newuser. The marketing site (beonedge.in, on
   # AWS) is a standalone project that reaches this backend server-to-server, so

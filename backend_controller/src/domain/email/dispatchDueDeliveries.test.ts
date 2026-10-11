@@ -9,7 +9,12 @@ import type { SesEmailSender, SesSendResult } from "../../email/ports.js"
 import { MAX_ATTEMPTS } from "../../email/retrySchedule.js"
 import type { EmailDeliveryWriteRepository } from "../../repositories/emailDeliveryRepository.js"
 import type { OutboxClaim, OutboxWriteRepository } from "../../repositories/outboxRepository.js"
-import { dispatchDueDeliveries, type DispatchConfig, type DispatchDeps } from "./dispatchDueDeliveries.js"
+import {
+  dispatchDueDeliveries,
+  type DispatchConfig,
+  type DispatchDeps,
+  type SendGuard,
+} from "./dispatchDueDeliveries.js"
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] }
 type OutboxRow = Mutable<OutboxEvent>
@@ -329,6 +334,7 @@ const outboxModel = (world: World): OutboxWriteRepository => {
 const deliveryModel = (world: World): EmailDeliveryWriteRepository => ({
   createAccountApprovedDelivery: vi.fn(),
   createRejectionDelivery: vi.fn(),
+  createPasswordMailDelivery: vi.fn(),
   insertSealedPayload: vi.fn(),
   findSealedPayload: vi.fn(),
   adminList: vi.fn(),
@@ -383,6 +389,7 @@ const depsFor = (
   emailSuppressionRepository: { findActive: async () => null, suppress: vi.fn() },
   sender,
   crypto,
+  sendGuards: new Map<string, SendGuard>(),
   clock: world.clock,
   config: {
     topics: ["email"],

@@ -22,7 +22,6 @@ import {
   registerAdminClientPositionRoutes,
   type AdminClientPositionDeps,
 } from "./adminClientPositionRoutes.js"
-import { sendPasswordInvite } from "./passwordRoutes.js"
 
 vi.mock("../domain/admin/adminAccess.js", () => ({
   resolveAdminPrincipal: vi.fn(),
@@ -31,7 +30,6 @@ vi.mock("../domain/admin/adminAccess.js", () => ({
 vi.mock("../domain/admin/createClientAccount.js", () => ({ createClientAccount: vi.fn() }))
 vi.mock("../domain/admin/recordContribution.js", () => ({ recordContribution: vi.fn() }))
 vi.mock("../domain/admin/reverseLedgerEntry.js", () => ({ reverseLedgerEntry: vi.fn() }))
-vi.mock("./passwordRoutes.js", () => ({ sendPasswordInvite: vi.fn() }))
 
 interface StoredReceipt {
   readonly requestHash: Uint8Array
@@ -110,7 +108,6 @@ const REVERSAL_ENTRY_ID = "c9d3e7f1-6a28-4b50-8e4c-1f7a2b9d3c68"
 const AUM_SNAPSHOT_ID = "d1f4a8c2-7b39-4e65-8a0d-3c5e9b7f2a14"
 const GROWN_SNAPSHOT_ID = "e2a5b9d3-8c4a-4f76-9b1e-4d6f0c8a3b25"
 const GROWTH_BATCH_ID = "f3b6c0e4-9d5b-4a87-8c2f-5e7a1d9b4c36"
-const INVITE_TOKEN = "invite-secret-token-9d41"
 
 const CREATE_CLIENT = {
   url: "/v1/admin/clients",
@@ -157,8 +154,7 @@ const buildApp = (): FastifyInstance =>
         idempotencyRepository: repository,
         clock,
         webAuth: {},
-        emailSender: { send: vi.fn() },
-        config: { idempotencyTtlMs: WINDOW_MS, resetUrlBase: null, supportAddress: null },
+        config: { idempotencyTtlMs: WINDOW_MS },
       } as unknown as AdminClientOnboardingDeps)
       registerAdminClientPositionRoutes(instance, {
         unitOfWork,
@@ -200,12 +196,12 @@ beforeEach(() => {
   >)
   vi.mocked(createClientAccount).mockResolvedValue({
     userId: CLIENT_ID,
-    invite: {
+    passwordLink: {
       userId: CLIENT_ID,
-      email: CREATE_CLIENT.payload.email,
-      rawToken: INVITE_TOKEN,
-      expiresAt: new Date(T0 + 7 * DAY_MS),
+      tokenId: "a3c7e1f5-6b29-4d84-9e03-2f8b4a6c1d57",
       purpose: "set",
+      expiresAt: new Date(T0 + 7 * DAY_MS),
+      deliveryId: "b4d8f2a6-7c30-4e95-8f14-3a9c5b7d2e68",
     },
   })
   vi.mocked(recordContribution).mockResolvedValue({
@@ -329,15 +325,18 @@ describe.each([
 })
 
 describe("client creation receipt contents", () => {
-  test("keeps the invite token out of the stored receipt and never re-sends the invite on replay", async () => {
+  test("stores exactly the response the released admin clients parse, and a replay queues no second invite", async () => {
     const first = await post(CREATE_CLIENT, CREATE_CLIENT.payload)
     expect(first.envelope.data).toEqual({ userId: CLIENT_ID, accountState: "active", emailVerification: "pending" })
 
     nowMs = T0 + JUST_PAST_WINDOW_MS
-    await post(CREATE_CLIENT, CREATE_CLIENT.payload)
+    const replay = await post(CREATE_CLIENT, CREATE_CLIENT.payload)
 
-    expect(sendPasswordInvite).toHaveBeenCalledTimes(1)
-    expect(JSON.stringify([...repository.receipts.values()])).not.toContain(INVITE_TOKEN)
+    expect(replay.envelope.data).toEqual(first.envelope.data)
+    expect(createClientAccount).toHaveBeenCalledTimes(1)
+    expect([...repository.receipts.values()].map((receipt) => receipt.body)).toEqual([
+      { userId: CLIENT_ID, accountState: "active", emailVerification: "pending" },
+    ])
   })
 })
 

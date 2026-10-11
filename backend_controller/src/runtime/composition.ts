@@ -67,7 +67,7 @@ import { createClientPositionRepository } from "../repositories/clientPositionRe
 import { registerAdminClientPositionRoutes } from "../routes/adminClientPositionRoutes.js"
 import { registerClientAccountRoutes } from "../routes/clientAccountRoutes.js"
 import { registerClientEmailVerificationRoutes } from "../routes/clientEmailVerificationRoutes.js"
-import { passwordResetUrlBase, registerPasswordRoutes } from "../routes/passwordRoutes.js"
+import { registerPasswordRoutes } from "../routes/passwordRoutes.js"
 import { registerAdminClientOnboardingRoutes } from "../routes/adminClientOnboardingRoutes.js"
 import { createPasswordTokenRepository } from "../repositories/passwordTokenRepository.js"
 import { registerClientOrderRoutes } from "../routes/clientOrderRoutes.js"
@@ -371,13 +371,14 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       authSessionRepository,
       userRepository,
       auditRepository,
-      emailSender,
+      outboxRepository,
+      emailDeliveryRepository,
       config: {
         tokenTtlMs: serverConfig.emailVerification.codeTtlMs,
         maxAttempts: serverConfig.emailVerification.maxAttempts,
         requestCooldownMs: serverConfig.emailVerification.resendCooldownMs,
-        resetUrlBase: passwordResetUrlBase(serverConfig.web.originAllowlist),
-        supportAddress: serverConfig.email.links.supportAddress,
+        passwordLinks: serverConfig.passwordLinks,
+        sesConfigurationSet: serverConfig.sesConfigurationSet,
       },
     })
 
@@ -394,13 +395,14 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       authSessionRepository,
       userRepository,
       auditRepository,
-      emailSender,
+      outboxRepository,
+      emailDeliveryRepository,
       config: {
         tokenTtlMs: serverConfig.emailVerification.codeTtlMs,
         maxAttempts: serverConfig.emailVerification.maxAttempts,
         requestCooldownMs: serverConfig.emailVerification.resendCooldownMs,
-        resetUrlBase: passwordResetUrlBase(serverConfig.web.originAllowlist),
-        supportAddress: serverConfig.email.links.supportAddress,
+        passwordLinks: serverConfig.passwordLinks,
+        sesConfigurationSet: serverConfig.sesConfigurationSet,
         idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
       },
     })
