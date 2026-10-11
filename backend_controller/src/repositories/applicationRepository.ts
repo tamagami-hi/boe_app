@@ -72,6 +72,12 @@ export interface IdentityInput {
   readonly phoneE164: string
 }
 
+export interface ContactProbe {
+  readonly emailNormalized?: string
+  readonly phoneE164?: string
+  readonly excludeUserId?: string
+}
+
 /**
  * Which submitted identifier(s) the found row shares. Pure; used only to describe
  * a discarded submission in the audit trail, never to decide anything.
@@ -85,6 +91,7 @@ const matchOf = (input: IdentityInput, email: string, phone: string): ConflictMa
 
 export interface ApplicationWriteRepository {
   findActiveConflict: (tx: Transaction, input: IdentityInput) => Promise<ActiveConflict | null>
+  findContactOwner: (tx: Transaction, probe: ContactProbe) => Promise<ConflictMatch | null>
   /**
    * How many times this identity has already been through a terminal decision.
    *
@@ -153,7 +160,7 @@ export const createApplicationRepository = (): ApplicationWriteRepository => ({
           eb("phone_e164", "=", input.phoneE164),
         ]),
       )
-      .where("state", "not in", ["rejected", "withdrawn"])
+      .where("state", "=", "submitted")
       .orderBy(sql`case when email_normalized = ${input.emailNormalized} then 0 else 1 end`, "asc")
       .limit(1)
       .executeTakeFirst()
@@ -164,6 +171,34 @@ export const createApplicationRepository = (): ApplicationWriteRepository => ({
       application,
       matchedOn: matchOf(input, application.email_normalized, application.phone_e164),
     }
+  },
+
+  findContactOwner: async (tx, probe) => {
+    const email = probe.emailNormalized ?? null
+    const phone = probe.phoneE164 ?? null
+    if (email === null && phone === null) return null
+    const exclude = probe.excludeUserId ?? null
+    const owner =
+      (
+        await sql<{ email_normalized: string; phone_e164: string }>`
+          select email_normalized, phone_e164 from users
+          where (email_normalized = ${email} or phone_e164 = ${phone})
+            and (${exclude}::uuid is null or id <> ${exclude}::uuid)
+          limit 1
+        `.execute(tx)
+      ).rows[0] ??
+      (
+        await sql<{ email_normalized: string; phone_e164: string }>`
+          select email_normalized, phone_e164 from applications
+          where state = 'submitted' and (email_normalized = ${email} or phone_e164 = ${phone})
+          limit 1
+        `.execute(tx)
+      ).rows[0]
+    if (owner === undefined) return null
+    const byEmail = email !== null && owner.email_normalized === email
+    const byPhone = phone !== null && owner.phone_e164 === phone
+    if (byEmail && byPhone) return "both"
+    return byEmail ? "email" : "phone"
   },
 
   /*

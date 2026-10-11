@@ -23,6 +23,7 @@ import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
 import { runSeed } from "../../src/scripts/seed.js"
 
 import type { CryptoContext } from "../../src/crypto/context.js"
+import { createIdentityLockRepository } from "../../src/repositories/identityLockRepository.js"
 
 let container: StartedPostgreSqlContainer
 let pool: Pool
@@ -101,6 +102,7 @@ beforeAll(async () => {
           signupSharedSecret: SIGNUP_SECRET,
         },
         applicationRepository: createApplicationRepository(),
+        identityLockRepository: createIdentityLockRepository(),
         consentRepository: createConsentRepository(),
         auditRepository: createAuditRepository(),
         idempotencyRepository: createIdempotencyRepository(),

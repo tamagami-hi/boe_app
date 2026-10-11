@@ -8,6 +8,7 @@ import { createDatabase, createUnitOfWork } from "../db/database.js"
 import { parseDatabaseConfig } from "../db/config.js"
 import { createPool } from "../db/pool.js"
 import { createCertificateFetcher } from "../email/certificateFetcher.js"
+import { createIdentityLockRepository } from "../repositories/identityLockRepository.js"
 import { createApplicationRepository } from "../repositories/applicationRepository.js"
 import { createClientCatalogRepository } from "../repositories/clientCatalogRepository.js"
 import { createClientPortfolioRepository } from "../repositories/clientPortfolioRepository.js"
@@ -67,6 +68,7 @@ import { createClientPositionRepository } from "../repositories/clientPositionRe
 import { registerAdminClientPositionRoutes } from "../routes/adminClientPositionRoutes.js"
 import { registerClientAccountRoutes } from "../routes/clientAccountRoutes.js"
 import { registerClientEmailVerificationRoutes } from "../routes/clientEmailVerificationRoutes.js"
+import { registerClientProfileRoutes } from "../routes/clientProfileRoutes.js"
 import { registerPasswordRoutes } from "../routes/passwordRoutes.js"
 import { registerAdminClientOnboardingRoutes } from "../routes/adminClientOnboardingRoutes.js"
 import { createPasswordTokenRepository } from "../repositories/passwordTokenRepository.js"
@@ -163,6 +165,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       : createRelayRecurringGateway({ config: serverConfig.payments.relay })
 
   const applicationRepository = createApplicationRepository()
+  const identityLockRepository = createIdentityLockRepository()
   const applicationReviewRepository = createApplicationReviewRepository()
   const consentRepository = createConsentRepository()
   const userRepository = createUserRepository()
@@ -240,6 +243,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         signupSharedSecret: serverConfig.signup.sharedSecret,
       },
       applicationRepository,
+      identityLockRepository,
       consentRepository,
       auditRepository,
       idempotencyRepository,
@@ -358,6 +362,24 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       },
     })
 
+    registerClientProfileRoutes(application, {
+      accessTokenService,
+      database,
+      clientWeb,
+      unitOfWork,
+      clock,
+      crypto,
+      userRepository,
+      credentialRepository,
+      emailVerificationRepository,
+      applicationRepository,
+      identityLockRepository,
+      auditRepository,
+      outboxRepository,
+      emailDeliveryRepository,
+      config: { sesConfigurationSet: serverConfig.sesConfigurationSet },
+    })
+
     registerPasswordRoutes(application, {
       appUpdate: serverConfig.appUpdate,
       accessTokenService,
@@ -389,6 +411,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       clock,
       crypto,
       applicationRepository,
+      identityLockRepository,
       emailVerificationRepository,
       passwordTokenRepository,
       credentialRepository,
@@ -482,6 +505,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       },
       appUpdate: serverConfig.appUpdate,
       applicationRepository,
+      identityLockRepository,
       applicationReviewRepository,
       userRepository,
       credentialRepository,

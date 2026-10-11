@@ -10,9 +10,11 @@ import {
   type QueuedPasswordLink,
 } from "../auth/passwordLinkMail.js"
 import { requirePasswordLinkBase } from "../auth/passwordLinkUrl.js"
+import type { IdentityLockRepository } from "../../repositories/identityLockRepository.js"
 
 export interface CreateClientAccountDeps extends PasswordLinkMailDeps {
   readonly applicationRepository: ApplicationWriteRepository
+  readonly identityLockRepository: IdentityLockRepository
   readonly emailVerificationRepository: EmailVerificationRepository
   readonly userRepository: UserWriteRepository
   readonly auditRepository: AuditWriteRepository
@@ -38,6 +40,10 @@ export const createClientAccount = async (
 ): Promise<CreatedClientAccount> => {
   const linkBase = requirePasswordLinkBase(deps.config.passwordLinks)
 
+  await deps.identityLockRepository.lockIdentities(tx, {
+    emailNormalized: input.emailNormalized,
+    phoneE164: input.phoneE164,
+  })
   const conflict = await deps.applicationRepository.findActiveConflict(tx, {
     emailNormalized: input.emailNormalized,
     phoneE164: input.phoneE164,

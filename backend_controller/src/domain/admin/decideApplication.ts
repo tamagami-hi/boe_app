@@ -35,6 +35,7 @@ import type { EmailDeliveryWriteRepository } from "../../repositories/emailDeliv
 import type { OutboxWriteRepository } from "../../repositories/outboxRepository.js"
 import type { UserWriteRepository } from "../../repositories/userRepository.js"
 import { enqueueEmail } from "../email/enqueueEmail.js"
+import type { IdentityLockRepository } from "../../repositories/identityLockRepository.js"
 
 export interface DecideApplicationConfig {
   readonly sesConfigurationSet: string
@@ -42,6 +43,7 @@ export interface DecideApplicationConfig {
 
 export interface DecideApplicationDeps {
   readonly applicationRepository: ApplicationWriteRepository
+  readonly identityLockRepository: IdentityLockRepository
   readonly applicationReviewRepository: ApplicationReviewWriteRepository
   readonly userRepository: UserWriteRepository
   readonly credentialRepository: CredentialWriteRepository
@@ -90,6 +92,14 @@ export const decideApplication = async (
   deps: DecideApplicationDeps,
   input: DecideApplicationInput,
 ): Promise<DecideApplicationResult> => {
+  const claimed = await deps.applicationRepository.findById(tx, input.applicationId)
+  if (claimed === null) throw new AppError("RESOURCE_NOT_FOUND")
+  if (input.decision === "approved") {
+    await deps.identityLockRepository.lockIdentities(tx, {
+      emailNormalized: claimed.email_normalized,
+      phoneE164: claimed.phone_e164,
+    })
+  }
   const application = await deps.applicationRepository.lockById(tx, input.applicationId)
   if (application === null) throw new AppError("RESOURCE_NOT_FOUND")
 
@@ -146,6 +156,15 @@ export const decideApplication = async (
   const auditMetadata = { decision: input.decision }
 
   if (input.decision === "approved") {
+    const taken = await deps.applicationRepository.findContactOwner(tx, {
+      emailNormalized: application.email_normalized,
+      phoneE164: application.phone_e164,
+    })
+    if (taken !== null) {
+      throw new AppError("STATE_CONFLICT", {
+        message: "This application's email address or phone number now belongs to another account, so it cannot be approved.",
+      })
+    }
     // The credential the applicant chose at signup, moved to the table that
     // owns it. No token is issued: there is nothing left for them to set.
     const user = await deps.userRepository.createActive(tx, {

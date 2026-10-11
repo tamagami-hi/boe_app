@@ -334,7 +334,7 @@ const outboxModel = (world: World): OutboxWriteRepository => {
 const deliveryModel = (world: World): EmailDeliveryWriteRepository => ({
   createAccountApprovedDelivery: vi.fn(),
   createRejectionDelivery: vi.fn(),
-  createPasswordMailDelivery: vi.fn(),
+  createUserMailDelivery: vi.fn(),
   insertSealedPayload: vi.fn(),
   findSealedPayload: vi.fn(),
   adminList: vi.fn(),

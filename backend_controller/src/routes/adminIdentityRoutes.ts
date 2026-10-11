@@ -38,6 +38,7 @@ import type { EmailDeliveryWriteRepository } from "../repositories/emailDelivery
 import type { OutboxWriteRepository } from "../repositories/outboxRepository.js"
 import type { UserWriteRepository } from "../repositories/userRepository.js"
 import { requireIdempotencyKey } from "./adminRouteKit.js"
+import type { IdentityLockRepository } from "../repositories/identityLockRepository.js"
 
 export interface AdminIdentityConfig {
   readonly cursorKey: Buffer
@@ -58,6 +59,7 @@ export interface AdminIdentityDeps {
    */
   readonly appUpdate: ReleaseFeed
   readonly applicationRepository: ApplicationWriteRepository
+  readonly identityLockRepository: IdentityLockRepository
   readonly applicationReviewRepository: ApplicationReviewWriteRepository
   readonly userRepository: UserWriteRepository
   readonly credentialRepository: CredentialWriteRepository
@@ -353,6 +355,7 @@ const postDecision = async (deps: AdminIdentityDeps, request: FastifyRequest, re
           tx,
           {
             applicationRepository: deps.applicationRepository,
+            identityLockRepository: deps.identityLockRepository,
             applicationReviewRepository: deps.applicationReviewRepository,
             userRepository: deps.userRepository,
             credentialRepository: deps.credentialRepository,

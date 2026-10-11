@@ -160,7 +160,7 @@ const run = async (scenario: Scenario) => {
   const emailDeliveryRepository: EmailDeliveryWriteRepository = {
     createAccountApprovedDelivery: vi.fn(),
     createRejectionDelivery: vi.fn(),
-    createPasswordMailDelivery: vi.fn(),
+    createUserMailDelivery: vi.fn(),
     insertSealedPayload: vi.fn(),
     findSealedPayload: vi.fn(() => {
       order.push("findSealedPayload")

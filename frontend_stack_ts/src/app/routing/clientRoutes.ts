@@ -205,6 +205,15 @@ export const CLIENT_ROUTES: RouteManifest = [
     back: { kind: "parent", path: "/profile" },
   },
   {
+    id: "profile-contact",
+    path: "/profile/contact",
+    title: "Contact details",
+    access: "session",
+    role: "client",
+    element: () => import("~/features/profile/ContactDetailsScreen"),
+    back: { kind: "parent", path: "/profile" },
+  },
+  {
     id: "profile-security",
     path: "/profile/security",
     title: "Security",
@@ -279,6 +288,7 @@ export const CLIENT_LINK_MAP: Readonly<Record<string, readonly string[]>> = {
   profile: [
     "statements",
     "notifications",
+    "profile-contact",
     "profile-email-verification",
     "profile-security",
     "profile-support",

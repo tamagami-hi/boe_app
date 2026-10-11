@@ -22,6 +22,7 @@ export const qk = {
   },
   client: {
     eligibility: (userId: string) => ["client", "eligibility", userId] as const,
+    profile: () => ["client", "profile"] as const,
     portfolio: () => ["client", "portfolio"] as const,
     funds: () => ["client", "funds"] as const,
     fund: (fundId: string) => ["client", "fund", fundId] as const,

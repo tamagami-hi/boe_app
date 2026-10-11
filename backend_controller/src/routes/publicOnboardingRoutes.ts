@@ -51,6 +51,7 @@ import type { ApplicationWriteRepository } from "../repositories/applicationRepo
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
 import type { ConsentRepositoryImpl } from "../repositories/consentRepository.js"
 import { submitApplication, type SubmitApplicationOutcome } from "../domain/onboarding/submitApplication.js"
+import type { IdentityLockRepository } from "../repositories/identityLockRepository.js"
 
 export interface PublicOnboardingConfig {
   readonly idempotencyTtlMs: number
@@ -75,6 +76,7 @@ export interface PublicOnboardingDeps {
   readonly breachChecker: BreachChecker
   readonly config: PublicOnboardingConfig
   readonly applicationRepository: ApplicationWriteRepository
+  readonly identityLockRepository: IdentityLockRepository
   readonly consentRepository: ConsentRepositoryImpl
   readonly auditRepository: AuditWriteRepository
   readonly idempotencyRepository: IdempotencyRepository
@@ -260,6 +262,7 @@ const submitThroughIdempotency = async (
           tx,
           {
             applicationRepository: deps.applicationRepository,
+            identityLockRepository: deps.identityLockRepository,
             consentRepository: deps.consentRepository,
             auditRepository: deps.auditRepository,
             crypto: deps.crypto,

@@ -18,6 +18,7 @@ import { createApplicationReviewRepository } from "../../src/repositories/applic
 import type { EmailDeliveryWriteRepository } from "../../src/repositories/emailDeliveryRepository.js"
 import { createEmailVerificationRepository } from "../../src/repositories/emailVerificationRepository.js"
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
+import { createIdentityLockRepository } from "../../src/repositories/identityLockRepository.js"
 import { createLoginEventRepository } from "../../src/repositories/loginEventRepository.js"
 import type { OutboxWriteRepository } from "../../src/repositories/outboxRepository.js"
 import { registerAdminClientOnboardingRoutes } from "../../src/routes/adminClientOnboardingRoutes.js"
@@ -88,6 +89,7 @@ const buildApp = (options: AppOptions = {}): FastifyInstance => {
         unitOfWork: stack.unitOfWork,
         idempotencyRepository: createIdempotencyRepository(),
         applicationRepository: createApplicationRepository(),
+        identityLockRepository: createIdentityLockRepository(),
         emailVerificationRepository: createEmailVerificationRepository(),
         config: { ...mail.config, idempotencyTtlMs: 86_400_000 },
       })
@@ -237,6 +239,7 @@ beforeAll(async () => {
     config: { cursorKey: randomBytes(32), idempotencyTtlMs: 86_400_000, sesConfigurationSet: "boe-transactional" },
     appUpdate: { releaseRoot: publishedRoot, downloadBaseUrl: FEED_BASE },
     applicationRepository: createApplicationRepository(),
+    identityLockRepository: createIdentityLockRepository(),
     applicationReviewRepository: createApplicationReviewRepository(),
     userRepository: stack.userRepository,
     credentialRepository: stack.credentialRepository,
@@ -484,9 +487,9 @@ describe("redeeming a link queues the app download mail", () => {
     const { rawToken } = await stack.linkOf(queued.deliveryId)
     const failing: EmailDeliveryWriteRepository = {
       ...stack.emailDeliveryRepository,
-      createPasswordMailDelivery: async (tx, input) => {
+      createUserMailDelivery: async (tx, input) => {
         await sql`select 1 / 0`.execute(tx)
-        return stack.emailDeliveryRepository.createPasswordMailDelivery(tx, input)
+        return stack.emailDeliveryRepository.createUserMailDelivery(tx, input)
       },
     }
     const broken = buildApp({ emailDeliveryRepository: failing })

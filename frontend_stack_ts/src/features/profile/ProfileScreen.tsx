@@ -36,6 +36,11 @@ const ENTRIES = [
     hint: "Payment confirmations, SIP reminders and account updates.",
   },
   {
+    to: "/profile/contact",
+    title: "Contact details",
+    hint: "Your email address and phone number, and how to change your number.",
+  },
+  {
     to: "/profile/email-verification",
     title: "Email verification",
     hint: "Whether investing is unlocked, and how to unlock it.",

@@ -16,6 +16,7 @@ import { ADMIN_OVERSIGHT_OPERATIONS } from "../src/operations/admin-oversight.js
 import { APP_OPERATIONS } from "../src/operations/app.js"
 import { CLIENT_ACCOUNT_OPERATIONS } from "../src/operations/client-account.js"
 import { CLIENT_ORDER_OPERATIONS } from "../src/operations/client-orders.js"
+import { CLIENT_PROFILE_OPERATIONS } from "../src/operations/client-profile.js"
 import { CLIENT_SIP_OPERATIONS } from "../src/operations/client-sips.js"
 import { CLIENT_WEB_AUTH_OPERATIONS } from "../src/operations/client-web-auth.js"
 import { CLIENT_OPERATIONS } from "../src/operations/client.js"
@@ -48,6 +49,7 @@ export const ALL_OPERATIONS: readonly GeneratableOperation[] = Object.freeze([
   ...CLIENT_OPERATIONS,
   ...CLIENT_ACCOUNT_OPERATIONS,
   ...CLIENT_ORDER_OPERATIONS,
+  ...CLIENT_PROFILE_OPERATIONS,
   ...CLIENT_SIP_OPERATIONS,
   ...PUBLIC_OPERATIONS,
   ...PUBLIC_CONTENT_OPERATIONS,

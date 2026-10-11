@@ -11,8 +11,8 @@ import {
 } from "../domain/admin/createClientAccount.js"
 import type { QueuedPasswordLink } from "../domain/auth/passwordLinkMail.js"
 import { requirePasswordLinkBase } from "../domain/auth/passwordLinkUrl.js"
+import { normalizePhone } from "../domain/shared/phoneNumber.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
-import { AppError } from "../http/errorCatalog.js"
 import { parseOrThrow } from "../http/validation.js"
 import {
   adminIdempotencyScope,
@@ -50,16 +50,6 @@ const bodySchema = z
     phone: z.string().trim().min(8).max(32),
   })
   .strict()
-
-const normalizePhone = (raw: string): string => {
-  const candidate = raw.replace(/[\s()-]/gu, "")
-  if (!/^\+[1-9][0-9]{7,14}$/u.test(candidate)) {
-    throw new AppError("VALIDATION_FAILED", {
-      fields: { phone: ["must be a valid E.164 phone number"] },
-    })
-  }
-  return candidate
-}
 
 const emptyBodySchema = z.object({}).strict().optional()
 

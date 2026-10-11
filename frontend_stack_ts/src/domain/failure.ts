@@ -22,6 +22,7 @@ export type FailureContext =
   | "requestPasswordReset"
   | "resetPassword"
   | "changePassword"
+  | "changePhone"
   | "sendSupportRequest"
   | "markNotificationRead"
   | "openLink"
@@ -232,6 +233,24 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
       timeout: { message: "That took too long. Nothing was changed — try again." },
     },
     fallback: { message: "We couldn't change your password. Please try again." },
+  },
+
+  changePhone: {
+    title: "Phone number not changed",
+    codes: {
+      INVALID_CREDENTIALS: { message: "That current password is not right." },
+      VALIDATION_FAILED: { message: "Enter the number with its country code, for example +919876543210." },
+      STATE_CONFLICT: { message: "That number is already used by another account or a pending application." },
+      RATE_LIMITED: { message: "Too many attempts. Try again shortly." },
+    },
+    transport: {
+      offline: { message: "We can't reach BeOnEdge. Check your connection and try again." },
+      timeout: {
+        title: "Not confirmed",
+        message: "The reply did not arrive, so we can't tell whether your number changed. Reload this page to see the number on your account.",
+      },
+    },
+    fallback: { message: "We couldn't change your phone number. Please try again." },
   },
 
   sendSupportRequest: {

@@ -53,11 +53,15 @@ export interface CreateRejectionDeliveryInput {
   readonly templateVersion: string
 }
 
-export type PasswordMailTemplateKey = "password_set_link" | "password_reset_link" | "password_app_download"
+export type UserMailTemplateKey =
+  | "password_set_link"
+  | "password_reset_link"
+  | "password_app_download"
+  | "contact_phone_changed"
 
-export interface CreatePasswordMailDeliveryInput {
+export interface CreateUserMailDeliveryInput {
   readonly outboxEventId: string
-  readonly templateKey: PasswordMailTemplateKey
+  readonly templateKey: UserMailTemplateKey
   readonly userId: string
   readonly recipientCiphertext: Buffer
   readonly recipientNonce: Buffer
@@ -97,7 +101,7 @@ export interface EmailDeliveryWriteRepository {
     input: CreateAccountApprovedDeliveryInput,
   ) => Promise<EmailDelivery>
   createRejectionDelivery: (tx: Transaction, input: CreateRejectionDeliveryInput) => Promise<EmailDelivery>
-  createPasswordMailDelivery: (tx: Transaction, input: CreatePasswordMailDeliveryInput) => Promise<EmailDelivery>
+  createUserMailDelivery: (tx: Transaction, input: CreateUserMailDeliveryInput) => Promise<EmailDelivery>
   insertSealedPayload: (tx: Transaction, input: InsertSealedPayloadInput) => Promise<void>
   findSealedPayload: (tx: Transaction, deliveryId: string) => Promise<EmailDeliveryPayload | null>
   adminList: (tx: Transaction, query: AdminEmailDeliveryQuery) => Promise<readonly EmailDelivery[]>
@@ -176,7 +180,7 @@ export const createEmailDeliveryRepository = (): EmailDeliveryWriteRepository =>
       .returningAll()
       .executeTakeFirstOrThrow(),
 
-  createPasswordMailDelivery: async (tx, input) =>
+  createUserMailDelivery: async (tx, input) =>
     tx
       .insertInto("email_deliveries")
       .values({

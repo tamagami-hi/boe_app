@@ -5,7 +5,7 @@ import { createCryptoContext, parseCryptoKeys } from "../../crypto/context.js"
 import type { EmailDelivery, OutboxEvent, Transaction } from "../../db/repositories.js"
 import type {
   CreateAccountApprovedDeliveryInput,
-  CreatePasswordMailDeliveryInput,
+  CreateUserMailDeliveryInput,
   CreateRejectionDeliveryInput,
   EmailDeliveryWriteRepository,
   InsertSealedPayloadInput,
@@ -44,8 +44,8 @@ const build = () => {
   const createRejectionDelivery = vi.fn<
     (tx: Transaction, input: CreateRejectionDeliveryInput) => Promise<EmailDelivery>
   >(() => Promise.resolve({ id: "delivery-1" } as unknown as EmailDelivery))
-  const createPasswordMailDelivery = vi.fn<
-    (tx: Transaction, input: CreatePasswordMailDeliveryInput) => Promise<EmailDelivery>
+  const createUserMailDelivery = vi.fn<
+    (tx: Transaction, input: CreateUserMailDeliveryInput) => Promise<EmailDelivery>
   >(() => Promise.resolve({ id: "delivery-1" } as unknown as EmailDelivery))
   const insertSealedPayload = vi.fn<(tx: Transaction, input: InsertSealedPayloadInput) => Promise<void>>(() =>
     Promise.resolve(),
@@ -55,7 +55,7 @@ const build = () => {
     emailDeliveryRepository: {
       createAccountApprovedDelivery,
       createRejectionDelivery,
-      createPasswordMailDelivery,
+      createUserMailDelivery,
       insertSealedPayload,
     } as unknown as EmailDeliveryWriteRepository,
     crypto,
@@ -65,7 +65,7 @@ const build = () => {
     enqueue,
     createAccountApprovedDelivery,
     createRejectionDelivery,
-    createPasswordMailDelivery,
+    createUserMailDelivery,
     insertSealedPayload,
   }
 }
@@ -154,7 +154,7 @@ describe("enqueueEmail", () => {
   test.each(["password_set_link", "password_reset_link"] as const)(
     "%s is recorded against the user alone and its sealed link appears in no other write",
     async (templateKey) => {
-      const { deps, enqueue, createAccountApprovedDelivery, createRejectionDelivery, createPasswordMailDelivery, insertSealedPayload } =
+      const { deps, enqueue, createAccountApprovedDelivery, createRejectionDelivery, createUserMailDelivery, insertSealedPayload } =
         build()
       const link = `https://app.test/reset-password?token=${SECRET}`
 
@@ -174,7 +174,7 @@ describe("enqueueEmail", () => {
       })
 
       expect(enqueue.mock.calls[0]?.[1]).toMatchObject({ topic: "email.sealed", aggregateId: USER_ID })
-      expect(createPasswordMailDelivery).toHaveBeenCalledWith(tx, {
+      expect(createUserMailDelivery).toHaveBeenCalledWith(tx, {
         outboxEventId: "outbox-1",
         templateKey,
         userId: USER_ID,
@@ -192,12 +192,12 @@ describe("enqueueEmail", () => {
       const stored = insertSealedPayload.mock.calls[0]?.[1]
       if (stored === undefined) throw new Error("expected the sealed payload to be inserted")
       expect(stored.ciphertext.includes(Buffer.from(SECRET))).toBe(false)
-      expect(JSON.stringify([enqueue.mock.calls, createPasswordMailDelivery.mock.calls])).not.toContain(SECRET)
+      expect(JSON.stringify([enqueue.mock.calls, createUserMailDelivery.mock.calls])).not.toContain(SECRET)
     },
   )
 
   test("the app download mail travels on the plain topic with its public link in the payload", async () => {
-    const { deps, enqueue, createPasswordMailDelivery, insertSealedPayload } = build()
+    const { deps, enqueue, createUserMailDelivery, insertSealedPayload } = build()
 
     await enqueueEmail(tx, deps, {
       recipient: RECIPIENT,
@@ -217,7 +217,7 @@ describe("enqueueEmail", () => {
       topic: "email",
       payload: { downloadUrl: "https://app.test/downloads/client/boe.apk" },
     })
-    expect(createPasswordMailDelivery.mock.calls[0]?.[1]).toMatchObject({
+    expect(createUserMailDelivery.mock.calls[0]?.[1]).toMatchObject({
       templateKey: "password_app_download",
       userId: USER_ID,
     })

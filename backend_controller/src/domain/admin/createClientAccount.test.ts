@@ -30,6 +30,7 @@ const crypto = createCryptoContext(
 const deps = (conflict: unknown, passwordLinks: PasswordLinkSettings = USABLE): CreateClientAccountDeps =>
   ({
     applicationRepository: { findActiveConflict: vi.fn().mockResolvedValue(conflict) },
+    identityLockRepository: { lockIdentities: vi.fn().mockResolvedValue(undefined) },
     userRepository: {
       createAdminCreatedActive: vi
         .fn()
@@ -60,7 +61,7 @@ const deps = (conflict: unknown, passwordLinks: PasswordLinkSettings = USABLE): 
     auditRepository: { append: vi.fn().mockResolvedValue(undefined) },
     outboxRepository: { enqueue: vi.fn().mockResolvedValue({ id: "outbox-1" }) },
     emailDeliveryRepository: {
-      createPasswordMailDelivery: vi.fn().mockResolvedValue({ id: "delivery-1" }),
+      createUserMailDelivery: vi.fn().mockResolvedValue({ id: "delivery-1" }),
       insertSealedPayload: vi.fn().mockResolvedValue(undefined),
     },
     crypto,
@@ -88,7 +89,7 @@ const writes = (d: CreateClientAccountDeps): unknown[] => [
   d.passwordTokenRepository.create,
   d.auditRepository.append,
   d.outboxRepository.enqueue,
-  d.emailDeliveryRepository.createPasswordMailDelivery,
+  d.emailDeliveryRepository.createUserMailDelivery,
   d.emailDeliveryRepository.insertSealedPayload,
 ]
 
@@ -152,7 +153,7 @@ describe("admin-created client accounts", () => {
 
     expect(created.passwordLink).toMatchObject({ userId: "user-1", tokenId: "token-1", deliveryId: "delivery-1" })
     const [, outbox] = vi.mocked(d.outboxRepository.enqueue).mock.calls[0] ?? []
-    const [, delivery] = vi.mocked(d.emailDeliveryRepository.createPasswordMailDelivery).mock.calls[0] ?? []
+    const [, delivery] = vi.mocked(d.emailDeliveryRepository.createUserMailDelivery).mock.calls[0] ?? []
     const [, sealed] = vi.mocked(d.emailDeliveryRepository.insertSealedPayload).mock.calls[0] ?? []
     if (outbox === undefined || delivery === undefined || sealed === undefined) throw new Error("mail was not queued")
     expect(outbox).toMatchObject({
@@ -175,7 +176,7 @@ describe("admin-created client accounts", () => {
     expect(JSON.stringify([outbox, delivery, vi.mocked(d.auditRepository.append).mock.calls])).not.toContain(token)
     for (const call of [
       vi.mocked(d.outboxRepository.enqueue).mock.calls[0],
-      vi.mocked(d.emailDeliveryRepository.createPasswordMailDelivery).mock.calls[0],
+      vi.mocked(d.emailDeliveryRepository.createUserMailDelivery).mock.calls[0],
       vi.mocked(d.emailDeliveryRepository.insertSealedPayload).mock.calls[0],
     ]) {
       expect(call?.[0]).toBe(TX)

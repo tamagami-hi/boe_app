@@ -17,6 +17,7 @@ const TEMPLATE_VERSIONS: ReadonlyMap<string, readonly string[]> = new Map([
   ["password_set_link", ["v1"]],
   ["password_reset_link", ["v1"]],
   ["password_app_download", ["v1"]],
+  ["contact_phone_changed", ["v1"]],
 ])
 
 export interface PasswordLinkInput {
@@ -186,6 +187,31 @@ export const emailVerificationCodeEmail = (
     ],
   })
 
+export const phoneChangedEmail = (ending: string, config: EmailTemplateConfig): RenderedEmail =>
+  renderEmail({
+    subject: "Your BeOnEdge phone number was changed",
+    preheader: "The phone number on your BeOnEdge account was changed.",
+    heading: "Your phone number was changed",
+    supportAddress: config.supportAddress,
+    blocks: [
+      {
+        kind: "text",
+        text: `The phone number on your BeOnEdge account was changed to a number ending in ${ending}.`,
+      },
+      { kind: "text", text: "If you made this change, you do not need to do anything." },
+      {
+        kind: "text",
+        text: "If you did not, contact BeOnEdge support straight away and change your password.",
+      },
+    ],
+  })
+
+const phoneEndingField = (data: Readonly<Record<string, unknown>>): string => {
+  const ending = requiredString(data, "phoneEnding")
+  if (!/^[0-9]{4}$/u.test(ending)) throw new EmailValidationError("EMAIL_TEMPLATE_DATA_INVALID")
+  return ending
+}
+
 const buildTemplate = (
   templateKey: string,
   templateData: Readonly<Record<string, unknown>>,
@@ -202,6 +228,8 @@ const buildTemplate = (
       return passwordResetEmail(passwordLinkInput(templateData), config)
     case "password_app_download":
       return appDownloadEmail(requiredString(templateData, "downloadUrl"), config)
+    case "contact_phone_changed":
+      return phoneChangedEmail(phoneEndingField(templateData), config)
     default:
       return null
   }

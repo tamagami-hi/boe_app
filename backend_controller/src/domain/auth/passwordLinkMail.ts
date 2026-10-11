@@ -3,7 +3,7 @@ import { withSavepoint } from "../../db/savepoint.js"
 import type { PasswordTokenPurpose } from "../../db/types.js"
 import type {
   EmailDeliveryWriteRepository,
-  PasswordMailTemplateKey,
+  UserMailTemplateKey,
 } from "../../repositories/emailDeliveryRepository.js"
 import type { OutboxWriteRepository } from "../../repositories/outboxRepository.js"
 import { enqueueEmail } from "../email/enqueueEmail.js"
@@ -18,7 +18,7 @@ import { buildPasswordLink, type PasswordLinkSettings } from "./passwordLinkUrl.
 const PASSWORD_MAIL_TEMPLATE_VERSION = "v1"
 
 const LINK_TEMPLATES: Readonly<
-  Record<PasswordTokenPurpose, { readonly templateKey: PasswordMailTemplateKey; readonly eventType: string }>
+  Record<PasswordTokenPurpose, { readonly templateKey: UserMailTemplateKey; readonly eventType: string }>
 > = {
   set: { templateKey: "password_set_link", eventType: "user.password_set_link" },
   reset: { templateKey: "password_reset_link", eventType: "user.password_reset_link" },

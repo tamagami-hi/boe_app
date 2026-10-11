@@ -38,6 +38,7 @@ import { registerWebAuthRoutes } from "../../src/routes/webAuthRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
 import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
 import { runSeed } from "../../src/scripts/seed.js"
+import { createIdentityLockRepository } from "../../src/repositories/identityLockRepository.js"
 
 const PASSWORD = "correct horse battery staple"
 const ORIGIN = "https://admin.beonedge.test"
@@ -227,6 +228,7 @@ beforeAll(async () => {
     },
     appUpdate: { releaseRoot, downloadBaseUrl: DOWNLOAD_BASE_URL },
     applicationRepository: createApplicationRepository(),
+    identityLockRepository: createIdentityLockRepository(),
     applicationReviewRepository: createApplicationReviewRepository(),
     userRepository: createUserRepository(),
     credentialRepository: createCredentialRepository(),

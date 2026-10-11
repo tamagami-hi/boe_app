@@ -56,6 +56,10 @@ export interface CreateAdminClientInput {
 export interface UserWriteRepository {
   lockById: (tx: Transaction, userId: UserId) => Promise<User | null>
   findById: (tx: Transaction, userId: UserId) => Promise<User | null>
+  updatePhone: (
+    tx: Transaction,
+    input: Readonly<{ userId: UserId; phoneE164: string; expectedVersion: string; now: Date }>,
+  ) => Promise<User | null>
   /**
    * Create the active user for an approved application. Approval is the only
    * door to an account now — the signup password is copied into
@@ -93,6 +97,15 @@ export const createUserRepository = (): UserWriteRepository => ({
 
   findById: async (tx, userId) =>
     (await tx.selectFrom("users").selectAll().where("id", "=", userId).executeTakeFirst()) ?? null,
+
+  updatePhone: async (tx, input) =>
+    (await tx
+      .updateTable("users")
+      .set({ phone_e164: input.phoneE164, updated_at: input.now, version: sql<string>`version + 1` })
+      .where("id", "=", input.userId)
+      .where("version", "=", input.expectedVersion)
+      .returningAll()
+      .executeTakeFirst()) ?? null,
 
   createActive: async (tx, input) =>
     tx

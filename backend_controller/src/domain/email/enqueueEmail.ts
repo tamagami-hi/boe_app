@@ -2,7 +2,7 @@ import type { CryptoContext, DeliveryPayload } from "../../crypto/context.js"
 import type { EmailDelivery, OutboxEvent, Transaction } from "../../db/repositories.js"
 import type {
   EmailDeliveryWriteRepository,
-  PasswordMailTemplateKey,
+  UserMailTemplateKey,
 } from "../../repositories/emailDeliveryRepository.js"
 import type { EnqueueOutboxInput, OutboxWriteRepository } from "../../repositories/outboxRepository.js"
 import { EMAIL_TOPIC, SEALED_EMAIL_TOPIC } from "./emailTopics.js"
@@ -16,7 +16,7 @@ export interface EnqueueEmailDeps {
 export type EmailTemplateSubject =
   | { readonly templateKey: "account_approved"; readonly userId: string; readonly applicationId: string }
   | { readonly templateKey: "application_rejected"; readonly applicationId: string }
-  | { readonly templateKey: PasswordMailTemplateKey; readonly userId: string }
+  | { readonly templateKey: UserMailTemplateKey; readonly userId: string }
 
 export interface EnqueueEmailInput extends Omit<EnqueueOutboxInput, "topic"> {
   readonly recipient: string
@@ -64,7 +64,8 @@ const createDelivery = (
     case "password_set_link":
     case "password_reset_link":
     case "password_app_download":
-      return deps.emailDeliveryRepository.createPasswordMailDelivery(tx, {
+    case "contact_phone_changed":
+      return deps.emailDeliveryRepository.createUserMailDelivery(tx, {
         templateKey: template.templateKey,
         userId: template.userId,
         ...evidence,

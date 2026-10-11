@@ -43,6 +43,7 @@ import { createApplication } from "../../src/runtime/application.js"
 import { composeEmailDispatchWorker } from "../../src/runtime/workerComposition.js"
 import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
 import { runSeed } from "../../src/scripts/seed.js"
+import { createIdentityLockRepository } from "../../src/repositories/identityLockRepository.js"
 
 const PASSWORD = "correct horse battery staple"
 const ORIGIN = "https://admin.beonedge.test"
@@ -290,6 +291,7 @@ beforeAll(async () => {
     config: { cursorKey: randomBytes(32), idempotencyTtlMs: 86_400_000, sesConfigurationSet: "boe-transactional" },
     appUpdate: { releaseRoot: tmpdir(), downloadBaseUrl: "https://dev-app.beonedge.in/downloads" },
     applicationRepository: createApplicationRepository(),
+    identityLockRepository: createIdentityLockRepository(),
     applicationReviewRepository: createApplicationReviewRepository(),
     userRepository: createUserRepository(),
     credentialRepository: createCredentialRepository(),

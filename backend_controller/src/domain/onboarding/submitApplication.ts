@@ -29,9 +29,11 @@ import { AppError } from "../../http/errorCatalog.js"
 import type { ApplicationWriteRepository } from "../../repositories/applicationRepository.js"
 import type { AuditWriteRepository } from "../../repositories/auditRepository.js"
 import type { ConsentRepositoryImpl } from "../../repositories/consentRepository.js"
+import type { IdentityLockRepository } from "../../repositories/identityLockRepository.js"
 
 export interface SubmitApplicationDeps {
   readonly applicationRepository: ApplicationWriteRepository
+  readonly identityLockRepository: IdentityLockRepository
   readonly consentRepository: ConsentRepositoryImpl
   readonly auditRepository: AuditWriteRepository
   readonly crypto: CryptoContext
@@ -103,6 +105,10 @@ export const submitApplication = async (
   }
 
   const now = deps.clock()
+  await deps.identityLockRepository.lockIdentities(tx, {
+    emailNormalized: input.emailNormalized,
+    phoneE164: input.phoneE164,
+  })
   const conflict = await deps.applicationRepository.findActiveConflict(tx, {
     emailNormalized: input.emailNormalized,
     phoneE164: input.phoneE164,
