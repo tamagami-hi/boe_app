@@ -7,7 +7,7 @@
  */
 import { sql } from "kysely"
 
-import type { EmailDelivery, Transaction } from "../db/repositories.js"
+import type { EmailDelivery, EmailDeliveryPayload, Transaction } from "../db/repositories.js"
 
 export interface RecordSentInput {
   readonly deliveryId: string
@@ -53,6 +53,13 @@ export interface CreateRejectionDeliveryInput {
   readonly templateVersion: string
 }
 
+export interface InsertSealedPayloadInput {
+  readonly deliveryId: string
+  readonly ciphertext: Buffer
+  readonly nonce: Buffer
+  readonly keyVersion: string
+}
+
 export interface AdminEmailDeliveryQuery {
   readonly states?: readonly EmailDelivery["state"][]
   readonly templateKeys?: readonly string[]
@@ -74,6 +81,8 @@ export interface EmailDeliveryWriteRepository {
     input: CreateAccountApprovedDeliveryInput,
   ) => Promise<EmailDelivery>
   createRejectionDelivery: (tx: Transaction, input: CreateRejectionDeliveryInput) => Promise<EmailDelivery>
+  insertSealedPayload: (tx: Transaction, input: InsertSealedPayloadInput) => Promise<void>
+  findSealedPayload: (tx: Transaction, deliveryId: string) => Promise<EmailDeliveryPayload | null>
   adminList: (tx: Transaction, query: AdminEmailDeliveryQuery) => Promise<readonly EmailDelivery[]>
   listByApplication: (
     tx: Transaction,
@@ -98,6 +107,17 @@ export interface EmailDeliveryWriteRepository {
 }
 
 const nextVersion = sql<string>`version + 1`
+
+const appliedToOne = (result: { readonly numUpdatedRows: bigint }): boolean => Number(result.numUpdatedRows) === 1
+
+export const scrubSealedPayload = async (tx: Transaction, deliveryId: string, now: Date): Promise<void> => {
+  await tx
+    .updateTable("email_delivery_payloads")
+    .set({ ciphertext: null, nonce: null, scrubbed_at: now })
+    .where("email_delivery_id", "=", deliveryId)
+    .where("scrubbed_at", "is", null)
+    .execute()
+}
 
 export const createEmailDeliveryRepository = (): EmailDeliveryWriteRepository => ({
   createAccountApprovedDelivery: async (tx, input) =>
@@ -138,6 +158,27 @@ export const createEmailDeliveryRepository = (): EmailDeliveryWriteRepository =>
       })
       .returningAll()
       .executeTakeFirstOrThrow(),
+
+  insertSealedPayload: async (tx, input) => {
+    await tx
+      .insertInto("email_delivery_payloads")
+      .values({
+        email_delivery_id: input.deliveryId,
+        ciphertext: input.ciphertext,
+        nonce: input.nonce,
+        key_version: input.keyVersion,
+      })
+      .execute()
+  },
+
+  findSealedPayload: async (tx, deliveryId) => {
+    const row = await tx
+      .selectFrom("email_delivery_payloads")
+      .selectAll()
+      .where("email_delivery_id", "=", deliveryId)
+      .executeTakeFirst()
+    return row ?? null
+  },
 
   adminList: async (tx, query) => {
     let builder = tx.selectFrom("email_deliveries").selectAll()
@@ -223,7 +264,7 @@ export const createEmailDeliveryRepository = (): EmailDeliveryWriteRepository =>
   },
 
   recordSent: async (tx, input) => {
-    await tx
+    const result = await tx
       .updateTable("email_deliveries")
       .set({
         state: "sent",
@@ -236,11 +277,12 @@ export const createEmailDeliveryRepository = (): EmailDeliveryWriteRepository =>
       })
       .where("id", "=", input.deliveryId)
       .where("state", "=", "sending")
-      .execute()
+      .executeTakeFirst()
+    if (appliedToOne(result)) await scrubSealedPayload(tx, input.deliveryId, input.now)
   },
 
   recordSendFailure: async (tx, input) => {
-    await tx
+    const result = await tx
       .updateTable("email_deliveries")
       .set({
         state: input.permanent ? "permanent_failed" : "retryable_failed",
@@ -250,16 +292,18 @@ export const createEmailDeliveryRepository = (): EmailDeliveryWriteRepository =>
       })
       .where("id", "=", input.deliveryId)
       .where("state", "=", "sending")
-      .execute()
+      .executeTakeFirst()
+    if (input.permanent && appliedToOne(result)) await scrubSealedPayload(tx, input.deliveryId, input.now)
   },
 
   cancel: async (tx, input) => {
-    await tx
+    const result = await tx
       .updateTable("email_deliveries")
       .set({ state: "cancelled", cancelled_at: input.now, updated_at: input.now, version: nextVersion })
       .where("id", "=", input.deliveryId)
       .where("state", "in", ["queued", "retryable_failed", "sending"])
-      .execute()
+      .executeTakeFirst()
+    if (appliedToOne(result)) await scrubSealedPayload(tx, input.deliveryId, input.now)
   },
 
   applyEvidence: async (tx, input) => {

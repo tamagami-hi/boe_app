@@ -18,10 +18,11 @@ import type { SesEmailSender, SesSendResult } from "../../email/ports.js"
 import type { EmailDeliveryWriteRepository } from "../../repositories/emailDeliveryRepository.js"
 import type { EmailSuppressionWriteRepository } from "../../repositories/emailSuppressionRepository.js"
 import type { OutboxWriteRepository } from "../../repositories/outboxRepository.js"
+import { openSealedPayload } from "./openSealedPayload.js"
 import { recoverExpiredDeliveries } from "./recoverExpiredDeliveries.js"
 
 export interface DispatchConfig {
-  readonly topic: string
+  readonly topics: readonly string[]
   readonly workerId: string
   readonly leaseMs: number
   readonly claimLimit: number
@@ -61,6 +62,7 @@ type PreparedSend =
       readonly configurationSet: string
       readonly templateData: Readonly<Record<string, unknown>>
     }
+  | { readonly kind: "unsendable"; readonly deliveryId: string; readonly errorCode: string }
   | { readonly kind: "cancelled" }
   | { readonly kind: "skipped" }
   | { readonly kind: "superseded" }
@@ -107,6 +109,9 @@ const prepare = async (deps: DispatchDeps, event: OutboxEvent): Promise<Prepared
     if (!started) return { kind: "superseded" }
     await deps.emailDeliveryRepository.transitionSending(tx, { deliveryId: delivery.id, now })
 
+    const sealed = await openSealedPayload(deps, tx, event, delivery.id)
+    if (sealed.kind === "failed") return { kind: "unsendable", deliveryId: delivery.id, errorCode: sealed.errorCode }
+
     return {
       kind: "ready",
       deliveryId: delivery.id,
@@ -114,7 +119,7 @@ const prepare = async (deps: DispatchDeps, event: OutboxEvent): Promise<Prepared
       templateKey: delivery.template_key,
       templateVersion: delivery.template_version,
       configurationSet: delivery.ses_configuration_set,
-      templateData: templateDataOf(event),
+      templateData: { ...templateDataOf(event), ...sealed.data },
     }
   })
 
@@ -203,7 +208,7 @@ const settle = async (
 const claimNext = (deps: DispatchDeps): Promise<OutboxEvent | null> =>
   deps.unitOfWork.execute(async (tx) => {
     const claimed = await deps.outboxRepository.claimDue(tx, {
-      topic: deps.config.topic,
+      topics: deps.config.topics,
       workerId: deps.config.workerId,
       leaseMs: deps.config.leaseMs,
       limit: 1,
@@ -243,6 +248,15 @@ export const dispatchDueDeliveries = async (deps: DispatchDeps): Promise<Dispatc
     }
     if (prepared.kind === "superseded") {
       summary.superseded += 1
+      continue
+    }
+    if (prepared.kind === "unsendable") {
+      const unsent = await settle(deps, event, prepared.deliveryId, {
+        outcome: "rejected",
+        disposition: "permanent",
+        errorCode: prepared.errorCode,
+      })
+      summary[unsent] += 1
       continue
     }
     const result = await callSes(deps, prepared)

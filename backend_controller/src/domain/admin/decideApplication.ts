@@ -34,6 +34,7 @@ import type { CredentialWriteRepository } from "../../repositories/credentialRep
 import type { EmailDeliveryWriteRepository } from "../../repositories/emailDeliveryRepository.js"
 import type { OutboxWriteRepository } from "../../repositories/outboxRepository.js"
 import type { UserWriteRepository } from "../../repositories/userRepository.js"
+import { enqueueEmail } from "../email/enqueueEmail.js"
 
 export interface DecideApplicationConfig {
   readonly sesConfigurationSet: string
@@ -142,18 +143,6 @@ export const decideApplication = async (
     idempotencyKey: input.idempotencyKey,
   })
 
-  const recipient = application.email_normalized
-  const envelope = deps.crypto.encryptRecipient(recipient)
-  const recipientEvidence = {
-    recipientCiphertext: envelope.ciphertext,
-    recipientNonce: envelope.nonce,
-    recipientHmac: deps.crypto.hmacRecipient(recipient).hash,
-    recipientMasked: deps.crypto.maskEmail(recipient),
-    recipientEncryptionKeyVersion: envelope.keyVersion,
-    suppressionHmacKeyVersion: deps.crypto.suppressionHmacKeyVersion,
-    sesConfigurationSet: deps.config.sesConfigurationSet,
-    templateVersion: "v1",
-  }
   const auditMetadata = { decision: input.decision }
 
   if (input.decision === "approved") {
@@ -167,8 +156,11 @@ export const decideApplication = async (
       activatedAt: now,
     })
     await deps.credentialRepository.create(tx, user.id as UserId, signupPasswordHash as string)
-    const outbox = await deps.outboxRepository.enqueue(tx, {
-      topic: "email",
+    const { delivery: emailDelivery } = await enqueueEmail(tx, deps, {
+      recipient: application.email_normalized,
+      template: { templateKey: "account_approved", userId: user.id, applicationId: input.applicationId },
+      templateVersion: "v1",
+      sesConfigurationSet: deps.config.sesConfigurationSet,
       eventType: "user.account_approved",
       eventVersion: 1,
       aggregateType: "user",
@@ -176,12 +168,6 @@ export const decideApplication = async (
       requestId: input.requestId,
       deduplicationKey: `account_approved:${user.id}`,
       payload: { template: "account_approved", downloadUrl: input.apkDownloadUrl },
-    })
-    const emailDelivery = await deps.emailDeliveryRepository.createAccountApprovedDelivery(tx, {
-      outboxEventId: outbox.id,
-      userId: user.id,
-      applicationId: input.applicationId,
-      ...recipientEvidence,
     })
     await deps.auditRepository.append(tx, {
       actorType: "admin",
@@ -209,8 +195,11 @@ export const decideApplication = async (
     }
   }
 
-  const outbox = await deps.outboxRepository.enqueue(tx, {
-    topic: "email",
+  const { delivery: emailDelivery } = await enqueueEmail(tx, deps, {
+    recipient: application.email_normalized,
+    template: { templateKey: "application_rejected", applicationId: input.applicationId },
+    templateVersion: "v1",
+    sesConfigurationSet: deps.config.sesConfigurationSet,
     eventType: "application.rejected",
     eventVersion: 1,
     aggregateType: "application",
@@ -218,11 +207,6 @@ export const decideApplication = async (
     requestId: input.requestId,
     deduplicationKey: `application_rejected:${input.applicationId}`,
     payload: { template: "application_rejected" },
-  })
-  const emailDelivery = await deps.emailDeliveryRepository.createRejectionDelivery(tx, {
-    outboxEventId: outbox.id,
-    applicationId: input.applicationId,
-    ...recipientEvidence,
   })
   await deps.auditRepository.append(tx, {
     actorType: "admin",

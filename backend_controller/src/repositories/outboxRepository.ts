@@ -9,6 +9,7 @@ import type { ExpressionBuilder } from "kysely"
 
 import type { OutboxEvent, Transaction } from "../db/repositories.js"
 import type { Database, EmailSendAttemptOutcome, OutboxState } from "../db/types.js"
+import { scrubSealedPayload } from "./emailDeliveryRepository.js"
 
 export interface EnqueueOutboxInput {
   readonly topic: string
@@ -22,7 +23,7 @@ export interface EnqueueOutboxInput {
 }
 
 export interface ClaimDueInput {
-  readonly topic: string
+  readonly topics: readonly string[]
   readonly workerId: string
   readonly leaseMs: number
   readonly limit: number
@@ -140,7 +141,7 @@ export const createOutboxRepository = (): OutboxWriteRepository => ({
     const claimable = await tx
       .selectFrom("outbox_events")
       .select("id")
-      .where("topic", "=", input.topic)
+      .where("topic", "in", [...input.topics])
       .where("state", "in", ["pending", "retryable_failed"])
       .where("available_at", "<=", input.now)
       .where(withoutInDoubtDelivery)
@@ -261,6 +262,7 @@ export const createOutboxRepository = (): OutboxWriteRepository => ({
         })
         .where("id", "=", delivery.id)
         .execute()
+      await scrubSealedPayload(tx, delivery.id, input.now)
     }
     return true
   },

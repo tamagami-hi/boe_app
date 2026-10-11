@@ -172,7 +172,7 @@ const workerDeps = (sender: SesEmailSender) => ({
   crypto,
   clock: () => new Date(),
   config: {
-    topic: "email",
+    topics: ["email"],
     workerId: "worker-1",
     leaseMs: 30_000,
     claimLimit: 10,

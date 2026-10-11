@@ -11,6 +11,11 @@ export type TemplateRenderResult =
   | { readonly kind: "rendered"; readonly email: RenderedEmail }
   | { readonly kind: "unrenderable"; readonly errorCode: string }
 
+const TEMPLATE_VERSIONS: ReadonlyMap<string, readonly string[]> = new Map([
+  ["application_rejected", ["v1"]],
+  ["account_approved", ["v1"]],
+])
+
 export interface PasswordLinkInput {
   readonly link: string
   readonly validForMs: number
@@ -177,9 +182,13 @@ const buildTemplate = (
 /** Render the body for a queued delivery's template key and payload. */
 export const renderEmailTemplate = (
   templateKey: string,
+  templateVersion: string,
   templateData: Readonly<Record<string, unknown>>,
   config: EmailTemplateConfig,
 ): TemplateRenderResult => {
+  const versions = TEMPLATE_VERSIONS.get(templateKey)
+  if (versions === undefined) return { kind: "unrenderable", errorCode: "TEMPLATE_UNKNOWN" }
+  if (!versions.includes(templateVersion)) return { kind: "unrenderable", errorCode: "TEMPLATE_VERSION_UNSUPPORTED" }
   try {
     const email = buildTemplate(templateKey, templateData, config)
     return email === null

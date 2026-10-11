@@ -25,6 +25,7 @@ export type AuditEvent = Row<"audit_events">
 export type IdempotencyRecord = Row<"idempotency_records">
 export type OutboxEvent = Row<"outbox_events">
 export type EmailDelivery = Row<"email_deliveries">
+export type EmailDeliveryPayload = Row<"email_delivery_payloads">
 export type EmailProviderEvent = Row<"email_provider_events">
 export type EmailSuppression = Row<"email_suppressions">
 export type EmailVerificationCode = Row<"email_verification_codes">

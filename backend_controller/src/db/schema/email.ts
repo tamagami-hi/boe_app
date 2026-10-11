@@ -95,6 +95,15 @@ export interface EmailDeliveriesTable {
   version: BigIntStringDefault
 }
 
+export interface EmailDeliveryPayloadsTable {
+  email_delivery_id: string
+  ciphertext: NullableBytea
+  nonce: NullableBytea
+  key_version: string
+  created_at: TimestampDefault
+  scrubbed_at: NullableTimestamp
+}
+
 export interface EmailProviderEventsTable {
   id: Generated<string>
   sns_message_id: string

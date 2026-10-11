@@ -258,7 +258,7 @@ describe("email queue populated upgrade", () => {
       crypto,
       clock: () => new Date(),
       config: {
-        topic: "email",
+        topics: ["email"],
         workerId: "worker-new",
         leaseMs: 60_000,
         claimLimit: 10,
@@ -298,7 +298,7 @@ describe("email queue fence on PostgreSQL", () => {
     const at = (offsetMs: number): Date => new Date(t0.getTime() + offsetMs)
 
     const first = await unitOfWork.execute((tx) =>
-      outboxRepository.claimDue(tx, { topic: "fence", workerId: "worker-a", leaseMs: 60_000, limit: 1, now: t0 }),
+      outboxRepository.claimDue(tx, { topics: ["fence"], workerId: "worker-a", leaseMs: 60_000, limit: 1, now: t0 }),
     )
     await unitOfWork.execute(async (tx) => {
       expect(await outboxRepository.markSending(tx, { outboxEventId: message.outboxId, generation: 1, workerId: "worker-a", now: at(1_000) })).toBe(true)
@@ -312,7 +312,7 @@ describe("email queue fence on PostgreSQL", () => {
       batchLimit: 10,
     })
     const second = await unitOfWork.execute((tx) =>
-      outboxRepository.claimDue(tx, { topic: "fence", workerId: "worker-b", leaseMs: 60_000, limit: 1, now: at(400_000) }),
+      outboxRepository.claimDue(tx, { topics: ["fence"], workerId: "worker-b", leaseMs: 60_000, limit: 1, now: at(400_000) }),
     )
     await unitOfWork.execute(async (tx) => {
       expect(await outboxRepository.markSending(tx, { outboxEventId: message.outboxId, generation: 2, workerId: "worker-b", now: at(401_000) })).toBe(true)
@@ -366,7 +366,7 @@ describe("email queue fence on PostgreSQL", () => {
     const sending = await seedMessage({ label: "cancel-sending", topic: "cancel-sending", outboxState: "pending", deliveryState: "queued" })
     const now = new Date()
     for (const topic of ["cancel-claimed", "cancel-sending"]) {
-      await unitOfWork.execute((tx) => outboxRepository.claimDue(tx, { topic, workerId: "worker-a", leaseMs: 60_000, limit: 1, now }))
+      await unitOfWork.execute((tx) => outboxRepository.claimDue(tx, { topics: [topic], workerId: "worker-a", leaseMs: 60_000, limit: 1, now }))
     }
     await unitOfWork.execute(async (tx) => {
       await outboxRepository.markSending(tx, { outboxEventId: sending.outboxId, generation: 1, workerId: "worker-a", now })

@@ -108,4 +108,19 @@ describe("createTransactionalEmailSender", () => {
     })
     expect(send).not.toHaveBeenCalled()
   })
+
+  test("a template version the queue recorded but the renderer lacks is permanent and never touches the transport", async () => {
+    const send = vi.fn()
+    const result = await createTransactionalEmailSender({
+      sender: { send },
+      templates: TEMPLATES,
+    }).send({ ...REQUEST, templateVersion: "v9" })
+
+    expect(result).toEqual({
+      outcome: "rejected",
+      disposition: "permanent",
+      errorCode: "TEMPLATE_VERSION_UNSUPPORTED",
+    })
+    expect(send).not.toHaveBeenCalled()
+  })
 })

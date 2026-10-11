@@ -4,6 +4,7 @@ import {
   dispatchDueDeliveries,
   type DispatchSummary,
 } from "../domain/email/dispatchDueDeliveries.js"
+import { CLAIMED_EMAIL_TOPICS } from "../domain/email/emailTopics.js"
 import { createTransactionalEmailSender } from "../email/transactionalEmailSender.js"
 import { deriveEmailSendTiming, EMAIL_PASS_BUDGET_MS } from "../email/sendTiming.js"
 import { createDatabase, createUnitOfWork } from "../db/database.js"
@@ -80,7 +81,7 @@ export const composeEmailDispatchWorker = (
     crypto,
     clock: (): Date => new Date(),
     config: {
-      topic: "email",
+      topics: CLAIMED_EMAIL_TOPICS,
       workerId: source.WORKER_ID ?? "email-worker",
       leaseMs: timing.leaseMs,
       claimLimit: serverConfig.email.worker.claimLimit,

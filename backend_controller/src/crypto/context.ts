@@ -84,6 +84,25 @@ export interface GeneratedToken {
   readonly keyVersion: string
 }
 
+export type DeliveryPayload = Readonly<Record<string, unknown>>
+
+export type OpenedDeliveryPayload =
+  | { readonly kind: "opened"; readonly payload: DeliveryPayload }
+  | { readonly kind: "key_version_mismatch" }
+  | { readonly kind: "unreadable" }
+
+const DELIVERY_PAYLOAD_AAD_PREFIX = "boe.email-delivery-payload.v1:"
+
+const deliveryPayloadAad = (deliveryId: string): Buffer =>
+  Buffer.from(`${DELIVERY_PAYLOAD_AAD_PREFIX}${deliveryId}`, "utf8")
+
+const parsePayloadObject = (text: string): DeliveryPayload | null => {
+  const parsed: unknown = JSON.parse(text)
+  return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)
+    ? (parsed as DeliveryPayload)
+    : null
+}
+
 export interface CryptoContext {
   generateVerificationToken: () => GeneratedToken
   hashToken: (rawToken: string) => KeyedHash
@@ -91,6 +110,8 @@ export interface CryptoContext {
   hmacRecipient: (emailNormalized: string) => KeyedHash
   encryptRecipient: (emailNormalized: string) => KeyedEnvelope
   decryptRecipient: (ciphertext: Buffer, nonce: Buffer) => string
+  encryptDeliveryPayload: (deliveryId: string, payload: DeliveryPayload) => KeyedEnvelope
+  decryptDeliveryPayload: (deliveryId: string, envelope: KeyedEnvelope) => OpenedDeliveryPayload
   maskEmail: (email: string) => string
   readonly suppressionHmacKeyVersion: string
   readonly recipientEncryptionKeyVersion: string
@@ -123,6 +144,20 @@ export const createCryptoContext = (keys: CryptoKeys): CryptoContext => {
     },
     decryptRecipient: (ciphertext: Buffer, nonce: Buffer): string =>
       decryptGcm(keys.recipientEncryptionKey, ciphertext, nonce),
+    encryptDeliveryPayload: (deliveryId: string, payload: DeliveryPayload): KeyedEnvelope => {
+      const envelope = encryptGcm(keys.recipientEncryptionKey, JSON.stringify(payload), deliveryPayloadAad(deliveryId))
+      return { ...envelope, keyVersion: keys.recipientEncryptionKeyVersion }
+    },
+    decryptDeliveryPayload: (deliveryId: string, envelope: KeyedEnvelope): OpenedDeliveryPayload => {
+      if (envelope.keyVersion !== keys.recipientEncryptionKeyVersion) return { kind: "key_version_mismatch" }
+      try {
+        const text = decryptGcm(keys.recipientEncryptionKey, envelope.ciphertext, envelope.nonce, deliveryPayloadAad(deliveryId))
+        const payload = parsePayloadObject(text)
+        return payload === null ? { kind: "unreadable" } : { kind: "opened", payload }
+      } catch {
+        return { kind: "unreadable" }
+      }
+    },
     maskEmail,
     suppressionHmacKeyVersion: keys.recipientHmacKeyVersion,
     recipientEncryptionKeyVersion: keys.recipientEncryptionKeyVersion,

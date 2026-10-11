@@ -175,7 +175,7 @@ const outboxModel = (world: World): OutboxWriteRepository => {
       const due = [...world.outbox.values()]
         .filter(
           (row) =>
-            row.topic === input.topic &&
+            input.topics.includes(row.topic) &&
             (row.state === "pending" || row.state === "retryable_failed") &&
             row.available_at.getTime() <= input.now.getTime() &&
             deliveryFor(row.id)?.state !== "sending",
@@ -329,6 +329,8 @@ const outboxModel = (world: World): OutboxWriteRepository => {
 const deliveryModel = (world: World): EmailDeliveryWriteRepository => ({
   createAccountApprovedDelivery: vi.fn(),
   createRejectionDelivery: vi.fn(),
+  insertSealedPayload: vi.fn(),
+  findSealedPayload: vi.fn(),
   adminList: vi.fn(),
   listByApplication: vi.fn(),
   lockById: vi.fn(),
@@ -383,7 +385,7 @@ const depsFor = (
   crypto,
   clock: world.clock,
   config: {
-    topic: "email",
+    topics: ["email"],
     workerId,
     leaseMs: 60_000,
     claimLimit: 10,

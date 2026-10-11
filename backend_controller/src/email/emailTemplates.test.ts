@@ -17,7 +17,7 @@ const APK_URL = "https://downloads.beonedge.example/client/boe.apk"
 
 describe("renderEmailTemplate", () => {
   test("approval carries the app download link when one was published", () => {
-    const result = renderEmailTemplate("account_approved", { downloadUrl: APK_URL }, CONFIG)
+    const result = renderEmailTemplate("account_approved", "v1", { downloadUrl: APK_URL }, CONFIG)
     expect(result.kind).toBe("rendered")
     if (result.kind !== "rendered") return
     expect(result.email.subject).toContain("approved")
@@ -27,7 +27,7 @@ describe("renderEmailTemplate", () => {
   })
 
   test("approval still renders without a download link", () => {
-    const result = renderEmailTemplate("account_approved", {}, CONFIG)
+    const result = renderEmailTemplate("account_approved", "v1", {}, CONFIG)
     expect(result.kind).toBe("rendered")
     if (result.kind !== "rendered") return
     expect(result.email.text).not.toContain("http")
@@ -35,27 +35,40 @@ describe("renderEmailTemplate", () => {
   })
 
   test("approval mentions the in-app verification step", () => {
-    const result = renderEmailTemplate("account_approved", { downloadUrl: APK_URL }, CONFIG)
+    const result = renderEmailTemplate("account_approved", "v1", { downloadUrl: APK_URL }, CONFIG)
     if (result.kind !== "rendered") throw new Error("expected a rendered email")
     expect(result.email.text).toContain("verify your email address")
   })
 
   test("a rejection needs no data", () => {
-    const result = renderEmailTemplate("application_rejected", {}, CONFIG)
+    const result = renderEmailTemplate("application_rejected", "v1", {}, CONFIG)
     if (result.kind !== "rendered") throw new Error("expected a rendered email")
     expect(result.email.text).toContain("not able to open an account")
   })
 
   test("an unknown template key is reported, not guessed", () => {
-    expect(renderEmailTemplate("statement_ready", {}, CONFIG)).toEqual({
+    expect(renderEmailTemplate("statement_ready", "v1", {}, CONFIG)).toEqual({
       kind: "unrenderable",
       errorCode: "TEMPLATE_UNKNOWN",
     })
   })
 
+  test("a version the key was never recorded with is refused instead of rendering the latest body", () => {
+    for (const [key, version] of [
+      ["account_approved", "v2"],
+      ["application_rejected", "v0"],
+      ["account_approved", ""],
+    ] as const) {
+      expect(renderEmailTemplate(key, version, { downloadUrl: APK_URL }, CONFIG)).toEqual({
+        kind: "unrenderable",
+        errorCode: "TEMPLATE_VERSION_UNSUPPORTED",
+      })
+    }
+  })
+
   test("removed onboarding templates are unknown now", () => {
     for (const key of ["verify_email", "activation_invite"] as const) {
-      expect(renderEmailTemplate(key, {}, CONFIG)).toEqual({
+      expect(renderEmailTemplate(key, "v1", {}, CONFIG)).toEqual({
         kind: "unrenderable",
         errorCode: "TEMPLATE_UNKNOWN",
       })
@@ -63,14 +76,14 @@ describe("renderEmailTemplate", () => {
   })
 
   test("no template leaks the download link into the subject line", () => {
-    const result = renderEmailTemplate("account_approved", { downloadUrl: APK_URL }, CONFIG)
+    const result = renderEmailTemplate("account_approved", "v1", { downloadUrl: APK_URL }, CONFIG)
     if (result.kind !== "rendered") throw new Error("expected a rendered email")
     expect(result.email.subject).not.toContain(APK_URL)
   })
 
   test("a queued approval whose download link is not http or https is not rendered", () => {
     for (const downloadUrl of ["javascript:alert(1)", "data:text/html,x", "/downloads/boe.apk"]) {
-      expect(renderEmailTemplate("account_approved", { downloadUrl }, CONFIG)).toEqual({
+      expect(renderEmailTemplate("account_approved", "v1", { downloadUrl }, CONFIG)).toEqual({
         kind: "unrenderable",
         errorCode: "EMAIL_ACTION_URL_INVALID",
       })

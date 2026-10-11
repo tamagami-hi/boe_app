@@ -51,7 +51,12 @@ const classify = (error: unknown): SesSendResult => {
 
 export const createTransactionalEmailSender = (deps: TransactionalSenderDeps): SesEmailSender => ({
   send: async (request: SesSendRequest): Promise<SesSendResult> => {
-    const rendered = renderEmailTemplate(request.templateKey, request.templateData, deps.templates)
+    const rendered = renderEmailTemplate(
+      request.templateKey,
+      request.templateVersion,
+      request.templateData,
+      deps.templates,
+    )
     if (rendered.kind === "unrenderable") {
       // A body that cannot be built will never build; retrying is pointless.
       return { outcome: "rejected", disposition: "permanent", errorCode: rendered.errorCode }
