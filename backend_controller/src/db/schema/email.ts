@@ -134,3 +134,27 @@ export interface EmailSuppressionsTable {
   lifted_by_user_id: Nullable<string>
   lift_reason: Nullable<string>
 }
+
+export interface EmailTemplatesTable {
+  id: Generated<string>
+  slug: string
+  name: string
+  description: Generated<string>
+  preloaded: Generated<boolean>
+  current_revision: Generated<number>
+  archived_at: NullableTimestamp
+  created_by_user_id: Nullable<string>
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  version: BigIntStringDefault
+}
+
+export interface EmailTemplateRevisionsTable {
+  id: Generated<string>
+  template_id: string
+  revision: number
+  subject: string
+  body: string
+  created_by_user_id: Nullable<string>
+  created_at: TimestampDefault
+}

@@ -1,6 +1,6 @@
 # BeOnEdge app: onboarding, contact details, earlier investments, and email
 
-Status: **Approved for implementation by the maintainer on 2026-10-08, in dependency order. Steps 1, 2a, 2b, and 2c are done and committed (section 8). Steps 3 (three verified slices), 4, 5, 6, 7, and 11 are done. Step 8 is next, and steps 5 to 9 follow in dependency order. Since 2026-10-11 the remaining steps are implemented by a single maintainer-assisted session after the coding agent's limit ran out. All plan work ships together as v0.15.0 (release decision, 2026-10-11). Q-002, Q-003, Q-004, Q-011, Q-012, Q-015, and Q-016 are answered (decision record). Q-013 stays out of scope, and Q-017 is open without gating a step.**
+Status: **Approved for implementation by the maintainer on 2026-10-08, in dependency order. Steps 1, 2a, 2b, and 2c are done and committed (section 8). Steps 3 (three verified slices), 4, 5, 6, 7, 8, and 11 are done. Step 9 is next, then step 10. Since 2026-10-11 the remaining steps are implemented by a single maintainer-assisted session after the coding agent's limit ran out. All plan work ships together as v0.15.0 (release decision, 2026-10-11). Q-002, Q-003, Q-004, Q-011, Q-012, Q-015, and Q-016 are answered (decision record). Q-013 stays out of scope, and Q-017 is open without gating a step.**
 
 Prepared: 2026-10-08. Investigation is source-level only; no production diagnosis, test runs, builds, mail sends, or deployments were performed. Since then only the admin authorization and seeding claims have been checked against source (section 2F). Every other claim in section 2 is unverified, and each step verifies the claims it depends on before it changes code.
 
@@ -509,7 +509,8 @@ Each step records here what changed, the exact verification (commands and counts
 | 11. Required-update message and maintenance mode | Done and committed; not deployed. Details below |
 | 5. Contact ownership, client profile, and phone editing | Done and committed; not deployed. Migration 056 is a major identity change recorded for the maintainer's review below |
 | 6. Verified email changes and session safety | Done and committed; not deployed. Details below |
-| 8, 9, 10 | Not started |
+| 8. Admin template catalogue and custom-template editing | Done and committed; not deployed. Details below |
+| 9, 10 | Not started |
 
 ### Step 1 handoff (2026-10-08)
 
@@ -861,3 +862,21 @@ Verified (TESTED): contracts check 98 tests; backend check 94 files and 1127 tes
 Not verified (UNVERIFIED): the panel in a browser, and real mail delivery.
 
 Finding: asking to change to an address another account holds answers that it is taken, so a signed-in client can learn whether an address has an account, limited by the resend cooldown. A silent path would only defer the same answer to the confirmation.
+
+### Step 8 handoff: admin email template catalogue (2026-10-12)
+
+Changed:
+
+- Migration `058_email_templates.sql` adds `email_templates` (slug, name, description, preloaded, current revision, archived time, version) and `email_template_revisions` (one immutable row per save: subject, body, author, time). The database refuses a blank or over-long name, a slug of the wrong shape, a subject over 150 characters or containing a line break, and a body over 5000 characters. It preloads five templates (welcome note, account update, support follow-up, education reminder, general team message), each starting "Hello {{first_name}}," and signed off by the shared layout. Bracketed lines mark text to replace before sending.
+- Content rules (`domain/admin/emailTemplateContent.ts`): the only placeholders are `{{first_name}}` and `{{full_name}}`; any other placeholder, including a link, code, or password token, and any stray braces are refused. The subject is a single line. Password, verification, and other account emails stay in source and are not in this catalogue, and nothing here issues a token.
+- Routes under `/v1/admin/email-templates`: list (optionally with archived), detail with the last 20 versions, create, save a new version (`expectedVersion` required; a stale one answers 409), archive, and restore. An archived template refuses edits. Reads need `email_templates.write` or `email_messages.send`; writes need `email_templates.write`, CSRF, and an idempotency key. Every write is audited (`email_template.created`, `revised`, `archived`, `restored`). Both codes are in the seed catalog and the frontend permission list; `email_messages.send` is added now because the read routes already accept it, and step 9 enforces it for sending.
+- Contracts: six operations in `operations/admin-email.ts`. Frontend: an Email templates screen (in use or including archived), a new-template screen, and a template screen with the editor, archive and restore, and earlier versions. A save keeps the same key on a lost reply ("Check again"), and a stale save offers to load the latest version instead of overwriting.
+
+Delivery rows are unchanged: no template key is added until step 9, and the admin delivery list already returns `templateKey` as an open string.
+
+Verified (TESTED): contracts 98 tests; backend check 95 files and 1144 tests (coverage 84.02% statements, 84.36% branches, 90.27% functions) with both boot smokes; frontend check 25 files and 232 tests; `build:client` (17 assets, 858908 bytes, Android budget and boot check) and `build:admin` pass. On PostgreSQL 16 the integration suite passes 32 files and 362 tests; `emailTemplates` (12): the preloaded catalogue uses only allowed placeholders; create derives the slug and is audited as the admin; a header-injecting subject, an unknown placeholder, a password-link placeholder, and an empty body are refused with nothing saved; a duplicate name is refused; a new version leaves the earlier one exactly as it was; a stale version is refused; an archived template leaves the list, refuses edits, and can be restored; a support admin can neither read nor write and nothing is saved; no session gives 401. Negative control: without the write-permission check the support test fails; restored by checksum (`c74cddd3c786d930`).
+
+Corrected belief: the integration suite's coverage gate (80% over routes, domain, and repositories) has been failing for longer than this session; earlier handoffs reported its tests, not its exit code. Measured on the same machine: 74.72% lines at `5cdc6fd` (23 files, 254 tests), 78.9% at `6774079` (31 files, 350 tests), and 79.15% lines and 77.9% branches now. Every test passes each time, and the threshold was not lowered. The remaining gap is mostly older admin and client routes with little integration coverage; step 10 records it for the maintainer.
+
+Not verified (UNVERIFIED): the screens in a browser.
+

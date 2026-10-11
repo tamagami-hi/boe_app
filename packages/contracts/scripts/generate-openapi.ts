@@ -8,6 +8,7 @@ import { ErrorEnvelope } from "../src/envelope.js"
 import { ERROR_DEFINITIONS } from "../src/errors.js"
 import type { ErrorCode } from "../src/errors.js"
 import { ADMIN_CONTENT_OPERATIONS } from "../src/operations/admin-content.js"
+import { ADMIN_EMAIL_OPERATIONS } from "../src/operations/admin-email.js"
 import { ADMIN_FUND_AUM_OPERATIONS } from "../src/operations/admin-fund-aum.js"
 import { ADMIN_MATURITY_OPERATIONS } from "../src/operations/admin-maturity.js"
 import { ADMIN_MONEY_OPERATIONS } from "../src/operations/admin-money.js"
@@ -63,6 +64,7 @@ export const ALL_OPERATIONS: readonly GeneratableOperation[] = Object.freeze([
   ...ADMIN_MONEY_OPERATIONS,
   ...ADMIN_MATURITY_OPERATIONS,
   ...ADMIN_OVERSIGHT_OPERATIONS,
+  ...ADMIN_EMAIL_OPERATIONS,
 ])
 
 type RouteConfig = Parameters<OpenAPIRegistry["registerPath"]>[0]

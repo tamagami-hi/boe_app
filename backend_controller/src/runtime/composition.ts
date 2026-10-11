@@ -70,6 +70,8 @@ import { registerClientAccountRoutes } from "../routes/clientAccountRoutes.js"
 import { registerClientEmailVerificationRoutes } from "../routes/clientEmailVerificationRoutes.js"
 import { createEmailChangeRepository } from "../repositories/emailChangeRepository.js"
 import { registerClientProfileRoutes } from "../routes/clientProfileRoutes.js"
+import { registerAdminEmailTemplateRoutes } from "../routes/adminEmailTemplateRoutes.js"
+import { createEmailTemplateRepository } from "../repositories/emailTemplateRepository.js"
 import { registerPasswordRoutes } from "../routes/passwordRoutes.js"
 import { registerAdminClientOnboardingRoutes } from "../routes/adminClientOnboardingRoutes.js"
 import { createPasswordTokenRepository } from "../repositories/passwordTokenRepository.js"
@@ -361,6 +363,16 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         maxAttempts: serverConfig.emailVerification.maxAttempts,
         resendCooldownMs: serverConfig.emailVerification.resendCooldownMs,
       },
+    })
+
+    registerAdminEmailTemplateRoutes(application, {
+      webAuth,
+      unitOfWork,
+      idempotencyRepository,
+      emailTemplateRepository: createEmailTemplateRepository(),
+      auditRepository,
+      clock,
+      config: { idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
     })
 
     registerClientProfileRoutes(application, {

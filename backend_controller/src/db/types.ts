@@ -1,5 +1,5 @@
 import type { AppConfigVersionsTable, AumGrowthBatchesTable, ContentItemsTable, FinancePolicyVersionsTable, FundAumSnapshotsTable, FundDisclosureVersionsTable, FundStockDisclosuresTable, FundVersionsTable, FundsTable } from "./schema/catalog.js"
-import type { EmailDeliveriesTable, EmailDeliveryPayloadsTable, EmailProviderEventsTable, EmailSendAttemptsTable, EmailSuppressionsTable, OutboxEventsTable } from "./schema/email.js"
+import type { EmailDeliveriesTable, EmailDeliveryPayloadsTable, EmailProviderEventsTable, EmailSendAttemptsTable, EmailSuppressionsTable, EmailTemplateRevisionsTable, EmailTemplatesTable, OutboxEventsTable } from "./schema/email.js"
 import type { ApplicationConsentsTable, ApplicationReviewsTable, ApplicationsTable, AuthLoginEventsTable, AuthRefreshTokensTable, AuthSessionsTable, ConsentDocumentsTable, EmailChangeRequestsTable, EmailVerificationCodesTable, PasswordCredentialTokensTable, UserCredentialsTable, UsersTable } from "./schema/identity.js"
 import type { ClientGrowthBatchesTable, ClientPositionMaturitiesTable, ClientValueEntriesTable, NotificationsTable, SupportRequestsTable, WithdrawalOperationsTable } from "./schema/ledger.js"
 import type { MandateCancelCommandsTable, MandateCollectionAttemptsTable, MandateSetupAttemptsTable, PaymentMandatesTable, SipPlansTable } from "./schema/mandates.js"
@@ -38,6 +38,8 @@ export interface Database {
   email_suppressions: EmailSuppressionsTable
   email_send_attempts: EmailSendAttemptsTable
   email_delivery_payloads: EmailDeliveryPayloadsTable
+  email_templates: EmailTemplatesTable
+  email_template_revisions: EmailTemplateRevisionsTable
   funds: FundsTable
   fund_versions: FundVersionsTable
   fund_disclosure_versions: FundDisclosureVersionsTable

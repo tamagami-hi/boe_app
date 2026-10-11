@@ -17,6 +17,8 @@ export const PERMISSION_CODES = [
   "content.publish",
   "email_deliveries.read",
   "email_deliveries.read_masked",
+  "email_templates.write",
+  "email_messages.send",
   "finance.operate",
   "finance.read",
   "funds.read",
