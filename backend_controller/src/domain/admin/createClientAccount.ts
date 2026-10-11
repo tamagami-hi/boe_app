@@ -64,8 +64,8 @@ export const createClientAccount = async (
 
   const invite = await issuePasswordToken(tx, deps, {
     userId: user.id,
-    purpose: "set",
     requestId: input.requestId,
+    requester: { kind: "admin", userId: input.actorUserId },
   })
 
   await deps.auditRepository.append(tx, {

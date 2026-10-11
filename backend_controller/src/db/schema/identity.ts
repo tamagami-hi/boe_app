@@ -1,5 +1,5 @@
 import type { Generated } from "kysely"
-import type { BigIntString, BigIntStringDefault, Bytea, Nullable, NullableBytea, NullableTimestamp, Timestamp, TimestampDefault } from "./columns.js"
+import type { BigIntString, BigIntStringDefault, Bytea, Nullable, NullableBigIntString, NullableBytea, NullableTimestamp, Timestamp, TimestampDefault } from "./columns.js"
 
 export type ApplicationState = "submitted" | "approved" | "rejected" | "withdrawn"
 
@@ -75,6 +75,7 @@ export interface UsersTable {
   id: Generated<string>
   application_id: Nullable<string>
   email_normalized: string
+  email_revision: BigIntStringDefault
   phone_e164: string
   full_name: string
   email_verification_state: Generated<EmailVerificationState>
@@ -194,4 +195,6 @@ export interface PasswordCredentialTokensTable {
   expires_at: Timestamp
   consumed_at: NullableTimestamp
   created_at: TimestampDefault
+  bound_email_revision: NullableBigIntString
+  bound_credential_version: NullableBigIntString
 }

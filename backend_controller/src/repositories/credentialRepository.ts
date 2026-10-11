@@ -7,7 +7,13 @@ import { sql } from "kysely"
 
 import type { Transaction, UserCredential, UserId } from "../db/repositories.js"
 
+export interface LockedCredential {
+  readonly version: string
+  readonly hasPassword: boolean
+}
+
 export interface CredentialWriteRepository {
+  lockByUserId: (tx: Transaction, userId: UserId) => Promise<LockedCredential | null>
   exists: (tx: Transaction, userId: UserId) => Promise<boolean>
   create: (tx: Transaction, userId: UserId, argon2idHash: string) => Promise<UserCredential>
   replace: (
@@ -17,6 +23,16 @@ export interface CredentialWriteRepository {
 }
 
 export const createCredentialRepository = (): CredentialWriteRepository => ({
+  lockByUserId: async (tx, userId) => {
+    const row = await tx
+      .selectFrom("user_credentials")
+      .select(["version", "password_hash"])
+      .where("user_id", "=", userId)
+      .forUpdate()
+      .executeTakeFirst()
+    return row === undefined ? null : { version: row.version, hasPassword: row.password_hash !== null }
+  },
+
   exists: async (tx, userId) => {
     const result = await sql<{ present: boolean }>`
       select exists (select 1 from user_credentials where user_id = ${userId}) as present

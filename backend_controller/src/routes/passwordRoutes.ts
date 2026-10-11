@@ -98,11 +98,13 @@ const forgot = async (deps: PasswordRoutesDeps, request: FastifyRequest, reply: 
     try {
       return await issuePasswordToken(tx, domainDeps(deps), {
         userId: identity.user.id,
-        purpose: "reset",
         requestId: request.requestId,
+        requester: { kind: "user", userId: identity.user.id },
       })
     } catch (error) {
-      if (error instanceof AppError && error.code === "RATE_LIMITED") return null
+      if (error instanceof AppError && (error.code === "RATE_LIMITED" || error.code === "ACCOUNT_NOT_ACTIVE")) {
+        return null
+      }
       throw error
     }
   })

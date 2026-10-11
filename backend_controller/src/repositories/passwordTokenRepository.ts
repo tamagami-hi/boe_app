@@ -3,6 +3,11 @@ import { sql } from "kysely"
 import type { Transaction } from "../db/repositories.js"
 import type { PasswordTokenPurpose } from "../db/types.js"
 
+export interface PasswordTokenBinding {
+  readonly emailRevision: string
+  readonly credentialVersion: string
+}
+
 export interface PasswordCredentialToken {
   readonly id: string
   readonly userId: string
@@ -13,6 +18,7 @@ export interface PasswordCredentialToken {
   readonly expiresAt: Date
   readonly consumedAt: Date | null
   readonly createdAt: Date
+  readonly binding: PasswordTokenBinding | null
 }
 
 export interface CreatePasswordTokenInput {
@@ -21,11 +27,13 @@ export interface CreatePasswordTokenInput {
   readonly tokenHash: Buffer
   readonly tokenKeyVersion: string
   readonly expiresAt: Date
+  readonly binding: PasswordTokenBinding
 }
 
 export interface PasswordTokenRepository {
   create: (tx: Transaction, input: CreatePasswordTokenInput) => Promise<PasswordCredentialToken>
   lockActive: (tx: Transaction, userId: string) => Promise<PasswordCredentialToken | null>
+  findActiveByHash: (tx: Transaction, tokenHash: Buffer) => Promise<PasswordCredentialToken | null>
   lockActiveByHash: (tx: Transaction, tokenHash: Buffer) => Promise<PasswordCredentialToken | null>
   latestCreatedAt: (tx: Transaction, userId: string) => Promise<Date | null>
   consumeActive: (tx: Transaction, input: Readonly<{ userId: string; now: Date }>) => Promise<void>
@@ -43,6 +51,8 @@ const mapToken = (row: {
   readonly expires_at: Date
   readonly consumed_at: Date | null
   readonly created_at: Date
+  readonly bound_email_revision: string | null
+  readonly bound_credential_version: string | null
 }): PasswordCredentialToken => ({
   id: row.id,
   userId: row.user_id,
@@ -53,6 +63,10 @@ const mapToken = (row: {
   expiresAt: row.expires_at,
   consumedAt: row.consumed_at,
   createdAt: row.created_at,
+  binding:
+    row.bound_email_revision !== null && row.bound_credential_version !== null
+      ? { emailRevision: row.bound_email_revision, credentialVersion: row.bound_credential_version }
+      : null,
 })
 
 export const createPasswordTokenRepository = (): PasswordTokenRepository => ({
@@ -65,6 +79,8 @@ export const createPasswordTokenRepository = (): PasswordTokenRepository => ({
         token_hash: input.tokenHash,
         token_key_version: input.tokenKeyVersion,
         expires_at: input.expiresAt,
+        bound_email_revision: input.binding.emailRevision,
+        bound_credential_version: input.binding.credentialVersion,
       })
       .returningAll()
       .executeTakeFirstOrThrow()
@@ -78,6 +94,16 @@ export const createPasswordTokenRepository = (): PasswordTokenRepository => ({
       .where("user_id", "=", userId)
       .where("consumed_at", "is", null)
       .forUpdate()
+      .executeTakeFirst()
+    return row === undefined ? null : mapToken(row)
+  },
+
+  findActiveByHash: async (tx, tokenHash) => {
+    const row = await tx
+      .selectFrom("password_credential_tokens")
+      .selectAll()
+      .where("token_hash", "=", tokenHash)
+      .where("consumed_at", "is", null)
       .executeTakeFirst()
     return row === undefined ? null : mapToken(row)
   },

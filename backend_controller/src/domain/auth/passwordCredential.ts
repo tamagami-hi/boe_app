@@ -9,6 +9,12 @@ import type { AuthSessionWriteRepository } from "../../repositories/authSessionR
 import type { CredentialWriteRepository } from "../../repositories/credentialRepository.js"
 import type { PasswordTokenRepository } from "../../repositories/passwordTokenRepository.js"
 import type { UserWriteRepository } from "../../repositories/userRepository.js"
+import {
+  assessPasswordTokenBinding,
+  bindingFor,
+  derivePasswordTokenPurpose,
+  type PasswordTokenRejection,
+} from "./passwordTokenBinding.js"
 
 export interface PasswordCredentialConfig {
   readonly tokenTtlMs: number
@@ -35,6 +41,10 @@ export interface IssuedPasswordToken {
   readonly purpose: PasswordTokenPurpose
 }
 
+export type PasswordLinkRequester =
+  | { readonly kind: "system" }
+  | { readonly kind: "user" | "admin"; readonly userId: string }
+
 const REVOCATION_REASONS: Readonly<Record<PasswordTokenPurpose | "change", string>> = {
   set: "password_set",
   reset: "password_reset",
@@ -50,11 +60,13 @@ const AUDIT_COMMANDS: Readonly<Record<PasswordTokenPurpose | "change", string>> 
 export const issuePasswordToken = async (
   tx: Transaction,
   deps: PasswordCredentialDeps,
-  input: Readonly<{ userId: string; purpose: PasswordTokenPurpose; requestId: string }>,
+  input: Readonly<{ userId: string; requestId: string; requester: PasswordLinkRequester }>,
 ): Promise<IssuedPasswordToken> => {
   const now = deps.clock()
   const user = await deps.userRepository.lockById(tx, input.userId as UserId)
   if (user === null) throw new AppError("RESOURCE_NOT_FOUND")
+  if (user.account_state !== "active") throw new AppError("ACCOUNT_NOT_ACTIVE")
+  const credential = await deps.credentialRepository.lockByUserId(tx, input.userId as UserId)
 
   const latest = await deps.passwordTokenRepository.latestCreatedAt(tx, input.userId)
   if (latest !== null && now.getTime() - latest.getTime() < deps.config.requestCooldownMs) {
@@ -63,27 +75,29 @@ export const issuePasswordToken = async (
     })
   }
 
+  const purpose = derivePasswordTokenPurpose(credential)
   await deps.passwordTokenRepository.consumeActive(tx, { userId: input.userId, now })
 
   const minted = deps.crypto.generateVerificationToken()
   const expiresAt = new Date(now.getTime() + deps.config.tokenTtlMs)
   await deps.passwordTokenRepository.create(tx, {
     userId: input.userId,
-    purpose: input.purpose,
+    purpose,
     tokenHash: minted.hash,
     tokenKeyVersion: minted.keyVersion,
     expiresAt,
+    binding: bindingFor(user, credential),
   })
 
   await deps.auditRepository.append(tx, {
-    actorType: "user",
-    actorUserId: input.userId,
-    command: input.purpose === "set" ? "password.set_requested" : "password.reset_requested",
+    actorType: input.requester.kind,
+    actorUserId: input.requester.kind === "system" ? null : input.requester.userId,
+    command: purpose === "set" ? "password.set_requested" : "password.reset_requested",
     entityType: "user",
     entityId: input.userId,
     requestId: input.requestId,
     entityVersion: Number(user.version),
-    metadata: { purpose: input.purpose },
+    metadata: { purpose },
   })
 
   return {
@@ -91,7 +105,7 @@ export const issuePasswordToken = async (
     email: user.email_normalized,
     rawToken: minted.token,
     expiresAt,
-    purpose: input.purpose,
+    purpose,
   }
 }
 
@@ -100,6 +114,7 @@ export type RedeemPasswordTokenOutcome =
   | { readonly kind: "unknown_token" }
   | { readonly kind: "expired" }
   | { readonly kind: "locked" }
+  | { readonly kind: PasswordTokenRejection }
 
 export const redeemPasswordToken = async (
   tx: Transaction,
@@ -108,8 +123,14 @@ export const redeemPasswordToken = async (
 ): Promise<RedeemPasswordTokenOutcome> => {
   const now = deps.clock()
   const presented = deps.crypto.hashToken(input.rawToken)
+  const candidate = await deps.passwordTokenRepository.findActiveByHash(tx, presented.hash)
+  if (candidate === null) return { kind: "unknown_token" }
+
+  const user = await deps.userRepository.lockById(tx, candidate.userId as UserId)
+  if (user === null) return { kind: "unknown_token" }
+  const credential = await deps.credentialRepository.lockByUserId(tx, candidate.userId as UserId)
   const token = await deps.passwordTokenRepository.lockActiveByHash(tx, presented.hash)
-  if (token === null) return { kind: "unknown_token" }
+  if (token === null || token.userId !== user.id) return { kind: "unknown_token" }
 
   if (token.expiresAt.getTime() <= now.getTime()) return { kind: "expired" }
   if (token.attemptCount >= deps.config.maxAttempts) return { kind: "locked" }
@@ -118,8 +139,8 @@ export const redeemPasswordToken = async (
     return { kind: "unknown_token" }
   }
 
-  const user = await deps.userRepository.lockById(tx, token.userId as UserId)
-  if (user === null) return { kind: "unknown_token" }
+  const rejection = assessPasswordTokenBinding({ token, user, credential })
+  if (rejection !== null) return { kind: rejection }
 
   if (!(await deps.passwordTokenRepository.consume(tx, { tokenId: token.id, now }))) {
     return { kind: "unknown_token" }
@@ -153,6 +174,7 @@ export const changePassword = async (
 ): Promise<ChangePasswordOutcome> => {
   const user = await deps.userRepository.lockById(tx, input.userId as UserId)
   if (user === null) return { kind: "no_credential" }
+  await deps.credentialRepository.lockByUserId(tx, input.userId as UserId)
 
   const storedHash = await deps.userRepository.findPasswordHash(tx, input.userId as UserId)
   if (storedHash === null) {
@@ -192,6 +214,7 @@ const applyNewPassword = async (
     argon2idHash,
     now,
   })
+  await deps.passwordTokenRepository.consumeActive(tx, { userId: input.userId, now })
 
   const revoked = await deps.authSessionRepository.revokeAllForUser(tx, {
     userId: input.userId as UserId,

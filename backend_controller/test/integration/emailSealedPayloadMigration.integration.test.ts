@@ -387,7 +387,7 @@ describe("email delivery payload populated upgrade", () => {
     const directory = fileURLToPath(new URL("../../db/migrations", import.meta.url))
     const migrations = await loadMigrationFiles(directory)
 
-    const applied = await runMigrations(pool, migrations.filter((migration) => migration.version >= PAYLOAD_MIGRATION))
+    const applied = await runMigrations(pool, migrations.filter((migration) => migration.version === PAYLOAD_MIGRATION))
 
     expect(applied).toContain(PAYLOAD_MIGRATION_FILE)
     expect(dataBefore.outbox_events).toHaveLength(LEGACY_SEEDS.length)

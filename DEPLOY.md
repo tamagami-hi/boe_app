@@ -203,6 +203,43 @@ the secret is unconfigured. Origin and Referer are deliberately not used — the
 server-to-server, so those headers are absent or attacker-controlled. Signup creates a
 `submitted` application and sends no email; approval is what queues the welcome mail.
 
+### Rotating `CRYPTO_RECIPIENT_ENC_KEY`
+
+One key, `CRYPTO_RECIPIENT_ENC_KEY` with its `CRYPTO_RECIPIENT_ENC_KEY_VERSION`, encrypts the
+recipient address of every queued mail message, the sealed payload of messages that carry a
+secret such as a password link, and the PhonePe callback payloads kept for audit. There is no
+keyring, so queued mail can be opened only under the version it was written with. A sealed
+message under another version is dead-lettered with `EMAIL_PAYLOAD_KEY_MISMATCH`. A recipient
+address under another key cannot be decrypted at all, so the email worker's pass throws
+(`EMAIL_WORKER_FAILURE`, an unsuccessful heartbeat) each time it claims that message. Rotate
+only when no mail is queued:
+
+1. Choose a maintenance window and stop the `backend` service so nothing new is queued. Leave
+   Postgres and `email-worker` running.
+2. Wait until these read-only queries all return 0. Mail in `retryable_failed` waits on the
+   retry ladder (about 42 hours before dead-lettering), so either wait it out or have the
+   maintainer decide how to resolve it.
+
+   ```sql
+   select count(*) from outbox_events
+    where topic in ('email', 'email.sealed') and state in ('pending', 'processing', 'retryable_failed');
+   select count(*) from email_deliveries where state = 'sending';
+   select count(*) from email_delivery_payloads p
+     join email_deliveries d on d.id = p.email_delivery_id
+    where p.scrubbed_at is null and d.state <> 'sending';
+   ```
+
+   A delivery in `sending` is in doubt, because the message may already have been sent. It
+   stays as recorded, with its sealed ciphertext under the old key, until the maintainer
+   decides what to do with it.
+3. Stop `email-worker`, set the new key and a new version in the stack `.env`, then start
+   `backend` and `email-worker` and check both healthchecks.
+
+Rows that are already delivered, cancelled, or failed keep their old ciphertext. The
+application never decrypts it again (the admin views show only the masked address), and the
+same holds for the stored PhonePe callback payloads. Keep the old key somewhere safe if an
+audit might need to read them.
+
 ## Migration policy
 
 Production holds customer, financial, consent, and audit data. Root `RULES.md` rule 11 is

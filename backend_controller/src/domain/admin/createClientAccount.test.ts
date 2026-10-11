@@ -13,7 +13,13 @@ const deps = (conflict: unknown): CreateClientAccountDeps =>
       createAdminCreatedActive: vi
         .fn()
         .mockResolvedValue({ id: "user-1", version: "1", email_normalized: "a@b.test" }),
-      lockById: vi.fn().mockResolvedValue({ id: "user-1", version: "1", email_normalized: "a@b.test" }),
+      lockById: vi.fn().mockResolvedValue({
+        id: "user-1",
+        version: "1",
+        email_normalized: "a@b.test",
+        account_state: "active",
+        email_revision: "1",
+      }),
     },
     emailVerificationRepository: {
       start: vi.fn().mockResolvedValue({ userId: "user-1", state: "pending", version: "2" }),
@@ -23,7 +29,12 @@ const deps = (conflict: unknown): CreateClientAccountDeps =>
       consumeActive: vi.fn().mockResolvedValue(undefined),
       create: vi.fn().mockResolvedValue({ id: "token-1" }),
     },
-    credentialRepository: { create: vi.fn(), replace: vi.fn(), exists: vi.fn() },
+    credentialRepository: {
+      lockByUserId: vi.fn().mockResolvedValue(null),
+      create: vi.fn(),
+      replace: vi.fn(),
+      exists: vi.fn(),
+    },
     authSessionRepository: { revokeAllForUser: vi.fn() },
     auditRepository: { append: vi.fn().mockResolvedValue(undefined) },
     crypto: {
@@ -71,6 +82,22 @@ describe("admin-created client accounts", () => {
     expect(created.userId).toBe("user-1")
     expect(d.credentialRepository.create).not.toHaveBeenCalled()
     expect(d.credentialRepository.replace).not.toHaveBeenCalled()
+  })
+
+  test("invites with a set link bound to no credential, requested by the creating admin", async () => {
+    const d = deps(null)
+
+    const created = await createClientAccount(TX, d, input)
+
+    expect(created.invite.purpose).toBe("set")
+    expect(d.passwordTokenRepository.create).toHaveBeenCalledWith(
+      TX,
+      expect.objectContaining({ purpose: "set", binding: { emailRevision: "1", credentialVersion: "0" } }),
+    )
+    expect(d.auditRepository.append).toHaveBeenCalledWith(
+      TX,
+      expect.objectContaining({ actorType: "admin", actorUserId: "admin-1", command: "password.set_requested" }),
+    )
   })
 
   test("leaves email verification pending so the account cannot invest yet", async () => {
