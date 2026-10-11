@@ -18,6 +18,7 @@ import { defineOperation, MAX_JSON_BODY_BYTES } from "./descriptor.js"
 
 const NullableIsoDateTime = IsoDateTime.nullable()
 const AsOfDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/u)
+const CalendarDate = z.iso.date()
 const NonZeroSignedPaise = SignedPaise.refine((value) => !/^-?0$/u.test(value))
 const BasisHash = z.string().regex(/^[0-9a-f]{64}$/u)
 
@@ -712,7 +713,7 @@ export const reconcileAdminMandateCollection = defineOperation({
 export const AdminRecordedContributionBody = z.strictObject({
   fundId: Uuid,
   amountPaise: Paise.refine((value) => !/^0$/u.test(value)),
-  effectiveDate: AsOfDate,
+  effectiveDate: CalendarDate,
   reasonCode: AdminReasonCode,
   note: AdminReasonDetail.optional(),
 })
