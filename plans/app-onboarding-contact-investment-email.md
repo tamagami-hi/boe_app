@@ -574,10 +574,40 @@ One full run of the integration suite on PostgreSQL 16 (`npm run test:integratio
 | paymentSettlement | 25 | 0 | 25 |
 | publicRoutes | 14 | 0 | 14 |
 
-Findings, none fixed (unrelated stale expectations from deliberate code changes):
+Findings at that run, none fixed there and all repaired in the next section (unrelated stale expectations from deliberate code changes):
 
 - `clientEmailVerification.integration.test.ts:251` expects `emailVerificationStatus`, but the route returns `emailVerificationState` (`clientEmailVerificationRoutes.ts:108`), which is also the contract name. Renamed in `5dc90fc` (2026-08-29).
 - `clientEmailVerification.integration.test.ts:334` and `:352` post to `/v1/client/email-verification/resend` and get 404; the routes module has no resend handler. Removed in `5dc90fc`.
 - `adminIdentity.integration.test.ts:440` expects the approval mail's `downloadUrl` without a query string, but `releaseFeed.ts:227` has appended `?v=<versionCode>` since `24a7449` (2026-09-10).
 
 Finding on route behavior (Q-014, answered by the maintainer on 2026-10-11: the command row stays and `adminMandateRoutes.ts` does not change): the admin cancel route calls `createCancelCommand` after its if/else in every branch (`adminMandateRoutes.ts:552`), so the local-cancel branch (`nothingToRevoke`, `:514-517`) inserts a `mandate_cancel_commands` row in state `queued` with `previous_mandate_state` `setup_pending`, and the success response returns its id and state, which the contract requires (`admin-money.ts:677`). The client route's local-cancel branches create no command. TESTED: the local-cancel integration test asserts that row, and the full-suite run of 2026-10-11 passed `adminMandate` 17 of 17 with it. STATIC (no test runs the worker over a locally cancelled mandate): the provider is not asked. On its next pass the reconciliation worker finds the mandate `cancelled` (`mandateReconciliationWorker.ts:152`) and calls `markCancelSatisfied` (`mandatesRepository.ts:514`), which sets the row to `accepted` with `dispatch_started_at` and `accepted_at` set to that pass's time, and it counts the row in `cancelCommandsDispatched` (`:158`) although no provider call happened. `claimCancelDispatch` would refuse the row anyway, because the mandate has no provider subscription (`mandatesRepository.ts:492`). Until the pass the admin list shows the cancel as `queued`; afterwards the row reads `accepted`.
+
+### Stale integration expectations repaired (2026-10-11)
+
+The four stale expectations listed above are repaired. Tests only; no source file changed. In `clientEmailVerification.integration.test.ts` the status test reads `emailVerificationState`, the name the route and contract have used since `5dc90fc`. The two resend tests post to `/v1/client/email-verification/start`, the only route that issues a code (`issueCode`), so both behaviors stay covered: a request after the cooldown supersedes the earlier code, and one inside the cooldown is `RATE_LIMITED` (429). The helper's action type is narrowed to `start`, so a call to the removed route no longer type-checks. In `adminIdentity.integration.test.ts` the approval mail's `downloadUrl` is expected to end in `?v=<versionCode>`, which `releaseFeed.ts:227` has appended since `24a7449`. The expected suffix comes from the constant that writes `versionCode` into the seeded release manifest, not from the route's output.
+
+Verified (TESTED) on PostgreSQL 16 (`postgres:16-alpine`) in the two container runs the maintainer allowed. The two repaired files alone passed 28 of 28 (`clientEmailVerification` 10, `adminIdentity` 18; 4.37 s). One full run of `npm run test:integration` then passed 21 of 21 files and 233 of 233 tests in 9.63 s, replacing the 229 of 233 baseline above. `npm run typecheck` and ESLint on the three edited test files exit 0. `docker ps -a` listed no container after either run once the Ryuk reaper had exited on its own. The 4 failures at `fb6d651` against unchanged source are the evidence that these assertions discriminate; no separate source mutation was run for them. From here any failure in the integration suite is new. Corrected baseline:
+
+| File | Passed | Failed | Total |
+| --- | --- | --- | --- |
+| adminAum | 25 | 0 | 25 |
+| adminFundCatalog | 29 | 0 | 29 |
+| adminIdentity | 18 | 0 | 18 |
+| adminMandate | 17 | 0 | 17 |
+| authDeviceLimit | 4 | 0 | 4 |
+| authNative | 7 | 0 | 7 |
+| authRepositories | 3 | 0 | 3 |
+| authWeb | 9 | 0 | 9 |
+| clientCatalog | 5 | 0 | 5 |
+| clientEmailVerification | 10 | 0 | 10 |
+| clientGrowth | 14 | 0 | 14 |
+| database | 14 | 0 | 14 |
+| deployBoot | 5 | 0 | 5 |
+| emailDelivery | 9 | 0 | 9 |
+| emailQueueMigration | 5 | 0 | 5 |
+| emailVerificationMigration | 1 | 0 | 1 |
+| mandatePersistence | 6 | 0 | 6 |
+| maturitySettlement | 11 | 0 | 11 |
+| metrics | 2 | 0 | 2 |
+| paymentSettlement | 25 | 0 | 25 |
+| publicRoutes | 14 | 0 | 14 |

@@ -74,7 +74,7 @@ const bearer = (token: string, key?: string): Record<string, string> => ({
   authorization: `Bearer ${token}`,
   ...(key === undefined ? {} : { "idempotency-key": key }),
 })
-const emailVerification = (token: string, action: "start" | "resend") =>
+const emailVerification = (token: string, action: "start") =>
   app.inject({ method: "POST", url: `/v1/client/email-verification/${action}`, headers: bearer(token) })
 const verify = (token: string, code: string) =>
   app.inject({ method: "POST", url: "/v1/client/email-verification/verify", headers: bearer(token), payload: { code } })
@@ -248,8 +248,8 @@ describe("client email OTP verification + eligibility (integration)", () => {
     // A fresh account has no case at all: that is a status, not an error.
     const fresh = await status(token)
     expect(fresh.statusCode).toBe(200)
-    expect(dataOf<{ emailVerificationStatus: string }>(fresh)).toMatchObject({
-      emailVerificationStatus: "not_started",
+    expect(dataOf<{ emailVerificationState: string }>(fresh)).toMatchObject({
+      emailVerificationState: "not_started",
       method: "email_otp",
     })
 
@@ -257,14 +257,14 @@ describe("client email OTP verification + eligibility (integration)", () => {
     const pending = await status(token)
     // A verification is pending and has not completed yet.
     expect(dataOf<{ status: string; verifiedAt: string | null }>(pending).verifiedAt).toBeNull()
-    expect(dataOf<{ emailVerificationStatus: string }>(pending).emailVerificationStatus).toBe("pending")
+    expect(dataOf<{ emailVerificationState: string }>(pending).emailVerificationState).toBe("pending")
 
     await verify(token, codeFor("client-status@example.com"))
     const verified = await status(token)
-    const body = dataOf<{ emailVerificationStatus: string; verifiedAt: string | null }>(
+    const body = dataOf<{ emailVerificationState: string; verifiedAt: string | null }>(
       verified,
     )
-    expect(body.emailVerificationStatus).toBe("verified")
+    expect(body.emailVerificationState).toBe("verified")
     expect(body.verifiedAt).not.toBeNull()
   })
 
@@ -330,7 +330,7 @@ describe("client email OTP verification + eligibility (integration)", () => {
       "update email_verification_codes set created_at = now() - interval '2 minutes' where user_id = $1 and consumed_at is null",
       [userId],
     )
-    const resent = await emailVerification(token, "resend")
+    const resent = await emailVerification(token, "start")
     expect(resent.statusCode).toBe(200)
     const secondCode = codeFor("client-resend@example.com")
 
@@ -348,7 +348,7 @@ describe("client email OTP verification + eligibility (integration)", () => {
     const { token } = await seedActiveUser("client-c@example.com", "+14155551703")
     const first = await emailVerification(token, "start")
     expect(first.statusCode).toBe(200)
-    const second = await emailVerification(token, "resend")
+    const second = await emailVerification(token, "start")
     expect(second.statusCode).toBe(429)
     expect(errorOf(second)).toBe("RATE_LIMITED")
   })

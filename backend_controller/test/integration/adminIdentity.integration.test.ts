@@ -50,6 +50,7 @@ let releaseRoot: string
 
 // The published client APK the account-approved email links to.
 const APK_FILENAME = "boe.dev.client.1.0.0.apk"
+const APK_VERSION_CODE = 100
 const DOWNLOAD_BASE_URL = "https://dev-app.beonedge.in/downloads"
 
 const key = (bytes: number): string => randomBytes(bytes).toString("base64")
@@ -174,7 +175,7 @@ beforeAll(async () => {
       variant: "client",
       version: "1.0.0",
       versionName: "1.0.0",
-      versionCode: 100,
+      versionCode: APK_VERSION_CODE,
       applicationId: "com.beonedge.app.dev",
       sha256: "deadbeef",
       signing: "release",
@@ -439,7 +440,7 @@ describe("admin application decision (integration)", () => {
     )
     expect(outbox.rows[0]?.payload).toEqual({
       template: "account_approved",
-      downloadUrl: `${DOWNLOAD_BASE_URL}/client/${APK_FILENAME}`,
+      downloadUrl: `${DOWNLOAD_BASE_URL}/client/${APK_FILENAME}?v=${APK_VERSION_CODE}`,
     })
     const delivery = await pool.query("select template_key from email_deliveries where id = $1", [
       decidedBody.emailDeliveryId,
