@@ -60,6 +60,7 @@ export type UserMailTemplateKey =
   | "contact_phone_changed"
   | "email_change_code"
   | "contact_email_changed"
+  | "admin_message"
 
 export interface CreateUserMailDeliveryInput {
   readonly outboxEventId: string

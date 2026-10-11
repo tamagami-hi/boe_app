@@ -72,6 +72,8 @@ import { createEmailChangeRepository } from "../repositories/emailChangeReposito
 import { registerClientProfileRoutes } from "../routes/clientProfileRoutes.js"
 import { registerAdminEmailTemplateRoutes } from "../routes/adminEmailTemplateRoutes.js"
 import { createEmailTemplateRepository } from "../repositories/emailTemplateRepository.js"
+import { registerAdminEmailMessageRoutes } from "../routes/adminEmailMessageRoutes.js"
+import { createAdminEmailMessageRepository } from "../repositories/adminEmailMessageRepository.js"
 import { registerPasswordRoutes } from "../routes/passwordRoutes.js"
 import { registerAdminClientOnboardingRoutes } from "../routes/adminClientOnboardingRoutes.js"
 import { createPasswordTokenRepository } from "../repositories/passwordTokenRepository.js"
@@ -365,14 +367,35 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       },
     })
 
+    const emailTemplateRepository = createEmailTemplateRepository()
     registerAdminEmailTemplateRoutes(application, {
       webAuth,
       unitOfWork,
       idempotencyRepository,
-      emailTemplateRepository: createEmailTemplateRepository(),
+      emailTemplateRepository,
       auditRepository,
       clock,
       config: { idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
+    })
+    registerAdminEmailMessageRoutes(application, {
+      webAuth,
+      unitOfWork,
+      idempotencyRepository,
+      emailTemplateRepository,
+      adminEmailMessageRepository: createAdminEmailMessageRepository(),
+      userRepository,
+      emailSuppressionRepository,
+      outboxRepository,
+      emailDeliveryRepository,
+      auditRepository,
+      crypto,
+      clock,
+      config: {
+        sesConfigurationSet: serverConfig.sesConfigurationSet,
+        sendCooldownMs: serverConfig.emailVerification.resendCooldownMs,
+        supportAddress: serverConfig.email.links.supportAddress,
+        idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
+      },
     })
 
     registerClientProfileRoutes(application, {

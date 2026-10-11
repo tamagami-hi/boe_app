@@ -80,3 +80,8 @@ export const ADMIN_JSON_AREA = [
   "shadow-[inset_0_0_0_1px_var(--be-hairline-strong)]",
   "focus:outline-none focus:shadow-[inset_0_0_0_1px_var(--be-gold)]",
 ].join(" ")
+
+export const ADMIN_EMAIL_PREVIEW = [
+  "block w-full min-h-[34rem] border-0",
+  "rounded-squircle-sm bg-shell shadow-hairline",
+].join(" ")

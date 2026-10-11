@@ -62,7 +62,7 @@ const codeRows = (lead: string, code: string): string =>
 const blockRows = (block: EmailBlock): string => {
   switch (block.kind) {
     case "text":
-      return row(escapeHtml(block.text), "0 28px 16px 28px")
+      return row(escapeHtml(block.text).replace(/\n/gu, "<br>"), "0 28px 16px 28px")
     case "action":
       return actionRows(block.label, block.url)
     case "code":

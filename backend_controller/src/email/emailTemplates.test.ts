@@ -149,6 +149,35 @@ describe("queued password mail", () => {
   })
 })
 
+describe("queued admin messages", () => {
+  const message = { subject: "Hello Meera", body: "Hello Meera,\r\n\r\n<b>Line one</b>\nLine two\n\n\nThanks" }
+
+  test("renders the approved words as escaped paragraphs inside the branded layout", () => {
+    const result = renderEmailTemplate("admin_message", "v1", message, CONFIG)
+    if (result.kind !== "rendered") throw new Error("expected a rendered email")
+    expect(result.email.subject).toBe("Hello Meera")
+    expect(result.email.html).toContain("&lt;b&gt;Line one&lt;/b&gt;<br>Line two")
+    expect(result.email.html).not.toContain("<b>")
+    expect(result.email.text).toContain("Hello Meera,\n\n<b>Line one</b>\nLine two\n\nThanks")
+    expect(result.email.text).toContain("Regards,\nBeOnEdge Team")
+  })
+
+  test("marks a test in the subject and the first paragraph", () => {
+    const result = renderEmailTemplate("admin_message", "v1", { ...message, test: true }, CONFIG)
+    if (result.kind !== "rendered") throw new Error("expected a rendered email")
+    expect(result.email.subject).toBe("[Test] Hello Meera")
+    expect(result.email.text).toContain("It was not sent to a client")
+  })
+
+  test.each([
+    ["a subject with a line break", { subject: "Hi\r\nBcc: x@example.com", body: "Body" }, "EMAIL_HEADER_INVALID"],
+    ["a blank body", { subject: "Hi", body: "  \n\n " }, "EMAIL_TEMPLATE_DATA_INVALID"],
+    ["a missing subject", { body: "Body" }, "EMAIL_TEMPLATE_DATA_INVALID"],
+  ] as const)("refuses %s permanently", (_name, data, errorCode) => {
+    expect(renderEmailTemplate("admin_message", "v1", data, CONFIG)).toEqual({ kind: "unrenderable", errorCode })
+  })
+})
+
 describe("emailVerificationCodeEmail", () => {
   const CODE = "aB3dE9"
 

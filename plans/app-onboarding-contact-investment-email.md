@@ -1,6 +1,6 @@
 # BeOnEdge app: onboarding, contact details, earlier investments, and email
 
-Status: **Approved for implementation by the maintainer on 2026-10-08, in dependency order. Steps 1, 2a, 2b, and 2c are done and committed (section 8). Steps 3 (three verified slices), 4, 5, 6, 7, 8, and 11 are done. Step 9 is next, then step 10. Since 2026-10-11 the remaining steps are implemented by a single maintainer-assisted session after the coding agent's limit ran out. All plan work ships together as v0.15.0 (release decision, 2026-10-11). Q-002, Q-003, Q-004, Q-011, Q-012, Q-015, and Q-016 are answered (decision record). Q-013 stays out of scope, and Q-017 is open without gating a step.**
+Status: **Approved for implementation by the maintainer on 2026-10-08, in dependency order. Steps 1, 2a, 2b, and 2c are done and committed (section 8). Steps 3 (three verified slices), 4, 5, 6, 7, 8, 9, and 11 are done. Step 10 is next. Since 2026-10-11 the remaining steps are implemented by a single maintainer-assisted session after the coding agent's limit ran out. All plan work ships together as v0.15.0 (release decision, 2026-10-11). Q-002, Q-003, Q-004, Q-011, Q-012, Q-015, and Q-016 are answered (decision record). Q-013 stays out of scope, and Q-017 is open without gating a step.**
 
 Prepared: 2026-10-08. Investigation is source-level only; no production diagnosis, test runs, builds, mail sends, or deployments were performed. Since then only the admin authorization and seeding claims have been checked against source (section 2F). Every other claim in section 2 is unverified, and each step verifies the claims it depends on before it changes code.
 
@@ -510,7 +510,8 @@ Each step records here what changed, the exact verification (commands and counts
 | 5. Contact ownership, client profile, and phone editing | Done and committed; not deployed. Migration 056 is a major identity change recorded for the maintainer's review below |
 | 6. Verified email changes and session safety | Done and committed; not deployed. Details below |
 | 8. Admin template catalogue and custom-template editing | Done and committed; not deployed. Details below |
-| 9, 10 | Not started |
+| 9. Preview, test send, and send to one client | Done and committed; not deployed. Details below |
+| 10 | Not started |
 
 ### Step 1 handoff (2026-10-08)
 
@@ -879,4 +880,24 @@ Verified (TESTED): contracts 98 tests; backend check 95 files and 1144 tests (co
 Corrected belief: the integration suite's coverage gate (80% over routes, domain, and repositories) has been failing for longer than this session; earlier handoffs reported its tests, not its exit code. Measured on the same machine: 74.72% lines at `5cdc6fd` (23 files, 254 tests), 78.9% at `6774079` (31 files, 350 tests), and 79.15% lines and 77.9% branches now. Every test passes each time, and the threshold was not lowered. The remaining gap is mostly older admin and client routes with little integration coverage; step 10 records it for the maintainer.
 
 Not verified (UNVERIFIED): the screens in a browser.
+
+### Step 9 handoff: preview, test send, and send to one client (2026-10-12)
+
+Changed:
+
+- Preview: `GET /v1/admin/email-messages/preview?templateId=&userId=` renders the template's current version through the shared branded layout. Without a client it uses the sample name Asha Verma and says so; with a client it uses their name and returns the masked address, the address revision, whether the account can be sent mail (not a client, inactive, or suppressed after a bounce or complaint), and when the next send is allowed. It writes nothing and queues nothing.
+- Send to a client: `POST /v1/admin/email-messages` takes the template, the previewed version, the client, and the previewed address revision, and nothing else; the server resolves the address. Under the client's row lock it refuses an archived or changed template, a non-client, an inactive or suppressed account, a changed address, and a second send within the cooldown (the email-verification resend cooldown). It then queues one sealed `admin_message` (subject and body with the name filled in; only the template key, a message id, and the test flag are left in the plain outbox payload) and records the send in the new `admin_email_messages` table: template, version, recipient, admin, address revision, and delivery. The send is audited as `email_message.sent`.
+- Test send: `POST /v1/admin/email-messages/test` goes only to the signed-in admin's own address, uses the sample name, starts the subject with [Test], and opens with a paragraph saying it was not sent to a client. Audited as `email_message.test_sent`.
+- Both sends need `email_messages.send`, CSRF, and an idempotency key. A replay returns the same message; a key used again after its replay window is refused, never sent twice.
+- Worker guard `admin_message`: before sending, it cancels the mail if the recipient's address revision changed, the account is no longer active, or the template was archived or revised after the send was approved. Mail already handed to the provider cannot be recalled.
+- The shared layout now turns a line break inside a paragraph into a line break in the HTML; no existing email has one, so their output is unchanged. The delivery log's template filter gains the step 5, 6, and 9 keys.
+- Frontend: a Send email screen (template, client search, the exact preview in a sandboxed frame with no scripts, then Send a test to me and Send to client, each confirmed first). A lost reply keeps the same key ("Check again"); a new key needs a confirmed new attempt after checking the delivery log. The template screen links to it.
+
+Migration `059_admin_email_messages.sql`: a new table that references the immutable template version, and the template CHECK widened with `admin_message`. It touches no existing row; step 10's combined upgrade test covers it.
+
+Verified (TESTED): contracts 98 tests and a valid OpenAPI file; backend check 95 files and 1149 tests (coverage 84.08% statements) with both boot smokes; frontend check 26 files and 236 tests; `build:client` (17 assets, 858942 bytes, Android budget and boot check) and `build:admin` pass. On PostgreSQL 16 the integration suite passes 33 files and 374 tests; `adminEmailMessages` (12): previewing shows a marked sample or the client's name and masked address and queues nothing; markup in a template is escaped in the preview; a send queues one sealed message bound to the version and address, with no name in any plain table, audited as the admin; delivery carries the approved words, the client's name, and line breaks, with no test marking; a same-key replay sends nothing more, and the same key after its window is refused; a recipient field in the request is refused, as is a stale address revision; a template changed or archived after the preview is refused; an admin account, a suspended client, and a suppressed address are refused; a second send inside the cooldown answers 429; a test goes only to the admin with the sample name and the marking; the worker cancels a queued message whose client changed address or whose template was revised; support and onboarding admins can neither preview nor send, and a send without CSRF is refused. Renderer unit tests cover escaping, test marking, and refusal of a line break in the subject or a blank body. `SendAction.test.tsx` (4): nothing is sent before confirming; Check again resends the same key; only a confirmed new attempt changes it; a refusal is shown and the button unlocks. Negative controls, each restored by checksum: a guard that ignores the address revision fails the guard test; no address-revision check fails the stale-address test; no template-version check fails the changed-template test; no send permission fails the permission test; a new key on every attempt fails the Check again test.
+
+Integration coverage: 79.61% lines and 78.03% branches, up from 79.15% and 77.9%; the gate is still below 80% (see the step 8 handoff).
+
+Not verified (UNVERIFIED): the screen in a browser, and real mail delivery.
 

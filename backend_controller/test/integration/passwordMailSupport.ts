@@ -21,7 +21,7 @@ import {
 } from "../../src/domain/auth/passwordLinkMail.js"
 import type { PasswordLinkSettings } from "../../src/domain/auth/passwordLinkUrl.js"
 import type { PasswordLinkRequester } from "../../src/domain/auth/passwordCredential.js"
-import { dispatchDueDeliveries } from "../../src/domain/email/dispatchDueDeliveries.js"
+import { dispatchDueDeliveries, type SendGuard } from "../../src/domain/email/dispatchDueDeliveries.js"
 import { CLAIMED_EMAIL_TOPICS } from "../../src/domain/email/emailTopics.js"
 import { createPasswordLinkMailGuard } from "../../src/domain/email/passwordLinkMailGuard.js"
 import type { EmailMessage, EmailSender } from "../../src/email/emailSender.js"
@@ -268,7 +268,12 @@ export class PasswordMailStack {
     }
   }
 
-  dispatch(sender: EmailSender, clock: () => Date = this.clock, crypto: CryptoContext = this.crypto) {
+  dispatch(
+    sender: EmailSender,
+    clock: () => Date = this.clock,
+    crypto: CryptoContext = this.crypto,
+    extraGuards: readonly (readonly [string, SendGuard])[] = [],
+  ) {
     const guard = createPasswordLinkMailGuard({ passwordTokenRepository: this.passwordTokenRepository })
     return dispatchDueDeliveries({
       unitOfWork: this.unitOfWork,
@@ -280,6 +285,7 @@ export class PasswordMailStack {
       sendGuards: new Map([
         ["password_set_link", guard],
         ["password_reset_link", guard],
+        ...extraGuards,
       ]),
       clock,
       config: {

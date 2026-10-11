@@ -337,6 +337,17 @@ export const ADMIN_ROUTES: RouteManifest = [
     back: { kind: "parent", path: "/emails/templates" },
   },
   {
+    id: "email-send",
+    path: "/emails/send",
+    title: "Send an email",
+    access: "session",
+    role: "admin",
+    permissions: ["email_messages.send"],
+    element: () => import("~/features/admin/emails/SendEmailScreen"),
+    nav: { domain: "system", order: 14, label: "Send email" },
+    back: { kind: "parent", path: ADMIN_HOME_PATH },
+  },
+  {
     id: "content-faqs",
     path: "/content/faqs",
     title: "FAQs",
@@ -344,7 +355,7 @@ export const ADMIN_ROUTES: RouteManifest = [
     role: "admin",
     permissions: ["content.read"],
     element: () => import("~/features/admin/content/FaqListScreen"),
-    nav: { domain: "system", order: 14, label: "FAQs" },
+    nav: { domain: "system", order: 15, label: "FAQs" },
     back: { kind: "parent", path: ADMIN_HOME_PATH },
   },
   {
@@ -355,7 +366,7 @@ export const ADMIN_ROUTES: RouteManifest = [
     role: "admin",
     permissions: ["config.read"],
     element: () => import("~/features/admin/app-config/AppConfigBuilderScreen"),
-    nav: { domain: "system", order: 15, label: "App config" },
+    nav: { domain: "system", order: 16, label: "App config" },
     back: { kind: "parent", path: ADMIN_HOME_PATH },
   },
   {

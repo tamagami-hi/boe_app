@@ -34,6 +34,10 @@ const TEMPLATES = [
   { value: "password_set_link", label: "Password set link" },
   { value: "password_reset_link", label: "Password reset link" },
   { value: "password_app_download", label: "App download after password" },
+  { value: "contact_phone_changed", label: "Phone changed notice" },
+  { value: "email_change_code", label: "Email change code" },
+  { value: "contact_email_changed", label: "Email changed notice" },
+  { value: "admin_message", label: "Admin message" },
 ] as const
 
 const EmailDeliveriesScreen = (): React.ReactElement => {

@@ -1,5 +1,5 @@
 import type { Generated } from "kysely"
-import type { BigIntStringDefault, Bytea, Json, Nullable, NullableBytea, NullableTimestamp, Timestamp, TimestampDefault } from "./columns.js"
+import type { BigIntString, BigIntStringDefault, Bytea, Json, Nullable, NullableBytea, NullableTimestamp, Timestamp, TimestampDefault } from "./columns.js"
 
 export type OutboxState =
   | "pending"
@@ -156,5 +156,17 @@ export interface EmailTemplateRevisionsTable {
   subject: string
   body: string
   created_by_user_id: Nullable<string>
+  created_at: TimestampDefault
+}
+
+export interface AdminEmailMessagesTable {
+  id: string
+  template_id: string
+  template_revision: number
+  recipient_user_id: string
+  actor_user_id: string
+  is_test: boolean
+  bound_email_revision: BigIntString
+  delivery_id: string
   created_at: TimestampDefault
 }

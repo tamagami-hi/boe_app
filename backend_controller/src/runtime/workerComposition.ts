@@ -5,9 +5,12 @@ import {
   type DispatchSummary,
 } from "../domain/email/dispatchDueDeliveries.js"
 import { CLAIMED_EMAIL_TOPICS } from "../domain/email/emailTopics.js"
+import { createAdminMessageGuard } from "../domain/email/adminMessageGuard.js"
 import { createEmailChangeMailGuard } from "../domain/email/emailChangeMailGuard.js"
 import { createPasswordLinkMailGuard } from "../domain/email/passwordLinkMailGuard.js"
+import { createAdminEmailMessageRepository } from "../repositories/adminEmailMessageRepository.js"
 import { createEmailChangeRepository } from "../repositories/emailChangeRepository.js"
+import { createEmailTemplateRepository } from "../repositories/emailTemplateRepository.js"
 import { createTransactionalEmailSender } from "../email/transactionalEmailSender.js"
 import { deriveEmailSendTiming, EMAIL_PASS_BUDGET_MS } from "../email/sendTiming.js"
 import { createDatabase, createUnitOfWork } from "../db/database.js"
@@ -78,6 +81,11 @@ export const composeEmailDispatchWorker = (
 
   const passwordLinkGuard = createPasswordLinkMailGuard({ passwordTokenRepository: createPasswordTokenRepository() })
   const emailChangeGuard = createEmailChangeMailGuard({ emailChangeRepository: createEmailChangeRepository() })
+  const adminMessageGuard = createAdminMessageGuard({
+    adminEmailMessageRepository: createAdminEmailMessageRepository(),
+    emailTemplateRepository: createEmailTemplateRepository(),
+    userRepository: createUserRepository(),
+  })
 
   const deps = {
     unitOfWork,
@@ -90,6 +98,7 @@ export const composeEmailDispatchWorker = (
       ["password_set_link", passwordLinkGuard],
       ["password_reset_link", passwordLinkGuard],
       ["email_change_code", emailChangeGuard],
+      ["admin_message", adminMessageGuard],
     ]),
     clock: (): Date => new Date(),
     config: {

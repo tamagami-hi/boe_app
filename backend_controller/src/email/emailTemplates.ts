@@ -20,6 +20,7 @@ const TEMPLATE_VERSIONS: ReadonlyMap<string, readonly string[]> = new Map([
   ["contact_phone_changed", ["v1"]],
   ["email_change_code", ["v1"]],
   ["contact_email_changed", ["v1"]],
+  ["admin_message", ["v1"]],
 ])
 
 export interface PasswordLinkInput {
@@ -272,6 +273,41 @@ const changeRole = (data: Readonly<Record<string, unknown>>): "previous" | "curr
   return role
 }
 
+export interface AdminMessageInput {
+  readonly subject: string
+  readonly body: string
+  readonly test: boolean
+}
+
+export const ADMIN_TEST_NOTICE =
+  "This is a test sent from the BeOnEdge admin panel. It was not sent to a client, and the name in it is a sample."
+
+const paragraphBlocks = (body: string): readonly EmailBlock[] =>
+  body
+    .replace(/\r\n?/gu, "\n")
+    .split(/\n[ \t]*\n/u)
+    .map((paragraph) => paragraph.trim())
+    .filter((paragraph) => paragraph !== "")
+    .map((text) => ({ kind: "text", text }))
+
+export const adminMessageEmail = (input: AdminMessageInput, config: EmailTemplateConfig): RenderedEmail => {
+  const blocks = paragraphBlocks(input.body)
+  if (blocks.length === 0) throw new EmailValidationError("EMAIL_TEMPLATE_DATA_INVALID")
+  return renderEmail({
+    subject: input.test ? `[Test] ${input.subject}` : input.subject,
+    preheader: input.subject,
+    heading: input.subject,
+    supportAddress: config.supportAddress,
+    blocks: [...(input.test ? [{ kind: "text" as const, text: ADMIN_TEST_NOTICE }] : []), ...blocks],
+  })
+}
+
+const adminMessageInput = (data: Readonly<Record<string, unknown>>): AdminMessageInput => ({
+  subject: requiredString(data, "subject"),
+  body: requiredString(data, "body"),
+  test: data.test === true,
+})
+
 const buildTemplate = (
   templateKey: string,
   templateData: Readonly<Record<string, unknown>>,
@@ -297,6 +333,8 @@ const buildTemplate = (
       )
     case "contact_email_changed":
       return emailChangedEmail({ role: changeRole(templateData), newEmail: requiredString(templateData, "newEmail") }, config)
+    case "admin_message":
+      return adminMessageEmail(adminMessageInput(templateData), config)
     default:
       return null
   }

@@ -134,6 +134,88 @@ export const restoreAdminEmailTemplate = defineOperation({
   errorCodes: [...ADMIN_WRITE_ERRORS, "RESOURCE_NOT_FOUND", "STATE_CONFLICT"],
 })
 
+export const AdminEmailRecipientBlock = z.enum(["not_client", "inactive", "suppressed"])
+
+export const AdminEmailPreviewData = z.strictObject({
+  templateId: Uuid,
+  templateName: z.string(),
+  revision: z.number().int().positive(),
+  subject: z.string(),
+  text: z.string(),
+  html: z.string(),
+  sample: z.boolean(),
+  recipient: z
+    .strictObject({
+      userId: Uuid,
+      fullName: z.string(),
+      maskedEmail: z.string(),
+      emailRevision: z.string().regex(/^[1-9][0-9]{0,18}$/u),
+      block: AdminEmailRecipientBlock.nullable(),
+      nextSendAllowedAt: IsoDateTime.nullable(),
+    })
+    .nullable(),
+})
+export type AdminEmailPreviewData = z.infer<typeof AdminEmailPreviewData>
+
+export const AdminEmailQueuedData = z.strictObject({
+  messageId: Uuid,
+  deliveryId: Uuid,
+  recipient: z.string(),
+  test: z.boolean(),
+  state: z.literal("queued"),
+  queuedAt: IsoDateTime,
+})
+
+export const AdminEmailSendBody = z.strictObject({
+  templateId: Uuid,
+  revision: z.number().int().positive(),
+  userId: Uuid,
+  expectedEmailRevision: z.string().regex(/^[1-9][0-9]{0,18}$/u),
+})
+
+export const AdminEmailTestBody = z.strictObject({
+  templateId: Uuid,
+  revision: z.number().int().positive(),
+})
+
+const SEND_ERRORS = [...ADMIN_WRITE_ERRORS, "RESOURCE_NOT_FOUND", "STATE_CONFLICT", "RATE_LIMITED"] as const
+
+export const previewAdminEmailMessage = defineOperation({
+  operationId: "previewAdminEmailMessage",
+  method: "GET",
+  path: "/v1/admin/email-messages/preview",
+  authChannel: "admin-web",
+  credentialPolicy: "admin-session-cookie-and-csrf",
+  idempotency: "none",
+  request: { query: z.strictObject({ templateId: Uuid, userId: Uuid.optional() }) },
+  success: { status: 200, schema: createSuccessEnvelopeSchema(AdminEmailPreviewData) },
+  errorCodes: [...ADMIN_READ_ERRORS, "RESOURCE_NOT_FOUND", "STATE_CONFLICT"],
+})
+
+export const sendAdminEmailMessage = defineOperation({
+  operationId: "sendAdminEmailMessage",
+  method: "POST",
+  path: "/v1/admin/email-messages",
+  authChannel: "admin-web",
+  credentialPolicy: "admin-session-cookie-and-csrf",
+  idempotency: "required-key",
+  request: writeRequest(AdminEmailSendBody),
+  success: { status: 202, schema: createSuccessEnvelopeSchema(AdminEmailQueuedData) },
+  errorCodes: [...SEND_ERRORS],
+})
+
+export const sendTestAdminEmailMessage = defineOperation({
+  operationId: "sendTestAdminEmailMessage",
+  method: "POST",
+  path: "/v1/admin/email-messages/test",
+  authChannel: "admin-web",
+  credentialPolicy: "admin-session-cookie-and-csrf",
+  idempotency: "required-key",
+  request: writeRequest(AdminEmailTestBody),
+  success: { status: 202, schema: createSuccessEnvelopeSchema(AdminEmailQueuedData) },
+  errorCodes: [...SEND_ERRORS],
+})
+
 export const ADMIN_EMAIL_OPERATIONS = Object.freeze([
   listAdminEmailTemplates,
   getAdminEmailTemplate,
@@ -141,4 +223,7 @@ export const ADMIN_EMAIL_OPERATIONS = Object.freeze([
   reviseAdminEmailTemplate,
   archiveAdminEmailTemplate,
   restoreAdminEmailTemplate,
+  previewAdminEmailMessage,
+  sendAdminEmailMessage,
+  sendTestAdminEmailMessage,
 ])

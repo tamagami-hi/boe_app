@@ -13,6 +13,7 @@ import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { Disclosure, Prose } from "~/ui/patterns/DataList"
 import { Badge } from "~/ui/primitives/Badge"
 import { Button } from "~/ui/primitives/Button"
+import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 import { ACTION_ROW, STACK_LG } from "~/ui/recipes/layout"
@@ -110,6 +111,7 @@ const RevisionHistory = ({ template }: Readonly<{ template: EmailTemplateDetail 
 const TemplateWorkspace = ({ template }: Readonly<{ template: EmailTemplateDetail }>): React.ReactElement => {
   const { hasAnyPermission } = useSession()
   const canWrite = hasAnyPermission(["email_templates.write"])
+  const canSend = hasAnyPermission(["email_messages.send"])
   const revise = useReviseEmailTemplate(template.templateId)
   const [formKey, setFormKey] = useState(0)
   const [baseVersion, setBaseVersion] = useState(template.version)
@@ -122,6 +124,14 @@ const TemplateWorkspace = ({ template }: Readonly<{ template: EmailTemplateDetai
         <Badge tone="neutral">{`Version ${String(template.currentRevision)}`}</Badge>
         {archived ? <Badge tone="neutral">Archived</Badge> : null}
       </span>
+
+      {canSend && !archived ? (
+        <span className={ACTION_ROW}>
+          <ButtonLink to={`/emails/send?templateId=${template.templateId}`} tone="secondary" size="sm" trailing>
+            Send this template
+          </ButtonLink>
+        </span>
+      ) : null}
 
       {canWrite ? null : (
         <Alert tone="info" title="Read only">

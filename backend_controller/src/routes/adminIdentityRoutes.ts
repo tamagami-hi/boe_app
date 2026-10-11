@@ -95,6 +95,10 @@ const templateKeyEnum = z.enum([
   "password_set_link",
   "password_reset_link",
   "password_app_download",
+  "contact_phone_changed",
+  "email_change_code",
+  "contact_email_changed",
+  "admin_message",
 ])
 const limitSchema = z.coerce.number().int().min(1).max(100).default(25)
 
