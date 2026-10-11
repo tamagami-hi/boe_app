@@ -7,10 +7,12 @@ export type AmountInputProps = Readonly<{
   invalid?: boolean
   describedBy?: string | undefined
   disabled?: boolean
+  decimals?: boolean
   onChange: (next: string) => void
 }>
 
 const DIGITS_ONLY = /[^0-9]/gu
+const DIGITS_AND_POINT = /[^0-9.]/gu
 
 export const AmountInput = ({
   id,
@@ -18,6 +20,7 @@ export const AmountInput = ({
   invalid = false,
   describedBy,
   disabled = false,
+  decimals = false,
   onChange,
 }: AmountInputProps): React.ReactElement => (
   <span className={AMOUNT_WRAP}>
@@ -28,7 +31,7 @@ export const AmountInput = ({
       id={id}
       className={cx(AMOUNT_INPUT, invalid ? FIELD_INVALID : undefined)}
       type="text"
-      inputMode="numeric"
+      inputMode={decimals ? "decimal" : "numeric"}
       autoComplete="off"
       spellCheck={false}
       value={value}
@@ -36,7 +39,7 @@ export const AmountInput = ({
       aria-invalid={invalid}
       aria-describedby={describedBy}
       onChange={(event) => {
-        onChange(event.target.value.replace(DIGITS_ONLY, ""))
+        onChange(event.target.value.replace(decimals ? DIGITS_AND_POINT : DIGITS_ONLY, ""))
       }}
     />
   </span>

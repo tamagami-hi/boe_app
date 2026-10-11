@@ -76,6 +76,14 @@ export const isRetryable = (value: unknown): boolean => {
 export const isSessionEnded = (value: unknown): boolean =>
   hasCode(value, "AUTHENTICATION_REQUIRED", "SESSION_INVALID")
 
+export const isUnknownWriteOutcome = (value: unknown): boolean => {
+  if (value instanceof ConfigurationMismatchError) return false
+  if (isApiError(value)) {
+    return value.status >= 500 || value.code === "IDEMPOTENCY_IN_PROGRESS" || value.code === "IDEMPOTENCY_KEY_REUSED"
+  }
+  return true
+}
+
 export const isOutage = (value: unknown): boolean => {
   if (isTransportError(value)) return value.kind === "timeout" || value.kind === "offline"
   return isApiError(value) && value.status >= 500

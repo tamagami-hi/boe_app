@@ -605,6 +605,7 @@ export const useIndividualClientGrowth = (): UseMutationResult<
 
 export type RecordedContributionInput = Readonly<{
   userId: string
+  idempotencyKey: string
   fundId: string
   amountPaise: string
   effectiveDate: string
@@ -639,15 +640,15 @@ export const useRecordClientContribution = (): UseMutationResult<
   const api = useApi()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ userId, ...body }: RecordedContributionInput) =>
+    mutationFn: async ({ userId, idempotencyKey, ...body }: RecordedContributionInput) =>
       (
         await api.request(recordAdminClientContribution, {
           params: { userId },
           body,
-          idempotencyKey: mintIdempotencyKey(),
+          idempotencyKey,
         })
       ).data,
-    onSuccess: async (_data, variables) => {
+    onSettled: async (_data, _error, variables) => {
       await queryClient.invalidateQueries({ queryKey: ["admin", "investor", variables.userId] })
     },
   })
