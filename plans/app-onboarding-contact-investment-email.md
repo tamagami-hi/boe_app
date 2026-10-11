@@ -1,6 +1,6 @@
 # BeOnEdge app: onboarding, contact details, earlier investments, and email
 
-Status: **Approved for implementation by the maintainer on 2026-10-08, in dependency order. Steps 1, 2a, 2b, and 2c are done and committed (section 8). Steps 3 (three verified slices), 4, 5, 6, 7, 8, 9, and 11 are done. Step 10 is next. Since 2026-10-11 the remaining steps are implemented by a single maintainer-assisted session after the coding agent's limit ran out. All plan work ships together as v0.15.0 (release decision, 2026-10-11). Q-002, Q-003, Q-004, Q-011, Q-012, Q-015, and Q-016 are answered (decision record). Q-013 stays out of scope, and Q-017 is open without gating a step.**
+Status: **Approved for implementation by the maintainer on 2026-10-08, in dependency order. Steps 1, 2a, 2b, and 2c are done and committed (section 8). Steps 3 (three verified slices) to 11 are done; step 10's handoff lists what the maintainer still checks and configures before releasing v0.15.0. Since 2026-10-11 the remaining steps are implemented by a single maintainer-assisted session after the coding agent's limit ran out. All plan work ships together as v0.15.0 (release decision, 2026-10-11). Q-002, Q-003, Q-004, Q-011, Q-012, Q-015, and Q-016 are answered (decision record). Q-013 stays out of scope, and Q-017 is open without gating a step.**
 
 Prepared: 2026-10-08. Investigation is source-level only; no production diagnosis, test runs, builds, mail sends, or deployments were performed. Since then only the admin authorization and seeding claims have been checked against source (section 2F). Every other claim in section 2 is unverified, and each step verifies the claims it depends on before it changes code.
 
@@ -511,7 +511,7 @@ Each step records here what changed, the exact verification (commands and counts
 | 6. Verified email changes and session safety | Done and committed; not deployed. Details below |
 | 8. Admin template catalogue and custom-template editing | Done and committed; not deployed. Details below |
 | 9. Preview, test send, and send to one client | Done and committed; not deployed. Details below |
-| 10 | Not started |
+| 10. Integrated verification and maintainer handoff | Done for everything that runs without a live stack; the browser, seed-grant, and live-mail checks are the maintainer's. Details below |
 
 ### Step 1 handoff (2026-10-08)
 
@@ -877,7 +877,7 @@ Delivery rows are unchanged: no template key is added until step 9, and the admi
 
 Verified (TESTED): contracts 98 tests; backend check 95 files and 1144 tests (coverage 84.02% statements, 84.36% branches, 90.27% functions) with both boot smokes; frontend check 25 files and 232 tests; `build:client` (17 assets, 858908 bytes, Android budget and boot check) and `build:admin` pass. On PostgreSQL 16 the integration suite passes 32 files and 362 tests; `emailTemplates` (12): the preloaded catalogue uses only allowed placeholders; create derives the slug and is audited as the admin; a header-injecting subject, an unknown placeholder, a password-link placeholder, and an empty body are refused with nothing saved; a duplicate name is refused; a new version leaves the earlier one exactly as it was; a stale version is refused; an archived template leaves the list, refuses edits, and can be restored; a support admin can neither read nor write and nothing is saved; no session gives 401. Negative control: without the write-permission check the support test fails; restored by checksum (`c74cddd3c786d930`).
 
-Corrected belief: the integration suite's coverage gate (80% over routes, domain, and repositories) has been failing for longer than this session; earlier handoffs reported its tests, not its exit code. Measured on the same machine: 74.72% lines at `5cdc6fd` (23 files, 254 tests), 78.9% at `6774079` (31 files, 350 tests), and 79.15% lines and 77.9% branches now. Every test passes each time, and the threshold was not lowered. The remaining gap is mostly older admin and client routes with little integration coverage; step 10 records it for the maintainer.
+Corrected belief: the integration suite's coverage gate (80% over routes, domain, and repositories) has been failing for longer than this session; earlier handoffs reported its tests, not its exit code. Measured on the same machine: 74.72% lines at `5cdc6fd` (23 files, 254 tests), 78.9% at `6774079` (31 files, 350 tests), and 79.15% lines and 77.9% branches now. Every test passes each time, and the threshold was not lowered. CI is not affected: `.github/workflows/ci.yml` runs the suite with `--coverage.enabled=false`, so only the local `npm run test:integration` exits 1. The remaining gap is mostly older admin and client routes with little integration coverage; step 10 records it for the maintainer.
 
 Not verified (UNVERIFIED): the screens in a browser.
 
@@ -900,4 +900,43 @@ Verified (TESTED): contracts 98 tests and a valid OpenAPI file; backend check 95
 Integration coverage: 79.61% lines and 78.03% branches, up from 79.15% and 77.9%; the gate is still below 80% (see the step 8 handoff).
 
 Not verified (UNVERIFIED): the screen in a browser, and real mail delivery.
+
+### Step 10 handoff: integrated verification and what the maintainer still does (2026-10-12)
+
+Changed:
+
+- `test/integration/releaseUpgrade.integration.test.ts` is the combined populated upgrade (scenario 9). It migrates a disposable PostgreSQL 16 database to 051, the v0.14.7 schema, and inserts representative data: an admin, an approved client with a credential and a verified address, an admin-created client, a suspended client, submitted and rejected applications, live, expired, and consumed password links, approval and rejection mail in queued, delivered, and cancelled states, ordinary, expired, and durable idempotency receipts, and a fund with an order, payment, allocation, contribution, and growth entry. It then applies 052 to 059 in one run. Every row of every table that existed at 051 keeps every column value exactly, and no row is added to those tables; no outbox event changes state, no send attempt or sealed payload appears, and every fence starts at 0; only live links are bound (to revision 1 and the credential version as it stood); the new tables are empty apart from the five preloaded templates; and the template CHECK accepts every new key while still refusing an unknown one.
+- Synthetic review of every email (scenario 6) found one wording flaw: a link valid for a whole number of hours read "1440 minutes". Whole hours now read as hours ("24 hours", "1 hour"); minute and second wording, and so the 10-minute OTP and link text, are unchanged.
+- `README.md` points to this section. `CLAUDE.md` is git-ignored, so its matching update stays on the maintainer's machine.
+
+Verified (TESTED), the final sweep on this tree: `packages/contracts` `npm run check` exits 0 (98 tests, valid OpenAPI). `backend_controller` `npm run check` exits 0 with 95 files and 1149 tests (coverage 84.08% statements, 84.51% branches, 90.35% functions), the build, and both boot smokes. `npm run test:integration -- --coverage.enabled=false`, the CI form, exits 0 with 34 files and 380 tests; the local form passes the same 380 tests and exits 1 only on the coverage gate (79.61% lines, 78% branches; see the step 8 handoff). `frontend_stack_ts` `npm run check` exits 0 with 26 files and 236 tests; `build:client` (17 assets, 858942 bytes, Android budget and boot check) and `build:admin` exit 0. Negative control for the upgrade test: a statement appended to 059 that re-queues cancelled mail fails both history tests; the file was restored by checksum (`277c3eb63186a8df`). No container was left.
+
+Acceptance scenarios, and where each is proven:
+
+| Scenario | Evidence | Not covered |
+| --- | --- | --- |
+| 1. Creation with a stalled transport | `passwordLinkMail`: creation queues and returns; a failing queue rolls everything back; the worker sends or retries later | A real SMTP stall |
+| 2. Lost creation reply, replay, resend, newest link only | `CreateClientScreen.test.tsx`, durable receipts (2a), `passwordLinkMail` cooldown and supersession, `passwordLinkAuthority` | One end-to-end run on a live stack |
+| 3. Email change and session safety | `emailChange` (10), `contactOwnership` | Browser flow |
+| 4. Phone change | `contactOwnership` (11) | Browser flow |
+| 5. Earlier investment | `recordContribution` unit tests, durable receipts, 7a date and amount guards | Browser flow |
+| 6. Every email's text and HTML | Rendered with synthetic data in this step; renderer unit tests | The HTML viewed in a mail client |
+| 7. Preview, test, send | `adminEmailMessages` (12), `SendAction.test.tsx` | Browser flow, real delivery |
+| 8. Worker crashes and leases | `emailDelivery`, `emailQueueMigration`, `passwordLinkMailWorker` | None beyond real SMTP |
+| 9. Combined populated upgrade | `releaseUpgrade` (6) | A copy of production data |
+| 10. Seed grants on the dev stack | The three codes are in the seed catalog, and superadmin receives every catalog code | Not run: it needs the dev stack |
+
+The maintainer's remaining steps before and during the v0.15.0 release (nothing here was done):
+
+1. Raise `VERSION` to 0.15.0 through the release flow (`release_manager/status.sh`).
+2. Set `CLIENT_PASSWORD_LINK_URL` in each stack's `.env` (DEPLOY.md). Without it, admin client creation answers 503 and saves nothing.
+3. Install the updated nginx site configs with the maintenance-flag check (step 11 handoff); a deploy only raises the flag the configs read.
+4. After the new APK is published, raise `minimumSupportedVersion` in the app configuration so older APKs are asked to update.
+5. Confirm the dev stack's `SEED_AUTH_ENABLED` and `SEED_AUTH_ALLOW_PRODUCTION` (Q-012), deploy, and check that `GET /v1/admin/session` for the seeded admin lists `clients.password_links.send`, `email_templates.write`, and `email_messages.send` (scenario 10). The codes reach the superadmin only when the deploy's seed step runs.
+6. Decide Q-017: set and reset links share the 10-minute email-code lifetime.
+7. Review migration 056 (step 5 handoff), the one identity change: application uniqueness now covers only submitted applications.
+8. Migration 056 builds two unique indexes on `applications` without `CONCURRENTLY`, which locks writes to that table while they build; 057 to 059 create indexes only on new, empty tables.
+9. Browser checks on a local or dev stack (they need a running stack, which needs separate permission): client contact details and email change, admin client creation and its password-link panel, earlier-investment entry, email templates, and the send screen; labels, focus, errors, disabled and cooldown states, confirmations, and phone-width layout.
+10. A real test send to an address the maintainer controls, before any client send.
+11. Optionally, more integration coverage for the older admin and client routes so the local coverage gate passes again.
 

@@ -38,7 +38,8 @@ defined in [RULES.md](RULES.md#verification-boundaries).
 - [WORKFLOW.md](WORKFLOW.md): workspaces, integration, and operator release flow.
 - [DEPLOY.md](DEPLOY.md): deployment/configuration reference, not permission to deploy.
 - [App feature proposal](plans/app-onboarding-contact-investment-email.md): onboarding
-  recovery, contacts, earlier investments, and email improvements; implementation
-  is approved and under way step by step; status is in section 8 of the plan.
+  recovery, contacts, earlier investments, and email improvements; every step is
+  implemented and committed for v0.15.0; evidence and the maintainer's remaining
+  checks are in section 8 of the plan.
 - [Prior implementation records](release_manager/docs/): topic-specific evidence;
   completed/dated records are historical, not standing rulebooks.

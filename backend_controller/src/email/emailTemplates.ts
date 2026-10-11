@@ -60,8 +60,11 @@ const passwordLinkInput = (data: Readonly<Record<string, unknown>>): PasswordLin
 const plural = (count: number, unit: string): string =>
   `${String(count)} ${unit}${count === 1 ? "" : "s"}`
 
+const SECONDS_PER_HOUR = 3_600
+
 const describeDuration = (ms: number): string => {
   const seconds = Math.max(1, Math.floor(ms / 1000))
+  if (seconds % SECONDS_PER_HOUR === 0) return plural(seconds / SECONDS_PER_HOUR, "hour")
   return seconds % 60 === 0 ? plural(seconds / 60, "minute") : plural(seconds, "second")
 }
 

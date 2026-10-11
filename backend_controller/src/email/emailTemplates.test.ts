@@ -205,6 +205,9 @@ describe("emailVerificationCodeEmail", () => {
     expect(expiry(300_000)).toContain("expires in 5 minutes.")
     expect(expiry(60_000)).toContain("expires in 1 minute.")
     expect(expiry(90_000)).toContain("expires in 90 seconds.")
+    expect(expiry(3_600_000)).toContain("expires in 1 hour.")
+    expect(expiry(86_400_000)).toContain("expires in 24 hours.")
+    expect(expiry(5_400_000)).toContain("expires in 90 minutes.")
   })
 })
 
