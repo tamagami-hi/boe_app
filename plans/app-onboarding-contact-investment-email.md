@@ -956,3 +956,12 @@ Verified (TESTED): backend check 95 files and 1149 tests (coverage 84.11% statem
 
 Not verified (UNVERIFIED): a Gradle build of the APKs against Capacitor 8.5.3 (the export builds them), and real SMTP through nodemailer 10 (a test send after the next dev deploy covers it).
 
+### Bugs found in dev testing of v0.15 (2026-10-12)
+
+The maintainer reported two bugs while testing the dev stack.
+
+- Client notifications: some notifications offered "Open" and then said the link could not be opened on this device. The fund-receipt acknowledgement has carried `deepLink: "/app/portfolio"` since `9c78e5e` (2026-08-26), when the old JavaScript client mounted every screen under `/app/*`; the TypeScript client two days later serves `/portfolio`, so the link resolved to no route and fell through to the external-link path. The backend now writes `/portfolio`. Notifications already stored keep the old value, so the notifications screen maps a leading `/app/` to the route without it, and shows "Open" only when the link resolves to a route or an allowed external address. That mapping is compatibility code for stored rows; remove it once no stored notification carries an `/app/` link (a read-only count of `notifications` whose payload `deepLink` starts with `/app/` shows when).
+- Admin client picker: the dropdown on the client-value screens showed stray elements over the client names and was hard to click. The Combobox panel used `z-dropdown`, which was never defined (`85ebd44`), so the panel had no stacking order and later positioned elements, such as the amount field's rupee symbol, painted over it. `--be-z-dropdown: 50` and a `z-dropdown` utility now place it above page content and below the header and navigation (100). This also covers the Send email screen and the investor picker on the position screen.
+
+Verified (TESTED): frontend 26 files and 236 tests, typecheck, lint, and `build:android` and `build:android:admin` with their guards; the compiled admin CSS now contains `.z-dropdown{z-index:var(--be-z-dropdown)}`. A throwaway render check, not kept, showed an `/app/portfolio` and a `/portfolio` notification each opening the portfolio, and an unresolvable link and a link-less notification showing no "Open". Backend check 95 files and 1149 tests; `paymentSettlement` passes 25 tests. Not verified (UNVERIFIED): both screens on a device or in a browser, and the exact artifacts the maintainer saw, since the screenshot did not come through.
+

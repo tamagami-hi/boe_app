@@ -10,6 +10,10 @@
   min-block-size: var(--be-target-min);
 }
 
+@utility z-dropdown {
+  z-index: var(--be-z-dropdown);
+}
+
 @utility z-header {
   z-index: var(--be-z-header);
 }
