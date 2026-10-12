@@ -3,6 +3,7 @@ import type { FastifyInstance } from "fastify"
 import { createAccessTokenService } from "../auth/accessToken.js"
 import { createBreachChecker, resolveBreachCheckMode } from "../auth/breachCheck.js"
 import { configurePasswordWorkGate } from "../auth/passwordGate.js"
+import { createPasswordRecheckLimiter } from "../auth/passwordRecheckLimiter.js"
 import { createCryptoContext, parseCryptoKeys } from "../crypto/context.js"
 import { createDatabase, createUnitOfWork } from "../db/database.js"
 import { parseDatabaseConfig } from "../db/config.js"
@@ -398,7 +399,9 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       },
     })
 
+    const passwordRecheckLimiter = createPasswordRecheckLimiter(clock)
     registerClientProfileRoutes(application, {
+      passwordRecheckLimiter,
       accessTokenService,
       database,
       clientWeb,
@@ -425,6 +428,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
     })
 
     registerPasswordRoutes(application, {
+      passwordRecheckLimiter,
       appUpdate: serverConfig.appUpdate,
       accessTokenService,
       database,

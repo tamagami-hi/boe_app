@@ -9,6 +9,7 @@ import { sql } from "kysely"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 
 import { createAccessTokenService } from "../../src/auth/accessToken.js"
+import { createPasswordRecheckLimiter } from "../../src/auth/passwordRecheckLimiter.js"
 import { hashPassword } from "../../src/auth/passwordHasher.js"
 import { SEED_ROLE_PERMISSIONS } from "../../src/db/seedCatalog.js"
 import type { PasswordLinkSettings } from "../../src/domain/auth/passwordLinkUrl.js"
@@ -95,6 +96,7 @@ const buildApp = (options: AppOptions = {}): FastifyInstance => {
       })
       registerPasswordRoutes(instance, {
         ...mail,
+        passwordRecheckLimiter: createPasswordRecheckLimiter(() => new Date()),
         unitOfWork: stack.unitOfWork,
         appUpdate: { releaseRoot: options.releaseRoot ?? publishedRoot, downloadBaseUrl: FEED_BASE },
       } as unknown as PasswordRoutesDeps)

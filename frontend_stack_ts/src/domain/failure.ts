@@ -228,7 +228,7 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
     codes: {
       INVALID_CREDENTIALS: { message: "That current password is not right." },
       VALIDATION_FAILED: { message: "Use at least 12 characters for the new password." },
-      RATE_LIMITED: { message: "Too many attempts. Try again shortly." },
+      RATE_LIMITED: { message: "Too many attempts with your password. Wait 15 minutes, then try again." },
     },
     transport: {
       offline: { message: "We can't reach BeOnEdge. Check your connection and try again." },
@@ -243,7 +243,7 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
       INVALID_CREDENTIALS: { message: "That current password is not right." },
       VALIDATION_FAILED: { message: "Enter the number with its country code, for example +919876543210." },
       STATE_CONFLICT: { message: "That number is already used by another account or a pending application." },
-      RATE_LIMITED: { message: "Too many attempts. Try again shortly." },
+      RATE_LIMITED: { message: "Too many attempts with your password. Wait 15 minutes, then try again." },
     },
     transport: {
       offline: { message: "We can't reach BeOnEdge. Check your connection and try again." },
@@ -261,7 +261,7 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
       INVALID_CREDENTIALS: { message: "That current password is not right." },
       VALIDATION_FAILED: { message: "Enter a full email address, like name@example.com." },
       STATE_CONFLICT: { message: "That email address is already used by another account or a pending application." },
-      RATE_LIMITED: { message: "A code was sent moments ago. Wait a minute, then ask again." },
+      RATE_LIMITED: { message: "A code was sent moments ago, or there were too many attempts with your password. Wait a few minutes, then ask again." },
     },
     transport: {
       offline: { message: "We can't reach BeOnEdge. Check your connection and try again." },

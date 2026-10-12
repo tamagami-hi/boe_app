@@ -10,6 +10,7 @@ import { Wait } from "testcontainers"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 
 import { createAccessTokenService, type AccessTokenService } from "../../src/auth/accessToken.js"
+import { createPasswordRecheckLimiter } from "../../src/auth/passwordRecheckLimiter.js"
 import { hashPassword } from "../../src/auth/passwordHasher.js"
 import { createCryptoContext, parseCryptoKeys, type CryptoContext } from "../../src/crypto/context.js"
 import { createDatabase, createUnitOfWork, type UnitOfWork } from "../../src/db/database.js"
@@ -173,6 +174,7 @@ beforeAll(async () => {
     registerRoutes: (instance) => {
       registerClientProfileRoutes(instance, {
         ...repositories(),
+        passwordRecheckLimiter: createPasswordRecheckLimiter(() => new Date()),
         accessTokenService,
         database,
         clientWeb: { originAllowlist: [] },

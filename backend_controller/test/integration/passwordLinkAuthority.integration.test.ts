@@ -9,6 +9,7 @@ import { Wait } from "testcontainers"
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest"
 
 import { hashPassword, verifyPassword } from "../../src/auth/passwordHasher.js"
+import { createPasswordRecheckLimiter } from "../../src/auth/passwordRecheckLimiter.js"
 import { createCryptoContext, parseCryptoKeys } from "../../src/crypto/context.js"
 import type { CryptoContext } from "../../src/crypto/context.js"
 import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
@@ -505,6 +506,7 @@ describe("password routes on PostgreSQL", () => {
       registerRoutes: (instance) =>
         registerPasswordRoutes(instance, {
           ...baseDeps(),
+          passwordRecheckLimiter: createPasswordRecheckLimiter(() => new Date()),
           unitOfWork,
           outboxRepository: createOutboxRepository(),
           emailDeliveryRepository: createEmailDeliveryRepository(),

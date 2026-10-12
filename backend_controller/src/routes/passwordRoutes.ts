@@ -20,6 +20,7 @@ import {
 import { describePasswordLinkProblem, resolvePasswordLinkBase } from "../domain/auth/passwordLinkUrl.js"
 import { latestPublishedApkUrl, type ReleaseFeed } from "../release/releaseFeed.js"
 import { AppError } from "../http/errorCatalog.js"
+import type { FixedWindowRateLimiter } from "../http/rateLimit.js"
 import { parseOrThrow } from "../http/validation.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
 import type { AuthSessionWriteRepository } from "../repositories/authSessionRepository.js"
@@ -43,6 +44,7 @@ export interface PasswordRoutesDeps extends ClientRequestAuthDeps {
   readonly auditRepository: AuditWriteRepository
   readonly outboxRepository: OutboxWriteRepository
   readonly emailDeliveryRepository: EmailDeliveryWriteRepository
+  readonly passwordRecheckLimiter: FixedWindowRateLimiter
   readonly config: PasswordRoutesConfig
 }
 
@@ -171,6 +173,7 @@ const reset = async (deps: PasswordRoutesDeps, request: FastifyRequest, reply: F
 const change = async (deps: PasswordRoutesDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveClientPrincipal(request, deps)
   const body = parseOrThrow(changeBodySchema, request.body)
+  deps.passwordRecheckLimiter.hit(principal.userId)
   const outcome = await deps.unitOfWork.execute((tx) =>
     changePassword(tx, domainDeps(deps), {
       userId: principal.userId,

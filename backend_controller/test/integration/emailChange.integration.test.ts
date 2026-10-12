@@ -10,6 +10,7 @@ import { Wait } from "testcontainers"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 
 import { createAccessTokenService, type AccessTokenService } from "../../src/auth/accessToken.js"
+import { createPasswordRecheckLimiter } from "../../src/auth/passwordRecheckLimiter.js"
 import { hashPassword } from "../../src/auth/passwordHasher.js"
 import { createCryptoContext, parseCryptoKeys, type CryptoContext } from "../../src/crypto/context.js"
 import { createDatabase, createUnitOfWork, type UnitOfWork } from "../../src/db/database.js"
@@ -33,6 +34,7 @@ import { createOutboxRepository } from "../../src/repositories/outboxRepository.
 import { createPasswordTokenRepository } from "../../src/repositories/passwordTokenRepository.js"
 import { createUserRepository } from "../../src/repositories/userRepository.js"
 import { registerClientProfileRoutes, type ClientProfileDeps } from "../../src/routes/clientProfileRoutes.js"
+import { registerPasswordRoutes } from "../../src/routes/passwordRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
 import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
 import { runSeed } from "../../src/scripts/seed.js"
@@ -193,12 +195,28 @@ beforeAll(async () => {
     auditRepository: createAuditRepository(),
     outboxRepository: createOutboxRepository(),
     emailDeliveryRepository: createEmailDeliveryRepository(),
+    passwordRecheckLimiter: createPasswordRecheckLimiter(() => new Date()),
     config: { sesConfigurationSet: "boe-transactional", codeTtlMs: 600_000, maxAttempts: MAX_ATTEMPTS, resendCooldownMs: 60_000 },
   }
   app = createApplication({
     logger: false,
     registerRoutes: (instance) => {
       registerClientProfileRoutes(instance, deps)
+      registerPasswordRoutes(instance, {
+        ...deps,
+        passwordTokenRepository: createPasswordTokenRepository(),
+        authSessionRepository: createAuthSessionRepository(),
+        credentialRepository: createCredentialRepository(),
+        userRepository: createUserRepository(),
+        appUpdate: { releaseRoot: null, downloadBaseUrl: null },
+        config: {
+          tokenTtlMs: 600_000,
+          maxAttempts: MAX_ATTEMPTS,
+          requestCooldownMs: 60_000,
+          passwordLinks: { clientUrl: "https://app.beonedge.test/reset-password", requireHttps: true },
+          sesConfigurationSet: "boe-transactional",
+        },
+      })
     },
   })
 }, 220_000)
@@ -207,6 +225,36 @@ afterAll(async () => {
   await app.close()
   await pool.end()
   await container.stop()
+})
+
+describe("guessing the current password from a signed-in session", () => {
+  test("allows five password checks per client across phone, email, and password changes, then refuses even the right one", async () => {
+    const client = await seedClient()
+    const other = await seedClient()
+    const wrong = "a wrong password that is long enough"
+    const newPassword = "a brand new password for this account"
+    const before = await pool.query("select password_hash, version from user_credentials where user_id = $1", [client.userId])
+
+    const guesses = [
+      await post(client.token, "/v1/client/profile/phone", { phone: nextPhone(), currentPassword: wrong }),
+      await requestChange(client, nextEmail("guess"), wrong),
+      await post(client.token, "/v1/auth/password/change", { currentPassword: wrong, newPassword }),
+      await post(client.token, "/v1/client/profile/phone", { phone: nextPhone(), currentPassword: wrong }),
+      await requestChange(client, nextEmail("guess"), wrong),
+    ]
+    const blocked = [
+      await post(client.token, "/v1/auth/password/change", { currentPassword: PASSWORD, newPassword }),
+      await post(client.token, "/v1/client/profile/phone", { phone: nextPhone(), currentPassword: PASSWORD }),
+      await requestChange(client, nextEmail("blocked")),
+    ]
+    const unaffected = await requestChange(other, nextEmail("other"))
+
+    expect(guesses.map((r) => r.statusCode)).toEqual([401, 401, 401, 401, 401])
+    expect(blocked.map((r) => [r.statusCode, errorOf(r)])).toEqual(Array(3).fill([429, "RATE_LIMITED"]))
+    expect((await pool.query("select password_hash, version from user_credentials where user_id = $1", [client.userId])).rows).toEqual(before.rows)
+    expect(await pool.query("select 1 from email_change_requests where user_id = $1", [client.userId]).then((r) => r.rowCount)).toBe(0)
+    expect(unaffected.statusCode).toBe(200)
+  })
 })
 
 describe("asking to change the email address", () => {

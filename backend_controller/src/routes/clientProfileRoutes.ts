@@ -20,6 +20,7 @@ import {
 import { normalizePhone } from "../domain/shared/phoneNumber.js"
 import type { EmailVerificationRepository } from "../repositories/emailVerificationRepository.js"
 import { AppError } from "../http/errorCatalog.js"
+import type { FixedWindowRateLimiter } from "../http/rateLimit.js"
 import { parseOrThrow } from "../http/validation.js"
 
 const PROFILE_ROUTE = "/v1/client/profile"
@@ -31,6 +32,7 @@ export type ClientProfileDeps = Omit<ContactDetailsDeps, "config" | "emailVerifi
   Omit<EmailChangeDeps, "config" | "emailVerificationRepository"> &
   ClientRequestAuthDeps & {
     readonly unitOfWork: UnitOfWork
+    readonly passwordRecheckLimiter: FixedWindowRateLimiter
     readonly emailVerificationRepository: Pick<EmailVerificationRepository, "findLatestByUser" | "consumeActiveCode">
     readonly config: ContactDetailsDeps["config"] & EmailChangeDeps["config"]
   }
@@ -71,6 +73,7 @@ const changePhone = async (deps: ClientProfileDeps, request: FastifyRequest, rep
   const principal = await resolveClientPrincipal(request, deps)
   const body = parseOrThrow(phoneBodySchema, request.body)
   const phoneE164 = normalizePhone(body.phone)
+  deps.passwordRecheckLimiter.hit(principal.userId)
 
   const outcome = await deps.unitOfWork.execute((tx) =>
     changeClientPhone(tx, deps, {
@@ -96,6 +99,7 @@ const changePhone = async (deps: ClientProfileDeps, request: FastifyRequest, rep
 const changeEmail = async (deps: ClientProfileDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveClientPrincipal(request, deps)
   const body = parseOrThrow(emailBodySchema, request.body)
+  deps.passwordRecheckLimiter.hit(principal.userId)
   const outcome = await deps.unitOfWork.execute((tx) =>
     requestEmailChange(tx, deps, {
       userId: principal.userId,
