@@ -17,6 +17,7 @@ export const CLIENT_MONEY_PREFIXES = [
 
 export const qk = {
   app: {
+    updates: () => ["app", "update"] as const,
     update: (variant: string) => ["app", "update", variant] as const,
     config: () => ["app", "config"] as const,
   },

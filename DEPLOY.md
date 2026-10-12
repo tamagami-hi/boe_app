@@ -172,7 +172,16 @@ request with a 503 JSON error `SERVICE_MAINTENANCE` plus the header `X-BOE-Maint
 `Retry-After: 60`. APK downloads, `/.well-known/assetlinks.json`, and the localhost health probes
 keep working, so a client can still download an update. Apps from v0.15.0 recognize the header
 and show a "We are updating BeOnEdge" screen that checks again every 30 seconds and closes by
-itself; older APKs show their generic temporary error.
+itself; older APKs show their generic temporary error. When that screen closes, the app checks for
+a newer APK straight away instead of waiting for its usual ten-minute interval.
+
+The APKs run at the origin `https://localhost` and call the API cross-origin, so the maintenance
+reply carries its own CORS headers: it echoes the `Origin` only for the hosts listed in the
+`$boe_maintenance_cors_origin` map in `boe-shared.conf` (the app and admin hosts and
+`https://localhost`), exposes `X-BOE-Maintenance` and `Retry-After`, and answers a preflight
+`OPTIONS` with 204. Without those headers the WebView discards the 503 as a network failure and
+the app never shows its maintenance screen, which is what the first v0.15 dev deploy showed. A new
+app or admin host must be added to that map as well as to the backend's origin allowlist.
 
 When the flag goes up and down:
 
@@ -200,6 +209,12 @@ Advance notice and required updates are published app configuration (Admin, App 
   `minimumSupportedVersion.message` adds an extra line to that screen on apps from v0.15.0. Raise
   the floor to the new version when the v0.15.0 APK is published, so older APKs update before
   they meet the changed API.
+
+A deploy never raises the floor by itself. After deploying a release every client must install,
+publish `minimumSupportedVersion.android` set to that release's version (and, if wanted, a
+`minimumSupportedVersion.message`) in App configuration; until then older APKs only see the
+optional "A newer BeOnEdge is available" sheet when they next check. A stack with no published
+app configuration (`GET /v1/app-config` answers `config: null`) never shows the required screen.
 
 ## How admin and the APKs connect
 

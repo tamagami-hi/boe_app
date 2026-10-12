@@ -1,6 +1,8 @@
-import { useRef } from "react"
+import { useQueryClient } from "@tanstack/react-query"
+import { useEffect, useRef } from "react"
 import type { ReactNode } from "react"
 
+import { qk } from "~/api/queryKeys"
 import { useChromeOffset } from "~/app/native/useChromeOffset"
 import { useNetworkStatus } from "~/app/providers/NetworkStatusProvider"
 import { formatDateTime } from "~/domain/dates"
@@ -31,6 +33,15 @@ export type AppNoticeGateProps = Readonly<{ children: ReactNode }>
 export const AppNoticeGate = ({ children }: AppNoticeGateProps): React.ReactElement => {
   const { maintenance, degraded } = useNetworkStatus()
   const feed = useAppConfigFeed(maintenance)
+  const queryClient = useQueryClient()
+  const wasUnderMaintenance = useRef(maintenance)
+
+  useEffect(() => {
+    if (wasUnderMaintenance.current && !maintenance) {
+      void queryClient.invalidateQueries({ queryKey: qk.app.updates() })
+    }
+    wasUnderMaintenance.current = maintenance
+  }, [maintenance, queryClient])
   const notices = readAppNotices(feed.data?.config ?? null, new Date())
 
   if (maintenance) {
