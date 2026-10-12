@@ -4,7 +4,7 @@ import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { useToast } from "~/app/providers/ToastProvider"
 import { CLIENT_ROUTES } from "~/app/routing/clientRoutes"
-import { resolveDestination } from "~/app/routing/resolveDestination"
+import { resolveDestination, type Destination } from "~/app/routing/resolveDestination"
 import { formatDateTime } from "~/domain/dates"
 import { describeClientFailure } from "~/domain/failure"
 import { notificationCategory } from "~/domain/notifications"
@@ -25,9 +25,19 @@ import { COUNT_TEXT, META_ROW } from "~/ui/recipes/text"
 
 import { NOTIFICATION_UNREAD } from "./notifications.recipe"
 
+const LEGACY_CLIENT_PREFIX = "/app/"
+
 const deepLinkOf = (payload: Record<string, unknown>): string | null => {
   const candidate = payload.deepLink ?? payload.link ?? payload.path
-  return typeof candidate === "string" && candidate.trim() !== "" ? candidate : null
+  return typeof candidate === "string" && candidate.trim() !== "" ? candidate.trim() : null
+}
+
+const destinationOf = (payload: Record<string, unknown>): Destination | null => {
+  const link = deepLinkOf(payload)
+  if (link === null) return null
+  const candidate = link.startsWith(LEGACY_CLIENT_PREFIX) ? link.slice(LEGACY_CLIENT_PREFIX.length - 1) : link
+  const destination = resolveDestination(candidate, CLIENT_ROUTES)
+  return destination.kind === "refused" ? null : destination
 }
 
 const NotificationsScreen = (): React.ReactElement => {
@@ -36,8 +46,7 @@ const NotificationsScreen = (): React.ReactElement => {
   const navigate = useNavigate()
   const toast = useToast()
 
-  const follow = (candidate: string): void => {
-    const destination = resolveDestination(candidate, CLIENT_ROUTES)
+  const follow = (destination: Destination): void => {
     if (destination.kind === "internal") {
       void navigate(destination.path)
       return
@@ -79,7 +88,7 @@ const NotificationsScreen = (): React.ReactElement => {
             )}
             <div className={cx(CARD_STACK, FEED_MEASURE)}>
               {data.items.map((item) => {
-                const link = deepLinkOf(item.payload)
+                const destination = destinationOf(item.payload)
                 const category = notificationCategory(item.kind)
                 return (
                   <Card key={item.id} tone={item.read ? "default" : "elevated"}>
@@ -99,12 +108,12 @@ const NotificationsScreen = (): React.ReactElement => {
                         <span>{formatDateTime(item.createdAt)}</span>
                       </div>
                       <div className={cx(ACTION_ROW, "pt-1")}>
-                        {link === null ? null : (
+                        {destination === null ? null : (
                           <Button
                             tone="secondary"
                             size="sm"
                             onClick={() => {
-                              follow(link)
+                              follow(destination)
                             }}
                           >
                             Open

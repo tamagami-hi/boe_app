@@ -224,7 +224,7 @@ const acknowledgeFunds = async (deps: AdminFundReceiptDeps, request: FastifyRequ
         kind: "fund_receipt_acknowledged",
         title: ACKNOWLEDGEMENT_TITLE,
         body: ACKNOWLEDGEMENT_BODY,
-        payload: { orderId, paymentId: payment.id, fundId: order.fund_id, deepLink: "/app/portfolio" },
+        payload: { orderId, paymentId: payment.id, fundId: order.fund_id, deepLink: "/portfolio" },
       })
 
       await deps.auditRepository.append(tx, {
