@@ -38,6 +38,7 @@ const TEMPLATES = [
   { value: "email_change_code", label: "Email change code" },
   { value: "contact_email_changed", label: "Email changed notice" },
   { value: "admin_message", label: "Admin message" },
+  { value: "app_update_notice", label: "App update notice" },
 ] as const
 
 const EmailDeliveriesScreen = (): React.ReactElement => {

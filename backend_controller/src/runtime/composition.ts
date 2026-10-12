@@ -71,11 +71,8 @@ import { registerClientAccountRoutes } from "../routes/clientAccountRoutes.js"
 import { registerClientEmailVerificationRoutes } from "../routes/clientEmailVerificationRoutes.js"
 import { createEmailChangeRepository } from "../repositories/emailChangeRepository.js"
 import { registerClientProfileRoutes } from "../routes/clientProfileRoutes.js"
-import { registerAdminEmailTemplateRoutes } from "../routes/adminEmailTemplateRoutes.js"
-import { createEmailTemplateRepository } from "../repositories/emailTemplateRepository.js"
-import { registerAdminEmailMessageRoutes } from "../routes/adminEmailMessageRoutes.js"
-import { createAdminEmailMessageRepository } from "../repositories/adminEmailMessageRepository.js"
 import { registerPasswordRoutes } from "../routes/passwordRoutes.js"
+import { registerAdminEmailSurface } from "./adminEmailComposition.js"
 import { registerAdminClientOnboardingRoutes } from "../routes/adminClientOnboardingRoutes.js"
 import { createPasswordTokenRepository } from "../repositories/passwordTokenRepository.js"
 import { registerClientOrderRoutes } from "../routes/clientOrderRoutes.js"
@@ -368,28 +365,19 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       },
     })
 
-    const emailTemplateRepository = createEmailTemplateRepository()
-    registerAdminEmailTemplateRoutes(application, {
+    registerAdminEmailSurface(application, {
       webAuth,
       unitOfWork,
       idempotencyRepository,
-      emailTemplateRepository,
-      auditRepository,
-      clock,
-      config: { idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
-    })
-    registerAdminEmailMessageRoutes(application, {
-      webAuth,
-      unitOfWork,
-      idempotencyRepository,
-      emailTemplateRepository,
-      adminEmailMessageRepository: createAdminEmailMessageRepository(),
       userRepository,
       emailSuppressionRepository,
       outboxRepository,
       emailDeliveryRepository,
       auditRepository,
+      contentRepository: adminContentRepository,
       crypto,
+      cache,
+      appUpdate: serverConfig.appUpdate,
       clock,
       config: {
         sesConfigurationSet: serverConfig.sesConfigurationSet,

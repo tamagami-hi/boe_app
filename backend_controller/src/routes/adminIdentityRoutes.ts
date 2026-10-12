@@ -99,6 +99,7 @@ const templateKeyEnum = z.enum([
   "email_change_code",
   "contact_email_changed",
   "admin_message",
+  "app_update_notice",
 ])
 const limitSchema = z.coerce.number().int().min(1).max(100).default(25)
 

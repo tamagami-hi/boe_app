@@ -245,20 +245,16 @@ export const latestPublishedBuild = async (
   return found === null ? null : { versionCode: found.versionCode, version: found.version }
 }
 
-/**
- * Public download URL of the newest published APK for a variant, or null when
- * the feed is unmounted, nothing is published, or no download base is
- * configured.
- *
- * Used by the account-approved email, which needs the official client APK link
- * without knowing the install's applicationId: the newest release-signed
- * artifact in the variant directory is the one nginx serves and the one the
- * update endpoint would offer a fresh install.
- */
-export const latestPublishedApkUrl = async (
+export interface PublishedRelease {
+  readonly version: string
+  readonly versionCode: number
+  readonly url: string
+}
+
+export const latestPublishedRelease = async (
   feed: ReleaseFeed,
   variant: ReleaseVariant,
-): Promise<string | null> => {
+): Promise<PublishedRelease | null> => {
   if (feed.releaseRoot === null || feed.downloadBaseUrl === null) return null
   const identity = (() => {
     if (feed.downloadBaseUrl === "https://dev-app.beonedge.in/downloads") {
@@ -285,5 +281,22 @@ export const latestPublishedApkUrl = async (
     }),
     undefined,
   )
-  return found === null ? null : downloadUrl(feed.downloadBaseUrl, variant, found)
+  if (found === null) return null
+  const url = downloadUrl(feed.downloadBaseUrl, variant, found)
+  return url === null ? null : { version: baseVersion(found.version), versionCode: found.versionCode, url }
 }
+
+/**
+ * Public download URL of the newest published APK for a variant, or null when
+ * the feed is unmounted, nothing is published, or no download base is
+ * configured.
+ *
+ * Used by the account-approved email, which needs the official client APK link
+ * without knowing the install's applicationId: the newest release-signed
+ * artifact in the variant directory is the one nginx serves and the one the
+ * update endpoint would offer a fresh install.
+ */
+export const latestPublishedApkUrl = async (
+  feed: ReleaseFeed,
+  variant: ReleaseVariant,
+): Promise<string | null> => (await latestPublishedRelease(feed, variant))?.url ?? null

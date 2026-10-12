@@ -216,6 +216,82 @@ export const sendTestAdminEmailMessage = defineOperation({
   errorCodes: [...SEND_ERRORS],
 })
 
+export const AdminAppUpdateRelease = z.strictObject({
+  version: z.string(),
+  versionCode: z.number().int().positive(),
+  url: z.url(),
+})
+
+export const AdminAppUpdatePreviewData = z.strictObject({
+  release: AdminAppUpdateRelease.nullable(),
+  subject: z.string().nullable(),
+  text: z.string().nullable(),
+  html: z.string().nullable(),
+  recipientCount: z.number().int().nonnegative(),
+  alreadySent: z.boolean(),
+  currentMinimum: z.string().nullable(),
+})
+export type AdminAppUpdatePreviewData = z.infer<typeof AdminAppUpdatePreviewData>
+
+export const AdminAppUpdateSendBody = z.strictObject({
+  versionCode: z.number().int().positive(),
+  mandatory: z.boolean(),
+  message: z.string().trim().max(500).optional(),
+})
+
+export const AdminAppUpdateSentData = z.strictObject({
+  announcementId: Uuid,
+  version: z.string(),
+  versionCode: z.number().int().positive(),
+  mandatory: z.boolean(),
+  recipientCount: z.number().int().nonnegative(),
+  appConfigVersion: z.number().int().positive().nullable(),
+})
+
+export const AdminAppUpdateTestData = z.strictObject({
+  deliveryId: Uuid,
+  recipient: z.string(),
+  state: z.literal("queued"),
+})
+
+export const previewAppUpdateAnnouncement = defineOperation({
+  operationId: "previewAppUpdateAnnouncement",
+  method: "GET",
+  path: "/v1/admin/app-update-announcements/preview",
+  authChannel: "admin-web",
+  credentialPolicy: "admin-session-cookie-and-csrf",
+  idempotency: "none",
+  request: {
+    query: z.strictObject({ mandatory: z.enum(["true", "false"]).optional(), message: z.string().max(500).optional() }),
+  },
+  success: { status: 200, schema: createSuccessEnvelopeSchema(AdminAppUpdatePreviewData) },
+  errorCodes: [...ADMIN_READ_ERRORS],
+})
+
+export const sendAppUpdateAnnouncement = defineOperation({
+  operationId: "sendAppUpdateAnnouncement",
+  method: "POST",
+  path: "/v1/admin/app-update-announcements",
+  authChannel: "admin-web",
+  credentialPolicy: "admin-session-cookie-and-csrf",
+  idempotency: "required-key",
+  request: writeRequest(AdminAppUpdateSendBody),
+  success: { status: 202, schema: createSuccessEnvelopeSchema(AdminAppUpdateSentData) },
+  errorCodes: [...ADMIN_WRITE_ERRORS, "STATE_CONFLICT"],
+})
+
+export const sendTestAppUpdateAnnouncement = defineOperation({
+  operationId: "sendTestAppUpdateAnnouncement",
+  method: "POST",
+  path: "/v1/admin/app-update-announcements/test",
+  authChannel: "admin-web",
+  credentialPolicy: "admin-session-cookie-and-csrf",
+  idempotency: "required-key",
+  request: writeRequest(AdminAppUpdateSendBody),
+  success: { status: 202, schema: createSuccessEnvelopeSchema(AdminAppUpdateTestData) },
+  errorCodes: [...ADMIN_WRITE_ERRORS, "STATE_CONFLICT", "RESOURCE_NOT_FOUND", "RATE_LIMITED"],
+})
+
 export const ADMIN_EMAIL_OPERATIONS = Object.freeze([
   listAdminEmailTemplates,
   getAdminEmailTemplate,
@@ -226,4 +302,7 @@ export const ADMIN_EMAIL_OPERATIONS = Object.freeze([
   previewAdminEmailMessage,
   sendAdminEmailMessage,
   sendTestAdminEmailMessage,
+  previewAppUpdateAnnouncement,
+  sendAppUpdateAnnouncement,
+  sendTestAppUpdateAnnouncement,
 ])

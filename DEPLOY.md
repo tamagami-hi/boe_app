@@ -211,9 +211,11 @@ Advance notice and required updates are published app configuration (Admin, App 
   they meet the changed API.
 
 A deploy never raises the floor by itself. After deploying a release every client must install,
+either send a required announcement from Admin, Send email, "App update to all clients" (it emails
+every active client the official download link and publishes the new floor in the same step), or
 publish `minimumSupportedVersion.android` set to that release's version (and, if wanted, a
-`minimumSupportedVersion.message`) in App configuration; until then older APKs only see the
-optional "A newer BeOnEdge is available" sheet when they next check. A stack with no published
+`minimumSupportedVersion.message`) in App configuration yourself; until then older APKs only see
+the optional "A newer BeOnEdge is available" sheet when they next check. A stack with no published
 app configuration (`GET /v1/app-config` answers `config: null`) never shows the required screen.
 
 ## How admin and the APKs connect

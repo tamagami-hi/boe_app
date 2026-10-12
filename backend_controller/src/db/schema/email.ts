@@ -170,3 +170,16 @@ export interface AdminEmailMessagesTable {
   delivery_id: string
   created_at: TimestampDefault
 }
+
+export interface AppUpdateAnnouncementsTable {
+  id: string
+  version: string
+  version_code: number
+  mandatory: boolean
+  message: Nullable<string>
+  download_url: string
+  recipient_count: number
+  app_config_version: Nullable<number>
+  actor_user_id: string
+  created_at: TimestampDefault
+}

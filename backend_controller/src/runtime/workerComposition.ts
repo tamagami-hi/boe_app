@@ -6,9 +6,11 @@ import {
 } from "../domain/email/dispatchDueDeliveries.js"
 import { CLAIMED_EMAIL_TOPICS } from "../domain/email/emailTopics.js"
 import { createAdminMessageGuard } from "../domain/email/adminMessageGuard.js"
+import { createAppUpdateNoticeGuard } from "../domain/email/appUpdateNoticeGuard.js"
 import { createEmailChangeMailGuard } from "../domain/email/emailChangeMailGuard.js"
 import { createPasswordLinkMailGuard } from "../domain/email/passwordLinkMailGuard.js"
 import { createAdminEmailMessageRepository } from "../repositories/adminEmailMessageRepository.js"
+import { createAppUpdateAnnouncementRepository } from "../repositories/appUpdateAnnouncementRepository.js"
 import { createEmailChangeRepository } from "../repositories/emailChangeRepository.js"
 import { createEmailTemplateRepository } from "../repositories/emailTemplateRepository.js"
 import { createTransactionalEmailSender } from "../email/transactionalEmailSender.js"
@@ -99,6 +101,13 @@ export const composeEmailDispatchWorker = (
       ["password_reset_link", passwordLinkGuard],
       ["email_change_code", emailChangeGuard],
       ["admin_message", adminMessageGuard],
+      [
+        "app_update_notice",
+        createAppUpdateNoticeGuard({
+          appUpdateAnnouncementRepository: createAppUpdateAnnouncementRepository(),
+          userRepository: createUserRepository(),
+        }),
+      ],
     ]),
     clock: (): Date => new Date(),
     config: {

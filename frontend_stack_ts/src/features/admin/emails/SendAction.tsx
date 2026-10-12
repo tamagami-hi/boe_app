@@ -10,11 +10,11 @@ import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Alert } from "~/ui/primitives/Feedback"
 import { ACTION_ROW, STACK_LG } from "~/ui/recipes/layout"
 
-import type { QueuedEmail } from "./emailMessageQueries"
+export type SendReceipt = Readonly<{ title: string; detail: string }>
 
 type Outcome =
   | Readonly<{ kind: "idle" }>
-  | Readonly<{ kind: "queued"; queued: QueuedEmail }>
+  | Readonly<{ kind: "queued"; receipt: SendReceipt }>
   | Readonly<{ kind: "rejected"; message: string }>
   | Readonly<{ kind: "unknown" }>
 
@@ -37,7 +37,7 @@ export type SendActionProps = Readonly<{
   confirmLabel: string
   confirmBody: ReactNode
   request: Readonly<Record<string, unknown>>
-  send: (idempotencyKey: string) => Promise<QueuedEmail>
+  send: (idempotencyKey: string) => Promise<SendReceipt>
 }>
 
 export const SendAction = ({
@@ -61,8 +61,8 @@ export const SendAction = ({
     setConfirming(false)
     setPending(true)
     try {
-      const queued = await send(idempotencyKey)
-      setOutcome({ kind: "queued", queued })
+      const receipt = await send(idempotencyKey)
+      setOutcome({ kind: "queued", receipt })
       setAttempt((current) => current + 1)
     } catch (error) {
       setOutcome(isUnknownWriteOutcome(error) ? { kind: "unknown" } : { kind: "rejected", message: describeRejection(error) })
@@ -82,14 +82,14 @@ export const SendAction = ({
       {outcome.kind === "queued" ? (
         <Alert
           tone="success"
-          title={outcome.queued.test ? "Test queued" : "Email queued"}
+          title={outcome.receipt.title}
           action={
             <ButtonLink to="/emails" tone="secondary" size="sm">
               Open the delivery log
             </ButtonLink>
           }
         >
-          {`Queued for ${outcome.queued.recipient}. The delivery log shows when it is sent, or why it was not.`}
+          {outcome.receipt.detail}
         </Alert>
       ) : null}
 

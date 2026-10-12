@@ -12,19 +12,26 @@ import { Combobox } from "~/ui/primitives/Combobox"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 import { FormField } from "~/ui/primitives/FormField"
 import { Select } from "~/ui/primitives/Select"
+import { TabPanel, Tabs, type TabItem } from "~/ui/primitives/Toggle"
 import { ADMIN_EMAIL_PREVIEW, ADMIN_FORM_GRID } from "~/ui/recipes/admin"
 import { STACK_LG } from "~/ui/recipes/layout"
 
-import type { EmailPreview } from "./emailMessageQueries"
+import type { EmailPreview, QueuedEmail } from "./emailMessageQueries"
 import { useEmailPreview, useSendEmail, useSendTestEmail } from "./emailMessageQueries"
 import { useEmailTemplates } from "./emailTemplateQueries"
-import { SendAction } from "./SendAction"
+import { AppUpdateAnnouncementPanel } from "./AppUpdateAnnouncementPanel"
+import { SendAction, type SendReceipt } from "./SendAction"
 
 const BLOCK_MESSAGES: Readonly<Record<string, string>> = {
   not_client: "This account is not a client account. Messages from this screen go only to clients.",
   inactive: "This client account is not active, so it cannot be sent a message.",
   suppressed: "Mail to this client's address is blocked after a bounce or complaint.",
 }
+
+const receiptOf = (queued: QueuedEmail): SendReceipt => ({
+  title: queued.test ? "Test queued" : "Email queued",
+  detail: `Queued for ${queued.recipient}. The delivery log shows when it is sent, or why it was not.`,
+})
 
 const PreviewPanel = ({ preview }: Readonly<{ preview: EmailPreview }>): React.ReactElement => (
   <Section
@@ -70,7 +77,7 @@ const SendPanel = ({ preview }: Readonly<{ preview: EmailPreview }>): React.Reac
             </Prose>
           }
           request={{ kind: "test", ...testRequest }}
-          send={(idempotencyKey) => sendTest.mutateAsync({ ...testRequest, idempotencyKey })}
+          send={async (idempotencyKey) => receiptOf(await sendTest.mutateAsync({ ...testRequest, idempotencyKey }))}
         />
 
         {recipient === null ? (
@@ -105,13 +112,15 @@ const SendPanel = ({ preview }: Readonly<{ preview: EmailPreview }>): React.Reac
                 userId: recipient.userId,
                 expectedEmailRevision: recipient.emailRevision,
               }}
-              send={(idempotencyKey) =>
-                sendEmail.mutateAsync({
-                  ...testRequest,
-                  userId: recipient.userId,
-                  expectedEmailRevision: recipient.emailRevision,
-                  idempotencyKey,
-                })
+              send={async (idempotencyKey) =>
+                receiptOf(
+                  await sendEmail.mutateAsync({
+                    ...testRequest,
+                    userId: recipient.userId,
+                    expectedEmailRevision: recipient.emailRevision,
+                    idempotencyKey,
+                  }),
+                )
               }
             />
           </>
@@ -121,7 +130,16 @@ const SendPanel = ({ preview }: Readonly<{ preview: EmailPreview }>): React.Reac
   )
 }
 
-const SendEmailScreen = (): React.ReactElement => {
+type Mode = "client" | "update"
+
+const MODE_TABS_ID = "send-email-mode"
+
+const MODES: readonly TabItem<Mode>[] = [
+  { value: "client", label: "One client" },
+  { value: "update", label: "App update to all clients" },
+]
+
+const OneClientMode = (): React.ReactElement => {
   const [searchParams] = useSearchParams()
   const [templateId, setTemplateId] = useState(searchParams.get("templateId") ?? "")
   const [userId, setUserId] = useState(searchParams.get("userId") ?? "")
@@ -145,12 +163,7 @@ const SendEmailScreen = (): React.ReactElement => {
   )
 
   return (
-    <Page width="wide">
-      <PageHeader
-        title="Send an email"
-        description="Send one template to one client, or a marked test to yourself. There are no bulk or scheduled sends."
-      />
-
+    <>
       <Card>
         <div className={ADMIN_FORM_GRID}>
           <FormField label="Template" required>
@@ -200,6 +213,23 @@ const SendEmailScreen = (): React.ReactElement => {
           )}
         </AsyncBoundary>
       )}
+    </>
+  )
+}
+
+const SendEmailScreen = (): React.ReactElement => {
+  const [mode, setMode] = useState<Mode>("client")
+
+  return (
+    <Page width="wide">
+      <PageHeader
+        title="Send an email"
+        description="Send one template to one client, or announce a new app version to every active client. Each send asks you to confirm first."
+      />
+      <Tabs id={MODE_TABS_ID} label="What to send" value={mode} items={MODES} onChange={setMode} />
+      <TabPanel id={MODE_TABS_ID} value={mode}>
+        <div className={STACK_LG}>{mode === "client" ? <OneClientMode /> : <AppUpdateAnnouncementPanel />}</div>
+      </TabPanel>
     </Page>
   )
 }

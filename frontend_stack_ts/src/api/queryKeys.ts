@@ -51,6 +51,8 @@ export const qk = {
     emailTemplates: (filter: string) => ["admin", "email-templates", filter] as const,
     emailTemplate: (templateId: string) => ["admin", "email-template", templateId] as const,
     emailPreview: (templateId: string, userId: string) => ["admin", "email-preview", templateId, userId] as const,
+    appUpdatePreview: (mandatory: boolean, message: string) =>
+      ["admin", "app-update-preview", mandatory ? "required" : "optional", message] as const,
     investorPositions: (userId: string) => ["admin", "investor", userId, "positions"] as const,
     clientLedgerEntries: (userId: string, fundId: string) =>
       ["admin", "investor", userId, "ledger-entries", fundId] as const,

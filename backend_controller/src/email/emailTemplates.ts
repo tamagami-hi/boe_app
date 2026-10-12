@@ -21,6 +21,7 @@ const TEMPLATE_VERSIONS: ReadonlyMap<string, readonly string[]> = new Map([
   ["email_change_code", ["v1"]],
   ["contact_email_changed", ["v1"]],
   ["admin_message", ["v1"]],
+  ["app_update_notice", ["v1"]],
 ])
 
 export interface PasswordLinkInput {
@@ -311,6 +312,57 @@ const adminMessageInput = (data: Readonly<Record<string, unknown>>): AdminMessag
   test: data.test === true,
 })
 
+export interface AppUpdateNoticeInput {
+  readonly version: string
+  readonly mandatory: boolean
+  readonly message: string | null
+  readonly downloadUrl: string
+  readonly test: boolean
+}
+
+const APP_UPDATE_TEST_NOTICE =
+  "This is a test sent from the BeOnEdge admin panel. It was not sent to any client."
+
+export const appUpdateNoticeEmail = (input: AppUpdateNoticeInput, config: EmailTemplateConfig): RenderedEmail => {
+  if (!/^[0-9]+(?:\.[0-9]+){0,3}$/u.test(input.version)) throw new EmailValidationError("EMAIL_TEMPLATE_DATA_INVALID")
+  const subject = input.mandatory
+    ? `Update required: BeOnEdge app version ${input.version}`
+    : `BeOnEdge app version ${input.version} is available`
+  const lead: readonly EmailBlock[] = input.mandatory
+    ? [
+        { kind: "text", text: `Version ${input.version} of the BeOnEdge app is a required update.` },
+        {
+          kind: "text",
+          text: "Older versions of the app will ask you to update before you can continue, so please install it now.",
+        },
+      ]
+    : [{ kind: "text", text: `Version ${input.version} of the BeOnEdge app is ready to install.` }]
+  return renderEmail({
+    subject: input.test ? `[Test] ${subject}` : subject,
+    preheader: subject,
+    heading: input.mandatory ? "Please update the BeOnEdge app" : "A new version of the BeOnEdge app",
+    supportAddress: config.supportAddress,
+    blocks: [
+      ...(input.test ? [{ kind: "text" as const, text: APP_UPDATE_TEST_NOTICE }] : []),
+      ...lead,
+      ...(input.message === null ? [] : [{ kind: "text" as const, text: input.message }]),
+      { kind: "action", label: "Download the BeOnEdge app", url: input.downloadUrl },
+      {
+        kind: "text",
+        text: "You can also update from inside the app: open it and follow the update prompt. BeOnEdge only sends the app from its own website.",
+      },
+    ],
+  })
+}
+
+const appUpdateNoticeInput = (data: Readonly<Record<string, unknown>>): AppUpdateNoticeInput => ({
+  version: requiredString(data, "version"),
+  mandatory: data.mandatory === true,
+  message: stringField(data, "message"),
+  downloadUrl: requiredString(data, "downloadUrl"),
+  test: data.test === true,
+})
+
 const buildTemplate = (
   templateKey: string,
   templateData: Readonly<Record<string, unknown>>,
@@ -338,6 +390,8 @@ const buildTemplate = (
       return emailChangedEmail({ role: changeRole(templateData), newEmail: requiredString(templateData, "newEmail") }, config)
     case "admin_message":
       return adminMessageEmail(adminMessageInput(templateData), config)
+    case "app_update_notice":
+      return appUpdateNoticeEmail(appUpdateNoticeInput(templateData), config)
     default:
       return null
   }

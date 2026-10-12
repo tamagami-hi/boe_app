@@ -5,22 +5,14 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { ApiError, TransportError } from "~/api/errors"
 import { OverlayStackProvider } from "~/app/providers/OverlayStackProvider"
 
-import type { QueuedEmail } from "./emailMessageQueries"
-import { SendAction } from "./SendAction"
+import { SendAction, type SendReceipt } from "./SendAction"
 
 const keys: string[] = []
 let failures: Error[] = []
 
-const QUEUED: QueuedEmail = {
-  messageId: "6c1c7a4e-8d5e-4c55-9d0a-1f7d0b1c2a3e",
-  deliveryId: "0b8a3d2c-1e4f-4a6b-8c7d-9e0f1a2b3c4d",
-  recipient: "m***@example.com",
-  test: false,
-  state: "queued",
-  queuedAt: "2026-10-12T05:00:00.000Z",
-}
+const QUEUED: SendReceipt = { title: "Email queued", detail: "Queued for m***@example.com." }
 
-const send = (idempotencyKey: string): Promise<QueuedEmail> => {
+const send = (idempotencyKey: string): Promise<SendReceipt> => {
   keys.push(idempotencyKey)
   const failure = failures.shift()
   return failure === undefined ? Promise.resolve(QUEUED) : Promise.reject(failure)

@@ -272,7 +272,7 @@ afterAll(async () => {
 describe("upgrading a populated v0.14.7 database to v0.15.0 in one run", () => {
   test("applies every migration after 051", async () => {
     const applied = (await pool.query<{ version: string }>("select version from schema_migrations where version > $1 order by version", [RELEASED_SCHEMA])).rows
-    expect(applied.map((row) => row.version.slice(0, 3))).toEqual(["052", "053", "054", "055", "056", "057", "058", "059"])
+    expect(applied.map((row) => row.version.slice(0, 3))).toEqual(["052", "053", "054", "055", "056", "057", "058", "059", "060"])
   })
 
   test("keeps every existing row in every existing table exactly as it was, and adds none", async () => {
@@ -319,6 +319,7 @@ describe("upgrading a populated v0.14.7 database to v0.15.0 in one run", () => {
     expect(await count("email_template_revisions")).toBe(5)
     expect(await count("email_change_requests")).toBe(0)
     expect(await count("admin_email_messages")).toBe(0)
+    expect(await count("app_update_announcements")).toBe(0)
   })
 
   test("accepts every template key the new release queues and still refuses an unknown one", async () => {
@@ -336,7 +337,7 @@ describe("upgrading a populated v0.14.7 database to v0.15.0 in one run", () => {
       }
     }
 
-    for (const key of ["password_set_link", "password_reset_link", "password_app_download", "contact_phone_changed", "email_change_code", "contact_email_changed", "admin_message"]) {
+    for (const key of ["password_set_link", "password_reset_link", "password_app_download", "contact_phone_changed", "email_change_code", "contact_email_changed", "admin_message", "app_update_notice"]) {
       expect(await accepts(key), key).toBe(true)
     }
     expect(await accepts("statement_ready")).toBe(false)

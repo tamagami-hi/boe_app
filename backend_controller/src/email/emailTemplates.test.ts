@@ -178,6 +178,33 @@ describe("queued admin messages", () => {
   })
 })
 
+describe("app update notices", () => {
+  const notice = { version: "0.15.2", downloadUrl: "https://app.beonedge.in/downloads/client/boe.prod.client.0.15.2.apk?v=1502" }
+
+  test("an optional update offers the official link and says the update is available", () => {
+    const result = renderEmailTemplate("app_update_notice", "v1", { ...notice, mandatory: false }, CONFIG)
+    if (result.kind !== "rendered") throw new Error("expected a rendered email")
+    expect(result.email.subject).toBe("BeOnEdge app version 0.15.2 is available")
+    expect(result.email.text).toContain(notice.downloadUrl)
+    expect(result.email.text).not.toContain("required")
+  })
+
+  test("a required update says so in the subject and body, and carries the admin's note", () => {
+    const result = renderEmailTemplate("app_update_notice", "v1", { ...notice, mandatory: true, message: "Statements load faster." }, CONFIG)
+    if (result.kind !== "rendered") throw new Error("expected a rendered email")
+    expect(result.email.subject).toBe("Update required: BeOnEdge app version 0.15.2")
+    expect(result.email.text).toContain("is a required update")
+    expect(result.email.text).toContain("Statements load faster.")
+  })
+
+  test.each([
+    ["a link that is not https", { ...notice, downloadUrl: "javascript:alert(1)" }, "EMAIL_ACTION_URL_INVALID"],
+    ["a version that is not a dotted number", { ...notice, version: "0.15.2\r\nBcc: x@example.com" }, "EMAIL_TEMPLATE_DATA_INVALID"],
+  ] as const)("refuses %s permanently", (_name, data, errorCode) => {
+    expect(renderEmailTemplate("app_update_notice", "v1", data, CONFIG)).toEqual({ kind: "unrenderable", errorCode })
+  })
+})
+
 describe("emailVerificationCodeEmail", () => {
   const CODE = "aB3dE9"
 
