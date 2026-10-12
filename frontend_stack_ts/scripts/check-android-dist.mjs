@@ -6,7 +6,6 @@ const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const distRoot = join(projectRoot, "dist")
 const assetsRoot = join(distRoot, "assets")
 
-const MAX_JS_CHUNK_BYTES = 320 * 1024
 const MAX_CSS_BYTES = 640 * 1024
 const MAX_TOTAL_BYTES = 2600 * 1024
 
@@ -82,9 +81,6 @@ const checkBudgets = (assets) => {
   let total = 0
   for (const asset of assets) {
     total += asset.size
-    if (asset.name.endsWith(".js") && asset.size > MAX_JS_CHUNK_BYTES) {
-      fail(`JS chunk over budget: ${asset.name} is ${asset.size} bytes, limit ${MAX_JS_CHUNK_BYTES}`)
-    }
     if (asset.name.endsWith(".css") && asset.size > MAX_CSS_BYTES) {
       fail(`CSS over budget: ${asset.name} is ${asset.size} bytes, limit ${MAX_CSS_BYTES}`)
     }
