@@ -18,6 +18,7 @@ move funds, change identity authority, send customer mail, or deploy.
 | --- | --- | --- |
 | Q-013 | Self-protection for the sole admin, which can suspend or close its own account with no in-app or seed recovery | Out of scope for this plan, as the maintainer confirmed on 2026-10-11; no change. Steps 3 and 4 add actions to the same screen and must not make this worse. |
 | Q-017 | Whether admin-created invites and reset links need a longer lifetime than the 10-minute email-code default they share (`EMAIL_VERIFICATION_CODE_TTL_MS`). Once step 3b queues link mail, a message retried past its link's expiry is cancelled unsent by the worker's validity check (step 3 task 6), and the client requests a new link | No change: the lifetime stays at the shared setting and nothing new is configured. |
+| Q-018 | How many current-password checks a signed-in client may make, and over what window, across the phone change, the email change, and the password change | Five per client in a fixed 15-minute window, shared by the three endpoints and kept in the backend process's memory (it resets when the backend restarts). The sixth answers 429 `RATE_LIMITED` before the password is checked. Chosen on 2026-10-12 when the maintainer asked for the fix; sign-in itself stays on nginx's 5 requests a minute per address. |
 
 ### Decision record
 
@@ -939,4 +940,19 @@ The maintainer's remaining steps before and during the v0.15.0 release (nothing 
 9. Browser checks on a local or dev stack (they need a running stack, which needs separate permission): client contact details and email change, admin client creation and its password-link panel, earlier-investment entry, email templates, and the send screen; labels, focus, errors, disabled and cooldown states, confirmations, and phone-width layout.
 10. A real test send to an address the maintainer controls, before any client send.
 11. Optionally, more integration coverage for the older admin and client routes so the local coverage gate passes again.
+
+### Pre-release security fixes for v0.15 (2026-10-12)
+
+The maintainer asked for a security and bug review before the production push, then for both findings to be fixed.
+
+Changed:
+
+- Current-password checks are now limited per client (Q-018). `POST /v1/client/profile/phone` and `POST /v1/client/profile/email` (new in v0.15) and the existing `POST /v1/auth/password/change` share one limiter, `auth/passwordRecheckLimiter.ts`, consulted after the request is authenticated and parsed and before any password is verified. Before this, those endpoints sat under nginx's general zone (20 requests a second per address) with no per-client limit, so someone holding a stolen session could guess the password far faster than sign-in allows and then move the account to an address they control, and any signed-in client could test whether another customer's email or phone is registered, because "already used" is answered before any cooldown. The app's messages for these refusals now say to wait.
+- Dependencies with published advisories: backend `fastify` 5.12.1 to 5.12.5 and `nodemailer` 9.0.5 to 10.1.0 (10.x is needed to close every advisory; its breaking changes are Node 20 or later, which the stack already runs, and bundled types, so `@types/nodemailer` was removed), with `fast-uri` 3.1.6 and 4.1.3 moved to 3.1.8 and 4.2.2 within their ranges; frontend `@capacitor/android`, `@capacitor/core`, `@capacitor/cli`, and the transitive `@capacitor/ios` 8.5.0 to 8.5.3 (GHSA-rvm3-566m-v7fv: remote content at the app origin through the internal HTTP proxy path, which needs an attacker-controlled link activated inside the WebView; no such link is rendered today, and every client installs the new APK anyway). Installs ran in a one-shot `node:22` container with npm 11.16.0, the versions the project and CI pin. `npm audit --omit=dev` now reports no vulnerabilities in the backend, the frontend, or contracts.
+
+Reviewed and unchanged (STATIC unless marked): every new admin write requires CSRF and its permission, and every read a permission; the client cookie channel requires CSRF on every unsafe method; both name entry points refuse control characters, so a name cannot break a subject; the only HTML rendered from the server is the fully sandboxed email preview; no new log line carries an address, code, or token; v0.15 added no dependency. VPS (read-only, authorized): the production schema dump matches a fresh database migrated to 051 line for line after comments are removed, so 052 to 059 meet the same schema on production as on dev and in `releaseUpgrade`.
+
+Verified (TESTED): backend check 95 files and 1149 tests (coverage 84.11% statements) with the build and both boot smokes; the integration suite in its CI form passes 34 files and 381 tests, including the new `emailChange` case: five wrong guesses spread over the three endpoints are refused with 401, then the right password is refused with 429 on all three with the credential and email unchanged, while another client is unaffected. Frontend: 26 files and 236 tests, typecheck, lint, and `build:android` and `build:android:admin` with the size, boot, and native PhonePe guards. Negative control: with the limiter call removed from the password-change route alone, the new test fails; restored by checksum (`f11780a80e5460d8`).
+
+Not verified (UNVERIFIED): a Gradle build of the APKs against Capacitor 8.5.3 (the export builds them), and real SMTP through nodemailer 10 (a test send after the next dev deploy covers it).
 
