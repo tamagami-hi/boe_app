@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "name": "boe_app",
+  "mainBranch": "main",
+  "docsDir": "docs",
+  "tracks": [],
+  "stages": [
+    {
+      "id": "build",
+      "name": "the build",
+      "weight": 100
+    }
+  ],
+  "commands": {
+    "test": [
+      "npm",
+      "test"
+    ],
+    "env": {},
+    "unset": []
+  },
+  "fingerprint": {
+    "paths": [
+      "."
+    ],
+    "exclude": [
+      "docs/records"
+    ]
+  },
+  "identity": {
+    "name": "tamagami-hi",
+    "email": "193059379+tamagami-hi@users.noreply.github.com"
+  },
+  "records": {
+    "dir": "docs/records",
+    "commitPrefix": "records:",
+    "commit": true
+  },
+  "locks": [
+    "landing"
+  ],
+  "context": "records"
+}
