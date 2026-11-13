@@ -23,7 +23,7 @@ import { ACTION_ROW, FEED_MEASURE, ROW_BETWEEN, STACK_SM } from "~/ui/recipes/la
 import { CARD_STACK } from "~/ui/recipes/surface"
 import { COUNT_TEXT, META_ROW } from "~/ui/recipes/text"
 
-import { NOTIFICATION_UNREAD } from "./notifications.recipe"
+import { NOTIFICATION_TAPPABLE, NOTIFICATION_UNREAD } from "./notifications.recipe"
 
 const LEGACY_CLIENT_PREFIX = "/app/"
 
@@ -40,6 +40,8 @@ const destinationOf = (payload: Record<string, unknown>): Destination | null => 
   return destination.kind === "refused" ? null : destination
 }
 
+type ReadableNotification = Readonly<{ id: string; read: boolean }>
+
 const NotificationsScreen = (): React.ReactElement => {
   const query = useNotifications()
   const markRead = useMarkNotificationRead()
@@ -55,6 +57,19 @@ const NotificationsScreen = (): React.ReactElement => {
       if (result.ok) return
       toast.show("We couldn't open that link on this device.", "error")
     })
+  }
+
+  const markOneRead = (id: string): void => {
+    markRead.mutate(id, {
+      onError: (error) => {
+        toast.show(describeClientFailure(error, "markNotificationRead").message, "error")
+      },
+    })
+  }
+
+  const open = (item: ReadableNotification, destination: Destination): void => {
+    if (!item.read) markOneRead(item.id)
+    follow(destination)
   }
 
   return (
@@ -93,19 +108,32 @@ const NotificationsScreen = (): React.ReactElement => {
                 return (
                   <Card key={item.id} tone={item.read ? "default" : "elevated"}>
                     <div className={STACK_SM}>
-                      <div className={ROW_BETWEEN}>
-                        <span
-                          className={cx(ITEM_TITLE, item.read ? undefined : NOTIFICATION_UNREAD)}
-                        >
-                          {item.title}
-                        </span>
-                        {category === null ? null : (
-                          <Badge tone={category.tone}>{category.label}</Badge>
-                        )}
-                      </div>
-                      <p className={PROSE_SM}>{item.body}</p>
-                      <div className={META_ROW}>
-                        <span>{formatDateTime(item.createdAt)}</span>
+                      <div
+                        className={
+                          destination === null ? STACK_SM : cx(STACK_SM, NOTIFICATION_TAPPABLE)
+                        }
+                        onClick={
+                          destination === null
+                            ? undefined
+                            : () => {
+                                open(item, destination)
+                              }
+                        }
+                      >
+                        <div className={ROW_BETWEEN}>
+                          <span
+                            className={cx(ITEM_TITLE, item.read ? undefined : NOTIFICATION_UNREAD)}
+                          >
+                            {item.title}
+                          </span>
+                          {category === null ? null : (
+                            <Badge tone={category.tone}>{category.label}</Badge>
+                          )}
+                        </div>
+                        <p className={PROSE_SM}>{item.body}</p>
+                        <div className={META_ROW}>
+                          <span>{formatDateTime(item.createdAt)}</span>
+                        </div>
                       </div>
                       <div className={cx(ACTION_ROW, "pt-1")}>
                         {destination === null ? null : (
@@ -113,7 +141,7 @@ const NotificationsScreen = (): React.ReactElement => {
                             tone="secondary"
                             size="sm"
                             onClick={() => {
-                              follow(destination)
+                              open(item, destination)
                             }}
                           >
                             Open
@@ -125,14 +153,7 @@ const NotificationsScreen = (): React.ReactElement => {
                             size="sm"
                             loading={markRead.isPending && markRead.variables === item.id}
                             onClick={() => {
-                              markRead.mutate(item.id, {
-                                onError: (error) => {
-                                  toast.show(
-                                    describeClientFailure(error, "markNotificationRead").message,
-                                    "error",
-                                  )
-                                },
-                              })
+                              markOneRead(item.id)
                             }}
                           >
                             Mark read

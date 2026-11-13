@@ -135,8 +135,9 @@ const SupportScreen = (): React.ReactElement => {
               }
             >
               {create.isSuccess && subject === "" && body === "" ? (
-                <Alert tone="success" title="Message sent">
-                  We reply by email. You can follow it below.
+                <Alert tone="success" title="Request sent">
+                  The BeOnEdge team will review it, and its status below will update. For anything
+                  urgent, contact the BeOnEdge team directly.
                 </Alert>
               ) : null}
               {failureMessage === null ? null : (
@@ -218,7 +219,7 @@ const SupportScreen = (): React.ReactElement => {
           empty={
             <EmptyState
               title="No requests yet"
-              description="Messages you send appear here, along with our reply."
+              description="Requests you send appear here with their current status."
             />
           }
         >

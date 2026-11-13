@@ -12,3 +12,5 @@ export const IDENTITY_TEXT = "flex min-w-0 flex-col gap-0.5"
 export const IDENTITY_NAME = "font-display text-xl font-normal tracking-display text-fg"
 
 export const IDENTITY_EMAIL = "font-ui text-sm text-fg-muted [overflow-wrap:anywhere]"
+
+export const INVESTING_UNKNOWN = "inline-flex flex-wrap items-center gap-2"

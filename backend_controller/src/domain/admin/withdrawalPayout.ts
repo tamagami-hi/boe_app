@@ -49,6 +49,6 @@ export const updateWithdrawalPayout = async (
     body: input.state === "paid"
       ? "Your withdrawal payout has been recorded as paid. Contact support if you have not received it."
       : "Your withdrawal payout could not be completed. Contact support for assistance.",
-    payload: { payoutId: input.payoutId },
+    payload: { payoutId: input.payoutId, deepLink: "/activity" },
   })
 }

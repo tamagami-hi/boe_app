@@ -9,10 +9,12 @@ import { toPaise } from "~/domain/money"
 import { formatPercent } from "~/domain/percent"
 import { clientEmailVerification } from "~/domain/clientStatus"
 import { PendingPaymentRecovery } from "~/features/payments/PendingPaymentRecovery"
+import { InvestingStatus } from "~/features/profile/InvestingStatus"
 import { useEligibility, useFunds, usePortfolio, useSipPlans } from "~/features/shared/queries"
 import { cx } from "~/lib/cx"
 import { Reveal } from "~/ui/motion/Reveal"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
+import { MoneyFootnote } from "~/ui/patterns/MoneyFootnote"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { ITEM_TITLE, STAT_LABEL, STAT_ROOT } from "~/ui/recipes/datalist"
@@ -52,7 +54,6 @@ const DashboardScreen = (): React.ReactElement => {
 
   const firstName = session.principal?.fullName.split(" ")[0] ?? "there"
   const verificationState = eligibility.data?.emailVerificationState ?? null
-  const canInvest = eligibility.data?.canInvest === true
 
   return (
     <Page width="default">
@@ -143,7 +144,7 @@ See portfolio
               )}
               <div className={STATUS_ROW}>
                 <span className={META_MUTED}>Investing</span>
-                <span className={META_MUTED}>{canInvest ? "Available" : "Locked"}</span>
+                <InvestingStatus availableLabel="Available" className={META_MUTED} />
               </div>
               {sips.data === undefined ? null : (
                 <div className={STATUS_ROW}>
@@ -206,6 +207,8 @@ See all
           )}
         </AsyncBoundary>
       </Section>
+
+      <MoneyFootnote lastUpdated={portfolio.data?.lastUpdated ?? null} />
     </Page>
   )
 }

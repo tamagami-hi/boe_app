@@ -16,6 +16,7 @@ import { Card } from "~/ui/primitives/Card"
 import { ENTRY_GLYPH, ENTRY_TEXT, ITEM_TITLE, NAV_LIST, NAV_ROW } from "~/ui/recipes/datalist"
 import { HINT_MUTED } from "~/ui/recipes/text"
 
+import { InvestingStatus } from "./InvestingStatus"
 import {
   IDENTITY_AVATAR,
   IDENTITY_EMAIL,
@@ -127,7 +128,7 @@ const ProfileScreen = (): React.ReactElement => {
             </DetailRow>
           )}
           <DetailRow label="Investing">
-            {eligibility.data?.canInvest === true ? "Unlocked" : "Locked"}
+            <InvestingStatus availableLabel="Unlocked" />
           </DetailRow>
         </DataList>
       </Card>

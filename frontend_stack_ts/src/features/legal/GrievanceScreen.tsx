@@ -28,7 +28,7 @@ import {
 } from "./legal.recipe"
 
 const FALLBACK =
-  "The full grievance policy is not available yet. You can still raise a complaint through support, and we will give you a reference for it."
+  "The full grievance policy is not available yet. You can still raise a complaint through support. It gets a reference straight away, and the BeOnEdge team will review it."
 
 type Step = Readonly<{ heading: string; body: string }>
 type Contact = Readonly<{ label: string; value: string; href: string | null }>
@@ -156,7 +156,7 @@ const GrievanceScreen = (): React.ReactElement => {
 
       <Section
         title="Raise it with us first"
-        description="Send us the details and we will give you a reference to follow it."
+        description="Send the details through support. You get a reference straight away, and the BeOnEdge team will review the request and update its status there. For anything urgent, contact the BeOnEdge team directly."
       >
         <ButtonLink to={CLIENT_SUPPORT_PATH} trailing>
 Open support

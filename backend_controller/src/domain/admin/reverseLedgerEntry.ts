@@ -130,7 +130,7 @@ const recordReversalOutcome = async (
     kind: REVERSAL_NOTIFICATION.kind,
     title: REVERSAL_NOTIFICATION.title,
     body: REVERSAL_NOTIFICATION.body,
-    payload: { fundId: original.fundId },
+    payload: { fundId: original.fundId, deepLink: "/portfolio" },
   })
 
 }

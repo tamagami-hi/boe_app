@@ -10,6 +10,7 @@ import { useFundCatalogue, usePortfolio } from "~/features/shared/queries"
 import { cx } from "~/lib/cx"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { EmptyState } from "~/ui/patterns/EmptyState"
+import { MoneyFootnote } from "~/ui/patterns/MoneyFootnote"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { ITEM_TITLE, STAT_LABEL, STAT_ROOT, SUMMARY_GRID } from "~/ui/recipes/datalist"
 import { CARD_COLUMNS_WRAP } from "~/ui/recipes/layout"
@@ -116,16 +117,14 @@ SIP plans
                         {formatPercent(pool.returnPercent, { showSign: true })}
                       </span>
                     </div>
-                    <span className={META_TEXT}>
-                      {pool.sipInstallmentCount === 0
-                        ? countOf(pool.lumpSumCount, "one-off investment")
-                        : `${countOf(pool.sipInstallmentCount, "SIP instalment")}, ${countOf(pool.lumpSumCount, "one-off investment")}`}
-                    </span>
+                    <span className={META_TEXT}>{countOf(pool.contributionCount, "payment")}</span>
                   </Card>
                   </Link>
                 ))}
               </div>
             </Section>
+
+            <MoneyFootnote lastUpdated={data.lastUpdated} />
           </>
         )}
       </AsyncBoundary>

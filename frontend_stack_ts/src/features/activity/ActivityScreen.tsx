@@ -5,10 +5,16 @@ import { PageHeader } from "~/app/layouts/PageHeader"
 import { formatDate, formatDateTime } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { clientInvestmentStatus } from "~/domain/status"
-import { useFundCatalogue, usePayments, useTransactions } from "~/features/shared/queries"
+import {
+  useFundCatalogue,
+  usePayments,
+  usePortfolio,
+  useTransactions,
+} from "~/features/shared/queries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { LoadMore } from "~/ui/patterns/LoadMore"
+import { MoneyFootnote } from "~/ui/patterns/MoneyFootnote"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { CARD_LINK, CARD_STACK } from "~/ui/recipes/surface"
@@ -29,7 +35,7 @@ import { ROW, ROW_LEFT, ROW_RIGHT } from "./activity.recipe"
 const LABEL = {
   lump_sum: "One-off investment",
   sip_installment: "SIP instalment",
-  recorded_offline: "Earlier investment",
+  recorded_offline: "Payment recorded",
   gain_allocation: "Growth",
   adjustment: "Correction",
   withdrawal: "Withdrawal",
@@ -67,6 +73,22 @@ type PaymentFilter = (typeof PAYMENT_FILTERS)[number]["value"]
 
 const partnerLabel = (provider: string | null): string | null => paymentPartnerName(provider)
 
+type DatedEntry = Readonly<{ date: string; createdAt: string }>
+
+const newestFirst = (left: DatedEntry, right: DatedEntry): number =>
+  right.date.localeCompare(left.date) || right.createdAt.localeCompare(left.createdAt)
+
+type ListedPayment = Readonly<{
+  provider: string | null
+  succeededAt: string | null
+  createdAt: string
+}>
+
+const paymentWhen = (payment: ListedPayment): string =>
+  payment.provider === null
+    ? formatDate(payment.succeededAt ?? payment.createdAt)
+    : formatDateTime(payment.createdAt)
+
 const asTab = (value: string | null): Tab => (value === "payments" ? "payments" : "ledger")
 
 const asFilter = (value: string | null): PaymentFilter =>
@@ -84,6 +106,7 @@ const ActivityScreen = (): React.ReactElement => {
   const ledger = useTransactions()
   const payments = usePayments(filter)
   const funds = useFundCatalogue()
+  const portfolio = usePortfolio()
 
   const nameFor = (fundId: string | null): string =>
     fundId === null
@@ -135,7 +158,7 @@ Browse funds
           {(data) => (
             <div className={cx(CARD_STACK, FEED_MEASURE)}>
               {[...data.items]
-                .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+                .sort(newestFirst)
                 .map((entry) => (
                   <Card key={entry.id}>
                     <div className={ROW}>
@@ -207,7 +230,7 @@ Browse funds
                         <div className={ROW_LEFT}>
                           <StatusBadge status={clientInvestmentStatus(payment.status)} />
                           <span className={ITEM_TITLE}>{nameFor(payment.fundId)}</span>
-                          <span className={META_MUTED}>{formatDateTime(payment.createdAt)}</span>
+                          <span className={META_MUTED}>{paymentWhen(payment)}</span>
                         </div>
                         <div className={ROW_RIGHT}>
                           <MoneyValue amount={toPaise(payment.amountPaise)} size="md" />
@@ -225,6 +248,8 @@ Browse funds
           <LoadMore list={payments} noun="payments" />
         </TabPanel>
       )}
+
+      <MoneyFootnote lastUpdated={portfolio.data?.lastUpdated ?? null} />
     </Page>
   )
 }

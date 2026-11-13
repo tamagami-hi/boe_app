@@ -458,8 +458,7 @@ const listTickets = async (
   return reply.sendData({ items: items.map(mapTicket) }, { status: 200, page })
 }
 
-/** Short, quotable handle: `BOE-` plus 8 hex characters of a fresh UUID. */
-const nextReference = (): string => `BOE-${randomUUID().replace(/-/gu, "").slice(0, 8).toUpperCase()}`
+const nextReference = (): string => `REQ-${randomUUID().replace(/-/gu, "").slice(0, 8).toUpperCase()}`
 
 const createTicket = async (
   deps: ClientAccountDeps,
