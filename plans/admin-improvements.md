@@ -1,6 +1,6 @@
 # BeOnEdge admin improvements: recording categories, receipts, value updates, returns, maturity, nominee, and fixes
 
-Status: **Approved by the maintainer on 2026-11-13. Phases A, B and C, and Phase E steps E1 and E2, are complete on local `main` (not pushed or released). Phase D and E3 wait for the maintainer. Phase F is being built on lane `f-maturity`. Phase G (client erasure, decided on 2026-11-14) waits for the maintainer's signal.** Three questions are open (Q-030 to Q-032, section 0a), and Phase F is built with their defaults. What still needs the maintainer: those questions, the Phase G signal, publishing `featureFlags.onlinePayments=false` (G11), the production reform's own destructive-change approval after the pre-flight report (D2), releases, and the decision to resume payments. Checks run in the pinned Node 22.20.0 / npm 11.16.0 container `tools/node22-container/run.sh` (tally `howto-2`).
+Status: **Approved by the maintainer on 2026-11-13. Phases A, B and C, and Phase E steps E1 and E2, are complete on local `main` (not pushed or released). Phase D and E3 wait for the maintainer. Phase F is being built on lane `f-maturity`. Phase G (client erasure) is being built on lane `g-erasure`.** No question is open. What still needs the maintainer: publishing `featureFlags.onlinePayments=false` (G11), the production reform's own destructive-change approval after the pre-flight report (D2), releases, and the decision to resume payments. Checks run in the pinned Node 22.20.0 / npm 11.16.0 container `tools/node22-container/run.sh` (tally `howto-2`).
 
 Prepared: 2026-11-13. The investigation was static source reading only. No local checks ran (no dependencies are installed, and `RULES.md` forbids installing them just to make checks runnable). Nothing was diagnosed on a VPS, no test ran, no mail was sent, and nothing was deployed. GitHub CI run 38216879911 passed contracts, backend (including integration) and frontend on `ba8b196` (v0.15.4). The detailed evidence is held as tally records under `docs/records/`: findings `finding-1` to `finding-18` (excluding the retired `finding-5`), decisions `rule-2` to `rule-6`, and milestones `M1-admin-audit` and `M2-plan`.
 
@@ -8,13 +8,11 @@ Governing process: root [RULES.md](../RULES.md). The application is in productio
 
 ## 0a. Open questions and conservative defaults
 
-IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-025 were answered on 2026-11-13, and Q-027 to Q-029 on 2026-11-14; all are in the decision record. Q-026 was answered on 2026-11-14 (DEC-29). Tally question rows 1 to 18 are marked answered, each citing its decision ID.
+IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-025 were answered on 2026-11-13, and Q-027 to Q-029 on 2026-11-14; all are in the decision record. Q-026 and Q-030 to Q-032 were answered on 2026-11-14 (DEC-29 to DEC-32). Tally question rows 1 to 21 are marked answered, each citing its decision ID. No question is open.
 
 | ID | Open decision | Conservative behavior meanwhile |
 | --- | --- | --- |
-| Q-030 | When a client picks a maturity option in the app (Phase F), should it take effect straight away, or go to the admin as the client's choice for the admin to confirm and carry out? A withdrawal is paid out by the team outside the app, so the admin acts on it anyway. | The pick is saved as the client's choice and shown on the Maturities dashboard, in the launch prompt and on the client page. Nothing changes in money, the ledger or the SIP until the admin confirms, which runs the same resolution as a direct one. Until then the client can change the pick (tally question row 19). |
-| Q-031 | When the admin sends the options, who fills in the figures: option 2's next SIP amount and months, and option 3's months to add? The admin before sending, or the client in the app? | The admin fills them in when sending. The client sees each option with its figures and the current value (invested plus returns) and picks one. For other figures the client talks to the team and the admin sends new options (tally question row 20). |
-| Q-032 | When option 3 extends the SIP, should the maturity date move later by the same number of months? | The new date is filled in as the old date plus the months added, and the admin can change it before confirming. The old maturity stays resolved in the history and a new one is scheduled (tally question row 21). |
+| — | No open questions. | — |
 
 ### Decision record
 
@@ -53,6 +51,10 @@ IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-0
 | DEC-28 | 2026-11-14 | Question answers are decisions, not tally rules. | In force. Every maintainer decision is a tally decision with the ID shown here (group `admin-improvements`), and each answered tally question cites its ID. Tally rules hold only standing constraints that cite their source: `rule-1` (RULES.md), `rule-14` (payments, from DEC-22 and DEC-14) and `rule-15` (no bank details or reference numbers, from DEC-25 and DEC-13). The earlier rule entries that held decisions are retired, and section 8 keeps their old `rule-N` references as history. Tally `convention-6` says where each kind of record goes. |
 | DEC-20 | 2026-11-14 | Phase F go-ahead ("Build with defaults"): build F1 to F3 with the conservative defaults of Q-030 to Q-032. | Being built on lane `f-maturity`. |
 | DEC-29 | 2026-11-14 | Q-026, erasing a client: erasure is refused until the client's invested amount and current value are both zero. Their emails and phones are erased everywhere, including the contact-change history. A client who never completed email verification cannot hold money, so erasing them deletes every record of them. A client who completed email verification is kept as a record with no contact details, and their email and phone can be used again for a new sign-up or a new admin-created client. | Phase G, which waits for the maintainer's signal. It is a destructive change under rule 11 (section 6, Phase G). |
+| DEC-30 | 2026-11-14 | Q-030: a client's maturity pick goes to the admin as the client's choice; nothing changes in money, the ledger or the SIP until the admin confirms, and confirming runs the same resolution as a direct one. | Being built in Phase F. |
+| DEC-31 | 2026-11-14 | Q-031: the admin fills in the figures for options 2 and 3 before sending; the client only picks one. | Being built in Phase F. |
+| DEC-32 | 2026-11-14 | Q-032: an extension's new maturity date is filled in as the old date plus the months added, and the admin can change it. | Being built in Phase F. |
+| DEC-33 | 2026-11-14 | Phase G go-ahead: build client erasure (DEC-29) now. | Being built on lane `g-erasure`. |
 
 #### Replaced
 
@@ -253,7 +255,7 @@ Each lane is a tally track `track/<name>` with its own worktree. Lanes in the sa
 | D | `d-data` | D1 → D2 | Runs only when a feature needs a client-data reform. D2's production run needs separate approval. |
 | E | `e-reviews`, `e-autopay`; E3 | E1, E2; E3 when the maintainer chooses | Reviews took 067 |
 | F | `f-maturity` | F1, F2, F3 | Migration 068; maturity domain and routes, a new client maturity contract and screen, the admin ledger tab and maturities feature (tally `M10-phase-f`) |
-| G | `g-erasure` | G1, G2, G3 | After the maintainer's signal. The next free migration number; admin identity and users routes, the tombstone paths and the repositories that hold client data (tally `M11-phase-g`) |
+| G | `g-erasure` | G1, G2, G3 | Migration 069; admin identity and users routes, the tombstone paths and the repositories that hold client data (tally `M11-phase-g`) |
 
 Shared-file rules:
 - `adminQueries.ts` is at 538 of 800 lines after Phase B. A lane moves the hooks it changes into its feature's own query module instead of growing the file.
@@ -381,19 +383,19 @@ Built on one lane, `f-maturity`, with migration 068. Phase C is not released, so
 - **F1.** The admin client ledger tab shows when each row was recorded, beside its effective date. `createdAt` is already in the response, so there is no contract change.
 - **F2.** Option 3 becomes "Extend the SIP":
   - it adds months to the client's active SIP schedule for that fund through the existing schedule edit, and writes no ledger row and no payout;
-  - it resolves the maturity and schedules the next one, by default at the old date plus the months added (Q-032);
+  - it resolves the maturity and schedules the next one, by default at the old date plus the months added (DEC-32);
   - migration 068 widens the resolution check with the new value, and the old value stays readable.
 - **F3.** The admin sends the options to one client:
-  - The Maturities dashboard, the launch prompt and the client page gain "Send options to client" beside "Resolve". The admin fills in the figures for options 2 and 3 (Q-031).
+  - The Maturities dashboard, the launch prompt and the client page gain "Send options to client" beside "Resolve". The admin fills in the figures for options 2 and 3 (DEC-31).
   - Sending saves the offer and notifies the client in the app (a new kind) and by email (new template `maturity_options`, with fund and maturity date, no amounts, and the web app line when configured). Migration 068 widens the template check.
   - The client app shows the maturity, the current value (invested plus returns) and the three options with their figures. The client picks one with a held Idempotency-Key.
-  - The pick goes to the admin, who confirms it, and confirming runs the same resolution as a direct one (Q-030). The admin can still resolve directly at any time, which closes the offer.
+  - The pick goes to the admin, who confirms it, and confirming runs the same resolution as a direct one (DEC-30). The admin can still resolve directly at any time, which closes the offer.
   - If the client never picks, nothing happens automatically.
   - Nothing about a maturity shows to the client until the admin sends the options.
 - Tests where failure is expensive: no money, ledger or SIP change before the admin confirms; a client cannot read or answer another client's offer; a replayed pick or confirm applies once; and the 068 populated-upgrade test.
 - A client on an older APK gets the email and a plain notification, and can choose only after updating or in the web app.
 
-### Phase G — client erasure (DEC-29; waits for the maintainer's signal)
+### Phase G — client erasure (DEC-29, DEC-33; lane `g-erasure`)
 
 This deletes and overwrites existing rows, so it is a destructive change under rule 11. The maintainer decided it on 2026-11-14 (DEC-29). Before release, the lane records here:
 - every table that holds a client's data, and what erasure does to each one;
