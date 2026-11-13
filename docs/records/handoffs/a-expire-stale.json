@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "track": "a-expire-stale",
+  "current": {
+    "task": "M4-phase-a:A-L2b-expire-stale",
+    "from": "lane-a-expire-stale-worker",
+    "track": "a-expire-stale",
+    "at": "2026-11-13T10:28:01.932Z",
+    "lines": [
+      "Track/a-expire-stale: d8a76a4 (stale never-sent checkout expiry) + 6d903aa (review follow-up: payment lock). Not landed, not pushed.",
+      "6d903aa: candidates listed without locks (time, undispatched, payment created filters); per candidate one transaction locks the payment (lockPaymentById) and re-checks created/unsettled, then locks the attempt (lockAttemptById) and re-checks undispatched hosted checkout of that payment, then requires no sibling in created/provider_pending/succeeded/reconciliation_required, then markAttemptExpired/markPaymentExpired + audit. Lock order payment -> attempt matches the pay route (order -> payment, attempt created/reused under the payment lock) and expireAttempt. Dispatch transactions (attempt, then payment) never touch these attempts because postPay refuses with STATE_CONFLICT once checkout time has run out, so no lock cycle.",
+      "Test adds a stale checkout with a live sibling (stays untouched). Negative controls: time filter removed -> 3 expired instead of 1; sibling re-check removed -> 2.",
+      "Checks (Node 22 container): backend npm run check 98 files/1180 tests; integration --coverage.enabled=false 37 files/400 tests. DEPLOY.md mentions the no-live-sibling condition.",
+      "Unchanged from d8a76a4: grace = PAYMENT_RECONCILIATION_EXPIRY_GRACE_SECONDS; dispatched/dispatch-started rows left for reconciliation; Activity Payments list still shows 'Awaiting payment' for them (list has no expiresAt, needs a contract change); no-gateway loop waits the idle interval."
+    ]
+  },
+  "history": [
+    {
+      "task": "M4-phase-a:A-L2b-expire-stale",
+      "from": "lane-a-expire-stale-worker",
+      "track": "a-expire-stale",
+      "at": "2026-11-13T10:20:50.421Z",
+      "lines": [
+        "A10/G12 committed on track/a-expire-stale as d8a76a4 (not landed, not pushed).",
+        "No-gateway branch of composePaymentReconciliationWorker runs runStalePaymentExpiryPass (src/stalePaymentExpiry.ts + repositories/staleCheckoutRepository.ts): expires hosted_redirect attempts in state created with provider_dispatch_started_at null, payment state created, no sibling attempt in created/provider_pending/succeeded/reconciliation_required, checkout_expires_at + PAYMENT_RECONCILIATION_EXPIRY_GRACE_SECONDS (default 300 s, the grace normal reconciliation uses) <= now. Existing markAttemptExpired/markPaymentExpired; one audit row per payment (command payment.expire_stale_checkout, random uuid requestId); provider_state left null; order left payment_pending as in normal expiry. Summary gains optional staleAttemptsExpired (no-gateway only). No-gateway nextWakeDelayMs now returns the idle interval (was a 50 ms re-poll whenever stale rows existed).",
+        "Left alone by maintainer agreement: provider_pending attempts and created attempts whose dispatch started (provider may hold a payment; reconciliation decides once a gateway returns); AutoPay/mandate channels; payments not in state created; orders and SIP instalments without a payment.",
+        "Client view of those rows: PaymentStatusScreen shows the lapsed message after expiresAt + 5 min; Activity Payments list (ActivityScreen.tsx:208, filter :58) still shows 'Awaiting payment' and its list item has no expiresAt, so lapse handling there needs a contract change. listClientOrders/getClientOrder still project payment_pending as payment_in_progress (no current screen reads them).",
+        "Tests: test/integration/stalePaymentExpiry.integration.test.ts (2 tests, composed worker with grace 600 s): only the stale undispatched row expires; within-grace, within-expiry, dispatched, dispatch-started and settled rows identical; second pass no-op; gateway-configured run (relay at 127.0.0.1:1) leaves the row created. Negative controls: time filter removed -> 3 expired instead of 1; dispatch filter removed -> 2.",
+        "Checks (Node 22 container): contracts build; backend npm run check 98 files/1180 tests; integration with --coverage.enabled=false 37 files/400 tests. Frontend untouched, not run."
+      ]
+    }
+  ]
+}

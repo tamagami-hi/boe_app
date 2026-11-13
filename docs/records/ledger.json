@@ -432,8 +432,11 @@
         {
           "id": "A-L1-client-values",
           "track": "main",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "ba39307",
+          "also": [
+            "9a9d95d"
+          ],
           "brief": "Lane track/a-client-values: A1 growth idempotency (held key per submit, form lock, honest unknown outcome, invalidate positions/ledger), A2 failed-read states on client-values screens incl. EarlierInvestmentForm fund picker, A5 growth/AUM real date parsing + future guard and server paise parsing aligned with contract. Move touched hooks out of adminQueries.ts into client-values query modules; do not touch admin-money.ts.",
           "paths": [
             "frontend_stack_ts/src/features/admin/client-values",
@@ -451,8 +454,11 @@
         {
           "id": "A-L2-payments-off",
           "track": "main",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "9a83b30",
+          "also": [
+            "847c506"
+          ],
           "brief": "Lane track/a-payments-off: A3 refuse lump-sum order and SIP creation with DEPENDENCY_UNAVAILABLE when no payment gateway; SIP worker creates no instalment without gateway; honest client copy for lump sum and AutoPay-disabled; tests for refusal and worker skip. Never enable payments or change payment env.",
           "paths": [
             "backend_controller/src/routes/clientOrderRoutes.ts",
@@ -470,8 +476,12 @@
         {
           "id": "A-L3-admin-core",
           "track": "main",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "5cc8bcb",
+          "also": [
+            "a43752b",
+            "dee2b46"
+          ],
           "brief": "Lane track/a-admin-core: A2 failed-read states for fund-aum (no init form on failure), overview tiles, AdminFrame requiresAll, email pickers; A4 app-config publish expected-version guard (optional request field so released admin APKs still publish) + conflict copy + test; A6 exact paise formatting on mandate screens without changing the response contract, unknown-outcome checks on application/refund/receipt screens.",
           "paths": [
             "frontend_stack_ts/src/features/admin/fund-aum",
@@ -495,8 +505,12 @@
         {
           "id": "A-L4-onboarding",
           "track": "main",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "cd0a522",
+          "also": [
+            "dd7ab92",
+            "fabeb5e"
+          ],
           "brief": "Lane track/a-onboarding: A7 non-identity fixes (create-client review step, field-level duplicate errors, +91 length, recordContribution account-state check, held key + honest unknown outcome on user page and password-link panel, eligibility failure state instead of verify-email redirect, honest already-verified copy, expired-link 'request new link', web-neutral password success copy, invited label in directory, repaired onboarding harness wired into CI) and A5 IST calendar 'today' for recordings and maturity. Identity rule changes (Q-017/Q-024/Q-025) excluded.",
           "paths": [
             "frontend_stack_ts/src/features/admin/users",
@@ -518,8 +532,15 @@
         {
           "id": "A-L5-identity",
           "track": "main",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "92d0e77",
+          "also": [
+            "139ebd5",
+            "8970a3d",
+            "8f7618e",
+            "cd9b96d",
+            "f105a7f"
+          ],
           "brief": "Lane track/a-identity (after A-L4 lands): audited admin contact correction for clients without a password (retire old links, invite the corrected address); explicit audited release of a closed account's email/phone keeping originals in an append-only history table (additive migration 064) without breaking previous-release lookups; make regenerating an invite one obvious admin action that works after expiry/cancellation (invite lifetime stays 10 min; email code step stays). Tests (identity critical) + populated-upgrade test for 064.",
           "paths": [
             "backend_controller/src/domain/admin/createClientAccount.ts",
@@ -531,12 +552,6 @@
           ],
           "covers": [
             "A8"
-          ],
-          "waitsOn": [
-            {
-              "task": "M4-phase-a:A-L4-onboarding",
-              "what": "shares createClientAccount and users screens with lane 4"
-            }
           ]
         },
         {
@@ -598,8 +613,11 @@
         {
           "id": "A-L6-client-polish",
           "track": "main",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "f1d316b",
+          "also": [
+            "8429d3b"
+          ],
           "brief": "Lane track/a-client-polish: A9 client app polish (FE + BE-safe strings/payload keys only)",
           "paths": [
             "frontend_stack_ts/src/features/portfolio",
@@ -619,8 +637,11 @@
         {
           "id": "A-L2b-expire-stale",
           "track": "main",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "9621ab1",
+          "also": [
+            "a9b3ee6"
+          ],
           "brief": "Lane track/a-payments-off follow-up (after A-L2 lands): when no payment gateway is configured, expire pending payment attempts/payments whose checkout expiry plus grace has passed via the existing expiry path (markPaymentExpired + canonical outcome), audited and idempotent; never delete/rewrite rows or move money; integration test proves only time-expired rows change and a gateway-configured run is unaffected",
           "paths": [
             "backend_controller/src/paymentReconciliationEntrypoint.ts",
@@ -630,17 +651,18 @@
           "covers": [
             "A10"
           ],
-          "waitsOn": [
+          "deferred": [
             {
-              "task": "M4-phase-a:A-L2-payments-off",
-              "what": "same payments code as lane 2; starts once lane 2 lands"
+              "what": "Activity Payments list still labels provider-dispatched stale payments 'Awaiting payment' (needs a new list endpoint, finding-23)",
+              "to": "M5-phase-b:B-L6-client-investing"
             }
           ]
         },
         {
           "id": "A-close",
           "track": "main",
-          "status": "planned",
+          "status": "landed",
+          "commit": "3869d21",
           "also": [],
           "brief": "Review each lane diff, land lanes through the tally queue, run the full verification sweep on main, record evidence, write the plan section 8 handoff"
         }
@@ -690,12 +712,6 @@
           "covers": [
             "B1",
             "B2"
-          ],
-          "waitsOn": [
-            {
-              "task": "M4-phase-a:A-close",
-              "what": "touches recordContribution and EarlierInvestmentForm changed in Phase A lanes 1 and 4"
-            }
           ]
         },
         {
@@ -706,12 +722,6 @@
           "brief": "Lane track/b-value-updates: B3 value-update notification payload entryId/deepLink + client value-updates endpoint/screen; PLUS monthly value-update sheet per fund: rows of client name, invested, current value, gain so far, input 'gain since investment (Rs)'; computes per-client change and commits via existing per-client items preview/commit (one atomic batch); new read endpoint for fund client positions with names",
           "covers": [
             "B3"
-          ],
-          "waitsOn": [
-            {
-              "task": "M4-phase-a:A-close",
-              "what": "builds on the A1 growth idempotency fix"
-            }
           ]
         },
         {
@@ -723,12 +733,6 @@
           "covers": [
             "B4",
             "B5"
-          ],
-          "waitsOn": [
-            {
-              "task": "M4-phase-a:A-close",
-              "what": "touches users screens changed in Phase A lane 4"
-            }
           ]
         },
         {
@@ -739,12 +743,6 @@
           "brief": "Lane track/b-email-web: B6 optional CLIENT_WEB_APP_URL rendered into invite/approval/app-download mail, tracked env examples + compose passthrough, web-neutral reset copy",
           "covers": [
             "B6"
-          ],
-          "waitsOn": [
-            {
-              "task": "M4-phase-a:A-close",
-              "what": "touches ResetPasswordScreen changed in Phase A lane 4"
-            }
           ]
         },
         {
@@ -752,26 +750,14 @@
           "track": "main",
           "status": "planned",
           "also": [],
-          "brief": "Lane track/b-support: admin support inbox (list oldest first with client name/reference, detail, respond with expectedVersion/state/resolutionNote + Idempotency-Key + audit + client notification), per-client tickets endpoint; uses seeded support.read/support.write; no client contract change (client already shows status and resolutionNote)",
-          "waitsOn": [
-            {
-              "task": "M4-phase-a:A-close",
-              "what": "after Phase A lands (admin routing and client support copy touched in A)"
-            }
-          ]
+          "brief": "Lane track/b-support: admin support inbox (list oldest first with client name/reference, detail, respond with expectedVersion/state/resolutionNote + Idempotency-Key + audit + client notification), per-client tickets endpoint; uses seeded support.read/support.write; no client contract change (client already shows status and resolutionNote)"
         },
         {
           "id": "B-L6-client-investing",
           "track": "main",
           "status": "planned",
           "also": [],
-          "brief": "Lane track/b-client-investing: 'How to invest' guidance card pointing to the maintainer-authored FAQ/support; hide pay/invest CTAs when published app-config featureFlags.onlinePayments === false (absent keeps today's behavior); simplified History (activity) when payments are off; printable statement view on web (window.print) and plan for APK statement delivery",
-          "waitsOn": [
-            {
-              "task": "M4-phase-a:A-close",
-              "what": "after Phase A lands (client dashboard/activity touched by A-L6)"
-            }
-          ]
+          "brief": "Lane track/b-client-investing: 'How to invest' guidance card pointing to the maintainer-authored FAQ/support; hide pay/invest CTAs when published app-config featureFlags.onlinePayments === false (absent keeps today's behavior); simplified History (activity) when payments are off; printable statement view on web (window.print) and plan for APK statement delivery"
         },
         {
           "id": "B-close",

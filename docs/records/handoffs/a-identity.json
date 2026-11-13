@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "track": "a-identity",
+  "current": {
+    "task": "M4-phase-a:A-L5-identity",
+    "from": "lane-a-identity-worker",
+    "track": "a-identity",
+    "at": "2026-11-13T12:15:17.471Z",
+    "lines": [
+      "A8 on track/a-identity atop main a9b3ee6: 92d0e77 backend+contracts, 139ebd5 admin UI, f105a7f plan, cd9b96d migration renumbered to 061, 8970a3d security-review follow-ups, 8f7618e plan follow-up.",
+      "Endpoints: POST /v1/admin/clients/{userId}/contact-correction (clients.create + clients.password_links.send), POST /v1/admin/users/{userId}/contact-release (users.close), GET /v1/admin/users/{userId}/contact-history (users.read). Contract: packages/contracts/src/operations/admin-client-contacts.ts.",
+      "Migration 061_user_contact_history.sql: sequence + append-only user_contact_history; triggers refuse UPDATE/DELETE (row) and TRUNCATE (statement). Additive; v0.15.x runs unchanged.",
+      "Release: closed, role-less account only, once; live email/phone become released+<id>@released.invalid and +999<11 digits>; also consumes tokens, verification codes and pending email-change requests.",
+      "Correction: active, no role, no password, expectedVersion guard, capped at CORRECTION_LIMIT=3 per CORRECTION_WINDOW_MS=24h (RATE_LIMITED with retryAfter). New email bumps email_revision, retires links/codes, queues a fresh invite.",
+      "Reserved ranges: normalizePhone refuses +999 (create-client, correction, client phone change); refuseReservedEmail (domain/shared/reservedContacts.ts) refuses @released.invalid on create-client and correction. Admin form mirrors +999.",
+      "Contact history masks all four contacts with tombstone+<id>@invalid.example / 'tombstone' when users.pii_tombstoned_at is set.",
+      "Idempotency: ContactCorrectionForm and ContactReleasePanel keep the held key for Check again after an unknown outcome (transport failure, 5xx, key in progress) and show Not confirmed; a new key only after a definite answer or a successful reload.",
+      "Checks (container, final tree): contracts 98; backend check 98 files/1180; integration 40/422 coverage off; frontend 27/241 + build:admin. Negative controls failed 3 + 3 integration tests.",
+      "Not done: browser run, real mail, VPS; build:client not rerun after follow-ups (no client code touched). Closed admin accounts cannot release; directory search ignores previous contacts."
+    ]
+  },
+  "history": [
+    {
+      "task": "M4-phase-a:A-L5-identity",
+      "from": "lane-a-identity-worker",
+      "track": "a-identity",
+      "at": "2026-11-13T10:34:15.247Z",
+      "lines": [
+        "A8 done on track/a-identity, rebased on main 8429d3b: 5f0c168 backend+contracts, d8d3973 admin UI, b542d4a plan section 8, c536252 renumber migration to 061.",
+        "Endpoints: POST /v1/admin/clients/{userId}/contact-correction (clients.create + clients.password_links.send), POST /v1/admin/users/{userId}/contact-release (users.close), GET /v1/admin/users/{userId}/contact-history (users.read). Contract file packages/contracts/src/operations/admin-client-contacts.ts.",
+        "Migration 061_user_contact_history.sql: sequence user_contact_release_number_seq + append-only user_contact_history (trigger refuses update/delete, unique release per user). Additive; v0.15.x runs unchanged.",
+        "Release rewrites only live email/phone of a closed, role-less account to released+<id>@released.invalid and +999<11 digits>; unique constraints untouched, so previous-release lookups find one account per address.",
+        "Correction: active, no role, no password, expectedVersion guard. New email bumps email_revision, consumes tokens and verification codes, queues a fresh set link; phone-only sends nothing.",
+        "passwordTokenRepository.latestCreatedAt now takes {userId, emailRevision}: link cooldown counts only links for the current revision.",
+        "Invite regeneration reuses POST .../password-link; PasswordLinkPanel now says 'Send a new invite link' and warns when the invite is expired, retired, cancelled or failed.",
+        "Checks (container): contracts 98; backend check 98 files/1180; integration 39/417 (coverage off); frontend 27/241 + build:client + build:admin. Negative controls failed 3 integration tests.",
+        "Not done: browser run of new UI, real mail, VPS. Closed admin accounts cannot release. Directory search does not match previous contacts. Plan lines 233/279/281 still say 064 (coordinator owns lane table).",
+        "Shared files touched: db/types.ts, db/schema/identity.ts, composition.ts (+2), releaseUpgrade test, frontend queryKeys.ts, generated OpenAPI/operations, plan section 8."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "track": "a-client-polish",
+  "current": {
+    "task": "M4-phase-a:A-L6-client-polish",
+    "from": "lane-a-client-polish",
+    "track": "a-client-polish",
+    "at": "2026-11-13T09:47:29.089Z",
+    "lines": [
+      "Commits on track/a-client-polish (not landed, not pushed): e51c145 A9 steps 1-9; 4f5285f review follow-up.",
+      "4f5285f: NotificationsScreen markOneRead uses mutateAsync + promise catch, so a failed mark-read after navigation still toasts (ToastProvider is above the router). Open button, card tap and Mark read share it; duplicate in-flight request per item skipped via a ref set. features/shared/queries.ts untouched.",
+      "Shared additions from e51c145: ui/patterns/MoneyFootnote.tsx, features/profile/InvestingStatus.tsx (Dashboard + Profile).",
+      "Out-of-scope file touched on instruction: features/legal/GrievanceScreen.tsx (copy only).",
+      "PaymentStatusScreen time issue fixed on track/a-payments-off (080d79f); untouched here. ClientFrame unread badge still falls back to 0 on a failed read (shells/client, left).",
+      "deepLink: reversal -> /portfolio, withdrawal payout -> /activity.",
+      "Checks (Node 22 container): after 4f5285f frontend npm ci && npm run check pass, 236 tests / 26 files. At e51c145: contracts build ok; backend check 1153/95 ok; integration 390/35 pass but exit 1 on pre-existing 78.29% branch gate (finding-22). build:client/admin and browser runs not done."
+    ]
+  },
+  "history": [
+    {
+      "task": "M4-phase-a:A-L6-client-polish",
+      "from": "lane-a-client-polish",
+      "track": "a-client-polish",
+      "at": "2026-11-13T09:41:14.208Z",
+      "lines": [
+        "Commit e51c145 on track/a-client-polish (not landed): A9 steps 1-9 in one commit.",
+        "Shared additions: ui/patterns/MoneyFootnote.tsx (source + lastUpdated + market-risk line), features/profile/InvestingStatus.tsx (Checking / Couldn't check + Try again / Locked), used by Dashboard and Profile.",
+        "Out-of-scope file touched on instruction: features/legal/GrievanceScreen.tsx (copy only).",
+        "Not done here: PaymentStatusScreen invented 17:30 time (features/payments, a-payments-off) -> note-23. ClientFrame unread badge still falls back to 0 on a failed read (shells/client, left).",
+        "Notification card tap: content area onClick opens + marks read; Open button kept as the keyboard/SR control and now also marks read.",
+        "deepLink: reversal -> /portfolio, withdrawal payout -> /activity (both routes exist since v0.14.7).",
+        "Checks (Node 22 container): contracts build ok; backend check 1153/95 ok; frontend check 236/26 ok; integration 390/35 pass but exit 1 on pre-existing 78.29% branch gate (finding-22, note-24). build:client/admin not run."
+      ]
+    }
+  ]
+}

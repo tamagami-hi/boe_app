@@ -119,6 +119,42 @@
         "commits": "1c02146 f8451d6"
       },
       "note": "As reported by the lane; logs under .temp/tally/logs/a-client-values/. Admins still appear in investor pickers (no admin field in list response; adding one breaks released APKs)."
+    },
+    {
+      "id": "2ba4dcea-8314-4bcd-9ea9-a4077557f2ca",
+      "task": "A-close",
+      "track": "main",
+      "agent": "lane-a-identity",
+      "kind": "sweep",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "contracts: npm ci && npm run check && npm run build; backend: npm ci && npm run check && npm run test:integration -- --coverage.enabled=false; frontend: npm ci && npm run check && npm run build:client && npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/sweep-a",
+      "started": "2026-11-13T12:23:13Z",
+      "seconds": 120,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/a-close-sweep.log",
+        "sha256": "212d9b25810c86d528b09936d6b30d40c5e0bb344022d4876d724be5deb20a29",
+        "bytes": 37046
+      },
+      "summary": {
+        "head": "8f7618e",
+        "contracts_tests": 98,
+        "backend_files": 98,
+        "backend_tests": 1180,
+        "integration_files": 40,
+        "integration_tests": 422,
+        "frontend_files": 27,
+        "frontend_tests": 241,
+        "build_client": "pass",
+        "build_admin": "pass",
+        "failed": 0
+      },
+      "note": "Phase A close sweep on main 8f7618e in a clean detached worktree, Node 22.20.0 container; integration coverage disabled as in CI (local 80% branch gate fails on clean main, finding-22)."
     }
   ]
 }

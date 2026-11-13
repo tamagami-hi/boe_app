@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "track": "a-admin-core",
+  "current": {
+    "from": "lane-a-admin-core",
+    "track": "a-admin-core",
+    "at": "2026-11-13T09:47:29.735Z",
+    "lines": [
+      "Track a-admin-core: A2 (other admin screens), A4, A6 committed on track/a-admin-core: cdf648a (A4), e62f9a2 (A2/A6 + nav), 995245e (review follow-up). Not landed, not pushed.",
+      "A4: publishAdminAppConfig body has optional expectedVersion (number|null; null = nothing published). Absent = old behavior (released admin APKs). Mismatch -> STATE_CONFLICT before any write. Route and appUpdateAnnouncement.enforceMinimum share adminContentRepository.lockAppConfigPublication (pg advisory xact lock 'app_config_publication'). 23505 on app_config_versions_version_uk/one_current_uk -> STATE_CONFLICT.",
+      "Test: backend_controller/test/integration/adminAppConfigPublish.integration.test.ts (7 tests). Negative controls: no check -> 3 fail; no collision mapping -> 1 fails with 500; no lock -> concurrent test gets 409s.",
+      "Generated files regenerated: packages/contracts/generated/openapi-v1.{json,d.ts}. Frontend src/api/generated/operations.ts unchanged. Other lanes touching contracts must regenerate at landing.",
+      "Hooks moved: useAdminAppConfig/usePublishAppConfig -> features/admin/app-config/appConfigQueries.ts (adminQueries.ts 725 -> 699).",
+      "Nav: adminRoutes.ts primary flags only (Users, Client values primary; Applications, Receipts demoted). 995245e removed the onlinePayments nav hiding per coordinator ruling: Receipts, Refunds, Payments, Mandates always stay in nav (not primary). AdminFrame no longer reads the app-config feed.",
+      "AdminFrame keeps the requiresAll nav filter: buildRouter wraps routes in RequirePermission, which refuses on requiresAll (guards.tsx), so nav and guard agree.",
+      "995245e also removed the JSDoc moved above OverviewScreen depth (rule 9); a scan of the full lane diff 81b29aa..995245e shows no added comment lines. Unknown-outcome copy on app-config says publishing the unchanged draft again is safe.",
+      "Integration suite: 36 files/397 tests pass but global branch coverage 78.45% < 80% gate; clean base 81b29aa also fails (78.25%), see finding-22 (CI disables coverage).",
+      "Not done in this lane: plan section 8 progress entry; holding keys for useDecideApplication/useRefundAction/useAcknowledgeReceipt (still minted per attempt in adminQueries.ts; server state/version guards stop duplicates); A6 client-values entry permissions (client-values lane); unknown-outcome on UserDetailScreen (users lane).",
+      "Unverified: no browser/runtime check of any screen; no APK."
+    ]
+  },
+  "history": [
+    {
+      "from": "lane-a-admin-core",
+      "track": "a-admin-core",
+      "at": "2026-11-13T09:42:08.042Z",
+      "lines": [
+        "Track a-admin-core: A2 (other admin screens), A4, A6 committed on track/a-admin-core: cdf648a (A4) and e62f9a2 (A2/A6 + nav). Not landed.",
+        "A4: publishAdminAppConfig body has optional expectedVersion (number|null; null = nothing published). Absent = old behavior (released admin APKs). Mismatch -> STATE_CONFLICT before any write. Route and appUpdateAnnouncement.enforceMinimum share adminContentRepository.lockAppConfigPublication (pg advisory xact lock 'app_config_publication'). 23505 on app_config_versions_version_uk/one_current_uk -> STATE_CONFLICT.",
+        "Test: backend_controller/test/integration/adminAppConfigPublish.integration.test.ts (7 tests). Negative controls: no check -> 3 fail; no collision mapping -> 1 fails with 500; no lock -> concurrent test gets 409s.",
+        "Generated files regenerated: packages/contracts/generated/openapi-v1.{json,d.ts}. Frontend src/api/generated/operations.ts unchanged. Other lanes touching contracts must regenerate at landing.",
+        "Hooks moved: useAdminAppConfig/usePublishAppConfig -> features/admin/app-config/appConfigQueries.ts (adminQueries.ts 725 -> 699).",
+        "Shared-file edits: adminRoutes.ts nav primary flags (Users, Client values primary; Applications, Receipts demoted). AdminFrame hides receipts/refunds/payments/mandates nav when published featureFlags.onlinePayments === false (read from the public getAppConfig cache).",
+        "Integration suite: 36 files/397 tests pass but global branch coverage 78.45% < 80% gate; clean base 81b29aa also fails (78.25%). Pre-existing; maintainer decision needed.",
+        "Not done in this lane: plan section 8 progress entry; holding keys for useDecideApplication/useRefundAction/useAcknowledgeReceipt (still minted per attempt in adminQueries.ts; server state/version guards stop duplicates); A6 client-values entry permissions (client-values lane); unknown-outcome on UserDetailScreen (users lane).",
+        "Unverified: no browser/runtime check of any screen; no APK."
+      ]
+    }
+  ]
+}

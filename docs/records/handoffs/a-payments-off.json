@@ -5,16 +5,30 @@
     "task": "M4-phase-a:A-L2-payments-off",
     "from": "lane-a-payments-off",
     "track": "a-payments-off",
-    "at": "2026-11-13T09:36:22.191Z",
+    "at": "2026-11-13T09:41:26.273Z",
     "lines": [
-      "A3 committed on track/a-payments-off as 189f9ac (not landed).",
-      "Backend: createClientOrder refuses DEPENDENCY_UNAVAILABLE inside the idempotency execute (completed keys still replay); createSip refuses before its transaction; SIP worker returns an idle summary when no gateway (config.gatewayConfigured from selectPaymentGateway in workerComposition), entrypoint logs PAYMENT_GATEWAY_NOT_CONFIGURED. composition.ts +1 line. SIP-due notification payload gains deepLink \"/sips\".",
-      "Tests: paymentsOff.integration.test.ts (5), sipScheduleWorker.test.ts (+1), composition.test.ts (SIP worker flag). clientEmailVerification integration now gives order routes a stub gateway (intended behavior change). Negative control: guards removed -> 1 unit + 3 integration failures.",
-      "Frontend: failure.ts DEPENDENCY_UNAVAILABLE copy for lump sum, pay, createSip, new startAutoPay context, authoriseAutoPay (pay the BeOnEdge team directly); SIP list/detail hide past next-due dates and pay-in-Activity promise; PaymentStatusScreen stops polling once checkout expiresAt passes (hasCheckoutLapsed in shared/queries.ts). AutoPay option NOT hidden: client has no gateway/AutoPay availability data without a contract change.",
-      "Checks (Node 22 container): backend check 95 files/1155 tests; frontend check 26/236; contracts build; integration 36 files/395 tests pass; local integration branch-coverage gate fails at 78.03% (78.26% without the new file, so pre-existing; CI runs with --coverage.enabled=false).",
-      "Found, not fixed (E2, before re-enable): SIP worker requestId is not a uuid so every instalment insert rolls back (worker never worked on Postgres); mandateCollectionWorker same shape; createSip first instalment period YYYY-MM-01 vs next_due_date today -> double instalment once fixed; no client UI pays an existing order; 'Open the app to pay it' notice body; DEPENDENCY_UNAVAILABLE AutoPay copy says nothing saved, which is false if AutoPay is re-enabled and dispatch fails after prepare.",
-      "Out-of-lane files touched (heads-up note-15): sipScheduleEntrypoint.ts, composition.test.ts, clientEmailVerification.integration.test.ts, DEPLOY.md, domain/dates.ts, features/payments/PaymentStatusScreen.tsx, features/shared/queries.ts, domain/client/createSipInstallmentOrder.ts (last three per coordinator request)."
+      "Track/a-payments-off has two commits, not landed: 189f9ac (A3: payments-off guards, copy, tests) and 080d79f (follow-up from review).",
+      "080d79f: hasCheckoutLapsed now requires expiresAt + 5 min grace; after lapse usePayment polls every 60s instead of stopping, so a late settlement still appears; PaymentStatusScreen shows date only for Payment received / Invested when provider is null (recorded offline payments sit at 12:00Z).",
+      "080d79f checks: frontend npm run check in the Node 22 container, 26 files / 236 tests, drift, build, boot check (7 chunks) pass. Backend not touched, so not rerun.",
+      "Known minor: during the 5-minute grace a past 'Pay by' time can still show (display only).",
+      "189f9ac evidence and E2 findings are unchanged from the previous hand-off (backend 1155/1155, frontend 236/236, integration 395/395 with coverage disabled as in CI; local integration branch-coverage gate 78.03% predates this lane; SIP worker requestId is not a uuid; double first instalment; no client pay action; AutoPay copy caveat at re-enable; rule-10 stale-payment expiry not implemented here)."
     ]
   },
-  "history": []
+  "history": [
+    {
+      "task": "M4-phase-a:A-L2-payments-off",
+      "from": "lane-a-payments-off",
+      "track": "a-payments-off",
+      "at": "2026-11-13T09:36:22.191Z",
+      "lines": [
+        "A3 committed on track/a-payments-off as 189f9ac (not landed).",
+        "Backend: createClientOrder refuses DEPENDENCY_UNAVAILABLE inside the idempotency execute (completed keys still replay); createSip refuses before its transaction; SIP worker returns an idle summary when no gateway (config.gatewayConfigured from selectPaymentGateway in workerComposition), entrypoint logs PAYMENT_GATEWAY_NOT_CONFIGURED. composition.ts +1 line. SIP-due notification payload gains deepLink \"/sips\".",
+        "Tests: paymentsOff.integration.test.ts (5), sipScheduleWorker.test.ts (+1), composition.test.ts (SIP worker flag). clientEmailVerification integration now gives order routes a stub gateway (intended behavior change). Negative control: guards removed -> 1 unit + 3 integration failures.",
+        "Frontend: failure.ts DEPENDENCY_UNAVAILABLE copy for lump sum, pay, createSip, new startAutoPay context, authoriseAutoPay (pay the BeOnEdge team directly); SIP list/detail hide past next-due dates and pay-in-Activity promise; PaymentStatusScreen stops polling once checkout expiresAt passes (hasCheckoutLapsed in shared/queries.ts). AutoPay option NOT hidden: client has no gateway/AutoPay availability data without a contract change.",
+        "Checks (Node 22 container): backend check 95 files/1155 tests; frontend check 26/236; contracts build; integration 36 files/395 tests pass; local integration branch-coverage gate fails at 78.03% (78.26% without the new file, so pre-existing; CI runs with --coverage.enabled=false).",
+        "Found, not fixed (E2, before re-enable): SIP worker requestId is not a uuid so every instalment insert rolls back (worker never worked on Postgres); mandateCollectionWorker same shape; createSip first instalment period YYYY-MM-01 vs next_due_date today -> double instalment once fixed; no client UI pays an existing order; 'Open the app to pay it' notice body; DEPENDENCY_UNAVAILABLE AutoPay copy says nothing saved, which is false if AutoPay is re-enabled and dispatch fails after prepare.",
+        "Out-of-lane files touched (heads-up note-15): sipScheduleEntrypoint.ts, composition.test.ts, clientEmailVerification.integration.test.ts, DEPLOY.md, domain/dates.ts, features/payments/PaymentStatusScreen.tsx, features/shared/queries.ts, domain/client/createSipInstallmentOrder.ts (last three per coordinator request)."
+      ]
+    }
+  ]
 }

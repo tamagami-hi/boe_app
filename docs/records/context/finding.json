@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "finding",
-  "nextNumber": 23,
+  "nextNumber": 24,
   "entries": [
     {
       "id": "finding-1",
@@ -512,6 +512,31 @@
         "agent": "claude-opus-5-5"
       },
       "at": "2026-11-13T09:37:38.319Z"
+    },
+    {
+      "id": "finding-23",
+      "kind": "finding",
+      "title": "Stale expiry scope: only never-sent checkouts expire; sent ones still read 'Awaiting payment' in Activity",
+      "text": "Lane a-expire-stale (d8a76a4, TESTED in the container: integration 37 files/400 tests with coverage off; negative controls fail as expected) expires one-time checkout attempts in state created whose dispatch never started, whose payment is created with no other live or settled attempt, once expiresAt plus PAYMENT_RECONCILIATION_EXPIRY_GRACE_SECONDS (default 300 s) has passed, and only while no gateway is configured. Left alone by coordinator decision under rule-10 ('never touch a payment the provider might still settle'): provider_pending attempts and created attempts whose dispatch started. PhonePe callbacks 404 while there is no gateway, so some of these may be paid but unrecorded; reconciliation decides once a gateway returns. Client view for those rows: PaymentStatusScreen shows the lapsed message 5 min after pay-by. The Activity Payments list (ActivityScreen.tsx:58 filter, :208 label) still says 'Awaiting payment' because list items carry no expiresAt. Route to B-L6-client-investing (simplified History when payments are off) or a new list endpoint; never add a key to the existing list response (finding-14).",
+      "paths": [
+        "backend_controller/src/stalePaymentExpiry.ts",
+        "frontend_stack_ts/src/features/activity/ActivityScreen.tsx"
+      ],
+      "tags": [
+        "payments",
+        "in-flight",
+        "expiry"
+      ],
+      "refs": [
+        "rule-10",
+        "finding-14",
+        "M5-phase-b:B-L6-client-investing"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "lane-a-expire-stale"
+      },
+      "at": "2026-11-13T10:22:39.399Z"
     }
   ]
 }

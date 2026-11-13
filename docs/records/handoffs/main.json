@@ -2,16 +2,20 @@
   "schema": 1,
   "track": "main",
   "current": {
-    "from": "claude-opus-5-5",
+    "task": "A-close",
+    "from": "lane-a-identity",
     "track": "main",
-    "at": "2026-11-13T08:53:58.672Z",
+    "at": "2026-11-13T12:26:21.081Z",
     "lines": [
-      "M2-plan 2026-11-13: maintainer answers recorded as rule-3..rule-6 (rule-2 payments off). Onboarding audit finding-17/18; design/compat finding-14/15/16.",
-      "plans/admin-improvements.md drafted, uncommitted, awaiting approval; README.md pointer edited, uncommitted; CLAUDE.md is gitignored (local edits only).",
-      "Open questions: tally rows 9-14 = Q-019..Q-021, Q-024, Q-017, Q-025; Q-022/Q-023 defaults in the plan only. Rows 1-8 are answered (rule-3..6) but cannot be closed via MCP (no tally CLI on PATH).",
-      "Key constraint finding-14: strict response parsing in released APKs; new data only via new endpoints and notification payload keys.",
-      "Fix-first: growth idempotency (finding-9), payments-off unpayable orders (finding-15), failed-read states (finding-10), app-config guard (finding-12), onboarding defects (finding-17/18).",
-      "Implementation must wait for approval; then open tally tracks per phase (A first) with own worktrees."
+      "Phase A closed 2026-11-13 at 3869d21 (plan section 8 'Phase A close'). All seven lanes are on local main; nothing pushed, released or deployed.",
+      "Sweep on 8f7618e in the Node 22 container: contracts 98; backend 98 files/1180; integration 40/422 with coverage off; frontend 27/241; build:client and build:admin pass (evidence 2ba4dcea).",
+      "Migration numbering (convention-1): identity 061 on main; Phase C nominee 062, SIP schedule 063, maturity 064. Later migrations take the next free number and append themselves to the releaseUpgrade expectation.",
+      "Open: Q-026 (erase contact history for tombstoned clients). Meanwhile history is masked for tombstoned users.",
+      "Carried to B8 (B-L6-client-investing): Activity list says 'Awaiting payment' for provider-dispatched stale payments (finding-23); needs a new list endpoint, never a new key on the existing response.",
+      "Carried to E2: SIP worker non-uuid requestId (finding-21), AutoPay next_due_date, mandate reconcile atomicity; before any payments re-enable.",
+      "Still per-attempt idempotency keys: approve application, refund action, acknowledge receipt (adminQueries.ts); server guards stop duplicates.",
+      "Phase B lanes are unblocked on the board (B-L1..B-L6). Start each on its own tally track from current main; lanes adding contract files regenerate OpenAPI at landing.",
+      "Landing pattern that worked: rebase the track onto main in its worktree, resolve, open a session on the track worktree, land_start, run the script in the background, land_wait, then task_land from the lane's main session."
     ]
   },
   "history": [
@@ -30,6 +34,19 @@
         "DD 3 signup redirect is mostly a boe_landing change (finding-1).",
         "No worktrees were created: audit was read-only. Implementation should go on tally tracks (track_open) with their own worktrees, after plan approval.",
         "Records commit policy: records.commit=false; commit docs/records once per phase."
+      ]
+    },
+    {
+      "from": "claude-opus-5-5",
+      "track": "main",
+      "at": "2026-11-13T08:53:58.672Z",
+      "lines": [
+        "M2-plan 2026-11-13: maintainer answers recorded as rule-3..rule-6 (rule-2 payments off). Onboarding audit finding-17/18; design/compat finding-14/15/16.",
+        "plans/admin-improvements.md drafted, uncommitted, awaiting approval; README.md pointer edited, uncommitted; CLAUDE.md is gitignored (local edits only).",
+        "Open questions: tally rows 9-14 = Q-019..Q-021, Q-024, Q-017, Q-025; Q-022/Q-023 defaults in the plan only. Rows 1-8 are answered (rule-3..6) but cannot be closed via MCP (no tally CLI on PATH).",
+        "Key constraint finding-14: strict response parsing in released APKs; new data only via new endpoints and notification payload keys.",
+        "Fix-first: growth idempotency (finding-9), payments-off unpayable orders (finding-15), failed-read states (finding-10), app-config guard (finding-12), onboarding defects (finding-17/18).",
+        "Implementation must wait for approval; then open tally tracks per phase (A first) with own worktrees."
       ]
     }
   ]

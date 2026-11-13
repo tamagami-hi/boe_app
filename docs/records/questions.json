@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextRow": 15,
+  "nextRow": 16,
   "open": [
     {
       "row": 1,
@@ -113,6 +113,14 @@
       "meanwhile": "Unchanged: client still verifies with a code.",
       "asked": "2026-11-13T08:53:30.108Z",
       "by": "claude-opus-5-5"
+    },
+    {
+      "row": 15,
+      "group": "records",
+      "question": "Q-026: When a client's personal data is erased (tombstoned), should their old emails and phones in the new contact-change history also be erased? The history is append-only by design (it proves who changed what and when). Erasing it on request needs a separate, audited erase step that overwrites only the history's contact fields.",
+      "meanwhile": "Keep the history append-only. For tombstoned clients the admin screen and API show the same masked values as everywhere else (tombstone placeholders), so no admin can read the originals through the app. The originals stay in the database until you decide.",
+      "asked": "2026-11-13T10:36:44.645Z",
+      "by": "lane-a-identity"
     }
   ],
   "answered": []

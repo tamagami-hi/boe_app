@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "kind": "convention",
+  "nextNumber": 2,
+  "entries": [
+    {
+      "id": "convention-1",
+      "kind": "convention",
+      "title": "Migration numbers follow ship order: identity 061; Phase C nominee 062, SIP 063, maturity 064",
+      "text": "migrate.ts applies every unapplied file by set membership in filename order, so gaps and late lower numbers run. Production would then apply them out of numeric order across releases. To keep production order equal to filename order, each lane takes the next free number when it lands. Phase A identity (A8 contact history) uses 061. The plan's Phase C reservations shift: C1 nominee 062, C2 admin SIP schedule 063, C3 maturity schedule 064. Reviews (E1) and bank reference (C-L3) take the next free numbers when built. Every new migration also updates the releaseUpgrade integration test's expected list.",
+      "paths": [
+        "backend_controller/db/migrations"
+      ],
+      "tags": [
+        "migrations",
+        "numbering"
+      ],
+      "refs": [
+        "rule-7",
+        "M4-phase-a:A-L5-identity"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "lane-a-expire-stale"
+      },
+      "at": "2026-11-13T10:32:25.533Z"
+    }
+  ]
+}

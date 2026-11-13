@@ -55,6 +55,28 @@
         "agent": "claude-opus-5-5"
       },
       "openedAt": "2026-11-13T09:26:50.006Z"
+    },
+    {
+      "name": "a-identity",
+      "branch": "track/a-identity",
+      "worktree": ".temp/worktrees/a-identity",
+      "purpose": "A8: admin contact correction before password set, audited release of closed-account contacts with history (migration 064), one-step invite regeneration",
+      "openedBy": {
+        "track": "main",
+        "agent": "lane-a-identity"
+      },
+      "openedAt": "2026-11-13T10:03:44.400Z"
+    },
+    {
+      "name": "a-expire-stale",
+      "branch": "track/a-expire-stale",
+      "worktree": ".temp/worktrees/a-expire-stale",
+      "purpose": "A10/G12: expire stale pending online payments past checkout expiry plus grace while no gateway is configured",
+      "openedBy": {
+        "track": "main",
+        "agent": "lane-a-expire-stale"
+      },
+      "openedAt": "2026-11-13T10:08:26.090Z"
     }
   ]
 }
