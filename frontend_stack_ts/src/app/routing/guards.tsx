@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from "react-router-dom"
-import type { ReactNode } from "react"
+import type { ComponentType, ReactNode } from "react"
 
 import { useSession } from "~/app/providers/SessionProvider"
 import type { PermissionCode, RoleCode } from "~/domain/permissions"
@@ -16,6 +16,7 @@ export type GuardTargets = Readonly<{
 export type EligibilityGate = Readonly<{
   loading: boolean
   canInvest: boolean
+  readCheck?: ComponentType<Readonly<{ children: ReactNode }>>
 }>
 
 const RestoringScreen = (): React.ReactElement => (
@@ -104,18 +105,21 @@ export const RequireEligible = ({
   children,
 }: RequireEligibleProps): React.ReactElement => {
   const location = useLocation()
+  const ReadCheck = gate.readCheck
 
-  if (gate.loading) return <RestoringScreen />
-
-  if (!gate.canInvest && targets.verifyEmailPath !== null) {
-    const returnTo = `${location.pathname}${location.search}`
-    return (
-      <Navigate
-        to={`${targets.verifyEmailPath}?returnTo=${encodeURIComponent(returnTo)}`}
-        replace
-      />
-    )
+  const decide = (): React.ReactElement => {
+    if (gate.loading) return <RestoringScreen />
+    if (!gate.canInvest && targets.verifyEmailPath !== null) {
+      const returnTo = `${location.pathname}${location.search}`
+      return (
+        <Navigate
+          to={`${targets.verifyEmailPath}?returnTo=${encodeURIComponent(returnTo)}`}
+          replace
+        />
+      )
+    }
+    return <>{children}</>
   }
 
-  return <>{children}</>
+  return ReadCheck === undefined ? decide() : <ReadCheck>{decide()}</ReadCheck>
 }

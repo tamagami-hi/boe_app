@@ -14,6 +14,7 @@ import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 
+import { Button } from "~/ui/primitives/Button"
 import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 import { ITEM_TITLE, STAT_LABEL, STAT_ROOT, SUMMARY_GRID } from "~/ui/recipes/datalist"
@@ -39,6 +40,7 @@ const FundDetailScreen = (): React.ReactElement => {
       {(data) => {
         const { fund, disclosure, stocks } = data
         const canInvest = eligibility.data?.canInvest === true
+        const eligibilityFailed = eligibility.data === undefined && eligibility.isError
 
         return (
           <Page width="default">
@@ -105,6 +107,25 @@ const FundDetailScreen = (): React.ReactElement => {
                     Start a SIP
                   </ButtonLink>
                 </div>
+              ) : eligibilityFailed ? (
+                <Alert
+                  tone="error"
+                  title="We could not check whether you can invest"
+                  action={
+                    <Button
+                      tone="secondary"
+                      size="sm"
+                      loading={eligibility.isFetching}
+                      onClick={() => {
+                        void eligibility.refetch()
+                      }}
+                    >
+                      Try again
+                    </Button>
+                  }
+                >
+                  You can read everything about this fund now. Investing options appear once the check succeeds.
+                </Alert>
               ) : (
                 <Alert
                   tone="warning"

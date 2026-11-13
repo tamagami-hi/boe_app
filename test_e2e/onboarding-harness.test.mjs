@@ -12,6 +12,10 @@ test('onboarding e2e follows only the canonical approval and OTP flow', async ()
   assert.match(source, /decide\([^\n]+, 'rejected'\)/u);
   assert.match(source, /\^\[A-Za-z0-9\]\{6\}\$/u);
   assert.doesNotMatch(source, /pending_email_verification|\/newuser\/verify-email|\/review|activationToken|\/v1\/activations\/complete/u);
+  assert.match(source, /\/v1\/client\/email-verification\/start/u);
+  assert.match(source, /\/v1\/client\/email-verification\/verify/u);
+  assert.match(source, /'email_verification_required'/u);
+  assert.doesNotMatch(source, /\/v1\/client\/kyc\/|kyc_required/u);
 });
 
 test('browser signup harness submits the password required by POST /newuser', async () => {
@@ -33,12 +37,12 @@ test('active nginx routes no longer expose the deleted website verification endp
   }
 });
 
-test('email verification copy describes a case-sensitive six-character code, never KYC', async () => {
+test('email verification copy describes an exact six-character code, never KYC', async () => {
   const source = await readRepoFile(
     'frontend_stack_ts/src/features/email-verification/EmailVerificationScreen.tsx',
   );
 
-  assert.match(source, /Six characters, case-sensitive/u);
+  assert.match(source, /Six characters, exactly as they appear in the email/u);
   assert.doesNotMatch(source, /six-digit|6-digit/iu);
   assert.doesNotMatch(source, /\bKYC\b/u);
 });

@@ -1,16 +1,26 @@
 import { useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
+import { hasCode } from "~/api/errors"
 import { AuthLayout } from "~/app/layouts/AuthLayout"
 import { describeClientFailure } from "~/domain/failure"
 import { useRedeemPasswordReset } from "~/features/shared/queries"
+import { isNative } from "~/platform/capacitor"
 import { Button } from "~/ui/primitives/Button"
 import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Alert } from "~/ui/primitives/Feedback"
 import { Form } from "~/ui/primitives/Form"
 import { FormField, Input } from "~/ui/primitives/FormField"
+import { ACTION_ROW } from "~/ui/recipes/layout"
 
 const MIN_PASSWORD_LENGTH = 12
+
+const DOWNLOAD_COPY = {
+  queued: "We are also emailing you a link to install it. You do not need the app to sign in on the web.",
+  unconfirmed:
+    "We could not confirm sending the app download email. You can sign in on the web, or use the download link below if one is shown.",
+  unavailable: "The Android app is not available to download yet. You can sign in on the web.",
+} as const
 
 const ResetPasswordScreen = (): React.ReactElement => {
   const [params] = useSearchParams()
@@ -21,6 +31,7 @@ const ResetPasswordScreen = (): React.ReactElement => {
   const [error, setError] = useState<unknown>(null)
 
   const token = params.get("token") ?? ""
+  const native = isNative()
   const passwordLength = Array.from(newPassword).length
   const tooShort = newPassword !== "" && passwordLength < MIN_PASSWORD_LENGTH
   const mismatched = confirmation !== "" && confirmation !== newPassword
@@ -60,31 +71,30 @@ const ResetPasswordScreen = (): React.ReactElement => {
   }
 
   if (done) {
+    const downloadStatus = redeem.data?.downloadEmailStatus
+    const downloadUrl = redeem.data?.downloadUrl ?? null
     return (
       <AuthLayout
         eyebrow="BeOnEdge"
         panelTitle="Password set"
-        panelHint="Download the app, install it, and sign in with your new password."
+        panelHint="Sign in with your email address and new password, on the web or in the Android app."
       >
-        <Alert tone="success" title="Your password has been changed">
-          Every other device that was signed in has been signed out.
+        <Alert tone="success" title="Your password is set">
+          If this account was signed in anywhere else, those sessions have ended.
         </Alert>
-        <Alert
-          tone={redeem.data?.downloadEmailStatus === "queued" ? "info" : "warning"}
-          title={redeem.data?.downloadEmailStatus === "queued" ? "App download link on its way" : "Download email not confirmed"}
-        >
-          {redeem.data?.downloadEmailStatus === "queued"
-            ? "We are emailing you the app download link. It usually arrives within a few minutes; check your spam folder too. You can also use the link below, then sign in with your email address and new password."
-            : redeem.data?.downloadEmailStatus === "unavailable"
-              ? "Your password is set, but an app download is not available yet. Contact support for the installer, or sign in if you already have the app."
-              : "Your password is set, but we could not confirm sending the download email. Use the download link below if available, or contact support for the installer."}
-        </Alert>
-        {redeem.data?.downloadUrl == null ? null : (
-          <a href={redeem.data.downloadUrl} className="underline" referrerPolicy="no-referrer">Download the Android app</a>
-        )}
-        <ButtonLink to="/login" tone="secondary" fullWidth>
-          Continue to web sign in
+        <ButtonLink to="/login" fullWidth>
+          Sign in
         </ButtonLink>
+        {native ? null : (
+          <Alert tone="info" title="Prefer the Android app?">
+            {DOWNLOAD_COPY[downloadStatus ?? "unconfirmed"]}
+          </Alert>
+        )}
+        {native || downloadUrl === null ? null : (
+          <a href={downloadUrl} className="underline" referrerPolicy="no-referrer">
+            Download the Android app
+          </a>
+        )}
       </AuthLayout>
     )
   }
@@ -100,6 +110,16 @@ const ResetPasswordScreen = (): React.ReactElement => {
           {describeClientFailure(error, "resetPassword").message}
         </Alert>
       )}
+      {hasCode(error, "INVALID_CREDENTIALS", "RATE_LIMITED") ? (
+        <div className={ACTION_ROW}>
+          <ButtonLink to="/password/forgot" tone="secondary">
+            Request a new link
+          </ButtonLink>
+          <ButtonLink to="/login" tone="ghost">
+            Sign in if you already set it
+          </ButtonLink>
+        </div>
+      ) : null}
 
       <Form
         onSubmit={() => {

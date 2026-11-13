@@ -6,16 +6,14 @@ import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatCountdown } from "~/domain/dates"
-import {
-  useEligibility,
-  useStartEmailVerification,
-  useVerifyEmail,
-} from "~/features/shared/queries"
+import { useEligibility, useVerifyEmail } from "~/features/shared/queries"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Alert } from "~/ui/primitives/Feedback"
 import { Form } from "~/ui/primitives/Form"
 import { FormField, Input } from "~/ui/primitives/FormField"
+
+import { useStartEmailVerification } from "./queries"
 
 const CODE_LENGTH = 6
 
@@ -77,8 +75,8 @@ const EmailVerificationScreen = (): React.ReactElement => {
           setCooldown(error.retryAfterSeconds ?? 60)
         }
       },
-      onSuccess: () => {
-        setCooldown(60)
+      onSuccess: ({ alreadyVerified }) => {
+        if (!alreadyVerified) setCooldown(60)
       },
     })
   }
@@ -99,7 +97,12 @@ const EmailVerificationScreen = (): React.ReactElement => {
       />
 
       <Card>
-        {start.isSuccess ? (
+        {start.data?.alreadyVerified === true ? (
+          <Alert tone="success" title="Your email is already verified">
+            No code is needed. Taking you back as soon as your account refreshes.
+          </Alert>
+        ) : null}
+        {start.data?.alreadyVerified === false ? (
           <Alert tone="info" title="Code sent">
             Check your inbox. The code lasts ten minutes.
           </Alert>

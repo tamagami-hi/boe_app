@@ -70,3 +70,13 @@ jobs:
       - run: npm install --global npm@11.16.0
       - run: npm ci
       - run: npm run check
+
+  onboarding-harness:
+    name: Onboarding harness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: backend_controller/.nvmrc
+      - run: npm run test:onboarding:harness

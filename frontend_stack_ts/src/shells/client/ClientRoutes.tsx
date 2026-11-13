@@ -4,6 +4,7 @@ import { buildRouter } from "~/app/routing/buildRouter"
 import type { GuardTargets } from "~/app/routing/guards"
 import { CLIENT_ROUTES, CLIENT_SPLASH_PATH } from "~/app/routing/clientRoutes"
 import { useSession } from "~/app/providers/SessionProvider"
+import { EligibilityReadCheck } from "~/features/email-verification/EligibilityReadCheck"
 import { useEligibility } from "~/features/shared/queries"
 
 export type ClientRoutesProps = Readonly<{ targets: GuardTargets }>
@@ -16,6 +17,7 @@ export const ClientRoutes = ({ targets }: ClientRoutesProps): React.ReactElement
     () => ({
       loading: session.status === "authenticated" && eligibility.isPending,
       canInvest: eligibility.data?.canInvest === true,
+      readCheck: EligibilityReadCheck,
     }),
     [session.status, eligibility.isPending, eligibility.data],
   )

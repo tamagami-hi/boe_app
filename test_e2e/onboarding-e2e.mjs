@@ -199,19 +199,19 @@ const clientToken = clientLogin.data?.accessToken;
 
 console.log('\n4. email OTP is case-sensitive and unlocks eligibility');
 const beforeEligibility = await api('/v1/client/eligibility', { token: clientToken });
-step('unverified account cannot invest', beforeEligibility.data?.canInvest === false && beforeEligibility.data?.reason === 'kyc_required');
-const start = await api('/v1/client/kyc/start', { method: 'POST', token: clientToken });
-step('kyc/start reports code_sent', start.ok && start.data?.status === 'code_sent', `http=${start.status}`);
+step('unverified account cannot invest', beforeEligibility.data?.canInvest === false && beforeEligibility.data?.reason === 'email_verification_required');
+const start = await api('/v1/client/email-verification/start', { method: 'POST', token: clientToken });
+step('email-verification/start reports code_sent', start.ok && start.data?.status === 'code_sent', `http=${start.status}`);
 const otp = await waitForOtp(approvedSubject.email);
 step('emailed OTP is 6-character alphanumeric', OTP_PATTERN.test(otp));
-const incorrect = await api('/v1/client/kyc/verify', {
+const incorrect = await api('/v1/client/email-verification/verify', {
   method: 'POST', token: clientToken, body: { code: wrongCase(otp) },
 });
 step('wrong-case OTP is rejected', incorrect.status === 400 && incorrect.code === 'TOKEN_INVALID', `http=${incorrect.status}`);
-const verified = await api('/v1/client/kyc/verify', {
+const verified = await api('/v1/client/email-verification/verify', {
   method: 'POST', token: clientToken, body: { code: otp },
 });
-step('exact OTP approves verification', verified.ok && verified.data?.status === 'approved', `http=${verified.status}`);
+step('exact OTP verifies the email', verified.ok && verified.data?.status === 'verified', `http=${verified.status}`);
 const afterEligibility = await api('/v1/client/eligibility', { token: clientToken });
 step('verified account can invest', afterEligibility.data?.eligibility === 'eligible' && afterEligibility.data?.canInvest === true);
 

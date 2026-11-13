@@ -32,7 +32,6 @@ import {
   changeClientPassword,
   redeemPasswordReset,
   requestPasswordReset,
-  startEmailVerification,
   verifyEmail,
 } from "~/api/generated/operations"
 import type { DataOf } from "~/api/http"
@@ -301,15 +300,6 @@ export const useChangePassword = (): UseMutationResult<void, Error, ChangePasswo
   return useMutation({
     mutationFn: async (input: ChangePasswordInput) => {
       await api.request(changeClientPassword, { body: input })
-    },
-  })
-}
-
-export const useStartEmailVerification = (): UseMutationResult<void, Error, void> => {
-  const api = useApi()
-  return useMutation({
-    mutationFn: async () => {
-      await api.request(startEmailVerification)
     },
   })
 }
