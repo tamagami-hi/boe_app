@@ -72,6 +72,7 @@ import { createSipPlanRepository } from "../repositories/sipPlanRepository.js"
 import { registerClientCatalogRoutes } from "../routes/clientCatalogRoutes.js"
 import { registerClientPortfolioRoutes } from "../routes/clientPortfolioRoutes.js"
 import { registerClientValueUpdateRoutes } from "../routes/clientValueUpdateRoutes.js"
+import { registerClientReviewRoutes } from "../routes/clientReviewRoutes.js"
 import { registerPublicContentRoutes } from "../routes/publicContentRoutes.js"
 import { registerPublicAppRoutes } from "../routes/publicAppRoutes.js"
 import { createRedisCache, createUncachedCache } from "../cache/cache.js"
@@ -273,6 +274,15 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       database,
       clientWeb,
       clientValueUpdateRepository: createClientValueUpdateRepository(),
+      clock,
+      config: { cursorKey: serverConfig.cursorKey },
+    })
+    registerClientReviewRoutes(application, {
+      accessTokenService,
+      database,
+      clientWeb,
+      unitOfWork,
+      auditRepository,
       clock,
       config: { cursorKey: serverConfig.cursorKey },
     })

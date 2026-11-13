@@ -23,6 +23,7 @@ import { CLIENT_ACCOUNT_OPERATIONS } from "../src/operations/client-account.js"
 import { CLIENT_ORDER_OPERATIONS } from "../src/operations/client-orders.js"
 import { CLIENT_PROFILE_OPERATIONS } from "../src/operations/client-profile.js"
 import { CLIENT_RECEIPT_OPERATIONS } from "../src/operations/client-receipts.js"
+import { CLIENT_REVIEW_OPERATIONS } from "../src/operations/client-reviews.js"
 import { CLIENT_SIP_OPERATIONS } from "../src/operations/client-sips.js"
 import { CLIENT_WEB_AUTH_OPERATIONS } from "../src/operations/client-web-auth.js"
 import { CLIENT_OPERATIONS } from "../src/operations/client.js"
@@ -81,6 +82,7 @@ export const ALL_OPERATIONS: readonly GeneratableOperation[] = Object.freeze([
   ...ADMIN_REPORT_OPERATIONS,
   ...NOMINEE_OPERATIONS,
   ...SIP_SCHEDULE_OPERATIONS,
+  ...CLIENT_REVIEW_OPERATIONS,
 ])
 
 type RouteConfig = Parameters<OpenAPIRegistry["registerPath"]>[0]

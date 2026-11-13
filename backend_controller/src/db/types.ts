@@ -1,7 +1,7 @@
 import type { AppConfigVersionsTable, AumGrowthBatchesTable, ContentItemsTable, FinancePolicyVersionsTable, FundAumSnapshotsTable, FundDisclosureVersionsTable, FundStockDisclosuresTable, FundVersionsTable, FundsTable } from "./schema/catalog.js"
 import type { AdminEmailMessagesTable, AppUpdateAnnouncementsTable, EmailDeliveriesTable, EmailDeliveryPayloadsTable, EmailProviderEventsTable, EmailSendAttemptsTable, EmailSuppressionsTable, EmailTemplateRevisionsTable, EmailTemplatesTable, OutboxEventsTable } from "./schema/email.js"
 import type { ApplicationConsentsTable, ApplicationReviewsTable, ApplicationsTable, AuthLoginEventsTable, AuthRefreshTokensTable, AuthSessionsTable, ConsentDocumentsTable, EmailChangeRequestsTable, EmailVerificationCodesTable, PasswordCredentialTokensTable, UserContactHistoryTable, UserCredentialsTable, UsersTable } from "./schema/identity.js"
-import type { ClientGrowthBatchesTable, ClientPositionMaturitiesTable, ClientValueEntriesTable, NotificationsTable, SupportRequestsTable, WithdrawalOperationsTable } from "./schema/ledger.js"
+import type { ClientGrowthBatchesTable, ClientPositionMaturitiesTable, ClientReviewsTable, ClientValueEntriesTable, NotificationsTable, SupportRequestsTable, WithdrawalOperationsTable } from "./schema/ledger.js"
 import type { MandateCancelCommandsTable, MandateCollectionAttemptsTable, MandateSetupAttemptsTable, PaymentMandatesTable, SipPlansTable } from "./schema/mandates.js"
 import type { FundReceiptAcknowledgementsTable, InvestmentAllocationsTable, InvestmentOrdersTable, PaymentAttemptsTable, PaymentsTable, ProviderEventsTable, ProviderPaymentDetailsTable, RefundOperationsTable } from "./schema/payments.js"
 import type { AuditEventsTable, IdempotencyRecordsTable, LegalHoldsTable, PermissionsTable, RateLimitWindowsTable, RolePermissionsTable, RolesTable, UserRolesTable, WorkerHeartbeatsTable } from "./schema/platform.js"
@@ -79,4 +79,5 @@ export interface Database {
   support_requests: SupportRequestsTable
   admin_sip_schedules: AdminSipSchedulesTable
   admin_sip_schedule_months: AdminSipScheduleMonthsTable
+  client_reviews: ClientReviewsTable
 }

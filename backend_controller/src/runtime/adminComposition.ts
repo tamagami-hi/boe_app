@@ -23,6 +23,7 @@ import { registerAdminMaturityRoutes, type AdminMaturityDeps } from "../routes/a
 import { registerAdminNomineeRoutes } from "../routes/adminNomineeRoutes.js"
 import { registerAdminOversightRoutes, type AdminOversightDeps } from "../routes/adminOversightRoutes.js"
 import { registerAdminReportRoutes } from "../routes/adminReportRoutes.js"
+import { registerAdminReviewRoutes, type AdminReviewDeps } from "../routes/adminReviewRoutes.js"
 import { registerAdminSipScheduleRoutes } from "../routes/adminSipScheduleRoutes.js"
 import { registerAdminSupportRoutes, type AdminSupportDeps } from "../routes/adminSupportRoutes.js"
 import { registerClientSipScheduleRoutes } from "../routes/clientSipScheduleRoutes.js"
@@ -35,6 +36,7 @@ export type AdminSurfaceDeps = Omit<AdminIdentityDeps, "config" | "appUpdate"> &
   Omit<AdminContentDeps, "config" | "contentRepository"> &
   Omit<AdminOversightDeps, "config" | "oversightRepository"> &
   Omit<AdminSupportDeps, "config"> &
+  Omit<AdminReviewDeps, "config"> &
   Omit<AdminClientGrowthDeps, "config"> &
   Omit<RecordingSurfaceDeps, "config" | "sipScheduleRepository"> &
   Omit<AdminClientReturnDeps, "config" | "clientReturnsRepository"> &
@@ -159,6 +161,15 @@ export const registerAdminSurface = (application: FastifyInstance, deps: AdminSu
     auditRepository,
     idempotencyRepository,
     notificationRepository,
+  })
+
+  registerAdminReviewRoutes(application, {
+    webAuth,
+    unitOfWork,
+    clock,
+    config: { cursorKey: serverConfig.cursorKey, idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
+    auditRepository,
+    idempotencyRepository,
   })
 
   registerAdminClientGrowthRoutes(application, {

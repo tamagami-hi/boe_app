@@ -1,4 +1,4 @@
-import type { Generated } from "kysely"
+import type { Generated, GeneratedAlways } from "kysely"
 import type { GrowthInstructionType, GrowthScope } from "./catalog.js"
 import type { BigIntString, BigIntStringDefault, DateColumn, JsonDefault, Nullable, NullableTimestamp, TimestampDefault } from "./columns.js"
 
@@ -127,4 +127,21 @@ export interface SupportRequestsTable {
   created_at: TimestampDefault
   updated_at: TimestampDefault
   version: Generated<string>
+}
+
+export type ClientReviewState = "new" | "read" | "hidden"
+
+export interface ClientReviewsTable {
+  id: Generated<string>
+  user_id: string
+  rating: number
+  comment: string | null
+  state: Generated<ClientReviewState>
+  moderation_note: string | null
+  moderated_by_user_id: string | null
+  moderated_at: NullableTimestamp
+  version: Generated<string>
+  created_at: TimestampDefault
+  updated_at: TimestampDefault
+  review_month: GeneratedAlways<Date>
 }
