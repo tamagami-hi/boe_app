@@ -31,7 +31,7 @@ import { Skeleton } from "~/ui/primitives/Feedback"
 import { TabPanel, Tabs } from "~/ui/primitives/Toggle"
 
 import { HISTORY_PANEL, ROW, ROW_LEFT, ROW_RIGHT } from "./activity.recipe"
-import { NotCompletedPayments } from "./NotCompletedPayments"
+import { OnlinePaymentHistory } from "./OnlinePaymentHistory"
 import { PaymentCard } from "./PaymentCard"
 
 const LABEL = {
@@ -73,8 +73,6 @@ const PAYMENT_FILTERS = [
 
 type PaymentFilter = (typeof PAYMENT_FILTERS)[number]["value"]
 
-const NOT_COMPLETED_FILTER: PaymentFilter = "payment_in_progress"
-
 type DatedEntry = Readonly<{ date: string; createdAt: string }>
 
 const newestFirst = (left: DatedEntry, right: DatedEntry): number =>
@@ -106,7 +104,7 @@ const ActivityScreen = (): React.ReactElement => {
   const [params, setParams] = useSearchParams()
   const paymentsOff = useOnlinePaymentsOff()
   const tab = paymentsOff ? "ledger" : asTab(params.get("tab"))
-  const filter = paymentsOff ? NOT_COMPLETED_FILTER : asFilter(params.get("status"))
+  const filter = paymentsOff ? "all" : asFilter(params.get("status"))
 
   const ledger = useTransactions()
   const payments = usePayments(filter)
@@ -204,7 +202,7 @@ const ActivityScreen = (): React.ReactElement => {
           )}
         </AsyncBoundary>
         <LoadMore list={ledger} noun="entries" />
-        {paymentsOff ? <NotCompletedPayments payments={payments} fundName={nameFor} /> : null}
+        {paymentsOff ? <OnlinePaymentHistory fundName={nameFor} /> : null}
         </LedgerPanel>
       ) : (
         <TabPanel id={ACTIVITY_TABS_ID} value="payments">
