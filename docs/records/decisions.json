@@ -286,10 +286,10 @@
       "group": "admin-improvements",
       "text": "Erasing a client (Q-026). Erasure is refused until the client's invested amount and current value are both zero. Their emails and phones are erased everywhere, including the contact-change history. A client who never completed email verification cannot hold money, so erasing them deletes every record of them. A client who completed email verification is kept as a record with no contact details, and their email and phone can be used again for a new sign-up or a new admin-created client.",
       "since": "2026-11-14",
-      "status": "Decided, not built (Phase G, waits for the maintainer's signal)",
-      "state": "decided, not built",
+      "status": "Built (Phase G, 261d5e3..e29ff37)",
+      "state": "built",
       "by": "operator",
-      "on": "2026-11-13T21:08:37.668Z"
+      "on": "2026-11-13T23:15:43.036Z"
     },
     {
       "id": "DEC-30",
@@ -326,10 +326,10 @@
       "group": "admin-improvements",
       "text": "Phase G go-ahead: build client erasure (DEC-29) now.",
       "since": "2026-11-14",
-      "status": "Decided, being built (Phase G, lane g-erasure)",
-      "state": "decided, not built",
+      "status": "Built (Phase G, 261d5e3..e29ff37)",
+      "state": "built",
       "by": "operator",
-      "on": "2026-11-13T21:15:36.906Z"
+      "on": "2026-11-13T23:15:43.262Z"
     }
   ],
   "replaced": []

@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "track": "g-erasure",
+  "current": {
+    "task": "M11-phase-g:G-L1-erasure",
+    "from": "lane-g-erasure",
+    "track": "g-erasure",
+    "at": "2026-11-13T23:00:23.176Z",
+    "lines": [
+      "Lane g-erasure: Phase G client erasure (DEC-29, DEC-33). All review rounds fixed. Branch track/g-erasure on main 2ab2eae (includes F's 068). Not landed, not pushed.",
+      "Commits: 261d5e3 feat(erasure); e780686 feat(erasure-ui); 79f9d14 docs(erasure); 450448a fix(erasure); 2a93f84 fix(erasure-ui); 6d247f2 docs(erasure); last gaps 1a68f66 fix(erasure) and e29ff37 docs(erasure).",
+      "Last-gap round: (1) application_consents of every linked and matched application: G2 nulls user_agent (IP HMAC kept: required keyed hash and the consent's evidence), G3 deletes them; coverage list updated; reach test asserts it, G3 test asserts both consents gone. (2) pre-flight rebuilt on the code's sets: known emails (live, history, sign-in, linked application, minus emails held by other users), matched applications, every owned entity type/id for audit rows and holds, receipts by scope/actor/body id; only difference: the command also adds decryptable addresses. Ran read-only on a throwaway DB through 069 with a matched earlier application: 40 rows. (3) tests: parametrised legal-hold cases for provider event, audit event, payment, order and mandate; user_credentials.version rises in G2; two concurrent mail-lock races (delivery marked sending, outbox claimed) where erasure waits, then refuses with every other table byte-identical.",
+      "Checks (Node 22 container): backend check 101 files/1204; integration 65 files/557 coverage off. Frontend and contracts untouched since 2a93f84 (frontend 35 files/320, both builds; contracts 98 tests/185 operations). Controls this round, reverted and failing: no post-lock recheck (both races), mandate holds ignored, consent user agents kept.",
+      "Earlier fixes (see previous hand-off history): widened legal holds, email-only matched applications, failed payouts, receipt scoping and held-contact drop, entity-type audit filters, 069 indexes (write block while building), names in own free text, coverage guard, frontend tests, typed-word reset, digit/email boundaries, financial refs untouched, mail lock, password cleared, erased clients refused by recording/reversal/individual growth.",
+      "069 is not a rollback boundary (trigger function body plus three plain indexes).",
+      "Not verified: browser/device run, real mail, VPS, production pre-flight. Reviewer items still open by design: IPs/user agents on sessions and audit kept in G2, consent IP HMAC kept, email suppressions kept, phone endings left, JSON names exact-match only."
+    ]
+  },
+  "history": [
+    {
+      "task": "M11-phase-g:G-L1-erasure",
+      "from": "lane-g-erasure",
+      "track": "g-erasure",
+      "at": "2026-11-13T22:12:29.244Z",
+      "lines": [
+        "Lane g-erasure: Phase G client erasure (DEC-29, DEC-33). Branch track/g-erasure, rebased on main 2ab2eae (includes F's 068). Not landed, not pushed.",
+        "Commits: 261d5e3 feat(erasure) backend + 069 + tests; e780686 feat(erasure-ui) contract admin-client-erasure.ts, regenerated OpenAPI/operations, /users/:id/erase screen; 79f9d14 docs(erasure) release_manager/docs/client-erasure.md (table map, pre-flight SQL, 069 status).",
+        "API: GET /v1/admin/clients/{id}/erase-check, POST /v1/admin/clients/{id}/erase {confirm:'ERASE', expectedPath}; permission users.close (superadmin only by default); durable idempotency; already-erased answers 200 outcome already_erased from the client.erased audit row.",
+        "G1 blockers: staff_account (any user_roles row), legal_hold, holds_money (per-fund non-reversed sums), open orders/payments/attempts/webhooks, refunds, withdrawals, unsettled maturities, active admin SIP schedules, scheduled maturities, open F offers, non-final sip_plans (covers AutoPay via the deferred SIP/mandate constraint; mandate tables untouched per the architecture guard), mail_in_flight (sending).",
+        "Paths: G3 deleted only if never verified (state, verified_at, completion audit) and no money row (ledger, orders, allocations, payments, attempts, provider rows, withdrawals, position maturities, maturity schedules, F offers, SIP months, sip_plans); else G2 kept_as_record with keptBecause email_verified|money_records.",
+        "G2: users -> released+hex@released.invalid and +999 seq phone (A8 placeholders, unique), name Tombstoned, closed (invited stays invited), sessions/links/codes revoked, email change targets re-encrypted, mail cancelled + recipient/failure envelopes nulled, payloads scrubbed, provider payloads erased, contact history rewritten via 069, login emails, applications tombstoned, free text/JSON scrub of linked audit, notifications, support, outbox, receipts, ledger notes.",
+        "G3: deletes client rows children-first (mail, identity, history via 069, client receipts, audit about the client, user, linked application+consents+reviews); keeps one client.erased audit row; admin receipts kept with contacts replaced; unlinked same-contact applications tombstoned not deleted; suppressions kept.",
+        "069: CREATE OR REPLACE of user_contact_history_refuse_change(); erase path only when set_config('boe.erasing_user_id', id, true) matches the row's user. Not a rollback boundary: previous release never sets it and never reads the table.",
+        "Release-time note: f-maturity overlap in adminComposition.ts and releaseUpgrade (068 then 069) already resolved by this rebase; generated files regenerated with scripts.",
+        "Checks (Node 22 container, post-rebase): contracts 98 tests, 185 operations reachable; backend check 100 files/1198; integration 62 files/542 coverage off; frontend 34 files/316; build:client and build:admin with boot checks. Six negative controls each failed (logs control-1..6 in .temp/tally/logs/g-erasure).",
+        "Reviewer items: G3 audit rows deleted = entity user/app/client rows, actor client, metadata.userId client; IPs, user agents and password hash kept in G2; email suppressions kept; masked emails replaced but phone endings left; growth posts on an erased zero position are not refused (follow-up candidate); a delivery 'sending' blocks.",
+        "Not verified: browser or device run of the erase screen, real mail, VPS, production pre-flight (validated only on a throwaway DB). No frontend test added (rule 10: erase is idempotent by state, server tests cover replay).",
+        "Plan summary for section 6/8 is the coordinator's; the doc has the full table map and pre-flight SQL."
+      ]
+    },
+    {
+      "task": "M11-phase-g:G-L1-erasure",
+      "from": "lane-g-erasure",
+      "track": "g-erasure",
+      "at": "2026-11-13T22:48:02.281Z",
+      "lines": [
+        "Lane g-erasure: Phase G client erasure (DEC-29, DEC-33), review fixes done. Branch track/g-erasure on main 2ab2eae (includes F's 068). Not landed, not pushed.",
+        "Commits: 261d5e3 feat(erasure); e780686 feat(erasure-ui); 79f9d14 docs(erasure); review fixes 450448a fix(erasure), 2a93f84 fix(erasure-ui), 6d247f2 docs(erasure).",
+        "HIGH fixes: (1) legal holds block on any client entity (user, linked+matched applications, deliveries, their provider events, audit rows about the client, orders/payments/attempts/ledger/payouts/maturities/schedules/offers/sessions/tickets/reviews/refunds/receipts/SIP plans); mandate holds via existing mandatesRepository.findMandateForAdmin, so erasure code never names mandate tables. (2) unlinked applications match by EMAIL only (client's own emails not held by any other user), never phone; matched ids feed mail erase/delete, review scrub, outbox and audit; matched apps tombstoned in both paths. (3) new blocker failed_withdrawals.",
+        "MEDIUM fixes: (4) receipts scrubbed only for client scope/actor or bodies containing the client id; contacts held by another user dropped from all needles; LIKE escaped; one seq scan of idempotency_records per erasure documented. (5) audit predicates use (entity_type, entity_id) arrays, actor, 066 index; 069 adds plain indexes email_provider_events(email_delivery_id), outbox_events(aggregate_id), auth_login_events(email_normalized) where user_id is null; doc records the write block during build. (6) full name replaced word-bounded, case-insensitive in the client's own free text. (7) pre-flight money count matches code exactly; new rows for consents, outbox, provider payloads, receipts, widened holds (39 rows, validated on a throwaway DB). (8) clientErasureCoverage test: every FK to users/applications and every text/varchar/jsonb column of client-ownable tables must be in a reviewed handled/exempt list. (9) frontend ClientEraseScreen.test.tsx (typed gate, held-key replay, failed read).",
+        "LOW fixes: (10) typed ERASE cleared after refusal. (11) phone needles digit-bounded, emails boundary-checked; transfer_reference and provider_reference no longer scrubbed; erasureContacts.test.ts unit test. (12) eraseMail path locks deliveries then outbox FOR UPDATE (worker order) and rechecks sending. (13) G2 nulls user_credentials.password_hash and resets lockout, bumps version. (14) requireRecordableClient, reverseLedgerEntry and individual growth refuse erased clients (collective growth only touches value>0 positions). (15) G2/G3 tests compare every other row byte-identical (client rows excluded by pre-erasure id set) plus literal bystander fields; payment-only fallback (failed order+payment+attempt; an attempt cannot exist without them by FK); unique placeholders; 069 delete refusals for another user's row, a ledger holder and a verified user.",
+        "Existing test touched: recordContribution.test.ts suspended-client fixture gained pii_tombstoned_at: null (a real row always has it; the new erased check reads it).",
+        "Doc: release_manager/docs/client-erasure.md records that G2 rewrites contact text inside the client's own ledger, withdrawal, maturity and receipt-ack notes (amounts, dates, ids unchanged), per DEC-29.",
+        "Checks (Node 22 container, 2ab2eae + fixes): contracts 98 tests, 185 operations; backend check 101 files/1204; integration 65 files/550 coverage off; frontend 35 files/320; build:client and build:admin with boot checks. Controls (all reverted, all failed): earlier six plus holds-on-user-only, no failed-payout block, unscoped receipts, phone matching, growth on erased, fe new key, fe keep typed word, fe lower case.",
+        "069 still not a rollback boundary (function body + plain indexes). Indexes block writes on email_provider_events, outbox_events, auth_login_events while building.",
+        "Not verified: browser/device run of the erase screen, real mail, VPS, production pre-flight. Remaining reviewer items: IPs/user agents kept in G2; email suppressions kept; masked phone endings left; JSON name only exact-match."
+      ]
+    }
+  ]
+}

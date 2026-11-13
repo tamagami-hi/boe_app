@@ -286,7 +286,8 @@
         "track": "main",
         "agent": "claude-opus-5-5 coordinator"
       },
-      "openedAt": "2026-11-13T21:16:41.307Z"
+      "openedAt": "2026-11-13T21:16:41.307Z",
+      "closedAt": "2026-11-13T23:13:24.609Z"
     }
   ]
 }

@@ -4106,6 +4106,168 @@
       "agent": "claude-opus-5-5 coordinator",
       "verb": "task_land",
       "target": "M10-phase-f / F-close"
+    },
+    {
+      "at": "2026-11-13T22:07:23.857Z",
+      "session": "b64e53ad-2e4d-404c-8e38-e5ebddaae445",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T22:12:09.955Z",
+      "session": "24c3850f-12d9-4591-98de-8e84f1c9a007",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "verb": "evidence_record",
+      "target": "M11-phase-g / G-L1-erasure, sweep"
+    },
+    {
+      "at": "2026-11-13T22:12:29.273Z",
+      "session": "24c3850f-12d9-4591-98de-8e84f1c9a007",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "verb": "handoff_write",
+      "target": "M11-phase-g:G-L1-erasure"
+    },
+    {
+      "at": "2026-11-13T22:12:42.701Z",
+      "session": "24c3850f-12d9-4591-98de-8e84f1c9a007",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T22:20:21.851Z",
+      "session": "87e9a3cd-6963-4ed1-b509-392899ec932e",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "verb": "task_claim",
+      "target": "M11-phase-g / G-L1-erasure"
+    },
+    {
+      "at": "2026-11-13T22:47:42.722Z",
+      "session": "87e9a3cd-6963-4ed1-b509-392899ec932e",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "verb": "evidence_record",
+      "target": "M11-phase-g / G-L1-erasure, sweep"
+    },
+    {
+      "at": "2026-11-13T22:47:43.003Z",
+      "session": "87e9a3cd-6963-4ed1-b509-392899ec932e",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "verb": "evidence_record",
+      "target": "M11-phase-g / G-L1-erasure, red"
+    },
+    {
+      "at": "2026-11-13T22:48:02.303Z",
+      "session": "87e9a3cd-6963-4ed1-b509-392899ec932e",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "verb": "handoff_write",
+      "target": "M11-phase-g:G-L1-erasure"
+    },
+    {
+      "at": "2026-11-13T22:48:08.322Z",
+      "session": "87e9a3cd-6963-4ed1-b509-392899ec932e",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T22:53:44.656Z",
+      "session": "190a88c7-f1bf-4c01-a40c-1830f016ad92",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "verb": "task_claim",
+      "target": "M11-phase-g / G-L1-erasure"
+    },
+    {
+      "at": "2026-11-13T23:00:04.801Z",
+      "session": "190a88c7-f1bf-4c01-a40c-1830f016ad92",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "verb": "evidence_record",
+      "target": "M11-phase-g / G-L1-erasure, sweep"
+    },
+    {
+      "at": "2026-11-13T23:00:05.015Z",
+      "session": "190a88c7-f1bf-4c01-a40c-1830f016ad92",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "verb": "evidence_record",
+      "target": "M11-phase-g / G-L1-erasure, red"
+    },
+    {
+      "at": "2026-11-13T23:00:23.200Z",
+      "session": "190a88c7-f1bf-4c01-a40c-1830f016ad92",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "verb": "handoff_write",
+      "target": "M11-phase-g:G-L1-erasure"
+    },
+    {
+      "at": "2026-11-13T23:00:23.470Z",
+      "session": "190a88c7-f1bf-4c01-a40c-1830f016ad92",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T23:01:12.954Z",
+      "session": "d02f9ce0-6ffd-49b7-87a3-38defb7b32a5",
+      "track": "g-erasure",
+      "agent": "claude-opus-5-5 coordinator-land",
+      "verb": "land_start",
+      "target": "M11-phase-g / G-L1-erasure"
+    },
+    {
+      "at": "2026-11-13T23:12:43.686Z",
+      "session": "d02f9ce0-6ffd-49b7-87a3-38defb7b32a5",
+      "track": "g-erasure",
+      "agent": "claude-opus-5-5 coordinator-land",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T23:13:25.255Z",
+      "session": "e881f0b6-0cd4-476d-a6ff-72fe0e2e81f8",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "track_close",
+      "target": "g-erasure"
+    },
+    {
+      "at": "2026-11-13T23:15:52.176Z",
+      "session": "e881f0b6-0cd4-476d-a6ff-72fe0e2e81f8",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_land",
+      "target": "M11-phase-g / G-close"
+    },
+    {
+      "at": "2026-11-13T23:15:52.451Z",
+      "session": "e881f0b6-0cd4-476d-a6ff-72fe0e2e81f8",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_land",
+      "target": "M10-phase-f / F-close"
+    },
+    {
+      "at": "2026-11-13T23:16:15.448Z",
+      "session": "e881f0b6-0cd4-476d-a6ff-72fe0e2e81f8",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "evidence_record",
+      "target": "M11-phase-g / G-close, sweep"
+    },
+    {
+      "at": "2026-11-13T23:16:25.024Z",
+      "session": "e881f0b6-0cd4-476d-a6ff-72fe0e2e81f8",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "session_close"
     }
   ]
 }

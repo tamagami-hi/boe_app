@@ -141,6 +141,191 @@
         "failed": 0
       },
       "note": "Frontend check in the Node 22 container; build:client and build:admin also passed with boot checks (frontend-build-client.log, frontend-build-admin.log)."
+    },
+    {
+      "id": "7a0e1e07-92ff-4d25-b6a6-0aee8921e91b",
+      "task": "G-L1-erasure",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "kind": "sweep",
+      "command": [
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/g-erasure/backend_controller",
+      "started": "2026-11-13T22:35:00.000Z",
+      "seconds": 300,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/g-erasure/r-backend-integration.log",
+        "sha256": "41e80b9136939ec1eed230241c478224fc766d8e05023b9fb877b13c0f2f3f99",
+        "bytes": 10603
+      },
+      "summary": {
+        "files": 62,
+        "passed": 542,
+        "failed": 0
+      },
+      "note": "After rebasing on main with Phase F (068); code identical to 261d5e3..79f9d14 on 2ab2eae (main moved only in docs/records). Same sweep: backend check 100/1198 (r-backend-check.log), contracts check 98 tests / 185 operations (r-contracts-check.log), frontend check 34/316 plus build:client and build:admin with boot checks (r-frontend-*.log)."
+    },
+    {
+      "id": "f47420ce-807e-4849-b779-7c299bf4b1f6",
+      "task": "G-L1-erasure",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "kind": "sweep",
+      "command": [
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/g-erasure/backend_controller",
+      "started": "2026-11-13T22:46:00.000Z",
+      "seconds": 300,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/g-erasure/f-backend-integration.log",
+        "sha256": "b73f242c6a2bc94e36ee4721ad74848cd61586cc98e29f5c95ed8facbef84cbb",
+        "bytes": 13151
+      },
+      "summary": {
+        "files": 65,
+        "passed": 550,
+        "failed": 0
+      },
+      "note": "Review-fix sweep on 450448a..6d247f2 (main 2ab2eae unchanged), Node 22 container. Same tree: backend check 101 files/1204 (f-backend-check.log), contracts check 98 tests/185 operations (f-contracts-check.log), frontend check 35 files/320, build:client and build:admin with boot checks (f-frontend-*.log). Controls failing as expected: control2-* logs (holds on user only, no failed-payout block, unscoped receipts, phone matching, growth on erased, fe new key, fe keep typed, fe lower case)."
+    },
+    {
+      "id": "f94df2c8-0989-451d-9c17-8b8c1e7cf29d",
+      "task": "G-L1-erasure",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "kind": "red",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "--config",
+        "vitest.integration.config.ts",
+        "--coverage.enabled=false",
+        "test/integration/clientErasureReach.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/g-erasure/backend_controller",
+      "started": "2026-11-13T22:41:00.000Z",
+      "seconds": 30,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/g-erasure/control2-3-receipts-unscoped.log",
+        "sha256": "66071018c40c9995ce4045f99c2a7ea881c23998b013db25786d2f35c0ff3e14",
+        "bytes": 5454
+      },
+      "summary": {
+        "passed": 1,
+        "failed": 1
+      },
+      "note": "Negative control (reverted): scrubbing every receipt without dropping contacts another user holds rewrote the new holder's receipt; the reach test failed. Sibling controls control2-1/2/4/5 and fe1-3 also failed their tests."
+    },
+    {
+      "id": "f59ad94a-50bb-4149-9f71-ff8e22bf012b",
+      "task": "G-L1-erasure",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "kind": "sweep",
+      "command": [
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/g-erasure/backend_controller",
+      "started": "2026-11-13T23:05:00.000Z",
+      "seconds": 300,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/g-erasure/g-backend-integration.log",
+        "sha256": "befe771d5890fd5307d0b570e52ec9108f5e81851ff3b4ff446b31933ab3af56",
+        "bytes": 12149
+      },
+      "summary": {
+        "files": 65,
+        "passed": 557,
+        "failed": 0
+      },
+      "note": "Last-gap round on 1a68f66 (main 2ab2eae unchanged), Node 22 container. Backend check 101 files/1204 (g-backend-check.log). Frontend and contracts untouched since 2a93f84 (35 files/320, 98 tests/185 operations). Controls failing as expected: control3-1 no post-lock recheck (2 race cases), control3-2 mandate holds ignored, control3-3 consent user agents kept. Pre-flight read-only on throwaway DB through 069: 40 rows."
+    },
+    {
+      "id": "355ae09d-e249-461f-ac8b-e8bfc53bef45",
+      "task": "G-L1-erasure",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "kind": "red",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "--config",
+        "vitest.integration.config.ts",
+        "--coverage.enabled=false",
+        "test/integration/clientErasureRaces.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/g-erasure/backend_controller",
+      "started": "2026-11-13T23:00:00.000Z",
+      "seconds": 30,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/g-erasure/control3-1-no-mail-recheck.log",
+        "sha256": "0ae1187b6c7f242d1ca729e4ea89cb5f064ce14316d28839469eda50665c0fc0",
+        "bytes": 2482
+      },
+      "summary": {
+        "passed": 4,
+        "failed": 2
+      },
+      "note": "Negative control (reverted): with the post-lock in-flight recheck disabled, both concurrent mail-lock cases half-applied and failed."
+    },
+    {
+      "id": "1ece0ad2-6076-4d98-9ef4-341d94b8318c",
+      "task": "G-close",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "kind": "sweep",
+      "command": [
+        "sh",
+        "sweep-fg.sh",
+        "contracts check+build",
+        "backend check",
+        "test:integration --coverage.enabled=false",
+        "frontend check",
+        "build:client",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/sweep-fg",
+      "started": "2026-11-13T23:12:30Z",
+      "seconds": 1200,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/sweep-fg/summary.txt",
+        "sha256": "bdcddb6f7257b4d7f5bbd80249e0c6cae48826d79187704acc22d01484e55584",
+        "bytes": 117
+      },
+      "summary": {
+        "contracts_tests": 98,
+        "operations": 185,
+        "backend_tests": 1204,
+        "integration_files": 65,
+        "integration_tests": 557,
+        "frontend_tests": 320,
+        "build_client": "pass",
+        "build_admin": "pass",
+        "failed": 0
+      },
+      "note": "Clean detached worktree at e29ff37, Node 22.20.0 container; covers Phases F and G together. Start time and duration are approximate."
     }
   ]
 }

@@ -1170,14 +1170,10 @@
           "track": "main",
           "status": "landed",
           "commit": "f912370",
-          "also": [],
-          "brief": "Review, land, sweep, plan section 8 entry, records commit",
-          "deferred": [
-            {
-              "what": "Full sweep on main (integration and both app builds) after Phase G lands",
-              "to": "M11-phase-g:G-close"
-            }
-          ]
+          "also": [
+            "c034ebc"
+          ],
+          "brief": "Review, land, sweep, plan section 8 entry, records commit"
         }
       ]
     },
@@ -1207,8 +1203,17 @@
         {
           "id": "G-L1-erasure",
           "track": "g-erasure",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "e29ff37",
+          "also": [
+            "1a68f66",
+            "261d5e3",
+            "2a93f84",
+            "450448a",
+            "6d247f2",
+            "79f9d14",
+            "e780686"
+          ],
           "brief": "Lane g-erasure (DEC-29, DEC-33): G1 guard, G2 verified client kept as a record with every email and phone overwritten everywhere and freed for reuse, G3 never-verified client deleted in one transaction with one PII-free erase audit row, falling back to G2 if any money row exists. Migration 069; table map and pre-flight query in release_manager/docs/client-erasure.md.",
           "covers": [
             "G-erase-guard",
@@ -1219,7 +1224,8 @@
         {
           "id": "G-close",
           "track": "main",
-          "status": "planned",
+          "status": "landed",
+          "commit": "c034ebc",
           "also": [],
           "brief": "Review, land, sweep, plan section 8 entry, records commit"
         }
