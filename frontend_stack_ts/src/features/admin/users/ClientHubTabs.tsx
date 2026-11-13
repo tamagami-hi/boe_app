@@ -7,9 +7,10 @@ import { TabPanel, Tabs, type TabItem } from "~/ui/primitives/Toggle"
 import { ClientEmailsTab } from "./ClientEmailsTab"
 import { ClientLedgerTab } from "./ClientLedgerTab"
 import { ClientMaturityTab } from "./ClientMaturityTab"
+import { ClientSupportTab } from "./ClientSupportTab"
 import { UserLoginEventsList } from "./UserLoginEventsList"
 
-type HubTab = "ledger" | "maturity" | "emails" | "sign-ins"
+type HubTab = "ledger" | "maturity" | "emails" | "support" | "sign-ins"
 
 const TABS_ID = "client-hub-records"
 
@@ -29,6 +30,7 @@ export const ClientHubTabs = ({ userId, isClient }: Props): React.ReactElement |
     ...(hasAnyPermission(["email_deliveries.read", "email_deliveries.read_masked"])
       ? [{ value: "emails" as const, label: "Emails" }]
       : []),
+    ...(hasAnyPermission(["support.read"]) ? [{ value: "support" as const, label: "Support" }] : []),
     ...(hasAnyPermission(["users.read"]) ? [{ value: "sign-ins" as const, label: "Sign-ins" }] : []),
   ]
   const active = items.find((item) => item.value === selected)?.value ?? items[0]?.value
@@ -41,6 +43,7 @@ export const ClientHubTabs = ({ userId, isClient }: Props): React.ReactElement |
         {active === "ledger" ? <ClientLedgerTab userId={userId} /> : null}
         {active === "maturity" ? <ClientMaturityTab userId={userId} /> : null}
         {active === "emails" ? <ClientEmailsTab userId={userId} /> : null}
+        {active === "support" ? <ClientSupportTab userId={userId} /> : null}
         {active === "sign-ins" ? <UserLoginEventsList userId={userId} /> : null}
       </TabPanel>
     </Section>

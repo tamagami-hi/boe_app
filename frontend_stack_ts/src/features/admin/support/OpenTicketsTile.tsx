@@ -42,7 +42,9 @@ const OpenCount = (): React.ReactElement => {
   )
 }
 
-export const OpenTicketsTile = (): React.ReactElement => {
+type Props = Readonly<{ canOpen: boolean }>
+
+export const OpenTicketsTile = ({ canOpen }: Props): React.ReactElement => {
   const { hasAnyPermission } = useSession()
   const canRead = hasAnyPermission(["support.read"])
   return (
@@ -50,7 +52,7 @@ export const OpenTicketsTile = (): React.ReactElement => {
       <Stat label={LABEL} hint={HINT}>
         {canRead ? <OpenCount /> : <span className={META_MUTED}>Not available with your permissions.</span>}
       </Stat>
-      {canRead ? (
+      {canRead && canOpen ? (
         <ButtonLink to="/support" tone="ghost" size="sm" trailing>
           Open
         </ButtonLink>

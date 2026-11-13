@@ -5,6 +5,7 @@ import { ContentGrid } from "~/app/layouts/ContentGrid"
 import { Section } from "~/app/layouts/Section"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDate, formatDateTime } from "~/domain/dates"
+import { OpenTicketsTile } from "~/features/admin/support/OpenTicketsTile"
 import { DataList, DetailRow, Stat } from "~/ui/patterns/DataList"
 import { Button } from "~/ui/primitives/Button"
 import { ButtonLink } from "~/ui/primitives/ButtonLink"
@@ -157,6 +158,8 @@ export const DailyTiles = ({ reachablePaths }: Props): React.ReactElement => {
             NO_PERMISSION
           )}
         </DailyTile>
+
+        <OpenTicketsTile canOpen={reachablePaths.has("/support")} />
       </ContentGrid>
     </Section>
   )
