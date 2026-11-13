@@ -6,6 +6,7 @@ import { ADMIN_LOGIN_PATH, ADMIN_NAV_DOMAINS, ADMIN_ROUTES } from "~/app/routing
 import { findRoute, navBarEntries, navGroups, navRoutes } from "~/app/routing/routeManifest"
 import { Modal } from "~/app/overlays/Modal"
 import { useSession } from "~/app/providers/SessionProvider"
+import { MaturityDuePrompt } from "~/features/admin/maturities/MaturityDuePrompt"
 import { useAuthPort } from "~/features/auth/authPort"
 import { hasAll, hasAny } from "~/domain/permissions"
 import {
@@ -41,6 +42,7 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
   const session = useSession()
   const port = useAuthPort()
   const [moreOpen, setMoreOpen] = useState(false)
+  const [maturityPromptDismissedFor, setMaturityPromptDismissedFor] = useState<string | null>(null)
 
   useEffect(() => {
     setMoreOpen(false)
@@ -148,6 +150,13 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
           </button>
         ) : null}
       </nav>
+
+      <MaturityDuePrompt
+        dismissed={maturityPromptDismissedFor !== null && maturityPromptDismissedFor === session.principal?.userId}
+        onDismiss={() => {
+          setMaturityPromptDismissedFor(session.principal?.userId ?? null)
+        }}
+      />
 
       <Modal
         open={moreOpen}

@@ -10,6 +10,7 @@ import { toPaise } from "~/domain/money"
 import { emailVerificationState, orderState, userAccountState } from "~/domain/status"
 import { PortfolioSummarySection } from "~/features/admin/client-returns/PortfolioSummarySection"
 import { EarlierInvestmentForm } from "~/features/admin/client-values/EarlierInvestmentForm"
+import { ClientMaturitySection } from "~/features/admin/maturities/ClientMaturitySection"
 import { useAdminUser } from "~/features/admin/shared/adminQueries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
@@ -153,6 +154,10 @@ const UserDetailScreen = (): React.ReactElement => {
 
             {data.roles.length === 0 ? (
               <SipScheduleSection userId={userId} canStart={canRecordFor(data.user.accountState)} />
+            ) : null}
+
+            {data.roles.length === 0 ? (
+              <ClientMaturitySection userId={userId} canSet={canRecordFor(data.user.accountState)} />
             ) : null}
 
             <ClientHubTabs userId={userId} isClient={data.roles.length === 0} />
