@@ -15,7 +15,7 @@ import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adm
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { isUncompletableSetup } from "../domain/payments/mandateStates.js"
 import { reconcileCollectionFact } from "../domain/payments/reconcileCollectionFact.js"
-import { reconcileMandateFact, type MandateFactDeps } from "../domain/payments/reconcileMandateFacts.js"
+import { applyMandateFact } from "../domain/payments/reconcileMandateFacts.js"
 import { AppError } from "../http/errorCatalog.js"
 import { createdAtKeyset, paginate, readKeyset } from "../http/pagination.js"
 import { parseOrThrow } from "../http/validation.js"
@@ -330,13 +330,6 @@ const reconcileMandate = async (deps: AdminMandateDeps, request: FastifyRequest,
   const mandate = await deps.adminMandateRepository.findMandateDetail(deps.database, mandateId)
   if (mandate === null) throw new AppError("RESOURCE_NOT_FOUND")
 
-  const factDeps: MandateFactDeps = {
-    unitOfWork: deps.unitOfWork,
-    mandatesRepository: deps.mandatesRepository,
-    paymentsRepository: deps.paymentsRepository,
-    settlementRepository: deps.settlementRepository,
-  }
-
   let providerState: string | null = null
   let status: Awaited<ReturnType<RecurringPaymentGateway["getMandateStatus"]>> | null = null
   if (mandate.mandate.provider_subscription_id !== null) {
@@ -358,7 +351,7 @@ const reconcileMandate = async (deps: AdminMandateDeps, request: FastifyRequest,
     requestHash,
     execute: async (tx) => {
       if (status !== null) {
-        await reconcileMandateFact(factDeps, status, deps.clock())
+        await applyMandateFact(tx, deps, status, deps.clock())
       }
       const updated = await deps.adminMandateRepository.findMandateDetail(tx, mandateId)
       if (updated === null) throw new AppError("RESOURCE_NOT_FOUND")

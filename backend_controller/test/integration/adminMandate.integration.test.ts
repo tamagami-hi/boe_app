@@ -502,6 +502,46 @@ describe("admin mandate reconcile", () => {
     expect(errorOf(response)).toBe("AUTHORIZATION_DENIED")
   })
 
+  test("rolls back the mandate state change with the audit row and receipt when the audit write fails", async () => {
+    const { fundId } = await seedFund("mandate-reconcile-atomic")
+    const { mandateId, sipPlanId, merchantSubscriptionId } = await createSipAndMandate(fundId)
+    const { providerSubscriptionId } = await activateMandate(mandateId, sipPlanId)
+    nextMandateStatus = { state: "CANCELLED", merchantSubscriptionId, providerSubscriptionId }
+    const key = `reconcile-atomic-${randomUUID()}`
+    const mutableDeps = routeDeps as Mutable<AdminMandateDeps>
+    const originalAudit = routeDeps.auditRepository
+    mutableDeps.auditRepository = {
+      ...originalAudit,
+      append: async (tx, input) => {
+        if (input.command === "mandate.reconcile") throw new Error("audit store unavailable")
+        return originalAudit.append(tx, input)
+      },
+    }
+    try {
+      const response = asInjected(
+        await postJson(`/v1/admin/mandates/${mandateId}/reconcile`, adminToken, { reason: "Audit failure" }, key),
+      )
+      expect(response.statusCode).toBe(500)
+    } finally {
+      mutableDeps.auditRepository = originalAudit
+      nextMandateStatus = null
+    }
+
+    const states = await pool.query<{ mandate_state: string; sip_state: string }>(
+      "select mandate.state::text mandate_state, sip.state::text sip_state from payment_mandates mandate " +
+        "join sip_plans sip on sip.id = mandate.sip_plan_id where mandate.id = $1",
+      [mandateId],
+    )
+    expect(states.rows).toEqual([{ mandate_state: "active", sip_state: "active" }])
+    const audit = await pool.query(
+      "select 1 from audit_events where command = 'mandate.reconcile' and entity_id = $1",
+      [mandateId],
+    )
+    expect(audit.rowCount).toBe(0)
+    const receipt = await pool.query("select 1 from idempotency_records where actor_scope = $1 and key = $2", [`admin:${adminId}`, key])
+    expect(receipt.rowCount).toBe(0)
+  })
+
   test("provider inquiry happens outside the unit-of-work transaction", async () => {
     const { fundId } = await seedFund("mandate-reconcile-tx")
     const { mandateId, sipPlanId, merchantSubscriptionId } = await createSipAndMandate(fundId)

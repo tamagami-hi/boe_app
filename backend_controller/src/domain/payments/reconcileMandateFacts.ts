@@ -1,4 +1,6 @@
 import type { UnitOfWork } from "../../db/database.js"
+import type { Transaction } from "../../db/repositories.js"
+import type { MandateState } from "../../db/types.js"
 import type { MandateSetupStatus, MandateStatus } from "../../providers/recurringPaymentGateway.js"
 import type { MandatesRepository } from "../../repositories/mandatesRepository.js"
 import type { PaymentsRepository } from "../../repositories/paymentsRepository.js"
@@ -85,52 +87,58 @@ export const reconcileSetupFact = async (
   })
 }
 
-export const reconcileMandateFact = async (
-  deps: MandateFactDeps,
+const mandateFactTarget = (state: MandateStatus["state"]): MandateState | null =>
+  state === "CANCELLED" ? "cancelled"
+    : state === "REVOKED" ? "revoked"
+      : state === "EXPIRED" ? "expired"
+        : state === "FAILED" ? "failed"
+          : state === "PAUSED" ? "paused"
+            : null
+
+export const applyMandateFact = async (
+  tx: Transaction,
+  deps: Pick<MandateFactDeps, "mandatesRepository">,
   status: MandateStatus,
   now: Date,
 ): Promise<void> => {
   if (status.state === "ACTIVE" && status.providerSubscriptionId !== null) {
-    await deps.unitOfWork.execute(async (tx) => {
-      const abandoned = await deps.mandatesRepository.bindProviderSubscriptionForAbandonment(tx, {
-        merchantSubscriptionId: status.merchantSubscriptionId,
-        providerSubscriptionId: status.providerSubscriptionId as string,
-        now,
-      })
-      if (abandoned !== null) return
-      await deps.mandatesRepository.activateAfterSuccessfulSetupPayment(tx, {
-        merchantSubscriptionId: status.merchantSubscriptionId,
-        providerSubscriptionId: status.providerSubscriptionId as string,
-        now,
-      })
+    const abandoned = await deps.mandatesRepository.bindProviderSubscriptionForAbandonment(tx, {
+      merchantSubscriptionId: status.merchantSubscriptionId,
+      providerSubscriptionId: status.providerSubscriptionId,
+      now,
+    })
+    if (abandoned !== null) return
+    await deps.mandatesRepository.activateAfterSuccessfulSetupPayment(tx, {
+      merchantSubscriptionId: status.merchantSubscriptionId,
+      providerSubscriptionId: status.providerSubscriptionId,
+      now,
     })
     return
   }
-  const target = status.state === "CANCELLED" ? "cancelled"
-    : status.state === "REVOKED" ? "revoked"
-      : status.state === "EXPIRED" ? "expired"
-        : status.state === "FAILED" ? "failed"
-          : status.state === "PAUSED" ? "paused"
-            : null
+  const target = mandateFactTarget(status.state)
   if (target === null) return
-  await deps.unitOfWork.execute(async (tx) => {
-    const mandate = await deps.mandatesRepository.findMandateByMerchantSubscription(tx, status.merchantSubscriptionId)
-    if (mandate === null || mandate.state === target) return
-    const sip = await tx.selectFrom("sip_plans").selectAll().where("id", "=", mandate.sip_plan_id).executeTakeFirst()
-    if (sip === undefined) return
-    const liveStates = ["setup_pending", "active", "pause_pending", "paused", "cancel_pending", "revoke_pending"]
-    const allowed = target === "paused" && ["active", "pause_pending"].includes(mandate.state) ||
-      ["cancelled", "revoked", "expired", "failed"].includes(target) && liveStates.includes(mandate.state)
-    if (!allowed) return
-    await deps.mandatesRepository.applyProviderMandateState(tx, {
-      merchantSubscriptionId: mandate.merchant_subscription_id,
-      providerSubscriptionId: status.providerSubscriptionId,
-      expectedVersion: mandate.version,
-      expectedSipVersion: sip.version,
-      fromState: mandate.state,
-      toState: target,
-      ...(target === "failed" ? { failureCode: "PROVIDER_DECLINED" } : {}),
-      now,
-    })
+  const mandate = await deps.mandatesRepository.findMandateByMerchantSubscription(tx, status.merchantSubscriptionId)
+  if (mandate === null || mandate.state === target) return
+  const sip = await tx.selectFrom("sip_plans").selectAll().where("id", "=", mandate.sip_plan_id).executeTakeFirst()
+  if (sip === undefined) return
+  const liveStates = ["setup_pending", "active", "pause_pending", "paused", "cancel_pending", "revoke_pending"]
+  const allowed = target === "paused" && ["active", "pause_pending"].includes(mandate.state) ||
+    ["cancelled", "revoked", "expired", "failed"].includes(target) && liveStates.includes(mandate.state)
+  if (!allowed) return
+  await deps.mandatesRepository.applyProviderMandateState(tx, {
+    merchantSubscriptionId: mandate.merchant_subscription_id,
+    providerSubscriptionId: status.providerSubscriptionId,
+    expectedVersion: mandate.version,
+    expectedSipVersion: sip.version,
+    fromState: mandate.state,
+    toState: target,
+    ...(target === "failed" ? { failureCode: "PROVIDER_DECLINED" } : {}),
+    now,
   })
 }
+
+export const reconcileMandateFact = async (
+  deps: MandateFactDeps,
+  status: MandateStatus,
+  now: Date,
+): Promise<void> => deps.unitOfWork.execute((tx) => applyMandateFact(tx, deps, status, now))
