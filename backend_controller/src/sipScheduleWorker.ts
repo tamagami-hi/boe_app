@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto"
+
 import type { UnitOfWork } from "./db/database.js"
 import type { SipPlan } from "./db/repositories.js"
 import type { OrderState } from "./db/types.js"
@@ -39,6 +41,8 @@ const dateOnly = (value: Date | string): string => {
   return iso.slice(0, 10)
 }
 
+const monthOf = (value: Date | string): string => `${dateOnly(value).slice(0, 7)}-01`
+
 const addMonthClamped = (period: string, debitDay: number): string => {
   const parts = period.split("-")
   const year = Number(parts[0])
@@ -63,7 +67,6 @@ const monthsBetween = (startPeriod: string, period: string): number => {
 const advanceOnePlan = async (
   deps: SipScheduleDeps,
   plan: SipPlan,
-  requestId: string,
 ): Promise<{ installmentsCreated: number; advanced: boolean; completed: boolean }> => {
   let installmentsCreated = 0
   let advanced = false
@@ -75,7 +78,7 @@ const advanceOnePlan = async (
     const now = deps.clock()
     if (dateOnly(current.next_due_date) > now.toISOString().slice(0, 10)) break
 
-    const duePeriod = dateOnly(current.next_due_date)
+    const duePeriod = monthOf(current.next_due_date)
     const outcome = await deps.unitOfWork.execute(async (tx) => {
       const existing = await deps.orderRepository.findInstallmentByPeriod(tx, {
         sipPlanId: current.id,
@@ -92,7 +95,7 @@ const advanceOnePlan = async (
             notificationRepository: deps.notificationRepository,
             clock: deps.clock,
           },
-          { plan: current, duePeriod, requestId },
+          { plan: current, duePeriod, requestId: randomUUID() },
         )
         return { kind: "created" as const, resolved: result.outcome === "created" }
       }
@@ -159,8 +162,7 @@ export const runSipSchedulePass = async (deps: SipScheduleDeps): Promise<SipSche
   let plansCompleted = 0
 
   for (const plan of due) {
-    const requestId = `sip-schedule-${plan.id}-${now.getTime()}`
-    const result = await advanceOnePlan(deps, plan, requestId)
+    const result = await advanceOnePlan(deps, plan)
     installmentsCreated += result.installmentsCreated
     if (result.advanced) plansAdvanced += 1
     if (result.completed) plansCompleted += 1

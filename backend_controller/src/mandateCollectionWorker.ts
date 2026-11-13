@@ -108,7 +108,7 @@ const prepareCollection = async (deps: MandateCollectionDeps, plan: SipPlan) => 
       auditRepository: deps.auditRepository,
       notificationRepository: deps.notificationRepository,
       clock: deps.clock,
-    }, { plan: locked, duePeriod, requestId: `autopay-${locked.id}-${duePeriod}` })
+    }, { plan: locked, duePeriod, requestId: randomUUID() })
     if (created.outcome !== "created") return null
     if (await deps.paymentsRepository.markOrderPaymentPending(tx, created.order.id, now) === null) return null
     const payment = await deps.paymentsRepository.createPayment(tx, {
