@@ -48,6 +48,7 @@ export const qk = {
     user: (userId: string) => ["admin", "user", userId] as const,
     userLoginEvents: (userId: string) => ["admin", "user", userId, "login-events"] as const,
     clientPasswordAccess: (userId: string) => ["admin", "user", userId, "password-link"] as const,
+    userContactHistory: (userId: string) => ["admin", "user", userId, "contact-history"] as const,
     emailTemplates: (filter: string) => ["admin", "email-templates", filter] as const,
     emailTemplate: (templateId: string) => ["admin", "email-template", templateId] as const,
     emailPreview: (templateId: string, userId: string) => ["admin", "email-preview", templateId, userId] as const,

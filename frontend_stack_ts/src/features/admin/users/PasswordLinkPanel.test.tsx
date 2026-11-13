@@ -40,7 +40,7 @@ const panel = (canReceive: boolean): void => {
 }
 
 const sendDeliberately = (): void => {
-  fireEvent.click(screen.getByRole("button", { name: "Send a new password link" }))
+  fireEvent.click(screen.getByRole("button", { name: "Send a new invite link" }))
   fireEvent.click(screen.getByRole("button", { name: "Send the link" }))
 }
 
@@ -53,19 +53,19 @@ afterEach(() => {
 describe("who can send a client a password link", () => {
   it("offers the send action to an admin holding the permission, for an active client", () => {
     panel(true)
-    expect(screen.queryByRole("button", { name: "Send a new password link" })).not.toBeNull()
+    expect(screen.queryByRole("button", { name: "Send a new invite link" })).not.toBeNull()
   })
 
   it("never offers it without the permission", () => {
     granted = false
     panel(true)
-    expect(screen.queryByRole("button", { name: "Send a new password link" })).toBeNull()
+    expect(screen.queryByRole("button", { name: "Send a new invite link" })).toBeNull()
     expect(screen.getByText(/needs the clients.password_links.send permission/u)).toBeTruthy()
   })
 
   it("never offers it for an account that cannot receive one", () => {
     panel(false)
-    expect(screen.queryByRole("button", { name: "Send a new password link" })).toBeNull()
+    expect(screen.queryByRole("button", { name: "Send a new invite link" })).toBeNull()
   })
 })
 

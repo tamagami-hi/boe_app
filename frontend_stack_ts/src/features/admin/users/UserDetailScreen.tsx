@@ -23,6 +23,7 @@ import { ACTION_ROW } from "~/ui/recipes/layout"
 
 import { META_TEXT } from "~/ui/recipes/text"
 
+import { ClientContactsSection } from "./ClientContactsSection"
 import { PasswordLinkPanel } from "./PasswordLinkPanel"
 import { UserLifecyclePanel } from "./UserLifecyclePanel"
 
@@ -105,8 +106,8 @@ const UserDetailScreen = (): React.ReactElement => {
 
             {data.roles.length === 0 ? (
               <Section
-                title="Password link"
-                description="Whether this client has a password, the latest set or reset link, and whether its email went out."
+                title="Invite and password link"
+                description="Whether this client has a password, the latest invite or reset link, and whether its email went out. A new link replaces every earlier one."
               >
                 <PasswordLinkPanel
                   userId={userId}
@@ -114,6 +115,10 @@ const UserDetailScreen = (): React.ReactElement => {
                   canReceive={data.user.accountState === "active"}
                 />
               </Section>
+            ) : null}
+
+            {data.roles.length === 0 ? (
+              <ClientContactsSection user={data.user} reloading={query.isFetching} onReload={reloadUser} />
             ) : null}
 
             {data.roles.length === 0 &&

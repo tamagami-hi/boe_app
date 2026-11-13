@@ -37,6 +37,44 @@ type Outcome =
 
 const IDLE: Outcome = { kind: "idle" }
 
+const SEND_LABEL = { invite: "Send a new invite link", reset: "Send a password reset link", unknown: "Send a new password link" } as const
+
+type SendKind = keyof typeof SEND_LABEL
+
+const sendKindOf = (access: ClientPasswordAccess | undefined): SendKind => {
+  if (access === undefined) return "unknown"
+  return access.hasPassword ? "reset" : "invite"
+}
+
+const inviteProblem = (access: ClientPasswordAccess): string | null => {
+  if (access.hasPassword) return null
+  const link = access.latestLink
+  if (link === null) return "No invite link has been sent to this client yet."
+  if (link.state === "expired") return `The invite link expired ${formatDateTime(link.expiresAt)}.`
+  if (link.state === "closed") return "The latest invite link was replaced or retired and no longer works."
+  if (link.delivery?.state === "cancelled") return "The invite email was cancelled before it was sent."
+  if (link.delivery?.state === "permanent_failed") return "The invite email could not be delivered."
+  return null
+}
+
+const CONFIRM_COPY: Readonly<Record<SendKind, Readonly<{ title: string; description: (email: string) => string }>>> = {
+  invite: {
+    title: "Send a new invite link?",
+    description: (email) =>
+      `A new link to set a first password is emailed to ${email}, and every earlier link stops working. After signing in, the client still confirms their email with a code before investing.`,
+  },
+  reset: {
+    title: "Send a password reset link?",
+    description: (email) =>
+      `A link to reset the password is emailed to ${email}, and every earlier link stops working. Sending it does not change the password.`,
+  },
+  unknown: {
+    title: "Send a new password link?",
+    description: (email) =>
+      `A link is emailed to ${email}. It sets a first password if the client has none, and resets it otherwise. Any earlier link stops working. Sending it does not change the password.`,
+  },
+}
+
 const rejectionMessage = (error: unknown): string => {
   if (!isApiError(error)) return "The request could not be sent. Reload the page and try again."
   if (error.code === "RATE_LIMITED") return "A link was sent moments ago. Wait for the cooldown to end, then try again."
@@ -88,6 +126,8 @@ export const PasswordLinkPanel = ({ userId, email, canReceive }: PasswordLinkPan
 
   const coolingDown =
     access.data?.nextLinkAllowedAt != null && Date.parse(access.data.nextLinkAllowedAt) > Date.now()
+  const sendKind = sendKindOf(access.data)
+  const problem = access.data === undefined ? null : inviteProblem(access.data)
 
   const submit = (): void => {
     setConfirming(false)
@@ -120,8 +160,13 @@ export const PasswordLinkPanel = ({ userId, email, canReceive }: PasswordLinkPan
   return (
     <Card>
       {outcome.kind === "sent" ? (
-        <Alert tone="success" title="New link queued">
+        <Alert tone="success" title={outcome.purpose === "set" ? "New invite link queued" : "New link queued"}>
           {`${PURPOSE_LABEL[outcome.purpose]} link queued for ${email}. It expires ${formatDateTime(outcome.expiresAt)}, and any earlier link no longer works. Watch the email state below.`}
+        </Alert>
+      ) : null}
+      {outcome.kind !== "sent" && problem !== null && canSend && canReceive ? (
+        <Alert tone="warning" title="The client cannot set a password yet">
+          {`${problem} Send a new invite link to let them choose a password.`}
         </Alert>
       ) : null}
       {outcome.kind === "rejected" ? (
@@ -169,7 +214,7 @@ export const PasswordLinkPanel = ({ userId, email, canReceive }: PasswordLinkPan
               setConfirming(true)
             }}
           >
-            Send a new password link
+            {SEND_LABEL[sendKind]}
           </Button>
           <Button
             tone="ghost"
@@ -191,8 +236,8 @@ export const PasswordLinkPanel = ({ userId, email, canReceive }: PasswordLinkPan
 
       <ConfirmDialog
         open={confirming}
-        title="Send a new password link?"
-        description={`A link is emailed to ${email}. It sets a first password if the client has none, and resets it otherwise. Any earlier link stops working. Sending it does not change the password.`}
+        title={CONFIRM_COPY[sendKind].title}
+        description={CONFIRM_COPY[sendKind].description(email)}
         confirmLabel="Send the link"
         onConfirm={submit}
         onCancel={() => {
