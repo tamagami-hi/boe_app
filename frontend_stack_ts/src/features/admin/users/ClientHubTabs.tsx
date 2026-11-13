@@ -9,10 +9,11 @@ import { ClientActivityTab } from "./ClientActivityTab"
 import { ClientEmailsTab } from "./ClientEmailsTab"
 import { ClientLedgerTab } from "./ClientLedgerTab"
 import { ClientMaturityTab } from "./ClientMaturityTab"
+import { ClientReviewsTab } from "./ClientReviewsTab"
 import { ClientSupportTab } from "./ClientSupportTab"
 import { UserLoginEventsList } from "./UserLoginEventsList"
 
-type HubTab = "ledger" | "maturity" | "emails" | "support" | "sign-ins" | "activity"
+type HubTab = "ledger" | "maturity" | "emails" | "support" | "reviews" | "sign-ins" | "activity"
 
 const TABS_ID = "client-hub-records"
 
@@ -39,6 +40,7 @@ export const ClientHubTabs = ({ userId, isClient }: Props): React.ReactElement |
       ? [{ value: "emails" as const, label: "Emails" }]
       : []),
     ...(hasAnyPermission(["support.read"]) ? [{ value: "support" as const, label: "Support" }] : []),
+    ...(isClient && hasAnyPermission(["support.read"]) ? [{ value: "reviews" as const, label: "Reviews" }] : []),
     ...(hasAnyPermission(["users.read"]) ? [{ value: "sign-ins" as const, label: "Sign-ins" }] : []),
     ...(hasAnyPermission(["audit.read"]) ? [{ value: "activity" as const, label: "Activity log" }] : []),
   ]
@@ -61,6 +63,7 @@ export const ClientHubTabs = ({ userId, isClient }: Props): React.ReactElement |
         {active === "maturity" ? <ClientMaturityTab userId={userId} /> : null}
         {active === "emails" ? <ClientEmailsTab userId={userId} /> : null}
         {active === "support" ? <ClientSupportTab userId={userId} /> : null}
+        {active === "reviews" ? <ClientReviewsTab userId={userId} /> : null}
         {active === "sign-ins" ? <UserLoginEventsList userId={userId} /> : null}
         {active === "activity" ? <ClientActivityTab userId={userId} /> : null}
       </TabPanel>

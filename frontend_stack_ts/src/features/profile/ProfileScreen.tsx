@@ -58,6 +58,11 @@ const ENTRIES = [
     hint: "Published answers and a record of everything you have raised.",
   },
   {
+    to: "/profile/reviews",
+    title: "Reviews",
+    hint: "Rate BeOnEdge and tell the team what you think. Only the team reads reviews.",
+  },
+  {
     to: "/profile/legal",
     title: "Legal",
     hint: "Investor charter and grievance redressal.",
