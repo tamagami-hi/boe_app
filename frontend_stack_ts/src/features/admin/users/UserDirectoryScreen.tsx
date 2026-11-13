@@ -24,7 +24,6 @@ import { META_TEXT } from "~/ui/recipes/text"
 const FILTERS = [
   { value: "any", label: "All" },
   { value: "active", label: "Active" },
-  { value: "invited", label: "Invited" },
   { value: "suspended", label: "Suspended" },
   { value: "closed", label: "Closed" },
 ] as const

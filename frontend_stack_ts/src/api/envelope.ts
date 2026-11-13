@@ -25,6 +25,21 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
     ? (value as Record<string, unknown>)
     : null
 
+const UNSAFE_FIELD_KEYS: ReadonlySet<string> = new Set(["__proto__", "prototype", "constructor"])
+
+const isFieldMessages = ([key, messages]: readonly [string, unknown]): boolean =>
+  !UNSAFE_FIELD_KEYS.has(key) &&
+  Array.isArray(messages) &&
+  messages.every((message) => typeof message === "string")
+
+const readFields = (value: unknown): FieldErrors | null => {
+  const record = asRecord(value)
+  if (record === null) return null
+  const entries = Object.entries(record)
+  if (entries.length === 0 || !entries.every(isFieldMessages)) return null
+  return Object.fromEntries(entries) as FieldErrors
+}
+
 export const readResponseMeta = (body: unknown): ResponseMeta => {
   const envelope = asRecord(body)
   const meta = envelope === null ? null : asRecord(envelope.meta)
@@ -59,6 +74,6 @@ export const readError = (body: unknown): ParsedError | null => {
     code: detail.code,
     message: typeof detail.message === "string" ? detail.message : "The request failed.",
     retryable: detail.retryable === true,
-    fields: null,
+    fields: readFields(detail.fields),
   }
 }

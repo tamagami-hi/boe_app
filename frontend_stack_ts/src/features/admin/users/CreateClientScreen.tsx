@@ -18,34 +18,55 @@ import { Alert } from "~/ui/primitives/Feedback"
 import { FormField, Input } from "~/ui/primitives/FormField"
 
 import { ADMIN_CODE, ADMIN_FORM_GRID } from "~/ui/recipes/admin"
+import { PROSE_SM } from "~/ui/recipes/datalist"
 import { ACTION_ROW, STACK_LG } from "~/ui/recipes/layout"
 
+import {
+  fieldRefusals,
+  nameProblem,
+  normalizedPhone,
+  phoneProblem,
+  refusalFor,
+  type ClientContact,
+  type FieldRefusals,
+} from "./clientContact"
 import { PasswordLinkPanel } from "./PasswordLinkPanel"
 
 type Outcome =
   | Readonly<{ kind: "idle" }>
-  | Readonly<{ kind: "rejected"; message: string; conflict: boolean }>
+  | Readonly<{ kind: "rejected"; message: string; conflict: boolean; refusals: FieldRefusals }>
   | Readonly<{ kind: "unknown"; serverMessage: string | null }>
 
+type Step = "edit" | "review"
+
 const IDLE: Outcome = { kind: "idle" }
+
+const NO_REFUSALS: FieldRefusals = {}
 
 const PURPOSE_LABEL = { set: "Set a first password", reset: "Reset the password" } as const
 
 const directoryLink = (email: string): string => `/users?q=${encodeURIComponent(email)}`
 
-const describeRejection = (error: unknown): Outcome => {
+const describeRejection = (error: unknown, submitted: ClientContact): Outcome => {
   if (!isApiError(error)) {
-    return { kind: "rejected", message: "The request could not be sent. Reload the page and try again.", conflict: false }
+    return {
+      kind: "rejected",
+      message: "The request could not be sent. Reload the page and try again.",
+      conflict: false,
+      refusals: NO_REFUSALS,
+    }
   }
+  const refusals = fieldRefusals(error, submitted)
   if (error.code === "STATE_CONFLICT") {
     return {
       kind: "rejected",
       message:
         "That email address or phone number already belongs to an account or a signup in progress. If an earlier attempt may have created this account, find it in the directory before trying again.",
       conflict: true,
+      refusals,
     }
   }
-  return { kind: "rejected", message: error.message, conflict: false }
+  return { kind: "rejected", message: error.message, conflict: false, refusals }
 }
 
 const CreateClientScreen = (): React.ReactElement => {
@@ -56,18 +77,25 @@ const CreateClientScreen = (): React.ReactElement => {
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [attempt, setAttempt] = useState(0)
+  const [step, setStep] = useState<Step>("edit")
   const [outcome, setOutcome] = useState<Outcome>(IDLE)
   const [confirmingRestart, setConfirmingRestart] = useState(false)
 
-  const request = { fullName: fullName.trim(), email: email.trim(), phone: phone.trim() }
+  const request: ClientContact = { fullName: fullName.trim(), email: email.trim(), phone: phone.trim() }
   const idempotencyKey = useIdempotencyKey({ ...request, attempt })
   const created = create.data
-  const locked = create.isPending || outcome.kind === "unknown"
+  const locked = create.isPending || outcome.kind === "unknown" || step === "review"
+  const refusals = outcome.kind === "rejected" ? outcome.refusals : NO_REFUSALS
 
-  const nameLength = Array.from(request.fullName).length
-  const invalidName = fullName !== "" && (nameLength < 2 || nameLength > 120)
-  const invalidPhone = phone !== "" && !/^\+[1-9][0-9]{7,14}$/u.test(phone.replace(/[\s()-]/gu, ""))
-  const incomplete = request.fullName === "" || request.email === "" || request.phone === "" || invalidName || invalidPhone
+  const nameError = nameProblem(request.fullName) ?? refusalFor(refusals, "fullName", request)
+  const emailError = refusalFor(refusals, "email", request)
+  const phoneError = phoneProblem(request.phone) ?? refusalFor(refusals, "phone", request)
+  const incomplete =
+    request.fullName === "" ||
+    request.email === "" ||
+    request.phone === "" ||
+    nameProblem(request.fullName) !== null ||
+    phoneProblem(request.phone) !== null
 
   const submit = (): void => {
     if (outcome.kind === "rejected") setOutcome(IDLE)
@@ -78,11 +106,12 @@ const CreateClientScreen = (): React.ReactElement => {
           setOutcome(IDLE)
         },
         onError: (error) => {
-          setOutcome(
-            isUnknownWriteOutcome(error)
-              ? { kind: "unknown", serverMessage: isApiError(error) ? error.message : null }
-              : describeRejection(error),
-          )
+          if (isUnknownWriteOutcome(error)) {
+            setOutcome({ kind: "unknown", serverMessage: isApiError(error) ? error.message : null })
+            return
+          }
+          setOutcome(describeRejection(error, request))
+          setStep("edit")
         },
       },
     )
@@ -92,6 +121,7 @@ const CreateClientScreen = (): React.ReactElement => {
     setConfirmingRestart(false)
     setAttempt((current) => current + 1)
     setOutcome(IDLE)
+    setStep("edit")
     create.reset()
   }
 
@@ -159,7 +189,7 @@ const CreateClientScreen = (): React.ReactElement => {
       {created === undefined ? (
         <Card elevated>
           <div className={STACK_LG}>
-            <FormField label="Full name" required error={invalidName ? "Use between 2 and 120 characters." : undefined}>
+            <FormField label="Full name" required error={nameError}>
               {({ id }) => (
                 <Input
                   id={id}
@@ -174,7 +204,7 @@ const CreateClientScreen = (): React.ReactElement => {
             </FormField>
 
             <div className={ADMIN_FORM_GRID}>
-              <FormField label="Email" required hint="The password link and all future mail go here.">
+              <FormField label="Email" required hint="The password link and all future mail go here." error={emailError}>
                 {({ id }) => (
                   <Input
                     id={id}
@@ -194,7 +224,7 @@ const CreateClientScreen = (): React.ReactElement => {
                 label="Phone"
                 required
                 hint="With the country code, for example +919876543210."
-                error={invalidPhone ? "Use an international number, starting with +." : undefined}
+                error={phoneError}
               >
                 {({ id }) => (
                   <Input
@@ -212,10 +242,50 @@ const CreateClientScreen = (): React.ReactElement => {
               </FormField>
             </div>
 
-            {outcome.kind === "unknown" ? null : (
-              <Button disabled={locked || incomplete} loading={create.isPending} onClick={submit} trailing>
-                Create the account and queue the password link
-              </Button>
+            {step === "review" ? (
+              <>
+                <Alert tone="info" title="Check these details before creating the account">
+                  The password link is emailed to this address as soon as the account is created.
+                </Alert>
+                <DataList>
+                  <DetailRow label="Full name">{request.fullName}</DetailRow>
+                  <DetailRow label="Email">
+                    <span className={ADMIN_CODE}>{request.email}</span>
+                  </DetailRow>
+                  <DetailRow label="Phone">
+                    <span className={ADMIN_CODE}>{normalizedPhone(request.phone)}</span>
+                  </DetailRow>
+                </DataList>
+                {outcome.kind === "unknown" ? null : (
+                  <div className={ACTION_ROW}>
+                    <Button loading={create.isPending} onClick={submit} trailing>
+                      Create the account and queue the password link
+                    </Button>
+                    <Button
+                      tone="ghost"
+                      disabled={create.isPending}
+                      onClick={() => {
+                        setStep("edit")
+                      }}
+                    >
+                      Change the details
+                    </Button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <p className={PROSE_SM}>Nothing is created or emailed until you confirm the details on the next step.</p>
+                <Button
+                  disabled={locked || incomplete}
+                  onClick={() => {
+                    setStep("review")
+                  }}
+                  trailing
+                >
+                  Review the details
+                </Button>
+              </>
             )}
           </div>
         </Card>

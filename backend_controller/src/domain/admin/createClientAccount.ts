@@ -1,6 +1,6 @@
 import type { Transaction } from "../../db/repositories.js"
 import { AppError } from "../../http/errorCatalog.js"
-import type { ApplicationWriteRepository } from "../../repositories/applicationRepository.js"
+import type { ActiveConflict, ApplicationWriteRepository } from "../../repositories/applicationRepository.js"
 import type { AuditWriteRepository } from "../../repositories/auditRepository.js"
 import type { EmailVerificationRepository } from "../../repositories/emailVerificationRepository.js"
 import type { UserWriteRepository } from "../../repositories/userRepository.js"
@@ -33,6 +33,20 @@ export interface CreatedClientAccount {
   readonly passwordLink: QueuedPasswordLink
 }
 
+const CONTACT_LABEL = { email: "email address", phone: "phone number" } as const
+
+const conflictMessage = (kind: ActiveConflict["kind"], contact: keyof typeof CONTACT_LABEL): string =>
+  kind === "user"
+    ? `An account already uses this ${CONTACT_LABEL[contact]}.`
+    : `A signup application is already in flight for this ${CONTACT_LABEL[contact]}.`
+
+const conflictError = (conflict: ActiveConflict): AppError => {
+  const contacts = conflict.matchedOn === "both" ? (["email", "phone"] as const) : [conflict.matchedOn]
+  return new AppError("STATE_CONFLICT", {
+    fields: Object.fromEntries(contacts.map((contact) => [contact, [conflictMessage(conflict.kind, contact)]])),
+  })
+}
+
 export const createClientAccount = async (
   tx: Transaction,
   deps: CreateClientAccountDeps,
@@ -48,17 +62,7 @@ export const createClientAccount = async (
     emailNormalized: input.emailNormalized,
     phoneE164: input.phoneE164,
   })
-  if (conflict !== null) {
-    throw new AppError("STATE_CONFLICT", {
-      fields: {
-        email: [
-          conflict.kind === "user"
-            ? "an account already uses this email address or phone number"
-            : "a signup application is already in flight for this email address or phone number",
-        ],
-      },
-    })
-  }
+  if (conflict !== null) throw conflictError(conflict)
 
   const now = deps.clock()
   const user = await deps.userRepository.createAdminCreatedActive(tx, {

@@ -95,9 +95,12 @@ const writes = (d: CreateClientAccountDeps): unknown[] => [
 
 describe("admin-created client accounts", () => {
   test("refuses an identity that already owns an account", async () => {
-    const d = deps({ kind: "user", userId: "other", userVersion: 1, matchedOn: "email" })
+    const d = deps({ kind: "user", userId: "other", userVersion: 1, matchedOn: "both" })
 
-    await expect(createClientAccount(TX, d, input)).rejects.toThrow()
+    await expect(createClientAccount(TX, d, input)).rejects.toMatchObject({
+      code: "STATE_CONFLICT",
+      fields: { email: [expect.any(String)], phone: [expect.any(String)] },
+    })
     expect(d.userRepository.createAdminCreatedActive).not.toHaveBeenCalled()
   })
 
@@ -108,7 +111,10 @@ describe("admin-created client accounts", () => {
       matchedOn: "phone",
     })
 
-    await expect(createClientAccount(TX, d, input)).rejects.toThrow()
+    const refusal = await createClientAccount(TX, d, input).catch((error: unknown) => error)
+
+    expect(refusal).toMatchObject({ code: "STATE_CONFLICT", fields: { phone: [expect.any(String)] } })
+    expect(refusal).not.toHaveProperty("fields.email")
     expect(d.userRepository.createAdminCreatedActive).not.toHaveBeenCalled()
   })
 

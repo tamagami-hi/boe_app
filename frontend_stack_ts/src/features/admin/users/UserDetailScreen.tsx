@@ -1,28 +1,22 @@
-import { useState } from "react"
 import { useParams } from "react-router-dom"
 
-import { isApiError } from "~/api/errors"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
-import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDate, formatDateTime } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { emailVerificationState, orderState, userAccountState } from "~/domain/status"
 import { EarlierInvestmentForm } from "~/features/admin/client-values/EarlierInvestmentForm"
-import { useAdminUser, useUserLifecycle } from "~/features/admin/shared/adminQueries"
-import type { UserLifecycle } from "~/features/admin/shared/adminQueries"
+import { useAdminUser } from "~/features/admin/shared/adminQueries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
-import { Button } from "~/ui/primitives/Button"
 import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
-import { Alert, Skeleton } from "~/ui/primitives/Feedback"
-import { FormField, Input } from "~/ui/primitives/FormField"
+import { Skeleton } from "~/ui/primitives/Feedback"
 
 import { ENTRY_TEXT, PROSE_SM } from "~/ui/recipes/datalist"
 import { ACTION_ROW } from "~/ui/recipes/layout"
@@ -30,6 +24,7 @@ import { ACTION_ROW } from "~/ui/recipes/layout"
 import { META_TEXT } from "~/ui/recipes/text"
 
 import { PasswordLinkPanel } from "./PasswordLinkPanel"
+import { UserLifecyclePanel } from "./UserLifecyclePanel"
 
 const ORDER_TYPE_LABEL = {
   lump_sum: "One-off investment",
@@ -37,57 +32,14 @@ const ORDER_TYPE_LABEL = {
   recorded_offline: "Recorded earlier investment",
 } as const
 
-const COPY: Readonly<Record<UserLifecycle, Readonly<{ title: string; description: string }>>> = {
-  suspend: {
-    title: "Suspend this account?",
-    description:
-      "Every session is revoked immediately and the investor cannot sign in or invest. Their money and values are untouched. You can reinstate them.",
-  },
-  reinstate: {
-    title: "Reinstate this account?",
-    description: "The investor can sign in and invest again. Existing sessions stay revoked.",
-  },
-  close: {
-    title: "Close this account?",
-    description:
-      "Every session is revoked and the account cannot be reopened from here. Their money and values are untouched, and their statements remain.",
-  },
-}
-
 const UserDetailScreen = (): React.ReactElement => {
   const { userId = "" } = useParams()
   const query = useAdminUser(userId)
-  const lifecycle = useUserLifecycle(userId)
   const { hasAnyPermission } = useSession()
-  const [pending, setPending] = useState<UserLifecycle | null>(null)
-  const [reason, setReason] = useState("")
-  const [failure, setFailure] = useState<string | null>(null)
 
-  const canSuspend = hasAnyPermission(["users.suspend"])
-  const canClose = hasAnyPermission(["users.close"])
   const canRecordInvestment = hasAnyPermission(["client_position.write"])
 
-  const run = (action: UserLifecycle): void => {
-    setFailure(null)
-    lifecycle.mutate(
-      { action, reasonCode: `admin_${action}`, ...(reason.trim() === "" ? {} : { reason: reason.trim() }) },
-      {
-        onError: (error) => {
-          setFailure(
-            isApiError(error)
-              ? error.message
-              : "We could not apply that change. Nothing has changed.",
-          )
-        },
-        onSuccess: () => {
-          setReason("")
-        },
-        onSettled: () => {
-          setPending(null)
-        },
-      },
-    )
-  }
+  const reloadUser = async (): Promise<boolean> => (await query.refetch()).isSuccess
 
   return (
     <Page width="wide">
@@ -107,12 +59,6 @@ const UserDetailScreen = (): React.ReactElement => {
       >
         {(data) => (
           <>
-            {failure === null ? null : (
-              <Alert tone="error" title="Nothing changed">
-                {failure}
-              </Alert>
-            )}
-
             <Card elevated>
               <DataList split>
                 <DetailRow label="Name">{data.user.fullName}</DetailRow>
@@ -170,7 +116,9 @@ const UserDetailScreen = (): React.ReactElement => {
               </Section>
             ) : null}
 
-            {data.roles.length === 0 && canRecordInvestment && data.user.accountState !== "closed" ? (
+            {data.roles.length === 0 &&
+            canRecordInvestment &&
+            (data.user.accountState === "active" || data.user.accountState === "suspended") ? (
               <Section
                 title="Record an earlier investment"
                 description="Records money this client invested before using BeOnEdge, one fund at a time. It is not a charge and not growth."
@@ -182,69 +130,12 @@ const UserDetailScreen = (): React.ReactElement => {
               </Section>
             ) : null}
 
-            <Section
-              title="Account lifecycle"
-              description="Suspending or closing an account revokes every session on it immediately."
-            >
-              <Card>
-                <FormField
-                  label="Reason"
-                  hint="Recorded in the audit log. Not shown to the investor."
-                >
-                  {({ id }) => (
-                    <Input
-                      id={id}
-                      value={reason}
-                      maxLength={2_000}
-                      onChange={(event) => {
-                        setReason(event.target.value)
-                      }}
-                    />
-                  )}
-                </FormField>
-
-                <div className={ACTION_ROW}>
-                  {data.user.accountState === "active" && canSuspend ? (
-                    <Button
-                      tone="danger"
-                      disabled={lifecycle.isPending}
-                      onClick={() => {
-                        setPending("suspend")
-                      }}
-                    >
-                      Suspend
-                    </Button>
-                  ) : null}
-                  {data.user.accountState === "suspended" && canSuspend ? (
-                    <Button
-                      disabled={lifecycle.isPending}
-                      onClick={() => {
-                        setPending("reinstate")
-                      }}
-                    >
-                      Reinstate
-                    </Button>
-                  ) : null}
-                  {data.user.accountState !== "closed" && canClose ? (
-                    <Button
-                      tone="danger"
-                      disabled={lifecycle.isPending}
-                      onClick={() => {
-                        setPending("close")
-                      }}
-                    >
-                      Close
-                    </Button>
-                  ) : null}
-                </div>
-
-                {!canSuspend && !canClose ? (
-                  <p className={PROSE_SM}>
-                    Changing an account state needs the users.suspend or users.close permission.
-                  </p>
-                ) : null}
-              </Card>
-            </Section>
+            <UserLifecyclePanel
+              userId={userId}
+              accountState={data.user.accountState}
+              reloading={query.isFetching}
+              onReload={reloadUser}
+            />
 
             <Section
               title="Recent orders"
@@ -298,22 +189,6 @@ const UserDetailScreen = (): React.ReactElement => {
               )}
             </Section>
 
-            {pending === null ? null : (
-              <ConfirmDialog
-                open
-                title={COPY[pending].title}
-                description={COPY[pending].description}
-                confirmLabel={pending === "reinstate" ? "Reinstate" : "Confirm"}
-                confirmTone={pending === "reinstate" ? "primary" : "danger"}
-                pending={lifecycle.isPending}
-                onConfirm={() => {
-                  run(pending)
-                }}
-                onCancel={() => {
-                  setPending(null)
-                }}
-              />
-            )}
           </>
         )}
       </AsyncBoundary>

@@ -52,6 +52,9 @@ const LinkStatus = ({ access }: Readonly<{ access: ClientPasswordAccess }>): Rea
         {link === null ? "None sent yet" : `${PURPOSE_LABEL[link.purpose]}, ${LINK_STATE_LABEL[link.state]}`}
       </DetailRow>
       {link === null ? null : (
+        <DetailRow label="Link created">{formatDateTime(link.createdAt)}</DetailRow>
+      )}
+      {link === null ? null : (
         <DetailRow label="Link expires">{formatDateTime(link.expiresAt)}</DetailRow>
       )}
       {link?.delivery == null ? null : (
@@ -107,6 +110,13 @@ export const PasswordLinkPanel = ({ userId, email, canReceive }: PasswordLinkPan
     )
   }
 
+  const readStatus = async (): Promise<void> => {
+    if ((await access.refetch()).isSuccess) {
+      setOutcome(IDLE)
+      setAttempt((current) => current + 1)
+    }
+  }
+
   return (
     <Card>
       {outcome.kind === "sent" ? (
@@ -124,12 +134,25 @@ export const PasswordLinkPanel = ({ userId, email, canReceive }: PasswordLinkPan
           tone="warning"
           title="Not confirmed"
           action={
-            <Button size="sm" loading={send.isPending} onClick={submit}>
-              Check again
-            </Button>
+            <span className={ACTION_ROW}>
+              <Button size="sm" loading={send.isPending} onClick={submit}>
+                Check again
+              </Button>
+              <Button
+                size="sm"
+                tone="ghost"
+                disabled={send.isPending}
+                loading={access.isFetching}
+                onClick={() => {
+                  void readStatus()
+                }}
+              >
+                Read the link status
+              </Button>
+            </span>
           }
         >
-          {`The reply did not arrive, so it is not known whether a new link was queued. Check again repeats the same request and cannot queue a second link. ${outcome.serverMessage ?? ""}`.trim()}
+          {`The reply did not arrive, so it is not known whether a new link was queued. Check again repeats the same request and cannot queue a second link. If it keeps failing, read the link status: a link created at the time you sent was queued; otherwise you can send a new one. ${outcome.serverMessage ?? ""}`.trim()}
         </Alert>
       ) : null}
 

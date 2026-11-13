@@ -12,7 +12,6 @@ import {
   reverseAdminClientLedgerEntry,
   archiveAdminFaq,
   cancelAdminMandate,
-  closeAdminUser,
   commitAdminCollectiveClientGrowth,
   createAdminFaq,
   decideAdminApplication,
@@ -37,10 +36,8 @@ import {
   publishAdminAppConfig,
   reconcileAdminMandate,
   reconcileAdminRefund,
-  reinstateAdminUser,
   retryAdminRefund,
   setAdminFaqStatus,
-  suspendAdminUser,
 } from "~/api/generated/operations"
 import { mintIdempotencyKey } from "~/api/idempotency"
 import type { DataOf } from "~/api/http"
@@ -155,45 +152,6 @@ export const useAdminUserLoginEvents = (
         params: { userId },
         query: { limit: LIST_LIMIT, after },
       }),
-  })
-}
-
-export type UserLifecycle = "suspend" | "reinstate" | "close"
-
-const USER_LIFECYCLE = {
-  suspend: suspendAdminUser,
-  reinstate: reinstateAdminUser,
-  close: closeAdminUser,
-} as const
-
-export const useUserLifecycle = (
-  userId: string,
-): UseMutationResult<
-  void,
-  Error,
-  Readonly<{ action: UserLifecycle; reasonCode?: string; reason?: string }>
-> => {
-  const api = useApi()
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async ({
-      action,
-      reasonCode,
-      reason,
-    }: Readonly<{ action: UserLifecycle; reasonCode?: string; reason?: string }>) => {
-      await api.request(USER_LIFECYCLE[action], {
-        params: { userId },
-        body: {
-          ...(reasonCode === undefined || reasonCode === "" ? {} : { reasonCode }),
-          ...(reason === undefined || reason === "" ? {} : { reason }),
-        },
-        idempotencyKey: mintIdempotencyKey(),
-      })
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: qk.admin.user(userId) })
-      await queryClient.invalidateQueries({ queryKey: ["admin", "users"] })
-    },
   })
 }
 

@@ -35,7 +35,10 @@ const fill = (): void => {
   fireEvent.change(screen.getByLabelText(/^Phone/u), { target: { value: "+919876543210" } })
 }
 
-const createButton = (): HTMLElement => screen.getByRole("button", { name: /Create the account/u })
+const submitReviewed = (): void => {
+  fireEvent.click(screen.getByRole("button", { name: "Review the details" }))
+  fireEvent.click(screen.getByRole("button", { name: /Create the account/u }))
+}
 
 const isLocked = (label: RegExp): boolean => screen.getByLabelText(label).hasAttribute("disabled")
 
@@ -62,10 +65,25 @@ beforeEach(() => {
   fill()
 })
 
+describe("reviewing a new client before anything is created", () => {
+  it("sends nothing and locks the details until the admin confirms them", () => {
+    fireEvent.click(screen.getByRole("button", { name: "Review the details" }))
+
+    expect(sent).toHaveLength(0)
+    expect(screen.getByText("+919876543210")).toBeTruthy()
+    expect(isLocked(/^Email/u)).toBe(true)
+
+    fireEvent.click(screen.getByRole("button", { name: "Change the details" }))
+
+    expect(sent).toHaveLength(0)
+    expect(isLocked(/^Email/u)).toBe(false)
+  })
+})
+
 describe("creating a client when the reply is lost", () => {
   it("holds the form and resends the very same key and body on Check again", () => {
     nextFailure = new TransportError("timeout", "The request timed out.")
-    fireEvent.click(createButton())
+    submitReviewed()
 
     expect(screen.getByText("Not confirmed")).toBeTruthy()
     expect(isLocked(/^Email/u)).toBe(true)
@@ -78,7 +96,7 @@ describe("creating a client when the reply is lost", () => {
 
   it("treats a gateway failure as unknown too, and does not unlock the form", () => {
     nextFailure = new ApiError({ code: "INTERNAL_ERROR", message: "Bad gateway", status: 502, retryable: true })
-    fireEvent.click(createButton())
+    submitReviewed()
 
     expect(screen.getByText("Not confirmed")).toBeTruthy()
     expect(isLocked(/Full name/u)).toBe(true)
@@ -86,12 +104,12 @@ describe("creating a client when the reply is lost", () => {
 
   it("mints a new key only after the admin confirms a new attempt", () => {
     nextFailure = new TransportError("offline", "Unreachable")
-    fireEvent.click(createButton())
+    submitReviewed()
     fireEvent.click(screen.getByRole("button", { name: "Start a new attempt" }))
     fireEvent.click(lastOf(screen.getAllByRole("button", { name: "Start a new attempt" })))
 
     nextFailure = new ApiError({ code: "VALIDATION_FAILED", message: "Check the details", status: 400, retryable: false })
-    fireEvent.click(createButton())
+    submitReviewed()
 
     expect(sent).toHaveLength(2)
     expect(sent[1]?.idempotencyKey).not.toBe(sent[0]?.idempotencyKey)
@@ -102,13 +120,13 @@ describe("creating a client when the reply is lost", () => {
 describe("creating a client when the server refuses", () => {
   it("unlocks the form, keeps the key for the same body, and changes it for a corrected one", () => {
     nextFailure = new ApiError({ code: "VALIDATION_FAILED", message: "Check the details", status: 400, retryable: false })
-    fireEvent.click(createButton())
+    submitReviewed()
     expect(screen.getByText("Not created")).toBeTruthy()
     expect(isLocked(/^Email/u)).toBe(false)
 
-    fireEvent.click(createButton())
+    submitReviewed()
     fireEvent.change(screen.getByLabelText(/^Email/u), { target: { value: "asha.verma@example.com" } })
-    fireEvent.click(createButton())
+    submitReviewed()
 
     expect(sent).toHaveLength(3)
     expect(sent[1]?.idempotencyKey).toBe(sent[0]?.idempotencyKey)
