@@ -7,6 +7,7 @@ import { z } from "zod"
 import { ErrorEnvelope } from "../src/envelope.js"
 import { ERROR_DEFINITIONS } from "../src/errors.js"
 import type { ErrorCode } from "../src/errors.js"
+import { ADMIN_CLIENT_CONTACT_OPERATIONS } from "../src/operations/admin-client-contacts.js"
 import { ADMIN_CONTENT_OPERATIONS } from "../src/operations/admin-content.js"
 import { ADMIN_EMAIL_OPERATIONS } from "../src/operations/admin-email.js"
 import { ADMIN_FUND_AUM_OPERATIONS } from "../src/operations/admin-fund-aum.js"
@@ -64,6 +65,7 @@ export const ALL_OPERATIONS: readonly GeneratableOperation[] = Object.freeze([
   ...ADMIN_MONEY_OPERATIONS,
   ...ADMIN_MATURITY_OPERATIONS,
   ...ADMIN_OVERSIGHT_OPERATIONS,
+  ...ADMIN_CLIENT_CONTACT_OPERATIONS,
   ...ADMIN_EMAIL_OPERATIONS,
 ])
 

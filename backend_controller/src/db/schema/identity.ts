@@ -214,3 +214,20 @@ export interface EmailChangeRequestsTable {
   created_at: TimestampDefault
   consumed_at: NullableTimestamp
 }
+
+export type UserContactChangeKind = "admin_correction" | "closed_release"
+
+export interface UserContactHistoryTable {
+  id: Generated<string>
+  user_id: string
+  change_kind: UserContactChangeKind
+  previous_email_normalized: string
+  previous_phone_e164: string
+  new_email_normalized: string
+  new_phone_e164: string
+  actor_user_id: string
+  request_id: string
+  reason_code: Nullable<string>
+  reason_detail: Nullable<string>
+  created_at: TimestampDefault
+}

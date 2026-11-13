@@ -69,7 +69,10 @@ export const issuePasswordToken = async (
   if (user.account_state !== "active") throw new AppError("ACCOUNT_NOT_ACTIVE")
   const credential = await deps.credentialRepository.lockByUserId(tx, input.userId as UserId)
 
-  const latest = await deps.passwordTokenRepository.latestCreatedAt(tx, input.userId)
+  const latest = await deps.passwordTokenRepository.latestCreatedAt(tx, {
+    userId: input.userId,
+    emailRevision: user.email_revision,
+  })
   if (latest !== null && now.getTime() - latest.getTime() < deps.config.requestCooldownMs) {
     throw new AppError("RATE_LIMITED", {
       retryAfterSeconds: Math.ceil(deps.config.requestCooldownMs / 1000),

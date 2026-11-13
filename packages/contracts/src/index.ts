@@ -1,5 +1,6 @@
 export * from "./envelope.js"
 export * from "./errors.js"
+export * from "./operations/admin-client-contacts.js"
 export * from "./operations/admin-content.js"
 export * from "./operations/admin-email.js"
 export * from "./operations/admin-fund-aum.js"

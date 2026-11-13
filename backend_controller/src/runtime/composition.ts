@@ -48,6 +48,7 @@ import { createMandatesRepository } from "../repositories/mandatesRepository.js"
 import { createAdminMandateRepository } from "../repositories/adminMandateRepository.js"
 import { createLoginEventRepository } from "../repositories/loginEventRepository.js"
 import { createOutboxRepository } from "../repositories/outboxRepository.js"
+import { createUserContactRepository } from "../repositories/userContactRepository.js"
 import { createUserRepository } from "../repositories/userRepository.js"
 import { createFixedWindowRateLimiter } from "../http/rateLimit.js"
 import { registerAdminIdentityRoutes } from "../routes/adminIdentityRoutes.js"
@@ -445,6 +446,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       webAuth,
       unitOfWork,
       idempotencyRepository,
+      userContactRepository: createUserContactRepository(),
       clock,
       crypto,
       applicationRepository,

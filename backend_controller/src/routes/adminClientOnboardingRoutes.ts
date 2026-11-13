@@ -14,6 +14,8 @@ import { requirePasswordLinkBase } from "../domain/auth/passwordLinkUrl.js"
 import { normalizePhone } from "../domain/shared/phoneNumber.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { parseOrThrow } from "../http/validation.js"
+import type { UserContactRepository } from "../repositories/userContactRepository.js"
+import { registerAdminClientContactRoutes } from "./adminClientContactRoutes.js"
 import {
   adminIdempotencyScope,
   hashRequest,
@@ -32,6 +34,7 @@ export interface AdminClientOnboardingDeps extends CreateClientAccountDeps {
   readonly webAuth: WebAuthDeps
   readonly unitOfWork: UnitOfWork
   readonly idempotencyRepository: IdempotencyRepository
+  readonly userContactRepository: UserContactRepository
   readonly config: CreateClientAccountDeps["config"] & { readonly idempotencyTtlMs: number }
 }
 
@@ -194,4 +197,5 @@ export const registerAdminClientOnboardingRoutes = (
   application.post(CLIENTS_ROUTE, (request, reply) => createClient(deps, request, reply))
   application.post(PASSWORD_LINK_ROUTE, (request, reply) => sendPasswordLink(deps, request, reply))
   application.get(PASSWORD_LINK_ROUTE, (request, reply) => getPasswordAccess(deps, request, reply))
+  registerAdminClientContactRoutes(application, deps)
 }

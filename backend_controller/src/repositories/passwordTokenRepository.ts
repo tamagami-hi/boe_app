@@ -59,7 +59,7 @@ export interface PasswordTokenRepository {
   lockActive: (tx: Transaction, userId: string) => Promise<PasswordCredentialToken | null>
   findActiveByHash: (tx: Transaction, tokenHash: Buffer) => Promise<PasswordCredentialToken | null>
   lockActiveByHash: (tx: Transaction, tokenHash: Buffer) => Promise<PasswordCredentialToken | null>
-  latestCreatedAt: (tx: Transaction, userId: string) => Promise<Date | null>
+  latestCreatedAt: (tx: Transaction, input: Readonly<{ userId: string; emailRevision: string }>) => Promise<Date | null>
   findValidityContext: (tx: Transaction, tokenId: string) => Promise<PasswordTokenValidityContext | null>
   findLatestLink: (tx: Transaction, userId: string) => Promise<LatestPasswordLink | null>
   consumeActive: (tx: Transaction, input: Readonly<{ userId: string; now: Date }>) => Promise<void>
@@ -145,11 +145,12 @@ export const createPasswordTokenRepository = (): PasswordTokenRepository => ({
     return row === undefined ? null : mapToken(row)
   },
 
-  latestCreatedAt: async (tx, userId) => {
+  latestCreatedAt: async (tx, input) => {
     const row = await tx
       .selectFrom("password_credential_tokens")
       .select("created_at")
-      .where("user_id", "=", userId)
+      .where("user_id", "=", input.userId)
+      .where("bound_email_revision", "=", input.emailRevision)
       .orderBy("created_at", "desc")
       .limit(1)
       .executeTakeFirst()

@@ -22,6 +22,7 @@ import { createIdempotencyRepository } from "../../src/repositories/idempotencyR
 import { createIdentityLockRepository } from "../../src/repositories/identityLockRepository.js"
 import { createLoginEventRepository } from "../../src/repositories/loginEventRepository.js"
 import type { OutboxWriteRepository } from "../../src/repositories/outboxRepository.js"
+import { createUserContactRepository } from "../../src/repositories/userContactRepository.js"
 import { registerAdminClientOnboardingRoutes } from "../../src/routes/adminClientOnboardingRoutes.js"
 import { registerAdminIdentityRoutes, type AdminIdentityDeps } from "../../src/routes/adminIdentityRoutes.js"
 import { registerPasswordRoutes, type PasswordRoutesDeps } from "../../src/routes/passwordRoutes.js"
@@ -92,6 +93,7 @@ const buildApp = (options: AppOptions = {}): FastifyInstance => {
         applicationRepository: createApplicationRepository(),
         identityLockRepository: createIdentityLockRepository(),
         emailVerificationRepository: createEmailVerificationRepository(),
+        userContactRepository: createUserContactRepository(),
         config: { ...mail.config, idempotencyTtlMs: 86_400_000 },
       })
       registerPasswordRoutes(instance, {

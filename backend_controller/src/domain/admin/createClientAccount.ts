@@ -35,7 +35,7 @@ export interface CreatedClientAccount {
 
 const CONTACT_LABEL = { email: "email address", phone: "phone number" } as const
 
-const conflictMessage = (kind: ActiveConflict["kind"], contact: keyof typeof CONTACT_LABEL): string =>
+export const contactConflictMessage = (kind: ActiveConflict["kind"], contact: keyof typeof CONTACT_LABEL): string =>
   kind === "user"
     ? `An account already uses this ${CONTACT_LABEL[contact]}.`
     : `A signup application is already in flight for this ${CONTACT_LABEL[contact]}.`
@@ -43,7 +43,7 @@ const conflictMessage = (kind: ActiveConflict["kind"], contact: keyof typeof CON
 const conflictError = (conflict: ActiveConflict): AppError => {
   const contacts = conflict.matchedOn === "both" ? (["email", "phone"] as const) : [conflict.matchedOn]
   return new AppError("STATE_CONFLICT", {
-    fields: Object.fromEntries(contacts.map((contact) => [contact, [conflictMessage(conflict.kind, contact)]])),
+    fields: Object.fromEntries(contacts.map((contact) => [contact, [contactConflictMessage(conflict.kind, contact)]])),
   })
 }
 
