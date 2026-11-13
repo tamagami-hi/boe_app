@@ -1,11 +1,14 @@
 import type { FastifyInstance } from "fastify"
 
 import { createFixedWindowRateLimiter } from "../http/rateLimit.js"
+import { createAccountingReportRepository } from "../repositories/accountingReportRepository.js"
 import { createAdminCatalogRepository } from "../repositories/adminCatalogRepository.js"
 import { createAdminOversightRepository } from "../repositories/adminOversightRepository.js"
+import { createAuditTrailRepository } from "../repositories/auditTrailRepository.js"
 import { createClientReturnsRepository } from "../repositories/clientReturnsRepository.js"
 import { createFundAumRepository } from "../repositories/fundAumRepository.js"
 import { createMaturityRepository } from "../repositories/maturityRepository.js"
+import { registerAdminAuditTrailRoutes } from "../routes/adminAuditTrailRoutes.js"
 import { registerAdminAumRoutes } from "../routes/adminAumRoutes.js"
 import { registerAdminCatalogRoutes } from "../routes/adminCatalogRoutes.js"
 import { registerAdminClientGrowthRoutes, type AdminClientGrowthDeps } from "../routes/adminClientGrowthRoutes.js"
@@ -16,6 +19,7 @@ import { registerAdminFundReceiptRoutes, type AdminFundReceiptDeps } from "../ro
 import { registerAdminIdentityRoutes, type AdminIdentityDeps } from "../routes/adminIdentityRoutes.js"
 import { registerAdminMaturityRoutes, type AdminMaturityDeps } from "../routes/adminMaturityRoutes.js"
 import { registerAdminOversightRoutes, type AdminOversightDeps } from "../routes/adminOversightRoutes.js"
+import { registerAdminReportRoutes } from "../routes/adminReportRoutes.js"
 import { registerAdminSupportRoutes, type AdminSupportDeps } from "../routes/adminSupportRoutes.js"
 import type { ServerConfig } from "./environment.js"
 import { registerRecordingSurface, type RecordingSurfaceDeps } from "./recordingComposition.js"
@@ -180,6 +184,10 @@ export const registerAdminSurface = (application: FastifyInstance, deps: AdminSu
     webAuth, database, clock, config: { cursorKey: serverConfig.cursorKey },
     clientReturnsRepository: createClientReturnsRepository(), clientPositionRepository,
   })
+
+  const readDeps = { webAuth, database, clock, config: { cursorKey: serverConfig.cursorKey } }
+  registerAdminReportRoutes(application, { ...readDeps, accountingReportRepository: createAccountingReportRepository() })
+  registerAdminAuditTrailRoutes(application, { ...readDeps, auditTrailRepository: createAuditTrailRepository() })
 
   registerAdminMaturityRoutes(application, {
     webAuth,
