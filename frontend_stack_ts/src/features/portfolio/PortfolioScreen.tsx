@@ -6,6 +6,8 @@ import { Section } from "~/app/layouts/Section"
 import { toPaise } from "~/domain/money"
 import { countOf } from "~/domain/plural"
 import { formatPercent } from "~/domain/percent"
+import { INVESTMENTS_RECORDED_NOTE } from "~/features/investing/InvestmentsRecorded"
+import { useOnlinePaymentsOff } from "~/features/investing/onlinePayments"
 import { useFundCatalogue, usePortfolio } from "~/features/shared/queries"
 import { cx } from "~/lib/cx"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
@@ -26,6 +28,7 @@ import { POOL_META, POOL_TOP } from "./portfolio.recipe"
 const PortfolioScreen = (): React.ReactElement => {
   const query = usePortfolio()
   const funds = useFundCatalogue()
+  const paymentsOff = useOnlinePaymentsOff()
 
   const nameFor = (fundId: string): string =>
     funds.data?.items.find((fund) => fund.id === fundId)?.name ?? "Fund"
@@ -49,11 +52,17 @@ const PortfolioScreen = (): React.ReactElement => {
         empty={
           <EmptyState
             title="You have not invested yet"
-            description="Your holdings will appear here once your first investment is complete."
+            description={
+              paymentsOff
+                ? INVESTMENTS_RECORDED_NOTE
+                : "Your holdings will appear here once your first investment is complete."
+            }
             action={
-              <ButtonLink to="/funds">
-Browse funds
-</ButtonLink>
+              paymentsOff ? null : (
+                <ButtonLink to="/funds">
+                  Browse funds
+                </ButtonLink>
+              )
             }
           />
         }
