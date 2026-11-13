@@ -1,6 +1,8 @@
 import { toPaise } from "~/domain/money"
+import type { StatusTone } from "~/domain/status"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
+import { Badge } from "~/ui/primitives/Badge"
 import { Input } from "~/ui/primitives/FormField"
 import { FIELD_ERROR, FIELD_HINT } from "~/ui/recipes/field"
 import { STACK_SM } from "~/ui/recipes/layout"
@@ -14,6 +16,22 @@ export type ValueUpdateSheetTableProps = Readonly<{
   locked: boolean
   onInput: (userId: string, text: string) => void
 }>
+
+const ACCOUNT_BADGES: Readonly<Partial<Record<string, Readonly<{ label: string; tone: StatusTone }>>>> = {
+  invited: { label: "Invited", tone: "info" },
+  suspended: { label: "Suspended", tone: "warning" },
+  closed: { label: "Closed", tone: "negative" },
+}
+
+const ClientCell = ({ position }: Readonly<{ position: SheetPosition }>): React.ReactElement => {
+  const badge = ACCOUNT_BADGES[position.accountState]
+  return (
+    <div className={STACK_SM}>
+      <span>{position.fullName}</span>
+      {badge === undefined ? null : <Badge tone={badge.tone}>{badge.label}</Badge>}
+    </div>
+  )
+}
 
 type RowOutcomeProps = Readonly<{ id: string; row: RowPlan | undefined }>
 
@@ -45,7 +63,7 @@ export const ValueUpdateSheetTable = ({
     rows={positions}
     rowKey={(row) => row.userId}
     columns={[
-      { key: "client", header: "Client", render: (row) => row.fullName },
+      { key: "client", header: "Client", render: (row) => <ClientCell position={row} /> },
       {
         key: "invested",
         header: "Invested",

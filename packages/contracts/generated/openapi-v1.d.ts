@@ -19110,6 +19110,8 @@ export interface operations {
                                 /** Format: uuid */
                                 userId: string;
                                 fullName: string;
+                                /** @enum {string} */
+                                accountState: "invited" | "active" | "suspended" | "closed";
                                 investedPaise: string;
                                 currentValuePaise: string;
                                 gainPaise: string;

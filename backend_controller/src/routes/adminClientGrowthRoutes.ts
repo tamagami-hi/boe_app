@@ -594,6 +594,7 @@ const fundPositions = async (
       items: rows.map((row) => ({
         userId: row.userId,
         fullName: row.fullName,
+        accountState: row.accountState,
         investedPaise: row.principalPaise,
         currentValuePaise: row.currentValuePaise,
         gainPaise: (BigInt(row.currentValuePaise) - BigInt(row.principalPaise)).toString(),

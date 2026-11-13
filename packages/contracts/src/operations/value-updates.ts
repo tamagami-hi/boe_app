@@ -2,6 +2,7 @@ import { z } from "zod"
 
 import { createPaginatedSuccessEnvelopeSchema, createSuccessEnvelopeSchema } from "../envelope.js"
 import { IsoDateTime, SignedPaise, Uuid } from "../scalars.js"
+import { AdminUserAccountState } from "./admin-oversight.js"
 import { ADMIN_READ_ERRORS } from "./admin-shared.js"
 import { IsoDate, ListQuery } from "./client.js"
 import { defineOperation } from "./descriptor.js"
@@ -43,6 +44,7 @@ export const listClientValueUpdates = defineOperation({
 export const AdminFundClientPosition = z.strictObject({
   userId: Uuid,
   fullName: z.string(),
+  accountState: AdminUserAccountState,
   investedPaise: SignedPaise,
   currentValuePaise: SignedPaise,
   gainPaise: SignedPaise,

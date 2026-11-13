@@ -5,6 +5,7 @@ export const MAX_SHEET_CHANGES = 500
 export type SheetPosition = Readonly<{
   userId: string
   fullName: string
+  accountState: string
   investedPaise: string
   currentValuePaise: string
   gainPaise: string

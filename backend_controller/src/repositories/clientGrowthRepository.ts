@@ -17,7 +17,7 @@ import { sql } from "kysely"
 import { lockClientPosition } from "./clientPositionLock.js"
 
 import type { Transaction } from "../db/repositories.js"
-import type { GrowthInstructionType, GrowthScope } from "../db/types.js"
+import type { GrowthInstructionType, GrowthScope, UserAccountState } from "../db/types.js"
 
 export interface ClientPositionBasisRow {
   readonly userId: string
@@ -37,6 +37,7 @@ export interface ClientUserPositionRow {
 export interface ClientFundPositionRow {
   readonly userId: string
   readonly fullName: string
+  readonly accountState: UserAccountState
   readonly principalPaise: string
   readonly currentValuePaise: string
 }
@@ -130,6 +131,7 @@ const namedFundPositionsQuery = (fundId: string) => sql<ClientFundPositionRow>`
   select
     b."userId",
     u.full_name as "fullName",
+    u.account_state as "accountState",
     b."principalPaise",
     b."currentValuePaise"
   from (${positionBasisQuery(fundId, null)}) b

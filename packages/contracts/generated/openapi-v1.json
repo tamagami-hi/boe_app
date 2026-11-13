@@ -33990,6 +33990,15 @@
                               "fullName": {
                                 "type": "string"
                               },
+                              "accountState": {
+                                "type": "string",
+                                "enum": [
+                                  "invited",
+                                  "active",
+                                  "suspended",
+                                  "closed"
+                                ]
+                              },
                               "investedPaise": {
                                 "type": "string",
                                 "pattern": "^-?(0|[1-9][0-9]*)$/u"
@@ -34006,6 +34015,7 @@
                             "required": [
                               "userId",
                               "fullName",
+                              "accountState",
                               "investedPaise",
                               "currentValuePaise",
                               "gainPaise"

@@ -63,7 +63,7 @@ const ValueUpdatesScreen = (): React.ReactElement => {
                 <div className={cx(POOL_META, META_MUTED)}>
                   <span>Date</span>
                   <span>{formatDate(`${update.date}T00:00:00Z`)}</span>
-                  <span>Value after</span>
+                  <span>Value after this update</span>
                   <MoneyValue amount={toPaise(update.valueAfterPaise)} size="sm" tone="muted" />
                 </div>
                 {update.entryId === highlighted ? <Badge tone="info">From your notification</Badge> : null}

@@ -12,6 +12,7 @@ import type { SheetPosition } from "./valueUpdateSheet"
 const ASHA: SheetPosition = {
   userId: "asha",
   fullName: "Asha Rao",
+  accountState: "active",
   investedPaise: "1000000",
   currentValuePaise: "1052525",
   gainPaise: "52525",
@@ -19,6 +20,7 @@ const ASHA: SheetPosition = {
 const BALA: SheetPosition = {
   userId: "bala",
   fullName: "Bala Iyer",
+  accountState: "active",
   investedPaise: "250000",
   currentValuePaise: "239999",
   gainPaise: "-10001",
@@ -26,6 +28,7 @@ const BALA: SheetPosition = {
 const CHITRA: SheetPosition = {
   userId: "chitra",
   fullName: "Chitra Nair",
+  accountState: "active",
   investedPaise: "500000",
   currentValuePaise: "0",
   gainPaise: "-500000",
@@ -33,6 +36,7 @@ const CHITRA: SheetPosition = {
 const DEV: SheetPosition = {
   userId: "dev",
   fullName: "Dev Shah",
+  accountState: "active",
   investedPaise: "300000",
   currentValuePaise: "300000",
   gainPaise: "0",

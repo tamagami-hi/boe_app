@@ -42,6 +42,7 @@ interface Session {
 interface Position {
   readonly userId: string
   readonly fullName: string
+  readonly accountState: string
   readonly investedPaise: string
   readonly currentValuePaise: string
   readonly gainPaise: string
@@ -333,14 +334,15 @@ afterAll(async () => {
 describe("monthly value-update sheet", () => {
   test("lists each client's invested, current value and gain, and lands each typed gain exactly", async () => {
     const sheet = await seedSheet()
+    await pool.query("update users set account_state = 'closed', closed_at = now() where id = $1", [sheet.chitra.userId])
 
     const before = await fundPositions(sheet.fund.fundId)
     expect(before.statusCode).toBe(200)
     expect(dataOf<{ items: Position[] }>(before).items).toEqual([
-      { userId: sheet.asha.userId, fullName: "Asha Rao", investedPaise: "1000000", currentValuePaise: "1052525", gainPaise: "52525" },
-      { userId: sheet.bala.userId, fullName: "Bala Iyer", investedPaise: "250000", currentValuePaise: "239999", gainPaise: "-10001" },
-      { userId: sheet.chitra.userId, fullName: "Chitra Nair", investedPaise: "500000", currentValuePaise: "0", gainPaise: "-500000" },
-      { userId: sheet.dev.userId, fullName: "Dev Shah", investedPaise: "300000", currentValuePaise: "300000", gainPaise: "0" },
+      { userId: sheet.asha.userId, fullName: "Asha Rao", accountState: "active", investedPaise: "1000000", currentValuePaise: "1052525", gainPaise: "52525" },
+      { userId: sheet.bala.userId, fullName: "Bala Iyer", accountState: "active", investedPaise: "250000", currentValuePaise: "239999", gainPaise: "-10001" },
+      { userId: sheet.chitra.userId, fullName: "Chitra Nair", accountState: "closed", investedPaise: "500000", currentValuePaise: "0", gainPaise: "-500000" },
+      { userId: sheet.dev.userId, fullName: "Dev Shah", accountState: "active", investedPaise: "300000", currentValuePaise: "300000", gainPaise: "0" },
     ])
 
     const items = [
