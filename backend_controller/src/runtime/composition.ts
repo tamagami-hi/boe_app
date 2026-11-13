@@ -51,33 +51,16 @@ import { createLoginEventRepository } from "../repositories/loginEventRepository
 import { createOutboxRepository } from "../repositories/outboxRepository.js"
 import { createUserContactRepository } from "../repositories/userContactRepository.js"
 import { createUserRepository } from "../repositories/userRepository.js"
-import { createFixedWindowRateLimiter } from "../http/rateLimit.js"
-import { registerAdminIdentityRoutes } from "../routes/adminIdentityRoutes.js"
-import { registerAdminAumRoutes } from "../routes/adminAumRoutes.js"
-import { registerAdminFundGrowthPreviewRoutes } from "../routes/adminFundGrowthPreviewRoutes.js"
-import { registerAdminFundReceiptRoutes } from "../routes/adminFundReceiptRoutes.js"
-import { registerAdminCatalogRoutes } from "../routes/adminCatalogRoutes.js"
-import { registerAdminClientGrowthRoutes } from "../routes/adminClientGrowthRoutes.js"
-import { registerAdminContentRoutes } from "../routes/adminContentRoutes.js"
-import { registerAdminOversightRoutes } from "../routes/adminOversightRoutes.js"
-import { registerAdminSupportRoutes } from "../routes/adminSupportRoutes.js"
-import { createAdminCatalogRepository } from "../repositories/adminCatalogRepository.js"
-import { createFundAumRepository } from "../repositories/fundAumRepository.js"
 import { createAdminContentRepository } from "../repositories/adminContentRepository.js"
-import { createAdminOversightRepository } from "../repositories/adminOversightRepository.js"
-import { createMaturityRepository } from "../repositories/maturityRepository.js"
-import { registerAdminMaturityRoutes } from "../routes/adminMaturityRoutes.js"
 import { createClientGrowthRepository } from "../repositories/clientGrowthRepository.js"
 import { createClientPositionRepository } from "../repositories/clientPositionRepository.js"
-import { createClientReturnsRepository } from "../repositories/clientReturnsRepository.js"
-import { registerAdminClientReturnRoutes } from "../routes/adminClientReturnRoutes.js"
 import { registerClientAccountRoutes } from "../routes/clientAccountRoutes.js"
 import { registerClientEmailVerificationRoutes } from "../routes/clientEmailVerificationRoutes.js"
 import { createEmailChangeRepository } from "../repositories/emailChangeRepository.js"
 import { registerClientProfileRoutes } from "../routes/clientProfileRoutes.js"
 import { registerPasswordRoutes } from "../routes/passwordRoutes.js"
 import { registerAdminEmailSurface } from "./adminEmailComposition.js"
-import { registerRecordingSurface } from "./recordingComposition.js"
+import { registerAdminSurface } from "./adminComposition.js"
 import { registerAdminClientOnboardingRoutes } from "../routes/adminClientOnboardingRoutes.js"
 import { createPasswordTokenRepository } from "../repositories/passwordTokenRepository.js"
 import { registerClientOrderRoutes } from "../routes/clientOrderRoutes.js"
@@ -545,169 +528,13 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       logger: application.log,
     })
 
-    registerAdminIdentityRoutes(application, {
-      webAuth,
-      unitOfWork,
-      database,
-      clock,
-      crypto,
-      config: {
-        cursorKey: serverConfig.cursorKey,
-        idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
-        sesConfigurationSet: serverConfig.sesConfigurationSet,
-      },
-      appUpdate: serverConfig.appUpdate,
-      applicationRepository,
-      identityLockRepository,
-      applicationReviewRepository,
-      userRepository,
-      credentialRepository,
-      outboxRepository,
-      emailDeliveryRepository,
-      auditRepository,
-      idempotencyRepository,
-    })
-
-    registerAdminContentRoutes(application, {
-      cache,
-      webAuth,
-      unitOfWork,
-      database,
-      clock,
-      config: {
-        cursorKey: serverConfig.cursorKey,
-        idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
-      },
-      contentRepository: adminContentRepository,
-      auditRepository,
-      idempotencyRepository,
-    })
-
-    const fundAumRepository = createFundAumRepository()
-
-    registerAdminCatalogRoutes(application, {
-      webAuth,
-      unitOfWork,
-      database,
-      clock,
-      cache,
-      config: {
-        cursorKey: serverConfig.cursorKey,
-        idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
-      },
-      catalogRepository: createAdminCatalogRepository(),
-      aumRepository: fundAumRepository,
-      auditRepository,
-      idempotencyRepository,
-    })
-
-    const adminAumDeps = {
-      cache,
-      webAuth,
-      unitOfWork,
-      database,
-      clock,
-      config: {
-        cursorKey: serverConfig.cursorKey,
-        idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
-        maxGrowthBasisPoints: serverConfig.fundAum.maxGrowthBasisPoints,
-      },
-      aumRepository: fundAumRepository,
-      auditRepository,
-      idempotencyRepository,
-      rateLimiter: createFixedWindowRateLimiter(
-        {
-          windowMs: serverConfig.fundAum.rateLimitWindowMs,
-          maxRequests: serverConfig.fundAum.rateLimitMaxRequests,
-        },
-        clock,
-      ),
-    }
-    registerAdminAumRoutes(application, adminAumDeps)
-    registerAdminFundGrowthPreviewRoutes(application, adminAumDeps)
-
-    registerAdminOversightRoutes(application, {
-      webAuth,
-      unitOfWork,
-      database,
-      clock,
-      config: {
-        cursorKey: serverConfig.cursorKey,
-        idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
-      },
-      oversightRepository: createAdminOversightRepository(),
-      loginEventRepository,
-      auditRepository,
-      idempotencyRepository,
-      authSessionRepository,
-    })
-
-    registerAdminSupportRoutes(application, {
-      webAuth,
-      unitOfWork,
-      clock,
-      config: { cursorKey: serverConfig.cursorKey, idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
-      auditRepository,
-      idempotencyRepository,
-      notificationRepository,
-    })
-
-    registerAdminClientGrowthRoutes(application, {
-      webAuth,
-      unitOfWork,
-      database,
-      clock,
-      config: {
-        idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
-      },
-      clientGrowthRepository,
-      auditRepository,
-      idempotencyRepository,
-      notificationRepository,
-    })
-
-    registerRecordingSurface(application, {
-      webAuth, accessTokenService, clientWeb, unitOfWork, database, clock, outboxRepository, emailDeliveryRepository, crypto,
-      clientPositionRepository, clientGrowthRepository, userRepository, auditRepository, idempotencyRepository, notificationRepository,
-      config: {
-        idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
-        cursorKey: serverConfig.cursorKey,
-        sesConfigurationSet: serverConfig.sesConfigurationSet,
-      },
-    })
-
-    registerAdminClientReturnRoutes(application, {
-      webAuth, database, clock, config: { cursorKey: serverConfig.cursorKey },
-      clientReturnsRepository: createClientReturnsRepository(), clientPositionRepository,
-    })
-
-    registerAdminMaturityRoutes(application, {
-      webAuth,
-      unitOfWork,
-      database,
-      clock,
-      config: { idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
-      maturityRepository: createMaturityRepository(),
-      clientGrowthRepository,
-      auditRepository,
-      idempotencyRepository,
-      notificationRepository,
-    })
-
-    registerAdminFundReceiptRoutes(application, {
-      webAuth,
-      unitOfWork,
-      database,
-      clock,
-      config: { cursorKey: serverConfig.cursorKey, idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
-      acknowledgementRepository: fundReceiptAcknowledgementRepository,
-      paymentsRepository,
-      settlementRepository,
-      refundRepository,
-      paymentGateway,
-      auditRepository,
-      idempotencyRepository,
-      notificationRepository,
+    registerAdminSurface(application, {
+      webAuth, unitOfWork, database, clock, crypto, cache, accessTokenService, clientWeb, serverConfig,
+      applicationRepository, identityLockRepository, applicationReviewRepository, userRepository,
+      credentialRepository, outboxRepository, emailDeliveryRepository, auditRepository, idempotencyRepository,
+      adminContentRepository, loginEventRepository, authSessionRepository, notificationRepository,
+      clientGrowthRepository, clientPositionRepository, fundReceiptAcknowledgementRepository,
+      paymentsRepository, settlementRepository, refundRepository, paymentGateway,
     })
     const { awsRegion, topicArn, ttlMs } = serverConfig.providerEvents
     if (awsRegion !== null && topicArn !== null) {
