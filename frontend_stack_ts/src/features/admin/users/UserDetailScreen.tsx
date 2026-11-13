@@ -28,6 +28,7 @@ import { META_TEXT } from "~/ui/recipes/text"
 import { ClientContactsSection } from "./ClientContactsSection"
 import { ClientHubActions } from "./ClientHubActions"
 import { ClientHubTabs } from "./ClientHubTabs"
+import { ClientNomineeSection } from "./ClientNomineeSection"
 import { PasswordLinkPanel } from "./PasswordLinkPanel"
 import { UserLifecyclePanel } from "./UserLifecyclePanel"
 
@@ -153,6 +154,10 @@ const UserDetailScreen = (): React.ReactElement => {
 
             {data.roles.length === 0 ? (
               <ClientContactsSection user={data.user} reloading={query.isFetching} onReload={reloadUser} />
+            ) : null}
+
+            {data.roles.length === 0 ? (
+              <ClientNomineeSection userId={userId} accountState={data.user.accountState} />
             ) : null}
 
             <UserLifecyclePanel

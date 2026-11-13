@@ -24,6 +24,7 @@ export type FailureContext =
   | "resetPassword"
   | "changePassword"
   | "changePhone"
+  | "changeNominee"
   | "requestEmailChange"
   | "confirmEmailChange"
   | "sendSupportRequest"
@@ -288,6 +289,16 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
       },
     },
     fallback: { message: "We couldn't change your phone number. Please try again." },
+  },
+
+  changeNominee: {
+    title: "Nominee not saved",
+    codes: {
+      VALIDATION_FAILED: { message: "Enter both the nominee's name and their relation to you, or clear both." },
+      ACCOUNT_NOT_ACTIVE: { message: "This account is not active, so its nominee cannot be changed. Contact support." },
+      STATE_CONFLICT: { message: "Your account changed while saving. Reload and try again." },
+    },
+    fallback: { message: "We couldn't save your nominee. Please try again." },
   },
 
   requestEmailChange: {

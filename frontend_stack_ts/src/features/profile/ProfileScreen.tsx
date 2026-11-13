@@ -17,6 +17,7 @@ import { ENTRY_GLYPH, ENTRY_TEXT, ITEM_TITLE, NAV_LIST, NAV_ROW } from "~/ui/rec
 import { HINT_MUTED } from "~/ui/recipes/text"
 
 import { InvestingStatus } from "./InvestingStatus"
+import { NomineeSection } from "./NomineeSection"
 import {
   IDENTITY_AVATAR,
   IDENTITY_EMAIL,
@@ -132,6 +133,8 @@ const ProfileScreen = (): React.ReactElement => {
           </DetailRow>
         </DataList>
       </Card>
+
+      <NomineeSection />
 
       <Section title="Manage">
         <Card>

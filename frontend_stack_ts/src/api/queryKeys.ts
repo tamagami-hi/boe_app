@@ -27,6 +27,7 @@ export const qk = {
   client: {
     eligibility: (userId: string) => ["client", "eligibility", userId] as const,
     profile: () => ["client", "profile"] as const,
+    nominee: () => ["client", "nominee"] as const,
     portfolio: () => ["client", "portfolio"] as const,
     funds: () => ["client", "funds"] as const,
     fund: (fundId: string) => ["client", "fund", fundId] as const,
@@ -55,6 +56,7 @@ export const qk = {
     userLoginEvents: (userId: string) => ["admin", "user", userId, "login-events"] as const,
     clientPasswordAccess: (userId: string) => ["admin", "user", userId, "password-link"] as const,
     userContactHistory: (userId: string) => ["admin", "user", userId, "contact-history"] as const,
+    userNominee: (userId: string) => ["admin", "user", userId, "nominee"] as const,
     emailTemplates: (filter: string) => ["admin", "email-templates", filter] as const,
     emailTemplate: (templateId: string) => ["admin", "email-template", templateId] as const,
     emailPreview: (templateId: string, userId: string) => ["admin", "email-preview", templateId, userId] as const,
