@@ -5,7 +5,7 @@ import { PostgreSqlContainer } from "@testcontainers/postgresql"
 import type { StartedPostgreSqlContainer } from "@testcontainers/postgresql"
 import type { FastifyInstance } from "fastify"
 import { exportPKCS8, exportSPKI, generateKeyPair } from "jose"
-import type { Kysely } from "kysely"
+import { sql, type Kysely } from "kysely"
 import type { Pool } from "pg"
 import { Wait } from "testcontainers"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
@@ -18,7 +18,7 @@ import type { PaymentGateway } from "../../src/providers/paymentGateway.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
 import { createNotificationRepository } from "../../src/repositories/notificationRepository.js"
 import { createOrderRepository } from "../../src/repositories/orderRepository.js"
-import { createSipPlanRepository } from "../../src/repositories/sipPlanRepository.js"
+import { createSipPlanRepository, type SipPlanRepository } from "../../src/repositories/sipPlanRepository.js"
 import { createUserRepository } from "../../src/repositories/userRepository.js"
 import { registerClientSipPlanRoutes } from "../../src/routes/clientSipPlanRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
@@ -89,10 +89,10 @@ const seedPublishedFund = async (): Promise<string> => {
   return id
 }
 
-const runWorker = (at: Date): Promise<SipScheduleSummary> => runSipSchedulePass({
+const runWorker = (at: Date, sipPlanRepository: SipPlanRepository = createSipPlanRepository()): Promise<SipScheduleSummary> => runSipSchedulePass({
   unitOfWork,
   clock: () => at,
-  sipPlanRepository: createSipPlanRepository(),
+  sipPlanRepository,
   orderRepository: createOrderRepository(),
   userRepository: createUserRepository(),
   auditRepository: createAuditRepository(),
@@ -106,6 +106,35 @@ const installmentsOf = async (sipPlanId: string): Promise<{ id: string; due_peri
       "where sip_plan_id = $1 and type = 'sip_installment' order by due_period",
     [sipPlanId],
   )).rows
+
+const seedDuePlan = async (userId: string, dueDate: string): Promise<string> =>
+  (await pool.query<{ id: string }>(
+    "insert into sip_plans (user_id, fund_id, amount_paise, debit_day, duration_months, collection_mode, state, start_date, next_due_date) " +
+      "values ($1, $2, 50000, 13, 12, 'manual_checkout', 'active', '2026-11-13', $3) returning id",
+    [userId, fundId, dueDate],
+  )).rows[0]!.id
+
+const seedAcceptedInstallment = async (userId: string, sipPlanId: string, duePeriod: string): Promise<void> => {
+  await pool.query(
+    "insert into investment_orders (user_id, fund_id, fund_version_id, sip_plan_id, type, state, amount_paise, due_period, accepted_at) " +
+      "select $1, id, current_published_version_id, $2, 'sip_installment', 'accepted', 50000, $3, now() from funds where id = $4",
+    [userId, sipPlanId, duePeriod, fundId],
+  )
+}
+
+const listingThen = (
+  change: (tx: Parameters<SipPlanRepository["listDue"]>[0]) => Promise<unknown>,
+): SipPlanRepository => {
+  const base = createSipPlanRepository()
+  return {
+    ...base,
+    listDue: async (tx, input) => {
+      const rows = await base.listDue(tx, input)
+      await change(tx)
+      return rows
+    },
+  }
+}
 
 const acceptOrder = async (orderId: string): Promise<void> => {
   await pool.query("update investment_orders set state = 'accepted', accepted_at = now() where id = $1", [orderId])
@@ -239,5 +268,52 @@ describe("SIP schedule worker on PostgreSQL", () => {
       ["2026-12-01", "submitted"],
     ])
     expect((await pool.query("select * from investment_orders where id = $1", [november!.id])).rows).toEqual(failedRow)
+  })
+
+  test("creates no order for a plan the client paused after the due list was read", async () => {
+    const { userId } = await seedEligibleClient()
+    const sipPlanId = await seedDuePlan(userId, "2026-11-13")
+    const pausingAfterList = listingThen((tx) =>
+      tx.updateTable("sip_plans").set({ state: "paused", paused_at: CREATED_AT }).where("id", "=", sipPlanId).execute())
+
+    await runWorker(CREATED_AT, pausingAfterList)
+
+    expect(await installmentsOf(sipPlanId)).toEqual([])
+    const notifications = await pool.query("select 1 from notifications where user_id = $1", [userId])
+    expect(notifications.rowCount).toBe(0)
+  })
+
+  test("writes nothing to a plan another worker advanced after the due list was read", async () => {
+    const { userId } = await seedEligibleClient()
+    const sipPlanId = await seedDuePlan(userId, "2026-11-13")
+    await seedAcceptedInstallment(userId, sipPlanId, "2026-11-01")
+    await seedAcceptedInstallment(userId, sipPlanId, "2026-12-01")
+    const bumped: unknown[] = []
+    const advancedElsewhere = listingThen(async (tx) => {
+      bumped.push(await tx.updateTable("sip_plans").set({ next_due_date: "2027-01-13", version: sql<string>`version + 1` })
+        .where("id", "=", sipPlanId).returningAll().executeTakeFirstOrThrow())
+    })
+
+    await runWorker(new Date("2026-12-20T06:00:00.000Z"), advancedElsewhere)
+
+    const after = await database.selectFrom("sip_plans").selectAll().where("id", "=", sipPlanId).executeTakeFirstOrThrow()
+    expect(after).toEqual(bumped[0])
+    expect((await installmentsOf(sipPlanId)).map((order) => order.due_period)).toEqual(["2026-11-01", "2026-12-01"])
+  })
+
+  test("advances next_due_date only from the value the caller expects", async () => {
+    const { userId } = await seedEligibleClient()
+    const sipPlanId = await seedDuePlan(userId, "2026-11-13")
+    const repository = createSipPlanRepository()
+    const advance = (expectedNextDueDate: string) => unitOfWork.execute((tx) =>
+      repository.advanceNextDueDate(tx, { sipPlanId, expectedNextDueDate, nextDueDate: "2026-12-13", now: CREATED_AT }))
+
+    expect(await advance("2026-10-13")).toBeNull()
+    const unchanged = await pool.query<{ next_due_date: string; version: string }>(
+      "select to_char(next_due_date, 'YYYY-MM-DD') next_due_date, version::text version from sip_plans where id = $1",
+      [sipPlanId],
+    )
+    expect(unchanged.rows[0]).toEqual({ next_due_date: "2026-11-13", version: "1" })
+    expect((await advance("2026-11-13"))?.version).toBe("2")
   })
 })

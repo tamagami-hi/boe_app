@@ -58,8 +58,10 @@ export interface MandateCollectionSummary {
   readonly collectionsExpired: number
 }
 
+const isoDate = (value: Date | string): string => typeof value === "string" ? value.slice(0, 10) : value.toISOString().slice(0, 10)
+
 export const scheduledDebitAt = (dueDate: Date | string): Date => {
-  const value = typeof dueDate === "string" ? dueDate.slice(0, 10) : dueDate.toISOString().slice(0, 10)
+  const value = isoDate(dueDate)
   const year = Number(value.slice(0, 4))
   const month = Number(value.slice(5, 7))
   const day = Number(value.slice(8, 10))
@@ -94,6 +96,7 @@ const prepareCollection = async (deps: MandateCollectionDeps, plan: SipPlan) => 
     if (isPeriodResolved) {
       await deps.sipPlanRepository.advanceNextDueDate(tx, {
         sipPlanId: locked.id,
+        expectedNextDueDate: isoDate(locked.next_due_date),
         nextDueDate: nextMonthlyDueDate(locked.next_due_date, locked.debit_day),
         now,
       })

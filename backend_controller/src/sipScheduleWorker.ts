@@ -62,80 +62,69 @@ const monthsBetween = (startPeriod: string, period: string): number => {
   return (year - startYear) * 12 + (month - startMonth)
 }
 
+type PlanStepOutcome =
+  | { readonly kind: "created" | "waiting" | "stale" | "completed" }
+  | { readonly kind: "advanced"; readonly plan: SipPlan }
+
+const isStillDueAt = (locked: SipPlan | null, expected: SipPlan): locked is SipPlan =>
+  locked !== null && locked.state === "active" && locked.next_due_date !== null && expected.next_due_date !== null &&
+  dateOnly(locked.next_due_date) === dateOnly(expected.next_due_date)
+
+const isDurationComplete = (plan: SipPlan, duePeriod: string): boolean => {
+  const startPeriod = dateOnly(plan.start_date ?? duePeriod).slice(0, 7)
+  return plan.duration_months !== null && monthsBetween(startPeriod, duePeriod) + 1 >= plan.duration_months
+}
+
+const runPlanStep = async (deps: SipScheduleDeps, expected: SipPlan): Promise<PlanStepOutcome> =>
+  deps.unitOfWork.execute(async (tx) => {
+    const locked = await deps.sipPlanRepository.lockById(tx, { sipPlanId: expected.id, userId: expected.user_id })
+    if (!isStillDueAt(locked, expected) || locked.next_due_date === null) return { kind: "stale" }
+    const duePeriod = monthOf(locked.next_due_date)
+    const existing = await deps.orderRepository.findInstallmentByPeriod(tx, { sipPlanId: locked.id, duePeriod })
+    if (existing === null) {
+      await createSipInstallmentOrder(tx, {
+        orderRepository: deps.orderRepository,
+        userRepository: deps.userRepository,
+        auditRepository: deps.auditRepository,
+        notificationRepository: deps.notificationRepository,
+        clock: deps.clock,
+      }, { plan: locked, duePeriod, requestId: randomUUID() })
+      return { kind: "created" }
+    }
+    if (!isInstallmentPeriodResolved(existing.state)) return { kind: "waiting" }
+    const now = deps.clock()
+    if (isDurationComplete(locked, duePeriod)) {
+      const completed = await deps.sipPlanRepository.markCompleted(tx, locked.id, now)
+      return completed === null ? { kind: "stale" } : { kind: "completed" }
+    }
+    const advanced = await deps.sipPlanRepository.advanceNextDueDate(tx, {
+      sipPlanId: locked.id,
+      expectedNextDueDate: dateOnly(locked.next_due_date),
+      nextDueDate: addMonthClamped(duePeriod, locked.debit_day),
+      now,
+    })
+    return advanced === null ? { kind: "stale" } : { kind: "advanced", plan: advanced }
+  })
+
 const advanceOnePlan = async (
   deps: SipScheduleDeps,
   plan: SipPlan,
 ): Promise<{ installmentsCreated: number; advanced: boolean; completed: boolean }> => {
-  let installmentsCreated = 0
   let advanced = false
-  let completed = false
   let current: SipPlan = plan
 
   for (let step = 0; step < deps.config.maxPeriodsPerPlan; step += 1) {
     if (current.state !== "active" || current.next_due_date === null) break
-    const now = deps.clock()
-    if (dateOnly(current.next_due_date) > now.toISOString().slice(0, 10)) break
-
-    const duePeriod = monthOf(current.next_due_date)
-    const outcome = await deps.unitOfWork.execute(async (tx) => {
-      const existing = await deps.orderRepository.findInstallmentByPeriod(tx, {
-        sipPlanId: current.id,
-        duePeriod,
-      })
-
-      if (existing === null) {
-        const result = await createSipInstallmentOrder(
-          tx,
-          {
-            orderRepository: deps.orderRepository,
-            userRepository: deps.userRepository,
-            auditRepository: deps.auditRepository,
-            notificationRepository: deps.notificationRepository,
-            clock: deps.clock,
-          },
-          { plan: current, duePeriod, requestId: randomUUID() },
-        )
-        return { kind: "created" as const, resolved: result.outcome === "created" }
-      }
-
-      if (!isInstallmentPeriodResolved(existing.state)) {
-        return { kind: "waiting" as const, resolved: false }
-      }
-      return { kind: "resolved" as const, resolved: true }
-    })
-
-    if (outcome.kind === "created") {
-      installmentsCreated += 1
-      break
-    }
-    if (outcome.kind === "waiting") break
-
-    const startPeriod = dateOnly(current.start_date ?? duePeriod).slice(0, 7)
-    const elapsedMonths = monthsBetween(startPeriod, duePeriod) + 1
-    const durationComplete =
-      current.duration_months !== null && elapsedMonths >= current.duration_months
-
-    const advanceNow = deps.clock()
-    const nextDueDate = addMonthClamped(duePeriod, current.debit_day)
-    const updated = durationComplete
-      ? await deps.unitOfWork.execute((tx) => deps.sipPlanRepository.markCompleted(tx, current.id, advanceNow))
-      : await deps.unitOfWork.execute((tx) =>
-          deps.sipPlanRepository.advanceNextDueDate(tx, {
-            sipPlanId: current.id,
-            nextDueDate,
-            now: advanceNow,
-          }),
-        )
-    if (updated === null) break
-    current = updated
-    if (durationComplete) {
-      completed = true
-      break
-    }
+    if (dateOnly(current.next_due_date) > deps.clock().toISOString().slice(0, 10)) break
+    const outcome = await runPlanStep(deps, current)
+    if (outcome.kind === "created") return { installmentsCreated: 1, advanced, completed: false }
+    if (outcome.kind === "completed") return { installmentsCreated: 0, advanced, completed: true }
+    if (outcome.kind !== "advanced") break
+    current = outcome.plan
     advanced = true
   }
 
-  return { installmentsCreated, advanced, completed }
+  return { installmentsCreated: 0, advanced, completed: false }
 }
 
 const IDLE_SUMMARY: SipScheduleSummary = {

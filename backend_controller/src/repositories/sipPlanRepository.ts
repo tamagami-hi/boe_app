@@ -28,7 +28,7 @@ export interface SipPlanRepository {
   markCompleted: (tx: Transaction, sipPlanId: string, now: Date) => Promise<SipPlan | null>
   advanceNextDueDate: (
     tx: Transaction,
-    input: Readonly<{ sipPlanId: string; nextDueDate: string; now: Date }>,
+    input: Readonly<{ sipPlanId: string; expectedNextDueDate: string; nextDueDate: string; now: Date }>,
   ) => Promise<SipPlan | null>
 }
 
@@ -174,6 +174,7 @@ export const createSipPlanRepository = (): SipPlanRepository => ({
       .set({ next_due_date: input.nextDueDate, updated_at: input.now, version: sql<string>`version + 1` })
       .where("id", "=", input.sipPlanId)
       .where("state", "=", "active")
+      .where(sql<boolean>`next_due_date = ${input.expectedNextDueDate}::date`)
       .returningAll()
       .executeTakeFirst()
     return row ?? null

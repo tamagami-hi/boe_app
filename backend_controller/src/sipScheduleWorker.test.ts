@@ -29,9 +29,9 @@ const buildDeps = (overrides: Partial<Record<string, unknown>> = {}): SipSchedul
     clock: () => new Date("2026-08-20T00:00:00Z"),
     sipPlanRepository: {
       listDue: async () => [...plans.values()].filter((plan) => plan.state === "active"),
-      advanceNextDueDate: async (_tx: unknown, input: { sipPlanId: string; nextDueDate: string }) => {
+      advanceNextDueDate: async (_tx: unknown, input: { sipPlanId: string; expectedNextDueDate: string; nextDueDate: string }) => {
         const plan = plans.get(input.sipPlanId)
-        if (plan === undefined) return null
+        if (plan === undefined || plan.next_due_date !== input.expectedNextDueDate) return null
         plan.next_due_date = input.nextDueDate
         return { ...plan }
       },
@@ -44,7 +44,10 @@ const buildDeps = (overrides: Partial<Record<string, unknown>> = {}): SipSchedul
       },
       create: vi.fn(),
       listByUser: vi.fn(),
-      lockById: vi.fn(),
+      lockById: async (_tx: unknown, input: { sipPlanId: string }) => {
+        const plan = plans.get(input.sipPlanId)
+        return plan === undefined ? null : { ...plan }
+      },
       markPaused: vi.fn(),
       markResumed: vi.fn(),
       markCancelled: vi.fn(),
