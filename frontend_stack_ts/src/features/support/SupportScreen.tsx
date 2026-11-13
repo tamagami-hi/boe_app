@@ -6,6 +6,7 @@ import { Section } from "~/app/layouts/Section"
 import { isApiError } from "~/api/errors"
 import { formatDateTime } from "~/domain/dates"
 import { supportRequestState } from "~/domain/status"
+import { SUPPORT_CATEGORIES, supportCategoryLabel } from "~/domain/supportCategories"
 import {
   useCreateSupportTicket,
   useSupportFaqs,
@@ -33,17 +34,6 @@ const TICKET_BODY = cx(PROSE_SM, PROSE_PRE)
 
 const MAX_SUBJECT = 200
 const MAX_BODY = 5_000
-
-const CATEGORIES = [
-  { value: "general", label: "General question" },
-  { value: "payments", label: "A payment or refund" },
-  { value: "sip", label: "A SIP or AutoPay" },
-  { value: "account", label: "My account or sign-in" },
-  { value: "statement", label: "Statements and values" },
-] as const
-
-const categoryLabel = (value: string): string | null =>
-  CATEGORIES.find((category) => category.value === value)?.label ?? null
 
 const SupportScreen = (): React.ReactElement => {
   const faqs = useSupportFaqs()
@@ -150,7 +140,7 @@ const SupportScreen = (): React.ReactElement => {
                 {({ id }) => (
                   <Select
                     id={id}
-                    options={CATEGORIES}
+                    options={SUPPORT_CATEGORIES}
                     value={category}
                     onChange={(event) => {
                       setCategory(event.target.value)
@@ -235,15 +225,15 @@ const SupportScreen = (): React.ReactElement => {
                   <p className={TICKET_BODY}>{ticket.body}</p>
                   <div className={META_ROW}>
                     <span>Raised {formatDateTime(ticket.createdAt)}</span>
-                    {categoryLabel(ticket.category) === null ? null : (
-                      <span>{categoryLabel(ticket.category)}</span>
+                    {supportCategoryLabel(ticket.category) === null ? null : (
+                      <span>{supportCategoryLabel(ticket.category)}</span>
                     )}
                     {ticket.resolvedAt === null ? null : (
                       <span>Resolved {formatDateTime(ticket.resolvedAt)}</span>
                     )}
                   </div>
                   {ticket.resolutionNote === null ? null : (
-                    <div className={INSET_NOTE}>{ticket.resolutionNote}</div>
+                    <div className={INSET_NOTE}>{`Reply from the BeOnEdge team: ${ticket.resolutionNote}`}</div>
                   )}
                 </Card>
               ))}
