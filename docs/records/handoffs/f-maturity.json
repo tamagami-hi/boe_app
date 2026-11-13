@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "track": "f-maturity",
+  "current": {
+    "task": "F-L1-maturity-choices",
+    "from": "lane-f-maturity",
+    "track": "f-maturity",
+    "at": "2026-11-13T21:58:24.667Z",
+    "lines": [
+      "Phase F lane f-maturity: built on track/f-maturity, not landed. Commits (on 67d8a57): 7dfd57a backend+068, 4485fdf contracts+generated+admin UI, f827bd8 client UI, 332d5ec review fixes.",
+      "Decisions applied: DEC-15, DEC-20, DEC-30 (client pick waits for admin confirm), DEC-31 (admin fills figures), DEC-32 (next date = old date + months, editable).",
+      "Migration 068_maturity_choices: drops/re-adds client_maturity_schedules resolution + resolution_links checks with sip_extension (sip_reinvestment kept), adds client_maturity_offers (append-only, one open per maturity, figures fixed and closed rows frozen by trigger, no delete/truncate), widens email_deliveries_template_check with maturity_options. Additive only.",
+      "Previous release: v0.15.x runs against 068 (it never reads the new table or writes the new values). Like finding-26, a v0.15.x email worker would permanently fail any queued maturity_options mail after a rollback; the in-app notice is unaffected.",
+      "releaseUpgrade expects 052..068 and accepts maturity_options; g-erasure owns 069, whichever lands second keeps both entries. adminComposition.ts overlaps with g-erasure (this lane only swapped the maturity registration for registerMaturitySurface).",
+      "F2: option 3 = sip_extension. Requires a recordable client (active or suspended, not closed; 332d5ec), adds N months via editAdminSipSchedule (version guard, 600 cap refused as 400 before the DB check), no ledger row; resolves and inserts the next scheduled maturity in the same tx; refused (409) with no active schedule. Next row links back only via audit metadata extendedFromScheduleId. Resolve response gains nextScheduleId.",
+      "F3 admin: POST .../maturity-schedules/{id}/offers (send; body expectedVersion + offerVersion = version of the open offer the admin saw or null, mismatch 409; durable receipt; supersedes the open offer), .../offers/{offerId}/withdraw, .../offers/{offerId}/confirm (durable; body restates option, schedule expectedVersion, offerVersion; options 1/2 carry the admin-seen figures; settlement date picked at confirm). AdminMaturitySchedule gains offer (open offer summary). Permissions: client_position.write / client_values.read, same as C3.",
+      "F3 client: GET /v1/client/maturity-options, GET /{offerId} (returns closed offers with state), POST /{offerId}/choice (Idempotency-Key, expectedVersion; refuses unchanged pick and an option not offered). Another client's offer answers 404. Routes registered via runtime/maturityComposition.ts from adminComposition; composition.ts untouched (636).",
+      "Notification kind maturity_options_sent, payload {offerId, scheduleId, fundId}, no deepLink (old APKs show plain notice; new builds map offerId in notificationLink). Email maturity_options v1: fund, maturity date, open-the-app line, web app line when configured, no amounts; guard cancels on closed offer, inactive/tombstoned account or email change.",
+      "Lane defaults (not maintainer decisions): option 3 may be left out of an offer and send refuses it without an active SIP; editing or cancelling a maturity date closes an open offer; sending needs an active, untombstoned client; sending is allowed before the date, confirm/resolve only on or after it; withdrawing does not notify the client; lock order schedule -> offer -> user/SIP.",
+      "F1: admin ledger tab Recorded column (createdAt). Email deliveries filter gains Maturity options.",
+      "Review fixes (332d5ec): MEDIUM closed/tombstoned client could get a SIP extension on confirm or direct resolve, now refused with nothing written; LOW stale concurrent send could silently supersede, now guarded by offerVersion; LOW tests added for closed+tombstoned client, confirm before choice, stale send, guard contact_changed and recipient_inactive.",
+      "Tests changed earlier: maturitySchedules test moved from sip_reinvestment to sip_extension; 065 migration test truncates schedules+offers together because the new FK refuses a lone truncate first. New files: maturityChoices (9 tests) and maturityChoicesMigration (3 tests).",
+      "Controls (each failed its test, source restored, recorded as red evidence for the four new ones): client owner check, confirm choice check, guard open-offer check, extension cap, recordable-client check, offerVersion check, guard contact_changed, guard recipient_inactive.",
+      "Sweep on the 332d5ec tree (TESTED, Node 22.20.0 container, recorded as evidence): contracts check 98 tests, 183 operations reachable; backend check 100 files / 1198; integration (coverage off) 59 files / 531; frontend check 34 files / 316; build:client (Android dist 922041 bytes) and build:admin pass with boot checks. Admin app chunk ~553 kB (538 kB at ae82558, warning pre-existing).",
+      "Logs: /home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/f-maturity/ (fix-*.log for this rerun, tip-*.log for f827bd8, control-*.log).",
+      "Not done here (F-close): plan section 0a/6/8, README and CLAUDE.md status updates, landing.",
+      "Not verified: no browser or device run, no notification tapped, no real mail rendered or sent, no APK, nothing on a VPS."
+    ]
+  },
+  "history": [
+    {
+      "from": "lane-f-maturity",
+      "track": "f-maturity",
+      "at": "2026-11-13T21:44:36.268Z",
+      "lines": [
+        "Phase F lane f-maturity: built on track/f-maturity, not landed. Commits (on 67d8a57): 7dfd57a backend+068, 4485fdf contracts+generated+admin UI, f827bd8 client UI.",
+        "Decisions applied: DEC-15, DEC-20, DEC-30 (client pick waits for admin confirm), DEC-31 (admin fills figures), DEC-32 (next date = old date + months, editable).",
+        "Migration 068_maturity_choices: drops/re-adds client_maturity_schedules resolution + resolution_links checks with sip_extension (sip_reinvestment kept), adds client_maturity_offers (append-only, one open per maturity, figures fixed and closed rows frozen by trigger, no delete/truncate), widens email_deliveries_template_check with maturity_options. Additive only.",
+        "Previous release: v0.15.x runs against 068 (it never reads the new table or writes the new values). Like finding-26, a v0.15.x email worker would permanently fail any queued maturity_options mail after a rollback; the in-app notice is unaffected.",
+        "releaseUpgrade expects 052..068 and accepts maturity_options; g-erasure owns 069, whichever lands second keeps both entries.",
+        "F2: option 3 = sip_extension. Adds N months via editAdminSipSchedule (version guard, 600 cap refused as 400 before the DB check), no ledger row; resolves and inserts the next scheduled maturity in the same tx; refused (409) with no active schedule. Next row links back only via audit metadata extendedFromScheduleId (no new column). Resolve response gains nextScheduleId.",
+        "F3 admin: POST .../maturity-schedules/{id}/offers (send, supersedes open offer), .../offers/{offerId}/withdraw, .../offers/{offerId}/confirm (durable receipt; body restates option, schedule expectedVersion, offerVersion; options 1/2 carry the admin-seen figures; settlement date picked at confirm). AdminMaturitySchedule gains offer (open offer summary). Permissions: client_position.write / client_values.read, same as C3.",
+        "F3 client: GET /v1/client/maturity-options, GET /{offerId} (returns closed offers with state so stale notices explain), POST /{offerId}/choice (Idempotency-Key, expectedVersion; refuses unchanged pick and an option not offered). Another client's offer answers 404. Routes registered via runtime/maturityComposition.ts from adminComposition; composition.ts untouched (636).",
+        "Notification kind maturity_options_sent, payload {offerId, scheduleId, fundId}, no deepLink (old APKs show plain notice; new builds map offerId in notificationLink). Email maturity_options v1: fund, maturity date, open-the-app line, web app line when configured, no amounts; guard cancels on closed offer, inactive/tombstoned account or email change.",
+        "Lane defaults (not maintainer decisions): option 3 may be left out of an offer and send refuses it without an active SIP; editing or cancelling a maturity date closes an open offer; sending needs an active, untombstoned client; sending is allowed before the date, confirm/resolve only on or after it; withdrawing does not notify the client; lock order schedule -> offer -> user/SIP.",
+        "F1: admin ledger tab Recorded column (createdAt). Email deliveries filter gains Maturity options.",
+        "Tests changed: maturitySchedules test moved from sip_reinvestment to sip_extension (API no longer offers it); 065 migration test now truncates schedules+offers together because the new FK refuses a lone truncate first. New: maturityChoices (7 tests) and maturityChoicesMigration (3 tests).",
+        "Controls: removing the client owner check, the confirm choice check, the guard open-offer check, or the extension cap each failed its test (logs control-*.log).",
+        "Sweep at f827bd8 (TESTED, Node 22.20.0 container): contracts check 98 tests, 183 operations reachable; backend check 100 files / 1198; integration (coverage off) 59 files / 529; frontend check 34 files / 316; build:client and build:admin pass with boot checks. Admin app chunk 553 kB (538 kB at ae82558, warning pre-existing); client app 316 kB (304 kB).",
+        "Logs: /home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/f-maturity/ (tip-*.log, backend-integration.log, control-*.log).",
+        "Tally: task M10-phase-f:F-L1-maturity-choices is planned on track main, so task_claim and evidence_record were refused for this track session; evidence is in the logs above.",
+        "Not done here (F-close): plan section 0a/6/8, README and CLAUDE.md status updates, review, landing.",
+        "Not verified: no browser or device run, no notification tapped, no real mail rendered or sent, no APK, nothing on a VPS."
+      ]
+    }
+  ]
+}

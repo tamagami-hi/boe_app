@@ -274,7 +274,8 @@
         "track": "main",
         "agent": "claude-opus-5-5 coordinator"
       },
-      "openedAt": "2026-11-13T20:57:00.584Z"
+      "openedAt": "2026-11-13T20:57:00.584Z",
+      "closedAt": "2026-11-13T22:06:33.018Z"
     },
     {
       "name": "g-erasure",

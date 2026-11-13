@@ -3863,6 +3863,249 @@
       "track": "main",
       "agent": "claude-opus-5-5 coordinator",
       "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T21:18:57.059Z",
+      "session": "24c3850f-12d9-4591-98de-8e84f1c9a007",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "verb": "note_post",
+      "target": "M11-phase-g:G-L1-erasure, request"
+    },
+    {
+      "at": "2026-11-13T21:44:36.289Z",
+      "session": "911c9c8d-4c07-4751-99a7-9dbb5d94e53e",
+      "track": "f-maturity",
+      "agent": "lane-f-maturity",
+      "verb": "handoff_write"
+    },
+    {
+      "at": "2026-11-13T21:44:41.693Z",
+      "session": "911c9c8d-4c07-4751-99a7-9dbb5d94e53e",
+      "track": "f-maturity",
+      "agent": "lane-f-maturity",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T21:45:38.168Z",
+      "session": "1a99aaa4-d392-4f66-946f-b6b8b0fd215e",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_remove",
+      "target": "M10-phase-f / F-L1-maturity-choices"
+    },
+    {
+      "at": "2026-11-13T21:45:38.410Z",
+      "session": "1a99aaa4-d392-4f66-946f-b6b8b0fd215e",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_remove",
+      "target": "M11-phase-g / G-L1-erasure"
+    },
+    {
+      "at": "2026-11-13T21:45:47.599Z",
+      "session": "1a99aaa4-d392-4f66-946f-b6b8b0fd215e",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_plan",
+      "target": "M10-phase-f"
+    },
+    {
+      "at": "2026-11-13T21:45:47.870Z",
+      "session": "1a99aaa4-d392-4f66-946f-b6b8b0fd215e",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_plan",
+      "target": "M11-phase-g"
+    },
+    {
+      "at": "2026-11-13T21:46:17.021Z",
+      "session": "1a99aaa4-d392-4f66-946f-b6b8b0fd215e",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T21:46:53.784Z",
+      "session": "24c3850f-12d9-4591-98de-8e84f1c9a007",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "verb": "task_claim",
+      "target": "M11-phase-g / G-L1-erasure"
+    },
+    {
+      "at": "2026-11-13T21:50:09.560Z",
+      "session": "caf10fe7-c4e4-4a05-92a9-15ee34f26d4a",
+      "track": "f-maturity",
+      "agent": "lane-f-maturity",
+      "verb": "task_claim",
+      "target": "M10-phase-f / F-L1-maturity-choices"
+    },
+    {
+      "at": "2026-11-13T21:53:26.541Z",
+      "session": "24c3850f-12d9-4591-98de-8e84f1c9a007",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "verb": "evidence_record",
+      "target": "M11-phase-g / G-L1-erasure, red"
+    },
+    {
+      "at": "2026-11-13T21:57:22.947Z",
+      "session": "caf10fe7-c4e4-4a05-92a9-15ee34f26d4a",
+      "track": "f-maturity",
+      "agent": "lane-f-maturity",
+      "verb": "evidence_record",
+      "target": "M10-phase-f / F-L1-maturity-choices, green"
+    },
+    {
+      "at": "2026-11-13T21:57:23.235Z",
+      "session": "caf10fe7-c4e4-4a05-92a9-15ee34f26d4a",
+      "track": "f-maturity",
+      "agent": "lane-f-maturity",
+      "verb": "evidence_record",
+      "target": "M10-phase-f / F-L1-maturity-choices, green"
+    },
+    {
+      "at": "2026-11-13T21:57:23.502Z",
+      "session": "caf10fe7-c4e4-4a05-92a9-15ee34f26d4a",
+      "track": "f-maturity",
+      "agent": "lane-f-maturity",
+      "verb": "evidence_record",
+      "target": "M10-phase-f / F-L1-maturity-choices, green"
+    },
+    {
+      "at": "2026-11-13T21:57:23.787Z",
+      "session": "caf10fe7-c4e4-4a05-92a9-15ee34f26d4a",
+      "track": "f-maturity",
+      "agent": "lane-f-maturity",
+      "verb": "evidence_record",
+      "target": "M10-phase-f / F-L1-maturity-choices, green"
+    },
+    {
+      "at": "2026-11-13T21:57:24.091Z",
+      "session": "caf10fe7-c4e4-4a05-92a9-15ee34f26d4a",
+      "track": "f-maturity",
+      "agent": "lane-f-maturity",
+      "verb": "evidence_record",
+      "target": "M10-phase-f / F-L1-maturity-choices, green"
+    },
+    {
+      "at": "2026-11-13T21:57:24.428Z",
+      "session": "caf10fe7-c4e4-4a05-92a9-15ee34f26d4a",
+      "track": "f-maturity",
+      "agent": "lane-f-maturity",
+      "verb": "evidence_record",
+      "target": "M10-phase-f / F-L1-maturity-choices, green"
+    },
+    {
+      "at": "2026-11-13T21:58:03.710Z",
+      "session": "caf10fe7-c4e4-4a05-92a9-15ee34f26d4a",
+      "track": "f-maturity",
+      "agent": "lane-f-maturity",
+      "verb": "evidence_record",
+      "target": "M10-phase-f / F-L1-maturity-choices, red"
+    },
+    {
+      "at": "2026-11-13T21:58:03.948Z",
+      "session": "caf10fe7-c4e4-4a05-92a9-15ee34f26d4a",
+      "track": "f-maturity",
+      "agent": "lane-f-maturity",
+      "verb": "evidence_record",
+      "target": "M10-phase-f / F-L1-maturity-choices, red"
+    },
+    {
+      "at": "2026-11-13T21:58:04.207Z",
+      "session": "caf10fe7-c4e4-4a05-92a9-15ee34f26d4a",
+      "track": "f-maturity",
+      "agent": "lane-f-maturity",
+      "verb": "evidence_record",
+      "target": "M10-phase-f / F-L1-maturity-choices, red"
+    },
+    {
+      "at": "2026-11-13T21:58:04.507Z",
+      "session": "caf10fe7-c4e4-4a05-92a9-15ee34f26d4a",
+      "track": "f-maturity",
+      "agent": "lane-f-maturity",
+      "verb": "evidence_record",
+      "target": "M10-phase-f / F-L1-maturity-choices, red"
+    },
+    {
+      "at": "2026-11-13T21:58:24.686Z",
+      "session": "caf10fe7-c4e4-4a05-92a9-15ee34f26d4a",
+      "track": "f-maturity",
+      "agent": "lane-f-maturity",
+      "verb": "handoff_write",
+      "target": "F-L1-maturity-choices"
+    },
+    {
+      "at": "2026-11-13T21:58:31.280Z",
+      "session": "caf10fe7-c4e4-4a05-92a9-15ee34f26d4a",
+      "track": "f-maturity",
+      "agent": "lane-f-maturity",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T21:59:08.623Z",
+      "session": "0a82d1d7-a0c2-464b-b517-1496259fd0a6",
+      "track": "f-maturity",
+      "agent": "claude-opus-5-5 coordinator-land",
+      "verb": "land_start",
+      "target": "M10-phase-f / F-L1-maturity-choices"
+    },
+    {
+      "at": "2026-11-13T22:05:49.121Z",
+      "session": "24c3850f-12d9-4591-98de-8e84f1c9a007",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "verb": "evidence_record",
+      "target": "M11-phase-g / G-L1-erasure, green"
+    },
+    {
+      "at": "2026-11-13T22:05:49.428Z",
+      "session": "24c3850f-12d9-4591-98de-8e84f1c9a007",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "verb": "evidence_record",
+      "target": "M11-phase-g / G-L1-erasure, green"
+    },
+    {
+      "at": "2026-11-13T22:05:49.715Z",
+      "session": "24c3850f-12d9-4591-98de-8e84f1c9a007",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "verb": "evidence_record",
+      "target": "M11-phase-g / G-L1-erasure, green"
+    },
+    {
+      "at": "2026-11-13T22:05:50.025Z",
+      "session": "24c3850f-12d9-4591-98de-8e84f1c9a007",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "verb": "evidence_record",
+      "target": "M11-phase-g / G-L1-erasure, green"
+    },
+    {
+      "at": "2026-11-13T22:06:12.903Z",
+      "session": "0a82d1d7-a0c2-464b-b517-1496259fd0a6",
+      "track": "f-maturity",
+      "agent": "claude-opus-5-5 coordinator-land",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T22:06:33.598Z",
+      "session": "b64e53ad-2e4d-404c-8e38-e5ebddaae445",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "track_close",
+      "target": "f-maturity"
+    },
+    {
+      "at": "2026-11-13T22:07:15.252Z",
+      "session": "b64e53ad-2e4d-404c-8e38-e5ebddaae445",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_land",
+      "target": "M10-phase-f / F-close"
     }
   ]
 }

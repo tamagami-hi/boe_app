@@ -146,20 +146,20 @@
       "group": "admin-improvements",
       "text": "Maturity: the admin is notified first, by the launch prompt from 30 days before the date. The options are (1) withdraw the invested amount with returns, (2) reinvest the previous amount as a one-time investment and then start recording the next SIP, (3) increase the SIP's time period. The options never pop up for the client by themselves: the admin either resolves directly after talking to the client, or sends the options to that client, who then gets an email and an in-app notification and can choose in the app. Both the client and the admin can decide. Answers question row 18.",
       "since": "2026-11-14",
-      "status": "Partly built (C3); option 3 as a SIP extension and sending the options to the client are Phase F",
-      "state": "partly built",
+      "status": "Built (Phase F, 24400e6..8745482)",
+      "state": "built",
       "by": "operator",
-      "on": "2026-11-13T20:53:20.466Z"
+      "on": "2026-11-13T22:07:07.147Z"
     },
     {
       "id": "DEC-16",
       "group": "admin-improvements",
       "text": "The Record action on the admin user page offers a Monthly investment category. Every recording has a history with the date it was recorded, kept as a ledger the admin sees and reflected in the client's app.",
       "since": "2026-11-14",
-      "status": "Built (B1, B2, B5); the admin ledger's recorded date is Phase F",
+      "status": "Built (Phase F, 24400e6..8745482)",
       "state": "built",
       "by": "operator",
-      "on": "2026-11-13T20:53:20.685Z"
+      "on": "2026-11-13T22:07:07.380Z"
     },
     {
       "id": "DEC-17",
@@ -196,10 +196,10 @@
       "group": "admin-improvements",
       "text": "Phase F go-ahead: build F1 (recorded date on the admin ledger), F2 (option 3 extends the SIP) and F3 (the admin sends maturity options to a client, who chooses in the app) with the conservative defaults of Q-030 to Q-032: the client's pick waits for the admin to confirm, the admin fills in the figures, and an extension moves the maturity date by the months added unless the admin changes it.",
       "since": "2026-11-14",
-      "status": "Decided, not built (Phase F, lane f-maturity)",
-      "state": "decided, not built",
+      "status": "Built (Phase F, 24400e6..8745482)",
+      "state": "built",
       "by": "operator",
-      "on": "2026-11-13T20:56:54.651Z"
+      "on": "2026-11-13T22:07:07.591Z"
     },
     {
       "id": "DEC-21",
@@ -296,30 +296,30 @@
       "group": "admin-improvements",
       "text": "Q-030: when a client picks a maturity option in the app, the pick goes to the admin as the client's choice. Nothing changes in money, the ledger or the SIP until the admin confirms, and confirming runs the same resolution as a direct one.",
       "since": "2026-11-14",
-      "status": "Decided, being built (Phase F)",
-      "state": "decided, not built",
+      "status": "Built (Phase F, 24400e6..8745482)",
+      "state": "built",
       "by": "operator",
-      "on": "2026-11-13T21:15:35.599Z"
+      "on": "2026-11-13T22:07:07.821Z"
     },
     {
       "id": "DEC-31",
       "group": "admin-improvements",
       "text": "Q-031: the admin fills in the figures for options 2 and 3 before sending the options; the client only picks one. For other figures the client talks to the team and the admin sends new options.",
       "since": "2026-11-14",
-      "status": "Decided, being built (Phase F)",
-      "state": "decided, not built",
+      "status": "Built (Phase F, 24400e6..8745482)",
+      "state": "built",
       "by": "operator",
-      "on": "2026-11-13T21:15:35.826Z"
+      "on": "2026-11-13T22:07:08.049Z"
     },
     {
       "id": "DEC-32",
       "group": "admin-improvements",
       "text": "Q-032: when option 3 extends the SIP, the new maturity date is filled in as the old date plus the months added, and the admin can change it before confirming.",
       "since": "2026-11-14",
-      "status": "Decided, being built (Phase F)",
-      "state": "decided, not built",
+      "status": "Built (Phase F, 24400e6..8745482)",
+      "state": "built",
       "by": "operator",
-      "on": "2026-11-13T21:15:36.033Z"
+      "on": "2026-11-13T22:07:08.356Z"
     },
     {
       "id": "DEC-33",

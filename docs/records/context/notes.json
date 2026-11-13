@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextNumber": 53,
+  "nextNumber": 54,
   "notes": [
     {
       "id": "note-1",
@@ -983,6 +983,23 @@
         ]
       },
       "at": "2026-11-13T18:19:47.157Z",
+      "replies": []
+    },
+    {
+      "id": "note-53",
+      "from": {
+        "track": "g-erasure",
+        "agent": "lane-g-erasure"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "request",
+      "text": "task_claim M11-phase-g:G-L1-erasure refused: the task's track is \"main\" in ledger.json (da234b8), so session on track g-erasure cannot claim it. Please reassign the task to track g-erasure. I am proceeding with the work meanwhile and will record evidence once the claim works, otherwise logs stay under .temp/tally/logs/g-erasure/.",
+      "about": {
+        "task": "M11-phase-g:G-L1-erasure"
+      },
+      "at": "2026-11-13T21:18:57.038Z",
       "replies": []
     }
   ]

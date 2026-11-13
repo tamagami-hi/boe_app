@@ -1,0 +1,146 @@
+{
+  "schema": 1,
+  "milestone": "M11-phase-g",
+  "records": [
+    {
+      "id": "8a292e2a-be14-4d10-8af3-7f28d5447c2c",
+      "task": "G-L1-erasure",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "kind": "red",
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "--config",
+        "vitest.integration.config.ts",
+        "--coverage.enabled=false",
+        "test/integration/clientErasure.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/g-erasure/backend_controller",
+      "started": "2026-11-13T21:55:00.000Z",
+      "seconds": 40,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/g-erasure/control-1-no-scrub.log",
+        "sha256": "12827aec74e5d9285ed2363ee2289878a40f8ee4bfc49e085f84c90de8f9215c",
+        "bytes": 4043
+      },
+      "summary": {
+        "passed": 3,
+        "failed": 2
+      },
+      "note": "Negative control 1 of 6 (reverted): skipping the free-text/JSON scrub targets fails 2 G2 tests. Controls 2-6 (no sealed-recipient decryption, no holds_money guard, trigger ignores erasing user, no user row lock, G3 deletes other users' audit) each failed their tests; logs control-2..6 in the same folder."
+    },
+    {
+      "id": "53ac1638-52af-4e5c-8713-4ffe38d86aaf",
+      "task": "G-L1-erasure",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "kind": "green",
+      "command": [
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/g-erasure/backend_controller",
+      "started": "2026-11-13T22:10:00.000Z",
+      "seconds": 240,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/g-erasure/backend-integration.log",
+        "sha256": "e310c138f959ef8aa7ae5f9c0926a6dec18cae7f541c9fccdf6dfbf0b67daf80",
+        "bytes": 11374
+      },
+      "summary": {
+        "files": 60,
+        "passed": 530,
+        "failed": 0
+      },
+      "note": "Full backend integration suite in the Node 22 container on the code of 3952211 (backend unchanged after), coverage disabled as in CI."
+    },
+    {
+      "id": "4589783d-5fa0-4590-bf62-c241ee63b32f",
+      "task": "G-L1-erasure",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "kind": "green",
+      "command": [
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/g-erasure/backend_controller",
+      "started": "2026-11-13T22:05:00.000Z",
+      "seconds": 120,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/g-erasure/backend-check.log",
+        "sha256": "a0289a7536e77dd40c3a9009bb2e8948a630e99e79f5fffbbbecd9522883c53b",
+        "bytes": 15945
+      },
+      "summary": {
+        "files": 100,
+        "passed": 1198,
+        "failed": 0
+      },
+      "note": "Backend check (typecheck, lint, unit coverage incl. architecture guards, build, source and dist smoke) in the Node 22 container."
+    },
+    {
+      "id": "a858282e-5ae6-49ff-9ddd-08b4ba2be830",
+      "task": "G-L1-erasure",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "kind": "green",
+      "command": [
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/g-erasure/packages/contracts",
+      "started": "2026-11-13T22:20:00.000Z",
+      "seconds": 90,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/g-erasure/contracts-check.log",
+        "sha256": "d20790de776b63f063a9d669fc510b379c7ac8e31cd1a7fcf7e0c1719db9d2e5",
+        "bytes": 7455
+      },
+      "summary": {
+        "passed": 98,
+        "failed": 0,
+        "operations": 179
+      },
+      "note": "Contracts check on committed eff5051: OpenAPI valid, no drift, 179 operations reachable through the generated client."
+    },
+    {
+      "id": "0353d4bf-dd58-473f-83c3-f69ae02a9d96",
+      "task": "G-L1-erasure",
+      "track": "g-erasure",
+      "agent": "lane-g-erasure",
+      "kind": "green",
+      "command": [
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/g-erasure/frontend_stack_ts",
+      "started": "2026-11-13T22:00:00.000Z",
+      "seconds": 120,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/g-erasure/frontend-check.log",
+        "sha256": "c5e24e27ddcfa1e8a894f7e763c9c1e35b8281abaf985b72d610283e9c6503a4",
+        "bytes": 5235
+      },
+      "summary": {
+        "files": 34,
+        "passed": 316,
+        "failed": 0
+      },
+      "note": "Frontend check in the Node 22 container; build:client and build:admin also passed with boot checks (frontend-build-client.log, frontend-build-admin.log)."
+    }
+  ]
+}
