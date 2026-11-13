@@ -1,6 +1,7 @@
 export * from "./envelope.js"
 export * from "./errors.js"
 export * from "./operations/admin-client-contacts.js"
+export * from "./operations/admin-client-erasure.js"
 export * from "./operations/admin-client-positions.js"
 export * from "./operations/admin-client-returns.js"
 export * from "./operations/admin-content.js"

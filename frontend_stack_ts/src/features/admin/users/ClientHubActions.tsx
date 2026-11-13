@@ -12,6 +12,7 @@ const ACTION_LINKS = [
   { routeId: "email-send", label: "Send an email", to: (userId: string) => `/emails/send?userId=${encodeURIComponent(userId)}` },
   { routeId: "mandates", label: "Mandates", to: () => "/mandates" },
   { routeId: "client-values-position", label: "Investor record", to: () => "/client-values/position" },
+  { routeId: "user-erase", label: "Erase client", to: (userId: string) => `/users/${encodeURIComponent(userId)}/erase` },
 ] as const
 
 type Props = Readonly<{
@@ -47,7 +48,7 @@ export const ClientHubActions = ({ userId, canRecord, isRecording, onToggleRecor
         <p className={PROSE_SM}>
           {links.length === 0 && !canRecord
             ? "Your account holds no permission that acts on this client."
-            : "Send an email opens with this client chosen. The value update, investor record and mandate screens ask you to pick the client there."}
+            : "Send an email opens with this client chosen. The value update, investor record and mandate screens ask you to pick the client there. Erase client first shows what would block it and what it would remove."}
         </p>
       </Card>
     </Section>

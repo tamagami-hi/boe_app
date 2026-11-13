@@ -63,6 +63,7 @@ export const qk = {
     clientPasswordAccess: (userId: string) => ["admin", "user", userId, "password-link"] as const,
     userContactHistory: (userId: string) => ["admin", "user", userId, "contact-history"] as const,
     userNominee: (userId: string) => ["admin", "user", userId, "nominee"] as const,
+    clientErasureCheck: (userId: string) => ["admin", "user", userId, "erase-check"] as const,
     emailTemplates: (filter: string) => ["admin", "email-templates", filter] as const,
     emailTemplate: (templateId: string) => ["admin", "email-template", templateId] as const,
     emailPreview: (templateId: string, userId: string) => ["admin", "email-preview", templateId, userId] as const,

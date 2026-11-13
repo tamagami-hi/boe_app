@@ -94,6 +94,16 @@ export const ADMIN_ROUTES: RouteManifest = [
     back: { kind: "parent", path: "/users/:userId" },
   },
   {
+    id: "user-erase",
+    path: "/users/:userId/erase",
+    title: "Erase client",
+    access: "session",
+    role: "admin",
+    permissions: ["users.close"],
+    element: () => import("~/features/admin/users/ClientEraseScreen"),
+    back: { kind: "parent", path: "/users/:userId" },
+  },
+  {
     id: "funds",
     path: "/funds",
     title: "Funds",
@@ -495,6 +505,7 @@ export const ADMIN_LINK_MAP: Readonly<Record<string, readonly string[]>> = {
   "client-create": ["user-detail"],
   "user-detail": [
     "user-login-events",
+    "user-erase",
     "client-values-individual",
     "client-values-position",
     "email-send",

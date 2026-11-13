@@ -93,7 +93,12 @@ export const ClientContactsSection = ({ user, reloading, onReload }: ContactsPro
         <AsyncBoundary query={history} skeleton={<Skeleton height="3rem" />}>
           {(data) => (
             <>
-              {user.accountState === "closed" ? (
+              {user.isPiiTombstoned ? (
+                <Alert tone="info" title="Client erased">
+                  This client's name, email addresses and phone numbers were removed from every record, so the email
+                  and phone can be used for a new account. The history below shows placeholders only.
+                </Alert>
+              ) : user.accountState === "closed" ? (
                 <ContactReleasePanel
                   userId={user.id}
                   version={user.version}

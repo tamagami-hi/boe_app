@@ -8,6 +8,7 @@ import { ErrorEnvelope } from "../src/envelope.js"
 import { ERROR_DEFINITIONS } from "../src/errors.js"
 import type { ErrorCode } from "../src/errors.js"
 import { ADMIN_CLIENT_CONTACT_OPERATIONS } from "../src/operations/admin-client-contacts.js"
+import { ADMIN_CLIENT_ERASURE_OPERATIONS } from "../src/operations/admin-client-erasure.js"
 import { ADMIN_CLIENT_RETURN_OPERATIONS } from "../src/operations/admin-client-returns.js"
 import { ADMIN_CONTENT_OPERATIONS } from "../src/operations/admin-content.js"
 import { ADMIN_EMAIL_OPERATIONS } from "../src/operations/admin-email.js"
@@ -78,6 +79,7 @@ export const ALL_OPERATIONS: readonly GeneratableOperation[] = Object.freeze([
   ...ADMIN_MATURITY_OPERATIONS,
   ...ADMIN_OVERSIGHT_OPERATIONS,
   ...ADMIN_CLIENT_CONTACT_OPERATIONS,
+  ...ADMIN_CLIENT_ERASURE_OPERATIONS,
   ...ADMIN_CLIENT_RETURN_OPERATIONS,
   ...ADMIN_EMAIL_OPERATIONS,
   ...ADMIN_SUPPORT_OPERATIONS,
