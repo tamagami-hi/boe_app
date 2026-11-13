@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "track": "a-client-values",
+  "current": {
+    "from": "lane-a-client-values",
+    "track": "a-client-values",
+    "at": "2026-11-13T09:38:53.574Z",
+    "lines": [
+      "Lane a-client-values: commits 1c02146 (backend: growth/AUM real dates, IST future guard, bounded non-zero paise, deepLink /portfolio) and f8451d6 (frontend: held growth keys, failed-read states, coordinator additions 1-7). Not landed.",
+      "New shared file backend_controller/src/domain/shared/calendarDate.ts (indiaCalendarDate, refuseFutureDate); a-onboarding has the byte-identical content (sha256 c82db7aa...394242).",
+      "adminQueries.ts: removals only (growth hooks + ledger query moved to client-values/growthQueries.ts, ledgerQueries.ts), 725 -> 639 lines. a-admin-core removed the app-config hooks just above line 543; expect adjacent-hunk merge at landing.",
+      "adminRouteKit.ts (outside lane) gained nonZeroSignedPaiseSchema next to positivePaiseSchema.",
+      "Checks (Node 22.20.0 container): backend npm run check 97 files/1161 tests; frontend npm run check 27 files/239 tests; build:admin ok; integration (CI form, coverage disabled) 35 files/393 tests. Plain test:integration fails only its 80% branch threshold (78.33%), which CI disables.",
+      "Behaviour change: an AUM fund whose latest snapshot is future-dated cannot grow until that date.",
+      "Unverified: screens not exercised in a browser; admins cannot be excluded from investor pickers without a contract change (closed/tombstoned are excluded).",
+      "Until a-onboarding lands its IST backend change, recorded contributions and maturity dates for IST-today entered 00:00-05:30 IST pass the form but hit the UTC backend refusal.",
+      "Not done (sibling class, out of A1 scope): maturity mark/settle, payout update and ledger reversal still mint a key per attempt (server state guards prevent duplicates; unknown outcome copy is generic)."
+    ]
+  },
+  "history": [
+    {
+      "from": "lane-a-client-values",
+      "track": "a-client-values",
+      "at": "2026-11-13T09:36:32.975Z",
+      "lines": [
+        "Lane a-client-values (A1, A2 client-values, A5 growth/AUM dates, plus coordinator additions 1-7). Commits on track/a-client-values; not landed.",
+        "Backend: growth effectiveDate is z.iso.date() plus refuseFutureDate (IST day) on individual and collective commit; AUM asOfDate future guard on initialize, growth, collective commit; shared nonZeroSignedPaiseSchema in adminRouteKit (canonical, non-zero, |x| <= bigint max) used by growth and AUM; growth notifications carry deepLink /portfolio.",
+        "New shared file backend_controller/src/domain/shared/calendarDate.ts (indiaCalendarDate, refuseFutureDate); a-onboarding was sent the byte-identical content (sha256 c82db7aa...394242) and reuses it.",
+        "Frontend: growth hooks moved to client-values/growthQueries.ts and ledger query to ledgerQueries.ts (limit 100); adminQueries.ts shrank 725 -> 639 lines (removals only).",
+        "Individual and collective growth hold one idempotency key per logical submit, resend the held request on Check again, lock after success, and show unknown outcomes as Not confirmed. Collective commit now has a confirm dialog.",
+        "Failed reads: AsyncBoundary/explicit failure+retry on positions, ledger, maturity history, payouts, fund pickers, investor pickers.",
+        "Behaviour change to watch: an AUM fund whose latest snapshot is already future-dated cannot grow until that date arrives (growth must be >= basis date and <= IST today).",
+        "Unverified: browser/runtime behaviour of the screens (no dev server run); admins cannot be filtered from investor pickers without a contract change (only closed/tombstoned are excluded).",
+        "Until a-onboarding lands its IST change, recorded contributions and maturity dates entered between 00:00-05:30 IST for today are allowed by the form but refused by the UTC backend check."
+      ]
+    }
+  ]
+}

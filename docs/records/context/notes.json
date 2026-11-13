@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextNumber": 21,
+  "nextNumber": 24,
   "notes": [
     {
       "id": "note-1",
@@ -355,6 +355,58 @@
         ]
       },
       "at": "2026-11-13T09:28:08.860Z",
+      "replies": []
+    },
+    {
+      "id": "note-21",
+      "from": {
+        "track": "a-admin-core",
+        "agent": "lane-a-admin-core"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "finding",
+      "text": "lane-a-admin-core: backend `npm run test:integration` FAILS on the global branch-coverage threshold even on clean base 81b29aa: 35 files/390 tests pass, branches 78.25% < 80% (measured in container on a stashed tree). With my lane: 36 files/397 tests pass, branches 78.45%, still below 80%. Not caused by any lane; needs a maintainer decision (threshold vs more tests). No leftover containers from my runs.",
+      "about": {
+        "paths": [
+          "backend_controller/vitest.integration.config.ts"
+        ]
+      },
+      "at": "2026-11-13T09:36:06.257Z",
+      "replies": []
+    },
+    {
+      "id": "note-22",
+      "from": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "to": "all",
+      "kind": "heads-up",
+      "text": "Coordinator: tally now has task_remove. The four stray copies in M4-phase-a (B-L3-returns, D1-dev-cleanup, D2-prod-reform, E1-reviews) cannot be removed because they were already landed-in-part with deferred pointers to their real tasks in M5/M7/M8; they clear when those real tasks land. Ignore them. Mistaken planned tasks are removed with task_remove from now on, never landed.",
+      "at": "2026-11-13T09:36:21.412Z",
+      "replies": []
+    },
+    {
+      "id": "note-23",
+      "from": {
+        "track": "a-client-polish",
+        "agent": "lane-a-client-polish"
+      },
+      "to": [
+        "main",
+        "a-payments-off"
+      ],
+      "kind": "heads-up",
+      "text": "finding-19 item 9 lives in a-payments-off files, not edited by a-client-polish: PaymentStatusScreen.tsx:131-136 renders \"Paid\" (succeededAt) and \"Invested\" (confirmedAt) with formatDateTime. For recorded_offline payments both are the effective date at 12:00Z (recordContribution.ts:49 midday), so the screen shows an invented 17:30. Suggested fix: when payment.provider === null, render formatDate for those rows. a-client-polish applied that rule to the Activity payments list only.",
+      "about": {
+        "paths": [
+          "frontend_stack_ts/src/features/payments/PaymentStatusScreen.tsx"
+        ],
+        "task": "M4-phase-a:A-L6-client-polish"
+      },
+      "at": "2026-11-13T09:36:30.337Z",
       "replies": []
     }
   ]

@@ -364,7 +364,8 @@
         {
           "id": "G12-stale-payments",
           "track": "main",
-          "status": "planned",
+          "status": "landed",
+          "commit": "0200a79",
           "also": [],
           "brief": "MAINTAINER: decide whether old pending online payments/orders created before payments were turned off are expired (state change of in-flight records, rule 11) or left as they are"
         },
@@ -421,6 +422,10 @@
         {
           "id": "A9",
           "what": "Client app polish: payment-recorded labels, portfolio payment count, money footnote/as-of, honest recorded-payment dates, eligibility failure not 'Locked', notification tap opens and marks read, support copy honest, ticket prefix without BOE, deepLinks on reversal and payout notices"
+        },
+        {
+          "id": "A10",
+          "what": "Stale pending online payments past their pay-by time expired via the existing expiry path, audited, idempotent, integration-tested"
         }
       ],
       "tasks": [
@@ -609,6 +614,27 @@
           ],
           "covers": [
             "A9"
+          ]
+        },
+        {
+          "id": "A-L2b-expire-stale",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Lane track/a-payments-off follow-up (after A-L2 lands): when no payment gateway is configured, expire pending payment attempts/payments whose checkout expiry plus grace has passed via the existing expiry path (markPaymentExpired + canonical outcome), audited and idempotent; never delete/rewrite rows or move money; integration test proves only time-expired rows change and a gateway-configured run is unaffected",
+          "paths": [
+            "backend_controller/src/paymentReconciliationEntrypoint.ts",
+            "backend_controller/src/repositories/paymentsRepository.ts",
+            "backend_controller/test/integration"
+          ],
+          "covers": [
+            "A10"
+          ],
+          "waitsOn": [
+            {
+              "task": "M4-phase-a:A-L2-payments-off",
+              "what": "same payments code as lane 2; starts once lane 2 lands"
+            }
           ]
         },
         {
@@ -1049,5 +1075,22 @@
       ]
     }
   ],
-  "other": []
+  "other": [
+    {
+      "commit": "557d4d8",
+      "note": "docs(plan): maintainer answers and identity step A8"
+    },
+    {
+      "commit": "73ad081",
+      "note": "chore(tools): Node 22 container for checks (maintainer: no second Node on host)"
+    },
+    {
+      "commit": "a9468a0",
+      "note": "docs(plan): client and admin experience review results"
+    },
+    {
+      "commit": "f71d8f7",
+      "note": "chore(tools): shared npm cache for the Node 22 container"
+    }
+  ]
 }

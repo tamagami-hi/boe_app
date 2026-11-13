@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "rule",
-  "nextNumber": 10,
+  "nextNumber": 11,
   "entries": [
     {
       "id": "rule-1",
@@ -200,6 +200,27 @@
       },
       "at": "2026-11-13T09:12:40.642Z",
       "replaces": "rule-8"
+    },
+    {
+      "id": "rule-10",
+      "kind": "rule",
+      "title": "Decision 2026-11-13 (G12): expire stale pending online payments whose pay-by time has passed",
+      "text": "Maintainer chose: mark old pending online payments/orders created before payments were turned off as expired. Scope: only attempts/payments whose checkout expiry (plus the configured grace) has passed; one-time or reconciliation-pass step that uses the existing expiry path (paymentsRepository markPaymentExpired and the canonical outcome flow), audited, idempotent, never deletes or rewrites rows, never moves money, and never touches a payment the provider might still settle once payments return (if the gateway is later configured, normal reconciliation applies). Clients stop seeing 'awaiting payment'. This retires in-flight state deliberately under RULES rule 11 with the impact stated: those clients would have to start a new payment once payments return. Needs an integration test proving only expired-by-time rows change.",
+      "paths": [],
+      "tags": [
+        "decision",
+        "payments",
+        "in-flight"
+      ],
+      "refs": [
+        "M3-gates:G12-stale-payments",
+        "rule-2"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "at": "2026-11-13T09:29:21.622Z"
     }
   ]
 }

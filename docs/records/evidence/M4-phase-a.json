@@ -31,6 +31,94 @@
         "baseline": "main before Phase A"
       },
       "note": "Baseline on main (code = v0.15.4) via the new Node 22 container; proves testcontainers works from inside the container. Contracts npm run check also passed in the container."
+    },
+    {
+      "id": "8cb95d95-c07e-48cb-b67e-a64582a3aecd",
+      "task": "A-L4-onboarding",
+      "track": "main",
+      "agent": "lane-a-onboarding",
+      "kind": "green",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check (backend, frontend) + npm run test:integration + npm run test:onboarding:harness"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/a-onboarding",
+      "started": "2026-11-13T09:27:09Z",
+      "seconds": 400,
+      "exit": 0,
+      "summary": {
+        "backendFiles": 96,
+        "backendTests": 1170,
+        "frontendFiles": 26,
+        "frontendTests": 238,
+        "integrationFiles": 35,
+        "integrationTests": 390,
+        "harness": "7/7",
+        "buildClient": "pass",
+        "buildAdmin": "pass",
+        "negativeControls": "phone 4, recording refusal 3, IST 2, link exit 1, harness 1 failures on old code",
+        "commits": "f778580 2eb49ee 296506e"
+      },
+      "note": "As reported by the lane; logs under .temp/tally/logs/a-onboarding/. Onboarding e2e script needs a live stack and was not run."
+    },
+    {
+      "id": "53d20da1-9172-47db-827e-10b9603b6c8d",
+      "task": "A-L2-payments-off",
+      "track": "main",
+      "agent": "lane-a-payments-off",
+      "kind": "green",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check (backend, frontend) + npm run test:integration -- --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/a-payments-off",
+      "started": "2026-11-13T09:20:43Z",
+      "seconds": 900,
+      "exit": 0,
+      "summary": {
+        "backendFiles": 95,
+        "backendTests": 1155,
+        "frontendFiles": 26,
+        "frontendTests": 236,
+        "integrationFiles": 36,
+        "integrationTests": 395,
+        "negativeControl": "guards removed: 1 unit + 3 integration failures",
+        "commit": "189f9ac"
+      },
+      "note": "As reported by the lane; logs under .temp/tally/logs/a-payments-off/. With coverage enabled the local integration run exits 1 on the pre-existing global branch threshold (78.03% vs 80%); CI disables coverage for integration."
+    },
+    {
+      "id": "e052b1bb-e664-4e1d-b99b-2f79a435bf7f",
+      "task": "A-L1-client-values",
+      "track": "main",
+      "agent": "lane-a-client-values",
+      "kind": "green",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check (backend, frontend) + npm run test:integration -- --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/a-client-values",
+      "started": "2026-11-13T09:30:00Z",
+      "seconds": 900,
+      "exit": 0,
+      "summary": {
+        "backendFiles": 97,
+        "backendTests": 1161,
+        "frontendFiles": 27,
+        "frontendTests": 239,
+        "integrationFiles": 35,
+        "integrationTests": 393,
+        "buildAdmin": "pass",
+        "negativeControls": "schema 3/16 failed before fix; IST offset zero 2/3 fail; key-per-send and no-lock each fail screen tests",
+        "commits": "1c02146 f8451d6"
+      },
+      "note": "As reported by the lane; logs under .temp/tally/logs/a-client-values/. Admins still appear in investor pickers (no admin field in list response; adding one breaks released APKs)."
     }
   ]
 }

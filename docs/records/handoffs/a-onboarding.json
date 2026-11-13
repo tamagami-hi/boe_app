@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "track": "a-onboarding",
+  "current": {
+    "from": "lane-a-onboarding",
+    "track": "a-onboarding",
+    "at": "2026-11-13T09:35:39.220Z",
+    "lines": [
+      "Lane a-onboarding: 3 commits on track/a-onboarding (f778580, 2eb49ee, 296506e), not landed.",
+      "A: recordContribution refuses non active/suspended and role-holding accounts before any write; IST day for contribution + maturity 'not future' via domain/shared/calendarDate.ts (byte-identical to a-client-values, sha256 c82db7aa...394242); neutral recording notification + deepLink /portfolio (also maturity).",
+      "B: create-client review step; conflict reported per field (email/phone/both); +91 needs 10 digits in shared normalizePhone (also guards client phone change); api/envelope.ts fallback keeps well-formed error.fields (out of lane, heads-up note-13); UserLifecyclePanel holds one key per action with honest unknown; PasswordLinkPanel exits unknown via 'Read the link status'; useUserLifecycle moved out of adminQueries.ts (683 lines); dead Invited filter removed.",
+      "C: EligibilityReadCheck under the router (guards readCheck, ClientRoutes 1 line, FundDetailScreen failure branch only); start-verification hook moved to features/email-verification/queries.ts and reports already verified; ResetPassword new-link action + platform-neutral copy; e2e kyc routes repaired (not run, needs stack); harness repaired and wired into CI as a no-deps job.",
+      "Checks (node22 container): backend check 96/1170; frontend check 26/238 + build:client + build:admin; integration 35/390; root harness 7/7 (6/7 before). Negative controls recorded for phone, refusal, IST, panel, harness.",
+      "Not done / later: directory 'Invited' label needs a new field or endpoint (AdminUser has no hasPassword; activatedAt is set at creation); app-download email queueing (passwordRoutes.ts:137-146) unchanged; EarlierInvestmentForm/MaturityPanel UTC today belong to a-client-values; Dashboard/Profile 'Locked' on failed eligibility to client-polish lane; plan section 8 evidence entry left to main.",
+      "publicOnboardingRoutes.ts has its own phone normaliser without the +91 rule (public signup unused)."
+    ]
+  },
+  "history": []
+}

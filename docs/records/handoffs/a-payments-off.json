@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "track": "a-payments-off",
+  "current": {
+    "task": "M4-phase-a:A-L2-payments-off",
+    "from": "lane-a-payments-off",
+    "track": "a-payments-off",
+    "at": "2026-11-13T09:36:22.191Z",
+    "lines": [
+      "A3 committed on track/a-payments-off as 189f9ac (not landed).",
+      "Backend: createClientOrder refuses DEPENDENCY_UNAVAILABLE inside the idempotency execute (completed keys still replay); createSip refuses before its transaction; SIP worker returns an idle summary when no gateway (config.gatewayConfigured from selectPaymentGateway in workerComposition), entrypoint logs PAYMENT_GATEWAY_NOT_CONFIGURED. composition.ts +1 line. SIP-due notification payload gains deepLink \"/sips\".",
+      "Tests: paymentsOff.integration.test.ts (5), sipScheduleWorker.test.ts (+1), composition.test.ts (SIP worker flag). clientEmailVerification integration now gives order routes a stub gateway (intended behavior change). Negative control: guards removed -> 1 unit + 3 integration failures.",
+      "Frontend: failure.ts DEPENDENCY_UNAVAILABLE copy for lump sum, pay, createSip, new startAutoPay context, authoriseAutoPay (pay the BeOnEdge team directly); SIP list/detail hide past next-due dates and pay-in-Activity promise; PaymentStatusScreen stops polling once checkout expiresAt passes (hasCheckoutLapsed in shared/queries.ts). AutoPay option NOT hidden: client has no gateway/AutoPay availability data without a contract change.",
+      "Checks (Node 22 container): backend check 95 files/1155 tests; frontend check 26/236; contracts build; integration 36 files/395 tests pass; local integration branch-coverage gate fails at 78.03% (78.26% without the new file, so pre-existing; CI runs with --coverage.enabled=false).",
+      "Found, not fixed (E2, before re-enable): SIP worker requestId is not a uuid so every instalment insert rolls back (worker never worked on Postgres); mandateCollectionWorker same shape; createSip first instalment period YYYY-MM-01 vs next_due_date today -> double instalment once fixed; no client UI pays an existing order; 'Open the app to pay it' notice body; DEPENDENCY_UNAVAILABLE AutoPay copy says nothing saved, which is false if AutoPay is re-enabled and dispatch fails after prepare.",
+      "Out-of-lane files touched (heads-up note-15): sipScheduleEntrypoint.ts, composition.test.ts, clientEmailVerification.integration.test.ts, DEPLOY.md, domain/dates.ts, features/payments/PaymentStatusScreen.tsx, features/shared/queries.ts, domain/client/createSipInstallmentOrder.ts (last three per coordinator request)."
+    ]
+  },
+  "history": []
+}

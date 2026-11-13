@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "finding",
-  "nextNumber": 22,
+  "nextNumber": 23,
   "entries": [
     {
       "id": "finding-1",
@@ -495,6 +495,23 @@
       },
       "at": "2026-11-13T09:25:09.175Z",
       "replaces": "finding-15"
+    },
+    {
+      "id": "finding-22",
+      "kind": "finding",
+      "title": "Local integration run with coverage fails the 80% branch gate on clean main (78.25%); CI disables coverage there",
+      "text": "TESTED by lanes a-admin-core and a-payments-off in the Node 22 container: `npm run test:integration` passes every test (35 files/390 on clean base 81b29aa) but exits 1 because global branch coverage is 78.25% < 80%. CI runs `npm run test:integration -- --coverage.enabled=false` (.github/workflows/ci.yml backend job), so CI is green. Not caused by any lane. Lanes and phase closes run integration with `-- --coverage.enabled=false` like CI. Whether to lower the local threshold or add coverage is a maintainer decision for later; not blocking.",
+      "paths": [],
+      "tags": [
+        "tests",
+        "coverage"
+      ],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "at": "2026-11-13T09:37:38.319Z"
     }
   ]
 }

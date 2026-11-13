@@ -1446,6 +1446,166 @@
       "agent": "lane-a-admin-core",
       "verb": "note_post",
       "target": "heads-up"
+    },
+    {
+      "at": "2026-11-13T09:29:21.629Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "context_put",
+      "target": "rule"
+    },
+    {
+      "at": "2026-11-13T09:29:21.929Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_land",
+      "target": "M3-gates / G12-stale-payments"
+    },
+    {
+      "at": "2026-11-13T09:29:22.194Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "milestone_deliver",
+      "target": "M4-phase-a"
+    },
+    {
+      "at": "2026-11-13T09:29:22.490Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_plan",
+      "target": "M4-phase-a"
+    },
+    {
+      "at": "2026-11-13T09:29:22.843Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_wait",
+      "target": "M4-phase-a / A-L2b-expire-stale"
+    },
+    {
+      "at": "2026-11-13T09:35:39.430Z",
+      "session": "0a35075b-d9f7-45c1-b5be-a3e13bfe8244",
+      "track": "a-onboarding",
+      "agent": "lane-a-onboarding",
+      "verb": "handoff_write"
+    },
+    {
+      "at": "2026-11-13T09:36:06.413Z",
+      "session": "afebd8bc-47b0-4988-b446-08ce07e08ad8",
+      "track": "a-admin-core",
+      "agent": "lane-a-admin-core",
+      "verb": "note_post",
+      "target": "finding"
+    },
+    {
+      "at": "2026-11-13T09:36:21.428Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "note_post",
+      "target": "heads-up"
+    },
+    {
+      "at": "2026-11-13T09:36:22.217Z",
+      "session": "ff8ce9de-cf77-4518-8aa6-ace22343fd00",
+      "track": "a-payments-off",
+      "agent": "lane-a-payments-off",
+      "verb": "handoff_write",
+      "target": "M4-phase-a:A-L2-payments-off"
+    },
+    {
+      "at": "2026-11-13T09:36:30.364Z",
+      "session": "31f0cddb-cd38-465e-a810-524890380228",
+      "track": "a-client-polish",
+      "agent": "lane-a-client-polish",
+      "verb": "note_post",
+      "target": "M4-phase-a:A-L6-client-polish, heads-up"
+    },
+    {
+      "at": "2026-11-13T09:36:33.000Z",
+      "session": "275ce6cd-592a-4453-8f40-54a0d47424f9",
+      "track": "a-client-values",
+      "agent": "lane-a-client-values",
+      "verb": "handoff_write"
+    },
+    {
+      "at": "2026-11-13T09:36:39.176Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_other"
+    },
+    {
+      "at": "2026-11-13T09:36:39.472Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_other"
+    },
+    {
+      "at": "2026-11-13T09:36:39.744Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_other"
+    },
+    {
+      "at": "2026-11-13T09:37:36.180Z",
+      "session": "95b875c4-a565-406c-9bc5-35da2c6acc10",
+      "track": "main",
+      "agent": "lane-a-onboarding",
+      "verb": "evidence_record",
+      "target": "M4-phase-a / A-L4-onboarding, green"
+    },
+    {
+      "at": "2026-11-13T09:37:36.956Z",
+      "session": "e22ee350-15fd-4e6a-86fa-feadfdbf2e84",
+      "track": "main",
+      "agent": "lane-a-payments-off",
+      "verb": "evidence_record",
+      "target": "M4-phase-a / A-L2-payments-off, green"
+    },
+    {
+      "at": "2026-11-13T09:37:38.356Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "context_put",
+      "target": "finding"
+    },
+    {
+      "at": "2026-11-13T09:38:53.593Z",
+      "session": "275ce6cd-592a-4453-8f40-54a0d47424f9",
+      "track": "a-client-values",
+      "agent": "lane-a-client-values",
+      "verb": "handoff_write"
+    },
+    {
+      "at": "2026-11-13T09:40:10.573Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "repo_configure"
+    },
+    {
+      "at": "2026-11-13T09:40:11.520Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_other"
+    },
+    {
+      "at": "2026-11-13T09:40:12.479Z",
+      "session": "c8da83b9-315d-4e51-b6bb-75db89ca7bf8",
+      "track": "main",
+      "agent": "lane-a-client-values",
+      "verb": "evidence_record",
+      "target": "M4-phase-a / A-L1-client-values, green"
     }
   ]
 }
