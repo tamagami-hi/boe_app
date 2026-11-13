@@ -31,6 +31,14 @@ Each code package has its own manifest and `npm run check`. Build contracts befo
 frontend checks. The full verification boundary and permission requirements are
 defined in [RULES.md](RULES.md#verification-boundaries).
 
+To run checks without installing the pinned Node 22 on the host, prefix any command
+with `tools/node22-container/run.sh` from inside a package folder, for example
+`tools/node22-container/run.sh sh -c 'npm ci && npm run check'` from
+`backend_controller/` (use the relative path to the script). It runs the pinned
+Node 22.20.0 and npm 11.16.0 in a local Alpine image as your user, and passes the
+Docker socket so `npm run test:integration` works. Dependencies installed this way
+are container builds, so do not mix them with host `npm`.
+
 ## Current documents
 
 - [RULES.md](RULES.md): binding rules and work process.

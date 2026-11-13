@@ -31,17 +31,24 @@ IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-0
 | 2026-11-13 | The integration suite may run in a local container with a throwaway PostgreSQL. | In force for lanes and phase closes (tally `rule-8`). |
 | 2026-11-13 | Q-021: "Start a new SIP" means an admin-tracked schedule: monthly amount, fund, start month and number of months. Each monthly recording links to a month, and the client sees "N of M months paid". There is no automatic collection. The maturity date is per client fund holding. | Becomes C2 and C3 (tally `rule-8`). |
 | 2026-11-13 | Q-024: two fixes. An audited admin contact correction for clients who have not set a password, which retires old links and sends the invite to the corrected address. Closed accounts can also release their email and phone. | Becomes step A8. Original contacts are kept in an append-only history (tally `rule-8`). |
-| 2026-11-13 | Q-017: admin invite (set-password) links are valid for 24 hours. Email codes and reset links stay at 10 minutes. | Step A8 (tally `rule-8`). |
-| 2026-11-13 | Q-025: setting the password through the invite link marks that email verified. | Step A8 (tally `rule-8`). |
-| 2026-11-13 | Q-019: the reform fixes duplicates and fills in missing new details (categories, maturity dates, SIP schedules, nominees). The dev copy masks names, emails and phones. A duplicate investment gets a reversal entry, and both rows are kept. A duplicate client account is closed and merged into the real one, only for pairs the maintainer confirms. | Phase D. The production run still needs its own destructive-change approval after the pre-flight report (tally `rule-8`). |
-| 2026-11-13 | Q-020: client reviews and comments are wanted, visible to admins only with the client profile, and nothing is public. | E1, after Phase B (tally `rule-8`). |
+| 2026-11-13 | Q-017 (revised): invite links stay short, at 10 minutes. Instead, the admin must be able to send a new invite in one obvious action, including after the old one expired or was cancelled. | Step A8 (tally `rule-9`). |
+| 2026-11-13 | Q-025 (revised): setting a password does not verify the email. The email code step stays. | No change to verification (tally `rule-9`). |
+| 2026-11-13 | Q-019 (revised): there is no standalone cleanup project. Reform or clean the database only when a change actually needs it, and only for client data. Nothing is lost, the step is rehearsed on dev against a masked copy, duplicate investments are reversed with both rows kept, and duplicate accounts are merged only for pairs the maintainer confirms. | Phase D runs only when needed. A production run still needs its own approval after the pre-flight report (tally `rule-9`). |
+| 2026-11-13 | Q-020 (revised): client reviews are wanted, admin-only, but deferred. Fix bugs first. | E1 stays deferred (tally `rule-9`). |
+| 2026-11-13 | Clients pay SIPs and investments directly to the company bank account, and the admin records them. Whether the gateway is on or off must not affect how quickly and clearly a client sees their investment in the app. | Recording, receipts, value updates and the client dashboard are the core path. Payments-off copy points to paying the BeOnEdge team directly (tally `rule-9`). |
+| 2026-11-13 | The maintainer delegates: work out what else this kind of app needs, and simplify complex flows so both client and admin have a seamless experience. | Client and admin journey reviews (tally `M9-ux-review`) feed section 6 (tally `rule-9`). |
 | 2026-11-13 | Q-022: the dashboards show simple return % as the main figure, plus annualised XIRR as a secondary column. | B5 (tally `rule-8`). |
 | 2026-11-13 | Q-023: app-update announcement emails keep going to every active client. | No change (tally `rule-8`). |
 | 2026-11-13 | Stay on Node 22. Production images already run `node:22.23.2`, and CI and the packages pin 22. Upgrading to Node 24 is a separate tested step. | Local checks use the official Node 22.20.0 and npm 11.16.0 in `~/.local/node-22.20.0`. The upgrade is task E3 (tally `howto-1`). |
 
 #### Replaced
 
-None yet.
+| Date | Earlier decision | Replaced by | Reason |
+| --- | --- | --- | --- |
+| 2026-11-13 | Q-017: invite links valid for 24 hours | Short links plus easy regeneration | Maintainer revised the same day |
+| 2026-11-13 | Q-025: setting the password through the invite marks the email verified | Email code step stays | Maintainer revised the same day |
+| 2026-11-13 | Q-019: a scheduled reform for duplicates and missing details | Reform only when a change needs it | Maintainer clarified the same day |
+| 2026-11-13 | Q-020: reviews built after Phase B | Reviews deferred | Maintainer: bugs first |
 
 ## 1. Requested outcomes
 
@@ -244,8 +251,7 @@ Maintainer gates (milestone `M3-gates`):
 - **A8.** Identity follow-up, on lane `a-identity`, after A7 lands:
   - An audited admin contact correction for a client who has not set a password. It retires the old links and invites the corrected address.
   - An explicit, audited "release contacts" action on a closed account. The original email and phone are kept in a new append-only history table (migration 064), and the live columns are freed without breaking the previous release's lookups.
-  - A separate 24-hour lifetime for invite links, while reset links and email codes stay at 10 minutes.
-  - Setting the password through a link marks the email at that revision verified.
+  - Sending a new invite is one obvious action on the user page and works after the old link expired or was cancelled. The invite lifetime stays at 10 minutes, and the email code step stays.
   - Tests cover each change, plus a populated-upgrade test for 064.
 
 ### Phase B — recording categories, receipts, value updates, returns
