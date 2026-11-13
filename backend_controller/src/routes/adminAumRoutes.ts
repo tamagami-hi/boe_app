@@ -18,6 +18,7 @@ import {
   type CollectiveAumInstruction,
 } from "../domain/admin/fundAumGrowth.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
+import { refuseFutureDate } from "../domain/shared/calendarDate.js"
 import { AppError } from "../http/errorCatalog.js"
 import type { FixedWindowRateLimiter } from "../http/rateLimit.js"
 import { paginate, readKeysetValues } from "../http/pagination.js"
@@ -30,6 +31,7 @@ import {
   hashRequest,
   iso,
   limitSchema,
+  nonZeroSignedPaiseSchema,
   reasonCodeSchema,
   requireIdempotencyKey,
   runAdminMutation,
@@ -60,14 +62,6 @@ export interface AdminAumDeps {
   readonly rateLimiter: FixedWindowRateLimiter
 }
 
-const signedPaiseSchema = z
-  .string()
-  .trim()
-  .regex(/^-?(0|[1-9]\d{0,18})$/u, "must be a signed decimal paise string")
-const nonZeroSignedPaiseSchema = signedPaiseSchema.refine(
-  (value) => !/^-?0$/u.test(value),
-  "must not be zero — a growth command has to change the figure",
-)
 const nonZeroBasisPointsSchema = (maxBasisPoints: number) =>
   z
     .number()
@@ -244,6 +238,7 @@ const initializeAum = async (deps: AdminAumDeps, request: FastifyRequest, reply:
   deps.rateLimiter.hit(principal.userId || request.ip)
   const fundId = parseOrThrow(uuidParam, (request.params as { fundId?: unknown }).fundId)
   const body = parseOrThrow(initializeBodySchema, request.body)
+  refuseFutureDate("asOfDate", body.asOfDate, deps.clock())
   const key = requireIdempotencyKey(request)
 
   const result = await runAdminMutation({
@@ -319,6 +314,7 @@ const growAum = async (deps: AdminAumDeps, request: FastifyRequest, reply: Fasti
   deps.rateLimiter.hit(principal.userId || request.ip)
   const fundId = parseOrThrow(uuidParam, (request.params as { fundId?: unknown }).fundId)
   const body = parseOrThrow(growthBodySchema(maxBasisPointsOf(deps)), request.body)
+  refuseFutureDate("asOfDate", body.asOfDate, deps.clock())
   const key = requireIdempotencyKey(request)
 
   const result = await runAdminMutation({
@@ -532,6 +528,7 @@ const commitCollectiveGrowth = async (deps: AdminAumDeps, request: FastifyReques
   requireAnyPermission(principal, ["aum.write"])
   deps.rateLimiter.hit(principal.userId || request.ip)
   const body = parseOrThrow(collectiveCommitBodySchema(maxBasisPointsOf(deps)), request.body)
+  refuseFutureDate("asOfDate", body.asOfDate, deps.clock())
   const key = requireIdempotencyKey(request)
   const targets = collectiveTargets(body)
 

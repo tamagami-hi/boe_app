@@ -35,6 +35,7 @@ import {
   type PlannedGrowthTarget,
 } from "../domain/admin/clientGrowth.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
+import { refuseFutureDate } from "../domain/shared/calendarDate.js"
 import { CLIENT_GROWTH_AUDIT_METADATA } from "../domain/shared/growthAuditMetadata.js"
 import { AppError } from "../http/errorCatalog.js"
 import { parseOrThrow } from "../http/validation.js"
@@ -47,6 +48,7 @@ import type { NotificationWriteRepository } from "../repositories/notificationRe
 import {
   adminIdempotencyScope,
   hashRequest,
+  nonZeroSignedPaiseSchema,
   reasonCodeSchema,
   reasonDetailSchema,
   requireIdempotencyKey,
@@ -85,20 +87,16 @@ const NOTIFICATION_KIND = "client_value_updated"
 const NOTIFICATION_TITLE = "Investment value updated"
 const NOTIFICATION_BODY =
   "The value of one of your investments was updated. Open your portfolio to see the current value."
+const NOTIFICATION_DEEP_LINK = "/portfolio"
 
 // --- schemas ---
 
-const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/u, "must be a YYYY-MM-DD date")
-/** Signed integer paise as a decimal string; bounded to the bigint range. */
-const signedPaiseSchema = z
-  .string()
-  .trim()
-  .regex(/^-?\d{1,19}$/u, "must be a signed integer paise string")
+const dateSchema = z.iso.date()
 const basisHashSchema = z
   .string()
   .regex(/^[0-9a-f]{64}$/u, "must be the basis hash returned by the preview")
 
-const buildSchemas = () => {
+export const buildClientGrowthSchemas = () => {
   const growthBasisPointsSchema = z.coerce
     .number()
     .int()
@@ -109,7 +107,7 @@ const buildSchemas = () => {
     .object({
       userId: uuidParam,
       fundId: uuidParam,
-      growthPaise: signedPaiseSchema.optional(),
+      growthPaise: nonZeroSignedPaiseSchema.optional(),
       growthBasisPoints: growthBasisPointsSchema.optional(),
       effectiveDate: dateSchema,
       reasonCode: reasonCodeSchema,
@@ -126,7 +124,7 @@ const buildSchemas = () => {
       fundId: uuidParam,
       growthBasisPoints: growthBasisPointsSchema.optional(),
       items: z
-        .array(z.object({ userId: uuidParam, growthPaise: signedPaiseSchema }).strict())
+        .array(z.object({ userId: uuidParam, growthPaise: nonZeroSignedPaiseSchema }).strict())
         .min(1)
         .max(MAX_COLLECTIVE_CLIENT_TARGETS)
         .optional(),
@@ -263,12 +261,13 @@ const resolveWriter = async (
 
 const individual = async (
   deps: AdminClientGrowthDeps,
-  schemas: ReturnType<typeof buildSchemas>,
+  schemas: ReturnType<typeof buildClientGrowthSchemas>,
   request: FastifyRequest,
   reply: FastifyReply,
 ) => {
   const principal = await resolveWriter(deps, request)
   const body = parseOrThrow(schemas.individualSchema, request.body)
+  refuseFutureDate("effectiveDate", body.effectiveDate, deps.clock())
 
   const instruction: GrowthInstruction =
     body.growthPaise !== undefined
@@ -352,7 +351,7 @@ const individual = async (
         kind: NOTIFICATION_KIND,
         title: NOTIFICATION_TITLE,
         body: NOTIFICATION_BODY,
-        payload: { fundId: body.fundId },
+        payload: { fundId: body.fundId, deepLink: NOTIFICATION_DEEP_LINK },
       })
 
       return {
@@ -395,7 +394,7 @@ const collectiveCommand = (instruction: CollectiveGrowthInstruction): string =>
 
 const collectivePreview = async (
   deps: AdminClientGrowthDeps,
-  schemas: ReturnType<typeof buildSchemas>,
+  schemas: ReturnType<typeof buildClientGrowthSchemas>,
   request: FastifyRequest,
   reply: FastifyReply,
 ) => {
@@ -429,12 +428,13 @@ const collectivePreview = async (
 
 const collectiveCommit = async (
   deps: AdminClientGrowthDeps,
-  schemas: ReturnType<typeof buildSchemas>,
+  schemas: ReturnType<typeof buildClientGrowthSchemas>,
   request: FastifyRequest,
   reply: FastifyReply,
 ) => {
   const principal = await resolveWriter(deps, request)
   const body = parseOrThrow(schemas.collectiveCommitSchema, request.body)
+  refuseFutureDate("effectiveDate", body.effectiveDate, deps.clock())
   const instruction = collectiveInstruction(body)
   const command = collectiveCommand(instruction)
   const canonical: Record<string, unknown> = {
@@ -502,7 +502,7 @@ const collectiveCommit = async (
           kind: NOTIFICATION_KIND,
           title: NOTIFICATION_TITLE,
           body: NOTIFICATION_BODY,
-          payload: { fundId: body.fundId },
+          payload: { fundId: body.fundId, deepLink: NOTIFICATION_DEEP_LINK },
         })
       }
       await deps.auditRepository.append(tx, {
@@ -581,7 +581,7 @@ export const registerAdminClientGrowthRoutes = (
   application: FastifyInstance,
   deps: AdminClientGrowthDeps,
 ): void => {
-  const schemas = buildSchemas()
+  const schemas = buildClientGrowthSchemas()
   application.get(INVESTOR_POSITIONS_ROUTE, (request, reply) => investorPositions(deps, request, reply))
   application.post(INDIVIDUAL_ROUTE, (request, reply) => individual(deps, schemas, request, reply))
   application.post(COLLECTIVE_PREVIEW_ROUTE, (request, reply) =>

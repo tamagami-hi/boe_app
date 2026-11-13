@@ -403,6 +403,27 @@ describe("individual growth (integration)", () => {
     expect(await snapshotCount(fundId)).toBe(1)
   })
 
+  test("AUM cannot be published for a date after today in India and nothing is written", async () => {
+    const fundId = await seedFund("aum-future-date")
+    const batchesBefore = await batchCount()
+
+    const futureOpening = await initialize(fundId, "10000000", `fut0-${randomUUID()}`, "2999-01-01")
+    expect(futureOpening.statusCode).toBe(400)
+    expect(errorOf(futureOpening)).toBe("VALIDATION_FAILED")
+    expect(await snapshotCount(fundId)).toBe(0)
+    expect(await batchCount()).toBe(batchesBefore)
+
+    await initialize(fundId, "10000000", `fut1-${randomUUID()}`, "2026-07-31")
+    const futureGrowth = asInjected(await postAum(`/v1/admin/aum/funds/${fundId}/growth`, adminToken, {
+      growthPaise: "500000",
+      asOfDate: "2999-01-01",
+      reasonCode: "manual_adjustment",
+    }, `fut2-${randomUUID()}`))
+    expect(futureGrowth.statusCode).toBe(400)
+    expect(errorOf(futureGrowth)).toBe("VALIDATION_FAILED")
+    expect(await snapshotCount(fundId)).toBe(1)
+  })
+
   test("amount and percentage growth compute from the latest snapshot", async () => {
     const fundId = await seedFund("aum-grow")
     await initialize(fundId, "10000000", `g0-${randomUUID()}`)

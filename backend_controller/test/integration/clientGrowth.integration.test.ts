@@ -466,6 +466,33 @@ describe("POST /v1/admin/client-growth/individual", () => {
     expect(await countRows("client_value_entries")).toBe(entriesBefore)
   })
 
+  test("refuses an impossible or future effective date and writes nothing", async () => {
+    const fund = await seedPublishedFund(`growth-ind-date-${randomUUID().slice(0, 8)}`, financeAdminId)
+    const clientId = await seedClient(`client-${randomUUID().slice(0, 8)}@example.com`)
+    await seedPosition(clientId, fund.fundId, fund.versionId, 1_000_000, financeAdminId)
+    const batchesBefore = await countRows("client_growth_batches")
+    const entriesBefore = await countRows("client_value_entries")
+
+    for (const effectiveDate of ["2026-13-45", "2026-02-30", "2999-01-01"]) {
+      const response = await app.inject({
+        method: "POST",
+        url: "/v1/admin/client-growth/individual",
+        headers: authHeaders(financeSession, { "idempotency-key": `ind-date-${randomUUID()}` }),
+        payload: {
+          userId: clientId,
+          fundId: fund.fundId,
+          growthPaise: "5000",
+          effectiveDate,
+          reasonCode: "performance_update",
+        },
+      })
+      expect(response.statusCode, effectiveDate).toBe(400)
+      expect(errorOf(response), effectiveDate).toBe("VALIDATION_FAILED")
+    }
+    expect(await countRows("client_growth_batches")).toBe(batchesBefore)
+    expect(await countRows("client_value_entries")).toBe(entriesBefore)
+  })
+
   test("rejects a position with no unreversed contribution as not found", async () => {
     const fund = await seedPublishedFund(`growth-ind-rev-${randomUUID().slice(0, 8)}`, financeAdminId)
     const clientId = await seedClient(`client-${randomUUID().slice(0, 8)}@example.com`)
@@ -800,6 +827,38 @@ describe("POST /v1/admin/client-growth/collective", () => {
     expect(await countRows("client_growth_batches")).toBe(batchesBefore + 1)
     expect(await countRows("client_value_entries")).toBe(entriesAfterIndividual)
     expect(entriesAfterIndividual).toBe(entriesBefore + 1)
+  })
+
+  test("a commit dated after today in India is refused with zero writes", async () => {
+    const fund = await seedPublishedFund(`growth-col-future-${randomUUID().slice(0, 8)}`, financeAdminId)
+    const clientId = await seedClient(`client-${randomUUID().slice(0, 8)}@example.com`)
+    await seedPosition(clientId, fund.fundId, fund.versionId, 1_000_000, financeAdminId)
+    const preview = await app.inject({
+      method: "POST",
+      url: "/v1/admin/client-growth/collective/preview",
+      headers: authHeaders(financeSession),
+      payload: { fundId: fund.fundId, growthBasisPoints: 250 },
+    })
+    expect(preview.statusCode).toBe(200)
+    const batchesBefore = await countRows("client_growth_batches")
+    const entriesBefore = await countRows("client_value_entries")
+
+    const commit = await app.inject({
+      method: "POST",
+      url: "/v1/admin/client-growth/collective",
+      headers: authHeaders(financeSession, { "idempotency-key": `col-future-${randomUUID()}` }),
+      payload: {
+        fundId: fund.fundId,
+        growthBasisPoints: 250,
+        basisHash: dataOf<{ basisHash: string }>(preview).basisHash,
+        effectiveDate: "2999-01-01",
+        reasonCode: "performance_update",
+      },
+    })
+    expect(commit.statusCode).toBe(400)
+    expect(errorOf(commit)).toBe("VALIDATION_FAILED")
+    expect(await countRows("client_growth_batches")).toBe(batchesBefore)
+    expect(await countRows("client_value_entries")).toBe(entriesBefore)
   })
 
   test("one invalid explicit target rolls back the whole batch", async () => {

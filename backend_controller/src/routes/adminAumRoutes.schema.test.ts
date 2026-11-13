@@ -28,6 +28,17 @@ test("individual AUM accepts a nonnegative target exclusively from signed or per
   expect(schema.safeParse(base).success).toBe(false)
 })
 
+test("AUM growth amounts and dates are refused outside the bigint range or the calendar", () => {
+  const schema = growthBodySchema(MAX)
+  expect(schema.safeParse({ ...base, growthPaise: "-9223372036854775807" }).success).toBe(true)
+  for (const growthPaise of ["9223372036854775808", "-9223372036854775808", "9999999999999999999", "0", "-0"]) {
+    expect(schema.safeParse({ ...base, growthPaise }).success, growthPaise).toBe(false)
+  }
+  for (const asOfDate of ["2026-13-45", "2026-02-30", "2025-02-29"]) {
+    expect(schema.safeParse({ ...base, asOfDate, growthPaise: "100" }).success, asOfDate).toBe(false)
+  }
+})
+
 const codeOf = (run: () => unknown): string => {
   try {
     run()

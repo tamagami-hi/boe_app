@@ -39,6 +39,17 @@ export const positivePaiseSchema = z
     "must be at most 9223372036854775807 paise",
   )
 
+const CANONICAL_NON_ZERO_SIGNED_PAISE = /^-?[1-9][0-9]{0,18}$/u
+export const nonZeroSignedPaiseSchema = z
+  .string()
+  .regex(CANONICAL_NON_ZERO_SIGNED_PAISE, "must be a non-zero signed whole number of paise")
+  .refine(
+    (value) =>
+      CANONICAL_NON_ZERO_SIGNED_PAISE.test(value) &&
+      BigInt(value.startsWith("-") ? value.slice(1) : value) <= POSTGRES_BIGINT_MAX,
+    "must be within 9223372036854775807 paise of zero",
+  )
+
 export const iso = (value: Date | string): string => new Date(value).toISOString()
 export const isoOrNull = (value: Date | string | null): string | null =>
   value === null ? null : iso(value)
