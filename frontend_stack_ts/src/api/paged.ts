@@ -86,16 +86,17 @@ export const usePagedQuery = <TData extends ItemsPage>({
     },
   })
 
-  const { fetchNextPage, hasNextPage, isFetchingNextPage } = query
+  const { fetchNextPage, hasNextPage, isFetchingNextPage, isError } = query
+  const isWalkStopped = loadAll && hasNextPage && isError
 
   useEffect(() => {
-    if (!loadAll || !hasNextPage || isFetchingNextPage) return
+    if (!loadAll || !hasNextPage || isFetchingNextPage || isError) return
     void fetchNextPage()
-  }, [loadAll, hasNextPage, isFetchingNextPage, fetchNextPage])
+  }, [loadAll, hasNextPage, isFetchingNextPage, isError, fetchNextPage])
 
   const data = useMemo(
-    () => (query.data === undefined ? undefined : mergePages(query.data.pages)),
-    [query.data],
+    () => (query.data === undefined || isWalkStopped ? undefined : mergePages(query.data.pages)),
+    [query.data, isWalkStopped],
   )
 
   return {

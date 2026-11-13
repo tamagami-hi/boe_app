@@ -13,6 +13,8 @@ type Row = Readonly<{ id: string }>
 type ListData = Readonly<{ items: readonly Row[]; unreadCount: number }>
 
 const CURSOR = "cursorbodycursorbody.cursorsignaturecursor"
+const FAILURE_DELAY_MS = 5
+const SETTLE_MS = 100
 
 const requested: { filter: string; cursor: Cursor | undefined }[] = []
 
@@ -115,6 +117,51 @@ describe("usePagedQuery", () => {
     expect(underNewFilter).toEqual([{ filter: "b", cursor: undefined }])
     expect(result.current.hasMore).toBe(true)
     expect(result.current.loadedCount).toBe(1)
+  })
+
+  it("stops a load-all walk on a failed page and resumes it only on retry", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })
+    const failure = new Error("page two failed")
+    let isPageTwoFailing = true
+    const { result } = renderHook(
+      () =>
+        usePagedQuery<ListData>({
+          queryKey: ["probe", "walk"],
+          limit: 1,
+          loadAll: true,
+          fetchPage: (cursor) => {
+            requested.push({ filter: "walk", cursor })
+            if (cursor === undefined || !isPageTwoFailing) return Promise.resolve(pageFor("walk", cursor))
+            return new Promise<never>((_resolve, reject) => {
+              setTimeout(() => {
+                reject(failure)
+              }, FAILURE_DELAY_MS)
+            })
+          },
+        }),
+      { wrapper: wrapper(client) },
+    )
+
+    await waitFor(() => {
+      expect(result.current.error).toBe(failure)
+    })
+    await act(() => new Promise((resolve) => setTimeout(resolve, SETTLE_MS)))
+
+    expect(requested).toEqual([
+      { filter: "walk", cursor: undefined },
+      { filter: "walk", cursor: CURSOR },
+    ])
+    expect(result.current.data).toBeUndefined()
+
+    isPageTwoFailing = false
+    act(() => {
+      result.current.refetch()
+    })
+    await waitFor(() => {
+      expect(result.current.data?.items).toEqual([{ id: "walk-1" }, { id: "walk-2" }])
+    })
+    expect(result.current.error).toBeNull()
+    expect(requested).toHaveLength(4)
   })
 
   it("keeps a page's sibling fields from the first page while concatenating items", () => {
