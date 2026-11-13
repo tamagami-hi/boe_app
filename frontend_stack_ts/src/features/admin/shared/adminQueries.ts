@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query"
-import type { z } from "zod"
 
 import {
   acknowledgeAdminFundReceipt,
@@ -13,7 +12,6 @@ import {
   createAdminFaq,
   decideAdminApplication,
   editAdminFaq,
-  getAdminAppConfig,
   getAdminApplication,
   getAdminFundReceipt,
   getAdminMandate,
@@ -29,7 +27,6 @@ import {
   listAdminRefunds,
   listAdminUserLoginEvents,
   listAdminUsers,
-  publishAdminAppConfig,
   reconcileAdminMandate,
   reconcileAdminRefund,
   retryAdminRefund,
@@ -466,30 +463,6 @@ export const useArchiveFaq = (): UseMutationResult<void, Error, string> => {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: qk.admin.faqs() })
-    },
-  })
-}
-
-export const useAdminAppConfig = (): UseQueryResult<DataOf<typeof getAdminAppConfig>> => {
-  const api = useApi()
-  return useQuery({
-    queryKey: qk.admin.appConfig(),
-    staleTime: STALE.CONFIG,
-    queryFn: async () => (await api.request(getAdminAppConfig)).data,
-  })
-}
-
-export type AppConfigInput = z.input<typeof publishAdminAppConfig.request.body>
-
-export const usePublishAppConfig = (): UseMutationResult<void, Error, AppConfigInput> => {
-  const api = useApi()
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (body: AppConfigInput) => {
-      await api.request(publishAdminAppConfig, { body, idempotencyKey: mintIdempotencyKey() })
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: qk.admin.appConfig() })
     },
   })
 }

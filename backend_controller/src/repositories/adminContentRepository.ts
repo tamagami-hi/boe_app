@@ -76,6 +76,7 @@ export interface AdminContentRepository {
   ) => Promise<number>
 
   // --- app configuration ---
+  lockAppConfigPublication: (tx: Transaction) => Promise<void>
   findCurrentAppConfig: (tx: Transaction) => Promise<AppConfigVersion | null>
   maxAppConfigVersion: (tx: Transaction) => Promise<number>
   retireCurrentAppConfig: (tx: Transaction, now: Date) => Promise<void>
@@ -168,6 +169,10 @@ export const createAdminContentRepository = (): AdminContentRepository => ({
   },
 
   // --- app configuration ---
+  lockAppConfigPublication: async (tx) => {
+    await sql`select pg_advisory_xact_lock(hashtextextended('app_config_publication', 0))`.execute(tx)
+  },
+
   findCurrentAppConfig: async (tx) =>
     (await tx
       .selectFrom("app_config_versions")

@@ -125,8 +125,22 @@ const appConfigPayloadSchema = z
   .strict()
 
 const appConfigPatchSchema = z
-  .object({ config: appConfigPayloadSchema, reason: reasonDetailSchema.optional() })
+  .object({
+    config: appConfigPayloadSchema,
+    reason: reasonDetailSchema.optional(),
+    expectedVersion: z.number().int().positive().nullable().optional(),
+  })
   .strict()
+
+const UNIQUE_VIOLATION = "23505"
+const APP_CONFIG_VERSION_CONSTRAINTS: ReadonlySet<string> = new Set([
+  "app_config_versions_version_uk",
+  "app_config_versions_one_current_uk",
+])
+const STALE_PUBLISH_MESSAGE =
+  "The app configuration changed after you opened it. Reload it, apply your changes again, and publish."
+const COLLIDING_PUBLISH_MESSAGE =
+  "Another app configuration was published at the same moment. Reload it, apply your changes again, and publish."
 
 // --- payload helpers ---
 
@@ -436,10 +450,36 @@ const getAppConfig = async (deps: AdminContentDeps, request: FastifyRequest, rep
   return reply.sendData(mapAppConfig(current), { status: 200 })
 }
 
+const requireEditedFromCurrent = (expectedVersion: number | null | undefined, current: AppConfigVersion | null): void => {
+  if (expectedVersion === undefined || expectedVersion === (current?.version ?? null)) return
+  throw new AppError("STATE_CONFLICT", { message: STALE_PUBLISH_MESSAGE })
+}
+
+const isAppConfigVersionCollision = (error: unknown): boolean => {
+  if (error === null || typeof error !== "object") return false
+  const { code, constraint } = error as { readonly code?: unknown; readonly constraint?: unknown }
+  return code === UNIQUE_VIOLATION && typeof constraint === "string" && APP_CONFIG_VERSION_CONSTRAINTS.has(constraint)
+}
+
 const publishAppConfig = async (deps: AdminContentDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
   requireAnyPermission(principal, ["config.publish"])
   const body = parseOrThrow(appConfigPatchSchema, request.body)
+  try {
+    return await publishCheckedAppConfig(deps, request, reply, principal.userId, body)
+  } catch (error) {
+    if (isAppConfigVersionCollision(error)) throw new AppError("STATE_CONFLICT", { message: COLLIDING_PUBLISH_MESSAGE })
+    throw error
+  }
+}
+
+const publishCheckedAppConfig = async (
+  deps: AdminContentDeps,
+  request: FastifyRequest,
+  reply: FastifyReply,
+  principalUserId: string,
+  body: z.infer<typeof appConfigPatchSchema>,
+) => {
   const now = deps.clock()
   const canonicalPayload = JSON.stringify(body.config)
   const contentSha256 = createHash("sha256").update(canonicalPayload).digest()
@@ -450,22 +490,24 @@ const publishAppConfig = async (deps: AdminContentDeps, request: FastifyRequest,
     reply,
     APP_CONFIG_ROUTE,
     "PATCH",
-    { config: body.config },
-    principal.userId,
+    { config: body.config, ...(body.expectedVersion === undefined ? {} : { expectedVersion: body.expectedVersion }) },
+    principalUserId,
     async (tx) => {
+      await deps.contentRepository.lockAppConfigPublication(tx)
       const previous = await deps.contentRepository.findCurrentAppConfig(tx)
+      requireEditedFromCurrent(body.expectedVersion, previous)
       const nextVersion = (await deps.contentRepository.maxAppConfigVersion(tx)) + 1
       await deps.contentRepository.retireCurrentAppConfig(tx, now)
       const published = await deps.contentRepository.insertAppConfigVersion(tx, {
         version: nextVersion,
         payload: body.config,
         contentSha256,
-        publishedByUserId: principal.userId,
+        publishedByUserId: principalUserId,
         now,
       })
       await deps.auditRepository.append(tx, {
         actorType: "admin",
-        actorUserId: principal.userId,
+        actorUserId: principalUserId,
         command: "app_config.published",
         entityType: "app_config_version",
         entityId: published.id,

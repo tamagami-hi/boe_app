@@ -10664,6 +10664,7 @@ export interface operations {
                         };
                     };
                     reason?: string;
+                    expectedVersion?: number | null;
                 };
             };
         };

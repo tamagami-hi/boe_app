@@ -192,6 +192,7 @@ export const getAdminAppConfig = defineOperation({
 export const AdminAppConfigPatchBody = z.strictObject({
   config: AdminAppConfigPayload,
   reason: AdminReasonDetail.optional(),
+  expectedVersion: z.number().int().positive().nullable().optional(),
 })
 export type AdminAppConfigPatchBody = z.infer<typeof AdminAppConfigPatchBody>
 
@@ -209,7 +210,7 @@ export const publishAdminAppConfig = defineOperation({
     maxBodyBytes: MAX_JSON_BODY_BYTES,
   },
   success: { status: 200, schema: createSuccessEnvelopeSchema(AdminAppConfigData) },
-  errorCodes: [...ADMIN_WRITE_ERRORS],
+  errorCodes: [...ADMIN_WRITE_ERRORS, "STATE_CONFLICT"],
 })
 
 export const AdminFundStockItem = z.strictObject({

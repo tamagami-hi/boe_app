@@ -24,7 +24,11 @@ export interface AppUpdateAnnouncementDeps {
   readonly appUpdateAnnouncementRepository: AppUpdateAnnouncementRepository
   readonly contentRepository: Pick<
     AdminContentRepository,
-    "findCurrentAppConfig" | "maxAppConfigVersion" | "retireCurrentAppConfig" | "insertAppConfigVersion"
+    | "lockAppConfigPublication"
+    | "findCurrentAppConfig"
+    | "maxAppConfigVersion"
+    | "retireCurrentAppConfig"
+    | "insertAppConfigVersion"
   >
   readonly userRepository: Pick<UserWriteRepository, "findById">
   readonly outboxRepository: OutboxWriteRepository
@@ -114,6 +118,7 @@ const enforceMinimum = async (
   deps: AppUpdateAnnouncementDeps,
   input: Readonly<{ version: string; actorUserId: string; requestId: string; now: Date }>,
 ): Promise<number> => {
+  await deps.contentRepository.lockAppConfigPublication(tx)
   const { current, payload } = await currentConfigPayload(tx, deps)
   const existing = androidMinimum(payload)
   if (current !== null && existing !== null && compareVersions(existing, input.version) >= 0) return current.version
