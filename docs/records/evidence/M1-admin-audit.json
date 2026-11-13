@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "milestone": "M1-admin-audit",
+  "records": [
+    {
+      "id": "633377e1-3704-4f04-b8fc-e70635a74ffc",
+      "task": "T6-ci-evidence",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "kind": "evidence",
+      "command": [
+        "gh",
+        "run",
+        "view",
+        "38216879911",
+        "--json",
+        "jobs,headSha,conclusion"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app",
+      "started": "2026-10-12T07:17:05Z",
+      "seconds": 157,
+      "exit": 0,
+      "summary": {
+        "sha": "ba8b196",
+        "contracts": "success",
+        "backend": "success",
+        "frontend": "success",
+        "localDepsInstalled": false
+      },
+      "note": "GitHub CI on v0.15.4 (ba8b196): contracts check, backend check + integration, frontend typecheck/lint/test/api-drift/build:client/build:admin all green. Local node_modules absent in all three units; RULES forbids installing deps just to run checks, so no local run. main since then only adds tally record commits (docs/records)."
+    }
+  ]
+}

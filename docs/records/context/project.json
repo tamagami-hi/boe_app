@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "purpose": "BeOnEdge gated investing app: client app (browser + Android APK), admin console, and backend API. In production with customer, financial, consent, and audit data. The public education site beonedge.in is a separate application.",
+  "stack": [
+    "Node 22 ESM, Fastify, Kysely over pg, Zod (backend_controller)",
+    "PostgreSQL only; plain SQL migrations",
+    "React 19, Vite 6, TypeScript, Capacitor 8, TanStack Query, React Router 7, Tailwind v4 (frontend_stack_ts)",
+    "Zod operation descriptors + generated OpenAPI (packages/contracts)",
+    "Vitest; testcontainers integration suite"
+  ],
+  "layout": [
+    {
+      "path": "backend_controller/",
+      "what": "Fastify API, repositories, domain, 4 workers, db/migrations"
+    },
+    {
+      "path": "frontend_stack_ts/",
+      "what": "single frontend; VITE_BEO_APP_TARGET=client|admin"
+    },
+    {
+      "path": "packages/contracts/",
+      "what": "shared API operation contracts and OpenAPI"
+    },
+    {
+      "path": "release_manager/",
+      "what": "maintainer-only deploy/rollback/export tooling, nginx, stacks"
+    },
+    {
+      "path": "plans/",
+      "what": "active proposals, decisions, handoffs"
+    },
+    {
+      "path": "RULES.md",
+      "what": "sole binding rulebook"
+    }
+  ],
+  "glossary": [
+    {
+      "term": "paise",
+      "means": "integer money unit (1/100 rupee); money crosses the API as integer paise strings"
+    },
+    {
+      "term": "recordContribution",
+      "means": "admin path for recording earlier principal into the append-only value ledger"
+    },
+    {
+      "term": "DD requests",
+      "means": "maintainer-relayed business requests from Dalal Das (Oct-Nov 2026), points 1-8 plus DB cleanup and monthly-investment category"
+    }
+  ],
+  "updated": {
+    "at": "2026-11-13T08:10:59.493Z",
+    "by": {
+      "track": "main",
+      "agent": "claude-opus-5-5"
+    }
+  }
+}

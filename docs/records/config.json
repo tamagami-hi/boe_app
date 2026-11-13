@@ -34,7 +34,7 @@
   "records": {
     "dir": "docs/records",
     "commitPrefix": "records:",
-    "commit": true
+    "commit": false
   },
   "locks": [
     "landing"

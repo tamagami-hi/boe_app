@@ -1,6 +1,129 @@
 {
   "schema": 1,
   "baseline": "ba8b196",
-  "milestones": [],
+  "milestones": [
+    {
+      "id": "M1-admin-audit",
+      "stage": "build",
+      "group": "admin-improvements",
+      "name": "Admin-side audit and gap analysis vs DD requests",
+      "track": "main",
+      "weight": 10,
+      "delivers": [
+        {
+          "id": "D1-fe-health",
+          "what": "Admin frontend broken/half-wired/missing findings with file:line",
+          "paths": [
+            "frontend_stack_ts/src/features/admin",
+            "frontend_stack_ts/src/app/routing"
+          ]
+        },
+        {
+          "id": "D2-api-health",
+          "what": "Admin API contract parity, mounting, authorization, validation findings",
+          "paths": [
+            "backend_controller/src/routes",
+            "backend_controller/src/domain/admin",
+            "packages/contracts/src/operations"
+          ]
+        },
+        {
+          "id": "D3-invest-roi",
+          "what": "Investment recording (correction/earlier/monthly category) and per-client invested/returns/ROI dashboard gaps (points 7, 8)"
+        },
+        {
+          "id": "D4-sip-nominee",
+          "what": "Nominee name and 12-month auto-maturity + SIP months-paid indicator gaps (points 5, 6)"
+        },
+        {
+          "id": "D5-web-mail-reviews",
+          "what": "Web app, signup redirect to app.beonedge.in, invitation mail links, client reviews, one-click DB cleanup gaps (points 1-4, cleanup)"
+        },
+        {
+          "id": "D6-gap-report",
+          "what": "Consolidated report: fix-first list, then gap matrix per DD point, maintainer questions"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "T1-fe-audit",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Explorer: admin frontend wiring, error states, users/overview screens, nav reachability",
+          "paths": [
+            "frontend_stack_ts/src/features/admin",
+            "frontend_stack_ts/src/app/routing"
+          ],
+          "covers": [
+            "D1-fe-health"
+          ]
+        },
+        {
+          "id": "T2-api-audit",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Explorer: admin route/contract parity, mounting, permissions, validation, delete/cleanup capability, recorded-but-unfixed items",
+          "paths": [
+            "backend_controller/src/routes",
+            "backend_controller/src/domain/admin",
+            "packages/contracts/src/operations"
+          ],
+          "covers": [
+            "D2-api-health"
+          ]
+        },
+        {
+          "id": "T3-invest-roi",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Explorer: recordContribution kinds, monthly-investment category feasibility, per-client invested/returns, overall ROI dashboard, last-updated",
+          "covers": [
+            "D3-invest-roi"
+          ]
+        },
+        {
+          "id": "T4-sip-nominee",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Explorer: nominee field presence, maturity mechanics and 12-month auto-maturity, SIP installments-paid count",
+          "covers": [
+            "D4-sip-nominee"
+          ]
+        },
+        {
+          "id": "T5-web-mail-reviews",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Explorer: browser web app status, signup redirect to app.beonedge.in, invitation mail links, reviews/comments, one-click DB cleanup vs rule 11",
+          "covers": [
+            "D5-web-mail-reviews"
+          ]
+        },
+        {
+          "id": "T6-ci-evidence",
+          "track": "main",
+          "status": "landed",
+          "commit": "06e95af",
+          "also": [],
+          "brief": "Record CI evidence for current main (deps not installed locally; GitHub CI run on v0.15.4)"
+        },
+        {
+          "id": "T7-close-gap-report",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Verify key explorer claims in source, then write consolidated fix-first list + gap matrix per DD point + maintainer questions",
+          "covers": [
+            "D6-gap-report"
+          ]
+        }
+      ]
+    }
+  ],
   "other": []
 }

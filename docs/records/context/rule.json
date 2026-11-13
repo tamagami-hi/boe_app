@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "kind": "rule",
+  "nextNumber": 2,
+  "entries": [
+    {
+      "id": "rule-1",
+      "kind": "rule",
+      "title": "RULES.md is the sole rulebook; read README.md then RULES.md before any work",
+      "text": "Read root README.md and RULES.md completely at session start and after compaction. RULES.md is the only authority for safety, production-data compatibility (rule 11: expand-first migrations, no destructive changes without a separate maintainer decision), no new source comments (rule 9), critical-only tests (rule 10), Git identity and authorization (rule 14), and verification. Never deploy, touch the VPS, move real money, or send real customer mail. This tally entry points there and does not restate or override it.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "at": "2026-11-13T08:11:00.059Z"
+    }
+  ]
+}

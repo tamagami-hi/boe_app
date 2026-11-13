@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "kind": "finding",
+  "nextNumber": 2,
+  "entries": [
+    {
+      "id": "finding-1",
+      "kind": "finding",
+      "title": "DD point 3: signup lives in the separate boe_landing repo (Next.js); redirect to app.beonedge.in is a landing change",
+      "text": "STATIC. /home/nethunter07/PROJECTS/boe_landing (its own tally repo) holds the beonedge.in site. src/components/SignupForm.tsx posts to its /api/newuser route (src/app/api/newuser/route.ts -> src/lib/newuser.ts), which forwards to the app API (BEO_API_BASE, allowed hosts dev-app.beonedge.in / app.beonedge.in in src/lib/env.ts:18). On success it shows an in-page message (SignupForm.tsx:134-140) saying approval email includes the app download link; no redirect and no app.beonedge.in web link. Point 3 therefore needs either a landing change (redirect/link the signup CTA to app.beonedge.in) or a web signup surface in boe_app; boe_app has to provide the target page either way.",
+      "paths": [],
+      "tags": [
+        "dd-point-3",
+        "signup",
+        "cross-repo"
+      ],
+      "refs": [
+        "M1-admin-audit:T5-web-mail-reviews"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "at": "2026-11-13T08:12:38.547Z"
+    }
+  ]
+}
