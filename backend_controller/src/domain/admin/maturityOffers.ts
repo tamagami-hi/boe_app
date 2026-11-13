@@ -30,6 +30,7 @@ export type MaturityOfferDeps = MaturityResolutionDeps &
   Readonly<{ notificationRepository: NotificationWriteRepository }>
 
 export interface SendMaturityOptionsCommand extends OwnScheduleCommand {
+  readonly offerVersion: number | null
   readonly sip: FollowUpSchedule
   readonly extension: SipExtension | null
 }
@@ -61,6 +62,12 @@ const NO_HOLDING_MESSAGE = "This client no longer holds anything in this fund."
 const CLOSED_OFFER_MESSAGE = "These options are no longer open. Reload to see the latest."
 const NOT_CHOSEN_MESSAGE = "The client has not chosen an option yet."
 const CHOICE_CHANGED_MESSAGE = "The client's choice changed since you opened it. Reload and review it again."
+const OFFER_CHANGED_MESSAGE = "The options for this maturity changed since you opened it. Reload and review them before sending."
+
+const refuseChangedOffer = (open: LockedMaturityOffer | null, expectedVersion: number | null): void => {
+  const current = open === null ? null : Number(open.version)
+  if (current !== expectedVersion) throw new AppError("STATE_CONFLICT", { message: OFFER_CHANGED_MESSAGE })
+}
 
 const requireActiveClient = async (tx: Transaction, deps: MaturityOfferDeps, userId: string): Promise<User> => {
   const user = await deps.userRepository.lockById(tx, userId as UserId)
@@ -122,6 +129,7 @@ export const sendMaturityOptions = async (
 ): Promise<SentMaturityOptions> => {
   const schedule = await lockOpenMaturitySchedule(tx, deps, command)
   const previous = await deps.maturityOfferRepository.lockOpenForSchedule(tx, schedule.id)
+  refuseChangedOffer(previous, command.offerVersion)
   const client = await requireActiveClient(tx, deps, schedule.userId)
   await refuseInvalidFigures(tx, deps, schedule, command)
   await closeOpenOfferIfAny(tx, deps, previous, { ...command, state: "superseded" })

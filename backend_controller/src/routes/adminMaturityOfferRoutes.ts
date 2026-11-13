@@ -41,6 +41,7 @@ const sendPlan = (deps: AdminMaturityOfferDeps) => (request: FastifyRequest): Mu
   const body = parseOrThrow(sendOptionsBodySchema, request.body)
   return {
     route: SEND_ROUTE,
+    retention: "durable",
     hash: { userId, scheduleId, ...body },
     execute: async (tx, actor) => {
       const sent = await sendMaturityOptions(tx, deps, {
@@ -48,6 +49,7 @@ const sendPlan = (deps: AdminMaturityOfferDeps) => (request: FastifyRequest): Mu
         userId,
         scheduleId,
         expectedVersion: body.expectedVersion,
+        offerVersion: body.offerVersion,
         sip: followUpOf(body.sip),
         extension: body.extension,
       })

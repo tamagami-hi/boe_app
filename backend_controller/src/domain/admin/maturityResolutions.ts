@@ -1,4 +1,4 @@
-import type { Transaction } from "../../db/repositories.js"
+import type { Transaction, UserId } from "../../db/repositories.js"
 import type { ClientMaturityResolution } from "../../db/types.js"
 import { AppError } from "../../http/errorCatalog.js"
 import type { LockedMaturitySchedule, MaturityScheduleRow } from "../../repositories/clientMaturityScheduleRepository.js"
@@ -19,6 +19,7 @@ import {
   type MaturityScheduleDeps,
   type OwnScheduleCommand,
 } from "./maturitySchedules.js"
+import { requireRecordableClient } from "./recordContribution.js"
 import { indiaCurrentMonth, monthIndexOf } from "./sipScheduleMonths.js"
 
 export type MaturityResolutionDeps = MaturityScheduleDeps & MaturitySettlementDeps & AdminSipScheduleDeps
@@ -237,6 +238,7 @@ const sipExtension = async (
   schedule: LockedMaturitySchedule,
   command: ResolveMaturityCommand & Readonly<{ resolution: "sip_extension" }>,
 ): Promise<ResolutionEffects> => {
+  await requireRecordableClient(tx, deps, schedule.userId as UserId)
   await loadBasis(tx, deps, schedule)
   const extendedId = await extendActiveSip(tx, deps, schedule, command)
   return { ...NO_SETTLEMENT, followUpSipScheduleId: extendedId, closedSipScheduleId: null }

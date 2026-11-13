@@ -161,15 +161,16 @@ const scheduled = async (holding: Holding, maturityDate = MATURED_ON): Promise<S
   return envelopeOf<{ schedule: Schedule }>(response).data.schedule
 }
 
-const send = (holding: Holding, schedule: Schedule, withExtension = true) =>
+const send = (holding: Holding, schedule: Schedule, withExtension = true, offerVersion: number | null = null) =>
   adminPost(`${scheduleUrl(holding, schedule)}/offers`, {
     expectedVersion: schedule.version,
+    offerVersion,
     sip: followUp,
     extension: withExtension ? extension : null,
   })
 
-const sent = async (holding: Holding, schedule: Schedule, withExtension = true): Promise<Offer> => {
-  const response = await send(holding, schedule, withExtension)
+const sent = async (holding: Holding, schedule: Schedule, withExtension = true, offerVersion: number | null = null): Promise<Offer> => {
+  const response = await send(holding, schedule, withExtension, offerVersion)
   expect(response.statusCode, response.body).toBe(201)
   const offer = envelopeOf<{ schedule: Schedule }>(response).data.schedule.offer
   if (offer === null) throw new Error("no open offer after sending")
@@ -342,14 +343,18 @@ describe("sending maturity options and the client's choice", () => {
     expect(envelopeOf<{ offer: Offer }>(await readOffer(ownerToken, offer.offerId)).data.offer).toMatchObject({ state: "open" })
   })
 
-  test("resolving directly closes the open offer, and sending again supersedes it", async () => {
+  test("resolving directly closes the open offer, and sending again supersedes only the offer the admin saw", async () => {
     const holding = await seedHolding()
     const schedule = await scheduled(holding)
     const token = await clientToken(holding.userId)
     const superseded = await sent(holding, schedule, false)
-    const current = await sent(holding, schedule, false)
+    expect((await send(holding, schedule, false)).statusCode).toBe(409)
+    expect((await choose(token, superseded.offerId, "return_all", 1)).statusCode).toBe(200)
+    expect((await send(holding, schedule, false, 1)).statusCode).toBe(409)
+    expect(await offerState(superseded.offerId)).toEqual({ state: "open", chosen_option: "return_all", version: 2 })
+    const current = await sent(holding, schedule, false, 2)
     expect(await offerState(superseded.offerId)).toMatchObject({ state: "superseded" })
-    expect((await choose(token, superseded.offerId, "return_all", 1)).statusCode).toBe(409)
+    expect((await choose(token, superseded.offerId, "return_all", 2)).statusCode).toBe(409)
     expect((await choose(token, current.offerId, "sip_extension", 1)).statusCode).toBe(400)
 
     const resolved = await adminPost(`${scheduleUrl(holding, schedule)}/resolve`, {
@@ -362,6 +367,48 @@ describe("sending maturity options and the client's choice", () => {
     expect(envelopeOf<Resolution>(resolved).data.schedule.offer).toBeNull()
     expect(await offerState(current.offerId)).toMatchObject({ state: "closed" })
     expect(envelopeOf<{ offer: Offer }>(await readOffer(token, current.offerId)).data.offer.state).toBe("closed")
+  })
+})
+
+describe("refusals before anything moves", () => {
+  test("a closed client gets no options and no SIP extension, even when an offer was already chosen", async () => {
+    const holding = await seedHolding()
+    const sipId = await seedActiveSip(holding)
+    const schedule = await scheduled(holding)
+    const offer = await sent(holding, schedule)
+    const token = await clientToken(holding.userId)
+    expect((await choose(token, offer.offerId, "sip_extension", 1)).statusCode).toBe(200)
+    await stack.setAccountState(holding.userId, "closed")
+    await stack.pool.query("update users set pii_tombstoned_at = now() where id = $1", [holding.userId])
+    const before = await moneyCounts()
+
+    const confirmed = await confirm(holding, schedule, { ...offer, version: 2 }, { option: "sip_extension" })
+    expect(confirmed.statusCode).toBe(409)
+    const resolved = await adminPost(`${scheduleUrl(holding, schedule)}/resolve`, { resolution: "sip_extension", expectedVersion: 1, extension })
+    expect(resolved.statusCode).toBe(409)
+    const resent = await send(holding, schedule, true, 2)
+    expect(resent.statusCode).toBe(409)
+    expect(envelopeOf(resent).error.message).toMatch(/active client account/u)
+
+    expect(await stack.first("select month_count, version::int as version from admin_sip_schedules where id = $1", [sipId])).toEqual({
+      month_count: 12,
+      version: 1,
+    })
+    expect(await stack.count("client_maturity_schedules", "user_id = $1", [holding.userId])).toBe(1)
+    expect(await stack.count("client_maturity_schedules", "id = $1 and state = 'scheduled' and version = 1", [schedule.scheduleId])).toBe(1)
+    expect(await offerState(offer.offerId)).toEqual({ state: "open", chosen_option: "sip_extension", version: 2 })
+    expect(await moneyCounts()).toEqual(before)
+  })
+
+  test("confirming before the client has chosen is refused", async () => {
+    const holding = await seedHolding()
+    const schedule = await scheduled(holding)
+    const offer = await sent(holding, schedule, false)
+    const refused = await confirm(holding, schedule, offer, { option: "return_all", effectiveDate: MATURED_ON, amountPaise: String(INVESTED) })
+    expect(refused.statusCode).toBe(409)
+    expect(envelopeOf(refused).error.message).toMatch(/has not chosen/u)
+    expect(await offerState(offer.offerId)).toEqual({ state: "open", chosen_option: null, version: 1 })
+    expect(await stack.count("client_value_entries", "user_id = $1", [holding.userId])).toBe(1)
   })
 })
 
@@ -437,7 +484,7 @@ describe("extending the SIP", () => {
 })
 
 describe("maturity options email", () => {
-  test("sends an open offer's mail without amounts and cancels a withdrawn or superseded one", async () => {
+  test("sends an open offer's mail without amounts and cancels it for a closed offer, a closed account or a changed email", async () => {
     const kept = await seedHolding()
     const withdrawn = await seedHolding()
     const resent = await seedHolding()
@@ -445,8 +492,14 @@ describe("maturity options email", () => {
     const withdrawnSchedule = await scheduled(withdrawn)
     const withdrawnOffer = await sent(withdrawn, withdrawnSchedule, false)
     const resentSchedule = await scheduled(resent)
-    await sent(resent, resentSchedule, false)
-    await sent(resent, resentSchedule, false)
+    const firstOffer = await sent(resent, resentSchedule, false)
+    await sent(resent, resentSchedule, false, firstOffer.version)
+    const moved = await seedHolding()
+    const closed = await seedHolding()
+    await sent(moved, await scheduled(moved), false)
+    await sent(closed, await scheduled(closed), false)
+    await stack.pool.query("update users set email_revision = email_revision + 1 where id = $1", [moved.userId])
+    await stack.setAccountState(closed.userId, "closed")
     const withdrawal = await adminPost(`${scheduleUrl(withdrawn, withdrawnSchedule)}/offers/${withdrawnOffer.offerId}/withdraw`, {
       expectedVersion: 1,
       offerVersion: 1,
@@ -466,8 +519,10 @@ describe("maturity options email", () => {
     expect(keptMail[0]?.subject).toBe("Your maturity options are ready")
     expect(keptMail[0]?.text).toContain(`Your investment in ${FUND_NAME} matures on 31 December 2025.`)
     expect(keptMail[0]?.text).not.toMatch(/₹|[0-9],[0-9]{3}/u)
-    expect(transport.messages.some((message) => message.to === withdrawn.email)).toBe(false)
-    expect((await maturityMailsOf(withdrawn.userId)).map((row) => row.outbox_state)).toEqual(["cancelled"])
+    for (const holding of [withdrawn, moved, closed]) {
+      expect(transport.messages.some((message) => message.to === holding.email), holding.email).toBe(false)
+      expect((await maturityMailsOf(holding.userId)).map((row) => row.outbox_state)).toEqual(["cancelled"])
+    }
     expect((await maturityMailsOf(resent.userId)).map((row) => row.outbox_state)).toEqual(["cancelled", "delivered"])
     expect(transport.messages.filter((message) => message.to === resent.email)).toHaveLength(1)
   })

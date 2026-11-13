@@ -79,7 +79,10 @@ export const MaturitySendDialog = ({
               loading={write.pending}
               onClick={() => {
                 if (sip === null) return
-                write.submit({ scheduleId: schedule.scheduleId, body: { expectedVersion: schedule.version, sip, extension } })
+                write.submit({
+                  scheduleId: schedule.scheduleId,
+                  body: { expectedVersion: schedule.version, offerVersion: schedule.offer?.version ?? null, sip, extension },
+                })
               }}
             >
               Send options to client

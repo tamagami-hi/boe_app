@@ -241,6 +241,7 @@ export const resolveAdminClientMaturity = defineOperation({
 
 export const AdminSendMaturityOptionsBody = z.strictObject({
   expectedVersion: Version,
+  offerVersion: Version.nullable(),
   sip: AdminMaturityFollowUpSip,
   extension: MaturitySipExtension.nullable(),
 })

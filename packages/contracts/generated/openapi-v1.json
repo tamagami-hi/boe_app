@@ -43895,6 +43895,13 @@
                     "type": "integer",
                     "exclusiveMinimum": 0
                   },
+                  "offerVersion": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "exclusiveMinimum": 0
+                  },
                   "sip": {
                     "type": "object",
                     "properties": {
@@ -43944,6 +43951,7 @@
                 },
                 "required": [
                   "expectedVersion",
+                  "offerVersion",
                   "sip",
                   "extension"
                 ],

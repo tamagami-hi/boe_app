@@ -64,6 +64,7 @@ export type ResolveMaturityBody = z.infer<typeof resolveMaturityBodySchema>
 
 export const sendOptionsBodySchema = z.strictObject({
   expectedVersion: versionSchema,
+  offerVersion: versionSchema.nullable(),
   sip: followUpSchema,
   extension: extensionSchema.nullable(),
 })

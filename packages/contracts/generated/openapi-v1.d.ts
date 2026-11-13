@@ -24289,6 +24289,7 @@ export interface operations {
             content: {
                 "application/json": {
                     expectedVersion: number;
+                    offerVersion: number | null;
                     sip: {
                         monthlyAmountPaise: string;
                         startMonth: string;
