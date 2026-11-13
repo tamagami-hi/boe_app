@@ -1,6 +1,7 @@
 import { toPaise } from "~/domain/money"
 
-const FORMULA_LEADS: ReadonlySet<string> = new Set(["=", "+", "-", "@", "\t", "\r"])
+const CONTROL_LEAD = /^[\t\r]/u
+const FORMULA_AFTER_SPACE = /^[ \t\r\n\u00A0]*[=+\-@]/u
 const PLAIN_DECIMAL = /^-?\d+(\.\d+)?$/u
 const NEEDS_QUOTES = /[",\r\n]/u
 const RECORD_SEPARATOR = "\r\n"
@@ -8,8 +9,8 @@ const PAISE_PER_RUPEE = 100n
 const INDIA_UTC_OFFSET_MS = 330 * 60 * 1000
 
 export const guardFormula = (value: string): string => {
-  if (value === "" || PLAIN_DECIMAL.test(value)) return value
-  return FORMULA_LEADS.has(value.charAt(0)) ? `'${value}` : value
+  if (PLAIN_DECIMAL.test(value)) return value
+  return CONTROL_LEAD.test(value) || FORMULA_AFTER_SPACE.test(value) ? `'${value}` : value
 }
 
 export const csvCell = (value: string): string => {

@@ -25,7 +25,7 @@ const CONTRIBUTION_HEADER = [
   "Fund",
   "Fund ID",
   "Category",
-  "Amount (INR)",
+  "Amount (INR, before reversal)",
   "Reversed",
   "Reversed at (IST)",
 ] as const

@@ -110,6 +110,10 @@ const AccountingExportsScreen = (): React.ReactElement => {
         description="CSV files built in this browser from the client value ledger. Each file is saved only to this device and holds client names and email addresses, so keep it private. Amounts are rupees with two decimals."
       />
 
+      <p className={PROSE_SM}>
+        An export reads the ledger page by page, so a recording or correction made while it runs can make its pages differ. Export again after the change to get a consistent file.
+      </p>
+
       {isApp ? (
         <Alert tone="info" title="Open the console in a browser">
           The admin app cannot save files. Sign in to the admin console in a browser to download these exports.
@@ -184,6 +188,9 @@ const AccountingExportsScreen = (): React.ReactElement => {
           </div>
           <p className={PROSE_SM}>
             Recorded investments carry the category chosen when they were recorded. Online payments read One-off investment or SIP instalment.
+          </p>
+          <p className={PROSE_SM}>
+            A reversed entry still shows its original amount, marked Reversed with the time of the reversal. Its reversal is dated the same day, so it adds nothing to the month.
           </p>
         </Card>
       </Section>

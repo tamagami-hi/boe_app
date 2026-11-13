@@ -16,6 +16,19 @@ describe("accounting CSV", () => {
     ["say \"hi\"", "\"say \"\"hi\"\"\""],
     ["two\nlines", "\"two\nlines\""],
     ["Plain name", "Plain name"],
+    [" =1+1", "' =1+1"],
+    ["  @SUM(A1)", "'  @SUM(A1)"],
+    ["\u00A0+cmd", "'\u00A0+cmd"],
+    ["\t=cmd", "'\t=cmd"],
+    ["\n=cmd", "\"'\n=cmd\""],
+    ["\r\n-2+3", "\"'\r\n-2+3\""],
+    [" -1.5", "' -1.5"],
+    ["-1.5\n", "\"'-1.5\n\""],
+    ["\"=1+1\"", "\"\"\"=1+1\"\"\""],
+    ["'=1", "'=1"],
+    ["a\r\nb", "\"a\r\nb\""],
+    ["1,234.50", "\"1,234.50\""],
+    ["", ""],
   ])("writes %j as %j", (input, expected) => {
     expect(csvCell(input)).toBe(expected)
   })
