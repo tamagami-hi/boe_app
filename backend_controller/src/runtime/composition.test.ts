@@ -281,6 +281,28 @@ describe("parseServerConfig", () => {
       .toBe(Number(attemptTtlMs))
   })
 
+  test("CLIENT_WEB_APP_URL is optional, keeps a bare https origin and refuses anything else", () => {
+    const webAppUrl = (value?: string): string | null =>
+      parseServerConfig(value === undefined ? validEnv() : { ...validEnv(), CLIENT_WEB_APP_URL: value }).email.links
+        .webAppUrl
+
+    expect(webAppUrl()).toBeNull()
+    expect(webAppUrl("")).toBeNull()
+    expect(webAppUrl("https://app.beonedge.in")).toBe("https://app.beonedge.in")
+    expect(webAppUrl(" https://app.beonedge.in/ ")).toBe("https://app.beonedge.in")
+    for (const value of [
+      "http://app.beonedge.in",
+      "https://app.beonedge.in/login",
+      "https://app.beonedge.in/?next=1",
+      "https://app.beonedge.in/#top",
+      "https://user:pass@app.beonedge.in",
+      "javascript:alert(1)",
+      "app.beonedge.in",
+    ]) {
+      expect(() => webAppUrl(value)).toThrow(/CLIENT_WEB_APP_URL/u)
+    }
+  })
+
 })
 
 describe("the read cache is optional", () => {

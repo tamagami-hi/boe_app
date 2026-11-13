@@ -279,6 +279,19 @@ each stack's `.env` before the release that queues password mail goes out. Passw
 queued, not sent by the web request, and leaves only while `email-worker` runs with SMTP
 configured.
 
+`CLIENT_WEB_APP_URL` is optional. It is the client web app's bare https origin, for example
+`https://app.beonedge.in` on production and `https://dev-app.beonedge.in` on development.
+When it is set, the application approval, password invite (admin-created client) and
+password-set app-download emails each add one line telling iPhone and computer users they
+can open the BeOnEdge web app at that address, in both the plain-text and HTML bodies. When
+it is unset or blank, those emails render exactly as before and nothing else changes. The
+line is added by `email-worker` when it renders a message, never stored in the queued
+payload, so it also appears in mail queued before the key was set and disappears from
+queued mail once it is removed. Any other value, such as `http://`, a path, a query or a
+fragment, makes the backend and every worker refuse to start, the same as other malformed
+settings. Compose passes it to every backend service; add it to each stack's `.env` by hand,
+because a deploy never overwrites that file.
+
 ### Rotating `CRYPTO_RECIPIENT_ENC_KEY`
 
 One key, `CRYPTO_RECIPIENT_ENC_KEY` with its `CRYPTO_RECIPIENT_ENC_KEY_VERSION`, encrypts the

@@ -9,6 +9,7 @@ export interface RenderedEmail {
 export type EmailBlock =
   | { readonly kind: "text"; readonly text: string }
   | { readonly kind: "action"; readonly label: string; readonly url: string }
+  | { readonly kind: "link"; readonly lead: string; readonly url: string }
   | { readonly kind: "code"; readonly lead: string; readonly code: string }
 
 export interface EmailContent {
@@ -65,6 +66,8 @@ const blockRows = (block: EmailBlock): string => {
       return row(escapeHtml(block.text).replace(/\n/gu, "<br>"), "0 28px 16px 28px")
     case "action":
       return actionRows(block.label, block.url)
+    case "link":
+      return row(`${escapeHtml(block.lead)} ${anchor(block.url, block.url, "word-break:break-all;")}`, "0 28px 16px 28px")
     case "code":
       return codeRows(block.lead, block.code)
   }
@@ -79,13 +82,15 @@ const blockText = (block: EmailBlock): string => {
       return block.text
     case "action":
       return `${block.label}:\n${block.url}`
+    case "link":
+      return `${block.lead} ${block.url}`
     case "code":
       return `${block.lead} ${block.code}.`
   }
 }
 
 const resolveBlock = (block: EmailBlock): EmailBlock =>
-  block.kind === "action" ? { ...block, url: safeActionUrl(block.url) } : block
+  block.kind === "action" || block.kind === "link" ? { ...block, url: safeActionUrl(block.url) } : block
 
 const renderText = (
   heading: string,

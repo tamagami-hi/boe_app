@@ -149,6 +149,39 @@ describe("queued password mail", () => {
   })
 })
 
+describe("web app line", () => {
+  const WEB_APP = "https://app.beonedge.example"
+  const LINE = `On an iPhone or a computer, you can open the BeOnEdge web app at ${WEB_APP}/`
+  const forged = { webAppUrl: "https://forged.example" }
+  const invite = { link: "https://app.beonedge.example/reset-password?token=T", validForMs: 600_000 }
+
+  test("invite, approval and app-download mail add it from configuration only, and render as today without it", () => {
+    for (const [key, data] of [
+      ["account_approved", { downloadUrl: APK_URL }],
+      ["password_set_link", invite],
+      ["password_app_download", { downloadUrl: APK_URL }],
+    ] as const) {
+      const today = renderEmailTemplate(key, "v1", data, CONFIG)
+      const absent = renderEmailTemplate(key, "v1", { ...data, ...forged }, { ...CONFIG, webAppUrl: null })
+      const present = renderEmailTemplate(key, "v1", { ...data, ...forged }, { ...CONFIG, webAppUrl: WEB_APP })
+      if (today.kind !== "rendered" || absent.kind !== "rendered" || present.kind !== "rendered") {
+        throw new Error(`expected ${key} to render`)
+      }
+
+      expect(absent).toStrictEqual(today)
+      expect(today.email.text).not.toContain("iPhone")
+      expect(present.email.subject).toBe(today.email.subject)
+      expect(present.email.text).toContain(LINE)
+      expect(present.email.html).toContain(`<a href="${WEB_APP}/"`)
+      expect(`${present.email.text}${present.email.html}`).not.toContain("forged.example")
+    }
+
+    const reset = renderEmailTemplate("password_reset_link", "v1", invite, { ...CONFIG, webAppUrl: WEB_APP })
+    if (reset.kind !== "rendered") throw new Error("expected a rendered email")
+    expect(reset.email.text).not.toContain("iPhone")
+  })
+})
+
 describe("queued admin messages", () => {
   const message = { subject: "Hello Meera", body: "Hello Meera,\r\n\r\n<b>Line one</b>\nLine two\n\n\nThanks" }
 

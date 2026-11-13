@@ -148,6 +148,7 @@ const ServerConfigSchema = z.object({
   // Where onboarding emails point.
   SUPPORT_EMAIL: z.string().trim().optional(),
   CLIENT_PASSWORD_LINK_URL: z.string().trim().optional(),
+  CLIENT_WEB_APP_URL: z.string().trim().optional(),
   // Outbox email delivery worker knobs (mirrors the payment worker).
   EMAIL_WORKER_CLAIM_LIMIT: z.coerce.number().int().min(1).max(200).default(25),
   EMAIL_WORKER_LEASE_MS: z.coerce.number().int().min(1000).default(60_000),
@@ -261,6 +262,7 @@ export interface ServerConfig {
     /** Addresses baked into onboarding email bodies. */
     readonly links: {
       readonly supportAddress: string | null
+      readonly webAppUrl: string | null
     }
     readonly worker: { readonly claimLimit: number; readonly leaseMs: number }
   }
@@ -489,6 +491,29 @@ const parsePhonePeConfig = (
   })
 }
 
+const CLIENT_WEB_APP_URL_ERROR = "CLIENT_WEB_APP_URL must be a bare HTTPS origin such as https://app.example.com"
+
+const clientWebAppUrl = (raw: string | undefined): string | null => {
+  if (raw === undefined || raw === "") return null
+  let url: URL
+  try {
+    url = new URL(raw)
+  } catch {
+    throw new Error(CLIENT_WEB_APP_URL_ERROR)
+  }
+  if (
+    url.protocol !== "https:" ||
+    url.username !== "" ||
+    url.password !== "" ||
+    url.pathname !== "/" ||
+    url.search !== "" ||
+    url.hash !== ""
+  ) {
+    throw new Error(CLIENT_WEB_APP_URL_ERROR)
+  }
+  return url.origin
+}
+
 export const parseServerConfig = (source: Readonly<Record<string, string | undefined>>): ServerConfig => {
   const parsed = ServerConfigSchema.parse(source)
   const verificationKeysSpki = parseVerificationKeys(parsed.ACCESS_TOKEN_VERIFICATION_KEYS)
@@ -619,6 +644,7 @@ export const parseServerConfig = (source: Readonly<Record<string, string | undef
           : null,
       links: {
         supportAddress: nonEmpty(parsed.SUPPORT_EMAIL),
+        webAppUrl: clientWebAppUrl(parsed.CLIENT_WEB_APP_URL),
       },
       worker: {
         claimLimit: parsed.EMAIL_WORKER_CLAIM_LIMIT,

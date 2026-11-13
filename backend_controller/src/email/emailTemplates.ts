@@ -4,6 +4,7 @@ import { EmailValidationError } from "./emailValidation.js"
 export interface EmailTemplateConfig {
   /** Address investors are told to contact. */
   readonly supportAddress: string | null
+  readonly webAppUrl?: string | null
 }
 
 /** Unknown or unrenderable templates are reported rather than guessed at. */
@@ -69,6 +70,13 @@ const describeDuration = (ms: number): string => {
   return seconds % 60 === 0 ? plural(seconds / 60, "minute") : plural(seconds, "second")
 }
 
+const WEB_APP_LEAD = "On an iPhone or a computer, you can open the BeOnEdge web app at"
+
+const webAppBlocks = (config: EmailTemplateConfig): readonly EmailBlock[] => {
+  const url = config.webAppUrl ?? null
+  return url === null ? [] : [{ kind: "link", lead: WEB_APP_LEAD, url }]
+}
+
 const downloadBlocks = (downloadUrl: string | null): readonly EmailBlock[] =>
   downloadUrl === null
     ? []
@@ -99,6 +107,7 @@ export const accountApprovedEmail = (
     blocks: [
       { kind: "text", text: "Welcome to BeOnEdge. Your application has been approved." },
       ...downloadBlocks(downloadUrl),
+      ...webAppBlocks(config),
       {
         kind: "text",
         text: "Sign in with the same email address and password you used when you signed up at beonedge.in.",
@@ -131,6 +140,7 @@ export const passwordInviteEmail = (
         kind: "text",
         text: "After signing in you will be asked to verify your email address before you can invest.",
       },
+      ...webAppBlocks(config),
     ],
   })
 
@@ -169,6 +179,7 @@ export const appDownloadEmail = (downloadUrl: string, config: EmailTemplateConfi
         kind: "text",
         text: "If the app is already installed, you can sign in with your new password now.",
       },
+      ...webAppBlocks(config),
       { kind: "text", text: "If you did not change your password, contact BeOnEdge support." },
     ],
   })
