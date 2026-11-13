@@ -1060,13 +1060,6 @@
           ]
         },
         {
-          "id": "E4-bank-reference",
-          "track": "main",
-          "status": "planned",
-          "also": [],
-          "brief": "ONLY IF the maintainer answers Q-027 (question row 16) with yes: optional bank reference (UTR) on admin recordings, next free migration number, optional request field on record-contribution, a payment-sheet column and an export column. Otherwise close it unbuilt (rule-11)."
-        },
-        {
           "id": "E-close",
           "track": "main",
           "status": "landed",
@@ -1139,6 +1132,59 @@
           "covers": [
             "U3"
           ]
+        }
+      ]
+    },
+    {
+      "id": "M10-phase-f",
+      "stage": "build",
+      "group": "admin-improvements",
+      "name": "Phase F: maturity choices and ledger dates",
+      "track": "all",
+      "weight": 3,
+      "waits": "maintainer go-ahead: build with the defaults of Q-030 to Q-032 (rows 19-21) or after their answers",
+      "delivers": [
+        {
+          "id": "F1-ledger-recorded-date",
+          "what": "Admin client ledger tab shows when each row was recorded beside its effective date (createdAt is already in the response)"
+        },
+        {
+          "id": "F2-sip-extension",
+          "what": "Maturity option 3 becomes extend the SIP: add months to the active schedule, no ledger row, next maturity date scheduled (default old date plus months added)"
+        },
+        {
+          "id": "F3-client-options",
+          "what": "Admin sends maturity options to one client: email plus in-app notification; client sees the three options with the admin's figures and picks one; admin confirms and the same resolution runs"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "F-L1-maturity-choices",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Lane f-maturity: F1 Recorded column on the admin ledger tab; F2 option 3 as SIP extension; F3 send options to client (email template maturity_options, in-app notice, client choice screen and endpoints, admin confirm). Migration 068: widen the maturity resolution check, add the offer/choice record, widen the email template check. Additive only; Phase C is unreleased so its new endpoints may change shape. No payments, no bank details, no money moves until the admin confirms.",
+          "paths": [
+            "backend_controller/src/domain/admin/maturityResolutions.ts",
+            "backend_controller/src/domain/admin/maturitySchedules.ts",
+            "backend_controller/src/routes/adminMaturityScheduleRoutes.ts",
+            "backend_controller/db/migrations/",
+            "packages/contracts/src/operations/admin-maturity-schedules.ts",
+            "frontend_stack_ts/src/features/admin/users/ClientLedgerTab.tsx",
+            "frontend_stack_ts/src/features/admin/maturities/"
+          ],
+          "covers": [
+            "F1-ledger-recorded-date",
+            "F2-sip-extension",
+            "F3-client-options"
+          ]
+        },
+        {
+          "id": "F-close",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Review, land, sweep, plan section 8 entry, records commit"
         }
       ]
     }

@@ -1,119 +1,7 @@
 {
   "schema": 1,
-  "nextRow": 19,
+  "nextRow": 22,
   "open": [
-    {
-      "row": 1,
-      "group": "admin-improvements",
-      "question": "One-click user DB cleanup: is this (a) wiping test data on the dev stack, or (b) removing a real client in production? Production hard delete is blocked by ON DELETE RESTRICT and rule 11; the safe production form is a per-user PII tombstone that keeps money/audit records.",
-      "meanwhile": "Nothing built. Plan treats it as a dev-only reset tool plus an optional per-user production tombstone, each needing a separate approval.",
-      "asked": "2026-11-13T08:16:45.300Z",
-      "by": "claude-opus-5-5"
-    },
-    {
-      "row": 2,
-      "group": "admin-improvements",
-      "question": "Monthly investment category: is an admin-side category enough (new reason code; clients still see it as an 'earlier investment' style entry), or must clients see a distinct 'Monthly investment' label (needs a new order type and a minimumSupportedVersion bump so old APKs do not break)?",
-      "meanwhile": "Assume admin-side reason code with reason-specific admin copy and notification text; no migration, no client label change.",
-      "asked": "2026-11-13T08:16:45.773Z",
-      "by": "claude-opus-5-5"
-    },
-    {
-      "row": 3,
-      "group": "admin-improvements",
-      "question": "Auto-maturity after 12 months: counted per fund position or per SIP plan; from first contribution or plan start; do offline-recorded investments count; should a matured position block new investments; and does 'mature' ever mean an automatic payout (real fund movement is a maintainer safety decision)?",
-      "meanwhile": "Assume mark-as-matured only (pending maturity, no payout), per fund position, 12 months from first contribution, offline included, no blocking; withdrawal/reinvest stay manual admin actions.",
-      "asked": "2026-11-13T08:16:46.177Z",
-      "by": "claude-opus-5-5"
-    },
-    {
-      "row": 4,
-      "group": "admin-improvements",
-      "question": "Nominee: name only, or also relationship / date of birth / share? One nominee or several? Can the client edit it in the app, or only an admin?",
-      "meanwhile": "Assume one nominee name (plus optional relationship), editable by client in Profile and by admin, audited, shown on admin user page.",
-      "asked": "2026-11-13T08:16:46.608Z",
-      "by": "claude-opus-5-5"
-    },
-    {
-      "row": 5,
-      "group": "admin-improvements",
-      "question": "Signup redirect: after a beonedge.in signup, should users land on an 'application received, sign in after approval' page on app.beonedge.in, or go straight to sign-in (which fails until approved)? The redirect itself is a boe_landing change.",
-      "meanwhile": "Assume a new public 'application received' page in the client app; boe_landing redirects to it on success.",
-      "asked": "2026-11-13T08:16:47.130Z",
-      "by": "claude-opus-5-5"
-    },
-    {
-      "row": 6,
-      "group": "admin-improvements",
-      "question": "Reviews: are client reviews visible only to admins, or also to other clients in the app? Moderate before or after they appear? (Showing them on beonedge.in would bring investing content onto the public site.)",
-      "meanwhile": "Assume admin-only list with client name/profile, moderation state kept for later publishing; nothing on the public site.",
-      "asked": "2026-11-13T08:16:47.561Z",
-      "by": "claude-opus-5-5"
-    },
-    {
-      "row": 7,
-      "group": "admin-improvements",
-      "question": "Web app parity: should AutoPay SIP setup work in a browser (iOS users currently have no AutoPay path), and should APK update mail stop going to web/iOS-only users?",
-      "meanwhile": "Assume web keeps manual monthly SIP checkout; AutoPay-on-web scoped separately after checking the provider's web mandate flow.",
-      "asked": "2026-11-13T08:16:48.028Z",
-      "by": "claude-opus-5-5"
-    },
-    {
-      "row": 8,
-      "group": "admin-improvements",
-      "question": "ROI dashboard: is 'updating client investment amount' the growth adjustment (value changes, principal does not)? Is simple return (growth / invested) the ROI you want, or annualised (XIRR)?",
-      "meanwhile": "Assume growth adjustment, simple return %, last-updated = latest ledger entry time per client.",
-      "asked": "2026-11-13T08:16:48.592Z",
-      "by": "claude-opus-5-5"
-    },
-    {
-      "row": 9,
-      "group": "admin-improvements",
-      "question": "Data reform: what is wrong in today's production data that the one-time step must fix (test accounts mixed with real clients, investments entered as growth or corrections that should be monthly investments, missing categories/maturity dates/nominees, duplicates)? And may real client data be copied to dev as-is, or should names/emails/phones be masked there?",
-      "meanwhile": "Design only an additive backfill path (new rows, never edits) plus a read-only pre-flight report the maintainer runs; assume masked PII on dev.",
-      "asked": "2026-11-13T08:40:04.538Z",
-      "by": "claude-opus-5-5"
-    },
-    {
-      "row": 10,
-      "group": "admin-improvements",
-      "question": "DD point 1 (clients rating and commenting on the app, shown with their profile): still wanted? If so, visible to admins only or to other clients too?",
-      "meanwhile": "Keep it in the plan as a later phase, admin-only list, nothing public.",
-      "asked": "2026-11-13T08:40:05.024Z",
-      "by": "claude-opus-5-5"
-    },
-    {
-      "row": 11,
-      "group": "admin-improvements",
-      "question": "With payments off, 'start a new SIP' means: the admin sets an expected monthly amount, fund and start date for the client; each monthly investment the admin records is linked to it; the client sees 'N of M months paid'. Is that right, and is the maturity date set per fund holding or per individual investment?",
-      "meanwhile": "Assume an admin-tracked SIP schedule with no gateway collection, monthly recordings linked to it, and one maturity date per fund holding.",
-      "asked": "2026-11-13T08:40:05.538Z",
-      "by": "claude-opus-5-5"
-    },
-    {
-      "row": 12,
-      "group": "admin-improvements",
-      "question": "Q-024: how should the admin correct a mistyped email or phone for a client who has not set a password yet: an audited admin contact-correction action that retires old links, and/or letting a closed account release its email and phone?",
-      "meanwhile": "No identity rule change; only a review step before the invite is queued.",
-      "asked": "2026-11-13T08:53:29.168Z",
-      "by": "claude-opus-5-5"
-    },
-    {
-      "row": 13,
-      "group": "admin-improvements",
-      "question": "Q-017 (carried): what lifetime should admin invite links have? Today they share the 10-minute email-code lifetime, so a mail outage over ~6 minutes cancels the invite.",
-      "meanwhile": "Unchanged at 10 minutes; admin can resend.",
-      "asked": "2026-11-13T08:53:29.682Z",
-      "by": "claude-opus-5-5"
-    },
-    {
-      "row": 14,
-      "group": "admin-improvements",
-      "question": "Q-025: should setting the password through the emailed link also mark that email verified, so a new client is not asked for a second email code before investing?",
-      "meanwhile": "Unchanged: client still verifies with a code.",
-      "asked": "2026-11-13T08:53:30.108Z",
-      "by": "claude-opus-5-5"
-    },
     {
       "row": 15,
       "group": "records",
@@ -123,12 +11,180 @@
       "by": "lane-a-identity"
     },
     {
+      "row": 19,
+      "group": "admin-improvements",
+      "question": "Q-030: When a client picks a maturity option in the app, should it take effect straight away, or go to the admin as the client's choice, which the admin then confirms and carries out? A withdrawal is paid out by the team outside the app, so the admin has to act on it anyway.",
+      "meanwhile": "The client's pick is saved as their choice and shown to the admin on the Maturities dashboard, in the launch prompt and on the client page. Nothing changes in money, the ledger or the SIP until the admin confirms, and confirming runs the same resolution as a direct one. Until then the client can change their pick and sees that the BeOnEdge team will confirm it.",
+      "asked": "2026-11-13T20:53:52.225Z",
+      "by": "claude-opus-5-5 coordinator"
+    },
+    {
+      "row": 20,
+      "group": "admin-improvements",
+      "question": "Q-031: When the admin sends the maturity options to a client, who fills in the figures? Option 2 needs the next SIP's monthly amount and number of months, and option 3 needs how many months to add. Does the admin fill them in before sending, so the client only picks one, or does the client enter them in the app?",
+      "meanwhile": "The admin fills them in when sending. The client sees each option with its figures, plus the current value (amount invested and returns), and picks one. A client who wants other figures talks to the team, and the admin sends new options.",
+      "asked": "2026-11-13T20:53:52.486Z",
+      "by": "claude-opus-5-5 coordinator"
+    },
+    {
+      "row": 21,
+      "group": "admin-improvements",
+      "question": "Q-032: When option 3 extends a client's SIP by some months, should the maturity date move later by the same number of months, so the next 30-day reminder comes at the new end?",
+      "meanwhile": "The new maturity date is filled in as the old date plus the months added, and the admin can change it before confirming. The old maturity stays in the history as resolved, and a new one is scheduled at the new date.",
+      "asked": "2026-11-13T20:53:52.762Z",
+      "by": "claude-opus-5-5 coordinator"
+    }
+  ],
+  "answered": [
+    {
+      "row": 1,
+      "group": "admin-improvements",
+      "question": "One-click user DB cleanup: is this (a) wiping test data on the dev stack, or (b) removing a real client in production? Production hard delete is blocked by ON DELETE RESTRICT and rule 11; the safe production form is a per-user PII tombstone that keeps money/audit records.",
+      "meanwhile": "Nothing built. Plan treats it as a dev-only reset tool plus an optional per-user production tombstone, each needing a separate approval.",
+      "asked": "2026-11-13T08:16:45.300Z",
+      "by": "claude-opus-5-5",
+      "answeredAt": "2026-11-13T20:53:28.397Z",
+      "decision": "DEC-1"
+    },
+    {
+      "row": 2,
+      "group": "admin-improvements",
+      "question": "Monthly investment category: is an admin-side category enough (new reason code; clients still see it as an 'earlier investment' style entry), or must clients see a distinct 'Monthly investment' label (needs a new order type and a minimumSupportedVersion bump so old APKs do not break)?",
+      "meanwhile": "Assume admin-side reason code with reason-specific admin copy and notification text; no migration, no client label change.",
+      "asked": "2026-11-13T08:16:45.773Z",
+      "by": "claude-opus-5-5",
+      "answeredAt": "2026-11-13T20:53:28.614Z",
+      "decision": "DEC-2"
+    },
+    {
+      "row": 3,
+      "group": "admin-improvements",
+      "question": "Auto-maturity after 12 months: counted per fund position or per SIP plan; from first contribution or plan start; do offline-recorded investments count; should a matured position block new investments; and does 'mature' ever mean an automatic payout (real fund movement is a maintainer safety decision)?",
+      "meanwhile": "Assume mark-as-matured only (pending maturity, no payout), per fund position, 12 months from first contribution, offline included, no blocking; withdrawal/reinvest stay manual admin actions.",
+      "asked": "2026-11-13T08:16:46.177Z",
+      "by": "claude-opus-5-5",
+      "answeredAt": "2026-11-13T20:53:28.830Z",
+      "decision": "DEC-3"
+    },
+    {
+      "row": 4,
+      "group": "admin-improvements",
+      "question": "Nominee: name only, or also relationship / date of birth / share? One nominee or several? Can the client edit it in the app, or only an admin?",
+      "meanwhile": "Assume one nominee name (plus optional relationship), editable by client in Profile and by admin, audited, shown on admin user page.",
+      "asked": "2026-11-13T08:16:46.608Z",
+      "by": "claude-opus-5-5",
+      "answeredAt": "2026-11-13T20:53:29.055Z",
+      "decision": "DEC-4"
+    },
+    {
+      "row": 5,
+      "group": "admin-improvements",
+      "question": "Signup redirect: after a beonedge.in signup, should users land on an 'application received, sign in after approval' page on app.beonedge.in, or go straight to sign-in (which fails until approved)? The redirect itself is a boe_landing change.",
+      "meanwhile": "Assume a new public 'application received' page in the client app; boe_landing redirects to it on success.",
+      "asked": "2026-11-13T08:16:47.130Z",
+      "by": "claude-opus-5-5",
+      "answeredAt": "2026-11-13T20:53:29.267Z",
+      "decision": "DEC-5"
+    },
+    {
+      "row": 6,
+      "group": "admin-improvements",
+      "question": "Reviews: are client reviews visible only to admins, or also to other clients in the app? Moderate before or after they appear? (Showing them on beonedge.in would bring investing content onto the public site.)",
+      "meanwhile": "Assume admin-only list with client name/profile, moderation state kept for later publishing; nothing on the public site.",
+      "asked": "2026-11-13T08:16:47.561Z",
+      "by": "claude-opus-5-5",
+      "answeredAt": "2026-11-13T20:53:29.478Z",
+      "decision": "DEC-6"
+    },
+    {
+      "row": 7,
+      "group": "admin-improvements",
+      "question": "Web app parity: should AutoPay SIP setup work in a browser (iOS users currently have no AutoPay path), and should APK update mail stop going to web/iOS-only users?",
+      "meanwhile": "Assume web keeps manual monthly SIP checkout; AutoPay-on-web scoped separately after checking the provider's web mandate flow.",
+      "asked": "2026-11-13T08:16:48.028Z",
+      "by": "claude-opus-5-5",
+      "answeredAt": "2026-11-13T20:53:29.699Z",
+      "decision": "DEC-7"
+    },
+    {
+      "row": 8,
+      "group": "admin-improvements",
+      "question": "ROI dashboard: is 'updating client investment amount' the growth adjustment (value changes, principal does not)? Is simple return (growth / invested) the ROI you want, or annualised (XIRR)?",
+      "meanwhile": "Assume growth adjustment, simple return %, last-updated = latest ledger entry time per client.",
+      "asked": "2026-11-13T08:16:48.592Z",
+      "by": "claude-opus-5-5",
+      "answeredAt": "2026-11-13T20:53:29.918Z",
+      "decision": "DEC-8"
+    },
+    {
+      "row": 9,
+      "group": "admin-improvements",
+      "question": "Data reform: what is wrong in today's production data that the one-time step must fix (test accounts mixed with real clients, investments entered as growth or corrections that should be monthly investments, missing categories/maturity dates/nominees, duplicates)? And may real client data be copied to dev as-is, or should names/emails/phones be masked there?",
+      "meanwhile": "Design only an additive backfill path (new rows, never edits) plus a read-only pre-flight report the maintainer runs; assume masked PII on dev.",
+      "asked": "2026-11-13T08:40:04.538Z",
+      "by": "claude-opus-5-5",
+      "answeredAt": "2026-11-13T20:53:30.135Z",
+      "decision": "DEC-1"
+    },
+    {
+      "row": 10,
+      "group": "admin-improvements",
+      "question": "DD point 1 (clients rating and commenting on the app, shown with their profile): still wanted? If so, visible to admins only or to other clients too?",
+      "meanwhile": "Keep it in the plan as a later phase, admin-only list, nothing public.",
+      "asked": "2026-11-13T08:40:05.024Z",
+      "by": "claude-opus-5-5",
+      "answeredAt": "2026-11-13T20:53:30.351Z",
+      "decision": "DEC-6"
+    },
+    {
+      "row": 11,
+      "group": "admin-improvements",
+      "question": "With payments off, 'start a new SIP' means: the admin sets an expected monthly amount, fund and start date for the client; each monthly investment the admin records is linked to it; the client sees 'N of M months paid'. Is that right, and is the maturity date set per fund holding or per individual investment?",
+      "meanwhile": "Assume an admin-tracked SIP schedule with no gateway collection, monthly recordings linked to it, and one maturity date per fund holding.",
+      "asked": "2026-11-13T08:40:05.538Z",
+      "by": "claude-opus-5-5",
+      "answeredAt": "2026-11-13T20:53:30.570Z",
+      "decision": "DEC-9"
+    },
+    {
+      "row": 12,
+      "group": "admin-improvements",
+      "question": "Q-024: how should the admin correct a mistyped email or phone for a client who has not set a password yet: an audited admin contact-correction action that retires old links, and/or letting a closed account release its email and phone?",
+      "meanwhile": "No identity rule change; only a review step before the invite is queued.",
+      "asked": "2026-11-13T08:53:29.168Z",
+      "by": "claude-opus-5-5",
+      "answeredAt": "2026-11-13T20:53:30.799Z",
+      "decision": "DEC-10"
+    },
+    {
+      "row": 13,
+      "group": "admin-improvements",
+      "question": "Q-017 (carried): what lifetime should admin invite links have? Today they share the 10-minute email-code lifetime, so a mail outage over ~6 minutes cancels the invite.",
+      "meanwhile": "Unchanged at 10 minutes; admin can resend.",
+      "asked": "2026-11-13T08:53:29.682Z",
+      "by": "claude-opus-5-5",
+      "answeredAt": "2026-11-13T20:53:31.032Z",
+      "decision": "DEC-11"
+    },
+    {
+      "row": 14,
+      "group": "admin-improvements",
+      "question": "Q-025: should setting the password through the emailed link also mark that email verified, so a new client is not asked for a second email code before investing?",
+      "meanwhile": "Unchanged: client still verifies with a code.",
+      "asked": "2026-11-13T08:53:30.108Z",
+      "by": "claude-opus-5-5",
+      "answeredAt": "2026-11-13T20:53:31.260Z",
+      "decision": "DEC-12"
+    },
+    {
       "row": 16,
       "group": "admin-improvements",
       "question": "Phase C's monthly payment sheet (C4, task C-L3-payment-sheet) planned an optional bank reference (UTR) field on each recording, so the admin could match a recording to the bank statement. You decided that no bank details or payment methods are recorded (rule-11). Should the sheet still keep an optional UTR, which is a transfer reference and not an account detail, or leave it out?",
       "meanwhile": "The payment sheet is built without any bank reference field and without its migration. Recordings keep only the category, amount, date and fund. Nothing about bank accounts or payment methods is stored or shown.",
       "asked": "2026-11-13T14:10:33.533Z",
-      "by": "coordinator-b-close"
+      "by": "coordinator-b-close",
+      "answeredAt": "2026-11-13T20:53:31.475Z",
+      "decision": "DEC-13"
     },
     {
       "row": 17,
@@ -136,7 +192,9 @@
       "question": "For AutoPay, once payments are re-enabled (E2, track e-autopay): when a monthly debit fails, or its 10:00 IST debit time passes with no order, should the plan skip that month and still end on its original end date, so it collects fewer instalments than its number of months? Or should the plan be extended so the missed month is collected at the end?",
       "meanwhile": "The failed or missed month is skipped. Its rows are kept as they are, it is never debited again, and the plan still ends on its original end date, so no extra debit ever happens after the planned term. Payments and AutoPay stay disabled, so this has no effect today.",
       "asked": "2026-11-13T15:23:34.419Z",
-      "by": "lane-e-autopay"
+      "by": "lane-e-autopay",
+      "answeredAt": "2026-11-13T20:53:31.688Z",
+      "decision": "DEC-14"
     },
     {
       "row": 18,
@@ -144,8 +202,9 @@
       "question": "Maturity resolutions (C3, track c-maturity):\n(a) For \"reinvest the money as a SIP\", the app keeps the matured money where it is, with no ledger entry, and only starts a new admin SIP schedule; the admin then records each month's payment as usual. Is that how the money should flow, or should the matured amount be paid out first and then re-recorded month by month?\n(b) Is a 30-day window right for the admin's launch prompt? It also lists dates already past.\n(c) When options 2 or 3 start a new SIP, the client's existing active SIP schedule for that fund is closed first. Is that right?",
       "meanwhile": "(a) Option 3 writes no ledger row and no payout; only the SIP schedule changes, and the screen tells the admin not to record the matured money again. (b) The prompt lists maturities from today through 30 days ahead, plus overdue ones. (c) Options 2 and 3 close the existing active SIP for that client and fund before creating the new one. Nothing happens to money without the admin's explicit choice.",
       "asked": "2026-11-13T18:24:32.459Z",
-      "by": "lane-c-sip"
+      "by": "lane-c-sip",
+      "answeredAt": "2026-11-13T20:53:31.910Z",
+      "decision": "DEC-15"
     }
-  ],
-  "answered": []
+  ]
 }

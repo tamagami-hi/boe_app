@@ -1,0 +1,196 @@
+{
+  "schema": 1,
+  "decisions": [
+    {
+      "id": "DEC-1",
+      "group": "admin-improvements",
+      "text": "Client and investment records stay intact on dev and production; the dev server may be cleaned. There is no standalone cleanup project: client data is reformed only when a change needs it, nothing is lost, the step is rehearsed on dev against a masked copy, duplicate investments are reversed with both rows kept, and duplicate accounts are merged only for pairs the maintainer confirms. Answers question rows 1 and 9.",
+      "since": "2026-11-13",
+      "status": "In force; Phase D runs only when a change needs it",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-13T20:53:17.416Z"
+    },
+    {
+      "id": "DEC-2",
+      "group": "admin-improvements",
+      "text": "When the admin records an investment, the client sees it as a receipt labelled with the category the admin chose: earlier investment, monthly investment or correction. Answers question row 2.",
+      "since": "2026-11-13",
+      "status": "Built (B1, B2)",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-13T20:53:17.622Z"
+    },
+    {
+      "id": "DEC-3",
+      "group": "admin-improvements",
+      "text": "No automatic maturity. The admin enters a maturity date per client fund holding, a Maturities dashboard lists them, and the admin is prompted at every admin launch for maturities due within 30 days and overdue ones. Every recording counts and the admin manages them. Answers question row 3; the resolutions are set by DEC-15.",
+      "since": "2026-11-13",
+      "status": "Built (C3)",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-13T20:53:17.848Z"
+    },
+    {
+      "id": "DEC-4",
+      "group": "admin-improvements",
+      "text": "Nominee: the nominee's name and their relation to the account holder. Answers question row 4.",
+      "since": "2026-11-13",
+      "status": "Built (C1)",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-13T20:53:18.058Z"
+    },
+    {
+      "id": "DEC-5",
+      "group": "admin-improvements",
+      "text": "Public signups are not in use; clients are onboarded only by the admin, so the signup redirect to app.beonedge.in is dropped. The signup application review stays as it is, and the onboarding process is audited for bugs instead. Answers question row 5.",
+      "since": "2026-11-13",
+      "status": "In force",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-13T20:53:18.278Z"
+    },
+    {
+      "id": "DEC-6",
+      "group": "admin-improvements",
+      "text": "Client ratings and comments on the app are wanted and are visible to admins only, with the client profile; nothing is public. Answers question rows 6 and 10.",
+      "since": "2026-11-13",
+      "status": "Built (E1)",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-13T20:53:18.515Z"
+    },
+    {
+      "id": "DEC-7",
+      "group": "admin-improvements",
+      "text": "AutoPay is not activated until the maintainer says so, so AutoPay on the web is not pursued. App-update announcement emails keep going to every active client. Answers question row 7.",
+      "since": "2026-11-13",
+      "status": "In force",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-13T20:53:18.736Z"
+    },
+    {
+      "id": "DEC-8",
+      "group": "admin-improvements",
+      "text": "Value updates are entered monthly as the amount gained since investment. Each update is kept as a record and the client is notified every time. Dashboards show simple return % as the main figure and annualised XIRR as a secondary column. Answers question row 8.",
+      "since": "2026-11-13",
+      "status": "Built (B3, B4, B5)",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-13T20:53:18.980Z"
+    },
+    {
+      "id": "DEC-9",
+      "group": "admin-improvements",
+      "text": "Start a new SIP means an admin-tracked schedule: monthly amount, fund, start month and number of months. Each monthly recording links to a month and the client sees N of M months paid. There is no automatic collection. The maturity date is per client fund holding. Answers question row 11.",
+      "since": "2026-11-13",
+      "status": "Built (C2)",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-13T20:53:19.194Z"
+    },
+    {
+      "id": "DEC-10",
+      "group": "admin-improvements",
+      "text": "An audited admin contact correction for clients who have not set a password, which retires old links and sends the invite to the corrected address. Closed accounts can release their email and phone. Original contacts are kept in an append-only history. Answers question row 12.",
+      "since": "2026-11-13",
+      "status": "Built (A8)",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-13T20:53:19.407Z"
+    },
+    {
+      "id": "DEC-11",
+      "group": "admin-improvements",
+      "text": "Invite links stay short, at 10 minutes. The admin can send a new invite in one obvious action, including after the old one expired or was cancelled. Answers question row 13.",
+      "since": "2026-11-13",
+      "status": "Built (A8)",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-13T20:53:19.618Z"
+    },
+    {
+      "id": "DEC-12",
+      "group": "admin-improvements",
+      "text": "Setting a password does not verify the email; the email code step stays. Answers question row 14.",
+      "since": "2026-11-13",
+      "status": "In force",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-13T20:53:19.828Z"
+    },
+    {
+      "id": "DEC-13",
+      "group": "admin-improvements",
+      "text": "No reference number of any kind (UTR or other) is assigned to or kept on investments the admin records. Recordings keep category, amount, date and fund. Answers question row 16.",
+      "since": "2026-11-14",
+      "status": "In force",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-13T20:53:20.036Z"
+    },
+    {
+      "id": "DEC-14",
+      "group": "admin-improvements",
+      "text": "Payments: nothing is added or changed; the maintainer asked only for bug fixes and for payments to be disabled. AutoPay and everything related to the payment gateway are halted until the maintainer says to resume them. Answers question row 17.",
+      "since": "2026-11-14",
+      "status": "In force",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-13T20:53:20.256Z"
+    },
+    {
+      "id": "DEC-15",
+      "group": "admin-improvements",
+      "text": "Maturity: the admin is notified first, by the launch prompt from 30 days before the date. The options are (1) withdraw the invested amount with returns, (2) reinvest the previous amount as a one-time investment and then start recording the next SIP, (3) increase the SIP's time period. The options never pop up for the client by themselves: the admin either resolves directly after talking to the client, or sends the options to that client, who then gets an email and an in-app notification and can choose in the app. Both the client and the admin can decide. Answers question row 18.",
+      "since": "2026-11-14",
+      "status": "Partly built (C3); option 3 as a SIP extension and sending the options to the client are Phase F",
+      "state": "partly built",
+      "by": "operator",
+      "on": "2026-11-13T20:53:20.466Z"
+    },
+    {
+      "id": "DEC-16",
+      "group": "admin-improvements",
+      "text": "The Record action on the admin user page offers a Monthly investment category. Every recording has a history with the date it was recorded, kept as a ledger the admin sees and reflected in the client's app.",
+      "since": "2026-11-14",
+      "status": "Built (B1, B2, B5); the admin ledger's recorded date is Phase F",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-13T20:53:20.685Z"
+    },
+    {
+      "id": "DEC-17",
+      "group": "admin-improvements",
+      "text": "The integration suite may run in a local container with a throwaway PostgreSQL.",
+      "since": "2026-11-13",
+      "status": "In force",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-13T20:53:20.907Z"
+    },
+    {
+      "id": "DEC-18",
+      "group": "admin-improvements",
+      "text": "Clients pay SIPs and investments directly to the company, and the admin records them. Whether the gateway is on or off must not affect how quickly and clearly a client sees their investment in the app.",
+      "since": "2026-11-13",
+      "status": "In force",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-13T20:53:21.127Z"
+    },
+    {
+      "id": "DEC-19",
+      "group": "admin-improvements",
+      "text": "The maintainer delegates working out what else this kind of app needs, and simplifying complex flows so both client and admin have a seamless experience.",
+      "since": "2026-11-13",
+      "status": "In force",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-13T20:53:21.337Z"
+    }
+  ],
+  "replaced": []
+}

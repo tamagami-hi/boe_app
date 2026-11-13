@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "rule",
-  "nextNumber": 13,
+  "nextNumber": 14,
   "entries": [
     {
       "id": "rule-1",
@@ -56,7 +56,9 @@
         "track": "main",
         "agent": "claude-opus-5-5"
       },
-      "at": "2026-11-13T08:39:47.295Z"
+      "at": "2026-11-13T08:39:47.295Z",
+      "retiredAt": "2026-11-13T20:53:53.312Z",
+      "retiredWhy": "Question answers are decisions, not rules (maintainer 2026-11-14). Recorded as decision DEC-1, group admin-improvements."
     },
     {
       "id": "rule-4",
@@ -77,7 +79,9 @@
         "track": "main",
         "agent": "claude-opus-5-5"
       },
-      "at": "2026-11-13T08:39:47.792Z"
+      "at": "2026-11-13T08:39:47.792Z",
+      "retiredAt": "2026-11-13T20:53:53.583Z",
+      "retiredWhy": "Question answers are decisions, not rules (maintainer 2026-11-14). Recorded as decision DEC-2, group admin-improvements."
     },
     {
       "id": "rule-5",
@@ -97,7 +101,9 @@
         "track": "main",
         "agent": "claude-opus-5-5"
       },
-      "at": "2026-11-13T08:39:48.204Z"
+      "at": "2026-11-13T08:39:48.204Z",
+      "retiredAt": "2026-11-13T20:53:53.882Z",
+      "retiredWhy": "Question answers are decisions, not rules (maintainer 2026-11-14). Recorded as decisions DEC-3 and DEC-15, group admin-improvements."
     },
     {
       "id": "rule-6",
@@ -124,7 +130,9 @@
         "track": "main",
         "agent": "claude-opus-5-5"
       },
-      "at": "2026-11-13T08:39:48.727Z"
+      "at": "2026-11-13T08:39:48.727Z",
+      "retiredAt": "2026-11-13T20:53:54.148Z",
+      "retiredWhy": "Question answers are decisions, not rules (maintainer 2026-11-14). Recorded as decisions DEC-4 to DEC-8, group admin-improvements."
     },
     {
       "id": "rule-7",
@@ -199,7 +207,9 @@
         "agent": "claude-opus-5-5"
       },
       "at": "2026-11-13T09:12:40.642Z",
-      "replaces": "rule-8"
+      "replaces": "rule-8",
+      "retiredAt": "2026-11-13T20:53:54.437Z",
+      "retiredWhy": "Question answers are decisions, not rules (maintainer 2026-11-14). Recorded as decisions DEC-1, DEC-6, DEC-7, DEC-9 to DEC-12 and DEC-17 to DEC-19, group admin-improvements."
     },
     {
       "id": "rule-10",
@@ -269,6 +279,32 @@
         "agent": "lane-b-receipts"
       },
       "at": "2026-11-13T13:01:06.501Z"
+    },
+    {
+      "id": "rule-13",
+      "kind": "rule",
+      "title": "Decisions 2026-11-14: payments halted, no reference number, recordings confirmed, maturity choices for client",
+      "text": "Maintainer, in chat, answering question rows 16-18:\n- Payments: \"i don't want to add or change anything about it, only asked you to fix some bugs and disable it.\" AutoPay and everything payment-gateway related is halted until the maintainer says to resume. E2 stays as built and dormant; no further payment work. Row 17 (missed AutoPay months) is answered by this: no change.\n- Row 16: no reference number (UTR or any other) on admin recordings. Task E4-bank-reference is dropped.\n- Recordings confirmed as built (B1/B2/B5): the Record action on the admin user page offers a Monthly investment category; every recording is kept with its date as a ledger/log the admin keeps, reflected in the client's app. Gap: the admin ledger tab shows the effective date only, not when the row was recorded.\n- Row 18 maturity: options are (1) withdraw the invested amount with returns; (2) reinvest the previous amount as a one-time investment, then start recording the next SIP; (3) increase the SIP's time period (replaces \"reinvest as a new SIP\"). Options never pop up for the client by themselves. The admin is notified first (30-day launch prompt, confirmed), then either resolves directly after talking to the client, or sends the options to that client, who gets an email and an in-app notification and can choose in the app. Both client and admin can decide.",
+      "paths": [],
+      "tags": [
+        "decision",
+        "payments",
+        "maturity",
+        "monthly-investment"
+      ],
+      "refs": [
+        "rule-2",
+        "rule-5",
+        "rule-11",
+        "M8-phase-e:E4-bank-reference"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-13T20:49:10.259Z",
+      "retiredAt": "2026-11-13T20:53:53.029Z",
+      "retiredWhy": "Question answers are decisions, not rules (maintainer 2026-11-14). Recorded as decisions DEC-13 to DEC-16, group admin-improvements."
     }
   ]
 }
