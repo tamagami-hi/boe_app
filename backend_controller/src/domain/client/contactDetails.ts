@@ -64,9 +64,9 @@ export const readClientProfile = async (
   return toProfile(user, verification?.state ?? null)
 }
 
-const passwordMatches = async (
+export const passwordMatches = async (
   tx: Transaction,
-  deps: ContactDetailsDeps,
+  deps: Pick<ContactDetailsDeps, "credentialRepository" | "userRepository">,
   userId: UserId,
   candidate: string,
 ): Promise<boolean> => {

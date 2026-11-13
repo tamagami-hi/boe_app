@@ -5,7 +5,7 @@ import type { UnitOfWork } from "../db/database.js"
 import type { IdempotencyRepository } from "../db/repositories.js"
 import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adminAccess.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
-import { changeClientNominee, readNominee, type AdminNomineeDeps } from "../domain/client/nominee.js"
+import { changeClientNominee, readClientNominee, type AdminNomineeDeps } from "../domain/client/nominee.js"
 import { parseOrThrow } from "../http/validation.js"
 import { adminIdempotencyScope, hashRequest, requireIdempotencyKey, runAdminMutation, uuidParam } from "./adminRouteKit.js"
 import { nomineeBody, nomineeFields, nomineeOf, requireBothOrNeither } from "./nomineeSchemas.js"
@@ -22,7 +22,7 @@ export interface AdminNomineeRouteDeps extends AdminNomineeDeps {
 }
 
 const changeBodySchema = z
-  .object({ ...nomineeFields, expectedVersion: z.number().int().positive() })
+  .object({ ...nomineeFields, expectedVersion: z.number().int().nonnegative() })
   .strict()
   .superRefine(requireBothOrNeither)
 
@@ -33,7 +33,7 @@ const getNominee = async (deps: AdminNomineeRouteDeps, request: FastifyRequest, 
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: false })
   requireAnyPermission(principal, READ_PERMISSIONS)
   const userId = userIdOf(request)
-  const holder = await deps.unitOfWork.execute((tx) => readNominee(tx, deps, userId))
+  const holder = await deps.unitOfWork.execute((tx) => readClientNominee(tx, deps, userId))
   return reply.sendData(nomineeBody(holder), { status: 200 })
 }
 

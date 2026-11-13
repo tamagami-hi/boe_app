@@ -25,11 +25,12 @@ import {
   signInRoleAdmin,
   type AdminSession,
 } from "./adminSessionSupport.js"
-import { PasswordMailStack, type Row } from "./passwordMailSupport.js"
+import { PASSWORD, PasswordMailStack, type Row } from "./passwordMailSupport.js"
 
 const PROFILE_KEYS = ["email", "emailVerification", "fullName", "pendingEmailChange", "phone", "phoneVerified", "userId", "version"]
 const ADMIN_DETAIL_KEYS = ["emailVerification", "orders", "roles", "user"]
 const NOMINEE = { name: "Meera Krishnan Rao", relation: "Spouse" }
+const WRONG_PASSWORD = "not the client's real password"
 
 interface Client {
   readonly id: string
@@ -68,8 +69,13 @@ const bearer = (client: Client) => ({ authorization: `Bearer ${client.token}` })
 
 const clientGet = (client: Client) => app.inject({ method: "GET", url: "/v1/client/profile/nominee", headers: bearer(client) })
 
-const clientPost = (client: Client, payload: object) =>
-  app.inject({ method: "POST", url: "/v1/client/profile/nominee", headers: bearer(client), payload })
+const clientPost = (client: Client, payload: object, currentPassword: string = PASSWORD) =>
+  app.inject({
+    method: "POST",
+    url: "/v1/client/profile/nominee",
+    headers: bearer(client),
+    payload: { ...payload, currentPassword },
+  })
 
 const adminGet = (userId: string, as: AdminSession = admin) =>
   app.inject({ method: "GET", url: `/v1/admin/users/${userId}/nominee`, headers: adminHeaders(as) })
@@ -78,7 +84,7 @@ const adminPost = (userId: string, payload: object, key: string | undefined, as:
   app.inject({ method: "POST", url: `/v1/admin/users/${userId}/nominee`, headers: adminHeaders(as, key), payload })
 
 const nomineeRow = (userId: string): Promise<Row> =>
-  stack.first("select nominee_name, nominee_relation, version from users where id = $1", [userId])
+  stack.first("select nominee_name, nominee_relation, nominee_version, version from users where id = $1", [userId])
 
 const auditRows = async (userId: string): Promise<Row[]> =>
   (
@@ -104,6 +110,9 @@ beforeAll(async () => {
         unitOfWork: stack.unitOfWork,
         clock: stack.clock,
         auditRepository: stack.auditRepository,
+        userRepository: stack.userRepository,
+        credentialRepository: stack.credentialRepository,
+        passwordRecheckLimiter: createPasswordRecheckLimiter(stack.clock),
         userNomineeRepository,
       })
       registerAdminNomineeRoutes(instance, {
@@ -158,34 +167,39 @@ describe("a client's own nominee", () => {
     const ravi = await seedClient()
     const raviBefore = await nomineeRow(ravi.id)
 
-    expect(dataOf<NomineeResponse>(await clientGet(asha))).toEqual({ userId: asha.id, nominee: null, version: 1 })
+    expect(dataOf<NomineeResponse>(await clientGet(asha))).toEqual({ userId: asha.id, nominee: null, version: 0 })
     const set = await clientPost(asha, NOMINEE)
     expect(set.statusCode).toBe(200)
-    expect(dataOf<NomineeResponse>(set)).toEqual({ userId: asha.id, nominee: NOMINEE, version: 2, status: "changed" })
+    expect(dataOf<NomineeResponse>(set)).toEqual({ userId: asha.id, nominee: NOMINEE, version: 1, status: "changed" })
 
-    expect(dataOf<NomineeResponse>(await clientGet(ravi))).toEqual({ userId: ravi.id, nominee: null, version: 1 })
+    expect(dataOf<NomineeResponse>(await clientGet(ravi))).toEqual({ userId: ravi.id, nominee: null, version: 0 })
     expect(await nomineeRow(ravi.id)).toEqual(raviBefore)
     expect((await clientPost(ravi, { ...NOMINEE, userId: asha.id })).statusCode).toBe(400)
-    expect(await nomineeRow(asha.id)).toEqual({ nominee_name: NOMINEE.name, nominee_relation: NOMINEE.relation, version: "2" })
+    expect(await nomineeRow(asha.id)).toEqual({
+      nominee_name: NOMINEE.name,
+      nominee_relation: NOMINEE.relation,
+      nominee_version: 1,
+      version: "1",
+    })
 
     const again = await clientPost(asha, { name: `  ${NOMINEE.name} `, relation: NOMINEE.relation })
-    expect(dataOf<NomineeResponse>(again)).toMatchObject({ status: "unchanged", version: 2 })
+    expect(dataOf<NomineeResponse>(again)).toMatchObject({ status: "unchanged", version: 1 })
     const cleared = await clientPost(asha, { name: null, relation: null })
-    expect(dataOf<NomineeResponse>(cleared)).toEqual({ userId: asha.id, nominee: null, version: 3, status: "changed" })
+    expect(dataOf<NomineeResponse>(cleared)).toEqual({ userId: asha.id, nominee: null, version: 2, status: "changed" })
 
     expect(await auditRows(asha.id)).toEqual([
       {
         actor_type: "user",
         actor_user_id: asha.id,
         command: "user.nominee_changed",
-        entity_version: "2",
+        entity_version: "1",
         metadata: { change: "added", nameChanged: true, relationChanged: true, previousName: null, currentName: "M***" },
       },
       {
         actor_type: "user",
         actor_user_id: asha.id,
         command: "user.nominee_changed",
-        entity_version: "3",
+        entity_version: "2",
         metadata: { change: "removed", nameChanged: true, relationChanged: true, previousName: "M***", currentName: null },
       },
     ])
@@ -193,46 +207,76 @@ describe("a client's own nominee", () => {
     expect(await auditRows(ravi.id)).toEqual([])
   })
 
-  test("needs a signed-in active client", async () => {
-    expect((await app.inject({ method: "GET", url: "/v1/client/profile/nominee" })).statusCode).toBe(401)
-    expect((await app.inject({ method: "POST", url: "/v1/client/profile/nominee", payload: NOMINEE })).statusCode).toBe(401)
-  })
-
-  test("leaves the existing profile and admin user responses unchanged once a nominee is set", async () => {
+  test("refuses a wrong current password before anything else and changes nothing", async () => {
     const client = await seedClient()
     await clientPost(client, NOMINEE)
+    const before = await nomineeRow(client.id)
+
+    const attempts = [{ name: "Kiran Rao", relation: "Son" }, { name: null, relation: null }, NOMINEE, { name: "Kiran Rao", relation: "Son" }]
+    for (const payload of attempts) {
+      const refused = await clientPost(client, payload, WRONG_PASSWORD)
+      expect(refused.statusCode, JSON.stringify(payload)).toBe(401)
+      expect(errorOf(refused).code).toBe("INVALID_CREDENTIALS")
+    }
+    expect(errorOf(await clientPost(client, { name: "Kiran Rao", relation: "Son" })).code).toBe("RATE_LIMITED")
+    expect(await nomineeRow(client.id)).toEqual(before)
+    expect(await auditRows(client.id)).toHaveLength(1)
+  })
+
+  test("needs a signed-in active client", async () => {
+    expect((await app.inject({ method: "GET", url: "/v1/client/profile/nominee" })).statusCode).toBe(401)
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url: "/v1/client/profile/nominee",
+          payload: { ...NOMINEE, currentPassword: PASSWORD },
+        })
+      ).statusCode,
+    ).toBe(401)
+  })
+
+  test("leaves users.version and the existing profile and admin user responses unchanged", async () => {
+    const client = await seedClient()
+    await clientPost(client, NOMINEE)
+    await adminPost(client.id, { name: "Kiran Rao", relation: "Son", expectedVersion: 1 }, randomUUID())
+    expect(await nomineeRow(client.id)).toMatchObject({ nominee_name: "Kiran Rao", nominee_version: 2, version: "1" })
 
     const profile = await app.inject({ method: "GET", url: "/v1/client/profile", headers: bearer(client) })
     expect(Object.keys(dataOf<Row>(profile)).sort()).toEqual(PROFILE_KEYS)
+    expect(dataOf<Row>(profile).version).toBe(1)
     const detail = await app.inject({ method: "GET", url: `/v1/admin/users/${client.id}/detail`, headers: adminHeaders(admin) })
     expect(detail.statusCode).toBe(200)
     expect(Object.keys(dataOf<Row>(detail)).sort()).toEqual(ADMIN_DETAIL_KEYS)
-    expect(JSON.stringify(dataOf<Row>(detail))).not.toContain(NOMINEE.name)
+    expect(JSON.stringify(dataOf<Row>(detail))).not.toContain("Kiran")
   })
 })
 
 describe("the admin nominee endpoints", () => {
-  test("allow users.read to read and clients.create to edit, and refuse every other admin", async () => {
+  test("allow users.read to read and clients.create to edit client accounts only", async () => {
     const client = await seedClient()
+    const nominee = { name: "सीता देवी", relation: "पत्नी" }
 
     for (const outsider of [support, finance]) {
       expect((await adminGet(client.id, outsider)).statusCode).toBe(403)
-      expect((await adminPost(client.id, { ...NOMINEE, expectedVersion: 1 }, randomUUID(), outsider)).statusCode).toBe(403)
+      expect((await adminPost(client.id, { ...nominee, expectedVersion: 0 }, randomUUID(), outsider)).statusCode).toBe(403)
     }
-    expect(await nomineeRow(client.id)).toMatchObject({ nominee_name: null, version: "1" })
+    expect(await nomineeRow(client.id)).toMatchObject({ nominee_name: null, nominee_version: 0 })
 
-    const set = await adminPost(client.id, { ...NOMINEE, expectedVersion: 1 }, randomUUID(), onboarding)
+    const set = await adminPost(client.id, { ...nominee, expectedVersion: 0 }, randomUUID(), onboarding)
     expect(set.statusCode).toBe(200)
-    expect(dataOf<NomineeResponse>(await adminGet(client.id, onboarding))).toEqual({ userId: client.id, nominee: NOMINEE, version: 2 })
+    expect(dataOf<NomineeResponse>(await adminGet(client.id, onboarding))).toEqual({ userId: client.id, nominee, version: 1 })
     expect(await auditRows(client.id)).toMatchObject([
-      { actor_type: "admin", actor_user_id: onboarding.userId, metadata: { change: "added", currentName: "M***" } },
+      { actor_type: "admin", actor_user_id: onboarding.userId, metadata: { change: "added", currentName: "स***" } },
     ])
+    expect(errorOf(await adminGet(onboarding.userId)).code).toBe("RESOURCE_NOT_FOUND")
+    expect(errorOf(await adminGet(randomUUID())).code).toBe("RESOURCE_NOT_FOUND")
   })
 
   test("hold one change per idempotency key, refuse a stale version and refuse non-client or closed accounts", async () => {
     const client = await seedClient("suspended")
     const key = randomUUID()
-    const body = { name: "Kiran Rao", relation: "Son", expectedVersion: 1 }
+    const body = { name: "Kiran Rao", relation: "Son", expectedVersion: 0 }
 
     expect(errorOf(await adminPost(client.id, body, undefined)).code).toBe("VALIDATION_FAILED")
     const first = await adminPost(client.id, body, key)
@@ -244,12 +288,12 @@ describe("the admin nominee endpoints", () => {
     expect(errorOf(await adminPost(client.id, { ...body, relation: "Daughter" }, key)).code).toBe("IDEMPOTENCY_KEY_REUSED")
 
     expect(errorOf(await adminPost(client.id, { ...body, relation: "Daughter" }, randomUUID())).code).toBe("STATE_CONFLICT")
-    expect(await nomineeRow(client.id)).toEqual({ nominee_name: "Kiran Rao", nominee_relation: "Son", version: "2" })
+    expect(await nomineeRow(client.id)).toEqual({ nominee_name: "Kiran Rao", nominee_relation: "Son", nominee_version: 1, version: "1" })
 
-    expect(errorOf(await adminPost(onboarding.userId, { ...body, expectedVersion: 1 }, randomUUID())).code).toBe("STATE_CONFLICT")
+    expect(errorOf(await adminPost(onboarding.userId, body, randomUUID())).code).toBe("STATE_CONFLICT")
     const closed = await seedClient("closed")
     expect(errorOf(await adminPost(closed.id, body, randomUUID())).code).toBe("STATE_CONFLICT")
-    expect(await nomineeRow(closed.id)).toMatchObject({ nominee_name: null, version: "1" })
+    expect(await nomineeRow(closed.id)).toMatchObject({ nominee_name: null, nominee_version: 0 })
   })
 })
 
@@ -263,19 +307,24 @@ describe("nominee validation", () => {
     [{ name: "Meera Rao", relation: "S" }, "relation"],
     [{ name: "Meera Rao", relation: "x".repeat(121) }, "relation"],
     [{ name: "Meera Rao", relation: "Sp\u0085ouse" }, "relation"],
+    [{ name: "Meera\u200bRao", relation: "Spouse" }, "name"],
+    [{ name: "Meera\ufeffRao", relation: "Spouse" }, "name"],
+    [{ name: "Meera Rao", relation: "Spo\u202euse" }, "relation"],
+    [{ name: "Meera Rao", relation: "Spo\u2028use" }, "relation"],
+    [{ name: "-- .", relation: "Spouse" }, "name"],
   ]
 
-  test("refuses a half nominee and bad lengths or control characters with field errors, changing nothing", async () => {
+  test("refuses a half nominee, bad lengths, control, invisible or formatting characters and text without a letter", async () => {
     const client = await seedClient()
     for (const [payload, field] of refusals) {
       const fromClient = await clientPost(client, payload)
       expect(fromClient.statusCode, JSON.stringify(payload)).toBe(400)
-      expect(Object.keys(errorOf(fromClient).fields ?? {})).toEqual([field])
-      const fromAdmin = await adminPost(client.id, { ...payload, expectedVersion: 1 }, randomUUID())
+      expect(Object.keys(errorOf(fromClient).fields ?? {}), JSON.stringify(payload)).toEqual([field])
+      const fromAdmin = await adminPost(client.id, { ...payload, expectedVersion: 0 }, randomUUID())
       expect(fromAdmin.statusCode, JSON.stringify(payload)).toBe(400)
-      expect(Object.keys(errorOf(fromAdmin).fields ?? {})).toEqual([field])
+      expect(Object.keys(errorOf(fromAdmin).fields ?? {}), JSON.stringify(payload)).toEqual([field])
     }
-    expect(await nomineeRow(client.id)).toEqual({ nominee_name: null, nominee_relation: null, version: "1" })
+    expect(await nomineeRow(client.id)).toEqual({ nominee_name: null, nominee_relation: null, nominee_version: 0, version: "1" })
     expect(await auditRows(client.id)).toEqual([])
   })
 })

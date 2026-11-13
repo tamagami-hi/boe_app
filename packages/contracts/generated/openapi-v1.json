@@ -36807,10 +36807,12 @@
                           ],
                           "properties": {
                             "name": {
-                              "type": "string"
+                              "type": "string",
+                              "pattern": "^[^\\p{Cf}\\p{Zl}\\p{Zp}]*$/u"
                             },
                             "relation": {
-                              "type": "string"
+                              "type": "string",
+                              "pattern": "^[^\\p{Cf}\\p{Zl}\\p{Zp}]*$/u"
                             }
                           },
                           "required": [
@@ -36821,7 +36823,7 @@
                         },
                         "version": {
                           "type": "integer",
-                          "exclusiveMinimum": 0
+                          "minimum": 0
                         }
                       },
                       "required": [
@@ -36921,15 +36923,21 @@
                     "type": "object",
                     "properties": {
                       "name": {
-                        "type": "string"
+                        "type": "string",
+                        "pattern": "^[^\\p{Cf}\\p{Zl}\\p{Zp}]*$/u"
                       },
                       "relation": {
+                        "type": "string",
+                        "pattern": "^[^\\p{Cf}\\p{Zl}\\p{Zp}]*$/u"
+                      },
+                      "currentPassword": {
                         "type": "string"
                       }
                     },
                     "required": [
                       "name",
-                      "relation"
+                      "relation",
+                      "currentPassword"
                     ],
                     "additionalProperties": false
                   },
@@ -36941,11 +36949,15 @@
                       },
                       "relation": {
                         "type": "null"
+                      },
+                      "currentPassword": {
+                        "type": "string"
                       }
                     },
                     "required": [
                       "name",
-                      "relation"
+                      "relation",
+                      "currentPassword"
                     ],
                     "additionalProperties": false
                   }
@@ -36982,10 +36994,12 @@
                           ],
                           "properties": {
                             "name": {
-                              "type": "string"
+                              "type": "string",
+                              "pattern": "^[^\\p{Cf}\\p{Zl}\\p{Zp}]*$/u"
                             },
                             "relation": {
-                              "type": "string"
+                              "type": "string",
+                              "pattern": "^[^\\p{Cf}\\p{Zl}\\p{Zp}]*$/u"
                             }
                           },
                           "required": [
@@ -36996,7 +37010,7 @@
                         },
                         "version": {
                           "type": "integer",
-                          "exclusiveMinimum": 0
+                          "minimum": 0
                         },
                         "status": {
                           "type": "string",
@@ -37080,7 +37094,27 @@
               }
             }
           },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
             "description": "Error",
             "content": {
               "application/json": {
@@ -37145,10 +37179,12 @@
                           ],
                           "properties": {
                             "name": {
-                              "type": "string"
+                              "type": "string",
+                              "pattern": "^[^\\p{Cf}\\p{Zl}\\p{Zp}]*$/u"
                             },
                             "relation": {
-                              "type": "string"
+                              "type": "string",
+                              "pattern": "^[^\\p{Cf}\\p{Zl}\\p{Zp}]*$/u"
                             }
                           },
                           "required": [
@@ -37159,7 +37195,7 @@
                         },
                         "version": {
                           "type": "integer",
-                          "exclusiveMinimum": 0
+                          "minimum": 0
                         }
                       },
                       "required": [
@@ -37316,14 +37352,16 @@
                     "type": "object",
                     "properties": {
                       "name": {
-                        "type": "string"
+                        "type": "string",
+                        "pattern": "^[^\\p{Cf}\\p{Zl}\\p{Zp}]*$/u"
                       },
                       "relation": {
-                        "type": "string"
+                        "type": "string",
+                        "pattern": "^[^\\p{Cf}\\p{Zl}\\p{Zp}]*$/u"
                       },
                       "expectedVersion": {
                         "type": "integer",
-                        "exclusiveMinimum": 0
+                        "minimum": 0
                       }
                     },
                     "required": [
@@ -37344,7 +37382,7 @@
                       },
                       "expectedVersion": {
                         "type": "integer",
-                        "exclusiveMinimum": 0
+                        "minimum": 0
                       }
                     },
                     "required": [
@@ -37387,10 +37425,12 @@
                           ],
                           "properties": {
                             "name": {
-                              "type": "string"
+                              "type": "string",
+                              "pattern": "^[^\\p{Cf}\\p{Zl}\\p{Zp}]*$/u"
                             },
                             "relation": {
-                              "type": "string"
+                              "type": "string",
+                              "pattern": "^[^\\p{Cf}\\p{Zl}\\p{Zp}]*$/u"
                             }
                           },
                           "required": [
@@ -37401,7 +37441,7 @@
                         },
                         "version": {
                           "type": "integer",
-                          "exclusiveMinimum": 0
+                          "minimum": 0
                         },
                         "status": {
                           "type": "string",

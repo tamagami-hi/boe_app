@@ -19,11 +19,14 @@ export const useClientNominee = (): UseQueryResult<ClientNominee> => {
   })
 }
 
-export const useChangeClientNominee = (): UseMutationResult<ClientNomineeChange, Error, NomineeInput> => {
+export type ClientNomineeChangeInput = Readonly<{ input: NomineeInput; currentPassword: string }>
+
+export const useChangeClientNominee = (): UseMutationResult<ClientNomineeChange, Error, ClientNomineeChangeInput> => {
   const api = useApi()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (body: NomineeInput) => (await api.request(changeClientNominee, { body })).data,
+    mutationFn: async ({ input, currentPassword }: ClientNomineeChangeInput) =>
+      (await api.request(changeClientNominee, { body: { ...input, currentPassword } })).data,
     onSuccess: (result) => {
       queryClient.setQueryData(qk.client.nominee(), {
         userId: result.userId,

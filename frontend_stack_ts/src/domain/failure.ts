@@ -294,6 +294,8 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
   changeNominee: {
     title: "Nominee not saved",
     codes: {
+      INVALID_CREDENTIALS: { message: "That current password is not right." },
+      RATE_LIMITED: { message: "Too many attempts with your password. Wait 15 minutes, then try again." },
       VALIDATION_FAILED: { message: "Enter both the nominee's name and their relation to you, or clear both." },
       ACCOUNT_NOT_ACTIVE: { message: "This account is not active, so its nominee cannot be changed. Contact support." },
       STATE_CONFLICT: { message: "Your account changed while saving. Reload and try again." },

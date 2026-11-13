@@ -415,8 +415,8 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       },
     })
     registerClientNomineeRoutes(application, {
-      accessTokenService, database, clientWeb, unitOfWork, clock, auditRepository,
-      userNomineeRepository: createUserNomineeRepository(),
+      accessTokenService, database, clientWeb, unitOfWork, clock, auditRepository, passwordRecheckLimiter,
+      userRepository, credentialRepository, userNomineeRepository: createUserNomineeRepository(),
     })
 
     registerPasswordRoutes(application, {

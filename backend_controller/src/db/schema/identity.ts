@@ -88,6 +88,7 @@ export interface UsersTable {
   pii_tombstoned_at: NullableTimestamp
   nominee_name: Nullable<string>
   nominee_relation: Nullable<string>
+  nominee_version: Generated<number>
   created_at: TimestampDefault
   updated_at: TimestampDefault
   version: BigIntStringDefault

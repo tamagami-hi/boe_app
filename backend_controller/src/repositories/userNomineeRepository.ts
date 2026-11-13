@@ -13,13 +13,13 @@ export interface NomineeHolder {
   readonly nominee: Nominee | null
   readonly accountState: UserAccountState
   readonly tombstoned: boolean
-  readonly version: string
+  readonly version: number
 }
 
 export interface NomineeReplacement {
   readonly userId: string
   readonly nominee: Nominee | null
-  readonly expectedVersion: string
+  readonly expectedVersion: number
   readonly now: Date
 }
 
@@ -35,10 +35,17 @@ interface HolderRow {
   readonly nominee_relation: string | null
   readonly account_state: UserAccountState
   readonly pii_tombstoned_at: Date | null
-  readonly version: string
+  readonly nominee_version: number
 }
 
-const HOLDER_COLUMNS = ["id", "nominee_name", "nominee_relation", "account_state", "pii_tombstoned_at", "version"] as const
+const HOLDER_COLUMNS = [
+  "id",
+  "nominee_name",
+  "nominee_relation",
+  "account_state",
+  "pii_tombstoned_at",
+  "nominee_version",
+] as const
 
 const toHolder = (row: HolderRow): NomineeHolder => ({
   userId: row.id,
@@ -48,7 +55,7 @@ const toHolder = (row: HolderRow): NomineeHolder => ({
       : { name: row.nominee_name, relation: row.nominee_relation },
   accountState: row.account_state,
   tombstoned: row.pii_tombstoned_at !== null,
-  version: row.version,
+  version: row.nominee_version,
 })
 
 export const createUserNomineeRepository = (): UserNomineeRepository => ({
@@ -73,11 +80,11 @@ export const createUserNomineeRepository = (): UserNomineeRepository => ({
       .set({
         nominee_name: input.nominee?.name ?? null,
         nominee_relation: input.nominee?.relation ?? null,
+        nominee_version: sql<number>`nominee_version + 1`,
         updated_at: input.now,
-        version: sql<string>`version + 1`,
       })
       .where("id", "=", input.userId)
-      .where("version", "=", input.expectedVersion)
+      .where("nominee_version", "=", input.expectedVersion)
       .returning(HOLDER_COLUMNS)
       .executeTakeFirst()
     return row === undefined ? null : toHolder(row)

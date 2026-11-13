@@ -485,20 +485,39 @@ The B3 entry above was written before landing and names the lane's pre-rebase co
   - Q-026 is open.
 - **Not verified.** No browser or device run of any new screen, no notification tapped on a device, no real mail rendered or sent, no APK export, nothing on a VPS.
 
-### C1 nominee (lane `c-nominee`, commits `7ddc2ad`, `ae5fd1a`)
+### C1 nominee (lane `c-nominee`, commits `5563d1b`, `91e8a66` and the review follow-up after them)
 
-- **Migration 063** (`063_user_nominee.sql`) adds nullable `users.nominee_name` and `users.nominee_relation`. Checks follow `full_name`: 2 to 120 characters, stored trimmed, no C0 or C1 control characters, and both set or both null. Every existing row is null and stays untouched, so the previous release (v0.15.x) runs against it unchanged. It is additive and not a destructive boundary. `releaseUpgrade` expects 063.
+- **Migration 063** (`063_user_nominee.sql`) adds nullable `users.nominee_name` and `users.nominee_relation`, and `nominee_version integer NOT NULL DEFAULT 0` (a constant default, so the table is not rewritten). Both texts are checked: 2 to 120 characters, stored trimmed, both set or both null, and they must contain no C0 or C1 control characters and no format or line or paragraph separator characters. Those three categories (`\p{Cf}`, `\p{Zl}`, `\p{Zp}`, which include zero-width spaces, direction marks and overrides, and U+FEFF) are listed as explicit code points, matching Unicode 15.1. Each text must also contain a letter or digit, checked as `[[:alnum:]]` under the ICU collation `und-x-icu` (letters and decimal digits). The production image `postgres:16-alpine` ships ICU; the integration suite runs on the same image and accepts a Devanagari name. Every existing row gets nulls and version 0 and is otherwise untouched, so the previous release (v0.15.x) runs against it unchanged. It is additive and not a destructive boundary. `releaseUpgrade` expects 063.
 - **Tombstone.** Nothing in the code writes `users.pii_tombstoned_at` (as `finding-8` and `finding-13` record). So 063 also adds a `BEFORE INSERT OR UPDATE` trigger that clears both nominee fields on any tombstoned row, whoever writes it. The admin write refuses a closed or tombstoned account.
 - **Endpoints** (contract `packages/contracts/src/operations/nominee.ts`):
-  - `GET` and `POST /v1/client/profile/nominee` are scoped to the signed-in client, with bearer or client web cookie. Like the other profile edits there is no idempotency key and no version: saving the same value again answers `unchanged`.
-  - `GET /v1/admin/users/{userId}/nominee` needs `users.read`, the permission the user page reads with.
-  - `POST /v1/admin/users/{userId}/nominee` needs `clients.create`, the client-detail edit permission that contact correction also uses, plus an Idempotency-Key and the `expectedVersion` it read. It works only for client accounts without roles that are not closed.
-  - In the contract the body is a union: a name and a relation, or both null. The routes accept exactly the same bodies and report a half nominee as a field error.
-- **Audit.** Every change bumps the user version and writes `user.nominee_changed` (actor user or admin), with metadata `change`, `nameChanged`, `relationChanged` and only the first letter of the previous and current names. Neither the full name nor the relation is stored.
-- **Compatibility.** No existing response key or enum changed; the profile and admin user detail keys are asserted unchanged after a nominee is set. A nominee change moves `users.version`, so an admin form opened earlier (contact correction, release) answers its existing stale-version conflict and reloads.
-- **Screens.** A Nominee section on Profile and on the client hub user page. A failed read shows the shared error state with retry. The admin form holds one key per submit and stays locked on an unknown outcome, with Check again on the same key or a reload.
-- **Tests.** `userNomineeMigration` has 3 tests: the populated upgrade with previous-release reads and writes through `userRepository` and `adminOversightRepository` (both unchanged since v0.15.4), the database checks, and the tombstone trigger. `nominee.integration` has 7 tests: own-nominee scoping and audit, unauthenticated refusal, unchanged existing responses, admin permissions, idempotency and stale or non-client refusals, field errors, and tombstone. The A8 `userContactHistoryMigration` test now compares its snapshot after applying 061 alone, because later migrations may add columns.
-- **Negative controls.** Dropping the user filter from the nominee update failed the own-nominee test. Dropping the tombstone trigger failed both tombstone tests.
-- **Verification (TESTED, Node 22.20.0 container, rebased on `35b8353`).** Contracts `npm run check` passed 98 tests, with OpenAPI valid and 153 operations reachable. Backend `npm run check` passed 100 files / 1198 tests. `npm run test:integration -- --coverage.enabled=false` passed 47 files / 465 tests. Frontend `npm run check` passed 30 files / 261 tests. `build:client` and `build:admin` passed with the boot checks. `composition.ts` is at 626 lines.
-- **Open for the maintainer.** Should a client nominee change also need the current password, as phone and email changes do? It does not today. The admin edit permission (`clients.create`) is a lane choice and needs review.
+  - `GET` and `POST /v1/client/profile/nominee` are scoped to the signed-in client, with bearer or client web cookie.
+  - The client POST needs `currentPassword`. It uses the same password re-check and limiter as the phone and email changes: 5 attempts per user per 15 minutes, counted before the password is checked. A wrong password answers `INVALID_CREDENTIALS`. It is checked before the "unchanged" no-op, writes nothing and, like a contact change, writes no audit row.
+  - The client POST has no idempotency key and no version, like the other profile edits.
+  - `GET /v1/admin/users/{userId}/nominee` needs `users.read`. It answers `RESOURCE_NOT_FOUND` for an account that holds roles, matching the write.
+  - `POST /v1/admin/users/{userId}/nominee` needs `clients.create`, an Idempotency-Key and the nominee `expectedVersion` it read. It works only for client accounts without roles that are not closed. `seedCatalog.ts` has no `clients.update` or `users.update`; contact correction also uses `clients.create`, so it stays.
+  - Responses carry `version`, which is `nominee_version` and exists only on these endpoints. The response texts use the same constrained scalar as the request.
+  - In the contract the body is a union: name and relation, or both null. The routes accept exactly the same bodies and report a half nominee as a field error. Error lists include `CSRF_INVALID` on the client GET (the cookie origin check) and `RESOURCE_NOT_FOUND` on the client POST.
+- **Version.** A nominee write bumps only `nominee_version` and leaves `users.version` alone, so a nominee edit never makes the admin's next contact correction, suspension or closure conflict.
+- **Audit.** Every change writes `user.nominee_changed` (actor user or admin, entity version = nominee version). Its metadata holds `change`, `nameChanged`, `relationChanged` and only the first letter of the previous and current names. Neither the full name nor the relation is stored.
+- **Compatibility.** No existing response key or enum changed; the profile and admin user detail keys, and `users.version`, are asserted unchanged after client and admin nominee edits.
+- **Screens.** A Nominee section on Profile asks for the current password in the same way as the contact-change forms. The client hub user page has a Nominee section too. A failed read shows the shared error state with retry. The admin form holds one key per submit and stays locked on an unknown outcome, with Check again on the same key or a reload.
+- **Tests.**
+  - `userNomineeMigration` (3): the populated upgrade, with previous-release reads and writes through `userRepository` and `adminOversightRepository` (both unchanged since v0.15.4); the database checks, which refuse every `\p{Cf}`, `\p{Zl}` and `\p{Zp}` code point Node knows, in either field, and accept a Devanagari name; the tombstone trigger.
+  - `nominee.integration` (8): own-nominee scoping and audit; wrong password refused before the no-op, then rate limited, nothing written; unauthenticated refusal; `users.version` and the existing responses unchanged; admin permissions with the staff 404; idempotency and stale or non-client refusals; field errors, including zero-width, BOM, direction override, line separator and letterless text; tombstone.
+  - The A8 `userContactHistoryMigration` test now compares its snapshot after applying 061 alone, because later migrations may add columns.
+- **Negative controls.**
+  - Dropping the user filter from the nominee update failed the own-nominee test.
+  - Dropping the tombstone trigger failed both tombstone tests.
+  - Ignoring the password verdict failed the wrong-password test.
+  - Bumping `users.version` again on a nominee write failed 3 tests.
+- **Verification (TESTED, Node 22.20.0 container, rebased on `8da4ddb`).**
+  - contracts `npm run check` passed 98 tests, with OpenAPI valid and 153 operations reachable;
+  - backend `npm run check` passed 100 files / 1198 tests;
+  - `npm run test:integration -- --coverage.enabled=false` passed 49 files / 479 tests;
+  - frontend `npm run check` passed 30 files / 261 tests;
+  - `build:client` and `build:admin` passed with the boot checks;
+  - `composition.ts` is at 626 lines.
+- **Open for the maintainer.**
+  - Rejecting every `\p{Cf}` character also refuses ZWJ and ZWNJ (U+200D, U+200C). Some Malayalam, Sinhala or Devanagari typing produces them. Such a name gets a field error and must be retyped without them.
+  - The letter rule accepts letters and decimal digits (`\p{L}`, `\p{Nd}`), not every `\p{N}`, so the API and the ICU check agree exactly.
 - **Not verified.** No browser or device run of either section, no APK export, nothing on a VPS.

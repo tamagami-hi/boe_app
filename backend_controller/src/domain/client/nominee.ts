@@ -3,11 +3,12 @@ import { AppError } from "../../http/errorCatalog.js"
 import type { AuditWriteRepository } from "../../repositories/auditRepository.js"
 import type { Nominee, NomineeHolder, UserNomineeRepository } from "../../repositories/userNomineeRepository.js"
 import type { UserWriteRepository } from "../../repositories/userRepository.js"
+import { passwordMatches, type ContactDetailsDeps } from "./contactDetails.js"
 
 export const NOMINEE_CLIENT_ONLY_MESSAGE = "A nominee can only be recorded for a client account."
 export const NOMINEE_CLOSED_MESSAGE =
   "This account is closed or its personal data was erased, so its nominee cannot be changed."
-export const NOMINEE_STALE_MESSAGE = "The account changed since you opened it. Reload it and try again."
+export const NOMINEE_STALE_MESSAGE = "The nominee changed since you opened it. Reload it and try again."
 
 const MASK_MARKER = "***"
 
@@ -21,10 +22,14 @@ export interface AdminNomineeDeps extends NomineeDeps {
   readonly userRepository: Pick<UserWriteRepository, "findActiveRolesAndPermissions">
 }
 
+export type OwnNomineeDeps = NomineeDeps & Pick<ContactDetailsDeps, "credentialRepository" | "userRepository">
+
 export interface NomineeChange {
   readonly status: "changed" | "unchanged"
   readonly holder: NomineeHolder
 }
+
+export type OwnNomineeChange = NomineeChange | Readonly<{ status: "incorrect_password" }>
 
 interface ChangeInput {
   readonly holder: NomineeHolder
@@ -73,7 +78,7 @@ const applyChange = async (tx: Transaction, deps: NomineeDeps, input: ChangeInpu
     entityType: "user",
     entityId: holder.userId,
     requestId: input.requestId,
-    entityVersion: Number(updated.version),
+    entityVersion: updated.version,
     metadata: auditMetadata(holder.nominee, updated.nominee),
   })
   return { status: "changed", holder: updated }
@@ -89,14 +94,33 @@ export const readNominee = async (
   return holder
 }
 
+const holdsRoles = async (
+  tx: Transaction,
+  deps: Pick<AdminNomineeDeps, "userRepository">,
+  userId: string,
+): Promise<boolean> => (await deps.userRepository.findActiveRolesAndPermissions(tx, userId as UserId)).roles.length > 0
+
+export const readClientNominee = async (
+  tx: Transaction,
+  deps: Pick<AdminNomineeDeps, "userNomineeRepository" | "userRepository">,
+  userId: string,
+): Promise<NomineeHolder> => {
+  const holder = await readNominee(tx, deps, userId)
+  if (await holdsRoles(tx, deps, userId)) throw new AppError("RESOURCE_NOT_FOUND")
+  return holder
+}
+
 export const changeOwnNominee = async (
   tx: Transaction,
-  deps: NomineeDeps,
-  input: Readonly<{ userId: string; nominee: Nominee | null; requestId: string }>,
-): Promise<NomineeChange> => {
+  deps: OwnNomineeDeps,
+  input: Readonly<{ userId: string; nominee: Nominee | null; currentPassword: string; requestId: string }>,
+): Promise<OwnNomineeChange> => {
   const holder = await deps.userNomineeRepository.lock(tx, input.userId)
   if (holder === null) throw new AppError("RESOURCE_NOT_FOUND")
   if (holder.accountState !== "active" || holder.tombstoned) throw new AppError("ACCOUNT_NOT_ACTIVE")
+  if (!(await passwordMatches(tx, deps, input.userId as UserId, input.currentPassword))) {
+    return { status: "incorrect_password" }
+  }
   return applyChange(tx, deps, {
     holder,
     nominee: input.nominee,
@@ -119,10 +143,9 @@ export const changeClientNominee = async (
 ): Promise<NomineeChange> => {
   const holder = await deps.userNomineeRepository.lock(tx, input.userId)
   if (holder === null) throw new AppError("RESOURCE_NOT_FOUND")
-  const grants = await deps.userRepository.findActiveRolesAndPermissions(tx, input.userId as UserId)
-  if (grants.roles.length > 0) throw conflict(NOMINEE_CLIENT_ONLY_MESSAGE)
+  if (await holdsRoles(tx, deps, input.userId)) throw conflict(NOMINEE_CLIENT_ONLY_MESSAGE)
   if (holder.accountState === "closed" || holder.tombstoned) throw conflict(NOMINEE_CLOSED_MESSAGE)
-  if (Number(holder.version) !== input.expectedVersion) throw conflict(NOMINEE_STALE_MESSAGE)
+  if (holder.version !== input.expectedVersion) throw conflict(NOMINEE_STALE_MESSAGE)
   return applyChange(tx, deps, {
     holder,
     nominee: input.nominee,

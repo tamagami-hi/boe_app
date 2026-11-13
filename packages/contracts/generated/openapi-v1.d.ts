@@ -20706,9 +20706,11 @@ export interface operations {
                 "application/json": {
                     name: string;
                     relation: string;
+                    currentPassword: string;
                 } | {
                     name: null;
                     relation: null;
+                    currentPassword: string;
                 };
             };
         };
@@ -20772,7 +20774,25 @@ export interface operations {
                 };
             };
             /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -52,28 +52,35 @@ type FormProps = Readonly<{
 const NomineeForm = ({ current, reloading, onReload, onSaved }: FormProps): React.ReactElement => {
   const change = useChangeClientNominee()
   const [draft, setDraft] = useState<NomineeDraft>({ name: current?.name ?? "", relation: current?.relation ?? "" })
+  const [currentPassword, setCurrentPassword] = useState("")
   const [failure, setFailure] = useState<unknown>(null)
   const [refusals, setRefusals] = useState<NomineeProblems>({})
 
   const input = nomineeInput(draft)
   const problems = nomineeProblems(draft)
   const removing = input?.name === null
-  const ready = input !== null && Object.keys(problems).length === 0 && !sameNominee(input, current)
+  const ready =
+    input !== null && currentPassword !== "" && Object.keys(problems).length === 0 && !sameNominee(input, current)
   const errorFor = (field: NomineeField): string | undefined => problems[field] ?? refusals[field]
 
   const submit = (): void => {
     if (input === null) return
     setFailure(null)
     setRefusals({})
-    change.mutate(input, {
-      onSuccess: (result) => {
-        onSaved(result.status === "unchanged" ? "unchanged" : result.nominee === null ? "removed" : "changed")
+    change.mutate(
+      { input, currentPassword },
+      {
+        onSuccess: (result) => {
+          setCurrentPassword("")
+          onSaved(result.status === "unchanged" ? "unchanged" : result.nominee === null ? "removed" : "changed")
+        },
+        onError: (cause) => {
+          setCurrentPassword("")
+          setFailure(cause)
+          setRefusals(nomineeRefusals(cause))
+        },
       },
-      onError: (cause) => {
-        setFailure(cause)
-        setRefusals(nomineeRefusals(cause))
-      },
-    })
+    )
   }
 
   const edit = (field: NomineeField, value: string): void => {
@@ -143,6 +150,23 @@ const NomineeForm = ({ current, reloading, onReload, onSaved }: FormProps): Reac
             />
           )}
         </FormField>
+        <FormField label="Current password" required>
+          {({ id, describedBy, invalid }) => (
+            <Input
+              id={id}
+              name="current-password"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={currentPassword}
+              invalid={invalid}
+              {...(describedBy === undefined ? {} : { "aria-describedby": describedBy })}
+              onChange={(event) => {
+                setCurrentPassword(event.target.value)
+              }}
+            />
+          )}
+        </FormField>
       </Form>
     </>
   )
@@ -155,7 +179,7 @@ export const NomineeSection = (): React.ReactElement => {
   return (
     <Section
       title="Nominee"
-      description="The person you nominate on your BeOnEdge account, and their relation to you. Clear both fields to remove them."
+      description="The person you nominate on your BeOnEdge account, and their relation to you. Confirm any change with your current password; clear both fields to remove them."
     >
       <AsyncBoundary query={nominee} skeleton={<Skeleton height="6rem" />}>
         {(data) => (

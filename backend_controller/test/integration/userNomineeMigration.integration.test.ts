@@ -18,7 +18,9 @@ import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
 
 const MIGRATION = "063_user_nominee"
 const ARGON_HASH = "$argon2id$v=19$m=19456,t=2,p=1$c2FsdHNhbHQ$aGFzaGhhc2hoYXNoaGFzaA"
-const NOMINEE_COLUMNS = ["nominee_name", "nominee_relation"]
+const NOMINEE_COLUMNS = ["nominee_name", "nominee_relation", "nominee_version"]
+const INVISIBLE = /[\p{Cf}\p{Zl}\p{Zp}]/u
+const LAST_CODE_POINT = 0x10ffff
 
 type Row = Record<string, unknown>
 
@@ -55,6 +57,15 @@ const withoutNominee = (row: Row): Row =>
 const nomineeOf = async (userId: string): Promise<Row> =>
   (await pool.query<Row>("select nominee_name, nominee_relation, version from users where id = $1", [userId])).rows[0] ?? {}
 
+const invisibleCharacters = (): string[] => {
+  const found: string[] = []
+  for (let codePoint = 0; codePoint <= LAST_CODE_POINT; codePoint += 1) {
+    const character = String.fromCodePoint(codePoint)
+    if (INVISIBLE.test(character)) found.push(character)
+  }
+  return found
+}
+
 const migrationsFrom = async (predicate: (version: string) => boolean) => {
   const directory = fileURLToPath(new URL("../../db/migrations", import.meta.url))
   return (await loadMigrationFiles(directory)).filter((migration) => predicate(migration.version))
@@ -88,7 +99,7 @@ describe("nominee populated upgrade", () => {
 
     const after = await usersById()
     expect(after.map(withoutNominee)).toEqual(before)
-    for (const row of after) expect([row.nominee_name, row.nominee_relation]).toEqual([null, null])
+    for (const row of after) expect([row.nominee_name, row.nominee_relation, row.nominee_version]).toEqual([null, null, 0])
     await runMigrations(pool, await migrationsFrom((version) => version > MIGRATION))
 
     await pool.query("update users set nominee_name = 'Meera Rao', nominee_relation = 'Spouse' where id = $1", [client])
@@ -126,7 +137,7 @@ describe("nominee populated upgrade", () => {
     }
   })
 
-  test("refuses a half nominee, untrimmed or control-character text and over-long values in the database", async () => {
+  test("refuses a half nominee, untrimmed, control, invisible or letterless text and over-long values in the database", async () => {
     const client = await seedUser("active", true)
     const refused = [
       ["Meera Rao", null],
@@ -137,6 +148,12 @@ describe("nominee populated upgrade", () => {
       ["M", "Spouse"],
       ["x".repeat(121), "Spouse"],
       ["Meera Rao", "x".repeat(121)],
+      ["-- .", "Spouse"],
+      ["Meera Rao", "!!"],
+      ...invisibleCharacters().flatMap((character) => [
+        [`Meera${character}Rao`, "Spouse"],
+        ["Meera Rao", `Spo${character}use`],
+      ]),
     ]
     for (const [name, relation] of refused) {
       await expect(
@@ -146,6 +163,8 @@ describe("nominee populated upgrade", () => {
     }
     await pool.query("update users set nominee_name = $2, nominee_relation = $3 where id = $1", [client, "x".repeat(120), "x".repeat(120)])
     expect((await nomineeOf(client)).nominee_name).toBe("x".repeat(120))
+    await pool.query("update users set nominee_name = $2, nominee_relation = $3 where id = $1", [client, "सीता देवी", "पत्नी"])
+    expect(await nomineeOf(client)).toMatchObject({ nominee_name: "सीता देवी", nominee_relation: "पत्नी" })
   })
 
   test("tombstoning a user in the database clears both nominee fields", async () => {
