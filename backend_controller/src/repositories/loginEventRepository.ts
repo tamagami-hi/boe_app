@@ -16,6 +16,7 @@ import { sql } from "kysely"
 import type { Transaction } from "../db/repositories.js"
 import type { AuthLoginOutcome, SessionChannel } from "../db/types.js"
 import { normalizeIpAddress, sanitizeUserAgent } from "../http/requestProvenance.js"
+import { cursorTime, keysetCondition, type KeysetBoundary, type WithCursor } from "./keysetBoundary.js"
 
 export interface RecordLoginEventInput {
   /** Null when the submitted address has no account. */
@@ -45,16 +46,14 @@ export interface LoginEventRow {
   readonly requestId: string
 }
 
-export interface LoginEventPageQuery {
+export interface LoginEventPageQuery extends KeysetBoundary {
   readonly userId: string
-  readonly afterCreatedAt?: Date
-  readonly afterId?: string
   readonly limit: number
 }
 
 export interface LoginEventRepository {
   record: (db: Transaction, input: RecordLoginEventInput) => Promise<void>
-  listForUser: (db: Transaction, query: LoginEventPageQuery) => Promise<readonly LoginEventRow[]>
+  listForUser: (db: Transaction, query: LoginEventPageQuery) => Promise<readonly WithCursor<LoginEventRow>[]>
 }
 
 export const createLoginEventRepository = (): LoginEventRepository => ({
@@ -83,16 +82,13 @@ export const createLoginEventRepository = (): LoginEventRepository => ({
     // `users` is LEFT joined because the log outlives its subject: the table has
     // no foreign keys (see migration 026), so an INNER JOIN would make any row
     // whose user is gone permanently unreadable while the row itself persists.
-    const keysetClause =
-      query.afterCreatedAt !== undefined && query.afterId !== undefined
-        ? sql`and (e.occurred_at < ${query.afterCreatedAt}
-            or (e.occurred_at = ${query.afterCreatedAt} and e.id < ${query.afterId}))`
-        : sql``
-    const result = await sql<LoginEventRow>`
+    const keysetClause = sql`and ${keysetCondition({ time: "e.occurred_at", id: "e.id" }, "before", query)}`
+    const result = await sql<WithCursor<LoginEventRow>>`
       select
         e.id as "id",
         e.occurred_at as "occurredAt",
         e.occurred_at as "createdAt",
+        ${cursorTime("e.occurred_at")} as "cursorAt",
         e.user_id as "userId",
         -- Masked for a tombstoned user, matching the admin user projection.
         case

@@ -27,7 +27,7 @@ import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { computeFilterHash } from "../http/cursor.js"
 import { AppError } from "../http/errorCatalog.js"
 import { executeIdempotent } from "../http/idempotencyProtocol.js"
-import { createdAtKeyset, paginate, readKeyset } from "../http/pagination.js"
+import { createdAtKeyset, paginate, readKeyset, type KeysetPosition } from "../http/pagination.js"
 import { parseOrThrow } from "../http/validation.js"
 import { latestPublishedApkUrl, type ReleaseFeed } from "../release/releaseFeed.js"
 import type { ApplicationWriteRepository } from "../repositories/applicationRepository.js"
@@ -144,11 +144,6 @@ const uuidParam = z.string().uuid()
 const hashRequest = (canonical: Readonly<Record<string, unknown>>): Buffer =>
   createHash("sha256").update(JSON.stringify(canonical)).digest()
 
-interface KeysetPosition {
-  readonly afterCreatedAt?: Date
-  readonly afterId?: string
-}
-
 const keysetFor = (
   deps: AdminIdentityDeps,
   after: string | undefined,
@@ -156,10 +151,6 @@ const keysetFor = (
   filterHash: string,
   now: Date,
 ): KeysetPosition => readKeyset(deps.config.cursorKey, after, route, filterHash, now)
-
-const CREATED_AT_KEYSET = createdAtKeyset<{ readonly id: string; readonly created_at: Date | string }>(
-  (row) => row.created_at,
-)
 
 const adminScope = (userId: string, routeTemplate: string, key: string): IdempotencyScope => ({
   actorScope: `admin:${userId}`,
@@ -259,7 +250,7 @@ const listApplications = async (deps: AdminIdentityDeps, request: FastifyRequest
     APPLICATIONS_ROUTE,
     filterHash,
     now,
-    CREATED_AT_KEYSET,
+    createdAtKeyset,
   )
   return reply.sendData({ items: items.map(mapApplicationListItem) }, { status: 200, page })
 }
@@ -295,7 +286,7 @@ const getApplicationDetail = async (deps: AdminIdentityDeps, request: FastifyReq
     `${APPLICATIONS_ROUTE}/:id/deliveries`,
     filterHash,
     now,
-    CREATED_AT_KEYSET,
+    createdAtKeyset,
   )
 
   return reply.sendData(
@@ -430,7 +421,7 @@ const listEmailDeliveries = async (deps: AdminIdentityDeps, request: FastifyRequ
     EMAIL_DELIVERIES_ROUTE,
     filterHash,
     now,
-    CREATED_AT_KEYSET,
+    createdAtKeyset,
   )
   return reply.sendData({ items: items.map((row) => mapDeliveryAdmin(row, full)) }, { status: 200, page })
 }

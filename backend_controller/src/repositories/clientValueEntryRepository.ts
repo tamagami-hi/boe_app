@@ -9,6 +9,7 @@ import { sql } from "kysely"
 
 import type { Transaction } from "../db/repositories.js"
 import type { ClientValueEntryType, OrderType } from "../db/types.js"
+import { cursorTime, keysetCondition, type KeysetBoundary, type WithCursor } from "./keysetBoundary.js"
 
 export interface ClientValueEntryRow {
   readonly id: string
@@ -26,8 +27,8 @@ export interface ClientValueEntryRepository {
   listByUser: (tx: Transaction, userId: string) => Promise<readonly ClientValueEntryRow[]>
   listRecentByUser: (
     tx: Transaction,
-    input: Readonly<{ userId: string; limit: number; afterCreatedAt?: Date; afterId?: string }>,
-  ) => Promise<readonly ClientValueEntryRow[]>
+    input: KeysetBoundary & Readonly<{ userId: string; limit: number }>,
+  ) => Promise<readonly WithCursor<ClientValueEntryRow>[]>
 }
 
 const ENTRY_COLUMNS = sql`
@@ -55,13 +56,12 @@ export const createClientValueEntryRepository = (): ClientValueEntryRepository =
   },
 
   listRecentByUser: async (tx, input) => {
-    const result = await sql<ClientValueEntryRow>`
-      select ${ENTRY_COLUMNS}
+    const result = await sql<WithCursor<ClientValueEntryRow>>`
+      select ${ENTRY_COLUMNS}, ${cursorTime("v.created_at")} as "cursorAt"
       from client_value_entries v
       left join investment_orders o on o.id = v.order_id
       where v.user_id = ${input.userId}
-        and (${input.afterCreatedAt ?? null}::timestamptz is null
-             or (v.created_at, v.id) < (${input.afterCreatedAt ?? null}, ${input.afterId ?? null}))
+        and ${keysetCondition({ time: "v.created_at", id: "v.id" }, "before", input)}
       order by v.created_at desc, v.id desc
       limit ${input.limit}
     `.execute(tx)

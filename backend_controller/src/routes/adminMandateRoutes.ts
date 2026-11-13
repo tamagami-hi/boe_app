@@ -17,7 +17,7 @@ import { isUncompletableSetup } from "../domain/payments/mandateStates.js"
 import { reconcileCollectionFact } from "../domain/payments/reconcileCollectionFact.js"
 import { reconcileMandateFact, type MandateFactDeps } from "../domain/payments/reconcileMandateFacts.js"
 import { AppError } from "../http/errorCatalog.js"
-import { paginate, readKeysetValues } from "../http/pagination.js"
+import { createdAtKeyset, paginate, readKeyset } from "../http/pagination.js"
 import { parseOrThrow } from "../http/validation.js"
 import { logGatewayFailure } from "../providers/gatewayFailure.js"
 import type { RecurringPaymentGateway } from "../providers/recurringPaymentGateway.js"
@@ -269,19 +269,9 @@ const listMandates = async (deps: AdminMandateDeps, request: FastifyRequest, rep
 
   const now = deps.clock()
   const filterHash = computeFilterHash({ state: query.state ?? null, attention: query.attention ?? null })
-  const afterValues = readKeysetValues(
-    deps.config.cursorKey,
-    query.after,
-    MANDATES_ROUTE,
-    filterHash,
-    now,
-  )
-  const afterUpdatedAt = afterValues[0]
-  const afterId = afterValues[1]
+  const { afterCreatedAt, afterId } = readKeyset(deps.config.cursorKey, query.after, MANDATES_ROUTE, filterHash, now)
   const afterPosition =
-    afterUpdatedAt === undefined || afterId === undefined
-      ? undefined
-      : { updatedAt: new Date(afterUpdatedAt), id: afterId }
+    afterCreatedAt === undefined || afterId === undefined ? undefined : { updatedAt: afterCreatedAt, id: afterId }
 
   const listInput = {
     /*
@@ -301,7 +291,7 @@ const listMandates = async (deps: AdminMandateDeps, request: FastifyRequest, rep
     MANDATES_ROUTE,
     filterHash,
     now,
-    (row) => [iso(row.updatedAt), row.id],
+    createdAtKeyset,
   )
   return reply.sendData({ items: items.map(mapListRow) }, { status: 200, page })
 }

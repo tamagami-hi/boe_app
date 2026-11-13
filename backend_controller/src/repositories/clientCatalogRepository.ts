@@ -9,6 +9,7 @@ import {
 
 import type { Transaction } from "../db/repositories.js"
 import type { FundReturnTier, FundRiskLevel } from "../db/types.js"
+import { cursorTime, keysetCondition, type KeysetBoundary } from "./keysetBoundary.js"
 
 export interface ClientFundRow {
   readonly id: string
@@ -31,6 +32,7 @@ export interface ClientFundRow {
   readonly stockCount: number
   readonly publishedAt: Date | null
   readonly createdAt: Date
+  readonly cursorAt: string
 }
 
 export interface ClientFundStockRow {
@@ -50,7 +52,7 @@ export interface ClientFundDisclosureRow {
 export interface ClientCatalogRepository {
   listPublished: (
     tx: Transaction,
-    query: { readonly afterCreatedAt?: Date; readonly afterId?: string; readonly limit: number },
+    query: KeysetBoundary & { readonly limit: number },
   ) => Promise<readonly ClientFundRow[]>
   findPublished: (tx: Transaction, fundId: string) => Promise<ClientFundRow | null>
   listStocks: (tx: Transaction, fundId: string) => Promise<readonly ClientFundStockRow[]>
@@ -67,7 +69,8 @@ const FUND_SELECT = sql`
     fv.id as "currentVersionId",
     ${FUND_AUM_PROJECTION},
     f.published_at as "publishedAt",
-    f.created_at as "createdAt"
+    f.created_at as "createdAt",
+    ${cursorTime("f.created_at")} as "cursorAt"
   from funds f
   join fund_versions fv on fv.id = f.current_published_version_id
   ${LATEST_SNAPSHOT_LATERAL}
@@ -77,13 +80,8 @@ const FUND_SELECT = sql`
 
 export const createClientCatalogRepository = (): ClientCatalogRepository => ({
   listPublished: async (tx, query) => {
-    const keyset =
-      query.afterCreatedAt !== undefined && query.afterId !== undefined
-        ? sql`and (f.created_at < ${query.afterCreatedAt}
-            or (f.created_at = ${query.afterCreatedAt} and f.id < ${query.afterId}))`
-        : sql``
     const result = await sql<ClientFundRow>`
-      ${FUND_SELECT} ${keyset}
+      ${FUND_SELECT} and ${keysetCondition({ time: "f.created_at", id: "f.id" }, "before", query)}
       order by f.created_at desc, f.id desc
       limit ${query.limit}
     `.execute(tx)

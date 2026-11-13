@@ -13,16 +13,16 @@ const FILTER = computeFilterHash({ state: "failed" })
 
 interface Row {
   readonly id: string
-  readonly createdAt: Date
+  readonly cursorAt: string
 }
 
 const rows = (count: number): readonly Row[] =>
   Array.from({ length: count }, (_unused, index) => ({
     id: `0000000${String(index)}-1111-4111-8111-111111111111`,
-    createdAt: new Date(NOW.getTime() - index * 1_000),
+    cursorAt: `2026-08-28T09:59:5${String(index)}.123456Z`,
   }))
 
-const keyset = createdAtKeyset<Row>((row) => row.createdAt)
+const keyset = createdAtKeyset
 
 const codeOf = (run: () => unknown): string => {
   try {
@@ -71,7 +71,7 @@ describe("paginate", () => {
     const position = readKeyset(KEY, result.page.nextCursor ?? undefined, ROUTE, FILTER, NOW)
 
     expect(position.afterId).toBe(page[2]?.id)
-    expect(position.afterCreatedAt?.toISOString()).toBe(page[2]?.createdAt.toISOString())
+    expect(position.afterCreatedAt).toBe(page[2]?.cursorAt)
   })
 })
 
@@ -109,6 +109,6 @@ describe("readKeyset", () => {
 
 describe("createdAtKeyset", () => {
   test("projects the timestamp and id pair the cursor round-trips on", () => {
-    expect(keyset({ id: "abc", createdAt: NOW })).toEqual([NOW.toISOString(), "abc"])
+    expect(keyset({ id: "abc", cursorAt: "2026-08-28T10:00:00.000001Z" })).toEqual(["2026-08-28T10:00:00.000001Z", "abc"])
   })
 })

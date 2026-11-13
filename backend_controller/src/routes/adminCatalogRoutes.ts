@@ -12,7 +12,7 @@ import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adm
 import { computeAumBasisHash } from "../domain/admin/fundAumGrowth.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { AppError } from "../http/errorCatalog.js"
-import { paginate, readKeyset } from "../http/pagination.js"
+import { createdAtKeyset, paginate, readKeyset } from "../http/pagination.js"
 import { parseOrThrow } from "../http/validation.js"
 import type { AdminCatalogRepository, FundListRow } from "../repositories/adminCatalogRepository.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
@@ -211,7 +211,7 @@ const listFunds = async (deps: AdminCatalogDeps, request: FastifyRequest, reply:
     FUNDS_ROUTE,
     filterHash,
     now,
-    (row) => [iso(row.createdAt), row.id],
+    createdAtKeyset,
   )
   return reply.sendData({ items: items.map(mapFund), summary }, { status: 200, page })
 }

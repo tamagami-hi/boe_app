@@ -30,7 +30,7 @@ import { toLedgerEntries } from "../domain/client/portfolioProjection.js"
 import { deriveStatements } from "../domain/client/statements.js"
 import { computeFilterHash } from "../http/cursor.js"
 import { AppError } from "../http/errorCatalog.js"
-import { paginate, readKeyset } from "../http/pagination.js"
+import { createdAtKeyset, paginate, readKeyset } from "../http/pagination.js"
 import { parseOrThrow } from "../http/validation.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
 import type {
@@ -312,7 +312,7 @@ const listNotifications = async (
     NOTIFICATIONS_ROUTE,
     filterHash,
     now,
-    (row) => [iso(row.createdAt), row.id],
+    createdAtKeyset,
   )
   return reply.sendData(
     { items: items.map(mapNotification), unreadCount },
@@ -378,7 +378,7 @@ const listPayments = async (
     PAYMENTS_ROUTE,
     filterHash,
     now,
-    (row) => [iso(row.createdAt), row.id],
+    createdAtKeyset,
   )
   return reply.sendData({ items: items.map(mapPayment) }, { status: 200, page })
 }
@@ -453,7 +453,7 @@ const listTickets = async (
     TICKETS_ROUTE,
     filterHash,
     now,
-    (row) => [iso(row.createdAt), row.id],
+    createdAtKeyset,
   )
   return reply.sendData({ items: items.map(mapTicket) }, { status: 200, page })
 }

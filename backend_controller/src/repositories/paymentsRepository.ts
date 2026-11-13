@@ -6,6 +6,7 @@ import type {
   PaymentAttempt,
   Transaction,
 } from "../db/repositories.js"
+import { cursorTime, keysetCondition, type KeysetBoundary } from "./keysetBoundary.js"
 
 export interface CreatePaymentInput {
   readonly orderId: string
@@ -49,6 +50,7 @@ export interface PaymentListRow {
   readonly succeededAt: Date | null
   readonly failedAt: Date | null
   readonly createdAt: Date
+  readonly cursorAt: string
 }
 
 export interface PaymentsRepository {
@@ -157,7 +159,7 @@ export interface PaymentsRepository {
   ) => Promise<Date | null>
   listPage: (
     tx: Transaction,
-    input: Readonly<{ afterCreatedAt?: Date; afterId?: string; limit: number }>,
+    input: KeysetBoundary & Readonly<{ limit: number }>,
   ) => Promise<readonly PaymentListRow[]>
 }
 
@@ -749,7 +751,8 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
         coalesce(ac.attempt_count, 0)::int as "attemptCount",
         p.succeeded_at as "succeededAt",
         p.failed_at as "failedAt",
-        p.created_at as "createdAt"
+        p.created_at as "createdAt",
+        ${cursorTime("p.created_at")} as "cursorAt"
       from payments p
       join users u on u.id = p.user_id
       left join lateral (
@@ -764,8 +767,7 @@ export const createPaymentsRepository = (): PaymentsRepository => ({
         from payment_attempts pa
         where pa.payment_id = p.id
       ) ac on true
-      where (${input.afterCreatedAt ?? null}::timestamptz is null
-             or (p.created_at, p.id) < (${input.afterCreatedAt ?? null}, ${input.afterId ?? null}))
+      where ${keysetCondition({ time: "p.created_at", id: "p.id" }, "before", input)}
       order by p.created_at desc, p.id desc
       limit ${input.limit}
     `.execute(tx)

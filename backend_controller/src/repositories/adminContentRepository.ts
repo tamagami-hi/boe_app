@@ -16,12 +16,11 @@
 import { sql } from "kysely"
 
 import type { AppConfigVersion, ContentItem, Transaction } from "../db/repositories.js"
+import { cursorTime, keysetCondition, type KeysetBoundary, type WithCursor } from "./keysetBoundary.js"
 
 export type ContentState = "draft" | "published" | "archived"
 
-export interface ContentPageQuery {
-  readonly afterCreatedAt?: Date
-  readonly afterId?: string
+export interface ContentPageQuery extends KeysetBoundary {
   /** validated 1..MAX_ADMIN_LIMIT, already incremented for hasMore probing */
   readonly limit: number
 }
@@ -62,7 +61,7 @@ export interface AdminContentRepository {
     tx: Transaction,
     kind: string,
     query: ContentPageQuery,
-  ) => Promise<readonly ContentItem[]>
+  ) => Promise<readonly WithCursor<ContentItem>[]>
   lockContentItem: (tx: Transaction, id: string) => Promise<ContentItem | null>
   contentKeyExists: (tx: Transaction, contentKey: string) => Promise<boolean>
   insertContentItem: (tx: Transaction, input: InsertContentItemInput) => Promise<ContentItem>
@@ -83,18 +82,12 @@ export interface AdminContentRepository {
   insertAppConfigVersion: (tx: Transaction, input: InsertAppConfigInput) => Promise<AppConfigVersion>
 }
 
-const keysetClause = (query: ContentPageQuery, column: string) =>
-  query.afterCreatedAt !== undefined && query.afterId !== undefined
-    ? sql`and (${sql.raw(column)}.created_at < ${query.afterCreatedAt}
-        or (${sql.raw(column)}.created_at = ${query.afterCreatedAt} and ${sql.raw(column)}.id < ${query.afterId}))`
-    : sql``
-
 export const createAdminContentRepository = (): AdminContentRepository => ({
   // --- content items ---
   listContentItems: async (tx, kind, query) => {
-    const result = await sql<ContentItem>`
-      select ci.* from content_items ci
-      where ci.kind = ${kind} ${keysetClause(query, "ci")}
+    const result = await sql<WithCursor<ContentItem>>`
+      select ci.*, ${cursorTime("ci.created_at")} as "cursorAt" from content_items ci
+      where ci.kind = ${kind} and ${keysetCondition({ time: "ci.created_at", id: "ci.id" }, "before", query)}
       order by ci.created_at desc, ci.id desc
       limit ${query.limit}
     `.execute(tx)

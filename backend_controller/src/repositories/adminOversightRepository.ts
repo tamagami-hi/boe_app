@@ -19,10 +19,9 @@ import type {
   OrderType,
   UserAccountState,
 } from "../db/types.js"
+import { cursorTime, keysetCondition, type KeysetBoundary, type WithCursor } from "./keysetBoundary.js"
 
-export interface OversightPageQuery {
-  readonly afterCreatedAt?: Date
-  readonly afterId?: string
+export interface OversightPageQuery extends KeysetBoundary {
   readonly limit: number
 }
 
@@ -124,7 +123,7 @@ export interface UserDetail {
 }
 
 export interface AdminOversightRepository {
-  listUsers: (tx: Transaction, query: UserListQuery) => Promise<readonly UserListRow[]>
+  listUsers: (tx: Transaction, query: UserListQuery) => Promise<readonly WithCursor<UserListRow>[]>
   userDetail: (tx: Transaction, userId: string) => Promise<UserDetail | null>
   lockUser: (tx: Transaction, userId: string) => Promise<User | null>
   setUserAccountState: (
@@ -137,16 +136,13 @@ export interface AdminOversightRepository {
     },
   ) => Promise<User | null>
 
-  listOrders: (tx: Transaction, query: OrderListQuery) => Promise<readonly OrderListRow[]>
+  listOrders: (tx: Transaction, query: OrderListQuery) => Promise<readonly WithCursor<OrderListRow>[]>
 
-  listAuditEvents: (tx: Transaction, query: AuditListQuery) => Promise<readonly AuditEventListRow[]>
+  listAuditEvents: (tx: Transaction, query: AuditListQuery) => Promise<readonly WithCursor<AuditEventListRow>[]>
 }
 
 const keyset = (query: OversightPageQuery, alias: string) =>
-  query.afterCreatedAt !== undefined && query.afterId !== undefined
-    ? sql`and (${sql.raw(alias)}.created_at < ${query.afterCreatedAt}
-        or (${sql.raw(alias)}.created_at = ${query.afterCreatedAt} and ${sql.raw(alias)}.id < ${query.afterId}))`
-    : sql``
+  sql`and ${keysetCondition({ time: `${alias}.created_at`, id: `${alias}.id` }, "before", query)}`
 
 const USER_COLUMNS = sql`
   u.id as "id",
@@ -225,8 +221,8 @@ export const createAdminOversightRepository = (): AdminOversightRepository => ({
         : sql`and (u.email_normalized like ${`${query.search.toLowerCase()}%`}
             or u.phone_e164 like ${`%${query.search}%`}
             or u.full_name ilike ${`%${query.search}%`})`
-    const result = await sql<UserListRow>`
-      select ${USER_COLUMNS} ${USER_JOINS}
+    const result = await sql<WithCursor<UserListRow>>`
+      select ${USER_COLUMNS}, ${cursorTime("u.created_at")} as "cursorAt" ${USER_JOINS}
       where true
       ${stateClause} ${searchClause} ${keyset(query, "u")}
       order by u.created_at desc, u.id desc
@@ -296,8 +292,8 @@ export const createAdminOversightRepository = (): AdminOversightRepository => ({
         ? sql``
         : sql`and (o.id::text like ${`${query.search}%`}
             or u.email_normalized like ${`${query.search.toLowerCase()}%`})`
-    const result = await sql<OrderListRow>`
-      select ${ORDER_COLUMNS} ${ORDER_JOINS}
+    const result = await sql<WithCursor<OrderListRow>>`
+      select ${ORDER_COLUMNS}, ${cursorTime("o.created_at")} as "cursorAt" ${ORDER_JOINS}
       where true ${fundClause} ${stateClause} ${typeClause} ${searchClause} ${keyset(query, "o")}
       order by o.created_at desc, o.id desc
       limit ${query.limit}
@@ -315,16 +311,13 @@ export const createAdminOversightRepository = (): AdminOversightRepository => ({
       query.occurredFrom === undefined ? sql`` : sql`and a.occurred_at >= ${query.occurredFrom}`
     const toClause = query.occurredTo === undefined ? sql`` : sql`and a.occurred_at <= ${query.occurredTo}`
     // `audit_events` has no `created_at`; `occurred_at` is its append timestamp.
-    const keysetClause =
-      query.afterCreatedAt !== undefined && query.afterId !== undefined
-        ? sql`and (a.occurred_at < ${query.afterCreatedAt}
-            or (a.occurred_at = ${query.afterCreatedAt} and a.id < ${query.afterId}))`
-        : sql``
-    const result = await sql<AuditEventListRow>`
+    const keysetClause = sql`and ${keysetCondition({ time: "a.occurred_at", id: "a.id" }, "before", query)}`
+    const result = await sql<WithCursor<AuditEventListRow>>`
       select
         a.id as "id",
         a.occurred_at as "occurredAt",
         a.occurred_at as "createdAt",
+        ${cursorTime("a.occurred_at")} as "cursorAt",
         a.actor_type as "actorType",
         a.actor_user_id as "actorUserId",
         u.email_normalized as "actorEmail",

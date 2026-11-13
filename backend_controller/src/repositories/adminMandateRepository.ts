@@ -15,6 +15,7 @@ import type {
   MandateState,
   SipState,
 } from "../db/types.js"
+import { cursorTime, keysetCondition } from "./keysetBoundary.js"
 import { createMandatesRepository, type MandatesRepository } from "./mandatesRepository.js"
 
 export interface AdminMandateListRow {
@@ -35,6 +36,7 @@ export interface AdminMandateListRow {
   readonly latestDuePeriod: string | null
   readonly lastStatusCheckedAt: Date | null
   readonly updatedAt: Date
+  readonly cursorAt: string
 }
 
 export interface AdminMandateDetail {
@@ -48,7 +50,7 @@ export interface AdminMandateDetail {
 export interface ListMandatesInput {
   /** Row budget as sent, including the caller's over-fetch row. */
   readonly limit: number
-  readonly after?: Readonly<{ updatedAt: Date; id: string }>
+  readonly after?: Readonly<{ updatedAt: string; id: string }>
   readonly state?: MandateState
   readonly attention?: boolean
 }
@@ -91,8 +93,7 @@ export const createAdminMandateRepository = (): AdminMandateRepository => {
 
   return {
     listMandates: async (tx, input) => {
-      const afterUpdatedAt = input.after?.updatedAt
-      const afterId = input.after?.id
+      const boundary = input.after === undefined ? {} : { afterCreatedAt: input.after.updatedAt, afterId: input.after.id }
 
       let query = sql<AdminMandateListRow>`
         with latest_setup as (
@@ -127,7 +128,8 @@ export const createAdminMandateRepository = (): AdminMandateRepository => {
           lcc.state as "cancelState",
           coalesce(lc.due_period::text, ls.due_period::text) as "latestDuePeriod",
           m.last_status_checked_at as "lastStatusCheckedAt",
-          m.updated_at as "updatedAt"
+          m.updated_at as "updatedAt",
+          ${cursorTime("m.updated_at")} as "cursorAt"
         from payment_mandates m
         join sip_plans sip on sip.id = m.sip_plan_id
         join users u on u.id = m.user_id
@@ -152,9 +154,7 @@ export const createAdminMandateRepository = (): AdminMandateRepository => {
         )`
       }
 
-      if (afterUpdatedAt !== undefined && afterId !== undefined) {
-        query = sql<AdminMandateListRow>`${query} and (m.updated_at, m.id) < (${afterUpdatedAt}, ${afterId})`
-      }
+      query = sql<AdminMandateListRow>`${query} and ${keysetCondition({ time: "m.updated_at", id: "m.id" }, "before", boundary)}`
 
       query = sql<AdminMandateListRow>`${query} order by m.updated_at desc, m.id desc limit ${input.limit}`
 

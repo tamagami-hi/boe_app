@@ -7,6 +7,7 @@ import type {
   Transaction,
 } from "../db/repositories.js"
 import type { FundReceiptAcknowledgementState, FundState } from "../db/types.js"
+import { cursorTime, keysetCondition, type KeysetBoundary } from "./keysetBoundary.js"
 
 export interface FundReceiptQueueRow {
   readonly orderId: string
@@ -30,17 +31,13 @@ export interface FundReceiptQueueRow {
   readonly privateNote: string | null
   readonly acknowledgementVersion: string
   readonly createdAt: Date
+  readonly cursorAt: string
 }
 
 export interface FundReceiptAcknowledgementRepository {
   findQueuePage: (
     tx: Transaction,
-    input: Readonly<{
-      state: FundReceiptAcknowledgementState
-      afterCreatedAt?: Date
-      afterId?: string
-      limit: number
-    }>,
+    input: KeysetBoundary & Readonly<{ state: FundReceiptAcknowledgementState; limit: number }>,
   ) => Promise<readonly FundReceiptQueueRow[]>
   findDetailByOrder: (tx: Transaction, orderId: string) => Promise<FundReceiptQueueRow | null>
   lockAcknowledgementByOrder: (tx: Transaction, orderId: string) => Promise<FundReceiptAcknowledgement | null>
@@ -79,7 +76,8 @@ const QUEUE_SELECT = sql`
     r.acknowledged_at as "acknowledgedAt",
     r.private_note as "privateNote",
     r.version::text as "acknowledgementVersion",
-    r.created_at as "createdAt"
+    r.created_at as "createdAt",
+    ${cursorTime("r.created_at")} as "cursorAt"
   from fund_receipt_acknowledgements r
   join investment_orders o on o.id = r.order_id
   join payments p on p.order_id = o.id
@@ -100,8 +98,7 @@ export const createFundReceiptAcknowledgementRepository = (): FundReceiptAcknowl
     const result = await sql<FundReceiptQueueRow>`
       ${QUEUE_SELECT}
       where r.state = ${input.state}
-        and (${input.afterCreatedAt ?? null}::timestamptz is null
-             or (r.created_at, r.id) > (${input.afterCreatedAt ?? null}, ${input.afterId ?? null}))
+        and ${keysetCondition({ time: "r.created_at", id: "r.id" }, "after", input)}
       order by r.created_at asc, r.id asc
       limit ${input.limit}
     `.execute(tx)

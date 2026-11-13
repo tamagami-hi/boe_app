@@ -72,7 +72,7 @@ const listReceipts = async (deps: ClientReceiptDeps, request: FastifyRequest, re
     RECEIPTS_ROUTE,
     filterHash,
     now,
-    (row) => [iso(row.recordedAt), row.entryId],
+    (row) => [row.cursorAt, row.entryId],
   )
   return reply.sendData({ items: items.map(mapReceipt) }, { status: 200, page })
 }

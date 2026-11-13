@@ -9,6 +9,7 @@ import { sql } from "kysely"
 
 import type { RefundOperation, Transaction } from "../db/repositories.js"
 import type { RefundState } from "../db/types.js"
+import { cursorTime, keysetCondition, type KeysetBoundary } from "./keysetBoundary.js"
 
 export interface CreateRefundInput {
   readonly paymentId: string
@@ -34,6 +35,7 @@ export interface RefundListRow {
   readonly clientEmail: string
   readonly createdAt: Date
   readonly updatedAt: Date
+  readonly cursorAt: string
 }
 
 /** Refund states from which provider evidence may still move the row. */
@@ -48,12 +50,7 @@ export interface RefundRepository {
   ) => Promise<RefundOperation | null>
   listPage: (
     tx: Transaction,
-    input: Readonly<{
-      states: readonly RefundState[]
-      afterCreatedAt?: Date
-      afterId?: string
-      limit: number
-    }>,
+    input: KeysetBoundary & Readonly<{ states: readonly RefundState[]; limit: number }>,
   ) => Promise<readonly RefundListRow[]>
   /** pending -> provider_pending after dispatch; bumps the attempt count. */
   markProviderPending: (
@@ -132,13 +129,13 @@ export const createRefundRepository = (): RefundRepository => ({
         u.full_name as "clientName",
         u.email_normalized as "clientEmail",
         r.created_at as "createdAt",
-        r.updated_at as "updatedAt"
+        r.updated_at as "updatedAt",
+        ${cursorTime("r.created_at")} as "cursorAt"
       from refund_operations r
       join payments p on p.id = r.payment_id
       join users u on u.id = p.user_id
       where (${input.states.length} = 0 or r.state = any(${input.states}))
-        and (${input.afterCreatedAt ?? null}::timestamptz is null
-             or (r.created_at, r.id) < (${input.afterCreatedAt ?? null}, ${input.afterId ?? null}))
+        and ${keysetCondition({ time: "r.created_at", id: "r.id" }, "before", input)}
       order by r.created_at desc, r.id desc
       limit ${input.limit}
     `.execute(tx)

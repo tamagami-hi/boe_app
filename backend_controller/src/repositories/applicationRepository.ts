@@ -8,6 +8,7 @@ import { sql } from "kysely"
 
 import type { Application, ApplicationReview, Transaction } from "../db/repositories.js"
 import type { ApplicationState } from "../db/types.js"
+import { cursorTime, keysetCondition, type KeysetBoundary, type WithCursor } from "./keysetBoundary.js"
 
 export interface CreateSubmissionInput {
   readonly emailNormalized: string
@@ -27,12 +28,10 @@ export interface CreateSubmissionInput {
   readonly submittedAt: Date
 }
 
-export interface ApplicationQueueQuery {
+export interface ApplicationQueueQuery extends KeysetBoundary {
   readonly states?: readonly ApplicationState[]
   readonly createdFrom?: Date
   readonly createdTo?: Date
-  readonly afterCreatedAt?: Date
-  readonly afterId?: string
   readonly limit: number
 }
 
@@ -105,7 +104,7 @@ export interface ApplicationWriteRepository {
   createSubmission: (tx: Transaction, input: CreateSubmissionInput) => Promise<Application>
   findById: (tx: Transaction, applicationId: string) => Promise<Application | null>
   lockById: (tx: Transaction, applicationId: string) => Promise<Application | null>
-  queue: (tx: Transaction, query: ApplicationQueueQuery) => Promise<readonly Application[]>
+  queue: (tx: Transaction, query: ApplicationQueueQuery) => Promise<readonly WithCursor<Application>[]>
   applyDecision: (
     tx: Transaction,
     input: Readonly<{ applicationId: string; decision: "approved" | "rejected"; now: Date }>,
@@ -254,24 +253,18 @@ export const createApplicationRepository = (): ApplicationWriteRepository => ({
   },
 
   queue: async (tx, query) => {
-    let builder = tx.selectFrom("applications").selectAll()
+    let builder = tx.selectFrom("applications").selectAll().select(cursorTime("created_at").as("cursorAt"))
     if (query.states !== undefined && query.states.length > 0) {
       builder = builder.where("state", "in", [...query.states])
     }
     if (query.createdFrom !== undefined) builder = builder.where("created_at", ">=", query.createdFrom)
     if (query.createdTo !== undefined) builder = builder.where("created_at", "<=", query.createdTo)
-    if (query.afterCreatedAt !== undefined && query.afterId !== undefined) {
-      const afterCreatedAt = query.afterCreatedAt
-      const afterId = query.afterId
-      // Keyset for (created_at DESC, id DESC): strictly "before" the cursor row.
-      builder = builder.where((eb) =>
-        eb.or([
-          eb("created_at", "<", afterCreatedAt),
-          eb.and([eb("created_at", "=", afterCreatedAt), eb("id", "<", afterId)]),
-        ]),
-      )
-    }
-    return builder.orderBy("created_at", "desc").orderBy("id", "desc").limit(query.limit).execute()
+    return builder
+      .where(keysetCondition({ time: "created_at", id: "id" }, "before", query))
+      .orderBy("created_at", "desc")
+      .orderBy("id", "desc")
+      .limit(query.limit)
+      .execute()
   },
 
   applyDecision: async (tx, input) => {

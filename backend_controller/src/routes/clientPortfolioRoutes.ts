@@ -34,7 +34,7 @@ import { derivePortfolio } from "../domain/client/portfolioLedger.js"
 import { toLedgerEntries } from "../domain/client/portfolioProjection.js"
 import { computeFilterHash } from "../http/cursor.js"
 import { AppError } from "../http/errorCatalog.js"
-import { paginate, readKeyset } from "../http/pagination.js"
+import { createdAtKeyset, paginate, readKeyset } from "../http/pagination.js"
 import { parseOrThrow } from "../http/validation.js"
 import type {
   ClientPortfolioReadRepository,
@@ -273,7 +273,7 @@ const listTransactions = async (deps: ClientPortfolioDeps, request: FastifyReque
     TRANSACTIONS_ROUTE,
     filterHash,
     now,
-    (row) => [iso(row.createdAt), row.id],
+    createdAtKeyset,
   )
   return reply.sendData({ items: items.map(mapTransaction) }, { status: 200, page })
 }
@@ -297,7 +297,7 @@ const listOrders = async (deps: ClientPortfolioDeps, request: FastifyRequest, re
     ORDERS_ROUTE,
     filterHash,
     now,
-    (row) => [iso(row.createdAt), row.id],
+    createdAtKeyset,
   )
   return reply.sendData({ items: items.map(mapOrder) }, { status: 200, page })
 }

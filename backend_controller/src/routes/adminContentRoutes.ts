@@ -28,7 +28,7 @@ import type { Database } from "../db/types.js"
 import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adminAccess.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { AppError } from "../http/errorCatalog.js"
-import { paginate, readKeyset } from "../http/pagination.js"
+import { createdAtKeyset, paginate, readKeyset } from "../http/pagination.js"
 import { parseOrThrow } from "../http/validation.js"
 import type { AdminContentRepository } from "../repositories/adminContentRepository.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
@@ -197,16 +197,16 @@ const faqContentKey = (question: string): string => {
 
 interface ListedRow {
   readonly id: string
-  readonly created_at: Date | string
+  readonly cursorAt: string
 }
 
-const listCollection = async <Row extends ListedRow>(
+const listCollection = async <Row>(
   deps: AdminContentDeps,
   request: FastifyRequest,
   reply: FastifyReply,
   route: string,
   permissions: readonly string[],
-  load: (limit: number, keyset: ReturnType<typeof readKeyset>) => Promise<readonly Row[]>,
+  load: (limit: number, keyset: ReturnType<typeof readKeyset>) => Promise<readonly (Row & ListedRow)[]>,
   map: (row: Row) => Record<string, unknown>,
 ) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: false })
@@ -223,7 +223,7 @@ const listCollection = async <Row extends ListedRow>(
     route,
     filterHash,
     now,
-    (row) => [iso(row.created_at), row.id],
+    createdAtKeyset,
   )
   return reply.sendData({ items: items.map(map) }, { status: 200, page })
 }

@@ -5,9 +5,10 @@ import { z } from "zod"
 
 import type { Database } from "../db/types.js"
 import { resolveClientPrincipal, type ClientRequestAuthDeps } from "../domain/auth/clientWebAuth.js"
-import { computeFilterHash, decodeCursor, encodeCursor } from "../http/cursor.js"
+import { computeFilterHash, encodeCursor } from "../http/cursor.js"
 import type { PageMeta } from "../http/envelope.js"
 import { AppError } from "../http/errorCatalog.js"
+import { readKeyset } from "../http/pagination.js"
 import { parseOrThrow } from "../http/validation.js"
 import { mapFundSize, mapFundTerms } from "./fundProjection.js"
 import type {
@@ -70,24 +71,10 @@ const listFunds = async (deps: ClientCatalogDeps, request: FastifyRequest, reply
   const now = deps.clock()
   const filterHash = computeFilterHash({})
 
-  let afterCreatedAt: Date | undefined
-  let afterId: string | undefined
-  if (query.after !== undefined) {
-    const parts = decodeCursor(deps.config.cursorKey, query.after, {
-      route: FUNDS_ROUTE,
-      filterHash,
-      now,
-    })
-    const createdAtRaw = parts[0]
-    const idRaw = parts[1]
-    if (createdAtRaw === undefined || idRaw === undefined) throw new AppError("CURSOR_INVALID")
-    afterCreatedAt = new Date(createdAtRaw)
-    afterId = idRaw
-  }
+  const keyset = readKeyset(deps.config.cursorKey, query.after, FUNDS_ROUTE, filterHash, now)
 
   const rows = await deps.clientCatalogRepository.listPublished(deps.database, {
-    ...(afterCreatedAt === undefined ? {} : { afterCreatedAt }),
-    ...(afterId === undefined ? {} : { afterId }),
+    ...keyset,
     limit: query.limit + 1,
   })
 
@@ -100,7 +87,7 @@ const listFunds = async (deps: ClientCatalogDeps, request: FastifyRequest, reply
         ? encodeCursor(deps.config.cursorKey, {
             route: FUNDS_ROUTE,
             filterHash,
-            sortValues: [iso(last.createdAt), last.id],
+            sortValues: [last.cursorAt, last.id],
             now,
           })
         : null,

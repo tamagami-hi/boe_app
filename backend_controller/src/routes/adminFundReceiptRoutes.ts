@@ -9,7 +9,7 @@ import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adm
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { computeFilterHash } from "../http/cursor.js"
 import { AppError } from "../http/errorCatalog.js"
-import { paginate, readKeyset } from "../http/pagination.js"
+import { createdAtKeyset, paginate, readKeyset } from "../http/pagination.js"
 import { parseOrThrow } from "../http/validation.js"
 import type { PaymentGateway } from "../providers/paymentGateway.js"
 import { logGatewayFailure } from "../providers/gatewayFailure.js"
@@ -164,7 +164,7 @@ const listQueue = async (deps: AdminFundReceiptDeps, request: FastifyRequest, re
     FUND_RECEIPTS_ROUTE,
     filterHash,
     now,
-    (row) => [iso(row.createdAt), row.acknowledgementId],
+    (row) => [row.cursorAt, row.acknowledgementId],
   )
   return reply.sendData({ items: items.map(mapQueueRow) }, { status: 200, page })
 }
@@ -264,7 +264,7 @@ const listRefunds = async (deps: AdminFundReceiptDeps, request: FastifyRequest, 
     REFUNDS_ROUTE,
     filterHash,
     now,
-    (row) => [iso(row.createdAt), row.id],
+    createdAtKeyset,
   )
   return reply.sendData({ items: items.map(mapRefundRow) }, { status: 200, page })
 }
@@ -288,7 +288,7 @@ const listPayments = async (deps: AdminFundReceiptDeps, request: FastifyRequest,
     PAYMENTS_ROUTE,
     filterHash,
     now,
-    (row) => [iso(row.createdAt), row.id],
+    createdAtKeyset,
   )
   return reply.sendData({ items: items.map(mapPaymentRow) }, { status: 200, page })
 }

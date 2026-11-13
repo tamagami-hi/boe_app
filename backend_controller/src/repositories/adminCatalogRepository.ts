@@ -8,6 +8,7 @@ import {
 } from "./fundAumOrdering.js"
 import type { Fund, FundVersion, Transaction } from "../db/repositories.js"
 import type { FundReturnTier, FundRiskLevel, FundState } from "../db/types.js"
+import { cursorTime, keysetCondition, type KeysetBoundary } from "./keysetBoundary.js"
 
 export interface FundListRow {
   readonly id: string
@@ -31,6 +32,7 @@ export interface FundListRow {
   readonly createdAt: Date
   readonly updatedAt: Date
   readonly version: string
+  readonly cursorAt: string
 }
 
 export interface FundVersionRow {
@@ -71,9 +73,7 @@ export interface DisclosureRow {
   readonly createdAt: Date
 }
 
-export interface FundPageQuery {
-  readonly afterCreatedAt?: Date
-  readonly afterId?: string
+export interface FundPageQuery extends KeysetBoundary {
   readonly limit: number
   readonly state?: FundState
   readonly search?: string
@@ -181,7 +181,8 @@ const FUND_SELECT = sql`
     f.published_at as "publishedAt",
     f.created_at as "createdAt",
     f.updated_at as "updatedAt",
-    f.version::text as "version"
+    f.version::text as "version",
+    ${cursorTime("f.created_at")} as "cursorAt"
   from funds f
   left join fund_versions fv on fv.id = f.current_published_version_id
   ${LATEST_SNAPSHOT_LATERAL}
@@ -203,9 +204,7 @@ const STOCK_COLUMNS = sql`
 export const createAdminCatalogRepository = (): AdminCatalogRepository => ({
   list: async (tx, query) => {
     const conditions = [
-      query.afterCreatedAt !== undefined && query.afterId !== undefined
-        ? sql`(f.created_at, f.id) < (${query.afterCreatedAt}, ${query.afterId}::uuid)`
-        : null,
+      keysetCondition({ time: "f.created_at", id: "f.id" }, "before", query),
       query.state === undefined ? null : sql`f.state = ${query.state}::fund_state`,
       query.search === undefined
         ? null

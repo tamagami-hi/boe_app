@@ -13,6 +13,7 @@ import { sql } from "kysely"
 
 import type { Transaction } from "../db/repositories.js"
 import type { OrderState, PaymentState, SupportRequestState } from "../db/types.js"
+import { cursorTime, keysetCondition, type KeysetBoundary, type WithCursor } from "./keysetBoundary.js"
 
 // --- notifications ---
 
@@ -81,8 +82,8 @@ export interface ContentDocumentRow {
 export interface ClientAccountRepository {
   listNotifications: (
     tx: Transaction,
-    input: Readonly<{ userId: string; limit: number; afterCreatedAt?: Date; afterId?: string }>,
-  ) => Promise<readonly NotificationRow[]>
+    input: KeysetBoundary & Readonly<{ userId: string; limit: number }>,
+  ) => Promise<readonly WithCursor<NotificationRow>[]>
   /**
    * Unread notifications for the whole account, not for the page just read —
    * the inbox badge must not shrink because the caller only fetched one page.
@@ -100,14 +101,12 @@ export interface ClientAccountRepository {
       states: readonly PaymentState[]
       successProjection: "confirmed" | "processing" | null
       limit: number
-      afterCreatedAt?: Date
-      afterId?: string
-    }>,
-  ) => Promise<readonly ClientPaymentRow[]>
+    }> & KeysetBoundary,
+  ) => Promise<readonly WithCursor<ClientPaymentRow>[]>
   listSupportRequests: (
     tx: Transaction,
-    input: Readonly<{ userId: string; limit: number; afterCreatedAt?: Date; afterId?: string }>,
-  ) => Promise<readonly SupportRequestRow[]>
+    input: KeysetBoundary & Readonly<{ userId: string; limit: number }>,
+  ) => Promise<readonly WithCursor<SupportRequestRow>[]>
   createSupportRequest: (tx: Transaction, input: CreateSupportRequestInput) => Promise<SupportRequestRow>
   /** Published FAQ items in display order. */
   listFaqs: (tx: Transaction, input: Readonly<{ limit: number }>) => Promise<readonly ContentDocumentRow[]>
@@ -163,12 +162,11 @@ const CONTENT_COLUMNS = sql`
 
 export const createClientAccountRepository = (): ClientAccountRepository => ({
   listNotifications: async (tx, input) => {
-    const result = await sql<NotificationRow>`
-      select ${NOTIFICATION_COLUMNS}
+    const result = await sql<WithCursor<NotificationRow>>`
+      select ${NOTIFICATION_COLUMNS}, ${cursorTime("n.created_at")} as "cursorAt"
       from notifications n
       where n.user_id = ${input.userId}
-        and (${input.afterCreatedAt ?? null}::timestamptz is null
-             or (n.created_at, n.id) < (${input.afterCreatedAt ?? null}, ${input.afterId ?? null}))
+        and ${keysetCondition({ time: "n.created_at", id: "n.id" }, "before", input)}
       order by n.created_at desc, n.id desc
       limit ${input.limit}
     `.execute(tx)
@@ -200,7 +198,7 @@ export const createClientAccountRepository = (): ClientAccountRepository => ({
     // The fund comes through the order, and the provider plus any failure code
     // live on the latest attempt — so one row carries everything the payments
     // screen shows without a second round trip.
-    const result = await sql<ClientPaymentRow>`
+    const result = await sql<WithCursor<ClientPaymentRow>>`
       select
         p.id,
         p.order_id as "orderId",
@@ -214,7 +212,8 @@ export const createClientAccountRepository = (): ClientAccountRepository => ({
         latest.failure_code as "failureCode",
         p.succeeded_at as "succeededAt",
         p.created_at as "createdAt",
-        p.updated_at as "updatedAt"
+        p.updated_at as "updatedAt",
+        ${cursorTime("p.created_at")} as "cursorAt"
       from payments p
       join investment_orders o on o.id = p.order_id
       left join lateral (
@@ -226,8 +225,7 @@ export const createClientAccountRepository = (): ClientAccountRepository => ({
       ) latest on true
       where p.user_id = ${input.userId}
         and (${input.states.length === 0} or p.state = any(${input.states}::payment_state[]))
-        and (${input.afterCreatedAt ?? null}::timestamptz is null
-             or (p.created_at, p.id) < (${input.afterCreatedAt ?? null}, ${input.afterId ?? null}))
+        and ${keysetCondition({ time: "p.created_at", id: "p.id" }, "before", input)}
         and (
           ${input.successProjection}::text is null or
           p.state <> 'succeeded' or
@@ -241,12 +239,11 @@ export const createClientAccountRepository = (): ClientAccountRepository => ({
   },
 
   listSupportRequests: async (tx, input) => {
-    const result = await sql<SupportRequestRow>`
-      select ${SUPPORT_COLUMNS}
+    const result = await sql<WithCursor<SupportRequestRow>>`
+      select ${SUPPORT_COLUMNS}, ${cursorTime("s.created_at")} as "cursorAt"
       from support_requests s
       where s.user_id = ${input.userId}
-        and (${input.afterCreatedAt ?? null}::timestamptz is null
-             or (s.created_at, s.id) < (${input.afterCreatedAt ?? null}, ${input.afterId ?? null}))
+        and ${keysetCondition({ time: "s.created_at", id: "s.id" }, "before", input)}
       order by s.created_at desc, s.id desc
       limit ${input.limit}
     `.execute(tx)

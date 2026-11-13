@@ -8,6 +8,7 @@
 import { sql } from "kysely"
 
 import type { EmailDelivery, EmailDeliveryPayload, Transaction } from "../db/repositories.js"
+import { cursorTime, keysetCondition, type KeysetBoundary, type WithCursor } from "./keysetBoundary.js"
 
 export interface RecordSentInput {
   readonly deliveryId: string
@@ -85,13 +86,11 @@ export interface InsertSealedPayloadInput {
   readonly keyVersion: string
 }
 
-export interface AdminEmailDeliveryQuery {
+export interface AdminEmailDeliveryQuery extends KeysetBoundary {
   readonly states?: readonly EmailDelivery["state"][]
   readonly templateKeys?: readonly string[]
   readonly applicationId?: string
   readonly userId?: string
-  readonly afterCreatedAt?: Date
-  readonly afterId?: string
   readonly limit: number
 }
 
@@ -109,11 +108,11 @@ export interface EmailDeliveryWriteRepository {
   createUserMailDelivery: (tx: Transaction, input: CreateUserMailDeliveryInput) => Promise<EmailDelivery>
   insertSealedPayload: (tx: Transaction, input: InsertSealedPayloadInput) => Promise<void>
   findSealedPayload: (tx: Transaction, deliveryId: string) => Promise<EmailDeliveryPayload | null>
-  adminList: (tx: Transaction, query: AdminEmailDeliveryQuery) => Promise<readonly EmailDelivery[]>
+  adminList: (tx: Transaction, query: AdminEmailDeliveryQuery) => Promise<readonly WithCursor<EmailDelivery>[]>
   listByApplication: (
     tx: Transaction,
-    input: Readonly<{ applicationId: string; afterCreatedAt?: Date; afterId?: string; limit: number }>,
-  ) => Promise<readonly EmailDelivery[]>
+    input: KeysetBoundary & Readonly<{ applicationId: string; limit: number }>,
+  ) => Promise<readonly WithCursor<EmailDelivery>[]>
   lockByOutboxEventId: (tx: Transaction, outboxEventId: string) => Promise<EmailDelivery | null>
   lockById: (tx: Transaction, deliveryId: string) => Promise<EmailDelivery | null>
   lockBySesMessageId: (tx: Transaction, sesMessageId: string) => Promise<EmailDelivery | null>
@@ -226,7 +225,7 @@ export const createEmailDeliveryRepository = (): EmailDeliveryWriteRepository =>
   },
 
   adminList: async (tx, query) => {
-    let builder = tx.selectFrom("email_deliveries").selectAll()
+    let builder = tx.selectFrom("email_deliveries").selectAll().select(cursorTime("created_at").as("cursorAt"))
     if (query.states !== undefined && query.states.length > 0) {
       builder = builder.where("state", "in", [...query.states])
     }
@@ -235,32 +234,25 @@ export const createEmailDeliveryRepository = (): EmailDeliveryWriteRepository =>
     }
     if (query.applicationId !== undefined) builder = builder.where("application_id", "=", query.applicationId)
     if (query.userId !== undefined) builder = builder.where("user_id", "=", query.userId)
-    if (query.afterCreatedAt !== undefined && query.afterId !== undefined) {
-      const afterCreatedAt = query.afterCreatedAt
-      const afterId = query.afterId
-      builder = builder.where((eb) =>
-        eb.or([
-          eb("created_at", "<", afterCreatedAt),
-          eb.and([eb("created_at", "=", afterCreatedAt), eb("id", "<", afterId)]),
-        ]),
-      )
-    }
-    return builder.orderBy("created_at", "desc").orderBy("id", "desc").limit(query.limit).execute()
+    return builder
+      .where(keysetCondition({ time: "created_at", id: "id" }, "before", query))
+      .orderBy("created_at", "desc")
+      .orderBy("id", "desc")
+      .limit(query.limit)
+      .execute()
   },
 
   listByApplication: async (tx, input) => {
-    let builder = tx.selectFrom("email_deliveries").selectAll().where("application_id", "=", input.applicationId)
-    if (input.afterCreatedAt !== undefined && input.afterId !== undefined) {
-      const afterCreatedAt = input.afterCreatedAt
-      const afterId = input.afterId
-      builder = builder.where((eb) =>
-        eb.or([
-          eb("created_at", "<", afterCreatedAt),
-          eb.and([eb("created_at", "=", afterCreatedAt), eb("id", "<", afterId)]),
-        ]),
-      )
-    }
-    return builder.orderBy("created_at", "desc").orderBy("id", "desc").limit(input.limit).execute()
+    return tx
+      .selectFrom("email_deliveries")
+      .selectAll()
+      .select(cursorTime("created_at").as("cursorAt"))
+      .where("application_id", "=", input.applicationId)
+      .where(keysetCondition({ time: "created_at", id: "id" }, "before", input))
+      .orderBy("created_at", "desc")
+      .orderBy("id", "desc")
+      .limit(input.limit)
+      .execute()
   },
 
   lockByOutboxEventId: async (tx, outboxEventId) => {

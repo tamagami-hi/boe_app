@@ -17,6 +17,7 @@ import type {
   PaymentState,
   UserAccountState,
 } from "../db/types.js"
+import { cursorTime, keysetCondition, type KeysetBoundary, type WithCursor } from "./keysetBoundary.js"
 
 export interface EligibilityInputsRow {
   readonly accountState: UserAccountState
@@ -42,10 +43,8 @@ export interface OrderRow {
   readonly version: string
 }
 
-export interface HistoryPageQuery {
+export interface HistoryPageQuery extends KeysetBoundary {
   readonly userId: string
-  readonly afterCreatedAt?: Date
-  readonly afterId?: string
   /** validated integer 1..MAX_QUERY_LIMIT (+1 for hasMore probing) */
   readonly limit: number
 }
@@ -74,7 +73,7 @@ export interface PaymentDetailRow {
 
 export interface ClientPortfolioReadRepository {
   eligibilityInputs: (tx: Transaction, userId: string) => Promise<EligibilityInputsRow | null>
-  listOrders: (tx: Transaction, query: HistoryPageQuery) => Promise<readonly OrderRow[]>
+  listOrders: (tx: Transaction, query: HistoryPageQuery) => Promise<readonly WithCursor<OrderRow>[]>
   /** Owner-scoped single order; null when it does not belong to `userId`. */
   findOrder: (tx: Transaction, userId: string, orderId: string) => Promise<OrderRow | null>
   /** Owner-scoped payment with its latest attempt (provider + failure detail). */
@@ -113,16 +112,11 @@ export const createClientPortfolioRepository = (): ClientPortfolioReadRepository
   },
 
   listOrders: async (tx, query) => {
-    const keyset =
-      query.afterCreatedAt !== undefined && query.afterId !== undefined
-        ? sql`and (created_at < ${query.afterCreatedAt}
-              or (created_at = ${query.afterCreatedAt} and id < ${query.afterId}))`
-        : sql``
-    const result = await sql<OrderRow>`
-      select ${ORDER_COLUMNS}
+    const result = await sql<WithCursor<OrderRow>>`
+      select ${ORDER_COLUMNS}, ${cursorTime("created_at")} as "cursorAt"
       from investment_orders
       where user_id = ${query.userId}
-      ${keyset}
+        and ${keysetCondition({ time: "created_at", id: "id" }, "before", query)}
       order by created_at desc, id desc
       limit ${query.limit}
     `.execute(tx)

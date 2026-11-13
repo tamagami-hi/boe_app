@@ -17,9 +17,12 @@ export const MAX_PAGE_LIMIT = 100
 export const DEFAULT_PAGE_LIMIT = 25
 
 export interface KeysetPosition {
-  readonly afterCreatedAt?: Date
+  readonly afterCreatedAt?: string
   readonly afterId?: string
 }
+
+const CURSOR_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.(?:\d{3}|\d{6})Z$/u
+const CURSOR_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu
 
 /** The raw sort values a cursor carries, or an empty tuple on the first page. */
 export const readKeysetValues = (
@@ -42,11 +45,11 @@ export const readKeyset = (
   now: Date,
 ): KeysetPosition => {
   if (after === undefined) return {}
-  const parts = decodeCursor(cursorKey, after, { route, filterHash, now })
-  const createdAtRaw = parts[0]
-  const idRaw = parts[1]
-  if (createdAtRaw === undefined || idRaw === undefined) throw new AppError("CURSOR_INVALID")
-  return { afterCreatedAt: new Date(createdAtRaw), afterId: idRaw }
+  const [createdAtRaw, idRaw] = decodeCursor(cursorKey, after, { route, filterHash, now })
+  if (createdAtRaw === undefined || idRaw === undefined || !CURSOR_TIME.test(createdAtRaw) || !CURSOR_ID.test(idRaw)) {
+    throw new AppError("CURSOR_INVALID")
+  }
+  return { afterCreatedAt: createdAtRaw, afterId: idRaw }
 }
 
 export interface Paginated<Row> {
@@ -78,7 +81,7 @@ export const paginate = <Row>(
  * exactly that pair. Keeping the projection here means a route cannot pick a
  * different tuple for the cursor than the one its SQL sorts on.
  */
-export const createdAtKeyset = <Row extends { readonly id: string }>(
-  createdAt: (row: Row) => Date | string,
-): ((row: Row) => readonly string[]) =>
-  (row) => [new Date(createdAt(row)).toISOString(), row.id]
+export const createdAtKeyset = (row: Readonly<{ id: string; cursorAt: string }>): readonly string[] => [
+  row.cursorAt,
+  row.id,
+]

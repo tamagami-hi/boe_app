@@ -26,7 +26,7 @@ import type { Database, EmailVerificationState, UserAccountState } from "../db/t
 import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adminAccess.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { AppError } from "../http/errorCatalog.js"
-import { paginate, readKeyset } from "../http/pagination.js"
+import { createdAtKeyset, paginate, readKeyset } from "../http/pagination.js"
 import { parseOrThrow } from "../http/validation.js"
 import type { AdminOversightRepository } from "../repositories/adminOversightRepository.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
@@ -106,17 +106,17 @@ export const shouldRevokeUserSessions = (nextState: UserAccountState): boolean =
 
 interface Listed {
   readonly id: string
-  readonly createdAt: Date | string
+  readonly cursorAt: string
 }
 
-const listWith = async <Row extends Listed>(
+const listWith = async <Row>(
   deps: AdminOversightDeps,
   request: FastifyRequest,
   reply: FastifyReply,
   route: string,
   permissions: readonly string[],
   filters: Readonly<Record<string, unknown>>,
-  load: (limit: number, keyset: ReturnType<typeof readKeyset>) => Promise<readonly Row[]>,
+  load: (limit: number, keyset: ReturnType<typeof readKeyset>) => Promise<readonly (Row & Listed)[]>,
   map: (row: Row) => Record<string, unknown>,
 ) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: false })
@@ -127,10 +127,7 @@ const listWith = async <Row extends Listed>(
   const keyset = readKeyset(deps.config.cursorKey, after, route, filterHash, now)
   const limit = Number((request.query as { limit?: unknown } | undefined)?.limit ?? 25)
   const rows = await load(limit + 1, keyset)
-  const { items, page } = paginate(deps.config.cursorKey, rows, limit, route, filterHash, now, (row) => [
-    iso(row.createdAt),
-    row.id,
-  ])
+  const { items, page } = paginate(deps.config.cursorKey, rows, limit, route, filterHash, now, createdAtKeyset)
   return reply.sendData({ items: items.map(map) }, { status: 200, page })
 }
 
