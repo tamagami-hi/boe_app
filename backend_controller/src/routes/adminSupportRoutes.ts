@@ -8,11 +8,12 @@ import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adm
 import { respondToSupportTicket } from "../domain/admin/supportResponse.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { AppError } from "../http/errorCatalog.js"
-import { paginate, readKeyset } from "../http/pagination.js"
+import { paginate, readKeysetValues } from "../http/pagination.js"
 import { parseOrThrow } from "../http/validation.js"
 import {
   createAdminSupportRepository,
   type AdminSupportRepository,
+  type SupportPagePosition,
   type SupportTicketDetailRow,
   type SupportTicketEventRow,
   type SupportTicketRow,
@@ -40,6 +41,7 @@ const WRITE_PERMISSIONS = ["support.write"] as const
 const MAX_RESOLUTION_NOTE_LENGTH = 2_000
 
 const SUPPORT_STATES = ["open", "in_progress", "resolved", "closed"] as const satisfies readonly SupportRequestState[]
+const CURSOR_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/u
 
 export interface AdminSupportDeps {
   readonly webAuth: WebAuthDeps
@@ -107,6 +109,21 @@ const detailBody = (row: SupportTicketDetailRow, events: readonly SupportTicketE
 const paramOf = (request: FastifyRequest, name: "ticketId" | "userId"): string =>
   parseOrThrow(uuidParam, (request.params as Record<string, unknown> | undefined)?.[name])
 
+const readPosition = (
+  deps: SupportRouteDeps,
+  after: string | undefined,
+  route: string,
+  filterHash: string,
+  now: Date,
+): SupportPagePosition => {
+  if (after === undefined) return {}
+  const [afterKey, afterId] = readKeysetValues(deps.config.cursorKey, after, route, filterHash, now)
+  if (afterKey === undefined || afterId === undefined || !CURSOR_TIME.test(afterKey) || !uuidParam.safeParse(afterId).success) {
+    throw new AppError("CURSOR_INVALID")
+  }
+  return { afterKey, afterId }
+}
+
 const sendPage = (
   deps: SupportRouteDeps,
   reply: FastifyReply,
@@ -117,7 +134,7 @@ const sendPage = (
   rows: readonly SupportTicketRow[],
 ) => {
   const { items, page } = paginate(deps.config.cursorKey, rows, limit, route, filterHash, now, (row) => [
-    iso(row.createdAt),
+    row.cursorKey,
     row.id,
   ])
   return reply.sendData({ items: items.map(ticketBody) }, { status: 200, page })
@@ -129,7 +146,7 @@ const listInbox = async (deps: SupportRouteDeps, request: FastifyRequest, reply:
   const query = parseOrThrow(inboxQuerySchema, request.query ?? {})
   const now = deps.clock()
   const filterHash = computeFilterHash({ status: query.status })
-  const keyset = readKeyset(deps.config.cursorKey, query.after, TICKETS_ROUTE, filterHash, now)
+  const keyset = readPosition(deps, query.after, TICKETS_ROUTE, filterHash, now)
   const rows = await deps.unitOfWork.execute((tx) =>
     deps.adminSupportRepository.listQueue(tx, {
       ...keyset,
@@ -147,7 +164,7 @@ const listUserTickets = async (deps: SupportRouteDeps, request: FastifyRequest, 
   const query = parseOrThrow(userTicketsQuerySchema, request.query ?? {})
   const now = deps.clock()
   const filterHash = computeFilterHash({ userId })
-  const keyset = readKeyset(deps.config.cursorKey, query.after, USER_TICKETS_ROUTE, filterHash, now)
+  const keyset = readPosition(deps, query.after, USER_TICKETS_ROUTE, filterHash, now)
   const rows = await deps.unitOfWork.execute(async (tx) => {
     if (!(await deps.adminSupportRepository.userExists(tx, userId))) return null
     return deps.adminSupportRepository.listForUser(tx, { userId, ...keyset, limit: query.limit + 1 })

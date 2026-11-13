@@ -48,6 +48,8 @@ const CLIENT_TICKET_KEYS = [
   "updatedAt",
 ]
 
+const MAX_WALKED_PAGES = 200
+
 let stack: PasswordMailStack
 let app: FastifyInstance
 let tokens: AccessTokenService
@@ -79,6 +81,28 @@ const raiseTicket = async (client: Client, subject: string): Promise<string> => 
   })
   expect(response.statusCode).toBe(201)
   return dataOf<{ id: string }>(response).id
+}
+
+const insertTicketAt = async (userId: string, createdAt: string): Promise<string> => {
+  const inserted = await stack.pool.query<{ id: string }>(
+    "insert into support_requests (user_id, reference, category, subject, body, created_at, updated_at) " +
+      "values ($1, $2, 'general', 'Timing check', 'Raised within the same millisecond.', $3::timestamptz, $3::timestamptz) returning id",
+    [userId, `REQ-${randomUUID().slice(0, 8).toUpperCase()}`, createdAt],
+  )
+  return inserted.rows[0]?.id ?? ""
+}
+
+const walkPages = async (session: AdminSession, url: string): Promise<string[]> => {
+  const seen: string[] = []
+  let after: string | null = null
+  do {
+    const cursor: string = after === null ? "" : `&after=${encodeURIComponent(after)}`
+    const page = await adminGet(session, `${url}${url.includes("?") ? "&" : "?"}limit=1${cursor}`)
+    expect(page.statusCode).toBe(200)
+    seen.push(...dataOf<Page<Ticket>>(page).items.map((item) => item.id))
+    after = metaOf(page).page?.nextCursor ?? null
+  } while (after !== null && new Set(seen).size === seen.length && seen.length < MAX_WALKED_PAGES)
+  return seen
 }
 
 const clientGet = (client: Client, url: string) =>
@@ -175,15 +199,7 @@ describe("the admin support inbox", () => {
     const first = await raiseTicket(client, "Missing transfer")
     const second = await raiseTicket(client, "Second question")
 
-    const seen: string[] = []
-    let after: string | null = null
-    do {
-      const query: string = after === null ? "" : `&after=${encodeURIComponent(after)}`
-      const page = await adminGet(support, `/v1/admin/support/tickets?status=open&limit=1${query}`)
-      expect(page.statusCode).toBe(200)
-      seen.push(...dataOf<Page<Ticket>>(page).items.map((item) => item.id))
-      after = metaOf(page).page?.nextCursor ?? null
-    } while (after !== null)
+    const seen = await walkPages(support, "/v1/admin/support/tickets?status=open")
     expect(new Set(seen).size).toBe(seen.length)
     expect(seen.indexOf(first)).toBeGreaterThanOrEqual(0)
     expect(seen.indexOf(first)).toBeLessThan(seen.indexOf(second))
@@ -230,6 +246,18 @@ describe("the admin support inbox", () => {
       status: "resolved",
       deepLink: "/profile/support",
     })
+  })
+
+  test("pages across requests raised microseconds apart without repeating or skipping one", async () => {
+    const client = await stack.seedUser()
+    const earlier = await insertTicketAt(client.id, "2020-01-01T00:00:00.000100Z")
+    const later = await insertTicketAt(client.id, "2020-01-01T00:00:00.000103Z")
+
+    const inbox = await walkPages(support, "/v1/admin/support/tickets?status=open")
+    expect(new Set(inbox).size).toBe(inbox.length)
+    expect(inbox.slice(0, 2)).toEqual([earlier, later])
+
+    expect(await walkPages(support, `/v1/admin/users/${client.id}/support-tickets`)).toEqual([later, earlier])
   })
 
   test("a repeated response key replays without writing or notifying twice", async () => {

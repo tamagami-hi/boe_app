@@ -13,6 +13,7 @@ export interface SupportTicketRow {
   readonly state: SupportRequestState
   readonly resolvedAt: Date | null
   readonly createdAt: Date
+  readonly cursorKey: string
   readonly updatedAt: Date
   readonly version: string
 }
@@ -34,9 +35,12 @@ export interface SupportTicketEventRow {
   readonly occurredAt: Date
 }
 
-export interface SupportPageInput {
-  readonly afterCreatedAt?: Date
+export interface SupportPagePosition {
+  readonly afterKey?: string
   readonly afterId?: string
+}
+
+export interface SupportPageInput extends SupportPagePosition {
   readonly limit: number
 }
 
@@ -66,8 +70,6 @@ export interface AdminSupportRepository {
 
 const MAX_HISTORY_EVENTS = 200
 
-const CREATED_KEY = sql`date_trunc('milliseconds', s.created_at)`
-
 const TICKET_COLUMNS = sql`
   s.id,
   s.user_id as "userId",
@@ -77,7 +79,8 @@ const TICKET_COLUMNS = sql`
   s.subject,
   s.state,
   s.resolved_at as "resolvedAt",
-  ${CREATED_KEY} as "createdAt",
+  s.created_at as "createdAt",
+  to_char(s.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as "cursorKey",
   s.updated_at as "updatedAt",
   s.version::text as "version"
 `
@@ -91,10 +94,11 @@ const DETAIL_COLUMNS = sql`
 
 const TICKET_SOURCE = sql`from support_requests s join users u on u.id = s.user_id`
 
-const afterPosition = (input: SupportPageInput) => ({
-  at: input.afterCreatedAt ?? null,
-  id: input.afterId ?? null,
-})
+const keysetClause = (input: SupportPagePosition, direction: "after" | "before") => {
+  if (input.afterKey === undefined || input.afterId === undefined) return sql``
+  const position = sql`(${input.afterKey}::timestamptz, ${input.afterId}::uuid)`
+  return direction === "after" ? sql`and (s.created_at, s.id) > ${position}` : sql`and (s.created_at, s.id) < ${position}`
+}
 
 const findDetail = async (
   tx: Transaction,
@@ -112,28 +116,23 @@ const findDetail = async (
 
 export const createAdminSupportRepository = (): AdminSupportRepository => ({
   listQueue: async (tx, input) => {
-    const after = afterPosition(input)
+    const stateClause = input.state === undefined ? sql`` : sql`and s.state = ${input.state}::support_request_state`
     const result = await sql<SupportTicketRow>`
       select ${TICKET_COLUMNS}
       ${TICKET_SOURCE}
-      where (${input.state ?? null}::support_request_state is null or s.state = ${input.state ?? null}::support_request_state)
-        and (${after.at}::timestamptz is null
-             or (${CREATED_KEY}, s.id) > (${after.at}::timestamptz, ${after.id}::uuid))
-      order by ${CREATED_KEY} asc, s.id asc
+      where true ${stateClause} ${keysetClause(input, "after")}
+      order by s.created_at asc, s.id asc
       limit ${input.limit}
     `.execute(tx)
     return result.rows
   },
 
   listForUser: async (tx, input) => {
-    const after = afterPosition(input)
     const result = await sql<SupportTicketRow>`
       select ${TICKET_COLUMNS}
       ${TICKET_SOURCE}
-      where s.user_id = ${input.userId}
-        and (${after.at}::timestamptz is null
-             or (${CREATED_KEY}, s.id) < (${after.at}::timestamptz, ${after.id}::uuid))
-      order by ${CREATED_KEY} desc, s.id desc
+      where s.user_id = ${input.userId} ${keysetClause(input, "before")}
+      order by s.created_at desc, s.id desc
       limit ${input.limit}
     `.execute(tx)
     return result.rows
