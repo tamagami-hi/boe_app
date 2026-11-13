@@ -264,6 +264,17 @@
       },
       "openedAt": "2026-11-13T17:51:12.330Z",
       "closedAt": "2026-11-13T18:34:27.888Z"
+    },
+    {
+      "name": "f-maturity",
+      "branch": "track/f-maturity",
+      "worktree": ".temp/worktrees/f-maturity",
+      "purpose": "Phase F: ledger recorded date (F1), maturity option 3 as SIP extension (F2), admin sends maturity options to the client who chooses in the app (F3); migration 068",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-13T20:57:00.584Z"
     }
   ]
 }

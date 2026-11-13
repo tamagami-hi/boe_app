@@ -3,14 +3,6 @@
   "nextRow": 22,
   "open": [
     {
-      "row": 15,
-      "group": "records",
-      "question": "Q-026: When a client's personal data is erased (tombstoned), should their old emails and phones in the new contact-change history also be erased? The history is append-only by design (it proves who changed what and when). Erasing it on request needs a separate, audited erase step that overwrites only the history's contact fields.",
-      "meanwhile": "Keep the history append-only. For tombstoned clients the admin screen and API show the same masked values as everywhere else (tombstone placeholders), so no admin can read the originals through the app. The originals stay in the database until you decide.",
-      "asked": "2026-11-13T10:36:44.645Z",
-      "by": "lane-a-identity"
-    },
-    {
       "row": 19,
       "group": "admin-improvements",
       "question": "Q-030: When a client picks a maturity option in the app, should it take effect straight away, or go to the admin as the client's choice, which the admin then confirms and carries out? A withdrawal is paid out by the team outside the app, so the admin has to act on it anyway.",
@@ -205,6 +197,16 @@
       "by": "lane-c-sip",
       "answeredAt": "2026-11-13T20:53:31.910Z",
       "decision": "DEC-15"
+    },
+    {
+      "row": 15,
+      "group": "records",
+      "question": "Q-026: When a client's personal data is erased (tombstoned), should their old emails and phones in the new contact-change history also be erased? The history is append-only by design (it proves who changed what and when). Erasing it on request needs a separate, audited erase step that overwrites only the history's contact fields.",
+      "meanwhile": "Keep the history append-only. For tombstoned clients the admin screen and API show the same masked values as everywhere else (tombstone placeholders), so no admin can read the originals through the app. The originals stay in the database until you decide.",
+      "asked": "2026-11-13T10:36:44.645Z",
+      "by": "lane-a-identity",
+      "answeredAt": "2026-11-13T21:08:37.902Z",
+      "decision": "DEC-29"
     }
   ]
 }

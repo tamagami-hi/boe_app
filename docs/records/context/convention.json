@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "convention",
-  "nextNumber": 4,
+  "nextNumber": 7,
   "entries": [
     {
       "id": "convention-1",
@@ -70,7 +70,70 @@
         "agent": "lane-e-autopay"
       },
       "at": "2026-11-13T15:54:38.834Z",
-      "replaces": "convention-2"
+      "replaces": "convention-2",
+      "retiredAt": "2026-11-13T20:57:09.977Z",
+      "retiredWhy": "replaced by convention-4"
+    },
+    {
+      "id": "convention-4",
+      "kind": "convention",
+      "title": "Migration numbers: 068 Phase F maturity choices (after 061-067)",
+      "text": "061 identity, 062 investment email, 063 nominee, 064 admin SIP schedules, 065 maturity schedules, 066 audit index, 067 client reviews, 068 Phase F maturity choices (widen the maturity resolution check, the offer/choice record, widen the email template check). releaseUpgrade expects ...061-068 once F lands. Any later migration takes the next free number.",
+      "paths": [
+        "backend_controller/db/migrations"
+      ],
+      "tags": [
+        "migration"
+      ],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-13T20:57:09.977Z",
+      "replaces": "convention-3"
+    },
+    {
+      "id": "convention-5",
+      "kind": "convention",
+      "title": "Lane file rules: shared files that must not grow",
+      "text": "- frontend admin adminQueries.ts must not grow: move the hooks a lane changes into its feature's own query module.\n- packages/contracts/src/operations/admin-money.ts must not grow: new operations go in a new contract file per lane.\n- backend_controller/src/runtime/composition.ts must not grow much: register new routes through a small composition module (adminComposition.ts, recordingComposition.ts).\n- Generated OpenAPI and frontend operations are regenerated with the scripts at every rebase, never hand-edited.\nMoved from the retired rule-7.",
+      "paths": [
+        "frontend_stack_ts/src/features/admin",
+        "packages/contracts/src/operations",
+        "backend_controller/src/runtime"
+      ],
+      "tags": [
+        "lanes",
+        "shared-files"
+      ],
+      "refs": [
+        "DEC-21"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-13T21:09:03.012Z"
+    },
+    {
+      "id": "convention-6",
+      "kind": "convention",
+      "title": "Where each kind of record goes in this repository's tally",
+      "text": "- Rules: only standing constraints agents must obey, short and imperative, each citing its source (RULES.md or a decision id). Only an operator session writes one.\n- Decisions: everything the maintainer decided, in decisions.json (group admin-improvements), ids DEC-n, entered with the tally CLI decision add --operator. The plan's decision record carries the same DEC ids in its ID column.\n- Questions: open choices with the conservative behaviour meanwhile. The plan's section 0a uses Q-0nn ids; the tally question text starts with the same Q-0nn. An answered question cites its DEC id (tally question answer ROW DEC-n).\n- Findings: verified facts and defects. Conventions: how lanes work together. Howtos: commands.\n- Plans, steps and progress stay in plans/admin-improvements.md; tasks, tracks, hand-offs, evidence and the ledger stay in tally.\nNever put a decision or a question's answer in a rule entry (DEC-28).",
+      "paths": [],
+      "tags": [
+        "records",
+        "structure"
+      ],
+      "refs": [
+        "DEC-28"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-13T21:09:03.313Z"
     }
   ]
 }

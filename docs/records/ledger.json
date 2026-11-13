@@ -887,13 +887,7 @@
             "03891a3",
             "c53e178"
           ],
-          "brief": "Lane track/c-payment-sheet (after C2): monthly payment sheet: month picker, one row per client/fund from the admin SIP schedule with expected amount, already recorded, date (default today IST), bank reference (UTR); per-row held idempotency keys in sessionStorage, 1-2 concurrent posts, status chip per row, explicit 'record another'; CSV paste into the sheet; optional structured bank reference on recordings (additive migration at the next free number + optional request field)",
-          "deferred": [
-            {
-              "what": "optional bank reference (UTR) on recordings and its migration: not built pending maintainer question row 16 (rule-11)",
-              "to": "M8-phase-e:E4-bank-reference"
-            }
-          ]
+          "brief": "Lane track/c-payment-sheet (after C2): monthly payment sheet: month picker, one row per client/fund from the admin SIP schedule with expected amount, already recorded, date (default today IST), bank reference (UTR); per-row held idempotency keys in sessionStorage, 1-2 concurrent posts, status chip per row, explicit 'record another'; CSV paste into the sheet; optional structured bank reference on recordings (additive migration at the next free number + optional request field)"
         },
         {
           "id": "C-L4-reports-audit",
@@ -1070,10 +1064,6 @@
             {
               "what": "E3 Node 24 upgrade: maintainer decides timing",
               "to": "M8-phase-e:E3-node24-upgrade"
-            },
-            {
-              "what": "Bank reference on recordings: only if the maintainer answers Q-027 yes",
-              "to": "M8-phase-e:E4-bank-reference"
             }
           ]
         }
@@ -1187,6 +1177,50 @@
           "brief": "Review, land, sweep, plan section 8 entry, records commit"
         }
       ]
+    },
+    {
+      "id": "M11-phase-g",
+      "stage": "build",
+      "group": "admin-improvements",
+      "name": "Phase G: client erasure",
+      "track": "all",
+      "weight": 2,
+      "waits": "the maintainer's signal to start (DEC-29); the design in plan section 6 Phase G is a destructive change under RULES rule 11",
+      "delivers": [
+        {
+          "id": "G-erase-guard",
+          "what": "Erasure refused unless invested amount and current value are both zero, with no pending order, payment, withdrawal, open SIP schedule, maturity or maturity offer"
+        },
+        {
+          "id": "G-erase-verified",
+          "what": "Verified client: account kept as a record with no contact details; emails and phones erased everywhere incl. contact-change history; email and phone free for reuse"
+        },
+        {
+          "id": "G-erase-unverified",
+          "what": "Never-verified client: every record of the client deleted in one transaction; refused (kept as a record instead) if any money row exists"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "G-L1-erasure",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Lane g-erasure, only after the maintainer's signal: G1 guard (zero invested and current value, nothing pending or open), G2 verified client kept as a record with every email and phone overwritten everywhere incl. contact history and freed for reuse, G3 never-verified client deleted in one transaction with one PII-free erase audit row, falling back to G2 if any money row exists. Destructive under RULES rule 11: record the table map, pre-flight query and rollback-boundary status in plan section 6 Phase G before release.",
+          "covers": [
+            "G-erase-guard",
+            "G-erase-verified",
+            "G-erase-unverified"
+          ]
+        },
+        {
+          "id": "G-close",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Review, land, sweep, plan section 8 entry, records commit"
+        }
+      ]
     }
   ],
   "other": [
@@ -1205,6 +1239,14 @@
     {
       "commit": "f71d8f7",
       "note": "chore(tools): shared npm cache for the Node 22 container"
+    },
+    {
+      "commit": "fc9d01d",
+      "note": "docs(plan): 2026-11-14 answers recorded and Phase F planned"
+    },
+    {
+      "commit": "1fad527",
+      "note": "docs(plan): decision IDs, Q-026 recorded as DEC-29, Phase G erasure planned"
     }
   ]
 }

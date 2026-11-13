@@ -190,6 +190,106 @@
       "state": "in force",
       "by": "operator",
       "on": "2026-11-13T20:53:21.337Z"
+    },
+    {
+      "id": "DEC-20",
+      "group": "admin-improvements",
+      "text": "Phase F go-ahead: build F1 (recorded date on the admin ledger), F2 (option 3 extends the SIP) and F3 (the admin sends maturity options to a client, who chooses in the app) with the conservative defaults of Q-030 to Q-032: the client's pick waits for the admin to confirm, the admin fills in the figures, and an extension moves the maturity date by the months added unless the admin changes it.",
+      "since": "2026-11-14",
+      "status": "Decided, not built (Phase F, lane f-maturity)",
+      "state": "decided, not built",
+      "by": "operator",
+      "on": "2026-11-13T20:56:54.651Z"
+    },
+    {
+      "id": "DEC-21",
+      "group": "admin-improvements",
+      "text": "Plan plans/admin-improvements.md approved (\"Yes I do\", in answer to approving the plan, committing it, and starting Phase A on tally tracks with their own worktrees). Covers opening tracks and worktrees, installing locked dependencies in them for checks, committing on track branches and landing on local main. Does not cover deployments, APK exports, real customer mail, enabling payments or Phase D's destructive step.",
+      "since": "2026-11-13",
+      "status": "In force",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-13T21:08:35.939Z"
+    },
+    {
+      "id": "DEC-22",
+      "group": "admin-improvements",
+      "text": "AutoPay and normal online payments are turned off and stay disabled until the maintainer decides to activate them. Agents never enable them or change payment configuration.",
+      "since": "2026-11-13",
+      "status": "In force",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-13T21:08:36.164Z"
+    },
+    {
+      "id": "DEC-23",
+      "group": "admin-improvements",
+      "text": "Stay on Node 22; production images run node 22 and CI and the packages pin 22. Local checks run in the pinned Node 22.20.0 / npm 11.16.0 container tools/node22-container/run.sh. The Node 24 upgrade is a separate tested step (E3) whose timing the maintainer decides.",
+      "since": "2026-11-13",
+      "status": "In force",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-13T21:08:36.371Z"
+    },
+    {
+      "id": "DEC-24",
+      "group": "admin-improvements",
+      "text": "G12: old pending online payments created before payments were turned off are marked expired once their pay-by time has passed, only for checkouts never sent to the provider, through the existing expiry path, audited and idempotent, never deleting rows or moving money.",
+      "since": "2026-11-13",
+      "status": "Built (A10)",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-13T21:08:36.587Z"
+    },
+    {
+      "id": "DEC-25",
+      "group": "admin-improvements",
+      "text": "No bank details, payment methods or payment instructions are added or recorded anywhere: not in code, copy, FAQ seeds or emails. The admin records monthly investments under their own category and the client is notified \"Investment added\".",
+      "since": "2026-11-13",
+      "status": "In force",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-13T21:08:36.795Z"
+    },
+    {
+      "id": "DEC-26",
+      "group": "admin-improvements",
+      "text": "When the admin records a monthly or earlier investment, the client is also emailed the amount, fund and date, saying it was added to their app and asking them to check it. Corrections send no email.",
+      "since": "2026-11-13",
+      "status": "Built (B1, B2)",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-13T21:08:37.005Z"
+    },
+    {
+      "id": "DEC-27",
+      "group": "admin-improvements",
+      "text": "\"Complete all the phases that needs code implementation and leave ones out that needs me.\" Phase D, E3, releases and the G11 publish were left out.",
+      "since": "2026-11-13",
+      "status": "Built (Phases C and E1, E2)",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-13T21:08:37.224Z"
+    },
+    {
+      "id": "DEC-28",
+      "group": "admin-improvements",
+      "text": "Question answers are decisions, not tally rules. Tally rules hold only standing constraints that agents must obey, each citing the decision it comes from. Answered questions cite their decision id.",
+      "since": "2026-11-14",
+      "status": "In force",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-13T21:08:37.438Z"
+    },
+    {
+      "id": "DEC-29",
+      "group": "admin-improvements",
+      "text": "Erasing a client (Q-026). Erasure is refused until the client's invested amount and current value are both zero. Their emails and phones are erased everywhere, including the contact-change history. A client who never completed email verification cannot hold money, so erasing them deletes every record of them. A client who completed email verification is kept as a record with no contact details, and their email and phone can be used again for a new sign-up or a new admin-created client.",
+      "since": "2026-11-14",
+      "status": "Decided, not built (Phase G, waits for the maintainer's signal)",
+      "state": "decided, not built",
+      "by": "operator",
+      "on": "2026-11-13T21:08:37.668Z"
     }
   ],
   "replaced": []
