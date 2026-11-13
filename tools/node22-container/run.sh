@@ -12,7 +12,7 @@ work_root="$(git rev-parse --show-toplevel)"
 work_prefix="$(git rev-parse --show-prefix)"
 git_common_dir="$(cd "$(git rev-parse --git-common-dir)" && pwd)"
 socket="/var/run/docker.sock"
-cache_dir="${work_root}/.temp/npm-cache"
+cache_dir="$(dirname "$git_common_dir")/.temp/npm-cache"
 
 if ! docker image inspect "$image" >/dev/null 2>&1; then
   docker build --quiet --tag "$image" "$context_dir" >/dev/null
