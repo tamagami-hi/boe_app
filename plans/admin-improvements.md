@@ -485,9 +485,15 @@ The B3 entry above was written before landing and names the lane's pre-rebase co
   - Q-026 is open.
 - **Not verified.** No browser or device run of any new screen, no notification tapped on a device, no real mail rendered or sent, no APK export, nothing on a VPS.
 
-### C1 nominee (lane `c-nominee`, commits `5563d1b`, `91e8a66` and the review follow-up after them)
+### C1 nominee (lane `c-nominee`, commits `01c6418`, `40067f1` and the two review follow-ups after them)
 
-- **Migration 063** (`063_user_nominee.sql`) adds nullable `users.nominee_name` and `users.nominee_relation`, and `nominee_version integer NOT NULL DEFAULT 0` (a constant default, so the table is not rewritten). Both texts are checked: 2 to 120 characters, stored trimmed, both set or both null, and they must contain no C0 or C1 control characters and no format or line or paragraph separator characters. Those three categories (`\p{Cf}`, `\p{Zl}`, `\p{Zp}`, which include zero-width spaces, direction marks and overrides, and U+FEFF) are listed as explicit code points, matching Unicode 15.1. Each text must also contain a letter or digit, checked as `[[:alnum:]]` under the ICU collation `und-x-icu` (letters and decimal digits). The production image `postgres:16-alpine` ships ICU; the integration suite runs on the same image and accepts a Devanagari name. Every existing row gets nulls and version 0 and is otherwise untouched, so the previous release (v0.15.x) runs against it unchanged. It is additive and not a destructive boundary. `releaseUpgrade` expects 063.
+- **Migration 063** (`063_user_nominee.sql`) adds nullable `users.nominee_name` and `users.nominee_relation`, and `nominee_version integer NOT NULL DEFAULT 0` (a constant default, so the table is not rewritten). Every database check is deterministic and needs no collation or locale:
+  - each text has 2 to 120 characters, is stored trimmed, and both are set or both null;
+  - no C0 or C1 control characters;
+  - no format, line separator or paragraph separator characters (`\p{Cf}`, `\p{Zl}`, `\p{Zp}`: zero-width space, direction marks and overrides, U+2028/2029, BOM), listed as explicit Unicode 15.1 code points;
+  - the exceptions are ZWJ and ZWNJ (U+200D, U+200C). Malayalam, Sinhala and Devanagari names use them, and `full_name` accepts them, so they are allowed inside a text but refused as its first or last character.
+- **Letter rule in the app only.** "Contains at least one letter or number" (`\p{L}` or `\p{N}`) is enforced by the contract and the routes, not by the database. PostgreSQL has no Unicode property classes. A `[[:alnum:]]` check depends on the database's collation, and the ICU collation `und-x-icu` exists only if the cluster was initialised with ICU, which cannot be checked from here. A migration that fails at deploy would block the release, so the database is the backstop for everything except this rule.
+- Every existing row gets nulls and version 0 and is otherwise untouched, so the previous release (v0.15.x) runs against it unchanged. It is additive and not a destructive boundary. `releaseUpgrade` expects 063.
 - **Tombstone.** Nothing in the code writes `users.pii_tombstoned_at` (as `finding-8` and `finding-13` record). So 063 also adds a `BEFORE INSERT OR UPDATE` trigger that clears both nominee fields on any tombstoned row, whoever writes it. The admin write refuses a closed or tombstoned account.
 - **Endpoints** (contract `packages/contracts/src/operations/nominee.ts`):
   - `GET` and `POST /v1/client/profile/nominee` are scoped to the signed-in client, with bearer or client web cookie.
@@ -502,22 +508,23 @@ The B3 entry above was written before landing and names the lane's pre-rebase co
 - **Compatibility.** No existing response key or enum changed; the profile and admin user detail keys, and `users.version`, are asserted unchanged after client and admin nominee edits.
 - **Screens.** A Nominee section on Profile asks for the current password in the same way as the contact-change forms. The client hub user page has a Nominee section too. A failed read shows the shared error state with retry. The admin form holds one key per submit and stays locked on an unknown outcome, with Check again on the same key or a reload.
 - **Tests.**
-  - `userNomineeMigration` (3): the populated upgrade, with previous-release reads and writes through `userRepository` and `adminOversightRepository` (both unchanged since v0.15.4); the database checks, which refuse every `\p{Cf}`, `\p{Zl}` and `\p{Zp}` code point Node knows, in either field, and accept a Devanagari name; the tombstone trigger.
-  - `nominee.integration` (8): own-nominee scoping and audit; wrong password refused before the no-op, then rate limited, nothing written; unauthenticated refusal; `users.version` and the existing responses unchanged; admin permissions with the staff 404; idempotency and stale or non-client refusals; field errors, including zero-width, BOM, direction override, line separator and letterless text; tombstone.
+  - `userNomineeMigration` (3): the populated upgrade, with previous-release reads and writes through `userRepository` and `adminOversightRepository` (both unchanged since v0.15.4); the database checks; the tombstone trigger. The database checks refuse every `\p{Cf}`, `\p{Zl}` and `\p{Zp}` code point Node knows other than the two joiners, in either field. They also refuse a joiner as the first or last character, and accept a Devanagari name and a Malayalam name with an inner ZWJ.
+  - `nominee.integration` (8): own-nominee scoping and audit; wrong password refused before the no-op, then rate limited, nothing written; unauthenticated refusal; `users.version` and the existing responses unchanged; admin permissions with the staff 404; idempotency and stale or non-client refusals; field errors, including zero-width, BOM, direction override, line separator, leading ZWJ, trailing ZWNJ and letterless text; tombstone. The admin path saves and reads back a Malayalam name containing ZWJ.
   - The A8 `userContactHistoryMigration` test now compares its snapshot after applying 061 alone, because later migrations may add columns.
 - **Negative controls.**
   - Dropping the user filter from the nominee update failed the own-nominee test.
   - Dropping the tombstone trigger failed both tombstone tests.
   - Ignoring the password verdict failed the wrong-password test.
   - Bumping `users.version` again on a nominee write failed 3 tests.
-- **Verification (TESTED, Node 22.20.0 container, rebased on `8da4ddb`).**
-  - contracts `npm run check` passed 98 tests, with OpenAPI valid and 153 operations reachable;
+  - Letting the route accept a joiner as the first or last character failed the field-error test, because the database then refuses with a server error.
+  - Refusing joiners everywhere again failed the admin test that saves the Malayalam name.
+- **Verification (TESTED, Node 22.20.0 container, rebased on `5722bc0`, after c-reports).**
+  - contracts `npm run check` passed 98 tests, with OpenAPI valid and 157 operations reachable;
   - backend `npm run check` passed 100 files / 1198 tests;
-  - `npm run test:integration -- --coverage.enabled=false` passed 49 files / 479 tests;
-  - frontend `npm run check` passed 30 files / 261 tests;
+  - `npm run test:integration -- --coverage.enabled=false` passed 50 files / 484 tests;
+  - frontend `npm run check` passed 32 files / 303 tests;
   - `build:client` and `build:admin` passed with the boot checks;
-  - `composition.ts` is at 626 lines.
-- **Open for the maintainer.**
-  - Rejecting every `\p{Cf}` character also refuses ZWJ and ZWNJ (U+200D, U+200C). Some Malayalam, Sinhala or Devanagari typing produces them. Such a name gets a field error and must be retyped without them.
-  - The letter rule accepts letters and decimal digits (`\p{L}`, `\p{Nd}`), not every `\p{N}`, so the API and the ICU check agree exactly.
+  - `composition.ts` is at 626 lines;
+  - `releaseUpgrade` expects 061, 062, 063 and 066.
+- **Open for the maintainer.** None for this lane.
 - **Not verified.** No browser or device run of either section, no APK export, nothing on a VPS.

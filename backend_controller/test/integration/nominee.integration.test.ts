@@ -255,7 +255,7 @@ describe("a client's own nominee", () => {
 describe("the admin nominee endpoints", () => {
   test("allow users.read to read and clients.create to edit client accounts only", async () => {
     const client = await seedClient()
-    const nominee = { name: "सीता देवी", relation: "पत्नी" }
+    const nominee = { name: "ഗോപാല്\u200D കൃഷ്ണൻ", relation: "മകൻ" }
 
     for (const outsider of [support, finance]) {
       expect((await adminGet(client.id, outsider)).statusCode).toBe(403)
@@ -267,7 +267,7 @@ describe("the admin nominee endpoints", () => {
     expect(set.statusCode).toBe(200)
     expect(dataOf<NomineeResponse>(await adminGet(client.id, onboarding))).toEqual({ userId: client.id, nominee, version: 1 })
     expect(await auditRows(client.id)).toMatchObject([
-      { actor_type: "admin", actor_user_id: onboarding.userId, metadata: { change: "added", currentName: "स***" } },
+      { actor_type: "admin", actor_user_id: onboarding.userId, metadata: { change: "added", currentName: "ഗ***" } },
     ])
     expect(errorOf(await adminGet(onboarding.userId)).code).toBe("RESOURCE_NOT_FOUND")
     expect(errorOf(await adminGet(randomUUID())).code).toBe("RESOURCE_NOT_FOUND")
@@ -312,9 +312,11 @@ describe("nominee validation", () => {
     [{ name: "Meera Rao", relation: "Spo\u202euse" }, "relation"],
     [{ name: "Meera Rao", relation: "Spo\u2028use" }, "relation"],
     [{ name: "-- .", relation: "Spouse" }, "name"],
+    [{ name: "\u200DMeera Rao", relation: "Spouse" }, "name"],
+    [{ name: "Meera Rao", relation: "Spouse\u200C" }, "relation"],
   ]
 
-  test("refuses a half nominee, bad lengths, control, invisible or formatting characters and text without a letter", async () => {
+  test("refuses a half nominee, bad lengths, control or invisible characters, edge joiners and text without a letter", async () => {
     const client = await seedClient()
     for (const [payload, field] of refusals) {
       const fromClient = await clientPost(client, payload)

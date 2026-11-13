@@ -19,7 +19,7 @@ import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
 const MIGRATION = "063_user_nominee"
 const ARGON_HASH = "$argon2id$v=19$m=19456,t=2,p=1$c2FsdHNhbHQ$aGFzaGhhc2hoYXNoaGFzaA"
 const NOMINEE_COLUMNS = ["nominee_name", "nominee_relation", "nominee_version"]
-const INVISIBLE = /[\p{Cf}\p{Zl}\p{Zp}]/u
+const INVISIBLE = /(?!\u200C|\u200D)[\p{Cf}\p{Zl}\p{Zp}]/u
 const LAST_CODE_POINT = 0x10ffff
 
 type Row = Record<string, unknown>
@@ -137,7 +137,7 @@ describe("nominee populated upgrade", () => {
     }
   })
 
-  test("refuses a half nominee, untrimmed, control, invisible or letterless text and over-long values in the database", async () => {
+  test("refuses a half nominee, untrimmed, control or invisible text, edge joiners and over-long values in the database", async () => {
     const client = await seedUser("active", true)
     const refused = [
       ["Meera Rao", null],
@@ -148,8 +148,10 @@ describe("nominee populated upgrade", () => {
       ["M", "Spouse"],
       ["x".repeat(121), "Spouse"],
       ["Meera Rao", "x".repeat(121)],
-      ["-- .", "Spouse"],
-      ["Meera Rao", "!!"],
+      ["\u200DMeera Rao", "Spouse"],
+      ["Meera Rao\u200C", "Spouse"],
+      ["Meera Rao", "\u200CSpouse"],
+      ["Meera Rao", "Spouse\u200D"],
       ...invisibleCharacters().flatMap((character) => [
         [`Meera${character}Rao`, "Spouse"],
         ["Meera Rao", `Spo${character}use`],
@@ -165,6 +167,8 @@ describe("nominee populated upgrade", () => {
     expect((await nomineeOf(client)).nominee_name).toBe("x".repeat(120))
     await pool.query("update users set nominee_name = $2, nominee_relation = $3 where id = $1", [client, "सीता देवी", "पत्नी"])
     expect(await nomineeOf(client)).toMatchObject({ nominee_name: "सीता देवी", nominee_relation: "पत्नी" })
+    await pool.query("update users set nominee_name = $2, nominee_relation = $3 where id = $1", [client, "ഗോപാല്\u200D കൃഷ്ണൻ", "മകൻ"])
+    expect(await nomineeOf(client)).toMatchObject({ nominee_name: "ഗോപാല്\u200D കൃഷ്ണൻ", nominee_relation: "മകൻ" })
   })
 
   test("tombstoning a user in the database clears both nominee fields", async () => {

@@ -3,8 +3,8 @@ import { z } from "zod"
 import type { Nominee, NomineeHolder } from "../repositories/userNomineeRepository.js"
 
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]/u
-const WITHOUT_INVISIBLE_CHARACTERS = /^[^\p{Cf}\p{Zl}\p{Zp}]*$/u
-const LETTER_OR_DIGIT = /[\p{L}\p{Nd}]/u
+const VISIBLE_TEXT = /^(?!\u200C|\u200D)(?:[^\p{Cf}\p{Zl}\p{Zp}]|\u200C|\u200D)*(?<!\u200C|\u200D)$/u
+const LETTER_OR_NUMBER = /[\p{L}\p{N}]/u
 const MIN_LENGTH = 2
 const MAX_LENGTH = 120
 
@@ -15,10 +15,10 @@ const nomineeText = z
     message: `must be ${String(MIN_LENGTH)} to ${String(MAX_LENGTH)} characters`,
   })
   .refine((value) => !CONTROL_CHARACTERS.test(value), { message: "must not contain control characters" })
-  .refine((value) => WITHOUT_INVISIBLE_CHARACTERS.test(value), {
-    message: "must not contain invisible or formatting characters",
+  .refine((value) => VISIBLE_TEXT.test(value), {
+    message: "must not contain invisible or formatting characters, or start or end with a joiner",
   })
-  .refine((value) => LETTER_OR_DIGIT.test(value), { message: "must contain a letter or a digit" })
+  .refine((value) => LETTER_OR_NUMBER.test(value), { message: "must contain a letter or a number" })
 
 export const nomineeFields = {
   name: nomineeText.nullable(),

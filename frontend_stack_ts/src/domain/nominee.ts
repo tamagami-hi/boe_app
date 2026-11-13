@@ -13,8 +13,9 @@ export const NOMINEE_MAX_LENGTH = 120
 const FIELDS: readonly NomineeField[] = ["name", "relation"]
 const MIN_LENGTH = 2
 const CONTROL_CHARACTERS = /\p{Cc}/u
-const INVISIBLE_CHARACTERS = /[\p{Cf}\p{Zl}\p{Zp}]/u
-const LETTER_OR_DIGIT = /[\p{L}\p{Nd}]/u
+const INVISIBLE_CHARACTERS = /(?!\u200C|\u200D)[\p{Cf}\p{Zl}\p{Zp}]/u
+const EDGE_JOINER = /^(?:\u200C|\u200D)|(?:\u200C|\u200D)$/u
+const LETTER_OR_NUMBER = /[\p{L}\p{N}]/u
 
 const LENGTH_COPY = `Use between ${String(MIN_LENGTH)} and ${String(NOMINEE_MAX_LENGTH)} characters.`
 
@@ -22,7 +23,9 @@ const CONTROL_COPY = "Remove tabs, line breaks and other control characters."
 
 const INVISIBLE_COPY = "Remove invisible characters, such as zero-width spaces or direction marks."
 
-const LETTER_COPY = "Include at least one letter or digit."
+const EDGE_JOINER_COPY = "A joining character cannot be the first or last character."
+
+const LETTER_COPY = "Include at least one letter or number."
 
 const PAIR_COPY: Readonly<Record<NomineeField, string>> = {
   name: "Enter the nominee's name too, or clear both fields.",
@@ -41,7 +44,8 @@ const textProblem = (value: string): string | null => {
   if (length < MIN_LENGTH || length > NOMINEE_MAX_LENGTH) return LENGTH_COPY
   if (CONTROL_CHARACTERS.test(value)) return CONTROL_COPY
   if (INVISIBLE_CHARACTERS.test(value)) return INVISIBLE_COPY
-  return LETTER_OR_DIGIT.test(value) ? null : LETTER_COPY
+  if (EDGE_JOINER.test(value)) return EDGE_JOINER_COPY
+  return LETTER_OR_NUMBER.test(value) ? null : LETTER_COPY
 }
 
 export const nomineeInput = (draft: NomineeDraft): NomineeInput | null => {

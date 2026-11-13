@@ -5,10 +5,10 @@ import { FullName, PasswordInput, Uuid } from "../scalars.js"
 import { ADMIN_READ_ERRORS, ADMIN_WRITE_ERRORS, RequiredAdminMutationHeaders } from "./admin-shared.js"
 import { defineOperation, MAX_JSON_BODY_BYTES } from "./descriptor.js"
 
-const WITHOUT_INVISIBLE_CHARACTERS = /^[^\p{Cf}\p{Zl}\p{Zp}]*$/u
-const LETTER_OR_DIGIT = /[\p{L}\p{Nd}]/u
+const VISIBLE_TEXT = /^(?!\u200C|\u200D)(?:[^\p{Cf}\p{Zl}\p{Zp}]|\u200C|\u200D)*(?<!\u200C|\u200D)$/u
+const LETTER_OR_NUMBER = /[\p{L}\p{N}]/u
 
-export const NomineeText = FullName.regex(WITHOUT_INVISIBLE_CHARACTERS).regex(LETTER_OR_DIGIT)
+export const NomineeText = FullName.regex(VISIBLE_TEXT).regex(LETTER_OR_NUMBER)
 export type NomineeText = z.infer<typeof NomineeText>
 
 export const NomineeName = NomineeText

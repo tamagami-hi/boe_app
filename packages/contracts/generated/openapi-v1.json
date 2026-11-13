@@ -36808,11 +36808,11 @@
                           "properties": {
                             "name": {
                               "type": "string",
-                              "pattern": "^[^\\p{Cf}\\p{Zl}\\p{Zp}]*$/u"
+                              "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
                             },
                             "relation": {
                               "type": "string",
-                              "pattern": "^[^\\p{Cf}\\p{Zl}\\p{Zp}]*$/u"
+                              "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
                             }
                           },
                           "required": [
@@ -36924,11 +36924,11 @@
                     "properties": {
                       "name": {
                         "type": "string",
-                        "pattern": "^[^\\p{Cf}\\p{Zl}\\p{Zp}]*$/u"
+                        "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
                       },
                       "relation": {
                         "type": "string",
-                        "pattern": "^[^\\p{Cf}\\p{Zl}\\p{Zp}]*$/u"
+                        "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
                       },
                       "currentPassword": {
                         "type": "string"
@@ -36995,11 +36995,11 @@
                           "properties": {
                             "name": {
                               "type": "string",
-                              "pattern": "^[^\\p{Cf}\\p{Zl}\\p{Zp}]*$/u"
+                              "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
                             },
                             "relation": {
                               "type": "string",
-                              "pattern": "^[^\\p{Cf}\\p{Zl}\\p{Zp}]*$/u"
+                              "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
                             }
                           },
                           "required": [
@@ -37180,11 +37180,11 @@
                           "properties": {
                             "name": {
                               "type": "string",
-                              "pattern": "^[^\\p{Cf}\\p{Zl}\\p{Zp}]*$/u"
+                              "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
                             },
                             "relation": {
                               "type": "string",
-                              "pattern": "^[^\\p{Cf}\\p{Zl}\\p{Zp}]*$/u"
+                              "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
                             }
                           },
                           "required": [
@@ -37353,11 +37353,11 @@
                     "properties": {
                       "name": {
                         "type": "string",
-                        "pattern": "^[^\\p{Cf}\\p{Zl}\\p{Zp}]*$/u"
+                        "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
                       },
                       "relation": {
                         "type": "string",
-                        "pattern": "^[^\\p{Cf}\\p{Zl}\\p{Zp}]*$/u"
+                        "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
                       },
                       "expectedVersion": {
                         "type": "integer",
@@ -37426,11 +37426,11 @@
                           "properties": {
                             "name": {
                               "type": "string",
-                              "pattern": "^[^\\p{Cf}\\p{Zl}\\p{Zp}]*$/u"
+                              "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
                             },
                             "relation": {
                               "type": "string",
-                              "pattern": "^[^\\p{Cf}\\p{Zl}\\p{Zp}]*$/u"
+                              "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
                             }
                           },
                           "required": [
