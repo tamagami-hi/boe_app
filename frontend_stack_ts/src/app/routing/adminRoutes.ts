@@ -242,6 +242,16 @@ export const ADMIN_ROUTES: RouteManifest = [
     back: { kind: "parent", path: "/client-values" },
   },
   {
+    id: "client-values-payment-sheet",
+    path: "/client-values/payment-sheet",
+    title: "Monthly payments",
+    access: "session",
+    role: "admin",
+    permissions: ["client_position.write"],
+    element: () => import("~/features/admin/payment-sheet/PaymentSheetScreen"),
+    back: { kind: "parent", path: "/client-values" },
+  },
+  {
     id: "client-values-position",
     path: "/client-values/position",
     title: "One investor's position",
@@ -485,6 +495,7 @@ export const ADMIN_LINK_MAP: Readonly<Record<string, readonly string[]>> = {
   aum: ["aum-collective", "fund-aum", "fund-aum-history"],
   "client-values": [
     "client-values-monthly",
+    "client-values-payment-sheet",
     "client-values-individual",
     "client-values-collective",
     "client-values-position",

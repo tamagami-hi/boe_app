@@ -19,6 +19,12 @@ const ENTRIES = [
     requires: ["client_values.read", "client_growth.write"],
   },
   {
+    to: "/client-values/payment-sheet",
+    title: "Monthly payments",
+    hint: "Record a month of SIP payments for every client in one sheet, or paste them in. Each row is recorded on its own and every client is notified.",
+    requires: ["client_position.write"],
+  },
+  {
     to: "/client-values/individual",
     title: "One investor",
     hint: "Adjust a single position by an amount or a rate. Written straight to the ledger.",
