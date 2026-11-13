@@ -157,8 +157,8 @@ const AppConfigBuilderScreen = (): React.ReactElement => {
       {failure?.kind === "unknown" ? (
         <Alert tone="warning" title="Outcome unknown" action={reloadAction}>
           The reply did not arrive, so it is not known whether this configuration was published. Check
-          the published version before publishing again. Publishing the same text again is safe: it
-          cannot create a second version.
+          the published version before publishing again. Publishing the unchanged draft again is safe:
+          it cannot create a second version.
         </Alert>
       ) : null}
       {failure?.kind === "rejected" ? (

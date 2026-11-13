@@ -66,11 +66,6 @@ type QueueEntry = (typeof QUEUE_ENTRIES)[number]
 type QueueList = PagedQuery<{ items: readonly unknown[] }>
 type QueueProps = Readonly<{ entry: QueueEntry; canOpen: boolean }>
 
-/**
- * There is no count endpoint, so a tile can only report what it has read. A
- * queue with another page behind it is shown as "25+" rather than as a total
- * that happens to equal the page size.
- */
 const depth = (list: QueueList, data: Readonly<{ items: readonly unknown[] }>): string =>
   `${String(data.items.length)}${list.hasMore ? "+" : ""}`
 
