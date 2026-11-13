@@ -9,6 +9,7 @@ import { createAdminSipScheduleRepository } from "../repositories/adminSipSchedu
 import { createClientReturnsRepository } from "../repositories/clientReturnsRepository.js"
 import { createFundAumRepository } from "../repositories/fundAumRepository.js"
 import { createMaturityRepository } from "../repositories/maturityRepository.js"
+import { createMonthlyRecordingSheetRepository } from "../repositories/monthlyRecordingSheetRepository.js"
 import { createUserNomineeRepository } from "../repositories/userNomineeRepository.js"
 import { registerAdminAuditTrailRoutes } from "../routes/adminAuditTrailRoutes.js"
 import { registerAdminAumRoutes } from "../routes/adminAumRoutes.js"
@@ -22,6 +23,7 @@ import { registerAdminIdentityRoutes, type AdminIdentityDeps } from "../routes/a
 import { registerAdminMaturityRoutes, type AdminMaturityDeps } from "../routes/adminMaturityRoutes.js"
 import { registerAdminNomineeRoutes } from "../routes/adminNomineeRoutes.js"
 import { registerAdminOversightRoutes, type AdminOversightDeps } from "../routes/adminOversightRoutes.js"
+import { registerAdminRecordingSheetRoutes } from "../routes/adminRecordingSheetRoutes.js"
 import { registerAdminReportRoutes } from "../routes/adminReportRoutes.js"
 import { registerAdminReviewRoutes, type AdminReviewDeps } from "../routes/adminReviewRoutes.js"
 import { registerAdminSipScheduleRoutes } from "../routes/adminSipScheduleRoutes.js"
@@ -213,6 +215,7 @@ export const registerAdminSurface = (application: FastifyInstance, deps: AdminSu
   const readDeps = { webAuth, database, clock, config: { cursorKey: serverConfig.cursorKey } }
   registerAdminReportRoutes(application, { ...readDeps, accountingReportRepository: createAccountingReportRepository() })
   registerAdminAuditTrailRoutes(application, { ...readDeps, auditTrailRepository: createAuditTrailRepository() })
+  registerAdminRecordingSheetRoutes(application, { ...readDeps, recordingSheetRepository: createMonthlyRecordingSheetRepository() })
 
   registerAdminMaturityRoutes(application, {
     webAuth,

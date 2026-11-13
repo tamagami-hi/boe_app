@@ -2436,6 +2436,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/recording-sheet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listAdminRecordingSheet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -22705,6 +22721,127 @@ export interface operations {
             };
             /** @description Error */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listAdminRecordingSheet: {
+        parameters: {
+            query: {
+                month: string;
+                fundId?: string;
+                after?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            month: string;
+                            items: {
+                                /** Format: uuid */
+                                scheduleId: string;
+                                /** Format: uuid */
+                                userId: string;
+                                clientName: string;
+                                clientEmail: string;
+                                /** Format: uuid */
+                                fundId: string;
+                                fundName: string;
+                                monthlyAmountPaise: string;
+                                startMonth: string;
+                                monthCount: number;
+                                recorded: {
+                                    /** Format: uuid */
+                                    entryId: string;
+                                    amountPaise: string;
+                                    /** Format: date */
+                                    effectiveDate: string;
+                                    /** Format: date-time */
+                                    recordedAt: string;
+                                } | null;
+                            }[];
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                            page: {
+                                nextCursor: string | null;
+                                limit: number;
+                                hasMore: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
