@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 
 import { Modal } from "~/app/overlays/Modal"
@@ -10,21 +11,38 @@ import { ADMIN_CELL_LINK } from "~/ui/recipes/admin"
 import { ENTRY_TEXT, LIST_ROOT, LIST_ROW } from "~/ui/recipes/datalist"
 import { BODY_SM, META_TEXT } from "~/ui/recipes/text"
 
-import { dueBadgeOf, dueTextOf, formatMaturityDate } from "./maturityPresentation"
+import { MaturityActionButtons, MaturityActionDialog, type MaturityAction } from "./MaturityActions"
+import { dueBadgeOf, dueTextOf, formatMaturityDate, offerStatusText } from "./maturityPresentation"
 import { useDueMaturities } from "./maturityQueries"
 
 export type MaturityDuePromptProps = Readonly<{ dismissed: boolean; onDismiss: () => void }>
 
 const READ_PERMISSIONS = ["client_position.write", "client_values.read"] as const
+const WRITE_PERMISSIONS = ["client_position.write"] as const
 
 export const MaturityDuePrompt = ({ dismissed, onDismiss }: MaturityDuePromptProps): React.ReactElement | null => {
   const { hasAnyPermission } = useSession()
   const navigate = useNavigate()
   const canRead = hasAnyPermission(READ_PERMISSIONS)
+  const canWrite = hasAnyPermission(WRITE_PERMISSIONS)
   const due = useDueMaturities(canRead && !dismissed)
+  const [acting, setActing] = useState<MaturityAction | null>(null)
   const hasDue = due.data !== undefined && due.data.total > 0
   const readFailed = due.data === undefined && due.isError
-  if (!canRead || dismissed || (!hasDue && !readFailed)) return null
+  if (!canRead || dismissed) return null
+  if (acting !== null) {
+    return (
+      <MaturityActionDialog
+        key={`${acting.schedule.scheduleId}-${acting.kind}`}
+        userId={acting.schedule.userId}
+        action={acting}
+        onClose={() => {
+          setActing(null)
+        }}
+      />
+    )
+  }
+  if (!hasDue && !readFailed) return null
 
   const openDashboard = (): void => {
     onDismiss()
@@ -35,7 +53,7 @@ export const MaturityDuePrompt = ({ dismissed, onDismiss }: MaturityDuePromptPro
     <Modal
       open
       title="Maturities need your decision"
-      description="Nothing is paid out or reinvested until you resolve each one. This reminder returns the next time the console opens."
+      description="Nothing is paid out or reinvested until you resolve each one or confirm the client's choice. This reminder returns the next time the console opens."
       onDismiss={onDismiss}
       actions={
         <>
@@ -50,11 +68,12 @@ export const MaturityDuePrompt = ({ dismissed, onDismiss }: MaturityDuePromptPro
         {(data) => (
           <>
             <p className={BODY_SM}>
-              {`${String(data.total)} ${data.total === 1 ? "holding matures" : "holdings mature"} by ${formatMaturityDate(data.dueThrough)} or ${data.total === 1 ? "is" : "are"} overdue. Open a client to choose how to resolve it.`}
+              {`${String(data.total)} ${data.total === 1 ? "holding matures" : "holdings mature"} by ${formatMaturityDate(data.dueThrough)} or ${data.total === 1 ? "is" : "are"} overdue. Resolve each one after talking to the client, or send the options so the client can choose in the app.`}
             </p>
             <ul className={LIST_ROOT}>
               {data.items.map((item) => {
                 const badge = dueBadgeOf(item)
+                const offerText = offerStatusText(item.offer)
                 return (
                   <li key={item.scheduleId} className={LIST_ROW}>
                     <span className={ENTRY_TEXT}>
@@ -64,6 +83,8 @@ export const MaturityDuePrompt = ({ dismissed, onDismiss }: MaturityDuePromptPro
                       <span className={META_TEXT}>
                         {`${item.fundName}, ${formatMaturityDate(item.maturityDate)}, ${dueTextOf(item)}`}
                       </span>
+                      {offerText === null ? null : <span className={META_TEXT}>{offerText}</span>}
+                      {canWrite ? <MaturityActionButtons schedule={item} onAct={setActing} /> : null}
                     </span>
                     <Badge tone={badge.tone}>{badge.label}</Badge>
                   </li>

@@ -68,6 +68,11 @@ export const MaturityDateForm = ({ userId, funds, editing, onReload, onClose }: 
     <Card elevated>
       <div className={STACK_LG}>
         <HeldWriteNotice write={write} subject="the maturity date was saved" onReload={onReload} />
+        {editing?.offer == null ? null : (
+          <Alert tone="warning" title="Options were sent for this date">
+            Changing the date closes them, and the client stops seeing them. Send new options afterwards if needed.
+          </Alert>
+        )}
         <div className={ADMIN_FORM_GRID}>
           <FormField label="Holding" required>
             {({ id }) => (

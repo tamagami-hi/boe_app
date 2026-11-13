@@ -2548,6 +2548,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/clients/{userId}/maturity-schedules/{scheduleId}/offers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["sendAdminMaturityOptions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/clients/{userId}/maturity-schedules/{scheduleId}/offers/{offerId}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["withdrawAdminMaturityOffer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/clients/{userId}/maturity-schedules/{scheduleId}/offers/{offerId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["confirmAdminMaturityOffer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/client/maturity-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listClientMaturityOffers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/client/maturity-options/{offerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getClientMaturityOffer"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/client/maturity-options/{offerId}/choice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["chooseClientMaturityOption"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -15621,7 +15717,7 @@ export interface operations {
         parameters: {
             query?: {
                 state?: "queued" | "sending" | "sent" | "delivered" | "retryable_failed" | "permanent_failed" | "cancelled";
-                templateKey?: "application_rejected" | "account_approved" | "password_set_link" | "password_reset_link" | "password_app_download" | "contact_phone_changed" | "email_change_code" | "contact_email_changed" | "admin_message" | "app_update_notice" | "investment_recorded";
+                templateKey?: "application_rejected" | "account_approved" | "password_set_link" | "password_reset_link" | "password_app_download" | "contact_phone_changed" | "email_change_code" | "contact_email_changed" | "admin_message" | "app_update_notice" | "investment_recorded" | "maturity_options";
                 applicationId?: string;
                 userId?: string;
                 after?: string;
@@ -23025,6 +23121,26 @@ export interface operations {
                                 resolvedAt: string | null;
                                 /** Format: date-time */
                                 cancelledAt: string | null;
+                                offer: {
+                                    /** Format: uuid */
+                                    offerId: string;
+                                    version: number;
+                                    /** Format: date-time */
+                                    sentAt: string;
+                                    chosenOption: string | null;
+                                    /** Format: date-time */
+                                    chosenAt: string | null;
+                                    sip: {
+                                        monthlyAmountPaise: string;
+                                        startMonth: string;
+                                        monthCount: number;
+                                    };
+                                    extension: {
+                                        months: number;
+                                        /** Format: date */
+                                        nextMaturityDate: string;
+                                    } | null;
+                                } | null;
                             }[];
                         };
                         error: null;
@@ -23154,6 +23270,26 @@ export interface operations {
                                 resolvedAt: string | null;
                                 /** Format: date-time */
                                 cancelledAt: string | null;
+                                offer: {
+                                    /** Format: uuid */
+                                    offerId: string;
+                                    version: number;
+                                    /** Format: date-time */
+                                    sentAt: string;
+                                    chosenOption: string | null;
+                                    /** Format: date-time */
+                                    chosenAt: string | null;
+                                    sip: {
+                                        monthlyAmountPaise: string;
+                                        startMonth: string;
+                                        monthCount: number;
+                                    };
+                                    extension: {
+                                        months: number;
+                                        /** Format: date */
+                                        nextMaturityDate: string;
+                                    } | null;
+                                } | null;
                             }[];
                         };
                         error: null;
@@ -23272,6 +23408,26 @@ export interface operations {
                                 resolvedAt: string | null;
                                 /** Format: date-time */
                                 cancelledAt: string | null;
+                                offer: {
+                                    /** Format: uuid */
+                                    offerId: string;
+                                    version: number;
+                                    /** Format: date-time */
+                                    sentAt: string;
+                                    chosenOption: string | null;
+                                    /** Format: date-time */
+                                    chosenAt: string | null;
+                                    sip: {
+                                        monthlyAmountPaise: string;
+                                        startMonth: string;
+                                        monthCount: number;
+                                    };
+                                    extension: {
+                                        months: number;
+                                        /** Format: date */
+                                        nextMaturityDate: string;
+                                    } | null;
+                                } | null;
                             }[];
                         };
                         error: null;
@@ -23402,6 +23558,26 @@ export interface operations {
                                 resolvedAt: string | null;
                                 /** Format: date-time */
                                 cancelledAt: string | null;
+                                offer: {
+                                    /** Format: uuid */
+                                    offerId: string;
+                                    version: number;
+                                    /** Format: date-time */
+                                    sentAt: string;
+                                    chosenOption: string | null;
+                                    /** Format: date-time */
+                                    chosenAt: string | null;
+                                    sip: {
+                                        monthlyAmountPaise: string;
+                                        startMonth: string;
+                                        monthCount: number;
+                                    };
+                                    extension: {
+                                        months: number;
+                                        /** Format: date */
+                                        nextMaturityDate: string;
+                                    } | null;
+                                } | null;
                             };
                         };
                         error: null;
@@ -23568,6 +23744,26 @@ export interface operations {
                                 resolvedAt: string | null;
                                 /** Format: date-time */
                                 cancelledAt: string | null;
+                                offer: {
+                                    /** Format: uuid */
+                                    offerId: string;
+                                    version: number;
+                                    /** Format: date-time */
+                                    sentAt: string;
+                                    chosenOption: string | null;
+                                    /** Format: date-time */
+                                    chosenAt: string | null;
+                                    sip: {
+                                        monthlyAmountPaise: string;
+                                        startMonth: string;
+                                        monthCount: number;
+                                    };
+                                    extension: {
+                                        months: number;
+                                        /** Format: date */
+                                        nextMaturityDate: string;
+                                    } | null;
+                                } | null;
                             };
                         };
                         error: null;
@@ -23732,6 +23928,26 @@ export interface operations {
                                 resolvedAt: string | null;
                                 /** Format: date-time */
                                 cancelledAt: string | null;
+                                offer: {
+                                    /** Format: uuid */
+                                    offerId: string;
+                                    version: number;
+                                    /** Format: date-time */
+                                    sentAt: string;
+                                    chosenOption: string | null;
+                                    /** Format: date-time */
+                                    chosenAt: string | null;
+                                    sip: {
+                                        monthlyAmountPaise: string;
+                                        startMonth: string;
+                                        monthCount: number;
+                                    };
+                                    extension: {
+                                        months: number;
+                                        /** Format: date */
+                                        nextMaturityDate: string;
+                                    } | null;
+                                } | null;
                             };
                         };
                         error: null;
@@ -23874,12 +24090,12 @@ export interface operations {
                     };
                 } | {
                     /** @enum {string} */
-                    resolution: "sip_reinvestment";
+                    resolution: "sip_extension";
                     expectedVersion: number;
-                    sip: {
-                        monthlyAmountPaise: string;
-                        startMonth: string;
-                        monthCount: number;
+                    extension: {
+                        months: number;
+                        /** Format: date */
+                        nextMaturityDate: string;
                     };
                 };
             };
@@ -23923,6 +24139,26 @@ export interface operations {
                                 resolvedAt: string | null;
                                 /** Format: date-time */
                                 cancelledAt: string | null;
+                                offer: {
+                                    /** Format: uuid */
+                                    offerId: string;
+                                    version: number;
+                                    /** Format: date-time */
+                                    sentAt: string;
+                                    chosenOption: string | null;
+                                    /** Format: date-time */
+                                    chosenAt: string | null;
+                                    sip: {
+                                        monthlyAmountPaise: string;
+                                        startMonth: string;
+                                        monthCount: number;
+                                    };
+                                    extension: {
+                                        months: number;
+                                        /** Format: date */
+                                        nextMaturityDate: string;
+                                    } | null;
+                                } | null;
                             };
                             /** Format: uuid */
                             settlementEntryId: string | null;
@@ -23930,6 +24166,8 @@ export interface operations {
                             payoutId: string | null;
                             /** Format: uuid */
                             closedSipScheduleId: string | null;
+                            /** Format: uuid */
+                            nextScheduleId: string | null;
                         };
                         error: null;
                         meta: {
@@ -24025,6 +24263,938 @@ export interface operations {
             };
             /** @description Error */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    sendAdminMaturityOptions: {
+        parameters: {
+            query?: never;
+            header: {
+                "idempotency-key": string;
+                "x-csrf-token": string;
+            };
+            path: {
+                userId: string;
+                scheduleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    sip: {
+                        monthlyAmountPaise: string;
+                        startMonth: string;
+                        monthCount: number;
+                    };
+                    extension: {
+                        months: number;
+                        /** Format: date */
+                        nextMaturityDate: string;
+                    } | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            schedule: {
+                                /** Format: uuid */
+                                scheduleId: string;
+                                /** Format: uuid */
+                                userId: string;
+                                clientName: string;
+                                /** Format: uuid */
+                                fundId: string;
+                                fundName: string;
+                                /** Format: date */
+                                maturityDate: string;
+                                state: string;
+                                resolution: string | null;
+                                dueStatus: string;
+                                daysUntil: number;
+                                /** Format: uuid */
+                                maturityId: string | null;
+                                /** Format: uuid */
+                                followUpSipScheduleId: string | null;
+                                version: number;
+                                /** Format: date-time */
+                                createdAt: string;
+                                /** Format: date-time */
+                                updatedAt: string;
+                                /** Format: date-time */
+                                resolvedAt: string | null;
+                                /** Format: date-time */
+                                cancelledAt: string | null;
+                                offer: {
+                                    /** Format: uuid */
+                                    offerId: string;
+                                    version: number;
+                                    /** Format: date-time */
+                                    sentAt: string;
+                                    chosenOption: string | null;
+                                    /** Format: date-time */
+                                    chosenAt: string | null;
+                                    sip: {
+                                        monthlyAmountPaise: string;
+                                        startMonth: string;
+                                        monthCount: number;
+                                    };
+                                    extension: {
+                                        months: number;
+                                        /** Format: date */
+                                        nextMaturityDate: string;
+                                    } | null;
+                                } | null;
+                            };
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    withdrawAdminMaturityOffer: {
+        parameters: {
+            query?: never;
+            header: {
+                "idempotency-key": string;
+                "x-csrf-token": string;
+            };
+            path: {
+                userId: string;
+                scheduleId: string;
+                offerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    offerVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            schedule: {
+                                /** Format: uuid */
+                                scheduleId: string;
+                                /** Format: uuid */
+                                userId: string;
+                                clientName: string;
+                                /** Format: uuid */
+                                fundId: string;
+                                fundName: string;
+                                /** Format: date */
+                                maturityDate: string;
+                                state: string;
+                                resolution: string | null;
+                                dueStatus: string;
+                                daysUntil: number;
+                                /** Format: uuid */
+                                maturityId: string | null;
+                                /** Format: uuid */
+                                followUpSipScheduleId: string | null;
+                                version: number;
+                                /** Format: date-time */
+                                createdAt: string;
+                                /** Format: date-time */
+                                updatedAt: string;
+                                /** Format: date-time */
+                                resolvedAt: string | null;
+                                /** Format: date-time */
+                                cancelledAt: string | null;
+                                offer: {
+                                    /** Format: uuid */
+                                    offerId: string;
+                                    version: number;
+                                    /** Format: date-time */
+                                    sentAt: string;
+                                    chosenOption: string | null;
+                                    /** Format: date-time */
+                                    chosenAt: string | null;
+                                    sip: {
+                                        monthlyAmountPaise: string;
+                                        startMonth: string;
+                                        monthCount: number;
+                                    };
+                                    extension: {
+                                        months: number;
+                                        /** Format: date */
+                                        nextMaturityDate: string;
+                                    } | null;
+                                } | null;
+                            };
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    confirmAdminMaturityOffer: {
+        parameters: {
+            query?: never;
+            header: {
+                "idempotency-key": string;
+                "x-csrf-token": string;
+            };
+            path: {
+                userId: string;
+                scheduleId: string;
+                offerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    option: "return_all";
+                    expectedVersion: number;
+                    offerVersion: number;
+                    /** Format: date */
+                    effectiveDate: string;
+                    amountPaise: string;
+                } | {
+                    /** @enum {string} */
+                    option: "one_time_and_sip";
+                    expectedVersion: number;
+                    offerVersion: number;
+                    /** Format: date */
+                    effectiveDate: string;
+                    expectedPrincipalPaise: string;
+                    expectedCurrentValuePaise: string;
+                } | {
+                    /** @enum {string} */
+                    option: "sip_extension";
+                    expectedVersion: number;
+                    offerVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            schedule: {
+                                /** Format: uuid */
+                                scheduleId: string;
+                                /** Format: uuid */
+                                userId: string;
+                                clientName: string;
+                                /** Format: uuid */
+                                fundId: string;
+                                fundName: string;
+                                /** Format: date */
+                                maturityDate: string;
+                                state: string;
+                                resolution: string | null;
+                                dueStatus: string;
+                                daysUntil: number;
+                                /** Format: uuid */
+                                maturityId: string | null;
+                                /** Format: uuid */
+                                followUpSipScheduleId: string | null;
+                                version: number;
+                                /** Format: date-time */
+                                createdAt: string;
+                                /** Format: date-time */
+                                updatedAt: string;
+                                /** Format: date-time */
+                                resolvedAt: string | null;
+                                /** Format: date-time */
+                                cancelledAt: string | null;
+                                offer: {
+                                    /** Format: uuid */
+                                    offerId: string;
+                                    version: number;
+                                    /** Format: date-time */
+                                    sentAt: string;
+                                    chosenOption: string | null;
+                                    /** Format: date-time */
+                                    chosenAt: string | null;
+                                    sip: {
+                                        monthlyAmountPaise: string;
+                                        startMonth: string;
+                                        monthCount: number;
+                                    };
+                                    extension: {
+                                        months: number;
+                                        /** Format: date */
+                                        nextMaturityDate: string;
+                                    } | null;
+                                } | null;
+                            };
+                            /** Format: uuid */
+                            settlementEntryId: string | null;
+                            /** Format: uuid */
+                            payoutId: string | null;
+                            /** Format: uuid */
+                            closedSipScheduleId: string | null;
+                            /** Format: uuid */
+                            nextScheduleId: string | null;
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listClientMaturityOffers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            items: {
+                                /** Format: uuid */
+                                offerId: string;
+                                /** Format: uuid */
+                                fundId: string;
+                                fundName: string;
+                                maturityDate: string;
+                                state: string;
+                                version: number;
+                                /** Format: date-time */
+                                sentAt: string;
+                                chosenOption: string | null;
+                                /** Format: date-time */
+                                chosenAt: string | null;
+                                sip: {
+                                    monthlyAmountPaise: string;
+                                    startMonth: string;
+                                    monthCount: number;
+                                };
+                                extension: {
+                                    months: number;
+                                    /** Format: date */
+                                    nextMaturityDate: string;
+                                } | null;
+                            }[];
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getClientMaturityOffer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            offer: {
+                                /** Format: uuid */
+                                offerId: string;
+                                /** Format: uuid */
+                                fundId: string;
+                                fundName: string;
+                                maturityDate: string;
+                                state: string;
+                                version: number;
+                                /** Format: date-time */
+                                sentAt: string;
+                                chosenOption: string | null;
+                                /** Format: date-time */
+                                chosenAt: string | null;
+                                sip: {
+                                    monthlyAmountPaise: string;
+                                    startMonth: string;
+                                    monthCount: number;
+                                };
+                                extension: {
+                                    months: number;
+                                    /** Format: date */
+                                    nextMaturityDate: string;
+                                } | null;
+                            };
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chooseClientMaturityOption: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    option: "return_all" | "one_time_and_sip" | "sip_extension";
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            offer: {
+                                /** Format: uuid */
+                                offerId: string;
+                                /** Format: uuid */
+                                fundId: string;
+                                fundName: string;
+                                maturityDate: string;
+                                state: string;
+                                version: number;
+                                /** Format: date-time */
+                                sentAt: string;
+                                chosenOption: string | null;
+                                /** Format: date-time */
+                                chosenAt: string | null;
+                                sip: {
+                                    monthlyAmountPaise: string;
+                                    startMonth: string;
+                                    monthCount: number;
+                                };
+                                extension: {
+                                    months: number;
+                                    /** Format: date */
+                                    nextMaturityDate: string;
+                                } | null;
+                            };
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };

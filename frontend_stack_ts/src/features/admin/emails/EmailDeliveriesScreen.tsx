@@ -40,6 +40,7 @@ const TEMPLATES = [
   { value: "admin_message", label: "Admin message" },
   { value: "app_update_notice", label: "App update notice" },
   { value: "investment_recorded", label: "Investment added" },
+  { value: "maturity_options", label: "Maturity options" },
 ] as const
 
 const EmailDeliveriesScreen = (): React.ReactElement => {

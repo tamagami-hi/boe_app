@@ -1,8 +1,9 @@
 import { formatINR, toPaise } from "~/domain/money"
 
+import { formatMaturityDate } from "./maturityPresentation"
 import type { MaturityResolution } from "./maturityQueries"
 
-export type Choice = "return_all" | "one_time_and_sip" | "sip_reinvestment"
+export type Choice = "return_all" | "one_time_and_sip" | "sip_extension"
 
 export type HoldingFigures = Readonly<{ principalPaise: string; currentValuePaise: string }>
 
@@ -27,7 +28,7 @@ export const explanationOf = (choice: Choice, holding: HoldingFigures | null): s
           : `The value is ${money((-gain).toString())} below the amount invested, so confirming writes that loss into the amount invested.`
     return `The current value becomes the amount invested from the settlement date. ${effect} Nothing is paid out. Any active SIP schedule shown below is closed, and the new one starts as entered; nothing is collected automatically.`
   }
-  return "Nothing is paid out and no ledger entry is written: the holding keeps its value and its amount invested. Any active SIP schedule shown below is closed, and the new one starts as entered. Record each month's payment when the client pays, and do not record the matured money again."
+  return "Nothing is paid out and no ledger entry is written: the holding keeps its value and its amount invested. The active SIP schedule shown below gets the extra months, and a new maturity date is set for this holding. Record each month's payment when the client pays."
 }
 
 export const resolutionOutcomeText = (result: MaturityResolution): string => {
@@ -42,5 +43,10 @@ export const resolutionOutcomeText = (result: MaturityResolution): string => {
         : "The matured value is now the amount invested."
     return `${ledger} The new SIP schedule has started.${replaced}`
   }
-  return `No money moved and the holding is unchanged. The new SIP schedule has started.${replaced}`
+  return result.nextScheduleId === null
+    ? "No money moved and the holding is unchanged."
+    : "No money moved and the holding is unchanged. The SIP schedule has the extra months, and the next maturity date is set."
 }
+
+export const extensionSummary = (extension: Readonly<{ months: number; nextMaturityDate: string }>): string =>
+  `Add ${String(extension.months)} ${extension.months === 1 ? "month" : "months"} to the SIP; next maturity ${formatMaturityDate(extension.nextMaturityDate)}`

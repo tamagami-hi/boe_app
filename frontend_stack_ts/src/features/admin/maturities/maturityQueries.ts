@@ -4,12 +4,15 @@ import type { z } from "zod"
 
 import {
   cancelAdminClientMaturity,
+  confirmAdminMaturityOffer,
   editAdminClientMaturityDate,
   listAdminClientMaturitySchedules,
   listAdminDueMaturities,
   listAdminMaturities,
   resolveAdminClientMaturity,
+  sendAdminMaturityOptions,
   setAdminClientMaturityDate,
+  withdrawAdminMaturityOffer,
 } from "~/api/generated/operations"
 import type { DataOf } from "~/api/http"
 import { usePagedQuery } from "~/api/paged"
@@ -24,6 +27,9 @@ export type MaturityDashboardState = "scheduled" | "resolved" | "cancelled"
 export type SavedMaturitySchedule = DataOf<typeof setAdminClientMaturityDate>["schedule"]
 export type MaturityResolution = DataOf<typeof resolveAdminClientMaturity>
 export type ResolveMaturityBody = z.input<typeof resolveAdminClientMaturity.request.body>
+export type MaturityOfferSummary = NonNullable<MaturityScheduleItem["offer"]>
+export type SendMaturityOptionsBody = z.input<typeof sendAdminMaturityOptions.request.body>
+export type ConfirmMaturityOfferBody = z.input<typeof confirmAdminMaturityOffer.request.body>
 
 type Keyed<T> = T & Readonly<{ idempotencyKey: string }>
 
@@ -31,6 +37,11 @@ export type SetMaturityInput = Keyed<Readonly<{ fundId: string; maturityDate: st
 export type EditMaturityInput = Keyed<Readonly<{ scheduleId: string; expectedVersion: number; maturityDate: string }>>
 export type CancelMaturityInput = Keyed<Readonly<{ scheduleId: string; expectedVersion: number }>>
 export type ResolveMaturityInput = Keyed<Readonly<{ scheduleId: string; body: ResolveMaturityBody }>>
+export type SendMaturityOptionsInput = Keyed<Readonly<{ scheduleId: string; body: SendMaturityOptionsBody }>>
+export type WithdrawMaturityOfferInput = Keyed<
+  Readonly<{ scheduleId: string; offerId: string; expectedVersion: number; offerVersion: number }>
+>
+export type ConfirmMaturityOfferInput = Keyed<Readonly<{ scheduleId: string; offerId: string; body: ConfirmMaturityOfferBody }>>
 
 const DUE_PROMPT_LIMIT = 25
 
@@ -112,6 +123,43 @@ export const useResolveMaturity = (userId: string): UseMutationResult<MaturityRe
   return useMutation({
     mutationFn: async ({ idempotencyKey, scheduleId, body }: ResolveMaturityInput) =>
       (await api.request(resolveAdminClientMaturity, { params: { userId, scheduleId }, body, idempotencyKey })).data,
+    onSettled: refresh,
+  })
+}
+
+export const useSendMaturityOptions = (
+  userId: string,
+): UseMutationResult<SavedMaturitySchedule, Error, SendMaturityOptionsInput> => {
+  const api = useApi()
+  const refresh = useRefreshMaturities(userId, false)
+  return useMutation({
+    mutationFn: async ({ idempotencyKey, scheduleId, body }: SendMaturityOptionsInput) =>
+      (await api.request(sendAdminMaturityOptions, { params: { userId, scheduleId }, body, idempotencyKey })).data.schedule,
+    onSettled: refresh,
+  })
+}
+
+export const useWithdrawMaturityOffer = (
+  userId: string,
+): UseMutationResult<SavedMaturitySchedule, Error, WithdrawMaturityOfferInput> => {
+  const api = useApi()
+  const refresh = useRefreshMaturities(userId, false)
+  return useMutation({
+    mutationFn: async ({ idempotencyKey, scheduleId, offerId, ...body }: WithdrawMaturityOfferInput) =>
+      (await api.request(withdrawAdminMaturityOffer, { params: { userId, scheduleId, offerId }, body, idempotencyKey })).data
+        .schedule,
+    onSettled: refresh,
+  })
+}
+
+export const useConfirmMaturityOffer = (
+  userId: string,
+): UseMutationResult<MaturityResolution, Error, ConfirmMaturityOfferInput> => {
+  const api = useApi()
+  const refresh = useRefreshMaturities(userId, true)
+  return useMutation({
+    mutationFn: async ({ idempotencyKey, scheduleId, offerId, body }: ConfirmMaturityOfferInput) =>
+      (await api.request(confirmAdminMaturityOffer, { params: { userId, scheduleId, offerId }, body, idempotencyKey })).data,
     onSettled: refresh,
   })
 }

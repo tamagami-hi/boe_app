@@ -21,6 +21,7 @@ import { ADMIN_REPORT_OPERATIONS } from "../src/operations/admin-reports.js"
 import { ADMIN_SUPPORT_OPERATIONS } from "../src/operations/admin-support.js"
 import { APP_OPERATIONS } from "../src/operations/app.js"
 import { CLIENT_ACCOUNT_OPERATIONS } from "../src/operations/client-account.js"
+import { CLIENT_MATURITY_OPERATIONS } from "../src/operations/client-maturity.js"
 import { CLIENT_ORDER_OPERATIONS } from "../src/operations/client-orders.js"
 import { CLIENT_PROFILE_OPERATIONS } from "../src/operations/client-profile.js"
 import { CLIENT_RECEIPT_OPERATIONS } from "../src/operations/client-receipts.js"
@@ -87,6 +88,7 @@ export const ALL_OPERATIONS: readonly GeneratableOperation[] = Object.freeze([
   ...CLIENT_REVIEW_OPERATIONS,
   ...RECORDING_SHEET_OPERATIONS,
   ...ADMIN_MATURITY_SCHEDULE_OPERATIONS,
+  ...CLIENT_MATURITY_OPERATIONS,
 ])
 
 type RouteConfig = Parameters<OpenAPIRegistry["registerPath"]>[0]

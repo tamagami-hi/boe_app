@@ -26284,7 +26284,8 @@
                 "contact_email_changed",
                 "admin_message",
                 "app_update_notice",
-                "investment_recorded"
+                "investment_recorded",
+                "maturity_options"
               ]
             },
             "required": false,
@@ -41114,6 +41115,95 @@
                                   "null"
                                 ],
                                 "format": "date-time"
+                              },
+                              "offer": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "properties": {
+                                  "offerId": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "version": {
+                                    "type": "integer",
+                                    "exclusiveMinimum": 0
+                                  },
+                                  "sentAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "chosenOption": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "chosenAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "format": "date-time"
+                                  },
+                                  "sip": {
+                                    "type": "object",
+                                    "properties": {
+                                      "monthlyAmountPaise": {
+                                        "type": "string",
+                                        "pattern": "^(0|[1-9][0-9]*)$/u"
+                                      },
+                                      "startMonth": {
+                                        "type": "string",
+                                        "pattern": "^2[01]\\d{2}-(0[1-9]|1[0-2])$/u"
+                                      },
+                                      "monthCount": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 600
+                                      }
+                                    },
+                                    "required": [
+                                      "monthlyAmountPaise",
+                                      "startMonth",
+                                      "monthCount"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "extension": {
+                                    "type": [
+                                      "object",
+                                      "null"
+                                    ],
+                                    "properties": {
+                                      "months": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 599
+                                      },
+                                      "nextMaturityDate": {
+                                        "type": "string",
+                                        "format": "date"
+                                      }
+                                    },
+                                    "required": [
+                                      "months",
+                                      "nextMaturityDate"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "offerId",
+                                  "version",
+                                  "sentAt",
+                                  "chosenOption",
+                                  "chosenAt",
+                                  "sip",
+                                  "extension"
+                                ],
+                                "additionalProperties": false
                               }
                             },
                             "required": [
@@ -41133,7 +41223,8 @@
                               "createdAt",
                               "updatedAt",
                               "resolvedAt",
-                              "cancelledAt"
+                              "cancelledAt",
+                              "offer"
                             ],
                             "additionalProperties": false
                           }
@@ -41396,6 +41487,95 @@
                                   "null"
                                 ],
                                 "format": "date-time"
+                              },
+                              "offer": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "properties": {
+                                  "offerId": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "version": {
+                                    "type": "integer",
+                                    "exclusiveMinimum": 0
+                                  },
+                                  "sentAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "chosenOption": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "chosenAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "format": "date-time"
+                                  },
+                                  "sip": {
+                                    "type": "object",
+                                    "properties": {
+                                      "monthlyAmountPaise": {
+                                        "type": "string",
+                                        "pattern": "^(0|[1-9][0-9]*)$/u"
+                                      },
+                                      "startMonth": {
+                                        "type": "string",
+                                        "pattern": "^2[01]\\d{2}-(0[1-9]|1[0-2])$/u"
+                                      },
+                                      "monthCount": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 600
+                                      }
+                                    },
+                                    "required": [
+                                      "monthlyAmountPaise",
+                                      "startMonth",
+                                      "monthCount"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "extension": {
+                                    "type": [
+                                      "object",
+                                      "null"
+                                    ],
+                                    "properties": {
+                                      "months": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 599
+                                      },
+                                      "nextMaturityDate": {
+                                        "type": "string",
+                                        "format": "date"
+                                      }
+                                    },
+                                    "required": [
+                                      "months",
+                                      "nextMaturityDate"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "offerId",
+                                  "version",
+                                  "sentAt",
+                                  "chosenOption",
+                                  "chosenAt",
+                                  "sip",
+                                  "extension"
+                                ],
+                                "additionalProperties": false
                               }
                             },
                             "required": [
@@ -41415,7 +41595,8 @@
                               "createdAt",
                               "updatedAt",
                               "resolvedAt",
-                              "cancelledAt"
+                              "cancelledAt",
+                              "offer"
                             ],
                             "additionalProperties": false
                           }
@@ -41641,6 +41822,95 @@
                                   "null"
                                 ],
                                 "format": "date-time"
+                              },
+                              "offer": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "properties": {
+                                  "offerId": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "version": {
+                                    "type": "integer",
+                                    "exclusiveMinimum": 0
+                                  },
+                                  "sentAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  },
+                                  "chosenOption": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "chosenAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ],
+                                    "format": "date-time"
+                                  },
+                                  "sip": {
+                                    "type": "object",
+                                    "properties": {
+                                      "monthlyAmountPaise": {
+                                        "type": "string",
+                                        "pattern": "^(0|[1-9][0-9]*)$/u"
+                                      },
+                                      "startMonth": {
+                                        "type": "string",
+                                        "pattern": "^2[01]\\d{2}-(0[1-9]|1[0-2])$/u"
+                                      },
+                                      "monthCount": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 600
+                                      }
+                                    },
+                                    "required": [
+                                      "monthlyAmountPaise",
+                                      "startMonth",
+                                      "monthCount"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "extension": {
+                                    "type": [
+                                      "object",
+                                      "null"
+                                    ],
+                                    "properties": {
+                                      "months": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 599
+                                      },
+                                      "nextMaturityDate": {
+                                        "type": "string",
+                                        "format": "date"
+                                      }
+                                    },
+                                    "required": [
+                                      "months",
+                                      "nextMaturityDate"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "offerId",
+                                  "version",
+                                  "sentAt",
+                                  "chosenOption",
+                                  "chosenAt",
+                                  "sip",
+                                  "extension"
+                                ],
+                                "additionalProperties": false
                               }
                             },
                             "required": [
@@ -41660,7 +41930,8 @@
                               "createdAt",
                               "updatedAt",
                               "resolvedAt",
-                              "cancelledAt"
+                              "cancelledAt",
+                              "offer"
                             ],
                             "additionalProperties": false
                           }
@@ -41919,6 +42190,95 @@
                                 "null"
                               ],
                               "format": "date-time"
+                            },
+                            "offer": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "offerId": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0
+                                },
+                                "sentAt": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                },
+                                "chosenOption": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "chosenAt": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ],
+                                  "format": "date-time"
+                                },
+                                "sip": {
+                                  "type": "object",
+                                  "properties": {
+                                    "monthlyAmountPaise": {
+                                      "type": "string",
+                                      "pattern": "^(0|[1-9][0-9]*)$/u"
+                                    },
+                                    "startMonth": {
+                                      "type": "string",
+                                      "pattern": "^2[01]\\d{2}-(0[1-9]|1[0-2])$/u"
+                                    },
+                                    "monthCount": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 600
+                                    }
+                                  },
+                                  "required": [
+                                    "monthlyAmountPaise",
+                                    "startMonth",
+                                    "monthCount"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "extension": {
+                                  "type": [
+                                    "object",
+                                    "null"
+                                  ],
+                                  "properties": {
+                                    "months": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 599
+                                    },
+                                    "nextMaturityDate": {
+                                      "type": "string",
+                                      "format": "date"
+                                    }
+                                  },
+                                  "required": [
+                                    "months",
+                                    "nextMaturityDate"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "offerId",
+                                "version",
+                                "sentAt",
+                                "chosenOption",
+                                "chosenAt",
+                                "sip",
+                                "extension"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -41938,7 +42298,8 @@
                             "createdAt",
                             "updatedAt",
                             "resolvedAt",
-                            "cancelledAt"
+                            "cancelledAt",
+                            "offer"
                           ],
                           "additionalProperties": false
                         }
@@ -42247,6 +42608,95 @@
                                 "null"
                               ],
                               "format": "date-time"
+                            },
+                            "offer": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "offerId": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0
+                                },
+                                "sentAt": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                },
+                                "chosenOption": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "chosenAt": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ],
+                                  "format": "date-time"
+                                },
+                                "sip": {
+                                  "type": "object",
+                                  "properties": {
+                                    "monthlyAmountPaise": {
+                                      "type": "string",
+                                      "pattern": "^(0|[1-9][0-9]*)$/u"
+                                    },
+                                    "startMonth": {
+                                      "type": "string",
+                                      "pattern": "^2[01]\\d{2}-(0[1-9]|1[0-2])$/u"
+                                    },
+                                    "monthCount": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 600
+                                    }
+                                  },
+                                  "required": [
+                                    "monthlyAmountPaise",
+                                    "startMonth",
+                                    "monthCount"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "extension": {
+                                  "type": [
+                                    "object",
+                                    "null"
+                                  ],
+                                  "properties": {
+                                    "months": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 599
+                                    },
+                                    "nextMaturityDate": {
+                                      "type": "string",
+                                      "format": "date"
+                                    }
+                                  },
+                                  "required": [
+                                    "months",
+                                    "nextMaturityDate"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "offerId",
+                                "version",
+                                "sentAt",
+                                "chosenOption",
+                                "chosenAt",
+                                "sip",
+                                "extension"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -42266,7 +42716,8 @@
                             "createdAt",
                             "updatedAt",
                             "resolvedAt",
-                            "cancelledAt"
+                            "cancelledAt",
+                            "offer"
                           ],
                           "additionalProperties": false
                         }
@@ -42570,6 +43021,95 @@
                                 "null"
                               ],
                               "format": "date-time"
+                            },
+                            "offer": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "offerId": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0
+                                },
+                                "sentAt": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                },
+                                "chosenOption": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "chosenAt": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ],
+                                  "format": "date-time"
+                                },
+                                "sip": {
+                                  "type": "object",
+                                  "properties": {
+                                    "monthlyAmountPaise": {
+                                      "type": "string",
+                                      "pattern": "^(0|[1-9][0-9]*)$/u"
+                                    },
+                                    "startMonth": {
+                                      "type": "string",
+                                      "pattern": "^2[01]\\d{2}-(0[1-9]|1[0-2])$/u"
+                                    },
+                                    "monthCount": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 600
+                                    }
+                                  },
+                                  "required": [
+                                    "monthlyAmountPaise",
+                                    "startMonth",
+                                    "monthCount"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "extension": {
+                                  "type": [
+                                    "object",
+                                    "null"
+                                  ],
+                                  "properties": {
+                                    "months": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 599
+                                    },
+                                    "nextMaturityDate": {
+                                      "type": "string",
+                                      "format": "date"
+                                    }
+                                  },
+                                  "required": [
+                                    "months",
+                                    "nextMaturityDate"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "offerId",
+                                "version",
+                                "sentAt",
+                                "chosenOption",
+                                "chosenAt",
+                                "sip",
+                                "extension"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -42589,7 +43129,8 @@
                             "createdAt",
                             "updatedAt",
                             "resolvedAt",
-                            "cancelledAt"
+                            "cancelledAt",
+                            "offer"
                           ],
                           "additionalProperties": false
                         }
@@ -42879,34 +43420,29 @@
                       "resolution": {
                         "type": "string",
                         "enum": [
-                          "sip_reinvestment"
+                          "sip_extension"
                         ]
                       },
                       "expectedVersion": {
                         "type": "integer",
                         "exclusiveMinimum": 0
                       },
-                      "sip": {
+                      "extension": {
                         "type": "object",
                         "properties": {
-                          "monthlyAmountPaise": {
-                            "type": "string",
-                            "pattern": "^(0|[1-9][0-9]*)$/u"
-                          },
-                          "startMonth": {
-                            "type": "string",
-                            "pattern": "^2[01]\\d{2}-(0[1-9]|1[0-2])$/u"
-                          },
-                          "monthCount": {
+                          "months": {
                             "type": "integer",
                             "minimum": 1,
-                            "maximum": 600
+                            "maximum": 599
+                          },
+                          "nextMaturityDate": {
+                            "type": "string",
+                            "format": "date"
                           }
                         },
                         "required": [
-                          "monthlyAmountPaise",
-                          "startMonth",
-                          "monthCount"
+                          "months",
+                          "nextMaturityDate"
                         ],
                         "additionalProperties": false
                       }
@@ -42914,7 +43450,7 @@
                     "required": [
                       "resolution",
                       "expectedVersion",
-                      "sip"
+                      "extension"
                     ],
                     "additionalProperties": false
                   }
@@ -43019,6 +43555,95 @@
                                 "null"
                               ],
                               "format": "date-time"
+                            },
+                            "offer": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "offerId": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0
+                                },
+                                "sentAt": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                },
+                                "chosenOption": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "chosenAt": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ],
+                                  "format": "date-time"
+                                },
+                                "sip": {
+                                  "type": "object",
+                                  "properties": {
+                                    "monthlyAmountPaise": {
+                                      "type": "string",
+                                      "pattern": "^(0|[1-9][0-9]*)$/u"
+                                    },
+                                    "startMonth": {
+                                      "type": "string",
+                                      "pattern": "^2[01]\\d{2}-(0[1-9]|1[0-2])$/u"
+                                    },
+                                    "monthCount": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 600
+                                    }
+                                  },
+                                  "required": [
+                                    "monthlyAmountPaise",
+                                    "startMonth",
+                                    "monthCount"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "extension": {
+                                  "type": [
+                                    "object",
+                                    "null"
+                                  ],
+                                  "properties": {
+                                    "months": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 599
+                                    },
+                                    "nextMaturityDate": {
+                                      "type": "string",
+                                      "format": "date"
+                                    }
+                                  },
+                                  "required": [
+                                    "months",
+                                    "nextMaturityDate"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "offerId",
+                                "version",
+                                "sentAt",
+                                "chosenOption",
+                                "chosenAt",
+                                "sip",
+                                "extension"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -43038,7 +43663,8 @@
                             "createdAt",
                             "updatedAt",
                             "resolvedAt",
-                            "cancelledAt"
+                            "cancelledAt",
+                            "offer"
                           ],
                           "additionalProperties": false
                         },
@@ -43062,13 +43688,21 @@
                             "null"
                           ],
                           "format": "uuid"
+                        },
+                        "nextScheduleId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
                         }
                       },
                       "required": [
                         "schedule",
                         "settlementEntryId",
                         "payoutId",
-                        "closedSipScheduleId"
+                        "closedSipScheduleId",
+                        "nextScheduleId"
                       ],
                       "additionalProperties": false
                     },
@@ -43199,6 +43833,2170 @@
             }
           },
           "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/clients/{userId}/maturity-schedules/{scheduleId}/offers": {
+      "post": {
+        "operationId": "sendAdminMaturityOptions",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "scheduleId",
+            "in": "path"
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expectedVersion": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "sip": {
+                    "type": "object",
+                    "properties": {
+                      "monthlyAmountPaise": {
+                        "type": "string",
+                        "pattern": "^(0|[1-9][0-9]*)$/u"
+                      },
+                      "startMonth": {
+                        "type": "string",
+                        "pattern": "^2[01]\\d{2}-(0[1-9]|1[0-2])$/u"
+                      },
+                      "monthCount": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 600
+                      }
+                    },
+                    "required": [
+                      "monthlyAmountPaise",
+                      "startMonth",
+                      "monthCount"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "extension": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "properties": {
+                      "months": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 599
+                      },
+                      "nextMaturityDate": {
+                        "type": "string",
+                        "format": "date"
+                      }
+                    },
+                    "required": [
+                      "months",
+                      "nextMaturityDate"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "expectedVersion",
+                  "sip",
+                  "extension"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "schedule": {
+                          "type": "object",
+                          "properties": {
+                            "scheduleId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "userId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "clientName": {
+                              "type": "string"
+                            },
+                            "fundId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "fundName": {
+                              "type": "string"
+                            },
+                            "maturityDate": {
+                              "type": "string",
+                              "format": "date"
+                            },
+                            "state": {
+                              "type": "string"
+                            },
+                            "resolution": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "dueStatus": {
+                              "type": "string"
+                            },
+                            "daysUntil": {
+                              "type": "integer"
+                            },
+                            "maturityId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "uuid"
+                            },
+                            "followUpSipScheduleId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "uuid"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "updatedAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "resolvedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "date-time"
+                            },
+                            "cancelledAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "date-time"
+                            },
+                            "offer": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "offerId": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0
+                                },
+                                "sentAt": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                },
+                                "chosenOption": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "chosenAt": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ],
+                                  "format": "date-time"
+                                },
+                                "sip": {
+                                  "type": "object",
+                                  "properties": {
+                                    "monthlyAmountPaise": {
+                                      "type": "string",
+                                      "pattern": "^(0|[1-9][0-9]*)$/u"
+                                    },
+                                    "startMonth": {
+                                      "type": "string",
+                                      "pattern": "^2[01]\\d{2}-(0[1-9]|1[0-2])$/u"
+                                    },
+                                    "monthCount": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 600
+                                    }
+                                  },
+                                  "required": [
+                                    "monthlyAmountPaise",
+                                    "startMonth",
+                                    "monthCount"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "extension": {
+                                  "type": [
+                                    "object",
+                                    "null"
+                                  ],
+                                  "properties": {
+                                    "months": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 599
+                                    },
+                                    "nextMaturityDate": {
+                                      "type": "string",
+                                      "format": "date"
+                                    }
+                                  },
+                                  "required": [
+                                    "months",
+                                    "nextMaturityDate"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "offerId",
+                                "version",
+                                "sentAt",
+                                "chosenOption",
+                                "chosenAt",
+                                "sip",
+                                "extension"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "scheduleId",
+                            "userId",
+                            "clientName",
+                            "fundId",
+                            "fundName",
+                            "maturityDate",
+                            "state",
+                            "resolution",
+                            "dueStatus",
+                            "daysUntil",
+                            "maturityId",
+                            "followUpSipScheduleId",
+                            "version",
+                            "createdAt",
+                            "updatedAt",
+                            "resolvedAt",
+                            "cancelledAt",
+                            "offer"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "schedule"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/clients/{userId}/maturity-schedules/{scheduleId}/offers/{offerId}/withdraw": {
+      "post": {
+        "operationId": "withdrawAdminMaturityOffer",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "scheduleId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "offerId",
+            "in": "path"
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expectedVersion": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "offerVersion": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "expectedVersion",
+                  "offerVersion"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "schedule": {
+                          "type": "object",
+                          "properties": {
+                            "scheduleId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "userId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "clientName": {
+                              "type": "string"
+                            },
+                            "fundId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "fundName": {
+                              "type": "string"
+                            },
+                            "maturityDate": {
+                              "type": "string",
+                              "format": "date"
+                            },
+                            "state": {
+                              "type": "string"
+                            },
+                            "resolution": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "dueStatus": {
+                              "type": "string"
+                            },
+                            "daysUntil": {
+                              "type": "integer"
+                            },
+                            "maturityId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "uuid"
+                            },
+                            "followUpSipScheduleId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "uuid"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "updatedAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "resolvedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "date-time"
+                            },
+                            "cancelledAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "date-time"
+                            },
+                            "offer": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "offerId": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0
+                                },
+                                "sentAt": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                },
+                                "chosenOption": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "chosenAt": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ],
+                                  "format": "date-time"
+                                },
+                                "sip": {
+                                  "type": "object",
+                                  "properties": {
+                                    "monthlyAmountPaise": {
+                                      "type": "string",
+                                      "pattern": "^(0|[1-9][0-9]*)$/u"
+                                    },
+                                    "startMonth": {
+                                      "type": "string",
+                                      "pattern": "^2[01]\\d{2}-(0[1-9]|1[0-2])$/u"
+                                    },
+                                    "monthCount": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 600
+                                    }
+                                  },
+                                  "required": [
+                                    "monthlyAmountPaise",
+                                    "startMonth",
+                                    "monthCount"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "extension": {
+                                  "type": [
+                                    "object",
+                                    "null"
+                                  ],
+                                  "properties": {
+                                    "months": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 599
+                                    },
+                                    "nextMaturityDate": {
+                                      "type": "string",
+                                      "format": "date"
+                                    }
+                                  },
+                                  "required": [
+                                    "months",
+                                    "nextMaturityDate"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "offerId",
+                                "version",
+                                "sentAt",
+                                "chosenOption",
+                                "chosenAt",
+                                "sip",
+                                "extension"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "scheduleId",
+                            "userId",
+                            "clientName",
+                            "fundId",
+                            "fundName",
+                            "maturityDate",
+                            "state",
+                            "resolution",
+                            "dueStatus",
+                            "daysUntil",
+                            "maturityId",
+                            "followUpSipScheduleId",
+                            "version",
+                            "createdAt",
+                            "updatedAt",
+                            "resolvedAt",
+                            "cancelledAt",
+                            "offer"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "schedule"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/clients/{userId}/maturity-schedules/{scheduleId}/offers/{offerId}/confirm": {
+      "post": {
+        "operationId": "confirmAdminMaturityOffer",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "scheduleId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "offerId",
+            "in": "path"
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "option": {
+                        "type": "string",
+                        "enum": [
+                          "return_all"
+                        ]
+                      },
+                      "expectedVersion": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0
+                      },
+                      "offerVersion": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0
+                      },
+                      "effectiveDate": {
+                        "type": "string",
+                        "format": "date"
+                      },
+                      "amountPaise": {
+                        "type": "string",
+                        "pattern": "^(0|[1-9][0-9]*)$/u"
+                      }
+                    },
+                    "required": [
+                      "option",
+                      "expectedVersion",
+                      "offerVersion",
+                      "effectiveDate",
+                      "amountPaise"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "option": {
+                        "type": "string",
+                        "enum": [
+                          "one_time_and_sip"
+                        ]
+                      },
+                      "expectedVersion": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0
+                      },
+                      "offerVersion": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0
+                      },
+                      "effectiveDate": {
+                        "type": "string",
+                        "format": "date"
+                      },
+                      "expectedPrincipalPaise": {
+                        "type": "string",
+                        "pattern": "^(0|[1-9][0-9]*)$/u"
+                      },
+                      "expectedCurrentValuePaise": {
+                        "type": "string",
+                        "pattern": "^(0|[1-9][0-9]*)$/u"
+                      }
+                    },
+                    "required": [
+                      "option",
+                      "expectedVersion",
+                      "offerVersion",
+                      "effectiveDate",
+                      "expectedPrincipalPaise",
+                      "expectedCurrentValuePaise"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "option": {
+                        "type": "string",
+                        "enum": [
+                          "sip_extension"
+                        ]
+                      },
+                      "expectedVersion": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0
+                      },
+                      "offerVersion": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0
+                      }
+                    },
+                    "required": [
+                      "option",
+                      "expectedVersion",
+                      "offerVersion"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "schedule": {
+                          "type": "object",
+                          "properties": {
+                            "scheduleId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "userId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "clientName": {
+                              "type": "string"
+                            },
+                            "fundId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "fundName": {
+                              "type": "string"
+                            },
+                            "maturityDate": {
+                              "type": "string",
+                              "format": "date"
+                            },
+                            "state": {
+                              "type": "string"
+                            },
+                            "resolution": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "dueStatus": {
+                              "type": "string"
+                            },
+                            "daysUntil": {
+                              "type": "integer"
+                            },
+                            "maturityId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "uuid"
+                            },
+                            "followUpSipScheduleId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "uuid"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "updatedAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "resolvedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "date-time"
+                            },
+                            "cancelledAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "date-time"
+                            },
+                            "offer": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "offerId": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0
+                                },
+                                "sentAt": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                },
+                                "chosenOption": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "chosenAt": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ],
+                                  "format": "date-time"
+                                },
+                                "sip": {
+                                  "type": "object",
+                                  "properties": {
+                                    "monthlyAmountPaise": {
+                                      "type": "string",
+                                      "pattern": "^(0|[1-9][0-9]*)$/u"
+                                    },
+                                    "startMonth": {
+                                      "type": "string",
+                                      "pattern": "^2[01]\\d{2}-(0[1-9]|1[0-2])$/u"
+                                    },
+                                    "monthCount": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 600
+                                    }
+                                  },
+                                  "required": [
+                                    "monthlyAmountPaise",
+                                    "startMonth",
+                                    "monthCount"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "extension": {
+                                  "type": [
+                                    "object",
+                                    "null"
+                                  ],
+                                  "properties": {
+                                    "months": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 599
+                                    },
+                                    "nextMaturityDate": {
+                                      "type": "string",
+                                      "format": "date"
+                                    }
+                                  },
+                                  "required": [
+                                    "months",
+                                    "nextMaturityDate"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "offerId",
+                                "version",
+                                "sentAt",
+                                "chosenOption",
+                                "chosenAt",
+                                "sip",
+                                "extension"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "scheduleId",
+                            "userId",
+                            "clientName",
+                            "fundId",
+                            "fundName",
+                            "maturityDate",
+                            "state",
+                            "resolution",
+                            "dueStatus",
+                            "daysUntil",
+                            "maturityId",
+                            "followUpSipScheduleId",
+                            "version",
+                            "createdAt",
+                            "updatedAt",
+                            "resolvedAt",
+                            "cancelledAt",
+                            "offer"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "settlementEntryId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "payoutId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "closedSipScheduleId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        },
+                        "nextScheduleId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uuid"
+                        }
+                      },
+                      "required": [
+                        "schedule",
+                        "settlementEntryId",
+                        "payoutId",
+                        "closedSipScheduleId",
+                        "nextScheduleId"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/client/maturity-options": {
+      "get": {
+        "operationId": "listClientMaturityOffers",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "offerId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "fundId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "fundName": {
+                                "type": "string"
+                              },
+                              "maturityDate": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$/u"
+                              },
+                              "state": {
+                                "type": "string"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0
+                              },
+                              "sentAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "chosenOption": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "chosenAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "date-time"
+                              },
+                              "sip": {
+                                "type": "object",
+                                "properties": {
+                                  "monthlyAmountPaise": {
+                                    "type": "string",
+                                    "pattern": "^(0|[1-9][0-9]*)$/u"
+                                  },
+                                  "startMonth": {
+                                    "type": "string",
+                                    "pattern": "^2[01]\\d{2}-(0[1-9]|1[0-2])$/u"
+                                  },
+                                  "monthCount": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 600
+                                  }
+                                },
+                                "required": [
+                                  "monthlyAmountPaise",
+                                  "startMonth",
+                                  "monthCount"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "extension": {
+                                "type": [
+                                  "object",
+                                  "null"
+                                ],
+                                "properties": {
+                                  "months": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 599
+                                  },
+                                  "nextMaturityDate": {
+                                    "type": "string",
+                                    "format": "date"
+                                  }
+                                },
+                                "required": [
+                                  "months",
+                                  "nextMaturityDate"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "offerId",
+                              "fundId",
+                              "fundName",
+                              "maturityDate",
+                              "state",
+                              "version",
+                              "sentAt",
+                              "chosenOption",
+                              "chosenAt",
+                              "sip",
+                              "extension"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/client/maturity-options/{offerId}": {
+      "get": {
+        "operationId": "getClientMaturityOffer",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "offerId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "offer": {
+                          "type": "object",
+                          "properties": {
+                            "offerId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "fundId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "fundName": {
+                              "type": "string"
+                            },
+                            "maturityDate": {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$/u"
+                            },
+                            "state": {
+                              "type": "string"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0
+                            },
+                            "sentAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "chosenOption": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "chosenAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "date-time"
+                            },
+                            "sip": {
+                              "type": "object",
+                              "properties": {
+                                "monthlyAmountPaise": {
+                                  "type": "string",
+                                  "pattern": "^(0|[1-9][0-9]*)$/u"
+                                },
+                                "startMonth": {
+                                  "type": "string",
+                                  "pattern": "^2[01]\\d{2}-(0[1-9]|1[0-2])$/u"
+                                },
+                                "monthCount": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 600
+                                }
+                              },
+                              "required": [
+                                "monthlyAmountPaise",
+                                "startMonth",
+                                "monthCount"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "extension": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "months": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 599
+                                },
+                                "nextMaturityDate": {
+                                  "type": "string",
+                                  "format": "date"
+                                }
+                              },
+                              "required": [
+                                "months",
+                                "nextMaturityDate"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "offerId",
+                            "fundId",
+                            "fundName",
+                            "maturityDate",
+                            "state",
+                            "version",
+                            "sentAt",
+                            "chosenOption",
+                            "chosenAt",
+                            "sip",
+                            "extension"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "offer"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/client/maturity-options/{offerId}/choice": {
+      "post": {
+        "operationId": "chooseClientMaturityOption",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "offerId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "option": {
+                    "type": "string",
+                    "enum": [
+                      "return_all",
+                      "one_time_and_sip",
+                      "sip_extension"
+                    ]
+                  },
+                  "expectedVersion": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "option",
+                  "expectedVersion"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "offer": {
+                          "type": "object",
+                          "properties": {
+                            "offerId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "fundId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "fundName": {
+                              "type": "string"
+                            },
+                            "maturityDate": {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$/u"
+                            },
+                            "state": {
+                              "type": "string"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0
+                            },
+                            "sentAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "chosenOption": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "chosenAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "date-time"
+                            },
+                            "sip": {
+                              "type": "object",
+                              "properties": {
+                                "monthlyAmountPaise": {
+                                  "type": "string",
+                                  "pattern": "^(0|[1-9][0-9]*)$/u"
+                                },
+                                "startMonth": {
+                                  "type": "string",
+                                  "pattern": "^2[01]\\d{2}-(0[1-9]|1[0-2])$/u"
+                                },
+                                "monthCount": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 600
+                                }
+                              },
+                              "required": [
+                                "monthlyAmountPaise",
+                                "startMonth",
+                                "monthCount"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "extension": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "months": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 599
+                                },
+                                "nextMaturityDate": {
+                                  "type": "string",
+                                  "format": "date"
+                                }
+                              },
+                              "required": [
+                                "months",
+                                "nextMaturityDate"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "offerId",
+                            "fundId",
+                            "fundName",
+                            "maturityDate",
+                            "state",
+                            "version",
+                            "sentAt",
+                            "chosenOption",
+                            "chosenAt",
+                            "sip",
+                            "extension"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "offer"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
             "description": "Error",
             "content": {
               "application/json": {

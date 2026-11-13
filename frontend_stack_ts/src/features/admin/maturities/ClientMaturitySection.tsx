@@ -3,7 +3,6 @@ import { useState } from "react"
 import { Section } from "~/app/layouts/Section"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
-import { useClientSipSchedules } from "~/features/admin/client-values/sipScheduleQueries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { useAdminInvestorPositions } from "~/features/admin/shared/adminQueries"
 import { useAdminFundCatalogue } from "~/features/admin/shared/queries"
@@ -19,9 +18,9 @@ import { ACTION_ROW } from "~/ui/recipes/layout"
 import { META_TEXT } from "~/ui/recipes/text"
 
 import { MaturityDateForm, type FundChoice } from "./MaturityDateForm"
-import { dueBadgeOf, dueTextOf, formatMaturityDate } from "./maturityPresentation"
+import { MaturityActionButtons, MaturityActionDialog, type MaturityAction } from "./MaturityActions"
+import { dueBadgeOf, dueTextOf, formatMaturityDate, offerStatusText } from "./maturityPresentation"
 import { useCancelMaturity, useClientMaturitySchedules, type MaturityScheduleItem } from "./maturityQueries"
-import { MaturityResolveDialog } from "./MaturityResolveDialog"
 
 export type ClientMaturitySectionProps = Readonly<{ userId: string; canSet: boolean }>
 
@@ -33,11 +32,10 @@ export const ClientMaturitySection = ({ userId, canSet }: ClientMaturitySectionP
   const canWrite = hasAnyPermission(["client_position.write"])
   const schedules = useClientMaturitySchedules(canRead ? userId : "")
   const positions = useAdminInvestorPositions(canRead ? userId : "")
-  const sips = useClientSipSchedules(canWrite ? userId : "")
   const catalogue = useAdminFundCatalogue()
   const cancel = useHeldWrite(useCancelMaturity(userId), "The cancellation could not be sent. Reload the page and try again.")
   const [editing, setEditing] = useState<Editing | null>(null)
-  const [resolving, setResolving] = useState<MaturityScheduleItem | null>(null)
+  const [acting, setActing] = useState<MaturityAction | null>(null)
   const [cancelling, setCancelling] = useState<MaturityScheduleItem | null>(null)
   if (!canRead) return null
 
@@ -54,15 +52,12 @@ export const ClientMaturitySection = ({ userId, canSet }: ClientMaturitySectionP
   const funds: readonly FundChoice[] = (positions.data?.items ?? [])
     .filter((row) => !openFunds.has(row.fundId))
     .map((row) => ({ fundId: row.fundId, label: fundName(row.fundId) }))
-  const holdingOf = (fundId: string) => positions.data?.items.find((row) => row.fundId === fundId) ?? null
-  const activeSipOf = (fundId: string) =>
-    sips.data === undefined ? undefined : (sips.data.items.find((row) => row.fundId === fundId && row.state === "active") ?? null)
   const canStart = canWrite && canSet && positions.data !== undefined && schedules.data !== undefined
 
   return (
     <Section
       title="Maturity dates"
-      description="When each holding matures. Nothing happens on the date by itself: from 30 days before it the console reminds you each time it opens, and no money moves until you resolve it here."
+      description="When each holding matures. Nothing happens on the date by itself: from 30 days before it the console reminds you each time it opens. Resolve it here after talking to the client, or send the options so the client can choose in the app. No money moves until you resolve it or confirm the client's choice."
       actions={
         canStart && editing === null ? (
           <Button
@@ -129,7 +124,13 @@ export const ClientMaturitySection = ({ userId, canSet }: ClientMaturitySectionP
                 header: "Status",
                 render: (row) => {
                   const badge = dueBadgeOf(row)
-                  return <Badge tone={badge.tone}>{badge.label}</Badge>
+                  const offerText = offerStatusText(row.offer)
+                  return (
+                    <span className={ENTRY_TEXT}>
+                      <Badge tone={badge.tone}>{badge.label}</Badge>
+                      {offerText === null ? null : <span className={META_TEXT}>{offerText}</span>}
+                    </span>
+                  )
                 },
               },
               {
@@ -138,15 +139,7 @@ export const ClientMaturitySection = ({ userId, canSet }: ClientMaturitySectionP
                 render: (row) =>
                   canWrite && row.state === "scheduled" ? (
                     <span className={ACTION_ROW}>
-                      <Button
-                        size="sm"
-                        disabled={row.daysUntil > 0 || positions.isPending}
-                        onClick={() => {
-                          setResolving(row)
-                        }}
-                      >
-                        Resolve
-                      </Button>
+                      <MaturityActionButtons schedule={row} onAct={setActing} />
                       <Button
                         size="sm"
                         tone="ghost"
@@ -174,17 +167,13 @@ export const ClientMaturitySection = ({ userId, canSet }: ClientMaturitySectionP
         )}
       </AsyncBoundary>
 
-      {resolving === null ? null : (
-        <MaturityResolveDialog
-          key={resolving.scheduleId}
+      {acting === null ? null : (
+        <MaturityActionDialog
+          key={`${acting.schedule.scheduleId}-${acting.kind}`}
           userId={userId}
-          schedule={resolving}
-          holding={holdingOf(resolving.fundId)}
-          activeSip={activeSipOf(resolving.fundId)}
-          refreshing={positions.isFetching || sips.isFetching}
-          onReload={reload}
+          action={acting}
           onClose={() => {
-            setResolving(null)
+            setActing(null)
           }}
         />
       )}
@@ -192,7 +181,7 @@ export const ClientMaturitySection = ({ userId, canSet }: ClientMaturitySectionP
       <ConfirmDialog
         open={cancelling !== null}
         title="Cancel this maturity date?"
-        description="The date is kept in the history as cancelled. No money moves and the holding is unchanged. You can set a new date afterwards."
+        description="The date is kept in the history as cancelled, and any options sent to the client are closed. No money moves and the holding is unchanged. You can set a new date afterwards."
         confirmLabel="Cancel the date"
         cancelLabel="Keep the date"
         onConfirm={() => {

@@ -16,6 +16,8 @@ const FIELD_LABELS: Readonly<Record<string, string>> = {
   "sip.monthlyAmountPaise": "SIP monthly amount",
   "sip.startMonth": "First SIP month",
   "sip.monthCount": "SIP months",
+  "extension.months": "Months to add",
+  "extension.nextMaturityDate": "Next maturity date",
 }
 
 const fieldLines = (fields: Readonly<Record<string, readonly string[]>>): string[] =>

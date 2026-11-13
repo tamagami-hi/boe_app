@@ -25,8 +25,35 @@ const Version = z.number().int().positive()
 export const AdminMaturityScheduleState = z.enum(["scheduled", "resolved", "cancelled"])
 export type AdminMaturityScheduleState = z.infer<typeof AdminMaturityScheduleState>
 
-export const AdminMaturityResolution = z.enum(["return_all", "one_time_and_sip", "sip_reinvestment"])
+export const AdminMaturityResolution = z.enum(["return_all", "one_time_and_sip", "sip_reinvestment", "sip_extension"])
 export type AdminMaturityResolution = z.infer<typeof AdminMaturityResolution>
+
+export const MaturityOptionKey = z.enum(["return_all", "one_time_and_sip", "sip_extension"])
+export type MaturityOptionKey = z.infer<typeof MaturityOptionKey>
+
+export const MaturityOfferSip = z.strictObject({
+  monthlyAmountPaise: Paise,
+  startMonth: SipScheduleMonth,
+  monthCount: z.number().int().min(1).max(MAX_SIP_SCHEDULE_MONTHS),
+})
+export type MaturityOfferSip = z.infer<typeof MaturityOfferSip>
+
+export const MaturitySipExtension = z.strictObject({
+  months: z.number().int().min(1).max(MAX_SIP_SCHEDULE_MONTHS - 1),
+  nextMaturityDate: MaturityDate,
+})
+export type MaturitySipExtension = z.infer<typeof MaturitySipExtension>
+
+export const AdminMaturityOffer = z.strictObject({
+  offerId: Uuid,
+  version: Version,
+  sentAt: IsoDateTime,
+  chosenOption: z.string().nullable(),
+  chosenAt: IsoDateTime.nullable(),
+  sip: MaturityOfferSip,
+  extension: MaturitySipExtension.nullable(),
+})
+export type AdminMaturityOffer = z.infer<typeof AdminMaturityOffer>
 
 export const AdminMaturitySchedule = z.strictObject({
   scheduleId: Uuid,
@@ -46,6 +73,7 @@ export const AdminMaturitySchedule = z.strictObject({
   updatedAt: IsoDateTime,
   resolvedAt: IsoDateTime.nullable(),
   cancelledAt: IsoDateTime.nullable(),
+  offer: AdminMaturityOffer.nullable(),
 })
 export type AdminMaturitySchedule = z.infer<typeof AdminMaturitySchedule>
 
@@ -185,9 +213,9 @@ export const AdminResolveMaturityBody = z.discriminatedUnion("resolution", [
     sip: AdminMaturityFollowUpSip,
   }),
   z.strictObject({
-    resolution: z.literal("sip_reinvestment"),
+    resolution: z.literal("sip_extension"),
     expectedVersion: Version,
-    sip: AdminMaturityFollowUpSip,
+    extension: MaturitySipExtension,
   }),
 ])
 export type AdminResolveMaturityBody = z.infer<typeof AdminResolveMaturityBody>
@@ -197,6 +225,7 @@ export const AdminMaturityResolutionData = z.strictObject({
   settlementEntryId: Uuid.nullable(),
   payoutId: Uuid.nullable(),
   closedSipScheduleId: Uuid.nullable(),
+  nextScheduleId: Uuid.nullable(),
 })
 export type AdminMaturityResolutionData = z.infer<typeof AdminMaturityResolutionData>
 
@@ -210,6 +239,67 @@ export const resolveAdminClientMaturity = defineOperation({
   errorCodes: [...WRITE_ERRORS],
 })
 
+export const AdminSendMaturityOptionsBody = z.strictObject({
+  expectedVersion: Version,
+  sip: AdminMaturityFollowUpSip,
+  extension: MaturitySipExtension.nullable(),
+})
+export type AdminSendMaturityOptionsBody = z.infer<typeof AdminSendMaturityOptionsBody>
+
+export const sendAdminMaturityOptions = defineOperation({
+  ...AdminWrite,
+  operationId: "sendAdminMaturityOptions",
+  method: "POST",
+  path: "/v1/admin/clients/{userId}/maturity-schedules/{scheduleId}/offers",
+  request: { ...MutationRequest, params: ScheduleParams, body: AdminSendMaturityOptionsBody },
+  success: { status: 201, schema: createSuccessEnvelopeSchema(AdminMaturityScheduleData) },
+  errorCodes: [...WRITE_ERRORS],
+})
+
+const OfferParams = z.strictObject({ userId: Uuid, scheduleId: Uuid, offerId: Uuid })
+const OfferVersions = { expectedVersion: Version, offerVersion: Version }
+
+export const AdminWithdrawMaturityOfferBody = z.strictObject(OfferVersions)
+export type AdminWithdrawMaturityOfferBody = z.infer<typeof AdminWithdrawMaturityOfferBody>
+
+export const withdrawAdminMaturityOffer = defineOperation({
+  ...AdminWrite,
+  operationId: "withdrawAdminMaturityOffer",
+  method: "POST",
+  path: "/v1/admin/clients/{userId}/maturity-schedules/{scheduleId}/offers/{offerId}/withdraw",
+  request: { ...MutationRequest, params: OfferParams, body: AdminWithdrawMaturityOfferBody },
+  success: { status: 200, schema: createSuccessEnvelopeSchema(AdminMaturityScheduleData) },
+  errorCodes: [...WRITE_ERRORS],
+})
+
+export const AdminConfirmMaturityOfferBody = z.discriminatedUnion("option", [
+  z.strictObject({
+    option: z.literal("return_all"),
+    ...OfferVersions,
+    effectiveDate: CalendarDate,
+    amountPaise: PositivePaise,
+  }),
+  z.strictObject({
+    option: z.literal("one_time_and_sip"),
+    ...OfferVersions,
+    effectiveDate: CalendarDate,
+    expectedPrincipalPaise: Paise,
+    expectedCurrentValuePaise: Paise,
+  }),
+  z.strictObject({ option: z.literal("sip_extension"), ...OfferVersions }),
+])
+export type AdminConfirmMaturityOfferBody = z.infer<typeof AdminConfirmMaturityOfferBody>
+
+export const confirmAdminMaturityOffer = defineOperation({
+  ...AdminWrite,
+  operationId: "confirmAdminMaturityOffer",
+  method: "POST",
+  path: "/v1/admin/clients/{userId}/maturity-schedules/{scheduleId}/offers/{offerId}/confirm",
+  request: { ...MutationRequest, params: OfferParams, body: AdminConfirmMaturityOfferBody },
+  success: { status: 200, schema: createSuccessEnvelopeSchema(AdminMaturityResolutionData) },
+  errorCodes: [...WRITE_ERRORS],
+})
+
 export const ADMIN_MATURITY_SCHEDULE_OPERATIONS = Object.freeze([
   listAdminMaturities,
   listAdminDueMaturities,
@@ -218,4 +308,7 @@ export const ADMIN_MATURITY_SCHEDULE_OPERATIONS = Object.freeze([
   editAdminClientMaturityDate,
   cancelAdminClientMaturity,
   resolveAdminClientMaturity,
+  sendAdminMaturityOptions,
+  withdrawAdminMaturityOffer,
+  confirmAdminMaturityOffer,
 ])

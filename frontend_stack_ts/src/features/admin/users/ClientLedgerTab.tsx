@@ -3,6 +3,7 @@ import { useState } from "react"
 import { isApiError, isUnknownWriteOutcome } from "~/api/errors"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
+import { formatDateTime } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { useClientLedgerPage } from "~/features/admin/client-returns/returnQueries"
 import { useReverseClientLedgerEntry } from "~/features/admin/shared/adminQueries"
@@ -116,6 +117,7 @@ export const ClientLedgerTab = ({ userId }: Props): React.ReactElement => {
             rowKey={(row) => row.entryId}
             columns={[
               { key: "date", header: "Effective", render: (row) => row.effectiveDate },
+              { key: "recorded", header: "Recorded", render: (row) => formatDateTime(row.createdAt) },
               { key: "fund", header: "Fund", render: (row) => fundName(row.fundId) },
               {
                 key: "kind",

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
+import { useSession } from "~/app/providers/SessionProvider"
 import { AdminTable, FilterChip, FilterRow } from "~/features/admin/shared/AdminTable"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { EmptyState } from "~/ui/patterns/EmptyState"
@@ -14,7 +15,8 @@ import { ADMIN_CELL_LINK } from "~/ui/recipes/admin"
 import { ENTRY_TEXT } from "~/ui/recipes/datalist"
 import { META_TEXT } from "~/ui/recipes/text"
 
-import { dueBadgeOf, dueTextOf, formatMaturityDate } from "./maturityPresentation"
+import { MaturityActionButtons, MaturityActionDialog, type MaturityAction } from "./MaturityActions"
+import { dueBadgeOf, dueTextOf, formatMaturityDate, offerStatusText } from "./maturityPresentation"
 import { useMaturityDashboard, type MaturityDashboardState } from "./maturityQueries"
 
 const FILTERS: readonly Readonly<{ value: MaturityDashboardState; label: string }>[] = [
@@ -32,12 +34,15 @@ const EMPTY_TEXT: Readonly<Record<MaturityDashboardState, string>> = {
 const MaturitiesScreen = (): React.ReactElement => {
   const [state, setState] = useState<MaturityDashboardState>("scheduled")
   const query = useMaturityDashboard(state)
+  const { hasAnyPermission } = useSession()
+  const canWrite = hasAnyPermission(["client_position.write"])
+  const [acting, setActing] = useState<MaturityAction | null>(null)
 
   return (
     <Page width="wide">
       <PageHeader
         title="Maturities"
-        description="Maturity dates you set on client holdings, earliest first. Nothing happens on a maturity date by itself: open the client to resolve it, and no money moves until you do."
+        description="Maturity dates you set on client holdings, earliest first. Nothing happens on a maturity date by itself: resolve it after talking to the client, or send the options so the client can choose in the app. No money moves until you resolve it or confirm the client's choice."
       />
 
       <FilterRow label="Maturity status">
@@ -97,14 +102,39 @@ const MaturitiesScreen = (): React.ReactElement => {
                 header: "Status",
                 render: (row) => {
                   const badge = dueBadgeOf(row)
-                  return <Badge tone={badge.tone}>{badge.label}</Badge>
+                  const offerText = offerStatusText(row.offer)
+                  return (
+                    <span className={ENTRY_TEXT}>
+                      <Badge tone={badge.tone}>{badge.label}</Badge>
+                      {offerText === null ? null : <span className={META_TEXT}>{offerText}</span>}
+                    </span>
+                  )
                 },
               },
+              ...(canWrite && state === "scheduled"
+                ? [
+                    {
+                      key: "manage",
+                      header: "",
+                      render: (row: (typeof data.items)[number]) => <MaturityActionButtons schedule={row} onAct={setActing} />,
+                    },
+                  ]
+                : []),
             ]}
           />
         )}
       </AsyncBoundary>
       <LoadMore list={query} noun="maturities" />
+      {acting === null ? null : (
+        <MaturityActionDialog
+          key={`${acting.schedule.scheduleId}-${acting.kind}`}
+          userId={acting.schedule.userId}
+          action={acting}
+          onClose={() => {
+            setActing(null)
+          }}
+        />
+      )}
     </Page>
   )
 }
