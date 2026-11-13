@@ -21434,6 +21434,8 @@ export interface operations {
             query: {
                 fundId: string;
                 state?: "active" | "closed";
+                after?: string;
+                limit?: number;
             };
             header?: never;
             path?: never;
@@ -21485,6 +21487,11 @@ export interface operations {
                             /** Format: date-time */
                             timestamp: string;
                             idempotencyReplay?: boolean;
+                            page: {
+                                nextCursor: string | null;
+                                limit: number;
+                                hasMore: boolean;
+                            };
                         };
                     };
                 };

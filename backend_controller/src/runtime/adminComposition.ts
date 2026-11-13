@@ -190,7 +190,7 @@ export const registerAdminSurface = (application: FastifyInstance, deps: AdminSu
 
   registerAdminSipScheduleRoutes(application, {
     webAuth, unitOfWork, database, clock, sipScheduleRepository, userRepository, auditRepository, idempotencyRepository,
-    config: { idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
+    config: { idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs, cursorKey: serverConfig.cursorKey },
   })
   registerClientSipScheduleRoutes(application, { accessTokenService, clientWeb, database, clock, sipScheduleRepository })
 

@@ -80,8 +80,12 @@ export interface AdminSipScheduleRepository {
   listByUser: (tx: Transaction, userId: string) => Promise<readonly AdminSipScheduleRow[]>
   listByFund: (
     tx: Transaction,
-    input: Readonly<{ fundId: string; state: AdminSipScheduleState | null }>,
+    input: Readonly<{ fundId: string; state: AdminSipScheduleState | null; afterScheduleId: string | null; limit: number }>,
   ) => Promise<readonly AdminSipScheduleRow[]>
+  findOwner: (
+    tx: Transaction,
+    scheduleId: string,
+  ) => Promise<Readonly<{ userId: string; fundId: string }> | null>
   lockById: (tx: Transaction, scheduleId: string) => Promise<LockedSipSchedule | null>
   hasOtherActive: (
     tx: Transaction,
@@ -146,10 +150,27 @@ export const createAdminSipScheduleRepository = (): AdminSipScheduleRepository =
       ${SCHEDULE_SELECTION}
       where s.fund_id = ${input.fundId}
         and (${input.state}::text is null or s.state = ${input.state})
-      order by u.full_name, s.created_at desc, s.id desc
+        and (
+          ${input.afterScheduleId}::uuid is null
+          or (u.full_name, s.id) > (
+            select ua.full_name, sa.id
+            from admin_sip_schedules sa
+            join users ua on ua.id = sa.user_id
+            where sa.id = ${input.afterScheduleId}::uuid
+          )
+        )
+      order by u.full_name, s.id
+      limit ${input.limit}
     `.execute(tx)
     return result.rows
   },
+
+  findOwner: async (tx, scheduleId) =>
+    (await tx
+      .selectFrom("admin_sip_schedules")
+      .select(["user_id as userId", "fund_id as fundId"])
+      .where("id", "=", scheduleId)
+      .executeTakeFirst()) ?? null,
 
   lockById: async (tx, scheduleId) => {
     const result = await sql<LockedSipSchedule>`

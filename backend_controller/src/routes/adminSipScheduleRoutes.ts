@@ -14,12 +14,16 @@ import {
 } from "../domain/admin/adminSipSchedules.js"
 import { MAX_SCHEDULE_MONTHS } from "../domain/admin/sipScheduleMonths.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
+import { AppError } from "../http/errorCatalog.js"
+import { paginate, readKeysetValues } from "../http/pagination.js"
 import { parseOrThrow } from "../http/validation.js"
 import { POSITION_READ_PERMISSIONS, POSITION_WRITE_PERMISSIONS } from "./adminClientPositionRoutes.js"
 import { mapAdminSipSchedule, sipMonthSchema } from "./sipScheduleProjection.js"
 import {
   adminIdempotencyScope,
+  computeFilterHash,
   hashRequest,
+  limitSchema,
   positivePaiseSchema,
   requireIdempotencyKey,
   runAdminMutation,
@@ -37,7 +41,7 @@ export interface AdminSipScheduleRouteDeps extends AdminSipScheduleDeps {
   readonly unitOfWork: UnitOfWork
   readonly database: Kysely<Database>
   readonly idempotencyRepository: IdempotencyRepository
-  readonly config: Readonly<{ idempotencyTtlMs: number }>
+  readonly config: Readonly<{ idempotencyTtlMs: number; cursorKey: Buffer }>
 }
 
 const monthCountSchema = z.number().int().min(1).max(MAX_SCHEDULE_MONTHS)
@@ -64,7 +68,9 @@ const editBodySchema = z
 
 const closeBodySchema = z.object({ expectedVersion: versionSchema }).strict()
 
-const fundQuerySchema = z.object({ fundId: uuidParam, state: stateSchema.optional() }).strict()
+const fundQuerySchema = z
+  .object({ fundId: uuidParam, state: stateSchema.optional(), after: z.string().min(1).optional(), limit: limitSchema })
+  .strict()
 
 const paramOf = (request: FastifyRequest, name: "userId" | "scheduleId"): string =>
   parseOrThrow(uuidParam, (request.params as Record<string, unknown>)[name])
@@ -78,16 +84,32 @@ const listForClient = async (deps: AdminSipScheduleRouteDeps, request: FastifyRe
   return reply.sendData({ items: rows.map((row) => mapAdminSipSchedule(row, now)) }, { status: 200 })
 }
 
+const afterScheduleIdOf = (values: readonly string[]): string | null => {
+  if (values.length === 0) return null
+  const parsed = uuidParam.safeParse(values[0])
+  if (values.length !== 1 || !parsed.success) throw new AppError("CURSOR_INVALID")
+  return parsed.data
+}
+
 const listForFund = async (deps: AdminSipScheduleRouteDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: false })
   requireAnyPermission(principal, [...POSITION_READ_PERMISSIONS])
   const query = parseOrThrow(fundQuerySchema, request.query)
+  const now = deps.clock()
+  const filterHash = computeFilterHash({ fundId: query.fundId, state: query.state ?? null })
+  const afterScheduleId = afterScheduleIdOf(
+    readKeysetValues(deps.config.cursorKey, query.after, FUND_SCHEDULES_ROUTE, filterHash, now),
+  )
   const rows = await deps.sipScheduleRepository.listByFund(deps.database, {
     fundId: query.fundId,
     state: query.state ?? null,
+    afterScheduleId,
+    limit: query.limit + 1,
   })
-  const now = deps.clock()
-  return reply.sendData({ items: rows.map((row) => mapAdminSipSchedule(row, now)) }, { status: 200 })
+  const { items, page } = paginate(deps.config.cursorKey, rows, query.limit, FUND_SCHEDULES_ROUTE, filterHash, now, (row) => [
+    row.id,
+  ])
+  return reply.sendData({ items: items.map((row) => mapAdminSipSchedule(row, now)) }, { status: 200, page })
 }
 
 const create = async (deps: AdminSipScheduleRouteDeps, request: FastifyRequest, reply: FastifyReply) => {

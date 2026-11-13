@@ -21,7 +21,7 @@ import { PasswordMailStack } from "./passwordMailSupport.js"
 
 interface Envelope<T> {
   readonly data: T
-  readonly meta: { readonly idempotencyReplay?: boolean }
+  readonly meta: { readonly idempotencyReplay?: boolean; readonly page?: { readonly nextCursor: string | null; readonly hasMore: boolean } }
   readonly error: { readonly code: string; readonly fields?: Record<string, readonly string[]> }
 }
 
@@ -34,6 +34,10 @@ interface Schedule {
   readonly monthsDue: number
   readonly nextUnpaidMonth: string | null
   readonly paidMonths: readonly string[]
+}
+
+interface FundSchedule extends Schedule {
+  readonly clientName: string
 }
 
 interface ClientSchedule {
@@ -205,7 +209,7 @@ beforeAll(async () => {
         clientGrowthRepository: createClientGrowthRepository(),
         notificationRepository: createNotificationRepository(),
       })
-      registerAdminSipScheduleRoutes(instance, { ...shared, config: { idempotencyTtlMs: 86_400_000 } })
+      registerAdminSipScheduleRoutes(instance, { ...shared, config: { idempotencyTtlMs: 86_400_000, cursorKey: randomBytes(32) } })
       const clientDeps = { accessTokenService, database: stack.database, clientWeb: { originAllowlist: [] }, clock: stack.clock }
       registerClientSipScheduleRoutes(instance, { ...clientDeps, sipScheduleRepository })
       registerClientReceiptRoutes(instance, {
@@ -329,6 +333,58 @@ describe("admin SIP schedule months", () => {
     const stale = await edit({ expectedVersion: after?.version, monthCount: 8 })
     expect(stale.statusCode).toBe(409)
     expect(envelopeOf(stale).error.code).toBe("STATE_CONFLICT")
+  })
+
+  test("two recordings racing for the same month with different keys link it once and refuse the other cleanly", async () => {
+    const client = await stack.seedUser()
+    const schedule = await scheduleFor(client.id, "2025-01")
+    const link = { scheduleId: schedule.scheduleId, month: "2025-05" }
+
+    const responses = await Promise.all([record(client.id, link), record(client.id, link)])
+
+    const statuses = responses.map((response) => response.statusCode).sort()
+    expect(statuses).toEqual([201, 400])
+    const refused = responses.find((response) => response.statusCode === 400)
+    expect(refused === undefined ? null : envelopeOf(refused).error.fields?.["sipScheduleLink.month"]).toBeDefined()
+    expect(await stack.count("client_value_entries", "user_id = $1", [client.id])).toBe(1)
+    expect(await stack.count("admin_sip_schedule_months", "schedule_id = $1 and released_at is null", [schedule.scheduleId])).toBe(1)
+  })
+
+  test("pages a fund's schedules by client name then schedule id without repeating or skipping one", async () => {
+    const fund = await seedFund("Paged Monthly Fund")
+    const names = ["Zara Khan", "Arjun Rao", "Arjun Rao", "Meera Iyer", "Arjun Rao"]
+    const created: string[] = []
+    for (const name of names) {
+      const client = await stack.seedUser()
+      await stack.pool.query("update users set full_name = $2 where id = $1", [client.id, name])
+      created.push((await scheduleFor(client.id, "2025-01", 12, fund)).scheduleId)
+    }
+    const page = (after: string | null, state = "active") =>
+      app.inject({
+        method: "GET",
+        url: `/v1/admin/sip-schedules?fundId=${fund}&state=${state}&limit=2${after === null ? "" : `&after=${encodeURIComponent(after)}`}`,
+        headers: adminHeaders(finance),
+      })
+
+    const walked: FundSchedule[] = []
+    let cursor: string | null = null
+    for (let index = 0; index < 5; index += 1) {
+      const response = await page(cursor)
+      expect(response.statusCode).toBe(200)
+      walked.push(...envelopeOf<{ items: FundSchedule[] }>(response).data.items)
+      cursor = envelopeOf(response).meta.page?.nextCursor ?? null
+      if (cursor === null) break
+    }
+
+    const expected = [...walked].sort((left, right) =>
+      left.clientName === right.clientName ? (left.scheduleId < right.scheduleId ? -1 : 1) : left.clientName < right.clientName ? -1 : 1,
+    )
+    expect(walked.map((item) => item.scheduleId)).toEqual(expected.map((item) => item.scheduleId))
+    expect(new Set(walked.map((item) => item.scheduleId))).toEqual(new Set(created))
+    expect(walked.map((item) => item.clientName)).toEqual(["Arjun Rao", "Arjun Rao", "Arjun Rao", "Meera Iyer", "Zara Khan"])
+    const first = envelopeOf((await page(null))).meta.page?.nextCursor ?? ""
+    const otherFilter = await page(first, "closed")
+    expect(envelopeOf(otherFilter).error.code).toBe("CURSOR_INVALID")
   })
 
   test("a client sees only their own schedules", async () => {

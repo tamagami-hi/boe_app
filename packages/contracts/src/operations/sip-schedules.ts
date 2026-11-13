@@ -2,7 +2,15 @@ import { z } from "zod"
 
 import { createSuccessEnvelopeSchema } from "../envelope.js"
 import { IsoDateTime, Paise, Uuid } from "../scalars.js"
-import { ADMIN_READ_ERRORS, ADMIN_WRITE_ERRORS, RequiredAdminMutationHeaders } from "./admin-shared.js"
+import {
+  ADMIN_PAGED_READ_ERRORS,
+  ADMIN_READ_ERRORS,
+  ADMIN_WRITE_ERRORS,
+  AdminCursor,
+  AdminLimit,
+  AdminPageMeta,
+  RequiredAdminMutationHeaders,
+} from "./admin-shared.js"
 import { ReceiptSipMonth } from "./client-receipts.js"
 import { defineOperation, MAX_JSON_BODY_BYTES } from "./descriptor.js"
 
@@ -43,6 +51,16 @@ export type AdminSipSchedule = z.infer<typeof AdminSipSchedule>
 export const AdminSipSchedulesData = z.strictObject({ items: z.array(AdminSipSchedule) })
 export type AdminSipSchedulesData = z.infer<typeof AdminSipSchedulesData>
 
+export const AdminSipSchedulePage = createSuccessEnvelopeSchema(AdminSipSchedulesData, { page: AdminPageMeta })
+
+export const AdminFundSipSchedulesQuery = z.strictObject({
+  fundId: Uuid,
+  state: AdminSipScheduleState.optional(),
+  after: AdminCursor,
+  limit: AdminLimit,
+})
+export type AdminFundSipSchedulesQuery = z.infer<typeof AdminFundSipSchedulesQuery>
+
 export const AdminSipScheduleData = z.strictObject({ schedule: AdminSipSchedule })
 export type AdminSipScheduleData = z.infer<typeof AdminSipScheduleData>
 
@@ -68,9 +86,9 @@ export const listAdminFundSipSchedules = defineOperation({
   authChannel: "admin-web",
   credentialPolicy: "admin-session-cookie-and-csrf",
   idempotency: "none",
-  request: { query: z.strictObject({ fundId: Uuid, state: AdminSipScheduleState.optional() }) },
-  success: { status: 200, schema: createSuccessEnvelopeSchema(AdminSipSchedulesData) },
-  errorCodes: [...ADMIN_READ_ERRORS],
+  request: { query: AdminFundSipSchedulesQuery },
+  success: { status: 200, schema: AdminSipSchedulePage },
+  errorCodes: [...ADMIN_PAGED_READ_ERRORS],
 })
 
 export const AdminCreateSipScheduleBody = z.strictObject({

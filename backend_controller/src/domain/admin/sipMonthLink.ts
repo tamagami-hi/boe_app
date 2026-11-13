@@ -37,6 +37,10 @@ export const prepareSipMonthLink = async (
   if (input.category !== "monthly_investment") {
     throw refuse("sipScheduleLink", "only a monthly investment can be linked to a SIP schedule month")
   }
+  const owner = await deps.sipScheduleRepository.findOwner(tx, input.link.scheduleId)
+  if (owner === null || owner.userId !== input.userId) {
+    throw refuse(SCHEDULE_FIELD, "is not a SIP schedule of this client")
+  }
   const schedule = await deps.sipScheduleRepository.lockById(tx, input.link.scheduleId)
   if (schedule === null || schedule.userId !== input.userId) {
     throw refuse(SCHEDULE_FIELD, "is not a SIP schedule of this client")
