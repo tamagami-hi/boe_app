@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 
-import { isApiError } from "~/api/errors"
+import { isApiError, isUnknownWriteOutcome } from "~/api/errors"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
@@ -24,6 +24,17 @@ import { ACTION_ROW } from "~/ui/recipes/layout"
 
 type Confirming = "approved" | "rejected" | null
 
+type Failure = Readonly<{ isUnknown: boolean; message: string }>
+
+const decisionFailure = (error: unknown): Failure =>
+  isUnknownWriteOutcome(error)
+    ? {
+        isUnknown: true,
+        message:
+          "The reply did not arrive, so it is not known whether the decision was recorded. Reload this application to see its current status before deciding again.",
+      }
+    : { isUnknown: false, message: isApiError(error) ? error.message : "We could not record that decision." }
+
 const ApplicationDetailScreen = (): React.ReactElement => {
   const { applicationId = "" } = useParams()
   const query = useAdminApplication(applicationId)
@@ -31,7 +42,7 @@ const ApplicationDetailScreen = (): React.ReactElement => {
   const navigate = useNavigate()
   const { hasAnyPermission } = useSession()
   const [confirming, setConfirming] = useState<Confirming>(null)
-  const [failure, setFailure] = useState<string | null>(null)
+  const [failure, setFailure] = useState<Failure | null>(null)
 
   const canDecide = hasAnyPermission(["applications.decide"])
 
@@ -39,11 +50,7 @@ const ApplicationDetailScreen = (): React.ReactElement => {
     setFailure(null)
     decide.mutate(outcome, {
       onError: (error) => {
-        setFailure(
-          isApiError(error)
-            ? error.message
-            : "We could not record that decision. Nothing has changed.",
-        )
+        setFailure(decisionFailure(error))
       },
       onSuccess: () => {
         void navigate("/applications", { replace: true })
@@ -73,8 +80,11 @@ const ApplicationDetailScreen = (): React.ReactElement => {
         {(data) => (
           <>
             {failure === null ? null : (
-              <Alert tone="error" title="Nothing changed">
-                {failure}
+              <Alert
+                tone={failure.isUnknown ? "warning" : "error"}
+                title={failure.isUnknown ? "Outcome unknown" : "Nothing changed"}
+              >
+                {failure.message}
               </Alert>
             )}
 

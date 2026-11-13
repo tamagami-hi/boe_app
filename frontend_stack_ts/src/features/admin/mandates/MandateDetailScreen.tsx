@@ -8,21 +8,23 @@ import { Section } from "~/app/layouts/Section"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDate, formatDateTime } from "~/domain/dates"
-import { formatRupees } from "~/domain/money"
 import { mandateSetupState, mandateState, sipState } from "~/domain/status"
 import { useAdminMandate, useMandateAction } from "~/features/admin/shared/adminQueries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
+import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 import { FormField, Input } from "~/ui/primitives/FormField"
 
-import { ADMIN_CODE, ADMIN_FIGURE } from "~/ui/recipes/admin"
+import { ADMIN_CODE } from "~/ui/recipes/admin"
 import { PROSE_SM } from "~/ui/recipes/datalist"
 import { ACTION_ROW } from "~/ui/recipes/layout"
+
+import { mandatePaise } from "./mandateAmount"
 
 type Confirming = "reconcile" | "cancel" | null
 
@@ -95,9 +97,7 @@ const MandateDetailScreen = (): React.ReactElement => {
                 <DetailRow label="Email">{data.user.email ?? "—"}</DetailRow>
                 <DetailRow label="Fund">{data.fund.name ?? "—"}</DetailRow>
                 <DetailRow label="Monthly amount">
-                  <span className={ADMIN_FIGURE}>
-                    {formatRupees(data.mandate.amountPaise / 100)}
-                  </span>
+                  <MoneyValue amount={mandatePaise(data.mandate.amountPaise)} size="sm" showDecimals />
                 </DetailRow>
                 <DetailRow label="Debit day">{String(data.sip.debitDay)}</DetailRow>
                 <DetailRow label="Mandate">
@@ -249,7 +249,7 @@ const MandateDetailScreen = (): React.ReactElement => {
                       header: "Amount",
                       numeric: true,
                       render: (row) => (
-                        <span className={ADMIN_FIGURE}>{formatRupees(row.amountPaise / 100)}</span>
+                        <MoneyValue amount={mandatePaise(row.amountPaise)} size="sm" showDecimals />
                       ),
                     },
                     { key: "notify", header: "Notification", render: (row) => row.notifyState },

@@ -1,6 +1,6 @@
 import { useState } from "react"
 
-import { isApiError } from "~/api/errors"
+import { hasCode, isApiError, isUnknownWriteOutcome } from "~/api/errors"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
@@ -48,13 +48,32 @@ const COPY: Readonly<Record<RefundAction, Readonly<{ title: string; description:
   },
 }
 
+type Failure = Readonly<{ isUnknown: boolean; message: string }>
+
+const actionFailure = (error: unknown): Failure => {
+  if (hasCode(error, "DEPENDENCY_UNAVAILABLE")) {
+    return {
+      isUnknown: false,
+      message: "PhonePe is not reachable from this environment, so the refund cannot be reconciled here.",
+    }
+  }
+  if (isUnknownWriteOutcome(error)) {
+    return {
+      isUnknown: true,
+      message:
+        "The reply did not arrive, so it is not known whether this went through. Reload the refunds to see their current state before trying again.",
+    }
+  }
+  return { isUnknown: false, message: isApiError(error) ? error.message : "We could not do that." }
+}
+
 const RefundQueueScreen = (): React.ReactElement => {
   const [filter, setFilter] = useState<RefundFilter>("failed")
   const query = useAdminRefunds(filter)
   const action = useRefundAction()
   const { hasAnyPermission } = useSession()
   const [confirming, setConfirming] = useState<Confirming>(null)
-  const [failure, setFailure] = useState<string | null>(null)
+  const [failure, setFailure] = useState<Failure | null>(null)
 
   const canWrite = hasAnyPermission(["refunds.write"])
 
@@ -62,13 +81,7 @@ const RefundQueueScreen = (): React.ReactElement => {
     setFailure(null)
     action.mutate(target, {
       onError: (error) => {
-        setFailure(
-          isApiError(error)
-            ? error.code === "DEPENDENCY_UNAVAILABLE"
-              ? "PhonePe is not reachable from this environment, so the refund cannot be reconciled here."
-              : error.message
-            : "We could not do that. Nothing has changed.",
-        )
+        setFailure(actionFailure(error))
       },
       onSettled: () => {
         setConfirming(null)
@@ -97,8 +110,11 @@ const RefundQueueScreen = (): React.ReactElement => {
       </FilterRow>
 
       {failure === null ? null : (
-        <Alert tone="error" title="Nothing changed">
-          {failure}
+        <Alert
+          tone={failure.isUnknown ? "warning" : "error"}
+          title={failure.isUnknown ? "Outcome unknown" : "Nothing changed"}
+        >
+          {failure.message}
         </Alert>
       )}
 

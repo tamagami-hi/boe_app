@@ -7,6 +7,7 @@ import { useSession } from "~/app/providers/SessionProvider"
 import { formatDateTime } from "~/domain/dates"
 import { AdminTable, FilterChip, FilterRow } from "~/features/admin/shared/AdminTable"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
+import { EmptyState } from "~/ui/patterns/EmptyState"
 import { Badge } from "~/ui/primitives/Badge"
 import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
@@ -63,6 +64,17 @@ const EmailTemplatesScreen = (): React.ReactElement => {
           <Card>
             <Skeleton height="3rem" />
           </Card>
+        }
+        isEmpty={(data) => data.items.length === 0}
+        empty={
+          <EmptyState
+            title={includeArchived ? "No templates yet" : "No templates in use"}
+            description={
+              includeArchived
+                ? "No email template has been created. Password and verification emails are built in and are not listed here."
+                : "No template is in use. Include archived templates to restore one, or create a new template."
+            }
+          />
         }
       >
         {(data) => (

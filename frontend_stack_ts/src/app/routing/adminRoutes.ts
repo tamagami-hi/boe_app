@@ -39,7 +39,7 @@ export const ADMIN_ROUTES: RouteManifest = [
     role: "admin",
     permissions: ["applications.read"],
     element: () => import("~/features/admin/applications/ApplicationQueueScreen"),
-    nav: { domain: "applications", order: 2, label: "Applications", primary: true },
+    nav: { domain: "applications", order: 2, label: "Applications" },
     back: { kind: "parent", path: ADMIN_HOME_PATH },
   },
   {
@@ -60,7 +60,7 @@ export const ADMIN_ROUTES: RouteManifest = [
     role: "admin",
     permissions: ["users.read", "users.read_limited"],
     element: () => import("~/features/admin/users/UserDirectoryScreen"),
-    nav: { domain: "users", order: 3, label: "Users" },
+    nav: { domain: "users", order: 3, label: "Users", primary: true },
     back: { kind: "parent", path: ADMIN_HOME_PATH },
   },
   {
@@ -186,7 +186,7 @@ export const ADMIN_ROUTES: RouteManifest = [
     role: "admin",
     permissions: ["client_values.read", "users.read", "users.read_limited"],
     element: () => import("~/features/admin/client-values/ClientPositionsScreen"),
-    nav: { domain: "client-values", order: 6, label: "Client values" },
+    nav: { domain: "client-values", order: 6, label: "Client values", primary: true },
     back: { kind: "parent", path: ADMIN_HOME_PATH },
   },
   {
@@ -227,7 +227,7 @@ export const ADMIN_ROUTES: RouteManifest = [
     role: "admin",
     permissions: ["funds.receipts.read"],
     element: () => import("~/features/admin/receipts/FundReceiptQueueScreen"),
-    nav: { domain: "money", order: 7, label: "Receipts", primary: true },
+    nav: { domain: "money", order: 7, label: "Receipts" },
     back: { kind: "parent", path: ADMIN_HOME_PATH },
   },
   {

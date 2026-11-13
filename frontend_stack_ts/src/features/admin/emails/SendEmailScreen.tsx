@@ -7,6 +7,7 @@ import { Section } from "~/app/layouts/Section"
 import { useAdminUsers } from "~/features/admin/shared/adminQueries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { DataList, DetailRow, Prose } from "~/ui/patterns/DataList"
+import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Combobox } from "~/ui/primitives/Combobox"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
@@ -18,6 +19,7 @@ import { STACK_LG } from "~/ui/recipes/layout"
 
 import type { EmailPreview, QueuedEmail } from "./emailMessageQueries"
 import { useEmailPreview, useSendEmail, useSendTestEmail } from "./emailMessageQueries"
+import type { EmailTemplateList } from "./emailTemplateQueries"
 import { useEmailTemplates } from "./emailTemplateQueries"
 import { AppUpdateAnnouncementPanel } from "./AppUpdateAnnouncementPanel"
 import { SendAction, type SendReceipt } from "./SendAction"
@@ -130,6 +132,45 @@ const SendPanel = ({ preview }: Readonly<{ preview: EmailPreview }>): React.Reac
   )
 }
 
+type ListRead<TData> = Readonly<{ data: TData | undefined; isPending: boolean; error: unknown }>
+
+const hasFailed = <TData,>(read: ListRead<TData>): boolean =>
+  read.data === undefined && read.error !== null && read.error !== undefined
+
+type TemplatePicker = Readonly<{
+  options: readonly Readonly<{ value: string; label: string }>[]
+  isDisabled: boolean
+  error?: string
+  hint?: string
+}>
+
+const templatePicker = (templates: ListRead<EmailTemplateList>): TemplatePicker => {
+  if (hasFailed(templates)) {
+    return {
+      options: [{ value: "", label: "Templates could not be loaded" }],
+      isDisabled: true,
+      error: "The template list could not be loaded.",
+    }
+  }
+  if (templates.data === undefined) {
+    return { options: [{ value: "", label: "Loading templates" }], isDisabled: true }
+  }
+  if (templates.data.items.length === 0) {
+    return {
+      options: [{ value: "", label: "No active templates" }],
+      isDisabled: true,
+      hint: "Create a template on the Templates screen first.",
+    }
+  }
+  return {
+    options: [
+      { value: "", label: "Choose a template" },
+      ...templates.data.items.map((template) => ({ value: template.templateId, label: template.name })),
+    ],
+    isDisabled: false,
+  }
+}
+
 type Mode = "client" | "update"
 
 const MODE_TABS_ID = "send-email-mode"
@@ -148,10 +189,9 @@ const OneClientMode = (): React.ReactElement => {
   const clients = useAdminUsers(clientQuery.trim() === "" ? { status: "active" } : { status: "active", q: clientQuery.trim() })
   const preview = useEmailPreview(templateId, userId)
 
-  const templateOptions = [
-    { value: "", label: "Choose a template" },
-    ...(templates.data?.items ?? []).map((template) => ({ value: template.templateId, label: template.name })),
-  ]
+  const picker = templatePicker(templates)
+  const hasTemplatesFailed = hasFailed(templates)
+  const hasClientsFailed = hasFailed(clients)
   const clientOptions = useMemo(
     () =>
       (clients.data?.items ?? []).map((user) => ({
@@ -166,11 +206,13 @@ const OneClientMode = (): React.ReactElement => {
     <>
       <Card>
         <div className={ADMIN_FORM_GRID}>
-          <FormField label="Template" required>
+          <FormField label="Template" required error={picker.error} hint={picker.hint}>
             {({ id }) => (
               <Select
                 id={id}
-                options={templateOptions}
+                options={picker.options}
+                disabled={picker.isDisabled}
+                invalid={picker.error !== undefined}
                 value={templateId}
                 onChange={(event) => {
                   setTemplateId(event.target.value)
@@ -178,7 +220,11 @@ const OneClientMode = (): React.ReactElement => {
               />
             )}
           </FormField>
-          <FormField label="Client" hint="Search by name, email or phone.">
+          <FormField
+            label="Client"
+            hint="Search by name, email or phone."
+            error={hasClientsFailed ? "The client list could not be loaded." : undefined}
+          >
             {({ id }) => (
               <Combobox
                 id={id}
@@ -189,11 +235,37 @@ const OneClientMode = (): React.ReactElement => {
                 onQueryChange={setClientQuery}
                 placeholder="Start typing a name"
                 loading={clients.isFetching}
-                emptyLabel="No active client matches that"
+                invalid={hasClientsFailed}
+                emptyLabel={hasClientsFailed ? "Clients could not be loaded" : "No active client matches that"}
               />
             )}
           </FormField>
         </div>
+        {hasTemplatesFailed || hasClientsFailed ? (
+          <Alert
+            tone="error"
+            title="Could not load the choices"
+            action={
+              <Button
+                tone="secondary"
+                size="sm"
+                onClick={() => {
+                  if (hasTemplatesFailed) void templates.refetch()
+                  if (hasClientsFailed) clients.refetch()
+                }}
+              >
+                Try again
+              </Button>
+            }
+          >
+            {hasTemplatesFailed && hasClientsFailed
+              ? "Neither the templates nor the clients could be loaded."
+              : hasTemplatesFailed
+                ? "The templates could not be loaded."
+                : "The clients could not be loaded."}{" "}
+            Nothing has been sent.
+          </Alert>
+        ) : null}
       </Card>
 
       {templateId === "" ? null : (

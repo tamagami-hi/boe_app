@@ -1,10 +1,11 @@
 import { useState } from "react"
 import { useParams } from "react-router-dom"
 
-import { isApiError } from "~/api/errors"
+import { hasCode, isApiError, isUnknownWriteOutcome } from "~/api/errors"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
+import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDateTime } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
@@ -23,37 +24,51 @@ import { Textarea } from "~/ui/primitives/Textarea"
 import { ADMIN_CODE, ADMIN_LABEL } from "~/ui/recipes/admin"
 import { PROSE_SM } from "~/ui/recipes/datalist"
 
+type Failure = Readonly<{ isUnknown: boolean; message: string }>
+
+const acknowledgementFailure = (error: unknown): Failure => {
+  if (hasCode(error, "STATE_CONFLICT")) {
+    return {
+      isUnknown: false,
+      message:
+        "This receipt changed while you were looking at it. It has been refreshed. Read it again before acknowledging.",
+    }
+  }
+  if (isUnknownWriteOutcome(error)) {
+    return {
+      isUnknown: true,
+      message:
+        "The reply did not arrive, so it is not known whether the acknowledgement was recorded or the investor was notified. Reload this receipt to see its current state before trying again.",
+    }
+  }
+  return { isUnknown: false, message: isApiError(error) ? error.message : "We could not record the acknowledgement." }
+}
+
 const FundReceiptDetailScreen = (): React.ReactElement => {
   const { orderId = "" } = useParams()
   const query = useAdminReceipt(orderId)
   const acknowledge = useAcknowledgeReceipt(orderId)
   const { hasAnyPermission } = useSession()
   const [note, setNote] = useState("")
-  const [failure, setFailure] = useState<string | null>(null)
+  const [failure, setFailure] = useState<Failure | null>(null)
+  const [confirmingVersion, setConfirmingVersion] = useState<number | null>(null)
 
   const canWrite = hasAnyPermission(["funds.receipts.write"])
 
-  const confirm = (expectedVersion: number): void => {
+  const acknowledgeAt = (expectedVersion: number): void => {
     setFailure(null)
     acknowledge.mutate(
       { expectedVersion, ...(note.trim() === "" ? {} : { privateNote: note.trim() }) },
       {
         onError: (error) => {
-          if (isApiError(error) && error.code === "STATE_CONFLICT") {
-            setFailure(
-              "This receipt changed while you were looking at it. It has been refreshed — read it again before acknowledging.",
-            )
-            void query.refetch()
-            return
-          }
-          setFailure(
-            isApiError(error)
-              ? error.message
-              : "We could not record the acknowledgement. Nothing has changed.",
-          )
+          setFailure(acknowledgementFailure(error))
+          if (hasCode(error, "STATE_CONFLICT")) void query.refetch()
         },
         onSuccess: () => {
           setNote("")
+        },
+        onSettled: () => {
+          setConfirmingVersion(null)
         },
       },
     )
@@ -78,8 +93,11 @@ const FundReceiptDetailScreen = (): React.ReactElement => {
         {(data) => (
           <>
             {failure === null ? null : (
-              <Alert tone="error" title="Nothing changed">
-                {failure}
+              <Alert
+                tone={failure.isUnknown ? "warning" : "error"}
+                title={failure.isUnknown ? "Outcome unknown" : "Nothing changed"}
+              >
+                {failure.message}
               </Alert>
             )}
 
@@ -166,7 +184,7 @@ const FundReceiptDetailScreen = (): React.ReactElement => {
                       <Button
                         loading={acknowledge.isPending}
                         onClick={() => {
-                          confirm(data.acknowledgement.version)
+                          setConfirmingVersion(data.acknowledgement.version)
                         }}
                         trailing
                       >
@@ -184,6 +202,20 @@ const FundReceiptDetailScreen = (): React.ReactElement => {
           </>
         )}
       </AsyncBoundary>
+
+      <ConfirmDialog
+        open={confirmingVersion !== null}
+        title="Acknowledge these funds?"
+        description="Confirm only after you have seen this money in the fund account. The investor is notified as soon as you acknowledge."
+        confirmLabel="Acknowledge and notify"
+        pending={acknowledge.isPending}
+        onConfirm={() => {
+          if (confirmingVersion !== null) acknowledgeAt(confirmingVersion)
+        }}
+        onCancel={() => {
+          setConfirmingVersion(null)
+        }}
+      />
     </Page>
   )
 }

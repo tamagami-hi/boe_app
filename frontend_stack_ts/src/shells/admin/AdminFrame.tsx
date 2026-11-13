@@ -6,8 +6,9 @@ import { ADMIN_LOGIN_PATH, ADMIN_NAV_DOMAINS, ADMIN_ROUTES } from "~/app/routing
 import { findRoute, navBarEntries, navGroups, navRoutes } from "~/app/routing/routeManifest"
 import { Modal } from "~/app/overlays/Modal"
 import { useSession } from "~/app/providers/SessionProvider"
+import { useAppConfigFeed } from "~/features/app-notice/appNoticeQuery"
 import { useAuthPort } from "~/features/auth/authPort"
-import { hasAny } from "~/domain/permissions"
+import { hasAll, hasAny } from "~/domain/permissions"
 import {
   ADMIN_ACTION,
   ADMIN_BODY,
@@ -32,6 +33,12 @@ import {
 
 const NAV_ROUTES = navRoutes(ADMIN_ROUTES)
 const MOBILE_NAV_SLOTS = 4
+const GATEWAY_ONLY_ROUTE_IDS: ReadonlySet<string> = new Set(["receipts", "refunds", "payments", "mandates"])
+
+const isOnlinePaymentsOff = (config: Readonly<Record<string, unknown>> | null | undefined): boolean => {
+  const flags = config?.featureFlags
+  return typeof flags === "object" && flags !== null && "onlinePayments" in flags && flags.onlinePayments === false
+}
 
 export type AdminFrameProps = Readonly<{ children: ReactNode }>
 
@@ -40,6 +47,7 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
   const navigate = useNavigate()
   const session = useSession()
   const port = useAuthPort()
+  const configFeed = useAppConfigFeed(false)
   const [moreOpen, setMoreOpen] = useState(false)
 
   useEffect(() => {
@@ -51,11 +59,13 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
 
   if (isPublicSurface || session.status !== "authenticated") return <>{children}</>
 
+  const granted = session.principal?.permissions ?? []
+  const hidesGatewayOnly = isOnlinePaymentsOff(configFeed.data?.config)
   const permitted = NAV_ROUTES.filter(
     (entry) =>
-      entry.permissions === undefined ||
-      entry.permissions.length === 0 ||
-      hasAny(session.principal?.permissions ?? [], entry.permissions),
+      hasAny(granted, entry.permissions ?? []) &&
+      hasAll(granted, entry.requiresAll ?? []) &&
+      !(hidesGatewayOnly && GATEWAY_ONLY_ROUTE_IDS.has(entry.id)),
   )
 
   const activeId = route.id

@@ -5,20 +5,22 @@ import { isApiError } from "~/api/errors"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { formatDateTime } from "~/domain/dates"
-import { formatRupees } from "~/domain/money"
 import { mandateState, sipState } from "~/domain/status"
 import { useAdminMandates } from "~/features/admin/shared/adminQueries"
 import { AdminTable, FilterChip, FilterRow } from "~/features/admin/shared/AdminTable"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { LoadMore } from "~/ui/patterns/LoadMore"
 import { EmptyState } from "~/ui/patterns/EmptyState"
+import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { Card } from "~/ui/primitives/Card"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 
-import { ADMIN_CELL_LINK, ADMIN_FIGURE } from "~/ui/recipes/admin"
+import { ADMIN_CELL_LINK } from "~/ui/recipes/admin"
 import { ENTRY_TEXT } from "~/ui/recipes/datalist"
 import { META_TEXT } from "~/ui/recipes/text"
+
+import { mandatePaise } from "./mandateAmount"
 
 const FILTERS = [
   { value: "attention", label: "Needs attention" },
@@ -110,7 +112,7 @@ const MandateListScreen = (): React.ReactElement => {
                     header: "Monthly",
                     numeric: true,
                     render: (row) => (
-                      <span className={ADMIN_FIGURE}>{formatRupees(row.amountPaise / 100)}</span>
+                      <MoneyValue amount={mandatePaise(row.amountPaise)} size="sm" showDecimals />
                     ),
                   },
                   {
