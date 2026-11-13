@@ -1,3 +1,4 @@
+import { useRef } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Page } from "~/app/layouts/Page"
@@ -47,6 +48,7 @@ const NotificationsScreen = (): React.ReactElement => {
   const markRead = useMarkNotificationRead()
   const navigate = useNavigate()
   const toast = useToast()
+  const pendingReads = useRef<ReadonlySet<string>>(new Set())
 
   const follow = (destination: Destination): void => {
     if (destination.kind === "internal") {
@@ -60,11 +62,18 @@ const NotificationsScreen = (): React.ReactElement => {
   }
 
   const markOneRead = (id: string): void => {
-    markRead.mutate(id, {
-      onError: (error) => {
+    if (pendingReads.current.has(id)) return
+    pendingReads.current = new Set([...pendingReads.current, id])
+    void markRead
+      .mutateAsync(id)
+      .catch((error: unknown) => {
         toast.show(describeClientFailure(error, "markNotificationRead").message, "error")
-      },
-    })
+      })
+      .finally(() => {
+        pendingReads.current = new Set(
+          [...pendingReads.current].filter((pending) => pending !== id),
+        )
+      })
   }
 
   const open = (item: ReadableNotification, destination: Destination): void => {
