@@ -12,6 +12,7 @@ import { createClientErasureWriteRepository } from "../repositories/clientErasur
 import { createClientReturnsRepository } from "../repositories/clientReturnsRepository.js"
 import { createEmailChangeRepository } from "../repositories/emailChangeRepository.js"
 import { createEmailVerificationRepository } from "../repositories/emailVerificationRepository.js"
+import { createMandatesRepository } from "../repositories/mandatesRepository.js"
 import { createFundAumRepository } from "../repositories/fundAumRepository.js"
 import { createMaturityRepository } from "../repositories/maturityRepository.js"
 import { createMonthlyRecordingSheetRepository } from "../repositories/monthlyRecordingSheetRepository.js"
@@ -268,6 +269,7 @@ export const registerAdminSurface = (application: FastifyInstance, deps: AdminSu
     passwordTokenRepository: createPasswordTokenRepository(),
     emailVerificationRepository: createEmailVerificationRepository(),
     emailChangeRepository: createEmailChangeRepository(),
+    mandateLookup: createMandatesRepository(),
     config: { idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
   })
 

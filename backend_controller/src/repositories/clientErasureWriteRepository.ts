@@ -9,6 +9,11 @@ import {
   type ContactScrubber,
 } from "../domain/admin/erasureContacts.js"
 
+export interface MailReach {
+  readonly userId: string
+  readonly applicationIds: readonly string[]
+}
+
 export interface TombstoneUserInput {
   readonly userId: string
   readonly emailNormalized: string
@@ -16,9 +21,7 @@ export interface TombstoneUserInput {
   readonly now: Date
 }
 
-export interface MailErasureInput {
-  readonly userId: string
-  readonly applicationId: string | null
+export interface MailErasureInput extends MailReach {
   readonly recipientHmac: Buffer
   readonly recipientMasked: string
   readonly now: Date
@@ -38,23 +41,30 @@ export interface ContactRewriteInput {
 
 export interface ClientErasureWriteRepository {
   markErasing: (tx: Transaction, userId: string) => Promise<void>
+  lockMail: (tx: Transaction, reach: MailReach) => Promise<number>
   tombstoneUser: (tx: Transaction, input: TombstoneUserInput) => Promise<User | null>
+  clearPassword: (tx: Transaction, userId: string, now: Date) => Promise<void>
   overwriteEmailChangeTargets: (tx: Transaction, userId: string, target: SealedTarget) => Promise<void>
   eraseMail: (tx: Transaction, input: MailErasureInput) => Promise<number>
   rewriteContactHistory: (tx: Transaction, input: ContactRewriteInput) => Promise<number>
   overwriteLoginEmails: (tx: Transaction, input: ContactRewriteInput) => Promise<number>
   tombstoneApplications: (
     tx: Transaction,
-    input: ContactRewriteInput & Readonly<{ applicationId: string | null; now: Date }>,
+    input: Readonly<{ applicationIds: readonly string[]; erasedEmail: string; now: Date }>,
   ) => Promise<number>
   eraseProviderEventPayloads: (tx: Transaction, userId: string, now: Date) => Promise<number>
 }
 
 const affected = (result: { readonly numAffectedRows?: bigint }): number => Number(result.numAffectedRows ?? 0n)
 
-const userMailIds = (userId: string, applicationId: string | null) => sql`
+export const clientMailIds = (reach: MailReach) => sql`
   select d.id from email_deliveries d
-  where d.user_id = ${userId} or d.application_id = ${applicationId}::uuid
+  where d.user_id = ${reach.userId} or d.application_id = any(${[...reach.applicationIds]}::uuid[])
+`
+
+export const providerEventsOfMail = (reach: MailReach) => sql`
+  (email_delivery_id in (${clientMailIds(reach)})
+   or (state = 'unmatched' and delivery_correlation_id in (${clientMailIds(reach)})))
 `
 
 export const unlinkedLoginEmails = (userId: string, emails: readonly string[]) => sql`
@@ -66,28 +76,17 @@ export const unlinkedLoginEmails = (userId: string, emails: readonly string[]) =
   )
 `
 
-export const unlinkedApplications = (userId: string, emails: readonly string[], phones: readonly string[]) => sql`
-  state <> 'submitted'
-  and pii_tombstoned_at is null
-  and (email_normalized = any(${[...emails]}::text[]) or phone_e164 = any(${[...phones]}::text[]))
-  and not exists (select 1 from users holder where holder.application_id = applications.id and holder.id <> ${userId})
-`
-
 const cancelQueuedMail = async (tx: Transaction, input: MailErasureInput): Promise<number> => {
   const deliveries = await sql`
     update email_deliveries
     set state = 'cancelled', cancelled_at = ${input.now}, updated_at = ${input.now}, version = version + 1
-    where id in (${userMailIds(input.userId, input.applicationId)})
-      and state in ('queued', 'retryable_failed')
+    where id in (${clientMailIds(input)}) and state in ('queued', 'retryable_failed')
   `.execute(tx)
   await sql`
     update outbox_events
     set state = 'cancelled', cancelled_at = ${input.now}, updated_at = ${input.now}
     where state in ('pending', 'retryable_failed')
-      and id in (
-        select d.outbox_event_id from email_deliveries d
-        where d.id in (${userMailIds(input.userId, input.applicationId)})
-      )
+      and id in (select d.outbox_event_id from email_deliveries d where d.id in (${clientMailIds(input)}))
   `.execute(tx)
   return affected(deliveries)
 }
@@ -95,6 +94,29 @@ const cancelQueuedMail = async (tx: Transaction, input: MailErasureInput): Promi
 export const createClientErasureWriteRepository = (): ClientErasureWriteRepository => ({
   markErasing: async (tx, userId) => {
     await sql`select set_config('boe.erasing_user_id', ${userId}, true)`.execute(tx)
+  },
+
+  lockMail: async (tx, reach) => {
+    const deliveries = (
+      await sql<{ readonly state: string; readonly outbox_event_id: string | null }>`
+        select state, outbox_event_id from email_deliveries
+        where id in (${clientMailIds(reach)})
+        order by id
+        for update
+      `.execute(tx)
+    ).rows
+    const outbox = (
+      await sql<{ readonly state: string }>`
+        select state from outbox_events
+        where id = any(${deliveries.flatMap((row) => (row.outbox_event_id === null ? [] : [row.outbox_event_id]))}::uuid[])
+        order by id
+        for update
+      `.execute(tx)
+    ).rows
+    return (
+      deliveries.filter((row) => row.state === "sending").length +
+      outbox.filter((row) => row.state === "processing" || row.state === "sending").length
+    )
   },
 
   tombstoneUser: async (tx, input) =>
@@ -114,6 +136,15 @@ export const createClientErasureWriteRepository = (): ClientErasureWriteReposito
         returning *
       `.execute(tx)
     ).rows[0] ?? null,
+
+  clearPassword: async (tx, userId, now) => {
+    await sql`
+      update user_credentials
+      set password_hash = null, failed_attempt_count = 0, failed_attempt_window_started_at = null, locked_until = null,
+          updated_at = ${now}, version = version + 1
+      where user_id = ${userId}
+    `.execute(tx)
+  },
 
   overwriteEmailChangeTargets: async (tx, userId, target) => {
     await sql`
@@ -138,19 +169,18 @@ export const createClientErasureWriteRepository = (): ClientErasureWriteReposito
         erased_at = coalesce(erased_at, ${input.now}),
         updated_at = ${input.now},
         version = version + 1
-      where id in (${userMailIds(input.userId, input.applicationId)})
+      where id in (${clientMailIds(input)})
     `.execute(tx)
     await sql`
       update email_delivery_payloads
       set ciphertext = null, nonce = null, scrubbed_at = coalesce(scrubbed_at, ${input.now})
-      where email_delivery_id in (${userMailIds(input.userId, input.applicationId)})
+      where email_delivery_id in (${clientMailIds(input)})
     `.execute(tx)
     await sql`
       update email_provider_events
       set payload_ciphertext = null, payload_nonce = null, payload_key_version = null,
           erased_at = coalesce(erased_at, ${input.now})
-      where email_delivery_id in (${userMailIds(input.userId, input.applicationId)})
-         or delivery_correlation_id in (${userMailIds(input.userId, input.applicationId)})
+      where ${providerEventsOfMail(input)}
     `.execute(tx)
     return cancelled
   },
@@ -158,7 +188,7 @@ export const createClientErasureWriteRepository = (): ClientErasureWriteReposito
   rewriteContactHistory: async (tx, input) => {
     const rows = (
       await sql<{ readonly id: string; readonly reason_detail: string | null }>`
-        select id, reason_detail from user_contact_history where user_id = ${input.userId} for update
+        select id, reason_detail from user_contact_history where user_id = ${input.userId} order by id for update
       `.execute(tx)
     ).rows
     for (const row of rows) {
@@ -197,9 +227,7 @@ export const createClientErasureWriteRepository = (): ClientErasureWriteReposito
           pii_tombstoned_at = coalesce(pii_tombstoned_at, ${input.now}),
           updated_at = ${input.now},
           version = version + 1
-        where state <> 'submitted'
-          and (id = ${input.applicationId}::uuid
-               or (${unlinkedApplications(input.userId, input.scrubber.emails, input.scrubber.phones)}))
+        where id = any(${[...input.applicationIds]}::uuid[]) and state <> 'submitted'
       `.execute(tx),
     ),
 

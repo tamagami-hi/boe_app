@@ -39,3 +39,11 @@ BEGIN
   RAISE EXCEPTION 'user_contact_history is append-only';
 END;
 $$;
+
+CREATE INDEX email_provider_events_delivery_idx ON email_provider_events (email_delivery_id)
+  WHERE email_delivery_id IS NOT NULL;
+
+CREATE INDEX outbox_events_aggregate_idx ON outbox_events (aggregate_id);
+
+CREATE INDEX auth_login_events_unlinked_email_idx ON auth_login_events (email_normalized)
+  WHERE user_id IS NULL;

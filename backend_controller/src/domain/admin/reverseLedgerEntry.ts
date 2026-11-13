@@ -10,6 +10,7 @@ import type {
 } from "../../repositories/clientPositionRepository.js"
 import type { NotificationWriteRepository } from "../../repositories/notificationRepository.js"
 import type { UserWriteRepository } from "../../repositories/userRepository.js"
+import { refuseErasedClient } from "../shared/erasedClient.js"
 import { releaseSipMonthOnReversal } from "./sipMonthLink.js"
 
 export interface ReverseLedgerEntryDeps {
@@ -62,6 +63,7 @@ export const reverseLedgerEntry = async (
 
   const user = await deps.userRepository.lockById(tx, input.userId as UserId)
   if (user === null) throw new AppError("RESOURCE_NOT_FOUND")
+  refuseErasedClient(user.pii_tombstoned_at)
 
   const original = await deps.clientPositionRepository.lockEntryForReversal(tx, {
     userId: input.userId,

@@ -16,9 +16,11 @@ import { createEmailVerificationRepository } from "../../src/repositories/emailV
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
 import { createIdentityLockRepository } from "../../src/repositories/identityLockRepository.js"
 import { createLoginEventRepository } from "../../src/repositories/loginEventRepository.js"
+import { createMandatesRepository } from "../../src/repositories/mandatesRepository.js"
 import { createNotificationRepository } from "../../src/repositories/notificationRepository.js"
 import { createUserContactRepository } from "../../src/repositories/userContactRepository.js"
 import { registerAdminClientErasureRoutes } from "../../src/routes/adminClientErasureRoutes.js"
+import { registerAdminClientGrowthRoutes } from "../../src/routes/adminClientGrowthRoutes.js"
 import { registerAdminClientOnboardingRoutes } from "../../src/routes/adminClientOnboardingRoutes.js"
 import { registerClientWebAuthRoutes } from "../../src/routes/clientWebAuthRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
@@ -45,6 +47,7 @@ export interface SeededClient {
   readonly changeTarget: string
   readonly nominee: string
   readonly applicationId: string
+  readonly rejectedApplicationId: string
 }
 
 export type Envelope<T> = Readonly<{
@@ -76,6 +79,17 @@ export const startErasureHarness = async (): Promise<ErasureHarness> => {
         emailChangeRepository: createEmailChangeRepository(),
         config: { ...mail.config, idempotencyTtlMs: 86_400_000 },
       })
+      registerAdminClientGrowthRoutes(instance, {
+        webAuth,
+        unitOfWork: stack.unitOfWork,
+        database: stack.database,
+        clock: stack.clock,
+        config: { idempotencyTtlMs: 86_400_000 },
+        clientGrowthRepository: createClientGrowthRepository(),
+        auditRepository: stack.auditRepository,
+        idempotencyRepository: createIdempotencyRepository(),
+        notificationRepository: createNotificationRepository(),
+      })
       registerAdminClientErasureRoutes(instance, {
         webAuth,
         unitOfWork: stack.unitOfWork,
@@ -93,6 +107,7 @@ export const startErasureHarness = async (): Promise<ErasureHarness> => {
         passwordTokenRepository: stack.passwordTokenRepository,
         emailVerificationRepository: createEmailVerificationRepository(),
         emailChangeRepository: createEmailChangeRepository(),
+        mandateLookup: createMandatesRepository(),
         config: { idempotencyTtlMs: 86_400_000 },
       })
     },
@@ -150,8 +165,18 @@ export const seedClient = async (
   )
   const id = String(user.id)
   await stack.pool.query("insert into user_credentials (user_id, password_hash) values ($1, $2)", [id, stack.passwordHash])
-  await populateCopies(harness, { id, email, phone, name, oldEmail, oldPhone, changeTarget, nominee, applicationId: String(application.id) })
-  return { id, email, phone, name, oldEmail, oldPhone, changeTarget, nominee, applicationId: String(application.id) }
+  const rejected = await stack.first(
+    "insert into applications (email_normalized, phone_e164, full_name, state, submitted_at, decided_at) " +
+      "values ($1, $2, $3, 'rejected', now(), now()) returning id",
+    [oldEmail, oldPhone, name],
+  )
+  const client = {
+    id, email, phone, name, oldEmail, oldPhone, changeTarget, nominee,
+    applicationId: String(application.id),
+    rejectedApplicationId: String(rejected.id),
+  }
+  await populateCopies(harness, client)
+  return client
 }
 
 const populateCopies = async (harness: ErasureHarness, client: SeededClient): Promise<void> => {
@@ -164,10 +189,20 @@ const populateCopies = async (harness: ErasureHarness, client: SeededClient): Pr
       "values ($1, 'admin_correction', $2, $3, $4, $5, $6, $7, 'typo', $8)",
     [client.id, client.oldEmail, client.oldPhone, client.email, client.phone, admin.userId, randomUUID(), `called ${client.oldPhone}`],
   )
-  await q(
-    "insert into applications (email_normalized, phone_e164, full_name, state, submitted_at, decided_at) " +
-      "values ($1, $2, $3, 'rejected', now(), now())",
-    [client.oldEmail, client.oldPhone, client.name],
+  await stack.unitOfWork.execute((tx) =>
+    enqueueEmail(tx, stack.mailDeps(), {
+      recipient: client.oldEmail,
+      template: { templateKey: "application_rejected", applicationId: client.rejectedApplicationId },
+      templateVersion: "v1",
+      sesConfigurationSet: "boe-transactional",
+      eventType: "application.rejected",
+      eventVersion: 1,
+      aggregateType: "application",
+      aggregateId: client.rejectedApplicationId,
+      requestId: randomUUID(),
+      deduplicationKey: `erase-test:${randomUUID()}`,
+      payload: { template: "application_rejected", note: `for ${client.oldEmail}` },
+    }),
   )
   await q(
     "insert into auth_login_events (user_id, email_normalized, channel, outcome, request_id) values ($1, $2, 'client_web', 'invalid_credentials', $3)",
@@ -184,7 +219,7 @@ const populateCopies = async (harness: ErasureHarness, client: SeededClient): Pr
   ])
   await q(
     "insert into support_requests (user_id, reference, category, subject, body) values ($1, $2, 'account', 'Help', $3)",
-    [client.id, `REQ-${randomUUID().slice(0, 6)}`, `Call me on ${national} or write to ${client.email.toUpperCase()}`],
+    [client.id, `REQ-${randomUUID().slice(0, 6)}`, `Call me on ${national} or write to ${client.email.toUpperCase()}. ${client.name.toLowerCase()}`],
   )
   await q(
     "insert into audit_events (actor_type, actor_user_id, command, entity_type, entity_id, request_id, entity_version, reason_detail, metadata) " +
@@ -370,5 +405,43 @@ export const clientLogin = (harness: ErasureHarness, email: string) =>
     headers: { origin: CLIENT_ORIGIN },
     payload: { email, password: PASSWORD },
   })
+
+export const growIndividually = (harness: ErasureHarness, userId: string) =>
+  harness.app.inject({
+    method: "POST",
+    url: "/v1/admin/client-growth/individual",
+    headers: adminHeaders(harness.admin, randomUUID()),
+    payload: { userId, fundId: harness.fundId, growthPaise: "1000", effectiveDate: "2025-03-01", reasonCode: "monthly" },
+  })
+
+export const ownIdsOf = async (stack: PasswordMailStack, client: SeededClient): Promise<readonly string[]> => {
+  const apps = [client.applicationId, client.rejectedApplicationId]
+  const rows = await stack.pool.query<{ id: string }>(
+    "select id from email_deliveries where user_id = $1 or application_id = any($2::uuid[]) " +
+      "union all select outbox_event_id from email_deliveries where (user_id = $1 or application_id = any($2::uuid[])) and outbox_event_id is not null " +
+      "union all select id from auth_login_events where user_id is null and email_normalized = any($3::text[])",
+    [client.id, apps, [client.email, client.oldEmail, client.changeTarget]],
+  )
+  return [client.id, ...apps, ...rows.rows.map((row) => row.id)]
+}
+
+export const othersSnapshot = async (stack: PasswordMailStack, ownIds: readonly string[]): Promise<string> => {
+  const tables = (
+    await stack.pool.query<{ table_name: string }>(
+      "select table_name from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE' order by table_name",
+    )
+  ).rows.map((row) => row.table_name)
+  const parts: string[] = []
+  for (const table of tables) {
+    const rows = (
+      await stack.pool.query<{ r: string }>(
+        `select to_jsonb(t)::text as r from "${table}" t where not (to_jsonb(t)::text like any($1::text[])) order by 1`,
+        [ownIds.map((id) => `%${id}%`)],
+      )
+    ).rows
+    parts.push(`${table}:${rows.map((row) => row.r).join("|")}`)
+  }
+  return parts.join("\n")
+}
 
 export const userRow = (stack: PasswordMailStack, id: string): Promise<Row> => stack.first("select * from users where id = $1", [id])

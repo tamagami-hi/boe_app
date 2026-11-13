@@ -19,6 +19,7 @@ import {
   type RecordingCategory,
   type RecordingReasonCode,
 } from "../shared/recordingCategory.js"
+import { refuseErasedClient } from "../shared/erasedClient.js"
 import { commitSipMonthLink, prepareSipMonthLink, type SipMonthLinkInput } from "./sipMonthLink.js"
 
 export interface RecordContributionDeps extends InvestmentRecordedMailDeps {
@@ -77,6 +78,7 @@ export const requireRecordableClient = async (
 ): Promise<User> => {
   const user = await deps.userRepository.lockById(tx, userId)
   if (user === null) throw new AppError("RESOURCE_NOT_FOUND")
+  refuseErasedClient(user.pii_tombstoned_at)
   if (!RECORDABLE_ACCOUNT_STATES.has(user.account_state)) {
     throw new AppError("STATE_CONFLICT", { message: NOT_RECORDABLE_STATE_MESSAGE })
   }

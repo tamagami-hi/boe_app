@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto"
+import { randomBytes, randomUUID } from "node:crypto"
 import { fileURLToPath } from "node:url"
 
 import { PostgreSqlContainer } from "@testcontainers/postgresql"
@@ -47,6 +47,45 @@ const seedHolder = async (verified: boolean): Promise<Holder> => {
     [id, actorId, randomUUID()],
   )
   return { id, historyId: history.rows[0]?.id ?? "" }
+}
+
+const giveLedgerRow = async (userId: string): Promise<void> => {
+  const one = async (text: string, values: readonly unknown[]): Promise<string> =>
+    String((await pool.query<{ id: string }>(text, [...values])).rows[0]?.id)
+  const fund = await one("insert into funds (slug, state, published_at, created_by_user_id) values ($1, 'published', now(), $2) returning id", [
+    `m-${randomUUID().slice(0, 8)}`,
+    actorId,
+  ])
+  const disclosure = await one(
+    "insert into fund_disclosure_versions (fund_id, version, title, body, content_sha256, effective_from, published_by_user_id) " +
+      "values ($1, 1, 'D', 'B', $2, now(), $3) returning id",
+    [fund, randomBytes(32), actorId],
+  )
+  const version = await one(
+    "insert into fund_versions (fund_id, version, name, category, objective, risk_level, minimum_sip_paise, minimum_purchase_paise, " +
+      "disclosure_version_id, terms_sha256, created_by_user_id) values ($1, 1, 'F', 'hybrid', 'O', 'moderate', 1, 1, $2, $3, $4) returning id",
+    [fund, disclosure, randomBytes(32), actorId],
+  )
+  const order = await one(
+    "insert into investment_orders (user_id, fund_id, fund_version_id, type, state, amount_paise, accepted_at) " +
+      "values ($1, $2, $3, 'recorded_offline', 'accepted', 1000, now()) returning id",
+    [userId, fund, version],
+  )
+  const payment = await one(
+    "insert into payments (order_id, user_id, amount_paise, state, succeeded_at) values ($1, $2, 1000, 'succeeded', now()) returning id",
+    [order, userId],
+  )
+  const allocation = await one(
+    "insert into investment_allocations (order_id, user_id, fund_id, amount_paise, allocated_by_user_id, request_id) " +
+      "values ($1, $2, $3, 1000, $4, $5) returning id",
+    [order, userId, fund, actorId, randomUUID()],
+  )
+  await pool.query(
+    "insert into client_value_entries (user_id, fund_id, allocation_id, entry_type, principal_delta_paise, value_delta_paise, " +
+      "effective_date, order_id, payment_id, reason_code, actor_type, created_by_user_id, request_id) " +
+      "values ($1, $2, $3, 'contribution', 1000, 1000, '2025-01-15', $4, $5, 'recorded_offline_investment', 'admin', $6, $7)",
+    [userId, fund, allocation, order, payment, actorId, randomUUID()],
+  )
 }
 
 const historySnapshot = async (): Promise<string> =>
@@ -153,12 +192,26 @@ describe("069 client erasure populated upgrade", () => {
     })
 
     const unverified = await seedHolder(false)
+    const otherUnverified = await seedHolder(false)
+    const invested = await seedHolder(false)
+    await giveLedgerRow(invested.id)
+    await expect(
+      inErasure(unverified.id, (client) => client.query("delete from user_contact_history where id = $1", [otherUnverified.historyId])),
+    ).rejects.toThrow(/append-only/u)
+    await expect(
+      inErasure(invested.id, (client) => client.query("delete from user_contact_history where id = $1", [invested.historyId])),
+    ).rejects.toThrow(/append-only/u)
+    await expect(
+      inErasure(live.id, (client) => client.query("delete from user_contact_history where id = $1", [live.historyId])),
+    ).rejects.toThrow(/append-only/u)
     await inErasure(unverified.id, (client) => client.query("delete from user_contact_history where user_id = $1", [unverified.id]))
     expect((await pool.query("select count(*)::int as c from user_contact_history where user_id = $1", [unverified.id])).rows[0]).toEqual({
       c: 0,
     })
-    expect(
-      (await pool.query("select count(*)::int as c from user_contact_history where user_id = $1", [live.id])).rows[0],
-    ).toEqual({ c: 1 })
+    for (const kept of [live, otherUnverified, invested]) {
+      expect(
+        (await pool.query("select count(*)::int as c from user_contact_history where user_id = $1", [kept.id])).rows[0],
+      ).toEqual({ c: 1 })
+    }
   })
 })

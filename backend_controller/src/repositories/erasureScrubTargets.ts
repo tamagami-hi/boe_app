@@ -2,12 +2,12 @@ import { sql, type RawBuilder } from "kysely"
 
 import type { Transaction } from "../db/repositories.js"
 import type { ContactScrubber } from "../domain/admin/erasureContacts.js"
+import type { OwnedEntities } from "./clientErasureInspectRepository.js"
 
 export interface ScrubOwner {
   readonly userId: string
-  readonly applicationId: string | null
-  readonly linkedEntityIds: readonly string[]
-  readonly mentionPatterns: readonly string[]
+  readonly applicationIds: readonly string[]
+  readonly owned: OwnedEntities
 }
 
 interface ScrubTarget {
@@ -19,26 +19,24 @@ interface ScrubTarget {
 
 type ScrubRow = Readonly<Record<string, unknown>> & { readonly id: string }
 
-const applicationOrNull = (owner: ScrubOwner) => sql`${owner.applicationId}::uuid`
+const uuids = (values: readonly string[]) => sql`${[...values]}::uuid[]`
 
-const userMail = (owner: ScrubOwner) => sql`
+const escapeLike = (value: string): string => value.replace(/[\\%_]/gu, (character) => `\\${character}`)
+
+export const auditAboutClient = (owner: ScrubOwner) => sql`
+  (entity_type = any(${[...owner.owned.types]}::text[]) and entity_id = any(${uuids(owner.owned.ids)}))
+  or actor_user_id = ${owner.userId}
+  or (metadata ? 'userId' and metadata->>'userId' = ${owner.userId})
+`
+
+const clientMail = (owner: ScrubOwner) => sql`
   select d.outbox_event_id from email_deliveries d
   where d.outbox_event_id is not null
-    and (d.user_id = ${owner.userId} or d.application_id = ${applicationOrNull(owner)})
+    and (d.user_id = ${owner.userId} or d.application_id = any(${uuids(owner.applicationIds)}))
 `
 
 export const CLIENT_SCRUB_TARGETS: readonly ScrubTarget[] = [
-  {
-    table: "audit_events",
-    textColumns: ["reason_detail"],
-    jsonColumns: ["metadata"],
-    owned: (owner) => sql`
-      entity_id = ${owner.userId} or actor_user_id = ${owner.userId}
-      or (metadata ? 'userId' and metadata->>'userId' = ${owner.userId})
-      or entity_id = ${applicationOrNull(owner)}
-      or entity_id = any(${[...owner.linkedEntityIds]}::uuid[])
-    `,
-  },
+  { table: "audit_events", textColumns: ["reason_detail"], jsonColumns: ["metadata"], owned: auditAboutClient },
   {
     table: "notifications",
     textColumns: ["title", "body"],
@@ -55,14 +53,16 @@ export const CLIENT_SCRUB_TARGETS: readonly ScrubTarget[] = [
     table: "application_reviews",
     textColumns: ["reason_detail"],
     jsonColumns: [],
-    owned: (owner) => sql`application_id = ${applicationOrNull(owner)}`,
+    owned: (owner) => sql`application_id = any(${uuids(owner.applicationIds)})`,
   },
   {
     table: "outbox_events",
     textColumns: [],
     jsonColumns: ["payload"],
     owned: (owner) => sql`
-      id in (${userMail(owner)}) or aggregate_id = ${owner.userId} or aggregate_id = ${applicationOrNull(owner)}
+      id in (${clientMail(owner)})
+      or (aggregate_type = 'user' and aggregate_id = ${owner.userId})
+      or (aggregate_type = 'application' and aggregate_id = any(${uuids(owner.applicationIds)}))
     `,
   },
   {
@@ -79,13 +79,7 @@ export const CLIENT_SCRUB_TARGETS: readonly ScrubTarget[] = [
   },
   {
     table: "withdrawal_operations",
-    textColumns: ["note", "transfer_reference"],
-    jsonColumns: [],
-    owned: (owner) => sql`user_id = ${owner.userId}`,
-  },
-  {
-    table: "provider_payment_details",
-    textColumns: ["provider_reference"],
+    textColumns: ["note"],
     jsonColumns: [],
     owned: (owner) => sql`user_id = ${owner.userId}`,
   },
@@ -102,9 +96,9 @@ export const RECEIPT_SCRUB_TARGET: ScrubTarget = {
   textColumns: [],
   jsonColumns: ["response_body"],
   owned: (owner) => sql`
-    actor_user_id = ${owner.userId}
-    or actor_scope = ${`user:${owner.userId}`}
-    or response_body::text like any(${[...owner.mentionPatterns]}::text[])
+    actor_scope = ${`user:${owner.userId}`}
+    or actor_user_id = ${owner.userId}
+    or response_body::text like ${`%${escapeLike(owner.userId)}%`} escape '\\'
   `,
 }
 
@@ -116,7 +110,7 @@ const scrubbedColumns = (
   ...target.textColumns.flatMap((column) => {
     const before = row[column]
     if (typeof before !== "string") return []
-    const after = scrubber.text(before)
+    const after = scrubber.ownText(before)
     return after === before ? [] : [[column, sql`${after}`] as const]
   }),
   ...target.jsonColumns.flatMap((column) => {
@@ -140,6 +134,7 @@ export const scrubTarget = async (
       select id, ${sql.join(columns.map((column) => sql.ref(column)))}
       from ${sql.table(target.table)}
       where ${target.owned(owner)}
+      order by id
       for update
     `.execute(tx)
   ).rows

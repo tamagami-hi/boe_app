@@ -36,6 +36,7 @@ import {
 } from "../domain/admin/clientGrowth.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { refuseFutureDate } from "../domain/shared/calendarDate.js"
+import { refuseErasedClient } from "../domain/shared/erasedClient.js"
 import { CLIENT_GROWTH_AUDIT_METADATA } from "../domain/shared/growthAuditMetadata.js"
 import { AppError } from "../http/errorCatalog.js"
 import { parseOrThrow } from "../http/validation.js"
@@ -302,6 +303,7 @@ const individual = async (
       // §8.5: lock the position, then recalculate from the current server
       // basis — the commit response is authoritative.
       await deps.clientGrowthRepository.lockPosition(tx, body.userId, body.fundId)
+      refuseErasedClient(await deps.clientGrowthRepository.findErasedAt(tx, body.userId))
       const basisRow = await deps.clientGrowthRepository.findPositionBasis(
         tx,
         body.userId,

@@ -166,6 +166,7 @@ describe("recorded offline contributions", () => {
       id: "user-1",
       version: "1",
       account_state: "suspended",
+      pii_tombstoned_at: null,
     } as never)
 
     await recordContribution(TX, deps, input)

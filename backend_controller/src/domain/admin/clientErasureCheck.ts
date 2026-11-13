@@ -1,13 +1,13 @@
 import type { Transaction } from "../../db/repositories.js"
 import { AppError } from "../../http/errorCatalog.js"
 import type {
-  ClientErasureInspectRepository,
   ErasureBlockerCode,
   ErasureBlockerCounts,
   ErasureSubject,
   PriorErasure,
 } from "../../repositories/clientErasureInspectRepository.js"
 import { ERASED_NAME } from "./erasureContacts.js"
+import { blockerCountsOf, reachOf, type ErasureReachDeps } from "./erasureReach.js"
 
 export type ErasurePath = "deleted" | "kept_as_record"
 export type ErasureKeptBecause = "email_verified" | "money_records"
@@ -40,22 +40,23 @@ export type ErasureCheck =
       blockers: readonly ErasureBlocker[]
     }>
 
-export interface ClientErasureCheckDeps {
-  readonly erasureInspectRepository: ClientErasureInspectRepository
-}
+export type ClientErasureCheckDeps = ErasureReachDeps
 
 const counted = (count: number, one: string, many: string): string =>
   `${String(count)} ${count === 1 ? one : many}`
 
 const BLOCKER_MESSAGES: Readonly<Record<ErasureBlockerCode, (count: number) => string>> = {
   staff_account: () => "This is a staff account. Staff and admin accounts are never erased here.",
-  legal_hold: () => "A legal hold is placed on this account.",
+  legal_hold: (count) =>
+    `${counted(count, "legal hold is", "legal holds are")} placed on this client's account, applications, emails, money records or audit entries.`,
   holds_money: (count) =>
     `The client still has an invested amount or a current value in ${counted(count, "fund", "funds")}. Both must be zero in every fund.`,
   open_orders: (count) => `${counted(count, "order is", "orders are")} still open.`,
   open_payments: (count) => `${counted(count, "payment is", "payments are")} not final yet.`,
   open_refunds: (count) => `${counted(count, "refund is", "refunds are")} still pending.`,
   open_withdrawals: (count) => `${counted(count, "withdrawal payout is", "withdrawal payouts are")} still pending.`,
+  failed_withdrawals: (count) =>
+    `${counted(count, "withdrawal payout", "withdrawal payouts")} failed, so the client is still owed that money. Settle it first.`,
   unsettled_maturities: (count) => `${counted(count, "maturity is", "maturities are")} marked but not settled.`,
   active_sip_schedules: (count) => `${counted(count, "SIP schedule is", "SIP schedules are")} still active. Close it first.`,
   scheduled_maturities: (count) =>
@@ -119,7 +120,8 @@ export const checkClientErasure = async (
     }
   }
   if (subject === null) throw new AppError("RESOURCE_NOT_FOUND")
-  const blockers = blockersOf(await repository.countBlockers(tx, subject))
+  const reach = await reachOf(tx, deps, subject)
+  const blockers = blockersOf(await blockerCountsOf(tx, deps, subject, reach))
   return {
     state: blockers.length === 0 ? "erasable" : "blocked",
     userId,

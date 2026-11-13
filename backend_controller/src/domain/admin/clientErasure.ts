@@ -1,14 +1,9 @@
-import type { CryptoContext } from "../../crypto/context.js"
 import type { Transaction, UserId } from "../../db/repositories.js"
 import { AppError } from "../../http/errorCatalog.js"
 import type { AuditWriteRepository } from "../../repositories/auditRepository.js"
 import type { AuthSessionWriteRepository } from "../../repositories/authSessionRepository.js"
 import type { ClientErasureDeleteRepository } from "../../repositories/clientErasureDeleteRepository.js"
-import {
-  ERASURE_COMMAND,
-  type ContactSources,
-  type ErasureSubject,
-} from "../../repositories/clientErasureInspectRepository.js"
+import { ERASURE_COMMAND, type ErasureSubject } from "../../repositories/clientErasureInspectRepository.js"
 import type { ClientErasureWriteRepository } from "../../repositories/clientErasureWriteRepository.js"
 import type { ClientGrowthRepository } from "../../repositories/clientGrowthRepository.js"
 import type { EmailChangeRepository } from "../../repositories/emailChangeRepository.js"
@@ -27,13 +22,8 @@ import {
   type ErasurePath,
   type ErasurePlan,
 } from "./clientErasureCheck.js"
-import {
-  createContactScrubber,
-  erasedEmailFor,
-  isPlaceholderEmail,
-  isPlaceholderPhone,
-  type ContactScrubber,
-} from "./erasureContacts.js"
+import { erasedEmailFor, isPlaceholderEmail, isPlaceholderPhone } from "./erasureContacts.js"
+import { blockerCountsOf, reachOf, type ClientReach } from "./erasureReach.js"
 
 export const PATH_CHANGED_MESSAGE =
   "What erasure would do for this client changed since you checked. Check again before confirming."
@@ -52,7 +42,6 @@ export interface ClientErasureDeps extends ClientErasureCheckDeps {
   readonly emailVerificationRepository: Pick<EmailVerificationRepository, "consumeActiveCode">
   readonly emailChangeRepository: Pick<EmailChangeRepository, "retireActive">
   readonly auditRepository: AuditWriteRepository
-  readonly crypto: CryptoContext
   readonly clock: () => Date
 }
 
@@ -69,6 +58,16 @@ export interface ErasureOutcome extends ErasurePlan {
   readonly erasedAt: Date
 }
 
+interface LockedSubject {
+  readonly seen: ErasureSubject
+  readonly locked: ErasureSubject | null
+}
+
+interface ErasedAccount {
+  readonly entityVersion: number
+  readonly toState: string
+}
+
 const releasedEmailFor = (userId: string): string => `released+${userId.replaceAll("-", "")}@${RELEASED_EMAIL_DOMAIN}`
 
 const alreadyErased = async (
@@ -78,11 +77,6 @@ const alreadyErased = async (
 ): Promise<ErasureOutcome | null> => {
   const prior = await deps.erasureInspectRepository.findPriorErasure(tx, userId)
   return prior === null ? null : { userId, outcome: "already_erased", erasedAt: prior.erasedAt, ...planOfPrior(prior) }
-}
-
-interface LockedSubject {
-  readonly seen: ErasureSubject
-  readonly locked: ErasureSubject | null
 }
 
 const lockSubject = async (tx: Transaction, deps: ClientErasureDeps, userId: string): Promise<LockedSubject | null> => {
@@ -99,29 +93,10 @@ const lockSubject = async (tx: Transaction, deps: ClientErasureDeps, userId: str
 const sameContacts = (left: ErasureSubject, right: ErasureSubject): boolean =>
   left.emailNormalized === right.emailNormalized && left.phoneE164 === right.phoneE164
 
-const openedRecipients = (deps: ClientErasureDeps, sources: ContactSources): string[] =>
-  sources.sealedRecipients.flatMap((sealed) => {
-    if (sealed.keyVersion !== deps.crypto.recipientEncryptionKeyVersion) return []
-    try {
-      return [deps.crypto.decryptRecipient(sealed.ciphertext, sealed.nonce)]
-    } catch {
-      return []
-    }
-  })
-
-const scrubberFor = async (tx: Transaction, deps: ClientErasureDeps, subject: ErasureSubject): Promise<ContactScrubber> => {
-  const sources = await deps.erasureInspectRepository.collectContactSources(tx, subject)
-  return createContactScrubber(
-    { emails: [...sources.emails, ...openedRecipients(deps, sources)], phones: sources.phones, names: sources.names },
-    subject.id,
-  )
-}
-
-const ownerOf = (subject: ErasureSubject, scrubber: ContactScrubber, linkedEntityIds: readonly string[]): ScrubOwner => ({
+const ownerOf = (subject: ErasureSubject, reach: ClientReach, applicationIds: readonly string[]): ScrubOwner => ({
   userId: subject.id,
-  applicationId: subject.applicationId,
-  linkedEntityIds,
-  mentionPatterns: [subject.id, ...scrubber.emails, ...scrubber.phones].map((needle) => `%${needle}%`),
+  applicationIds,
+  owned: reach.owned,
 })
 
 const drawReleasePhone = async (tx: Transaction, deps: ClientErasureDeps, current: string): Promise<string> => {
@@ -133,21 +108,25 @@ const drawReleasePhone = async (tx: Transaction, deps: ClientErasureDeps, curren
   throw new AppError("INTERNAL_ERROR")
 }
 
-interface ErasedAccount {
-  readonly entityVersion: number
-  readonly toState: string
+const revokeAccess = async (tx: Transaction, deps: ClientErasureDeps, userId: string, now: Date): Promise<void> => {
+  const erasedEmail = erasedEmailFor(userId)
+  await deps.authSessionRepository.revokeAllForUser(tx, { userId: userId as UserId, reason: "account_erased", now })
+  await deps.erasureWriteRepository.clearPassword(tx, userId, now)
+  await deps.passwordTokenRepository.consumeActive(tx, { userId, now })
+  await deps.emailVerificationRepository.consumeActiveCode(tx, { userId, now })
+  await deps.emailChangeRepository.retireActive(tx, { userId, now })
+  await deps.erasureWriteRepository.overwriteEmailChangeTargets(tx, userId, deps.crypto.encryptRecipient(erasedEmail))
 }
 
 const keepAsRecord = async (
   tx: Transaction,
   deps: ClientErasureDeps,
   subject: ErasureSubject,
-  scrubber: ContactScrubber,
+  reach: ClientReach,
   now: Date,
 ): Promise<ErasedAccount> => {
   const write = deps.erasureWriteRepository
   const erasedEmail = erasedEmailFor(subject.id)
-  const linkedEntityIds = await deps.erasureInspectRepository.listOwnedEntityIds(tx, subject)
   const updated = await write.tombstoneUser(tx, {
     userId: subject.id,
     emailNormalized: isPlaceholderEmail(subject.emailNormalized) ? subject.emailNormalized : releasedEmailFor(subject.id),
@@ -155,26 +134,22 @@ const keepAsRecord = async (
     now,
   })
   if (updated === null) throw new AppError("STATE_CONFLICT", { message: STALE_CONTACTS_MESSAGE })
-  await deps.authSessionRepository.revokeAllForUser(tx, { userId: subject.id as UserId, reason: "account_erased", now })
-  await deps.passwordTokenRepository.consumeActive(tx, { userId: subject.id, now })
-  await deps.emailVerificationRepository.consumeActiveCode(tx, { userId: subject.id, now })
-  await deps.emailChangeRepository.retireActive(tx, { userId: subject.id, now })
-  await write.overwriteEmailChangeTargets(tx, subject.id, deps.crypto.encryptRecipient(erasedEmail))
+  await revokeAccess(tx, deps, subject.id, now)
   await write.eraseMail(tx, {
     userId: subject.id,
-    applicationId: subject.applicationId,
+    applicationIds: reach.applicationIds,
     recipientHmac: deps.crypto.hmacRecipient(erasedEmail).hash,
     recipientMasked: deps.crypto.maskEmail(erasedEmail),
     now,
   })
-  const rewrite = { userId: subject.id, erasedEmail, scrubber }
+  const rewrite = { userId: subject.id, erasedEmail, scrubber: reach.scrubber }
   await write.rewriteContactHistory(tx, rewrite)
   await write.overwriteLoginEmails(tx, rewrite)
-  await write.tombstoneApplications(tx, { ...rewrite, applicationId: subject.applicationId, now })
+  await write.tombstoneApplications(tx, { applicationIds: reach.applicationIds, erasedEmail, now })
   await write.eraseProviderEventPayloads(tx, subject.id, now)
-  const owner = ownerOf(subject, scrubber, linkedEntityIds)
+  const owner = ownerOf(subject, reach, reach.applicationIds)
   for (const target of [...CLIENT_SCRUB_TARGETS, RECEIPT_SCRUB_TARGET]) {
-    await scrubTarget(tx, target, owner, scrubber)
+    await scrubTarget(tx, target, owner, reach.scrubber)
   }
   return { entityVersion: Number(updated.version), toState: updated.account_state }
 }
@@ -183,25 +158,63 @@ const deleteCompletely = async (
   tx: Transaction,
   deps: ClientErasureDeps,
   subject: ErasureSubject,
-  scrubber: ContactScrubber,
+  reach: ClientReach,
   now: Date,
 ): Promise<ErasedAccount> => {
   await deps.erasureDeleteRepository.deleteClient(tx, {
     userId: subject.id,
-    applicationId: subject.applicationId,
-    emails: scrubber.emails,
+    linkedApplicationId: subject.applicationId,
+    applicationIds: reach.applicationIds,
+    emails: reach.scrubber.emails,
+    owned: reach.owned,
   })
-  const owner = ownerOf(subject, scrubber, [])
   await deps.erasureWriteRepository.tombstoneApplications(tx, {
-    userId: subject.id,
+    applicationIds: reach.matchedApplicationIds,
     erasedEmail: erasedEmailFor(subject.id),
-    scrubber,
-    applicationId: null,
     now,
   })
-  await scrubTarget(tx, RECEIPT_SCRUB_TARGET, owner, scrubber)
+  const matched = ownerOf(subject, reach, reach.matchedApplicationIds)
+  for (const target of CLIENT_SCRUB_TARGETS.filter((candidate) => candidate.table === "application_reviews")) {
+    await scrubTarget(tx, target, matched, reach.scrubber)
+  }
+  await scrubTarget(tx, RECEIPT_SCRUB_TARGET, matched, reach.scrubber)
   return { entityVersion: subject.version + 1, toState: "deleted" }
 }
+
+const requirePlan = async (
+  tx: Transaction,
+  deps: ClientErasureDeps,
+  subject: ErasureSubject,
+  reach: ClientReach,
+  expectedPath: ErasurePath,
+): Promise<ErasurePlan> => {
+  const blockers = blockersOf(await blockerCountsOf(tx, deps, subject, reach))
+  if (blockers.length > 0) throw blockedError(blockers)
+  const inFlight = await deps.erasureWriteRepository.lockMail(tx, { userId: subject.id, applicationIds: reach.applicationIds })
+  if (inFlight > 0) throw blockedError(blockersOf({ ...emptyCounts(), mail_in_flight: inFlight }))
+  const plan = planFor(subject, await deps.erasureInspectRepository.hasMoneyRecords(tx, subject.id))
+  if (plan.path !== expectedPath) {
+    throw new AppError("STATE_CONFLICT", { message: PATH_CHANGED_MESSAGE, fields: { expectedPath: [PATH_CHANGED_MESSAGE] } })
+  }
+  return plan
+}
+
+const emptyCounts = () => ({
+  staff_account: 0,
+  legal_hold: 0,
+  holds_money: 0,
+  open_orders: 0,
+  open_payments: 0,
+  open_refunds: 0,
+  open_withdrawals: 0,
+  failed_withdrawals: 0,
+  unsettled_maturities: 0,
+  active_sip_schedules: 0,
+  scheduled_maturities: 0,
+  open_maturity_offers: 0,
+  active_sip_plans: 0,
+  mail_in_flight: 0,
+})
 
 export const eraseClient = async (
   tx: Transaction,
@@ -217,20 +230,14 @@ export const eraseClient = async (
   if (lock === null || subject === null) throw new AppError("RESOURCE_NOT_FOUND")
   if (!sameContacts(lock.seen, subject)) throw new AppError("STATE_CONFLICT", { message: STALE_CONTACTS_MESSAGE })
 
-  const blockers = blockersOf(await deps.erasureInspectRepository.countBlockers(tx, subject))
-  if (blockers.length > 0) throw blockedError(blockers)
-  const plan = planFor(subject, await deps.erasureInspectRepository.hasMoneyRecords(tx, subject.id))
-  if (plan.path !== input.expectedPath) {
-    throw new AppError("STATE_CONFLICT", { message: PATH_CHANGED_MESSAGE, fields: { expectedPath: [PATH_CHANGED_MESSAGE] } })
-  }
-
+  const reach = await reachOf(tx, deps, subject)
+  const plan = await requirePlan(tx, deps, subject, reach, input.expectedPath)
   const now = deps.clock()
   await deps.erasureWriteRepository.markErasing(tx, subject.id)
-  const scrubber = await scrubberFor(tx, deps, subject)
   const erased =
     plan.path === "deleted"
-      ? await deleteCompletely(tx, deps, subject, scrubber, now)
-      : await keepAsRecord(tx, deps, subject, scrubber, now)
+      ? await deleteCompletely(tx, deps, subject, reach, now)
+      : await keepAsRecord(tx, deps, subject, reach, now)
 
   const audit = await deps.auditRepository.append(tx, {
     actorType: "admin",

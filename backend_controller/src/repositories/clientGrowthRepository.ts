@@ -85,6 +85,7 @@ export interface ClientGrowthRepository {
     tx: Transaction,
     userId: string,
   ) => Promise<readonly ClientUserPositionRow[]>
+  findErasedAt: (tx: Transaction, userId: string) => Promise<Date | null>
   listNamedFundPositions: (
     tx: Transaction,
     fundId: string,
@@ -161,6 +162,11 @@ const userPositionsQuery = (userId: string) => sql<ClientUserPositionRow>`
 `
 
 export const createClientGrowthRepository = (): ClientGrowthRepository => ({
+  findErasedAt: async (tx, userId) =>
+    (await sql<{ readonly pii_tombstoned_at: Date | null }>`
+      select pii_tombstoned_at from users where id = ${userId}
+    `.execute(tx)).rows[0]?.pii_tombstoned_at ?? null,
+
   lockPosition: lockClientPosition,
 
   findPositionBasis: async (tx, userId, fundId) => {
