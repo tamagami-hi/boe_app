@@ -275,6 +275,17 @@
         "agent": "claude-opus-5-5 coordinator"
       },
       "openedAt": "2026-11-13T20:57:00.584Z"
+    },
+    {
+      "name": "g-erasure",
+      "branch": "track/g-erasure",
+      "worktree": ".temp/worktrees/g-erasure",
+      "purpose": "Phase G client erasure (DEC-29, DEC-33): guard, verified clients kept without contacts, never-verified clients deleted; migration 069",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-13T21:16:41.307Z"
     }
   ]
 }

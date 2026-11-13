@@ -290,6 +290,46 @@
       "state": "decided, not built",
       "by": "operator",
       "on": "2026-11-13T21:08:37.668Z"
+    },
+    {
+      "id": "DEC-30",
+      "group": "admin-improvements",
+      "text": "Q-030: when a client picks a maturity option in the app, the pick goes to the admin as the client's choice. Nothing changes in money, the ledger or the SIP until the admin confirms, and confirming runs the same resolution as a direct one.",
+      "since": "2026-11-14",
+      "status": "Decided, being built (Phase F)",
+      "state": "decided, not built",
+      "by": "operator",
+      "on": "2026-11-13T21:15:35.599Z"
+    },
+    {
+      "id": "DEC-31",
+      "group": "admin-improvements",
+      "text": "Q-031: the admin fills in the figures for options 2 and 3 before sending the options; the client only picks one. For other figures the client talks to the team and the admin sends new options.",
+      "since": "2026-11-14",
+      "status": "Decided, being built (Phase F)",
+      "state": "decided, not built",
+      "by": "operator",
+      "on": "2026-11-13T21:15:35.826Z"
+    },
+    {
+      "id": "DEC-32",
+      "group": "admin-improvements",
+      "text": "Q-032: when option 3 extends the SIP, the new maturity date is filled in as the old date plus the months added, and the admin can change it before confirming.",
+      "since": "2026-11-14",
+      "status": "Decided, being built (Phase F)",
+      "state": "decided, not built",
+      "by": "operator",
+      "on": "2026-11-13T21:15:36.033Z"
+    },
+    {
+      "id": "DEC-33",
+      "group": "admin-improvements",
+      "text": "Phase G go-ahead: build client erasure (DEC-29) now.",
+      "since": "2026-11-14",
+      "status": "Decided, being built (Phase G, lane g-erasure)",
+      "state": "decided, not built",
+      "by": "operator",
+      "on": "2026-11-13T21:15:36.906Z"
     }
   ],
   "replaced": []

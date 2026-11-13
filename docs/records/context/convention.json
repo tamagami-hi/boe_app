@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "convention",
-  "nextNumber": 7,
+  "nextNumber": 8,
   "entries": [
     {
       "id": "convention-1",
@@ -91,7 +91,9 @@
         "agent": "claude-opus-5-5 coordinator"
       },
       "at": "2026-11-13T20:57:09.977Z",
-      "replaces": "convention-3"
+      "replaces": "convention-3",
+      "retiredAt": "2026-11-13T21:16:41.045Z",
+      "retiredWhy": "replaced by convention-7"
     },
     {
       "id": "convention-5",
@@ -134,6 +136,25 @@
         "agent": "claude-opus-5-5 coordinator"
       },
       "at": "2026-11-13T21:09:03.313Z"
+    },
+    {
+      "id": "convention-7",
+      "kind": "convention",
+      "title": "Migration numbers: 068 Phase F maturity choices, 069 Phase G client erasure",
+      "text": "061 identity, 062 investment email, 063 nominee, 064 admin SIP schedules, 065 maturity schedules, 066 audit index, 067 client reviews, 068 Phase F maturity choices (lane f-maturity), 069 Phase G client erasure (lane g-erasure). Each lane adds its own number to the releaseUpgrade integration test's expected list; the second lane to land rebases and keeps both. Any later migration takes the next free number.",
+      "paths": [
+        "backend_controller/db/migrations"
+      ],
+      "tags": [
+        "migration"
+      ],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-13T21:16:41.045Z",
+      "replaces": "convention-4"
     }
   ]
 }

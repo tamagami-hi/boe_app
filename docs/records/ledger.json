@@ -1247,6 +1247,10 @@
     {
       "commit": "1fad527",
       "note": "docs(plan): decision IDs, Q-026 recorded as DEC-29, Phase G erasure planned"
+    },
+    {
+      "commit": "5a3b9dd",
+      "note": "docs(plan): Q-030 to Q-032 recorded as DEC-30 to DEC-32, Phase G started (DEC-33)"
     }
   ]
 }

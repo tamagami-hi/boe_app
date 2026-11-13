@@ -1,32 +1,7 @@
 {
   "schema": 1,
   "nextRow": 22,
-  "open": [
-    {
-      "row": 19,
-      "group": "admin-improvements",
-      "question": "Q-030: When a client picks a maturity option in the app, should it take effect straight away, or go to the admin as the client's choice, which the admin then confirms and carries out? A withdrawal is paid out by the team outside the app, so the admin has to act on it anyway.",
-      "meanwhile": "The client's pick is saved as their choice and shown to the admin on the Maturities dashboard, in the launch prompt and on the client page. Nothing changes in money, the ledger or the SIP until the admin confirms, and confirming runs the same resolution as a direct one. Until then the client can change their pick and sees that the BeOnEdge team will confirm it.",
-      "asked": "2026-11-13T20:53:52.225Z",
-      "by": "claude-opus-5-5 coordinator"
-    },
-    {
-      "row": 20,
-      "group": "admin-improvements",
-      "question": "Q-031: When the admin sends the maturity options to a client, who fills in the figures? Option 2 needs the next SIP's monthly amount and number of months, and option 3 needs how many months to add. Does the admin fill them in before sending, so the client only picks one, or does the client enter them in the app?",
-      "meanwhile": "The admin fills them in when sending. The client sees each option with its figures, plus the current value (amount invested and returns), and picks one. A client who wants other figures talks to the team, and the admin sends new options.",
-      "asked": "2026-11-13T20:53:52.486Z",
-      "by": "claude-opus-5-5 coordinator"
-    },
-    {
-      "row": 21,
-      "group": "admin-improvements",
-      "question": "Q-032: When option 3 extends a client's SIP by some months, should the maturity date move later by the same number of months, so the next 30-day reminder comes at the new end?",
-      "meanwhile": "The new maturity date is filled in as the old date plus the months added, and the admin can change it before confirming. The old maturity stays in the history as resolved, and a new one is scheduled at the new date.",
-      "asked": "2026-11-13T20:53:52.762Z",
-      "by": "claude-opus-5-5 coordinator"
-    }
-  ],
+  "open": [],
   "answered": [
     {
       "row": 1,
@@ -207,6 +182,36 @@
       "by": "lane-a-identity",
       "answeredAt": "2026-11-13T21:08:37.902Z",
       "decision": "DEC-29"
+    },
+    {
+      "row": 19,
+      "group": "admin-improvements",
+      "question": "Q-030: When a client picks a maturity option in the app, should it take effect straight away, or go to the admin as the client's choice, which the admin then confirms and carries out? A withdrawal is paid out by the team outside the app, so the admin has to act on it anyway.",
+      "meanwhile": "The client's pick is saved as their choice and shown to the admin on the Maturities dashboard, in the launch prompt and on the client page. Nothing changes in money, the ledger or the SIP until the admin confirms, and confirming runs the same resolution as a direct one. Until then the client can change their pick and sees that the BeOnEdge team will confirm it.",
+      "asked": "2026-11-13T20:53:52.225Z",
+      "by": "claude-opus-5-5 coordinator",
+      "answeredAt": "2026-11-13T21:15:36.249Z",
+      "decision": "DEC-30"
+    },
+    {
+      "row": 20,
+      "group": "admin-improvements",
+      "question": "Q-031: When the admin sends the maturity options to a client, who fills in the figures? Option 2 needs the next SIP's monthly amount and number of months, and option 3 needs how many months to add. Does the admin fill them in before sending, so the client only picks one, or does the client enter them in the app?",
+      "meanwhile": "The admin fills them in when sending. The client sees each option with its figures, plus the current value (amount invested and returns), and picks one. A client who wants other figures talks to the team, and the admin sends new options.",
+      "asked": "2026-11-13T20:53:52.486Z",
+      "by": "claude-opus-5-5 coordinator",
+      "answeredAt": "2026-11-13T21:15:36.465Z",
+      "decision": "DEC-31"
+    },
+    {
+      "row": 21,
+      "group": "admin-improvements",
+      "question": "Q-032: When option 3 extends a client's SIP by some months, should the maturity date move later by the same number of months, so the next 30-day reminder comes at the new end?",
+      "meanwhile": "The new maturity date is filled in as the old date plus the months added, and the admin can change it before confirming. The old maturity stays in the history as resolved, and a new one is scheduled at the new date.",
+      "asked": "2026-11-13T20:53:52.762Z",
+      "by": "claude-opus-5-5 coordinator",
+      "answeredAt": "2026-11-13T21:15:36.685Z",
+      "decision": "DEC-32"
     }
   ]
 }
