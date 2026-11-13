@@ -5,6 +5,7 @@ import type { ClientGrowthBatchesTable, ClientPositionMaturitiesTable, ClientVal
 import type { MandateCancelCommandsTable, MandateCollectionAttemptsTable, MandateSetupAttemptsTable, PaymentMandatesTable, SipPlansTable } from "./schema/mandates.js"
 import type { FundReceiptAcknowledgementsTable, InvestmentAllocationsTable, InvestmentOrdersTable, PaymentAttemptsTable, PaymentsTable, ProviderEventsTable, ProviderPaymentDetailsTable, RefundOperationsTable } from "./schema/payments.js"
 import type { AuditEventsTable, IdempotencyRecordsTable, LegalHoldsTable, PermissionsTable, RateLimitWindowsTable, RolePermissionsTable, RolesTable, UserRolesTable, WorkerHeartbeatsTable } from "./schema/platform.js"
+import type { AdminSipScheduleMonthsTable, AdminSipSchedulesTable } from "./schema/sipSchedules.js"
 
 export type * from "./schema/identity.js"
 export type * from "./schema/platform.js"
@@ -13,6 +14,7 @@ export type * from "./schema/catalog.js"
 export type * from "./schema/mandates.js"
 export type * from "./schema/payments.js"
 export type * from "./schema/ledger.js"
+export type * from "./schema/sipSchedules.js"
 
 export interface Database {
   applications: ApplicationsTable
@@ -75,4 +77,6 @@ export interface Database {
   email_change_requests: EmailChangeRequestsTable
   user_contact_history: UserContactHistoryTable
   support_requests: SupportRequestsTable
+  admin_sip_schedules: AdminSipSchedulesTable
+  admin_sip_schedule_months: AdminSipScheduleMonthsTable
 }

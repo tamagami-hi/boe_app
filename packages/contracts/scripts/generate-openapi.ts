@@ -31,6 +31,7 @@ import { NOMINEE_OPERATIONS } from "../src/operations/nominee.js"
 import { OPS_OPERATIONS } from "../src/operations/ops.js"
 import { PUBLIC_CONTENT_OPERATIONS } from "../src/operations/public-content.js"
 import { PUBLIC_OPERATIONS } from "../src/operations/public.js"
+import { SIP_SCHEDULE_OPERATIONS } from "../src/operations/sip-schedules.js"
 import { VALUE_UPDATE_OPERATIONS } from "../src/operations/value-updates.js"
 import { WEB_AUTH_OPERATIONS } from "../src/operations/web-auth.js"
 
@@ -79,6 +80,7 @@ export const ALL_OPERATIONS: readonly GeneratableOperation[] = Object.freeze([
   ...VALUE_UPDATE_OPERATIONS,
   ...ADMIN_REPORT_OPERATIONS,
   ...NOMINEE_OPERATIONS,
+  ...SIP_SCHEDULE_OPERATIONS,
 ])
 
 type RouteConfig = Parameters<OpenAPIRegistry["registerPath"]>[0]

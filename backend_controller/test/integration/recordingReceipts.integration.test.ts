@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest"
 
 import { createAccessTokenService, type AccessTokenService } from "../../src/auth/accessToken.js"
 import { createInvestmentRecordedGuard } from "../../src/domain/email/investmentRecordedGuard.js"
+import { createAdminSipScheduleRepository } from "../../src/repositories/adminSipScheduleRepository.js"
 import { createClientGrowthRepository } from "../../src/repositories/clientGrowthRepository.js"
 import { createClientPositionRepository } from "../../src/repositories/clientPositionRepository.js"
 import { createClientReceiptRepository } from "../../src/repositories/clientReceiptRepository.js"
@@ -234,6 +235,7 @@ beforeAll(async () => {
         auditRepository: stack.auditRepository,
         idempotencyRepository: createIdempotencyRepository(),
         notificationRepository: createNotificationRepository(),
+        sipScheduleRepository: createAdminSipScheduleRepository(),
       })
       registerClientReceiptRoutes(instance, {
         accessTokenService,

@@ -13,6 +13,7 @@ export interface ClientReceiptRow {
   readonly effectiveDate: string
   readonly recordedAt: Date
   readonly reversedAt: Date | null
+  readonly sipMonth: string | null
 }
 
 export interface ClientReceiptRepository {
@@ -37,11 +38,13 @@ const RECEIPT_SELECTION = sql`
     to_char(v.effective_date, 'YYYY-MM-DD') as "effectiveDate",
     v.created_at as "recordedAt",
     r.created_at as "reversedAt",
-    ${cursorTime("v.created_at")} as "cursorAt"
+    ${cursorTime("v.created_at")} as "cursorAt",
+    to_char(l.sip_month, 'YYYY-MM') as "sipMonth"
   from client_value_entries v
   join investment_orders o on o.id = v.order_id and o.user_id = v.user_id
   join fund_versions fv on fv.id = o.fund_version_id
   left join client_value_entries r on r.reverses_entry_id = v.id
+  left join admin_sip_schedule_months l on l.entry_id = v.id
 `
 
 const RECORDING_FILTER = sql`v.entry_type = 'contribution' and o.type = 'recorded_offline'`

@@ -16,6 +16,7 @@ import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
 import { SEED_ROLE_PERMISSIONS } from "../../src/db/seedCatalog.js"
 import type { WebAuthDeps } from "../../src/domain/auth/webAuth.js"
+import { createAdminSipScheduleRepository } from "../../src/repositories/adminSipScheduleRepository.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
 import { createAuthSessionRepository } from "../../src/repositories/authSessionRepository.js"
 import { createClientPositionRepository } from "../../src/repositories/clientPositionRepository.js"
@@ -278,6 +279,7 @@ beforeAll(async () => {
         auditRepository: createAuditRepository(),
         idempotencyRepository: createIdempotencyRepository(),
         notificationRepository: createNotificationRepository(),
+        sipScheduleRepository: createAdminSipScheduleRepository(),
       })
       registerAdminMaturityRoutes(instance, {
         maturityRepository: createMaturityRepository(),

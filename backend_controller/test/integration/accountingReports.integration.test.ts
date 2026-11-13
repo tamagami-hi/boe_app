@@ -4,6 +4,7 @@ import type { FastifyInstance } from "fastify"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 
 import { createAccountingReportRepository } from "../../src/repositories/accountingReportRepository.js"
+import { createAdminSipScheduleRepository } from "../../src/repositories/adminSipScheduleRepository.js"
 import { createAuditTrailRepository } from "../../src/repositories/auditTrailRepository.js"
 import { createClientGrowthRepository } from "../../src/repositories/clientGrowthRepository.js"
 import { createClientPositionRepository } from "../../src/repositories/clientPositionRepository.js"
@@ -222,6 +223,7 @@ beforeAll(async () => {
         crypto: stack.crypto,
         clientPositionRepository: createClientPositionRepository(),
         userRepository: stack.userRepository,
+        sipScheduleRepository: createAdminSipScheduleRepository(),
       })
       registerAdminReportRoutes(instance, { ...readDeps, accountingReportRepository: createAccountingReportRepository() })
       registerAdminAuditTrailRoutes(instance, { ...readDeps, auditTrailRepository: createAuditTrailRepository() })

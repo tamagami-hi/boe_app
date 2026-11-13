@@ -1,5 +1,6 @@
 import type { Transaction, User } from "../../db/repositories.js"
 import { AppError } from "../../http/errorCatalog.js"
+import type { AdminSipScheduleRepository } from "../../repositories/adminSipScheduleRepository.js"
 import type { AuditWriteRepository } from "../../repositories/auditRepository.js"
 import type { ClientGrowthRepository } from "../../repositories/clientGrowthRepository.js"
 import type { ClientPositionRepository } from "../../repositories/clientPositionRepository.js"
@@ -18,6 +19,7 @@ import {
   type RecordingCategory,
   type RecordingReasonCode,
 } from "../shared/recordingCategory.js"
+import { commitSipMonthLink, prepareSipMonthLink, type SipMonthLinkInput } from "./sipMonthLink.js"
 
 export interface RecordContributionDeps extends InvestmentRecordedMailDeps {
   readonly clientPositionRepository: ClientPositionRepository
@@ -25,6 +27,7 @@ export interface RecordContributionDeps extends InvestmentRecordedMailDeps {
   readonly userRepository: UserWriteRepository
   readonly auditRepository: AuditWriteRepository
   readonly notificationRepository: NotificationWriteRepository
+  readonly sipScheduleRepository: AdminSipScheduleRepository
   readonly clock: () => Date
 }
 
@@ -35,6 +38,7 @@ export interface RecordContributionInput {
   readonly effectiveDate: string
   readonly reasonCode: RecordingReasonCode
   readonly note: string | null
+  readonly sipLink?: SipMonthLinkInput | null
   readonly actorUserId: string
   readonly requestId: string
 }
@@ -66,9 +70,9 @@ const canReceiveMail = (user: User): boolean => user.account_state === "active" 
 
 const midday = (effectiveDate: string): Date => new Date(`${effectiveDate}T12:00:00.000Z`)
 
-const requireRecordableClient = async (
+export const requireRecordableClient = async (
   tx: Transaction,
-  deps: RecordContributionDeps,
+  deps: Pick<RecordContributionDeps, "userRepository">,
   userId: UserId,
 ): Promise<User> => {
   const user = await deps.userRepository.lockById(tx, userId)
@@ -95,6 +99,16 @@ export const recordContribution = async (
     effectiveDate: input.effectiveDate,
   })
   if (version === null) throw new AppError("RESOURCE_NOT_FOUND")
+
+  const sipLink =
+    input.sipLink === undefined || input.sipLink === null
+      ? null
+      : await prepareSipMonthLink(tx, deps, {
+          userId: input.userId,
+          fundId: input.fundId,
+          category,
+          link: input.sipLink,
+        })
 
   const occurredAt = midday(input.effectiveDate)
 
@@ -133,6 +147,13 @@ export const recordContribution = async (
     actorUserId: input.actorUserId,
     requestId: input.requestId,
   })
+  if (sipLink !== null) {
+    await commitSipMonthLink(tx, deps, sipLink, {
+      entryId: entry.id,
+      actorUserId: input.actorUserId,
+      requestId: input.requestId,
+    })
+  }
 
   const basis = await deps.clientGrowthRepository.findPositionBasis(tx, input.userId, input.fundId)
   if (basis === null) throw new AppError("INTERNAL_ERROR")

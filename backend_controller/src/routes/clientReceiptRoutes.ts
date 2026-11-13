@@ -49,7 +49,7 @@ const mapReceipt = (row: ClientReceiptRow): Record<string, unknown> => {
     effectiveDate: row.effectiveDate,
     recordedAt: iso(row.recordedAt),
     reversedAt: row.reversedAt === null ? null : iso(row.reversedAt),
-    sipMonth: null,
+    sipMonth: row.sipMonth,
   }
 }
 

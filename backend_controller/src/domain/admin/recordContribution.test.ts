@@ -51,6 +51,7 @@ const positionDeps = () =>
     },
     auditRepository: { append: vi.fn().mockResolvedValue(undefined) },
     notificationRepository: { create: vi.fn().mockResolvedValue(undefined) },
+    sipScheduleRepository: { releaseLinkForEntry: vi.fn().mockResolvedValue(null) },
     outboxRepository: { enqueue: vi.fn().mockResolvedValue({ id: "outbox-1" }) },
     emailDeliveryRepository: {
       createUserMailDelivery: vi.fn().mockResolvedValue({ id: "delivery-1" }),

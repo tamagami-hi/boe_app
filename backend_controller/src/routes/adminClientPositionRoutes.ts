@@ -29,13 +29,14 @@ import {
   runAdminMutation,
   uuidParam,
 } from "./adminRouteKit.js"
+import { sipMonthSchema } from "./sipScheduleProjection.js"
 
 const RECORDED_CONTRIBUTIONS_ROUTE = "/v1/admin/clients/:userId/recorded-contributions"
 const LEDGER_ENTRIES_ROUTE = "/v1/admin/clients/:userId/ledger-entries"
 const REVERSAL_ROUTE = "/v1/admin/clients/:userId/ledger-entries/:entryId/reversal"
 
-const WRITE_PERMISSION = "client_position.write"
-const READ_PERMISSIONS = ["client_position.write", "client_values.read"] as const
+export const POSITION_WRITE_PERMISSIONS = ["client_position.write"] as const
+export const POSITION_READ_PERMISSIONS = ["client_position.write", "client_values.read"] as const
 
 export interface AdminClientPositionConfig {
   readonly idempotencyTtlMs: number
@@ -59,6 +60,7 @@ const recordedContributionSchema = z
     effectiveDate: dateSchema,
     reasonCode: z.enum(RECORDING_REASON_CODES),
     note: reasonDetailSchema.optional(),
+    sipScheduleLink: z.object({ scheduleId: uuidParam, month: sipMonthSchema }).strict().optional(),
   })
   .strict()
 
@@ -82,7 +84,7 @@ const recordedContribution = async (
   reply: FastifyReply,
 ) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
-  requireAnyPermission(principal, [WRITE_PERMISSION])
+  requireAnyPermission(principal, [...POSITION_WRITE_PERMISSIONS])
   const userId = userIdOf(request)
   const body = parseOrThrow(recordedContributionSchema, request.body)
   const key = requireIdempotencyKey(request)
@@ -103,6 +105,7 @@ const recordedContribution = async (
       effectiveDate: body.effectiveDate,
       reasonCode: body.reasonCode,
       ...(body.note === undefined ? {} : { note: body.note }),
+      ...(body.sipScheduleLink === undefined ? {} : { sipScheduleLink: body.sipScheduleLink }),
     }),
     execute: async (tx) => {
       const recorded = await recordContribution(tx, deps, {
@@ -112,6 +115,7 @@ const recordedContribution = async (
         effectiveDate: body.effectiveDate,
         reasonCode: body.reasonCode,
         note: body.note ?? null,
+        sipLink: body.sipScheduleLink ?? null,
         actorUserId: principal.userId,
         requestId: request.requestId,
       })
@@ -148,7 +152,7 @@ const ledgerEntries = async (
   reply: FastifyReply,
 ) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: false })
-  requireAnyPermission(principal, [...READ_PERMISSIONS])
+  requireAnyPermission(principal, [...POSITION_READ_PERMISSIONS])
   const userId = userIdOf(request)
   const query = parseOrThrow(ledgerQuerySchema, request.query)
 
@@ -186,7 +190,7 @@ const reversal = async (
   reply: FastifyReply,
 ) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: true })
-  requireAnyPermission(principal, [WRITE_PERMISSION])
+  requireAnyPermission(principal, [...POSITION_WRITE_PERMISSIONS])
   const userId = userIdOf(request)
   const entryId = entryIdOf(request)
   const body = parseOrThrow(reversalSchema, request.body)

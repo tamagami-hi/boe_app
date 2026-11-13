@@ -12,6 +12,7 @@ import {
 } from "./admin-shared.js"
 import { OrderType } from "./client-orders.js"
 import { defineOperation, MAX_JSON_BODY_BYTES } from "./descriptor.js"
+import { AdminSipScheduleLink } from "./sip-schedules.js"
 
 const AsOfDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/u)
 const CalendarDate = z.iso.date()
@@ -29,6 +30,7 @@ export const AdminRecordedContributionBody = z.strictObject({
   effectiveDate: CalendarDate,
   reasonCode: AdminRecordingReasonCode,
   note: AdminReasonDetail.optional(),
+  sipScheduleLink: AdminSipScheduleLink.optional(),
 })
 export type AdminRecordedContributionBody = z.infer<typeof AdminRecordedContributionBody>
 

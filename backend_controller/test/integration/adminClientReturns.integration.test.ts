@@ -16,6 +16,7 @@ import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
 import { SEED_ROLE_PERMISSIONS } from "../../src/db/seedCatalog.js"
 import type { WebAuthDeps } from "../../src/domain/auth/webAuth.js"
+import { createAdminSipScheduleRepository } from "../../src/repositories/adminSipScheduleRepository.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
 import { createAuthSessionRepository } from "../../src/repositories/authSessionRepository.js"
 import { createClientGrowthRepository } from "../../src/repositories/clientGrowthRepository.js"
@@ -260,6 +261,7 @@ beforeAll(async () => {
         crypto: createCryptoContext(parseCryptoKeys(CRYPTO_ENV)),
         clientPositionRepository: createClientPositionRepository(),
         userRepository: createUserRepository(),
+        sipScheduleRepository: createAdminSipScheduleRepository(),
       })
       registerAdminClientReturnRoutes(instance, {
         webAuth,

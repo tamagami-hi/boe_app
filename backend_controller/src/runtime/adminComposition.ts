@@ -5,6 +5,7 @@ import { createAccountingReportRepository } from "../repositories/accountingRepo
 import { createAdminCatalogRepository } from "../repositories/adminCatalogRepository.js"
 import { createAdminOversightRepository } from "../repositories/adminOversightRepository.js"
 import { createAuditTrailRepository } from "../repositories/auditTrailRepository.js"
+import { createAdminSipScheduleRepository } from "../repositories/adminSipScheduleRepository.js"
 import { createClientReturnsRepository } from "../repositories/clientReturnsRepository.js"
 import { createFundAumRepository } from "../repositories/fundAumRepository.js"
 import { createMaturityRepository } from "../repositories/maturityRepository.js"
@@ -22,7 +23,9 @@ import { registerAdminMaturityRoutes, type AdminMaturityDeps } from "../routes/a
 import { registerAdminNomineeRoutes } from "../routes/adminNomineeRoutes.js"
 import { registerAdminOversightRoutes, type AdminOversightDeps } from "../routes/adminOversightRoutes.js"
 import { registerAdminReportRoutes } from "../routes/adminReportRoutes.js"
+import { registerAdminSipScheduleRoutes } from "../routes/adminSipScheduleRoutes.js"
 import { registerAdminSupportRoutes, type AdminSupportDeps } from "../routes/adminSupportRoutes.js"
+import { registerClientSipScheduleRoutes } from "../routes/clientSipScheduleRoutes.js"
 import type { ServerConfig } from "./environment.js"
 import { registerRecordingSurface, type RecordingSurfaceDeps } from "./recordingComposition.js"
 
@@ -33,7 +36,7 @@ export type AdminSurfaceDeps = Omit<AdminIdentityDeps, "config" | "appUpdate"> &
   Omit<AdminOversightDeps, "config" | "oversightRepository"> &
   Omit<AdminSupportDeps, "config"> &
   Omit<AdminClientGrowthDeps, "config"> &
-  Omit<RecordingSurfaceDeps, "config"> &
+  Omit<RecordingSurfaceDeps, "config" | "sipScheduleRepository"> &
   Omit<AdminClientReturnDeps, "config" | "clientReturnsRepository"> &
   Omit<AdminMaturityDeps, "config" | "maturityRepository"> &
   Omit<AdminFundReceiptDeps, "config" | "acknowledgementRepository"> &
@@ -172,7 +175,10 @@ export const registerAdminSurface = (application: FastifyInstance, deps: AdminSu
     notificationRepository,
   })
 
+  const sipScheduleRepository = createAdminSipScheduleRepository()
+
   registerRecordingSurface(application, {
+    sipScheduleRepository,
     webAuth, accessTokenService, clientWeb, unitOfWork, database, clock, outboxRepository, emailDeliveryRepository, crypto,
     clientPositionRepository, clientGrowthRepository, userRepository, auditRepository, idempotencyRepository, notificationRepository,
     config: {
@@ -181,6 +187,12 @@ export const registerAdminSurface = (application: FastifyInstance, deps: AdminSu
       sesConfigurationSet: serverConfig.sesConfigurationSet,
     },
   })
+
+  registerAdminSipScheduleRoutes(application, {
+    webAuth, unitOfWork, database, clock, sipScheduleRepository, userRepository, auditRepository, idempotencyRepository,
+    config: { idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
+  })
+  registerClientSipScheduleRoutes(application, { accessTokenService, clientWeb, database, clock, sipScheduleRepository })
 
   registerAdminClientReturnRoutes(application, {
     webAuth, database, clock, config: { cursorKey: serverConfig.cursorKey },

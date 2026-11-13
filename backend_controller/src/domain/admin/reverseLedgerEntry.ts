@@ -1,5 +1,6 @@
 import type { Transaction, UserId } from "../../db/repositories.js"
 import { AppError } from "../../http/errorCatalog.js"
+import type { AdminSipScheduleRepository } from "../../repositories/adminSipScheduleRepository.js"
 import type { AuditWriteRepository } from "../../repositories/auditRepository.js"
 import type { ClientGrowthRepository } from "../../repositories/clientGrowthRepository.js"
 import type {
@@ -9,6 +10,7 @@ import type {
 } from "../../repositories/clientPositionRepository.js"
 import type { NotificationWriteRepository } from "../../repositories/notificationRepository.js"
 import type { UserWriteRepository } from "../../repositories/userRepository.js"
+import { releaseSipMonthOnReversal } from "./sipMonthLink.js"
 
 export interface ReverseLedgerEntryDeps {
   readonly clientPositionRepository: ClientPositionRepository
@@ -16,6 +18,7 @@ export interface ReverseLedgerEntryDeps {
   readonly userRepository: UserWriteRepository
   readonly auditRepository: AuditWriteRepository
   readonly notificationRepository: NotificationWriteRepository
+  readonly sipScheduleRepository: AdminSipScheduleRepository
 }
 
 export interface ReverseLedgerEntryInput {
@@ -84,6 +87,12 @@ export const reverseLedgerEntry = async (
   })
 
   await recordReversalOutcome(tx, deps, input, original, reversal.id)
+  await releaseSipMonthOnReversal(tx, deps, {
+    entryId: original.id,
+    reversalEntryId: reversal.id,
+    actorUserId: input.actorUserId,
+    requestId: input.requestId,
+  })
 
   return {
     reversalEntryId: reversal.id,
