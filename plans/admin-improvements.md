@@ -1,6 +1,6 @@
 # BeOnEdge admin improvements: recording categories, receipts, value updates, returns, maturity, nominee, and fixes
 
-Status: **Approved by the maintainer on 2026-11-13. Phases A and B are complete on local `main` (seven and six lanes, not pushed or released); Phase C is next.** One question is open (Q-026, section 0a). What still needs the maintainer: Q-026, publishing `featureFlags.onlinePayments=false` (G11), the production reform's own destructive-change approval after the pre-flight report (D2), releases, and the payments re-enable decision. Checks run in the pinned Node 22.20.0 / npm 11.16.0 container `tools/node22-container/run.sh` (tally `howto-2`).
+Status: **Approved by the maintainer on 2026-11-13. Phases A, B and C, and Phase E steps E1 and E2, are complete on local `main` (not pushed or released). Phase D and E3 wait for the maintainer.** Four questions are open (Q-026 to Q-029, section 0a). What still needs the maintainer: those questions, publishing `featureFlags.onlinePayments=false` (G11), the production reform's own destructive-change approval after the pre-flight report (D2), releases, and the payments re-enable decision. Checks run in the pinned Node 22.20.0 / npm 11.16.0 container `tools/node22-container/run.sh` (tally `howto-2`).
 
 Prepared: 2026-11-13. The investigation was static source reading only. No local checks ran (no dependencies are installed, and `RULES.md` forbids installing them just to make checks runnable). Nothing was diagnosed on a VPS, no test ran, no mail was sent, and nothing was deployed. GitHub CI run 38216879911 passed contracts, backend (including integration) and frontend on `ba8b196` (v0.15.4). The detailed evidence is held as tally records under `docs/records/`: findings `finding-1` to `finding-18` (excluding the retired `finding-5`), decisions `rule-2` to `rule-6`, and milestones `M1-admin-audit` and `M2-plan`.
 
@@ -13,6 +13,9 @@ IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-0
 | ID | Open decision | Conservative behavior meanwhile |
 | --- | --- | --- |
 | Q-026 | When a client's personal data is erased (tombstoned), should their earlier emails and phones in the append-only contact history (A8) also be erased? Erasing them needs a separate, audited step that overwrites only the history's contact fields. | The history stays append-only. For a tombstoned client the admin screen and API show the same tombstone values as everywhere else, so no admin can read the originals through the app. The originals remain in the database until the maintainer decides (tally question row 15). |
+| Q-027 | Should the monthly payment sheet keep an optional bank reference (UTR) on each recording? A UTR is a transfer reference, not an account detail, but `rule-11` says no bank details or payment methods are recorded. | Built without any bank reference field or migration. Recordings keep category, amount, date and fund only (tally question row 16). |
+| Q-028 | Once payments are re-enabled: when an AutoPay debit fails or its debit window passes with no order, should the plan skip that month and still end on its original end date (collecting fewer instalments), or be extended to collect the missed month? | The month is skipped, its rows are kept, it is never debited again, and the plan ends on its original end date. Payments stay disabled, so this has no effect today (tally question row 17). |
+| Q-029 | Maturity: (a) for "reinvest as a SIP", should the matured money stay in place with only a new admin SIP schedule (as built), or be paid out first and re-recorded monthly? (b) Is a 30-day prompt window right? (c) Should options 2 and 3 close the client's active SIP schedule for that fund? | (a) Option 3 writes no ledger row or payout and tells the admin not to record the matured money again; (b) the prompt lists due dates within 30 days plus overdue ones; (c) the active schedule is closed first. No money moves without the admin's explicit choice (tally question row 18). |
 
 ### Decision record
 
@@ -43,6 +46,7 @@ IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-0
 | 2026-11-13 | G12: old pending online payments created before payments were turned off are marked expired once their pay-by time has passed. | Step A10. Applied only to checkouts never sent to the provider; checkouts already sent are left for reconciliation when payments return, because the provider may hold a payment for them (tally `rule-10`, `finding-23`). |
 | 2026-11-13 | No bank details or payment methods are added or recorded anywhere. The admin records monthly investments under their own category, and the client is notified "Investment added". | B1 and B8. No "How to invest" card or FAQ, and no copy on how or where to pay. G11 is now only publishing `featureFlags.onlinePayments=false` (tally `rule-11`). |
 | 2026-11-13 | The client is also emailed the amount recorded, saying the investment was added to their app and asking them to check it. | Template `investment_recorded` for earlier and monthly recordings, not corrections, with migration 062 (tally `rule-12`). |
+| 2026-11-13 | "Complete all the phases that needs code implementation and leave ones out that needs me." | Phase C (C1 to C5) and Phase E steps E1 and E2 were built, which lifts E1's deferral. Phase D (conditional, with a production step needing approval), E3 (maintainer timing), releases and the G11 publish were left out (section 8, Phases C and E close). |
 
 #### Replaced
 
@@ -236,9 +240,9 @@ Each lane is a tally track `track/<name>` with its own worktree. Lanes in the sa
 | A | `a-onboarding` | A7, A5 (IST today) | admin users feature, client auth and email verification, guards, recordContribution, createClientAccount, maturity settlement date, onboarding harness and CI |
 | A | `a-identity` | A8, after `a-onboarding` lands | createClientAccount, password credential, oversight routes, environment, migration 061, admin users feature |
 | B | `b-receipts`, `b-value-updates`, `b-returns`, `b-email-web`, `b-support`, `b-client-investing` | B1–B2, B3, B4–B5, B6, B7, B8 | Each adds its own contract file, so generated exports are regenerated at landing |
-| C | `c-nominee`, `c-sip-maturity` | C1; then C2 → C3 | Migrations are numbered 063 (C1), 064 (C2), 065 (C3), after A8's 061 and B2's 062, so production applies them in filename order (tally `convention-2`) |
-| D | `d-data` | D1 → D2 | D1 can start now. D2's production run needs separate approval. |
-| E | `e-reviews`; E2; E3 | E1 after Phase B; E2 after Phase C and before any payments re-enable; E3 when the maintainer chooses | Reviews take the next free migration number when built |
+| C | `c-composition`, `c-hardening`, `c-nominee`, `c-sip`, `c-reports`, `c-maturity`, `c-payment-sheet` | composition headroom, hardening, C1, C2 → C3 and C4, C5 | Migrations 063 (C1), 064 (C2), 065 (C3) and 066 (C5 audit index), after A8's 061 and B2's 062 (tally `convention-3`) |
+| D | `d-data` | D1 → D2 | Runs only when a feature needs a client-data reform. D2's production run needs separate approval. |
+| E | `e-reviews`, `e-autopay`; E3 | E1, E2; E3 when the maintainer chooses | Reviews took 067 |
 
 Shared-file rules:
 - `adminQueries.ts` is at 538 of 800 lines after Phase B. A lane moves the hooks it changes into its feature's own query module instead of growing the file.
@@ -327,12 +331,12 @@ Maintainer gates (milestone `M3-gates`):
 - **C1.** Nominee migration, client and admin endpoints, Profile form, user page, audit. Populated-upgrade test for the new nullable columns.
 - **C2.** Admin SIP schedule table and link, admin create/edit/close, monthly recording linked to a schedule month, and a client months-paid endpoint and badge.
 - **C4.** A monthly payment sheet, after C2:
-  - pick a month; one row per client and fund from the SIP schedule, with the expected amount, the amount already recorded, the date (today in IST by default) and a bank reference (UTR)
+  - pick a month; one row per client and fund from the SIP schedule, with the expected amount, the amount already recorded and the date (today in IST by default)
   - each row keeps its own idempotency key and shows its own result
   - CSV can be pasted into the sheet
-  - the optional structured bank reference takes the next free migration number and an optional request field
+  - the bank reference (UTR) field and its migration were not built; they wait for Q-027 (`rule-11`)
 - **C5.** Accounting exports and a usable audit log:
-  - client balances as of a date, and contributions by month with bank reference, built as CSV in the browser from new read endpoints
+  - client balances as of a date, and contributions by month (no bank reference column), built as CSV in the browser from new read endpoints
   - money-command presets with amounts and client links
   - a per-client audit list
 - **C3.** Maturity schedule table, admin dashboard, due list, launch prompt, and the three resolutions built from existing settlement plus C2. Test: no resolution moves money or writes ledger rows without an explicit admin action, and each resolution is idempotent.
@@ -357,7 +361,7 @@ Maintainer gates (milestone `M3-gates`):
   - a check of native dependencies
 
   The maintainer decides the timing.
-- **E2.** Before payments are re-enabled: the AutoPay due-date advance, stalled failed or refunded instalments, and mandate reconcile atomicity (section 2B).
+- **E2.** Before payments are re-enabled: the AutoPay due-date advance, stalled failed or refunded instalments, and mandate reconcile atomicity (section 2B). Built on lane `e-autopay`; payments stay disabled (section 8).
 
 ## 7. Plan changes and approval gate
 
@@ -541,3 +545,98 @@ The B3 entry above was written before landing and names the lane's pre-rebase co
 - **Verification (TESTED, Node 22 container, on the lane tip before this entry, rebased on `3cd86c1`):** contracts check 98 tests with OpenAPI valid and 169 operations reachable; backend check 100 files / 1198 tests; integration with coverage disabled 54 files / 503 tests; frontend check 32 files / 303 tests; `build:client` and `build:admin` with the boot checks. New tests: `clientReviews.integration` (7: scoping and the monthly rule including a race; text and rating rules in the API and the database, including the blank-looking characters, the visible-character rule, inner joiners and an emoji with a variation selector, plus the rate limit; paging across microsecond neighbours; moderation replay and stale version; permissions; tombstone clearing comments and notes; the IST month boundary) and `clientReviewsMigration.integration` (2: populated upgrade, previous-release user writes including a tombstone). Controls run and reverted, each failing its test: dropping the client scope, the monthly index, the tombstone trigger, the trigger's note clearing, the version guard, the write permission or the visible-character rule; removing U+3164 from the SQL list; computing the month in UTC.
 - **Open for the maintainer.** The repeat rule, the tombstone handling and the reuse of `support.read`/`support.write` are lane choices.
 - **Not verified.** No browser or device run, no APK export, nothing on a VPS. The rate limit is per process, like the other in-process limiters.
+
+### Phases C and E close (2026-11-14)
+
+On 2026-11-13 the maintainer asked to "complete all the phases that needs code implementation and leave ones out that needs me". So Phase C (C1 to C5) and Phase E steps E1 and E2 were built, together with a composition prep lane and a hardening lane. Left out because they need the maintainer:
+- Phase D, which runs only when a feature needs a client-data reform; its production step needs its own approval and pre-flight run.
+- E3 (Node 24), whose timing the maintainer decides.
+- Releases, publishing `featureFlags.onlinePayments=false` (G11), and the statement PDF endpoint for the APK.
+
+Every lane landed on local `main` through the tally queue, one at a time, each after an independent review whose findings were fixed before landing, and its own checks in the Node 22 container. Nothing is pushed, released or deployed.
+
+| Step | Lane | Commits on `main` |
+| --- | --- | --- |
+| Composition headroom | `c-composition` | `bb573f0` |
+| `finding-24`, `finding-25`, Phase B follow-ups | `c-hardening` | `ed9d60a`, `3e81053`, `71097de`, `35b8353` |
+| E2 | `e-autopay` | `c68f31f`, `d28fc3b`, `c197eaa`, `89e596e`, `6e8b320`, `8da4ddb` |
+| C5 | `c-reports` | `f0df84a`, `2768b9b`, `9f66354`, `5722bc0` |
+| C1 | `c-nominee` | `01c6418`, `40067f1`, `1634797`, `fcf160b`, `a6e14a4` |
+| C2 | `c-sip` | `2050360`, `ce3389f`, `3cd86c1` |
+| E1 | `e-reviews` | `ac35dde`, `4de32df`, `869c7e5` |
+| C4 | `c-payment-sheet` | `edbbaad`, `c53e178`, `03891a3` |
+| C3 | `c-maturity` | `b887f54`, `d767ec6`, `ae82558` |
+
+- **Migrations** (tally `convention-3`): 063 nominee, 064 admin SIP schedules, 065 maturity schedules, 066 audit index, 067 client reviews. Each only adds tables, nullable or defaulted columns, triggers or an index. The previous release runs against all of them, and each has a populated-upgrade test. 066 is a plain `CREATE INDEX` (migrations run in a transaction), so it blocks writes to `audit_events` while it builds.
+- **Composition (`c-composition`).** The admin route registrations moved unchanged into `runtime/adminComposition.ts`. `composition.ts` went from 793 to 620 lines and is 636 at close.
+- **Hardening (`c-hardening`).**
+  - About 20 admin and client keyset lists now carry a microsecond cursor. The fund receipt queue had returned the same row 50 times in a one-row walk.
+  - Old millisecond cursors from released APKs are still accepted, and the previous release reads the new ones.
+  - `usePagedQuery`'s load-all walk stops on a failed page.
+  - The open-tickets tile is on the overview, the client page has a Support tab, and support replies are labelled "Support".
+- **E2 (`e-autopay`).** Payments and AutoPay stay disabled; these fixes matter only if the maintainer re-enables them.
+  - Worker request ids are uuids, and a mid-month SIP gets one order per month.
+  - AutoPay advances `next_due_date` once the period's order has an outcome.
+  - A failed, refunded or cancelled instalment, or a missed debit window, moves the plan on without re-collecting that month. Its rows are kept, and a skipped month writes an audit row and a warning.
+  - The term ends on the planned end month.
+  - Each SIP schedule step re-locks its plan and advances only from the expected due date.
+  - Admin mandate reconcile commits state, audit and idempotency receipt together.
+- **C5 (`c-reports`).**
+  - CSV exports built in the browser: balances as of an IST date, and contributions by month (amount before reversal, with a Reversed column, and no bank reference). Cells are guarded against spreadsheet formulas.
+  - The audit log gains money presets, a date range and client links, and the client page gains a per-client activity log, served by the 066 index.
+- **C2 (`c-sip`).**
+  - Admin-tracked SIP schedules: monthly amount, fund, start month and months.
+  - A monthly recording can link to a schedule month, once per month, and reversing the recording releases the month.
+  - The client sees "N of M months paid", and the receipt shows the month.
+- **C4 (`c-payment-sheet`).**
+  - A month's sheet of active schedules across funds is served by `GET /v1/admin/recording-sheet`.
+  - Rows start unticked. Each ticked row records with its own held Idempotency-Key and exact body in sessionStorage, at most two at a time.
+  - CSV paste fills rows and lists unmatched lines. The sheet renders only once every page has loaded.
+  - The optional bank reference field and its migration were not built (question row 16).
+- **C3 (`c-maturity`).**
+  - Admin maturity dates per client and fund, a Maturities dashboard, a client-hub section, and a launch prompt listing maturities due within 30 days (including overdue ones), dismissed per launch only.
+  - The three resolutions run only on or after the maturity date, each in one transaction:
+    - return all money uses the existing withdrawal settlement, and the amount must equal the current value;
+    - a one-time investment plus a new SIP uses the existing reinvestment, guarded by the principal and value the admin saw, then replaces the SIP schedule;
+    - reinvest as a SIP writes no ledger row and replaces the SIP schedule.
+  - The settlement enum is unchanged.
+- **C1 and E1** have their own entries above.
+- **Review outcomes that changed the work.**
+  - E2: re-locking each SIP step, and auditing skipped periods.
+  - Nominee: a current-password check on the client's change, rejection of hidden characters with inner ZWJ/ZWNJ allowed for Indic names, a nominee version separate from the user version, and no ICU collation in 063, because a missing collation would fail the deploy.
+  - Reports: the 066 index with an indexable union query, and a formula guard for values behind leading whitespace.
+  - SIP: a paged per-fund list, and a two-admin race test.
+  - Reviews: moderation notes cleared on tombstone, refusal of more invisible characters, and an exact arrival check.
+  - Payment sheet: the full-walk gate, the missing tests, and screen-reader announcements.
+  - Maturity: the expected-figures guard on option 2, the start month no earlier than the current month, the closing SIP shown before confirming, and a rollback test.
+- **Lane defaults for the maintainer to review.**
+  - SIP schedules: one active schedule per client and fund, at most 600 months, months linked in any order, and the recorded amount may differ from the schedule amount.
+  - Nominee: the client's change needs the current password (5 attempts per 15 minutes, shared with contact changes), and admin edits use `clients.create`.
+  - Reviews: one review per client per IST month with no editing, comments and notes cleared on tombstone, and `support.read`/`support.write` for admin access.
+  - Payment sheet: a client reference is the client's email or id.
+  - Exports include online payments in contributions.
+  - Maturity, AutoPay and the bank reference are questions Q-027 to Q-029.
+- **Release notes for the maintainer.**
+  - Migrations 063 to 067 apply in order. The previous release runs against them, and 066 briefly blocks audit writes while it builds.
+  - The millisecond-cursor fallback can be removed in the release after this one, at least 24 hours after it is deployed.
+  - Payments and AutoPay stay disabled, so E2 changes nothing until they are re-enabled.
+  - New client and admin APK exports are needed for the new screens (G7, G8).
+  - The Phase B notes still apply: add `CLIENT_WEB_APP_URL` to each stack `.env`, `finding-26` (an old email worker drops investment mail), and publish the payments flag (G11).
+- **Sweep on `ae82558` (TESTED, clean detached worktree, Node 22.20.0 container):**
+  - contracts `npm run check` passed 98 tests, with OpenAPI lint valid and 177 operations reachable;
+  - backend `npm run check` passed 100 files / 1198 tests;
+  - `npm run test:integration -- --coverage.enabled=false` passed 57 files / 519 tests;
+  - frontend `npm run check` passed 34 files / 316 tests;
+  - `build:client` and `build:admin` passed, including the bundle boot checks.
+- **Carried forward.**
+  - E2 leftovers:
+    - a long-paused mandate catches up one period per pass and may miss the current window;
+    - an unpaid month on a manual plan still blocks that plan;
+    - a client may retry checkout on a failed instalment after the plan has moved on.
+  - Smaller items:
+    - nominee audit rows record `nominee_version` as their entity version;
+    - the client nominee mutation keeps the password in the in-memory mutation cache until garbage collection;
+    - the 066 query plan was measured on 60,000 rows, not production volume;
+    - the APK statement PDF is still a proposal.
+  - Q-026 and Q-027 to Q-029 are open.
+- **Not verified.** No browser or device run of any new screen, no real mail, no APK export, nothing on a VPS.
