@@ -1,0 +1,300 @@
+import { randomBytes, randomUUID } from "node:crypto"
+
+import type { FastifyInstance } from "fastify"
+import { afterAll, beforeAll, describe, expect, test } from "vitest"
+
+import { createPasswordRecheckLimiter } from "../../src/auth/passwordRecheckLimiter.js"
+import type { WebAuthDeps } from "../../src/domain/auth/webAuth.js"
+import { createAdminOversightRepository } from "../../src/repositories/adminOversightRepository.js"
+import { createApplicationRepository } from "../../src/repositories/applicationRepository.js"
+import { createEmailChangeRepository } from "../../src/repositories/emailChangeRepository.js"
+import { createEmailVerificationRepository } from "../../src/repositories/emailVerificationRepository.js"
+import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
+import { createIdentityLockRepository } from "../../src/repositories/identityLockRepository.js"
+import { createLoginEventRepository } from "../../src/repositories/loginEventRepository.js"
+import { createUserNomineeRepository } from "../../src/repositories/userNomineeRepository.js"
+import { registerAdminNomineeRoutes } from "../../src/routes/adminNomineeRoutes.js"
+import { registerAdminOversightRoutes } from "../../src/routes/adminOversightRoutes.js"
+import { registerClientNomineeRoutes } from "../../src/routes/clientNomineeRoutes.js"
+import { registerClientProfileRoutes } from "../../src/routes/clientProfileRoutes.js"
+import { createApplication } from "../../src/runtime/application.js"
+import {
+  adminHeaders,
+  adminWebAuth,
+  registerAdminLogin,
+  signInRoleAdmin,
+  type AdminSession,
+} from "./adminSessionSupport.js"
+import { PasswordMailStack, type Row } from "./passwordMailSupport.js"
+
+const PROFILE_KEYS = ["email", "emailVerification", "fullName", "pendingEmailChange", "phone", "phoneVerified", "userId", "version"]
+const ADMIN_DETAIL_KEYS = ["emailVerification", "orders", "roles", "user"]
+const NOMINEE = { name: "Meera Krishnan Rao", relation: "Spouse" }
+
+interface Client {
+  readonly id: string
+  readonly token: string
+}
+
+interface NomineeResponse {
+  readonly userId: string
+  readonly nominee: { readonly name: string; readonly relation: string } | null
+  readonly version: number
+  readonly status?: string
+}
+
+let stack: PasswordMailStack
+let app: FastifyInstance
+let webAuth: WebAuthDeps
+let admin: AdminSession
+let onboarding: AdminSession
+let support: AdminSession
+let finance: AdminSession
+
+const dataOf = <T>(response: { json: () => unknown }): T => (response.json() as { data: T }).data
+const errorOf = (response: { json: () => unknown }) =>
+  (response.json() as { error: { code: string; fields?: Record<string, string[]> } }).error
+
+const seedClient = async (state: "active" | "suspended" | "closed" = "active"): Promise<Client> => {
+  const { id } = await stack.seedUser({ password: true, state })
+  const session = await stack.first(
+    "insert into auth_sessions (user_id, channel, refresh_key_version, expires_at) values ($1, 'native', 'rt1', now() + interval '1 day') returning id",
+    [id],
+  )
+  return { id, token: await webAuth.accessTokenService.sign({ sub: id, sid: String(session.id) }) }
+}
+
+const bearer = (client: Client) => ({ authorization: `Bearer ${client.token}` })
+
+const clientGet = (client: Client) => app.inject({ method: "GET", url: "/v1/client/profile/nominee", headers: bearer(client) })
+
+const clientPost = (client: Client, payload: object) =>
+  app.inject({ method: "POST", url: "/v1/client/profile/nominee", headers: bearer(client), payload })
+
+const adminGet = (userId: string, as: AdminSession = admin) =>
+  app.inject({ method: "GET", url: `/v1/admin/users/${userId}/nominee`, headers: adminHeaders(as) })
+
+const adminPost = (userId: string, payload: object, key: string | undefined, as: AdminSession = admin) =>
+  app.inject({ method: "POST", url: `/v1/admin/users/${userId}/nominee`, headers: adminHeaders(as, key), payload })
+
+const nomineeRow = (userId: string): Promise<Row> =>
+  stack.first("select nominee_name, nominee_relation, version from users where id = $1", [userId])
+
+const auditRows = async (userId: string): Promise<Row[]> =>
+  (
+    await stack.pool.query<Row>(
+      "select actor_type, actor_user_id, command, entity_version, metadata from audit_events where entity_id = $1 and command = 'user.nominee_changed' order by occurred_at, id",
+      [userId],
+    )
+  ).rows
+
+beforeAll(async () => {
+  stack = await PasswordMailStack.start({ seed: true })
+  webAuth = await adminWebAuth(stack)
+  const mail = stack.mailDeps()
+  const userNomineeRepository = createUserNomineeRepository()
+  const idempotencyRepository = createIdempotencyRepository()
+  const clientAuth = { accessTokenService: webAuth.accessTokenService, database: stack.database, clientWeb: { originAllowlist: [] } }
+  app = createApplication({
+    logger: false,
+    registerRoutes: (instance) => {
+      registerAdminLogin(instance, stack, webAuth)
+      registerClientNomineeRoutes(instance, {
+        ...clientAuth,
+        unitOfWork: stack.unitOfWork,
+        clock: stack.clock,
+        auditRepository: stack.auditRepository,
+        userNomineeRepository,
+      })
+      registerAdminNomineeRoutes(instance, {
+        webAuth,
+        unitOfWork: stack.unitOfWork,
+        clock: stack.clock,
+        userRepository: stack.userRepository,
+        auditRepository: stack.auditRepository,
+        idempotencyRepository,
+        userNomineeRepository,
+        config: { idempotencyTtlMs: 86_400_000 },
+      })
+      registerClientProfileRoutes(instance, {
+        ...mail,
+        ...clientAuth,
+        unitOfWork: stack.unitOfWork,
+        emailVerificationRepository: createEmailVerificationRepository(),
+        emailChangeRepository: createEmailChangeRepository(),
+        applicationRepository: createApplicationRepository(),
+        identityLockRepository: createIdentityLockRepository(),
+        passwordRecheckLimiter: createPasswordRecheckLimiter(stack.clock),
+        config: { sesConfigurationSet: "boe-transactional", codeTtlMs: 600_000, maxAttempts: 5, resendCooldownMs: 60_000 },
+      })
+      registerAdminOversightRoutes(instance, {
+        webAuth,
+        unitOfWork: stack.unitOfWork,
+        database: stack.database,
+        clock: stack.clock,
+        config: { cursorKey: randomBytes(32), idempotencyTtlMs: 86_400_000 },
+        oversightRepository: createAdminOversightRepository(),
+        loginEventRepository: createLoginEventRepository(),
+        auditRepository: stack.auditRepository,
+        idempotencyRepository,
+        authSessionRepository: stack.authSessionRepository,
+      })
+    },
+  })
+  admin = await signInRoleAdmin(app, stack, "superadmin")
+  onboarding = await signInRoleAdmin(app, stack, "onboarding")
+  support = await signInRoleAdmin(app, stack, "support")
+  finance = await signInRoleAdmin(app, stack, "finance")
+}, 220_000)
+
+afterAll(async () => {
+  await app.close()
+  await stack.stop()
+})
+
+describe("a client's own nominee", () => {
+  test("reads and edits only the signed-in client's nominee and audits each change without the full name", async () => {
+    const asha = await seedClient()
+    const ravi = await seedClient()
+    const raviBefore = await nomineeRow(ravi.id)
+
+    expect(dataOf<NomineeResponse>(await clientGet(asha))).toEqual({ userId: asha.id, nominee: null, version: 1 })
+    const set = await clientPost(asha, NOMINEE)
+    expect(set.statusCode).toBe(200)
+    expect(dataOf<NomineeResponse>(set)).toEqual({ userId: asha.id, nominee: NOMINEE, version: 2, status: "changed" })
+
+    expect(dataOf<NomineeResponse>(await clientGet(ravi))).toEqual({ userId: ravi.id, nominee: null, version: 1 })
+    expect(await nomineeRow(ravi.id)).toEqual(raviBefore)
+    expect((await clientPost(ravi, { ...NOMINEE, userId: asha.id })).statusCode).toBe(400)
+    expect(await nomineeRow(asha.id)).toEqual({ nominee_name: NOMINEE.name, nominee_relation: NOMINEE.relation, version: "2" })
+
+    const again = await clientPost(asha, { name: `  ${NOMINEE.name} `, relation: NOMINEE.relation })
+    expect(dataOf<NomineeResponse>(again)).toMatchObject({ status: "unchanged", version: 2 })
+    const cleared = await clientPost(asha, { name: null, relation: null })
+    expect(dataOf<NomineeResponse>(cleared)).toEqual({ userId: asha.id, nominee: null, version: 3, status: "changed" })
+
+    expect(await auditRows(asha.id)).toEqual([
+      {
+        actor_type: "user",
+        actor_user_id: asha.id,
+        command: "user.nominee_changed",
+        entity_version: "2",
+        metadata: { change: "added", nameChanged: true, relationChanged: true, previousName: null, currentName: "M***" },
+      },
+      {
+        actor_type: "user",
+        actor_user_id: asha.id,
+        command: "user.nominee_changed",
+        entity_version: "3",
+        metadata: { change: "removed", nameChanged: true, relationChanged: true, previousName: "M***", currentName: null },
+      },
+    ])
+    expect(await stack.count("audit_events", "metadata::text like $1", ["%Krishnan%"])).toBe(0)
+    expect(await auditRows(ravi.id)).toEqual([])
+  })
+
+  test("needs a signed-in active client", async () => {
+    expect((await app.inject({ method: "GET", url: "/v1/client/profile/nominee" })).statusCode).toBe(401)
+    expect((await app.inject({ method: "POST", url: "/v1/client/profile/nominee", payload: NOMINEE })).statusCode).toBe(401)
+  })
+
+  test("leaves the existing profile and admin user responses unchanged once a nominee is set", async () => {
+    const client = await seedClient()
+    await clientPost(client, NOMINEE)
+
+    const profile = await app.inject({ method: "GET", url: "/v1/client/profile", headers: bearer(client) })
+    expect(Object.keys(dataOf<Row>(profile)).sort()).toEqual(PROFILE_KEYS)
+    const detail = await app.inject({ method: "GET", url: `/v1/admin/users/${client.id}/detail`, headers: adminHeaders(admin) })
+    expect(detail.statusCode).toBe(200)
+    expect(Object.keys(dataOf<Row>(detail)).sort()).toEqual(ADMIN_DETAIL_KEYS)
+    expect(JSON.stringify(dataOf<Row>(detail))).not.toContain(NOMINEE.name)
+  })
+})
+
+describe("the admin nominee endpoints", () => {
+  test("allow users.read to read and clients.create to edit, and refuse every other admin", async () => {
+    const client = await seedClient()
+
+    for (const outsider of [support, finance]) {
+      expect((await adminGet(client.id, outsider)).statusCode).toBe(403)
+      expect((await adminPost(client.id, { ...NOMINEE, expectedVersion: 1 }, randomUUID(), outsider)).statusCode).toBe(403)
+    }
+    expect(await nomineeRow(client.id)).toMatchObject({ nominee_name: null, version: "1" })
+
+    const set = await adminPost(client.id, { ...NOMINEE, expectedVersion: 1 }, randomUUID(), onboarding)
+    expect(set.statusCode).toBe(200)
+    expect(dataOf<NomineeResponse>(await adminGet(client.id, onboarding))).toEqual({ userId: client.id, nominee: NOMINEE, version: 2 })
+    expect(await auditRows(client.id)).toMatchObject([
+      { actor_type: "admin", actor_user_id: onboarding.userId, metadata: { change: "added", currentName: "M***" } },
+    ])
+  })
+
+  test("hold one change per idempotency key, refuse a stale version and refuse non-client or closed accounts", async () => {
+    const client = await seedClient("suspended")
+    const key = randomUUID()
+    const body = { name: "Kiran Rao", relation: "Son", expectedVersion: 1 }
+
+    expect(errorOf(await adminPost(client.id, body, undefined)).code).toBe("VALIDATION_FAILED")
+    const first = await adminPost(client.id, body, key)
+    const replay = await adminPost(client.id, body, key)
+    expect(first.statusCode).toBe(200)
+    expect(dataOf<NomineeResponse>(replay)).toEqual(dataOf<NomineeResponse>(first))
+    expect(replay.json()).toMatchObject({ meta: { idempotencyReplay: true } })
+    expect(await auditRows(client.id)).toHaveLength(1)
+    expect(errorOf(await adminPost(client.id, { ...body, relation: "Daughter" }, key)).code).toBe("IDEMPOTENCY_KEY_REUSED")
+
+    expect(errorOf(await adminPost(client.id, { ...body, relation: "Daughter" }, randomUUID())).code).toBe("STATE_CONFLICT")
+    expect(await nomineeRow(client.id)).toEqual({ nominee_name: "Kiran Rao", nominee_relation: "Son", version: "2" })
+
+    expect(errorOf(await adminPost(onboarding.userId, { ...body, expectedVersion: 1 }, randomUUID())).code).toBe("STATE_CONFLICT")
+    const closed = await seedClient("closed")
+    expect(errorOf(await adminPost(closed.id, body, randomUUID())).code).toBe("STATE_CONFLICT")
+    expect(await nomineeRow(closed.id)).toMatchObject({ nominee_name: null, version: "1" })
+  })
+})
+
+describe("nominee validation", () => {
+  const refusals: readonly (readonly [object, string])[] = [
+    [{ name: "Meera Rao", relation: null }, "relation"],
+    [{ name: null, relation: "Spouse" }, "name"],
+    [{ name: "M", relation: "Spouse" }, "name"],
+    [{ name: "x".repeat(121), relation: "Spouse" }, "name"],
+    [{ name: "Meera\u0007Rao", relation: "Spouse" }, "name"],
+    [{ name: "Meera Rao", relation: "S" }, "relation"],
+    [{ name: "Meera Rao", relation: "x".repeat(121) }, "relation"],
+    [{ name: "Meera Rao", relation: "Sp\u0085ouse" }, "relation"],
+  ]
+
+  test("refuses a half nominee and bad lengths or control characters with field errors, changing nothing", async () => {
+    const client = await seedClient()
+    for (const [payload, field] of refusals) {
+      const fromClient = await clientPost(client, payload)
+      expect(fromClient.statusCode, JSON.stringify(payload)).toBe(400)
+      expect(Object.keys(errorOf(fromClient).fields ?? {})).toEqual([field])
+      const fromAdmin = await adminPost(client.id, { ...payload, expectedVersion: 1 }, randomUUID())
+      expect(fromAdmin.statusCode, JSON.stringify(payload)).toBe(400)
+      expect(Object.keys(errorOf(fromAdmin).fields ?? {})).toEqual([field])
+    }
+    expect(await nomineeRow(client.id)).toEqual({ nominee_name: null, nominee_relation: null, version: "1" })
+    expect(await auditRows(client.id)).toEqual([])
+  })
+})
+
+describe("tombstoning", () => {
+  test("clears the nominee, which then reads as none and cannot be set again", async () => {
+    const client = await seedClient()
+    await clientPost(client, NOMINEE)
+    await stack.setAccountState(client.id, "closed")
+
+    await stack.pool.query("update users set pii_tombstoned_at = now() where id = $1", [client.id])
+
+    expect(await nomineeRow(client.id)).toMatchObject({ nominee_name: null, nominee_relation: null })
+    const read = dataOf<NomineeResponse>(await adminGet(client.id))
+    expect(read.nominee).toBeNull()
+    expect(errorOf(await adminPost(client.id, { ...NOMINEE, expectedVersion: read.version }, randomUUID())).code).toBe(
+      "STATE_CONFLICT",
+    )
+    expect(await nomineeRow(client.id)).toMatchObject({ nominee_name: null, nominee_relation: null })
+    expect(await auditRows(client.id)).toHaveLength(1)
+  })
+})

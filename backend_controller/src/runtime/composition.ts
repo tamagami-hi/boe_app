@@ -57,12 +57,14 @@ import { createClientPositionRepository } from "../repositories/clientPositionRe
 import { registerClientAccountRoutes } from "../routes/clientAccountRoutes.js"
 import { registerClientEmailVerificationRoutes } from "../routes/clientEmailVerificationRoutes.js"
 import { createEmailChangeRepository } from "../repositories/emailChangeRepository.js"
+import { registerClientNomineeRoutes } from "../routes/clientNomineeRoutes.js"
 import { registerClientProfileRoutes } from "../routes/clientProfileRoutes.js"
 import { registerPasswordRoutes } from "../routes/passwordRoutes.js"
 import { registerAdminEmailSurface } from "./adminEmailComposition.js"
 import { registerAdminSurface } from "./adminComposition.js"
 import { registerAdminClientOnboardingRoutes } from "../routes/adminClientOnboardingRoutes.js"
 import { createPasswordTokenRepository } from "../repositories/passwordTokenRepository.js"
+import { createUserNomineeRepository } from "../repositories/userNomineeRepository.js"
 import { registerClientOrderRoutes } from "../routes/clientOrderRoutes.js"
 import { registerClientSipPlanRoutes } from "../routes/clientSipPlanRoutes.js"
 import { registerClientAutoPaySipRoutes } from "../routes/clientAutoPaySipRoutes.js"
@@ -411,6 +413,10 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         maxAttempts: serverConfig.emailVerification.maxAttempts,
         resendCooldownMs: serverConfig.emailVerification.resendCooldownMs,
       },
+    })
+    registerClientNomineeRoutes(application, {
+      accessTokenService, database, clientWeb, unitOfWork, clock, auditRepository,
+      userNomineeRepository: createUserNomineeRepository(),
     })
 
     registerPasswordRoutes(application, {

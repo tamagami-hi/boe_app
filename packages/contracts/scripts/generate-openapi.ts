@@ -27,6 +27,7 @@ import { CLIENT_SIP_OPERATIONS } from "../src/operations/client-sips.js"
 import { CLIENT_WEB_AUTH_OPERATIONS } from "../src/operations/client-web-auth.js"
 import { CLIENT_OPERATIONS } from "../src/operations/client.js"
 import { NATIVE_AUTH_OPERATIONS } from "../src/operations/native-auth.js"
+import { NOMINEE_OPERATIONS } from "../src/operations/nominee.js"
 import { OPS_OPERATIONS } from "../src/operations/ops.js"
 import { PUBLIC_CONTENT_OPERATIONS } from "../src/operations/public-content.js"
 import { PUBLIC_OPERATIONS } from "../src/operations/public.js"
@@ -77,6 +78,7 @@ export const ALL_OPERATIONS: readonly GeneratableOperation[] = Object.freeze([
   ...ADMIN_SUPPORT_OPERATIONS,
   ...VALUE_UPDATE_OPERATIONS,
   ...ADMIN_REPORT_OPERATIONS,
+  ...NOMINEE_OPERATIONS,
 ])
 
 type RouteConfig = Parameters<OpenAPIRegistry["registerPath"]>[0]

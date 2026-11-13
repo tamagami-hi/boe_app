@@ -125,10 +125,11 @@ describe("contact history populated upgrade", () => {
 
     const directory = fileURLToPath(new URL("../../db/migrations", import.meta.url))
     const migrations = await loadMigrationFiles(directory)
-    await runMigrations(pool, migrations.filter((migration) => migration.version >= MIGRATION))
+    await runMigrations(pool, migrations.filter((migration) => migration.version === MIGRATION))
 
     expect(await snapshot()).toBe(before)
     expect((await pool.query("select count(*)::int as c from user_contact_history")).rows[0]).toEqual({ c: 0 })
+    await runMigrations(pool, migrations.filter((migration) => migration.version > MIGRATION))
 
     const unitOfWork = createUnitOfWork(database)
     await unitOfWork.execute((tx) =>
