@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 
 import { Page } from "~/app/layouts/Page"
@@ -7,6 +7,7 @@ import { useSession } from "~/app/providers/SessionProvider"
 import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { formatDate } from "~/domain/dates"
 import { emailVerificationState, userAccountState } from "~/domain/status"
+import { useDirectoryReturns } from "~/features/admin/client-returns/directoryReturns"
 import { useAdminUsers } from "~/features/admin/shared/adminQueries"
 import { AdminTable, FilterChip, FilterRow } from "~/features/admin/shared/AdminTable"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
@@ -42,6 +43,8 @@ const UserDirectoryScreen = (): React.ReactElement => {
     ...(filter === "any" ? {} : { status: filter }),
     ...(applied === "" ? {} : { q: applied }),
   })
+  const visibleIds = useMemo(() => (query.data?.items ?? []).map((row) => row.id), [query.data])
+  const returns = useDirectoryReturns(visibleIds)
 
   return (
     <Page width="wide">
@@ -85,6 +88,8 @@ const UserDirectoryScreen = (): React.ReactElement => {
           />
         ))}
       </FilterRow>
+
+      {returns.notice}
 
       <AsyncBoundary
         query={query}
@@ -150,6 +155,7 @@ const UserDirectoryScreen = (): React.ReactElement => {
                 numeric: true,
                 render: (row) => String(row.ordersCount),
               },
+              ...returns.columns,
               {
                 key: "created",
                 header: "Joined",

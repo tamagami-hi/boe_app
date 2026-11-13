@@ -15,10 +15,11 @@ export const investorLabel = (user: Pick<DirectoryUser, "fullName" | "email">): 
 export const isSelectableInvestor = (user: Pick<DirectoryUser, "accountState" | "isPiiTombstoned">): boolean =>
   user.accountState !== "closed" && !user.isPiiTombstoned
 
-export const useInvestorDirectory = (): PagedQuery<DataOf<typeof listAdminUsers>> => {
+export const useInvestorDirectory = (enabled = true): PagedQuery<DataOf<typeof listAdminUsers>> => {
   const api = useApi()
   return usePagedQuery({
     queryKey: qk.admin.users("client-values:directory"),
+    enabled,
     staleTime: STALE.MONEY,
     limit: DIRECTORY_PAGE_LIMIT,
     loadAll: true,

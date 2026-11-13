@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { useParams } from "react-router-dom"
 
 import { Page } from "~/app/layouts/Page"
@@ -7,6 +8,7 @@ import { useSession } from "~/app/providers/SessionProvider"
 import { formatDate, formatDateTime } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { emailVerificationState, orderState, userAccountState } from "~/domain/status"
+import { PortfolioSummarySection } from "~/features/admin/client-returns/PortfolioSummarySection"
 import { EarlierInvestmentForm } from "~/features/admin/client-values/EarlierInvestmentForm"
 import { useAdminUser } from "~/features/admin/shared/adminQueries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
@@ -24,6 +26,8 @@ import { ACTION_ROW } from "~/ui/recipes/layout"
 import { META_TEXT } from "~/ui/recipes/text"
 
 import { ClientContactsSection } from "./ClientContactsSection"
+import { ClientHubActions } from "./ClientHubActions"
+import { ClientHubTabs } from "./ClientHubTabs"
 import { PasswordLinkPanel } from "./PasswordLinkPanel"
 import { UserLifecyclePanel } from "./UserLifecyclePanel"
 
@@ -39,6 +43,9 @@ const UserDetailScreen = (): React.ReactElement => {
   const { hasAnyPermission } = useSession()
 
   const canRecordInvestment = hasAnyPermission(["client_position.write"])
+  const [isRecording, setRecording] = useState(false)
+  const canRecordFor = (accountState: string): boolean =>
+    canRecordInvestment && (accountState === "active" || accountState === "suspended")
 
   const reloadUser = async (): Promise<boolean> => (await query.refetch()).isSuccess
 
@@ -46,7 +53,7 @@ const UserDetailScreen = (): React.ReactElement => {
     <Page width="wide">
       <PageHeader
         title="User"
-        description="The account, its verification state, its roles and its most recent orders."
+        description="One page for this account: who it is, what it holds, what to do next and what has happened to it."
       />
 
       <AsyncBoundary
@@ -117,13 +124,20 @@ const UserDetailScreen = (): React.ReactElement => {
               </Section>
             ) : null}
 
+            {data.roles.length === 0 ? <PortfolioSummarySection userId={userId} /> : null}
+
             {data.roles.length === 0 ? (
-              <ClientContactsSection user={data.user} reloading={query.isFetching} onReload={reloadUser} />
+              <ClientHubActions
+                userId={userId}
+                canRecord={canRecordFor(data.user.accountState)}
+                isRecording={isRecording}
+                onToggleRecord={() => {
+                  setRecording((open) => !open)
+                }}
+              />
             ) : null}
 
-            {data.roles.length === 0 &&
-            canRecordInvestment &&
-            (data.user.accountState === "active" || data.user.accountState === "suspended") ? (
+            {data.roles.length === 0 && isRecording && canRecordFor(data.user.accountState) ? (
               <Section
                 title="Record an earlier investment"
                 description="Records money this client invested before using BeOnEdge, one fund at a time. It is not a charge and not growth."
@@ -133,6 +147,12 @@ const UserDetailScreen = (): React.ReactElement => {
                   investorLabel={data.user.fullName === "" ? data.user.email : data.user.fullName}
                 />
               </Section>
+            ) : null}
+
+            <ClientHubTabs userId={userId} isClient={data.roles.length === 0} />
+
+            {data.roles.length === 0 ? (
+              <ClientContactsSection user={data.user} reloading={query.isFetching} onReload={reloadUser} />
             ) : null}
 
             <UserLifecyclePanel

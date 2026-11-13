@@ -25,6 +25,8 @@ import { PROSE_SM } from "~/ui/recipes/datalist"
 import { ACTION_ROW } from "~/ui/recipes/layout"
 import { META_MUTED } from "~/ui/recipes/text"
 
+import { DailyTiles } from "./DailyTiles"
+
 const QUEUE_ENTRIES = [
   {
     id: "applications",
@@ -157,6 +159,8 @@ const OverviewScreen = (): React.ReactElement => {
         title="Overview"
         description="What is waiting for a decision, and where to make it. Every number is read live from the backend."
       />
+
+      <DailyTiles reachablePaths={reachablePaths} />
 
       <Section title="Queues">
         <ContentGrid columns={4}>
