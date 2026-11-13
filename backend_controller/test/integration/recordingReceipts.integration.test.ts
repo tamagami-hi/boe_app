@@ -66,7 +66,15 @@ const envelopeOf = <T>(response: { json: () => unknown }): Envelope<T> => respon
 
 const writeCounts = async (): Promise<number[]> => Promise.all(WRITE_TABLES.map((table) => stack.count(table)))
 
-const seedFund = async (actorId: string): Promise<string> => {
+interface FundVersionSeed {
+  readonly name: string
+  readonly createdAt: string | null
+}
+
+const seedFund = async (
+  actorId: string,
+  versions: readonly FundVersionSeed[] = [{ name: FUND_NAME, createdAt: null }],
+): Promise<{ fundId: string; versionIds: string[] }> => {
   const fund = await stack.first(
     "insert into funds (slug, state, published_at, created_by_user_id) values ($1, 'published', now(), $2) returning id",
     [`receipts-${randomUUID().slice(0, 8)}`, actorId],
@@ -76,14 +84,18 @@ const seedFund = async (actorId: string): Promise<string> => {
       "values ($1, 1, 'Scheme disclosure', 'Full disclosure body.', $2, now(), $3) returning id",
     [fund.id, randomBytes(32), actorId],
   )
-  const version = await stack.first(
-    "insert into fund_versions (fund_id, version, name, category, objective, risk_level, return_tier, " +
-      "minimum_sip_paise, minimum_purchase_paise, minimum_duration_months, disclosure_version_id, terms_sha256, created_by_user_id) " +
-      "values ($1, 1, $2, 'hybrid', 'Balanced growth.', 'moderate', 'moderate', 50000, 500000, 6, $3, $4, $5) returning id",
-    [fund.id, FUND_NAME, disclosure.id, randomBytes(32), actorId],
-  )
-  await stack.pool.query("update funds set current_published_version_id = $1 where id = $2", [version.id, fund.id])
-  return String(fund.id)
+  const versionIds: string[] = []
+  for (const [index, seed] of versions.entries()) {
+    const version = await stack.first(
+      "insert into fund_versions (fund_id, version, name, category, objective, risk_level, return_tier, " +
+        "minimum_sip_paise, minimum_purchase_paise, minimum_duration_months, disclosure_version_id, terms_sha256, created_by_user_id, created_at) " +
+        "values ($1, $2, $3, 'hybrid', 'Balanced growth.', 'moderate', 'moderate', 50000, 500000, 6, $4, $5, $6, coalesce($7::timestamptz, now())) returning id",
+      [fund.id, index + 1, seed.name, disclosure.id, randomBytes(32), actorId, seed.createdAt],
+    )
+    versionIds.push(String(version.id))
+  }
+  await stack.pool.query("update funds set current_published_version_id = $1 where id = $2", [versionIds.at(-1), fund.id])
+  return { fundId: String(fund.id), versionIds }
 }
 
 const clientToken = async (userId: string): Promise<string> => {
@@ -234,7 +246,7 @@ beforeAll(async () => {
     },
   })
   finance = await signInRoleAdmin(app, stack, "finance")
-  fundId = await seedFund(finance.userId)
+  fundId = (await seedFund(finance.userId)).fundId
 }, 220_000)
 
 afterAll(async () => {
@@ -496,6 +508,47 @@ describe("investment added email", () => {
     for (const user of [reversed, closed, moved]) {
       expect(mail.transport.messages.some((message) => message.to === user.email), user.email).toBe(false)
       expect((await investmentEmailsOf(user.id)).map((row) => row.outbox_state)).toEqual(["cancelled"])
+    }
+  })
+})
+
+describe("fund name quoted for a recording", () => {
+  test("quotes the fund version in force on the recording date, and the current version when none existed yet", async () => {
+    const renamed = await seedFund(finance.userId, [
+      { name: "Harbour Growth Fund", createdAt: "2025-01-01T00:00:00Z" },
+      { name: "Summit Growth Fund", createdAt: null },
+    ])
+    const client = await stack.seedUser()
+    const token = await clientToken(client.id)
+    const recordOn = async (effectiveDate: string) => {
+      const response = await app.inject({
+        method: "POST",
+        url: `/v1/admin/clients/${client.id}/recorded-contributions`,
+        headers: adminHeaders(finance, `renamed-${randomUUID()}`),
+        payload: { fundId: renamed.fundId, amountPaise: "250000", effectiveDate, reasonCode: "recorded_offline_monthly_investment" },
+      })
+      expect(response.statusCode).toBe(201)
+      return envelopeOf<Recorded & { fundVersionId: string; fundVersionEffectiveOnDate: boolean }>(response).data
+    }
+
+    const dated = await recordOn("2025-06-02")
+    const beforeAnyVersion = await recordOn("2024-12-01")
+
+    expect([dated.fundVersionId, dated.fundVersionEffectiveOnDate]).toEqual([renamed.versionIds[0], true])
+    expect([beforeAnyVersion.fundVersionId, beforeAnyVersion.fundVersionEffectiveOnDate]).toEqual([renamed.versionIds[1], false])
+    const emails = await investmentEmailsOf(client.id)
+    for (const [recorded, quoted] of [
+      [dated, "Harbour Growth Fund"],
+      [beforeAnyVersion, "Summit Growth Fund"],
+    ] as const) {
+      const notification = await stack.first("select body from notifications where payload->>'entryId' = $1", [recorded.entryId])
+      expect(notification.body).toBe(
+        `Your monthly investment in ${quoted} is now in your portfolio. Contact support if you do not recognise it.`,
+      )
+      const email = emails.find((row) => (row.payload as { entryId?: string }).entryId === recorded.entryId)
+      expect((await sealedOf(String(email?.id))).fundName).toBe(quoted)
+      const receipt = envelopeOf<{ receipt: Receipt }>(await getReceipt(token, recorded.entryId)).data.receipt
+      expect(receipt.fundName).toBe(quoted)
     }
   })
 })
