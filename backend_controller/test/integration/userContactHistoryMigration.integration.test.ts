@@ -27,7 +27,7 @@ import { createUserRepository } from "../../src/repositories/userRepository.js"
 import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
 import { CRYPTO_ENV } from "./passwordMailSupport.js"
 
-const MIGRATION = "064_user_contact_history"
+const MIGRATION = "061_user_contact_history"
 const ARGON_HASH = "$argon2id$v=19$m=19456,t=2,p=1$c2FsdHNhbHQ$aGFzaGhhc2hoYXNoaGFzaA"
 
 let container: StartedPostgreSqlContainer
