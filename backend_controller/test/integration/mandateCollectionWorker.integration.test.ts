@@ -12,6 +12,7 @@ import { createDatabase, createUnitOfWork, type UnitOfWork } from "../../src/db/
 import { createPool } from "../../src/db/pool.js"
 import type { Database } from "../../src/db/types.js"
 import { runMandateCollectionPass, type MandateCollectionSummary } from "../../src/mandateCollectionWorker.js"
+import type { GatewayFailureLogger } from "../../src/providers/gatewayFailure.js"
 import type {
   CollectionStatus,
   NotifyCollectionCommand,
@@ -91,7 +92,7 @@ const settleCollectionsOf = (plan: AutoPayPlan, state: "COMPLETED" | "FAILED"): 
 const notifiedCountOf = (plan: AutoPayPlan): number =>
   [...notified.values()].filter((entry) => entry.command.merchantSubscriptionId === plan.merchantSubscriptionId).length
 
-const runPass = (at: Date): Promise<MandateCollectionSummary> => runMandateCollectionPass({
+const runPass = (at: Date, logger: GatewayFailureLogger | null = null): Promise<MandateCollectionSummary> => runMandateCollectionPass({
   unitOfWork,
   clock: () => at,
   recurringPaymentGateway: fakeGateway,
@@ -103,7 +104,7 @@ const runPass = (at: Date): Promise<MandateCollectionSummary> => runMandateColle
   userRepository: createUserRepository(),
   auditRepository: createAuditRepository(),
   notificationRepository: createNotificationRepository(),
-  logger: null,
+  logger,
   config: { merchantService: "boe-dev", claimLimit: 100, commandEnabled: true, expiryGraceMs: 300_000 },
 })
 
@@ -348,5 +349,29 @@ describe("AutoPay mandate collection worker on PostgreSQL", () => {
     ])
     expect(notifiedCountOf(plan)).toBe(2)
     expect(await sipStateOf(plan)).toBe("cancel_pending")
+  })
+
+  test("records a period skipped for an ineligible client without notifying the client", async () => {
+    const plan = await seedActiveAutoPayPlan("2031-01-10")
+    await pool.query("update users set email_verification_state = 'pending', email_verified_at = null where id = $1", [plan.userId])
+    const warnings: Record<string, unknown>[] = []
+    const logger: GatewayFailureLogger = { warn: (fields) => { warnings.push(fields) } }
+
+    await runPass(inNotifyWindow("2031-02"), logger)
+    await runPass(afterDebit("2031-02"), logger)
+
+    expect(await installmentsOf(plan.sipPlanId)).toEqual([])
+    expect(warnings.filter((fields) => fields.sipPlanId === plan.sipPlanId)).toEqual([
+      { errorCode: "SIP_INSTALLMENT_NOT_CREATED", sipPlanId: plan.sipPlanId, duePeriod: "2031-02-01", reason: "not_eligible" },
+      { errorCode: "SIP_PERIOD_SKIPPED", sipPlanId: plan.sipPlanId, duePeriod: "2031-02-01", reason: "no_installment_by_debit_time" },
+    ])
+    const audit = await pool.query<{ actor_type: string; metadata: unknown }>(
+      "select actor_type::text actor_type, metadata from audit_events where command = 'sip.period.skip' and entity_id = $1",
+      [plan.sipPlanId],
+    )
+    expect(audit.rows).toEqual([{ actor_type: "system", metadata: { duePeriod: "2031-02-01", reason: "no_installment_by_debit_time" } }])
+    const notifications = await pool.query("select 1 from notifications where user_id = $1", [plan.userId])
+    expect(notifications.rowCount).toBe(0)
+    expect(await nextDueDateOf(plan)).toBe("2031-03-05")
   })
 })

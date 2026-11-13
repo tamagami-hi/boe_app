@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 
 import type { UnitOfWork } from "./db/database.js"
-import type { MandateCollectionAttempt, PaymentAttempt, SipPlan } from "./db/repositories.js"
+import type { InvestmentOrder, MandateCollectionAttempt, PaymentAttempt, PaymentMandate, SipPlan, Transaction } from "./db/repositories.js"
 import { createSipInstallmentOrder } from "./domain/client/createSipInstallmentOrder.js"
 import { isInstallmentPeriodResolved } from "./domain/client/sipInstallmentPeriod.js"
 import { reconcileCollectionFact } from "./domain/payments/reconcileCollectionFact.js"
@@ -26,6 +26,7 @@ const COLLECTION_EXPIRY_MS = 48 * HOUR_MS
 const IST_OFFSET_MS = 5.5 * HOUR_MS
 const DEBIT_HOUR_IST = 10
 const COLLECTION_EXPIRED_CODE = "COLLECTION_EXPIRED"
+const MISSED_PERIOD_REASON = "no_installment_by_debit_time"
 
 export interface MandateCollectionConfig {
   readonly merchantService: string | null
@@ -58,6 +59,19 @@ export interface MandateCollectionSummary {
   readonly collectionsExpired: number
 }
 
+type CollectionStep =
+  | {
+    readonly kind: "prepared"
+    readonly collection: MandateCollectionAttempt
+    readonly mandate: PaymentMandate
+    readonly paymentAttempt: PaymentAttempt
+    readonly expiresAt: Date
+  }
+  | { readonly kind: "skipped"; readonly duePeriod: string }
+  | { readonly kind: "not_created"; readonly duePeriod: string; readonly reason: string }
+
+type PreparedCollection = Extract<CollectionStep, { kind: "prepared" }>
+
 const isoDate = (value: Date | string): string => typeof value === "string" ? value.slice(0, 10) : value.toISOString().slice(0, 10)
 
 export const scheduledDebitAt = (dueDate: Date | string): Date => {
@@ -70,37 +84,90 @@ export const scheduledDebitAt = (dueDate: Date | string): Date => {
 
 const dateInIndia = (value: Date): string => new Date(value.getTime() + IST_OFFSET_MS).toISOString().slice(0, 10)
 
-const firstOfMonth = (value: Date | string): string => {
-  const date = typeof value === "string" ? value.slice(0, 10) : value.toISOString().slice(0, 10)
-  return `${date.slice(0, 7)}-01`
-}
+const firstOfMonth = (value: Date | string): string => `${isoDate(value).slice(0, 7)}-01`
 
 const nextMonthlyDueDate = (dueDate: Date | string, debitDay: number): string => {
-  const value = typeof dueDate === "string" ? dueDate.slice(0, 10) : dueDate.toISOString().slice(0, 10)
-  const [year, month] = value.split("-").map(Number)
+  const [year, month] = isoDate(dueDate).split("-").map(Number)
   const first = new Date(Date.UTC(year as number, month as number, 1))
   const lastDay = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate()
   return new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), Math.min(debitDay, lastDay))).toISOString().slice(0, 10)
 }
 
-const prepareCollection = async (deps: MandateCollectionDeps, plan: SipPlan) => {
+const advancePastPeriod = async (
+  tx: Transaction,
+  deps: MandateCollectionDeps,
+  input: Readonly<{ plan: SipPlan; dueDate: string; duePeriod: string; isMissed: boolean; now: Date }>,
+): Promise<CollectionStep | null> => {
+  const advanced = await deps.sipPlanRepository.advanceNextDueDate(tx, {
+    sipPlanId: input.plan.id,
+    expectedNextDueDate: input.dueDate,
+    nextDueDate: nextMonthlyDueDate(input.dueDate, input.plan.debit_day),
+    now: input.now,
+  })
+  if (advanced === null || !input.isMissed) return null
+  await deps.auditRepository.append(tx, {
+    actorType: "system",
+    actorUserId: null,
+    command: "sip.period.skip",
+    entityType: "sip_plan",
+    entityId: input.plan.id,
+    requestId: randomUUID(),
+    entityVersion: Number(advanced.version),
+    metadata: { duePeriod: input.duePeriod, reason: MISSED_PERIOD_REASON },
+  })
+  return { kind: "skipped", duePeriod: input.duePeriod }
+}
+
+const openCollection = async (
+  tx: Transaction,
+  deps: MandateCollectionDeps,
+  input: Readonly<{ plan: SipPlan; mandate: PaymentMandate; order: InvestmentOrder; duePeriod: string; debitAt: Date; notifyAt: Date; now: Date }>,
+): Promise<CollectionStep | null> => {
+  if (await deps.paymentsRepository.markOrderPaymentPending(tx, input.order.id, input.now) === null) return null
+  const payment = await deps.paymentsRepository.createPayment(tx, {
+    orderId: input.order.id,
+    userId: input.plan.user_id,
+    amountPaise: input.plan.amount_paise,
+    currency: input.order.currency,
+  })
+  const expiresAt = new Date(input.notifyAt.getTime() + COLLECTION_EXPIRY_MS)
+  const paymentAttempt = await deps.paymentsRepository.createAttempt(tx, {
+    paymentId: payment.id,
+    userId: input.plan.user_id,
+    attemptNumber: 1,
+    merchantOrderId: newMerchantOrderId(deps.config.merchantService),
+    checkoutExpiresAt: expiresAt,
+    checkoutChannel: "phonepe_autopay",
+  })
+  const collection = await deps.mandatesRepository.createCollectionAttempt(tx, {
+    mandateId: input.mandate.id,
+    sipPlanId: input.plan.id,
+    userId: input.plan.user_id,
+    fundId: input.plan.fund_id,
+    amountPaise: input.plan.amount_paise,
+    duePeriod: input.duePeriod,
+    scheduledDebitAt: input.debitAt,
+    notifyAt: input.notifyAt,
+    orderId: input.order.id,
+    paymentId: payment.id,
+    paymentAttemptId: paymentAttempt.id,
+  })
+  return { kind: "prepared", collection, mandate: input.mandate, paymentAttempt, expiresAt }
+}
+
+const prepareCollection = async (deps: MandateCollectionDeps, plan: SipPlan): Promise<CollectionStep | null> => {
   const now = deps.clock()
   return deps.unitOfWork.execute(async (tx) => {
     const locked = await deps.sipPlanRepository.lockById(tx, { sipPlanId: plan.id, userId: plan.user_id })
     if (locked === null || locked.state !== "active" || locked.collection_mode !== "phonepe_autopay" || locked.next_due_date === null) return null
-    const debitAt = scheduledDebitAt(locked.next_due_date)
+    const dueDate = isoDate(locked.next_due_date)
+    const debitAt = scheduledDebitAt(dueDate)
     const notifyAt = new Date(debitAt.getTime() - NOTIFY_LEAD_MS)
-    const duePeriod = firstOfMonth(locked.next_due_date)
+    const duePeriod = firstOfMonth(dueDate)
     const existing = await deps.orderRepository.findInstallmentByPeriod(tx, { sipPlanId: locked.id, duePeriod })
     const isPeriodResolved = existing === null ? now >= debitAt : isInstallmentPeriodResolved(existing.state)
     if (isPeriodResolved) {
-      await deps.sipPlanRepository.advanceNextDueDate(tx, {
-        sipPlanId: locked.id,
-        expectedNextDueDate: isoDate(locked.next_due_date),
-        nextDueDate: nextMonthlyDueDate(locked.next_due_date, locked.debit_day),
-        now,
-      })
-      return null
+      return advancePastPeriod(tx, deps, { plan: locked, dueDate, duePeriod, isMissed: existing === null, now })
     }
     if (existing !== null || now < notifyAt) return null
     const mandate = await deps.mandatesRepository.findCurrentMandateForOwner(tx, { sipPlanId: locked.id, userId: locked.user_id })
@@ -112,39 +179,27 @@ const prepareCollection = async (deps: MandateCollectionDeps, plan: SipPlan) => 
       notificationRepository: deps.notificationRepository,
       clock: deps.clock,
     }, { plan: locked, duePeriod, requestId: randomUUID() })
-    if (created.outcome !== "created") return null
-    if (await deps.paymentsRepository.markOrderPaymentPending(tx, created.order.id, now) === null) return null
-    const payment = await deps.paymentsRepository.createPayment(tx, {
-      orderId: created.order.id,
-      userId: locked.user_id,
-      amountPaise: locked.amount_paise,
-      currency: created.order.currency,
-    })
-    const merchantOrderId = newMerchantOrderId(deps.config.merchantService)
-    const expiresAt = new Date(notifyAt.getTime() + COLLECTION_EXPIRY_MS)
-    const paymentAttempt = await deps.paymentsRepository.createAttempt(tx, {
-      paymentId: payment.id,
-      userId: locked.user_id,
-      attemptNumber: 1,
-      merchantOrderId,
-      checkoutExpiresAt: expiresAt,
-      checkoutChannel: "phonepe_autopay",
-    })
-    const collection = await deps.mandatesRepository.createCollectionAttempt(tx, {
-      mandateId: mandate.id,
-      sipPlanId: locked.id,
-      userId: locked.user_id,
-      fundId: locked.fund_id,
-      amountPaise: locked.amount_paise,
-      duePeriod,
-      scheduledDebitAt: debitAt,
-      notifyAt,
-      orderId: created.order.id,
-      paymentId: payment.id,
-      paymentAttemptId: paymentAttempt.id,
-    })
-    return { collection, mandate, paymentAttempt, expiresAt }
+    if (created.outcome !== "created") return { kind: "not_created", duePeriod, reason: created.outcome }
+    return openCollection(tx, deps, { plan: locked, mandate, order: created.order, duePeriod, debitAt, notifyAt, now })
   })
+}
+
+const logUncollectedPeriod = (
+  deps: MandateCollectionDeps,
+  plan: SipPlan,
+  step: Exclude<CollectionStep, PreparedCollection>,
+): void => {
+  if (step.kind === "skipped") {
+    deps.logger?.warn(
+      { errorCode: "SIP_PERIOD_SKIPPED", sipPlanId: plan.id, duePeriod: step.duePeriod, reason: MISSED_PERIOD_REASON },
+      "AutoPay SIP period passed its debit time with no instalment and was skipped",
+    )
+    return
+  }
+  deps.logger?.warn(
+    { errorCode: "SIP_INSTALLMENT_NOT_CREATED", sipPlanId: plan.id, duePeriod: step.duePeriod, reason: step.reason },
+    "AutoPay SIP instalment was not created for this period",
+  )
 }
 
 const failRejectedCollectionNotification = async (
@@ -171,7 +226,7 @@ const failRejectedCollectionNotification = async (
   }, deps.clock(), deps.settlementRepository)
 })
 
-const dispatchCollection = async (deps: MandateCollectionDeps, prepared: NonNullable<Awaited<ReturnType<typeof prepareCollection>>>): Promise<boolean> => {
+const dispatchCollection = async (deps: MandateCollectionDeps, prepared: PreparedCollection): Promise<boolean> => {
   try {
     const status = await deps.recurringPaymentGateway.getMandateStatus(prepared.mandate.merchant_subscription_id)
     if (status.state !== "ACTIVE" || status.providerSubscriptionId !== prepared.mandate.provider_subscription_id) {
@@ -338,6 +393,10 @@ export const runMandateCollectionPass = async (deps: MandateCollectionDeps): Pro
     if (!await confirmActiveBeforeCollectionCreation(deps, plan)) continue
     const prepared = await prepareCollection(deps, plan)
     if (prepared === null) continue
+    if (prepared.kind !== "prepared") {
+      logUncollectedPeriod(deps, plan, prepared)
+      continue
+    }
     collectionsCreated += 1
     if (await dispatchCollection(deps, prepared)) notificationsDispatched += 1
   }
