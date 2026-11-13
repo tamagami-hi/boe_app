@@ -17,6 +17,7 @@ import type { WebAuthDeps } from "../../src/domain/auth/webAuth.js"
 import { createApplicationRepository } from "../../src/repositories/applicationRepository.js"
 import { createApplicationReviewRepository } from "../../src/repositories/applicationReviewRepository.js"
 import type { EmailDeliveryWriteRepository } from "../../src/repositories/emailDeliveryRepository.js"
+import { createEmailChangeRepository } from "../../src/repositories/emailChangeRepository.js"
 import { createEmailVerificationRepository } from "../../src/repositories/emailVerificationRepository.js"
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
 import { createIdentityLockRepository } from "../../src/repositories/identityLockRepository.js"
@@ -94,6 +95,7 @@ const buildApp = (options: AppOptions = {}): FastifyInstance => {
         identityLockRepository: createIdentityLockRepository(),
         emailVerificationRepository: createEmailVerificationRepository(),
         userContactRepository: createUserContactRepository(),
+        emailChangeRepository: createEmailChangeRepository(),
         config: { ...mail.config, idempotencyTtlMs: 86_400_000 },
       })
       registerPasswordRoutes(instance, {

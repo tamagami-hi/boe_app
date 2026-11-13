@@ -40,3 +40,7 @@ $$;
 CREATE TRIGGER user_contact_history_append_only
   BEFORE UPDATE OR DELETE ON user_contact_history
   FOR EACH ROW EXECUTE FUNCTION user_contact_history_refuse_change();
+
+CREATE TRIGGER user_contact_history_no_truncate
+  BEFORE TRUNCATE ON user_contact_history
+  FOR EACH STATEMENT EXECUTE FUNCTION user_contact_history_refuse_change();

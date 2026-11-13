@@ -1,4 +1,5 @@
 import { AppError } from "../../http/errorCatalog.js"
+import { RELEASED_PHONE_PREFIX } from "./reservedContacts.js"
 
 const E164 = /^\+[1-9][0-9]{7,14}$/u
 const INDIA_PREFIX = "+91"
@@ -15,6 +16,9 @@ export const normalizePhone = (raw: string): string => {
   if (!E164.test(candidate)) return refuse("must be a valid E.164 phone number")
   if (candidate.startsWith(INDIA_PREFIX) && !INDIA_NATIONAL.test(candidate)) {
     return refuse("an Indian number must have exactly 10 digits after +91")
+  }
+  if (candidate.startsWith(RELEASED_PHONE_PREFIX)) {
+    return refuse(`must not start with ${RELEASED_PHONE_PREFIX}, which is reserved`)
   }
   return candidate
 }

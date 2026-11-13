@@ -5,6 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest"
 
 import { redeemPasswordToken } from "../../src/domain/auth/passwordCredential.js"
 import { createApplicationRepository } from "../../src/repositories/applicationRepository.js"
+import { createEmailChangeRepository } from "../../src/repositories/emailChangeRepository.js"
 import { createEmailVerificationRepository } from "../../src/repositories/emailVerificationRepository.js"
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
 import { createIdentityLockRepository } from "../../src/repositories/identityLockRepository.js"
@@ -117,6 +118,7 @@ beforeAll(async () => {
         identityLockRepository: createIdentityLockRepository(),
         emailVerificationRepository: createEmailVerificationRepository(),
         userContactRepository: createUserContactRepository(),
+        emailChangeRepository: createEmailChangeRepository(),
         config: { ...mail.config, idempotencyTtlMs: 86_400_000 },
       })
     },
@@ -287,6 +289,55 @@ describe("an admin corrects an invitee's contacts before a password is set", () 
   })
 })
 
+describe("contact corrections stay bounded and out of the reserved space", () => {
+  test("refuses a fourth correction for the same client within 24 hours and changes nothing", async () => {
+    const client = await createClient()
+    for (let round = 0; round < 3; round += 1) {
+      const allowed = await correct(
+        client.userId,
+        { email: `round-${String(round)}-${randomUUID()}@example.com`, expectedVersion: await versionOf(client.userId) },
+        `c-${randomUUID()}`,
+      )
+      expect(allowed.statusCode).toBe(200)
+    }
+    const before = await tableCounts()
+
+    const refused = await correct(
+      client.userId,
+      { phone: stack.nextPhone(), expectedVersion: await versionOf(client.userId) },
+      `c-${randomUUID()}`,
+    )
+
+    expect(refused.statusCode).toBe(429)
+    expect(errorOf(refused)).toMatchObject({ code: "RATE_LIMITED" })
+    expect(errorOf(refused).message).toContain("3 times in the last 24 hours")
+    expect(await tableCounts()).toEqual(before)
+  })
+
+  test("refuses the released placeholder ranges on correction and creation with field errors", async () => {
+    const client = await createClient()
+    const version = await versionOf(client.userId)
+    const before = await tableCounts()
+
+    const reservedPhone = await correct(client.userId, { phone: "+99900000000001", expectedVersion: version }, `c-${randomUUID()}`)
+    const reservedEmail = await correct(client.userId, { email: "someone@released.invalid", expectedVersion: version }, `c-${randomUUID()}`)
+    const created = await app.inject({
+      method: "POST",
+      url: "/v1/admin/clients",
+      headers: adminHeaders(admin, `create-${randomUUID()}`),
+      payload: { fullName: "Asha Verma", email: `x-${randomUUID()}@released.invalid`, phone: stack.nextPhone() },
+    })
+
+    expect(errorOf(reservedPhone)).toMatchObject({ code: "VALIDATION_FAILED" })
+    expect(Object.keys(errorOf(reservedPhone).fields ?? {})).toEqual(["phone"])
+    expect(errorOf(reservedEmail)).toMatchObject({ code: "VALIDATION_FAILED" })
+    expect(Object.keys(errorOf(reservedEmail).fields ?? {})).toEqual(["email"])
+    expect(errorOf(created)).toMatchObject({ code: "VALIDATION_FAILED" })
+    expect(Object.keys(errorOf(created).fields ?? {})).toEqual(["email"])
+    expect(await tableCounts()).toEqual(before)
+  })
+})
+
 describe("an admin releases a closed account's email and phone", () => {
   const closeAccount = async (client: Client): Promise<void> => {
     await stack.setAccountState(client.userId, "closed")
@@ -393,6 +444,22 @@ describe("an admin releases a closed account's email and phone", () => {
     await expect(stack.pool.query("delete from user_contact_history where user_id = $1", [client.userId])).rejects.toThrow(
       /append-only/u,
     )
+    await expect(stack.pool.query("truncate user_contact_history")).rejects.toThrow(/append-only/u)
+  })
+
+  test("masks every contact in the history of a tombstoned account", async () => {
+    const client = await createClient()
+    await correct(client.userId, { phone: stack.nextPhone(), expectedVersion: await versionOf(client.userId) }, `c-${randomUUID()}`)
+    await stack.pool.query("update users set pii_tombstoned_at = now() where id = $1", [client.userId])
+
+    const read = await history(client.userId)
+
+    const masked = `tombstone+${client.userId.replaceAll("-", "")}@invalid.example`
+    expect(dataOf<{ entries: unknown[] }>(read).entries).toMatchObject([
+      { previousEmail: masked, newEmail: masked, previousPhone: "tombstone", newPhone: "tombstone" },
+    ])
+    expect(JSON.stringify(dataOf(read))).not.toContain(client.email)
+    expect(JSON.stringify(dataOf(read))).not.toContain(client.phone)
   })
 })
 

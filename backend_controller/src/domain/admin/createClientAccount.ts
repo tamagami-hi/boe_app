@@ -11,6 +11,7 @@ import {
 } from "../auth/passwordLinkMail.js"
 import { requirePasswordLinkBase } from "../auth/passwordLinkUrl.js"
 import type { IdentityLockRepository } from "../../repositories/identityLockRepository.js"
+import { refuseReservedEmail } from "../shared/reservedContacts.js"
 
 export interface CreateClientAccountDeps extends PasswordLinkMailDeps {
   readonly applicationRepository: ApplicationWriteRepository
@@ -52,6 +53,7 @@ export const createClientAccount = async (
   deps: CreateClientAccountDeps,
   input: CreateClientAccountInput,
 ): Promise<CreatedClientAccount> => {
+  refuseReservedEmail(input.emailNormalized)
   const linkBase = requirePasswordLinkBase(deps.config.passwordLinks)
 
   await deps.identityLockRepository.lockIdentities(tx, {

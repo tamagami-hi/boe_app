@@ -2,6 +2,7 @@ import { sql } from "kysely"
 
 import type { Transaction, User, UserId } from "../db/repositories.js"
 import type { EmailVerificationState, UserContactChangeKind } from "../db/types.js"
+import { RELEASED_PHONE_PREFIX } from "../domain/shared/reservedContacts.js"
 
 export type ContactClaimKind = "user" | "application"
 
@@ -53,8 +54,14 @@ export interface ContactHistoryEntry {
   readonly createdAt: Date
 }
 
+export interface RecentCorrections {
+  readonly count: number
+  readonly oldest: Date | null
+}
+
 export interface UserContactRepository {
   findContactClaims: (tx: Transaction, probe: ContactClaimProbe) => Promise<ContactClaims>
+  countCorrectionsSince: (tx: Transaction, input: Readonly<{ userId: string; since: Date }>) => Promise<RecentCorrections>
   isPhoneHeld: (tx: Transaction, phoneE164: string) => Promise<boolean>
   correctContacts: (tx: Transaction, change: ContactChange & { readonly emailChanged: boolean }) => Promise<User | null>
   releaseContacts: (tx: Transaction, change: ContactChange) => Promise<User | null>
@@ -64,8 +71,10 @@ export interface UserContactRepository {
   listHistory: (tx: Transaction, input: Readonly<{ userId: string; limit: number }>) => Promise<readonly ContactHistoryEntry[]>
 }
 
-const RELEASE_PHONE_PREFIX = "+999"
 const RELEASE_NUMBER_DIGITS = 11
+const TOMBSTONED_PHONE = "tombstone"
+
+const tombstonedEmail = (userId: string): string => `tombstone+${userId.replaceAll("-", "")}@invalid.example`
 
 interface HistoryRow {
   readonly id: string
@@ -80,26 +89,33 @@ interface HistoryRow {
   readonly reason_code: string | null
   readonly reason_detail: string | null
   readonly created_at: Date | string
+  readonly user_tombstoned_at: Date | string | null
 }
 
-const mapHistory = (row: HistoryRow): ContactHistoryEntry => ({
-  id: row.id,
-  userId: row.user_id,
-  changeKind: row.change_kind,
-  previousEmail: row.previous_email_normalized,
-  previousPhone: row.previous_phone_e164,
-  newEmail: row.new_email_normalized,
-  newPhone: row.new_phone_e164,
-  actorUserId: row.actor_user_id,
-  actorName: row.actor_name,
-  reasonCode: row.reason_code,
-  reasonDetail: row.reason_detail,
-  createdAt: new Date(row.created_at),
-})
+const mapHistory = (row: HistoryRow): ContactHistoryEntry => {
+  const tombstoned = row.user_tombstoned_at !== null
+  const email = (value: string): string => (tombstoned ? tombstonedEmail(row.user_id) : value)
+  const phone = (value: string): string => (tombstoned ? TOMBSTONED_PHONE : value)
+  return {
+    id: row.id,
+    userId: row.user_id,
+    changeKind: row.change_kind,
+    previousEmail: email(row.previous_email_normalized),
+    previousPhone: phone(row.previous_phone_e164),
+    newEmail: email(row.new_email_normalized),
+    newPhone: phone(row.new_phone_e164),
+    actorUserId: row.actor_user_id,
+    actorName: row.actor_name,
+    reasonCode: row.reason_code,
+    reasonDetail: row.reason_detail,
+    createdAt: new Date(row.created_at),
+  }
+}
 
 const historyQuery = (tx: Transaction) =>
   tx
     .selectFrom("user_contact_history as h")
+    .innerJoin("users as u", "u.id", "h.user_id")
     .leftJoin("users as a", "a.id", "h.actor_user_id")
     .select([
       "h.id",
@@ -114,6 +130,7 @@ const historyQuery = (tx: Transaction) =>
       "h.reason_code",
       "h.reason_detail",
       "h.created_at",
+      "u.pii_tombstoned_at as user_tombstoned_at",
     ])
 
 const claimOf = async (
@@ -146,6 +163,20 @@ export const createUserContactRepository = (): UserContactRepository => ({
     email: await claimOf(tx, "email_normalized", probe.emailNormalized, probe.excludeUserId),
     phone: await claimOf(tx, "phone_e164", probe.phoneE164, probe.excludeUserId),
   }),
+
+  countCorrectionsSince: async (tx, input) => {
+    const row = await tx
+      .selectFrom("user_contact_history")
+      .select((eb) => [eb.fn.countAll<string>().as("count"), eb.fn.min("created_at").as("oldest")])
+      .where("user_id", "=", input.userId)
+      .where("change_kind", "=", "admin_correction")
+      .where("created_at", ">", input.since)
+      .executeTakeFirst()
+    return {
+      count: Number(row?.count ?? 0),
+      oldest: row?.oldest === undefined || row.oldest === null ? null : new Date(row.oldest),
+    }
+  },
 
   isPhoneHeld: async (tx, phoneE164) =>
     (await tx.selectFrom("users").select("id").where("phone_e164", "=", phoneE164).executeTakeFirst()) !== undefined,
@@ -194,7 +225,7 @@ export const createUserContactRepository = (): UserContactRepository => ({
     `.execute(tx)
     const drawn = result.rows[0]?.number
     if (drawn === undefined) throw new Error("user_contact_release_number_seq returned no value")
-    return `${RELEASE_PHONE_PREFIX}${drawn.padStart(RELEASE_NUMBER_DIGITS, "0")}`
+    return `${RELEASED_PHONE_PREFIX}${drawn.padStart(RELEASE_NUMBER_DIGITS, "0")}`
   },
 
   findRelease: async (tx, userId) => {

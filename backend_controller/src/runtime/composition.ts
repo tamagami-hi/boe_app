@@ -447,6 +447,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       unitOfWork,
       idempotencyRepository,
       userContactRepository: createUserContactRepository(),
+      emailChangeRepository: createEmailChangeRepository(),
       clock,
       crypto,
       applicationRepository,

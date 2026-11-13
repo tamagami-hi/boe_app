@@ -18,6 +18,7 @@ import { createAuditRepository } from "../../src/repositories/auditRepository.js
 import { createAuthSessionRepository } from "../../src/repositories/authSessionRepository.js"
 import { createCredentialRepository } from "../../src/repositories/credentialRepository.js"
 import { createEmailDeliveryRepository } from "../../src/repositories/emailDeliveryRepository.js"
+import { createEmailChangeRepository } from "../../src/repositories/emailChangeRepository.js"
 import { createEmailVerificationRepository } from "../../src/repositories/emailVerificationRepository.js"
 import { createIdentityLockRepository } from "../../src/repositories/identityLockRepository.js"
 import { createOutboxRepository } from "../../src/repositories/outboxRepository.js"
@@ -81,6 +82,7 @@ const releaseDeps = (): ClientContactsDeps => ({
   identityLockRepository: createIdentityLockRepository(),
   userContactRepository: createUserContactRepository(),
   emailVerificationRepository: createEmailVerificationRepository(),
+  emailChangeRepository: createEmailChangeRepository(),
   crypto: createCryptoContext(parseCryptoKeys(CRYPTO_ENV)),
   clock: () => new Date(),
   config: {

@@ -14,6 +14,7 @@ import { requirePasswordLinkBase } from "../domain/auth/passwordLinkUrl.js"
 import { normalizePhone } from "../domain/shared/phoneNumber.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { parseOrThrow } from "../http/validation.js"
+import type { EmailChangeRepository } from "../repositories/emailChangeRepository.js"
 import type { UserContactRepository } from "../repositories/userContactRepository.js"
 import { registerAdminClientContactRoutes } from "./adminClientContactRoutes.js"
 import {
@@ -35,6 +36,7 @@ export interface AdminClientOnboardingDeps extends CreateClientAccountDeps {
   readonly unitOfWork: UnitOfWork
   readonly idempotencyRepository: IdempotencyRepository
   readonly userContactRepository: UserContactRepository
+  readonly emailChangeRepository: Pick<EmailChangeRepository, "retireActive">
   readonly config: CreateClientAccountDeps["config"] & { readonly idempotencyTtlMs: number }
 }
 

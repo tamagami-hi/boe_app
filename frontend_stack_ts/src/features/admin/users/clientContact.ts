@@ -4,6 +4,7 @@ const PHONE_SEPARATORS = /[\s()-]/gu
 const E164 = /^\+[1-9][0-9]{7,14}$/u
 const INDIA_PREFIX = "+91"
 const INDIA_NATIONAL = /^\+91[0-9]{10}$/u
+const RESERVED_PREFIX = "+999"
 const MIN_NAME_LENGTH = 2
 const MAX_NAME_LENGTH = 120
 
@@ -19,6 +20,7 @@ const CONTACT_FIELDS: readonly ContactField[] = ["fullName", "email", "phone"]
 
 const PHONE_FORMAT = "Use an international number, starting with +."
 const INDIA_LENGTH = "An Indian number has 10 digits after +91."
+const RESERVED_RANGE = "Numbers starting with +999 are reserved and cannot be used."
 
 const CONFLICT_COPY: Readonly<Record<ContactField, string>> = {
   fullName: "Check this name.",
@@ -39,6 +41,7 @@ export const phoneProblem = (raw: string): string | null => {
   const phone = normalizedPhone(raw)
   if (!E164.test(phone)) return PHONE_FORMAT
   if (phone.startsWith(INDIA_PREFIX) && !INDIA_NATIONAL.test(phone)) return INDIA_LENGTH
+  if (phone.startsWith(RESERVED_PREFIX)) return RESERVED_RANGE
   return null
 }
 

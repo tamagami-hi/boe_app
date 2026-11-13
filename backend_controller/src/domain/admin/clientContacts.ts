@@ -1,5 +1,6 @@
 import type { Transaction, User, UserId } from "../../db/repositories.js"
 import { AppError } from "../../http/errorCatalog.js"
+import type { EmailChangeRepository } from "../../repositories/emailChangeRepository.js"
 import type { EmailVerificationRepository } from "../../repositories/emailVerificationRepository.js"
 import type { IdentityLockRepository } from "../../repositories/identityLockRepository.js"
 import type {
@@ -14,6 +15,7 @@ import {
 } from "../auth/passwordLinkMail.js"
 import { requirePasswordLinkBase } from "../auth/passwordLinkUrl.js"
 import { phoneEnding } from "../shared/phoneNumber.js"
+import { RELEASED_EMAIL_DOMAIN, refuseReservedEmail } from "../shared/reservedContacts.js"
 import { contactConflictMessage } from "./createClientAccount.js"
 
 export const CONTACTS_CLIENT_ONLY_MESSAGE = "Email and phone can only be changed here for client accounts."
@@ -26,7 +28,10 @@ export const RELEASE_NOT_CLOSED_MESSAGE = "Only a closed account can release its
 export const RELEASE_ALREADY_DONE_MESSAGE = "This account's email and phone were already released."
 export const STALE_ACCOUNT_MESSAGE = "The account changed since you opened it. Reload it and try again."
 
-const RELEASED_EMAIL_DOMAIN = "released.invalid"
+export const CORRECTION_LIMIT = 3
+export const CORRECTION_WINDOW_MS = 24 * 60 * 60 * 1000
+export const CORRECTION_LIMIT_MESSAGE = `This client's email or phone was already corrected ${String(CORRECTION_LIMIT)} times in the last 24 hours. Try again later.`
+
 const RELEASE_PHONE_DRAWS = 3
 const HISTORY_LIMIT = 100
 
@@ -34,6 +39,7 @@ export interface ClientContactsDeps extends PasswordLinkMailDeps {
   readonly identityLockRepository: IdentityLockRepository
   readonly userContactRepository: UserContactRepository
   readonly emailVerificationRepository: Pick<EmailVerificationRepository, "consumeActiveCode">
+  readonly emailChangeRepository: Pick<EmailChangeRepository, "retireActive">
 }
 
 export interface ContactActor {
@@ -79,6 +85,24 @@ const claimedContactsError = (claims: ContactClaims): AppError | null => {
   return Object.keys(fields).length === 0 ? null : new AppError("STATE_CONFLICT", { fields })
 }
 
+const requireCorrectionAllowance = async (
+  tx: Transaction,
+  deps: ClientContactsDeps,
+  userId: string,
+  now: Date,
+): Promise<void> => {
+  const recent = await deps.userContactRepository.countCorrectionsSince(tx, {
+    userId,
+    since: new Date(now.getTime() - CORRECTION_WINDOW_MS),
+  })
+  if (recent.count < CORRECTION_LIMIT || recent.oldest === null) return
+  const reopensInMs = recent.oldest.getTime() + CORRECTION_WINDOW_MS - now.getTime()
+  throw new AppError("RATE_LIMITED", {
+    message: CORRECTION_LIMIT_MESSAGE,
+    retryAfterSeconds: Math.max(1, Math.ceil(reopensInMs / 1000)),
+  })
+}
+
 const requireCorrectable = async (tx: Transaction, deps: ClientContactsDeps, userId: string): Promise<User> => {
   const user = await deps.userRepository.lockById(tx, userId as UserId)
   if (user === null) throw new AppError("RESOURCE_NOT_FOUND")
@@ -95,12 +119,15 @@ export const correctClientContacts = async (
   input: ContactActor &
     Readonly<{ userId: string; emailNormalized?: string; phoneE164?: string; expectedVersion: number }>,
 ): Promise<CorrectedContacts> => {
+  if (input.emailNormalized !== undefined) refuseReservedEmail(input.emailNormalized)
   await deps.identityLockRepository.lockIdentities(tx, {
     ...(input.emailNormalized === undefined ? {} : { emailNormalized: input.emailNormalized }),
     ...(input.phoneE164 === undefined ? {} : { phoneE164: input.phoneE164 }),
   })
   const user = await requireCorrectable(tx, deps, input.userId)
   requireVersion(user, input.expectedVersion)
+  const now = deps.clock()
+  await requireCorrectionAllowance(tx, deps, input.userId, now)
 
   const nextEmail = input.emailNormalized ?? user.email_normalized
   const nextPhone = input.phoneE164 ?? user.phone_e164
@@ -118,7 +145,6 @@ export const correctClientContacts = async (
   )
   if (claimed !== null) throw claimed
 
-  const now = deps.clock()
   const updated = await deps.userContactRepository.correctContacts(tx, {
     userId: input.userId,
     emailNormalized: nextEmail,
@@ -236,6 +262,8 @@ export const releaseClosedAccountContacts = async (
   })
   if (updated === null) throw conflict(STALE_ACCOUNT_MESSAGE)
   await deps.passwordTokenRepository.consumeActive(tx, { userId: input.userId, now })
+  await deps.emailVerificationRepository.consumeActiveCode(tx, { userId: input.userId, now })
+  await deps.emailChangeRepository.retireActive(tx, { userId: input.userId, now })
 
   const history = await deps.userContactRepository.appendHistory(tx, {
     userId: input.userId,
