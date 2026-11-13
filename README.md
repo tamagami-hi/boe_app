@@ -48,8 +48,8 @@ are container builds, so do not mix them with host `npm`.
 - [Admin improvements plan](plans/admin-improvements.md): recording categories,
   client receipts, value updates, returns dashboards, maturity management, nominee,
   and admin fixes; approved, Phases A, B and C and Phase E steps E1-E2 complete
-  on local `main`; Phase D and E3 wait for the maintainer, and Phase F (maturity
-  choices) waits for the go-ahead.
+  on local `main`; Phase D and E3 wait for the maintainer, Phase F (maturity
+  choices) is being built, and Phase G (client erasure) waits for the maintainer's signal.
 - [Previous app feature plan](plans/app-onboarding-contact-investment-email.md):
   onboarding recovery, contacts, earlier investments, and email improvements;
   implemented and released through v0.15.4; evidence is in section 8 of the plan.

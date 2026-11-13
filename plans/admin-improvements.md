@@ -1,6 +1,6 @@
 # BeOnEdge admin improvements: recording categories, receipts, value updates, returns, maturity, nominee, and fixes
 
-Status: **Approved by the maintainer on 2026-11-13. Phases A, B and C, and Phase E steps E1 and E2, are complete on local `main` (not pushed or released). Phase D and E3 wait for the maintainer. Phase F (maturity choices, requested on 2026-11-14) is planned and waits for the maintainer's go-ahead.** Four questions are open (Q-026 and Q-030 to Q-032, section 0a). What still needs the maintainer: those questions, the Phase F go-ahead, publishing `featureFlags.onlinePayments=false` (G11), the production reform's own destructive-change approval after the pre-flight report (D2), releases, and the decision to resume payments. Checks run in the pinned Node 22.20.0 / npm 11.16.0 container `tools/node22-container/run.sh` (tally `howto-2`).
+Status: **Approved by the maintainer on 2026-11-13. Phases A, B and C, and Phase E steps E1 and E2, are complete on local `main` (not pushed or released). Phase D and E3 wait for the maintainer. Phase F is being built on lane `f-maturity`. Phase G (client erasure, decided on 2026-11-14) waits for the maintainer's signal.** Three questions are open (Q-030 to Q-032, section 0a), and Phase F is built with their defaults. What still needs the maintainer: those questions, the Phase G signal, publishing `featureFlags.onlinePayments=false` (G11), the production reform's own destructive-change approval after the pre-flight report (D2), releases, and the decision to resume payments. Checks run in the pinned Node 22.20.0 / npm 11.16.0 container `tools/node22-container/run.sh` (tally `howto-2`).
 
 Prepared: 2026-11-13. The investigation was static source reading only. No local checks ran (no dependencies are installed, and `RULES.md` forbids installing them just to make checks runnable). Nothing was diagnosed on a VPS, no test ran, no mail was sent, and nothing was deployed. GitHub CI run 38216879911 passed contracts, backend (including integration) and frontend on `ba8b196` (v0.15.4). The detailed evidence is held as tally records under `docs/records/`: findings `finding-1` to `finding-18` (excluding the retired `finding-5`), decisions `rule-2` to `rule-6`, and milestones `M1-admin-audit` and `M2-plan`.
 
@@ -8,61 +8,62 @@ Governing process: root [RULES.md](../RULES.md). The application is in productio
 
 ## 0a. Open questions and conservative defaults
 
-IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-025 were answered on 2026-11-13, and Q-027 to Q-029 on 2026-11-14; all are in the decision record. Tally question rows 1 to 14 and 16 to 18 are marked answered.
+IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-025 were answered on 2026-11-13, and Q-027 to Q-029 on 2026-11-14; all are in the decision record. Q-026 was answered on 2026-11-14 (DEC-29). Tally question rows 1 to 18 are marked answered, each citing its decision ID.
 
 | ID | Open decision | Conservative behavior meanwhile |
 | --- | --- | --- |
-| Q-026 | When a client's personal data is erased (tombstoned), should their earlier emails and phones in the append-only contact history (A8) also be erased? Erasing them needs a separate, audited step that overwrites only the history's contact fields. | The history stays append-only. For a tombstoned client the admin screen and API show the same tombstone values as everywhere else, so no admin can read the originals through the app. The originals remain in the database until the maintainer decides (tally question row 15). |
 | Q-030 | When a client picks a maturity option in the app (Phase F), should it take effect straight away, or go to the admin as the client's choice for the admin to confirm and carry out? A withdrawal is paid out by the team outside the app, so the admin acts on it anyway. | The pick is saved as the client's choice and shown on the Maturities dashboard, in the launch prompt and on the client page. Nothing changes in money, the ledger or the SIP until the admin confirms, which runs the same resolution as a direct one. Until then the client can change the pick (tally question row 19). |
 | Q-031 | When the admin sends the options, who fills in the figures: option 2's next SIP amount and months, and option 3's months to add? The admin before sending, or the client in the app? | The admin fills them in when sending. The client sees each option with its figures and the current value (invested plus returns) and picks one. For other figures the client talks to the team and the admin sends new options (tally question row 20). |
 | Q-032 | When option 3 extends the SIP, should the maturity date move later by the same number of months? | The new date is filled in as the old date plus the months added, and the admin can change it before confirming. The old maturity stays resolved in the history and a new one is scheduled (tally question row 21). |
 
 ### Decision record
 
-| Date | Maintainer decision | Status |
-| --- | --- | --- |
-| 2026-11-13 | Plan approved ("Yes I do", in answer to approving the plan, committing it, and starting Phase A on tally tracks with their own worktrees). | In force. It covers opening tally tracks and worktrees and installing locked dependencies in them for checks. It does not cover a container runtime, deployments, APK exports, real customer mail, or Phase D's destructive step. |
-| 2026-11-13 | AutoPay and normal online payments are turned off for now and stay disabled until the maintainer decides to activate them. | In force. Agents never enable payments or change payment configuration. AutoPay defects are fixed before any re-enable, not urgently (tally `rule-2`). |
-| 2026-11-13 | Data cleanup: the dev server may be cleaned, but client records and investment records stay intact on both dev and production. Production holds real clients. Save a copy of the required production information, and in the next deployed update run a one-time migration or copy step that reforms the data without losing any of it. Rehearse that step on dev first. | Direction recorded. Details wait on Q-019. The maintainer performs every production export and deploy. A rewrite or backfill is a rule 11 destructive change, needing its own approval with a pre-flight check (tally `rule-3`). |
-| 2026-11-13 | When the admin records an investment, the client sees it as a receipt labelled with the category the admin chose. | Becomes steps B1–B2 (tally `rule-4`). |
-| 2026-11-13 | No automatic maturity. The admin enters a maturity date. A maturity management dashboard lists them. As a date nears, the admin is prompted every time the admin app opens to resolve it by returning all the money to the client, recording it as a one-time investment from the maturity date and starting a new SIP from then, or reinvesting it as a SIP. Every recording counts, and the admin manages them. | Becomes step C3. Option wording is refined by Q-021 (tally `rule-5`). |
-| 2026-11-13 | Nominee: the nominee's name and their relation to the account holder. | Becomes step C1 (tally `rule-6`). |
-| 2026-11-13 | Public signups are not in use. Clients are onboarded only by the admin, so redirecting signups to app.beonedge.in (DD point 3) is not pursued. The onboarding process is audited for bugs instead. | DD point 3 is dropped. Onboarding audit results are in section 2E (tally `rule-6`). |
-| 2026-11-13 | The signup application review stays as it is. Admin onboarding works well and does not go through review. | No change to application review (tally `rule-6`). |
-| 2026-11-13 | AutoPay is not activated until the maintainer says so. | AutoPay on the web is not pursued (tally `rule-2`, `rule-6`). |
-| 2026-11-13 | Value updates are entered monthly as the amount gained since investment. Each update is kept as a record, and the client is notified every time their investment is updated. | Becomes step B3 (tally `rule-6`). |
-| 2026-11-13 | The integration suite may run in a local container with a throwaway PostgreSQL. | In force for lanes and phase closes (tally `rule-8`). |
-| 2026-11-13 | Q-021: "Start a new SIP" means an admin-tracked schedule: monthly amount, fund, start month and number of months. Each monthly recording links to a month, and the client sees "N of M months paid". There is no automatic collection. The maturity date is per client fund holding. | Becomes C2 and C3 (tally `rule-8`). |
-| 2026-11-13 | Q-024: two fixes. An audited admin contact correction for clients who have not set a password, which retires old links and sends the invite to the corrected address. Closed accounts can also release their email and phone. | Becomes step A8. Original contacts are kept in an append-only history (tally `rule-8`). |
-| 2026-11-13 | Q-017 (revised): invite links stay short, at 10 minutes. Instead, the admin must be able to send a new invite in one obvious action, including after the old one expired or was cancelled. | Step A8 (tally `rule-9`). |
-| 2026-11-13 | Q-025 (revised): setting a password does not verify the email. The email code step stays. | No change to verification (tally `rule-9`). |
-| 2026-11-13 | Q-019 (revised): there is no standalone cleanup project. Reform or clean the database only when a change actually needs it, and only for client data. Nothing is lost, the step is rehearsed on dev against a masked copy, duplicate investments are reversed with both rows kept, and duplicate accounts are merged only for pairs the maintainer confirms. | Phase D runs only when needed. A production run still needs its own approval after the pre-flight report (tally `rule-9`). |
-| 2026-11-13 | Q-020 (revised): client reviews are wanted, admin-only, but deferred. Fix bugs first. | E1 stays deferred (tally `rule-9`). |
-| 2026-11-13 | Clients pay SIPs and investments directly to the company bank account, and the admin records them. Whether the gateway is on or off must not affect how quickly and clearly a client sees their investment in the app. | Recording, receipts, value updates and the client dashboard are the core path. Payments-off copy says recorded investments still appear and gives no payment instructions (tally `rule-9`, revised by `rule-11`). |
-| 2026-11-13 | The maintainer delegates: work out what else this kind of app needs, and simplify complex flows so both client and admin have a seamless experience. | Client and admin journey reviews (tally `M9-ux-review`) feed section 6 (tally `rule-9`). |
-| 2026-11-13 | Q-022: the dashboards show simple return % as the main figure, plus annualised XIRR as a secondary column. | B5 (tally `rule-8`). |
-| 2026-11-13 | Q-023: app-update announcement emails keep going to every active client. | No change (tally `rule-8`). |
-| 2026-11-13 | Stay on Node 22. Production images already run `node:22.23.2`, and CI and the packages pin 22. Upgrading to Node 24 is a separate tested step. | Local checks run in a dedicated container with the official Node 22.20.0 and npm 11.16.0 (`tools/node22-container/run.sh`), so the host keeps a single Node install. The upgrade is task E3 (tally `howto-2`, which replaces `howto-1`). |
-| 2026-11-13 | G12: old pending online payments created before payments were turned off are marked expired once their pay-by time has passed. | Step A10. Applied only to checkouts never sent to the provider; checkouts already sent are left for reconciliation when payments return, because the provider may hold a payment for them (tally `rule-10`, `finding-23`). |
-| 2026-11-13 | No bank details or payment methods are added or recorded anywhere. The admin records monthly investments under their own category, and the client is notified "Investment added". | B1 and B8. No "How to invest" card or FAQ, and no copy on how or where to pay. G11 is now only publishing `featureFlags.onlinePayments=false` (tally `rule-11`). |
-| 2026-11-13 | The client is also emailed the amount recorded, saying the investment was added to their app and asking them to check it. | Template `investment_recorded` for earlier and monthly recordings, not corrections, with migration 062 (tally `rule-12`). |
-| 2026-11-13 | "Complete all the phases that needs code implementation and leave ones out that needs me." | Phase C (C1 to C5) and Phase E steps E1 and E2 were built, which lifts E1's deferral. Phase D (conditional, with a production step needing approval), E3 (maintainer timing), releases and the G11 publish were left out (section 8, Phases C and E close). |
-| 2026-11-14 | Q-027: no reference number of any kind is assigned to or kept on investments the admin records. | In force. No UTR field, column or migration; tally task E4 is removed (tally `DEC-13`). |
-| 2026-11-14 | Q-028: payments get no additions or changes; the maintainer asked only for bug fixes and for payments to be disabled. AutoPay and everything related to the payment gateway are halted until the maintainer says to resume them. | In force. E2 stays as built and dormant; no further payment work, including the E2 leftovers (tally `DEC-14`). |
-| 2026-11-14 | The Record action on the admin user page offers a Monthly investment category. Every recording has a history with the date it was recorded, kept as a ledger the admin sees and reflected in the client's app. | Built in B1, B2 and B5. The admin ledger tab shows only the effective date, so F1 adds the recorded date (tally `DEC-16`). |
-| 2026-11-14 | Q-029: the admin is notified first, by the launch prompt from 30 days before the date. The options are (1) withdraw the invested amount with returns, (2) reinvest the previous amount as a one-time investment and then start recording the next SIP, (3) increase the SIP's time period. The options never pop up for the client by themselves: the admin either resolves directly after talking to the client, or sends the options to that client, who then gets an email and an in-app notification and can choose in the app. Both the client and the admin can decide. | Options 1 and 2 and the 30-day prompt are built (C3). Option 3 as a SIP extension and sending the options to the client are Phase F; details wait on Q-030 to Q-032 (tally `DEC-15`). |
-| 2026-11-14 | Question answers are decisions, not tally rules. | Tally holds this plan's answered questions as decisions `DEC-1` to `DEC-19` (group `admin-improvements`). The rule entries `rule-3` to `rule-6`, `rule-9` and `rule-13` are retired, and the `rule-N` references in older rows stay readable as retired entries. |
+| ID | Date | Maintainer decision | Status |
+| --- | --- | --- | --- |
+| DEC-21 | 2026-11-13 | Plan approved ("Yes I do", in answer to approving the plan, committing it, and starting Phase A on tally tracks with their own worktrees). | In force. It covers opening tally tracks and worktrees and installing locked dependencies in them for checks. It does not cover a container runtime, deployments, APK exports, real customer mail, or Phase D's destructive step. |
+| DEC-22 | 2026-11-13 | AutoPay and normal online payments are turned off for now and stay disabled until the maintainer decides to activate them. | In force. Agents never enable payments or change payment configuration. AutoPay defects are fixed before any re-enable, not urgently. |
+| DEC-1 | 2026-11-13 | Data cleanup: the dev server may be cleaned, but client records and investment records stay intact on both dev and production. Production holds real clients. Save a copy of the required production information, and in the next deployed update run a one-time migration or copy step that reforms the data without losing any of it. Rehearse that step on dev first. | Direction recorded; its scope is set by the Q-019 row below. The maintainer performs every production export and deploy. A rewrite or backfill is a rule 11 destructive change, needing its own approval with a pre-flight check. |
+| DEC-2 | 2026-11-13 | When the admin records an investment, the client sees it as a receipt labelled with the category the admin chose. | Becomes steps B1–B2. |
+| DEC-3 | 2026-11-13 | No automatic maturity. The admin enters a maturity date. A maturity management dashboard lists them. As a date nears, the admin is prompted every time the admin app opens to resolve it by returning all the money to the client, recording it as a one-time investment from the maturity date and starting a new SIP from then, or reinvesting it as a SIP. Every recording counts, and the admin manages them. | Becomes step C3. Option wording is refined by Q-021. |
+| DEC-4 | 2026-11-13 | Nominee: the nominee's name and their relation to the account holder. | Becomes step C1. |
+| DEC-5 | 2026-11-13 | Public signups are not in use. Clients are onboarded only by the admin, so redirecting signups to app.beonedge.in (DD point 3) is not pursued. The onboarding process is audited for bugs instead. | DD point 3 is dropped. Onboarding audit results are in section 2E. |
+| DEC-5 | 2026-11-13 | The signup application review stays as it is. Admin onboarding works well and does not go through review. | No change to application review. |
+| DEC-7 | 2026-11-13 | AutoPay is not activated until the maintainer says so. | AutoPay on the web is not pursued. |
+| DEC-8 | 2026-11-13 | Value updates are entered monthly as the amount gained since investment. Each update is kept as a record, and the client is notified every time their investment is updated. | Becomes step B3. |
+| DEC-17 | 2026-11-13 | The integration suite may run in a local container with a throwaway PostgreSQL. | In force for lanes and phase closes. |
+| DEC-9 | 2026-11-13 | Q-021: "Start a new SIP" means an admin-tracked schedule: monthly amount, fund, start month and number of months. Each monthly recording links to a month, and the client sees "N of M months paid". There is no automatic collection. The maturity date is per client fund holding. | Becomes C2 and C3. |
+| DEC-10 | 2026-11-13 | Q-024: two fixes. An audited admin contact correction for clients who have not set a password, which retires old links and sends the invite to the corrected address. Closed accounts can also release their email and phone. | Becomes step A8. Original contacts are kept in an append-only history. |
+| DEC-11 | 2026-11-13 | Q-017 (revised): invite links stay short, at 10 minutes. Instead, the admin must be able to send a new invite in one obvious action, including after the old one expired or was cancelled. | Step A8. |
+| DEC-12 | 2026-11-13 | Q-025 (revised): setting a password does not verify the email. The email code step stays. | No change to verification. |
+| DEC-1 | 2026-11-13 | Q-019 (revised): there is no standalone cleanup project. Reform or clean the database only when a change actually needs it, and only for client data. Nothing is lost, the step is rehearsed on dev against a masked copy, duplicate investments are reversed with both rows kept, and duplicate accounts are merged only for pairs the maintainer confirms. | Phase D runs only when needed. A production run still needs its own approval after the pre-flight report. |
+| DEC-6 | 2026-11-13 | Q-020 (revised): client reviews are wanted, admin-only, but deferred. Fix bugs first. | Deferred at the time; built as E1 after DEC-27. |
+| DEC-18 | 2026-11-13 | Clients pay SIPs and investments directly to the company bank account, and the admin records them. Whether the gateway is on or off must not affect how quickly and clearly a client sees their investment in the app. | Recording, receipts, value updates and the client dashboard are the core path. Payments-off copy says recorded investments still appear and gives no payment instructions. |
+| DEC-19 | 2026-11-13 | The maintainer delegates: work out what else this kind of app needs, and simplify complex flows so both client and admin have a seamless experience. | Client and admin journey reviews (tally `M9-ux-review`) feed section 6. |
+| DEC-8 | 2026-11-13 | Q-022: the dashboards show simple return % as the main figure, plus annualised XIRR as a secondary column. | B5. |
+| DEC-7 | 2026-11-13 | Q-023: app-update announcement emails keep going to every active client. | No change. |
+| DEC-23 | 2026-11-13 | Stay on Node 22. Production images already run `node:22.23.2`, and CI and the packages pin 22. Upgrading to Node 24 is a separate tested step. | Local checks run in a dedicated container with the official Node 22.20.0 and npm 11.16.0 (`tools/node22-container/run.sh`), so the host keeps a single Node install. The upgrade is task E3 (tally `howto-2`, which replaces `howto-1`). |
+| DEC-24 | 2026-11-13 | G12: old pending online payments created before payments were turned off are marked expired once their pay-by time has passed. | Step A10. Applied only to checkouts never sent to the provider; checkouts already sent are left for reconciliation when payments return, because the provider may hold a payment for them (tally `finding-23`). |
+| DEC-25 | 2026-11-13 | No bank details or payment methods are added or recorded anywhere. The admin records monthly investments under their own category, and the client is notified "Investment added". | B1 and B8. No "How to invest" card or FAQ, and no copy on how or where to pay. G11 is now only publishing `featureFlags.onlinePayments=false`. |
+| DEC-26 | 2026-11-13 | The client is also emailed the amount recorded, saying the investment was added to their app and asking them to check it. | Template `investment_recorded` for earlier and monthly recordings, not corrections, with migration 062. |
+| DEC-27 | 2026-11-13 | "Complete all the phases that needs code implementation and leave ones out that needs me." | Phase C (C1 to C5) and Phase E steps E1 and E2 were built, which lifts E1's deferral. Phase D (conditional, with a production step needing approval), E3 (maintainer timing), releases and the G11 publish were left out (section 8, Phases C and E close). |
+| DEC-13 | 2026-11-14 | Q-027: no reference number of any kind is assigned to or kept on investments the admin records. | In force. No UTR field, column or migration; tally task E4 is removed. |
+| DEC-14 | 2026-11-14 | Q-028: payments get no additions or changes; the maintainer asked only for bug fixes and for payments to be disabled. AutoPay and everything related to the payment gateway are halted until the maintainer says to resume them. | In force. E2 stays as built and dormant; no further payment work, including the E2 leftovers. |
+| DEC-16 | 2026-11-14 | The Record action on the admin user page offers a Monthly investment category. Every recording has a history with the date it was recorded, kept as a ledger the admin sees and reflected in the client's app. | Built in B1, B2 and B5. The admin ledger tab shows only the effective date, so F1 adds the recorded date. |
+| DEC-15 | 2026-11-14 | Q-029: the admin is notified first, by the launch prompt from 30 days before the date. The options are (1) withdraw the invested amount with returns, (2) reinvest the previous amount as a one-time investment and then start recording the next SIP, (3) increase the SIP's time period. The options never pop up for the client by themselves: the admin either resolves directly after talking to the client, or sends the options to that client, who then gets an email and an in-app notification and can choose in the app. Both the client and the admin can decide. | Options 1 and 2 and the 30-day prompt are built (C3). Option 3 as a SIP extension and sending the options to the client are Phase F; details wait on Q-030 to Q-032. |
+| DEC-28 | 2026-11-14 | Question answers are decisions, not tally rules. | In force. Every maintainer decision is a tally decision with the ID shown here (group `admin-improvements`), and each answered tally question cites its ID. Tally rules hold only standing constraints that cite their source: `rule-1` (RULES.md), `rule-14` (payments, from DEC-22 and DEC-14) and `rule-15` (no bank details or reference numbers, from DEC-25 and DEC-13). The earlier rule entries that held decisions are retired, and section 8 keeps their old `rule-N` references as history. Tally `convention-6` says where each kind of record goes. |
+| DEC-20 | 2026-11-14 | Phase F go-ahead ("Build with defaults"): build F1 to F3 with the conservative defaults of Q-030 to Q-032. | Being built on lane `f-maturity`. |
+| DEC-29 | 2026-11-14 | Q-026, erasing a client: erasure is refused until the client's invested amount and current value are both zero. Their emails and phones are erased everywhere, including the contact-change history. A client who never completed email verification cannot hold money, so erasing them deletes every record of them. A client who completed email verification is kept as a record with no contact details, and their email and phone can be used again for a new sign-up or a new admin-created client. | Phase G, which waits for the maintainer's signal. It is a destructive change under rule 11 (section 6, Phase G). |
 
 #### Replaced
 
-| Date | Earlier decision | Replaced by | Reason |
-| --- | --- | --- | --- |
-| 2026-11-13 | Q-017: invite links valid for 24 hours | Short links plus easy regeneration | Maintainer revised the same day |
-| 2026-11-13 | Q-025: setting the password through the invite marks the email verified | Email code step stays | Maintainer revised the same day |
-| 2026-11-13 | Q-019: a scheduled reform for duplicates and missing details | Reform only when a change needs it | Maintainer clarified the same day |
-| 2026-11-13 | Q-020: reviews built after Phase B | Reviews deferred | Maintainer: bugs first |
-| 2026-11-13 | Payments-off copy points clients to paying the BeOnEdge team directly; G11 includes a "How to invest" FAQ with the bank details | No payment instructions or bank details anywhere (`rule-11`) | Maintainer clarified during Phase B |
-| 2026-11-14 | Maturity option 3, "reinvest it as a SIP", built in C3 as closing the active SIP and starting a new schedule funded from the matured value | Option 3 increases the SIP's time period (`DEC-15`, Phase F) | Maintainer clarified when answering Q-029 |
+| Replaced by | Date | Earlier decision | Replaced with | Reason |
+| --- | --- | --- | --- | --- |
+| DEC-11 | 2026-11-13 | Q-017: invite links valid for 24 hours | Short links plus easy regeneration | Maintainer revised the same day |
+| DEC-12 | 2026-11-13 | Q-025: setting the password through the invite marks the email verified | Email code step stays | Maintainer revised the same day |
+| DEC-1 | 2026-11-13 | Q-019: a scheduled reform for duplicates and missing details | Reform only when a change needs it | Maintainer clarified the same day |
+| DEC-6 | 2026-11-13 | Q-020: reviews built after Phase B | Reviews deferred | Maintainer: bugs first |
+| DEC-25 | 2026-11-13 | Payments-off copy points clients to paying the BeOnEdge team directly; G11 includes a "How to invest" FAQ with the bank details | No payment instructions or bank details anywhere () | Maintainer clarified during Phase B |
+| DEC-15 | 2026-11-14 | Maturity option 3, "reinvest it as a SIP", built in C3 as closing the active SIP and starting a new schedule funded from the matured value | Option 3 increases the SIP's time period (`DEC-15`, Phase F) | Maintainer clarified when answering Q-029 |
 
 ## 1. Requested outcomes
 
@@ -231,13 +232,14 @@ Phase D  data (after Q-019)      D1 dev cleanup keeping records
                                  D2 production pre-flight export and one-time reform, rehearsed on dev
 Phase E  later                   E1 reviews (Q-020); E2 AutoPay and mandate fixes before any re-enable
 Phase F  maturity choices        F1 ledger recorded date; F2 SIP extension ─ F3 options sent to the client
+Phase G  client erasure          G1 guard ─ G2 verified clients kept without contacts; G3 unverified clients deleted
 ```
 
 Phases A and B need no migration. C1, C2 and C3 add tables or nullable columns. Each phase can ship on its own, with A first.
 
 ### Parallel lanes (tally tracks)
 
-Each lane is a tally track `track/<name>` with its own worktree. Lanes in the same phase run in parallel and land one at a time through the tally queue. The board (milestones `M3-gates` to `M10-phase-f`) is the live view.
+Each lane is a tally track `track/<name>` with its own worktree. Lanes in the same phase run in parallel and land one at a time through the tally queue. The board (milestones `M3-gates` to `M11-phase-g`) is the live view.
 
 | Phase | Lane | Steps | Own files |
 | --- | --- | --- | --- |
@@ -251,6 +253,7 @@ Each lane is a tally track `track/<name>` with its own worktree. Lanes in the sa
 | D | `d-data` | D1 → D2 | Runs only when a feature needs a client-data reform. D2's production run needs separate approval. |
 | E | `e-reviews`, `e-autopay`; E3 | E1, E2; E3 when the maintainer chooses | Reviews took 067 |
 | F | `f-maturity` | F1, F2, F3 | Migration 068; maturity domain and routes, a new client maturity contract and screen, the admin ledger tab and maturities feature (tally `M10-phase-f`) |
+| G | `g-erasure` | G1, G2, G3 | After the maintainer's signal. The next free migration number; admin identity and users routes, the tombstone paths and the repositories that hold client data (tally `M11-phase-g`) |
 
 Shared-file rules:
 - `adminQueries.ts` is at 538 of 800 lines after Phase B. A lane moves the hooks it changes into its feature's own query module instead of growing the file.
@@ -264,7 +267,7 @@ Maintainer gates (milestone `M3-gates`):
 - G7 and G8: dev and production releases.
 - G9: the production pre-flight run.
 - G10: the payments re-enable decision.
-- G11: publish `featureFlags.onlinePayments=false` now that B8 is on `main`. There is no "How to invest" FAQ, and no bank details or payment instructions appear anywhere (tally `rule-11`).
+- G11: publish `featureFlags.onlinePayments=false` now that B8 is on `main`. There is no "How to invest" FAQ, and no bank details or payment instructions appear anywhere (tally `rule-15`, DEC-25).
 - G12: decide whether old pending online payments created before payments were turned off are expired, or left as they are.
 
 ## 6. Construction steps
@@ -329,7 +332,7 @@ Maintainer gates (milestone `M3-gates`):
   - a per-client ticket list
   - the client already shows status and the resolution note, so no client contract change is needed
 - **B8.** Client investing guidance:
-  - no "How to invest" card and no copy on how or where to pay (`rule-11`)
+  - no "How to invest" card and no copy on how or where to pay (DEC-25)
   - pay and invest buttons hidden when the published `featureFlags.onlinePayments` is false; today's behaviour is kept when the flag is absent
   - a single History list while payments are off
   - a printable statement view on the web
@@ -342,7 +345,7 @@ Maintainer gates (milestone `M3-gates`):
   - pick a month; one row per client and fund from the SIP schedule, with the expected amount, the amount already recorded and the date (today in IST by default)
   - each row keeps its own idempotency key and shows its own result
   - CSV can be pasted into the sheet
-  - no bank reference (UTR) field or migration: the maintainer ruled out any reference number on 2026-11-14 (`rule-11`, `DEC-13`)
+  - no bank reference (UTR) field or migration: the maintainer ruled out any reference number on 2026-11-14 (DEC-25, DEC-13)
 - **C5.** Accounting exports and a usable audit log:
   - client balances as of a date, and contributions by month (no bank reference column), built as CSV in the browser from new read endpoints
   - money-command presets with amounts and client links
@@ -371,7 +374,7 @@ Maintainer gates (milestone `M3-gates`):
   The maintainer decides the timing.
 - **E2.** Before payments are re-enabled: the AutoPay due-date advance, stalled failed or refunded instalments, and mandate reconcile atomicity (section 2B). Built on lane `e-autopay`; payments stay disabled (section 8). Since 2026-11-14 all payment and AutoPay work is halted until the maintainer resumes it (`DEC-14`).
 
-### Phase F — maturity choices (requested 2026-11-14, waits for the go-ahead)
+### Phase F — maturity choices (DEC-15, DEC-20; lane `f-maturity`)
 
 Built on one lane, `f-maturity`, with migration 068. Phase C is not released, so its maturity endpoints and enums can still change before release. Released APKs only gain new endpoints and a new notification kind, which they show as a plain notice.
 
@@ -389,6 +392,40 @@ Built on one lane, `f-maturity`, with migration 068. Phase C is not released, so
   - Nothing about a maturity shows to the client until the admin sends the options.
 - Tests where failure is expensive: no money, ledger or SIP change before the admin confirms; a client cannot read or answer another client's offer; a replayed pick or confirm applies once; and the 068 populated-upgrade test.
 - A client on an older APK gets the email and a plain notification, and can choose only after updating or in the web app.
+
+### Phase G — client erasure (DEC-29; waits for the maintainer's signal)
+
+This deletes and overwrites existing rows, so it is a destructive change under rule 11. The maintainer decided it on 2026-11-14 (DEC-29). Before release, the lane records here:
+- every table that holds a client's data, and what erasure does to each one;
+- the read-only pre-flight query the maintainer can run first;
+- whether its migration is a rollback boundary.
+
+It touches no other client.
+
+- **G1. Guard.** Erasure is refused unless all of these hold:
+  - the client's invested amount and current value are zero in every fund;
+  - no order, payment, withdrawal or refund is pending;
+  - no SIP schedule, maturity or maturity offer is open.
+
+  The refusal names what is blocking, and nothing is changed.
+- **G2. Verified client** (completed email verification): the account and money history are kept as a record.
+  - Their name, every email and phone, including every contact-change history row, and the nominee are overwritten with the existing tombstone values.
+  - So are any copies kept for sign-in events, email deliveries (recipient address and sealed payload), sign-up applications and audit details.
+  - Sessions and links are revoked.
+  - The email and phone are then free for a new sign-up or a new admin-created client.
+- **G3. Client who never completed email verification:** every row of the client is deleted in one transaction:
+  - the account, contacts and contact history;
+  - invites and links, verification codes, sessions and notifications;
+  - email deliveries, and audit rows about the client.
+
+  One audit row of the erasure itself stays, with the admin, the time and no personal data. Such a client cannot invest from the app, but the admin can record investments for any client. So if any ledger, order or payment row exists, erasure falls back to G2 and says so, and never deletes money records.
+- Tables whose triggers refuse deletes (append-only records) gain an erase-only path in a new migration (the next free number), used by this command and nothing else.
+- Tests:
+  - the guard refuses while any money is held;
+  - G3 deletes exactly one client's rows and no one else's, and refuses when money rows exist;
+  - G2 leaves no email or phone readable anywhere and frees them for reuse;
+  - the operation is idempotent and audited;
+  - the migration's populated-upgrade test.
 
 ## 7. Plan changes and approval gate
 
