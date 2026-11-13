@@ -23865,6 +23865,8 @@ export interface operations {
                     expectedVersion: number;
                     /** Format: date */
                     effectiveDate: string;
+                    expectedPrincipalPaise: string;
+                    expectedCurrentValuePaise: string;
                     sip: {
                         monthlyAmountPaise: string;
                         startMonth: string;

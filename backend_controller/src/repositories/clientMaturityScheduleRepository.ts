@@ -29,6 +29,7 @@ export interface LockedMaturitySchedule {
   readonly maturityDate: string
   readonly state: ClientMaturityScheduleState
   readonly version: string
+  readonly createdAt: Date
 }
 
 export interface InsertMaturityScheduleInput {
@@ -62,6 +63,10 @@ export interface ClientMaturityScheduleRepository {
   hasOpen: (tx: Transaction, input: Readonly<{ userId: string; fundId: string }>) => Promise<boolean>
   findOwner: (tx: Transaction, scheduleId: string) => Promise<Readonly<{ userId: string; fundId: string }> | null>
   lockById: (tx: Transaction, scheduleId: string) => Promise<LockedMaturitySchedule | null>
+  findSettledMaturitySince: (
+    tx: Transaction,
+    input: Readonly<{ userId: string; fundId: string; since: Date }>,
+  ) => Promise<Readonly<{ settledOn: string }> | null>
   changeDate: (tx: Transaction, input: VersionedChange & Readonly<{ maturityDate: string }>) => Promise<boolean>
   cancel: (tx: Transaction, input: VersionedChange) => Promise<boolean>
   resolve: (tx: Transaction, input: ResolveMaturityScheduleInput) => Promise<boolean>
@@ -139,10 +144,25 @@ export const createClientMaturityScheduleRepository = (): ClientMaturitySchedule
         fund_id as "fundId",
         to_char(maturity_date, 'YYYY-MM-DD') as "maturityDate",
         state,
-        version::text as version
+        version::text as version,
+        created_at as "createdAt"
       from client_maturity_schedules
       where id = ${scheduleId}
       for update
+    `.execute(tx)
+    return result.rows[0] ?? null
+  },
+
+  findSettledMaturitySince: async (tx, input) => {
+    const result = await sql<{ readonly settledOn: string }>`
+      select to_char(settled_at at time zone 'Asia/Kolkata', 'YYYY-MM-DD') as "settledOn"
+      from client_position_maturities
+      where user_id = ${input.userId}
+        and fund_id = ${input.fundId}
+        and state = 'settled'
+        and settled_at >= ${input.since}
+      order by settled_at desc
+      limit 1
     `.execute(tx)
     return result.rows[0] ?? null
   },

@@ -181,6 +181,7 @@ export const ClientMaturitySection = ({ userId, canSet }: ClientMaturitySectionP
           schedule={resolving}
           holding={holdingOf(resolving.fundId)}
           activeSip={activeSipOf(resolving.fundId)}
+          refreshing={positions.isFetching || sips.isFetching}
           onReload={reload}
           onClose={() => {
             setResolving(null)

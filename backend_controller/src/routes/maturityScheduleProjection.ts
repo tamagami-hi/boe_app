@@ -17,6 +17,12 @@ export const maturityDateSchema = z.iso
   .refine((value) => value >= EARLIEST_MATURITY_DATE && value <= LATEST_MATURITY_DATE, "must be from 2000-01-01 to 2199-12-31")
 
 const versionSchema = z.number().int().positive()
+const NON_NEGATIVE_PAISE = /^(0|[1-9][0-9]{0,18})$/u
+const POSTGRES_BIGINT_MAX = 9_223_372_036_854_775_807n
+const nonNegativePaiseSchema = z
+  .string()
+  .regex(NON_NEGATIVE_PAISE, "must be a whole number of paise, zero or more")
+  .refine((value) => NON_NEGATIVE_PAISE.test(value) && BigInt(value) <= POSTGRES_BIGINT_MAX, "is out of range")
 const effectiveDateSchema = z.iso.date()
 const followUpSchema = z.strictObject({
   monthlyAmountPaise: positivePaiseSchema,
@@ -40,6 +46,8 @@ export const resolveMaturityBodySchema = z.discriminatedUnion("resolution", [
     resolution: z.literal("one_time_and_sip"),
     expectedVersion: versionSchema,
     effectiveDate: effectiveDateSchema,
+    expectedPrincipalPaise: nonNegativePaiseSchema,
+    expectedCurrentValuePaise: nonNegativePaiseSchema,
     sip: followUpSchema,
   }),
   z.strictObject({

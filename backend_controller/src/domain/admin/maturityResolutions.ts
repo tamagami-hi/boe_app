@@ -17,7 +17,7 @@ import {
   type MaturityScheduleDeps,
   type OwnScheduleCommand,
 } from "./maturitySchedules.js"
-import { monthIndexOf } from "./sipScheduleMonths.js"
+import { indiaCurrentMonth, monthIndexOf } from "./sipScheduleMonths.js"
 
 export type MaturityResolutionDeps = MaturityScheduleDeps & MaturitySettlementDeps & AdminSipScheduleDeps
 
@@ -30,7 +30,13 @@ export interface FollowUpSchedule {
 export type ResolveMaturityCommand = OwnScheduleCommand &
   (
     | Readonly<{ resolution: "return_all"; effectiveDate: string; amountPaise: bigint }>
-    | Readonly<{ resolution: "one_time_and_sip"; effectiveDate: string; sip: FollowUpSchedule }>
+    | Readonly<{
+        resolution: "one_time_and_sip"
+        effectiveDate: string
+        expectedPrincipalPaise: bigint
+        expectedCurrentValuePaise: bigint
+        sip: FollowUpSchedule
+      }>
     | Readonly<{ resolution: "sip_reinvestment"; sip: FollowUpSchedule }>
   )
 
@@ -54,6 +60,25 @@ const WITHDRAWAL_REASON = "maturity_withdrawal"
 const REINVESTMENT_REASON = "maturity_reinvestment"
 const MATURED_REASON = "position_matured"
 
+const CANCEL_HINT = "Cancel this maturity date instead of resolving it."
+
+const refuseHandSettledMaturity = async (
+  tx: Transaction,
+  deps: MaturityResolutionDeps,
+  schedule: LockedMaturitySchedule,
+): Promise<void> => {
+  const settled = await deps.maturityScheduleRepository.findSettledMaturitySince(tx, {
+    userId: schedule.userId,
+    fundId: schedule.fundId,
+    since: schedule.createdAt,
+  })
+  if (settled !== null) {
+    throw new AppError("STATE_CONFLICT", {
+      message: `This holding was already settled in the Maturity tab on ${settled.settledOn}. ${CANCEL_HINT}`,
+    })
+  }
+}
+
 const refuseUnreachedMaturity = (schedule: LockedMaturitySchedule, now: Date): void => {
   if (schedule.maturityDate > indiaCalendarDate(now)) {
     throw new AppError("STATE_CONFLICT", {
@@ -68,10 +93,16 @@ const refuseEarlyEffectiveDate = (schedule: LockedMaturitySchedule, effectiveDat
   }
 }
 
-const refuseEarlyStartMonth = (schedule: LockedMaturitySchedule, sip: FollowUpSchedule): void => {
-  if (monthIndexOf(sip.startMonth) <= monthIndexOf(schedule.maturityDate.slice(0, 7))) {
+const refuseEarlyStartMonth = (schedule: LockedMaturitySchedule, sip: FollowUpSchedule, now: Date): void => {
+  const start = monthIndexOf(sip.startMonth)
+  if (start <= monthIndexOf(schedule.maturityDate.slice(0, 7))) {
     throw new AppError("VALIDATION_FAILED", {
       fields: { "sip.startMonth": ["must be the month after the maturity month or later"] },
+    })
+  }
+  if (start < monthIndexOf(indiaCurrentMonth(now))) {
+    throw new AppError("VALIDATION_FAILED", {
+      fields: { "sip.startMonth": ["cannot be earlier than the current month in India"] },
     })
   }
 }
@@ -130,7 +161,7 @@ const returnAll = async (
   refuseEarlyEffectiveDate(schedule, command.effectiveDate)
   const basis = await loadBasis(tx, deps, schedule)
   if (basis.currentValuePaise <= 0n) {
-    throw new AppError("STATE_CONFLICT", { message: "This holding has no value to return." })
+    throw new AppError("STATE_CONFLICT", { message: `This holding has no value to return. ${CANCEL_HINT}` })
   }
   if (basis.currentValuePaise !== command.amountPaise) {
     throw new AppError("STATE_CONFLICT", {
@@ -185,8 +216,13 @@ const oneTimeAndSip = async (
   command: ResolveMaturityCommand & Readonly<{ resolution: "one_time_and_sip" }>,
 ): Promise<ResolutionEffects> => {
   refuseEarlyEffectiveDate(schedule, command.effectiveDate)
-  refuseEarlyStartMonth(schedule, command.sip)
+  refuseEarlyStartMonth(schedule, command.sip, deps.clock())
   const basis = await loadBasis(tx, deps, schedule)
+  if (basis.principalPaise !== command.expectedPrincipalPaise || basis.currentValuePaise !== command.expectedCurrentValuePaise) {
+    throw new AppError("STATE_CONFLICT", {
+      message: "The holding's value or amount invested changed since you opened it. Review the new figures and confirm again.",
+    })
+  }
   const settlement =
     basis.currentValuePaise === basis.principalPaise ? NO_SETTLEMENT : await reinvestGrowth(tx, deps, schedule, command)
   return { ...settlement, ...(await replaceSipSchedule(tx, deps, schedule, command)) }
@@ -198,7 +234,7 @@ const sipReinvestment = async (
   schedule: LockedMaturitySchedule,
   command: ResolveMaturityCommand & Readonly<{ resolution: "sip_reinvestment" }>,
 ): Promise<ResolutionEffects> => {
-  refuseEarlyStartMonth(schedule, command.sip)
+  refuseEarlyStartMonth(schedule, command.sip, deps.clock())
   await loadBasis(tx, deps, schedule)
   return { ...NO_SETTLEMENT, ...(await replaceSipSchedule(tx, deps, schedule, command)) }
 }
@@ -225,6 +261,7 @@ export const resolveMaturity = async (
   command: ResolveMaturityCommand,
 ): Promise<MaturityResolutionOutcome> => {
   const schedule = await lockOpenMaturitySchedule(tx, deps, command)
+  await refuseHandSettledMaturity(tx, deps, schedule)
   refuseUnreachedMaturity(schedule, deps.clock())
   const effects = await applyResolution(tx, deps, schedule, command)
   const resolution: ClientMaturityResolution = command.resolution

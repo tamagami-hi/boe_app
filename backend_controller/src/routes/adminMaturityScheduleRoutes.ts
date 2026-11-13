@@ -152,7 +152,14 @@ const toResolveCommand = (body: ResolveMaturityBody, own: OwnScheduleCommand): R
     case "return_all":
       return { ...own, resolution: body.resolution, effectiveDate: body.effectiveDate, amountPaise: BigInt(body.amountPaise) }
     case "one_time_and_sip":
-      return { ...own, resolution: body.resolution, effectiveDate: body.effectiveDate, sip: followUpOf(body.sip) }
+      return {
+        ...own,
+        resolution: body.resolution,
+        effectiveDate: body.effectiveDate,
+        expectedPrincipalPaise: BigInt(body.expectedPrincipalPaise),
+        expectedCurrentValuePaise: BigInt(body.expectedCurrentValuePaise),
+        sip: followUpOf(body.sip),
+      }
     case "sip_reinvestment":
       return { ...own, resolution: body.resolution, sip: followUpOf(body.sip) }
   }

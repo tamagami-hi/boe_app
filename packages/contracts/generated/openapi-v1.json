@@ -42830,6 +42830,14 @@
                         "type": "string",
                         "format": "date"
                       },
+                      "expectedPrincipalPaise": {
+                        "type": "string",
+                        "pattern": "^(0|[1-9][0-9]*)$/u"
+                      },
+                      "expectedCurrentValuePaise": {
+                        "type": "string",
+                        "pattern": "^(0|[1-9][0-9]*)$/u"
+                      },
                       "sip": {
                         "type": "object",
                         "properties": {
@@ -42859,6 +42867,8 @@
                       "resolution",
                       "expectedVersion",
                       "effectiveDate",
+                      "expectedPrincipalPaise",
+                      "expectedCurrentValuePaise",
                       "sip"
                     ],
                     "additionalProperties": false

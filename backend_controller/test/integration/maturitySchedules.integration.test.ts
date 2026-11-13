@@ -9,6 +9,7 @@ import { createClientMaturityScheduleRepository } from "../../src/repositories/c
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
 import { createMaturityRepository } from "../../src/repositories/maturityRepository.js"
 import { createNotificationRepository } from "../../src/repositories/notificationRepository.js"
+import { registerAdminMaturityRoutes } from "../../src/routes/adminMaturityRoutes.js"
 import { registerAdminClientGrowthRoutes } from "../../src/routes/adminClientGrowthRoutes.js"
 import { registerAdminMaturityScheduleRoutes } from "../../src/routes/adminMaturityScheduleRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
@@ -127,15 +128,7 @@ const seedHolding = async (growth: string | null = null): Promise<Holding> => {
       "values ($1, $2, $3, 'contribution', $4, $4, $5, $6, $7, 'investment_accepted', 'admin', $8, $9)",
     [userId, fundId, allocation.id, INVESTED, INVESTED_ON, order.id, payment.id, finance.userId, randomUUID()],
   )
-  if (growth !== null) {
-    const response = await app.inject({
-      method: "POST",
-      url: "/v1/admin/client-growth/individual",
-      headers: adminHeaders(finance, randomUUID()),
-      payload: { userId, fundId, growthPaise: growth, effectiveDate: GROWTH_ON, reasonCode: "valuation_update" },
-    })
-    expect(response.statusCode, response.body).toBe(201)
-  }
+  if (growth !== null) await growBy({ userId, fundId }, growth, GROWTH_ON)
   return { userId, fundId }
 }
 
@@ -181,7 +174,29 @@ const resolve = (holding: Holding, schedule: Schedule, body: Record<string, unkn
     payload: { expectedVersion: schedule.version, ...body },
   })
 
-const followUp = { monthlyAmountPaise: "300000", startMonth: "2026-01", monthCount: 24 }
+const shiftMonth = (month: string, by: number): string => {
+  const [year, number] = month.split("-").map(Number) as [number, number]
+  const index = year * 12 + number - 1 + by
+  return `${String(Math.floor(index / 12))}-${String((index % 12) + 1).padStart(2, "0")}`
+}
+
+const INDIA_MONTH = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 7)
+const SIP_START = shiftMonth(INDIA_MONTH, 1)
+const followUp = { monthlyAmountPaise: "300000", startMonth: SIP_START, monthCount: 24 }
+const figures = (principal: number, value: number) => ({
+  expectedPrincipalPaise: String(principal),
+  expectedCurrentValuePaise: String(value),
+})
+
+const growBy = async (holding: Holding, growthPaise: string, effectiveDate: string): Promise<void> => {
+  const response = await app.inject({
+    method: "POST",
+    url: "/v1/admin/client-growth/individual",
+    headers: adminHeaders(finance, randomUUID()),
+    payload: { ...holding, growthPaise, effectiveDate, reasonCode: "valuation_update" },
+  })
+  expect(response.statusCode, response.body).toBe(201)
+}
 
 const readAs = (session: AdminSession, url: string) => app.inject({ method: "GET", url, headers: adminHeaders(session) })
 
@@ -202,6 +217,12 @@ beforeAll(async () => {
         notificationRepository: createNotificationRepository(),
       }
       registerAdminClientGrowthRoutes(instance, { ...shared, clock: stack.clock, config: { idempotencyTtlMs: 86_400_000 } })
+      registerAdminMaturityRoutes(instance, {
+        ...shared,
+        clock: stack.clock,
+        maturityRepository: createMaturityRepository(),
+        config: { idempotencyTtlMs: 86_400_000 },
+      })
       registerAdminMaturityScheduleRoutes(instance, {
         ...shared,
         clock: () => fixedClock ?? stack.clock(),
@@ -382,22 +403,37 @@ describe("maturity resolutions", () => {
     const oldSip = await seedActiveSip(holding)
     const schedule = await scheduled(holding, MATURED_ON)
     const before = await moneyCounts()
-    const body = { resolution: "one_time_and_sip", effectiveDate: MATURED_ON, sip: followUp }
+    const audits = await stack.count("audit_events")
+    const body = { resolution: "one_time_and_sip", effectiveDate: MATURED_ON, ...figures(INVESTED, 120_000), sip: followUp }
 
-    const early = await resolve(holding, schedule, { ...body, sip: { ...followUp, startMonth: "2025-12" } })
-    expect(early.statusCode).toBe(400)
-    expect(envelopeOf(early).error.fields?.["sip.startMonth"]).toBeDefined()
+    for (const [startMonth, message] of [
+      ["2025-12", /after the maturity month/u],
+      [shiftMonth(INDIA_MONTH, -1), /earlier than the current month/u],
+    ] as const) {
+      const early = await resolve(holding, schedule, { ...body, sip: { ...followUp, startMonth } })
+      expect(early.statusCode).toBe(400)
+      expect(envelopeOf(early).error.fields?.["sip.startMonth"]?.join(" ")).toMatch(message)
+    }
 
     const key = randomUUID()
-    await stack.pool.query("CREATE FUNCTION refuse_test_sip() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected sip failure'; END $$")
+    await stack.pool.query("CREATE SEQUENCE test_reinvested_before_sip")
+    await stack.pool.query(
+      "CREATE FUNCTION refuse_test_sip() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN " +
+        "IF EXISTS (SELECT 1 FROM client_value_entries WHERE user_id = NEW.user_id AND entry_type = 'maturity_reinvestment') " +
+        "THEN PERFORM nextval('test_reinvested_before_sip'); END IF; " +
+        "RAISE EXCEPTION 'injected sip failure'; END $$",
+    )
     await stack.pool.query("CREATE TRIGGER refuse_test_sip BEFORE INSERT ON admin_sip_schedules FOR EACH ROW EXECUTE FUNCTION refuse_test_sip()")
     try {
       expect((await resolve(holding, schedule, body, key)).statusCode).toBe(500)
+      expect(await stack.first("select is_called from test_reinvested_before_sip", [])).toEqual({ is_called: true })
     } finally {
       await stack.pool.query("DROP TRIGGER refuse_test_sip ON admin_sip_schedules")
       await stack.pool.query("DROP FUNCTION refuse_test_sip()")
+      await stack.pool.query("DROP SEQUENCE test_reinvested_before_sip")
     }
     expect(await moneyCounts()).toEqual(before)
+    expect(await stack.count("audit_events")).toBe(audits)
     expect(await stack.count("admin_sip_schedules", "id = $1 and state = 'active'", [oldSip])).toBe(1)
     expect(await stack.count("client_maturity_schedules", "id = $1 and state = 'scheduled'", [schedule.scheduleId])).toBe(1)
 
@@ -418,7 +454,7 @@ describe("maturity resolutions", () => {
       "select state, monthly_amount_paise, to_char(start_month, 'YYYY-MM') as start, month_count from admin_sip_schedules where id = $1",
       [result.schedule.followUpSipScheduleId],
     )
-    expect(newSip).toEqual({ state: "active", monthly_amount_paise: "300000", start: "2026-01", month_count: 24 })
+    expect(newSip).toEqual({ state: "active", monthly_amount_paise: "300000", start: SIP_START, month_count: 24 })
     expect(await stack.count("withdrawal_operations", "user_id = $1", [holding.userId])).toBe(0)
 
     const after = await moneyCounts()
@@ -435,7 +471,12 @@ describe("maturity resolutions", () => {
     const entries = await stack.count("client_value_entries")
     const maturities = await stack.count("client_position_maturities")
 
-    const oneTime = await resolve(flat, flatSchedule, { resolution: "one_time_and_sip", effectiveDate: MATURED_ON, sip: followUp })
+    const oneTime = await resolve(flat, flatSchedule, {
+      resolution: "one_time_and_sip",
+      effectiveDate: MATURED_ON,
+      ...figures(INVESTED, INVESTED),
+      sip: followUp,
+    })
     expect(oneTime.statusCode, oneTime.body).toBe(200)
     expect(envelopeOf<Resolution>(oneTime).data).toMatchObject({ settlementEntryId: null, payoutId: null, closedSipScheduleId: null })
     expect(envelopeOf<Resolution>(oneTime).data.schedule.maturityId).toBeNull()
@@ -454,6 +495,69 @@ describe("maturity resolutions", () => {
     expect(await stack.count("client_position_maturities")).toBe(maturities)
     expect(await sums(flat)).toEqual({ principal: "100000", value: "100000" })
     expect(await sums(grown)).toEqual({ principal: "100000", value: "120000" })
+  })
+
+  test("a value update between reading the holding and confirming refuses the one-time option without writing", async () => {
+    const holding = await seedHolding(GROWTH)
+    const schedule = await scheduled(holding, MATURED_ON)
+    const seen = figures(INVESTED, 120_000)
+    await growBy(holding, "5000", "2025-07-01")
+    const before = await moneyCounts()
+    const audits = await stack.count("audit_events")
+
+    const stale = await resolve(holding, schedule, { resolution: "one_time_and_sip", effectiveDate: MATURED_ON, ...seen, sip: followUp })
+    expect(stale.statusCode).toBe(409)
+    expect(envelopeOf(stale).error.code).toBe("STATE_CONFLICT")
+    expect(await moneyCounts()).toEqual(before)
+    expect(await stack.count("audit_events")).toBe(audits)
+    expect(await stack.count("client_maturity_schedules", "id = $1 and state = 'scheduled' and version = 1", [schedule.scheduleId])).toBe(1)
+
+    const fresh = await resolve(holding, schedule, {
+      resolution: "one_time_and_sip",
+      effectiveDate: MATURED_ON,
+      ...figures(INVESTED, 125_000),
+      sip: followUp,
+    })
+    expect(fresh.statusCode, fresh.body).toBe(200)
+    const entry = await stack.first("select principal_delta_paise from client_value_entries where id = $1", [
+      envelopeOf<Resolution>(fresh).data.settlementEntryId,
+    ])
+    expect(entry).toEqual({ principal_delta_paise: "25000" })
+  })
+
+  test("a holding settled by hand in the Maturity tab is refused with a pointer to cancel the date", async () => {
+    const holding = await seedHolding(GROWTH)
+    const schedule = await scheduled(holding, MATURED_ON)
+    const url = `/v1/admin/clients/${holding.userId}/maturities`
+    const marked = await app.inject({
+      method: "POST",
+      url,
+      headers: adminHeaders(finance, randomUUID()),
+      payload: { fundId: holding.fundId, maturedOn: MATURED_ON, reasonCode: "position_matured" },
+    })
+    expect(marked.statusCode, marked.body).toBe(201)
+    const withdrawn = await app.inject({
+      method: "POST",
+      url: `${url}/${envelopeOf<{ maturityId: string }>(marked).data.maturityId}/withdrawal`,
+      headers: adminHeaders(finance, randomUUID()),
+      payload: { fundId: holding.fundId, effectiveDate: MATURED_ON, amountPaise: "50000", reasonCode: "maturity_withdrawal" },
+    })
+    expect(withdrawn.statusCode, withdrawn.body).toBe(201)
+    const before = await moneyCounts()
+
+    const refused = await resolve(holding, schedule, { resolution: "sip_reinvestment", sip: followUp })
+    expect(refused.statusCode).toBe(409)
+    expect(refused.json<{ error: { message: string } }>().error.message).toMatch(/already settled.*Cancel this maturity date/u)
+    expect(await moneyCounts()).toEqual(before)
+
+    const cancelled = await app.inject({
+      method: "POST",
+      url: `/v1/admin/clients/${holding.userId}/maturity-schedules/${schedule.scheduleId}/cancel`,
+      headers: adminHeaders(finance, randomUUID()),
+      payload: { expectedVersion: 1 },
+    })
+    expect(cancelled.statusCode, cancelled.body).toBe(200)
+    expect(await moneyCounts()).toEqual(before)
   })
 
   test("a maturity date that has not arrived cannot be resolved", async () => {

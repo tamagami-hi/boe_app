@@ -180,6 +180,8 @@ export const AdminResolveMaturityBody = z.discriminatedUnion("resolution", [
     resolution: z.literal("one_time_and_sip"),
     expectedVersion: Version,
     effectiveDate: CalendarDate,
+    expectedPrincipalPaise: Paise,
+    expectedCurrentValuePaise: Paise,
     sip: AdminMaturityFollowUpSip,
   }),
   z.strictObject({
