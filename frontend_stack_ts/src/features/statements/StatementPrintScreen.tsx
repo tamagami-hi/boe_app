@@ -84,7 +84,7 @@ const StatementPrintScreen = (): React.ReactElement => {
       >
         {(data) => (
           <Card>
-            <div className={STATEMENT_TABLE_SCROLL}>
+            <div className={STATEMENT_TABLE_SCROLL} tabIndex={0} role="region" aria-label="Statement table">
               <table className={STATEMENT_TABLE}>
                 <caption className={STATEMENT_CAPTION}>Month-by-month value of your investments</caption>
                 <thead>
