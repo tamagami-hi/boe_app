@@ -1,6 +1,6 @@
 # BeOnEdge admin improvements: recording categories, receipts, value updates, returns, maturity, nominee, and fixes
 
-Status: **Approved by the maintainer on 2026-11-13. Phase A is being implemented on four parallel tally tracks.** Every open question was answered on 2026-11-13 (decision record). What still needs the maintainer: the production reform's own destructive-change approval after the pre-flight report (D2), releases, and the payments re-enable decision. Checks run on the pinned Node 22.20.0 / npm 11.16.0 (tally `howto-1`).
+Status: **Approved by the maintainer on 2026-11-13. Phase A is complete on local `main` (seven lanes, not pushed or released); Phase B is next.** One question is open (Q-026, section 0a). What still needs the maintainer: Q-026, the production reform's own destructive-change approval after the pre-flight report (D2), releases, and the payments re-enable decision. Checks run in the pinned Node 22.20.0 / npm 11.16.0 container `tools/node22-container/run.sh` (tally `howto-2`).
 
 Prepared: 2026-11-13. The investigation was static source reading only. No local checks ran (no dependencies are installed, and `RULES.md` forbids installing them just to make checks runnable). Nothing was diagnosed on a VPS, no test ran, no mail was sent, and nothing was deployed. GitHub CI run 38216879911 passed contracts, backend (including integration) and frontend on `ba8b196` (v0.15.4). The detailed evidence is held as tally records under `docs/records/`: findings `finding-1` to `finding-18` (excluding the retired `finding-5`), decisions `rule-2` to `rule-6`, and milestones `M1-admin-audit` and `M2-plan`.
 
@@ -8,11 +8,11 @@ Governing process: root [RULES.md](../RULES.md). The application is in productio
 
 ## 0a. Open questions and conservative defaults
 
-IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-025 were answered on 2026-11-13 and moved to the decision record. No question is open.
+IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-025 were answered on 2026-11-13 and moved to the decision record.
 
 | ID | Open decision | Conservative behavior meanwhile |
 | --- | --- | --- |
-| None | | |
+| Q-026 | When a client's personal data is erased (tombstoned), should their earlier emails and phones in the append-only contact history (A8) also be erased? Erasing them needs a separate, audited step that overwrites only the history's contact fields. | The history stays append-only. For a tombstoned client the admin screen and API show the same tombstone values as everywhere else, so no admin can read the originals through the app. The originals remain in the database until the maintainer decides (tally question row 15). |
 
 ### Decision record
 
@@ -39,7 +39,8 @@ IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-0
 | 2026-11-13 | The maintainer delegates: work out what else this kind of app needs, and simplify complex flows so both client and admin have a seamless experience. | Client and admin journey reviews (tally `M9-ux-review`) feed section 6 (tally `rule-9`). |
 | 2026-11-13 | Q-022: the dashboards show simple return % as the main figure, plus annualised XIRR as a secondary column. | B5 (tally `rule-8`). |
 | 2026-11-13 | Q-023: app-update announcement emails keep going to every active client. | No change (tally `rule-8`). |
-| 2026-11-13 | Stay on Node 22. Production images already run `node:22.23.2`, and CI and the packages pin 22. Upgrading to Node 24 is a separate tested step. | Local checks use the official Node 22.20.0 and npm 11.16.0 in `~/.local/node-22.20.0`. The upgrade is task E3 (tally `howto-1`). |
+| 2026-11-13 | Stay on Node 22. Production images already run `node:22.23.2`, and CI and the packages pin 22. Upgrading to Node 24 is a separate tested step. | Local checks run in a dedicated container with the official Node 22.20.0 and npm 11.16.0 (`tools/node22-container/run.sh`), so the host keeps a single Node install. The upgrade is task E3 (tally `howto-2`, which replaces `howto-1`). |
+| 2026-11-13 | G12: old pending online payments created before payments were turned off are marked expired once their pay-by time has passed. | Step A10. Applied only to checkouts never sent to the provider; checkouts already sent are left for reconciliation when payments return, because the provider may hold a payment for them (tally `rule-10`, `finding-23`). |
 
 #### Replaced
 
@@ -232,9 +233,9 @@ Each lane is a tally track `track/<name>` with its own worktree. Lanes in the sa
 | A | `a-onboarding` | A7, A5 (IST today) | admin users feature, client auth and email verification, guards, recordContribution, createClientAccount, maturity settlement date, onboarding harness and CI |
 | A | `a-identity` | A8, after `a-onboarding` lands | createClientAccount, password credential, oversight routes, environment, migration 061, admin users feature |
 | B | `b-receipts`, `b-value-updates`, `b-returns`, `b-email-web` | B1–B2, B3, B4–B5, B6 | Each adds its own contract file, so generated exports are regenerated at landing |
-| C | `c-nominee`, `c-sip-maturity` | C1; then C2 → C3 | Migrations are numbered 061 (C1), 062 (C2), 063 (C3) |
+| C | `c-nominee`, `c-sip-maturity` | C1; then C2 → C3 | Migrations are numbered 062 (C1), 063 (C2), 064 (C3), after A8's 061, so production applies them in filename order (tally `convention-1`) |
 | D | `d-data` | D1 → D2 | D1 can start now. D2's production run needs separate approval. |
-| E | `e-reviews`; E2; E3 | E1 after Phase B; E2 after Phase C and before any payments re-enable; E3 when the maintainer chooses | Reviews use migration 065 |
+| E | `e-reviews`; E2; E3 | E1 after Phase B; E2 after Phase C and before any payments re-enable; E3 when the maintainer chooses | Reviews take the next free migration number when built |
 
 Shared-file rules:
 - `adminQueries.ts` is at 725 of 800 lines. A lane moves the hooks it changes into its feature's own query module instead of growing the file.
@@ -289,7 +290,9 @@ Maintainer gates (milestone `M3-gates`):
   - honest support copy, and `REQ-` ticket references for new tickets
   - Open links on reversal and payout notices
 
-  Other lanes add Open links for recordings, value updates, maturity and SIP notices, neutral recording copy, the 100-row ledger with names in previews, rupee inputs, the collective confirm step, monthly reason codes, mobile navigation favouring Users, and hiding gateway-only admin sections when `featureFlags.onlinePayments` is false.
+  Other lanes add Open links for recordings, value updates, maturity and SIP notices, neutral recording copy, the 100-row ledger with names in previews, rupee inputs, the collective confirm step, monthly reason codes, and mobile navigation favouring Users and Client values. Receipts, Refunds, Payments and Mandates stay reachable in the admin navigation while payments are off, because receipts settled before the switch-off still need acknowledging and those screens hold existing records.
+
+- **A10.** Stale pending online payments (gate G12): while no payment gateway is configured, the payments worker expires one-time checkouts that were never sent to the provider once their pay-by time plus the configured reconciliation grace has passed. It uses the existing expiry transitions under the payment lock, writes one audit row per payment, deletes nothing and moves no money. Checkouts already sent to the provider are left for reconciliation when payments return.
 
 ### Phase B — recording categories, receipts, value updates, returns
 
@@ -324,7 +327,7 @@ Maintainer gates (milestone `M3-gates`):
   - pick a month; one row per client and fund from the SIP schedule, with the expected amount, the amount already recorded, the date (today in IST by default) and a bank reference (UTR)
   - each row keeps its own idempotency key and shows its own result
   - CSV can be pasted into the sheet
-  - the optional structured bank reference uses migration 066 and an optional request field
+  - the optional structured bank reference takes the next free migration number and an optional request field
 - **C5.** Accounting exports and a usable audit log:
   - client balances as of a date, and contributions by month with bank reference, built as CSV in the browser from new read endpoints
   - money-command presets with amounts and client links
@@ -363,6 +366,42 @@ Maintainer gates (milestone `M3-gates`):
 ## 8. Progress and handoff
 
 Each step records here what changed, the exact verification (commands and counts), corrected beliefs, remaining risks, and what is unverified. Commits are referenced only after they exist.
+
+### Phase A close (2026-11-13)
+
+Seven lanes landed on local `main` through the tally queue, one at a time. Each lane was reviewed by an independent reviewer before landing, and every commit was checked on its own in a clean checkout in the Node 22 container (contracts build, backend check, frontend check). Nothing is pushed, released or deployed.
+
+| Step | Lane | Commits on `main` |
+| --- | --- | --- |
+| A7, A5 (IST today) | `a-onboarding` | `cd0a522`, `fabeb5e`, `dd7ab92` |
+| A1, A2 (client values), A5 (dates) | `a-client-values` | `ba39307`, `9a9d95d` |
+| A3 | `a-payments-off` | `9a83b30`, `847c506` |
+| A2 (other screens), A4, A6 | `a-admin-core` | `5cc8bcb`, `a43752b`, `dee2b46` |
+| A9 | `a-client-polish` | `f1d316b`, `8429d3b` |
+| A10 (G12) | `a-expire-stale` | `9621ab1`, `a9b3ee6` |
+| A8 | `a-identity` | `92d0e77`, `139ebd5`, `f105a7f`, `cd9b96d`, `8970a3d`, `8f7618e` |
+
+- **Review outcomes that changed the work.**
+  - Admin core: the admin navigation no longer hides Receipts, Refunds, Payments and Mandates when payments are off. Hiding them would have stranded receipts that still need acknowledging.
+  - Payments-off: the payment screen allows a 5-minute grace after the pay-by time. After that it keeps checking once a minute, so a late settlement still appears.
+  - Client polish: a failed mark-read is reported even after the notification has opened its destination.
+  - Expire-stale: the payment is locked before the attempt, in the same order as the pay route.
+  - Identity: the security review added the correction cap, tombstone masking in the history, and refusal of the reserved contact ranges.
+- **Corrected beliefs.**
+  - The SIP worker never created orders. Its pass failed on a non-uuid request id (tally `finding-21`, fixed in E2).
+  - The local integration run with coverage enabled fails its 80% branch threshold on clean `main` (78.25%). CI runs that suite with coverage disabled, and so did every check here (tally `finding-22`).
+- **Sweep on `8f7618e` (TESTED, clean detached worktree, Node 22.20.0 container):**
+  - contracts `npm run check` passed 98 tests, with OpenAPI lint valid and 136 operations reachable;
+  - backend `npm run check` passed 98 files / 1180 tests;
+  - `npm run test:integration -- --coverage.enabled=false` passed 40 files / 422 tests;
+  - frontend `npm run check` passed 27 files / 241 tests;
+  - `build:client` and `build:admin` passed, including the bundle boot checks.
+- **Carried forward.**
+  - Provider-dispatched stale payments still read "Awaiting payment" in the client Activity list. That needs a new list endpoint (tally `finding-23`, moved to B8).
+  - Approving an application, a refund action and acknowledging a receipt still mint a key per attempt. Server state and version guards stop duplicates.
+  - The AutoPay and mandate defects stay in E2, before any payments re-enable.
+  - Q-026 is open.
+- **Not verified.** No browser or device run of any changed screen, no APK export, no real mail, nothing on a VPS. Releasing needs new client and admin APK exports by the maintainer (G7, G8). Migration 061 is additive, and the previous release runs against it.
 
 ### A8 identity follow-up (lane `a-identity`, commits `92d0e77`, `139ebd5`, `cd9b96d` and the security-review follow-ups after them)
 

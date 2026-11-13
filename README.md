@@ -45,9 +45,9 @@ are container builds, so do not mix them with host `npm`.
 - [CLAUDE.md](CLAUDE.md): architecture, current state, commands, and task map.
 - [WORKFLOW.md](WORKFLOW.md): workspaces, integration, and operator release flow.
 - [DEPLOY.md](DEPLOY.md): deployment/configuration reference, not permission to deploy.
-- [Admin improvements proposal](plans/admin-improvements.md): recording categories,
+- [Admin improvements plan](plans/admin-improvements.md): recording categories,
   client receipts, value updates, returns dashboards, maturity management, nominee,
-  and admin fixes; awaiting maintainer approval.
+  and admin fixes; approved, Phase A (fixes) complete on local `main`, Phase B next.
 - [Previous app feature plan](plans/app-onboarding-contact-investment-email.md):
   onboarding recovery, contacts, earlier investments, and email improvements;
   implemented and released through v0.15.4; evidence is in section 8 of the plan.
