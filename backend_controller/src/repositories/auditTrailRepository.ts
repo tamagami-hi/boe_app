@@ -66,38 +66,62 @@ const logClause = (filter: AuditLogFilter): RawBuilder<unknown> => sql`
   ${filter.occurredBefore === null ? sql`` : sql`and a.occurred_at < ${filter.occurredBefore}`}
 `
 
-const userClause = (userId: string): RawBuilder<unknown> => sql`
+const KEYSET_COLUMNS = { time: "a.occurred_at", id: "a.id" } as const
+
+const logPage = (filter: AuditLogFilter, query: AuditTrailQuery): RawBuilder<unknown> => sql`
+  select a.*
+  from audit_events a
+  where ${logClause(filter)}
+    and ${keysetCondition(KEYSET_COLUMNS, "before", query)}
+  order by a.occurred_at desc, a.id desc
+  limit ${query.limit}
+`
+
+const userBranch = (match: RawBuilder<unknown>, query: AuditTrailQuery): RawBuilder<unknown> => sql`
   (
-    (a.entity_type = 'user' and a.entity_id = ${userId}::uuid)
-    or a.actor_user_id = ${userId}::uuid
-    or ${metadataText("userId")} = ${userId}
-    or (a.entity_type = 'refund_operation' and exists (
-      select 1 from refund_operations r
-      join investment_orders o on o.id = r.order_id
-      where r.id = a.entity_id and o.user_id = ${userId}::uuid
-    ))
-    or (a.entity_type = 'client_growth_batch' and exists (
-      select 1 from client_value_entries e
-      where e.growth_batch_id = a.entity_id and e.user_id = ${userId}::uuid
-    ))
+    select a.id, a.occurred_at
+    from audit_events a
+    where ${match}
+      and ${keysetCondition(KEYSET_COLUMNS, "before", query)}
+    order by a.occurred_at desc, a.id desc
+    limit ${query.limit}
   )
 `
 
-const scopeClause = (scope: AuditTrailScope): RawBuilder<unknown> =>
-  scope.kind === "log" ? logClause(scope.filter) : userClause(scope.userId)
+const userMatches = (userId: string): readonly RawBuilder<unknown>[] => [
+  sql`a.entity_type = 'user' and a.entity_id = ${userId}::uuid`,
+  sql`a.actor_user_id = ${userId}::uuid`,
+  sql`a.metadata ? 'userId' and ${metadataText("userId")} = ${userId}`,
+  sql`a.entity_type = 'refund_operation' and a.entity_id in (
+    select r.id from refund_operations r
+    join investment_orders o on o.id = r.order_id
+    where o.user_id = ${userId}::uuid
+  )`,
+  sql`a.entity_type = 'client_growth_batch' and a.entity_id in (
+    select e.growth_batch_id from client_value_entries e
+    where e.user_id = ${userId}::uuid and e.growth_batch_id is not null
+  )`,
+]
+
+const userPage = (userId: string, query: AuditTrailQuery): RawBuilder<unknown> => sql`
+  select a.*
+  from (${sql.join(
+    userMatches(userId).map((match) => userBranch(match, query)),
+    sql` union `,
+  )}) candidate
+  join audit_events a on a.id = candidate.id
+  order by a.occurred_at desc, a.id desc
+  limit ${query.limit}
+`
+
+const pageOf = (query: AuditTrailQuery): RawBuilder<unknown> =>
+  query.scope.kind === "log" ? logPage(query.scope.filter, query) : userPage(query.scope.userId, query)
 
 export const createAuditTrailRepository = (): AuditTrailRepository => ({
   listAuditTrail: async (tx, query) => {
     const scopeUserId = query.scope.kind === "user" ? query.scope.userId : null
     const result = await sql<WithCursor<AuditTrailRow>>`
-      with page as (
-        select a.*
-        from audit_events a
-        where ${scopeClause(query.scope)}
-          and ${keysetCondition({ time: "a.occurred_at", id: "a.id" }, "before", query)}
-        order by a.occurred_at desc, a.id desc
-        limit ${query.limit}
-      )
+      with page as (${pageOf(query)})
       select
         a.id,
         a.occurred_at as "occurredAt",
