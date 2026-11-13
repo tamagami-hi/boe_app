@@ -10,6 +10,7 @@ const CATEGORIES: Readonly<Record<string, NotificationCategory>> = {
   client_contribution_recorded: { label: "Investment", tone: "info" },
   fund_receipt_acknowledged: { label: "Investment", tone: "positive" },
   sip_installment_due: { label: "SIP", tone: "info" },
+  support_request_updated: { label: "Support", tone: "info" },
   app_update_available: { label: "App", tone: "neutral" },
 }
 
