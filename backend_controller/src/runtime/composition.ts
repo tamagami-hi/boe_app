@@ -667,9 +667,13 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
     })
 
     registerRecordingSurface(application, {
-      webAuth, accessTokenService, clientWeb, unitOfWork, database, clock,
+      webAuth, accessTokenService, clientWeb, unitOfWork, database, clock, outboxRepository, emailDeliveryRepository, crypto,
       clientPositionRepository, clientGrowthRepository, userRepository, auditRepository, idempotencyRepository, notificationRepository,
-      config: { idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs, cursorKey: serverConfig.cursorKey },
+      config: {
+        idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
+        cursorKey: serverConfig.cursorKey,
+        sesConfigurationSet: serverConfig.sesConfigurationSet,
+      },
     })
 
     registerAdminClientReturnRoutes(application, {

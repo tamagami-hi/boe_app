@@ -5,6 +5,7 @@ import { exportPKCS8, exportSPKI, generateKeyPair } from "jose"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 
 import { createAccessTokenService, type AccessTokenService } from "../../src/auth/accessToken.js"
+import { createInvestmentRecordedGuard } from "../../src/domain/email/investmentRecordedGuard.js"
 import { createClientGrowthRepository } from "../../src/repositories/clientGrowthRepository.js"
 import { createClientPositionRepository } from "../../src/repositories/clientPositionRepository.js"
 import { createClientReceiptRepository } from "../../src/repositories/clientReceiptRepository.js"
@@ -121,6 +122,36 @@ const positionTotals = async (userId: string): Promise<Row> =>
     [userId, fundId],
   )
 
+const investmentEmailsOf = async (userId: string): Promise<Row[]> =>
+  (
+    await stack.pool.query<Row>(
+      "select d.id, d.state, o.payload, o.state as outbox_state from email_deliveries d " +
+        "join outbox_events o on o.id = d.outbox_event_id " +
+        "where d.user_id = $1 and d.template_key = 'investment_recorded' order by d.created_at",
+      [userId],
+    )
+  ).rows
+
+const sealedOf = async (deliveryId: string): Promise<Record<string, unknown>> => {
+  const stored = await stack.payloadRow(deliveryId)
+  const opened = stack.crypto.decryptDeliveryPayload(deliveryId, {
+    ciphertext: stored.ciphertext as Buffer,
+    nonce: stored.nonce as Buffer,
+    keyVersion: String(stored.key_version),
+  })
+  if (opened.kind !== "opened") throw new Error("sealed payload not readable")
+  return { ...opened.payload }
+}
+
+const dispatchInvestmentMail = () => {
+  const transport = stack.transport()
+  const guard = createInvestmentRecordedGuard({
+    clientReceiptRepository: createClientReceiptRepository(),
+    userRepository: stack.userRepository,
+  })
+  return { transport, run: () => stack.dispatch(transport, stack.clock, stack.crypto, [["investment_recorded", guard]]) }
+}
+
 const seedGrowth = async (userId: string, deltaPaise: number): Promise<void> => {
   const batch = await stack.first(
     "insert into client_growth_batches (scope, instruction_type, effective_date, reason_code, basis_hash, " +
@@ -181,7 +212,10 @@ beforeAll(async () => {
         unitOfWork: stack.unitOfWork,
         database: stack.database,
         clock: stack.clock,
-        config: { idempotencyTtlMs: 86_400_000 },
+        config: { idempotencyTtlMs: 86_400_000, sesConfigurationSet: "boe-transactional" },
+        outboxRepository: stack.outboxRepository,
+        emailDeliveryRepository: stack.emailDeliveryRepository,
+        crypto: stack.crypto,
         clientPositionRepository: createClientPositionRepository(),
         clientGrowthRepository: createClientGrowthRepository(),
         userRepository: stack.userRepository,
@@ -382,5 +416,86 @@ describe("client receipts", () => {
     const reversed = envelopeOf<{ receipt: Receipt }>(await getReceipt(ownerToken, ownerReceipt.entryId)).data.receipt
     expect(reversed.reversedAt).not.toBeNull()
     expect(reversed.amountPaise).toBe("900000")
+  })
+})
+
+describe("investment added email", () => {
+  test("a monthly investment queues one email with the amount, fund and name sealed, and a replay queues none", async () => {
+    const client = await stack.seedUser()
+    const key = `monthly-mail-${randomUUID()}`
+
+    const first = await record(client.id, "recorded_offline_monthly_investment", "12345678", key)
+    const replay = await record(client.id, "recorded_offline_monthly_investment", "12345678", key)
+
+    expect(first.statusCode).toBe(201)
+    expect(envelopeOf(replay).meta.idempotencyReplay).toBe(true)
+    const recorded = envelopeOf<Recorded>(first).data
+    const emails = await investmentEmailsOf(client.id)
+    expect(emails).toHaveLength(1)
+    const user = await stack.first("select email_revision::text as revision from users where id = $1", [client.id])
+    expect(emails[0]?.payload).toEqual({
+      template: "investment_recorded",
+      entryId: recorded.entryId,
+      category: "monthly_investment",
+      effectiveDate: EFFECTIVE_DATE,
+      boundEmailRevision: user.revision,
+    })
+    expect(await sealedOf(String(emails[0]?.id))).toEqual({
+      fullName: "Ada Lovelace",
+      fundName: FUND_NAME,
+      amountPaise: "12345678",
+    })
+    const plain = await stack.first(
+      "select o.payload::text || d::text as text from email_deliveries d join outbox_events o on o.id = d.outbox_event_id where d.id = $1",
+      [emails[0]?.id],
+    )
+    for (const secret of ["12345678", FUND_NAME, "Ada Lovelace"]) expect(String(plain.text)).not.toContain(secret)
+  })
+
+  test("an earlier investment queues one email and a correction queues none", async () => {
+    const earlier = await stack.seedUser()
+    const corrected = await stack.seedUser()
+
+    await recordOk(earlier.id, "recorded_offline_investment", "500000")
+    await recordOk(corrected.id, "recorded_offline_correction", "500000")
+
+    expect(await investmentEmailsOf(earlier.id)).toHaveLength(1)
+    expect(await investmentEmailsOf(corrected.id)).toHaveLength(0)
+  })
+
+  test("sends the formatted amount without a web-app line, and cancels after a reversal, a closure or an email change", async () => {
+    const kept = await stack.seedUser()
+    const reversed = await stack.seedUser()
+    const closed = await stack.seedUser()
+    const moved = await stack.seedUser()
+    await recordOk(kept.id, "recorded_offline_monthly_investment", "12345678")
+    const toReverse = await recordOk(reversed.id, "recorded_offline_monthly_investment", "12345678")
+    await recordOk(closed.id, "recorded_offline_investment", "12345678")
+    await recordOk(moved.id, "recorded_offline_investment", "12345678")
+    const reversal = await app.inject({
+      method: "POST",
+      url: `/v1/admin/clients/${reversed.id}/ledger-entries/${toReverse.entryId}/reversal`,
+      headers: adminHeaders(finance, `reverse-${randomUUID()}`),
+      payload: { reasonCode: "admin_correction_reversal" },
+    })
+    expect(reversal.statusCode).toBe(201)
+    await stack.setAccountState(closed.id, "closed")
+    await stack.pool.query("update users set email_revision = email_revision + 1 where id = $1", [moved.id])
+    const mail = dispatchInvestmentMail()
+
+    await mail.run()
+
+    const sent = mail.transport.messages.filter((message) => message.to === kept.email)
+    expect(sent).toHaveLength(1)
+    expect(sent[0]?.subject).toBe("Investment added")
+    expect(sent[0]?.text).toContain(
+      `Your monthly investment of ₹1,23,456.78 in ${FUND_NAME}, dated 2 June 2025, has been added to your BeOnEdge app.`,
+    )
+    expect(sent[0]?.text).toContain("Hello Ada Lovelace,")
+    expect(sent[0]?.text).not.toContain("web app")
+    for (const user of [reversed, closed, moved]) {
+      expect(mail.transport.messages.some((message) => message.to === user.email), user.email).toBe(false)
+      expect((await investmentEmailsOf(user.id)).map((row) => row.outbox_state)).toEqual(["cancelled"])
+    }
   })
 })

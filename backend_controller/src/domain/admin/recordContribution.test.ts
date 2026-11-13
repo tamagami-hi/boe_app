@@ -38,11 +38,32 @@ const positionDeps = () =>
         .mockResolvedValue({ principalPaise: "500000", currentValuePaise: "500000", latestEntryId: "entry-1" }),
     },
     userRepository: {
-      lockById: vi.fn().mockResolvedValue({ id: "user-1", version: "1", account_state: "active" }),
+      lockById: vi.fn().mockResolvedValue({
+        id: "user-1",
+        version: "1",
+        account_state: "active",
+        pii_tombstoned_at: null,
+        email_normalized: "client@example.com",
+        full_name: "Asha Verma",
+        email_revision: "1",
+      }),
       findActiveRolesAndPermissions: vi.fn().mockResolvedValue({ roles: [], permissions: [] }),
     },
     auditRepository: { append: vi.fn().mockResolvedValue(undefined) },
     notificationRepository: { create: vi.fn().mockResolvedValue(undefined) },
+    outboxRepository: { enqueue: vi.fn().mockResolvedValue({ id: "outbox-1" }) },
+    emailDeliveryRepository: {
+      createUserMailDelivery: vi.fn().mockResolvedValue({ id: "delivery-1" }),
+      insertSealedPayload: vi.fn().mockResolvedValue(undefined),
+    },
+    crypto: {
+      encryptRecipient: vi.fn().mockReturnValue({ ciphertext: Buffer.alloc(1), nonce: Buffer.alloc(1), keyVersion: "ek1" }),
+      hmacRecipient: vi.fn().mockReturnValue({ hash: Buffer.alloc(1) }),
+      maskEmail: vi.fn().mockReturnValue("c***@example.com"),
+      encryptDeliveryPayload: vi.fn().mockReturnValue({ ciphertext: Buffer.alloc(1), nonce: Buffer.alloc(1), keyVersion: "ek1" }),
+      suppressionHmacKeyVersion: "rk1",
+    },
+    config: { sesConfigurationSet: "boe-transactional" },
     clock: () => NOW,
   }) as unknown as RecordContributionDeps & ReverseLedgerEntryDeps
 
@@ -132,6 +153,7 @@ describe("recorded offline contributions", () => {
       deps.clientPositionRepository.insertContributionEntry,
       deps.auditRepository.append,
       deps.notificationRepository.create,
+      deps.outboxRepository.enqueue,
     ]) {
       expect(write).not.toHaveBeenCalled()
     }

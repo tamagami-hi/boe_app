@@ -62,6 +62,7 @@ export type UserMailTemplateKey =
   | "contact_email_changed"
   | "admin_message"
   | "app_update_notice"
+  | "investment_recorded"
 
 export interface CreateUserMailDeliveryInput {
   readonly outboxEventId: string

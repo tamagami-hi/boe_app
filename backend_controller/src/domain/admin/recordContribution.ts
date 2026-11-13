@@ -1,4 +1,4 @@
-import type { Transaction } from "../../db/repositories.js"
+import type { Transaction, User } from "../../db/repositories.js"
 import { AppError } from "../../http/errorCatalog.js"
 import type { AuditWriteRepository } from "../../repositories/auditRepository.js"
 import type { ClientGrowthRepository } from "../../repositories/clientGrowthRepository.js"
@@ -8,12 +8,18 @@ import type { UserWriteRepository } from "../../repositories/userRepository.js"
 import type { UserId } from "../../db/repositories.js"
 import type { UserAccountState } from "../../db/types.js"
 import {
+  queueInvestmentRecordedMail,
+  type EmailedRecordingCategory,
+  type InvestmentRecordedMailDeps,
+} from "../email/investmentRecordedMail.js"
+import {
   RECORDING_CATEGORY_TEXT,
   recordingCategoryOf,
+  type RecordingCategory,
   type RecordingReasonCode,
 } from "../shared/recordingCategory.js"
 
-export interface RecordContributionDeps {
+export interface RecordContributionDeps extends InvestmentRecordedMailDeps {
   readonly clientPositionRepository: ClientPositionRepository
   readonly clientGrowthRepository: ClientGrowthRepository
   readonly userRepository: UserWriteRepository
@@ -53,13 +59,18 @@ const RECORDABLE_ACCOUNT_STATES: ReadonlySet<UserAccountState> = new Set(["activ
 const NOT_RECORDABLE_STATE_MESSAGE = "Investments can only be recorded for an active or suspended client account."
 const NOT_A_CLIENT_MESSAGE = "Investments can only be recorded for client accounts."
 
+const emailedCategory = (category: RecordingCategory): EmailedRecordingCategory | null =>
+  category === "correction" ? null : category
+
+const canReceiveMail = (user: User): boolean => user.account_state === "active" && user.pii_tombstoned_at === null
+
 const midday = (effectiveDate: string): Date => new Date(`${effectiveDate}T12:00:00.000Z`)
 
 const requireRecordableClient = async (
   tx: Transaction,
   deps: RecordContributionDeps,
   userId: UserId,
-): Promise<void> => {
+): Promise<User> => {
   const user = await deps.userRepository.lockById(tx, userId)
   if (user === null) throw new AppError("RESOURCE_NOT_FOUND")
   if (!RECORDABLE_ACCOUNT_STATES.has(user.account_state)) {
@@ -67,6 +78,7 @@ const requireRecordableClient = async (
   }
   const grants = await deps.userRepository.findActiveRolesAndPermissions(tx, userId)
   if (grants.roles.length > 0) throw new AppError("STATE_CONFLICT", { message: NOT_A_CLIENT_MESSAGE })
+  return user
 }
 
 export const recordContribution = async (
@@ -76,7 +88,7 @@ export const recordContribution = async (
 ): Promise<RecordedContribution> => {
   const category = recordingCategoryOf(input.reasonCode)
   await deps.clientGrowthRepository.lockPosition(tx, input.userId, input.fundId)
-  await requireRecordableClient(tx, deps, input.userId as UserId)
+  const client = await requireRecordableClient(tx, deps, input.userId as UserId)
 
   const version = await deps.clientPositionRepository.findFundVersionForDate(tx, {
     fundId: input.fundId,
@@ -166,6 +178,19 @@ export const recordContribution = async (
       category,
     },
   })
+
+  const mailCategory = emailedCategory(category)
+  if (mailCategory !== null && canReceiveMail(client)) {
+    await queueInvestmentRecordedMail(tx, deps, {
+      recipient: client,
+      entryId: entry.id,
+      fundName: version.fundName,
+      amountPaise: input.amountPaise,
+      effectiveDate: input.effectiveDate,
+      category: mailCategory,
+      requestId: input.requestId,
+    })
+  }
 
   return {
     entryId: entry.id,

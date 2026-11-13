@@ -26265,7 +26265,8 @@
                 "email_change_code",
                 "contact_email_changed",
                 "admin_message",
-                "app_update_notice"
+                "app_update_notice",
+                "investment_recorded"
               ]
             },
             "required": false,

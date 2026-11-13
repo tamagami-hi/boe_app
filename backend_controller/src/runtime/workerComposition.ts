@@ -8,9 +8,11 @@ import { CLAIMED_EMAIL_TOPICS } from "../domain/email/emailTopics.js"
 import { createAdminMessageGuard } from "../domain/email/adminMessageGuard.js"
 import { createAppUpdateNoticeGuard } from "../domain/email/appUpdateNoticeGuard.js"
 import { createEmailChangeMailGuard } from "../domain/email/emailChangeMailGuard.js"
+import { createInvestmentRecordedGuard } from "../domain/email/investmentRecordedGuard.js"
 import { createPasswordLinkMailGuard } from "../domain/email/passwordLinkMailGuard.js"
 import { createAdminEmailMessageRepository } from "../repositories/adminEmailMessageRepository.js"
 import { createAppUpdateAnnouncementRepository } from "../repositories/appUpdateAnnouncementRepository.js"
+import { createClientReceiptRepository } from "../repositories/clientReceiptRepository.js"
 import { createEmailChangeRepository } from "../repositories/emailChangeRepository.js"
 import { createEmailTemplateRepository } from "../repositories/emailTemplateRepository.js"
 import { createTransactionalEmailSender } from "../email/transactionalEmailSender.js"
@@ -107,6 +109,13 @@ export const composeEmailDispatchWorker = (
         "app_update_notice",
         createAppUpdateNoticeGuard({
           appUpdateAnnouncementRepository: createAppUpdateAnnouncementRepository(),
+          userRepository: createUserRepository(),
+        }),
+      ],
+      [
+        "investment_recorded",
+        createInvestmentRecordedGuard({
+          clientReceiptRepository: createClientReceiptRepository(),
           userRepository: createUserRepository(),
         }),
       ],

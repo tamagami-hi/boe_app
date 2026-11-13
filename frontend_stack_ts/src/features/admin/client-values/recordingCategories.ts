@@ -29,7 +29,7 @@ const EARLIER_INVESTMENT: RecordingCategoryCopy = {
   recordedTitle: "Earlier investment recorded",
   confirmTitle: "Record this earlier investment?",
   confirmLabel: "Record the investment",
-  confirmBody: `This records an investment the client has already paid to BeOnEdge. ${NOT_A_CHARGE} The client is notified and sees a receipt labelled Earlier investment. ${REVERSAL_NOTE}`,
+  confirmBody: `This records an investment the client has already paid to BeOnEdge. ${NOT_A_CHARGE} The client is notified in the app and by email, and sees a receipt labelled Earlier investment. ${REVERSAL_NOTE}`,
 }
 
 const MONTHLY_INVESTMENT: RecordingCategoryCopy = {
@@ -42,7 +42,7 @@ const MONTHLY_INVESTMENT: RecordingCategoryCopy = {
   recordedTitle: "Monthly investment recorded",
   confirmTitle: "Record this monthly investment?",
   confirmLabel: "Record the investment",
-  confirmBody: `This records a monthly investment the client paid to BeOnEdge directly. ${NOT_A_CHARGE} The client is notified and sees a receipt labelled Monthly investment. ${REVERSAL_NOTE}`,
+  confirmBody: `This records a monthly investment the client paid to BeOnEdge directly. ${NOT_A_CHARGE} The client is notified in the app and by email, and sees a receipt labelled Monthly investment. ${REVERSAL_NOTE}`,
 }
 
 const CORRECTION: RecordingCategoryCopy = {
@@ -56,7 +56,7 @@ const CORRECTION: RecordingCategoryCopy = {
   recordedTitle: "Correction recorded",
   confirmTitle: "Record this correction?",
   confirmLabel: "Record the correction",
-  confirmBody: `This adds an amount that is missing from the client's record. ${NOT_A_CHARGE} The client is notified and sees a receipt labelled Correction. ${REVERSAL_NOTE}`,
+  confirmBody: `This adds an amount that is missing from the client's record. ${NOT_A_CHARGE} The client is notified in the app, not by email, and sees a receipt labelled Correction. ${REVERSAL_NOTE}`,
 }
 
 export const RECORDING_CATEGORIES: readonly RecordingCategoryCopy[] = [EARLIER_INVESTMENT, MONTHLY_INVESTMENT, CORRECTION]

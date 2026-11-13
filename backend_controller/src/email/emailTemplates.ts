@@ -1,4 +1,5 @@
 import { renderEmail, type EmailBlock, type RenderedEmail } from "./emailLayout.js"
+import { formatCalendarDate, formatRupeesFromPaise } from "./emailMoney.js"
 import { EmailValidationError } from "./emailValidation.js"
 
 export interface EmailTemplateConfig {
@@ -23,6 +24,7 @@ const TEMPLATE_VERSIONS: ReadonlyMap<string, readonly string[]> = new Map([
   ["contact_email_changed", ["v1"]],
   ["admin_message", ["v1"]],
   ["app_update_notice", ["v1"]],
+  ["investment_recorded", ["v1"]],
 ])
 
 export interface PasswordLinkInput {
@@ -374,6 +376,59 @@ const appUpdateNoticeInput = (data: Readonly<Record<string, unknown>>): AppUpdat
   test: data.test === true,
 })
 
+export type RecordedInvestmentKind = "earlier_investment" | "monthly_investment"
+
+export interface InvestmentRecordedInput {
+  readonly fullName: string
+  readonly fundName: string
+  readonly amountPaise: string
+  readonly effectiveDate: string
+  readonly category: RecordedInvestmentKind
+}
+
+const RECORDED_INVESTMENT_NOUN: Readonly<Record<RecordedInvestmentKind, string>> = {
+  earlier_investment: "earlier investment",
+  monthly_investment: "monthly investment",
+}
+
+export const investmentRecordedEmail = (input: InvestmentRecordedInput, config: EmailTemplateConfig): RenderedEmail => {
+  const amount = formatRupeesFromPaise(input.amountPaise)
+  const date = formatCalendarDate(input.effectiveDate)
+  return renderEmail({
+    subject: "Investment added",
+    preheader: "An investment has been added to your BeOnEdge app.",
+    heading: "Investment added",
+    supportAddress: config.supportAddress,
+    blocks: [
+      { kind: "text", text: `Hello ${input.fullName},` },
+      {
+        kind: "text",
+        text: `Your ${RECORDED_INVESTMENT_NOUN[input.category]} of ${amount} in ${input.fundName}, dated ${date}, has been added to your BeOnEdge app.`,
+      },
+      { kind: "text", text: "Open the BeOnEdge app to check it in your portfolio and on its receipt." },
+      ...webAppBlocks(config),
+      { kind: "text", text: "If you do not recognise this investment, contact BeOnEdge support." },
+      { kind: "text", text: "Investments are subject to market risk." },
+    ],
+  })
+}
+
+const recordedInvestmentKind = (data: Readonly<Record<string, unknown>>): RecordedInvestmentKind => {
+  const category = data.category
+  if (category !== "earlier_investment" && category !== "monthly_investment") {
+    throw new EmailValidationError("EMAIL_TEMPLATE_DATA_INVALID")
+  }
+  return category
+}
+
+const investmentRecordedInput = (data: Readonly<Record<string, unknown>>): InvestmentRecordedInput => ({
+  fullName: requiredString(data, "fullName"),
+  fundName: requiredString(data, "fundName"),
+  amountPaise: requiredString(data, "amountPaise"),
+  effectiveDate: requiredString(data, "effectiveDate"),
+  category: recordedInvestmentKind(data),
+})
+
 const buildTemplate = (
   templateKey: string,
   templateData: Readonly<Record<string, unknown>>,
@@ -403,6 +458,8 @@ const buildTemplate = (
       return adminMessageEmail(adminMessageInput(templateData), config)
     case "app_update_notice":
       return appUpdateNoticeEmail(appUpdateNoticeInput(templateData), config)
+    case "investment_recorded":
+      return investmentRecordedEmail(investmentRecordedInput(templateData), config)
     default:
       return null
   }

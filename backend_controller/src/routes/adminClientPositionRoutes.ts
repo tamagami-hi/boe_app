@@ -39,6 +39,7 @@ const READ_PERMISSIONS = ["client_position.write", "client_values.read"] as cons
 
 export interface AdminClientPositionConfig {
   readonly idempotencyTtlMs: number
+  readonly sesConfigurationSet: string
 }
 
 export interface AdminClientPositionDeps extends RecordContributionDeps, ReverseLedgerEntryDeps {

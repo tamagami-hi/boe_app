@@ -11,6 +11,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest"
 
 import { createAccessTokenService } from "../../src/auth/accessToken.js"
 import { hashPassword } from "../../src/auth/passwordHasher.js"
+import { createCryptoContext, parseCryptoKeys } from "../../src/crypto/context.js"
 import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
 import { SEED_ROLE_PERMISSIONS } from "../../src/db/seedCatalog.js"
@@ -18,6 +19,8 @@ import type { WebAuthDeps } from "../../src/domain/auth/webAuth.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
 import { createAuthSessionRepository } from "../../src/repositories/authSessionRepository.js"
 import { createClientPositionRepository } from "../../src/repositories/clientPositionRepository.js"
+import { createEmailDeliveryRepository } from "../../src/repositories/emailDeliveryRepository.js"
+import { createOutboxRepository } from "../../src/repositories/outboxRepository.js"
 import { registerAdminClientPositionRoutes } from "../../src/routes/adminClientPositionRoutes.js"
 import { createClientGrowthRepository } from "../../src/repositories/clientGrowthRepository.js"
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
@@ -31,6 +34,7 @@ import { registerWebAuthRoutes } from "../../src/routes/webAuthRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
 import { loadMigrationFiles, runMigrations } from "../../src/scripts/migrate.js"
 import { runSeed } from "../../src/scripts/seed.js"
+import { CRYPTO_ENV } from "./passwordMailSupport.js"
 
 const PASSWORD = "correct horse battery staple"
 const ORIGIN = "https://admin.beonedge.test"
@@ -264,7 +268,10 @@ beforeAll(async () => {
       })
       registerAdminClientPositionRoutes(instance, {
         webAuth, unitOfWork, database, clock: () => new Date(),
-        config: { idempotencyTtlMs: 86_400_000 },
+        config: { idempotencyTtlMs: 86_400_000, sesConfigurationSet: "boe-transactional" },
+        outboxRepository: createOutboxRepository(),
+        emailDeliveryRepository: createEmailDeliveryRepository(),
+        crypto: createCryptoContext(parseCryptoKeys(CRYPTO_ENV)),
         clientPositionRepository: createClientPositionRepository(),
         userRepository: createUserRepository(),
         clientGrowthRepository: createClientGrowthRepository(),
