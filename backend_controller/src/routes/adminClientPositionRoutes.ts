@@ -15,7 +15,7 @@ import {
   type ReverseLedgerEntryDeps,
 } from "../domain/admin/reverseLedgerEntry.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
-import { AppError } from "../http/errorCatalog.js"
+import { refuseFutureDate } from "../domain/shared/calendarDate.js"
 import { parseOrThrow } from "../http/validation.js"
 import {
   adminIdempotencyScope,
@@ -74,14 +74,6 @@ const userIdOf = (request: FastifyRequest): string =>
 const entryIdOf = (request: FastifyRequest): string =>
   parseOrThrow(uuidParam, (request.params as { entryId?: unknown }).entryId)
 
-const assertNotFuture = (effectiveDate: string, now: Date): void => {
-  if (effectiveDate > now.toISOString().slice(0, 10)) {
-    throw new AppError("VALIDATION_FAILED", {
-      fields: { effectiveDate: ["A past investment cannot be dated in the future."] },
-    })
-  }
-}
-
 const recordedContribution = async (
   deps: AdminClientPositionDeps,
   request: FastifyRequest,
@@ -93,7 +85,7 @@ const recordedContribution = async (
   const body = parseOrThrow(recordedContributionSchema, request.body)
   const key = requireIdempotencyKey(request)
   const now = deps.clock()
-  assertNotFuture(body.effectiveDate, now)
+  refuseFutureDate("effectiveDate", body.effectiveDate, now)
 
   const result = await runAdminMutation({
     unitOfWork: deps.unitOfWork,

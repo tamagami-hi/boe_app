@@ -4,6 +4,7 @@ import type { AuditWriteRepository } from "../../repositories/auditRepository.js
 import type { ClientGrowthRepository } from "../../repositories/clientGrowthRepository.js"
 import type { MaturityRepository, SettlementEntryInput } from "../../repositories/maturityRepository.js"
 import type { NotificationWriteRepository } from "../../repositories/notificationRepository.js"
+import { indiaCalendarDate } from "../shared/calendarDate.js"
 
 export { updateWithdrawalPayout } from "./withdrawalPayout.js"
 
@@ -54,7 +55,7 @@ const MAX_PAISE = 9_223_372_036_854_775_807n
 const assertDate = (date: string, now: Date): void => {
   const parsed = new Date(`${date}T00:00:00.000Z`)
   if (!/^\d{4}-\d{2}-\d{2}$/u.test(date) || !Number.isFinite(parsed.getTime()) ||
-      parsed.toISOString().slice(0, 10) !== date || date > now.toISOString().slice(0, 10)) {
+      parsed.toISOString().slice(0, 10) !== date || date > indiaCalendarDate(now)) {
     throw new AppError("VALIDATION_FAILED", { message: "Use a valid calendar date that is not in the future." })
   }
 }
@@ -141,7 +142,7 @@ const recordSettlement = async (
     body: settlement === "withdrawal"
       ? "A withdrawal has been deducted from your portfolio and is awaiting payout. Contact support for transfer details."
       : "Your matured investment has been reinvested. Open your portfolio to see the updated principal.",
-    payload: { fundId: input.fundId, maturityId: input.maturityId },
+    payload: { fundId: input.fundId, maturityId: input.maturityId, deepLink: "/portfolio" },
   })
   return result
 }

@@ -47,6 +47,7 @@ const idempotencyRepository: IdempotencyRepository = {
 
 let app: FastifyInstance
 let keySequence = 0
+let now = NOW
 
 const post = async (payload: object) => {
   keySequence += 1
@@ -61,6 +62,7 @@ const post = async (payload: object) => {
 
 beforeEach(() => {
   vi.resetAllMocks()
+  now = NOW
   vi.mocked(resolveAdminPrincipal).mockResolvedValue({ userId: "admin-1" } as unknown as Awaited<
     ReturnType<typeof resolveAdminPrincipal>
   >)
@@ -80,7 +82,7 @@ beforeEach(() => {
       registerAdminClientPositionRoutes(instance, {
         unitOfWork: { execute: (work: (tx: unknown) => Promise<unknown>) => work({}) },
         idempotencyRepository,
-        clock: () => NOW,
+        clock: () => now,
         webAuth: {},
         config: { idempotencyTtlMs: 86_400_000 },
       } as unknown as AdminClientPositionDeps)
@@ -124,6 +126,25 @@ describe("recorded contribution effective date", () => {
     expect(result.status).toBe(201)
     expect(recordContribution).toHaveBeenCalledTimes(1)
     expect(vi.mocked(recordContribution).mock.calls[0]?.[2]).toMatchObject({ effectiveDate: date })
+  })
+
+  test("accepts today in India while the UTC day is still yesterday", async () => {
+    now = new Date("2026-11-13T19:00:00.000Z")
+
+    const result = await post({ ...VALID_BODY, effectiveDate: "2026-11-14" })
+
+    expect(result.status).toBe(201)
+    expect(vi.mocked(recordContribution).mock.calls[0]?.[2]).toMatchObject({ effectiveDate: "2026-11-14" })
+  })
+
+  test("rejects tomorrow in India, before writing anything", async () => {
+    now = new Date("2026-11-13T19:00:00.000Z")
+
+    const result = await post({ ...VALID_BODY, effectiveDate: "2026-11-15" })
+
+    expect(result.status).toBe(400)
+    expect(result.envelope.error?.fields?.effectiveDate).toBeDefined()
+    expect(recordContribution).not.toHaveBeenCalled()
   })
 
   test("still rejects a real date after today", async () => {

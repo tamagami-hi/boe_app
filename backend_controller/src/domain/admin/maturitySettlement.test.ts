@@ -154,6 +154,20 @@ describe("maturity settlement financial integrity", () => {
     await expect(markPositionMatured(TX, domainDeps(deps), { ...INPUT, maturedOn: "2026-09-09" })).rejects.toMatchObject({ code: "STATE_CONFLICT" })
     expect(deps.maturityRepository.markMatured).not.toHaveBeenCalled()
   })
+
+  test("dates maturity by the India calendar day, so 00:30 IST can mature today but not tomorrow", async () => {
+    const halfPastMidnightInIndia = new Date("2026-11-13T19:00:00.000Z")
+    const accepted = { ...dependencies(), clock: () => halfPastMidnightInIndia }
+    const refused = { ...dependencies(), clock: () => halfPastMidnightInIndia }
+
+    await markPositionMatured(TX, domainDeps(accepted), { ...INPUT, maturedOn: "2026-11-14" })
+    await expect(
+      markPositionMatured(TX, domainDeps(refused), { ...INPUT, maturedOn: "2026-11-15" }),
+    ).rejects.toMatchObject({ code: "VALIDATION_FAILED" })
+
+    expect(accepted.maturityRepository.markMatured).toHaveBeenCalledTimes(1)
+    expect(refused.maturityRepository.markMatured).not.toHaveBeenCalled()
+  })
 })
 
 

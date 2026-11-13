@@ -37,7 +37,10 @@ const positionDeps = () =>
         .fn()
         .mockResolvedValue({ principalPaise: "500000", currentValuePaise: "500000", latestEntryId: "entry-1" }),
     },
-    userRepository: { lockById: vi.fn().mockResolvedValue({ id: "user-1", version: "1" }) },
+    userRepository: {
+      lockById: vi.fn().mockResolvedValue({ id: "user-1", version: "1", account_state: "active" }),
+      findActiveRolesAndPermissions: vi.fn().mockResolvedValue({ roles: [], permissions: [] }),
+    },
     auditRepository: { append: vi.fn().mockResolvedValue(undefined) },
     notificationRepository: { create: vi.fn().mockResolvedValue(undefined) },
     clock: () => NOW,
@@ -109,6 +112,42 @@ describe("recorded offline contributions", () => {
     ).toBeLessThan(
       vi.mocked(deps.clientPositionRepository.insertRecordedOrder).mock.invocationCallOrder[0] ?? 0,
     )
+  })
+
+  test.each([
+    ["a closed account", { account_state: "closed" }, []],
+    ["an invited account that was never activated", { account_state: "invited" }, []],
+    ["an administrator account", { account_state: "active" }, ["superadmin"]],
+  ])("refuses %s before any money, audit or notification write", async (_name, user, roles) => {
+    const deps = positionDeps()
+    vi.mocked(deps.userRepository.lockById).mockResolvedValue({ id: "user-1", version: "1", ...user } as never)
+    vi.mocked(deps.userRepository.findActiveRolesAndPermissions).mockResolvedValue({ roles, permissions: [] })
+
+    await expect(recordContribution(TX, deps, input)).rejects.toMatchObject({ code: "STATE_CONFLICT" })
+
+    for (const write of [
+      deps.clientPositionRepository.insertRecordedOrder,
+      deps.clientPositionRepository.insertRecordedPayment,
+      deps.clientPositionRepository.insertRecordedAllocation,
+      deps.clientPositionRepository.insertContributionEntry,
+      deps.auditRepository.append,
+      deps.notificationRepository.create,
+    ]) {
+      expect(write).not.toHaveBeenCalled()
+    }
+  })
+
+  test("still records for a suspended client, whose money stays managed while suspended", async () => {
+    const deps = positionDeps()
+    vi.mocked(deps.userRepository.lockById).mockResolvedValue({
+      id: "user-1",
+      version: "1",
+      account_state: "suspended",
+    } as never)
+
+    await recordContribution(TX, deps, input)
+
+    expect(deps.clientPositionRepository.insertContributionEntry).toHaveBeenCalledTimes(1)
   })
 
   test("writes nothing when the fund has no resolvable version", async () => {
