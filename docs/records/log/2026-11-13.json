@@ -2768,6 +2768,817 @@
       "track": "main",
       "agent": "coordinator-b-close",
       "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T14:56:14.864Z",
+      "session": "7c6ac546-fcfb-4631-bf09-cefaa0639575",
+      "track": "main",
+      "agent": "lane-c-composition",
+      "verb": "task_plan",
+      "target": "M6-phase-c"
+    },
+    {
+      "at": "2026-11-13T14:56:24.845Z",
+      "session": "d8c44dce-49d5-45c3-96c1-537ba4e2a515",
+      "track": "main",
+      "agent": "lane-e-autopay",
+      "verb": "task_unwait",
+      "target": "M8-phase-e / E2-autopay-fixes"
+    },
+    {
+      "at": "2026-11-13T14:56:25.108Z",
+      "session": "7c6ac546-fcfb-4631-bf09-cefaa0639575",
+      "track": "main",
+      "agent": "lane-c-composition",
+      "verb": "task_claim",
+      "target": "M6-phase-c / C-L0-composition"
+    },
+    {
+      "at": "2026-11-13T14:56:25.411Z",
+      "session": "cb500c58-2f2f-491f-90ea-b1dd9c71acef",
+      "track": "main",
+      "agent": "lane-c-hardening",
+      "verb": "task_claim",
+      "target": "M6-phase-c / C-L5-hardening"
+    },
+    {
+      "at": "2026-11-13T14:56:25.702Z",
+      "session": "d8c44dce-49d5-45c3-96c1-537ba4e2a515",
+      "track": "main",
+      "agent": "lane-e-autopay",
+      "verb": "task_claim",
+      "target": "M8-phase-e / E2-autopay-fixes"
+    },
+    {
+      "at": "2026-11-13T14:56:34.569Z",
+      "session": "7c6ac546-fcfb-4631-bf09-cefaa0639575",
+      "track": "main",
+      "agent": "lane-c-composition",
+      "verb": "track_open",
+      "target": "c-composition"
+    },
+    {
+      "at": "2026-11-13T14:56:34.971Z",
+      "session": "cb500c58-2f2f-491f-90ea-b1dd9c71acef",
+      "track": "main",
+      "agent": "lane-c-hardening",
+      "verb": "track_open",
+      "target": "c-hardening"
+    },
+    {
+      "at": "2026-11-13T14:56:35.444Z",
+      "session": "d8c44dce-49d5-45c3-96c1-537ba4e2a515",
+      "track": "main",
+      "agent": "lane-e-autopay",
+      "verb": "track_open",
+      "target": "e-autopay"
+    },
+    {
+      "at": "2026-11-13T15:04:42.279Z",
+      "session": "24df4f68-0975-4445-8294-9e3daca32c9c",
+      "track": "c-composition",
+      "agent": "lane-c-composition-worker",
+      "verb": "handoff_write",
+      "target": "M6-phase-c:C-L0-composition"
+    },
+    {
+      "at": "2026-11-13T15:05:17.894Z",
+      "session": "24df4f68-0975-4445-8294-9e3daca32c9c",
+      "track": "c-composition",
+      "agent": "lane-c-composition-worker",
+      "verb": "land_start"
+    },
+    {
+      "at": "2026-11-13T15:06:54.590Z",
+      "session": "7c6ac546-fcfb-4631-bf09-cefaa0639575",
+      "track": "main",
+      "agent": "lane-c-composition",
+      "verb": "task_land",
+      "target": "M6-phase-c / C-L0-composition"
+    },
+    {
+      "at": "2026-11-13T15:06:54.839Z",
+      "session": "24df4f68-0975-4445-8294-9e3daca32c9c",
+      "track": "c-composition",
+      "agent": "lane-c-composition-worker",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T15:07:04.246Z",
+      "session": "7c6ac546-fcfb-4631-bf09-cefaa0639575",
+      "track": "main",
+      "agent": "lane-c-composition",
+      "verb": "track_close",
+      "target": "c-composition"
+    },
+    {
+      "at": "2026-11-13T15:07:04.539Z",
+      "session": "7c6ac546-fcfb-4631-bf09-cefaa0639575",
+      "track": "main",
+      "agent": "lane-c-composition",
+      "verb": "task_claim",
+      "target": "M6-phase-c / C-L1-nominee"
+    },
+    {
+      "at": "2026-11-13T15:07:17.900Z",
+      "session": "9b01e7f7-2329-475c-b8f5-f9d6b4d8194d",
+      "track": "main",
+      "agent": "lane-c-sip",
+      "verb": "task_claim",
+      "target": "M6-phase-c / C-L2-sip-schedule"
+    },
+    {
+      "at": "2026-11-13T15:07:18.324Z",
+      "session": "7c6ac546-fcfb-4631-bf09-cefaa0639575",
+      "track": "main",
+      "agent": "lane-c-composition",
+      "verb": "track_open",
+      "target": "c-nominee"
+    },
+    {
+      "at": "2026-11-13T15:07:18.731Z",
+      "session": "9b01e7f7-2329-475c-b8f5-f9d6b4d8194d",
+      "track": "main",
+      "agent": "lane-c-sip",
+      "verb": "track_open",
+      "target": "c-sip"
+    },
+    {
+      "at": "2026-11-13T15:07:19.150Z",
+      "session": "7c6ac546-fcfb-4631-bf09-cefaa0639575",
+      "track": "main",
+      "agent": "lane-c-composition",
+      "verb": "track_open",
+      "target": "c-reports"
+    },
+    {
+      "at": "2026-11-13T15:22:17.183Z",
+      "session": "d957dfcd-e558-458b-8a70-db626e557782",
+      "track": "e-autopay",
+      "agent": "lane-e-autopay-worker",
+      "verb": "note_post",
+      "target": "M8-phase-e:E2-autopay-fixes, heads-up"
+    },
+    {
+      "at": "2026-11-13T15:22:30.422Z",
+      "session": "d957dfcd-e558-458b-8a70-db626e557782",
+      "track": "e-autopay",
+      "agent": "lane-e-autopay-worker",
+      "verb": "handoff_write",
+      "target": "M8-phase-e:E2-autopay-fixes"
+    },
+    {
+      "at": "2026-11-13T15:23:34.435Z",
+      "session": "d8c44dce-49d5-45c3-96c1-537ba4e2a515",
+      "track": "main",
+      "agent": "lane-e-autopay",
+      "verb": "question_add"
+    },
+    {
+      "at": "2026-11-13T15:27:23.712Z",
+      "session": "37f4cdda-7e5b-4261-9b25-b5f51024b892",
+      "track": "c-hardening",
+      "agent": "lane-c-hardening-worker",
+      "verb": "handoff_write",
+      "target": "M6-phase-c:C-L5-hardening"
+    },
+    {
+      "at": "2026-11-13T15:27:32.643Z",
+      "session": "37f4cdda-7e5b-4261-9b25-b5f51024b892",
+      "track": "c-hardening",
+      "agent": "lane-c-hardening-worker",
+      "verb": "note_post",
+      "target": "M6-phase-c:C-L5-hardening, heads-up"
+    },
+    {
+      "at": "2026-11-13T15:29:41.199Z",
+      "session": "37f4cdda-7e5b-4261-9b25-b5f51024b892",
+      "track": "c-hardening",
+      "agent": "lane-c-hardening-worker",
+      "verb": "land_start"
+    },
+    {
+      "at": "2026-11-13T15:36:45.858Z",
+      "session": "d957dfcd-e558-458b-8a70-db626e557782",
+      "track": "e-autopay",
+      "agent": "lane-e-autopay-worker",
+      "verb": "handoff_write",
+      "target": "M8-phase-e:E2-autopay-fixes"
+    },
+    {
+      "at": "2026-11-13T15:36:55.045Z",
+      "session": "16aadc14-0710-4590-a37e-39c5c5129771",
+      "track": "c-reports",
+      "agent": "lane-c-reports-worker",
+      "verb": "note_post",
+      "target": "M6-phase-c:C-L4-reports-audit, heads-up"
+    },
+    {
+      "at": "2026-11-13T15:37:58.242Z",
+      "session": "cb500c58-2f2f-491f-90ea-b1dd9c71acef",
+      "track": "main",
+      "agent": "lane-c-hardening",
+      "verb": "task_land",
+      "target": "M6-phase-c / C-L5-hardening"
+    },
+    {
+      "at": "2026-11-13T15:37:58.575Z",
+      "session": "37f4cdda-7e5b-4261-9b25-b5f51024b892",
+      "track": "c-hardening",
+      "agent": "lane-c-hardening-worker",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T15:38:10.457Z",
+      "session": "cb500c58-2f2f-491f-90ea-b1dd9c71acef",
+      "track": "main",
+      "agent": "lane-c-hardening",
+      "verb": "task_claim",
+      "target": "M6-phase-c / C-L4-reports-audit"
+    },
+    {
+      "at": "2026-11-13T15:38:24.623Z",
+      "session": "cb500c58-2f2f-491f-90ea-b1dd9c71acef",
+      "track": "main",
+      "agent": "lane-c-hardening",
+      "verb": "track_close",
+      "target": "c-hardening"
+    },
+    {
+      "at": "2026-11-13T15:40:35.415Z",
+      "session": "1dc53a60-4d44-4be4-ba51-cbf6c9e49c3f",
+      "track": "c-sip",
+      "agent": "lane-c-sip-worker",
+      "verb": "note_post",
+      "target": "M6-phase-c:C-L2-sip-schedule, heads-up"
+    },
+    {
+      "at": "2026-11-13T15:42:00.017Z",
+      "session": "d957dfcd-e558-458b-8a70-db626e557782",
+      "track": "e-autopay",
+      "agent": "lane-e-autopay-worker",
+      "verb": "handoff_write",
+      "target": "M8-phase-e:E2-autopay-fixes"
+    },
+    {
+      "at": "2026-11-13T15:42:25.082Z",
+      "session": "d957dfcd-e558-458b-8a70-db626e557782",
+      "track": "e-autopay",
+      "agent": "lane-e-autopay-worker",
+      "verb": "land_start"
+    },
+    {
+      "at": "2026-11-13T15:44:31.458Z",
+      "session": "57c274e3-ca87-4e7b-87e1-38702d2c3770",
+      "track": "c-nominee",
+      "agent": "lane-c-nominee-worker",
+      "verb": "note_post",
+      "target": "M6-phase-c:C-L1-nominee, heads-up"
+    },
+    {
+      "at": "2026-11-13T15:44:50.523Z",
+      "session": "57c274e3-ca87-4e7b-87e1-38702d2c3770",
+      "track": "c-nominee",
+      "agent": "lane-c-nominee-worker",
+      "verb": "handoff_write",
+      "target": "M6-phase-c:C-L1-nominee"
+    },
+    {
+      "at": "2026-11-13T15:44:55.079Z",
+      "session": "57c274e3-ca87-4e7b-87e1-38702d2c3770",
+      "track": "c-nominee",
+      "agent": "lane-c-nominee-worker",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T15:46:43.143Z",
+      "session": "16aadc14-0710-4590-a37e-39c5c5129771",
+      "track": "c-reports",
+      "agent": "lane-c-reports-worker",
+      "verb": "handoff_write",
+      "target": "M6-phase-c:C-L4-reports-audit"
+    },
+    {
+      "at": "2026-11-13T15:51:08.243Z",
+      "session": "1dc53a60-4d44-4be4-ba51-cbf6c9e49c3f",
+      "track": "c-sip",
+      "agent": "lane-c-sip-worker",
+      "verb": "handoff_write",
+      "target": "M6-phase-c:C-L2-sip-schedule"
+    },
+    {
+      "at": "2026-11-13T15:53:49.545Z",
+      "session": "d8c44dce-49d5-45c3-96c1-537ba4e2a515",
+      "track": "main",
+      "agent": "lane-e-autopay",
+      "verb": "task_land",
+      "target": "M8-phase-e / E2-autopay-fixes"
+    },
+    {
+      "at": "2026-11-13T15:53:49.846Z",
+      "session": "d957dfcd-e558-458b-8a70-db626e557782",
+      "track": "e-autopay",
+      "agent": "lane-e-autopay-worker",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T15:53:50.186Z",
+      "session": "d8c44dce-49d5-45c3-96c1-537ba4e2a515",
+      "track": "main",
+      "agent": "lane-e-autopay",
+      "verb": "task_unwait",
+      "target": "M8-phase-e / E1-reviews"
+    },
+    {
+      "at": "2026-11-13T15:53:58.890Z",
+      "session": "d8c44dce-49d5-45c3-96c1-537ba4e2a515",
+      "track": "main",
+      "agent": "lane-e-autopay",
+      "verb": "track_close",
+      "target": "e-autopay"
+    },
+    {
+      "at": "2026-11-13T15:53:59.196Z",
+      "session": "d8c44dce-49d5-45c3-96c1-537ba4e2a515",
+      "track": "main",
+      "agent": "lane-e-autopay",
+      "verb": "task_claim",
+      "target": "M8-phase-e / E1-reviews"
+    },
+    {
+      "at": "2026-11-13T15:53:59.596Z",
+      "session": "d8c44dce-49d5-45c3-96c1-537ba4e2a515",
+      "track": "main",
+      "agent": "lane-e-autopay",
+      "verb": "track_open",
+      "target": "e-reviews"
+    },
+    {
+      "at": "2026-11-13T15:54:38.850Z",
+      "session": "d8c44dce-49d5-45c3-96c1-537ba4e2a515",
+      "track": "main",
+      "agent": "lane-e-autopay",
+      "verb": "context_put",
+      "target": "convention"
+    },
+    {
+      "at": "2026-11-13T17:14:29.111Z",
+      "session": "16aadc14-0710-4590-a37e-39c5c5129771",
+      "track": "c-reports",
+      "agent": "lane-c-reports-worker",
+      "verb": "handoff_write",
+      "target": "M6-phase-c:C-L4-reports-audit"
+    },
+    {
+      "at": "2026-11-13T17:14:59.342Z",
+      "session": "16aadc14-0710-4590-a37e-39c5c5129771",
+      "track": "c-reports",
+      "agent": "lane-c-reports-worker",
+      "verb": "land_start"
+    },
+    {
+      "at": "2026-11-13T17:17:01.214Z",
+      "session": "d519f183-2ca2-4172-a5bf-851abe47f5a1",
+      "track": "c-nominee",
+      "agent": "lane-c-nominee-worker",
+      "verb": "handoff_write",
+      "target": "M6-phase-c:C-L1-nominee"
+    },
+    {
+      "at": "2026-11-13T17:17:02.002Z",
+      "session": "d519f183-2ca2-4172-a5bf-851abe47f5a1",
+      "track": "c-nominee",
+      "agent": "lane-c-nominee-worker",
+      "verb": "note_post",
+      "target": "M6-phase-c:C-L1-nominee, heads-up"
+    },
+    {
+      "at": "2026-11-13T17:17:02.759Z",
+      "session": "d519f183-2ca2-4172-a5bf-851abe47f5a1",
+      "track": "c-nominee",
+      "agent": "lane-c-nominee-worker",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T17:22:08.572Z",
+      "session": "1dc53a60-4d44-4be4-ba51-cbf6c9e49c3f",
+      "track": "c-sip",
+      "agent": "lane-c-sip-worker",
+      "verb": "handoff_write",
+      "target": "M6-phase-c:C-L2-sip-schedule"
+    },
+    {
+      "at": "2026-11-13T17:22:52.088Z",
+      "session": "cb500c58-2f2f-491f-90ea-b1dd9c71acef",
+      "track": "main",
+      "agent": "lane-c-hardening",
+      "verb": "task_land",
+      "target": "M6-phase-c / C-L4-reports-audit"
+    },
+    {
+      "at": "2026-11-13T17:22:52.346Z",
+      "session": "16aadc14-0710-4590-a37e-39c5c5129771",
+      "track": "c-reports",
+      "agent": "lane-c-reports-worker",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T17:23:07.667Z",
+      "session": "cb500c58-2f2f-491f-90ea-b1dd9c71acef",
+      "track": "main",
+      "agent": "lane-c-hardening",
+      "verb": "track_close",
+      "target": "c-reports"
+    },
+    {
+      "at": "2026-11-13T17:28:58.290Z",
+      "session": "5dc6a4d7-1187-42a4-bc51-631c65a06baf",
+      "track": "c-nominee",
+      "agent": "lane-c-nominee-worker",
+      "verb": "handoff_write",
+      "target": "M6-phase-c:C-L1-nominee"
+    },
+    {
+      "at": "2026-11-13T17:28:59.102Z",
+      "session": "5dc6a4d7-1187-42a4-bc51-631c65a06baf",
+      "track": "c-nominee",
+      "agent": "lane-c-nominee-worker",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T17:29:57.139Z",
+      "session": "417f8721-7b47-44e8-bed6-2bb799d9a9eb",
+      "track": "c-nominee",
+      "agent": "coordinator-land-c-nominee",
+      "verb": "land_start"
+    },
+    {
+      "at": "2026-11-13T17:38:25.255Z",
+      "session": "7c6ac546-fcfb-4631-bf09-cefaa0639575",
+      "track": "main",
+      "agent": "lane-c-composition",
+      "verb": "task_land",
+      "target": "M6-phase-c / C-L1-nominee"
+    },
+    {
+      "at": "2026-11-13T17:38:25.537Z",
+      "session": "417f8721-7b47-44e8-bed6-2bb799d9a9eb",
+      "track": "c-nominee",
+      "agent": "coordinator-land-c-nominee",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T17:38:33.408Z",
+      "session": "7c6ac546-fcfb-4631-bf09-cefaa0639575",
+      "track": "main",
+      "agent": "lane-c-composition",
+      "verb": "track_close",
+      "target": "c-nominee"
+    },
+    {
+      "at": "2026-11-13T17:45:22.723Z",
+      "session": "1dc53a60-4d44-4be4-ba51-cbf6c9e49c3f",
+      "track": "c-sip",
+      "agent": "lane-c-sip-worker",
+      "verb": "handoff_write",
+      "target": "M6-phase-c:C-L2-sip-schedule"
+    },
+    {
+      "at": "2026-11-13T17:45:49.528Z",
+      "session": "1dc53a60-4d44-4be4-ba51-cbf6c9e49c3f",
+      "track": "c-sip",
+      "agent": "lane-c-sip-worker",
+      "verb": "land_start"
+    },
+    {
+      "at": "2026-11-13T17:49:36.219Z",
+      "session": "9890e453-5859-42a8-84e9-f4cd7c8332f3",
+      "track": "e-reviews",
+      "agent": "lane-e-reviews-worker",
+      "verb": "handoff_write",
+      "target": "M8-phase-e:E1-reviews"
+    },
+    {
+      "at": "2026-11-13T17:49:46.161Z",
+      "session": "9890e453-5859-42a8-84e9-f4cd7c8332f3",
+      "track": "e-reviews",
+      "agent": "lane-e-reviews-worker",
+      "verb": "note_post",
+      "target": "M8-phase-e:E1-reviews, heads-up"
+    },
+    {
+      "at": "2026-11-13T17:50:54.500Z",
+      "session": "9b01e7f7-2329-475c-b8f5-f9d6b4d8194d",
+      "track": "main",
+      "agent": "lane-c-sip",
+      "verb": "task_land",
+      "target": "M6-phase-c / C-L2-sip-schedule"
+    },
+    {
+      "at": "2026-11-13T17:50:54.790Z",
+      "session": "1dc53a60-4d44-4be4-ba51-cbf6c9e49c3f",
+      "track": "c-sip",
+      "agent": "lane-c-sip-worker",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T17:51:04.264Z",
+      "session": "9b01e7f7-2329-475c-b8f5-f9d6b4d8194d",
+      "track": "main",
+      "agent": "lane-c-sip",
+      "verb": "track_close",
+      "target": "c-sip"
+    },
+    {
+      "at": "2026-11-13T17:51:04.538Z",
+      "session": "9b01e7f7-2329-475c-b8f5-f9d6b4d8194d",
+      "track": "main",
+      "agent": "lane-c-sip",
+      "verb": "task_claim",
+      "target": "M6-phase-c / C-L2-maturity"
+    },
+    {
+      "at": "2026-11-13T17:51:04.817Z",
+      "session": "7c6ac546-fcfb-4631-bf09-cefaa0639575",
+      "track": "main",
+      "agent": "lane-c-composition",
+      "verb": "task_claim",
+      "target": "M6-phase-c / C-L3-payment-sheet"
+    },
+    {
+      "at": "2026-11-13T17:51:12.076Z",
+      "session": "9b01e7f7-2329-475c-b8f5-f9d6b4d8194d",
+      "track": "main",
+      "agent": "lane-c-sip",
+      "verb": "track_open",
+      "target": "c-maturity"
+    },
+    {
+      "at": "2026-11-13T17:51:12.432Z",
+      "session": "7c6ac546-fcfb-4631-bf09-cefaa0639575",
+      "track": "main",
+      "agent": "lane-c-composition",
+      "verb": "track_open",
+      "target": "c-payment-sheet"
+    },
+    {
+      "at": "2026-11-13T18:03:19.618Z",
+      "session": "9890e453-5859-42a8-84e9-f4cd7c8332f3",
+      "track": "e-reviews",
+      "agent": "lane-e-reviews-worker",
+      "verb": "handoff_write",
+      "target": "M8-phase-e:E1-reviews"
+    },
+    {
+      "at": "2026-11-13T18:03:48.960Z",
+      "session": "9890e453-5859-42a8-84e9-f4cd7c8332f3",
+      "track": "e-reviews",
+      "agent": "lane-e-reviews-worker",
+      "verb": "land_start"
+    },
+    {
+      "at": "2026-11-13T18:09:10.115Z",
+      "session": "d8c44dce-49d5-45c3-96c1-537ba4e2a515",
+      "track": "main",
+      "agent": "lane-e-autopay",
+      "verb": "task_land",
+      "target": "M8-phase-e / E1-reviews"
+    },
+    {
+      "at": "2026-11-13T18:09:10.342Z",
+      "session": "9890e453-5859-42a8-84e9-f4cd7c8332f3",
+      "track": "e-reviews",
+      "agent": "lane-e-reviews-worker",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T18:09:20.244Z",
+      "session": "d8c44dce-49d5-45c3-96c1-537ba4e2a515",
+      "track": "main",
+      "agent": "lane-e-autopay",
+      "verb": "track_close",
+      "target": "e-reviews"
+    },
+    {
+      "at": "2026-11-13T18:17:12.438Z",
+      "session": "dbcee17d-bed4-41f0-b071-99086285a3e3",
+      "track": "c-payment-sheet",
+      "agent": "lane-c-payment-sheet-worker",
+      "verb": "note_post",
+      "target": "M6-phase-c:C-L3-payment-sheet, heads-up"
+    },
+    {
+      "at": "2026-11-13T18:17:33.207Z",
+      "session": "dbcee17d-bed4-41f0-b071-99086285a3e3",
+      "track": "c-payment-sheet",
+      "agent": "lane-c-payment-sheet-worker",
+      "verb": "handoff_write",
+      "target": "M6-phase-c:C-L3-payment-sheet"
+    },
+    {
+      "at": "2026-11-13T18:17:40.716Z",
+      "session": "dbcee17d-bed4-41f0-b071-99086285a3e3",
+      "track": "c-payment-sheet",
+      "agent": "lane-c-payment-sheet-worker",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T18:19:47.249Z",
+      "session": "eaa97588-d7d6-46aa-ab5a-29dea025ec67",
+      "track": "c-maturity",
+      "agent": "lane-c-maturity-worker",
+      "verb": "note_post",
+      "target": "heads-up"
+    },
+    {
+      "at": "2026-11-13T18:23:50.788Z",
+      "session": "eaa97588-d7d6-46aa-ab5a-29dea025ec67",
+      "track": "c-maturity",
+      "agent": "lane-c-maturity-worker",
+      "verb": "handoff_write",
+      "target": "M6-phase-c:C-L2-maturity"
+    },
+    {
+      "at": "2026-11-13T18:24:32.476Z",
+      "session": "9b01e7f7-2329-475c-b8f5-f9d6b4d8194d",
+      "track": "main",
+      "agent": "lane-c-sip",
+      "verb": "question_add"
+    },
+    {
+      "at": "2026-11-13T18:28:47.261Z",
+      "session": "7e82d97f-ee72-4afe-bdc0-b50e4d6baa64",
+      "track": "c-payment-sheet",
+      "agent": "lane-c-payment-sheet-worker",
+      "verb": "handoff_write",
+      "target": "M6-phase-c:C-L3-payment-sheet"
+    },
+    {
+      "at": "2026-11-13T18:28:47.499Z",
+      "session": "7e82d97f-ee72-4afe-bdc0-b50e4d6baa64",
+      "track": "c-payment-sheet",
+      "agent": "lane-c-payment-sheet-worker",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T18:29:27.351Z",
+      "session": "9b81c302-c520-4995-b8b9-1507d4f4382b",
+      "track": "c-payment-sheet",
+      "agent": "coordinator-land-c-payment-sheet",
+      "verb": "land_start"
+    },
+    {
+      "at": "2026-11-13T18:34:21.084Z",
+      "session": "7c6ac546-fcfb-4631-bf09-cefaa0639575",
+      "track": "main",
+      "agent": "lane-c-composition",
+      "verb": "task_land",
+      "target": "M6-phase-c / C-L3-payment-sheet"
+    },
+    {
+      "at": "2026-11-13T18:34:21.303Z",
+      "session": "9b81c302-c520-4995-b8b9-1507d4f4382b",
+      "track": "c-payment-sheet",
+      "agent": "coordinator-land-c-payment-sheet",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T18:34:28.447Z",
+      "session": "7c6ac546-fcfb-4631-bf09-cefaa0639575",
+      "track": "main",
+      "agent": "lane-c-composition",
+      "verb": "track_close",
+      "target": "c-payment-sheet"
+    },
+    {
+      "at": "2026-11-13T18:38:30.335Z",
+      "session": "eaa97588-d7d6-46aa-ab5a-29dea025ec67",
+      "track": "c-maturity",
+      "agent": "lane-c-maturity-worker",
+      "verb": "handoff_write",
+      "target": "M6-phase-c:C-L2-maturity"
+    },
+    {
+      "at": "2026-11-13T18:39:04.135Z",
+      "session": "eaa97588-d7d6-46aa-ab5a-29dea025ec67",
+      "track": "c-maturity",
+      "agent": "lane-c-maturity-worker",
+      "verb": "land_start"
+    },
+    {
+      "at": "2026-11-13T18:43:30.891Z",
+      "session": "9b01e7f7-2329-475c-b8f5-f9d6b4d8194d",
+      "track": "main",
+      "agent": "lane-c-sip",
+      "verb": "task_land",
+      "target": "M6-phase-c / C-L2-maturity"
+    },
+    {
+      "at": "2026-11-13T18:43:31.166Z",
+      "session": "eaa97588-d7d6-46aa-ab5a-29dea025ec67",
+      "track": "c-maturity",
+      "agent": "lane-c-maturity-worker",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T18:43:39.611Z",
+      "session": "9b01e7f7-2329-475c-b8f5-f9d6b4d8194d",
+      "track": "main",
+      "agent": "lane-c-sip",
+      "verb": "track_close",
+      "target": "c-maturity"
+    },
+    {
+      "at": "2026-11-13T18:44:47.782Z",
+      "session": "7c6ac546-fcfb-4631-bf09-cefaa0639575",
+      "track": "main",
+      "agent": "lane-c-composition",
+      "verb": "task_claim",
+      "target": "M6-phase-c / C-close"
+    },
+    {
+      "at": "2026-11-13T18:44:48.555Z",
+      "session": "d8c44dce-49d5-45c3-96c1-537ba4e2a515",
+      "track": "main",
+      "agent": "lane-e-autopay",
+      "verb": "task_claim",
+      "target": "M8-phase-e / E-close"
+    },
+    {
+      "at": "2026-11-13T18:44:58.617Z",
+      "session": "d8c44dce-49d5-45c3-96c1-537ba4e2a515",
+      "track": "main",
+      "agent": "lane-e-autopay",
+      "verb": "task_plan",
+      "target": "M8-phase-e"
+    },
+    {
+      "at": "2026-11-13T18:45:06.486Z",
+      "session": "7c6ac546-fcfb-4631-bf09-cefaa0639575",
+      "track": "main",
+      "agent": "lane-c-composition",
+      "verb": "task_land",
+      "target": "M6-phase-c / C-L3-payment-sheet"
+    },
+    {
+      "at": "2026-11-13T18:46:18.992Z",
+      "session": "7c6ac546-fcfb-4631-bf09-cefaa0639575",
+      "track": "main",
+      "agent": "lane-c-composition",
+      "verb": "evidence_record",
+      "target": "M6-phase-c / C-close, sweep"
+    },
+    {
+      "at": "2026-11-13T18:46:46.565Z",
+      "session": "7c6ac546-fcfb-4631-bf09-cefaa0639575",
+      "track": "main",
+      "agent": "lane-c-composition",
+      "verb": "task_land",
+      "target": "M6-phase-c / C-close"
+    },
+    {
+      "at": "2026-11-13T18:46:46.844Z",
+      "session": "d8c44dce-49d5-45c3-96c1-537ba4e2a515",
+      "track": "main",
+      "agent": "lane-e-autopay",
+      "verb": "task_land",
+      "target": "M8-phase-e / E-close"
+    },
+    {
+      "at": "2026-11-13T18:46:47.119Z",
+      "session": "7c6ac546-fcfb-4631-bf09-cefaa0639575",
+      "track": "main",
+      "agent": "lane-c-composition",
+      "verb": "handoff_write",
+      "target": "C-close"
+    },
+    {
+      "at": "2026-11-13T18:46:58.067Z",
+      "session": "cb500c58-2f2f-491f-90ea-b1dd9c71acef",
+      "track": "main",
+      "agent": "lane-c-hardening",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T18:46:58.300Z",
+      "session": "9b01e7f7-2329-475c-b8f5-f9d6b4d8194d",
+      "track": "main",
+      "agent": "lane-c-sip",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T18:46:58.591Z",
+      "session": "d8c44dce-49d5-45c3-96c1-537ba4e2a515",
+      "track": "main",
+      "agent": "lane-e-autopay",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T18:47:07.347Z",
+      "session": "7c6ac546-fcfb-4631-bf09-cefaa0639575",
+      "track": "main",
+      "agent": "lane-c-composition",
+      "verb": "session_close"
     }
   ]
 }

@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "track": "c-payment-sheet",
+  "current": {
+    "task": "M6-phase-c:C-L3-payment-sheet",
+    "from": "lane-c-payment-sheet-worker",
+    "track": "c-payment-sheet",
+    "at": "2026-11-13T18:28:47.230Z",
+    "lines": [
+      "track/c-payment-sheet on main 869c7e5: edbbaad feat(sheet) read endpoint + contract; c53e178 feat(admin-ui) sheet screen; 03891a3 fix(sheet) review follow-up. Not landed, not pushed.",
+      "Review follow-up (03891a3): rows, counts, Record and the paste panel render only when the walk is complete (data present, no next page, not loading more); until then SheetLoading shows a role=status line with rows read so far. 'No SIP schedule is due' only for a complete empty result. Each row status cell is an aria-live=polite region.",
+      "New tests: screen double click on Record the payments sends once; hook-level record() called twice in one act sends once; VALIDATION_FAILED releases the key and the next Record mints a new one; 502 leaves Not confirmed with the same key in sessionStorage and Check again resends it; no rows/Record/empty message before the walk ends. Parser table: refused 1e3, -5, 1,000, 1.234, ' 1 0', ₹10, .5, 10., +10, 0, 0.00, 01; accepted 10, 10.5, 10.50. Integration: a values_reader role with only client_values.read reads the sheet (200) and gets 403 AUTHORIZATION_DENIED recording, nothing written.",
+      "Negative controls (follow-up): ignoring hasMore/isLoadingMore failed the walk test; treating an API refusal as unknown failed the refusal test; treating a 502 as refused failed the server-error test; removing the recorder isFree guard failed the hook double-record test; recording route accepting client_values.read failed the read-only integration test. Layering: with the guard removed the screen double-click test still passes because the dialog unmounts on confirm and the row stops being ready; only the hook test exercises the guard.",
+      "Endpoint: GET /v1/admin/recording-sheet?month=YYYY-MM&fundId=&after=&limit= (contract packages/contracts/src/operations/recording-sheet.ts, op listAdminRecordingSheet), client_position.write or client_values.read. Active schedules whose range covers the month, across funds; recorded = live month link joined to its contribution entry; paged by client name then schedule id, cursor bound to month+fund.",
+      "Wall: monthlyRecordingSheetRepository.ts / adminRecordingSheetRoutes.ts (no sip/payment in path), like clientReceiptRepository; schedule code still never reads the ledger.",
+      "Frontend: features/admin/payment-sheet/, route /client-values/payment-sheet (client_position.write). Per-row key + exact body in sessionStorage (beo.admin.recording-sheet.v1:<month>:<scheduleId>), cleared only on success or API refusal; MAX_IN_FLIGHT=2; recorded rows need Record another; no bank reference anywhere.",
+      "Shared files (additive): adminComposition.ts (+3), contracts index/generator + regenerated OpenAPI/operations.ts, queryKeys.ts (+2), adminRoutes.ts (route + link map), ClientPositionsScreen.tsx (+1 entry). c-maturity overlaps adminComposition, generator/index, generated files, queryKeys, adminRoutes: keep both sides and regenerate.",
+      "Checks on 03891a3 (Node 22 container, main 869c7e5): contracts 98 tests, 170 ops; backend check 100 files/1198; integration 55 files/508 (coverage off); frontend check 34 files/316; build:admin and build:client with boot checks (client android dist check passed).",
+      "Conservative defaults for plan 0a: rows start unticked; client reference = email or id; held keys per tab. Plan C4 text still mentions UTR and a migration; neither built (rule-11, question row 16).",
+      "Not done: plan doc/section 8 (coordinator), browser, screen-reader, device or VPS runs."
+    ]
+  },
+  "history": [
+    {
+      "task": "M6-phase-c:C-L3-payment-sheet",
+      "from": "lane-c-payment-sheet-worker",
+      "track": "c-payment-sheet",
+      "at": "2026-11-13T18:17:33.187Z",
+      "lines": [
+        "track/c-payment-sheet on main 869c7e5 (after e-reviews): edbbaad feat(sheet) read endpoint + contract; c53e178 feat(admin-ui) sheet screen. Not landed, not pushed.",
+        "Endpoint: GET /v1/admin/recording-sheet?month=YYYY-MM&fundId=&after=&limit= (contract packages/contracts/src/operations/recording-sheet.ts, RECORDING_SHEET_OPERATIONS, op listAdminRecordingSheet). Permission client_position.write or client_values.read (POSITION_READ_PERMISSIONS).",
+        "Rows: active admin SIP schedules whose range covers the month (start_month <= month < start + month_count), optional fund filter, across funds. Item: scheduleId,userId,clientName,clientEmail (tombstone-masked like reports),fundId,fundName,monthlyAmountPaise,startMonth,monthCount,recorded {entryId,amountPaise,effectiveDate,recordedAt}|null.",
+        "recorded = live month link (released_at null) joined to its client_value_entries row (principal_delta_paise). Reversed recordings show null.",
+        "Why a new endpoint, not a per-fund walk: the per-fund list gives only paidMonths names, not the recorded amount, and needs one walk per fund.",
+        "Wall: repo is repositories/monthlyRecordingSheetRepository.ts, route routes/adminRecordingSheetRoutes.ts (no sip/payment in the path), same as clientReceiptRepository joining the link to the ledger; schedule code still never reads the ledger; architecture guard unchanged.",
+        "Paging: order client full_name then schedule id; signed cursor carries only the schedule id, bound to month+fundId (CURSOR_INVALID on change), limit default 25 max 100. Same keyset shape as c-sip listByFund.",
+        "Registered in runtime/adminComposition.ts with readDeps (one line after audit-trail). composition.ts untouched (636).",
+        "Frontend: features/admin/payment-sheet/, route /client-values/payment-sheet (client_position.write), hub entry on /client-values, link-map entry. adminQueries.ts untouched (511).",
+        "Rows load via usePagedQuery loadAll (limit 100) over the new read; a failed page stops the walk and AsyncBoundary shows the error with retry.",
+        "Per row: tick Record, amount in rupees (defaults to schedule amount; parsePositiveRupees, >2 decimals or any other format refused, never rounded), date (defaults to IST today, future refused).",
+        "Recording: existing recordAdminClientContribution with reasonCode recorded_offline_monthly_investment + sipScheduleLink {scheduleId, month}. Confirm dialog shows rows and total.",
+        "Idempotency: useRecordingSheetRecorder mints a key per row on Record, stores {key,userId,body} in sessionStorage key beo.admin.recording-sheet.v1:<month>:<scheduleId>; inputs locked to the held body; Check again resends same key+body, also after reload; cleared only on success or an API refusal; unknown (timeout/5xx/IDEMPOTENCY_*) keeps it.",
+        "Concurrency: queue with MAX_IN_FLIGHT=2; chips Not sent/Pending/Sending/Recorded/Refused (server field error text)/Not confirmed. Recorded rows (local or server) are locked until Record another, which also resets the draft; the server refuses an already-paid month per row.",
+        "Expired idempotency receipt on a late Check again is still safe: the month link is unique, so the server refuses the duplicate with the sipScheduleLink.month field error.",
+        "CSV paste: lines of reference, amount, optional date (comma or tab, quotes honoured). Reference = schedule id, client id or client email (case-insensitive). Ambiguous client (several schedules), no match, bad amount/date, duplicate line, or a recorded/held row are listed per line; fills tick rows only; nothing sends until Record.",
+        "No bank reference/UTR anywhere (rule-11; question row 16 open). Plan C4 still mentions UTR and a migration; neither was built.",
+        "Checks (Node 22 container) on main 869c7e5: contracts check 98 tests, 170 ops reachable; backend check 100 files/1198; integration 55 files/507 (coverage off; new recordingSheet.integration.test.ts 4 tests); frontend check 34 files/311; build:admin and build:client with boot checks.",
+        "Negative controls: backend - no released filter, no range end, no permission check each failed one test. Frontend - new key on Check again, no sessionStorage, MAX_IN_FLIGHT 3, resend after success (gates removed), rounding/comma parser each failed the matching test.",
+        "Conservative defaults for plan 0a: rows default unticked so nothing records for clients who did not pay; client reference = email or id (no client reference field exists); held keys live per tab (sessionStorage), cleared when the tab closes.",
+        "Not done: plan doc/section 8 (coordinator), browser/device runs, VPS."
+      ]
+    }
+  ]
+}

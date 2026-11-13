@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "track": "e-autopay",
+  "current": {
+    "task": "M8-phase-e:E2-autopay-fixes",
+    "from": "lane-e-autopay-worker",
+    "track": "e-autopay",
+    "at": "2026-11-13T15:41:59.989Z",
+    "lines": [
+      "track/e-autopay rebased onto main 35b8353 (not landed, not pushed). New shas: c68f31f (finding-21 uuid + one order per month), d28fc3b (finding-6 advance), c197eaa (stalled plans), 89e596e (finding-12 atomic reconcile), 6e8b320 (review: re-lock SIP step + conditional advance), 8da4ddb (review: audit/log skipped AutoPay period).",
+      "Rebase: no manual conflict; git merged adminMandateRoutes.ts imports (applyMandateFact line next to hardening's createdAtKeyset/readKeyset line) and kept hardening's listMandates. sipPlanRepository/mandatesRepository untouched by main; no keyset helper overlap.",
+      "Stalled-plan rule: a period resolves once its order leaves submitted/payment_pending; resolved => plan advances one month (manual plan completes on its last calendar month). AutoPay also resolves a period whose 10:00 IST debit time passed with no order; that skip writes audit sip.period.skip and warns SIP_PERIOD_SKIPPED; refused creation warns SIP_INSTALLMENT_NOT_CREATED. Never notifies the client. Resolved periods are never collected again; rows untouched.",
+      "AutoPay term completion also fires when next_due_date >= start month + duration (no make-up collection); such a plan completes with fewer accepted instalments than duration_months (maintainer may want to confirm).",
+      "SIP schedule worker steps lock and re-check the plan; advanceNextDueDate requires the expected date. AutoPay prepareCollection already locked the plan.",
+      "Retrying checkout on a payment_failed manual order after the plan moved on settles that month's own order; nothing is double-debited (review LOW, no change).",
+      "Checks at rebased tip (Node 22 container): npm run check 100 files/1198 tests; integration (coverage off) 47 files/468 tests; typecheck passes on each of the 6 rewritten commits.",
+      "Not fixed (found): resume paused->active resets next_due_date to start+1 (self-heals one period per pass, no back-debit); a manual plan's unpaid month still blocks it (open by design).",
+      "Not verified: no relay or real provider; AutoPay/payments remain disabled; plans/admin-improvements.md not edited by this lane."
+    ]
+  },
+  "history": [
+    {
+      "task": "M8-phase-e:E2-autopay-fixes",
+      "from": "lane-e-autopay-worker",
+      "track": "e-autopay",
+      "at": "2026-11-13T15:22:30.399Z",
+      "lines": [
+        "track/e-autopay has 4 commits on 3cd6cad, not landed, not pushed: 9ab02f0 (finding-21 uuid + one order per month), 1329c66 (finding-6 advance), 7331809 (stalled plans), e9c026f (finding-12 atomic reconcile).",
+        "Stalled-plan rule: a period resolves once its order leaves submitted/payment_pending (accepted, payment_failed, cancelled, refund_pending, refunded, refund_failed); resolved => plan advances one month (manual plan completes when its last calendar month resolves).",
+        "AutoPay also resolves a period whose 10:00 IST debit time passed with no order (ineligible client, unpublished fund, inactive mandate, worker down). Resolved periods are never collected again; their rows are untouched.",
+        "AutoPay term completion now also fires when next_due_date >= start month + duration (sipPlanRepository candidates + mandatesRepository.requestTermCompletion), so a failed month never becomes a make-up collection after the schedule. Consequence: a plan with failed months completes with fewer accepted instalments than duration_months (maintainer may want to confirm).",
+        "SIP schedule worker keys instalments by first-of-month (matches createSip/AutoPay setup); no data change needed. Request ids are randomUUID per instalment.",
+        "finding-12: applyMandateFact(tx, ...) is the tx-scoped core; reconcileMandateFact wraps it (workers, provider-event route unchanged). Admin collection-reconcile and cancel routes already used the mutation tx.",
+        "Tests: new test/integration/sipScheduleWorker.integration.test.ts (3), mandateCollectionWorker.integration.test.ts (5), adminMandate +1 atomicity test; sipScheduleWorker.test.ts failed-month case now expects the plan to move on (intended change).",
+        "Checks (Node 22 container): npm run check 100 files/1198 tests; integration (coverage off) 46 files/461 tests. Each fix's tests failed before it; per-part negative controls run and failed as expected.",
+        "Not fixed (found): resume paused->active resets next_due_date to start+1 (mandatesRepository applyProviderMandateState scheduleValues); now self-heals one period per pass, no back-debit, but a long pause could miss the current window. Recommend computing next due from now on resume.",
+        "Not fixed: a manual plan's unpaid (payment_pending) month still blocks the plan (open by design); stale-expiry (A10) leaves those orders payment_pending. No audit/notification is written when a period is skipped (advance was never audited).",
+        "Not verified: no relay or real provider called; AutoPay/payments remain disabled; plan doc (plans/admin-improvements.md E2/handoff) not edited by this lane."
+      ]
+    },
+    {
+      "task": "M8-phase-e:E2-autopay-fixes",
+      "from": "lane-e-autopay-worker",
+      "track": "e-autopay",
+      "at": "2026-11-13T15:36:45.834Z",
+      "lines": [
+        "track/e-autopay has 6 commits on 3cd6cad, not landed, not pushed: 9ab02f0 (finding-21 uuid + one order per month), 1329c66 (finding-6 advance), 7331809 (stalled plans), e9c026f (finding-12 atomic reconcile), 37d204a (review: re-lock SIP step + conditional advance), 5714ac7 (review: audit/log skipped AutoPay period).",
+        "Stalled-plan rule: a period resolves once its order leaves submitted/payment_pending (accepted, payment_failed, cancelled, refund_pending, refunded, refund_failed); resolved => plan advances one month (manual plan completes when its last calendar month resolves).",
+        "AutoPay also resolves a period whose 10:00 IST debit time passed with no order. Resolved periods are never collected again; their rows are untouched. Skips write audit command sip.period.skip (entity sip_plan, metadata duePeriod + reason no_installment_by_debit_time) and warn SIP_PERIOD_SKIPPED; refused creation in window warns SIP_INSTALLMENT_NOT_CREATED with reason. No client notification on these paths.",
+        "AutoPay term completion also fires when next_due_date >= start month + duration, so a failed month never becomes a make-up collection. Consequence: such a plan completes with fewer accepted instalments than duration_months (maintainer may want to confirm).",
+        "SIP schedule worker: each step locks the plan (lockById) and re-checks active + expected next_due_date in one tx; advanceNextDueDate(expectedNextDueDate) writes only from that value. AutoPay prepareCollection already locked/re-read the plan, so it only gained the conditional advance.",
+        "Retrying checkout on a payment_failed manual order after the plan moved on settles that month's own order; the plan does not move back and nothing is double-debited (review LOW, no change).",
+        "finding-12: applyMandateFact(tx, ...) is the tx-scoped core; reconcileMandateFact wraps it (workers, provider-event route unchanged).",
+        "Tests: sipScheduleWorker.integration (6), mandateCollectionWorker.integration (6), adminMandate +1; sipScheduleWorker.test.ts failed-month expectation changed and its mock now implements lockById + expected date.",
+        "Checks (Node 22 container, final tree): npm run check 100 files/1198 tests; integration (coverage off) 46 files/465 tests. Negative controls run for every fix and follow-up part.",
+        "Not fixed (found): resume paused->active resets next_due_date to start+1 (mandatesRepository applyProviderMandateState); self-heals one period per pass without back-debit, but a long pause could miss the current window.",
+        "Not fixed: a manual plan's unpaid (payment_pending) month still blocks it (open by design); stale-expiry (A10) leaves those orders payment_pending.",
+        "Not verified: no relay or real provider; AutoPay/payments remain disabled; plans/admin-improvements.md not edited by this lane."
+      ]
+    }
+  ]
+}

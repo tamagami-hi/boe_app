@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "track": "e-reviews",
+  "current": {
+    "task": "M8-phase-e:E1-reviews",
+    "from": "lane-e-reviews-worker",
+    "track": "e-reviews",
+    "at": "2026-11-13T18:03:19.575Z",
+    "lines": [
+      "E1 on track/e-reviews, rebased on main 3cd86c1 (c-reports, c-nominee, c-sip in): ac35dde feat(reviews) backend+contracts+generated+tests; 4de32df feat(reviews-ui); 869c7e5 docs(plan) E1 entry in section 8. Not landed, not pushed. Review follow-ups 1-4 folded into these commits.",
+      "Migration 067_client_reviews.sql (ASCII): new table only. rating 1-5; comment and moderation_note nullable, 1-1000 chars, trimmed, no C0/C1 except LF, the 063 Cf/Zl/Zp code-point list plus U+034F, U+115F, U+1160, U+2800, U+3164, U+FFA0, no edge ZWJ/ZWNJ; state new|read|hidden; moderator/moderated_at pair; version; generated review_month = IST month of created_at. Variation selectors FE00-FE0F allowed.",
+      "Contract and routes also require a visible character (\\p{L}\\p{N}\\p{P}\\p{S}); not in SQL (no Unicode classes), like the nominee letter rule.",
+      "Repeat rule: one review per client per IST calendar month; unique (user_id, review_month) + insert on conflict do nothing -> STATE_CONFLICT. No editing.",
+      "Tombstone: users AFTER UPDATE OF pii_tombstoned_at clears comment AND moderation_note (version+1); client_reviews BEFORE INSERT/UPDATE OF comment, moderation_note nulls both for a tombstoned user; admin reads mask name, comment and note.",
+      "Endpoints (contract packages/contracts/src/operations/client-reviews.ts): GET/POST /v1/client/reviews (client scope; CSRF on cookie POST; 5 POSTs/10 min/user in process); GET /v1/admin/reviews, GET /v1/admin/reviews/{reviewId}, GET /v1/admin/users/{userId}/reviews (support.read); POST /v1/admin/reviews/{reviewId}/moderation (support.write, Idempotency-Key, expectedVersion, audit client_review.moderated).",
+      "Client arrival check (ReviewForm): success only if the newest review is not the one known at send time and has the same rating and comment; any other review this month -> 'A review for this month already exists' notice. STATE_CONFLICT on send gives the same notice. The list is not auto-refetched after an unknown outcome.",
+      "Checks at the tip (Node 22 container): contracts 98 tests, OpenAPI valid, 169 ops; backend check 100 files/1198; integration --coverage.enabled=false 54 files/503 (clientReviews 7, clientReviewsMigration 2); frontend 32 files/303; build:client and build:admin with boot checks. Logs .temp/tally/logs/e-reviews/.",
+      "Negative controls (run, reverted): no client scope; no monthly index; no users tombstone trigger; trigger without note clearing; no version guard; support.read as write permission; no visible-character rule; U+3164 dropped from SQL; month computed in UTC. Each failed its test.",
+      "releaseUpgrade expects ...061, 062, 063, 064, 066, 067. composition.ts 636 lines.",
+      "Trap: Write/Edit tools decode \\u escapes into literal characters; regex and SQL escapes written via python with chr(92); tests use String.fromCodePoint.",
+      "Open for the maintainer: repeat rule, tombstone handling, support.read/support.write reuse are lane choices. Not verified: browser/device, APK, VPS."
+    ]
+  },
+  "history": [
+    {
+      "task": "M8-phase-e:E1-reviews",
+      "from": "lane-e-reviews-worker",
+      "track": "e-reviews",
+      "at": "2026-11-13T17:49:36.182Z",
+      "lines": [
+        "E1 done on track/e-reviews, rebased on main a6e14a4: acf1522 feat(reviews) backend+contracts+generated+tests; fc1ba3e feat(reviews-ui); a0cee5f docs(plan) E1 entry in section 8. Not landed, not pushed.",
+        "Migration 067_client_reviews.sql: new table only. rating smallint 1-5; comment nullable, 1-1000 chars, trimmed, no C0/C1 except LF, same explicit Cf/Zl/Zp code-point list as 063, no edge ZWJ/ZWNJ; state text new|read|hidden; moderation_note (same text rule), moderated_by_user_id/moderated_at pair, version, created/updated; review_month generated = IST calendar month of created_at.",
+        "Repeat rule: one review per client per IST calendar month. Unique index (user_id, review_month) + insert on conflict do nothing -> STATE_CONFLICT. No editing. Makes an unknown-outcome resend safe.",
+        "Tombstone: support keeps text for tombstoned users and masks only the name; nothing writes pii_tombstoned_at, so 067 mirrors the nominee trigger approach: AFTER UPDATE OF pii_tombstoned_at on users clears that user's comments (version+1); BEFORE INSERT/UPDATE OF comment on client_reviews nulls the comment for a tombstoned user. Admin reads show 'Tombstoned' and null comment.",
+        "Endpoints (contract packages/contracts/src/operations/client-reviews.ts): GET/POST /v1/client/reviews (signed-in client; bearer or cookie, CSRF on POST via resolveClientPrincipal; POST limited 5/10 min per user in process; list returns canSubmit, nextSubmissionOn). GET /v1/admin/reviews (state, rating filters, newest first, microsecond cursor via keysetBoundary), GET /v1/admin/reviews/{reviewId}, GET /v1/admin/users/{userId}/reviews (404 unknown user) need support.read; POST /v1/admin/reviews/{reviewId}/moderation needs support.write, Idempotency-Key, expectedVersion; audit client_review.moderated {noteChanged}; submit audits client_review.submitted {rating, hasComment}. No notifications.",
+        "Frontend: features/reviews (client screen at /profile/reviews, RatingControl on RadioGroup), features/admin/reviews (inbox, detail, moderation form, queries), users/ClientReviewsTab, domain/reviews.ts. adminQueries.ts untouched.",
+        "Checks (Node 22 container): contracts 98 tests, OpenAPI valid, 163 ops; backend check 100 files/1198; integration --coverage.enabled=false 52 files/492 (new: clientReviews 6, clientReviewsMigration 2); frontend check 32 files/303; build:client and build:admin with boot checks. Logs in .temp/tally/logs/e-reviews/.",
+        "Negative controls (run, reverted): no user scope in client list; no monthly unique index; no users tombstone trigger; no version guard; support.read as write permission. Each failed its test.",
+        "Landing: releaseUpgrade list on my branch is ...062, 063, 066, 067; add 064 when c-sip lands. composition.ts 636 lines.",
+        "Trap: the Write/Edit tools decoded \\u escapes into literal characters; regex and SQL escapes were written via python with chr(92). Tests use String.fromCodePoint.",
+        "Open for the maintainer: the repeat rule, tombstone handling and support.read/support.write reuse are lane choices. Not verified: browser/device, APK, VPS."
+      ]
+    }
+  ]
+}

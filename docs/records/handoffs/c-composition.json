@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "track": "c-composition",
+  "current": {
+    "task": "M6-phase-c:C-L0-composition",
+    "from": "lane-c-composition-worker",
+    "track": "c-composition",
+    "at": "2026-11-13T15:04:42.261Z",
+    "lines": [
+      "Commit bb573f0 on track/c-composition: refactor(runtime): register admin routes from one composition module. Not landed (coordinator lands).",
+      "composition.ts 793 -> 620 lines; new backend_controller/src/runtime/adminComposition.ts 212 lines exporting registerAdminSurface(application, deps) and type AdminSurfaceDeps.",
+      "Moved: identity, content, fundAum repo + catalog, AUM + fund growth preview, oversight, support, client growth, registerRecordingSurface, client returns, maturity, fund receipts. Body is textually identical to the original block once dedented (diff-checked).",
+      "Stayed in composition.ts: registerAdminClientOnboardingRoutes (it sits before the block, among client/password routes), provider events, PhonePe provider/mandate events, admin mandate routes, all client/public/auth routes.",
+      "AdminSurfaceDeps = Omit<route deps, config|created-inside repos> intersections + Readonly{adminContentRepository, fundReceiptAcknowledgementRepository, serverConfig: Pick<ServerConfig, appUpdate|cursorKey|fundAum|sesConfigurationSet|ttls>}.",
+      "For later lanes: add admin routes inside registerAdminSurface (adminComposition.ts); if a new route needs another instance, add it to the AdminSurfaceDeps intersection (Omit<NewRouteDeps, 'config'|...>) and to the call in composition.ts; new config values: extend the ServerConfig Pick. Client routes go into composition.ts.",
+      "Checks (Node 22 container): contracts check + build 98/98 tests; backend check 1198/1198 tests incl typecheck, lint, coverage (adminComposition.ts 100%), build, smoke source+dist; test:integration --coverage.enabled=false 44 files 452/452.",
+      "Not done: frontend checks (untouched); CLAUDE.md not edited (its runtime description stays accurate)."
+    ]
+  },
+  "history": []
+}

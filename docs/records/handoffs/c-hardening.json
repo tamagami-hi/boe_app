@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "track": "c-hardening",
+  "current": {
+    "task": "M6-phase-c:C-L5-hardening",
+    "from": "lane-c-hardening-worker",
+    "track": "c-hardening",
+    "at": "2026-11-13T15:27:23.686Z",
+    "lines": [
+      "C-L5 done on track/c-hardening (from 3cd6cad): 07ccecc fix(paging) microsecond cursors; 6223a8f fix(api) load-all walk stops on failed page; 0781311 feat(admin) open-requests tile + client hub Support tab; 4e807b4 feat(notifications) Support label. Not landed, not pushed.",
+      "finding-24 CONFIRMED (TESTED): fund receipt queue repeated its boundary row (50x in a limit=1 walk); newest-first lists skipped rows in the same millisecond incl. same-transaction siblings.",
+      "Fix shape: new backend_controller/src/repositories/keysetBoundary.ts (cursorTime = to_char(col at time zone 'UTC', ...US\"Z\"), keysetCondition(columns, after|before, boundary), WithCursor<Row>). readKeyset now returns afterCreatedAt as a validated string (3 or 6 fractional digits UTC + hex uuid, else CURSOR_INVALID). createdAtKeyset(row) projects [row.cursorAt, row.id].",
+      "Legacy ms cursors (released APKs, minted by toISOString): accepted, compared as (date_trunc('milliseconds', col), id). Exact for same-transaction siblings; JS truncation verified identical to date_trunc for all 10^6 microsecond values. Residual: two rows from different transactions in the same ms at a boundary may still repeat/skip, only for cursors minted before deploy.",
+      "COMPAT REMOVAL (for the plan record): the millisecond branch in keysetBoundary.comparedTime can go in the release after this one ships, once 24h (CURSOR_TTL_MS) have passed since its deploy. Rollback: V8 parses a microsecond cursor in the previous release exactly like an ms one (verified), so v0.15.x pages as it did before.",
+      "Lists fixed: admin fund-receipts (asc), refunds, payments, users, audit events, login events, applications, application deliveries, email deliveries, funds, FAQ, mandates (updated_at); client notifications, payments, support tickets, orders, transactions, receipts, fund catalogue (clientCatalogRoutes now uses readKeyset). Also unrouted adminOversightRepository.listOrders.",
+      "Checked and left alone: AUM history (unique fund/as_of_date/revision decides order first), returns value summary (computed sort), per-client ledger page (entry-id cursor, exact subquery), support inbox + per-client tickets + value updates (already microsecond).",
+      "finding-25: usePagedQuery skips fetchNextPage while query.isError, and a loadAll walk stopped by an error returns data undefined so screens use their existing error+retry branch (AsyncBoundary, CatalogueFundPicker, ReturnsDashboard). refetch restarts the walk. Name-only lookups fall back to 'Fund' while failed.",
+      "UI: OpenTicketsTile now takes canOpen (reachablePaths.has('/support')); mounted in DailyTiles slot 4. ClientSupportTab.tsx (features/admin/users) under support.read in ClientHubTabs. notifications.ts: support_request_updated -> Support/info.",
+      "Checks (Node 22 container, HEAD 4e807b4): contracts 98 tests, OpenAPI valid, 149 ops; backend check 100 files/1198; integration --coverage.enabled=false 45 files/455 (new keysetPrecision 3 tests); frontend check 30 files/261; build:admin and build:client pass with boot checks.",
+      "Controls: unfixed code fails all 3 keysetPrecision tests; disabling the ms branch fails the legacy-cursor test; old paged.ts fails the new paged test (23 re-requests in 100ms). Logs in worktree .temp/lane-c-hardening/.",
+      "Conflict risk at landing: adminMandateRepository/adminMandateRoutes (e-autopay), and any lane adding a keyset list must select cursorTime and use keysetCondition (KeysetPosition.afterCreatedAt is now string).",
+      "Not verified: no browser/device run of any screen; plan section 8 not updated (left to coordinator, incl. the compat removal condition above)."
+    ]
+  },
+  "history": []
+}

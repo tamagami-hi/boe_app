@@ -837,8 +837,14 @@
         {
           "id": "C-L1-nominee",
           "track": "main",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "01c6418",
+          "also": [
+            "1634797",
+            "40067f1",
+            "a6e14a4",
+            "fcf160b"
+          ],
           "brief": "Lane track/c-nominee: C1 migration 063 nullable nominee_name/nominee_relation with checks, populated-upgrade test, new client and admin endpoints, Profile form, user page, audit, tombstone clears (convention-2)",
           "covers": [
             "C1"
@@ -847,8 +853,12 @@
         {
           "id": "C-L2-sip-schedule",
           "track": "main",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "2050360",
+          "also": [
+            "3cd86c1",
+            "ce3389f"
+          ],
           "brief": "Lane track/c-sip-maturity: C2 migration 064 admin_sip_schedules + month link, admin CRUD, monthly recording linked to a month (fills the receipt sipMonth), client months-paid endpoint and badge (convention-2)",
           "covers": [
             "C2"
@@ -857,43 +867,74 @@
         {
           "id": "C-L2-maturity",
           "track": "main",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "b887f54",
+          "also": [
+            "ae82558",
+            "d767ec6"
+          ],
           "brief": "Lane track/c-sip-maturity (after C2): C3 migration 065 client_maturity_schedules, dashboard, due list, AdminFrame open-app prompt, three resolutions on existing settlement + C2; idempotent; no money moves without explicit admin action (convention-2)",
           "covers": [
             "C3"
-          ],
-          "waitsOn": [
-            {
-              "task": "M6-phase-c:C-L2-sip-schedule",
-              "what": "resolutions build on the admin SIP schedule"
-            }
           ]
         },
         {
           "id": "C-L3-payment-sheet",
           "track": "main",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "edbbaad",
+          "also": [
+            "03891a3",
+            "c53e178"
+          ],
           "brief": "Lane track/c-payment-sheet (after C2): monthly payment sheet: month picker, one row per client/fund from the admin SIP schedule with expected amount, already recorded, date (default today IST), bank reference (UTR); per-row held idempotency keys in sessionStorage, 1-2 concurrent posts, status chip per row, explicit 'record another'; CSV paste into the sheet; optional structured bank reference on recordings (additive migration at the next free number + optional request field)",
-          "waitsOn": [
+          "deferred": [
             {
-              "task": "M6-phase-c:C-L2-sip-schedule",
-              "what": "rows come from the admin SIP schedule"
+              "what": "optional bank reference (UTR) on recordings and its migration: not built pending maintainer question row 16 (rule-11)",
+              "to": "M8-phase-e:E4-bank-reference"
             }
           ]
         },
         {
           "id": "C-L4-reports-audit",
           "track": "main",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "f0df84a",
+          "also": [
+            "2768b9b",
+            "5722bc0",
+            "9f66354"
+          ],
           "brief": "Lane track/c-reports: accounting exports as CSV built in the browser from new read endpoints (client balances as of a date; contributions by month with bank reference); audit log presets for money commands, amount and client links, date range; per-client audit endpoint"
+        },
+        {
+          "id": "C-L0-composition",
+          "track": "main",
+          "status": "landed",
+          "commit": "bb573f0",
+          "also": [],
+          "brief": "Lane track/c-composition: move the unconditional admin route registrations out of runtime/composition.ts into runtime/adminComposition.ts (one registerAdminSurface call), behaviour identical, so Phase C/E lanes have headroom under the 800-line cap",
+          "paths": [
+            "backend_controller/src/runtime/"
+          ]
+        },
+        {
+          "id": "C-L5-hardening",
+          "track": "main",
+          "status": "landed",
+          "commit": "ed9d60a",
+          "also": [
+            "35b8353",
+            "3e81053",
+            "71097de"
+          ],
+          "brief": "Lane track/c-hardening: finding-24 microsecond keyset cursors for older lists (fund receipt queue first), finding-25 usePagedQuery loadAll stops on a failed page, mount OpenTicketsTile on the overview, support tab on the client hub, Support category label for support_request_updated notices"
         },
         {
           "id": "C-close",
           "track": "main",
-          "status": "planned",
+          "status": "landed",
+          "commit": "f83152b",
           "also": [],
           "brief": "Review, land, full sweep incl. integration, handoff with migration pre-flight notes"
         }
@@ -974,9 +1015,12 @@
         {
           "id": "E1-reviews",
           "track": "main",
-          "status": "planned",
-          "also": [],
-          "waits": "deferred by maintainer 2026-11-13: reviews wanted later; fix bugs first",
+          "status": "landed",
+          "commit": "ac35dde",
+          "also": [
+            "4de32df",
+            "869c7e5"
+          ],
           "brief": "Lane track/e-reviews: client rating 1-5 + comment (new table, additive migration, new client endpoint and screen), admin-only list with client profile and moderation state; nothing public",
           "covers": [
             "E1"
@@ -985,17 +1029,18 @@
         {
           "id": "E2-autopay-fixes",
           "track": "main",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "c68f31f",
+          "also": [
+            "6e8b320",
+            "89e596e",
+            "8da4ddb",
+            "c197eaa",
+            "d28fc3b"
+          ],
           "brief": "AutoPay next_due_date advance, stalled failed/refunded instalments, mandate reconcile atomicity; land before any payments re-enable",
           "covers": [
             "E2"
-          ],
-          "waitsOn": [
-            {
-              "task": "M6-phase-c:C-close",
-              "what": "scheduled after Phase C; must land before the maintainer re-enables payments (G10)"
-            }
           ]
         },
         {
@@ -1015,11 +1060,29 @@
           ]
         },
         {
-          "id": "E-close",
+          "id": "E4-bank-reference",
           "track": "main",
           "status": "planned",
           "also": [],
-          "brief": "Review, land, handoff"
+          "brief": "ONLY IF the maintainer answers Q-027 (question row 16) with yes: optional bank reference (UTR) on admin recordings, next free migration number, optional request field on record-contribution, a payment-sheet column and an export column. Otherwise close it unbuilt (rule-11)."
+        },
+        {
+          "id": "E-close",
+          "track": "main",
+          "status": "landed",
+          "commit": "f83152b",
+          "also": [],
+          "brief": "Review, land, handoff",
+          "deferred": [
+            {
+              "what": "E3 Node 24 upgrade: maintainer decides timing",
+              "to": "M8-phase-e:E3-node24-upgrade"
+            },
+            {
+              "what": "Bank reference on recordings: only if the maintainer answers Q-027 yes",
+              "to": "M8-phase-e:E4-bank-reference"
+            }
+          ]
         }
       ]
     },

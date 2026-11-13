@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "milestone": "M6-phase-c",
+  "records": [
+    {
+      "id": "1515b246-0d72-4882-a2ff-f0b62ab0392a",
+      "task": "C-close",
+      "track": "main",
+      "agent": "lane-c-composition",
+      "kind": "sweep",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "contracts: npm ci && npm run check && npm run build; backend: npm ci && npm run check && npm run test:integration -- --coverage.enabled=false; frontend: npm ci && npm run check && npm run build:client && npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/sweep-ce",
+      "started": "2026-11-13T18:43:31Z",
+      "seconds": 145,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/ce-close-sweep.log",
+        "sha256": "93a3315484519e0a64576f878cd378afaa4a3917ea09f337c3f51876cbcdc249",
+        "bytes": 45206
+      },
+      "summary": {
+        "head": "ae82558",
+        "contracts_tests": 98,
+        "operations": 177,
+        "backend_files": 100,
+        "backend_tests": 1198,
+        "integration_files": 57,
+        "integration_tests": 519,
+        "frontend_files": 34,
+        "frontend_tests": 316,
+        "builds": "client+admin with boot checks",
+        "covers": "Phase C and Phase E E1/E2",
+        "node": "22.20.0 alpine container"
+      }
+    }
+  ]
+}

@@ -2,22 +2,22 @@
   "schema": 1,
   "track": "main",
   "current": {
-    "task": "B-close",
-    "from": "coordinator-b-close",
+    "task": "C-close",
+    "from": "lane-c-composition",
     "track": "main",
-    "at": "2026-11-13T14:09:45.298Z",
+    "at": "2026-11-13T18:46:47.108Z",
     "lines": [
-      "Phase B closed 2026-11-13 at aed82c9 (plan section 8 'Phase B close'). All six lanes are on local main; nothing pushed, released or deployed.",
-      "Main commits: email-web 883b127 6f1f86d; client-investing 7b60293..417e479 (7); support ecf140c 8bf1c64 4999848; value-updates 22a9b4d 56cffb1 3d44a7f 77a88fa; returns 7203235 ba88063 e332863; receipts e81eb02 e8826b7 d9d26b2.",
-      "Sweep on d9d26b2 in the Node 22 container: contracts 98 (149 ops); backend 100 files/1198; integration 44/452 coverage off; frontend 30/260; build:client and build:admin with boot checks (evidence 9f050378).",
-      "Maintainer decisions: rule-11 (no bank details or payment instructions anywhere; recordings notify 'Investment added'), rule-12 (also email the amount). G11 is now only publishing featureFlags.onlinePayments=false (board brief updated).",
-      "Migrations (convention-2): 061 identity, 062 investment_recorded template check (on main). Phase C: C1 nominee 063, C2 SIP schedule 064, C3 maturity 065; bank reference and reviews take the next free number. Board briefs for C-L1..C-L3 updated.",
-      "Release notes in the plan: add CLIENT_WEB_APP_URL to each VPS stack .env by hand; a v0.15.x email worker dead-letters investment_recorded mail (finding-26), so deploy workers with the API and expect lost investment emails after a rollback; new APK exports (G7, G8).",
-      "Open for the maintainer before C-L3: the payment sheet's optional bank reference (UTR) field may conflict with rule-11 ('no bank details or payment methods recorded'); ask before building it.",
-      "Follow-ups not built: mount OpenTicketsTile on the overview (4th DailyTiles slot) and add a support tab on the client hub (useUserSupportTickets); client notifications category label for support_request_updated.",
-      "Carried findings: finding-24 (older keyset lists use millisecond cursors; fund receipt queue first), finding-25 (usePagedQuery loadAll loops after a failed page). APK statement PDF endpoint proposed (b-client-investing handoff), not built.",
-      "Composition: composition.ts 793 lines; new routes go through a composition module (adminEmailComposition.ts, recordingComposition.ts). adminQueries.ts 538, admin-money.ts 730.",
-      "Q-026 still open. Not verified: no browser or device run, no real mail, no APK export, nothing on a VPS."
+      "Phases C and E (E1, E2) closed 2026-11-14 at f83152b (plan section 8 'Phases C and E close'). All lanes on local main; nothing pushed, released or deployed.",
+      "Maintainer instruction 2026-11-13: build every phase needing code, leave out ones needing the maintainer. Left out: Phase D (conditional; prod step needs approval), E3 Node 24 (maintainer timing), releases G7/G8, G11 publish, APK statement PDF.",
+      "Main commits: composition bb573f0; hardening ed9d60a 3e81053 71097de 35b8353; AutoPay c68f31f d28fc3b c197eaa 89e596e 6e8b320 8da4ddb; reports f0df84a 2768b9b 9f66354 5722bc0; nominee 01c6418 40067f1 1634797 fcf160b a6e14a4; SIP 2050360 ce3389f 3cd86c1; reviews ac35dde 4de32df 869c7e5; payment sheet edbbaad c53e178 03891a3; maturity b887f54 d767ec6 ae82558.",
+      "Sweep on ae82558 in the Node 22 container: contracts 98 (177 ops); backend 100 files/1198; integration 57/519 coverage off; frontend 34/316; build:client and build:admin with boot checks (evidence 1515b246).",
+      "Migrations (convention-3): 063 nominee, 064 admin SIP schedules, 065 maturity schedules, 066 audit_events metadata userId index (plain CREATE INDEX; blocks audit writes while building), 067 client reviews. All additive with populated-upgrade tests; releaseUpgrade expects ...061..067.",
+      "Open maintainer questions: Q-026 (row 15), Q-027 bank reference (row 16; task E4-bank-reference waits on it), Q-028 AutoPay skipped months (row 17), Q-029 maturity option 3 money flow, 30-day window, closing the active SIP (row 18). Built behaviour is the conservative default for each.",
+      "Lane defaults for maintainer review are listed in plan section 8: SIP (one active per client+fund, 600-month cap, any-order months, amount may differ), nominee (password re-check shared limiter, clients.create), reviews (one per IST month, comments+notes cleared on tombstone, support.read/write), payment sheet (email or id as client reference), exports include online payments.",
+      "Release notes: migrations 063-067; millisecond cursor fallback removable in the release after this one (24h after deploy); payments/AutoPay still disabled so E2 changes nothing until re-enabled; new APK exports (G7, G8); Phase B notes (CLIENT_WEB_APP_URL, finding-26, G11) still apply.",
+      "Carried: E2 resume-after-long-pause catch-up, unpaid manual month blocks plan, retry on failed instalment after move-on; nominee audit entity_version is nominee_version; nominee password in mutation cache until GC; 066 plan measured on 60k rows only; APK statement PDF proposal.",
+      "Composition: composition.ts 636 lines; admin routes in runtime/adminComposition.ts. Keyset lists use repositories/keysetBoundary.ts.",
+      "Not verified: no browser or device run of new screens, no real mail, no APK export, nothing on a VPS."
     ]
   },
   "history": [
@@ -66,6 +66,25 @@
         "Still per-attempt idempotency keys: approve application, refund action, acknowledge receipt (adminQueries.ts); server guards stop duplicates.",
         "Phase B lanes are unblocked on the board (B-L1..B-L6). Start each on its own tally track from current main; lanes adding contract files regenerate OpenAPI at landing.",
         "Landing pattern that worked: rebase the track onto main in its worktree, resolve, open a session on the track worktree, land_start, run the script in the background, land_wait, then task_land from the lane's main session."
+      ]
+    },
+    {
+      "task": "B-close",
+      "from": "coordinator-b-close",
+      "track": "main",
+      "at": "2026-11-13T14:09:45.298Z",
+      "lines": [
+        "Phase B closed 2026-11-13 at aed82c9 (plan section 8 'Phase B close'). All six lanes are on local main; nothing pushed, released or deployed.",
+        "Main commits: email-web 883b127 6f1f86d; client-investing 7b60293..417e479 (7); support ecf140c 8bf1c64 4999848; value-updates 22a9b4d 56cffb1 3d44a7f 77a88fa; returns 7203235 ba88063 e332863; receipts e81eb02 e8826b7 d9d26b2.",
+        "Sweep on d9d26b2 in the Node 22 container: contracts 98 (149 ops); backend 100 files/1198; integration 44/452 coverage off; frontend 30/260; build:client and build:admin with boot checks (evidence 9f050378).",
+        "Maintainer decisions: rule-11 (no bank details or payment instructions anywhere; recordings notify 'Investment added'), rule-12 (also email the amount). G11 is now only publishing featureFlags.onlinePayments=false (board brief updated).",
+        "Migrations (convention-2): 061 identity, 062 investment_recorded template check (on main). Phase C: C1 nominee 063, C2 SIP schedule 064, C3 maturity 065; bank reference and reviews take the next free number. Board briefs for C-L1..C-L3 updated.",
+        "Release notes in the plan: add CLIENT_WEB_APP_URL to each VPS stack .env by hand; a v0.15.x email worker dead-letters investment_recorded mail (finding-26), so deploy workers with the API and expect lost investment emails after a rollback; new APK exports (G7, G8).",
+        "Open for the maintainer before C-L3: the payment sheet's optional bank reference (UTR) field may conflict with rule-11 ('no bank details or payment methods recorded'); ask before building it.",
+        "Follow-ups not built: mount OpenTicketsTile on the overview (4th DailyTiles slot) and add a support tab on the client hub (useUserSupportTickets); client notifications category label for support_request_updated.",
+        "Carried findings: finding-24 (older keyset lists use millisecond cursors; fund receipt queue first), finding-25 (usePagedQuery loadAll loops after a failed page). APK statement PDF endpoint proposed (b-client-investing handoff), not built.",
+        "Composition: composition.ts 793 lines; new routes go through a composition module (adminEmailComposition.ts, recordingComposition.ts). adminQueries.ts 538, admin-money.ts 730.",
+        "Q-026 still open. Not verified: no browser or device run, no real mail, no APK export, nothing on a VPS."
       ]
     }
   ]

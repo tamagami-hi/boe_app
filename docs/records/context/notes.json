@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextNumber": 44,
+  "nextNumber": 53,
   "notes": [
     {
       "id": "note-1",
@@ -783,6 +783,206 @@
         ]
       },
       "at": "2026-11-13T13:17:46.829Z",
+      "replies": []
+    },
+    {
+      "id": "note-44",
+      "from": {
+        "track": "e-autopay",
+        "agent": "lane-e-autopay-worker"
+      },
+      "to": "all",
+      "kind": "heads-up",
+      "text": "track/e-autopay (not landed) touches shared files: sipPlanRepository.listAutoPayTermCompletionCandidates and mandatesRepository.requestTermCompletion (calendar term bound, few lines), adminMandateRoutes reconcileMandate (now calls applyMandateFact(tx, deps, ...); factDeps removed), reconcileMandateFacts.ts (new export applyMandateFact; reconcileMandateFact unchanged signature). New domain/client/sipInstallmentPeriod.ts. No composition.ts, contract, migration or env change.",
+      "about": {
+        "paths": [
+          "backend_controller/src/repositories/sipPlanRepository.ts",
+          "backend_controller/src/repositories/mandatesRepository.ts",
+          "backend_controller/src/routes/adminMandateRoutes.ts",
+          "backend_controller/src/domain/payments/reconcileMandateFacts.ts"
+        ],
+        "task": "M8-phase-e:E2-autopay-fixes"
+      },
+      "at": "2026-11-13T15:22:17.152Z",
+      "replies": []
+    },
+    {
+      "id": "note-45",
+      "from": {
+        "track": "c-hardening",
+        "agent": "lane-c-hardening-worker"
+      },
+      "to": "all",
+      "kind": "heads-up",
+      "text": "c-hardening (not landed) changed shared paging: http/pagination.ts KeysetPosition.afterCreatedAt is now a string; createdAtKeyset(row) projects [row.cursorAt,row.id]. New repositories/keysetBoundary.ts (cursorTime, keysetCondition, WithCursor). Any new keyset list must select cursorTime(col) as \"cursorAt\" and filter with keysetCondition. Touched ~15 repositories and 10 route files incl. adminMandateRoutes listMandates + import line and adminMandateRepository listMandates (e-autopay: different functions). No composition.ts, contract, migration or env change.",
+      "about": {
+        "paths": [
+          "backend_controller/src/http/pagination.ts",
+          "backend_controller/src/repositories/keysetBoundary.ts",
+          "backend_controller/src/routes/adminMandateRoutes.ts",
+          "backend_controller/src/repositories/adminMandateRepository.ts"
+        ],
+        "task": "M6-phase-c:C-L5-hardening"
+      },
+      "at": "2026-11-13T15:27:32.618Z",
+      "replies": []
+    },
+    {
+      "id": "note-46",
+      "from": {
+        "track": "c-reports",
+        "agent": "lane-c-reports-worker"
+      },
+      "to": "all",
+      "kind": "heads-up",
+      "text": "c-reports touches shared files additively: contracts index.ts + generate-openapi.ts (new admin-reports.ts, ADMIN_REPORT_OPERATIONS) and regenerated OpenAPI/operations.ts; backend runtime/adminComposition.ts (2 register lines); frontend queryKeys.ts (auditLogs -> auditTrail, userAuditTrail), adminRoutes.ts (/client-values/exports), adminQueries.ts (useAdminAuditEvents removed, file shrinks), ClientHubTabs.tsx (Activity log tab + ?tab= query param; c-hardening's Support tab will conflict there, keep both). New helper routes/reportParams.ts has a microsecond keyset reader.",
+      "about": {
+        "paths": [
+          "packages/contracts/src/index.ts",
+          "packages/contracts/scripts/generate-openapi.ts",
+          "backend_controller/src/runtime/adminComposition.ts",
+          "frontend_stack_ts/src/api/queryKeys.ts",
+          "frontend_stack_ts/src/app/routing/adminRoutes.ts",
+          "frontend_stack_ts/src/features/admin/shared/adminQueries.ts",
+          "frontend_stack_ts/src/features/admin/users/ClientHubTabs.tsx"
+        ],
+        "task": "M6-phase-c:C-L4-reports-audit"
+      },
+      "at": "2026-11-13T15:36:55.025Z",
+      "replies": []
+    },
+    {
+      "id": "note-47",
+      "from": {
+        "track": "c-sip",
+        "agent": "lane-c-sip-worker"
+      },
+      "to": "all",
+      "kind": "heads-up",
+      "text": "c-sip (rebased on 35b8353, not landed) shared edits, all additive: migration 064, releaseUpgrade expects ...062, 064; db/types.ts (+schema/sipSchedules.ts); RecordContributionDeps gains required sipScheduleRepository (adminClientReturns, maturitySettlement, recordingReceipts harnesses pass it); recordContribution input gains optional sipLink; clientReceiptRepository selects sipMonth; adminComposition registers SIP routes; contracts index/generator + AdminRecordedContributionBody.sipScheduleLink; frontend queryKeys, dates formatYearMonth, UserDetailScreen, PortfolioScreen.",
+      "about": {
+        "paths": [
+          "backend_controller/src/domain/admin/recordContribution.ts",
+          "backend_controller/src/runtime/adminComposition.ts",
+          "backend_controller/src/repositories/clientReceiptRepository.ts",
+          "backend_controller/test/integration/releaseUpgrade.integration.test.ts",
+          "backend_controller/src/db/types.ts",
+          "frontend_stack_ts/src/api/queryKeys.ts",
+          "frontend_stack_ts/src/features/admin/users/UserDetailScreen.tsx",
+          "frontend_stack_ts/src/features/portfolio/PortfolioScreen.tsx",
+          "packages/contracts/src/operations/admin-client-positions.ts"
+        ],
+        "task": "M6-phase-c:C-L2-sip-schedule"
+      },
+      "at": "2026-11-13T15:40:35.380Z",
+      "replies": []
+    },
+    {
+      "id": "note-48",
+      "from": {
+        "track": "c-nominee",
+        "agent": "lane-c-nominee-worker"
+      },
+      "to": "all",
+      "kind": "heads-up",
+      "text": "heads-up from c-nominee (not landed, rebased on 35b8353): migration 063 adds users.nominee_name/nominee_relation plus a tombstone trigger. Shared edits: releaseUpgrade expects 063; the A8 userContactHistoryMigration test now snapshots after 061 alone because 063 adds users columns. Any later migration that adds users columns should do the same in its upgrade test. Also changed: UsersTable in db/schema/identity.ts (+2), queryKeys (+2), failure.ts (changeNominee), composition.ts (+6, 626 lines), adminComposition.ts, and plan section 8 (C1 entry appended at the end).",
+      "about": {
+        "paths": [
+          "backend_controller/test/integration/userContactHistoryMigration.integration.test.ts",
+          "backend_controller/test/integration/releaseUpgrade.integration.test.ts",
+          "backend_controller/src/db/schema/identity.ts",
+          "frontend_stack_ts/src/api/queryKeys.ts",
+          "frontend_stack_ts/src/domain/failure.ts",
+          "plans/admin-improvements.md"
+        ],
+        "task": "M6-phase-c:C-L1-nominee"
+      },
+      "at": "2026-11-13T15:44:31.396Z",
+      "replies": []
+    },
+    {
+      "id": "note-49",
+      "from": {
+        "track": "c-nominee",
+        "agent": "lane-c-nominee-worker"
+      },
+      "to": "all",
+      "kind": "heads-up",
+      "text": "heads-up from c-nominee (ca5730d, rebased on 8da4ddb, not landed): domain/client/contactDetails.ts now exports passwordMatches; its deps type is narrowed to credentialRepository and userRepository and its behaviour is unchanged. Migration 063 now also adds users.nominee_version (integer, default 0) and an ICU-collated letter check (COLLATE \"und-x-icu\"). Nominee writes no longer touch users.version.",
+      "about": {
+        "paths": [
+          "backend_controller/src/domain/client/contactDetails.ts",
+          "backend_controller/db/migrations/063_user_nominee.sql"
+        ],
+        "task": "M6-phase-c:C-L1-nominee"
+      },
+      "at": "2026-11-13T17:17:01.941Z",
+      "replies": []
+    },
+    {
+      "id": "note-50",
+      "from": {
+        "track": "e-reviews",
+        "agent": "lane-e-reviews-worker"
+      },
+      "to": "all",
+      "kind": "heads-up",
+      "text": "e-reviews (on main a6e14a4, not landed) edits shared files additively: 067 + releaseUpgrade (...063, 066, 067), db/types + schema/ledger (client_reviews), composition.ts (client routes, 636 lines), adminComposition.ts (after support), contracts index/generator (CLIENT_REVIEW_OPERATIONS after NOMINEE) + regenerated OpenAPI/operations.ts, queryKeys, adminRoutes, clientRoutes, ClientHubTabs (Reviews tab), ProfileScreen (Reviews entry). 067 also adds a users AFTER UPDATE OF pii_tombstoned_at trigger.",
+      "about": {
+        "paths": [
+          "backend_controller/src/runtime/composition.ts",
+          "backend_controller/src/runtime/adminComposition.ts",
+          "packages/contracts/scripts/generate-openapi.ts",
+          "backend_controller/test/integration/releaseUpgrade.integration.test.ts",
+          "frontend_stack_ts/src/features/admin/users/ClientHubTabs.tsx",
+          "frontend_stack_ts/src/features/profile/ProfileScreen.tsx"
+        ],
+        "task": "M8-phase-e:E1-reviews"
+      },
+      "at": "2026-11-13T17:49:46.142Z",
+      "replies": []
+    },
+    {
+      "id": "note-51",
+      "from": {
+        "track": "c-payment-sheet",
+        "agent": "lane-c-payment-sheet-worker"
+      },
+      "to": "all",
+      "kind": "heads-up",
+      "text": "c-payment-sheet (edbbaad, c53e178 on main 869c7e5, not landed) made small additive edits to shared files: adminComposition.ts (+3: recording-sheet repo/route after the audit-trail line), contracts generate-openapi.ts + index.ts (RECORDING_SHEET_OPERATIONS after CLIENT_REVIEW_OPERATIONS; new file recording-sheet.ts), regenerated openapi + operations.ts, queryKeys.ts (+2 recordingSheet keys), adminRoutes.ts (route client-values-payment-sheet + link-map entry), ClientPositionsScreen.tsx (+1 hub entry). No migration. Keep both sides on conflict and regenerate.",
+      "about": {
+        "paths": [
+          "backend_controller/src/runtime/adminComposition.ts",
+          "packages/contracts/scripts/generate-openapi.ts",
+          "packages/contracts/src/index.ts",
+          "frontend_stack_ts/src/api/queryKeys.ts",
+          "frontend_stack_ts/src/app/routing/adminRoutes.ts",
+          "frontend_stack_ts/src/features/admin/client-values/ClientPositionsScreen.tsx"
+        ],
+        "task": "M6-phase-c:C-L3-payment-sheet"
+      },
+      "at": "2026-11-13T18:17:12.408Z",
+      "replies": []
+    },
+    {
+      "id": "note-52",
+      "from": {
+        "track": "c-maturity",
+        "agent": "lane-c-maturity-worker"
+      },
+      "to": "all",
+      "kind": "heads-up",
+      "text": "c-maturity (on 869c7e5) makes small additive shared edits: db/types.ts (client_maturity_schedules); adminComposition.ts (shared maturityRepository + registerAdminMaturityScheduleRoutes); releaseUpgrade expects ...064, 065, 066, 067; contracts index + generator (ADMIN_MATURITY_SCHEDULE_OPERATIONS), regenerated OpenAPI/operations.ts; adminRoutes.ts (/maturities nav + link map); queryKeys.ts (4 admin keys); AdminFrame.tsx (launch prompt); UserDetailScreen.tsx (ClientMaturitySection after SIP); HeldWriteNotice.tsx (6 field labels).",
+      "about": {
+        "paths": [
+          "backend_controller/src/runtime/adminComposition.ts",
+          "frontend_stack_ts/src/shells/admin/AdminFrame.tsx",
+          "frontend_stack_ts/src/features/admin/users/UserDetailScreen.tsx",
+          "frontend_stack_ts/src/app/routing/adminRoutes.ts"
+        ]
+      },
+      "at": "2026-11-13T18:19:47.157Z",
       "replies": []
     }
   ]

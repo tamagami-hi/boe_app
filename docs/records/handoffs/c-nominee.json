@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "track": "c-nominee",
+  "current": {
+    "task": "M6-phase-c:C-L1-nominee",
+    "from": "lane-c-nominee-worker",
+    "track": "c-nominee",
+    "at": "2026-11-13T17:28:58.135Z",
+    "lines": [
+      "C1 is on track/c-nominee, rebased on main 5722bc0 (after c-reports). Commits: 01c6418 feat(nominee) backend + contracts + generated + tests; 40067f1 feat(nominee-ui); 1634797 docs(plan); fcf160b fix(nominee) password, version and review fixes; a6e14a4 fix(nominee) inner joiners and the ICU check dropped (plan section 8 updated). Not landed, not pushed.",
+      "Rebase conflicts resolved: adminComposition keeps both the audit-trail and nominee registrations; generate-openapi keeps ADMIN_REPORT_OPERATIONS and NOMINEE_OPERATIONS; releaseUpgrade expects ...061, 062, 063, 066. Generated OpenAPI and operations were regenerated with the scripts and match at the tip (157 ops).",
+      "Migration 063 (unlanded) is now pure ASCII; the earlier version held literal invisible characters. It adds nominee_name and nominee_relation (nullable) plus nominee_version integer NOT NULL DEFAULT 0, and the tombstone trigger.",
+      "063 database checks are deterministic, with no collation or locale: btrim, 2 to 120 chars, both or neither, no C0/C1 controls, no Cf/Zl/Zp from an explicit Unicode 15.1 code-point list, and no joiner as first or last character.",
+      "ZWJ and ZWNJ (U+200D, U+200C) are allowed inside names and relations and refused at either end. The contract, routes, Profile form and SQL agree. Regex form: ^(?!ZWNJ|ZWJ)(?:[^Cf Zl Zp]|ZWNJ|ZWJ)*(?<!ZWNJ|ZWJ)$, written with alternations, not character classes, for ESLint.",
+      "The letter rule (at least one \\p{L} or \\p{N}) is enforced in the contract and routes only. PostgreSQL has no Unicode property classes, and [[:alnum:]] depends on collation. und-x-icu exists only if the cluster was initialised with ICU, which can't be checked, and a migration failing at deploy blocks the release.",
+      "Unchanged from fcf160b: client POST needs currentPassword (passwordMatches, shared passwordRecheckLimiter of 5 per 15 min). A wrong password answers INVALID_CREDENTIALS before the 'unchanged' no-op, writes nothing and adds no audit row. nominee_version is separate and users.version is untouched. Admin GET answers 404 for role holders. Permission is clients.create (no clients.update exists).",
+      "Checks at a6e14a4 (Node 22 container): contracts 98 tests, OpenAPI valid, 157 ops; backend check 100 files/1198; integration (coverage off) 50 files/484; frontend check 32 files/303; build:client and build:admin with the boot checks. composition.ts 626 lines.",
+      "Tests: userNomineeMigration 3; nominee.integration 8. A Malayalam name with an inner ZWJ is accepted via the admin API and in SQL; a leading ZWJ and a trailing ZWNJ are refused with field errors and by SQL.",
+      "Negative controls: drop .where(id) in replace (1 failed); drop the trigger (2 failed); ignore the password verdict (1 failed); bump users.version (3 failed); allow edge joiners in the route (validation test failed, the DB answered 500); refuse joiners everywhere (admin Malayalam test failed).",
+      "Landing overlaps with c-sip and e-reviews: releaseUpgrade list, adminComposition, composition (e-reviews), generator, index, generated files, queryKeys, UserDetailScreen. All additive. Not verified: browser/device, APK, VPS."
+    ]
+  },
+  "history": [
+    {
+      "task": "M6-phase-c:C-L1-nominee",
+      "from": "lane-c-nominee-worker",
+      "track": "c-nominee",
+      "at": "2026-11-13T15:44:50.500Z",
+      "lines": [
+        "C1 is on track/c-nominee, rebased on main 35b8353: 7ddc2ad feat(nominee) backend + contracts + generated + tests; ae5fd1a feat(nominee-ui); aac8e09 docs(plan) C1 entry in section 8. Not landed, not pushed.",
+        "Migration 063_user_nominee.sql: nullable users.nominee_name and nominee_relation. Checks: 2 to 120 chars, stored trimmed (= btrim), no [\\u0001-\\u001f\\u007f-\\u009f], both set or both null (users_nominee_pair). Additive; v0.15.x runs unchanged.",
+        "Tombstone: no code writes users.pii_tombstoned_at. 063 adds trigger users_tombstone_clears_nominee (BEFORE INSERT OR UPDATE, WHEN tombstoned and a nominee field is set) that nulls both fields. The admin write refuses closed or tombstoned accounts.",
+        "Endpoints (contract packages/contracts/src/operations/nominee.ts): GET/POST /v1/client/profile/nominee (signed-in client, idempotency none, no version, like the other profile edits); GET /v1/admin/users/{userId}/nominee (users.read); POST same path (clients.create, required Idempotency-Key, expectedVersion, client accounts without roles that are not closed).",
+        "Contract bodies are unions (name+relation, or both null), so no refine function hurts the contracts coverage gate. The backend uses superRefine to give field errors for a half nominee. Both accept the same bodies.",
+        "Audit: command user.nominee_changed, actor user or admin, metadata {change, nameChanged, relationChanged, previousName, currentName}; each name is reduced to its first letter plus ***. The relation is never stored in the audit.",
+        "A nominee change bumps users.version. Admin forms opened earlier (contact correction/release) then answer their existing stale conflict and reload.",
+        "Routes: client in composition.ts right after registerClientProfileRoutes (626 lines); admin in adminComposition.ts registerAdminSurface before fund receipts.",
+        "Shared test edit: userContactHistoryMigration now runs 061 alone before its full-row snapshot, then the rest. Later migrations that add users columns would break it otherwise. My userNomineeMigration uses the same pattern.",
+        "Landing conflict: c-sip's releaseUpgrade list (...062, 064) and my (...062, 063). The merged list is ...061, 062, 063, 064. Also queryKeys.ts, UserDetailScreen.tsx (c-sip), adminComposition.ts (c-sip, c-reports), and contracts index/generator: all additive.",
+        "Checks at the rebased tip (Node 22 container): contracts 98 tests, OpenAPI valid, 153 ops; backend check 100 files/1198; integration (coverage off) 47 files/465; frontend check 30 files/261; build:client and build:admin with the boot checks.",
+        "Negative controls: dropping .where(id) from userNomineeRepository.replace failed 'reads and edits only the signed-in client's nominee...'; dropping the trigger failed both tombstone tests (migration and API).",
+        "Open for the maintainer: whether a nominee change should need the current password (it does not); the admin edit permission is clients.create (a lane choice). Not verified: browser/device, APK, VPS."
+      ]
+    },
+    {
+      "task": "M6-phase-c:C-L1-nominee",
+      "from": "lane-c-nominee-worker",
+      "track": "c-nominee",
+      "at": "2026-11-13T17:17:01.145Z",
+      "lines": [
+        "C1 is on track/c-nominee, rebased on main 8da4ddb. Commits: 5563d1b feat(nominee) backend + contracts + generated + tests; 91e8a66 feat(nominee-ui); 313e5a5 docs(plan); ca5730d fix(nominee), the review follow-up (password, invisible characters, nominee_version, staff 404, error lists; plan section 8 updated). Not landed, not pushed.",
+        "Migration 063 (unlanded, edited in place): nominee_name and nominee_relation (nullable) plus nominee_version integer NOT NULL DEFAULT 0. Checks on both texts: 2 to 120 chars; stored trimmed; both set or neither; no C0/C1 control characters; no Cf/Zl/Zp, listed as explicit Unicode 15.1 code points; and [[:alnum:]] under COLLATE und-x-icu (ICU letters plus Nd digits). The tombstone trigger is unchanged.",
+        "The ICU letter check needs the und-x-icu collation. postgres:16-alpine, used in production and in testcontainers, has it, and the suite accepts 'सीता देवी'. A server without ICU would fail migration 063 loudly; no row would change.",
+        "Client POST /v1/client/profile/nominee now needs currentPassword. It reuses passwordMatches (exported from domain/client/contactDetails.ts; deps narrowed to credentialRepository and userRepository) and the shared passwordRecheckLimiter: 5 hits per user per 15 min, counted after parsing and before the transaction.",
+        "A wrong password answers INVALID_CREDENTIALS before the 'unchanged' no-op. Nothing is written and there is no audit row; contact changes do not audit failures either.",
+        "nominee_version is the only version on the nominee endpoints (response 'version', admin expectedVersion, which is nonnegative and starts at 0). Nominee writes never touch users.version. updated_at is still set.",
+        "Admin GET /v1/admin/users/{userId}/nominee answers RESOURCE_NOT_FOUND for accounts holding roles. The POST still answers STATE_CONFLICT for them. Permissions: users.read and clients.create. seedCatalog has no clients.update or users.update, so clients.create stays.",
+        "Contract: NomineeText = FullName.regex(no Cf/Zl/Zp).regex(letter or Nd). The response name and relation use it. getClientNominee lists CSRF_INVALID (cookie origin check on GET). changeClientNominee lists INVALID_CREDENTIALS, RESOURCE_NOT_FOUND and RATE_LIMITED.",
+        "Profile form: a Current password field, copied from the phone form, cleared after every attempt. Failure copy covers wrong password and rate limit.",
+        "Checks at ca5730d (Node 22 container): contracts 98 tests, OpenAPI valid, 153 ops; backend check 100 files/1198; integration (coverage off) 49 files/479; frontend check 30 files/261; build:client and build:admin with the boot checks.",
+        "Tests: userNomineeMigration 3 (the DB-check test refuses every Cf/Zl/Zp code point Node knows, in both fields) and nominee.integration 8.",
+        "Negative controls: drop .where(id) in replace (1 failed); drop the trigger (2 failed); ignore the password verdict (wrong-password test failed); bump users.version on nominee writes (3 failed).",
+        "Open for the maintainer: rejecting all Cf also refuses ZWJ/ZWNJ, which some Malayalam/Sinhala/Devanagari input produces; such names get a field error. The letter rule is L or Nd (not all of N) to match ICU exactly.",
+        "Landing conflicts: releaseUpgrade list with c-sip/c-reports (merge to ...061, 062, 063, 064...); adminComposition, queryKeys, UserDetailScreen, contracts index/generator: all additive. Not verified: browser/device, APK, VPS."
+      ]
+    }
+  ]
+}

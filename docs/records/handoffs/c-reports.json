@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "track": "c-reports",
+  "current": {
+    "task": "M6-phase-c:C-L4-reports-audit",
+    "from": "lane-c-reports-worker",
+    "track": "c-reports",
+    "at": "2026-11-13T17:14:29.074Z",
+    "lines": [
+      "Commits on track/c-reports (rebased on main 8da4ddb, not landed): f0df84a feat(admin): add accounting export and audit trail reads; 2768b9b feat(admin-ui): add accounting exports, audit presets and activity log; 9f66354 perf(admin): index the per-client audit trail by metadata userId; 5722bc0 fix(admin-ui): guard spaced formulas and label reversed export amounts.",
+      "Contract file: packages/contracts/src/operations/admin-reports.ts (ADMIN_REPORT_OPERATIONS), registered in index.ts and scripts/generate-openapi.ts. Regenerate openapi + frontend operations.ts at landing if another lane adds contracts.",
+      "Endpoints: GET /v1/admin/reports/client-balances?asOfDate (client_values.read); GET /v1/admin/reports/contributions?month=YYYY-MM (client_values.read); GET /v1/admin/audit-events?preset&entityType&command&fromDate&toDate (audit.read); GET /v1/admin/users/{userId}/audit-events (audit.read, 404 unknown user). All paged after/limit.",
+      "Migration 066_audit_events_user_index.sql: plain CREATE INDEX audit_events_metadata_user_idx ON audit_events ((metadata->>'userId'), occurred_at DESC, id DESC) WHERE metadata ? 'userId'. Index only, no row touched, previous release runs against it; not a destructive boundary. Blocks audit_events writes while it builds. releaseUpgrade on this branch expects ...062, 066; merge with c-nominee 063 and c-sip 064 at landing. Reviews take 067.",
+      "Per-client audit read is a UNION of five branches (entity user, actor, metadata userId with metadata ? 'userId', refund owner via entity_id IN subquery, growth batch via entity_id IN subquery), each with keysetCondition and LIMIT pushed down, deduplicated on (id, occurred_at), joined back to audit_events, ordered and limited. Same rows, order and cursors as before.",
+      "EXPLAIN (throwaway DB, 60,000 noise audit rows, ANALYZE): entity branch Index Only Scan audit_events_entity_idx; actor branch Index Scan audit_events_actor_idx + Incremental Sort; metadata branch Index Scan audit_events_metadata_user_idx with the keyset row comparison in the Index Cond on page 2; refund and growth branches Index Only Scan audit_events_entity_idx on entity_type with a semi-join to the (empty) source tables.",
+      "Backend modules: repositories/accountingReportRepository.ts, repositories/auditTrailRepository.ts, routes/adminReportRoutes.ts, routes/adminAuditTrailRoutes.ts, routes/reportParams.ts; registered in runtime/adminComposition.ts. Keyset lists use hardening's keysetBoundary (cursorTime/keysetCondition) and pagination readKeyset/createdAtKeyset; balances page on (user_id, fund_id).",
+      "Balances: sum of all entries (reversals included) with effective_date <= asOfDate per (user, fund). Contributions: entry_type contribution by IST effective month, all order types, server categoryLabel. No bank reference (rule-11). Future dates and months refused.",
+      "Frontend: features/admin/reports (AccountingExportsScreen at /client-values/exports, reportCsv.ts, collectPages.ts, reportFiles.ts, reportQueries.ts); features/admin/audit (auditQueries.ts, AuditTrailTable.tsx, AuditLogScreen on the new endpoint); users/ClientActivityTab.tsx; ClientHubTabs has Support + Activity log and reads ?tab=. useAdminAuditEvents removed from adminQueries.ts (511 lines).",
+      "CSV: RFC 4180, CRLF, BOM at save. Guard prefixes ' when the cell starts with tab or CR, or with = + - @ after leading space/tab/CR/LF/NBSP; only exact decimals (-123.45) are exempt. Contribution amount header is 'Amount (INR, before reversal)'. Screen notes: a reversed entry keeps its original amount and adds nothing to its month; recordings during an export can make pages differ.",
+      "Verified at 5722bc0 (Node 22 container): contracts check 98 tests, 153 operations; backend check 100 files/1198; integration 48 files/473 coverage off; frontend check 32 files/303 + build:admin with boot checks. Commit bodies of 9f66354 and earlier quote pre-rebase integration counts (46/460) measured on main 35b8353.",
+      "Negative controls: strict date cutoff fails the balances test; millisecond cursors fail the paging and month tests; dropping the metadata branch fails the audit trail test; first-character-only guard fails 5 new CSV cases; disabling the guard fails 6 original cases.",
+      "Not done: no browser run, no CSV opened in a spreadsheet, no plan section 8 update (coordinator), old /v1/admin/audit-logs unchanged for released admin APKs, no production-volume measurement."
+    ]
+  },
+  "history": [
+    {
+      "task": "M6-phase-c:C-L4-reports-audit",
+      "from": "lane-c-reports-worker",
+      "track": "c-reports",
+      "at": "2026-11-13T15:46:43.102Z",
+      "lines": [
+        "Commits on track/c-reports (rebased on main 35b8353, not landed): 5f8f2f2 feat(admin): add accounting export and audit trail reads; 4860977 feat(admin-ui): add accounting exports, audit presets and activity log.",
+        "Contract file: packages/contracts/src/operations/admin-reports.ts (ADMIN_REPORT_OPERATIONS), registered in index.ts and scripts/generate-openapi.ts. Regenerate openapi + frontend operations.ts at landing if another lane adds contracts.",
+        "Endpoints: GET /v1/admin/reports/client-balances?asOfDate (client_values.read); GET /v1/admin/reports/contributions?month=YYYY-MM (client_values.read); GET /v1/admin/audit-events?preset&entityType&command&fromDate&toDate (audit.read); GET /v1/admin/users/{userId}/audit-events (audit.read, 404 unknown user). All paged after/limit.",
+        "Backend modules: repositories/accountingReportRepository.ts, repositories/auditTrailRepository.ts, routes/adminReportRoutes.ts, routes/adminAuditTrailRoutes.ts, routes/reportParams.ts (calendar date/month schemas, IST day bounds, uuid-pair keyset reader for balances). Registered in runtime/adminComposition.ts (readDeps, 2 lines). Names avoid the aum/growth/payment/sip guard patterns.",
+        "Balances: sum of all entries (reversals included) with effective_date <= asOfDate per (user, fund); keyset (user_id, fund_id). Future asOfDate refused. A reversal is dated like its original, so later corrections change historical as-of balances.",
+        "Contributions: entry_type contribution with effective_date in the month (IST calendar), all order types; categoryLabel = recording category for recorded_offline, One-off investment / SIP instalment for online, Contribution if no order. Keyset created_at asc via keysetBoundary (cursorTime/keysetCondition). No bank reference (rule-11). Future month refused.",
+        "Audit trail: same item shape for both endpoints: client {userId, fullName} (tombstone masked), amountPaise, fundId, orderId, ledgerEntryId derived from metadata keys (userId, fundId, orderId, entryId; amount from amountPaise/valueDeltaPaise/totalDeltaPaise/currentValuePaise), refund_operations/withdrawal_operations rows, or collective growth membership (per-client amount = that client's growth delta). Presets: recordings, reversals, growth, maturity (matured, withdrawal, reinvestment, payout paid/failed), refunds (retry, reconcile).",
+        "Per-client scope: entity user = id, actor = id, metadata userId = id, refunds via order owner, growth batches with an entry for the user. No index on metadata userId (no migration allowed); fine at current volume, unmeasured at scale.",
+        "Frontend: features/admin/reports (AccountingExportsScreen at /client-values/exports, reportCsv.ts, collectPages.ts, reportFiles.ts, reportQueries.ts); features/admin/audit (auditQueries.ts, AuditTrailTable.tsx, AuditLogScreen now uses the new endpoint); users/ClientActivityTab.tsx; ClientHubTabs has Support + Activity log and reads ?tab=. useAdminAuditEvents removed from adminQueries.ts (511 lines); qk.admin.auditLogs replaced by auditTrail/userAuditTrail.",
+        "CSV: RFC 4180 quoting, CRLF, UTF-8 BOM added at save; formula guard prefixes ' for leading = + - @ tab CR except plain decimals like -123.45 (kept numeric deliberately). Rupees from paise via BigInt. Download disabled in the native admin app (isNative) with a browser hint.",
+        "Verified at tip (Node 22 container): contracts check 98 tests, 153 operations reachable; backend check 100 files/1198; integration 46 files/460 coverage off (new accountingReports.integration.test.ts, 5 tests); frontend check 32 files/290 + build:admin with boot checks; commit 5f8f2f2 alone: frontend check 30 files/261.",
+        "Negative controls: effective_date < asOfDate fails the balances test; millisecond-truncated cursors fail the paging and month tests; disabling the formula guard fails 6 CSV cases.",
+        "Not done: no browser run, no CSV opened in a spreadsheet, no plan section 8 update (coordinator), old /v1/admin/audit-logs left unchanged for released admin APKs."
+      ]
+    }
+  ]
+}

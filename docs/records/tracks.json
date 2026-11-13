@@ -156,6 +156,114 @@
       },
       "openedAt": "2026-11-13T12:43:03.560Z",
       "closedAt": "2026-11-13T14:10:08.631Z"
+    },
+    {
+      "name": "c-composition",
+      "branch": "track/c-composition",
+      "worktree": ".temp/worktrees/c-composition",
+      "purpose": "C-L0: move admin route registrations out of composition.ts into adminComposition.ts so Phase C/E lanes have headroom",
+      "openedBy": {
+        "track": "main",
+        "agent": "lane-c-composition"
+      },
+      "openedAt": "2026-11-13T14:56:34.472Z",
+      "closedAt": "2026-11-13T15:07:03.696Z"
+    },
+    {
+      "name": "c-hardening",
+      "branch": "track/c-hardening",
+      "worktree": ".temp/worktrees/c-hardening",
+      "purpose": "C-L5: microsecond keyset cursors (finding-24), loadAll stops on failure (finding-25), open-tickets tile, client-hub support tab, support notice label",
+      "openedBy": {
+        "track": "main",
+        "agent": "lane-c-hardening"
+      },
+      "openedAt": "2026-11-13T14:56:34.824Z",
+      "closedAt": "2026-11-13T15:38:23.943Z"
+    },
+    {
+      "name": "e-autopay",
+      "branch": "track/e-autopay",
+      "worktree": ".temp/worktrees/e-autopay",
+      "purpose": "E2: AutoPay due-date advance, stalled instalments, mandate reconcile atomicity, SIP and mandate worker request ids and double month; payments stay disabled",
+      "openedBy": {
+        "track": "main",
+        "agent": "lane-e-autopay"
+      },
+      "openedAt": "2026-11-13T14:56:35.309Z",
+      "closedAt": "2026-11-13T15:53:58.289Z"
+    },
+    {
+      "name": "c-nominee",
+      "branch": "track/c-nominee",
+      "worktree": ".temp/worktrees/c-nominee",
+      "purpose": "C1: nominee name and relation (migration 063), client Profile and admin user-page endpoints and forms, audited, cleared on tombstone",
+      "openedBy": {
+        "track": "main",
+        "agent": "lane-c-composition"
+      },
+      "openedAt": "2026-11-13T15:07:18.193Z",
+      "closedAt": "2026-11-13T17:38:32.469Z"
+    },
+    {
+      "name": "c-sip",
+      "branch": "track/c-sip",
+      "worktree": ".temp/worktrees/c-sip",
+      "purpose": "C2: admin SIP schedule (migration 064), monthly recordings linked to a schedule month, receipt sipMonth, client months-paid endpoint and badge",
+      "openedBy": {
+        "track": "main",
+        "agent": "lane-c-sip"
+      },
+      "openedAt": "2026-11-13T15:07:18.594Z",
+      "closedAt": "2026-11-13T17:51:03.651Z"
+    },
+    {
+      "name": "c-reports",
+      "branch": "track/c-reports",
+      "worktree": ".temp/worktrees/c-reports",
+      "purpose": "C5: accounting CSV exports (balances as of a date, contributions by month), audit log presets and links, per-client audit list",
+      "openedBy": {
+        "track": "main",
+        "agent": "lane-c-composition"
+      },
+      "openedAt": "2026-11-13T15:07:19.022Z",
+      "closedAt": "2026-11-13T17:23:06.816Z"
+    },
+    {
+      "name": "e-reviews",
+      "branch": "track/e-reviews",
+      "worktree": ".temp/worktrees/e-reviews",
+      "purpose": "E1: client rating 1-5 and comment (migration 067), client screen, admin-only list with client profile and moderation state; nothing public",
+      "openedBy": {
+        "track": "main",
+        "agent": "lane-e-autopay"
+      },
+      "openedAt": "2026-11-13T15:53:59.504Z",
+      "closedAt": "2026-11-13T18:09:19.664Z"
+    },
+    {
+      "name": "c-maturity",
+      "branch": "track/c-maturity",
+      "worktree": ".temp/worktrees/c-maturity",
+      "purpose": "C3: maturity schedule per client and fund (migration 065), dashboard, due list, admin open-app prompt, three admin resolutions built on settlement and SIP schedules",
+      "openedBy": {
+        "track": "main",
+        "agent": "lane-c-sip"
+      },
+      "openedAt": "2026-11-13T17:51:11.985Z",
+      "closedAt": "2026-11-13T18:43:39.017Z"
+    },
+    {
+      "name": "c-payment-sheet",
+      "branch": "track/c-payment-sheet",
+      "worktree": ".temp/worktrees/c-payment-sheet",
+      "purpose": "C4: monthly payment sheet from admin SIP schedules, per-row idempotent recordings linked to schedule months, CSV paste; no bank reference",
+      "openedBy": {
+        "track": "main",
+        "agent": "lane-c-composition"
+      },
+      "openedAt": "2026-11-13T17:51:12.330Z",
+      "closedAt": "2026-11-13T18:34:27.888Z"
     }
   ]
 }

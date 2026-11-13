@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextRow": 17,
+  "nextRow": 19,
   "open": [
     {
       "row": 1,
@@ -129,6 +129,22 @@
       "meanwhile": "The payment sheet is built without any bank reference field and without its migration. Recordings keep only the category, amount, date and fund. Nothing about bank accounts or payment methods is stored or shown.",
       "asked": "2026-11-13T14:10:33.533Z",
       "by": "coordinator-b-close"
+    },
+    {
+      "row": 17,
+      "group": "admin-improvements",
+      "question": "For AutoPay, once payments are re-enabled (E2, track e-autopay): when a monthly debit fails, or its 10:00 IST debit time passes with no order, should the plan skip that month and still end on its original end date, so it collects fewer instalments than its number of months? Or should the plan be extended so the missed month is collected at the end?",
+      "meanwhile": "The failed or missed month is skipped. Its rows are kept as they are, it is never debited again, and the plan still ends on its original end date, so no extra debit ever happens after the planned term. Payments and AutoPay stay disabled, so this has no effect today.",
+      "asked": "2026-11-13T15:23:34.419Z",
+      "by": "lane-e-autopay"
+    },
+    {
+      "row": 18,
+      "group": "admin-improvements",
+      "question": "Maturity resolutions (C3, track c-maturity):\n(a) For \"reinvest the money as a SIP\", the app keeps the matured money where it is, with no ledger entry, and only starts a new admin SIP schedule; the admin then records each month's payment as usual. Is that how the money should flow, or should the matured amount be paid out first and then re-recorded month by month?\n(b) Is a 30-day window right for the admin's launch prompt? It also lists dates already past.\n(c) When options 2 or 3 start a new SIP, the client's existing active SIP schedule for that fund is closed first. Is that right?",
+      "meanwhile": "(a) Option 3 writes no ledger row and no payout; only the SIP schedule changes, and the screen tells the admin not to record the matured money again. (b) The prompt lists maturities from today through 30 days ahead, plus overdue ones. (c) Options 2 and 3 close the existing active SIP for that client and fund before creating the new one. Nothing happens to money without the admin's explicit choice.",
+      "asked": "2026-11-13T18:24:32.459Z",
+      "by": "lane-c-sip"
     }
   ],
   "answered": []
