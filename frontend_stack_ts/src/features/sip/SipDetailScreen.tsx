@@ -17,6 +17,7 @@ import {
 import type { ClientFailure } from "~/domain/failure"
 import { toPaise } from "~/domain/money"
 import { paymentFailureReason } from "~/domain/paymentReason"
+import { useOnlinePaymentsOff } from "~/features/investing/onlinePayments"
 import { CheckoutUrlRejected, decideCheckout } from "~/features/payments/checkout"
 import { openCheckout } from "~/features/payments/openCheckout"
 import {
@@ -54,6 +55,9 @@ const MANUAL_EXPLANATION =
 const AUTOPAY_EXPLANATION =
   "This plan is collected by PhonePe UPI AutoPay. PhonePe lets you know a day before each collection."
 
+const AUTOPAY_OFF_EXPLANATION =
+  "AutoPay is not collecting at the moment. Your investments are recorded by the BeOnEdge team and appear in your portfolio."
+
 type Confirming = "pause" | "resume" | "cancel" | "cancel-autopay" | null
 
 const SipDetailScreen = (): React.ReactElement => {
@@ -67,6 +71,7 @@ const SipDetailScreen = (): React.ReactElement => {
   const [confirming, setConfirming] = useState<Confirming>(null)
   const [failure, setFailure] = useState<ClientFailure | null>(null)
   const store = useMemo(browserPendingPaymentStore, [])
+  const paymentsOff = useOnlinePaymentsOff()
 
   const plan = plans.data?.items.find((entry) => entry.sipId === sipPlanId) ?? null
   const looksAutoPay =
@@ -240,7 +245,11 @@ Back to SIP plans
 
               <div className={PROSE_PANEL}>
                 <p className={HONESTY_TEXT}>
-                  {isAutoPay ? AUTOPAY_EXPLANATION : MANUAL_EXPLANATION}
+                  {isAutoPay
+                    ? paymentsOff
+                      ? AUTOPAY_OFF_EXPLANATION
+                      : AUTOPAY_EXPLANATION
+                    : MANUAL_EXPLANATION}
                 </p>
               </div>
 
@@ -272,7 +281,7 @@ Back to SIP plans
                       <p className={HONESTY_TEXT}>{autoPayStatus.detail}</p>
                     )}
 
-                    {autopay.data?.canRetrySetup === true ? (
+                    {autopay.data?.canRetrySetup === true && !paymentsOff ? (
                       <Button loading={retrySetup.isPending} onClick={retry} trailing>
                         Set up AutoPay again
                       </Button>

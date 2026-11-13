@@ -21,6 +21,8 @@ import {
   browserPendingPaymentStore,
   persistPendingPayment,
 } from "~/features/payments/pendingPayment"
+import { PaymentsOffPage } from "~/features/investing/InvestmentsRecorded"
+import { useOnlinePaymentsOff } from "~/features/investing/onlinePayments"
 import { useCreateOrder, useFund, usePayOrder } from "~/features/shared/queries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { ITEM_TITLE } from "~/ui/recipes/datalist"
@@ -40,7 +42,7 @@ import { FUND_LINE, RULE, RULES, RULE_DOT } from "./orders.recipe"
 
 const PRESETS = [1_000, 5_000, 10_000, 25_000, 50_000] as const
 
-const LumpsumInvestScreen = (): React.ReactElement => {
+const LumpsumInvestForm = (): React.ReactElement => {
   const { fundId = "" } = useParams()
   const fund = useFund(fundId)
   const navigate = useNavigate()
@@ -252,6 +254,11 @@ const LumpsumInvestScreen = (): React.ReactElement => {
         </Section>
     </Page>
   )
+}
+
+const LumpsumInvestScreen = (): React.ReactElement => {
+  const paymentsOff = useOnlinePaymentsOff()
+  return paymentsOff ? <PaymentsOffPage title="Invest a lump sum" /> : <LumpsumInvestForm />
 }
 
 export default LumpsumInvestScreen

@@ -7,6 +7,8 @@ import { formatDate } from "~/domain/dates"
 import { monthsLabel } from "~/domain/plural"
 import { toPaise } from "~/domain/money"
 import { fundRiskLevel } from "~/domain/status"
+import { InvestmentsRecordedNote } from "~/features/investing/InvestmentsRecorded"
+import { useOnlinePaymentsOff } from "~/features/investing/onlinePayments"
 import { useEligibility, useFund } from "~/features/shared/queries"
 import { FundStockAllocation } from "./FundStockAllocation"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
@@ -26,6 +28,7 @@ const FundDetailScreen = (): React.ReactElement => {
   const { fundId = "" } = useParams()
   const query = useFund(fundId)
   const eligibility = useEligibility()
+  const paymentsOff = useOnlinePaymentsOff()
 
   const skeleton = (
     <Card>
@@ -93,7 +96,9 @@ const FundDetailScreen = (): React.ReactElement => {
                 )}
               </div>
 
-              {canInvest ? (
+              {canInvest && paymentsOff ? (
+                <InvestmentsRecordedNote />
+              ) : canInvest ? (
                 <div className={FUND_ACTIONS}>
                   <ButtonLink to={`/funds/${fund.id}/invest/lumpsum`} size="lg" fullWidth>
                     Invest a lump sum

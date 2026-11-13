@@ -10,6 +10,7 @@ import { paymentFailureReason } from "~/domain/paymentReason"
 import { paymentPartnerName } from "~/domain/provider"
 import { supportReference } from "~/domain/reference"
 import { clientInvestmentStatus } from "~/domain/status"
+import { PAYMENT_NOT_COMPLETED, useOnlinePaymentsOff } from "~/features/investing/onlinePayments"
 import {
   OPEN_PAYMENT_STATUSES,
   hasCheckoutLapsed,
@@ -53,12 +54,26 @@ const COPY: Readonly<Record<string, string>> = {
 const LAPSED_COPY =
   "The time to complete this payment has passed without a confirmed payment, so nothing was charged unless your bank shows otherwise. If money has left your account, contact the BeOnEdge team through Support with the reference below."
 
-const LAPSED_STATUS = { label: "Not completed", tone: "neutral" } as const
+const FAILED_WHILE_PAYMENTS_OFF_COPY =
+  "This payment did not go through and nothing was taken from your account."
+
+const NOT_COMPLETED_WHILE_PAYMENTS_OFF_COPY =
+  "This payment was not completed in the app. If money has left your account for it, contact the BeOnEdge team through Support with the reference below."
+
+type AnswerInput = Readonly<{ status: string; lapsed: boolean; paymentsOff: boolean }>
+
+const answerFor = ({ status, lapsed, paymentsOff }: AnswerInput): string => {
+  if (paymentsOff && status === "payment_in_progress") return NOT_COMPLETED_WHILE_PAYMENTS_OFF_COPY
+  if (lapsed) return LAPSED_COPY
+  if (paymentsOff && status === "payment_failed") return FAILED_WHILE_PAYMENTS_OFF_COPY
+  return COPY[status] ?? ""
+}
 
 const PaymentStatusScreen = (): React.ReactElement => {
   const { paymentId = "" } = useParams()
   const store = useMemo(browserPendingPaymentStore, [])
   const invalidateMoney = useInvalidateMoney()
+  const paymentsOff = useOnlinePaymentsOff()
 
   const query = usePayment(paymentId)
   const funds = useFundCatalogue()
@@ -96,7 +111,11 @@ const PaymentStatusScreen = (): React.ReactElement => {
           const partner = paymentPartnerName(payment.provider)
           const reason = paymentFailureReason(payment.failureCode)
           const reference = supportReference(payment.paymentId)
-          const lapsed = hasCheckoutLapsed(payment, query.dataUpdatedAt)
+          const lapsed =
+            hasCheckoutLapsed(payment, query.dataUpdatedAt) ||
+            (paymentsOff && payment.status === "payment_in_progress")
+          const failed = payment.status === "payment_failed"
+          const answer = answerFor({ status: payment.status, lapsed, paymentsOff })
           const isOpen = OPEN_PAYMENT_STATUSES.includes(payment.status) && !lapsed
           const formatSettledAt = payment.provider === null ? formatDate : formatDateTime
 
@@ -105,7 +124,7 @@ const PaymentStatusScreen = (): React.ReactElement => {
               <Card elevated>
                 <div className={PAYMENT_HERO}>
                   <div className={PAYMENT_STATUS_ROW}>
-                    <StatusBadge status={lapsed ? LAPSED_STATUS : clientInvestmentStatus(payment.status)} />
+                    <StatusBadge status={lapsed ? PAYMENT_NOT_COMPLETED : clientInvestmentStatus(payment.status)} />
                     {isOpen ? (
                       <span className={STATE_REFRESHING}>
                         <Spinner size="sm" label="Checking for an update" />
@@ -113,7 +132,7 @@ const PaymentStatusScreen = (): React.ReactElement => {
                       </span>
                     ) : null}
                   </div>
-                  <p className={PAYMENT_ANSWER}>{lapsed ? LAPSED_COPY : (COPY[payment.status] ?? "")}</p>
+                  <p className={PAYMENT_ANSWER}>{answer}</p>
                 </div>
 
                 <div className={SUMMARY_GRID}>
@@ -171,7 +190,7 @@ const PaymentStatusScreen = (): React.ReactElement => {
                       See my portfolio
                     </ButtonLink>
                   ) : null}
-                  {payment.status === "payment_failed" ? (
+                  {failed && !paymentsOff ? (
                     <ButtonLink to={`/funds/${payment.fundId}`} trailing>
                       Try again
                     </ButtonLink>

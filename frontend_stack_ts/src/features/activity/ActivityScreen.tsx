@@ -1,10 +1,13 @@
 import { Link, useSearchParams } from "react-router-dom"
+import type { ReactNode } from "react"
 
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
-import { formatDate, formatDateTime } from "~/domain/dates"
+import { formatDate } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { clientInvestmentStatus } from "~/domain/status"
+import { INVESTMENTS_RECORDED_HERE } from "~/features/investing/InvestmentsRecorded"
+import { useOnlinePaymentsOff } from "~/features/investing/onlinePayments"
 import {
   useFundCatalogue,
   usePayments,
@@ -16,21 +19,20 @@ import { EmptyState } from "~/ui/patterns/EmptyState"
 import { LoadMore } from "~/ui/patterns/LoadMore"
 import { MoneyFootnote } from "~/ui/patterns/MoneyFootnote"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
-import { StatusBadge } from "~/ui/patterns/StatusBadge"
-import { CARD_LINK, CARD_STACK } from "~/ui/recipes/surface"
+import { CARD_STACK } from "~/ui/recipes/surface"
 import { FEED_MEASURE } from "~/ui/recipes/layout"
 import { cx } from "~/lib/cx"
-import { ITEM_TITLE } from "~/ui/recipes/datalist"
 import { LINK_TEXT, META_MUTED } from "~/ui/recipes/text"
 import { Badge } from "~/ui/primitives/Badge"
 
 import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
-import { paymentPartnerName } from "~/domain/provider"
 import { Skeleton } from "~/ui/primitives/Feedback"
 import { TabPanel, Tabs } from "~/ui/primitives/Toggle"
 
-import { ROW, ROW_LEFT, ROW_RIGHT } from "./activity.recipe"
+import { HISTORY_PANEL, ROW, ROW_LEFT, ROW_RIGHT } from "./activity.recipe"
+import { NotCompletedPayments } from "./NotCompletedPayments"
+import { PaymentCard } from "./PaymentCard"
 
 const LABEL = {
   lump_sum: "One-off investment",
@@ -71,23 +73,12 @@ const PAYMENT_FILTERS = [
 
 type PaymentFilter = (typeof PAYMENT_FILTERS)[number]["value"]
 
-const partnerLabel = (provider: string | null): string | null => paymentPartnerName(provider)
+const NOT_COMPLETED_FILTER: PaymentFilter = "payment_in_progress"
 
 type DatedEntry = Readonly<{ date: string; createdAt: string }>
 
 const newestFirst = (left: DatedEntry, right: DatedEntry): number =>
   right.date.localeCompare(left.date) || right.createdAt.localeCompare(left.createdAt)
-
-type ListedPayment = Readonly<{
-  provider: string | null
-  succeededAt: string | null
-  createdAt: string
-}>
-
-const paymentWhen = (payment: ListedPayment): string =>
-  payment.provider === null
-    ? formatDate(payment.succeededAt ?? payment.createdAt)
-    : formatDateTime(payment.createdAt)
 
 const asTab = (value: string | null): Tab => (value === "payments" ? "payments" : "ledger")
 
@@ -98,10 +89,24 @@ const ACTIVITY_TABS_ID = "activity-view"
 
 const PAYMENT_FILTER_TABS_ID = "activity-payment-status"
 
+type LedgerPanelProps = Readonly<{ tabbed: boolean; children: ReactNode }>
+
+const LedgerPanel = ({ tabbed, children }: LedgerPanelProps): React.ReactElement =>
+  tabbed ? (
+    <TabPanel id={ACTIVITY_TABS_ID} value="ledger">
+      {children}
+    </TabPanel>
+  ) : (
+    <section className={HISTORY_PANEL} aria-label="History">
+      {children}
+    </section>
+  )
+
 const ActivityScreen = (): React.ReactElement => {
   const [params, setParams] = useSearchParams()
-  const tab = asTab(params.get("tab"))
-  const filter = asFilter(params.get("status"))
+  const paymentsOff = useOnlinePaymentsOff()
+  const tab = paymentsOff ? "ledger" : asTab(params.get("tab"))
+  const filter = paymentsOff ? NOT_COMPLETED_FILTER : asFilter(params.get("status"))
 
   const ledger = useTransactions()
   const payments = usePayments(filter)
@@ -127,13 +132,19 @@ const ActivityScreen = (): React.ReactElement => {
     <Page width="default">
       <PageHeader
         title="Activity"
-        description="Everything that has happened to your investments, and every payment behind it."
+        description={
+          paymentsOff
+            ? "Your investments, value updates and withdrawals, newest first."
+            : "Everything that has happened to your investments, and every payment behind it."
+        }
       />
 
-      <Tabs id={ACTIVITY_TABS_ID} label="Activity view" value={tab} items={TABS} onChange={setTab} />
+      {paymentsOff ? null : (
+        <Tabs id={ACTIVITY_TABS_ID} label="Activity view" value={tab} items={TABS} onChange={setTab} />
+      )}
 
       {tab === "ledger" ? (
-        <TabPanel id={ACTIVITY_TABS_ID} value="ledger">
+        <LedgerPanel tabbed={!paymentsOff}>
         <AsyncBoundary
           query={ledger}
           skeleton={
@@ -146,11 +157,17 @@ const ActivityScreen = (): React.ReactElement => {
           empty={
             <EmptyState
               title="Nothing here yet"
-              description="Your investments and their growth will appear here once your first payment is complete."
+              description={
+                paymentsOff
+                  ? INVESTMENTS_RECORDED_HERE
+                  : "Your investments and their growth will appear here once your first payment is complete."
+              }
               action={
-                <ButtonLink to="/funds" trailing>
-Browse funds
-</ButtonLink>
+                paymentsOff ? null : (
+                  <ButtonLink to="/funds" trailing>
+                    Browse funds
+                  </ButtonLink>
+                )
               }
             />
           }
@@ -187,7 +204,8 @@ Browse funds
           )}
         </AsyncBoundary>
         <LoadMore list={ledger} noun="entries" />
-        </TabPanel>
+        {paymentsOff ? <NotCompletedPayments payments={payments} fundName={nameFor} /> : null}
+        </LedgerPanel>
       ) : (
         <TabPanel id={ACTIVITY_TABS_ID} value="payments">
           <Tabs
@@ -220,27 +238,12 @@ Browse funds
             {(data) => (
               <div className={cx(CARD_STACK, FEED_MEASURE)}>
                 {data.items.map((payment) => (
-                  <Link
+                  <PaymentCard
                     key={payment.id}
-                    to={`/activity/payments/${payment.id}`}
-                    className={CARD_LINK}
-                  >
-                    <Card>
-                      <div className={ROW}>
-                        <div className={ROW_LEFT}>
-                          <StatusBadge status={clientInvestmentStatus(payment.status)} />
-                          <span className={ITEM_TITLE}>{nameFor(payment.fundId)}</span>
-                          <span className={META_MUTED}>{paymentWhen(payment)}</span>
-                        </div>
-                        <div className={ROW_RIGHT}>
-                          <MoneyValue amount={toPaise(payment.amountPaise)} size="md" />
-                          {partnerLabel(payment.provider) === null ? null : (
-                            <span className={META_MUTED}>{partnerLabel(payment.provider)}</span>
-                          )}
-                        </div>
-                      </div>
-                    </Card>
-                  </Link>
+                    payment={payment}
+                    fundName={nameFor(payment.fundId)}
+                    status={clientInvestmentStatus(payment.status)}
+                  />
                 ))}
               </div>
             )}

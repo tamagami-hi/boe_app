@@ -13,3 +13,4 @@ export const ROW_RIGHT = [
   "lg:flex-row lg:items-baseline lg:gap-3",
 ].join(" ")
 
+export const HISTORY_PANEL = "flex flex-col gap-8"

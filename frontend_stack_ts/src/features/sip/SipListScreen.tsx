@@ -6,6 +6,7 @@ import { formatDate } from "~/domain/dates"
 import { countOf } from "~/domain/plural"
 import { toPaise } from "~/domain/money"
 import { clientSipStatus } from "~/domain/clientStatus"
+import { useOnlinePaymentsOff } from "~/features/investing/onlinePayments"
 import { useFundCatalogue, useSipPlans } from "~/features/shared/queries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { EmptyState } from "~/ui/patterns/EmptyState"
@@ -26,6 +27,7 @@ import { ITEM_TITLE } from "~/ui/recipes/datalist"
 const SipListScreen = (): React.ReactElement => {
   const query = useSipPlans()
   const funds = useFundCatalogue()
+  const paymentsOff = useOnlinePaymentsOff()
 
   const nameFor = (fundId: string): string =>
     funds.data?.items.find((fund) => fund.id === fundId)?.name ?? "Fund"
@@ -54,11 +56,17 @@ const SipListScreen = (): React.ReactElement => {
         empty={
           <EmptyState
             title="You have no SIP plans"
-            description="A SIP invests the same amount every month. Start one from any fund."
+            description={
+              paymentsOff
+                ? "A SIP invests the same amount every month."
+                : "A SIP invests the same amount every month. Start one from any fund."
+            }
             action={
-              <ButtonLink to="/funds" trailing>
-Browse funds
-</ButtonLink>
+              paymentsOff ? null : (
+                <ButtonLink to="/funds" trailing>
+                  Browse funds
+                </ButtonLink>
+              )
             }
           />
         }

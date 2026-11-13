@@ -21,6 +21,8 @@ import {
   browserPendingPaymentStore,
   persistPendingPayment,
 } from "~/features/payments/pendingPayment"
+import { PaymentsOffPage } from "~/features/investing/InvestmentsRecorded"
+import { useOnlinePaymentsOff } from "~/features/investing/onlinePayments"
 import { useCreateSip, useFund, useStartAutoPay } from "~/features/shared/queries"
 import { isNative } from "~/platform/capacitor"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
@@ -48,7 +50,7 @@ const DEBIT_DAYS = [1, 5, 10, 15, 20, 25] as const
 
 type Mode = "manual_checkout" | "phonepe_autopay"
 
-const SipStartScreen = (): React.ReactElement => {
+const SipStartForm = (): React.ReactElement => {
   const { fundId = "" } = useParams()
   const fund = useFund(fundId)
   const navigate = useNavigate()
@@ -315,6 +317,11 @@ const SipStartScreen = (): React.ReactElement => {
         </Section>
     </Page>
   )
+}
+
+const SipStartScreen = (): React.ReactElement => {
+  const paymentsOff = useOnlinePaymentsOff()
+  return paymentsOff ? <PaymentsOffPage title="Start a SIP" /> : <SipStartForm />
 }
 
 export default SipStartScreen
