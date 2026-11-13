@@ -1,6 +1,6 @@
 # BeOnEdge admin improvements: recording categories, receipts, value updates, returns, maturity, nominee, and fixes
 
-Status: **Approved by the maintainer on 2026-11-13. Implementation starts with Phase A on four parallel tally tracks.** Steps that wait on an open question stay blocked until it is answered: identity changes (Q-017, Q-024, Q-025), C2 and C3 (Q-021), Phase D (Q-019, plus its own destructive-change approval), and E1 (Q-020). The container-based integration suite still needs the maintainer's permission.
+Status: **Approved by the maintainer on 2026-11-13. Phase A is being implemented on four parallel tally tracks.** Every open question was answered on 2026-11-13 (decision record). What still needs the maintainer: the production reform's own destructive-change approval after the pre-flight report (D2), releases, and the payments re-enable decision. Checks run on the pinned Node 22.20.0 / npm 11.16.0 (tally `howto-1`).
 
 Prepared: 2026-11-13. The investigation was static source reading only. No local checks ran (no dependencies are installed, and `RULES.md` forbids installing them just to make checks runnable). Nothing was diagnosed on a VPS, no test ran, no mail was sent, and nothing was deployed. GitHub CI run 38216879911 passed contracts, backend (including integration) and frontend on `ba8b196` (v0.15.4). The detailed evidence is held as tally records under `docs/records/`: findings `finding-1` to `finding-18` (excluding the retired `finding-5`), decisions `rule-2` to `rule-6`, and milestones `M1-admin-audit` and `M2-plan`.
 
@@ -8,18 +8,11 @@ Governing process: root [RULES.md](../RULES.md). The application is in productio
 
 ## 0a. Open questions and conservative defaults
 
-IDs continue from the previous plan and are never reused. Tally question rows are given for cross-reference.
+IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-025 were answered on 2026-11-13 and moved to the decision record. No question is open.
 
 | ID | Open decision | Conservative behavior meanwhile |
 | --- | --- | --- |
-| Q-019 | Data reform (tally row 9): what is wrong in today's production data that the one-time step must fix, and may real client data be copied to dev unmasked? | Phase D designs only an additive path: new rows, never edits, plus a read-only pre-flight report that the maintainer runs. PII on dev is assumed masked. Nothing in Phase D is written until this is answered. |
-| Q-020 | Client app reviews and comments, DD point 1 (tally row 10): still wanted, and visible to admins only or to other clients too? | Kept as a later phase (E1): an admin-only list, nothing public. |
-| Q-021 | Admin-tracked SIP and maturity scope (tally row 11): with payments off, does "start a new SIP" mean an admin-defined expected monthly amount, fund and start date that monthly recordings link to? Is the maturity date per fund holding or per individual investment? | An admin SIP schedule with no gateway collection; monthly recordings link to it; one maturity date per client and fund. |
-| Q-022 | Return figure on the dashboards: simple return (growth ÷ invested) or annualised (XIRR)? | Simple return %, the same formula the client portfolio already uses (`portfolioLedger.ts:60-68`). |
-| Q-023 | Should APK update announcements keep going to clients who use only the web app or an iPhone? | Unchanged: every active client receives them. |
-| Q-024 | How the admin corrects a mistyped email or phone on a client who has not set a password yet: an admin contact-correction action (audited, old links retired), and/or freeing a closed account's contacts | No change to identity rules. A7 only adds a review step before the invite is queued. |
-| Q-017 (carried) | A separate, longer lifetime for admin invite links than the 10-minute email-code lifetime they share today. The value is the maintainer's; it is not invented here | Unchanged at 10 minutes. The handoff warns that a mail outage of more than about six minutes cancels an invite, and the admin can resend. |
-| Q-025 | Whether setting the password through the emailed link should also mark that email verified, so a new client needs no second email code | Unchanged: the client still verifies with a code. |
+| None | | |
 
 ### Decision record
 
@@ -35,6 +28,16 @@ IDs continue from the previous plan and are never reused. Tally question rows ar
 | 2026-11-13 | The signup application review stays as it is. Admin onboarding works well and does not go through review. | No change to application review (tally `rule-6`). |
 | 2026-11-13 | AutoPay is not activated until the maintainer says so. | AutoPay on the web is not pursued (tally `rule-2`, `rule-6`). |
 | 2026-11-13 | Value updates are entered monthly as the amount gained since investment. Each update is kept as a record, and the client is notified every time their investment is updated. | Becomes step B3 (tally `rule-6`). |
+| 2026-11-13 | The integration suite may run in a local container with a throwaway PostgreSQL. | In force for lanes and phase closes (tally `rule-8`). |
+| 2026-11-13 | Q-021: "Start a new SIP" means an admin-tracked schedule: monthly amount, fund, start month and number of months. Each monthly recording links to a month, and the client sees "N of M months paid". There is no automatic collection. The maturity date is per client fund holding. | Becomes C2 and C3 (tally `rule-8`). |
+| 2026-11-13 | Q-024: two fixes. An audited admin contact correction for clients who have not set a password, which retires old links and sends the invite to the corrected address. Closed accounts can also release their email and phone. | Becomes step A8. Original contacts are kept in an append-only history (tally `rule-8`). |
+| 2026-11-13 | Q-017: admin invite (set-password) links are valid for 24 hours. Email codes and reset links stay at 10 minutes. | Step A8 (tally `rule-8`). |
+| 2026-11-13 | Q-025: setting the password through the invite link marks that email verified. | Step A8 (tally `rule-8`). |
+| 2026-11-13 | Q-019: the reform fixes duplicates and fills in missing new details (categories, maturity dates, SIP schedules, nominees). The dev copy masks names, emails and phones. A duplicate investment gets a reversal entry, and both rows are kept. A duplicate client account is closed and merged into the real one, only for pairs the maintainer confirms. | Phase D. The production run still needs its own destructive-change approval after the pre-flight report (tally `rule-8`). |
+| 2026-11-13 | Q-020: client reviews and comments are wanted, visible to admins only with the client profile, and nothing is public. | E1, after Phase B (tally `rule-8`). |
+| 2026-11-13 | Q-022: the dashboards show simple return % as the main figure, plus annualised XIRR as a secondary column. | B5 (tally `rule-8`). |
+| 2026-11-13 | Q-023: app-update announcement emails keep going to every active client. | No change (tally `rule-8`). |
+| 2026-11-13 | Stay on Node 22. Production images already run `node:22.23.2`, and CI and the packages pin 22. Upgrading to Node 24 is a separate tested step. | Local checks use the official Node 22.20.0 and npm 11.16.0 in `~/.local/node-22.20.0`. The upgrade is task E3 (tally `howto-1`). |
 
 #### Replaced
 
@@ -196,9 +199,11 @@ Each lane is a tally track `track/<name>` with its own worktree. Lanes in the sa
 | A | `a-payments-off` | A3 | client order and SIP routes, SIP worker, client failure copy |
 | A | `a-admin-core` | A2 (other admin screens), A4, A6 | fund-aum, overview, mandates, applications, refunds, receipts, app-config, emails, admin shell, app-config route and contract |
 | A | `a-onboarding` | A7, A5 (IST today) | admin users feature, client auth and email verification, guards, recordContribution, createClientAccount, maturity settlement date, onboarding harness and CI |
+| A | `a-identity` | A8, after `a-onboarding` lands | createClientAccount, password credential, oversight routes, environment, migration 064, admin users feature |
 | B | `b-receipts`, `b-value-updates`, `b-returns`, `b-email-web` | B1–B2, B3, B4–B5, B6 | Each adds its own contract file, so generated exports are regenerated at landing |
 | C | `c-nominee`, `c-sip-maturity` | C1; then C2 → C3 | Migrations are numbered 061 (C1), 062 (C2), 063 (C3) |
-| D | `d-data` | D1 → D2 | After Q-019 and separate approval |
+| D | `d-data` | D1 → D2 | D1 can start now. D2's production run needs separate approval. |
+| E | `e-reviews`; E2; E3 | E1 after Phase B; E2 after Phase C and before any payments re-enable; E3 when the maintainer chooses | Reviews use migration 065 |
 
 Shared-file rules:
 - `adminQueries.ts` is at 725 of 800 lines. A lane moves the hooks it changes into its feature's own query module instead of growing the file.
@@ -235,7 +240,13 @@ Maintainer gates (milestone `M3-gates`):
   - invitees without a password labelled as invited in the directory
   - a repaired onboarding harness wired into CI
 
-  Q-017, Q-024 and Q-025 change identity rules, so their fixes wait for answers.
+  The identity changes answered by Q-017, Q-024 and Q-025 are step A8.
+- **A8.** Identity follow-up, on lane `a-identity`, after A7 lands:
+  - An audited admin contact correction for a client who has not set a password. It retires the old links and invites the corrected address.
+  - An explicit, audited "release contacts" action on a closed account. The original email and phone are kept in a new append-only history table (migration 064), and the live columns are freed without breaking the previous release's lookups.
+  - A separate 24-hour lifetime for invite links, while reset links and email codes stay at 10 minutes.
+  - Setting the password through a link marks the email at that revision verified.
+  - Tests cover each change, plus a populated-upgrade test for 064.
 
 ### Phase B — recording categories, receipts, value updates, returns
 
@@ -259,7 +270,19 @@ Maintainer gates (milestone `M3-gates`):
 
 ### Phase E — later
 
-- **E1.** Client reviews and comments, once Q-020 is answered.
+- **E1.** Client reviews and comments, after Phase B lands:
+  - a rating from 1 to 5 plus a comment, in a new table (additive migration)
+  - a new client endpoint and screen
+  - an admin-only list showing the client profile and a moderation state
+  - nothing public
+- **E3.** Upgrade to Node 24 LTS before Node 22 support ends in April 2027, as a separate tested runtime change:
+  - Dockerfiles with pinned digests
+  - the CI Node version
+  - engines and `.nvmrc` in three packages
+  - the release-manager runtime contract test
+  - a check of native dependencies
+
+  The maintainer decides the timing.
 - **E2.** Before payments are re-enabled: the AutoPay due-date advance, stalled failed or refunded instalments, and mandate reconcile atomicity (section 2B).
 
 ## 7. Plan changes and approval gate
