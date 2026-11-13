@@ -17,9 +17,7 @@ const MIN_PASSWORD_LENGTH = 12
 
 const DOWNLOAD_COPY = {
   queued: "We are also emailing you a link to install it. You do not need the app to sign in on the web.",
-  unconfirmed:
-    "We could not confirm sending the app download email. You can sign in on the web, or use the download link below if one is shown.",
-  unavailable: "The Android app is not available to download yet. You can sign in on the web.",
+  linkOnly: "You can install it from the link below. You do not need the app to sign in on the web.",
 } as const
 
 const ResetPasswordScreen = (): React.ReactElement => {
@@ -85,15 +83,15 @@ const ResetPasswordScreen = (): React.ReactElement => {
         <ButtonLink to="/login" fullWidth>
           Sign in
         </ButtonLink>
-        {native ? null : (
-          <Alert tone="info" title="Prefer the Android app?">
-            {DOWNLOAD_COPY[downloadStatus ?? "unconfirmed"]}
-          </Alert>
-        )}
         {native || downloadUrl === null ? null : (
-          <a href={downloadUrl} className="underline" referrerPolicy="no-referrer">
-            Download the Android app
-          </a>
+          <>
+            <Alert tone="info" title="Prefer the Android app?">
+              {downloadStatus === "queued" ? DOWNLOAD_COPY.queued : DOWNLOAD_COPY.linkOnly}
+            </Alert>
+            <a href={downloadUrl} className="underline" referrerPolicy="no-referrer">
+              Download the Android app
+            </a>
+          </>
         )}
       </AuthLayout>
     )
