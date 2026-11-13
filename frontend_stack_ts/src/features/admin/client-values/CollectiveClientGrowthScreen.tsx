@@ -1,18 +1,17 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 
-import { isApiError } from "~/api/errors"
+import { isApiError, isUnknownWriteOutcome } from "~/api/errors"
+import { useIdempotencyKey } from "~/api/idempotency"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
+import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
+import { formatDate } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
-import {
-  useCommitCollectiveClientGrowth,
-  usePreviewCollectiveClientGrowth,
-} from "~/features/admin/shared/adminQueries"
-import { useAdminFundCatalogue } from "~/features/admin/shared/queries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
+import { useAdminFundCatalogue } from "~/features/admin/shared/queries"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
-import { Stat } from "~/ui/patterns/DataList"
+import { DataList, DetailRow, Stat } from "~/ui/patterns/DataList"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Alert } from "~/ui/primitives/Feedback"
@@ -27,94 +26,146 @@ import {
   ADMIN_SUMMARY_GRID,
 } from "~/ui/recipes/admin"
 import { PROSE_SM } from "~/ui/recipes/datalist"
-import { STACK_LG } from "~/ui/recipes/layout"
+import { ACTION_ROW, STACK_LG } from "~/ui/recipes/layout"
+
+import { CatalogueFundPicker } from "./CatalogueFundPicker"
+import { useCommitCollectiveClientGrowth, usePreviewCollectiveClientGrowth } from "./growthQueries"
+import type { CollectiveGrowthCommitInput } from "./growthQueries"
+import { DEFAULT_GROWTH_REASON, GROWTH_REASON_OPTIONS } from "./growthReasons"
+import { indiaToday } from "./indiaToday"
+import { investorLabel, useInvestorDirectory } from "./investorQueries"
 
 const MIN_BASIS_POINTS = -2_000
 const MAX_BASIS_POINTS = 2_000
 
-const today = (): string => new Date().toISOString().slice(0, 10)
+const STALE_BASIS_MESSAGE =
+  "Someone changed a value in this fund after the preview was taken, so the preview is void. Nothing was written. Run a new preview and read it before committing."
+
+type CommitOutcome =
+  | Readonly<{ kind: "idle" }>
+  | Readonly<{ kind: "rejected"; message: string; stale: boolean }>
+  | Readonly<{ kind: "unknown" }>
+
+const IDLE: CommitOutcome = { kind: "idle" }
+
+const describeCommitRejection = (error: unknown): CommitOutcome => {
+  if (isUnknownWriteOutcome(error)) return { kind: "unknown" }
+  if (isApiError(error) && error.code === "STATE_CONFLICT") {
+    return { kind: "rejected", message: STALE_BASIS_MESSAGE, stale: true }
+  }
+  return {
+    kind: "rejected",
+    message: isApiError(error) ? error.message : "This batch could not be sent. Reload the page and try again.",
+    stale: false,
+  }
+}
 
 const CollectiveClientGrowthScreen = (): React.ReactElement => {
   const funds = useAdminFundCatalogue()
+  const directory = useInvestorDirectory()
   const preview = usePreviewCollectiveClientGrowth()
   const commit = useCommitCollectiveClientGrowth()
 
   const [fundId, setFundId] = useState("")
   const [basisPoints, setBasisPoints] = useState("")
-  const [effectiveDate, setEffectiveDate] = useState(today)
-  const [reasonCode, setReasonCode] = useState("quarterly_valuation")
+  const [effectiveDate, setEffectiveDate] = useState(indiaToday)
+  const [reasonCode, setReasonCode] = useState<string>(DEFAULT_GROWTH_REASON)
   const [note, setNote] = useState("")
-  const [failure, setFailure] = useState<string | null>(null)
-  const [staleBasis, setStaleBasis] = useState(false)
+  const [previewFailure, setPreviewFailure] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
+  const [outcome, setOutcome] = useState<CommitOutcome>(IDLE)
+  const [held, setHeld] = useState<CollectiveGrowthCommitInput | null>(null)
+  const [confirmingRestart, setConfirmingRestart] = useState(false)
+  const [confirmingCommit, setConfirmingCommit] = useState(false)
 
-  const fundOptions = [
-    { value: "", label: "Choose a fund" },
-    ...(funds.data?.items ?? []).map((fund) => ({ value: fund.id, label: fund.name ?? fund.slug })),
-  ]
+  const investorNames = useMemo(
+    () => new Map((directory.data?.items ?? []).map((user) => [user.id, investorLabel(user)])),
+    [directory.data],
+  )
+  const fund = (funds.data?.items ?? []).find((entry) => entry.id === fundId)
+  const fundLabel = fund?.name ?? fund?.slug ?? fundId
 
   const rate = Number(basisPoints)
   const invalidRate =
     !Number.isInteger(rate) || rate === 0 || rate < MIN_BASIS_POINTS || rate > MAX_BASIS_POINTS
+  const staleBasis = outcome.kind === "rejected" && outcome.stale
   const plan = staleBasis ? null : (preview.data ?? null)
+  const committed = commit.data ?? null
+  const locked = commit.isPending || outcome.kind === "unknown" || committed !== null
+  const today = indiaToday()
+  const futureDated = effectiveDate > today
+
+  const trimmedNote = note.trim()
+  const commitBody =
+    plan === null
+      ? null
+      : {
+          fundId,
+          growthBasisPoints: rate,
+          basisHash: plan.basisHash,
+          effectiveDate,
+          reasonCode,
+          ...(trimmedNote === "" ? {} : { note: trimmedNote }),
+        }
+  const idempotencyKey = useIdempotencyKey({ body: commitBody, attempt })
 
   const clearPreview = (): void => {
     preview.reset()
     commit.reset()
-    setStaleBasis(false)
+    setOutcome(IDLE)
+    setHeld(null)
   }
 
   const runPreview = (): void => {
-    setFailure(null)
-    setStaleBasis(false)
-    commit.reset()
+    setPreviewFailure(null)
+    clearPreview()
     preview.mutate(
       { fundId, growthBasisPoints: rate },
       {
         onError: (error) => {
-          setFailure(
+          setPreviewFailure(
             isApiError(error)
               ? error.code === "STATE_CONFLICT"
                 ? "This fund has no position a growth batch could apply to, or every adjustment would round to nothing."
                 : error.message
-              : "We could not build a preview. Nothing has changed.",
+              : "We could not build a preview. A preview never writes anything.",
           )
         },
       },
     )
+  }
+
+  const sendCommit = (input: CollectiveGrowthCommitInput): void => {
+    setHeld(input)
+    setOutcome(IDLE)
+    commit.mutate(input, {
+      onError: (error) => {
+        setOutcome(describeCommitRejection(error))
+      },
+    })
   }
 
   const runCommit = (): void => {
-    if (plan === null) return
-    setFailure(null)
-    commit.mutate(
-      {
-        fundId,
-        growthBasisPoints: rate,
-        basisHash: plan.basisHash,
-        effectiveDate,
-        reasonCode: reasonCode.trim(),
-        ...(note.trim() === "" ? {} : { note: note.trim() }),
-      },
-      {
-        onError: (error) => {
-          if (isApiError(error) && error.code === "STATE_CONFLICT") {
-            setStaleBasis(true)
-            setFailure(
-              "Someone changed a value in this fund after the preview was taken, so the preview is void. Nothing was written. Run a new preview and read it before committing.",
-            )
-            return
-          }
-          setFailure(
-            isApiError(error)
-              ? error.message
-              : "We could not commit that batch. Nothing has been written.",
-          )
-        },
-      },
-    )
+    setConfirmingCommit(false)
+    if (commitBody === null) return
+    sendCommit({ idempotencyKey, body: commitBody })
   }
 
-  const committed = commit.data ?? null
+  const checkAgain = (): void => {
+    if (held !== null) sendCommit(held)
+  }
+
+  const startOver = (): void => {
+    setConfirmingRestart(false)
+    setAttempt((current) => current + 1)
+    clearPreview()
+  }
+
+  const startAnotherBatch = (): void => {
+    setBasisPoints("")
+    setNote("")
+    startOver()
+  }
 
   return (
     <Page width="wide">
@@ -123,14 +174,56 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
         description="A rate is measured against each investor's own amount invested, so it does not compound. Preview every position first. Committing sends the preview's basis back; if anything in the fund moved since, the commit is refused rather than applied to different numbers."
       />
 
-      {failure === null ? null : (
-        <Alert tone={staleBasis ? "warning" : "error"} title="Nothing was written">
-          {failure}
+      {previewFailure === null ? null : (
+        <Alert tone="error" title="No preview">
+          {previewFailure}
         </Alert>
       )}
 
+      {outcome.kind === "rejected" ? (
+        <Alert tone={outcome.stale ? "warning" : "error"} title="Nothing was written">
+          {outcome.message}
+        </Alert>
+      ) : null}
+
+      {outcome.kind === "unknown" ? (
+        <Alert
+          tone="warning"
+          title="Not confirmed"
+          action={
+            <span className={ACTION_ROW}>
+              <Button size="sm" loading={commit.isPending} onClick={checkAgain}>
+                Check again
+              </Button>
+              <Button
+                size="sm"
+                tone="secondary"
+                disabled={commit.isPending}
+                onClick={() => {
+                  setConfirmingRestart(true)
+                }}
+              >
+                Start over
+              </Button>
+            </span>
+          }
+        >
+          The reply did not arrive, so it is not known whether this batch was committed. The commit is
+          held on this exact request. Check again sends it once more under the same key, and the same
+          request can only ever be committed once.
+        </Alert>
+      ) : null}
+
       {committed === null ? null : (
-        <Alert tone="success" title="Batch committed">
+        <Alert
+          tone="success"
+          title="Batch committed"
+          action={
+            <Button size="sm" tone="secondary" onClick={startAnotherBatch}>
+              Start another batch
+            </Button>
+          }
+        >
           {`${String(committed.targetCount)} position(s) adjusted. Every investor in the batch has been notified.`}
         </Alert>
       )}
@@ -138,19 +231,14 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
       <Card elevated>
         <div className={STACK_LG}>
           <div className={ADMIN_FORM_GRID}>
-            <FormField label="Fund" required>
-              {({ id }) => (
-                <Select
-                  id={id}
-                  options={fundOptions}
-                  value={fundId}
-                  onChange={(event) => {
-                    setFundId(event.target.value)
-                    clearPreview()
-                  }}
-                />
-              )}
-            </FormField>
+            <CatalogueFundPicker
+              value={fundId}
+              disabled={locked}
+              onChange={(next) => {
+                setFundId(next)
+                clearPreview()
+              }}
+            />
 
             <FormField
               label="Rate in basis points"
@@ -167,6 +255,7 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
                   min={MIN_BASIS_POINTS}
                   max={MAX_BASIS_POINTS}
                   value={basisPoints}
+                  disabled={locked}
                   onChange={(event) => {
                     setBasisPoints(event.target.value)
                     clearPreview()
@@ -178,7 +267,7 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
 
           <Button
             tone="secondary"
-            disabled={fundId === "" || invalidRate}
+            disabled={locked || fundId === "" || invalidRate}
             loading={preview.isPending}
             onClick={runPreview}
           >
@@ -228,7 +317,8 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
                 {
                   key: "user",
                   header: "Investor",
-                  render: (row) => <span className={ADMIN_CODE}>{row.userId}</span>,
+                  render: (row) =>
+                    investorNames.get(row.userId) ?? <span className={ADMIN_CODE}>{row.userId}</span>,
                 },
                 {
                   key: "principal",
@@ -276,12 +366,15 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
                     label="Effective date"
                     required
                     hint="Decides which month's statement these entries land in."
+                    error={futureDated ? "The effective date cannot be later than today in India." : undefined}
                   >
                     {({ id }) => (
                       <Input
                         id={id}
                         type="date"
+                        max={today}
                         value={effectiveDate}
+                        disabled={locked}
                         onChange={(event) => {
                           setEffectiveDate(event.target.value)
                         }}
@@ -289,12 +382,13 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
                     )}
                   </FormField>
 
-                  <FormField label="Reason code" required>
+                  <FormField label="Reason code" required hint="The period this growth covers.">
                     {({ id }) => (
-                      <Input
+                      <Select
                         id={id}
+                        options={GROWTH_REASON_OPTIONS.map((option) => ({ ...option }))}
                         value={reasonCode}
-                        maxLength={80}
+                        disabled={locked}
                         onChange={(event) => {
                           setReasonCode(event.target.value)
                         }}
@@ -309,6 +403,7 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
                       id={id}
                       value={note}
                       maxLength={2_000}
+                      disabled={locked}
                       onChange={(event) => {
                         setNote(event.target.value)
                       }}
@@ -316,19 +411,66 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
                   )}
                 </FormField>
 
-                <Button
-                  disabled={reasonCode.trim() === "" || effectiveDate === ""}
-                  loading={commit.isPending}
-                  onClick={runCommit}
-                  trailing
-                >
-                  {`Commit ${String(plan.targetCount)} adjustment(s)`}
-                </Button>
+                {committed === null && outcome.kind !== "unknown" ? (
+                  <Button
+                    disabled={locked || effectiveDate === "" || futureDated}
+                    loading={commit.isPending}
+                    onClick={() => {
+                      setConfirmingCommit(true)
+                    }}
+                    trailing
+                  >
+                    {`Review and commit ${String(plan.targetCount)} adjustment(s)`}
+                  </Button>
+                ) : null}
               </div>
             </Card>
           </Section>
         </>
       )}
+
+      <ConfirmDialog
+        open={confirmingCommit && plan !== null}
+        title="Commit this batch?"
+        confirmLabel="Commit the batch"
+        onConfirm={runCommit}
+        onCancel={() => {
+          setConfirmingCommit(false)
+        }}
+      >
+        {plan === null ? null : (
+          <DataList>
+            <DetailRow label="Fund">{fundLabel}</DetailRow>
+            <DetailRow label="Positions adjusted" emphasis="lead">
+              {String(plan.targetCount)}
+            </DetailRow>
+            <DetailRow label="Total change">
+              <MoneyValue amount={toPaise(plan.totalDeltaPaise)} size="sm" tone="signed" showSign />
+            </DetailRow>
+            <DetailRow label="Effective date">{effectiveDate === "" ? "" : formatDate(effectiveDate)}</DetailRow>
+            <DetailRow label="Reason">
+              {GROWTH_REASON_OPTIONS.find((option) => option.value === reasonCode)?.label ?? reasonCode}
+            </DetailRow>
+          </DataList>
+        )}
+        <p className={PROSE_SM}>
+          One growth entry is written for every position above and every investor in the batch is
+          notified. A mistake is corrected later with a reversal, not by editing.
+        </p>
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={confirmingRestart}
+        title="Start over?"
+        description="Open one investor's record in this fund first. If an entry from this batch is listed, the batch was committed, and committing again would apply the rate a second time. Starting over discards this preview and cannot be matched to the unconfirmed commit."
+        confirmLabel="Start over"
+        confirmTone="danger"
+        cancelLabel="Keep this commit"
+        onConfirm={startOver}
+        onCancel={() => {
+          setConfirmingRestart(false)
+        }}
+      />
     </Page>
   )
 }

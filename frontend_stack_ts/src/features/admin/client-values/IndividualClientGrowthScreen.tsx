@@ -1,45 +1,63 @@
 import { useMemo, useState } from "react"
 
-import { isApiError } from "~/api/errors"
+import { isApiError, isUnknownWriteOutcome } from "~/api/errors"
+import { useIdempotencyKey } from "~/api/idempotency"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
-import { Section } from "~/app/layouts/Section"
+import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { applyBasisPoints, toPaise } from "~/domain/money"
-import {
-  useAdminInvestorPositions,
-  useAdminUsers,
-  useIndividualClientGrowth,
-} from "~/features/admin/shared/adminQueries"
+import { useAdminInvestorPositions } from "~/features/admin/shared/adminQueries"
 import { useAdminFundCatalogue } from "~/features/admin/shared/queries"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
+import { AmountInput } from "~/ui/primitives/AmountInput"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
-import { Combobox } from "~/ui/primitives/Combobox"
 import { Alert } from "~/ui/primitives/Feedback"
 import { FormField, Input } from "~/ui/primitives/FormField"
 import { RadioGroup } from "~/ui/primitives/Toggle"
 import { Select } from "~/ui/primitives/Select"
 
-import { ADMIN_CODE, ADMIN_FORM_GRID } from "~/ui/recipes/admin"
-import { STACK_LG } from "~/ui/recipes/layout"
+import { ADMIN_FORM_GRID } from "~/ui/recipes/admin"
+import { ACTION_ROW, STACK_LG, STACK_SM } from "~/ui/recipes/layout"
+
+import { GrowthReceipt } from "./GrowthReceipt"
+import { useIndividualClientGrowth } from "./growthQueries"
+import type { IndividualGrowthInput } from "./growthQueries"
+import { DEFAULT_GROWTH_REASON, GROWTH_REASON_OPTIONS } from "./growthReasons"
+import { indiaToday } from "./indiaToday"
+import { InvestorPicker } from "./InvestorPicker"
+import { parsePositiveRupees } from "./rupeeAmount"
 
 type Mode = "rate" | "amount"
+
+type Direction = "increase" | "decrease"
+
+const DIRECTION_OPTIONS = [
+  { value: "increase", label: "Raise the value" },
+  { value: "decrease", label: "Lower the value" },
+] as const
+
+type Outcome =
+  | Readonly<{ kind: "idle" }>
+  | Readonly<{ kind: "rejected"; message: string }>
+  | Readonly<{ kind: "unknown" }>
+
+const IDLE: Outcome = { kind: "idle" }
 
 const MIN_BASIS_POINTS = -2_000
 const MAX_BASIS_POINTS = 2_000
 
-const REASON_OPTIONS = [
-  { value: "weekly", label: "Weekly" },
-  { value: "monthly", label: "Monthly" },
-  { value: "quarterly", label: "Quarterly" },
-  { value: "yearly", label: "Yearly" },
-] as const
-
 const formatRate = (basisPoints: number): string =>
   `${basisPoints > 0 ? "+" : ""}${String(basisPoints / 100)}%`
 
-const today = (): string => new Date().toISOString().slice(0, 10)
+const describeRejection = (error: unknown): string => {
+  if (!isApiError(error)) return "This adjustment could not be sent. Reload the page and try again."
+  if (error.code === "RESOURCE_NOT_FOUND") {
+    return "That investor has no contribution in that fund, so there is nothing to adjust."
+  }
+  return error.message
+}
 
 const IndividualClientGrowthScreen = (): React.ReactElement => {
   const funds = useAdminFundCatalogue()
@@ -47,16 +65,18 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
 
   const [mode, setMode] = useState<Mode>("rate")
   const [userId, setUserId] = useState("")
-  const [investorQuery, setInvestorQuery] = useState("")
   const [fundId, setFundId] = useState("")
   const [basisPoints, setBasisPoints] = useState("")
-  const [amountPaise, setAmountPaise] = useState("")
-  const [effectiveDate, setEffectiveDate] = useState(today)
-  const [reasonCode, setReasonCode] = useState<string>("quarterly")
+  const [direction, setDirection] = useState<Direction>("increase")
+  const [rupees, setRupees] = useState("")
+  const [effectiveDate, setEffectiveDate] = useState(indiaToday)
+  const [reasonCode, setReasonCode] = useState<string>(DEFAULT_GROWTH_REASON)
   const [note, setNote] = useState("")
-  const [failure, setFailure] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
+  const [outcome, setOutcome] = useState<Outcome>(IDLE)
+  const [held, setHeld] = useState<IndividualGrowthInput | null>(null)
+  const [confirmingRestart, setConfirmingRestart] = useState(false)
 
-  const investors = useAdminUsers(investorQuery.trim() === "" ? {} : { q: investorQuery.trim() })
   const positions = useAdminInvestorPositions(userId)
 
   const fundName = (id: string): string => {
@@ -64,27 +84,20 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
     return fund?.name ?? fund?.slug ?? id
   }
 
-  const investorOptions = useMemo(
-    () =>
-      (investors.data?.items ?? []).map((user) => ({
-        value: user.id,
-        label: user.fullName === "" ? user.email : user.fullName,
-        hint: [user.email, user.phone].filter((part) => part !== "").join(" · "),
-      })),
-    [investors.data],
-  )
-
+  const positionsFailed = userId !== "" && positions.data === undefined && positions.error != null
   const positionItems = positions.data?.items ?? []
-  const fundOptions = [
-    {
-      value: "",
-      label:
-        userId === ""
-          ? "Choose an investor first"
+  const fundPrompt =
+    userId === ""
+      ? "Choose an investor first"
+      : positionsFailed
+        ? "This investor's funds could not be loaded"
+        : positions.data === undefined
+          ? "Loading this investor's funds"
           : positionItems.length === 0
             ? "This investor holds no fund"
-            : "Choose a fund",
-    },
+            : "Choose a fund"
+  const fundOptions = [
+    { value: "", label: fundPrompt },
     ...positionItems.map((position) => ({
       value: position.fundId,
       label: fundName(position.fundId),
@@ -93,54 +106,89 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
 
   const selectedPosition = positionItems.find((position) => position.fundId === fundId) ?? null
 
+  const recorded = growth.data
+  const locked = growth.isPending || outcome.kind === "unknown" || recorded !== undefined
+  const today = indiaToday()
+  const futureDated = effectiveDate > today
+
   const rate = Number(basisPoints)
   const rateInBand = Number.isInteger(rate) && rate !== 0 && rate >= MIN_BASIS_POINTS && rate <= MAX_BASIS_POINTS
   const invalidRate = mode === "rate" && !rateInBand
-  const invalidAmount = mode === "amount" && !/^-?[1-9][0-9]*$/u.test(amountPaise)
+  const magnitudePaise = parsePositiveRupees(rupees)
+  const signedPaise =
+    magnitudePaise === null ? null : direction === "decrease" ? `-${magnitudePaise}` : magnitudePaise
+  const invalidAmount = mode === "amount" && signedPaise === null
   const incomplete =
     userId === "" ||
     fundId === "" ||
     reasonCode === "" ||
     effectiveDate === "" ||
+    futureDated ||
     invalidRate ||
     invalidAmount
+
+  const trimmedNote = note.trim()
+  const body = {
+    userId,
+    fundId,
+    effectiveDate,
+    reasonCode,
+    ...(trimmedNote === "" ? {} : { note: trimmedNote }),
+    ...(mode === "rate" ? { growthBasisPoints: rate } : { growthPaise: signedPaise ?? "" }),
+  }
+  const idempotencyKey = useIdempotencyKey({ ...body, attempt })
 
   const adjustment = useMemo(() => {
     if (selectedPosition === null) return null
     const current = BigInt(selectedPosition.currentValuePaise)
     if (mode === "amount") {
-      if (invalidAmount) return null
-      const delta = BigInt(amountPaise)
+      if (signedPaise === null) return null
+      const delta = BigInt(signedPaise)
       return { delta, projected: current + delta }
     }
     if (invalidRate) return null
     const delta = BigInt(applyBasisPoints(toPaise(selectedPosition.principalPaise), rate))
     return { delta, projected: current + delta }
-  }, [selectedPosition, mode, amountPaise, invalidAmount, invalidRate, rate])
+  }, [selectedPosition, mode, signedPaise, invalidRate, rate])
+
+  const send = (input: IndividualGrowthInput): void => {
+    setHeld(input)
+    if (outcome.kind === "rejected") setOutcome(IDLE)
+    growth.mutate(input, {
+      onSuccess: () => {
+        setOutcome(IDLE)
+      },
+      onError: (error) => {
+        setOutcome(
+          isUnknownWriteOutcome(error)
+            ? { kind: "unknown" }
+            : { kind: "rejected", message: describeRejection(error) },
+        )
+      },
+    })
+  }
 
   const submit = (): void => {
-    setFailure(null)
-    growth.mutate(
-      {
-        userId,
-        fundId,
-        effectiveDate,
-        reasonCode,
-        ...(note.trim() === "" ? {} : { note: note.trim() }),
-        ...(mode === "rate" ? { growthBasisPoints: rate } : { growthPaise: amountPaise }),
-      },
-      {
-        onError: (error) => {
-          setFailure(
-            isApiError(error)
-              ? error.code === "RESOURCE_NOT_FOUND"
-                ? "That investor has no contribution in that fund, so there is nothing to adjust."
-                : error.message
-              : "We could not record that adjustment. Nothing has changed.",
-          )
-        },
-      },
-    )
+    send({ idempotencyKey, body })
+  }
+
+  const checkAgain = (): void => {
+    if (held !== null) send(held)
+  }
+
+  const startNewAttempt = (): void => {
+    setConfirmingRestart(false)
+    setAttempt((current) => current + 1)
+    setOutcome(IDLE)
+    setHeld(null)
+    growth.reset()
+  }
+
+  const adjustAgain = (): void => {
+    setBasisPoints("")
+    setRupees("")
+    setNote("")
+    startNewAttempt()
   }
 
   return (
@@ -150,15 +198,53 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
         description="Appends a growth entry against one position. A rate is measured against the amount invested, so it does not compound; the amount invested itself never moves. Read the projected value before committing — the server recalculates it authoritatively and its response is the truth."
       />
 
-      {failure === null ? null : (
-        <Alert tone="error" title="Nothing changed">
-          {failure}
+      {outcome.kind === "rejected" ? (
+        <Alert tone="error" title="Not recorded">
+          {outcome.message}
         </Alert>
-      )}
+      ) : null}
 
-      {growth.data === undefined ? null : (
-        <Alert tone="success" title="Adjustment recorded">
-          The ledger entry is written and the investor has been notified.
+      {outcome.kind === "unknown" ? (
+        <Alert
+          tone="warning"
+          title="Not confirmed"
+          action={
+            <span className={ACTION_ROW}>
+              <Button size="sm" loading={growth.isPending} onClick={checkAgain}>
+                Check again
+              </Button>
+              <Button
+                size="sm"
+                tone="secondary"
+                disabled={growth.isPending}
+                onClick={() => {
+                  setConfirmingRestart(true)
+                }}
+              >
+                Start a new attempt
+              </Button>
+            </span>
+          }
+        >
+          The reply did not arrive, so it is not known whether this adjustment was appended. The form
+          is held on this exact request. Check again sends it once more under the same key, and the
+          same request can only ever be appended once. It may also already appear in this
+          investor&apos;s ledger entries.
+        </Alert>
+      ) : null}
+
+      {recorded === undefined ? null : (
+        <Alert
+          tone="success"
+          title="Adjustment recorded"
+          action={
+            <Button size="sm" tone="secondary" onClick={adjustAgain}>
+              Adjust again
+            </Button>
+          }
+        >
+          The ledger entry is written and the investor has been notified. The form is held so the
+          same adjustment cannot be appended twice by mistake.
         </Alert>
       )}
 
@@ -169,7 +255,9 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
               <RadioGroup<Mode>
                 legend="Adjustment mode"
                 value={mode}
-                onChange={setMode}
+                onChange={(next) => {
+                  if (!locked) setMode(next)
+                }}
                 options={[
                   {
                     value: "rate",
@@ -179,53 +267,55 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
                   {
                     value: "amount",
                     label: "By an exact amount",
-                    hint: "Signed paise. Use this for a correction where the number is already known.",
+                    hint: "An amount in rupees that raises or lowers the value. Use this for a correction where the number is already known.",
                   },
                 ]}
               />
             )}
           </FormField>
 
-          <FormField
-            label="Investor"
-            required
+          <InvestorPicker
+            userId={userId}
             hint="Search by name, email or phone. Only investors with a holding can be adjusted."
-          >
-            {({ id }) => (
-              <Combobox
-                id={id}
-                options={investorOptions}
-                value={userId}
-                onChange={(next) => {
-                  setUserId(next)
-                  setFundId("")
-                }}
-                query={investorQuery}
-                onQueryChange={setInvestorQuery}
-                placeholder="Start typing a name"
-                loading={investors.isFetching}
-                emptyLabel="No investor matches that"
-              />
-            )}
-          </FormField>
+            disabled={locked}
+            onChange={(choice) => {
+              setUserId(choice.userId)
+              setFundId("")
+            }}
+          />
 
-          <FormField
-            label="Fund"
-            required
-            hint="Only the funds this investor has actually invested in."
-          >
-            {({ id }) => (
-              <Select
-                id={id}
-                options={fundOptions}
-                value={fundId}
-                disabled={userId === "" || positionItems.length === 0}
-                onChange={(event) => {
-                  setFundId(event.target.value)
+          <div className={STACK_SM}>
+            <FormField
+              label="Fund"
+              required
+              hint="Only the funds this investor has actually invested in."
+              error={positionsFailed ? "The list of this investor's funds could not be loaded." : undefined}
+            >
+              {({ id, invalid }) => (
+                <Select
+                  id={id}
+                  options={fundOptions}
+                  value={fundId}
+                  invalid={invalid}
+                  disabled={locked || positionItems.length === 0}
+                  onChange={(event) => {
+                    setFundId(event.target.value)
+                  }}
+                />
+              )}
+            </FormField>
+            {positionsFailed ? (
+              <Button
+                size="sm"
+                tone="secondary"
+                onClick={() => {
+                  void positions.refetch()
                 }}
-              />
-            )}
-          </FormField>
+              >
+                Load this investor&apos;s funds again
+              </Button>
+            ) : null}
+          </div>
 
           {selectedPosition === null ? null : (
             <DataList>
@@ -246,7 +336,7 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
               {mode === "rate" && rateInBand ? (
                 <DetailRow label="Growth percentage">{formatRate(rate)}</DetailRow>
               ) : null}
-              {adjustment === null ? null : (
+              {adjustment === null || recorded !== undefined ? null : (
                 <>
                   <DetailRow
                     label={
@@ -284,6 +374,7 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
                   min={MIN_BASIS_POINTS}
                   max={MAX_BASIS_POINTS}
                   value={basisPoints}
+                  disabled={locked}
                   onChange={(event) => {
                     setBasisPoints(event.target.value)
                   }}
@@ -291,24 +382,43 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
               )}
             </FormField>
           ) : (
-            <FormField
-              label="Amount in paise"
-              required
-              hint="Signed integer paise. -50000 removes ₹500."
-              {...(invalidAmount && amountPaise !== ""
-                ? { error: "Enter a non-zero integer number of paise." }
-                : {})}
-            >
-              {({ id }) => (
-                <Input
-                  id={id}
-                  value={amountPaise}
-                  onChange={(event) => {
-                    setAmountPaise(event.target.value.trim())
-                  }}
-                />
-              )}
-            </FormField>
+            <div className={ADMIN_FORM_GRID}>
+              <FormField label="Direction" required>
+                {({ id }) => (
+                  <Select
+                    id={id}
+                    options={DIRECTION_OPTIONS.map((option) => ({ ...option }))}
+                    value={direction}
+                    disabled={locked}
+                    onChange={(event) => {
+                      setDirection(event.target.value === "decrease" ? "decrease" : "increase")
+                    }}
+                  />
+                )}
+              </FormField>
+              <FormField
+                label="Amount in rupees"
+                required
+                hint="Up to two decimal places, for example 500 or 500.50."
+                error={
+                  invalidAmount && rupees !== ""
+                    ? "Enter an amount above zero in rupees, with at most two decimal places."
+                    : undefined
+                }
+              >
+                {({ id, describedBy, invalid }) => (
+                  <AmountInput
+                    id={id}
+                    value={rupees}
+                    decimals
+                    invalid={invalid}
+                    describedBy={describedBy}
+                    disabled={locked}
+                    onChange={setRupees}
+                  />
+                )}
+              </FormField>
+            </div>
           )}
 
           <div className={ADMIN_FORM_GRID}>
@@ -316,12 +426,15 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
               label="Effective date"
               required
               hint="Decides which month's statement it lands in."
+              error={futureDated ? "The effective date cannot be later than today in India." : undefined}
             >
               {({ id }) => (
                 <Input
                   id={id}
                   type="date"
+                  max={today}
                   value={effectiveDate}
+                  disabled={locked}
                   onChange={(event) => {
                     setEffectiveDate(event.target.value)
                   }}
@@ -333,8 +446,9 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
               {({ id }) => (
                 <Select
                   id={id}
-                  options={REASON_OPTIONS.map((option) => ({ ...option }))}
+                  options={GROWTH_REASON_OPTIONS.map((option) => ({ ...option }))}
                   value={reasonCode}
+                  disabled={locked}
                   onChange={(event) => {
                     setReasonCode(event.target.value)
                   }}
@@ -349,6 +463,7 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
                 id={id}
                 value={note}
                 maxLength={2_000}
+                disabled={locked}
                 onChange={(event) => {
                   setNote(event.target.value)
                 }}
@@ -356,44 +471,28 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
             )}
           </FormField>
 
-          <Button disabled={incomplete} loading={growth.isPending} onClick={submit} trailing>
-            Append the adjustment
-          </Button>
+          {recorded === undefined && outcome.kind !== "unknown" ? (
+            <Button disabled={locked || incomplete} loading={growth.isPending} onClick={submit} trailing>
+              Append the adjustment
+            </Button>
+          ) : null}
         </div>
       </Card>
 
-      {growth.data === undefined ? null : (
-        <Section title="What was written">
-          <Card>
-            <DataList>
-              <DetailRow label="Batch">
-                <span className={ADMIN_CODE}>{growth.data.batchId}</span>
-              </DetailRow>
-              <DetailRow label="Entry">
-                <span className={ADMIN_CODE}>{growth.data.entryId}</span>
-              </DetailRow>
-              <DetailRow label="Amount invested">
-                <MoneyValue amount={toPaise(growth.data.principalPaise)} size="sm" />
-              </DetailRow>
-              <DetailRow label="Value before">
-                <MoneyValue amount={toPaise(growth.data.beforePaise)} size="sm" />
-              </DetailRow>
-              <DetailRow label="Adjustment">
-                <MoneyValue
-                  amount={toPaise(growth.data.deltaPaise)}
-                  size="sm"
-                  tone="signed"
-                  showSign
-                />
-              </DetailRow>
-              <DetailRow label="Value after">
-                <MoneyValue amount={toPaise(growth.data.afterPaise)} size="sm" />
-              </DetailRow>
-              <DetailRow label="Effective date">{growth.data.effectiveDate}</DetailRow>
-            </DataList>
-          </Card>
-        </Section>
-      )}
+      {recorded === undefined ? null : <GrowthReceipt receipt={recorded} />}
+
+      <ConfirmDialog
+        open={confirmingRestart}
+        title="Start a new attempt?"
+        description="Check this investor's ledger entries first. If this adjustment is already listed, it was appended, and a new attempt would append it a second time. A new attempt cannot be matched to the unconfirmed one."
+        confirmLabel="Start a new attempt"
+        confirmTone="danger"
+        cancelLabel="Keep this attempt"
+        onConfirm={startNewAttempt}
+        onCancel={() => {
+          setConfirmingRestart(false)
+        }}
+      />
     </Page>
   )
 }

@@ -5,8 +5,7 @@ import { useIdempotencyKey } from "~/api/idempotency"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDate } from "~/domain/dates"
-import { MoneyFormatError, rupeeTextToPaise, toPaise } from "~/domain/money"
-import type { Paise } from "~/domain/money"
+import { toPaise } from "~/domain/money"
 import { useRecordClientContribution } from "~/features/admin/shared/adminQueries"
 import { useAdminFundCatalogue } from "~/features/admin/shared/queries"
 import { DataList, DetailRow, Prose } from "~/ui/patterns/DataList"
@@ -19,6 +18,10 @@ import { FormField, Input } from "~/ui/primitives/FormField"
 import { Select } from "~/ui/primitives/Select"
 import { ADMIN_FORM_GRID } from "~/ui/recipes/admin"
 import { ACTION_ROW, STACK_LG } from "~/ui/recipes/layout"
+
+import { CatalogueFundPicker } from "./CatalogueFundPicker"
+import { indiaToday } from "./indiaToday"
+import { parsePositiveRupees } from "./rupeeAmount"
 
 const REASON_OPTIONS = [
   { value: "recorded_offline_investment", label: "Investment made before the app" },
@@ -33,19 +36,6 @@ type Outcome =
   | Readonly<{ kind: "unknown" }>
 
 const IDLE: Outcome = { kind: "idle" }
-
-const todayUtc = (): string => new Date().toISOString().slice(0, 10)
-
-const parseAmount = (text: string): Paise | null => {
-  if (text === "") return null
-  try {
-    const paise = rupeeTextToPaise(text)
-    return paise === "0" ? null : paise
-  } catch (error) {
-    if (error instanceof MoneyFormatError) return null
-    throw error
-  }
-}
 
 const describeRejection = (error: unknown): string => {
   if (!isApiError(error)) return "This investment could not be sent. Reload the page and try again."
@@ -82,7 +72,7 @@ export const EarlierInvestmentForm = ({
   const [confirmingRecord, setConfirmingRecord] = useState(false)
   const [confirmingRestart, setConfirmingRestart] = useState(false)
 
-  const amountPaise = parseAmount(rupees)
+  const amountPaise = parsePositiveRupees(rupees)
   const trimmedNote = note.trim()
   const request = {
     userId,
@@ -94,19 +84,15 @@ export const EarlierInvestmentForm = ({
   }
   const idempotencyKey = useIdempotencyKey({ ...request, attempt })
 
-  const fundCatalogue = funds.data?.items ?? []
   const fundLabel = (id: string): string => {
-    const fund = fundCatalogue.find((entry) => entry.id === id)
+    const fund = (funds.data?.items ?? []).find((entry) => entry.id === id)
     return fund?.name ?? fund?.slug ?? id
   }
-  const fundOptions = [
-    { value: "", label: "Choose a fund" },
-    ...fundCatalogue.map((fund) => ({ value: fund.id, label: fund.name ?? fund.slug })),
-  ]
 
   const recorded = record.data
   const locked = !canWrite || record.isPending || outcome.kind === "unknown" || recorded !== undefined
-  const futureDated = effectiveDate !== "" && effectiveDate > todayUtc()
+  const today = indiaToday()
+  const futureDated = effectiveDate !== "" && effectiveDate > today
   const amountInvalid = rupees !== "" && amountPaise === null
   const incomplete = fundId === "" || effectiveDate === "" || futureDated || amountPaise === null
 
@@ -211,19 +197,7 @@ export const EarlierInvestmentForm = ({
         )}
 
         <div className={ADMIN_FORM_GRID}>
-          <FormField label="Fund" required>
-            {({ id }) => (
-              <Select
-                id={id}
-                options={fundOptions}
-                value={fundId}
-                disabled={locked}
-                onChange={(event) => {
-                  setFundId(event.target.value)
-                }}
-              />
-            )}
-          </FormField>
+          <CatalogueFundPicker value={fundId} disabled={locked} onChange={setFundId} />
 
           <FormField
             label="Amount in rupees"
@@ -256,7 +230,7 @@ export const EarlierInvestmentForm = ({
               <Input
                 id={id}
                 type="date"
-                max={todayUtc()}
+                max={today}
                 value={effectiveDate}
                 disabled={locked}
                 onChange={(event) => {

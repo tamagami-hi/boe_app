@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useState } from "react"
 
 import { isApiError, isUnknownWriteOutcome } from "~/api/errors"
 import { Page } from "~/app/layouts/Page"
@@ -8,24 +8,27 @@ import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
 import { toPaise } from "~/domain/money"
 import {
-  useAdminClientLedgerEntries,
   useAdminInvestorPositions,
-  useAdminUsers,
   useReverseClientLedgerEntry,
 } from "~/features/admin/shared/adminQueries"
 import { useAdminFundCatalogue } from "~/features/admin/shared/queries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
+import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
+import { EmptyState } from "~/ui/patterns/EmptyState"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { Badge } from "~/ui/primitives/Badge"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
-import { Combobox } from "~/ui/primitives/Combobox"
 import { Alert } from "~/ui/primitives/Feedback"
-import { FormField } from "~/ui/primitives/FormField"
 
 import { ADMIN_CODE } from "~/ui/recipes/admin"
+import { PROSE_SM } from "~/ui/recipes/datalist"
+import { STACK_SM } from "~/ui/recipes/layout"
 
 import { EarlierInvestmentForm } from "./EarlierInvestmentForm"
+import { InvestorPicker } from "./InvestorPicker"
+import { LEDGER_ENTRY_LIMIT, useAdminClientLedgerEntries } from "./ledgerQueries"
+import { ListSkeleton } from "./ListSkeleton"
 import { MaturityPanel } from "./MaturityPanel"
 
 const ENTRY_LABEL: Readonly<Record<string, string>> = {
@@ -53,11 +56,10 @@ const ClientPositionDetailScreen = (): React.ReactElement => {
   const reverse = useReverseClientLedgerEntry()
 
   const [userId, setUserId] = useState("")
-  const [investorQuery, setInvestorQuery] = useState("")
+  const [investorLabel, setInvestorLabel] = useState("")
   const [failure, setFailure] = useState<ReversalFailure | null>(null)
   const [pendingReversal, setPendingReversal] = useState<string | null>(null)
 
-  const investors = useAdminUsers(investorQuery.trim() === "" ? {} : { q: investorQuery.trim() })
   const positions = useAdminInvestorPositions(userId)
   const ledger = useAdminClientLedgerEntries(userId, "")
 
@@ -67,23 +69,9 @@ const ClientPositionDetailScreen = (): React.ReactElement => {
     return fund?.name ?? fund?.slug ?? id
   }
 
-  const investorOptions = useMemo(
-    () =>
-      (investors.data?.items ?? []).map((user) => ({
-        value: user.id,
-        label: user.fullName === "" ? user.email : user.fullName,
-        hint: [user.email, user.phone].filter((part) => part !== "").join(" · "),
-      })),
-    [investors.data],
-  )
-
-  const positionItems = positions.data?.items ?? []
-  const ledgerItems = ledger.data?.items ?? []
-  const investorLabel =
-    investorOptions.find((option) => option.value === userId)?.label ?? "The selected investor"
-
-  const resetInvestor = (next: string): void => {
+  const resetInvestor = (next: string, label: string): void => {
     setUserId(next)
+    setInvestorLabel(label)
     setFailure(null)
     reverse.reset()
   }
@@ -149,25 +137,13 @@ const ClientPositionDetailScreen = (): React.ReactElement => {
       )}
 
       <Card elevated>
-        <FormField
-          label="Investor"
-          required
+        <InvestorPicker
+          userId={userId}
           hint="Search by name, email or phone."
-        >
-          {({ id }) => (
-            <Combobox
-              id={id}
-              options={investorOptions}
-              value={userId}
-              onChange={resetInvestor}
-              query={investorQuery}
-              onQueryChange={setInvestorQuery}
-              placeholder="Start typing a name"
-              loading={investors.isFetching}
-              emptyLabel="No investor matches that"
-            />
-          )}
-        </FormField>
+          onChange={(choice) => {
+            resetInvestor(choice.userId, choice.label)
+          }}
+        />
       </Card>
 
       {userId === "" ? null : (
@@ -176,126 +152,173 @@ const ClientPositionDetailScreen = (): React.ReactElement => {
             title="Positions"
             description="Folded from the ledger on every read. There is no stored balance."
           >
-            <AdminTable
-              caption="Per-fund positions"
-              rows={positionItems}
-              rowKey={(row) => row.fundId}
-              columns={[
-                { key: "fund", header: "Fund", render: (row) => fundName(row.fundId) },
-                {
-                  key: "principal",
-                  header: "Invested",
-                  numeric: true,
-                  render: (row) => <MoneyValue amount={toPaise(row.principalPaise)} size="sm" />,
-                },
-                {
-                  key: "value",
-                  header: "Current value",
-                  numeric: true,
-                  render: (row) => <MoneyValue amount={toPaise(row.currentValuePaise)} size="sm" />,
-                },
-                {
-                  key: "growth",
-                  header: "Growth",
-                  numeric: true,
-                  render: (row) => (
-                    <MoneyValue
-                      amount={toPaise(row.totalGrowthPaise)}
-                      size="sm"
-                      tone="signed"
-                      showSign
-                    />
-                  ),
-                },
-              ]}
-            />
+            <AsyncBoundary
+              query={positions}
+              skeleton={<ListSkeleton />}
+              isEmpty={(data) => data.items.length === 0}
+              empty={
+                <EmptyState
+                  title="No position yet"
+                  description="This investor has no recorded investment in any fund."
+                />
+              }
+            >
+              {(data) => (
+                <AdminTable
+                  caption="Per-fund positions"
+                  rows={data.items}
+                  rowKey={(row) => row.fundId}
+                  columns={[
+                    { key: "fund", header: "Fund", render: (row) => fundName(row.fundId) },
+                    {
+                      key: "principal",
+                      header: "Invested",
+                      numeric: true,
+                      render: (row) => <MoneyValue amount={toPaise(row.principalPaise)} size="sm" />,
+                    },
+                    {
+                      key: "value",
+                      header: "Current value",
+                      numeric: true,
+                      render: (row) => <MoneyValue amount={toPaise(row.currentValuePaise)} size="sm" />,
+                    },
+                    {
+                      key: "growth",
+                      header: "Growth",
+                      numeric: true,
+                      render: (row) => (
+                        <MoneyValue
+                          amount={toPaise(row.totalGrowthPaise)}
+                          size="sm"
+                          tone="signed"
+                          showSign
+                        />
+                      ),
+                    },
+                  ]}
+                />
+              )}
+            </AsyncBoundary>
           </Section>
 
-          <MaturityPanel key={userId} userId={userId} canWrite={canWrite} positions={positionItems} fundName={fundName} />
+          {positions.data === undefined ? null : (
+            <MaturityPanel
+              key={userId}
+              userId={userId}
+              canWrite={canWrite}
+              positions={positions.data.items}
+              fundName={fundName}
+            />
+          )}
 
           <Section
             title="Record an investment made before the app"
             description="Written as what it was: an accepted order, a succeeded payment, an allocation and an ordinary contribution, all dated by the real investment date so the statement for that period is right. The investor is notified."
           >
-            <EarlierInvestmentForm key={userId} userId={userId} investorLabel={investorLabel} />
+            <EarlierInvestmentForm
+              key={userId}
+              userId={userId}
+              investorLabel={investorLabel === "" ? "The selected investor" : investorLabel}
+            />
           </Section>
 
           <Section
             title="Ledger entries"
             description="Append-only. Reversing an entry writes a new row that negates it; an entry can be reversed once."
           >
-            <AdminTable
-              caption="Ledger entries"
-              rows={ledgerItems}
-              rowKey={(row) => row.entryId}
-              columns={[
-                { key: "date", header: "Effective", render: (row) => row.effectiveDate },
-                { key: "fund", header: "Fund", render: (row) => fundName(row.fundId) },
-                {
-                  key: "kind",
-                  header: "Entry",
-                  render: (row) => (
-                    <Badge tone={row.entryType === "reversal" ? "neutral" : "info"}>
-                      {`${ENTRY_LABEL[row.entryType] ?? row.entryType}${
-                        row.orderType === null ? "" : ` · ${ORDER_LABEL[row.orderType] ?? row.orderType}`
-                      }`}
-                    </Badge>
-                  ),
-                },
-                {
-                  key: "principal",
-                  header: "Invested change",
-                  numeric: true,
-                  render: (row) => (
-                    <MoneyValue
-                      amount={toPaise(row.principalDeltaPaise)}
-                      size="sm"
-                      tone="signed"
-                      showSign
-                    />
-                  ),
-                },
-                {
-                  key: "value",
-                  header: "Value change",
-                  numeric: true,
-                  render: (row) => (
-                    <MoneyValue
-                      amount={toPaise(row.valueDeltaPaise)}
-                      size="sm"
-                      tone="signed"
-                      showSign
-                    />
-                  ),
-                },
-                {
-                  key: "reason",
-                  header: "Reason",
-                  render: (row) => <span className={ADMIN_CODE}>{row.reasonCode}</span>,
-                },
-                {
-                  key: "action",
-                  header: "Correction",
-                  render: (row) =>
-                    row.reversedByEntryId !== null ? (
-                      <Badge tone="neutral">Reversed</Badge>
-                    ) : row.reversible ? (
-                      <Button
-                        tone="danger"
-                        size="sm"
-                        disabled={!canWrite}
-                        onClick={() => {
-                          setPendingReversal(row.entryId)
-                        }}
-                      >
-                        Reverse
-                      </Button>
-                    ) : (
-                      <span />
-                    ),
-                },
-              ]}
-            />
+            <AsyncBoundary
+              query={ledger}
+              skeleton={<ListSkeleton />}
+              isEmpty={(data) => data.items.length === 0}
+              empty={
+                <EmptyState
+                  title="No ledger entry yet"
+                  description="Nothing has been recorded for this investor."
+                />
+              }
+            >
+              {(data) => (
+                <div className={STACK_SM}>
+                  {data.items.length < LEDGER_ENTRY_LIMIT ? null : (
+                    <p className={PROSE_SM}>
+                      {`Showing the latest ${String(data.items.length)} entries by effective date. Older entries are not listed here.`}
+                    </p>
+                  )}
+                  <AdminTable
+                    caption="Ledger entries"
+                    rows={data.items}
+                    rowKey={(row) => row.entryId}
+                    columns={[
+                      { key: "date", header: "Effective", render: (row) => row.effectiveDate },
+                      { key: "fund", header: "Fund", render: (row) => fundName(row.fundId) },
+                      {
+                        key: "kind",
+                        header: "Entry",
+                        render: (row) => (
+                          <Badge tone={row.entryType === "reversal" ? "neutral" : "info"}>
+                            {`${ENTRY_LABEL[row.entryType] ?? row.entryType}${
+                              row.orderType === null ? "" : ` · ${ORDER_LABEL[row.orderType] ?? row.orderType}`
+                            }`}
+                          </Badge>
+                        ),
+                      },
+                      {
+                        key: "principal",
+                        header: "Invested change",
+                        numeric: true,
+                        render: (row) => (
+                          <MoneyValue
+                            amount={toPaise(row.principalDeltaPaise)}
+                            size="sm"
+                            tone="signed"
+                            showSign
+                          />
+                        ),
+                      },
+                      {
+                        key: "value",
+                        header: "Value change",
+                        numeric: true,
+                        render: (row) => (
+                          <MoneyValue
+                            amount={toPaise(row.valueDeltaPaise)}
+                            size="sm"
+                            tone="signed"
+                            showSign
+                          />
+                        ),
+                      },
+                      {
+                        key: "reason",
+                        header: "Reason",
+                        render: (row) => <span className={ADMIN_CODE}>{row.reasonCode}</span>,
+                      },
+                      {
+                        key: "action",
+                        header: "Correction",
+                        render: (row) =>
+                          row.reversedByEntryId !== null ? (
+                            <Badge tone="neutral">Reversed</Badge>
+                          ) : row.reversible ? (
+                            <Button
+                              tone="danger"
+                              size="sm"
+                              disabled={!canWrite}
+                              onClick={() => {
+                                setPendingReversal(row.entryId)
+                              }}
+                            >
+                              Reverse
+                            </Button>
+                          ) : (
+                            <span />
+                          ),
+                      },
+                    ]}
+                  />
+                </div>
+              )}
+            </AsyncBoundary>
           </Section>
         </>
       )}

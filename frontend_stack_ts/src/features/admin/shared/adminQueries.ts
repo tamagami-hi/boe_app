@@ -4,15 +4,12 @@ import type { z } from "zod"
 
 import {
   acknowledgeAdminFundReceipt,
-  appendAdminIndividualClientGrowth,
   createAdminClient,
-  listAdminClientLedgerEntries,
   listAdminInvestorPositions,
   recordAdminClientContribution,
   reverseAdminClientLedgerEntry,
   archiveAdminFaq,
   cancelAdminMandate,
-  commitAdminCollectiveClientGrowth,
   createAdminFaq,
   decideAdminApplication,
   editAdminFaq,
@@ -32,7 +29,6 @@ import {
   listAdminRefunds,
   listAdminUserLoginEvents,
   listAdminUsers,
-  previewAdminCollectiveClientGrowth,
   publishAdminAppConfig,
   reconcileAdminMandate,
   reconcileAdminRefund,
@@ -498,8 +494,6 @@ export const usePublishAppConfig = (): UseMutationResult<void, Error, AppConfigI
   })
 }
 
-export type IndividualGrowthInput = z.input<typeof appendAdminIndividualClientGrowth.request.body>
-
 export type CreateAdminClientInput = Readonly<{
   idempotencyKey: string
   fullName: string
@@ -541,27 +535,6 @@ export const useAdminInvestorPositions = (
   })
 }
 
-export const useIndividualClientGrowth = (): UseMutationResult<
-  DataOf<typeof appendAdminIndividualClientGrowth>,
-  Error,
-  IndividualGrowthInput
-> => {
-  const api = useApi()
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (body: IndividualGrowthInput) =>
-      (
-        await api.request(appendAdminIndividualClientGrowth, {
-          body,
-          idempotencyKey: mintIdempotencyKey(),
-        })
-      ).data,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["admin", "users"] })
-    },
-  })
-}
-
 export type RecordedContributionInput = Readonly<{
   userId: string
   idempotencyKey: string
@@ -571,25 +544,6 @@ export type RecordedContributionInput = Readonly<{
   reasonCode: string
   note?: string
 }>
-
-export const useAdminClientLedgerEntries = (
-  userId: string,
-  fundId: string,
-): UseQueryResult<DataOf<typeof listAdminClientLedgerEntries>> => {
-  const api = useApi()
-  return useQuery({
-    queryKey: qk.admin.clientLedgerEntries(userId, fundId),
-    enabled: userId !== "",
-    staleTime: STALE.MONEY,
-    queryFn: async () =>
-      (
-        await api.request(listAdminClientLedgerEntries, {
-          params: { userId },
-          ...(fundId === "" ? {} : { query: { fundId } }),
-        })
-      ).data,
-  })
-}
 
 export const useRecordClientContribution = (): UseMutationResult<
   DataOf<typeof recordAdminClientContribution>,
@@ -638,46 +592,6 @@ export const useReverseClientLedgerEntry = (): UseMutationResult<
       ).data,
     onSuccess: async (_data, variables) => {
       await queryClient.invalidateQueries({ queryKey: ["admin", "investor", variables.userId] })
-    },
-  })
-}
-
-export type CollectiveGrowthPreviewInput = z.input<
-  typeof previewAdminCollectiveClientGrowth.request.body
->
-export const usePreviewCollectiveClientGrowth = (): UseMutationResult<
-  DataOf<typeof previewAdminCollectiveClientGrowth>,
-  Error,
-  CollectiveGrowthPreviewInput
-> => {
-  const api = useApi()
-  return useMutation({
-    mutationFn: async (body: CollectiveGrowthPreviewInput) =>
-      (await api.request(previewAdminCollectiveClientGrowth, { body })).data,
-  })
-}
-
-export type CollectiveGrowthCommitInput = z.input<
-  typeof commitAdminCollectiveClientGrowth.request.body
->
-
-export const useCommitCollectiveClientGrowth = (): UseMutationResult<
-  DataOf<typeof commitAdminCollectiveClientGrowth>,
-  Error,
-  CollectiveGrowthCommitInput
-> => {
-  const api = useApi()
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (body: CollectiveGrowthCommitInput) =>
-      (
-        await api.request(commitAdminCollectiveClientGrowth, {
-          body,
-          idempotencyKey: mintIdempotencyKey(),
-        })
-      ).data,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["admin", "users"] })
     },
   })
 }
