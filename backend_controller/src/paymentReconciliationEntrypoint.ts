@@ -40,7 +40,7 @@ export const runPaymentReconciliationPass = async (
     if (!worker.gatewayConfigured) {
       logger.warn(
         { errorCode: "PAYMENT_GATEWAY_NOT_CONFIGURED" },
-        "No payment gateway is configured: this pass will resolve nothing. Set PAYMENTS_SERVICE_URL and PAYMENTS_SERVICE_SECRET.",
+        "No payment gateway is configured: this pass only expires checkouts that were never sent to the provider and are past their pay-by time. Set PAYMENTS_SERVICE_URL and PAYMENTS_SERVICE_SECRET.",
       )
     }
     summary = (await worker.runOnce()) as unknown as Record<string, unknown>

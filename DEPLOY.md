@@ -68,7 +68,11 @@ unconfigured gateway or absent SMTP transport returns a zero summary and still r
 success. Without the payment service (`PAYMENTS_SERVICE_URL` and `PAYMENTS_SERVICE_SECRET`)
 the SIPs worker creates no instalment orders and logs `PAYMENT_GATEWAY_NOT_CONFIGURED`, and
 the API refuses client lump-sum orders and SIP plans with `DEPENDENCY_UNAVAILABLE` before
-writing anything.
+writing anything. In that state the payments worker only expires one-time checkouts that
+were never sent to the provider and whose pay-by time plus
+`PAYMENT_RECONCILIATION_EXPIRY_GRACE_SECONDS` has passed, with an audit row each, and
+waits the idle interval between passes. Checkouts already sent to the provider stay open
+until a configured gateway reconciles them.
 
 The email worker writes its heartbeat only at the end of a pass, so a pass must finish
 well inside that 60 s. `backend_controller/src/email/sendTiming.ts` budgets a pass at 35 s

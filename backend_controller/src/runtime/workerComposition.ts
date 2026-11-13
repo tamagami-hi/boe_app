@@ -47,6 +47,8 @@ import {
   type MandateCollectionSummary,
 } from "../mandateCollectionWorker.js"
 import { runSipSchedulePass, type SipScheduleSummary } from "../sipScheduleWorker.js"
+import { runStalePaymentExpiryPass } from "../stalePaymentExpiry.js"
+import { createStaleCheckoutRepository } from "../repositories/staleCheckoutRepository.js"
 import { createAuditRepository } from "../repositories/auditRepository.js"
 import { createEmailDeliveryRepository } from "../repositories/emailDeliveryRepository.js"
 import { createEmailSuppressionRepository } from "../repositories/emailSuppressionRepository.js"
@@ -132,6 +134,7 @@ export const composeEmailDispatchWorker = (
 
 export interface PaymentReconciliationPassSummary extends ReconciliationSummary {
   readonly mandateReconciliation: MandateReconciliationSummary | null
+  readonly staleAttemptsExpired?: number
 }
 
 export interface PaymentReconciliationWorker {
@@ -161,12 +164,24 @@ export const composePaymentReconciliationWorker = (
   return {
     runOnce: async () => {
       if (gateway === null) {
+        const stale = await runStalePaymentExpiryPass({
+          unitOfWork,
+          clock: (): Date => new Date(),
+          staleCheckoutRepository: createStaleCheckoutRepository(),
+          paymentsRepository: createPaymentsRepository(),
+          auditRepository: createAuditRepository(),
+          config: {
+            claimLimit: serverConfig.payments.reconciliation.claimLimit,
+            expiryGraceMs: serverConfig.payments.reconciliation.expiryGraceMs,
+          },
+        })
         return {
           attemptsChecked: 0,
           attemptsResolved: 0,
           refundsChecked: 0,
           refundsResolved: 0,
           mandateReconciliation: null,
+          staleAttemptsExpired: stale.staleAttemptsExpired,
         }
       }
       const summary = await runReconciliationPass({
@@ -214,6 +229,7 @@ export const composePaymentReconciliationWorker = (
     database,
     intervalMs: serverConfig.payments.reconciliation.intervalMs,
     nextWakeDelayMs: async () => {
+      if (gateway === null) return serverConfig.payments.reconciliation.idleIntervalMs
       const now = new Date()
       const earliestDueAt = await unitOfWork.execute((tx) =>
         createPaymentsRepository().earliestReconciliationDueAt(tx, {
