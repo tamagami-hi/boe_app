@@ -74,6 +74,7 @@ export interface AdminClientGrowthDeps {
 
 const INDIVIDUAL_ROUTE = "/v1/admin/client-growth/individual"
 const INVESTOR_POSITIONS_ROUTE = "/v1/admin/client-growth/investors/:userId/positions"
+const FUND_POSITIONS_ROUTE = "/v1/admin/client-growth/funds/:fundId/positions"
 const COLLECTIVE_PREVIEW_ROUTE = "/v1/admin/client-growth/collective/preview"
 const COLLECTIVE_ROUTE = "/v1/admin/client-growth/collective"
 
@@ -88,6 +89,14 @@ const NOTIFICATION_TITLE = "Investment value updated"
 const NOTIFICATION_BODY =
   "The value of one of your investments was updated. Open your portfolio to see the current value."
 const NOTIFICATION_DEEP_LINK = "/portfolio"
+
+const valueUpdatedNotice = (userId: string, fundId: string, entryId: string) => ({
+  userId,
+  kind: NOTIFICATION_KIND,
+  title: NOTIFICATION_TITLE,
+  body: NOTIFICATION_BODY,
+  payload: { fundId, entryId, deepLink: NOTIFICATION_DEEP_LINK },
+})
 
 // --- schemas ---
 
@@ -346,13 +355,7 @@ const individual = async (
           ...CLIENT_GROWTH_AUDIT_METADATA,
         },
       })
-      await deps.notificationRepository.create(tx, {
-        userId: body.userId,
-        kind: NOTIFICATION_KIND,
-        title: NOTIFICATION_TITLE,
-        body: NOTIFICATION_BODY,
-        payload: { fundId: body.fundId, deepLink: NOTIFICATION_DEEP_LINK },
-      })
+      await deps.notificationRepository.create(tx, valueUpdatedNotice(body.userId, body.fundId, entry.id))
 
       return {
         status: 201,
@@ -486,7 +489,7 @@ const collectiveCommit = async (
         totalDeltaPaise: plan.totalDeltaPaise,
       })
       for (const target of plan.targets) {
-        await deps.clientGrowthRepository.insertGrowthEntry(tx, {
+        const entry = await deps.clientGrowthRepository.insertGrowthEntry(tx, {
           batchId: batch.id,
           userId: target.userId,
           fundId: body.fundId,
@@ -497,13 +500,10 @@ const collectiveCommit = async (
           actorUserId: principal.userId,
           requestId: request.requestId,
         })
-        await deps.notificationRepository.create(tx, {
-          userId: target.userId,
-          kind: NOTIFICATION_KIND,
-          title: NOTIFICATION_TITLE,
-          body: NOTIFICATION_BODY,
-          payload: { fundId: body.fundId, deepLink: NOTIFICATION_DEEP_LINK },
-        })
+        await deps.notificationRepository.create(
+          tx,
+          valueUpdatedNotice(target.userId, body.fundId, entry.id),
+        )
       }
       await deps.auditRepository.append(tx, {
         actorType: "admin",
@@ -577,12 +577,39 @@ const investorPositions = async (
   )
 }
 
+const fundPositions = async (
+  deps: AdminClientGrowthDeps,
+  request: FastifyRequest,
+  reply: FastifyReply,
+) => {
+  const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: false })
+  requireAnyPermission(principal, ["client_values.read"])
+  const fundId = parseOrThrow(uuidParam, (request.params as { fundId?: unknown }).fundId)
+
+  const rows = await deps.clientGrowthRepository.listNamedFundPositions(deps.database, fundId)
+  if (rows === null) throw new AppError("RESOURCE_NOT_FOUND")
+  return reply.sendData(
+    {
+      fundId,
+      items: rows.map((row) => ({
+        userId: row.userId,
+        fullName: row.fullName,
+        investedPaise: row.principalPaise,
+        currentValuePaise: row.currentValuePaise,
+        gainPaise: (BigInt(row.currentValuePaise) - BigInt(row.principalPaise)).toString(),
+      })),
+    },
+    { status: 200 },
+  )
+}
+
 export const registerAdminClientGrowthRoutes = (
   application: FastifyInstance,
   deps: AdminClientGrowthDeps,
 ): void => {
   const schemas = buildClientGrowthSchemas()
   application.get(INVESTOR_POSITIONS_ROUTE, (request, reply) => investorPositions(deps, request, reply))
+  application.get(FUND_POSITIONS_ROUTE, (request, reply) => fundPositions(deps, request, reply))
   application.post(INDIVIDUAL_ROUTE, (request, reply) => individual(deps, schemas, request, reply))
   application.post(COLLECTIVE_PREVIEW_ROUTE, (request, reply) =>
     collectivePreview(deps, schemas, request, reply),

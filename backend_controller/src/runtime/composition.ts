@@ -14,6 +14,7 @@ import { createApplicationRepository } from "../repositories/applicationReposito
 import { createClientCatalogRepository } from "../repositories/clientCatalogRepository.js"
 import { createClientPortfolioRepository } from "../repositories/clientPortfolioRepository.js"
 import { createClientValueEntryRepository } from "../repositories/clientValueEntryRepository.js"
+import { createClientValueUpdateRepository } from "../repositories/clientValueUpdateRepository.js"
 import { createEmailVerificationRepository } from "../repositories/emailVerificationRepository.js"
 import {
   createSmtpEmailSender,
@@ -83,6 +84,7 @@ import { registerClientAutoPaySipRoutes } from "../routes/clientAutoPaySipRoutes
 import { createSipPlanRepository } from "../repositories/sipPlanRepository.js"
 import { registerClientCatalogRoutes } from "../routes/clientCatalogRoutes.js"
 import { registerClientPortfolioRoutes } from "../routes/clientPortfolioRoutes.js"
+import { registerClientValueUpdateRoutes } from "../routes/clientValueUpdateRoutes.js"
 import { registerPublicContentRoutes } from "../routes/publicContentRoutes.js"
 import { registerPublicAppRoutes } from "../routes/publicAppRoutes.js"
 import { createRedisCache, createUncachedCache } from "../cache/cache.js"
@@ -276,6 +278,14 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       clientPortfolioRepository,
       clientValueEntryRepository,
       unitOfWork,
+      clock,
+      config: { cursorKey: serverConfig.cursorKey },
+    })
+    registerClientValueUpdateRoutes(application, {
+      accessTokenService,
+      database,
+      clientWeb,
+      clientValueUpdateRepository: createClientValueUpdateRepository(),
       clock,
       config: { cursorKey: serverConfig.cursorKey },
     })

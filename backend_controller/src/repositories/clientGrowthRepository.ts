@@ -34,6 +34,13 @@ export interface ClientUserPositionRow {
   readonly latestEntryId: string | null
 }
 
+export interface ClientFundPositionRow {
+  readonly userId: string
+  readonly fullName: string
+  readonly principalPaise: string
+  readonly currentValuePaise: string
+}
+
 export interface InsertClientGrowthBatchInput {
   readonly scope: GrowthScope
   readonly instructionType: GrowthInstructionType
@@ -77,6 +84,10 @@ export interface ClientGrowthRepository {
     tx: Transaction,
     userId: string,
   ) => Promise<readonly ClientUserPositionRow[]>
+  listNamedFundPositions: (
+    tx: Transaction,
+    fundId: string,
+  ) => Promise<readonly ClientFundPositionRow[] | null>
   insertBatch: (
     tx: Transaction,
     input: InsertClientGrowthBatchInput,
@@ -115,6 +126,17 @@ const positionBasisQuery = (fundId: string, userId: string | null) => sql<Client
   order by v.user_id asc
 `
 
+const namedFundPositionsQuery = (fundId: string) => sql<ClientFundPositionRow>`
+  select
+    b."userId",
+    u.full_name as "fullName",
+    b."principalPaise",
+    b."currentValuePaise"
+  from (${positionBasisQuery(fundId, null)}) b
+  join users u on u.id = b."userId"
+  order by u.full_name asc, b."userId" asc
+`
+
 const userPositionsQuery = (userId: string) => sql<ClientUserPositionRow>`
   with visible as (
     select e.id, e.fund_id, e.principal_delta_paise, e.value_delta_paise, e.entry_type, e.created_at
@@ -151,6 +173,13 @@ export const createClientGrowthRepository = (): ClientGrowthRepository => ({
 
   listUserPositions: async (tx, userId) => {
     const result = await userPositionsQuery(userId).execute(tx)
+    return result.rows
+  },
+
+  listNamedFundPositions: async (tx, fundId) => {
+    const fund = await tx.selectFrom("funds").select("id").where("id", "=", fundId).executeTakeFirst()
+    if (fund === undefined) return null
+    const result = await namedFundPositionsQuery(fundId).execute(tx)
     return result.rows
   },
 

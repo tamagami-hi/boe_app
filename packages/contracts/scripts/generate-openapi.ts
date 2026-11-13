@@ -27,6 +27,7 @@ import { NATIVE_AUTH_OPERATIONS } from "../src/operations/native-auth.js"
 import { OPS_OPERATIONS } from "../src/operations/ops.js"
 import { PUBLIC_CONTENT_OPERATIONS } from "../src/operations/public-content.js"
 import { PUBLIC_OPERATIONS } from "../src/operations/public.js"
+import { VALUE_UPDATE_OPERATIONS } from "../src/operations/value-updates.js"
 import { WEB_AUTH_OPERATIONS } from "../src/operations/web-auth.js"
 
 type GeneratableOperation = Readonly<{
@@ -69,6 +70,7 @@ export const ALL_OPERATIONS: readonly GeneratableOperation[] = Object.freeze([
   ...ADMIN_CLIENT_CONTACT_OPERATIONS,
   ...ADMIN_EMAIL_OPERATIONS,
   ...ADMIN_SUPPORT_OPERATIONS,
+  ...VALUE_UPDATE_OPERATIONS,
 ])
 
 type RouteConfig = Parameters<OpenAPIRegistry["registerPath"]>[0]
