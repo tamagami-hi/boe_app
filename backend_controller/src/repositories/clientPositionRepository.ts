@@ -95,6 +95,10 @@ export interface ClientPositionRepository {
     tx: Transaction,
     input: Readonly<{ userId: string; fundId: string | null; limit: number }>,
   ) => Promise<readonly LedgerEntryRow[]>
+  listLedgerEntriesAfter: (
+    tx: Transaction,
+    input: Readonly<{ userId: string; fundId: string | null; afterEntryId: string | null; limit: number }>,
+  ) => Promise<readonly LedgerEntryRow[]>
   lockEntryForReversal: (
     tx: Transaction,
     input: Readonly<{ userId: string; entryId: string }>,
@@ -258,6 +262,26 @@ export const createClientPositionRepository = (): ClientPositionRepository => ({
       ${entrySelection}
       where e.user_id = ${input.userId}
         ${input.fundId === null ? sql`` : sql`and e.fund_id = ${input.fundId}`}
+      order by e.effective_date desc, e.created_at desc, e.id desc
+      limit ${input.limit}
+    `.execute(tx)
+    return result.rows.map(mapEntry)
+  },
+
+  listLedgerEntriesAfter: async (tx, input) => {
+    const result = await sql<LedgerEntrySqlRow>`
+      ${entrySelection}
+      where e.user_id = ${input.userId}
+        ${input.fundId === null ? sql`` : sql`and e.fund_id = ${input.fundId}`}
+        ${
+          input.afterEntryId === null
+            ? sql``
+            : sql`and (e.effective_date, e.created_at, e.id) < (
+                select a.effective_date, a.created_at, a.id
+                from client_value_entries a
+                where a.id = ${input.afterEntryId} and a.user_id = ${input.userId}
+              )`
+        }
       order by e.effective_date desc, e.created_at desc, e.id desc
       limit ${input.limit}
     `.execute(tx)

@@ -70,6 +70,8 @@ import { registerAdminMaturityRoutes } from "../routes/adminMaturityRoutes.js"
 import { createClientGrowthRepository } from "../repositories/clientGrowthRepository.js"
 import { createClientPositionRepository } from "../repositories/clientPositionRepository.js"
 import { registerAdminClientPositionRoutes } from "../routes/adminClientPositionRoutes.js"
+import { createClientReturnsRepository } from "../repositories/clientReturnsRepository.js"
+import { registerAdminClientReturnRoutes } from "../routes/adminClientReturnRoutes.js"
 import { registerClientAccountRoutes } from "../routes/clientAccountRoutes.js"
 import { registerClientEmailVerificationRoutes } from "../routes/clientEmailVerificationRoutes.js"
 import { createEmailChangeRepository } from "../repositories/emailChangeRepository.js"
@@ -676,6 +678,11 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       auditRepository,
       idempotencyRepository,
       notificationRepository,
+    })
+
+    registerAdminClientReturnRoutes(application, {
+      webAuth, database, clock, config: { cursorKey: serverConfig.cursorKey },
+      clientReturnsRepository: createClientReturnsRepository(), clientPositionRepository,
     })
 
     registerAdminMaturityRoutes(application, {

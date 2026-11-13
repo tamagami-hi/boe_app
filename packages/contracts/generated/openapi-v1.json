@@ -29677,6 +29677,1091 @@
         }
       }
     },
+    "/v1/admin/clients/{userId}/portfolio-summary": {
+      "get": {
+        "operationId": "getAdminClientPortfolioSummary",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "investedPaise": {
+                          "type": "string",
+                          "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                        },
+                        "currentValuePaise": {
+                          "type": "string",
+                          "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                        },
+                        "growthPaise": {
+                          "type": "string",
+                          "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                        },
+                        "simpleReturnBasisPoints": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                        },
+                        "xirrBasisPoints": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                        },
+                        "lastUpdatedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time"
+                        },
+                        "userId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "asOfDate": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$/u"
+                        }
+                      },
+                      "required": [
+                        "investedPaise",
+                        "currentValuePaise",
+                        "growthPaise",
+                        "simpleReturnBasisPoints",
+                        "xirrBasisPoints",
+                        "lastUpdatedAt",
+                        "userId",
+                        "asOfDate"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/client-values/summary": {
+      "get": {
+        "operationId": "listAdminClientValueSummaries",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "return_desc",
+                "return_asc"
+              ]
+            },
+            "required": false,
+            "name": "sort",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}){0,99}$/u"
+            },
+            "required": false,
+            "name": "userIds",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": false,
+            "name": "after",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "asOfDate": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$/u"
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "investedPaise": {
+                              "type": "string",
+                              "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                            },
+                            "currentValuePaise": {
+                              "type": "string",
+                              "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                            },
+                            "growthPaise": {
+                              "type": "string",
+                              "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                            },
+                            "simpleReturnBasisPoints": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                            },
+                            "xirrBasisPoints": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                            },
+                            "lastUpdatedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "date-time"
+                            },
+                            "clientCount": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "investedPaise",
+                            "currentValuePaise",
+                            "growthPaise",
+                            "simpleReturnBasisPoints",
+                            "xirrBasisPoints",
+                            "lastUpdatedAt",
+                            "clientCount"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "investedPaise": {
+                                "type": "string",
+                                "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                              },
+                              "currentValuePaise": {
+                                "type": "string",
+                                "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                              },
+                              "growthPaise": {
+                                "type": "string",
+                                "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                              },
+                              "simpleReturnBasisPoints": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                              },
+                              "xirrBasisPoints": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                              },
+                              "lastUpdatedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "date-time"
+                              },
+                              "userId": {
+                                "type": "string",
+                                "format": "uuid"
+                              }
+                            },
+                            "required": [
+                              "investedPaise",
+                              "currentValuePaise",
+                              "growthPaise",
+                              "simpleReturnBasisPoints",
+                              "xirrBasisPoints",
+                              "lastUpdatedAt",
+                              "userId"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "asOfDate",
+                        "totals",
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        },
+                        "page": {
+                          "type": "object",
+                          "properties": {
+                            "nextCursor": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "limit": {
+                              "type": "integer"
+                            },
+                            "hasMore": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "nextCursor",
+                            "limit",
+                            "hasMore"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp",
+                        "page"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/client-values/fund-updates": {
+      "get": {
+        "operationId": "listAdminFundValueUpdates",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "fundId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "fundSlug": {
+                                "type": "string"
+                              },
+                              "fundName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "lastValueUpdateAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "date-time"
+                              },
+                              "lastValueUpdateEffectiveDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$/u"
+                              }
+                            },
+                            "required": [
+                              "fundId",
+                              "fundSlug",
+                              "fundName",
+                              "lastValueUpdateAt",
+                              "lastValueUpdateEffectiveDate"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/overview/pending-invites": {
+      "get": {
+        "operationId": "getAdminPendingInvites",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "oldestInvitedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "count",
+                        "oldestInvitedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/clients/{userId}/ledger": {
+      "get": {
+        "operationId": "listAdminClientLedgerPage",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "fundId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": false,
+            "name": "after",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "userId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "entryId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "fundId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "entryType": {
+                                "type": "string",
+                                "enum": [
+                                  "contribution",
+                                  "growth_adjustment",
+                                  "reversal",
+                                  "withdrawal",
+                                  "maturity_reinvestment"
+                                ]
+                              },
+                              "orderType": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "lump_sum",
+                                  "sip_installment",
+                                  "recorded_offline",
+                                  null
+                                ]
+                              },
+                              "principalDeltaPaise": {
+                                "type": "string",
+                                "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                              },
+                              "valueDeltaPaise": {
+                                "type": "string",
+                                "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                              },
+                              "effectiveDate": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$/u"
+                              },
+                              "reasonCode": {
+                                "type": "string"
+                              },
+                              "reversesEntryId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "reversedByEntryId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "reversible": {
+                                "type": "boolean"
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "entryId",
+                              "fundId",
+                              "entryType",
+                              "orderType",
+                              "principalDeltaPaise",
+                              "valueDeltaPaise",
+                              "effectiveDate",
+                              "reasonCode",
+                              "reversesEntryId",
+                              "reversedByEntryId",
+                              "reversible",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "userId",
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        },
+                        "page": {
+                          "type": "object",
+                          "properties": {
+                            "nextCursor": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "limit": {
+                              "type": "integer"
+                            },
+                            "hasMore": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "nextCursor",
+                            "limit",
+                            "hasMore"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp",
+                        "page"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/admin/email-templates": {
       "get": {
         "operationId": "listAdminEmailTemplates",

@@ -57,14 +57,18 @@ const PERCENT_SCALE = 100n
  * symmetric for losses) and only converted to a float at the boundary. Returns
  * null when there is no invested principal to divide by.
  */
-export const returnPercent = (totalGrowthPaise: bigint, totalInvestmentPaise: bigint): number | null => {
+export const returnBasisPoints = (totalGrowthPaise: bigint, totalInvestmentPaise: bigint): bigint | null => {
   if (totalInvestmentPaise <= 0n) return null
   const numerator = totalGrowthPaise * 100n * PERCENT_SCALE
   const negative = numerator < 0n
   const magnitude = negative ? -numerator : numerator
   const rounded = (magnitude + totalInvestmentPaise / 2n) / totalInvestmentPaise
-  const signed = negative ? -rounded : rounded
-  return Number(signed) / Number(PERCENT_SCALE)
+  return negative ? -rounded : rounded
+}
+
+export const returnPercent = (totalGrowthPaise: bigint, totalInvestmentPaise: bigint): number | null => {
+  const basisPoints = returnBasisPoints(totalGrowthPaise, totalInvestmentPaise)
+  return basisPoints === null ? null : Number(basisPoints) / Number(PERCENT_SCALE)
 }
 
 /** Fold a ledger into the dashboard figures. Order-independent by construction. */
