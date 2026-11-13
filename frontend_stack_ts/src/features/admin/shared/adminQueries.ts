@@ -536,6 +536,7 @@ export const useRecordClientContribution = (): UseMutationResult<
       ).data,
     onSettled: async (_data, _error, variables) => {
       await queryClient.invalidateQueries({ queryKey: ["admin", "investor", variables.userId] })
+      await queryClient.invalidateQueries({ queryKey: qk.admin.clientValueSummaryRoot() })
     },
   })
 }
@@ -565,6 +566,7 @@ export const useReverseClientLedgerEntry = (): UseMutationResult<
       ).data,
     onSuccess: async (_data, variables) => {
       await queryClient.invalidateQueries({ queryKey: ["admin", "investor", variables.userId] })
+      await queryClient.invalidateQueries({ queryKey: qk.admin.clientValueSummaryRoot() })
     },
   })
 }

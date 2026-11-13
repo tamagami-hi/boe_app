@@ -62,6 +62,7 @@ export const qk = {
     fundClientPositions: (fundId: string) => ["admin", "fund", fundId, "client-positions"] as const,
     clientPortfolioSummary: (userId: string) => ["admin", "investor", userId, "portfolio-summary"] as const,
     clientLedgerPage: (userId: string) => ["admin", "investor", userId, "ledger-page"] as const,
+    clientValueSummaryRoot: () => ["admin", "client-value-summaries"] as const,
     clientValueSummaries: (filter: string) => ["admin", "client-value-summaries", filter] as const,
     fundValueUpdates: () => ["admin", "fund-value-updates"] as const,
     pendingInvites: () => ["admin", "pending-invites"] as const,

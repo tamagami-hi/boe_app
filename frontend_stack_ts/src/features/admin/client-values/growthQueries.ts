@@ -35,6 +35,7 @@ const refreshInvestorValues = async (queryClient: QueryClient, userId?: string):
       queryKey: userId === undefined ? ["admin", "investor"] : ["admin", "investor", userId],
     }),
     queryClient.invalidateQueries({ queryKey: ["admin", "users"] }),
+    queryClient.invalidateQueries({ queryKey: qk.admin.clientValueSummaryRoot() }),
   ])
 }
 

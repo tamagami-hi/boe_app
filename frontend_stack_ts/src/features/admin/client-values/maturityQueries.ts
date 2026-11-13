@@ -10,7 +10,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { z } from "zod"
 
 import { mintIdempotencyKey } from "~/api/idempotency"
-import { STALE } from "~/api/queryKeys"
+import { STALE, qk } from "~/api/queryKeys"
 import { useApi } from "~/app/providers/ApiProvider"
 
 export const useMaturityRecords = (userId: string) => {
@@ -62,6 +62,7 @@ export const useSettleMaturity = (userId: string) => {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["admin", "investor", userId] })
+      await queryClient.invalidateQueries({ queryKey: qk.admin.clientValueSummaryRoot() })
     },
   })
 }

@@ -17,10 +17,15 @@ import { SEED_ROLE_PERMISSIONS } from "../../src/db/seedCatalog.js"
 import type { WebAuthDeps } from "../../src/domain/auth/webAuth.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
 import { createAuthSessionRepository } from "../../src/repositories/authSessionRepository.js"
+import { createClientGrowthRepository } from "../../src/repositories/clientGrowthRepository.js"
 import { createClientPositionRepository } from "../../src/repositories/clientPositionRepository.js"
 import { createClientReturnsRepository } from "../../src/repositories/clientReturnsRepository.js"
+import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
 import { createLoginEventRepository } from "../../src/repositories/loginEventRepository.js"
+import { createNotificationRepository } from "../../src/repositories/notificationRepository.js"
 import { createUserRepository } from "../../src/repositories/userRepository.js"
+import { registerAdminClientGrowthRoutes } from "../../src/routes/adminClientGrowthRoutes.js"
+import { registerAdminClientPositionRoutes } from "../../src/routes/adminClientPositionRoutes.js"
 import { registerAdminClientReturnRoutes } from "../../src/routes/adminClientReturnRoutes.js"
 import { registerWebAuthRoutes } from "../../src/routes/webAuthRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
@@ -193,6 +198,7 @@ const get = (session: Session | null, url: string) =>
 
 let fund: Awaited<ReturnType<typeof seedFund>>
 let growingClient: string
+let growingContribution: string
 let youngClient: string
 let emptyClient: string
 
@@ -225,10 +231,28 @@ beforeAll(async () => {
     clock: () => new Date(),
     config: { cookieSecure: false, originAllowlist: [ORIGIN] },
   }
+  const unitOfWork = createUnitOfWork(database)
+  const writeDeps = {
+    webAuth,
+    unitOfWork,
+    database,
+    clock: () => new Date(),
+    config: { idempotencyTtlMs: 86_400_000 },
+    clientGrowthRepository: createClientGrowthRepository(),
+    auditRepository: createAuditRepository(),
+    idempotencyRepository: createIdempotencyRepository(),
+    notificationRepository: createNotificationRepository(),
+  }
   app = createApplication({
     logger: false,
     registerRoutes: (instance) => {
-      registerWebAuthRoutes(instance, { ...webAuth, unitOfWork: createUnitOfWork(database), loginEventRepository: createLoginEventRepository() })
+      registerWebAuthRoutes(instance, { ...webAuth, unitOfWork, loginEventRepository: createLoginEventRepository() })
+      registerAdminClientGrowthRoutes(instance, writeDeps)
+      registerAdminClientPositionRoutes(instance, {
+        ...writeDeps,
+        clientPositionRepository: createClientPositionRepository(),
+        userRepository: createUserRepository(),
+      })
       registerAdminClientReturnRoutes(instance, {
         webAuth,
         database,
@@ -248,7 +272,7 @@ beforeAll(async () => {
 
   fund = await seedFund()
   growingClient = await seedClient()
-  await contribute(growingClient, fund, 100_000, "2025-11-13")
+  growingContribution = await contribute(growingClient, fund, 100_000, "2025-11-13")
   await reverse(await contribute(growingClient, fund, 50_000, "2026-03-01"))
   await grow(growingClient, fund.fundId, 10_000, "2026-06-01")
   youngClient = await seedClient()
@@ -302,16 +326,18 @@ describe("admin client returns", () => {
     const ascending = dataOf<SummaryPage>(await get(finance, `/v1/admin/client-values/summary?userIds=${ids}&sort=return_asc`))
     expect(ascending.items.map((item) => item.userId)).toEqual([youngClient, growingClient, emptyClient])
 
-    const seen: string[] = []
+    const seen: SummaryPage["items"][number][] = []
     let cursor: string | null = null
     do {
       const url = `/v1/admin/client-values/summary?userIds=${ids}&limit=1${cursor === null ? "" : `&after=${encodeURIComponent(cursor)}`}`
       const page = await get(finance, url)
       expect(page.statusCode, page.body).toBe(200)
-      seen.push(...dataOf<SummaryPage>(page).items.map((item) => item.userId))
+      expect(dataOf<SummaryPage>(page).totals).toEqual(data.totals)
+      seen.push(...dataOf<SummaryPage>(page).items)
       cursor = pageOf(page).nextCursor
     } while (cursor !== null)
-    expect(seen).toEqual([growingClient, youngClient, emptyClient])
+    expect(seen).toEqual(data.items)
+    expect(seen.map((item) => item.xirrBasisPoints)).toEqual(["1000", null, null])
 
     const first = await get(finance, `/v1/admin/client-values/summary?userIds=${ids}&limit=1`)
     const replayed = await get(finance, `/v1/admin/client-values/summary?sort=return_asc&userIds=${ids}&after=${encodeURIComponent(pageOf(first).nextCursor ?? "")}`)
@@ -320,6 +346,25 @@ describe("admin client returns", () => {
     const unfiltered = dataOf<SummaryPage>(await get(finance, "/v1/admin/client-values/summary?limit=100"))
     expect(unfiltered.items.map((item) => item.userId)).toEqual(expect.arrayContaining([growingClient, youngClient]))
     expect(unfiltered.items.map((item) => item.userId)).not.toContain(emptyClient)
+  })
+
+  test("sums match the positions read, and the last live contribution under growth cannot be reversed", async () => {
+    const positions = dataOf<{ items: { principalPaise: string; currentValuePaise: string }[] }>(
+      await get(finance, `/v1/admin/client-growth/investors/${growingClient}/positions`),
+    )
+    const before = dataOf<Returns>(await get(finance, `/v1/admin/clients/${growingClient}/portfolio-summary`))
+    expect(String(positions.items.reduce((sum, item) => sum + BigInt(item.principalPaise), 0n))).toBe(before.investedPaise)
+    expect(String(positions.items.reduce((sum, item) => sum + BigInt(item.currentValuePaise), 0n))).toBe(before.currentValuePaise)
+
+    const refused = await app.inject({
+      method: "POST",
+      url: `/v1/admin/clients/${growingClient}/ledger-entries/${growingContribution}/reversal`,
+      headers: { origin: ORIGIN, cookie: finance.cookie, "x-csrf-token": finance.csrf, "idempotency-key": randomUUID() },
+      payload: { reasonCode: "admin_correction_reversal" },
+    })
+    expect(refused.statusCode, refused.body).toBe(409)
+    expect(errorOf(refused)).toBe("STATE_CONFLICT")
+    expect(dataOf<Returns>(await get(finance, `/v1/admin/clients/${growingClient}/portfolio-summary`))).toEqual(before)
   })
 
   test("the ledger page walks every entry once, newest first", async () => {

@@ -13,13 +13,16 @@ export interface LedgerFact {
   readonly lastCreatedAt: Date
 }
 
-export interface ClientReturns {
+export interface ClientValueFold {
   readonly investedPaise: bigint
   readonly currentValuePaise: bigint
   readonly growthPaise: bigint
   readonly simpleReturnBasisPoints: bigint | null
-  readonly xirrBasisPoints: bigint | null
   readonly lastUpdatedAt: Date | null
+}
+
+export interface ClientReturns extends ClientValueFold {
+  readonly xirrBasisPoints: bigint | null
 }
 
 const EXTERNAL_FLOW_TYPES: ReadonlySet<ClientValueEntryType> = new Set(["contribution", "withdrawal"])
@@ -32,7 +35,11 @@ export const investorCashFlowOf = (fact: LedgerFact): bigint => {
   return flowType !== null && EXTERNAL_FLOW_TYPES.has(flowType) ? -fact.valueDeltaPaise : 0n
 }
 
-const xirrOf = (facts: readonly LedgerFact[], currentValuePaise: bigint, asOfDate: string): bigint | null => {
+export const clientXirrBasisPoints = (
+  facts: readonly LedgerFact[],
+  currentValuePaise: bigint,
+  asOfDate: string,
+): bigint | null => {
   const flows: readonly DatedFlow[] = netFlowsByDate([
     ...facts.map((fact) => ({ date: fact.effectiveDate, amountPaise: investorCashFlowOf(fact) })),
     { date: asOfDate, amountPaise: currentValuePaise },
@@ -49,7 +56,7 @@ const latestOf = (facts: readonly LedgerFact[]): Date | null =>
     null,
   )
 
-export const summarizeClientReturns = (facts: readonly LedgerFact[], asOfDate: string): ClientReturns => {
+export const foldClientValues = (facts: readonly LedgerFact[]): ClientValueFold => {
   const investedPaise = facts.reduce((sum, fact) => sum + fact.principalDeltaPaise, 0n)
   const currentValuePaise = facts.reduce((sum, fact) => sum + fact.valueDeltaPaise, 0n)
   const growthPaise = currentValuePaise - investedPaise
@@ -58,7 +65,14 @@ export const summarizeClientReturns = (facts: readonly LedgerFact[], asOfDate: s
     currentValuePaise,
     growthPaise,
     simpleReturnBasisPoints: returnBasisPoints(growthPaise, investedPaise),
-    xirrBasisPoints: xirrOf(facts, currentValuePaise, asOfDate),
     lastUpdatedAt: latestOf(facts),
   }
 }
+
+export const withXirr = (fold: ClientValueFold, facts: readonly LedgerFact[], asOfDate: string): ClientReturns => ({
+  ...fold,
+  xirrBasisPoints: clientXirrBasisPoints(facts, fold.currentValuePaise, asOfDate),
+})
+
+export const summarizeClientReturns = (facts: readonly LedgerFact[], asOfDate: string): ClientReturns =>
+  withXirr(foldClientValues(facts), facts, asOfDate)

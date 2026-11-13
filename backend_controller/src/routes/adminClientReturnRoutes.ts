@@ -4,7 +4,14 @@ import { z } from "zod"
 
 import type { Database } from "../db/types.js"
 import { requireAnyPermission, resolveAdminPrincipal } from "../domain/admin/adminAccess.js"
-import { summarizeClientReturns, type ClientReturns, type LedgerFact } from "../domain/admin/clientReturns.js"
+import {
+  foldClientValues,
+  summarizeClientReturns,
+  withXirr,
+  type ClientReturns,
+  type ClientValueFold,
+  type LedgerFact,
+} from "../domain/admin/clientReturns.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { indiaCalendarDate } from "../domain/shared/calendarDate.js"
 import { AppError } from "../http/errorCatalog.js"
@@ -54,7 +61,8 @@ type SummarySort = z.infer<typeof summaryQuerySchema>["sort"]
 
 interface ClientSummaryRow {
   readonly userId: string
-  readonly returns: ClientReturns
+  readonly facts: readonly LedgerFact[]
+  readonly fold: ClientValueFold
 }
 
 interface SummaryPosition {
@@ -106,7 +114,7 @@ const compareSummaries =
 
 const positionOf = (row: ClientSummaryRow): SummaryPosition => ({
   userId: row.userId,
-  basisPoints: row.returns.simpleReturnBasisPoints,
+  basisPoints: row.fold.simpleReturnBasisPoints,
 })
 
 const cursorPosition = (values: readonly string[]): SummaryPosition | null => {
@@ -168,7 +176,10 @@ const valueSummaries = async (deps: AdminClientReturnDeps, request: FastifyReque
   const groups = groupByUser(scope.facts)
   const compare = compareSummaries(query.sort)
   const rows = scope.userIds
-    .map((userId) => ({ userId, returns: summarizeClientReturns(groups.get(userId) ?? [], asOfDate) }))
+    .map((userId) => {
+      const facts = groups.get(userId) ?? []
+      return { userId, facts, fold: foldClientValues(facts) }
+    })
     .sort((left, right) => compare(positionOf(left), positionOf(right)))
   const remaining = after === null ? rows : rows.filter((row) => compare(positionOf(row), after) > 0)
   const { items, page } = paginate(
@@ -178,14 +189,14 @@ const valueSummaries = async (deps: AdminClientReturnDeps, request: FastifyReque
     VALUE_SUMMARY_ROUTE,
     filterHash,
     now,
-    (row) => [basisPointsOrNull(row.returns.simpleReturnBasisPoints) ?? "null", row.userId],
+    (row) => [basisPointsOrNull(row.fold.simpleReturnBasisPoints) ?? "null", row.userId],
   )
 
   return reply.sendData(
     {
       asOfDate,
       totals: { clientCount: scope.userIds.length, ...returnsBody(summarizeClientReturns(scope.facts, asOfDate)) },
-      items: items.map((row) => ({ userId: row.userId, ...returnsBody(row.returns) })),
+      items: items.map((row) => ({ userId: row.userId, ...returnsBody(withXirr(row.fold, row.facts, asOfDate)) })),
     },
     { status: 200, page },
   )

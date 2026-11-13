@@ -122,20 +122,23 @@ const ReturnsDashboardScreen = (): React.ReactElement => {
           <>
             <Section
               title="All clients"
-              description={`Totals across every listed client, as of ${formatDate(`${data.asOfDate}T00:00:00Z`)}. Simple return is the headline; XIRR treats all clients as one pool of money in and out.`}
+              description={`Totals across all ${String(data.totals.clientCount)} clients with a recorded investment, not only the rows loaded below, as of ${formatDate(`${data.asOfDate}T00:00:00Z`)}. Simple return is the headline; XIRR treats all of them as one pool of money in and out.`}
             >
               <ReturnFigures
                 returns={data.totals}
                 asOfDate={data.asOfDate}
                 lead={
-                  <Stat label="Clients">
+                  <Stat label="Clients with a recorded investment">
                     <span className={ADMIN_FIGURE}>{String(data.totals.clientCount)}</span>
                   </Stat>
                 }
               />
             </Section>
 
-            <Section title="Per client" description="Clients without a simple return are listed last.">
+            <Section
+              title="Per client"
+              description={`${String(data.items.length)} of ${String(data.totals.clientCount)} clients loaded. Clients without a simple return are listed last.`}
+            >
               <AdminTable
                 caption="Returns per client"
                 rows={data.items}
