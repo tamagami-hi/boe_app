@@ -37,9 +37,11 @@ defined in [RULES.md](RULES.md#verification-boundaries).
 - [CLAUDE.md](CLAUDE.md): architecture, current state, commands, and task map.
 - [WORKFLOW.md](WORKFLOW.md): workspaces, integration, and operator release flow.
 - [DEPLOY.md](DEPLOY.md): deployment/configuration reference, not permission to deploy.
-- [App feature proposal](plans/app-onboarding-contact-investment-email.md): onboarding
-  recovery, contacts, earlier investments, and email improvements; every step is
-  implemented and committed for v0.15.0; evidence and the maintainer's remaining
-  checks are in section 8 of the plan.
+- [Admin improvements proposal](plans/admin-improvements.md): recording categories,
+  client receipts, value updates, returns dashboards, maturity management, nominee,
+  and admin fixes; awaiting maintainer approval.
+- [Previous app feature plan](plans/app-onboarding-contact-investment-email.md):
+  onboarding recovery, contacts, earlier investments, and email improvements;
+  implemented and released through v0.15.4; evidence is in section 8 of the plan.
 - [Prior implementation records](release_manager/docs/): topic-specific evidence;
   completed/dated records are historical, not standing rulebooks.
