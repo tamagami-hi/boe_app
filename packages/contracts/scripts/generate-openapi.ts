@@ -13,6 +13,7 @@ import { ADMIN_CONTENT_OPERATIONS } from "../src/operations/admin-content.js"
 import { ADMIN_EMAIL_OPERATIONS } from "../src/operations/admin-email.js"
 import { ADMIN_FUND_AUM_OPERATIONS } from "../src/operations/admin-fund-aum.js"
 import { ADMIN_MATURITY_OPERATIONS } from "../src/operations/admin-maturity.js"
+import { ADMIN_MATURITY_SCHEDULE_OPERATIONS } from "../src/operations/admin-maturity-schedules.js"
 import { ADMIN_MONEY_OPERATIONS } from "../src/operations/admin-money.js"
 import { ADMIN_NATIVE_AUTH_OPERATIONS } from "../src/operations/admin-native-auth.js"
 import { ADMIN_OVERSIGHT_OPERATIONS } from "../src/operations/admin-oversight.js"
@@ -85,6 +86,7 @@ export const ALL_OPERATIONS: readonly GeneratableOperation[] = Object.freeze([
   ...SIP_SCHEDULE_OPERATIONS,
   ...CLIENT_REVIEW_OPERATIONS,
   ...RECORDING_SHEET_OPERATIONS,
+  ...ADMIN_MATURITY_SCHEDULE_OPERATIONS,
 ])
 
 type RouteConfig = Parameters<OpenAPIRegistry["registerPath"]>[0]

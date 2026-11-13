@@ -6,6 +6,7 @@ import { createAdminCatalogRepository } from "../repositories/adminCatalogReposi
 import { createAdminOversightRepository } from "../repositories/adminOversightRepository.js"
 import { createAuditTrailRepository } from "../repositories/auditTrailRepository.js"
 import { createAdminSipScheduleRepository } from "../repositories/adminSipScheduleRepository.js"
+import { createClientMaturityScheduleRepository } from "../repositories/clientMaturityScheduleRepository.js"
 import { createClientReturnsRepository } from "../repositories/clientReturnsRepository.js"
 import { createFundAumRepository } from "../repositories/fundAumRepository.js"
 import { createMaturityRepository } from "../repositories/maturityRepository.js"
@@ -21,6 +22,7 @@ import { registerAdminFundGrowthPreviewRoutes } from "../routes/adminFundGrowthP
 import { registerAdminFundReceiptRoutes, type AdminFundReceiptDeps } from "../routes/adminFundReceiptRoutes.js"
 import { registerAdminIdentityRoutes, type AdminIdentityDeps } from "../routes/adminIdentityRoutes.js"
 import { registerAdminMaturityRoutes, type AdminMaturityDeps } from "../routes/adminMaturityRoutes.js"
+import { registerAdminMaturityScheduleRoutes } from "../routes/adminMaturityScheduleRoutes.js"
 import { registerAdminNomineeRoutes } from "../routes/adminNomineeRoutes.js"
 import { registerAdminOversightRoutes, type AdminOversightDeps } from "../routes/adminOversightRoutes.js"
 import { registerAdminRecordingSheetRoutes } from "../routes/adminRecordingSheetRoutes.js"
@@ -217,17 +219,26 @@ export const registerAdminSurface = (application: FastifyInstance, deps: AdminSu
   registerAdminAuditTrailRoutes(application, { ...readDeps, auditTrailRepository: createAuditTrailRepository() })
   registerAdminRecordingSheetRoutes(application, { ...readDeps, recordingSheetRepository: createMonthlyRecordingSheetRepository() })
 
+  const maturityRepository = createMaturityRepository()
+
   registerAdminMaturityRoutes(application, {
     webAuth,
     unitOfWork,
     database,
     clock,
     config: { idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
-    maturityRepository: createMaturityRepository(),
+    maturityRepository,
     clientGrowthRepository,
     auditRepository,
     idempotencyRepository,
     notificationRepository,
+  })
+
+  registerAdminMaturityScheduleRoutes(application, {
+    webAuth, unitOfWork, database, clock, maturityRepository, clientGrowthRepository, sipScheduleRepository,
+    userRepository, auditRepository, idempotencyRepository, notificationRepository,
+    maturityScheduleRepository: createClientMaturityScheduleRepository(),
+    config: { idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs, cursorKey: serverConfig.cursorKey },
   })
 
   registerAdminNomineeRoutes(application, {
