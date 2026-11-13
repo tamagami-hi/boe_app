@@ -59,6 +59,7 @@ import { registerAdminCatalogRoutes } from "../routes/adminCatalogRoutes.js"
 import { registerAdminClientGrowthRoutes } from "../routes/adminClientGrowthRoutes.js"
 import { registerAdminContentRoutes } from "../routes/adminContentRoutes.js"
 import { registerAdminOversightRoutes } from "../routes/adminOversightRoutes.js"
+import { registerAdminSupportRoutes } from "../routes/adminSupportRoutes.js"
 import { createAdminCatalogRepository } from "../repositories/adminCatalogRepository.js"
 import { createFundAumRepository } from "../repositories/fundAumRepository.js"
 import { createAdminContentRepository } from "../repositories/adminContentRepository.js"
@@ -627,6 +628,16 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       auditRepository,
       idempotencyRepository,
       authSessionRepository,
+    })
+
+    registerAdminSupportRoutes(application, {
+      webAuth,
+      unitOfWork,
+      clock,
+      config: { cursorKey: serverConfig.cursorKey, idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
+      auditRepository,
+      idempotencyRepository,
+      notificationRepository,
     })
 
     registerAdminClientGrowthRoutes(application, {

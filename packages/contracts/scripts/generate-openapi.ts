@@ -15,6 +15,7 @@ import { ADMIN_MATURITY_OPERATIONS } from "../src/operations/admin-maturity.js"
 import { ADMIN_MONEY_OPERATIONS } from "../src/operations/admin-money.js"
 import { ADMIN_NATIVE_AUTH_OPERATIONS } from "../src/operations/admin-native-auth.js"
 import { ADMIN_OVERSIGHT_OPERATIONS } from "../src/operations/admin-oversight.js"
+import { ADMIN_SUPPORT_OPERATIONS } from "../src/operations/admin-support.js"
 import { APP_OPERATIONS } from "../src/operations/app.js"
 import { CLIENT_ACCOUNT_OPERATIONS } from "../src/operations/client-account.js"
 import { CLIENT_ORDER_OPERATIONS } from "../src/operations/client-orders.js"
@@ -67,6 +68,7 @@ export const ALL_OPERATIONS: readonly GeneratableOperation[] = Object.freeze([
   ...ADMIN_OVERSIGHT_OPERATIONS,
   ...ADMIN_CLIENT_CONTACT_OPERATIONS,
   ...ADMIN_EMAIL_OPERATIONS,
+  ...ADMIN_SUPPORT_OPERATIONS,
 ])
 
 type RouteConfig = Parameters<OpenAPIRegistry["registerPath"]>[0]
