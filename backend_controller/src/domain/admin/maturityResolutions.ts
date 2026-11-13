@@ -4,6 +4,8 @@ import { AppError } from "../../http/errorCatalog.js"
 import type { LockedMaturitySchedule, MaturityScheduleRow } from "../../repositories/clientMaturityScheduleRepository.js"
 import { indiaCalendarDate } from "../shared/calendarDate.js"
 import { closeAdminSipSchedule, createAdminSipSchedule, type AdminSipScheduleDeps } from "./adminSipSchedules.js"
+import { extendActiveSip, scheduleNextMaturity, type SipExtension } from "./maturityExtension.js"
+import { closeOpenOfferIfAny } from "./maturityOfferRecords.js"
 import {
   markPositionMatured,
   reinvestMaturedPosition,
@@ -37,7 +39,7 @@ export type ResolveMaturityCommand = OwnScheduleCommand &
         expectedCurrentValuePaise: bigint
         sip: FollowUpSchedule
       }>
-    | Readonly<{ resolution: "sip_reinvestment"; sip: FollowUpSchedule }>
+    | Readonly<{ resolution: "sip_extension"; extension: SipExtension }>
   )
 
 export interface MaturityResolutionOutcome {
@@ -45,6 +47,7 @@ export interface MaturityResolutionOutcome {
   readonly settlementEntryId: string | null
   readonly payoutId: string | null
   readonly closedSipScheduleId: string | null
+  readonly nextScheduleId: string | null
 }
 
 interface ResolutionEffects {
@@ -93,7 +96,7 @@ const refuseEarlyEffectiveDate = (schedule: LockedMaturitySchedule, effectiveDat
   }
 }
 
-const refuseEarlyStartMonth = (schedule: LockedMaturitySchedule, sip: FollowUpSchedule, now: Date): void => {
+export const refuseEarlyStartMonth = (schedule: LockedMaturitySchedule, sip: FollowUpSchedule, now: Date): void => {
   const start = monthIndexOf(sip.startMonth)
   if (start <= monthIndexOf(schedule.maturityDate.slice(0, 7))) {
     throw new AppError("VALIDATION_FAILED", {
@@ -228,15 +231,15 @@ const oneTimeAndSip = async (
   return { ...settlement, ...(await replaceSipSchedule(tx, deps, schedule, command)) }
 }
 
-const sipReinvestment = async (
+const sipExtension = async (
   tx: Transaction,
   deps: MaturityResolutionDeps,
   schedule: LockedMaturitySchedule,
-  command: ResolveMaturityCommand & Readonly<{ resolution: "sip_reinvestment" }>,
+  command: ResolveMaturityCommand & Readonly<{ resolution: "sip_extension" }>,
 ): Promise<ResolutionEffects> => {
-  refuseEarlyStartMonth(schedule, command.sip, deps.clock())
   await loadBasis(tx, deps, schedule)
-  return { ...NO_SETTLEMENT, ...(await replaceSipSchedule(tx, deps, schedule, command)) }
+  const extendedId = await extendActiveSip(tx, deps, schedule, command)
+  return { ...NO_SETTLEMENT, followUpSipScheduleId: extendedId, closedSipScheduleId: null }
 }
 
 const applyResolution = (
@@ -250,17 +253,17 @@ const applyResolution = (
       return returnAll(tx, deps, schedule, command)
     case "one_time_and_sip":
       return oneTimeAndSip(tx, deps, schedule, command)
-    case "sip_reinvestment":
-      return sipReinvestment(tx, deps, schedule, command)
+    case "sip_extension":
+      return sipExtension(tx, deps, schedule, command)
   }
 }
 
-export const resolveMaturity = async (
+export const resolveLockedMaturity = async (
   tx: Transaction,
   deps: MaturityResolutionDeps,
+  schedule: LockedMaturitySchedule,
   command: ResolveMaturityCommand,
 ): Promise<MaturityResolutionOutcome> => {
-  const schedule = await lockOpenMaturitySchedule(tx, deps, command)
   await refuseHandSettledMaturity(tx, deps, schedule)
   refuseUnreachedMaturity(schedule, deps.clock())
   const effects = await applyResolution(tx, deps, schedule, command)
@@ -276,6 +279,10 @@ export const resolveMaturity = async (
       now: deps.clock(),
     }),
   )
+  const nextScheduleId =
+    command.resolution === "sip_extension"
+      ? await scheduleNextMaturity(tx, deps, schedule, { ...command, nextMaturityDate: command.extension.nextMaturityDate })
+      : null
   const row = await loadMaturitySchedule(tx, deps, command.userId, schedule.id)
   await deps.auditRepository.append(tx, {
     actorType: "admin",
@@ -287,12 +294,29 @@ export const resolveMaturity = async (
     toState: row.state,
     requestId: command.requestId,
     entityVersion: Number(row.version),
-    metadata: { userId: row.userId, fundId: row.fundId, maturityDate: row.maturityDate, resolution, ...effects },
+    metadata: { userId: row.userId, fundId: row.fundId, maturityDate: row.maturityDate, resolution, ...effects, nextScheduleId },
   })
   return {
     schedule: row,
     settlementEntryId: effects.settlementEntryId,
     payoutId: effects.payoutId,
     closedSipScheduleId: effects.closedSipScheduleId,
+    nextScheduleId,
   }
+}
+
+export const resolveMaturity = async (
+  tx: Transaction,
+  deps: MaturityResolutionDeps,
+  command: ResolveMaturityCommand,
+): Promise<MaturityResolutionOutcome> => {
+  const schedule = await lockOpenMaturitySchedule(tx, deps, command)
+  const openOffer = await deps.maturityOfferRepository.lockOpenForSchedule(tx, schedule.id)
+  const outcome = await resolveLockedMaturity(tx, deps, schedule, command)
+  await closeOpenOfferIfAny(tx, deps, openOffer, {
+    state: "closed",
+    actorUserId: command.actorUserId,
+    requestId: command.requestId,
+  })
+  return { ...outcome, schedule: await loadMaturitySchedule(tx, deps, command.userId, schedule.id) }
 }

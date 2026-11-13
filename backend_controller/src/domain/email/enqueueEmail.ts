@@ -70,6 +70,7 @@ const createDelivery = (
     case "admin_message":
     case "app_update_notice":
     case "investment_recorded":
+    case "maturity_options":
       return deps.emailDeliveryRepository.createUserMailDelivery(tx, {
         templateKey: template.templateKey,
         userId: template.userId,

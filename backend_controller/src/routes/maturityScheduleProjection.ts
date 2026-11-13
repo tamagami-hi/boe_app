@@ -29,6 +29,10 @@ const followUpSchema = z.strictObject({
   startMonth: sipMonthSchema,
   monthCount: z.number().int().min(1).max(MAX_SCHEDULE_MONTHS),
 })
+const extensionSchema = z.strictObject({
+  months: z.number().int().min(1).max(MAX_SCHEDULE_MONTHS - 1),
+  nextMaturityDate: maturityDateSchema,
+})
 
 export const scheduleStateSchema = z.enum(["scheduled", "resolved", "cancelled"])
 
@@ -51,12 +55,41 @@ export const resolveMaturityBodySchema = z.discriminatedUnion("resolution", [
     sip: followUpSchema,
   }),
   z.strictObject({
-    resolution: z.literal("sip_reinvestment"),
+    resolution: z.literal("sip_extension"),
     expectedVersion: versionSchema,
-    sip: followUpSchema,
+    extension: extensionSchema,
   }),
 ])
 export type ResolveMaturityBody = z.infer<typeof resolveMaturityBodySchema>
+
+export const sendOptionsBodySchema = z.strictObject({
+  expectedVersion: versionSchema,
+  sip: followUpSchema,
+  extension: extensionSchema.nullable(),
+})
+export type SendOptionsBody = z.infer<typeof sendOptionsBodySchema>
+
+const offerVersions = { expectedVersion: versionSchema, offerVersion: versionSchema }
+
+export const withdrawOfferBodySchema = z.strictObject(offerVersions)
+
+export const confirmOfferBodySchema = z.discriminatedUnion("option", [
+  z.strictObject({
+    option: z.literal("return_all"),
+    ...offerVersions,
+    effectiveDate: effectiveDateSchema,
+    amountPaise: positivePaiseSchema,
+  }),
+  z.strictObject({
+    option: z.literal("one_time_and_sip"),
+    ...offerVersions,
+    effectiveDate: effectiveDateSchema,
+    expectedPrincipalPaise: nonNegativePaiseSchema,
+    expectedCurrentValuePaise: nonNegativePaiseSchema,
+  }),
+  z.strictObject({ option: z.literal("sip_extension"), ...offerVersions }),
+])
+export type ConfirmOfferBody = z.infer<typeof confirmOfferBodySchema>
 
 export const dashboardQuerySchema = z.strictObject({
   state: scheduleStateSchema.default("scheduled"),
@@ -64,6 +97,26 @@ export const dashboardQuerySchema = z.strictObject({
   limit: limitSchema,
 })
 export const dueQuerySchema = z.strictObject({ limit: limitSchema })
+
+const mapOpenOffer = (row: MaturityScheduleRow): Record<string, unknown> | null =>
+  row.offerId === null
+    ? null
+    : {
+        offerId: row.offerId,
+        version: Number(row.offerVersion),
+        sentAt: isoOrNull(row.offerSentAt),
+        chosenOption: row.offerChosenOption,
+        chosenAt: isoOrNull(row.offerChosenAt),
+        sip: {
+          monthlyAmountPaise: row.offerSipMonthlyAmountPaise,
+          startMonth: row.offerSipStartMonth,
+          monthCount: row.offerSipMonthCount,
+        },
+        extension:
+          row.offerExtensionMonths === null
+            ? null
+            : { months: row.offerExtensionMonths, nextMaturityDate: row.offerNextMaturityDate },
+      }
 
 export const mapMaturitySchedule = (row: MaturityScheduleRow, window: MaturityDueWindow): Record<string, unknown> => ({
   scheduleId: row.id,
@@ -83,6 +136,7 @@ export const mapMaturitySchedule = (row: MaturityScheduleRow, window: MaturityDu
   updatedAt: iso(row.updatedAt),
   resolvedAt: isoOrNull(row.resolvedAt),
   cancelledAt: isoOrNull(row.cancelledAt),
+  offer: mapOpenOffer(row),
 })
 
 export const mapDueWindow = (window: MaturityDueWindow): Record<string, unknown> => ({

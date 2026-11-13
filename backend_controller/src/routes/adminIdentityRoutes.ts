@@ -101,6 +101,7 @@ const templateKeyEnum = z.enum([
   "admin_message",
   "app_update_notice",
   "investment_recorded",
+  "maturity_options",
 ])
 const limitSchema = z.coerce.number().int().min(1).max(100).default(25)
 

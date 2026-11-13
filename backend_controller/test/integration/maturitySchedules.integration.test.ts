@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest"
 
 import { createAdminSipScheduleRepository } from "../../src/repositories/adminSipScheduleRepository.js"
 import { createClientGrowthRepository } from "../../src/repositories/clientGrowthRepository.js"
+import { createClientMaturityOfferRepository } from "../../src/repositories/clientMaturityOfferRepository.js"
 import { createClientMaturityScheduleRepository } from "../../src/repositories/clientMaturityScheduleRepository.js"
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
 import { createMaturityRepository } from "../../src/repositories/maturityRepository.js"
@@ -46,6 +47,7 @@ interface Resolution {
   readonly settlementEntryId: string | null
   readonly payoutId: string | null
   readonly closedSipScheduleId: string | null
+  readonly nextScheduleId: string | null
 }
 
 interface DueList {
@@ -183,6 +185,7 @@ const shiftMonth = (month: string, by: number): string => {
 const INDIA_MONTH = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 7)
 const SIP_START = shiftMonth(INDIA_MONTH, 1)
 const followUp = { monthlyAmountPaise: "300000", startMonth: SIP_START, monthCount: 24 }
+const extension = { months: 12, nextMaturityDate: "2026-12-31" }
 const figures = (principal: number, value: number) => ({
   expectedPrincipalPaise: String(principal),
   expectedCurrentValuePaise: String(value),
@@ -230,6 +233,7 @@ beforeAll(async () => {
         maturityRepository: createMaturityRepository(),
         sipScheduleRepository: createAdminSipScheduleRepository(),
         maturityScheduleRepository: createClientMaturityScheduleRepository(),
+        maturityOfferRepository: createClientMaturityOfferRepository(),
         config: { idempotencyTtlMs: 86_400_000, cursorKey: randomBytes(32) },
       })
     },
@@ -311,11 +315,11 @@ describe("maturity dates", () => {
       expect(envelopeOf(denied).error.code).toBe("AUTHORIZATION_DENIED")
     }
     expect((await setDate(holding, "2030-01-01", support)).statusCode).toBe(403)
-    const deniedResolve = await resolve(holding, schedule, { resolution: "sip_reinvestment", sip: followUp }, randomUUID(), support)
+    const deniedResolve = await resolve(holding, schedule, { resolution: "sip_extension", extension }, randomUUID(), support)
     expect(deniedResolve.statusCode).toBe(403)
 
     const url = `/v1/admin/clients/${holding.userId}/maturity-schedules/${schedule.scheduleId}/resolve`
-    const payload = { resolution: "sip_reinvestment", expectedVersion: 1, sip: followUp }
+    const payload = { resolution: "sip_extension", expectedVersion: 1, extension }
     const noKey = await app.inject({ method: "POST", url, headers: adminHeaders(finance), payload })
     expect(noKey.statusCode).toBe(400)
     const noCsrf = await app.inject({
@@ -463,9 +467,10 @@ describe("maturity resolutions", () => {
     expect(await moneyCounts()).toEqual(after)
   })
 
-  test("with no growth the one-time option writes no ledger row, and reinvesting as a SIP never writes one", async () => {
+  test("with no growth the one-time option writes no ledger row, and extending the SIP never writes one", async () => {
     const flat = await seedHolding()
     const grown = await seedHolding(GROWTH)
+    const grownSip = await seedActiveSip(grown)
     const flatSchedule = await scheduled(flat, MATURED_ON)
     const grownSchedule = await scheduled(grown, MATURED_ON)
     const entries = await stack.count("client_value_entries")
@@ -482,14 +487,18 @@ describe("maturity resolutions", () => {
     expect(envelopeOf<Resolution>(oneTime).data.schedule.maturityId).toBeNull()
 
     const key = randomUUID()
-    const sipBody = { resolution: "sip_reinvestment", sip: followUp }
-    const reinvest = await resolve(grown, grownSchedule, sipBody, key)
-    expect(reinvest.statusCode, reinvest.body).toBe(200)
-    const result = envelopeOf<Resolution>(reinvest).data
-    expect(result).toMatchObject({ settlementEntryId: null, payoutId: null })
-    expect(result.schedule).toMatchObject({ resolution: "sip_reinvestment", maturityId: null })
-    expect(await stack.count("admin_sip_schedules", "id = $1 and state = 'active'", [result.schedule.followUpSipScheduleId])).toBe(1)
+    const sipBody = { resolution: "sip_extension", extension }
+    const extended = await resolve(grown, grownSchedule, sipBody, key)
+    expect(extended.statusCode, extended.body).toBe(200)
+    const result = envelopeOf<Resolution>(extended).data
+    expect(result).toMatchObject({ settlementEntryId: null, payoutId: null, closedSipScheduleId: null })
+    expect(result.schedule).toMatchObject({ resolution: "sip_extension", maturityId: null, followUpSipScheduleId: grownSip })
+    expect(await stack.first("select state, month_count from admin_sip_schedules where id = $1", [grownSip])).toEqual({
+      state: "active",
+      month_count: 24,
+    })
     expect(envelopeOf(await resolve(grown, grownSchedule, sipBody, key)).data).toEqual(result)
+    expect(await stack.first("select month_count from admin_sip_schedules where id = $1", [grownSip])).toEqual({ month_count: 24 })
 
     expect(await stack.count("client_value_entries")).toBe(entries)
     expect(await stack.count("client_position_maturities")).toBe(maturities)
@@ -545,7 +554,7 @@ describe("maturity resolutions", () => {
     expect(withdrawn.statusCode, withdrawn.body).toBe(201)
     const before = await moneyCounts()
 
-    const refused = await resolve(holding, schedule, { resolution: "sip_reinvestment", sip: followUp })
+    const refused = await resolve(holding, schedule, { resolution: "sip_extension", extension })
     expect(refused.statusCode).toBe(409)
     expect(refused.json<{ error: { message: string } }>().error.message).toMatch(/already settled.*Cancel this maturity date/u)
     expect(await moneyCounts()).toEqual(before)
@@ -564,7 +573,10 @@ describe("maturity resolutions", () => {
     const holding = await seedHolding(GROWTH)
     const schedule = await scheduled(holding, "2199-06-30")
     const before = await moneyCounts()
-    const response = await resolve(holding, schedule, { resolution: "sip_reinvestment", sip: { ...followUp, startMonth: "2199-07" } })
+    const response = await resolve(holding, schedule, {
+      resolution: "sip_extension",
+      extension: { months: 6, nextMaturityDate: "2199-12-31" },
+    })
     expect(response.statusCode).toBe(409)
     expect(envelopeOf(response).error.code).toBe("STATE_CONFLICT")
     expect(await moneyCounts()).toEqual(before)

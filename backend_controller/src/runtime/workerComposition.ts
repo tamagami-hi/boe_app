@@ -9,9 +9,11 @@ import { createAdminMessageGuard } from "../domain/email/adminMessageGuard.js"
 import { createAppUpdateNoticeGuard } from "../domain/email/appUpdateNoticeGuard.js"
 import { createEmailChangeMailGuard } from "../domain/email/emailChangeMailGuard.js"
 import { createInvestmentRecordedGuard } from "../domain/email/investmentRecordedGuard.js"
+import { createMaturityOptionsGuard } from "../domain/email/maturityOptionsGuard.js"
 import { createPasswordLinkMailGuard } from "../domain/email/passwordLinkMailGuard.js"
 import { createAdminEmailMessageRepository } from "../repositories/adminEmailMessageRepository.js"
 import { createAppUpdateAnnouncementRepository } from "../repositories/appUpdateAnnouncementRepository.js"
+import { createClientMaturityOfferRepository } from "../repositories/clientMaturityOfferRepository.js"
 import { createClientReceiptRepository } from "../repositories/clientReceiptRepository.js"
 import { createEmailChangeRepository } from "../repositories/emailChangeRepository.js"
 import { createEmailTemplateRepository } from "../repositories/emailTemplateRepository.js"
@@ -116,6 +118,13 @@ export const composeEmailDispatchWorker = (
         "investment_recorded",
         createInvestmentRecordedGuard({
           clientReceiptRepository: createClientReceiptRepository(),
+          userRepository: createUserRepository(),
+        }),
+      ],
+      [
+        "maturity_options",
+        createMaturityOptionsGuard({
+          maturityOfferRepository: createClientMaturityOfferRepository(),
           userRepository: createUserRepository(),
         }),
       ],

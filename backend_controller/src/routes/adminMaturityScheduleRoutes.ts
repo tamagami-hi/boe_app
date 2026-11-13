@@ -10,6 +10,7 @@ import {
   resolveMaturity,
   type FollowUpSchedule,
   type MaturityResolutionDeps,
+  type MaturityResolutionOutcome,
   type ResolveMaturityCommand,
 } from "../domain/admin/maturityResolutions.js"
 import {
@@ -46,7 +47,7 @@ import {
 const DASHBOARD_ROUTE = "/v1/admin/maturities"
 const DUE_ROUTE = "/v1/admin/maturities/due"
 const CLIENT_ROUTE = "/v1/admin/clients/:userId/maturity-schedules"
-const SCHEDULE_ROUTE = `${CLIENT_ROUTE}/:scheduleId`
+export const SCHEDULE_ROUTE = `${CLIENT_ROUTE}/:scheduleId`
 const CANCEL_ROUTE = `${SCHEDULE_ROUTE}/cancel`
 const RESOLVE_ROUTE = `${SCHEDULE_ROUTE}/resolve`
 
@@ -60,7 +61,7 @@ export interface AdminMaturityScheduleDeps extends MaturityResolutionDeps {
 
 type MutationResult = Readonly<{ status: number; body: Readonly<Record<string, unknown>> }>
 
-interface MutationPlan {
+export interface MutationPlan {
   readonly route: string
   readonly method?: "POST" | "PATCH"
   readonly retention?: IdempotencyRetention
@@ -68,10 +69,10 @@ interface MutationPlan {
   readonly execute: (tx: Transaction, actor: Readonly<{ actorUserId: string; requestId: string }>) => Promise<MutationResult>
 }
 
-const paramOf = (request: FastifyRequest, name: "userId" | "scheduleId"): string =>
+export const paramOf = (request: FastifyRequest, name: "userId" | "scheduleId" | "offerId"): string =>
   parseOrThrow(uuidParam, (request.params as Record<string, unknown>)[name])
 
-const mutate = async (
+export const mutate = async (
   deps: AdminMaturityScheduleDeps,
   request: FastifyRequest,
   reply: FastifyReply,
@@ -96,8 +97,16 @@ const mutate = async (
   return reply.sendData(result.body, { status: result.status, ...(result.replay ? { idempotencyReplay: true } : {}) })
 }
 
-const scheduleBody = (deps: AdminMaturityScheduleDeps, row: Parameters<typeof mapMaturitySchedule>[0]) => ({
+export const scheduleBody = (deps: AdminMaturityScheduleDeps, row: Parameters<typeof mapMaturitySchedule>[0]) => ({
   schedule: mapMaturitySchedule(row, maturityDueWindow(deps.clock())),
+})
+
+export const resolutionBody = (deps: AdminMaturityScheduleDeps, outcome: MaturityResolutionOutcome) => ({
+  ...scheduleBody(deps, outcome.schedule),
+  settlementEntryId: outcome.settlementEntryId,
+  payoutId: outcome.payoutId,
+  closedSipScheduleId: outcome.closedSipScheduleId,
+  nextScheduleId: outcome.nextScheduleId,
 })
 
 const setPlan = (deps: AdminMaturityScheduleDeps) => (request: FastifyRequest): MutationPlan => {
@@ -142,7 +151,7 @@ const cancelPlan = (deps: AdminMaturityScheduleDeps) => (request: FastifyRequest
   }
 }
 
-const followUpOf = (sip: Extract<ResolveMaturityBody, { sip: unknown }>["sip"]): FollowUpSchedule => ({
+export const followUpOf = (sip: Extract<ResolveMaturityBody, { sip: unknown }>["sip"]): FollowUpSchedule => ({
   ...sip,
   monthlyAmountPaise: BigInt(sip.monthlyAmountPaise),
 })
@@ -160,8 +169,8 @@ const toResolveCommand = (body: ResolveMaturityBody, own: OwnScheduleCommand): R
         expectedCurrentValuePaise: BigInt(body.expectedCurrentValuePaise),
         sip: followUpOf(body.sip),
       }
-    case "sip_reinvestment":
-      return { ...own, resolution: body.resolution, sip: followUpOf(body.sip) }
+    case "sip_extension":
+      return { ...own, resolution: body.resolution, extension: body.extension }
   }
 }
 
@@ -179,15 +188,7 @@ const resolvePlan = (deps: AdminMaturityScheduleDeps) => (request: FastifyReques
         deps,
         toResolveCommand(body, { ...actor, userId, scheduleId, expectedVersion: body.expectedVersion }),
       )
-      return {
-        status: 200,
-        body: {
-          ...scheduleBody(deps, outcome.schedule),
-          settlementEntryId: outcome.settlementEntryId,
-          payoutId: outcome.payoutId,
-          closedSipScheduleId: outcome.closedSipScheduleId,
-        },
-      }
+      return { status: 200, body: resolutionBody(deps, outcome) }
     },
   }
 }

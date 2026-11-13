@@ -25,6 +25,7 @@ const TEMPLATE_VERSIONS: ReadonlyMap<string, readonly string[]> = new Map([
   ["admin_message", ["v1"]],
   ["app_update_notice", ["v1"]],
   ["investment_recorded", ["v1"]],
+  ["maturity_options", ["v1"]],
 ])
 
 export interface PasswordLinkInput {
@@ -429,6 +430,42 @@ const investmentRecordedInput = (data: Readonly<Record<string, unknown>>): Inves
   category: recordedInvestmentKind(data),
 })
 
+export interface MaturityOptionsInput {
+  readonly fullName: string
+  readonly fundName: string
+  readonly maturityDate: string
+}
+
+export const maturityOptionsEmail = (input: MaturityOptionsInput, config: EmailTemplateConfig): RenderedEmail => {
+  const date = formatCalendarDate(input.maturityDate)
+  return renderEmail({
+    subject: "Your maturity options are ready",
+    preheader: "Choose what happens to your investment when it matures.",
+    heading: "Your maturity options are ready",
+    supportAddress: config.supportAddress,
+    blocks: [
+      { kind: "text", text: `Hello ${input.fullName},` },
+      {
+        kind: "text",
+        text: `Your investment in ${input.fundName} matures on ${date}. The BeOnEdge team has sent you options for what happens next.`,
+      },
+      {
+        kind: "text",
+        text: "Open the BeOnEdge app to see the options and choose one. Nothing changes until the BeOnEdge team confirms your choice.",
+      },
+      ...webAppBlocks(config),
+      { kind: "text", text: "If you have questions about these options, contact BeOnEdge support." },
+      { kind: "text", text: "Investments are subject to market risk." },
+    ],
+  })
+}
+
+const maturityOptionsInput = (data: Readonly<Record<string, unknown>>): MaturityOptionsInput => ({
+  fullName: requiredString(data, "fullName"),
+  fundName: requiredString(data, "fundName"),
+  maturityDate: requiredString(data, "maturityDate"),
+})
+
 const buildTemplate = (
   templateKey: string,
   templateData: Readonly<Record<string, unknown>>,
@@ -460,6 +497,8 @@ const buildTemplate = (
       return appUpdateNoticeEmail(appUpdateNoticeInput(templateData), config)
     case "investment_recorded":
       return investmentRecordedEmail(investmentRecordedInput(templateData), config)
+    case "maturity_options":
+      return maturityOptionsEmail(maturityOptionsInput(templateData), config)
     default:
       return null
   }

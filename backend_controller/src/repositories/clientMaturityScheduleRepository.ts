@@ -1,7 +1,7 @@
 import { sql } from "kysely"
 
 import type { Transaction } from "../db/repositories.js"
-import type { ClientMaturityResolution, ClientMaturityScheduleState } from "../db/types.js"
+import type { ClientMaturityOption, ClientMaturityResolution, ClientMaturityScheduleState } from "../db/types.js"
 import { cursorTime, keysetCondition, type KeysetBoundary, type WithCursor } from "./keysetBoundary.js"
 
 export interface MaturityScheduleRow {
@@ -20,6 +20,16 @@ export interface MaturityScheduleRow {
   readonly updatedAt: Date
   readonly resolvedAt: Date | null
   readonly cancelledAt: Date | null
+  readonly offerId: string | null
+  readonly offerVersion: string | null
+  readonly offerSentAt: Date | null
+  readonly offerChosenOption: ClientMaturityOption | null
+  readonly offerChosenAt: Date | null
+  readonly offerSipMonthlyAmountPaise: string | null
+  readonly offerSipStartMonth: string | null
+  readonly offerSipMonthCount: number | null
+  readonly offerExtensionMonths: number | null
+  readonly offerNextMaturityDate: string | null
 }
 
 export interface LockedMaturitySchedule {
@@ -92,7 +102,17 @@ const SCHEDULE_COLUMNS = sql`
   s.created_at as "createdAt",
   s.updated_at as "updatedAt",
   s.resolved_at as "resolvedAt",
-  s.cancelled_at as "cancelledAt"
+  s.cancelled_at as "cancelledAt",
+  o.id as "offerId",
+  o.version::text as "offerVersion",
+  o.created_at as "offerSentAt",
+  o.chosen_option as "offerChosenOption",
+  o.chosen_at as "offerChosenAt",
+  o.sip_monthly_amount_paise::text as "offerSipMonthlyAmountPaise",
+  to_char(o.sip_start_month, 'YYYY-MM') as "offerSipStartMonth",
+  o.sip_month_count as "offerSipMonthCount",
+  o.extension_months as "offerExtensionMonths",
+  to_char(o.next_maturity_date, 'YYYY-MM-DD') as "offerNextMaturityDate"
 `
 
 const SCHEDULE_SOURCE = sql`
@@ -100,6 +120,7 @@ const SCHEDULE_SOURCE = sql`
   join users u on u.id = s.user_id
   join funds f on f.id = s.fund_id
   left join fund_versions fv on fv.id = f.current_published_version_id
+  left join client_maturity_offers o on o.maturity_schedule_id = s.id and o.state = 'open'
 `
 
 const applied = (result: { readonly numAffectedRows?: bigint }): boolean => result.numAffectedRows === 1n

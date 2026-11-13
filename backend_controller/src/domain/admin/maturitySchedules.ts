@@ -7,12 +7,15 @@ import type {
   MaturityScheduleRow,
 } from "../../repositories/clientMaturityScheduleRepository.js"
 import type { ClientGrowthRepository } from "../../repositories/clientGrowthRepository.js"
+import type { ClientMaturityOfferRepository } from "../../repositories/clientMaturityOfferRepository.js"
 import type { UserWriteRepository } from "../../repositories/userRepository.js"
 import { isMaturityDate } from "./maturityDueWindow.js"
+import { closeOpenOfferIfAny } from "./maturityOfferRecords.js"
 import { requireRecordableClient } from "./recordContribution.js"
 
 export interface MaturityScheduleDeps {
   readonly maturityScheduleRepository: ClientMaturityScheduleRepository
+  readonly maturityOfferRepository: ClientMaturityOfferRepository
   readonly clientGrowthRepository: ClientGrowthRepository
   readonly userRepository: UserWriteRepository
   readonly auditRepository: AuditWriteRepository
@@ -45,7 +48,7 @@ const STALE_MESSAGE = "Someone changed this maturity since you opened it. Reload
 const CLOSED_MESSAGE = "This maturity is already resolved or cancelled."
 const OPEN_EXISTS_MESSAGE = "This holding already has a maturity date. Edit that date instead."
 
-const assertMaturityDate = (maturityDate: string): void => {
+export const assertMaturityDate = (maturityDate: string): void => {
   if (!isMaturityDate(maturityDate)) {
     throw new AppError("VALIDATION_FAILED", {
       fields: { maturityDate: ["must be a calendar date from 2000-01-01 to 2199-12-31"] },
@@ -84,6 +87,13 @@ export const lockOpenMaturitySchedule = async (
 export const refuseStaleMaturityChange = (changed: boolean): void => {
   if (!changed) throw new AppError("STATE_CONFLICT", { message: STALE_MESSAGE })
 }
+
+const closeOpenOffer = async (tx: Transaction, deps: MaturityScheduleDeps, scheduleId: string, actor: Actor): Promise<void> =>
+  closeOpenOfferIfAny(tx, deps, await deps.maturityOfferRepository.lockOpenForSchedule(tx, scheduleId), {
+    state: "closed",
+    actorUserId: actor.actorUserId,
+    requestId: actor.requestId,
+  })
 
 export const setMaturityDate = async (
   tx: Transaction,
@@ -127,6 +137,7 @@ export const editMaturityDate = async (
   if (current.maturityDate === command.maturityDate) {
     throw new AppError("VALIDATION_FAILED", { fields: { maturityDate: ["is unchanged"] } })
   }
+  await closeOpenOffer(tx, deps, current.id, command)
   refuseStaleMaturityChange(
     await deps.maturityScheduleRepository.changeDate(tx, {
       scheduleId: current.id,
@@ -163,6 +174,7 @@ export const cancelMaturitySchedule = async (
   command: OwnScheduleCommand,
 ): Promise<MaturityScheduleRow> => {
   const current = await lockOpenMaturitySchedule(tx, deps, command)
+  await closeOpenOffer(tx, deps, current.id, command)
   refuseStaleMaturityChange(
     await deps.maturityScheduleRepository.cancel(tx, {
       scheduleId: current.id,
