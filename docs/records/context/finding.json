@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "finding",
-  "nextNumber": 14,
+  "nextNumber": 19,
   "entries": [
     {
       "id": "finding-1",
@@ -298,6 +298,134 @@
         "agent": "explorer-admin-api"
       },
       "at": "2026-11-13T08:20:03.734Z"
+    },
+    {
+      "id": "finding-14",
+      "kind": "finding",
+      "title": "Compat (verified): client and admin APKs reject unknown response keys and enum values; only new endpoints are safe",
+      "text": "Verified STATIC. Client contracts use z.strictObject throughout (client.ts 15, client-account.ts 16; also client-orders, client-sips, client-profile, envelope.ts:66,126); frontend_stack_ts/src/api/http.ts:296-302 safeParse failure throws TransportError('malformed') for the whole call; released v0.14.7 identical. So any new key on an existing client or admin response, or a new value in OrderType (client-orders.ts:10), LedgerEntryType (client.ts:117), ClientInvestmentStatus, SipState, PaymentAttemptState, or admin enums such as AdminMaturity.settlement (admin-maturity.ts:65), breaks released APKs (admin APK too, app.ts:11). Tolerant: NotificationItem.kind is z.string() and payload z.record(unknown) (client-account.ts:32,37); old APKs show unknown kinds as plain title/body; deepLink only opens if the route exists in that build (builds <= v0.15.2 lack 7332bf6 and show a failing Open for unknown routes; '/activity' exists everywhere). Error codes are not checked per operation, so adding DEPENDENCY_UNAVAILABLE to any op is safe. Rule for the plan: new data reaches clients only through new endpoints and notification payload keys.",
+      "paths": [
+        "packages/contracts/src/operations/**",
+        "frontend_stack_ts/src/api/http.ts"
+      ],
+      "tags": [
+        "compatibility",
+        "contracts",
+        "apk"
+      ],
+      "refs": [
+        "M2-plan:T3-design-checks"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "explorer-design-checks"
+      },
+      "at": "2026-11-13T08:48:28.725Z"
+    },
+    {
+      "id": "finding-15",
+      "kind": "finding",
+      "title": "BUG with payments off (verified): SIP worker and client order/SIP creation keep producing unpayable orders",
+      "text": "Verified STATIC. sipScheduleWorker (built without a gateway, workerComposition.ts:294-317; prod every 300s) creates a sip_installment order per due period for active manual_checkout plans and notifies 'Your monthly SIP installment is due. Open the app to pay it.' (createSipInstallmentOrder.ts:77-84); plan then waits on the open order forever (sipScheduleWorker.ts:99-104), no order expiry found. Client createSip (clientSipPlanRoutes.ts:62-112) and createClientOrder (clientOrderRoutes.ts:93-135) have no gateway check; only POST pay refuses with DEPENDENCY_UNAVAILABLE (clientOrderRoutes.ts:154-156), shown as 'Payments are temporarily unavailable. Your investment is saved' (frontend domain/failure.ts:132-137). AutoPay create saves the plan first then fails (clientAutoPaySipRoutes.ts:289). Published app-config featureFlags exist but no client reads them; canInvest=false misleadingly redirects to verify-email. Safe fix: refuse order/SIP creation server-side with DEPENDENCY_UNAVAILABLE when the gateway is absent (existing copy failure.ts:124-126,151) and have the SIP worker skip creation; additive, released APKs already handle the code.",
+      "paths": [
+        "backend_controller/src/sipScheduleWorker.ts",
+        "backend_controller/src/routes/clientSipPlanRoutes.ts",
+        "backend_controller/src/routes/clientOrderRoutes.ts",
+        "backend_controller/src/domain/client/createSipInstallmentOrder.ts"
+      ],
+      "tags": [
+        "bug",
+        "fix-first",
+        "payments-off",
+        "sip"
+      ],
+      "refs": [
+        "rule-2",
+        "M2-plan:T3-design-checks"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "explorer-design-checks"
+      },
+      "at": "2026-11-13T08:48:29.131Z"
+    },
+    {
+      "id": "finding-16",
+      "kind": "finding",
+      "title": "Design facts: receipts, growth notices, maturity schedule, admin prompt, admin-tracked SIP",
+      "text": "STATIC (explorer). Receipts: no client receipt concept; recorded contribution shows as notification client_contribution_recorded (fixed text, payload {fundId}), Activity 'Earlier investment', a provider-less succeeded payment, and a one-off investment; reason_code stored on client_value_entries but never returned to clients. Proposal: category store (table or nullable col, mapped from reason_code), new GET /v1/client/receipts(/{id}) + screen, per-category notification text, payload {entryId, orderId, fundId, category, deepLink:'/activity'}. Growth: individual and collective already write a client_value_updated notification per client (adminClientGrowthRoutes.ts:350-356, 500-506; fixed text, no amounts, payload {fundId}); zero-delta targets get nothing (clientGrowth.ts:164); records = client_growth_batches + one growth_adjustment entry per client; client sees it only as 'Growth' rows. Need: payload entryId/deepLink, new GET /v1/client/value-updates + screen, optional email. Maturity: matured_on cannot be future (maturitySettlement.ts:55-60); no planned maturity date anywhere; new client_maturity_schedules table (user, fund, optional order, maturity_date, state, resolution CHECK, maturity_id FK, follow-up schedule id, actor/version) keyed by user+fund; existing reinvestment only moves growth to principal and refuses with no growth (:181-199); keep settlement enum untouched, record resolution in new table via new endpoints. No admin notification mechanism; prompt fits AdminFrame signed-in branch (AdminFrame.tsx:52,123, Modal already used) calling new GET /v1/admin/maturities/due, in-memory dismissal so it returns each launch. Admin-tracked SIP: prefer separate admin_sip_schedules + link table (reusing sip_plans exposes pause/cancel to clients and old APKs); recordings can be sip_installment orders (investment_orders_sip_link CHECK, unique plan+due_period) or linked entries; months-paid via new endpoint.",
+      "paths": [],
+      "tags": [
+        "design",
+        "receipts",
+        "growth",
+        "maturity",
+        "sip"
+      ],
+      "refs": [
+        "rule-4",
+        "rule-5",
+        "rule-6",
+        "M2-plan:T3-design-checks"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "explorer-design-checks"
+      },
+      "at": "2026-11-13T08:48:29.584Z"
+    },
+    {
+      "id": "finding-17",
+      "kind": "finding",
+      "title": "Onboarding BUGS (verified): typo email unfixable, contacts never freed, invite link dies before mail retries",
+      "text": "Verified STATIC. (1) Create client queues the set-password link immediately with no confirm step (CreateClientScreen.tsx:72-89,216); no admin route edits email/phone (adminOversightRoutes.ts:5-10); users_email_uk/users_phone_uk are UNIQUE across every user state (010_canonical_identity.sql:33-34), and migration 056 'released contacts' only narrowed APPLICATION indexes, so a closed account keeps its email and phone forever: a typo account lets the typo inbox owner take the account, and recreating the client with the same phone hits STATE_CONFLICT permanently. (2) Set link lifetime = shared email-code TTL (600000 ms in examples; composition.ts:460, environment.ts:155) while mail retries wait 1/5/15 min (retrySchedule.ts RETRY_DELAYS_MS) and passwordLinkMailGuard.ts:29 cancels expired links, so an SMTP outage over ~6-7 min silently cancels the invite; email says '10 minutes' from issue not send; same key drives verification codes (Q-017). (3) Setting the password via the link does not mark the email verified (passwordCredential.ts ~213-253) though the link proves the inbox at the current email revision, so new clients must still enter an emailed code before investing.",
+      "paths": [
+        "backend_controller/src/domain/admin/createClientAccount.ts",
+        "backend_controller/src/domain/auth/passwordCredential.ts",
+        "backend_controller/src/domain/email/passwordLinkMailGuard.ts",
+        "frontend_stack_ts/src/features/admin/users/CreateClientScreen.tsx"
+      ],
+      "tags": [
+        "bug",
+        "fix-first",
+        "onboarding"
+      ],
+      "refs": [
+        "M2-plan:T2-onboarding-bugs",
+        "rule-6"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "explorer-onboarding-bugs"
+      },
+      "at": "2026-11-13T08:52:39.567Z"
+    },
+    {
+      "id": "finding-18",
+      "kind": "finding",
+      "title": "Onboarding BUGS: misleading payments-off copy, eligibility failure shown as unverified, stale harness",
+      "text": "STATIC; AutoPay copy and harness verified. (4) With AutoPay disabled, postAutoPay refuses before creating anything (clientAutoPaySipRoutes.ts:375-379, prepare at :381) but the client copy says 'Your SIP is saved and waiting for authorisation' (frontend domain/failure.ts:163-166, SipStartScreen.tsx:111); AutoPay option still offered (:231). (5) Lump sum: order created then pay fails; copy 'Your investment is saved, open it from Activity to pay' (failure.ts:135-137) but paying always fails (see finding-15). (6) Failed eligibility read => canInvest false => redirect to /verify-email and 'Verify your email to invest' (ClientRoutes.tsx:15-20, guards.tsx:110-116, FundDetailScreen.tsx:41,94-119); 'Email me a code' when already verified discards status 'verified' and shows 'Code sent' (queries.ts:311-313). (7) EarlierInvestmentForm empty fund dropdown on failure (:72,97,102-105). (8) UserDetailScreen 'Nothing changed' after timeout/5xx and fresh key per suspend/close (adminQueries.ts:190). (9) test_e2e/onboarding-e2e.mjs:202-214 still calls /v1/client/kyc/* and expects kyc_required/approved (real: /v1/client/email-verification/*, email_verification_required, verified); onboarding-harness.test.mjs:41 expects removed copy; CI runs neither. UX: expired-link error has no 'request new link' (ResetPasswordScreen.tsx:98-102); success screen pushes Android APK and app-download mail queued on every set/reset (passwordRoutes.ts:137-146); directory shows never-set-password invitees as active. Likely (needs test): set-password retry after a dropped 2xx gets 401; PasswordLinkPanel unknown state has no exit; recordContribution has no account-state check (recordContribution.ts:56-65); phone clash reported on email field; +91 length not checked.",
+      "paths": [
+        "frontend_stack_ts/src/domain/failure.ts",
+        "frontend_stack_ts/src/features/auth",
+        "test_e2e/onboarding-e2e.mjs",
+        "test_e2e/onboarding-harness.test.mjs"
+      ],
+      "tags": [
+        "bug",
+        "onboarding",
+        "payments-off",
+        "tests"
+      ],
+      "refs": [
+        "M2-plan:T2-onboarding-bugs",
+        "finding-15"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "explorer-onboarding-bugs"
+      },
+      "at": "2026-11-13T08:52:40.057Z"
     }
   ]
 }

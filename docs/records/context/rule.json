@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "rule",
-  "nextNumber": 3,
+  "nextNumber": 7,
   "entries": [
     {
       "id": "rule-1",
@@ -36,6 +36,95 @@
         "agent": "claude-opus-5-5"
       },
       "at": "2026-11-13T08:18:41.707Z"
+    },
+    {
+      "id": "rule-3",
+      "kind": "rule",
+      "title": "Decision 2026-11-13 (Q1): keep client and investment records on dev and prod; prod data reform via tested one-time step",
+      "text": "Maintainer answer to question row 1. Dev server may be cleaned, but on BOTH dev and production client records and investment records stay intact. Production manages real clients. Approach: save a copy of the required information from the production database, then in the next deployed update run a one-time migration/copy step that reforms the database with proper client data without losing any of it; rehearse that step on the dev server first. Constraints from RULES: the maintainer performs every production export and deploy (rule 2/3); a reform that rewrites, backfills or removes rows is a destructive change under rule 11 needing the recorded pre-flight check, refusal-on-loss, populated-upgrade test and rollback-boundary registration; ledger/order/payment/audit/consent/application/delivery rows are never deleted or rewritten, corrections are new rows. Open: what exactly is wrong in the current data (follow-up question), and how production PII copied to dev is protected.",
+      "paths": [],
+      "tags": [
+        "decision",
+        "cleanup",
+        "data-reform"
+      ],
+      "refs": [
+        "question-1",
+        "finding-8"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "at": "2026-11-13T08:39:47.295Z"
+    },
+    {
+      "id": "rule-4",
+      "kind": "rule",
+      "title": "Decision 2026-11-13 (Q2): clients see each admin recording as a receipt labelled by its category",
+      "text": "Maintainer answer to question row 2. When the admin records an investment (earlier investment, correction, monthly investment, and further categories), the client sees it like a receipt, labelled with the category the admin chose. Implementation must stay additive so released APKs keep working (RULES rule 11): prefer a new client endpoint/screen and category-aware notification over changing existing response shapes or enums, unless the design check shows the change is tolerated. The notification text must follow the category instead of the fixed 'before you joined the app' copy.",
+      "paths": [],
+      "tags": [
+        "decision",
+        "receipts",
+        "monthly-investment"
+      ],
+      "refs": [
+        "question-2",
+        "finding-3"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "at": "2026-11-13T08:39:47.792Z"
+    },
+    {
+      "id": "rule-5",
+      "kind": "rule",
+      "title": "Decision 2026-11-13 (Q3): no automatic maturity; admin maturity dates, dashboard, prompt on every admin open",
+      "text": "Maintainer answer to question row 3. No automatic maturity. Admin enters a maturity date. A specialised maturity management dashboard lists them. When a maturity date nears, the admin is notified every time the admin app is opened and asked to resolve it with one of: (1) return all the money to the client; (2) record it as a one-time investment that starts from the maturity date and from then start a new SIP; (3) reinvest the money as a SIP. Every recording counts; the admin manages and updates them. No payout or ledger change ever happens without the admin's explicit resolution. Real bank transfer stays outside the app (existing withdrawal payout flow).",
+      "paths": [],
+      "tags": [
+        "decision",
+        "maturity"
+      ],
+      "refs": [
+        "question-3",
+        "finding-4"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "at": "2026-11-13T08:39:48.204Z"
+    },
+    {
+      "id": "rule-6",
+      "kind": "rule",
+      "title": "Decisions 2026-11-13 (Q4-Q8): nominee+relation, onboarding only, reviews, AutoPay off, growth records notify clients",
+      "text": "Maintainer answers. Q4: nominee name with relation to the account holder. Q5: public signups are not in use; only admin onboarding of clients is used, so DD point 3 (signup redirect) is not pursued; audit the onboarding process for bugs. Q6: signup application reviews stay as they are; admin onboarding works well today and does not go through review (answer did not address DD point 1 client app reviews/comments; follow-up question). Q7: AutoPay stays off until the maintainer says so (see rule-2); AutoPay-on-web not pursued. Q8: value updates are entered monthly as the amount increased since investment; keep EACH update as a record and notify the client every time their investment is updated. ROI form (simple vs annualised) not answered; default simple return %.",
+      "paths": [],
+      "tags": [
+        "decision",
+        "nominee",
+        "onboarding",
+        "growth",
+        "notifications"
+      ],
+      "refs": [
+        "question-4",
+        "question-5",
+        "question-6",
+        "question-7",
+        "question-8",
+        "rule-2"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "at": "2026-11-13T08:39:48.727Z"
     }
   ]
 }

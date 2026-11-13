@@ -4,19 +4,33 @@
   "current": {
     "from": "claude-opus-5-5",
     "track": "main",
-    "at": "2026-11-13T08:20:38.607Z",
+    "at": "2026-11-13T08:53:58.672Z",
     "lines": [
-      "M1-admin-audit done 2026-11-13: read-only audit; findings finding-1..13 (finding-5 retired), rules rule-1 (RULES.md pointer) and rule-2 (payments disabled decision).",
-      "Questions rows 1-8 (group admin-improvements) are the maintainer decisions gating implementation; each has a 'meanwhile' conservative default.",
-      "Fix-first verified bugs: finding-9 growth double-append (adminQueries.ts:598), finding-10 failed reads render empty (client-values, FundAum re-init), finding-12 app-config publish no version guard + mandate reconcile nested tx, finding-11 mandate float paise and permission gating.",
-      "Dormant while payments off (rule-2) but must fix before re-enable: finding-6 AutoPay next_due_date, stalled failed/refunded instalments, mandate reconcile atomicity.",
-      "Monthly investment = third reason code in EarlierInvestmentForm REASON_OPTIONS + reason-specific copy/notification; no migration (finding-3).",
-      "DD 7/8 need new read endpoints, never new fields on existing responses (strict client parsing); keep out of aum-named modules (walls guard test).",
-      "Schema work (nominee, reviews, auto-maturity actor) needs additive migrations + populated-upgrade tests (RULES rule 10/11).",
-      "DD 3 signup redirect is mostly a boe_landing change (finding-1).",
-      "No worktrees were created: audit was read-only. Implementation should go on tally tracks (track_open) with their own worktrees, after plan approval.",
-      "Records commit policy: records.commit=false; commit docs/records once per phase."
+      "M2-plan 2026-11-13: maintainer answers recorded as rule-3..rule-6 (rule-2 payments off). Onboarding audit finding-17/18; design/compat finding-14/15/16.",
+      "plans/admin-improvements.md drafted, uncommitted, awaiting approval; README.md pointer edited, uncommitted; CLAUDE.md is gitignored (local edits only).",
+      "Open questions: tally rows 9-14 = Q-019..Q-021, Q-024, Q-017, Q-025; Q-022/Q-023 defaults in the plan only. Rows 1-8 are answered (rule-3..6) but cannot be closed via MCP (no tally CLI on PATH).",
+      "Key constraint finding-14: strict response parsing in released APKs; new data only via new endpoints and notification payload keys.",
+      "Fix-first: growth idempotency (finding-9), payments-off unpayable orders (finding-15), failed-read states (finding-10), app-config guard (finding-12), onboarding defects (finding-17/18).",
+      "Implementation must wait for approval; then open tally tracks per phase (A first) with own worktrees."
     ]
   },
-  "history": []
+  "history": [
+    {
+      "from": "claude-opus-5-5",
+      "track": "main",
+      "at": "2026-11-13T08:20:38.607Z",
+      "lines": [
+        "M1-admin-audit done 2026-11-13: read-only audit; findings finding-1..13 (finding-5 retired), rules rule-1 (RULES.md pointer) and rule-2 (payments disabled decision).",
+        "Questions rows 1-8 (group admin-improvements) are the maintainer decisions gating implementation; each has a 'meanwhile' conservative default.",
+        "Fix-first verified bugs: finding-9 growth double-append (adminQueries.ts:598), finding-10 failed reads render empty (client-values, FundAum re-init), finding-12 app-config publish no version guard + mandate reconcile nested tx, finding-11 mandate float paise and permission gating.",
+        "Dormant while payments off (rule-2) but must fix before re-enable: finding-6 AutoPay next_due_date, stalled failed/refunded instalments, mandate reconcile atomicity.",
+        "Monthly investment = third reason code in EarlierInvestmentForm REASON_OPTIONS + reason-specific copy/notification; no migration (finding-3).",
+        "DD 7/8 need new read endpoints, never new fields on existing responses (strict client parsing); keep out of aum-named modules (walls guard test).",
+        "Schema work (nominee, reviews, auto-maturity actor) needs additive migrations + populated-upgrade tests (RULES rule 10/11).",
+        "DD 3 signup redirect is mostly a boe_landing change (finding-1).",
+        "No worktrees were created: audit was read-only. Implementation should go on tally tracks (track_open) with their own worktrees, after plan approval.",
+        "Records commit policy: records.commit=false; commit docs/records once per phase."
+      ]
+    }
+  ]
 }

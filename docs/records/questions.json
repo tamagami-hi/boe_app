@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextRow": 9,
+  "nextRow": 15,
   "open": [
     {
       "row": 1,
@@ -64,6 +64,54 @@
       "question": "ROI dashboard: is 'updating client investment amount' the growth adjustment (value changes, principal does not)? Is simple return (growth / invested) the ROI you want, or annualised (XIRR)?",
       "meanwhile": "Assume growth adjustment, simple return %, last-updated = latest ledger entry time per client.",
       "asked": "2026-11-13T08:16:48.592Z",
+      "by": "claude-opus-5-5"
+    },
+    {
+      "row": 9,
+      "group": "admin-improvements",
+      "question": "Data reform: what is wrong in today's production data that the one-time step must fix (test accounts mixed with real clients, investments entered as growth or corrections that should be monthly investments, missing categories/maturity dates/nominees, duplicates)? And may real client data be copied to dev as-is, or should names/emails/phones be masked there?",
+      "meanwhile": "Design only an additive backfill path (new rows, never edits) plus a read-only pre-flight report the maintainer runs; assume masked PII on dev.",
+      "asked": "2026-11-13T08:40:04.538Z",
+      "by": "claude-opus-5-5"
+    },
+    {
+      "row": 10,
+      "group": "admin-improvements",
+      "question": "DD point 1 (clients rating and commenting on the app, shown with their profile): still wanted? If so, visible to admins only or to other clients too?",
+      "meanwhile": "Keep it in the plan as a later phase, admin-only list, nothing public.",
+      "asked": "2026-11-13T08:40:05.024Z",
+      "by": "claude-opus-5-5"
+    },
+    {
+      "row": 11,
+      "group": "admin-improvements",
+      "question": "With payments off, 'start a new SIP' means: the admin sets an expected monthly amount, fund and start date for the client; each monthly investment the admin records is linked to it; the client sees 'N of M months paid'. Is that right, and is the maturity date set per fund holding or per individual investment?",
+      "meanwhile": "Assume an admin-tracked SIP schedule with no gateway collection, monthly recordings linked to it, and one maturity date per fund holding.",
+      "asked": "2026-11-13T08:40:05.538Z",
+      "by": "claude-opus-5-5"
+    },
+    {
+      "row": 12,
+      "group": "admin-improvements",
+      "question": "Q-024: how should the admin correct a mistyped email or phone for a client who has not set a password yet: an audited admin contact-correction action that retires old links, and/or letting a closed account release its email and phone?",
+      "meanwhile": "No identity rule change; only a review step before the invite is queued.",
+      "asked": "2026-11-13T08:53:29.168Z",
+      "by": "claude-opus-5-5"
+    },
+    {
+      "row": 13,
+      "group": "admin-improvements",
+      "question": "Q-017 (carried): what lifetime should admin invite links have? Today they share the 10-minute email-code lifetime, so a mail outage over ~6 minutes cancels the invite.",
+      "meanwhile": "Unchanged at 10 minutes; admin can resend.",
+      "asked": "2026-11-13T08:53:29.682Z",
+      "by": "claude-opus-5-5"
+    },
+    {
+      "row": 14,
+      "group": "admin-improvements",
+      "question": "Q-025: should setting the password through the emailed link also mark that email verified, so a new client is not asked for a second email code before investing?",
+      "meanwhile": "Unchanged: client still verifies with a code.",
+      "asked": "2026-11-13T08:53:30.108Z",
       "by": "claude-opus-5-5"
     }
   ],

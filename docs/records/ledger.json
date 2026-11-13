@@ -129,6 +129,88 @@
           ]
         }
       ]
+    },
+    {
+      "id": "M2-plan",
+      "stage": "build",
+      "group": "admin-improvements",
+      "name": "Maintainer decisions, onboarding bug hunt, design checks, and the new plan",
+      "track": "main",
+      "weight": 10,
+      "delivers": [
+        {
+          "id": "D1-decisions",
+          "what": "Maintainer answers of 2026-11-13 recorded as rule entries"
+        },
+        {
+          "id": "D2-onboarding-bugs",
+          "what": "Admin onboarding flow traced end to end with bugs found (file:line)"
+        },
+        {
+          "id": "D3-design-checks",
+          "what": "Facts for receipts by category, growth update notifications, maturity dashboard/prompt, admin-tracked SIP, payments-off side effects"
+        },
+        {
+          "id": "D4-plan",
+          "what": "New plan document in plans/ with decisions, phases, open questions, compatibility notes"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "T1-record-decisions",
+          "track": "main",
+          "status": "landed",
+          "commit": "1e1d517",
+          "also": [],
+          "brief": "Record maintainer answers to question rows 1-8 as rule entries; add follow-up questions",
+          "covers": [
+            "D1-decisions"
+          ]
+        },
+        {
+          "id": "T2-onboarding-bugs",
+          "track": "main",
+          "status": "landed",
+          "commit": "1e1d517",
+          "also": [],
+          "brief": "Explorer: trace admin create-client -> password link -> set password -> first sign-in (web + APK) -> email verification -> earlier investment at creation; find bugs",
+          "paths": [
+            "backend_controller/src/domain/admin/createClientAccount.ts",
+            "backend_controller/src/routes/adminClientOnboardingRoutes.ts",
+            "backend_controller/src/routes/passwordRoutes.ts",
+            "frontend_stack_ts/src/features/admin/users",
+            "frontend_stack_ts/src/features/auth"
+          ],
+          "covers": [
+            "D2-onboarding-bugs"
+          ]
+        },
+        {
+          "id": "T3-design-checks",
+          "track": "main",
+          "status": "landed",
+          "commit": "1e1d517",
+          "also": [],
+          "brief": "Explorer: client response strictness, client receipts by category, growth update notifications/history, maturity date + admin prompt surfaces, admin-tracked SIP, payments-off side effects of SIP worker",
+          "covers": [
+            "D3-design-checks"
+          ]
+        },
+        {
+          "id": "T4-close-plan",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "waits": "plans/admin-improvements.md drafted (uncommitted); waiting for maintainer review, answers to Q-017/Q-019..Q-025, approval, and permission to commit the plan and README pointer",
+          "brief": "Verify key claims, write plans/admin-improvements.md for maintainer approval",
+          "paths": [
+            "plans/admin-improvements.md"
+          ],
+          "covers": [
+            "D4-plan"
+          ]
+        }
+      ]
     }
   ],
   "other": []

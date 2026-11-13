@@ -51,6 +51,52 @@
         "Nothing RUNTIME-verified; all findings STATIC",
         "Next: write the approved-scope plan in plans/ before any implementation"
       ]
+    },
+    {
+      "group": "admin-improvements",
+      "milestone": "M2-plan",
+      "title": "Maintainer decisions, onboarding bug hunt, design checks, plan draft",
+      "date": "2026-11-13",
+      "markdown": "",
+      "commits": [],
+      "built": "Recorded maintainer answers; two read-only explorers (onboarding, design/compat); drafted plans/admin-improvements.md (uncommitted).",
+      "verified": [
+        {
+          "what": "Released APKs reject unknown response keys/enum values",
+          "check": "STATIC read of http.ts:296-302 and strictObject counts in client contracts"
+        },
+        {
+          "what": "SIP worker and order/SIP creation produce unpayable orders with payments off",
+          "check": "STATIC read of createSipInstallmentOrder.ts:75-86, clientOrderRoutes.ts gateway checks"
+        },
+        {
+          "what": "Closed accounts keep email/phone; 056 freed application contacts only",
+          "check": "STATIC read of 010_canonical_identity.sql:33-34 and commit fa0eaa5"
+        },
+        {
+          "what": "Invite link TTL shorter than mail retry ladder",
+          "check": "STATIC read of retrySchedule.ts RETRY_DELAYS_MS and passwordLinkMailGuard.ts:29"
+        },
+        {
+          "what": "AutoPay disabled refuses before saving yet copy says saved",
+          "check": "STATIC read of clientAutoPaySipRoutes.ts:370-384 and failure.ts:160-168"
+        }
+      ],
+      "decided": [
+        "Q1 cleanup: keep client and investment records on dev and prod; prod reform via tested one-time step (rule-3)",
+        "Q2 receipts by category (rule-4)",
+        "Q3 no auto maturity; admin dates, dashboard, open-app prompt, three resolutions (rule-5)",
+        "Q4-Q8 nominee+relation, onboarding only, review unchanged, AutoPay off, growth records notify clients (rule-6)"
+      ],
+      "corrected": [
+        "Design explorer said AutoPay saves the plan before failing; with AutoPay disabled the route refuses before saving (onboarding explorer correct)",
+        "Migration 056 'released contacts' applies to applications, not closed users"
+      ],
+      "open": [
+        "Plan approval and commit permission",
+        "Questions Q-017, Q-019..Q-025",
+        "No checks run locally; all findings STATIC"
+      ]
     }
   ]
 }
