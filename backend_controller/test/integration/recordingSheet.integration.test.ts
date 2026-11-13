@@ -275,4 +275,36 @@ describe("admin monthly recording sheet", () => {
     expect(badMonth.statusCode).toBe(400)
     expect(envelopeOf(badMonth).error.fields?.month).toBeDefined()
   })
+  test("an admin who can only read client values reads the sheet but cannot record from it", async () => {
+    await stack.pool.query("insert into roles (code, name) values ('values_reader', 'Values reader') on conflict do nothing")
+    await stack.pool.query(
+      "insert into role_permissions (role_id, permission_id, granted_by_user_id) select r.id, p.id, $1 " +
+        "from roles r, permissions p where r.code = 'values_reader' and p.code = 'client_values.read'",
+      [finance.userId],
+    )
+    const reader = await signInRoleAdmin(app, stack, "values_reader")
+    const client = await namedClient("Gita Rao")
+    const schedule = await scheduleFor(client, "2025-01", 12)
+
+    const read = await sheet(`month=${MONTH}&limit=100`, reader)
+    const recording = await app.inject({
+      method: "POST",
+      url: `/v1/admin/clients/${client}/recorded-contributions`,
+      headers: adminHeaders(reader, `record-${randomUUID()}`),
+      payload: {
+        fundId,
+        amountPaise: "500000",
+        effectiveDate: EFFECTIVE_DATE,
+        reasonCode: "recorded_offline_monthly_investment",
+        sipScheduleLink: { scheduleId: schedule.scheduleId, month: MONTH },
+      },
+    })
+
+    expect(read.statusCode).toBe(200)
+    expect(envelopeOf<{ items: SheetRow[] }>(read).data.items.map((row) => row.scheduleId)).toContain(schedule.scheduleId)
+    expect(recording.statusCode).toBe(403)
+    expect(envelopeOf(recording).error.code).toBe("AUTHORIZATION_DENIED")
+    expect(await stack.count("client_value_entries", "user_id = $1", [client])).toBe(0)
+    expect(await stack.count("admin_sip_schedule_months", "schedule_id = $1", [schedule.scheduleId])).toBe(0)
+  })
 })

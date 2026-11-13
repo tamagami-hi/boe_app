@@ -30,6 +30,9 @@ const draft = (amountText: string, dateText = TODAY) => ({ selected: true, amoun
 describe("payment sheet rupee amounts", () => {
   it("turns rupee text into exact integer paise, including amounts floats get wrong", () => {
     const cases: readonly (readonly [string, string])[] = [
+      ["10", "1000"],
+      ["10.5", "1050"],
+      ["10.50", "1050"],
       ["5000", "500000"],
       ["2500.5", "250050"],
       ["10.29", "1029"],
@@ -43,7 +46,8 @@ describe("payment sheet rupee amounts", () => {
   })
 
   it("refuses text it cannot read exactly instead of rounding it", () => {
-    for (const text of ["1.234", "1,000", "₹100", "-5", "0", "0.00", "1e3", "01", "abc", ""]) {
+    const refused = ["1e3", "-5", "1,000", "1.234", " 1 0", "₹10", ".5", "10.", "+10", "0", "0.00", "01", "abc", ""]
+    for (const text of refused) {
       expect(checkDraft(draft(text), TODAY), text).toEqual({ kind: "invalid", amountError: AMOUNT_MESSAGE, dateError: null })
     }
   })

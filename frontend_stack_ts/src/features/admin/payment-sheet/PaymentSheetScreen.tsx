@@ -16,7 +16,7 @@ import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { Button } from "~/ui/primitives/Button"
 import { Alert } from "~/ui/primitives/Feedback"
 import { PROSE_SM } from "~/ui/recipes/datalist"
-import { STACK_LG } from "~/ui/recipes/layout"
+import { STACK_LG, STACK_SM } from "~/ui/recipes/layout"
 
 import { canFill, checkDraft, defaultDraft, recordingBodyOf, statusOf } from "./recordingSheet"
 import type { RowDraft, SheetSchedule } from "./recordingSheet"
@@ -33,6 +33,17 @@ const SHEET_DESCRIPTION =
   "Record a month of SIP payments in one place. Tick each client who paid, check the amount and the date, and press Record. Every row is its own monthly investment, linked to its schedule month and sent two at a time, so one refusal never blocks the others."
 
 const NO_SCHEDULES: readonly SheetSchedule[] = []
+
+const SheetLoading = ({ loaded }: Readonly<{ loaded: number }>): React.ReactElement => (
+  <div className={STACK_SM}>
+    <ListSkeleton />
+    <p className={PROSE_SM} role="status">
+      {loaded === 0
+        ? "Loading the schedules due this month."
+        : `Loading the schedules due this month: ${String(loaded)} loaded so far.`}
+    </p>
+  </div>
+)
 
 type ReadyRow = Readonly<{ view: SheetRowView; amountPaise: string; effectiveDate: string }>
 
@@ -58,7 +69,9 @@ const RecordingSheetMonth = ({ month, fundId, onMonth, onFund }: SheetMonthProps
   const [drafts, setDrafts] = useState<Readonly<Record<string, RowDraft>>>({})
   const [confirming, setConfirming] = useState(false)
 
-  const schedules = sheet.data?.items ?? NO_SCHEDULES
+  const complete = sheet.data !== undefined && !sheet.hasMore && !sheet.isLoadingMore
+  const completeData = complete ? sheet.data : undefined
+  const schedules = completeData?.items ?? NO_SCHEDULES
   const views = useMemo(
     () =>
       schedules.map((schedule): SheetRowView => {
@@ -119,7 +132,7 @@ const RecordingSheetMonth = ({ month, fundId, onMonth, onFund }: SheetMonthProps
     <>
       <RecordingSheetControls month={month} fundId={fundId} disabled={recorder.busy} onMonth={onMonth} onFund={onFund} />
 
-      {hiddenHeld === 0 || sheet.data === undefined ? null : (
+      {hiddenHeld === 0 || completeData === undefined ? null : (
         <Alert tone="warning" title="Rows waiting for Check again are hidden">
           {`${String(hiddenHeld)} row(s) of this month were sent without a confirmed reply and are not on this sheet. Choose All funds to see them and check them again.`}
         </Alert>
@@ -131,8 +144,14 @@ const RecordingSheetMonth = ({ month, fundId, onMonth, onFund }: SheetMonthProps
           description="Active SIP schedules whose months include this month. The recorded amount is read from the ledger now."
         >
           <AsyncBoundary
-            query={sheet}
-            skeleton={<ListSkeleton />}
+            query={{
+              data: completeData,
+              isPending: completeData === undefined,
+              isFetching: sheet.isFetching,
+              error: sheet.error,
+              refetch: sheet.refetch,
+            }}
+            skeleton={<SheetLoading loaded={sheet.loadedCount} />}
             isEmpty={(data) => data.items.length === 0}
             empty={
               <EmptyState

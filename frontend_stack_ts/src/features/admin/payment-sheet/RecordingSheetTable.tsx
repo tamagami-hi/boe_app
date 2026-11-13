@@ -64,12 +64,11 @@ type StatusCellProps = Readonly<{
   onRecordAnother: (scheduleId: string) => void
 }>
 
-const StatusCell = ({ view, onCheckAgain, onRecordAnother }: StatusCellProps): React.ReactElement | null => {
+const StatusContent = ({ view, onCheckAgain, onRecordAnother }: StatusCellProps): React.ReactElement => {
   const { status, entry, schedule } = view
-  if (status === "pending" && !view.draft.selected) return null
   const chip = STATUS_CHIPS[status]
   return (
-    <div className={STACK_SM}>
+    <>
       <Badge tone={chip.tone}>{chip.label}</Badge>
       {entry?.kind === "refused" ? <span className={FIELD_ERROR}>{entry.message}</span> : null}
       {entry?.kind === "recorded" ? (
@@ -103,9 +102,17 @@ const StatusCell = ({ view, onCheckAgain, onRecordAnother }: StatusCellProps): R
           Record another
         </Button>
       ) : null}
-    </div>
+    </>
   )
 }
+
+const StatusCell = ({ view, onCheckAgain, onRecordAnother }: StatusCellProps): React.ReactElement => (
+  <div className={STACK_SM} aria-live="polite">
+    {view.status === "pending" && !view.draft.selected ? null : (
+      <StatusContent view={view} onCheckAgain={onCheckAgain} onRecordAnother={onRecordAnother} />
+    )}
+  </div>
+)
 
 const errorsOf = (view: SheetRowView): Readonly<{ amount: string | null; date: string | null }> =>
   view.draft.selected && view.check.kind === "invalid" && canFill(view.status)
