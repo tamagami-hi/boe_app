@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "track": "b-email-web",
+  "current": {
+    "task": "M5-phase-b:B-L4-email-web",
+    "from": "lane-b-email-web-worker",
+    "track": "b-email-web",
+    "at": "2026-11-13T12:57:17.164Z",
+    "lines": [
+      "B6 done on track/b-email-web: 883b127 feat(email) web app line; 6f1f86d fix(client) reset screen. Not landed, not pushed.",
+      "New env key CLIENT_WEB_APP_URL (optional). Bare https origin; trailing slash accepted and normalized to the origin. Unset/blank -> null -> emails unchanged. http, path, query, fragment, credentials -> boot refused (backend and all worker composers call parseServerConfig).",
+      "Exposed as ServerConfig.email.links.webAppUrl; worker passes email.links as EmailTemplateConfig, whose webAppUrl is optional so the other literal callers ({ supportAddress }) were left untouched.",
+      "Templates changed: account_approved, password_set_link (invite), password_app_download. password_reset_link, app_update_notice, admin_message, verification code unchanged.",
+      "Line text: 'On an iPhone or a computer, you can open the BeOnEdge web app at <origin>/' via new EmailBlock kind 'link' in emailLayout.ts (escaped lead, anchor, URL through safeActionUrl). Rendered at send time from config; queued payload keys are ignored (test proves a forged payload webAppUrl never renders).",
+      "Env/compose: prod stack .env.example and backend .env.production.example = https://app.beonedge.in; dev stack .env.example = https://dev-app.beonedge.in (its tracked files already name it); backend .env.example blank. Both compose x-backend-env anchors pass ${CLIENT_WEB_APP_URL:-}. monitor_service untouched. DEPLOY.md Configuration documents it.",
+      "Maintainer action at release: add CLIENT_WEB_APP_URL to each VPS stack .env by hand (deploy never overwrites .env); optional, so a missing key only omits the line.",
+      "Frontend: ResetPasswordScreen success on web now shows the 'Prefer the Android app?' callout and link only when the server returned downloadUrl; dropped the 'unavailable'/'unconfirmed without link' APK callouts. ForgotPasswordScreen and the incomplete-link state had no APK copy.",
+      "Checks (Node 22 container, combined tree): contracts check+build 7 files/98 tests; backend check 98 files/1182; integration 40/422 coverage off; frontend check 27/241 + build:client; release_manager runtime_contract, env_contract, deploy_env_validation PASS.",
+      "Negative control: mutated webAppBlocks to ignore config and clientWebAppUrl to accept paths; both new tests failed (2 failed / 100 passed), then restored.",
+      "Not done: plan section 8 progress entry (left to the phase close); no real mail rendered in a client or sent; reset screen not viewed in a browser.",
+      "Untouched but related: SipStartScreen still says AutoPay needs the Android app (AutoPay is off; b-client-investing territory)."
+    ]
+  },
+  "history": []
+}

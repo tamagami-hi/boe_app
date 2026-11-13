@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "finding",
-  "nextNumber": 24,
+  "nextNumber": 27,
   "entries": [
     {
       "id": "finding-1",
@@ -537,6 +537,71 @@
         "agent": "lane-a-expire-stale"
       },
       "at": "2026-11-13T10:22:39.399Z"
+    },
+    {
+      "id": "finding-24",
+      "kind": "finding",
+      "title": "Fund receipt queue likely repeats a row at page boundaries (ms cursor vs µs timestamps)",
+      "text": "STATIC, reported by lane b-support (note-39), not yet verified: the admin fund receipt queue pages oldest first with a keyset cursor that encodes a millisecond timestamp, while Postgres stores microseconds. A row whose created_at has sub-millisecond digits can compare as after the cursor and be shown again on the next page. The b-support lists avoid this by sorting and comparing on the timestamp truncated to milliseconds. To fix: confirm with an integration test (two rows a few microseconds apart at the page boundary), then apply the same truncation or encode microseconds in the cursor. Check the other keyset lists (http/cursor.ts users) for the same pattern.",
+      "paths": [
+        "backend_controller/src/http/cursor.ts",
+        "backend_controller/src/repositories"
+      ],
+      "tags": [
+        "pagination",
+        "cursor",
+        "bug-suspected"
+      ],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "lane-b-support"
+      },
+      "at": "2026-11-13T13:11:23.004Z"
+    },
+    {
+      "id": "finding-25",
+      "kind": "finding",
+      "title": "usePagedQuery loadAll re-fires fetchNextPage after a failed page (loop risk in useFundCatalogue)",
+      "text": "STATIC, reported by lane b-client-investing (not fixed): the shared paged query helper's loadAll option keeps calling fetchNextPage after a page fails, so a persistent error can re-request in a loop. It currently affects useFundCatalogue. b-client-investing's OnlinePaymentHistory uses its own guarded effect that stops on a failed page. Fix: stop the walk on the first failed page and surface the error with retry. Belongs to a later frontend hardening task.",
+      "paths": [
+        "frontend_stack_ts/src/api/paged.ts"
+      ],
+      "tags": [
+        "frontend",
+        "pagination",
+        "bug-suspected"
+      ],
+      "refs": [],
+      "by": {
+        "track": "b-client-investing",
+        "agent": "main-landing-b-client-investing"
+      },
+      "at": "2026-11-13T13:16:04.367Z"
+    },
+    {
+      "id": "finding-26",
+      "kind": "finding",
+      "title": "Release note: an old email worker permanently fails investment_recorded mail; deploy workers with the API",
+      "text": "TESTED by reading, not run: dispatchDueDeliveries settles a delivery whose template has no guard or renderer as 'unsendable' with disposition 'permanent'. A v0.15.x email worker therefore dead-letters any investment_recorded delivery queued by a Phase B API.\nNormal deploy: _boe_deploy.sh runs migrate and then `compose up -d --remove-orphans`, which recreates the API and the workers together, so the window is seconds.\nRollback to v0.15.x after Phase B has queued investment emails: any not yet sent are permanently failed, not retried.\nPut both points in the Phase B release notes. The maintainer can resend from the admin email tools if needed. No code change (lane b-receipts security review, SHOULD-FIX 1).",
+      "paths": [
+        "backend_controller/src/domain/email/dispatchDueDeliveries.ts",
+        "release_manager/stacks/_shared/_boe_deploy.sh"
+      ],
+      "tags": [
+        "release-notes",
+        "email",
+        "deploy"
+      ],
+      "refs": [
+        "rule-12",
+        "M5-phase-b:B-L1-receipts"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "lane-b-receipts"
+      },
+      "at": "2026-11-13T13:28:08.034Z"
     }
   ]
 }

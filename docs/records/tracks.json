@@ -10,7 +10,8 @@
         "track": "main",
         "agent": "claude-opus-5-5"
       },
-      "openedAt": "2026-11-13T08:58:33.627Z"
+      "openedAt": "2026-11-13T08:58:33.627Z",
+      "closedAt": "2026-11-13T13:05:35.559Z"
     },
     {
       "name": "a-payments-off",
@@ -21,7 +22,8 @@
         "track": "main",
         "agent": "claude-opus-5-5"
       },
-      "openedAt": "2026-11-13T08:58:34.289Z"
+      "openedAt": "2026-11-13T08:58:34.289Z",
+      "closedAt": "2026-11-13T13:05:36.087Z"
     },
     {
       "name": "a-admin-core",
@@ -32,7 +34,8 @@
         "track": "main",
         "agent": "claude-opus-5-5"
       },
-      "openedAt": "2026-11-13T08:58:34.970Z"
+      "openedAt": "2026-11-13T08:58:34.970Z",
+      "closedAt": "2026-11-13T13:05:36.553Z"
     },
     {
       "name": "a-onboarding",
@@ -43,7 +46,8 @@
         "track": "main",
         "agent": "claude-opus-5-5"
       },
-      "openedAt": "2026-11-13T08:58:35.643Z"
+      "openedAt": "2026-11-13T08:58:35.643Z",
+      "closedAt": "2026-11-13T13:05:34.986Z"
     },
     {
       "name": "a-client-polish",
@@ -54,7 +58,8 @@
         "track": "main",
         "agent": "claude-opus-5-5"
       },
-      "openedAt": "2026-11-13T09:26:50.006Z"
+      "openedAt": "2026-11-13T09:26:50.006Z",
+      "closedAt": "2026-11-13T13:05:37.023Z"
     },
     {
       "name": "a-identity",
@@ -65,7 +70,8 @@
         "track": "main",
         "agent": "lane-a-identity"
       },
-      "openedAt": "2026-11-13T10:03:44.400Z"
+      "openedAt": "2026-11-13T10:03:44.400Z",
+      "closedAt": "2026-11-13T13:05:37.913Z"
     },
     {
       "name": "a-expire-stale",
@@ -76,7 +82,80 @@
         "track": "main",
         "agent": "lane-a-expire-stale"
       },
-      "openedAt": "2026-11-13T10:08:26.090Z"
+      "openedAt": "2026-11-13T10:08:26.090Z",
+      "closedAt": "2026-11-13T13:05:37.454Z"
+    },
+    {
+      "name": "b-receipts",
+      "branch": "track/b-receipts",
+      "worktree": ".temp/worktrees/b-receipts",
+      "purpose": "B1+B2: monthly investment category, server allow-list, category-driven notification, client receipts endpoints and screen",
+      "openedBy": {
+        "track": "main",
+        "agent": "lane-b-receipts"
+      },
+      "openedAt": "2026-11-13T12:43:01.847Z",
+      "closedAt": "2026-11-13T14:10:09.614Z"
+    },
+    {
+      "name": "b-value-updates",
+      "branch": "track/b-value-updates",
+      "worktree": ".temp/worktrees/b-value-updates",
+      "purpose": "B3: value-update notification payload, client value-updates endpoint and screen, admin monthly value-update sheet per fund",
+      "openedBy": {
+        "track": "main",
+        "agent": "lane-b-value-updates"
+      },
+      "openedAt": "2026-11-13T12:43:02.181Z",
+      "closedAt": "2026-11-13T14:10:13.026Z"
+    },
+    {
+      "name": "b-returns",
+      "branch": "track/b-returns",
+      "worktree": ".temp/worktrees/b-returns",
+      "purpose": "B4+B5: per-client portfolio summary, single client page, ROI dashboard (simple % + XIRR), daily overview",
+      "openedBy": {
+        "track": "main",
+        "agent": "lane-b-returns"
+      },
+      "openedAt": "2026-11-13T12:43:02.546Z",
+      "closedAt": "2026-11-13T14:10:10.700Z"
+    },
+    {
+      "name": "b-email-web",
+      "branch": "track/b-email-web",
+      "worktree": ".temp/worktrees/b-email-web",
+      "purpose": "B6: optional CLIENT_WEB_APP_URL in invite, approval and app-download mail; web-neutral reset copy",
+      "openedBy": {
+        "track": "main",
+        "agent": "lane-b-email-web"
+      },
+      "openedAt": "2026-11-13T12:43:02.847Z",
+      "closedAt": "2026-11-13T13:05:38.922Z"
+    },
+    {
+      "name": "b-support",
+      "branch": "track/b-support",
+      "worktree": ".temp/worktrees/b-support",
+      "purpose": "B7: admin support inbox, respond with audit and client notification, per-client tickets",
+      "openedBy": {
+        "track": "main",
+        "agent": "lane-b-support"
+      },
+      "openedAt": "2026-11-13T12:43:03.180Z",
+      "closedAt": "2026-11-13T14:10:11.732Z"
+    },
+    {
+      "name": "b-client-investing",
+      "branch": "track/b-client-investing",
+      "worktree": ".temp/worktrees/b-client-investing",
+      "purpose": "B8: How-to-invest card, pay/invest buttons hidden when onlinePayments is false, single History while payments are off, printable statement on web",
+      "openedBy": {
+        "track": "main",
+        "agent": "lane-b-client-investing"
+      },
+      "openedAt": "2026-11-13T12:43:03.560Z",
+      "closedAt": "2026-11-13T14:10:08.631Z"
     }
   ]
 }

@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "track": "b-receipts",
+  "current": {
+    "task": "M5-phase-b:B-L1-receipts",
+    "from": "lane-b-receipts-worker",
+    "track": "b-receipts",
+    "at": "2026-11-13T13:25:16.705Z",
+    "lines": [
+      "Track track/b-receipts, rebased onto main 6f1f86d (b-email-web). Commits: 5efdab9 feat(receipts) B1+B2; acad390 feat(email) investment_recorded email + migration 062.",
+      "B1: admin recordings accept exactly recorded_offline_investment | recorded_offline_monthly_investment | recorded_offline_correction (route z.enum + contract AdminRecordingReasonCode). Released admin builds v0.14.0-v0.15.4 only sent the first and last, both still accepted.",
+      "Category derived at read time (domain/shared/recordingCategory.ts, Map lookup); any unknown stored reason_code reads as earlier_investment (how every recording was shown before). No backfill, no response type narrowed.",
+      "Contracts: recorded-contribution, ledger-entries and reversal ops moved from admin-money.ts (now 729 lines) to admin-client-positions.ts; ADMIN_MONEY_OPERATIONS still spreads them in the same order, so generated OpenAPI for existing ops differs only in the narrowed request reasonCode enum.",
+      "Notification kind client_contribution_recorded unchanged, deepLink /portfolio kept; payload adds entryId, orderId, category. Titles per maintainer: 'Investment added' (earlier, monthly), 'Investment record corrected' (correction); body names the fund, no amount.",
+      "B2: GET /v1/client/receipts (filter-bound cursor, userId) and GET /v1/client/receipts/{entryId}; client scope via resolveClientPrincipal; other client's entry -> 404 RESOURCE_NOT_FOUND. Receipt: entryId, orderId, fundId, fundName (order's fund version), category, categoryLabel (server-rendered, string so new categories don't break old APKs), amountPaise, effectiveDate, recordedAt, reversedAt (nullable, added so reversed recordings are not shown as live money), sipMonth (always null).",
+      "Frontend: features/receipts (list + detail) at /activity/receipts and /activity/receipts/:entryId; Activity header 'Receipts' button and 'View receipt' on recorded_offline rows; notificationLink(kind,payload)+ENTRY_DESTINATIONS in resolveDestination.ts (same shape b-value-updates uses - merge keeps one function and both map lines).",
+      "Admin: useRecordClientContribution moved to client-values/recordingQueries.ts (adminQueries.ts shrank to 537); form offers the three categories with per-category copy (recordingCategories.ts); 'before the app' titles neutralised in ClientPositionDetail, ClientPositions, UserDetail, CreateClient.",
+      "Email (maintainer request via coordinator): template investment_recorded v1 in emailTemplates.ts, amounts via email/emailMoney.ts (BigInt, Indian grouping). Queued in the recording transaction for earlier/monthly only, active+untombstoned only; dedup key investment_recorded:<entryId>; sealed fullName/fundName/amountPaise; plain entryId/category/effectiveDate/boundEmailRevision.",
+      "Guard domain/email/investmentRecordedGuard.ts registered in workerComposition: cancels on email_revision change, inactive/tombstoned account, missing or reversed recording.",
+      "Migration 062_investment_recorded_email.sql: drop/re-add email_deliveries_template_check with investment_recorded appended, nothing else. releaseUpgrade expects ...061, 062. Phase C must use 063-065 (coordinator updates plan).",
+      "AdminEmailTemplateKey (request filter) gains investment_recorded; delivery response templateKey stays z.string(). Admin deliveries filter label 'Investment added'.",
+      "Tests: test/integration/recordingReceipts.integration.test.ts (12). Negative controls: allow-list removed -> 5 fail; owner filter removed -> 1 fail; guard reversal check removed -> 1 fail; corrections emailed -> 1 fail.",
+      "Checks (container, on acad390): contracts 98, backend check 1182, integration 41 files/434 (coverage off), frontend 241, build:client + build:admin with boot checks. Commit 5efdab9 was verified before the rebase (backend 1180, integration 431).",
+      "Not done: plan/handoff doc updates in plans/admin-improvements.md (coordinator owns), sipMonth linkage (Phase C), real mail send, device/browser check of the new screens.",
+      "composition.ts is at 786 lines after my additions; other lanes registering routes may need a composition module to stay under 800."
+    ]
+  },
+  "history": []
+}

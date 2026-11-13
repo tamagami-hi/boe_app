@@ -2,20 +2,22 @@
   "schema": 1,
   "track": "main",
   "current": {
-    "task": "A-close",
-    "from": "lane-a-identity",
+    "task": "B-close",
+    "from": "coordinator-b-close",
     "track": "main",
-    "at": "2026-11-13T12:26:21.081Z",
+    "at": "2026-11-13T14:09:45.298Z",
     "lines": [
-      "Phase A closed 2026-11-13 at 3869d21 (plan section 8 'Phase A close'). All seven lanes are on local main; nothing pushed, released or deployed.",
-      "Sweep on 8f7618e in the Node 22 container: contracts 98; backend 98 files/1180; integration 40/422 with coverage off; frontend 27/241; build:client and build:admin pass (evidence 2ba4dcea).",
-      "Migration numbering (convention-1): identity 061 on main; Phase C nominee 062, SIP schedule 063, maturity 064. Later migrations take the next free number and append themselves to the releaseUpgrade expectation.",
-      "Open: Q-026 (erase contact history for tombstoned clients). Meanwhile history is masked for tombstoned users.",
-      "Carried to B8 (B-L6-client-investing): Activity list says 'Awaiting payment' for provider-dispatched stale payments (finding-23); needs a new list endpoint, never a new key on the existing response.",
-      "Carried to E2: SIP worker non-uuid requestId (finding-21), AutoPay next_due_date, mandate reconcile atomicity; before any payments re-enable.",
-      "Still per-attempt idempotency keys: approve application, refund action, acknowledge receipt (adminQueries.ts); server guards stop duplicates.",
-      "Phase B lanes are unblocked on the board (B-L1..B-L6). Start each on its own tally track from current main; lanes adding contract files regenerate OpenAPI at landing.",
-      "Landing pattern that worked: rebase the track onto main in its worktree, resolve, open a session on the track worktree, land_start, run the script in the background, land_wait, then task_land from the lane's main session."
+      "Phase B closed 2026-11-13 at aed82c9 (plan section 8 'Phase B close'). All six lanes are on local main; nothing pushed, released or deployed.",
+      "Main commits: email-web 883b127 6f1f86d; client-investing 7b60293..417e479 (7); support ecf140c 8bf1c64 4999848; value-updates 22a9b4d 56cffb1 3d44a7f 77a88fa; returns 7203235 ba88063 e332863; receipts e81eb02 e8826b7 d9d26b2.",
+      "Sweep on d9d26b2 in the Node 22 container: contracts 98 (149 ops); backend 100 files/1198; integration 44/452 coverage off; frontend 30/260; build:client and build:admin with boot checks (evidence 9f050378).",
+      "Maintainer decisions: rule-11 (no bank details or payment instructions anywhere; recordings notify 'Investment added'), rule-12 (also email the amount). G11 is now only publishing featureFlags.onlinePayments=false (board brief updated).",
+      "Migrations (convention-2): 061 identity, 062 investment_recorded template check (on main). Phase C: C1 nominee 063, C2 SIP schedule 064, C3 maturity 065; bank reference and reviews take the next free number. Board briefs for C-L1..C-L3 updated.",
+      "Release notes in the plan: add CLIENT_WEB_APP_URL to each VPS stack .env by hand; a v0.15.x email worker dead-letters investment_recorded mail (finding-26), so deploy workers with the API and expect lost investment emails after a rollback; new APK exports (G7, G8).",
+      "Open for the maintainer before C-L3: the payment sheet's optional bank reference (UTR) field may conflict with rule-11 ('no bank details or payment methods recorded'); ask before building it.",
+      "Follow-ups not built: mount OpenTicketsTile on the overview (4th DailyTiles slot) and add a support tab on the client hub (useUserSupportTickets); client notifications category label for support_request_updated.",
+      "Carried findings: finding-24 (older keyset lists use millisecond cursors; fund receipt queue first), finding-25 (usePagedQuery loadAll loops after a failed page). APK statement PDF endpoint proposed (b-client-investing handoff), not built.",
+      "Composition: composition.ts 793 lines; new routes go through a composition module (adminEmailComposition.ts, recordingComposition.ts). adminQueries.ts 538, admin-money.ts 730.",
+      "Q-026 still open. Not verified: no browser or device run, no real mail, no APK export, nothing on a VPS."
     ]
   },
   "history": [
@@ -47,6 +49,23 @@
         "Key constraint finding-14: strict response parsing in released APKs; new data only via new endpoints and notification payload keys.",
         "Fix-first: growth idempotency (finding-9), payments-off unpayable orders (finding-15), failed-read states (finding-10), app-config guard (finding-12), onboarding defects (finding-17/18).",
         "Implementation must wait for approval; then open tally tracks per phase (A first) with own worktrees."
+      ]
+    },
+    {
+      "task": "A-close",
+      "from": "lane-a-identity",
+      "track": "main",
+      "at": "2026-11-13T12:26:21.081Z",
+      "lines": [
+        "Phase A closed 2026-11-13 at 3869d21 (plan section 8 'Phase A close'). All seven lanes are on local main; nothing pushed, released or deployed.",
+        "Sweep on 8f7618e in the Node 22 container: contracts 98; backend 98 files/1180; integration 40/422 with coverage off; frontend 27/241; build:client and build:admin pass (evidence 2ba4dcea).",
+        "Migration numbering (convention-1): identity 061 on main; Phase C nominee 062, SIP schedule 063, maturity 064. Later migrations take the next free number and append themselves to the releaseUpgrade expectation.",
+        "Open: Q-026 (erase contact history for tombstoned clients). Meanwhile history is masked for tombstoned users.",
+        "Carried to B8 (B-L6-client-investing): Activity list says 'Awaiting payment' for provider-dispatched stale payments (finding-23); needs a new list endpoint, never a new key on the existing response.",
+        "Carried to E2: SIP worker non-uuid requestId (finding-21), AutoPay next_due_date, mandate reconcile atomicity; before any payments re-enable.",
+        "Still per-attempt idempotency keys: approve application, refund action, acknowledge receipt (adminQueries.ts); server guards stop duplicates.",
+        "Phase B lanes are unblocked on the board (B-L1..B-L6). Start each on its own tally track from current main; lanes adding contract files regenerate OpenAPI at landing.",
+        "Landing pattern that worked: rebase the track onto main in its worktree, resolve, open a session on the track worktree, land_start, run the script in the background, land_wait, then task_land from the lane's main session."
       ]
     }
   ]

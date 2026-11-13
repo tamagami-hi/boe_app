@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextRow": 16,
+  "nextRow": 17,
   "open": [
     {
       "row": 1,
@@ -121,6 +121,14 @@
       "meanwhile": "Keep the history append-only. For tombstoned clients the admin screen and API show the same masked values as everywhere else (tombstone placeholders), so no admin can read the originals through the app. The originals stay in the database until you decide.",
       "asked": "2026-11-13T10:36:44.645Z",
       "by": "lane-a-identity"
+    },
+    {
+      "row": 16,
+      "group": "admin-improvements",
+      "question": "Phase C's monthly payment sheet (C4, task C-L3-payment-sheet) planned an optional bank reference (UTR) field on each recording, so the admin could match a recording to the bank statement. You decided that no bank details or payment methods are recorded (rule-11). Should the sheet still keep an optional UTR, which is a transfer reference and not an account detail, or leave it out?",
+      "meanwhile": "The payment sheet is built without any bank reference field and without its migration. Recordings keep only the category, amount, date and fund. Nothing about bank accounts or payment methods is stored or shown.",
+      "asked": "2026-11-13T14:10:33.533Z",
+      "by": "coordinator-b-close"
     }
   ],
   "answered": []

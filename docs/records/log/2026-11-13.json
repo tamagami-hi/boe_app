@@ -1908,6 +1908,866 @@
       "agent": "lane-a-identity",
       "verb": "handoff_write",
       "target": "A-close"
+    },
+    {
+      "at": "2026-11-13T12:42:28.527Z",
+      "session": "5338da98-5f75-481a-821c-366f00098b5d",
+      "track": "main",
+      "agent": "lane-b-receipts",
+      "verb": "task_claim",
+      "target": "M5-phase-b / B-L1-receipts"
+    },
+    {
+      "at": "2026-11-13T12:43:00.339Z",
+      "session": "c077eed3-f00a-4f54-9a09-082c7682a271",
+      "track": "main",
+      "agent": "lane-b-value-updates",
+      "verb": "task_claim",
+      "target": "M5-phase-b / B-L2-value-updates"
+    },
+    {
+      "at": "2026-11-13T12:43:00.638Z",
+      "session": "7decf29b-d1d8-414f-b7bc-0497f0d2b947",
+      "track": "main",
+      "agent": "lane-b-returns",
+      "verb": "task_claim",
+      "target": "M5-phase-b / B-L3-returns"
+    },
+    {
+      "at": "2026-11-13T12:43:00.925Z",
+      "session": "58817ace-5396-4d0a-b09b-4b05f4a5088f",
+      "track": "main",
+      "agent": "lane-b-email-web",
+      "verb": "task_claim",
+      "target": "M5-phase-b / B-L4-email-web"
+    },
+    {
+      "at": "2026-11-13T12:43:01.255Z",
+      "session": "ec62f9c0-adfd-4dc2-8ae7-14a5ca5cbec4",
+      "track": "main",
+      "agent": "lane-b-support",
+      "verb": "task_claim",
+      "target": "M5-phase-b / B-L5-support"
+    },
+    {
+      "at": "2026-11-13T12:43:01.561Z",
+      "session": "5fb957a4-53ad-4379-8bbc-0c5f8398bb78",
+      "track": "main",
+      "agent": "lane-b-client-investing",
+      "verb": "task_claim",
+      "target": "M5-phase-b / B-L6-client-investing"
+    },
+    {
+      "at": "2026-11-13T12:43:01.941Z",
+      "session": "5338da98-5f75-481a-821c-366f00098b5d",
+      "track": "main",
+      "agent": "lane-b-receipts",
+      "verb": "track_open",
+      "target": "b-receipts"
+    },
+    {
+      "at": "2026-11-13T12:43:02.261Z",
+      "session": "c077eed3-f00a-4f54-9a09-082c7682a271",
+      "track": "main",
+      "agent": "lane-b-value-updates",
+      "verb": "track_open",
+      "target": "b-value-updates"
+    },
+    {
+      "at": "2026-11-13T12:43:02.623Z",
+      "session": "7decf29b-d1d8-414f-b7bc-0497f0d2b947",
+      "track": "main",
+      "agent": "lane-b-returns",
+      "verb": "track_open",
+      "target": "b-returns"
+    },
+    {
+      "at": "2026-11-13T12:43:02.931Z",
+      "session": "58817ace-5396-4d0a-b09b-4b05f4a5088f",
+      "track": "main",
+      "agent": "lane-b-email-web",
+      "verb": "track_open",
+      "target": "b-email-web"
+    },
+    {
+      "at": "2026-11-13T12:43:03.282Z",
+      "session": "ec62f9c0-adfd-4dc2-8ae7-14a5ca5cbec4",
+      "track": "main",
+      "agent": "lane-b-support",
+      "verb": "track_open",
+      "target": "b-support"
+    },
+    {
+      "at": "2026-11-13T12:43:03.684Z",
+      "session": "5fb957a4-53ad-4379-8bbc-0c5f8398bb78",
+      "track": "main",
+      "agent": "lane-b-client-investing",
+      "verb": "track_open",
+      "target": "b-client-investing"
+    },
+    {
+      "at": "2026-11-13T12:45:41.999Z",
+      "session": "5338da98-5f75-481a-821c-366f00098b5d",
+      "track": "main",
+      "agent": "lane-b-receipts",
+      "verb": "note_post",
+      "target": "heads-up"
+    },
+    {
+      "at": "2026-11-13T12:54:51.336Z",
+      "session": "58991f12-34d7-4aeb-aa8e-80811cc624b9",
+      "track": "b-value-updates",
+      "agent": "lane-b-value-updates-worker",
+      "verb": "note_post",
+      "target": "heads-up"
+    },
+    {
+      "at": "2026-11-13T12:55:42.136Z",
+      "session": "7029bcf2-fcfe-4f21-b321-fc4bc68fd8f1",
+      "track": "b-receipts",
+      "agent": "lane-b-receipts-worker",
+      "verb": "note_post",
+      "target": "M5-phase-b:B-L1-receipts, heads-up"
+    },
+    {
+      "at": "2026-11-13T12:55:54.606Z",
+      "session": "7029bcf2-fcfe-4f21-b321-fc4bc68fd8f1",
+      "track": "b-receipts",
+      "agent": "lane-b-receipts-worker",
+      "verb": "note_post",
+      "target": "M5-phase-b:B-L1-receipts, answer"
+    },
+    {
+      "at": "2026-11-13T12:57:03.539Z",
+      "session": "4f7043cc-acbc-4cbd-bec4-f054f4175808",
+      "track": "b-email-web",
+      "agent": "lane-b-email-web-worker",
+      "verb": "note_post",
+      "target": "M5-phase-b:B-L4-email-web, heads-up"
+    },
+    {
+      "at": "2026-11-13T12:57:17.183Z",
+      "session": "4f7043cc-acbc-4cbd-bec4-f054f4175808",
+      "track": "b-email-web",
+      "agent": "lane-b-email-web-worker",
+      "verb": "handoff_write",
+      "target": "M5-phase-b:B-L4-email-web"
+    },
+    {
+      "at": "2026-11-13T12:58:10.254Z",
+      "session": "5338da98-5f75-481a-821c-366f00098b5d",
+      "track": "main",
+      "agent": "lane-b-receipts",
+      "verb": "context_put",
+      "target": "rule"
+    },
+    {
+      "at": "2026-11-13T12:58:48.095Z",
+      "session": "0203e90e-1ea8-43b5-9179-4c0e416747d5",
+      "track": "b-email-web",
+      "agent": "main-landing-b-email-web",
+      "verb": "land_start"
+    },
+    {
+      "at": "2026-11-13T13:01:06.508Z",
+      "session": "5338da98-5f75-481a-821c-366f00098b5d",
+      "track": "main",
+      "agent": "lane-b-receipts",
+      "verb": "context_put",
+      "target": "rule"
+    },
+    {
+      "at": "2026-11-13T13:01:06.823Z",
+      "session": "5338da98-5f75-481a-821c-366f00098b5d",
+      "track": "main",
+      "agent": "lane-b-receipts",
+      "verb": "context_put",
+      "target": "convention"
+    },
+    {
+      "at": "2026-11-13T13:01:31.312Z",
+      "session": "7029bcf2-fcfe-4f21-b321-fc4bc68fd8f1",
+      "track": "b-receipts",
+      "agent": "lane-b-receipts-worker",
+      "verb": "note_post",
+      "target": "M5-phase-b:B-L1-receipts, heads-up"
+    },
+    {
+      "at": "2026-11-13T13:02:26.851Z",
+      "session": "58817ace-5396-4d0a-b09b-4b05f4a5088f",
+      "track": "main",
+      "agent": "lane-b-email-web",
+      "verb": "task_land",
+      "target": "M5-phase-b / B-L4-email-web"
+    },
+    {
+      "at": "2026-11-13T13:04:01.200Z",
+      "session": "275ce6cd-592a-4453-8f40-54a0d47424f9",
+      "track": "a-client-values",
+      "agent": "lane-a-client-values",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:01.510Z",
+      "session": "90fc85d4-d065-4f85-ac82-ba068197cd3e",
+      "track": "a-client-values",
+      "agent": "main-landing-a-client-values",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:01.826Z",
+      "session": "0a35075b-d9f7-45c1-b5be-a3e13bfe8244",
+      "track": "a-onboarding",
+      "agent": "lane-a-onboarding",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:02.134Z",
+      "session": "a2242fca-3c24-44dd-afe8-51744fd27ad0",
+      "track": "a-onboarding",
+      "agent": "coordinator-landing-a-onboarding",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:02.440Z",
+      "session": "afebd8bc-47b0-4988-b446-08ce07e08ad8",
+      "track": "a-admin-core",
+      "agent": "lane-a-admin-core",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:02.683Z",
+      "session": "e43b8afc-7d16-4d64-b139-657c21e16249",
+      "track": "a-admin-core",
+      "agent": "main-landing-a-admin-core",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:02.967Z",
+      "session": "ff8ce9de-cf77-4518-8aa6-ace22343fd00",
+      "track": "a-payments-off",
+      "agent": "lane-a-payments-off",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:03.250Z",
+      "session": "841a79cc-4b49-4da3-baf3-a3284149935d",
+      "track": "a-payments-off",
+      "agent": "main-landing-a-payments-off",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:03.542Z",
+      "session": "31f0cddb-cd38-465e-a810-524890380228",
+      "track": "a-client-polish",
+      "agent": "lane-a-client-polish",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:03.859Z",
+      "session": "95c49947-e734-48fe-8335-1fc92395fb49",
+      "track": "a-client-polish",
+      "agent": "main-landing-a-client-polish",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:04.183Z",
+      "session": "fbf9bd5a-ea1e-46a8-9dd0-2ca34c5e55b0",
+      "track": "a-identity",
+      "agent": "lane-a-identity-worker",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:04.510Z",
+      "session": "92f37cc9-112c-45f1-8c02-25ec9f73d375",
+      "track": "a-identity",
+      "agent": "main-landing-a-identity",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:04.797Z",
+      "session": "1b65ad45-5f1f-492a-a88b-ea0f497ca257",
+      "track": "a-expire-stale",
+      "agent": "lane-a-expire-stale-worker",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:05.036Z",
+      "session": "1d00e9f2-c372-4067-ba61-363485147bca",
+      "track": "a-expire-stale",
+      "agent": "main-landing-a-expire-stale",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:05.338Z",
+      "session": "4f7043cc-acbc-4cbd-bec4-f054f4175808",
+      "track": "b-email-web",
+      "agent": "lane-b-email-web-worker",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:05.651Z",
+      "session": "0203e90e-1ea8-43b5-9179-4c0e416747d5",
+      "track": "b-email-web",
+      "agent": "main-landing-b-email-web",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:05.966Z",
+      "session": "c8da83b9-315d-4e51-b6bb-75db89ca7bf8",
+      "track": "main",
+      "agent": "lane-a-client-values",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:06.362Z",
+      "session": "e22ee350-15fd-4e6a-86fa-feadfdbf2e84",
+      "track": "main",
+      "agent": "lane-a-payments-off",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:06.721Z",
+      "session": "60d84e4d-7c9b-4632-8154-f9d7f38b10de",
+      "track": "main",
+      "agent": "lane-a-admin-core",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:07.009Z",
+      "session": "95b875c4-a565-406c-9bc5-35da2c6acc10",
+      "track": "main",
+      "agent": "lane-a-onboarding",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:07.289Z",
+      "session": "8e044316-78e8-4844-8d41-38d099a8a02a",
+      "track": "main",
+      "agent": "lane-a-client-polish",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:07.577Z",
+      "session": "15e3c993-8ac9-4854-9659-c062299ac2ab",
+      "track": "main",
+      "agent": "lane-a-identity",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:07.852Z",
+      "session": "2d98dc93-5023-4e4f-9473-13bbcae39421",
+      "track": "main",
+      "agent": "lane-a-expire-stale",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:08.179Z",
+      "session": "44cb86ed-310d-4790-a680-775853eb11ca",
+      "track": "main",
+      "agent": "lane-a-expire-stale",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:08.456Z",
+      "session": "58817ace-5396-4d0a-b09b-4b05f4a5088f",
+      "track": "main",
+      "agent": "lane-b-email-web",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T13:04:08.967Z",
+      "session": "cf6ea24f-e263-4193-8df1-0cf487c5fb5b",
+      "track": "b-client-investing",
+      "agent": "lane-b-client-investing-worker",
+      "verb": "note_post",
+      "target": "M5-phase-b:B-L6-client-investing, heads-up"
+    },
+    {
+      "at": "2026-11-13T13:05:35.129Z",
+      "session": "5338da98-5f75-481a-821c-366f00098b5d",
+      "track": "main",
+      "agent": "lane-b-receipts",
+      "verb": "track_close",
+      "target": "a-onboarding"
+    },
+    {
+      "at": "2026-11-13T13:05:35.703Z",
+      "session": "5338da98-5f75-481a-821c-366f00098b5d",
+      "track": "main",
+      "agent": "lane-b-receipts",
+      "verb": "track_close",
+      "target": "a-client-values"
+    },
+    {
+      "at": "2026-11-13T13:05:36.208Z",
+      "session": "5338da98-5f75-481a-821c-366f00098b5d",
+      "track": "main",
+      "agent": "lane-b-receipts",
+      "verb": "track_close",
+      "target": "a-payments-off"
+    },
+    {
+      "at": "2026-11-13T13:05:36.666Z",
+      "session": "5338da98-5f75-481a-821c-366f00098b5d",
+      "track": "main",
+      "agent": "lane-b-receipts",
+      "verb": "track_close",
+      "target": "a-admin-core"
+    },
+    {
+      "at": "2026-11-13T13:05:37.143Z",
+      "session": "5338da98-5f75-481a-821c-366f00098b5d",
+      "track": "main",
+      "agent": "lane-b-receipts",
+      "verb": "track_close",
+      "target": "a-client-polish"
+    },
+    {
+      "at": "2026-11-13T13:05:37.578Z",
+      "session": "5338da98-5f75-481a-821c-366f00098b5d",
+      "track": "main",
+      "agent": "lane-b-receipts",
+      "verb": "track_close",
+      "target": "a-expire-stale"
+    },
+    {
+      "at": "2026-11-13T13:05:38.211Z",
+      "session": "5338da98-5f75-481a-821c-366f00098b5d",
+      "track": "main",
+      "agent": "lane-b-receipts",
+      "verb": "track_close",
+      "target": "a-identity"
+    },
+    {
+      "at": "2026-11-13T13:05:39.115Z",
+      "session": "5338da98-5f75-481a-821c-366f00098b5d",
+      "track": "main",
+      "agent": "lane-b-receipts",
+      "verb": "track_close",
+      "target": "b-email-web"
+    },
+    {
+      "at": "2026-11-13T13:06:16.155Z",
+      "session": "cf6ea24f-e263-4193-8df1-0cf487c5fb5b",
+      "track": "b-client-investing",
+      "agent": "lane-b-client-investing-worker",
+      "verb": "note_post",
+      "target": "M5-phase-b:B-L6-client-investing, heads-up"
+    },
+    {
+      "at": "2026-11-13T13:06:35.238Z",
+      "session": "cf6ea24f-e263-4193-8df1-0cf487c5fb5b",
+      "track": "b-client-investing",
+      "agent": "lane-b-client-investing-worker",
+      "verb": "handoff_write",
+      "target": "M5-phase-b:B-L6-client-investing"
+    },
+    {
+      "at": "2026-11-13T13:10:22.150Z",
+      "session": "900e1a6b-a3a1-40ca-8e80-455afed099cb",
+      "track": "b-support",
+      "agent": "lane-b-support-worker",
+      "verb": "note_post",
+      "target": "M5-phase-b:B-L5-support, heads-up"
+    },
+    {
+      "at": "2026-11-13T13:10:22.494Z",
+      "session": "900e1a6b-a3a1-40ca-8e80-455afed099cb",
+      "track": "b-support",
+      "agent": "lane-b-support-worker",
+      "verb": "note_post",
+      "target": "finding"
+    },
+    {
+      "at": "2026-11-13T13:10:38.495Z",
+      "session": "900e1a6b-a3a1-40ca-8e80-455afed099cb",
+      "track": "b-support",
+      "agent": "lane-b-support-worker",
+      "verb": "handoff_write",
+      "target": "M5-phase-b:B-L5-support"
+    },
+    {
+      "at": "2026-11-13T13:11:23.022Z",
+      "session": "ec62f9c0-adfd-4dc2-8ae7-14a5ca5cbec4",
+      "track": "main",
+      "agent": "lane-b-support",
+      "verb": "context_put",
+      "target": "finding"
+    },
+    {
+      "at": "2026-11-13T13:12:12.070Z",
+      "session": "58991f12-34d7-4aeb-aa8e-80811cc624b9",
+      "track": "b-value-updates",
+      "agent": "lane-b-value-updates-worker",
+      "verb": "note_post",
+      "target": "finding"
+    },
+    {
+      "at": "2026-11-13T13:14:34.037Z",
+      "session": "58991f12-34d7-4aeb-aa8e-80811cc624b9",
+      "track": "b-value-updates",
+      "agent": "lane-b-value-updates-worker",
+      "verb": "handoff_write",
+      "target": "M5-phase-b:B-L2-value-updates"
+    },
+    {
+      "at": "2026-11-13T13:14:37.413Z",
+      "session": "cf6ea24f-e263-4193-8df1-0cf487c5fb5b",
+      "track": "b-client-investing",
+      "agent": "lane-b-client-investing-worker",
+      "verb": "handoff_write",
+      "target": "M5-phase-b:B-L6-client-investing"
+    },
+    {
+      "at": "2026-11-13T13:14:49.301Z",
+      "session": "58991f12-34d7-4aeb-aa8e-80811cc624b9",
+      "track": "b-value-updates",
+      "agent": "lane-b-value-updates-worker",
+      "verb": "note_post",
+      "target": "M5-phase-b:B-L2-value-updates, heads-up"
+    },
+    {
+      "at": "2026-11-13T13:15:50.880Z",
+      "session": "240b696b-83d3-43a1-a958-a5827478d601",
+      "track": "b-client-investing",
+      "agent": "main-landing-b-client-investing",
+      "verb": "land_start"
+    },
+    {
+      "at": "2026-11-13T13:16:04.389Z",
+      "session": "240b696b-83d3-43a1-a958-a5827478d601",
+      "track": "b-client-investing",
+      "agent": "main-landing-b-client-investing",
+      "verb": "context_put",
+      "target": "finding"
+    },
+    {
+      "at": "2026-11-13T13:16:55.104Z",
+      "session": "e9d45cc9-819a-4142-a5eb-84ebf46fe173",
+      "track": "b-returns",
+      "agent": "lane-b-returns-worker",
+      "verb": "note_post",
+      "target": "M5-phase-b:B-L3-returns, heads-up"
+    },
+    {
+      "at": "2026-11-13T13:17:46.849Z",
+      "session": "e9d45cc9-819a-4142-a5eb-84ebf46fe173",
+      "track": "b-returns",
+      "agent": "lane-b-returns-worker",
+      "verb": "note_post",
+      "target": "answer"
+    },
+    {
+      "at": "2026-11-13T13:19:02.244Z",
+      "session": "e9d45cc9-819a-4142-a5eb-84ebf46fe173",
+      "track": "b-returns",
+      "agent": "lane-b-returns-worker",
+      "verb": "handoff_write",
+      "target": "M5-phase-b:B-L3-returns"
+    },
+    {
+      "at": "2026-11-13T13:21:25.381Z",
+      "session": "900e1a6b-a3a1-40ca-8e80-455afed099cb",
+      "track": "b-support",
+      "agent": "lane-b-support-worker",
+      "verb": "handoff_write",
+      "target": "M5-phase-b:B-L5-support"
+    },
+    {
+      "at": "2026-11-13T13:22:23.709Z",
+      "session": "58991f12-34d7-4aeb-aa8e-80811cc624b9",
+      "track": "b-value-updates",
+      "agent": "lane-b-value-updates-worker",
+      "verb": "handoff_write",
+      "target": "M5-phase-b:B-L2-value-updates"
+    },
+    {
+      "at": "2026-11-13T13:25:16.734Z",
+      "session": "7029bcf2-fcfe-4f21-b321-fc4bc68fd8f1",
+      "track": "b-receipts",
+      "agent": "lane-b-receipts-worker",
+      "verb": "handoff_write",
+      "target": "M5-phase-b:B-L1-receipts"
+    },
+    {
+      "at": "2026-11-13T13:28:08.044Z",
+      "session": "5338da98-5f75-481a-821c-366f00098b5d",
+      "track": "main",
+      "agent": "lane-b-receipts",
+      "verb": "context_put",
+      "target": "finding"
+    },
+    {
+      "at": "2026-11-13T13:28:35.874Z",
+      "session": "5fb957a4-53ad-4379-8bbc-0c5f8398bb78",
+      "track": "main",
+      "agent": "lane-b-client-investing",
+      "verb": "task_land",
+      "target": "M5-phase-b / B-L6-client-investing"
+    },
+    {
+      "at": "2026-11-13T13:28:43.464Z",
+      "session": "900e1a6b-a3a1-40ca-8e80-455afed099cb",
+      "track": "b-support",
+      "agent": "lane-b-support-worker",
+      "verb": "land_start"
+    },
+    {
+      "at": "2026-11-13T13:32:47.207Z",
+      "session": "e9d45cc9-819a-4142-a5eb-84ebf46fe173",
+      "track": "b-returns",
+      "agent": "lane-b-returns-worker",
+      "verb": "handoff_write",
+      "target": "M5-phase-b:B-L3-returns"
+    },
+    {
+      "at": "2026-11-13T13:34:21.501Z",
+      "session": "ec62f9c0-adfd-4dc2-8ae7-14a5ca5cbec4",
+      "track": "main",
+      "agent": "lane-b-support",
+      "verb": "task_land",
+      "target": "M5-phase-b / B-L5-support"
+    },
+    {
+      "at": "2026-11-13T13:34:22.100Z",
+      "session": "58991f12-34d7-4aeb-aa8e-80811cc624b9",
+      "track": "b-value-updates",
+      "agent": "lane-b-value-updates-worker",
+      "verb": "land_start"
+    },
+    {
+      "at": "2026-11-13T13:40:23.517Z",
+      "session": "c077eed3-f00a-4f54-9a09-082c7682a271",
+      "track": "main",
+      "agent": "lane-b-value-updates",
+      "verb": "task_land",
+      "target": "M5-phase-b / B-L2-value-updates"
+    },
+    {
+      "at": "2026-11-13T13:55:06.955Z",
+      "session": "e9d45cc9-819a-4142-a5eb-84ebf46fe173",
+      "track": "b-returns",
+      "agent": "lane-b-returns-worker",
+      "verb": "land_start"
+    },
+    {
+      "at": "2026-11-13T14:00:38.355Z",
+      "session": "7decf29b-d1d8-414f-b7bc-0497f0d2b947",
+      "track": "main",
+      "agent": "lane-b-returns",
+      "verb": "task_land",
+      "target": "M5-phase-b / B-L3-returns"
+    },
+    {
+      "at": "2026-11-13T14:02:13.968Z",
+      "session": "7029bcf2-fcfe-4f21-b321-fc4bc68fd8f1",
+      "track": "b-receipts",
+      "agent": "lane-b-receipts-worker",
+      "verb": "land_start"
+    },
+    {
+      "at": "2026-11-13T14:06:31.341Z",
+      "session": "5338da98-5f75-481a-821c-366f00098b5d",
+      "track": "main",
+      "agent": "lane-b-receipts",
+      "verb": "task_land",
+      "target": "M5-phase-b / B-L1-receipts"
+    },
+    {
+      "at": "2026-11-13T14:08:12.849Z",
+      "session": "ffa84371-63bd-4d37-a164-55a338600705",
+      "track": "main",
+      "agent": "coordinator-b-close",
+      "verb": "milestone_deliver",
+      "target": "M5-phase-b"
+    },
+    {
+      "at": "2026-11-13T14:08:13.160Z",
+      "session": "ffa84371-63bd-4d37-a164-55a338600705",
+      "track": "main",
+      "agent": "coordinator-b-close",
+      "verb": "task_claim",
+      "target": "M5-phase-b / B-close"
+    },
+    {
+      "at": "2026-11-13T14:08:22.931Z",
+      "session": "ffa84371-63bd-4d37-a164-55a338600705",
+      "track": "main",
+      "agent": "coordinator-b-close",
+      "verb": "task_plan",
+      "target": "M5-phase-b"
+    },
+    {
+      "at": "2026-11-13T14:08:23.229Z",
+      "session": "ffa84371-63bd-4d37-a164-55a338600705",
+      "track": "main",
+      "agent": "coordinator-b-close",
+      "verb": "task_plan",
+      "target": "M3-gates"
+    },
+    {
+      "at": "2026-11-13T14:08:23.529Z",
+      "session": "ffa84371-63bd-4d37-a164-55a338600705",
+      "track": "main",
+      "agent": "coordinator-b-close",
+      "verb": "task_plan",
+      "target": "M6-phase-c"
+    },
+    {
+      "at": "2026-11-13T14:08:45.333Z",
+      "session": "58991f12-34d7-4aeb-aa8e-80811cc624b9",
+      "track": "b-value-updates",
+      "agent": "lane-b-value-updates-worker",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T14:08:45.633Z",
+      "session": "e9d45cc9-819a-4142-a5eb-84ebf46fe173",
+      "track": "b-returns",
+      "agent": "lane-b-returns-worker",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T14:08:45.938Z",
+      "session": "900e1a6b-a3a1-40ca-8e80-455afed099cb",
+      "track": "b-support",
+      "agent": "lane-b-support-worker",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T14:08:46.293Z",
+      "session": "cf6ea24f-e263-4193-8df1-0cf487c5fb5b",
+      "track": "b-client-investing",
+      "agent": "lane-b-client-investing-worker",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T14:08:46.618Z",
+      "session": "240b696b-83d3-43a1-a958-a5827478d601",
+      "track": "b-client-investing",
+      "agent": "main-landing-b-client-investing",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T14:08:46.891Z",
+      "session": "7029bcf2-fcfe-4f21-b321-fc4bc68fd8f1",
+      "track": "b-receipts",
+      "agent": "lane-b-receipts-worker",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T14:09:13.601Z",
+      "session": "ffa84371-63bd-4d37-a164-55a338600705",
+      "track": "main",
+      "agent": "coordinator-b-close",
+      "verb": "evidence_record",
+      "target": "M5-phase-b / B-close, sweep"
+    },
+    {
+      "at": "2026-11-13T14:09:45.028Z",
+      "session": "ffa84371-63bd-4d37-a164-55a338600705",
+      "track": "main",
+      "agent": "coordinator-b-close",
+      "verb": "task_land",
+      "target": "M5-phase-b / B-close"
+    },
+    {
+      "at": "2026-11-13T14:09:45.306Z",
+      "session": "ffa84371-63bd-4d37-a164-55a338600705",
+      "track": "main",
+      "agent": "coordinator-b-close",
+      "verb": "handoff_write",
+      "target": "B-close"
+    },
+    {
+      "at": "2026-11-13T14:10:09.347Z",
+      "session": "ffa84371-63bd-4d37-a164-55a338600705",
+      "track": "main",
+      "agent": "coordinator-b-close",
+      "verb": "track_close",
+      "target": "b-client-investing"
+    },
+    {
+      "at": "2026-11-13T14:10:10.438Z",
+      "session": "ffa84371-63bd-4d37-a164-55a338600705",
+      "track": "main",
+      "agent": "coordinator-b-close",
+      "verb": "track_close",
+      "target": "b-receipts"
+    },
+    {
+      "at": "2026-11-13T14:10:11.494Z",
+      "session": "ffa84371-63bd-4d37-a164-55a338600705",
+      "track": "main",
+      "agent": "coordinator-b-close",
+      "verb": "track_close",
+      "target": "b-returns"
+    },
+    {
+      "at": "2026-11-13T14:10:12.779Z",
+      "session": "ffa84371-63bd-4d37-a164-55a338600705",
+      "track": "main",
+      "agent": "coordinator-b-close",
+      "verb": "track_close",
+      "target": "b-support"
+    },
+    {
+      "at": "2026-11-13T14:10:13.775Z",
+      "session": "ffa84371-63bd-4d37-a164-55a338600705",
+      "track": "main",
+      "agent": "coordinator-b-close",
+      "verb": "track_close",
+      "target": "b-value-updates"
+    },
+    {
+      "at": "2026-11-13T14:10:33.548Z",
+      "session": "ffa84371-63bd-4d37-a164-55a338600705",
+      "track": "main",
+      "agent": "coordinator-b-close",
+      "verb": "question_add"
+    },
+    {
+      "at": "2026-11-13T14:10:33.875Z",
+      "session": "5338da98-5f75-481a-821c-366f00098b5d",
+      "track": "main",
+      "agent": "lane-b-receipts",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T14:10:34.206Z",
+      "session": "c077eed3-f00a-4f54-9a09-082c7682a271",
+      "track": "main",
+      "agent": "lane-b-value-updates",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T14:10:34.492Z",
+      "session": "7decf29b-d1d8-414f-b7bc-0497f0d2b947",
+      "track": "main",
+      "agent": "lane-b-returns",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T14:10:34.771Z",
+      "session": "ec62f9c0-adfd-4dc2-8ae7-14a5ca5cbec4",
+      "track": "main",
+      "agent": "lane-b-support",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T14:10:35.032Z",
+      "session": "5fb957a4-53ad-4379-8bbc-0c5f8398bb78",
+      "track": "main",
+      "agent": "lane-b-client-investing",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-13T14:10:41.054Z",
+      "session": "ffa84371-63bd-4d37-a164-55a338600705",
+      "track": "main",
+      "agent": "coordinator-b-close",
+      "verb": "session_close"
     }
   ]
 }

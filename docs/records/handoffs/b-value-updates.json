@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "track": "b-value-updates",
+  "current": {
+    "task": "M5-phase-b:B-L2-value-updates",
+    "from": "lane-b-value-updates-worker",
+    "track": "b-value-updates",
+    "at": "2026-11-13T13:22:23.688Z",
+    "lines": [
+      "Commits on track/b-value-updates: 7a5f683 (backend+contracts+generated), fcc4314 (frontend), af7e12f (plan handoff), 0ca9b0c (review follow-up). Independent review approved; not landed, not pushed.",
+      "Endpoints: GET /v1/client/value-updates (client scope, paged, cursor bound to userId, microsecond keyset); GET /v1/admin/client-growth/funds/{fundId}/positions (client_values.read, unpaged, 404 unknown fund; items carry accountState since 0ca9b0c).",
+      "Contract file: packages/contracts/src/operations/value-updates.ts (VALUE_UPDATE_OPERATIONS, reuses AdminUserAccountState) registered in index.ts and generate-openapi.ts; regenerate openapi + frontend operations.ts at landing.",
+      "Notices: client_value_updated payload now {fundId, entryId, deepLink:'/portfolio'}; title/body unchanged.",
+      "Value after = position value right after that update (running sum over unreversed entries by created_at,id); NOT the current value: later contributions/updates move the portfolio away from the newest row. Client screen label: 'Value after this update'. Earlier text (af7e12f body, first handoff) wrongly said the newest row matches the portfolio; corrected in plan and here.",
+      "Reversed growth entries are hidden (decision accepted by reviewer).",
+      "Sheet keeps closed/suspended/invited clients (as collective preview does) and shows a state badge on those rows.",
+      "?entry= not found on loaded pages: nothing highlighted, no error.",
+      "Shared files touched (additive): composition.ts (+10, 779), adminRoutes.ts, clientRoutes.ts, resolveDestination.ts (notificationLink + ENTRY_DESTINATIONS, shared shape with b-receipts), NotificationsScreen.tsx, queryKeys.ts, PortfolioScreen.tsx, ClientPositionsScreen.tsx.",
+      "Checks on 0ca9b0c (Node 22 container): contracts 98 tests/138 ops; backend 98 files/1180; integration 41 files/427 (coverage off); frontend 28 files/246; build:client+build:admin pass.",
+      "Negative controls (on 7a5f683/fcc4314): user scope, permission, entryId mutations failed 3 integration tests; ignoring current gain failed 2 frontend sheet tests.",
+      "Not verified: browser/device runs, notification tap on device, APK export."
+    ]
+  },
+  "history": [
+    {
+      "task": "M5-phase-b:B-L2-value-updates",
+      "from": "lane-b-value-updates-worker",
+      "track": "b-value-updates",
+      "at": "2026-11-13T13:14:34.011Z",
+      "lines": [
+        "Commits on track/b-value-updates: 7a5f683 (backend+contracts+generated), fcc4314 (frontend), af7e12f (plan handoff). Not landed, not pushed.",
+        "Endpoints: GET /v1/client/value-updates (client scope, paged, cursor bound to userId, microsecond keyset); GET /v1/admin/client-growth/funds/{fundId}/positions (client_values.read, unpaged, 404 unknown fund).",
+        "Contract file: packages/contracts/src/operations/value-updates.ts (VALUE_UPDATE_OPERATIONS) registered in index.ts and generate-openapi.ts; regenerate openapi + frontend operations.ts at landing (other lanes add files too).",
+        "Notices: client_value_updated payload now {fundId, entryId, deepLink:'/portfolio'}; title/body unchanged.",
+        "Shared files touched (additive): composition.ts (+10, now 779), adminRoutes.ts, clientRoutes.ts, resolveDestination.ts (notificationLink + ENTRY_DESTINATIONS, agreed with b-receipts: keep one function, both map lines), NotificationsScreen.tsx (destinationOf(kind, payload)), queryKeys.ts, PortfolioScreen.tsx (Value updates button), ClientPositionsScreen.tsx.",
+        "Sheet commits via existing collective explicit-deltas preview/commit; useCommitCollectiveClientGrowth now also invalidates qk.admin.fundClientPositions(fundId).",
+        "Value after = running sum over unreversed entries by (created_at,id); reversed growth entries are not listed. Reviewer should confirm this choice.",
+        "Checks (Node 22 container): contracts 98 tests/138 ops; backend 98 files/1180; integration 41 files/427 (coverage off); frontend 28 files/246; build:client+build:admin pass.",
+        "Negative controls: user scope, permission, entryId mutations failed 3 integration tests; ignoring current gain failed 2 frontend sheet tests.",
+        "Not verified: browser/device runs, notification tap on device, APK export.",
+        "Scratchpad is shared across lanes; I posted note-40 about repo.bak/routes.bak collisions."
+      ]
+    }
+  ]
+}

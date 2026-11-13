@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "track": "b-support",
+  "current": {
+    "task": "M5-phase-b:B-L5-support",
+    "from": "lane-b-support-worker",
+    "track": "b-support",
+    "at": "2026-11-13T13:21:25.312Z",
+    "lines": [
+      "B7 done on track/b-support: 7fa17e2 (API, contract admin-support.ts, integration test), 1869b57 (admin UI), ef3daeb (review follow-up: raw created_at paging with microsecond cursor). Reviewed and approved by the coordinator; not landed, not pushed.",
+      "Endpoints: GET /v1/admin/support/tickets (support.read, oldest first, ?status=, cursor); GET /v1/admin/support/tickets/{ticketId} (support.read, body + audit history); POST /v1/admin/support/tickets/{ticketId}/responses (support.write, body {status, resolutionNote, expectedVersion}, required Idempotency-Key); GET /v1/admin/users/{userId}/support-tickets (support.read, newest first, 404 for unknown user).",
+      "Reply: locks row, STATE_CONFLICT on stale version, VALIDATION_FAILED when status and note repeat the current ones, audit support.request_responded {reference, noteChanged}, notification kind support_request_updated payload {ticketId, reference, status, deepLink:/profile/support} in the same tx.",
+      "Coordinator decision 2026-11-13 (no code change): reopening a closed ticket stays allowed (a client may follow up), and every reply still needs a changed status or note.",
+      "Notification decision: NotificationItem.kind is z.string() (open) in client-account.ts, so a new kind is compatible; no existing kind fitted. Client domain/notifications.ts has no category label for it (APKs show plain title/body). Adding {label: Support} there is an optional later copy change.",
+      "No migration: support_requests (022) state/resolution_note/resolved_at/closed_at/version reused; resolved_at kept on resolved->closed, cleared on reopen; closed_at set only for closed.",
+      "Paging (ef3daeb): both lists order on raw (created_at, id); cursor value is to_char(created_at at time zone 'UTC', ...US Z) read via readKeysetValues, validated as microsecond UTC time + uuid else CURSOR_INVALID. Status filter is a plain predicate so support_requests_queue_idx applies; the All view still sorts (no created_at-only index, no migrations this phase).",
+      "Unrelated finding (note-39, not fixed): fund receipt queue pages ascending with a millisecond cursor against microsecond created_at, so it likely repeats the boundary row; same fix shape as ef3daeb.",
+      "Frontend: features/admin/support/{supportQueries,supportPresentation,SupportInboxScreen,SupportTicketScreen,SupportResponseForm,OpenTicketsTile}. OpenTicketsTile (named export, no props) is intentionally unmounted until b-returns lands (it owns OverviewScreen); the client-page support tab can reuse useUserSupportTickets(userId).",
+      "Shared files: composition.ts (+10, 780 lines), adminRoutes.ts (support, support-ticket, nav domain support order 6), queryKeys.ts, contracts index/generate-openapi, generated openapi + operations.ts (regenerate at landing), client SupportScreen (categories -> domain/supportCategories.ts, note prefixed 'Reply from the BeOnEdge team:').",
+      "Checks after ef3daeb (Node 22 container): backend check 98 files/1180; integration --coverage.enabled=false 41 files/427 (adminSupport 5 tests). Before ef3daeb, unchanged since: contracts 7 files/98 + OpenAPI valid; frontend check 27 files/241; build:admin and build:client pass.",
+      "Negative controls (run, not committed): no version guard fails the stale test; bypassing runAdminMutation fails the idempotency test; READ permission on respond fails the authorization test; a millisecond cursor on raw ordering repeats the earlier ticket in the inbox and skips it in the per-client list.",
+      "Not verified: screens in a browser/device, admin build against a deployed API. Plan doc section 8 not updated (left to the coordinator's phase record).",
+      "Trap: lanes share one scratchpad dir; another lane overwrote my contracts-check.log. Use lane-prefixed log paths."
+    ]
+  },
+  "history": [
+    {
+      "task": "M5-phase-b:B-L5-support",
+      "from": "lane-b-support-worker",
+      "track": "b-support",
+      "at": "2026-11-13T13:10:38.477Z",
+      "lines": [
+        "B7 done on track/b-support: 7fa17e2 (API, contract admin-support.ts, integration test) and 1869b57 (admin UI). Not landed, not pushed.",
+        "Endpoints: GET /v1/admin/support/tickets (support.read, oldest first, ?status=, cursor); GET /v1/admin/support/tickets/{ticketId} (support.read, body + audit history); POST /v1/admin/support/tickets/{ticketId}/responses (support.write, body {status, resolutionNote, expectedVersion}, required Idempotency-Key); GET /v1/admin/users/{userId}/support-tickets (support.read, newest first, 404 for unknown user).",
+        "Reply: locks row, STATE_CONFLICT on stale version, VALIDATION_FAILED when status and note repeat the current ones, audit support.request_responded {reference, noteChanged}, notification kind support_request_updated payload {ticketId, reference, status, deepLink:/profile/support} in the same tx.",
+        "Notification decision: NotificationItem.kind is z.string() (open) in client-account.ts, so a new kind is compatible; no existing kind fitted. Client domain/notifications.ts has no category label for it (old and new APKs show plain title/body). Adding {label: Support} there is an optional later copy change.",
+        "No migration: support_requests (022) state/resolution_note/resolved_at/closed_at/version reused; resolved_at kept on resolved->closed, cleared on reopen; closed_at set only for closed.",
+        "Paging uses date_trunc('milliseconds', created_at) for both sort and cursor compare; existing ascending lists (fund receipt queue) likely repeat rows across pages (note-39).",
+        "Frontend: features/admin/support/{supportQueries,supportPresentation,SupportInboxScreen,SupportTicketScreen,SupportResponseForm,OpenTicketsTile}. OpenTicketsTile (named export, no props) is ready for OverviewScreen to mount after b-returns lands; the client-page support tab can reuse useUserSupportTickets(userId).",
+        "Shared files: composition.ts (+10, 780 lines), adminRoutes.ts (support, support-ticket, nav domain support order 6), queryKeys.ts, contracts index/generate-openapi, generated openapi + operations.ts (regenerate at landing), client SupportScreen (categories -> domain/supportCategories.ts, note prefixed 'Reply from the BeOnEdge team:').",
+        "Checks (Node 22 container): contracts 7 files/98 tests + OpenAPI valid; backend check 98 files/1180; integration --coverage.enabled=false 41 files/426; frontend check 27 files/241; build:admin and build:client pass.",
+        "Negative controls (run, not committed): removing the version guard fails the stale test; bypassing runAdminMutation fails the idempotency test; using READ permission for respond fails the authorization test.",
+        "Not verified: screens in a browser/device, real admin build against a deployed API. Plan doc section 8 not updated (left to the coordinator's phase record).",
+        "Trap: lanes share one scratchpad dir; another lane overwrote my contracts-check.log. Use lane-prefixed log paths."
+      ]
+    }
+  ]
+}

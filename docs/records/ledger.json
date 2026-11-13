@@ -359,7 +359,7 @@
           "track": "main",
           "status": "planned",
           "also": [],
-          "brief": "MAINTAINER: write the 'How to invest' FAQ entry (bank account details, reference to quote, what happens next) in the admin FAQ screen, and after B-L6 lands publish app-config featureFlags.onlinePayments=false; agents never invent bank details"
+          "brief": "MAINTAINER: publish app-config featureFlags.onlinePayments=false (B8 is on main). No How to invest FAQ, no bank details or payment instructions anywhere (rule-11)"
         },
         {
           "id": "G12-stale-payments",
@@ -700,14 +700,26 @@
         {
           "id": "B6",
           "what": "CLIENT_WEB_APP_URL lines in invite/approval/app-download mail; web-neutral reset copy"
+        },
+        {
+          "id": "B7",
+          "what": "Admin support inbox: ticket list and detail, idempotent audited responses that notify the client, per-client ticket list"
+        },
+        {
+          "id": "B8",
+          "what": "Payments-off client UX: pay and invest actions hidden when the published onlinePayments flag is false, one History list with unsettled online payments, printable web statement; no payment instructions (rule-11)"
         }
       ],
       "tasks": [
         {
           "id": "B-L1-receipts",
           "track": "main",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "e81eb02",
+          "also": [
+            "d9d26b2",
+            "e8826b7"
+          ],
           "brief": "Lane track/b-receipts: B1 monthly investment category + server allow-list + category-driven copy/notification text and payload keys; B2 new client receipts endpoints, contract file, screen",
           "covers": [
             "B1",
@@ -717,8 +729,13 @@
         {
           "id": "B-L2-value-updates",
           "track": "main",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "22a9b4d",
+          "also": [
+            "3d44a7f",
+            "56cffb1",
+            "77a88fa"
+          ],
           "brief": "Lane track/b-value-updates: B3 value-update notification payload entryId/deepLink + client value-updates endpoint/screen; PLUS monthly value-update sheet per fund: rows of client name, invested, current value, gain so far, input 'gain since investment (Rs)'; computes per-client change and commits via existing per-client items preview/commit (one atomic batch); new read endpoint for fund client positions with names",
           "covers": [
             "B3"
@@ -727,8 +744,12 @@
         {
           "id": "B-L3-returns",
           "track": "main",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "7203235",
+          "also": [
+            "ba88063",
+            "e332863"
+          ],
           "brief": "Lane track/b-returns: B4 admin portfolio summary endpoints + single client hub page (header with invite status and send-new-link, summary, actions, tabs: ledger paged with reverse, maturity, emails, support, sign-ins) + B5 ROI dashboard (simple % + XIRR) + daily overview endpoint and screen (open tickets, invites not accepted, failed emails, last value update per fund; payments/maturity tiles added in C)",
           "covers": [
             "B4",
@@ -738,8 +759,11 @@
         {
           "id": "B-L4-email-web",
           "track": "main",
-          "status": "planned",
-          "also": [],
+          "status": "landed",
+          "commit": "883b127",
+          "also": [
+            "6f1f86d"
+          ],
           "brief": "Lane track/b-email-web: B6 optional CLIENT_WEB_APP_URL rendered into invite/approval/app-download mail, tracked env examples + compose passthrough, web-neutral reset copy",
           "covers": [
             "B6"
@@ -748,21 +772,40 @@
         {
           "id": "B-L5-support",
           "track": "main",
-          "status": "planned",
-          "also": [],
-          "brief": "Lane track/b-support: admin support inbox (list oldest first with client name/reference, detail, respond with expectedVersion/state/resolutionNote + Idempotency-Key + audit + client notification), per-client tickets endpoint; uses seeded support.read/support.write; no client contract change (client already shows status and resolutionNote)"
+          "status": "landed",
+          "commit": "ecf140c",
+          "also": [
+            "4999848",
+            "8bf1c64"
+          ],
+          "brief": "Lane track/b-support: admin support inbox (list oldest first with client name/reference, detail, respond with expectedVersion/state/resolutionNote + Idempotency-Key + audit + client notification), per-client tickets endpoint; uses seeded support.read/support.write; no client contract change (client already shows status and resolutionNote)",
+          "covers": [
+            "B7"
+          ]
         },
         {
           "id": "B-L6-client-investing",
           "track": "main",
-          "status": "planned",
-          "also": [],
-          "brief": "Lane track/b-client-investing: 'How to invest' guidance card pointing to the maintainer-authored FAQ/support; hide pay/invest CTAs when published app-config featureFlags.onlinePayments === false (absent keeps today's behavior); simplified History (activity) when payments are off; printable statement view on web (window.print) and plan for APK statement delivery"
+          "status": "landed",
+          "commit": "7b60293",
+          "also": [
+            "17ff266",
+            "239a98c",
+            "417e479",
+            "a7e6630",
+            "b05bd51",
+            "e714a8d"
+          ],
+          "brief": "Lane track/b-client-investing: 'How to invest' guidance card pointing to the maintainer-authored FAQ/support; hide pay/invest CTAs when published app-config featureFlags.onlinePayments === false (absent keeps today's behavior); simplified History (activity) when payments are off; printable statement view on web (window.print) and plan for APK statement delivery",
+          "covers": [
+            "B8"
+          ]
         },
         {
           "id": "B-close",
           "track": "main",
-          "status": "planned",
+          "status": "landed",
+          "commit": "aed82c9",
           "also": [],
           "brief": "Review, land, full sweep, handoff; maintainer then exports APKs (G7)"
         }
@@ -796,15 +839,9 @@
           "track": "main",
           "status": "planned",
           "also": [],
-          "brief": "Lane track/c-nominee: C1 migration 061 nullable nominee_name/nominee_relation with checks, populated-upgrade test, new client and admin endpoints, Profile form, user page, audit, tombstone clears",
+          "brief": "Lane track/c-nominee: C1 migration 063 nullable nominee_name/nominee_relation with checks, populated-upgrade test, new client and admin endpoints, Profile form, user page, audit, tombstone clears (convention-2)",
           "covers": [
             "C1"
-          ],
-          "waitsOn": [
-            {
-              "task": "M5-phase-b:B-close",
-              "what": "touches user page and profile after Phase B lands"
-            }
           ]
         },
         {
@@ -812,15 +849,9 @@
           "track": "main",
           "status": "planned",
           "also": [],
-          "brief": "Lane track/c-sip-maturity: C2 migration 062 admin_sip_schedules + month link, admin CRUD, monthly recording linked to a month, client months-paid endpoint and badge",
+          "brief": "Lane track/c-sip-maturity: C2 migration 064 admin_sip_schedules + month link, admin CRUD, monthly recording linked to a month (fills the receipt sipMonth), client months-paid endpoint and badge (convention-2)",
           "covers": [
             "C2"
-          ],
-          "waitsOn": [
-            {
-              "task": "M5-phase-b:B-close",
-              "what": "Q-021 answered; still starts after Phase B lands (shared recording and admin routing files)"
-            }
           ]
         },
         {
@@ -828,7 +859,7 @@
           "track": "main",
           "status": "planned",
           "also": [],
-          "brief": "Lane track/c-sip-maturity (after C2): C3 migration 063 client_maturity_schedules, dashboard, due list, AdminFrame open-app prompt, three resolutions on existing settlement + C2; idempotent; no money moves without explicit admin action",
+          "brief": "Lane track/c-sip-maturity (after C2): C3 migration 065 client_maturity_schedules, dashboard, due list, AdminFrame open-app prompt, three resolutions on existing settlement + C2; idempotent; no money moves without explicit admin action (convention-2)",
           "covers": [
             "C3"
           ],
@@ -844,7 +875,7 @@
           "track": "main",
           "status": "planned",
           "also": [],
-          "brief": "Lane track/c-payment-sheet (after C2): monthly payment sheet: month picker, one row per client/fund from the admin SIP schedule with expected amount, already recorded, date (default today IST), bank reference (UTR); per-row held idempotency keys in sessionStorage, 1-2 concurrent posts, status chip per row, explicit 'record another'; CSV paste into the sheet; optional structured bank reference on recordings (additive migration 066 + optional request field)",
+          "brief": "Lane track/c-payment-sheet (after C2): monthly payment sheet: month picker, one row per client/fund from the admin SIP schedule with expected amount, already recorded, date (default today IST), bank reference (UTR); per-row held idempotency keys in sessionStorage, 1-2 concurrent posts, status chip per row, explicit 'record another'; CSV paste into the sheet; optional structured bank reference on recordings (additive migration at the next free number + optional request field)",
           "waitsOn": [
             {
               "task": "M6-phase-c:C-L2-sip-schedule",
@@ -857,13 +888,7 @@
           "track": "main",
           "status": "planned",
           "also": [],
-          "brief": "Lane track/c-reports: accounting exports as CSV built in the browser from new read endpoints (client balances as of a date; contributions by month with bank reference); audit log presets for money commands, amount and client links, date range; per-client audit endpoint",
-          "waitsOn": [
-            {
-              "task": "M5-phase-b:B-close",
-              "what": "after Phase B lands"
-            }
-          ]
+          "brief": "Lane track/c-reports: accounting exports as CSV built in the browser from new read endpoints (client balances as of a date; contributions by month with bank reference); audit log presets for money commands, amount and client links, date range; per-client audit endpoint"
         },
         {
           "id": "C-close",
@@ -955,12 +980,6 @@
           "brief": "Lane track/e-reviews: client rating 1-5 + comment (new table, additive migration, new client endpoint and screen), admin-only list with client profile and moderation state; nothing public",
           "covers": [
             "E1"
-          ],
-          "waitsOn": [
-            {
-              "task": "M5-phase-b:B-close",
-              "what": "answered (admins only); starts after Phase B lands because it shares admin routing and the client profile area"
-            }
           ]
         },
         {

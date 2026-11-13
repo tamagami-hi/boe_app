@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "convention",
-  "nextNumber": 2,
+  "nextNumber": 3,
   "entries": [
     {
       "id": "convention-1",
@@ -23,7 +23,32 @@
         "track": "main",
         "agent": "lane-a-expire-stale"
       },
-      "at": "2026-11-13T10:32:25.533Z"
+      "at": "2026-11-13T10:32:25.533Z",
+      "retiredAt": "2026-11-13T13:01:06.813Z",
+      "retiredWhy": "replaced by convention-2"
+    },
+    {
+      "id": "convention-2",
+      "kind": "convention",
+      "title": "Migration numbers follow ship order: 061 identity, 062 investment email; Phase C nominee 063, SIP 064, maturity 065",
+      "text": "migrate.ts applies every unapplied file by set membership in filename order, so gaps and late lower numbers do run. But production would then apply migrations out of numeric order across releases. To keep production order equal to filename order, each lane takes the next free number when it lands:\n- 061: A8 contact history (on main)\n- 062: B1 investment_recorded email template check (lane b-receipts)\n- Phase C: C1 nominee 063, C2 admin SIP schedule 064, C3 maturity schedule 065\n- Reviews (E1) and bank reference (C-L3) take the next free numbers when built.\nEvery new migration also adds itself to the releaseUpgrade integration test's expected list.",
+      "paths": [
+        "backend_controller/db/migrations"
+      ],
+      "tags": [
+        "migrations",
+        "numbering"
+      ],
+      "refs": [
+        "rule-7",
+        "M5-phase-b:B-L1-receipts"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "lane-b-receipts"
+      },
+      "at": "2026-11-13T13:01:06.813Z",
+      "replaces": "convention-1"
     }
   ]
 }

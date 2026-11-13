@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "track": "b-returns",
+  "current": {
+    "task": "M5-phase-b:B-L3-returns",
+    "from": "lane-b-returns-worker",
+    "track": "b-returns",
+    "at": "2026-11-13T13:32:47.182Z",
+    "lines": [
+      "Commits on track/b-returns: 52857f7 feat(admin): add client returns, ledger page and overview reads; 2961c86 feat(admin-ui): client hub page, returns dashboard and daily tiles; c54d259 perf(admin): compute XIRR only for the summary page and totals (review follow-up). Cut from main 47d82a6, not landed.",
+      "Contract file: packages/contracts/src/operations/admin-client-returns.ts (ADMIN_CLIENT_RETURN_OPERATIONS). Regenerate openapi + frontend operations.ts at landing.",
+      "Endpoints: GET /v1/admin/clients/{userId}/portfolio-summary (client_values.read, 404 unknown user); GET /v1/admin/client-values/summary?sort=return_desc|return_asc&userIds=<<=100 csv>&after&limit (client_values.read; unfiltered = users with ledger rows; userIds path returns a zero row for listed users without entries; totals over the listed set); GET /v1/admin/client-values/fund-updates (client_values.read); GET /v1/admin/overview/pending-invites (users.read or clients.password_links.send); GET /v1/admin/clients/{userId}/ledger?fundId&after&limit (client_position.write or client_values.read; cursor carries the entry id).",
+      "Landing trap (coordinator handles): b-receipts moves AdminLedgerEntry out of admin-money.ts into admin-client-positions.ts; admin-client-returns.ts still imports it from ./admin-money.js.",
+      "Pure modules: domain/shared/xirr.ts (bisection on ln(1+r), [-99.9999%, +99999900%], 200 iterations); domain/admin/clientReturns.ts (foldClientValues = sums + simple return; withXirr adds XIRR; summarizeClientReturns = both). portfolioLedger.ts exports returnBasisPoints; returnPercent unchanged.",
+      "Summary route sorts on foldClientValues and solves XIRR only for the limit page items and the totals (c54d259); output identical, asserted by paging one row at a time.",
+      "XIRR flows: contribution = outflow on effective date; withdrawal = inflow of paid value; reversal of either negates it on the original date; growth, maturity reinvestment and their reversals are not flows; current value = inflow on IST today; netted per date; null with no outflow, < 30 days from first flow, or no root. Simple return null when invested <= 0.",
+      "Sums vs positions reads: they agree because recording/growth/settlement need a live contribution (positionBasisQuery bool_or) and reverseLedgerEntry refuses the last live contribution unless principal and value both reach 0; integration asserts summary == positions sums for a client with a reversed pair, and that reversing the last contribution under live growth is 409 STATE_CONFLICT. A fully reversed client still lists as a 0/0 row with null returns.",
+      "Frontend: UserDetailScreen is the hub (identity card + PasswordLinkPanel, PortfolioSummarySection, ClientHubActions, ClientHubTabs ledger/maturity/emails/sign-ins). No support tab (b-support adds it). Overview DailyTiles leaves a 4th slot for open tickets. Returns dashboard /client-values/returns; copy says totals cover all N clients with a recorded investment.",
+      "Summary caches (qk.admin.clientValueSummaryRoot) are invalidated by recording, reversal (adminQueries.ts +2 lines, on reviewer request), growth (growthQueries) and settlement (maturityQueries).",
+      "Verified (Node 22 container, c54d259 tree): backend check 1196; integration 41 files/429 coverage off; frontend check 27 files/241 + build:admin. Earlier sweep on 2961c86 also ran contracts check 98 and build:client. Negative controls: dropping reversal flow handling failed 1 unit + 2 integration; widening RETURNS_PERMISSIONS failed the auth test; nulling page-item XIRR failed the paging test.",
+      "Not verified: no browser or APK run, no plan section 8 update (coordinator), no production-size data."
+    ]
+  },
+  "history": [
+    {
+      "task": "M5-phase-b:B-L3-returns",
+      "from": "lane-b-returns-worker",
+      "track": "b-returns",
+      "at": "2026-11-13T13:19:02.218Z",
+      "lines": [
+        "Commits on track/b-returns: 52857f7 feat(admin): add client returns, ledger page and overview reads; 2961c86 feat(admin-ui): client hub page, returns dashboard and daily tiles. Cut from main 47d82a6, not landed.",
+        "Contract file: packages/contracts/src/operations/admin-client-returns.ts (ADMIN_CLIENT_RETURN_OPERATIONS). Regenerate openapi + frontend operations.ts at landing.",
+        "Endpoints: GET /v1/admin/clients/{userId}/portfolio-summary (client_values.read, 404 unknown user); GET /v1/admin/client-values/summary?sort=return_desc|return_asc&userIds=<<=100 csv>&after&limit (client_values.read; unfiltered = users with ledger rows; totals over the listed set); GET /v1/admin/client-values/fund-updates (client_values.read); GET /v1/admin/overview/pending-invites (users.read or clients.password_links.send); GET /v1/admin/clients/{userId}/ledger?fundId&after&limit (client_position.write or client_values.read; cursor carries the entry id, DB compares exact timestamps).",
+        "Rebase trap: b-receipts moves AdminLedgerEntry out of admin-money.ts into admin-client-positions.ts; admin-client-returns.ts imports it from ./admin-money.js and must switch to ./admin-client-positions.js when b-receipts lands first.",
+        "Pure modules: backend domain/shared/xirr.ts (bisection on ln(1+r), [-99.9999%, +99999900%], 200 iterations), domain/admin/clientReturns.ts (flow rules). portfolioLedger.ts now exports returnBasisPoints; returnPercent unchanged.",
+        "XIRR flows: contribution = outflow on effective date; withdrawal = inflow of paid value; reversal of either negates it on the original date; growth, maturity reinvestment and their reversals are not flows; current value = inflow on IST today; netted per date; null with no outflow, < 30 days from first flow, or no root. Simple return null when invested <= 0. Zero-invested clients can still have an XIRR from realised flows.",
+        "Summary list folds the whole ledger per request (grouped SQL) and sorts in memory; fine for current volumes, unmeasured at scale.",
+        "Frontend: UserDetailScreen is the hub (identity card + PasswordLinkPanel, PortfolioSummarySection, ClientHubActions, ClientHubTabs: ledger/maturity/emails/sign-ins). Support tab intentionally absent for b-support. Record-investment Section text unchanged; it now opens from the Actions button.",
+        "Only Send email preselects the client (?userId); value update, investor record and mandates screens have no preselect support.",
+        "Overview: features/admin/overview/DailyTiles.tsx (Today section, ContentGrid 4 cols, 3 tiles; 4th slot for b-support's open-tickets tile).",
+        "Returns dashboard route /client-values/returns (nav client-values order 6.5). Names come from the users directory only when users.read/read_limited; otherwise rows show the id.",
+        "composition.ts registration compacted to 7 lines (776) so all Phase B lanes together stay under 800.",
+        "Verified (Node 22 container): contracts 98; backend check 1196; integration 41 files/428 coverage off; frontend 27 files/241; build:admin + build:client. Negative controls: dropping reversal flow handling failed 1 unit + 2 integration; widening RETURNS_PERMISSIONS failed the auth integration test.",
+        "Not verified: no browser or APK run, no plan section 8 update (coordinator), no production-size data."
+      ]
+    }
+  ]
+}

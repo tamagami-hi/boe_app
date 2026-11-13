@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "rule",
-  "nextNumber": 11,
+  "nextNumber": 13,
   "entries": [
     {
       "id": "rule-1",
@@ -221,6 +221,54 @@
         "agent": "claude-opus-5-5"
       },
       "at": "2026-11-13T09:29:21.622Z"
+    },
+    {
+      "id": "rule-11",
+      "kind": "rule",
+      "title": "Decision 2026-11-13: no bank details or payment instructions; monthly investments notify 'Investment added'",
+      "text": "Maintainer, in chat during Phase B: \"I wouldn't be adding/recording any bank details or payment methods included, only a category that adding monthly investments which for the clients will be receiving notifications as investment added.\" Effects:\n- G11 no longer includes a How-to-invest FAQ. The maintainer's only remaining G11 step is publishing featureFlags.onlinePayments=false after B8 lands.\n- B8 drops the How-to-invest card and any copy telling clients how or where to pay. Pay/invest buttons are still hidden when the flag is false, with at most one neutral line (\"recorded by the BeOnEdge team\").\n- B1: monthly investment (and earlier investment) recordings notify the client with the title \"Investment added\". Correction keeps neutral wording.\n- Agents never put bank details or payment methods in code, copy, FAQ seeds or emails.",
+      "paths": [],
+      "tags": [
+        "decision",
+        "monthly-investment",
+        "notifications",
+        "payments"
+      ],
+      "refs": [
+        "rule-4",
+        "rule-9",
+        "M3-gates:G11-investing-content",
+        "M5-phase-b:B-L1-receipts",
+        "M5-phase-b:B-L6-client-investing"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "lane-b-receipts"
+      },
+      "at": "2026-11-13T12:58:10.244Z"
+    },
+    {
+      "id": "rule-12",
+      "kind": "rule",
+      "title": "Decision 2026-11-13: recorded investments also email the client the amount with 'check your app'",
+      "text": "Maintainer, in chat: \"Also an email notification of the amount recorded for that client notifying about the investment added to their app, and to check their app.\" Effects:\n- When the admin records a monthly or earlier investment, the client gets an email titled \"Investment added\", in addition to the in-app notification. It gives the amount (from paise), fund and date, asks them to open the app, and includes the CLIENT_WEB_APP_URL line when configured.\n- Corrections send no email.\n- Delivery: one email per recording, queued in the recording transaction, idempotent on replay. Amount and names go in the sealed payload. A per-template send guard cancels after reversal, closure or tombstone, bound to the email revision at queue time.\n- Needs migration 062, which only widens the email_deliveries.template_check list. AdminEmailTemplateKey is a request filter, so the delivery response stays z.string() and released admin APKs are safe.\n- Built by lane b-receipts. No bank details or payment instructions (rule-11).",
+      "paths": [],
+      "tags": [
+        "decision",
+        "monthly-investment",
+        "email",
+        "migration"
+      ],
+      "refs": [
+        "rule-11",
+        "convention-1",
+        "M5-phase-b:B-L1-receipts"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "lane-b-receipts"
+      },
+      "at": "2026-11-13T13:01:06.501Z"
     }
   ]
 }
