@@ -108,7 +108,7 @@ const SipStartScreen = (): React.ReactElement => {
   const describeFailure = (error: unknown): ClientFailure =>
     error instanceof CheckoutUrlRejected
       ? PAYMENT_LINK_REJECTED
-      : describeClientFailure(error, mode === "phonepe_autopay" ? "authoriseAutoPay" : "createSip")
+      : describeClientFailure(error, mode === "phonepe_autopay" ? "startAutoPay" : "createSip")
 
   const start = (): void => {
     setSubmitted(true)
@@ -225,7 +225,7 @@ const SipStartScreen = (): React.ReactElement => {
                     {
                       value: "manual_checkout",
                       label: "Pay each month myself",
-                      hint: "Nothing is taken automatically. Each month you get an instalment to pay in Activity, just like a one-off investment.",
+                      hint: "Nothing is taken automatically. You pay each month's amount to the BeOnEdge team directly, and the team records it.",
                     },
                     {
                       value: "phonepe_autopay",
@@ -263,7 +263,9 @@ const SipStartScreen = (): React.ReactElement => {
                     onChange={setDebitDay}
                   />
                   <span className={SIP_HINT}>
-                    The day each month your instalment is collected.
+                    {mode === "manual_checkout"
+                      ? "The day each month your payment is due."
+                      : "The day each month your instalment is collected."}
                   </span>
                 </div>
               </div>

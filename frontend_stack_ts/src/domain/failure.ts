@@ -16,6 +16,7 @@ export type FailureContext =
   | "createInvestmentOrder"
   | "payInvestmentOrder"
   | "createSip"
+  | "startAutoPay"
   | "authoriseAutoPay"
   | "changeSipPlan"
   | "cancelAutoPay"
@@ -83,6 +84,27 @@ const CODE_BASE: Readonly<Partial<Record<ErrorCode, Copy>>> = {
 const UNCONFIRMED_MONEY_SAFE =
   "We couldn't confirm this. No payment has been taken — check Activity before trying again."
 
+const ONLINE_PAYMENT_UNAVAILABLE_TITLE = "Online payment is not available"
+
+const AUTOPAY_UNAVAILABLE_TITLE = "AutoPay is not available"
+
+const PAY_TEAM_DIRECTLY =
+  "You can still invest by paying the BeOnEdge team directly. The team records each payment, and it then shows in your portfolio. Contact them through Support in your profile."
+
+const AUTOPAY_UNCONFIRMED =
+  "We couldn't confirm this. No AutoPay was authorised. Check SIP plans before trying again."
+
+const AUTOPAY_TRANSPORT: Readonly<Partial<Record<TransportErrorKind, Copy>>> = {
+  offline: { message: AUTOPAY_UNCONFIRMED },
+  timeout: { message: AUTOPAY_UNCONFIRMED },
+}
+
+const AUTOPAY_STATE_CONFLICT: Copy = {
+  message: "We couldn't start this authorisation. Check SIP plans — the plan may already be waiting there.",
+}
+
+const AUTOPAY_FALLBACK: Copy = { message: "We couldn't set up AutoPay. No payment has been taken." }
+
 const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
   signIn: {
     title: "Sign-in failed",
@@ -122,7 +144,8 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
       STATE_CONFLICT: { message: "This fund can't take an investment right now." },
       VALIDATION_FAILED: { message: "Check the amount and try again." },
       DEPENDENCY_UNAVAILABLE: {
-        message: "Investing is temporarily unavailable. No payment has been taken.",
+        title: ONLINE_PAYMENT_UNAVAILABLE_TITLE,
+        message: `Online payment is not available in the app right now, so nothing was charged or saved. ${PAY_TEAM_DIRECTLY}`,
       },
     },
     transport: { offline: { message: UNCONFIRMED_MONEY_SAFE }, timeout: { message: UNCONFIRMED_MONEY_SAFE } },
@@ -133,7 +156,8 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
     title: "Payment not started",
     codes: {
       DEPENDENCY_UNAVAILABLE: {
-        message: "Payments are temporarily unavailable. Your investment is saved — open it from Activity to pay.",
+        title: ONLINE_PAYMENT_UNAVAILABLE_TITLE,
+        message: `Online payment is not available in the app right now, so nothing was charged. This investment request stays in Activity. ${PAY_TEAM_DIRECTLY}`,
       },
       STATE_CONFLICT: {
         message: "This investment can no longer be paid. Open it from Activity to see its status.",
@@ -148,7 +172,10 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
     codes: {
       STATE_CONFLICT: { message: "This fund can't take a SIP right now." },
       VALIDATION_FAILED: { message: "Check the amount and schedule, then try again." },
-      DEPENDENCY_UNAVAILABLE: { message: "SIPs are temporarily unavailable. Nothing was created." },
+      DEPENDENCY_UNAVAILABLE: {
+        title: ONLINE_PAYMENT_UNAVAILABLE_TITLE,
+        message: `Online payment is not available in the app right now, so this SIP was not created and nothing was charged or saved. ${PAY_TEAM_DIRECTLY}`,
+      },
     },
     transport: {
       offline: { message: "We couldn't confirm this. Check SIP plans before trying again." },
@@ -157,22 +184,30 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
     fallback: { message: "We couldn't create this SIP." },
   },
 
+  startAutoPay: {
+    title: "AutoPay not authorised",
+    codes: {
+      DEPENDENCY_UNAVAILABLE: {
+        title: AUTOPAY_UNAVAILABLE_TITLE,
+        message: `AutoPay is not available in the app right now, so it was not set up and nothing was charged or saved. ${PAY_TEAM_DIRECTLY}`,
+      },
+      STATE_CONFLICT: AUTOPAY_STATE_CONFLICT,
+    },
+    transport: AUTOPAY_TRANSPORT,
+    fallback: AUTOPAY_FALLBACK,
+  },
+
   authoriseAutoPay: {
     title: "AutoPay not authorised",
     codes: {
       DEPENDENCY_UNAVAILABLE: {
-        message:
-          "AutoPay isn't available right now. Your SIP is saved and waiting for authorisation, and you can pay each instalment manually in the meantime.",
+        title: AUTOPAY_UNAVAILABLE_TITLE,
+        message: `AutoPay is not available in the app right now, so nothing was authorised or charged, and this SIP stays as it is. ${PAY_TEAM_DIRECTLY}`,
       },
-      STATE_CONFLICT: {
-        message: "We couldn't start this authorisation. Check SIP plans — the plan may already be waiting there.",
-      },
+      STATE_CONFLICT: AUTOPAY_STATE_CONFLICT,
     },
-    transport: {
-      offline: { message: "We couldn't confirm this. No AutoPay was authorised. Check SIP plans before trying again." },
-      timeout: { message: "We couldn't confirm this. No AutoPay was authorised. Check SIP plans before trying again." },
-    },
-    fallback: { message: "We couldn't set up AutoPay. No payment has been taken." },
+    transport: AUTOPAY_TRANSPORT,
+    fallback: AUTOPAY_FALLBACK,
   },
 
   changeSipPlan: {

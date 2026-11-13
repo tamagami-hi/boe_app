@@ -81,7 +81,7 @@ export const createSipInstallmentOrder = async (
     body: plan.collection_mode === "phonepe_autopay"
       ? "Your monthly SIP installment is scheduled for automatic collection."
       : "Your monthly SIP installment is due. Open the app to pay it.",
-    payload: { sipPlanId: plan.id, orderId: order.id },
+    payload: { sipPlanId: plan.id, orderId: order.id, deepLink: "/sips" },
   })
 
   return { outcome: "created", order }

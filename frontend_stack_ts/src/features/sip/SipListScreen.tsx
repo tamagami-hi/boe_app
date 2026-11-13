@@ -20,6 +20,7 @@ import { CARD_COLUMNS } from "~/ui/recipes/layout"
 import { cx } from "~/lib/cx"
 
 import { SIP_CARD_TOP, SIP_LIST, SIP_SCHEDULE } from "./sip.recipe"
+import { upcomingDueDate } from "./sipSchedule"
 import { ITEM_TITLE } from "~/ui/recipes/datalist"
 
 const SipListScreen = (): React.ReactElement => {
@@ -28,6 +29,7 @@ const SipListScreen = (): React.ReactElement => {
 
   const nameFor = (fundId: string): string =>
     funds.data?.items.find((fund) => fund.id === fundId)?.name ?? "Fund"
+  const now = new Date()
 
   return (
     <Page width="default">
@@ -63,28 +65,29 @@ Browse funds
       >
         {(data) => (
           <div className={cx(SIP_LIST, CARD_COLUMNS[2])}>
-            {data.items.map((plan) => (
-              <Link key={plan.sipId} to={`/sips/${plan.sipId}`} className={CARD_LINK}>
-                <Card>
-                  <div className={SIP_CARD_TOP}>
-                    <span className={ITEM_TITLE}>{nameFor(plan.fundId)}</span>
-                    <StatusBadge status={clientSipStatus(plan.status)} />
-                  </div>
-                  <MoneyValue amount={toPaise(plan.amountPaise)} size="md" />
-                  <div className={SIP_SCHEDULE}>
-                    <span>Collected on day {String(plan.debitDay)}</span>
-                    <span>
-                      {plan.durationMonths === null
-                        ? "Until you stop it"
-                        : countOf(plan.durationMonths, "instalment")}
-                    </span>
-                    {plan.nextDueDate === null ? null : (
-                      <span>Next on {formatDate(plan.nextDueDate)}</span>
-                    )}
-                  </div>
-                </Card>
-              </Link>
-            ))}
+            {data.items.map((plan) => {
+              const upcoming = upcomingDueDate(plan.nextDueDate, now)
+              return (
+                <Link key={plan.sipId} to={`/sips/${plan.sipId}`} className={CARD_LINK}>
+                  <Card>
+                    <div className={SIP_CARD_TOP}>
+                      <span className={ITEM_TITLE}>{nameFor(plan.fundId)}</span>
+                      <StatusBadge status={clientSipStatus(plan.status)} />
+                    </div>
+                    <MoneyValue amount={toPaise(plan.amountPaise)} size="md" />
+                    <div className={SIP_SCHEDULE}>
+                      <span>Day {String(plan.debitDay)} of each month</span>
+                      <span>
+                        {plan.durationMonths === null
+                          ? "Until you stop it"
+                          : countOf(plan.durationMonths, "instalment")}
+                      </span>
+                      {upcoming === null ? null : <span>Next on {formatDate(upcoming)}</span>}
+                    </div>
+                  </Card>
+                </Link>
+              )
+            })}
           </div>
         )}
       </AsyncBoundary>

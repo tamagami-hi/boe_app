@@ -46,9 +46,10 @@ import { ACTION_DANGER_ROW, ACTION_GROUP, ACTION_ROW } from "~/ui/recipes/layout
 import { HONESTY_TEXT } from "~/ui/recipes/text"
 
 import { SIP_CARD_TOP } from "./sip.recipe"
+import { upcomingDueDate } from "./sipSchedule"
 
 const MANUAL_EXPLANATION =
-  "You pay this plan yourself. Nothing is ever taken automatically — each month an instalment appears in Activity for you to pay."
+  "This plan is your monthly commitment, and nothing is taken automatically. You pay each month's amount to the BeOnEdge team directly. The team records each payment, and it then shows in your portfolio. Contact them through Support in your profile."
 
 const AUTOPAY_EXPLANATION =
   "This plan is collected by PhonePe UPI AutoPay. PhonePe lets you know a day before each collection."
@@ -185,6 +186,7 @@ Back to SIP plans
           }
 
           const status = clientSipStatus(plan.status)
+          const upcoming = upcomingDueDate(plan.nextDueDate, new Date())
           const autoPayStatus =
             autopay.data === undefined ? null : clientAutoPayStatus(autopay.data.mandate.status)
           const setupReason = paymentFailureReason(autopay.data?.setup?.failureCode ?? null)
@@ -209,7 +211,7 @@ Back to SIP plans
 
                 <div className={SUMMARY_GRID}>
                   <div className={STAT_ROOT}>
-                    <span className={STAT_LABEL}>Collection day</span>
+                    <span className={STAT_LABEL}>{isAutoPay ? "Collection day" : "Day each month"}</span>
                     <span className={ITEM_TITLE}>{String(plan.debitDay)}</span>
                   </div>
                   <div className={STAT_ROOT}>
@@ -220,15 +222,15 @@ Back to SIP plans
                         : String(plan.durationMonths)}
                     </span>
                   </div>
-                  <div className={STAT_ROOT}>
-                    <span className={STAT_LABEL}>Next instalment</span>
-                    <span className={ITEM_TITLE}>
-                      {plan.nextDueDate === null ? "Not scheduled" : formatDate(plan.nextDueDate)}
-                    </span>
-                  </div>
+                  {upcoming === null ? null : (
+                    <div className={STAT_ROOT}>
+                      <span className={STAT_LABEL}>Next instalment</span>
+                      <span className={ITEM_TITLE}>{formatDate(upcoming)}</span>
+                    </div>
+                  )}
                   <div className={STAT_ROOT}>
                     <span className={STAT_LABEL}>Paid by</span>
-                    <span className={ITEM_TITLE}>{isAutoPay ? "AutoPay" : "You, each month"}</span>
+                    <span className={ITEM_TITLE}>{isAutoPay ? "AutoPay" : "You, to the BeOnEdge team"}</span>
                   </div>
                 </div>
                 {status.detail === undefined ? null : (
@@ -304,7 +306,7 @@ Back to SIP plans
                     </Button>
                   ) : null}
                   <ButtonLink to="/activity" tone="ghost">
-                    See instalments in Activity
+                    {isAutoPay ? "See instalments in Activity" : "See your investments in Activity"}
                   </ButtonLink>
                 </div>
                 {canCancel || canStopMandate ? (

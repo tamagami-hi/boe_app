@@ -14,6 +14,7 @@ import { createCryptoContext, parseCryptoKeys } from "../../src/crypto/context.j
 import { createDatabase, createUnitOfWork } from "../../src/db/database.js"
 import { createPool } from "../../src/db/pool.js"
 import type { EmailMessage, EmailSender } from "../../src/email/emailSender.js"
+import type { PaymentGateway } from "../../src/providers/paymentGateway.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
 import { createClientValueEntryRepository } from "../../src/repositories/clientValueEntryRepository.js"
 import { createClientPortfolioRepository } from "../../src/repositories/clientPortfolioRepository.js"
@@ -48,6 +49,13 @@ const codeFor = (email: string): string => {
   const match = message === undefined ? null : /code is ([A-Za-z0-9]{6})\b/u.exec(message.text)
   if (match?.[1] === undefined) throw new Error(`no code emailed to ${email}`)
   return match[1]
+}
+
+const unusedPaymentGateway: PaymentGateway = {
+  createCheckout: () => Promise.reject(new Error("unused")),
+  getOrderStatus: () => Promise.reject(new Error("unused")),
+  initiateRefund: () => Promise.reject(new Error("unused")),
+  getRefundStatus: () => Promise.reject(new Error("unused")),
 }
 
 const dataOf = <T>(r: { json: () => unknown }): T => (r.json() as { data: T }).data
@@ -157,7 +165,7 @@ beforeAll(async () => {
         auditRepository: createAuditRepository(),
         idempotencyRepository: createIdempotencyRepository(),
         paymentsRepository: createPaymentsRepository(),
-        paymentGateway: null,
+        paymentGateway: unusedPaymentGateway,
         config: {
           idempotencyTtlMs: 86_400_000,
           attemptTtlMs: 900_000,

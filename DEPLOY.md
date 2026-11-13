@@ -65,7 +65,10 @@ Each worker's healthcheck reads its own `worker_heartbeats` row through
 for email, 180 s for collections, 900 s for SIPs. A green healthcheck means the pass
 completed without throwing; it does **not** prove the pass did any work, because an
 unconfigured gateway or absent SMTP transport returns a zero summary and still reports
-success.
+success. Without the payment service (`PAYMENTS_SERVICE_URL` and `PAYMENTS_SERVICE_SECRET`)
+the SIPs worker creates no instalment orders and logs `PAYMENT_GATEWAY_NOT_CONFIGURED`, and
+the API refuses client lump-sum orders and SIP plans with `DEPENDENCY_UNAVAILABLE` before
+writing anything.
 
 The email worker writes its heartbeat only at the end of a pass, so a pass must finish
 well inside that 60 s. `backend_controller/src/email/sendTiming.ts` budgets a pass at 35 s

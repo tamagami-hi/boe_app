@@ -75,7 +75,7 @@ const buildDeps = (overrides: Partial<Record<string, unknown>> = {}): SipSchedul
     },
     auditRepository: { append: vi.fn() },
     notificationRepository: { create: vi.fn() },
-    config: { claimLimit: 50, maxPeriodsPerPlan: 24 },
+    config: { claimLimit: 50, maxPeriodsPerPlan: 24, gatewayConfigured: true },
     ...overrides,
     __orders: orders,
     __plans: plans,
@@ -88,6 +88,18 @@ describe("runSipSchedulePass", () => {
     const summary = await runSipSchedulePass(deps)
     expect(summary.installmentsCreated).toBe(1)
     expect(summary.plansChecked).toBe(1)
+    expect(deps.notificationRepository.create).toHaveBeenCalledTimes(1)
+  })
+
+  test("creates no installment order and no notification for a due plan when no payment gateway is configured", async () => {
+    const deps = buildDeps({ config: { claimLimit: 50, maxPeriodsPerPlan: 24, gatewayConfigured: false } })
+    const summary = await runSipSchedulePass(deps)
+    const internals = deps as unknown as { __orders: Map<string, unknown>; __plans: Map<string, typeof basePlan> }
+    expect(summary).toEqual({ plansChecked: 0, installmentsCreated: 0, plansAdvanced: 0, plansCompleted: 0 })
+    expect(internals.__orders.size).toBe(0)
+    expect(deps.notificationRepository.create).not.toHaveBeenCalled()
+    expect(deps.auditRepository.append).not.toHaveBeenCalled()
+    expect(internals.__plans.get("plan-1")).toEqual(basePlan)
   })
 
   test("never creates a second order for the same plan and month, even across repeated passes", async () => {

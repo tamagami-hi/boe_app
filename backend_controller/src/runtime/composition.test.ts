@@ -354,10 +354,21 @@ describe("worker composers", () => {
     expect(worker.gatewayConfigured).toBe(false)
   })
 
-  test("composeSipScheduleWorker composes and exposes a runOnce function", () => {
+  test("composeSipScheduleWorker runs an idle pass without touching the database when no payment gateway is configured", async () => {
     const worker = composeSipScheduleWorker(validEnv())
     dispose.push(worker.dispose)
-    expect(typeof worker.runOnce).toBe("function")
+    expect(worker.gatewayConfigured).toBe(false)
+    expect(await worker.runOnce()).toEqual({ plansChecked: 0, installmentsCreated: 0, plansAdvanced: 0, plansCompleted: 0 })
+  })
+
+  test("composeSipScheduleWorker reports the payment gateway as configured when the payment service is set", () => {
+    const worker = composeSipScheduleWorker({
+      ...validEnv(),
+      PAYMENTS_SERVICE_URL: "http://boe-payment-service:47430",
+      PAYMENTS_SERVICE_SECRET: "0123456789abcdef0123456789abcdef0123456789abcdef",
+    })
+    dispose.push(worker.dispose)
+    expect(worker.gatewayConfigured).toBe(true)
   })
 })
 

@@ -11,6 +11,7 @@ import type { UserWriteRepository } from "./repositories/userRepository.js"
 export interface SipScheduleConfig {
   readonly claimLimit: number
   readonly maxPeriodsPerPlan: number
+  readonly gatewayConfigured: boolean
 }
 
 export interface SipScheduleDeps {
@@ -139,7 +140,15 @@ const advanceOnePlan = async (
   return { installmentsCreated, advanced, completed }
 }
 
+const IDLE_SUMMARY: SipScheduleSummary = {
+  plansChecked: 0,
+  installmentsCreated: 0,
+  plansAdvanced: 0,
+  plansCompleted: 0,
+}
+
 export const runSipSchedulePass = async (deps: SipScheduleDeps): Promise<SipScheduleSummary> => {
+  if (!deps.config.gatewayConfigured) return IDLE_SUMMARY
   const now = deps.clock()
   const due = await deps.unitOfWork.execute((tx) =>
     deps.sipPlanRepository.listDue(tx, { asOf: now.toISOString().slice(0, 10), limit: deps.config.claimLimit }),

@@ -26,8 +26,14 @@ export const runSipSchedulePass = async (options: RunSipSchedulePassOptions = {}
   let errorCode: string | undefined
   let summary: Record<string, unknown> = {}
   try {
+    if (!worker.gatewayConfigured) {
+      logger.warn(
+        { errorCode: "PAYMENT_GATEWAY_NOT_CONFIGURED" },
+        "No payment gateway is configured: this pass creates no SIP instalment orders.",
+      )
+    }
     summary = (await worker.runOnce()) as unknown as Record<string, unknown>
-    logger.info({ ...summary }, "SIP schedule pass complete")
+    logger.info({ ...summary, gatewayConfigured: worker.gatewayConfigured }, "SIP schedule pass complete")
   } catch (error) {
     success = false
     errorCode = error instanceof Error ? error.name : "UNKNOWN_ERROR"

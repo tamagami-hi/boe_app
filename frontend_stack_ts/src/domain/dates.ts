@@ -42,7 +42,21 @@ const monthFormatter = new Intl.DateTimeFormat(LOCALE, {
   year: "numeric",
 })
 
+const calendarDateFormatter = new Intl.DateTimeFormat(LOCALE, {
+  timeZone: TIME_ZONE,
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+})
+
 export const formatDate = (value: string): string => dateFormatter.format(parseIsoDateTime(value))
+
+export const indiaCalendarDate = (moment: Date): string => {
+  const parts = calendarDateFormatter.formatToParts(moment)
+  const part = (type: Intl.DateTimeFormatPartTypes): string =>
+    parts.find((entry) => entry.type === type)?.value ?? ""
+  return `${part("year")}-${part("month")}-${part("day")}`
+}
 
 export const formatDateTime = (value: string): string =>
   dateTimeFormatter.format(parseIsoDateTime(value))

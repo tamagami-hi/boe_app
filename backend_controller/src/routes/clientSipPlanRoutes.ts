@@ -8,6 +8,8 @@ import { createSipInstallmentOrder } from "../domain/client/createSipInstallment
 import { deriveInvestingEligibility } from "../domain/client/investingEligibility.js"
 import { AppError } from "../http/errorCatalog.js"
 import { parseOrThrow } from "../http/validation.js"
+import { logGatewayUnconfigured } from "../providers/gatewayFailure.js"
+import type { PaymentGateway } from "../providers/paymentGateway.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
 import type { NotificationWriteRepository } from "../repositories/notificationRepository.js"
 import type { OrderWriteRepository } from "../repositories/orderRepository.js"
@@ -22,6 +24,7 @@ export interface ClientSipDeps extends ClientRequestAuthDeps {
   readonly userRepository: UserWriteRepository
   readonly auditRepository: AuditWriteRepository
   readonly notificationRepository: NotificationWriteRepository
+  readonly paymentGateway: PaymentGateway | null
 }
 
 const SIPS_ROUTE = "/v1/client/sips"
@@ -62,6 +65,10 @@ const firstOfMonth = (date: Date): string => {
 const createSip = async (deps: ClientSipDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveClientPrincipal(request, deps)
   const body = parseOrThrow(createSipBodySchema, request.body)
+  if (deps.paymentGateway === null) {
+    logGatewayUnconfigured(request.log, { requestId: request.requestId, operation: "create_sip" })
+    throw new AppError("DEPENDENCY_UNAVAILABLE")
+  }
   const now = deps.clock()
 
   const plan = await deps.unitOfWork.execute(async (tx) => {

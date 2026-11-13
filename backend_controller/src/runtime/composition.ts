@@ -318,6 +318,7 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       userRepository,
       auditRepository,
       notificationRepository,
+      paymentGateway,
     })
 
     registerClientAutoPaySipRoutes(application, {

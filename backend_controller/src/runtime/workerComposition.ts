@@ -234,6 +234,7 @@ export const composePaymentReconciliationWorker = (
 
 export interface SipScheduleWorker {
   readonly runOnce: () => Promise<SipScheduleSummary>
+  readonly gatewayConfigured: boolean
   readonly dispose: () => Promise<void>
   readonly database: Kysely<Database>
 }
@@ -297,6 +298,7 @@ export const composeSipScheduleWorker = (
   const pool = createPool(parseDatabaseConfig(source))
   const database = createDatabase(pool)
   const unitOfWork = createUnitOfWork(database)
+  const gatewayConfigured = selectPaymentGateway(parseServerConfig(source)) !== null
 
   return {
     runOnce: () =>
@@ -311,8 +313,10 @@ export const composeSipScheduleWorker = (
         config: {
           claimLimit: 200,
           maxPeriodsPerPlan: 24,
+          gatewayConfigured,
         },
       }),
+    gatewayConfigured,
     dispose: async () => {
       await pool.end()
     },

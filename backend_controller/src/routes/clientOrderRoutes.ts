@@ -102,6 +102,10 @@ const postCreateOrder = async (deps: ClientOrderDeps, request: FastifyRequest, r
       now: now.toISOString(),
       expiresAt: new Date(now.getTime() + deps.config.idempotencyTtlMs).toISOString(),
       execute: async () => {
+        if (deps.paymentGateway === null) {
+          logGatewayUnconfigured(request.log, { requestId: request.requestId, operation: "create_order" })
+          throw new AppError("DEPENDENCY_UNAVAILABLE")
+        }
         const order = await createOrder(
           tx,
           {

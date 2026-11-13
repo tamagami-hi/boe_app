@@ -221,6 +221,14 @@ export const OPEN_PAYMENT_STATUSES: readonly string[] = [
   "refund_in_progress",
 ]
 
+export const hasCheckoutLapsed = (
+  payment: Readonly<{ status: string; expiresAt: string | null }>,
+  asOfMs: number,
+): boolean =>
+  payment.status === "payment_in_progress" &&
+  payment.expiresAt !== null &&
+  Date.parse(payment.expiresAt) <= asOfMs
+
 export const usePayment = (
   paymentId: string,
 ): UseQueryResult<DataOf<typeof getClientPayment>> => {
@@ -234,9 +242,10 @@ export const usePayment = (
     // arrives. Without this the app cannot notice the payment settled and dismiss the tab.
     refetchIntervalInBackground: true,
     refetchInterval: (query) => {
-      const status = query.state.data?.payment.status
-      if (status === undefined) return PAYMENT_POLL_INTERVAL_MS
-      return OPEN_PAYMENT_STATUSES.includes(status) ? PAYMENT_POLL_INTERVAL_MS : false
+      const payment = query.state.data?.payment
+      if (payment === undefined) return PAYMENT_POLL_INTERVAL_MS
+      if (!OPEN_PAYMENT_STATUSES.includes(payment.status)) return false
+      return hasCheckoutLapsed(payment, query.state.dataUpdatedAt) ? false : PAYMENT_POLL_INTERVAL_MS
     },
     queryFn: async () => (await api.request(getClientPayment, { params: { paymentId } })).data,
   })

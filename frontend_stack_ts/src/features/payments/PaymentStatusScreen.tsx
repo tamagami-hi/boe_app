@@ -12,6 +12,7 @@ import { supportReference } from "~/domain/reference"
 import { clientInvestmentStatus } from "~/domain/status"
 import {
   OPEN_PAYMENT_STATUSES,
+  hasCheckoutLapsed,
   useFundCatalogue,
   useInvalidateMoney,
   usePayment,
@@ -48,6 +49,11 @@ const COPY: Readonly<Record<string, string>> = {
   payment_failed:
     "This payment did not go through and nothing was taken from your account. You can try investing again.",
 }
+
+const LAPSED_COPY =
+  "The time to complete this payment has passed without a confirmed payment, so nothing was charged unless your bank shows otherwise. If money has left your account, contact the BeOnEdge team through Support with the reference below."
+
+const LAPSED_STATUS = { label: "Not completed", tone: "neutral" } as const
 
 const PaymentStatusScreen = (): React.ReactElement => {
   const { paymentId = "" } = useParams()
@@ -90,14 +96,15 @@ const PaymentStatusScreen = (): React.ReactElement => {
           const partner = paymentPartnerName(payment.provider)
           const reason = paymentFailureReason(payment.failureCode)
           const reference = supportReference(payment.paymentId)
-          const isOpen = OPEN_PAYMENT_STATUSES.includes(payment.status)
+          const lapsed = hasCheckoutLapsed(payment, query.dataUpdatedAt)
+          const isOpen = OPEN_PAYMENT_STATUSES.includes(payment.status) && !lapsed
 
           return (
             <>
               <Card elevated>
                 <div className={PAYMENT_HERO}>
                   <div className={PAYMENT_STATUS_ROW}>
-                    <StatusBadge status={clientInvestmentStatus(payment.status)} />
+                    <StatusBadge status={lapsed ? LAPSED_STATUS : clientInvestmentStatus(payment.status)} />
                     {isOpen ? (
                       <span className={STATE_REFRESHING}>
                         <Spinner size="sm" label="Checking for an update" />
@@ -105,7 +112,7 @@ const PaymentStatusScreen = (): React.ReactElement => {
                       </span>
                     ) : null}
                   </div>
-                  <p className={PAYMENT_ANSWER}>{COPY[payment.status] ?? ""}</p>
+                  <p className={PAYMENT_ANSWER}>{lapsed ? LAPSED_COPY : (COPY[payment.status] ?? "")}</p>
                 </div>
 
                 <div className={SUMMARY_GRID}>
@@ -155,7 +162,7 @@ const PaymentStatusScreen = (): React.ReactElement => {
 
               <Section>
                 <div className={ACTION_ROW}>
-                  {payment.status === "support_required" ? (
+                  {payment.status === "support_required" || lapsed ? (
                     <ButtonLink to="/profile/support">Contact support</ButtonLink>
                   ) : null}
                   {payment.status === "confirmed" ? (
