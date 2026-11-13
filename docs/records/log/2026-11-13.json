@@ -624,6 +624,254 @@
       "agent": "claude-opus-5-5",
       "verb": "buildlog_append",
       "target": "M2-plan"
+    },
+    {
+      "at": "2026-11-13T08:55:47.237Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "milestone_add",
+      "target": "Maintainer gates: approvals, answers, permissions, releases (maintainer monitors), M3-gates"
+    },
+    {
+      "at": "2026-11-13T08:55:47.710Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "milestone_add",
+      "target": "Phase A: fixes, no schema (4 parallel lanes), M4-phase-a"
+    },
+    {
+      "at": "2026-11-13T08:55:48.176Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "milestone_add",
+      "target": "Phase B: recording categories, receipts, value updates, returns, ROI dashboard, web link (no migration), M5-phase-b"
+    },
+    {
+      "at": "2026-11-13T08:55:48.693Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "milestone_add",
+      "target": "Phase C: nominee, admin SIP schedule with months paid, maturity management (additive migrations), M6-phase-c"
+    },
+    {
+      "at": "2026-11-13T08:55:49.223Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "milestone_add",
+      "target": "Phase D: dev cleanup keeping records; production pre-flight and one-time reform (separate approval), M7-phase-d"
+    },
+    {
+      "at": "2026-11-13T08:55:49.762Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "milestone_add",
+      "target": "Phase E: later work (reviews; AutoPay and mandate fixes before any payments re-enable), M8-phase-e"
+    },
+    {
+      "at": "2026-11-13T08:56:59.911Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_plan",
+      "target": "M3-gates"
+    },
+    {
+      "at": "2026-11-13T08:57:00.404Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_plan",
+      "target": "M4-phase-a"
+    },
+    {
+      "at": "2026-11-13T08:57:00.814Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_plan",
+      "target": "M5-phase-b"
+    },
+    {
+      "at": "2026-11-13T08:57:01.366Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_plan",
+      "target": "M6-phase-c"
+    },
+    {
+      "at": "2026-11-13T08:57:01.810Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_plan",
+      "target": "M7-phase-d"
+    },
+    {
+      "at": "2026-11-13T08:57:02.295Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_plan",
+      "target": "M8-phase-e"
+    },
+    {
+      "at": "2026-11-13T08:57:35.713Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_wait",
+      "target": "M4-phase-a / A-close"
+    },
+    {
+      "at": "2026-11-13T08:57:36.236Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_wait",
+      "target": "M5-phase-b / B-L1-receipts"
+    },
+    {
+      "at": "2026-11-13T08:57:36.689Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_wait",
+      "target": "M5-phase-b / B-L2-value-updates"
+    },
+    {
+      "at": "2026-11-13T08:57:37.115Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_wait",
+      "target": "M5-phase-b / B-L3-returns"
+    },
+    {
+      "at": "2026-11-13T08:57:37.528Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_wait",
+      "target": "M5-phase-b / B-L4-email-web"
+    },
+    {
+      "at": "2026-11-13T08:57:37.985Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_wait",
+      "target": "M6-phase-c / C-L1-nominee"
+    },
+    {
+      "at": "2026-11-13T08:57:38.400Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_wait",
+      "target": "M6-phase-c / C-L2-sip-schedule"
+    },
+    {
+      "at": "2026-11-13T08:57:38.845Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_wait",
+      "target": "M6-phase-c / C-L2-maturity"
+    },
+    {
+      "at": "2026-11-13T08:57:39.346Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_wait",
+      "target": "M7-phase-d / D1-dev-cleanup"
+    },
+    {
+      "at": "2026-11-13T08:57:39.786Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_wait",
+      "target": "M7-phase-d / D2-prod-reform"
+    },
+    {
+      "at": "2026-11-13T08:57:40.277Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_wait",
+      "target": "M8-phase-e / E1-reviews"
+    },
+    {
+      "at": "2026-11-13T08:57:40.704Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_wait",
+      "target": "M8-phase-e / E2-autopay-fixes"
+    },
+    {
+      "at": "2026-11-13T08:58:07.441Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "context_put",
+      "target": "rule"
+    },
+    {
+      "at": "2026-11-13T08:58:32.647Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_land",
+      "target": "M3-gates / G1-approve-plan"
+    },
+    {
+      "at": "2026-11-13T08:58:33.136Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_land",
+      "target": "M2-plan / T4-close-plan"
+    },
+    {
+      "at": "2026-11-13T08:58:33.827Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "track_open",
+      "target": "a-client-values"
+    },
+    {
+      "at": "2026-11-13T08:58:34.521Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "track_open",
+      "target": "a-payments-off"
+    },
+    {
+      "at": "2026-11-13T08:58:35.145Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "track_open",
+      "target": "a-admin-core"
+    },
+    {
+      "at": "2026-11-13T08:58:35.850Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "track_open",
+      "target": "a-onboarding"
     }
   ]
 }

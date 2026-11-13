@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "rule",
-  "nextNumber": 7,
+  "nextNumber": 8,
   "entries": [
     {
       "id": "rule-1",
@@ -125,6 +125,27 @@
         "agent": "claude-opus-5-5"
       },
       "at": "2026-11-13T08:39:48.727Z"
+    },
+    {
+      "id": "rule-7",
+      "kind": "rule",
+      "title": "Decision 2026-11-13: plans/admin-improvements.md approved; Phase A starts on parallel tracks",
+      "text": "Maintainer replied 'Yes I do' to: approve the plan, commit it, and start Phase A on tally tracks with their own worktrees. Covers opening tracks/worktrees, npm ci of locked dependencies inside them for one-shot checks, committing on track branches and landing through the tally queue onto local main (not pushing). Not covered: container runtime for the testcontainers integration suite (gate G2), deploys, APK exports, real customer mail, enabling payments, Phase D destructive step, identity rule changes pending Q-017/Q-024/Q-025. Lane rules: adminQueries.ts must not grow (move touched hooks into feature query modules); admin-money.ts untouched in Phase A; new contract files per lane in Phase B; migrations 061/062/063 reserved for C1/C2/C3.",
+      "paths": [],
+      "tags": [
+        "decision",
+        "approval",
+        "lanes"
+      ],
+      "refs": [
+        "M3-gates:G1-approve-plan",
+        "rule-2"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "at": "2026-11-13T08:58:07.425Z"
     }
   ]
 }

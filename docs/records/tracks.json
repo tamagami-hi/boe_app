@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "tracks": [
+    {
+      "name": "a-client-values",
+      "branch": "track/a-client-values",
+      "worktree": ".temp/worktrees/a-client-values",
+      "purpose": "Phase A lane 1: growth idempotency, client-values failed-read states, growth/AUM date and paise parsing (A1, A2, A5)",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "openedAt": "2026-11-13T08:58:33.627Z"
+    },
+    {
+      "name": "a-payments-off",
+      "branch": "track/a-payments-off",
+      "worktree": ".temp/worktrees/a-payments-off",
+      "purpose": "Phase A lane 2: refuse order/SIP creation without a payment gateway, SIP worker skip, honest copy (A3)",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "openedAt": "2026-11-13T08:58:34.289Z"
+    },
+    {
+      "name": "a-admin-core",
+      "branch": "track/a-admin-core",
+      "worktree": ".temp/worktrees/a-admin-core",
+      "purpose": "Phase A lane 3: admin failed-read states, app-config publish version guard, mandate paise display, unknown outcomes (A2, A4, A6)",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "openedAt": "2026-11-13T08:58:34.970Z"
+    },
+    {
+      "name": "a-onboarding",
+      "branch": "track/a-onboarding",
+      "worktree": ".temp/worktrees/a-onboarding",
+      "purpose": "Phase A lane 4: onboarding fixes (non-identity) and IST calendar today (A7, A5)",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "openedAt": "2026-11-13T08:58:35.643Z"
+    }
+  ]
+}

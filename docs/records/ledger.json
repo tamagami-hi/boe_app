@@ -199,9 +199,9 @@
         {
           "id": "T4-close-plan",
           "track": "main",
-          "status": "planned",
+          "status": "landed",
+          "commit": "81b29aa",
           "also": [],
-          "waits": "plans/admin-improvements.md drafted (uncommitted); waiting for maintainer review, answers to Q-017/Q-019..Q-025, approval, and permission to commit the plan and README pointer",
           "brief": "Verify key claims, write plans/admin-improvements.md for maintainer approval",
           "paths": [
             "plans/admin-improvements.md"
@@ -209,6 +209,594 @@
           "covers": [
             "D4-plan"
           ]
+        }
+      ]
+    },
+    {
+      "id": "M3-gates",
+      "stage": "build",
+      "group": "admin-improvements",
+      "name": "Maintainer gates: approvals, answers, permissions, releases (maintainer monitors)",
+      "track": "main",
+      "weight": 5,
+      "delivers": [
+        {
+          "id": "G-approval",
+          "what": "Plan approved and committed"
+        },
+        {
+          "id": "G-permissions",
+          "what": "Permission to open tracks/worktrees, npm ci in them, and run the container integration suite"
+        },
+        {
+          "id": "G-answers",
+          "what": "Answers to Q-017, Q-019, Q-020, Q-021, Q-024, Q-025"
+        },
+        {
+          "id": "G-releases",
+          "what": "Maintainer APK exports, dev deploy and test, production deploy, production pre-flight run"
+        },
+        {
+          "id": "G-payments",
+          "what": "Maintainer decision on re-enabling payments"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "G1-approve-plan",
+          "track": "main",
+          "status": "landed",
+          "commit": "81b29aa",
+          "also": [],
+          "brief": "MAINTAINER: approve plans/admin-improvements.md and allow committing it (approved in chat 2026-11-13)",
+          "covers": [
+            "G-approval"
+          ]
+        },
+        {
+          "id": "G2-permissions",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "MAINTAINER: allow opening tally tracks/worktrees and npm ci in them (approved with the plan); container runtime for the testcontainers integration suite still needs a yes",
+          "covers": [
+            "G-permissions"
+          ]
+        },
+        {
+          "id": "G3-answer-identity",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "MAINTAINER: answer Q-024 (correct mistyped client email/phone), Q-017 (invite link lifetime), Q-025 (password set verifies email); gates the identity parts of A7",
+          "covers": [
+            "G-answers"
+          ]
+        },
+        {
+          "id": "G4-answer-sip-maturity",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "MAINTAINER: answer Q-021 (admin-tracked SIP meaning; maturity per holding or per investment); gates C2/C3",
+          "covers": [
+            "G-answers"
+          ]
+        },
+        {
+          "id": "G5-answer-data-reform",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "MAINTAINER: answer Q-019 (what the reform fixes; masked PII on dev) and separately approve the destructive reform; gates Phase D",
+          "covers": [
+            "G-answers"
+          ]
+        },
+        {
+          "id": "G6-answer-reviews",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "MAINTAINER: answer Q-020 (client reviews wanted? who sees them); gates E1",
+          "covers": [
+            "G-answers"
+          ]
+        },
+        {
+          "id": "G7-dev-release",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "MAINTAINER: per phase, export client+admin APKs, deploy to the dev stack, test there; agents never deploy",
+          "covers": [
+            "G-releases"
+          ]
+        },
+        {
+          "id": "G8-prod-release",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "MAINTAINER: production deploy in a maintenance window; publish minimumSupportedVersion only if a phase needs it",
+          "covers": [
+            "G-releases"
+          ]
+        },
+        {
+          "id": "G9-prod-preflight",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "MAINTAINER: run the read-only production pre-flight report for Phase D and share its output",
+          "covers": [
+            "G-releases"
+          ]
+        },
+        {
+          "id": "G10-payments-decision",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "MAINTAINER: decide when payments/AutoPay are re-enabled; gates E2 landing",
+          "covers": [
+            "G-payments"
+          ]
+        },
+        {
+          "id": "G-close",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "All gates resolved"
+        }
+      ]
+    },
+    {
+      "id": "M4-phase-a",
+      "stage": "build",
+      "group": "admin-improvements",
+      "name": "Phase A: fixes, no schema (4 parallel lanes)",
+      "track": "main",
+      "weight": 25,
+      "waits": "M3-gates",
+      "delivers": [
+        {
+          "id": "A1",
+          "what": "Growth writes hold one idempotency key per submit; no double append; honest unknown outcome; stale positions invalidated"
+        },
+        {
+          "id": "A2",
+          "what": "Every admin read shows explicit loading/failure/empty; FundAum init only after successful empty read; overview failure states"
+        },
+        {
+          "id": "A3",
+          "what": "Payments-off guards: order/SIP creation refused without gateway; SIP worker creates nothing; honest copy"
+        },
+        {
+          "id": "A4",
+          "what": "App-config publish requires edited-from version; stale publish rejected"
+        },
+        {
+          "id": "A5",
+          "what": "IST 'today' for recordings/maturity; real calendar parsing and future guard for growth/AUM dates"
+        },
+        {
+          "id": "A6",
+          "what": "Mandate paise shown exactly; unknown-outcome checks; client-values gating matches routes"
+        },
+        {
+          "id": "A7",
+          "what": "Onboarding fixes from plan 2E (review step, field errors, +91 length, account-state check, eligibility failure state, expired-link action, web-neutral copy, invited label, harness in CI)"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "A-L1-client-values",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Lane track/a-client-values: A1 growth idempotency (held key per submit, form lock, honest unknown outcome, invalidate positions/ledger), A2 failed-read states on client-values screens incl. EarlierInvestmentForm fund picker, A5 growth/AUM real date parsing + future guard and server paise parsing aligned with contract. Move touched hooks out of adminQueries.ts into client-values query modules; do not touch admin-money.ts.",
+          "paths": [
+            "frontend_stack_ts/src/features/admin/client-values",
+            "frontend_stack_ts/src/features/admin/shared/adminQueries.ts",
+            "backend_controller/src/routes/adminClientGrowthRoutes.ts",
+            "backend_controller/src/routes/adminAumRoutes.ts",
+            "backend_controller/src/domain/admin/clientGrowth.ts"
+          ],
+          "covers": [
+            "A1",
+            "A2",
+            "A5"
+          ]
+        },
+        {
+          "id": "A-L2-payments-off",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Lane track/a-payments-off: A3 refuse lump-sum order and SIP creation with DEPENDENCY_UNAVAILABLE when no payment gateway; SIP worker creates no instalment without gateway; honest client copy for lump sum and AutoPay-disabled; tests for refusal and worker skip. Never enable payments or change payment env.",
+          "paths": [
+            "backend_controller/src/routes/clientOrderRoutes.ts",
+            "backend_controller/src/routes/clientSipPlanRoutes.ts",
+            "backend_controller/src/sipScheduleWorker.ts",
+            "backend_controller/src/runtime/workerComposition.ts",
+            "frontend_stack_ts/src/domain/failure.ts",
+            "frontend_stack_ts/src/features/sip",
+            "frontend_stack_ts/src/features/orders"
+          ],
+          "covers": [
+            "A3"
+          ]
+        },
+        {
+          "id": "A-L3-admin-core",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Lane track/a-admin-core: A2 failed-read states for fund-aum (no init form on failure), overview tiles, AdminFrame requiresAll, email pickers; A4 app-config publish expected-version guard (optional request field so released admin APKs still publish) + conflict copy + test; A6 exact paise formatting on mandate screens without changing the response contract, unknown-outcome checks on application/refund/receipt screens.",
+          "paths": [
+            "frontend_stack_ts/src/features/admin/fund-aum",
+            "frontend_stack_ts/src/features/admin/overview",
+            "frontend_stack_ts/src/features/admin/mandates",
+            "frontend_stack_ts/src/features/admin/applications",
+            "frontend_stack_ts/src/features/admin/refunds",
+            "frontend_stack_ts/src/features/admin/receipts",
+            "frontend_stack_ts/src/features/admin/app-config",
+            "frontend_stack_ts/src/features/admin/emails",
+            "frontend_stack_ts/src/shells/admin",
+            "backend_controller/src/routes/adminContentRoutes.ts",
+            "packages/contracts/src/operations/admin-content.ts"
+          ],
+          "covers": [
+            "A2",
+            "A4",
+            "A6"
+          ]
+        },
+        {
+          "id": "A-L4-onboarding",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Lane track/a-onboarding: A7 non-identity fixes (create-client review step, field-level duplicate errors, +91 length, recordContribution account-state check, held key + honest unknown outcome on user page and password-link panel, eligibility failure state instead of verify-email redirect, honest already-verified copy, expired-link 'request new link', web-neutral password success copy, invited label in directory, repaired onboarding harness wired into CI) and A5 IST calendar 'today' for recordings and maturity. Identity rule changes (Q-017/Q-024/Q-025) excluded.",
+          "paths": [
+            "frontend_stack_ts/src/features/admin/users",
+            "frontend_stack_ts/src/features/auth",
+            "frontend_stack_ts/src/features/email-verification",
+            "frontend_stack_ts/src/app/routing/guards.tsx",
+            "backend_controller/src/domain/admin/recordContribution.ts",
+            "backend_controller/src/domain/admin/createClientAccount.ts",
+            "backend_controller/src/routes/adminClientPositionRoutes.ts",
+            "backend_controller/src/domain/admin/maturitySettlement.ts",
+            "test_e2e",
+            ".github/workflows/ci.yml"
+          ],
+          "covers": [
+            "A5",
+            "A7"
+          ]
+        },
+        {
+          "id": "A-close",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Review each lane diff, land lanes through the tally queue, run the full verification sweep on main, record evidence, write the plan section 8 handoff",
+          "waitsOn": [
+            {
+              "task": "M3-gates:G2-permissions",
+              "what": "integration suite needs the maintainer's yes for a container runtime (G2)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "M5-phase-b",
+      "stage": "build",
+      "group": "admin-improvements",
+      "name": "Phase B: recording categories, receipts, value updates, returns, ROI dashboard, web link (no migration)",
+      "track": "main",
+      "weight": 20,
+      "waits": "M4-phase-a",
+      "delivers": [
+        {
+          "id": "B1",
+          "what": "Monthly investment category, server allow-list, category-driven admin copy and notification"
+        },
+        {
+          "id": "B2",
+          "what": "Client receipts endpoints and screen"
+        },
+        {
+          "id": "B3",
+          "what": "Value-update notification payload and client value-updates endpoint/screen"
+        },
+        {
+          "id": "B4",
+          "what": "Admin per-client portfolio summary on users list and user page, onward links"
+        },
+        {
+          "id": "B5",
+          "what": "ROI dashboard with totals, per-client returns, last updated"
+        },
+        {
+          "id": "B6",
+          "what": "CLIENT_WEB_APP_URL lines in invite/approval/app-download mail; web-neutral reset copy"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "B-L1-receipts",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Lane track/b-receipts: B1 monthly investment category + server allow-list + category-driven copy/notification text and payload keys; B2 new client receipts endpoints, contract file, screen",
+          "covers": [
+            "B1",
+            "B2"
+          ],
+          "waitsOn": [
+            {
+              "task": "M4-phase-a:A-close",
+              "what": "touches recordContribution and EarlierInvestmentForm changed in Phase A lanes 1 and 4"
+            }
+          ]
+        },
+        {
+          "id": "B-L2-value-updates",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Lane track/b-value-updates: B3 growth notification payload entryId/deepLink; new client value-updates endpoint, contract file, screen",
+          "covers": [
+            "B3"
+          ],
+          "waitsOn": [
+            {
+              "task": "M4-phase-a:A-close",
+              "what": "builds on the A1 growth idempotency fix"
+            }
+          ]
+        },
+        {
+          "id": "B-L3-returns",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Lane track/b-returns: B4 admin portfolio summary endpoints (new contract file, module outside aum/clientGrowth paths), users list/detail figures and onward links; B5 ROI dashboard screen and route",
+          "covers": [
+            "B4",
+            "B5"
+          ],
+          "waitsOn": [
+            {
+              "task": "M4-phase-a:A-close",
+              "what": "touches users screens changed in Phase A lane 4"
+            }
+          ]
+        },
+        {
+          "id": "B-L4-email-web",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Lane track/b-email-web: B6 optional CLIENT_WEB_APP_URL rendered into invite/approval/app-download mail, tracked env examples + compose passthrough, web-neutral reset copy",
+          "covers": [
+            "B6"
+          ],
+          "waitsOn": [
+            {
+              "task": "M4-phase-a:A-close",
+              "what": "touches ResetPasswordScreen changed in Phase A lane 4"
+            }
+          ]
+        },
+        {
+          "id": "B-close",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Review, land, full sweep, handoff; maintainer then exports APKs (G7)"
+        }
+      ]
+    },
+    {
+      "id": "M6-phase-c",
+      "stage": "build",
+      "group": "admin-improvements",
+      "name": "Phase C: nominee, admin SIP schedule with months paid, maturity management (additive migrations)",
+      "track": "main",
+      "weight": 20,
+      "waits": "M5-phase-b",
+      "delivers": [
+        {
+          "id": "C1",
+          "what": "Nominee name and relation (migration 061), client and admin edit, audit"
+        },
+        {
+          "id": "C2",
+          "what": "Admin SIP schedule (migration 062), monthly recording link, client months-paid badge"
+        },
+        {
+          "id": "C3",
+          "what": "Maturity schedule (migration 063), dashboard, admin open-app prompt, three resolutions"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "C-L1-nominee",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Lane track/c-nominee: C1 migration 061 nullable nominee_name/nominee_relation with checks, populated-upgrade test, new client and admin endpoints, Profile form, user page, audit, tombstone clears",
+          "covers": [
+            "C1"
+          ],
+          "waitsOn": [
+            {
+              "task": "M5-phase-b:B-close",
+              "what": "touches user page and profile after Phase B lands"
+            }
+          ]
+        },
+        {
+          "id": "C-L2-sip-schedule",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Lane track/c-sip-maturity: C2 migration 062 admin_sip_schedules + month link, admin CRUD, monthly recording linked to a month, client months-paid endpoint and badge",
+          "covers": [
+            "C2"
+          ],
+          "waitsOn": [
+            {
+              "task": "M3-gates:G4-answer-sip-maturity",
+              "what": "needs the maintainer's answer to Q-021 (G4), and Phase B landed"
+            }
+          ]
+        },
+        {
+          "id": "C-L2-maturity",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Lane track/c-sip-maturity (after C2): C3 migration 063 client_maturity_schedules, dashboard, due list, AdminFrame open-app prompt, three resolutions on existing settlement + C2; idempotent; no money moves without explicit admin action",
+          "covers": [
+            "C3"
+          ],
+          "waitsOn": [
+            {
+              "task": "M6-phase-c:C-L2-sip-schedule",
+              "what": "resolutions build on the admin SIP schedule"
+            }
+          ]
+        },
+        {
+          "id": "C-close",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Review, land, full sweep incl. integration, handoff with migration pre-flight notes"
+        }
+      ]
+    },
+    {
+      "id": "M7-phase-d",
+      "stage": "build",
+      "group": "admin-improvements",
+      "name": "Phase D: dev cleanup keeping records; production pre-flight and one-time reform (separate approval)",
+      "track": "main",
+      "weight": 10,
+      "delivers": [
+        {
+          "id": "D1",
+          "what": "Dev-only cleanup command that refuses production and keeps client and investment records"
+        },
+        {
+          "id": "D2",
+          "what": "Read-only production pre-flight report and one-time reform rehearsed on dev, registered rollback boundary"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "D1-dev-cleanup",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Lane track/d-data: dev-only cleanup command refusing production NODE_ENV/database, keeping all client and investment records, removing only what Q-019 names",
+          "covers": [
+            "D1"
+          ],
+          "waitsOn": [
+            {
+              "task": "M3-gates:G5-answer-data-reform",
+              "what": "needs Q-019 answer (G5)"
+            }
+          ]
+        },
+        {
+          "id": "D2-prod-reform",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Lane track/d-data (after D1): read-only production pre-flight report script for the maintainer, one-time reform rehearsed on dev against a masked copy, rollback-boundary registration in release_manager, populated-upgrade test",
+          "covers": [
+            "D2"
+          ],
+          "waitsOn": [
+            {
+              "task": "M7-phase-d:D1-dev-cleanup",
+              "what": "after dev cleanup; separate destructive-change approval and maintainer pre-flight run (G9)"
+            }
+          ]
+        },
+        {
+          "id": "D-close",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Review, land, maintainer runs pre-flight (G9) before any production step"
+        }
+      ]
+    },
+    {
+      "id": "M8-phase-e",
+      "stage": "build",
+      "group": "admin-improvements",
+      "name": "Phase E: later work (reviews; AutoPay and mandate fixes before any payments re-enable)",
+      "track": "main",
+      "weight": 5,
+      "delivers": [
+        {
+          "id": "E1",
+          "what": "Client reviews and comments (after Q-020)"
+        },
+        {
+          "id": "E2",
+          "what": "AutoPay due-date advance, stalled instalments, mandate reconcile atomicity (before re-enable)"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "E1-reviews",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Client reviews and comments per Q-020 answer",
+          "covers": [
+            "E1"
+          ],
+          "waitsOn": [
+            {
+              "task": "M3-gates:G6-answer-reviews",
+              "what": "needs Q-020 answer (G6)"
+            }
+          ]
+        },
+        {
+          "id": "E2-autopay-fixes",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "AutoPay next_due_date advance, stalled failed/refunded instalments, mandate reconcile atomicity; land before any payments re-enable",
+          "covers": [
+            "E2"
+          ],
+          "waitsOn": [
+            {
+              "task": "M6-phase-c:C-close",
+              "what": "scheduled after Phase C; must land before the maintainer re-enables payments (G10)"
+            }
+          ]
+        },
+        {
+          "id": "E-close",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Review, land, handoff"
         }
       ]
     }
