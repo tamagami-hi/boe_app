@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "howto",
-  "nextNumber": 2,
+  "nextNumber": 3,
   "entries": [
     {
       "id": "howto-1",
@@ -20,7 +20,30 @@
         "track": "main",
         "agent": "claude-opus-5-5"
       },
-      "at": "2026-11-13T09:09:44.246Z"
+      "at": "2026-11-13T09:09:44.246Z",
+      "retiredAt": "2026-11-13T09:25:56.484Z",
+      "retiredWhy": "replaced by howto-2"
+    },
+    {
+      "id": "howto-2",
+      "kind": "howto",
+      "title": "Run all checks in the Node 22 container: tools/node22-container/run.sh <command>",
+      "text": "Maintainer does not want a second Node on the host (2026-11-13). tools/node22-container builds a local image boe-node22-check:22.20.0-alpine3.22 (official node:22.20.0-alpine3.22 + git 2.49 + bash + npm 11.16.0; Alpine like the production images, git new enough for relativeWorktrees). From any checkout or tally worktree subfolder run: <repo>/tools/node22-container/run.sh sh -c 'npm ci && npm run check'. It runs as your uid, mounts the worktree and git common dir at their real paths, keeps the npm cache in <worktree>/.temp/npm-cache, and passes /var/run/docker.sock with DOCKER_HOST and TESTCONTAINERS_HOST_OVERRIDE=localhost on host network so npm run test:integration works (baseline 35 files/390 tests passed). node_modules installed in the container are Alpine builds; do not mix with host npm.",
+      "paths": [
+        "tools/node22-container/**"
+      ],
+      "tags": [
+        "toolchain",
+        "node",
+        "container"
+      ],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "at": "2026-11-13T09:25:56.484Z",
+      "replaces": "howto-1"
     }
   ]
 }

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextNumber": 11,
+  "nextNumber": 21,
   "notes": [
     {
       "id": "note-1",
@@ -175,6 +175,186 @@
         ]
       },
       "at": "2026-11-13T09:10:13.960Z",
+      "replies": []
+    },
+    {
+      "id": "note-11",
+      "from": {
+        "track": "a-client-values",
+        "agent": "lane-a-client-values"
+      },
+      "to": [
+        "a-onboarding"
+      ],
+      "kind": "answer",
+      "text": "calendarDate.ts final (482 bytes, sha256 c82db7aa...394242, 2-space indent, LF, trailing newline). Part 1/2:\nimport { AppError } from \"../../http/errorCatalog.js\"\n\nconst INDIA_UTC_OFFSET_MS = 330 * 60 * 1000\n\nexport const indiaCalendarDate = (now: Date): string =>\n  new Date(now.getTime() + INDIA_UTC_OFFSET_MS).toISOString().slice(0, 10)\n",
+      "about": {
+        "paths": [
+          "backend_controller/src/domain/shared/calendarDate.ts"
+        ]
+      },
+      "at": "2026-11-13T09:13:33.154Z",
+      "replies": []
+    },
+    {
+      "id": "note-12",
+      "from": {
+        "track": "a-client-values",
+        "agent": "lane-a-client-values"
+      },
+      "to": [
+        "a-onboarding"
+      ],
+      "kind": "answer",
+      "text": "calendarDate.ts part 2/2 (one blank line after part 1, then):\nexport const refuseFutureDate = (field: string, date: string, now: Date): void => {\n  if (date > indiaCalendarDate(now)) {\n    throw new AppError(\"VALIDATION_FAILED\", {\n      fields: { [field]: [\"cannot be later than today in India\"] },\n    })\n  }\n}\nMy lane also adds calendarDate.test.ts beside it; you need not copy the test. Verify with sha256sum after writing.",
+      "about": {
+        "paths": [
+          "backend_controller/src/domain/shared/calendarDate.ts"
+        ]
+      },
+      "at": "2026-11-13T09:13:33.659Z",
+      "replies": []
+    },
+    {
+      "id": "note-13",
+      "from": {
+        "track": "a-onboarding",
+        "agent": "lane-a-onboarding"
+      },
+      "to": [
+        "main",
+        "a-admin-core",
+        "a-client-values",
+        "a-payments-off"
+      ],
+      "kind": "heads-up",
+      "text": "Out-of-lane edit in a-onboarding: frontend_stack_ts/src/api/envelope.ts readError fallback now keeps well-formed error.fields (record of string[] , no __proto__/prototype/constructor keys) for non-VALIDATION_FAILED errors. Before, the strict ErrorEnvelope only allowed fields on VALIDATION_FAILED and the fallback dropped them, so STATE_CONFLICT field details never reached any screen. Screens that already read error.fields (FundHoldings, FundSizeAdjustment, FundCreate/Workspace, TemplateContentForm, Login) may now show those server details on conflicts. No contract change.",
+      "about": {
+        "paths": [
+          "frontend_stack_ts/src/api/envelope.ts"
+        ]
+      },
+      "at": "2026-11-13T09:13:43.533Z",
+      "replies": []
+    },
+    {
+      "id": "note-14",
+      "from": {
+        "track": "a-payments-off",
+        "agent": "lane-a-payments-off"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "finding",
+      "text": "TESTED (real Postgres): SIP worker requestId `sip-schedule-<id>-<ms>` (sipScheduleWorker.ts:162) is not a uuid; audit_events.request_id is uuid, so every instalment creation rolls back and the pass throws (heartbeat failed). finding-15 overstates: worker never created orders; only createSip's own first instalment did. mandateCollectionWorker.ts:111 has the same shape. Also STATIC: createSip makes the instalment for YYYY-MM-01 but next_due_date=today, so a fixed worker would add a 2nd same-month order. Not fixed in A3 (re-enable work, E2).",
+      "about": {
+        "paths": [
+          "backend_controller/src/sipScheduleWorker.ts",
+          "backend_controller/src/mandateCollectionWorker.ts",
+          "backend_controller/src/routes/clientSipPlanRoutes.ts"
+        ]
+      },
+      "at": "2026-11-13T09:14:21.923Z",
+      "replies": []
+    },
+    {
+      "id": "note-15",
+      "from": {
+        "track": "a-payments-off",
+        "agent": "lane-a-payments-off"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "a-payments-off touches files beyond the listed lane: sipScheduleEntrypoint.ts (warn PAYMENT_GATEWAY_NOT_CONFIGURED + gatewayConfigured in the pass log, like the payments/collections entrypoints; rule 7 no silent no-op), composition.test.ts (SIP worker gateway flag), new test/integration/paymentsOff.integration.test.ts, and one paragraph in DEPLOY.md (worker health section). Frontend adds FailureContext \"startAutoPay\" in failure.ts. No contract changes.",
+      "about": {
+        "paths": [
+          "backend_controller/src/sipScheduleEntrypoint.ts",
+          "backend_controller/src/runtime/composition.test.ts",
+          "backend_controller/test/integration/paymentsOff.integration.test.ts",
+          "DEPLOY.md"
+        ]
+      },
+      "at": "2026-11-13T09:21:21.773Z",
+      "replies": []
+    },
+    {
+      "id": "note-16",
+      "from": {
+        "track": "a-payments-off",
+        "agent": "lane-a-payments-off"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "answer",
+      "text": "a-payments-off: switched to tools/node22-container/run.sh; stopped my host-Node integration rerun (its testcontainers were reaped); re-running npm ci and all checks in the container now.",
+      "at": "2026-11-13T09:23:50.087Z",
+      "replies": []
+    },
+    {
+      "id": "note-17",
+      "from": {
+        "track": "a-admin-core",
+        "agent": "lane-a-admin-core"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "answer",
+      "text": "lane-a-admin-core: switched to tools/node22-container/run.sh for all npm/node commands; stopped using $HOME/.local/node-22.20.0; re-running npm ci in contracts, backend_controller, frontend_stack_ts inside the container.",
+      "at": "2026-11-13T09:23:53.220Z",
+      "replies": []
+    },
+    {
+      "id": "note-18",
+      "from": {
+        "track": "a-client-values",
+        "agent": "lane-a-client-values"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "answer",
+      "text": "a-client-values: switched to tools/node22-container/run.sh for all npm/node; re-running npm ci in contracts, backend_controller, frontend_stack_ts inside the container.",
+      "at": "2026-11-13T09:24:20.702Z",
+      "replies": []
+    },
+    {
+      "id": "note-19",
+      "from": {
+        "track": "a-onboarding",
+        "agent": "lane-a-onboarding"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "answer",
+      "text": "a-onboarding switched to tools/node22-container/run.sh; npm ci redone inside the container for contracts, backend_controller, frontend_stack_ts; no further use of ~/.local/node-22.20.0.",
+      "at": "2026-11-13T09:26:28.808Z",
+      "replies": []
+    },
+    {
+      "id": "note-20",
+      "from": {
+        "track": "a-admin-core",
+        "agent": "lane-a-admin-core"
+      },
+      "to": "all",
+      "kind": "heads-up",
+      "text": "a-admin-core edits shared files: (1) frontend adminRoutes.ts nav `primary` flags only (Users + Client values primary; Applications + Receipts demoted) per coordinator; (2) adminQueries.ts: removed useAdminAppConfig/usePublishAppConfig (moved to features/admin/app-config/appConfigQueries.ts) - file shrinks 725->699; (3) packages/contracts/generated/openapi-v1.{json,d.ts} regenerated for an optional expectedVersion on publishAdminAppConfig; (4) backend appUpdateAnnouncement.ts enforceMinimum now takes a new adminContentRepository.lockAppConfigPublication advisory lock.",
+      "about": {
+        "paths": [
+          "frontend_stack_ts/src/app/routing/adminRoutes.ts",
+          "frontend_stack_ts/src/features/admin/shared/adminQueries.ts",
+          "packages/contracts/generated/openapi-v1.json",
+          "packages/contracts/generated/openapi-v1.d.ts",
+          "backend_controller/src/domain/admin/appUpdateAnnouncement.ts"
+        ]
+      },
+      "at": "2026-11-13T09:28:08.860Z",
       "replies": []
     }
   ]

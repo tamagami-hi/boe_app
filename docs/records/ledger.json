@@ -355,6 +355,20 @@
           ]
         },
         {
+          "id": "G11-investing-content",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "MAINTAINER: write the 'How to invest' FAQ entry (bank account details, reference to quote, what happens next) in the admin FAQ screen, and after B-L6 lands publish app-config featureFlags.onlinePayments=false; agents never invent bank details"
+        },
+        {
+          "id": "G12-stale-payments",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "MAINTAINER: decide whether old pending online payments/orders created before payments were turned off are expired (state change of in-flight records, rule 11) or left as they are"
+        },
+        {
           "id": "G-close",
           "track": "main",
           "status": "planned",
@@ -403,6 +417,10 @@
         {
           "id": "A8",
           "what": "Identity follow-up: admin contact correction before password set, closed accounts release contacts (history kept), 24h invite links, invite link marks email verified"
+        },
+        {
+          "id": "A9",
+          "what": "Client app polish: payment-recorded labels, portfolio payment count, money footnote/as-of, honest recorded-payment dates, eligibility failure not 'Locked', notification tap opens and marks read, support copy honest, ticket prefix without BOE, deepLinks on reversal and payout notices"
         }
       ],
       "tasks": [
@@ -497,7 +515,7 @@
           "track": "main",
           "status": "planned",
           "also": [],
-          "brief": "Lane track/a-identity (after A-L4 lands): audited admin contact correction for clients without a password (retire old links, invite the corrected address); closed accounts release email/phone via an explicit audited action that keeps the original contacts in an append-only history table (additive migration 064) and frees the live columns without breaking the previous release's lookups; separate 24h invite (set) link lifetime config while reset links and email codes stay 10 min; password set through an invite/reset link marks the email at that revision verified. Tests for each (identity/auth critical) plus populated-upgrade test.",
+          "brief": "Lane track/a-identity (after A-L4 lands): audited admin contact correction for clients without a password (retire old links, invite the corrected address); explicit audited release of a closed account's email/phone keeping originals in an append-only history table (additive migration 064) without breaking previous-release lookups; make regenerating an invite one obvious admin action that works after expiry/cancellation (invite lifetime stays 10 min; email code step stays). Tests (identity critical) + populated-upgrade test for 064.",
           "paths": [
             "backend_controller/src/domain/admin/createClientAccount.ts",
             "backend_controller/src/domain/auth/passwordCredential.ts",
@@ -573,6 +591,27 @@
           ]
         },
         {
+          "id": "A-L6-client-polish",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Lane track/a-client-polish: A9 client app polish (FE + BE-safe strings/payload keys only)",
+          "paths": [
+            "frontend_stack_ts/src/features/portfolio",
+            "frontend_stack_ts/src/features/activity",
+            "frontend_stack_ts/src/features/dashboard",
+            "frontend_stack_ts/src/features/profile",
+            "frontend_stack_ts/src/features/notifications",
+            "frontend_stack_ts/src/features/support",
+            "backend_controller/src/routes/clientAccountRoutes.ts",
+            "backend_controller/src/domain/admin/reverseLedgerEntry.ts",
+            "backend_controller/src/domain/admin/withdrawalPayout.ts"
+          ],
+          "covers": [
+            "A9"
+          ]
+        },
+        {
           "id": "A-close",
           "track": "main",
           "status": "planned",
@@ -638,7 +677,7 @@
           "track": "main",
           "status": "planned",
           "also": [],
-          "brief": "Lane track/b-value-updates: B3 growth notification payload entryId/deepLink; new client value-updates endpoint, contract file, screen",
+          "brief": "Lane track/b-value-updates: B3 value-update notification payload entryId/deepLink + client value-updates endpoint/screen; PLUS monthly value-update sheet per fund: rows of client name, invested, current value, gain so far, input 'gain since investment (Rs)'; computes per-client change and commits via existing per-client items preview/commit (one atomic batch); new read endpoint for fund client positions with names",
           "covers": [
             "B3"
           ],
@@ -654,7 +693,7 @@
           "track": "main",
           "status": "planned",
           "also": [],
-          "brief": "Lane track/b-returns: B4 admin portfolio summary endpoints (new contract file, module outside aum/clientGrowth paths), users list/detail figures and onward links; B5 ROI dashboard: simple return % main figure plus annualised XIRR secondary (pure function on integer paise and dates, tested against independently computed values), totals, per-client returns, last updated",
+          "brief": "Lane track/b-returns: B4 admin portfolio summary endpoints + single client hub page (header with invite status and send-new-link, summary, actions, tabs: ledger paged with reverse, maturity, emails, support, sign-ins) + B5 ROI dashboard (simple % + XIRR) + daily overview endpoint and screen (open tickets, invites not accepted, failed emails, last value update per fund; payments/maturity tiles added in C)",
           "covers": [
             "B4",
             "B5"
@@ -679,6 +718,32 @@
             {
               "task": "M4-phase-a:A-close",
               "what": "touches ResetPasswordScreen changed in Phase A lane 4"
+            }
+          ]
+        },
+        {
+          "id": "B-L5-support",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Lane track/b-support: admin support inbox (list oldest first with client name/reference, detail, respond with expectedVersion/state/resolutionNote + Idempotency-Key + audit + client notification), per-client tickets endpoint; uses seeded support.read/support.write; no client contract change (client already shows status and resolutionNote)",
+          "waitsOn": [
+            {
+              "task": "M4-phase-a:A-close",
+              "what": "after Phase A lands (admin routing and client support copy touched in A)"
+            }
+          ]
+        },
+        {
+          "id": "B-L6-client-investing",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Lane track/b-client-investing: 'How to invest' guidance card pointing to the maintainer-authored FAQ/support; hide pay/invest CTAs when published app-config featureFlags.onlinePayments === false (absent keeps today's behavior); simplified History (activity) when payments are off; printable statement view on web (window.print) and plan for APK statement delivery",
+          "waitsOn": [
+            {
+              "task": "M4-phase-a:A-close",
+              "what": "after Phase A lands (client dashboard/activity touched by A-L6)"
             }
           ]
         },
@@ -763,6 +828,32 @@
           ]
         },
         {
+          "id": "C-L3-payment-sheet",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Lane track/c-payment-sheet (after C2): monthly payment sheet: month picker, one row per client/fund from the admin SIP schedule with expected amount, already recorded, date (default today IST), bank reference (UTR); per-row held idempotency keys in sessionStorage, 1-2 concurrent posts, status chip per row, explicit 'record another'; CSV paste into the sheet; optional structured bank reference on recordings (additive migration 066 + optional request field)",
+          "waitsOn": [
+            {
+              "task": "M6-phase-c:C-L2-sip-schedule",
+              "what": "rows come from the admin SIP schedule"
+            }
+          ]
+        },
+        {
+          "id": "C-L4-reports-audit",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Lane track/c-reports: accounting exports as CSV built in the browser from new read endpoints (client balances as of a date; contributions by month with bank reference); audit log presets for money commands, amount and client links, date range; per-client audit endpoint",
+          "waitsOn": [
+            {
+              "task": "M5-phase-b:B-close",
+              "what": "after Phase B lands"
+            }
+          ]
+        },
+        {
           "id": "C-close",
           "track": "main",
           "status": "planned",
@@ -794,6 +885,7 @@
           "track": "main",
           "status": "planned",
           "also": [],
+          "waits": "conditional: only when a feature needs a client-data reform (maintainer 2026-11-13); then masked dev rehearsal, no data lost",
           "brief": "Lane track/d-data: dev-only tooling refusing production NODE_ENV/database: masked import of a production copy (names, emails, phones replaced; amounts and dates real) and a cleanup that keeps every client and investment record",
           "covers": [
             "D1"
@@ -847,6 +939,7 @@
           "track": "main",
           "status": "planned",
           "also": [],
+          "waits": "deferred by maintainer 2026-11-13: reviews wanted later; fix bugs first",
           "brief": "Lane track/e-reviews: client rating 1-5 + comment (new table, additive migration, new client endpoint and screen), admin-only list with client profile and moderation state; nothing public",
           "covers": [
             "E1"
@@ -896,6 +989,62 @@
           "status": "planned",
           "also": [],
           "brief": "Review, land, handoff"
+        }
+      ]
+    },
+    {
+      "id": "M9-ux-review",
+      "stage": "build",
+      "group": "admin-improvements",
+      "name": "Seamless-experience review: client and admin journeys, what else is needed, simplifications",
+      "track": "main",
+      "weight": 5,
+      "delivers": [
+        {
+          "id": "U1",
+          "what": "Client journey audit with bank-transfer investing: bugs, dead ends, missing pieces"
+        },
+        {
+          "id": "U2",
+          "what": "Admin workflow audit: recording, updates, support, client hub; bugs and simplifications"
+        },
+        {
+          "id": "U3",
+          "what": "Plan updated with prioritised additions and simplifications"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "U1-client-journey",
+          "track": "main",
+          "status": "landed",
+          "commit": "21d63b2",
+          "also": [],
+          "brief": "Explorer: client journey end to end (sign-in web/APK, dashboard/portfolio, activity, statements, notifications, SIP, profile, support) with bank-transfer investing recorded by admin and gateway off; bugs, dead ends, missing pieces, simplifications",
+          "covers": [
+            "U1"
+          ]
+        },
+        {
+          "id": "U2-admin-workflow",
+          "track": "main",
+          "status": "landed",
+          "commit": "21d63b2",
+          "also": [],
+          "brief": "Explorer: admin daily workflow (onboard, record monthly payments, monthly value update, maturity, support tickets, client hub, overview); bugs, missing pieces, steps to simplify",
+          "covers": [
+            "U2"
+          ]
+        },
+        {
+          "id": "U-close",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Verify key claims, update plan with prioritised additions/simplifications, plan tasks on the board",
+          "covers": [
+            "U3"
+          ]
         }
       ]
     }

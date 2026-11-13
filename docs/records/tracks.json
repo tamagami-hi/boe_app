@@ -44,6 +44,17 @@
         "agent": "claude-opus-5-5"
       },
       "openedAt": "2026-11-13T08:58:35.643Z"
+    },
+    {
+      "name": "a-client-polish",
+      "branch": "track/a-client-polish",
+      "worktree": ".temp/worktrees/a-client-polish",
+      "purpose": "Phase A lane 6: client app polish for bank-transfer investing (A9)",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "openedAt": "2026-11-13T09:26:50.006Z"
     }
   ]
 }

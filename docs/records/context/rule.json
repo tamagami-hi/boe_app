@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "rule",
-  "nextNumber": 9,
+  "nextNumber": 10,
   "entries": [
     {
       "id": "rule-1",
@@ -174,7 +174,32 @@
         "track": "main",
         "agent": "claude-opus-5-5"
       },
-      "at": "2026-11-13T09:04:48.090Z"
+      "at": "2026-11-13T09:04:48.090Z",
+      "retiredAt": "2026-11-13T09:12:40.642Z",
+      "retiredWhy": "replaced by rule-9"
+    },
+    {
+      "id": "rule-9",
+      "kind": "rule",
+      "title": "Decisions 2026-11-13 (revised): invites, verification, reform scope, bank-transfer investing, reviews later",
+      "text": "Supersedes rule-8 where they differ. In force: containers allowed for the integration suite; admin-tracked SIP schedule (amount, fund, start month, months; monthly recordings linked; client sees N of M paid; no collection); maturity date per client fund holding; admin contact correction before password set + closed accounts release email/phone (history kept); dashboards show simple % plus XIRR; app-update mail to all. REVISED: Q-017 invite links stay short (10 min); instead the admin must be able to regenerate a new invite link easily, incl. after expiry or cancellation. Q-025 setting a password does NOT verify the email; the email code step stays. Q-019 no standalone cleanup project: reform/clean the DB only when something requires it, client data only, no data lost, rehearsed on dev with masked copy. Clients pay SIPs and investments directly to the company bank account; the admin records them and clients must see invested amounts reflected seamlessly in their dashboard whether the gateway is on or off. Q-020 reviews wanted but deferred; fix bugs first. Maintainer delegates: work out what else such apps need and simplify complex flows so client and admin have a seamless experience.",
+      "paths": [],
+      "tags": [
+        "decision",
+        "identity",
+        "investing",
+        "simplify"
+      ],
+      "refs": [
+        "rule-8",
+        "rule-2"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "at": "2026-11-13T09:12:40.642Z",
+      "replaces": "rule-8"
     }
   ]
 }

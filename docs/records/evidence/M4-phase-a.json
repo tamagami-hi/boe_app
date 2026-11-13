@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "milestone": "M4-phase-a",
+  "records": [
+    {
+      "id": "b92c76ab-43f9-48e6-8790-00b626bc976a",
+      "task": "A-close",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "kind": "green",
+      "command": [
+        "tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run test:integration -- --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/backend_controller",
+      "started": "2026-11-13T09:23:28Z",
+      "seconds": 51,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/baseline/backend-integration.log",
+        "sha256": "50a119a6a0ba3492191230becb89d2a287c4e9f324d49e75527db2b7a535b725",
+        "bytes": 24074
+      },
+      "summary": {
+        "files": 35,
+        "passed": 390,
+        "failed": 0,
+        "node": "22.20.0 alpine container",
+        "baseline": "main before Phase A"
+      },
+      "note": "Baseline on main (code = v0.15.4) via the new Node 22 container; proves testcontainers works from inside the container. Contracts npm run check also passed in the container."
+    }
+  ]
+}

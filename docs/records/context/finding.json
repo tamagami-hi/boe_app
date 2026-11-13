@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "finding",
-  "nextNumber": 19,
+  "nextNumber": 22,
   "entries": [
     {
       "id": "finding-1",
@@ -347,7 +347,9 @@
         "track": "main",
         "agent": "explorer-design-checks"
       },
-      "at": "2026-11-13T08:48:29.131Z"
+      "at": "2026-11-13T08:48:29.131Z",
+      "retiredAt": "2026-11-13T09:25:09.175Z",
+      "retiredWhy": "replaced by finding-21"
     },
     {
       "id": "finding-16",
@@ -426,6 +428,73 @@
         "agent": "explorer-onboarding-bugs"
       },
       "at": "2026-11-13T08:52:40.057Z"
+    },
+    {
+      "id": "finding-19",
+      "kind": "finding",
+      "title": "Client journey: recordings say 'before you joined', no Open links, one-off count, no risk footnote, dead tickets",
+      "text": "STATIC; deepLink and BOE- verified. (1) Every admin recording notifies 'earlier investment... before you joined' (recordContribution.ts:41-47) and Activity labels it 'Earlier investment'. (2) Notifications open only payload.deepLink/link/path (NotificationsScreen.tsx:30-41); recordings, value updates, reversal, maturity, payout, SIP due carry {fundId}/{payoutId} so no Open button; only fund-receipt sets deepLink. (3) Portfolio counts recorded monthly payments as 'one-off investments' (clientPortfolioRoutes.ts:192-193; PortfolioScreen.tsx:120-122); contributionCount already in response. (4) 'Investments are subject to market risk.' only on SplashScreen; Portfolio has no as-of date though lastUpdated returned. (5) Support tickets reach nobody (no admin route) yet client is told 'We reply by email'; status stays Open forever. (6) Ticket reference prefix 'BOE-' (clientAccountRoutes.ts:462) breaks copy rule. (7) SIP screens promise instalments in Activity and a frozen 'Next on {past date}'; recorded payments not linked to plans. (8) Old pending payments never settle with gateway off; PaymentStatusScreen polls every 4s forever and shows a past 'Pay by'; no client cancel. (9) Recorded payment detail shows invented 5:30 pm time (midday UTC). (10) Failed eligibility read shown as 'Locked' on Dashboard/Profile. Statements: no download/print/share. Missing: how-to-pay/bank details (FAQ, maintainer-authored), support contact. app-config config is z.record(unknown) so featureFlags.onlinePayments can hide pay CTAs with no contract change.",
+      "paths": [],
+      "tags": [
+        "ux",
+        "client",
+        "bug"
+      ],
+      "refs": [
+        "M9-ux-review:U1-client-journey",
+        "rule-9"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "explorer-client-journey"
+      },
+      "at": "2026-11-13T09:24:13.422Z"
+    },
+    {
+      "id": "finding-20",
+      "kind": "finding",
+      "title": "Admin workflow: ~10 clicks per payment, ledger capped at 25, raw ids in preview, no support inbox, no hub",
+      "text": "STATIC; ledger cap, support, invited filter verified. Recording one monthly payment = ~10 interactions/3 page loads; no bulk or CSV. Bugs: ledger query sends no limit so default 25 applies (adminRouteKit.ts:20) hiding older entries (and their reversal); collective preview shows raw userIds (CollectiveClientGrowthScreen.tsx:231); paise inputs (IndividualClientGrowthScreen.tsx:294-311, MaturityPanel.tsx:89); investor record not linkable (state only, ClientPositionDetailScreen.tsx:55); pickers list admin/closed accounts; 'Invited' filter dead because admin-created users start active (createClientAccount.ts:87); mobile bottom bar promotes Applications/Receipts not Users (adminRoutes.ts:42,230,63); collective commit no confirm; reason codes quarterly vs quarterly_valuation. Missing: monthly payment sheet (rows per client/fund, per-row idempotency key, UTR bank reference; new read endpoint), monthly value-update sheet using existing per-client items API (new read endpoint fund client positions), support inbox (support.read/write seeded unused; client already renders status/resolutionNote), daily overview counts, single client hub page (mostly FE; deliveries already filter by userId), deliveries link to client + 'send new link', audit presets/client links, accounting CSV exports and structured bank reference for reconciliation. All via new endpoints or FE.",
+      "paths": [],
+      "tags": [
+        "ux",
+        "admin",
+        "bug"
+      ],
+      "refs": [
+        "M9-ux-review:U2-admin-workflow",
+        "rule-9"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "explorer-admin-workflow"
+      },
+      "at": "2026-11-13T09:24:14.696Z"
+    },
+    {
+      "id": "finding-21",
+      "kind": "finding",
+      "title": "CORRECTION (TESTED by lane a-payments-off): SIP worker never created orders; its pass throws on a non-uuid requestId",
+      "text": "Replaces finding-15's worker claim. TESTED on real PostgreSQL by lane a-payments-off: sipScheduleWorker.ts:162 builds requestId 'sip-schedule-<id>-<ms>', but audit_events.request_id is uuid, so every instalment creation rolls back and the pass throws (worker heartbeat fails). mandateCollectionWorker.ts:111 has the same shape. So the worker never created unpayable orders; only client createSip's own first instalment and lump-sum createClientOrder did. Also STATIC: createSip creates the instalment for YYYY-MM-01 while next_due_date=today, so a fixed worker would add a second same-month order. Lane a-payments-off makes the worker skip without a gateway (warns PAYMENT_GATEWAY_NOT_CONFIGURED) and refuses client creation; the uuid and double-month fixes belong to E2 before any payments re-enable. Client-side creation refusal and copy remain valid from finding-15.",
+      "paths": [
+        "backend_controller/src/sipScheduleWorker.ts",
+        "backend_controller/src/mandateCollectionWorker.ts"
+      ],
+      "tags": [
+        "bug",
+        "sip",
+        "correction"
+      ],
+      "refs": [
+        "finding-15",
+        "M8-phase-e:E2-autopay-fixes"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "at": "2026-11-13T09:25:09.175Z",
+      "replaces": "finding-15"
     }
   ]
 }
