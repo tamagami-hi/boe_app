@@ -145,6 +145,30 @@ Defects, verified unless marked:
 
 Nothing tests the whole admin-created journey: create, set the password, client sign-in on web and APK, email code, eligibility.
 
+### F. Experience review (client and admin, 2026-11-13)
+
+The maintainer asked for a check of what else an app like this needs and where complexity can be simplified (tally `finding-19`, `finding-20`, `finding-21`). The main results:
+
+- **Client side:**
+  - Every payment the admin records tells the client it was made "before you joined the app".
+  - Most notifications have no Open link.
+  - Monthly payments are counted as one-off investments.
+  - Money screens lack the market-risk footnote and the as-of date.
+  - Support tickets reach nobody, while the client is told "we reply by email". Ticket references start with "BOE-".
+  - SIP screens promise instalments in Activity that never appear.
+  - Old pending payments poll forever.
+  - Statements cannot be kept.
+  - There is no "how to invest" guidance.
+- **Admin side:** recording one payment takes about ten steps per client, with no bulk entry.
+  - The ledger silently stops at 25 rows.
+  - The collective preview shows raw IDs.
+  - Some money inputs are in paise.
+  - The investor record cannot be linked to.
+  - The "Invited" filter never matches.
+  - The mobile bar favours unused queues.
+  - There is no support inbox, no single client page, no daily overview, no exports, and no structured bank reference for reconciliation.
+- **Correction, tested by lane `a-payments-off`:** the SIP worker never created orders. Its request ID is not a valid identifier, so every pass throws. Its fixes join E2.
+
 ## 3. Recommended design
 
 | Area | Recommended behavior |
@@ -224,6 +248,8 @@ Maintainer gates (milestone `M3-gates`):
 - G7 and G8: dev and production releases.
 - G9: the production pre-flight run.
 - G10: the payments re-enable decision.
+- G11: write the "How to invest" FAQ with the bank details, and publish `featureFlags.onlinePayments=false` once B8 lands. Agents never invent bank details.
+- G12: decide whether old pending online payments created before payments were turned off are expired, or left as they are.
 
 ## 6. Construction steps
 
@@ -254,6 +280,17 @@ Maintainer gates (milestone `M3-gates`):
   - Sending a new invite is one obvious action on the user page and works after the old link expired or was cancelled. The invite lifetime stays at 10 minutes, and the email code step stays.
   - Tests cover each change, plus a populated-upgrade test for 064.
 
+- **A9.** Client polish, on lane `a-client-polish`:
+  - "Payment recorded" labels, and portfolio counts shown as payments
+  - a shared money footnote with last updated and the market-risk line
+  - date-only display for recorded payments
+  - a failed eligibility read shown as "couldn't check", not "Locked"
+  - tapping a notification opens it and marks it read
+  - honest support copy, and `REQ-` ticket references for new tickets
+  - Open links on reversal and payout notices
+
+  Other lanes add Open links for recordings, value updates, maturity and SIP notices, neutral recording copy, the 100-row ledger with names in previews, rupee inputs, the collective confirm step, monthly reason codes, mobile navigation favouring Users, and hiding gateway-only admin sections when `featureFlags.onlinePayments` is false.
+
 ### Phase B — recording categories, receipts, value updates, returns
 
 - **B1.** "Monthly investment" option and server-side category allow-list. Form wording, section titles and notification text follow the category instead of "before the app".
@@ -262,11 +299,36 @@ Maintainer gates (milestone `M3-gates`):
 - **B4.** Admin portfolio summary endpoints. Invested, value, return % and last updated on the users list and user detail. Links from the user page to the investor record, send email, and mandates.
 - **B5.** ROI dashboard screen and route.
 - **B6.** `CLIENT_WEB_APP_URL` lines in invite, approval and app-download emails. Reset-password screen copy that does not push the APK on web.
+- **B3 extension.** A monthly value-update sheet per fund:
+  - one row per client showing invested, current value and gain so far, with an input for "gain since investment"
+  - the change is computed for each client and committed through the existing per-client preview and commit as one batch
+- **B4 extension.**
+  - A single client page: invite status with "send new link", summary, actions, and tabs for ledger (paged, with reverse), maturity, emails, support and sign-ins.
+  - A daily overview: open tickets, invites not accepted, failed emails, and last value update per fund. Payment and maturity tiles are added in Phase C.
+- **B7.** An admin support inbox:
+  - a list with client name and reference, ticket detail, and a respond action (state plus resolution note)
+  - each response is idempotent and audited, and notifies the client
+  - a per-client ticket list
+  - the client already shows status and the resolution note, so no client contract change is needed
+- **B8.** Client investing guidance:
+  - a "How to invest" card pointing to the maintainer-written FAQ
+  - pay and invest buttons hidden when the published `featureFlags.onlinePayments` is false; today's behaviour is kept when the flag is absent
+  - a single History list while payments are off
+  - a printable statement view on the web
 
 ### Phase C — nominee, admin SIP schedule, maturity
 
 - **C1.** Nominee migration, client and admin endpoints, Profile form, user page, audit. Populated-upgrade test for the new nullable columns.
 - **C2.** Admin SIP schedule table and link, admin create/edit/close, monthly recording linked to a schedule month, and a client months-paid endpoint and badge.
+- **C4.** A monthly payment sheet, after C2:
+  - pick a month; one row per client and fund from the SIP schedule, with the expected amount, the amount already recorded, the date (today in IST by default) and a bank reference (UTR)
+  - each row keeps its own idempotency key and shows its own result
+  - CSV can be pasted into the sheet
+  - the optional structured bank reference uses migration 066 and an optional request field
+- **C5.** Accounting exports and a usable audit log:
+  - client balances as of a date, and contributions by month with bank reference, built as CSV in the browser from new read endpoints
+  - money-command presets with amounts and client links
+  - a per-client audit list
 - **C3.** Maturity schedule table, admin dashboard, due list, launch prompt, and the three resolutions built from existing settlement plus C2. Test: no resolution moves money or writes ledger rows without an explicit admin action, and each resolution is idempotent.
 
 ### Phase D — data (after Q-019)
