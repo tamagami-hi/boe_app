@@ -1,6 +1,6 @@
 # BeOnEdge admin improvements: recording categories, receipts, value updates, returns, maturity, nominee, and fixes
 
-Status: **Approved by the maintainer on 2026-11-13. Phases A, B and C, and Phase E steps E1 and E2, are complete on local `main` (not pushed or released). Phase D and E3 wait for the maintainer. Phase F is being built on lane `f-maturity`. Phase G (client erasure) is being built on lane `g-erasure`.** No question is open. What still needs the maintainer: publishing `featureFlags.onlinePayments=false` (G11), the production reform's own destructive-change approval after the pre-flight report (D2), releases, and the decision to resume payments. Checks run in the pinned Node 22.20.0 / npm 11.16.0 container `tools/node22-container/run.sh` (tally `howto-2`).
+Status: **Approved by the maintainer on 2026-11-13. Phases A, B and C, and Phase E steps E1 and E2, are complete on local `main` (not pushed or released). Phase D and E3 wait for the maintainer. Phase F is complete on local `main` (section 8, Phase F close). Phase G (client erasure) is being built on lane `g-erasure`.** No question is open. What still needs the maintainer: publishing `featureFlags.onlinePayments=false` (G11), the production reform's own destructive-change approval after the pre-flight report (D2), releases, and the decision to resume payments. Checks run in the pinned Node 22.20.0 / npm 11.16.0 container `tools/node22-container/run.sh` (tally `howto-2`).
 
 Prepared: 2026-11-13. The investigation was static source reading only. No local checks ran (no dependencies are installed, and `RULES.md` forbids installing them just to make checks runnable). Nothing was diagnosed on a VPS, no test ran, no mail was sent, and nothing was deployed. GitHub CI run 38216879911 passed contracts, backend (including integration) and frontend on `ba8b196` (v0.15.4). The detailed evidence is held as tally records under `docs/records/`: findings `finding-1` to `finding-18` (excluding the retired `finding-5`), decisions `rule-2` to `rule-6`, and milestones `M1-admin-audit` and `M2-plan`.
 
@@ -46,14 +46,14 @@ IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-0
 | DEC-27 | 2026-11-13 | "Complete all the phases that needs code implementation and leave ones out that needs me." | Phase C (C1 to C5) and Phase E steps E1 and E2 were built, which lifts E1's deferral. Phase D (conditional, with a production step needing approval), E3 (maintainer timing), releases and the G11 publish were left out (section 8, Phases C and E close). |
 | DEC-13 | 2026-11-14 | Q-027: no reference number of any kind is assigned to or kept on investments the admin records. | In force. No UTR field, column or migration; tally task E4 is removed. |
 | DEC-14 | 2026-11-14 | Q-028: payments get no additions or changes; the maintainer asked only for bug fixes and for payments to be disabled. AutoPay and everything related to the payment gateway are halted until the maintainer says to resume them. | In force. E2 stays as built and dormant; no further payment work, including the E2 leftovers. |
-| DEC-16 | 2026-11-14 | The Record action on the admin user page offers a Monthly investment category. Every recording has a history with the date it was recorded, kept as a ledger the admin sees and reflected in the client's app. | Built in B1, B2 and B5. The admin ledger tab shows only the effective date, so F1 adds the recorded date. |
-| DEC-15 | 2026-11-14 | Q-029: the admin is notified first, by the launch prompt from 30 days before the date. The options are (1) withdraw the invested amount with returns, (2) reinvest the previous amount as a one-time investment and then start recording the next SIP, (3) increase the SIP's time period. The options never pop up for the client by themselves: the admin either resolves directly after talking to the client, or sends the options to that client, who then gets an email and an in-app notification and can choose in the app. Both the client and the admin can decide. | Options 1 and 2 and the 30-day prompt are built (C3). Option 3 as a SIP extension and sending the options to the client are Phase F; details wait on Q-030 to Q-032. |
+| DEC-16 | 2026-11-14 | The Record action on the admin user page offers a Monthly investment category. Every recording has a history with the date it was recorded, kept as a ledger the admin sees and reflected in the client's app. | Built in B1, B2 and B5. F1 added the recorded date to the admin ledger tab. |
+| DEC-15 | 2026-11-14 | Q-029: the admin is notified first, by the launch prompt from 30 days before the date. The options are (1) withdraw the invested amount with returns, (2) reinvest the previous amount as a one-time investment and then start recording the next SIP, (3) increase the SIP's time period. The options never pop up for the client by themselves: the admin either resolves directly after talking to the client, or sends the options to that client, who then gets an email and an in-app notification and can choose in the app. Both the client and the admin can decide. | Options 1 and 2 and the 30-day prompt are built (C3). Option 3 as a SIP extension and sending the options to the client are built in Phase F (DEC-30 to DEC-32). |
 | DEC-28 | 2026-11-14 | Question answers are decisions, not tally rules. | In force. Every maintainer decision is a tally decision with the ID shown here (group `admin-improvements`), and each answered tally question cites its ID. Tally rules hold only standing constraints that cite their source: `rule-1` (RULES.md), `rule-14` (payments, from DEC-22 and DEC-14) and `rule-15` (no bank details or reference numbers, from DEC-25 and DEC-13). The earlier rule entries that held decisions are retired, and section 8 keeps their old `rule-N` references as history. Tally `convention-6` says where each kind of record goes. |
-| DEC-20 | 2026-11-14 | Phase F go-ahead ("Build with defaults"): build F1 to F3 with the conservative defaults of Q-030 to Q-032. | Being built on lane `f-maturity`. |
+| DEC-20 | 2026-11-14 | Phase F go-ahead ("Build with defaults"): build F1 to F3 with the conservative defaults of Q-030 to Q-032. | Built (Phase F close, section 8). |
 | DEC-29 | 2026-11-14 | Q-026, erasing a client: erasure is refused until the client's invested amount and current value are both zero. Their emails and phones are erased everywhere, including the contact-change history. A client who never completed email verification cannot hold money, so erasing them deletes every record of them. A client who completed email verification is kept as a record with no contact details, and their email and phone can be used again for a new sign-up or a new admin-created client. | Phase G, which waits for the maintainer's signal. It is a destructive change under rule 11 (section 6, Phase G). |
-| DEC-30 | 2026-11-14 | Q-030: a client's maturity pick goes to the admin as the client's choice; nothing changes in money, the ledger or the SIP until the admin confirms, and confirming runs the same resolution as a direct one. | Being built in Phase F. |
-| DEC-31 | 2026-11-14 | Q-031: the admin fills in the figures for options 2 and 3 before sending; the client only picks one. | Being built in Phase F. |
-| DEC-32 | 2026-11-14 | Q-032: an extension's new maturity date is filled in as the old date plus the months added, and the admin can change it. | Being built in Phase F. |
+| DEC-30 | 2026-11-14 | Q-030: a client's maturity pick goes to the admin as the client's choice; nothing changes in money, the ledger or the SIP until the admin confirms, and confirming runs the same resolution as a direct one. | Built in Phase F. |
+| DEC-31 | 2026-11-14 | Q-031: the admin fills in the figures for options 2 and 3 before sending; the client only picks one. | Built in Phase F. |
+| DEC-32 | 2026-11-14 | Q-032: an extension's new maturity date is filled in as the old date plus the months added, and the admin can change it. | Built in Phase F. |
 | DEC-33 | 2026-11-14 | Phase G go-ahead: build client erasure (DEC-29) now. | Being built on lane `g-erasure`. |
 
 #### Replaced
@@ -376,7 +376,7 @@ Maintainer gates (milestone `M3-gates`):
   The maintainer decides the timing.
 - **E2.** Before payments are re-enabled: the AutoPay due-date advance, stalled failed or refunded instalments, and mandate reconcile atomicity (section 2B). Built on lane `e-autopay`; payments stay disabled (section 8). Since 2026-11-14 all payment and AutoPay work is halted until the maintainer resumes it (`DEC-14`).
 
-### Phase F — maturity choices (DEC-15, DEC-20; lane `f-maturity`)
+### Phase F — maturity choices (DEC-15, DEC-20; built, section 8)
 
 Built on one lane, `f-maturity`, with migration 068. Phase C is not released, so its maturity endpoints and enums can still change before release. Released APKs only gain new endpoints and a new notification kind, which they show as a plain notice.
 
@@ -706,3 +706,53 @@ Every lane landed on local `main` through the tally queue, one at a time, each a
     - the APK statement PDF is still a proposal.
   - Q-026 and Q-027 to Q-029 are open.
 - **Not verified.** No browser or device run of any new screen, no real mail, no APK export, nothing on a VPS.
+
+### Phase F close (2026-11-14)
+
+Phase F (DEC-15, DEC-20, DEC-30 to DEC-32) was built on lane `f-maturity`. It landed on local `main` through the tally queue after an independent review whose findings were fixed before landing. Nothing is pushed, released or deployed.
+
+| Step | Commits on `main` |
+| --- | --- |
+| F2, F3 backend and migration 068 | `24400e6` |
+| Contracts, generated files, F1 and the admin screens | `c051442` |
+| Client screen | `e134227` |
+| Review fixes | `8745482` |
+
+- **Migration 068** only adds:
+  - the resolution checks are dropped and re-added with `sip_extension`, and `sip_reinvestment` stays allowed;
+  - a new append-only `client_maturity_offers` table: one open offer per maturity, offered figures that never change, closed rows frozen, no delete or truncate;
+  - the email template check is widened with `maturity_options`.
+
+  The previous release runs against it, and it has a populated-upgrade test. As with `finding-26`, a previous-release email worker would permanently fail any queued `maturity_options` mail after a rollback; the in-app notice is unaffected and the admin can send the options again.
+- **F1.** The admin ledger tab has a Recorded column beside Effective.
+- **F2.** Option 3 is "Extend the SIP":
+  - It adds months to the active admin SIP schedule through the existing edit, with its version check and 600-month cap, and writes no ledger row.
+  - It resolves the maturity and schedules the next one in the same transaction, by default at the old date plus the months added and editable (DEC-32).
+  - It is refused without an active schedule and for a closed or erased client.
+  - The resolve response gains `nextScheduleId`.
+- **F3.** The admin sends the options to one client from the dashboard, the launch prompt or the client page, and fills in the figures (DEC-31).
+  - The client gets the notification `maturity_options_sent`, whose payload holds the offer, maturity and fund ids and no link, so released apps show a plain notice. The client also gets the email `maturity_options`: fund and maturity date, no amounts, plus the web app line when configured. Its send guard cancels on a closed offer, a closed or erased account, or a changed email.
+  - The client sees the current value and the three options with their figures, and picks one with a held Idempotency-Key.
+  - The admin confirms the pick, which runs the same resolution as a direct one with the offered figures and the existing guards (DEC-30). Nothing changes money, the ledger or a SIP before that.
+  - A send carries the version of the open offer the admin saw, so a stale send is refused instead of silently replacing a client's pick.
+- **Review outcome** (independent review: land after fixes, no critical or high finding):
+  - option 3 was not checking the client's account state;
+  - a concurrent send could replace a client's pick;
+  - guard and refusal tests were missing.
+
+  All three are fixed in `8745482`. Each new guard was removed once to show its test fails.
+- **Lane defaults for the maintainer to review:**
+  - option 3 may be left out of an offer;
+  - changing or cancelling a maturity date closes an open offer;
+  - options go only to an active client who has not been erased;
+  - options may be sent before the date, but are confirmed or resolved only on or after it;
+  - withdrawing an offer does not notify the client;
+  - if an offered SIP start month has passed by the time the admin confirms, the admin sends fresh options.
+- **Landing run (TESTED, tally landing ticket 313b4027, Node 22 container):** each of the four commits passed the contracts build, backend `npm run check` (100 files / 1198 tests) and frontend `npm run check` (34 files / 316 tests, generated client unchanged, bundle boot check) after rebasing onto `main`. The integration suite and the two app builds ran on the lane, and run again in the sweep after Phase G lands.
+- **Lane run on 332d5ec (TESTED):**
+  - contracts 98 tests, 183 operations reachable;
+  - backend 100 files / 1198 tests;
+  - integration 59 files / 531 tests;
+  - frontend 34 files / 316 tests;
+  - `build:client` and `build:admin` passed.
+- **Not verified.** No browser or device run, no notification tapped, no real mail, no APK export, nothing on a VPS.
