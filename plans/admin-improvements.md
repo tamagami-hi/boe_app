@@ -1,6 +1,6 @@
 # BeOnEdge admin improvements: recording categories, receipts, value updates, returns, maturity, nominee, and fixes
 
-Status: **Approved by the maintainer on 2026-11-13. Phase A is complete on local `main` (seven lanes, not pushed or released); Phase B is next.** One question is open (Q-026, section 0a). What still needs the maintainer: Q-026, the production reform's own destructive-change approval after the pre-flight report (D2), releases, and the payments re-enable decision. Checks run in the pinned Node 22.20.0 / npm 11.16.0 container `tools/node22-container/run.sh` (tally `howto-2`).
+Status: **Approved by the maintainer on 2026-11-13. Phases A and B are complete on local `main` (seven and six lanes, not pushed or released); Phase C is next.** One question is open (Q-026, section 0a). What still needs the maintainer: Q-026, publishing `featureFlags.onlinePayments=false` (G11), the production reform's own destructive-change approval after the pre-flight report (D2), releases, and the payments re-enable decision. Checks run in the pinned Node 22.20.0 / npm 11.16.0 container `tools/node22-container/run.sh` (tally `howto-2`).
 
 Prepared: 2026-11-13. The investigation was static source reading only. No local checks ran (no dependencies are installed, and `RULES.md` forbids installing them just to make checks runnable). Nothing was diagnosed on a VPS, no test ran, no mail was sent, and nothing was deployed. GitHub CI run 38216879911 passed contracts, backend (including integration) and frontend on `ba8b196` (v0.15.4). The detailed evidence is held as tally records under `docs/records/`: findings `finding-1` to `finding-18` (excluding the retired `finding-5`), decisions `rule-2` to `rule-6`, and milestones `M1-admin-audit` and `M2-plan`.
 
@@ -35,12 +35,14 @@ IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-0
 | 2026-11-13 | Q-025 (revised): setting a password does not verify the email. The email code step stays. | No change to verification (tally `rule-9`). |
 | 2026-11-13 | Q-019 (revised): there is no standalone cleanup project. Reform or clean the database only when a change actually needs it, and only for client data. Nothing is lost, the step is rehearsed on dev against a masked copy, duplicate investments are reversed with both rows kept, and duplicate accounts are merged only for pairs the maintainer confirms. | Phase D runs only when needed. A production run still needs its own approval after the pre-flight report (tally `rule-9`). |
 | 2026-11-13 | Q-020 (revised): client reviews are wanted, admin-only, but deferred. Fix bugs first. | E1 stays deferred (tally `rule-9`). |
-| 2026-11-13 | Clients pay SIPs and investments directly to the company bank account, and the admin records them. Whether the gateway is on or off must not affect how quickly and clearly a client sees their investment in the app. | Recording, receipts, value updates and the client dashboard are the core path. Payments-off copy points to paying the BeOnEdge team directly (tally `rule-9`). |
+| 2026-11-13 | Clients pay SIPs and investments directly to the company bank account, and the admin records them. Whether the gateway is on or off must not affect how quickly and clearly a client sees their investment in the app. | Recording, receipts, value updates and the client dashboard are the core path. Payments-off copy says recorded investments still appear and gives no payment instructions (tally `rule-9`, revised by `rule-11`). |
 | 2026-11-13 | The maintainer delegates: work out what else this kind of app needs, and simplify complex flows so both client and admin have a seamless experience. | Client and admin journey reviews (tally `M9-ux-review`) feed section 6 (tally `rule-9`). |
 | 2026-11-13 | Q-022: the dashboards show simple return % as the main figure, plus annualised XIRR as a secondary column. | B5 (tally `rule-8`). |
 | 2026-11-13 | Q-023: app-update announcement emails keep going to every active client. | No change (tally `rule-8`). |
 | 2026-11-13 | Stay on Node 22. Production images already run `node:22.23.2`, and CI and the packages pin 22. Upgrading to Node 24 is a separate tested step. | Local checks run in a dedicated container with the official Node 22.20.0 and npm 11.16.0 (`tools/node22-container/run.sh`), so the host keeps a single Node install. The upgrade is task E3 (tally `howto-2`, which replaces `howto-1`). |
 | 2026-11-13 | G12: old pending online payments created before payments were turned off are marked expired once their pay-by time has passed. | Step A10. Applied only to checkouts never sent to the provider; checkouts already sent are left for reconciliation when payments return, because the provider may hold a payment for them (tally `rule-10`, `finding-23`). |
+| 2026-11-13 | No bank details or payment methods are added or recorded anywhere. The admin records monthly investments under their own category, and the client is notified "Investment added". | B1 and B8. No "How to invest" card or FAQ, and no copy on how or where to pay. G11 is now only publishing `featureFlags.onlinePayments=false` (tally `rule-11`). |
+| 2026-11-13 | The client is also emailed the amount recorded, saying the investment was added to their app and asking them to check it. | Template `investment_recorded` for earlier and monthly recordings, not corrections, with migration 062 (tally `rule-12`). |
 
 #### Replaced
 
@@ -50,6 +52,7 @@ IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-0
 | 2026-11-13 | Q-025: setting the password through the invite marks the email verified | Email code step stays | Maintainer revised the same day |
 | 2026-11-13 | Q-019: a scheduled reform for duplicates and missing details | Reform only when a change needs it | Maintainer clarified the same day |
 | 2026-11-13 | Q-020: reviews built after Phase B | Reviews deferred | Maintainer: bugs first |
+| 2026-11-13 | Payments-off copy points clients to paying the BeOnEdge team directly; G11 includes a "How to invest" FAQ with the bank details | No payment instructions or bank details anywhere (`rule-11`) | Maintainer clarified during Phase B |
 
 ## 1. Requested outcomes
 
@@ -232,15 +235,15 @@ Each lane is a tally track `track/<name>` with its own worktree. Lanes in the sa
 | A | `a-admin-core` | A2 (other admin screens), A4, A6 | fund-aum, overview, mandates, applications, refunds, receipts, app-config, emails, admin shell, app-config route and contract |
 | A | `a-onboarding` | A7, A5 (IST today) | admin users feature, client auth and email verification, guards, recordContribution, createClientAccount, maturity settlement date, onboarding harness and CI |
 | A | `a-identity` | A8, after `a-onboarding` lands | createClientAccount, password credential, oversight routes, environment, migration 061, admin users feature |
-| B | `b-receipts`, `b-value-updates`, `b-returns`, `b-email-web` | B1–B2, B3, B4–B5, B6 | Each adds its own contract file, so generated exports are regenerated at landing |
-| C | `c-nominee`, `c-sip-maturity` | C1; then C2 → C3 | Migrations are numbered 062 (C1), 063 (C2), 064 (C3), after A8's 061, so production applies them in filename order (tally `convention-1`) |
+| B | `b-receipts`, `b-value-updates`, `b-returns`, `b-email-web`, `b-support`, `b-client-investing` | B1–B2, B3, B4–B5, B6, B7, B8 | Each adds its own contract file, so generated exports are regenerated at landing |
+| C | `c-nominee`, `c-sip-maturity` | C1; then C2 → C3 | Migrations are numbered 063 (C1), 064 (C2), 065 (C3), after A8's 061 and B2's 062, so production applies them in filename order (tally `convention-2`) |
 | D | `d-data` | D1 → D2 | D1 can start now. D2's production run needs separate approval. |
 | E | `e-reviews`; E2; E3 | E1 after Phase B; E2 after Phase C and before any payments re-enable; E3 when the maintainer chooses | Reviews take the next free migration number when built |
 
 Shared-file rules:
-- `adminQueries.ts` is at 725 of 800 lines. A lane moves the hooks it changes into its feature's own query module instead of growing the file.
-- `packages/contracts/src/operations/admin-money.ts` is already over 800 lines. Phase A does not touch it, and later lanes add new contract files.
-- `runtime/composition.ts` is at 765 lines. A lane that must register a route there keeps the addition small, or adds a composition module as `adminEmailComposition.ts` does.
+- `adminQueries.ts` is at 538 of 800 lines after Phase B. A lane moves the hooks it changes into its feature's own query module instead of growing the file.
+- `packages/contracts/src/operations/admin-money.ts` is at 730 lines since B1 moved the recording operations into `admin-client-positions.ts`. Later lanes add new contract files.
+- `runtime/composition.ts` is at 793 lines after Phase B. A lane that must register a route adds a composition module, as `adminEmailComposition.ts` and `recordingComposition.ts` do.
 
 Maintainer gates (milestone `M3-gates`):
 - G1: plan approval.
@@ -249,7 +252,7 @@ Maintainer gates (milestone `M3-gates`):
 - G7 and G8: dev and production releases.
 - G9: the production pre-flight run.
 - G10: the payments re-enable decision.
-- G11: write the "How to invest" FAQ with the bank details, and publish `featureFlags.onlinePayments=false` once B8 lands. Agents never invent bank details.
+- G11: publish `featureFlags.onlinePayments=false` now that B8 is on `main`. There is no "How to invest" FAQ, and no bank details or payment instructions appear anywhere (tally `rule-11`).
 - G12: decide whether old pending online payments created before payments were turned off are expired, or left as they are.
 
 ## 6. Construction steps
@@ -296,7 +299,7 @@ Maintainer gates (milestone `M3-gates`):
 
 ### Phase B — recording categories, receipts, value updates, returns
 
-- **B1.** "Monthly investment" option and server-side category allow-list. Form wording, section titles and notification text follow the category instead of "before the app".
+- **B1.** "Monthly investment" option and server-side category allow-list. Form wording, section titles and notification text follow the category instead of "before the app". Earlier and monthly recordings notify "Investment added" and email the client the amount (`rule-11`, `rule-12`).
 - **B2.** Client receipts endpoints and screen. New APK users open a receipt from the notification.
 - **B3.** Value-update notification payload with `entryId` and `deepLink`. Client value-updates endpoint and screen.
 - **B4.** Admin portfolio summary endpoints. Invested, value, return % and last updated on the users list and user detail. Links from the user page to the investor record, send email, and mandates.
@@ -314,7 +317,7 @@ Maintainer gates (milestone `M3-gates`):
   - a per-client ticket list
   - the client already shows status and the resolution note, so no client contract change is needed
 - **B8.** Client investing guidance:
-  - a "How to invest" card pointing to the maintainer-written FAQ
+  - no "How to invest" card and no copy on how or where to pay (`rule-11`)
   - pay and invest buttons hidden when the published `featureFlags.onlinePayments` is false; today's behaviour is kept when the flag is absent
   - a single History list while payments are off
   - a printable statement view on the web
@@ -424,3 +427,60 @@ Seven lanes landed on local `main` through the tally queue, one at a time. Each 
 - **Compatibility.** No existing response key or enum changed; only notification payload gained a key, which released APKs accept. No migration, no new permission.
 - **Verification (TESTED, Node 22 container).** On `7a5f683`: contracts check 98 tests, OpenAPI valid, 138 operations reachable; backend check 98 files / 1180 tests; integration 41 files / 427 tests with coverage disabled; frontend check 27 files / 241 tests. On `fcc4314`: frontend check 28 files / 246 tests, and `build:client` and `build:admin` with both boot checks. New tests: `valueUpdates.integration.test.ts` (5: exact gains from typed rupees including a negative change, one bad row writes nothing, same-key replay commits once and a fresh key is refused on the stale basis, permission on the positions read, client scoping and paging) and `valueUpdateSheet.test.ts` (5: paise arithmetic from rupee text). Negative controls: dropping the user scope, the permission check or `entryId` failed 3 integration tests; making the sheet ignore the current gain failed 2 sheet tests.
 - **Not verified.** No browser or device run of either screen, no notification tapped on a device, no APK export, nothing on a VPS.
+
+### Phase B close (2026-11-13)
+
+Six lanes landed on local `main` through the tally queue, one at a time, each after an independent review and its own checks in the Node 22 container. Lanes that shared files were rebased onto the lane landed before them, and the generated OpenAPI and frontend operations were regenerated with the scripts at each rebase. Nothing is pushed, released or deployed.
+
+| Step | Lane | Commits on `main` |
+| --- | --- | --- |
+| B6 | `b-email-web` | `883b127`, `6f1f86d` |
+| B8 | `b-client-investing` | `7b60293`, `e714a8d`, `239a98c`, `b05bd51`, `17ff266`, `a7e6630`, `417e479` |
+| B7 | `b-support` | `ecf140c`, `8bf1c64`, `4999848` |
+| B3 and its sheet | `b-value-updates` | `22a9b4d`, `56cffb1`, `3d44a7f`, `77a88fa` |
+| B4, B5 and the client page and daily overview | `b-returns` | `7203235`, `ba88063`, `e332863` |
+| B1, B2 and the investment email | `b-receipts` | `e81eb02`, `e8826b7`, `d9d26b2` |
+
+The B3 entry above was written before landing and names the lane's pre-rebase commits `7a5f683` and `fcc4314`; on `main` they are `22a9b4d` and `56cffb1`.
+
+- **Maintainer decisions during the phase.**
+  - No bank details, payment methods or payment instructions anywhere (tally `rule-11`). B8 built a "How to invest" card and removed it before commit. Payments-off copy no longer tells clients to pay the team directly. G11 is now only publishing `featureFlags.onlinePayments=false`.
+  - Earlier and monthly recordings notify the client "Investment added" and also email the amount, fund and date with a request to check the app (tally `rule-12`). Corrections read "Investment record corrected" and send no email.
+- **B1, B2 (`b-receipts`).**
+  - Recordings accept exactly `recorded_offline_investment`, `recorded_offline_monthly_investment` and `recorded_offline_correction`. Released admin builds only ever sent the first and the last, so they keep working.
+  - The category is derived when read, and any other stored reason code reads as an earlier investment, which is how every recording showed before. No backfill and no response type narrowed.
+  - The recording, ledger and reversal operations moved from `admin-money.ts` into `admin-client-positions.ts`. The generated OpenAPI for existing operations differs only in the narrowed request `reasonCode`.
+  - `GET /v1/client/receipts` and `GET /v1/client/receipts/{entryId}` are scoped to the signed-in client; another client's entry answers 404. `categoryLabel` is a server-rendered string, so a later category does not break an older APK. `reversedAt` keeps a reversed recording from reading as live money. `sipMonth` is always null until C2.
+  - The `client_contribution_recorded` notice keeps its kind and the `/portfolio` link that released APKs open. Its title follows the category ("Investment added", or "Investment record corrected" for a correction) and names the fund but no amount. Its payload gains `entryId`, `orderId` and `category`, and new builds open the receipt through the same `notificationLink` map that B3 uses.
+  - Email template `investment_recorded` is queued in the recording transaction for active, untombstoned clients only, deduplicated per ledger entry, with names and amount sealed. Its send guard cancels on an email change, a closed or tombstoned account, or a reversed recording.
+  - Migration 062 only widens `email_deliveries_template_check` with `investment_recorded`. `releaseUpgrade` expects 061 and 062.
+  - The client-position and receipt routes register through `runtime/recordingComposition.ts`, which keeps `composition.ts` at 793 lines.
+- **B3 (`b-value-updates`).** See the B3 entry above. The review follow-up `77a88fa` labels each row "Value after this update" and shows the client state on the monthly sheet.
+- **B4, B5 (`b-returns`).**
+  - Endpoints: per-client portfolio summary, the paged returns summary with sort and totals, last value update per fund, invites not accepted, and the per-client ledger page.
+  - Simple return % is the main figure. XIRR is secondary, solved by bisection, and null with no outflow, under 30 days of history, or no root. A contribution is an outflow on its effective date, a withdrawal an inflow, a reversal cancels its original, growth is not a flow, and the current value is an inflow on today's IST date.
+  - XIRR is solved only for the page shown and the totals (`e332863`); the output is the same, which a one-row-at-a-time paging test asserts.
+  - The user page is the client hub (invite status and new link, summary, actions, tabs for ledger, maturity, emails and sign-ins). The overview shows daily tiles for invites not accepted, failed emails and the last value update per fund.
+- **B6 (`b-email-web`).** Optional `CLIENT_WEB_APP_URL`, a bare https origin; anything else refuses boot. When set, the approval, invite and app-download emails add a line pointing iPhone and computer users to the web app. It is rendered at send time from configuration, never from the queued payload. The web reset-password screen offers the Android app only when the server returned a download link.
+- **B7 (`b-support`).** Admin inbox, ticket detail, idempotent and audited responses that notify the client (kind `support_request_updated`), and a per-client ticket list. No migration. Both lists page on raw `created_at` with a microsecond cursor. Coordinator decision: reopening a closed ticket stays allowed, and every reply must change the status or the note.
+- **B8 (`b-client-investing`).** Pay and invest actions hide only when the published `featureFlags.onlinePayments` is exactly `false`; absent, loading or failed config keeps today's behaviour. While off, Activity shows one History list plus every unsettled online payment, which closes `finding-23` with no contract change. Printable statement at `/statements/print`, web only.
+- **Compatibility.** No existing response key or enum value changed. New notification kinds and payload keys are accepted by released APKs, which show them as plain notices. `AdminEmailTemplateKey` is a request filter; delivery responses keep `templateKey` as a string. Migration 062 is additive and the previous release runs against it.
+- **Release notes for the maintainer.**
+  - Add `CLIENT_WEB_APP_URL` to each VPS stack `.env` by hand (a deploy never overwrites `.env`). It is optional; without it the emails simply omit the web app line.
+  - A previous-release email worker permanently fails any `investment_recorded` mail it picks up (tally `finding-26`). A normal deploy recreates the API and workers together, so the window is seconds. After a rollback to v0.15.x, unsent investment emails are failed, not retried; the in-app notification is unaffected and the admin email tools can resend.
+  - Publish `featureFlags.onlinePayments=false` (G11) to switch the client app to the payments-off layout.
+  - New client and admin APK exports are needed for the new screens (G7, G8).
+- **Sweep on `d9d26b2` (TESTED, clean detached worktree, Node 22.20.0 container):**
+  - contracts `npm run check` passed 98 tests, with OpenAPI lint valid and 149 operations reachable;
+  - backend `npm run check` passed 100 files / 1198 tests;
+  - `npm run test:integration -- --coverage.enabled=false` passed 44 files / 452 tests;
+  - frontend `npm run check` passed 30 files / 260 tests;
+  - `build:client` and `build:admin` passed, including the bundle boot checks.
+- **Carried forward.**
+  - `finding-24`: older keyset lists (the fund receipt queue first) may repeat or skip a row at page boundaries because their cursor holds milliseconds. Value updates and support already use microsecond cursors.
+  - `finding-25`: the shared paged query's load-all walk keeps re-requesting after a failed page.
+  - The open-tickets tile is built but not yet on the overview, and the client page has no support tab yet. The client notifications screen has no category label for support replies.
+  - The APK has no print dialog; a statement PDF endpoint is proposed, not built.
+  - Phase C migrations are 063 (C1), 064 (C2) and 065 (C3) (tally `convention-2`).
+  - Q-026 is open.
+- **Not verified.** No browser or device run of any new screen, no notification tapped on a device, no real mail rendered or sent, no APK export, nothing on a VPS.

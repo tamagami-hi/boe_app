@@ -47,7 +47,8 @@ are container builds, so do not mix them with host `npm`.
 - [DEPLOY.md](DEPLOY.md): deployment/configuration reference, not permission to deploy.
 - [Admin improvements plan](plans/admin-improvements.md): recording categories,
   client receipts, value updates, returns dashboards, maturity management, nominee,
-  and admin fixes; approved, Phase A (fixes) complete on local `main`, Phase B next.
+  and admin fixes; approved, Phases A (fixes) and B (recording, receipts, value
+  updates, returns) complete on local `main`, Phase C next.
 - [Previous app feature plan](plans/app-onboarding-contact-investment-email.md):
   onboarding recovery, contacts, earlier investments, and email improvements;
   implemented and released through v0.15.4; evidence is in section 8 of the plan.
