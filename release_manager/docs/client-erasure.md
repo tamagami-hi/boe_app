@@ -1,6 +1,6 @@
 # Client erasure (Phase G)
 
-Status: built on lane `g-erasure` (tally `M11-phase-g:G-L1-erasure`), reviewed twice and fixed, not landed, not released.
+Status: built on lane `g-erasure` (tally `M11-phase-g:G-L1-erasure`), reviewed three times and fixed, landed on local `main` at `e29ff37` (2026-11-14), not released. No client has been erased anywhere.
 Decision: DEC-29 (behaviour) and DEC-33 (go-ahead), group `admin-improvements`.
 This is a destructive change under `RULES.md` rule 11: it deletes and overwrites existing
 production rows for the one client an administrator erases. It touches no other client.
