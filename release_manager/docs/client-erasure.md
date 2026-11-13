@@ -74,7 +74,7 @@ Besides the application linked to the account, erasure matches earlier applicati
 | `users` | email, phone, name, nominee | email and phone to the release placeholders (kept if already released), name `Tombstoned`, nominee cleared by the 063 trigger, `pii_tombstoned_at`, closed (an `invited` account stays invited, since closing needs an activation time), `email_revision` and `version` bumped | deleted |
 | `applications`, linked | email, phone, name, password hash | tombstoned under the 024 constraint (placeholders, `password_hash` null) | deleted |
 | `applications`, matched by email | same | tombstoned | tombstoned, not deleted |
-| `application_consents` | consent IP HMAC, user agent | kept | linked application's deleted; matched ones kept |
+| `application_consents` (linked and matched applications) | consent IP HMAC, user agent | `user_agent` nulled; the IP HMAC (a keyed hash, required, and the consent's evidence) is kept | deleted |
 | `application_reviews` (linked and matched) | admin reason text | contact and name text replaced | linked application's deleted; matched ones' text replaced |
 | `user_contact_history` | previous and new emails and phones | all four overwritten through the 069 erase path; `reason_detail` nulled if it names a contact | deleted through the 069 erase path |
 | `user_credentials` | password hash | `password_hash` nulled, lockout counters reset, `version` bumped | deleted |
@@ -125,16 +125,28 @@ Run against production by the maintainer only, in `psql`, before an erasure. It 
 \set user_id '00000000-0000-0000-0000-000000000000'
 BEGIN READ ONLY;
 WITH subject AS (
-  SELECT u.id, u.application_id, u.email_normalized, u.phone_e164,
+  SELECT u.id, u.application_id, u.email_normalized,
          (u.email_verification_state = 'verified' OR u.email_verified_at IS NOT NULL
           OR EXISTS (SELECT 1 FROM audit_events a WHERE a.entity_type = 'user' AND a.entity_id = u.id
                      AND a.command = 'email_verification.completed')) AS email_verified
   FROM users u WHERE u.id = :'user_id'
+), known_emails AS (
+  SELECT k.e FROM (
+    SELECT email_normalized AS e FROM subject
+    UNION SELECT previous_email_normalized FROM user_contact_history WHERE user_id = :'user_id'
+    UNION SELECT new_email_normalized FROM user_contact_history WHERE user_id = :'user_id'
+    UNION SELECT email_normalized FROM auth_login_events WHERE user_id = :'user_id'
+    UNION SELECT a.email_normalized FROM applications a JOIN subject s ON a.id = s.application_id
+  ) k
+  WHERE k.e LIKE '%@%' AND k.e NOT LIKE '%@released.invalid'
+    AND NOT (k.e LIKE 'tombstone+%' AND k.e LIKE '%@invalid.example')
+    AND NOT EXISTS (SELECT 1 FROM users o WHERE o.email_normalized = k.e AND o.id <> :'user_id')
 ), apps AS (
   SELECT s.application_id AS id FROM subject s WHERE s.application_id IS NOT NULL
   UNION
   SELECT a.id FROM applications a, subject s
-  WHERE a.state <> 'submitted' AND a.email_normalized = s.email_normalized AND a.id IS DISTINCT FROM s.application_id
+  WHERE a.state <> 'submitted' AND a.email_normalized IN (SELECT e FROM known_emails)
+    AND a.id IS DISTINCT FROM s.application_id
     AND NOT EXISTS (SELECT 1 FROM users h WHERE h.application_id = a.id AND h.id <> s.id)
 ), funds AS (
   SELECT e.fund_id, sum(e.principal_delta_paise) AS principal, sum(e.value_delta_paise) AS value
@@ -146,16 +158,41 @@ WITH subject AS (
   SELECT d.id, d.state, d.outbox_event_id, o.state AS outbox_state FROM email_deliveries d
   LEFT JOIN outbox_events o ON o.id = d.outbox_event_id
   WHERE d.user_id = :'user_id' OR d.application_id IN (SELECT id FROM apps)
+), owned (entity_type, id) AS (
+  SELECT 'user', :'user_id'::uuid
+  UNION ALL SELECT 'application', id FROM apps
+  UNION ALL SELECT 'support_request', id FROM support_requests WHERE user_id = :'user_id'
+  UNION ALL SELECT 'client_review', id FROM client_reviews WHERE user_id = :'user_id'
+  UNION ALL SELECT 'admin_sip_schedule', id FROM admin_sip_schedules WHERE user_id = :'user_id'
+  UNION ALL SELECT 'client_maturity_schedule', id FROM client_maturity_schedules WHERE user_id = :'user_id'
+  UNION ALL SELECT 'client_maturity_offer', id FROM client_maturity_offers WHERE user_id = :'user_id'
+  UNION ALL SELECT 'auth_session', id FROM auth_sessions WHERE user_id = :'user_id'
+  UNION ALL SELECT 'user_contact_history', id FROM user_contact_history WHERE user_id = :'user_id'
+  UNION ALL SELECT 'admin_email_message', id FROM admin_email_messages WHERE recipient_user_id = :'user_id'
+  UNION ALL SELECT 'email_delivery', id FROM mail
+  UNION ALL SELECT 'client_value_entry', id FROM client_value_entries WHERE user_id = :'user_id'
+  UNION ALL SELECT 'investment_order', id FROM investment_orders WHERE user_id = :'user_id'
+  UNION ALL SELECT 'payment', id FROM payments WHERE user_id = :'user_id'
+  UNION ALL SELECT 'payment_attempt', id FROM payment_attempts WHERE user_id = :'user_id'
+  UNION ALL SELECT 'withdrawal_operation', id FROM withdrawal_operations WHERE user_id = :'user_id'
+  UNION ALL SELECT 'client_position_maturity', id FROM client_position_maturities WHERE user_id = :'user_id'
+  UNION ALL SELECT 'sip_plan', id FROM sip_plans WHERE user_id = :'user_id'
+  UNION ALL SELECT 'refund_operation', r.id FROM refund_operations r JOIN investment_orders o ON o.id = r.order_id
+    WHERE o.user_id = :'user_id'
+  UNION ALL SELECT 'fund_receipt_acknowledgement', f.id FROM fund_receipt_acknowledgements f
+    JOIN investment_orders o ON o.id = f.order_id WHERE o.user_id = :'user_id'
+), audit_about AS (
+  SELECT a.id FROM audit_events a
+  WHERE a.entity_type IN (SELECT entity_type FROM owned) AND a.entity_id IN (SELECT id FROM owned)
+     OR a.actor_user_id = :'user_id'
+     OR (a.metadata ? 'userId' AND a.metadata->>'userId' = :'user_id')
 ), entities AS (
-  SELECT :'user_id'::uuid AS id UNION SELECT id FROM apps UNION SELECT id FROM mail
-  UNION SELECT id FROM investment_orders WHERE user_id = :'user_id' UNION SELECT id FROM payments WHERE user_id = :'user_id'
-  UNION SELECT id FROM payment_attempts WHERE user_id = :'user_id' UNION SELECT id FROM client_value_entries WHERE user_id = :'user_id'
-  UNION SELECT id FROM withdrawal_operations WHERE user_id = :'user_id' UNION SELECT id FROM payment_mandates WHERE user_id = :'user_id'
+  SELECT id FROM owned UNION SELECT id FROM audit_about
   UNION SELECT p.id FROM email_provider_events p WHERE p.email_delivery_id IN (SELECT id FROM mail)
-  UNION SELECT a.id FROM audit_events a WHERE (a.entity_type = 'user' AND a.entity_id = :'user_id') OR a.actor_user_id = :'user_id'
-    OR (a.metadata ? 'userId' AND a.metadata->>'userId' = :'user_id')
+  UNION SELECT id FROM payment_mandates WHERE user_id = :'user_id'
 )
-SELECT 'already_erased' AS item, count(*) AS n FROM audit_events WHERE entity_type = 'user' AND entity_id = :'user_id' AND command = 'client.erased'
+SELECT 'already_erased' AS item, count(*) AS n FROM audit_events
+  WHERE entity_type = 'user' AND entity_id = :'user_id' AND command = 'client.erased'
 UNION ALL SELECT 'email_verified', count(*) FROM subject WHERE email_verified
 UNION ALL SELECT 'block_staff_roles', count(*) FROM user_roles WHERE user_id = :'user_id'
 UNION ALL SELECT 'block_legal_holds_on_client_entities', count(*) FROM legal_holds h
@@ -190,18 +227,20 @@ UNION ALL SELECT 'money_rows_force_keep', (
   + (SELECT count(*) FROM client_position_maturities WHERE user_id = :'user_id') + (SELECT count(*) FROM client_maturity_schedules WHERE user_id = :'user_id')
   + (SELECT count(*) FROM client_maturity_offers WHERE user_id = :'user_id') + (SELECT count(*) FROM admin_sip_schedule_months WHERE user_id = :'user_id')
   + (SELECT count(*) FROM sip_plans WHERE user_id = :'user_id'))
+UNION ALL SELECT 'info_known_emails', count(*) FROM known_emails
 UNION ALL SELECT 'touch_applications_linked_and_matched', count(*) FROM apps
 UNION ALL SELECT 'touch_application_consents', count(*) FROM application_consents WHERE application_id IN (SELECT id FROM apps)
 UNION ALL SELECT 'touch_application_reviews', count(*) FROM application_reviews WHERE application_id IN (SELECT id FROM apps)
 UNION ALL SELECT 'touch_contact_history', count(*) FROM user_contact_history WHERE user_id = :'user_id'
 UNION ALL SELECT 'touch_sessions', count(*) FROM auth_sessions WHERE user_id = :'user_id'
 UNION ALL SELECT 'touch_login_events_own', count(*) FROM auth_login_events WHERE user_id = :'user_id'
-UNION ALL SELECT 'touch_login_events_unlinked_same_email', count(*) FROM auth_login_events l, subject s
-  WHERE l.user_id IS NULL AND l.email_normalized = s.email_normalized
+UNION ALL SELECT 'touch_login_events_unlinked_known_emails', count(*) FROM auth_login_events
+  WHERE user_id IS NULL AND email_normalized IN (SELECT e FROM known_emails)
 UNION ALL SELECT 'touch_email_deliveries', count(*) FROM mail
 UNION ALL SELECT 'touch_queued_mail_to_cancel', count(*) FROM mail WHERE state IN ('queued', 'retryable_failed')
 UNION ALL SELECT 'touch_outbox_events', count(*) FROM outbox_events WHERE id IN (SELECT outbox_event_id FROM mail)
-  OR aggregate_id = :'user_id' OR aggregate_id IN (SELECT id FROM apps)
+  OR (aggregate_type = 'user' AND aggregate_id = :'user_id')
+  OR (aggregate_type = 'application' AND aggregate_id IN (SELECT id FROM apps))
 UNION ALL SELECT 'touch_provider_event_payloads', count(*) FROM email_provider_events
   WHERE email_delivery_id IN (SELECT id FROM mail) AND payload_ciphertext IS NOT NULL
 UNION ALL SELECT 'touch_payment_webhook_payloads', count(*) FROM provider_events WHERE user_id = :'user_id' AND payload_ciphertext IS NOT NULL
@@ -210,14 +249,14 @@ UNION ALL SELECT 'touch_support_requests', count(*) FROM support_requests WHERE 
 UNION ALL SELECT 'touch_reviews', count(*) FROM client_reviews WHERE user_id = :'user_id'
 UNION ALL SELECT 'touch_email_change_requests', count(*) FROM email_change_requests WHERE user_id = :'user_id'
 UNION ALL SELECT 'touch_password_links', count(*) FROM password_credential_tokens WHERE user_id = :'user_id'
-UNION ALL SELECT 'touch_audit_rows_about_client', count(*) FROM audit_events WHERE (entity_type = 'user' AND entity_id = :'user_id')
-  OR actor_user_id = :'user_id' OR (metadata ? 'userId' AND metadata->>'userId' = :'user_id')
-UNION ALL SELECT 'touch_matching_receipts', count(*) FROM idempotency_records WHERE actor_scope = 'user:' || :'user_id'
-  OR actor_user_id = :'user_id' OR response_body::text LIKE '%' || :'user_id' || '%';
+UNION ALL SELECT 'touch_audit_rows_about_client', count(*) FROM audit_about
+UNION ALL SELECT 'touch_matching_receipts', count(*) FROM idempotency_records
+  WHERE actor_scope = 'user:' || :'user_id' OR actor_user_id = :'user_id'
+     OR response_body::text LIKE '%' || :'user_id' || '%';
 ROLLBACK;
 ```
 
-Reading it: every `block_*` row must be 0, and `already_erased` 0, or the command will refuse or answer "already erased". `email_verified` 1 or `money_rows_force_keep` above 0 means G2; otherwise G3 deletes the `touch_*` rows (matched applications are tombstoned, not deleted). The application and unlinked sign-in counts use only the live email; the command also matches older emails from the history, the sign-in log and decryptable mail, minus any another user holds. The legal-hold row covers the main client entities; the command also checks holds on sessions, tickets, reviews, schedules, offers, refunds and receipts.
+Reading it: every `block_*` row must be 0, and `already_erased` 0, or the command will refuse or answer "already erased". `email_verified` 1 or `money_rows_force_keep` above 0 means G2; otherwise G3 deletes the `touch_*` rows (matched applications are tombstoned, not deleted; their consents are deleted). The known emails, matched applications, owned entities, audit rows and receipts are the same sets the command uses, with one difference: the command also adds recipient addresses and email-change targets it can decrypt, which SQL cannot read, so the command can match slightly more. The command also matches legal holds of type `mandate` through the mandate lookup; the `entities` set here includes the client's mandates directly.
 
 ## Migration 069
 
@@ -238,14 +277,14 @@ Rollback boundary: **no.** 069 adds a condition that only an erasing transaction
 
 - `clientErasure.integration.test.ts`:
   - G2 leaves no email, former email, change target, masked email, phone, national number, name or nominee readable in any `text`, `varchar` or `jsonb` column of any table. A queued `maturity_options` email and a delivery on a matched earlier application are among the client's mail.
-  - G2 also keeps the ledger rows identical, clears the password, revokes sessions, cancels mail, refuses a later contact release, value update and recording, and lets a new client be created with the old and the former contacts.
+  - G2 also keeps the ledger rows identical, clears the password and raises the credential version, revokes sessions, cancels mail, refuses a later contact release, value update and recording, and lets a new client be created with the old and the former contacts.
   - Every other row in the database is byte-identical before and after (only the client's own rows are excluded, by id), and a second client's key fields equal their literal fixture values.
   - Two erased clients get distinct placeholders.
-  - G3 leaves only the erasure audit row and receipts naming the id, deletes the matched application's mail, tombstones that application, and leaves every other row byte-identical.
+  - G3 leaves only the erasure audit row and receipts naming the id, deletes the matched application's mail and both applications' consents, tombstones the matched application, and leaves every other row byte-identical.
   - A ledger row, or only a failed order, payment and payment attempt, forces G2; a stale `expectedPath` is refused.
-- `clientErasureGuard.integration.test.ts`: every blocker is named and the whole database is byte-identical after a refusal; this covers money, an active SIP schedule, a scheduled maturity with an open offer, a hold on the user, a failed payout at zero balance, holds on the application and on a delivery, staff accounts and admins without `users.close`.
-- `clientErasureReach.integration.test.ts`: an application that shares only the phone is untouched, and another user who now holds a former contact keeps byte-identical receipts and user row.
-- `clientErasureRaces.integration.test.ts`: same-key replay, a new key answering "already erased", two concurrent erasures erasing once, and concurrent recording or sign-in never leaving a half state.
+- `clientErasureGuard.integration.test.ts`: every blocker is named and the whole database is byte-identical after a refusal; this covers money, an active SIP schedule, a scheduled maturity with an open offer, a hold on the user, a failed payout at zero balance, holds on the application, a delivery, a provider event, an audit row, a payment, an order and a mandate, staff accounts and admins without `users.close`.
+- `clientErasureReach.integration.test.ts`: an application that shares only the phone is untouched, the consents of the linked and matched applications lose their user agent, and another user who now holds a former contact keeps byte-identical receipts and user row.
+- `clientErasureRaces.integration.test.ts`: same-key replay, a new key answering "already erased", two concurrent erasures erasing once, concurrent recording or sign-in never leaving a half state, and a delivery marked `sending` or an outbox event claimed by a concurrent transaction while erasure waits on the mail lock making it refuse with every other table byte-identical.
 - `clientErasureMigration.integration.test.ts`: the 069 populated upgrade and the trigger's negative controls, including deletes of another user's row, of a user with a ledger row and of a verified user.
 - `clientErasureCoverage.integration.test.ts`: the reviewed foreign-key and column classification.
 - `erasureContacts.test.ts`: the scrubber's boundaries, case handling, names and JSON rules.
