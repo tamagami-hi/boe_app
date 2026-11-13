@@ -80,6 +80,17 @@ const fakeGateway: RecurringPaymentGateway = {
   },
 }
 
+const settleCollectionsOf = (plan: AutoPayPlan, state: "COMPLETED" | "FAILED"): void => {
+  for (const [merchantOrderId, entry] of notified) {
+    if (entry.state === "NOTIFIED" && entry.command.merchantSubscriptionId === plan.merchantSubscriptionId) {
+      notified.set(merchantOrderId, { ...entry, state })
+    }
+  }
+}
+
+const notifiedCountOf = (plan: AutoPayPlan): number =>
+  [...notified.values()].filter((entry) => entry.command.merchantSubscriptionId === plan.merchantSubscriptionId).length
+
 const runPass = (at: Date): Promise<MandateCollectionSummary> => runMandateCollectionPass({
   unitOfWork,
   clock: () => at,
@@ -97,6 +108,7 @@ const runPass = (at: Date): Promise<MandateCollectionSummary> => runMandateColle
 })
 
 const inNotifyWindow = (month: string): Date => new Date(`${month}-04T12:00:00.000Z`)
+const afterDebit = (month: string): Date => new Date(`${month}-05T12:00:00.000Z`)
 
 const randomPhone = (): string => `+1415555${String(Math.floor(1000000 + Math.random() * 8999999))}`
 
@@ -184,6 +196,12 @@ const collectionPeriodsOf = async (sipPlanId: string): Promise<string[]> =>
     [sipPlanId],
   )).rows.map((row) => row.due_period)
 
+const nextDueDateOf = async (plan: AutoPayPlan): Promise<string | null> =>
+  (await pool.query<{ next_due_date: string | null }>(
+    "select to_char(next_due_date, 'YYYY-MM-DD') next_due_date from sip_plans where id = $1 and user_id = $2",
+    [plan.sipPlanId, plan.userId],
+  )).rows[0]!.next_due_date
+
 beforeAll(async () => {
   container = await new PostgreSqlContainer("postgres:16-alpine")
     .withWaitStrategy(Wait.forLogMessage(/database system is ready to accept connections/u, 2))
@@ -214,12 +232,34 @@ describe("AutoPay mandate collection worker on PostgreSQL", () => {
     const orders = await installmentsOf(plan.sipPlanId)
     expect(orders).toEqual([{ id: orders[0]?.id, due_period: "2026-02-01", state: "payment_pending" }])
     expect(await collectionPeriodsOf(plan.sipPlanId)).toEqual(["2026-02-01"])
-    expect([...notified.values()].filter((entry) => entry.command.merchantSubscriptionId === plan.merchantSubscriptionId)).toHaveLength(1)
+    expect(notifiedCountOf(plan)).toBe(1)
     const audit = await pool.query<{ request_id: string }>(
       "select request_id::text request_id from audit_events where command = 'sip.installment_order.create' and entity_id = $1",
       [orders[0]!.id],
     )
     expect(audit.rows).toHaveLength(1)
     expect(audit.rows[0]!.request_id).toMatch(UUID_PATTERN)
+  })
+
+  test("collects month 1, month 2 and month 3 across passes, once per period", async () => {
+    const plan = await seedActiveAutoPayPlan("2027-01-10")
+
+    for (const month of ["2027-02", "2027-03", "2027-04"]) {
+      await runPass(inNotifyWindow(month))
+      await runPass(inNotifyWindow(month))
+      settleCollectionsOf(plan, "COMPLETED")
+      await runPass(afterDebit(month))
+      await runPass(afterDebit(month))
+    }
+
+    const orders = await installmentsOf(plan.sipPlanId)
+    expect(orders.map((order) => [order.due_period, order.state])).toEqual([
+      ["2027-02-01", "accepted"],
+      ["2027-03-01", "accepted"],
+      ["2027-04-01", "accepted"],
+    ])
+    expect(await collectionPeriodsOf(plan.sipPlanId)).toEqual(["2027-02-01", "2027-03-01", "2027-04-01"])
+    expect(notifiedCountOf(plan)).toBe(3)
+    expect(await nextDueDateOf(plan)).toBe("2027-05-05")
   })
 })

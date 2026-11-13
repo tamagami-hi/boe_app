@@ -87,9 +87,6 @@ const prepareCollection = async (deps: MandateCollectionDeps, plan: SipPlan) => 
     if (locked === null || locked.state !== "active" || locked.collection_mode !== "phonepe_autopay" || locked.next_due_date === null) return null
     const debitAt = scheduledDebitAt(locked.next_due_date)
     const notifyAt = new Date(debitAt.getTime() - NOTIFY_LEAD_MS)
-    if (now < notifyAt || now >= debitAt) return null
-    const mandate = await deps.mandatesRepository.findCurrentMandateForOwner(tx, { sipPlanId: locked.id, userId: locked.user_id })
-    if (mandate === null || mandate.state !== "active" || mandate.provider_subscription_id === null) return null
     const duePeriod = firstOfMonth(locked.next_due_date)
     const existing = await deps.orderRepository.findInstallmentByPeriod(tx, { sipPlanId: locked.id, duePeriod })
     if (existing !== null) {
@@ -102,6 +99,9 @@ const prepareCollection = async (deps: MandateCollectionDeps, plan: SipPlan) => 
       }
       return null
     }
+    if (now < notifyAt || now >= debitAt) return null
+    const mandate = await deps.mandatesRepository.findCurrentMandateForOwner(tx, { sipPlanId: locked.id, userId: locked.user_id })
+    if (mandate === null || mandate.state !== "active" || mandate.provider_subscription_id === null) return null
     const created = await createSipInstallmentOrder(tx, {
       orderRepository: deps.orderRepository,
       userRepository: deps.userRepository,
