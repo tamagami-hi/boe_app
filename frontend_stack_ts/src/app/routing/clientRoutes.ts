@@ -177,6 +177,16 @@ export const CLIENT_ROUTES: RouteManifest = [
     back: { kind: "parent", path: "/profile" },
   },
   {
+    id: "statement-print",
+    path: "/statements/print",
+    title: "Investment statement",
+    access: "session",
+    role: "client",
+    chrome: "none",
+    element: () => import("~/features/statements/StatementPrintScreen"),
+    back: { kind: "parent", path: "/statements" },
+  },
+  {
     id: "notifications",
     path: "/notifications",
     title: "Notifications",
@@ -285,6 +295,7 @@ export const CLIENT_LINK_MAP: Readonly<Record<string, readonly string[]>> = {
   portfolio: ["fund-detail", "sips"],
   activity: ["payment-status"],
   sips: ["sip-detail"],
+  statements: ["statement-print"],
   profile: [
     "statements",
     "notifications",

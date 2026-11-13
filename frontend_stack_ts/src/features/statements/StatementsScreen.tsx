@@ -5,9 +5,11 @@ import { toPaise } from "~/domain/money"
 import { countOf } from "~/domain/plural"
 import { useStatements } from "~/features/shared/queries"
 import { cx } from "~/lib/cx"
+import { isNative } from "~/platform/capacitor"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
+import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 import { STAT_LABEL, STAT_ROOT, SUMMARY_GRID } from "~/ui/recipes/datalist"
@@ -23,6 +25,15 @@ const StatementsScreen = (): React.ReactElement => {
       <PageHeader
         title="Statements"
         description="A month-by-month record of your investments and their value."
+        {...(isNative()
+          ? {}
+          : {
+              actions: (
+                <ButtonLink to="/statements/print" tone="secondary" size="sm">
+                  Print statement
+                </ButtonLink>
+              ),
+            })}
       />
 
       <AsyncBoundary
