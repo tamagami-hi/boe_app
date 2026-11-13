@@ -42,6 +42,8 @@ import { useApi } from "~/app/providers/ApiProvider"
 import { useSession } from "~/app/providers/SessionProvider"
 
 const PAYMENT_POLL_INTERVAL_MS = 4_000
+const LAPSED_PAYMENT_POLL_INTERVAL_MS = 60_000
+const CHECKOUT_LAPSE_GRACE_MS = 5 * 60_000
 const LIST_PAGE_LIMIT = 25
 
 export const useEligibility = (): UseQueryResult<DataOf<typeof getClientEligibility>> => {
@@ -227,7 +229,7 @@ export const hasCheckoutLapsed = (
 ): boolean =>
   payment.status === "payment_in_progress" &&
   payment.expiresAt !== null &&
-  Date.parse(payment.expiresAt) <= asOfMs
+  Date.parse(payment.expiresAt) + CHECKOUT_LAPSE_GRACE_MS <= asOfMs
 
 export const usePayment = (
   paymentId: string,
@@ -245,7 +247,9 @@ export const usePayment = (
       const payment = query.state.data?.payment
       if (payment === undefined) return PAYMENT_POLL_INTERVAL_MS
       if (!OPEN_PAYMENT_STATUSES.includes(payment.status)) return false
-      return hasCheckoutLapsed(payment, query.state.dataUpdatedAt) ? false : PAYMENT_POLL_INTERVAL_MS
+      return hasCheckoutLapsed(payment, query.state.dataUpdatedAt)
+        ? LAPSED_PAYMENT_POLL_INTERVAL_MS
+        : PAYMENT_POLL_INTERVAL_MS
     },
     queryFn: async () => (await api.request(getClientPayment, { params: { paymentId } })).data,
   })

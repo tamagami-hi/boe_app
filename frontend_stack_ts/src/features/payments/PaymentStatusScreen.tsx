@@ -4,7 +4,7 @@ import { Link, useParams } from "react-router-dom"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
-import { formatDateTime } from "~/domain/dates"
+import { formatDate, formatDateTime } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { paymentFailureReason } from "~/domain/paymentReason"
 import { paymentPartnerName } from "~/domain/provider"
@@ -98,6 +98,7 @@ const PaymentStatusScreen = (): React.ReactElement => {
           const reference = supportReference(payment.paymentId)
           const lapsed = hasCheckoutLapsed(payment, query.dataUpdatedAt)
           const isOpen = OPEN_PAYMENT_STATUSES.includes(payment.status) && !lapsed
+          const formatSettledAt = payment.provider === null ? formatDate : formatDateTime
 
           return (
             <>
@@ -136,11 +137,11 @@ const PaymentStatusScreen = (): React.ReactElement => {
                   <DetailRow label="Started">{formatDateTime(payment.createdAt)}</DetailRow>
                   {payment.succeededAt === null ? null : (
                     <DetailRow label="Payment received">
-                      {formatDateTime(payment.succeededAt)}
+                      {formatSettledAt(payment.succeededAt)}
                     </DetailRow>
                   )}
                   {payment.confirmedAt === null ? null : (
-                    <DetailRow label="Invested">{formatDateTime(payment.confirmedAt)}</DetailRow>
+                    <DetailRow label="Invested">{formatSettledAt(payment.confirmedAt)}</DetailRow>
                   )}
                   {payment.refundedAt === null ? null : (
                     <DetailRow label="Refunded">{formatDateTime(payment.refundedAt)}</DetailRow>
