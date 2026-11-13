@@ -26,6 +26,7 @@ type Kind =
   | "withinExpiry"
   | "staleDispatched"
   | "staleDispatchStarted"
+  | "staleWithLiveSibling"
   | "settled"
 
 interface Seeded {
@@ -116,6 +117,16 @@ const seedCheckout = (kind: Kind): Promise<Seeded> =>
       checkoutExpiresAt,
       checkoutChannel: "hosted_redirect",
     })
+    if (kind === "staleWithLiveSibling") {
+      await paymentsRepository.createAttempt(tx, {
+        paymentId: payment.id,
+        userId,
+        attemptNumber: 2,
+        merchantOrderId: newMerchantOrderId("boe-dev"),
+        checkoutExpiresAt: new Date(now.getTime() + 10 * MINUTE_MS),
+        checkoutChannel: "hosted_redirect",
+      })
+    }
     if (kind === "staleDispatchStarted" || kind === "staleDispatched" || kind === "settled") {
       await paymentsRepository.markAttemptDispatchStarted(tx, attempt.id, now)
     }
@@ -201,10 +212,10 @@ afterAll(async () => {
 })
 
 describe("stale checkout expiry while no payment gateway is configured", () => {
-  test("expires only never-dispatched checkouts past their pay-by time and grace, once", async () => {
+  test("expires only never-dispatched checkouts past their pay-by time and grace with no live sibling, once", async () => {
     const stale = await seedCheckout("staleUndispatched")
     const untouched = await Promise.all(
-      (["withinGrace", "withinExpiry", "staleDispatched", "staleDispatchStarted", "settled"] as const)
+      (["withinGrace", "withinExpiry", "staleDispatched", "staleDispatchStarted", "staleWithLiveSibling", "settled"] as const)
         .map((kind) => seedCheckout(kind)),
     )
     const untouchedBefore = await Promise.all(untouched.map(snapshot))

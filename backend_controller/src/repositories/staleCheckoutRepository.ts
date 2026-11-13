@@ -1,20 +1,29 @@
-import type { PaymentAttempt, Transaction } from "../db/repositories.js"
+import type { Transaction } from "../db/repositories.js"
+
+export interface StaleCheckoutCandidate {
+  readonly attemptId: string
+  readonly paymentId: string
+}
 
 export interface StaleCheckoutRepository {
-  lockNextUndispatchedExpiredAttempt: (
+  listUndispatchedExpiredCandidates: (
     tx: Transaction,
-    input: Readonly<{ expiredBefore: Date; excludedAttemptIds: readonly string[] }>,
-  ) => Promise<PaymentAttempt | null>
+    input: Readonly<{ expiredBefore: Date; limit: number }>,
+  ) => Promise<readonly StaleCheckoutCandidate[]>
+  hasLiveOrSettledSibling: (
+    tx: Transaction,
+    input: Readonly<{ paymentId: string; attemptId: string }>,
+  ) => Promise<boolean>
 }
 
 const SIBLING_BLOCKING_STATES = ["created", "provider_pending", "succeeded", "reconciliation_required"] as const
 
 export const createStaleCheckoutRepository = (): StaleCheckoutRepository => ({
-  lockNextUndispatchedExpiredAttempt: async (tx, input) => {
-    const candidates = tx
+  listUndispatchedExpiredCandidates: async (tx, input) =>
+    tx
       .selectFrom("payment_attempts as attempt")
       .innerJoin("payments as payment", "payment.id", "attempt.payment_id")
-      .selectAll("attempt")
+      .select(["attempt.id as attemptId", "attempt.payment_id as paymentId"])
       .where("attempt.checkout_channel", "=", "hosted_redirect")
       .where("attempt.state", "=", "created")
       .where("attempt.provider_dispatch_started_at", "is", null)
@@ -22,23 +31,20 @@ export const createStaleCheckoutRepository = (): StaleCheckoutRepository => ({
       .where("attempt.checkout_expires_at", "<=", input.expiredBefore)
       .where("payment.state", "=", "created")
       .where("payment.succeeded_at", "is", null)
-      .where((expression) => expression.not(expression.exists(
-        expression.selectFrom("payment_attempts as sibling")
-          .select("sibling.id")
-          .whereRef("sibling.payment_id", "=", "attempt.payment_id")
-          .whereRef("sibling.id", "<>", "attempt.id")
-          .where("sibling.state", "in", SIBLING_BLOCKING_STATES),
-      )))
-    const filtered = input.excludedAttemptIds.length === 0
-      ? candidates
-      : candidates.where("attempt.id", "not in", input.excludedAttemptIds)
-    const row = await filtered
       .orderBy("attempt.created_at")
       .orderBy("attempt.id")
+      .limit(input.limit)
+      .execute(),
+
+  hasLiveOrSettledSibling: async (tx, input) => {
+    const row = await tx
+      .selectFrom("payment_attempts")
+      .select("id")
+      .where("payment_id", "=", input.paymentId)
+      .where("id", "<>", input.attemptId)
+      .where("state", "in", SIBLING_BLOCKING_STATES)
       .limit(1)
-      .forUpdate()
-      .skipLocked()
       .executeTakeFirst()
-    return row ?? null
+    return row !== undefined
   },
 })

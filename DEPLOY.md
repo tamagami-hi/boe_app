@@ -69,9 +69,9 @@ success. Without the payment service (`PAYMENTS_SERVICE_URL` and `PAYMENTS_SERVI
 the SIPs worker creates no instalment orders and logs `PAYMENT_GATEWAY_NOT_CONFIGURED`, and
 the API refuses client lump-sum orders and SIP plans with `DEPENDENCY_UNAVAILABLE` before
 writing anything. In that state the payments worker only expires one-time checkouts that
-were never sent to the provider and whose pay-by time plus
-`PAYMENT_RECONCILIATION_EXPIRY_GRACE_SECONDS` has passed, with an audit row each, and
-waits the idle interval between passes. Checkouts already sent to the provider stay open
+were never sent to the provider, have no other live or settled attempt on the same payment,
+and whose pay-by time plus `PAYMENT_RECONCILIATION_EXPIRY_GRACE_SECONDS` has passed, with an
+audit row each, and waits the idle interval between passes. Checkouts already sent to the provider stay open
 until a configured gateway reconciles them.
 
 The email worker writes its heartbeat only at the end of a pass, so a pass must finish
