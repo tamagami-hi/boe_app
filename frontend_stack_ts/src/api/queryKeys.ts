@@ -13,6 +13,7 @@ export const CLIENT_MONEY_PREFIXES = [
   ["client", "payment"],
   ["client", "sips"],
   ["client", "statements"],
+  ["client", "value-updates"],
 ] as const
 
 export const qk = {
@@ -28,6 +29,7 @@ export const qk = {
     funds: () => ["client", "funds"] as const,
     fund: (fundId: string) => ["client", "fund", fundId] as const,
     transactions: (filter: string) => ["client", "transactions", filter] as const,
+    valueUpdates: () => ["client", "value-updates"] as const,
     payments: (status: string) => ["client", "payments", status] as const,
     payment: (paymentId: string) => ["client", "payment", paymentId] as const,
     orders: () => ["client", "orders"] as const,
@@ -57,6 +59,7 @@ export const qk = {
     investorPositions: (userId: string) => ["admin", "investor", userId, "positions"] as const,
     clientLedgerEntries: (userId: string, fundId: string) =>
       ["admin", "investor", userId, "ledger-entries", fundId] as const,
+    fundClientPositions: (fundId: string) => ["admin", "fund", fundId, "client-positions"] as const,
     funds: (filter: string) => ["admin", "funds", filter] as const,
     fund: (fundId: string) => ["admin", "fund", fundId] as const,
     fundStocks: (fundId: string) => ["admin", "fund", fundId, "stocks"] as const,

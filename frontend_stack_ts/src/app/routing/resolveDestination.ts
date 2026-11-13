@@ -19,6 +19,21 @@ export type Destination =
 
 const WEBVIEW_ORIGIN_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"])
 
+const ENTRY_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu
+
+const ENTRY_DESTINATIONS: Readonly<Record<string, (entryId: string) => string>> = {
+  client_value_updated: (entryId) => `/portfolio/value-updates?entry=${entryId}`,
+}
+
+export const notificationLink = (kind: string, payload: Readonly<Record<string, unknown>>): unknown => {
+  const entryId = payload.entryId
+  const build = Object.hasOwn(ENTRY_DESTINATIONS, kind) ? ENTRY_DESTINATIONS[kind] : undefined
+  if (build !== undefined && typeof entryId === "string" && ENTRY_ID_PATTERN.test(entryId)) {
+    return build(entryId)
+  }
+  return payload.deepLink ?? payload.link ?? payload.path
+}
+
 const refuse = (reason: RefusalReason): Destination => ({ kind: "refused", reason })
 
 const stripFragment = (value: string): string => value.split("#")[0] ?? ""

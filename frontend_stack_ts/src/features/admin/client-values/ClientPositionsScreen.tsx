@@ -13,6 +13,12 @@ import { Alert } from "~/ui/primitives/Feedback"
 
 const ENTRIES = [
   {
+    to: "/client-values/monthly",
+    title: "Monthly value update",
+    hint: "Type each client's gain since they invested for one fund. The changes are previewed and written together, and every client is notified.",
+    requires: ["client_values.read", "client_growth.write"],
+  },
+  {
     to: "/client-values/individual",
     title: "One investor",
     hint: "Adjust a single position by an amount or a rate. Written straight to the ledger.",
@@ -30,7 +36,7 @@ const ENTRIES = [
 ] as const
 
 const ClientValuesScreen = (): React.ReactElement => {
-  const { hasAnyPermission } = useSession()
+  const { hasAnyPermission, hasAllPermissions } = useSession()
   const canWrite = hasAnyPermission(["client_growth.write", "client_position.write"])
 
   return (
@@ -54,7 +60,7 @@ const ClientValuesScreen = (): React.ReactElement => {
               <Stat label={entry.title} hint={entry.hint}>
                 <span />
               </Stat>
-              <ButtonLink to={entry.to} tone="secondary" size="sm" disabled={!canWrite} trailing>
+              <ButtonLink to={entry.to} tone="secondary" size="sm" disabled={"requires" in entry ? !hasAllPermissions(entry.requires) : !canWrite} trailing>
 Open
 </ButtonLink>
             </Card>

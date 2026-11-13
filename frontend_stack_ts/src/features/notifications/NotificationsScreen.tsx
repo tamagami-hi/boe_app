@@ -5,7 +5,7 @@ import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { useToast } from "~/app/providers/ToastProvider"
 import { CLIENT_ROUTES } from "~/app/routing/clientRoutes"
-import { resolveDestination, type Destination } from "~/app/routing/resolveDestination"
+import { notificationLink, resolveDestination, type Destination } from "~/app/routing/resolveDestination"
 import { formatDateTime } from "~/domain/dates"
 import { describeClientFailure } from "~/domain/failure"
 import { notificationCategory } from "~/domain/notifications"
@@ -28,13 +28,13 @@ import { NOTIFICATION_TAPPABLE, NOTIFICATION_UNREAD } from "./notifications.reci
 
 const LEGACY_CLIENT_PREFIX = "/app/"
 
-const deepLinkOf = (payload: Record<string, unknown>): string | null => {
-  const candidate = payload.deepLink ?? payload.link ?? payload.path
+const deepLinkOf = (kind: string, payload: Record<string, unknown>): string | null => {
+  const candidate = notificationLink(kind, payload)
   return typeof candidate === "string" && candidate.trim() !== "" ? candidate.trim() : null
 }
 
-const destinationOf = (payload: Record<string, unknown>): Destination | null => {
-  const link = deepLinkOf(payload)
+const destinationOf = (kind: string, payload: Record<string, unknown>): Destination | null => {
+  const link = deepLinkOf(kind, payload)
   if (link === null) return null
   const candidate = link.startsWith(LEGACY_CLIENT_PREFIX) ? link.slice(LEGACY_CLIENT_PREFIX.length - 1) : link
   const destination = resolveDestination(candidate, CLIENT_ROUTES)
@@ -112,7 +112,7 @@ const NotificationsScreen = (): React.ReactElement => {
             )}
             <div className={cx(CARD_STACK, FEED_MEASURE)}>
               {data.items.map((item) => {
-                const destination = destinationOf(item.payload)
+                const destination = destinationOf(item.kind, item.payload)
                 const category = notificationCategory(item.kind)
                 return (
                   <Card key={item.id} tone={item.read ? "default" : "elevated"}>

@@ -15,7 +15,7 @@ import { EmptyState } from "~/ui/patterns/EmptyState"
 import { MoneyFootnote } from "~/ui/patterns/MoneyFootnote"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { ITEM_TITLE, STAT_LABEL, STAT_ROOT, SUMMARY_GRID } from "~/ui/recipes/datalist"
-import { CARD_COLUMNS_WRAP } from "~/ui/recipes/layout"
+import { ACTION_ROW, CARD_COLUMNS_WRAP } from "~/ui/recipes/layout"
 import { CARD_LINK } from "~/ui/recipes/surface"
 import { META_MUTED, META_TEXT, MONEY_BASE, MONEY_SIZE, MONEY_TONE } from "~/ui/recipes/text"
 
@@ -98,9 +98,14 @@ const PortfolioScreen = (): React.ReactElement => {
             <Section
               title="Positions"
               actions={
-                <ButtonLink to="/sips" tone="secondary" size="sm">
+                <span className={ACTION_ROW}>
+                  <ButtonLink to="/portfolio/value-updates" tone="secondary" size="sm">
+                    Value updates
+                  </ButtonLink>
+                  <ButtonLink to="/sips" tone="secondary" size="sm">
 SIP plans
 </ButtonLink>
+                </span>
               }
             >
               <div className={CARD_COLUMNS_WRAP[3]}>

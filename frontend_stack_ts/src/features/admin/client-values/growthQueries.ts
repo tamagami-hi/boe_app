@@ -1,13 +1,15 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import type { QueryClient, UseMutationResult } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import type { QueryClient, UseMutationResult, UseQueryResult } from "@tanstack/react-query"
 import type { z } from "zod"
 
 import {
   appendAdminIndividualClientGrowth,
   commitAdminCollectiveClientGrowth,
+  listAdminFundClientPositions,
   previewAdminCollectiveClientGrowth,
 } from "~/api/generated/operations"
 import type { DataOf } from "~/api/http"
+import { STALE, qk } from "~/api/queryKeys"
 import { useApi } from "~/app/providers/ApiProvider"
 
 export type IndividualGrowthBody = z.input<typeof appendAdminIndividualClientGrowth.request.body>
@@ -74,8 +76,23 @@ export const useCommitCollectiveClientGrowth = (): UseMutationResult<
   return useMutation({
     mutationFn: async ({ idempotencyKey, body }: CollectiveGrowthCommitInput) =>
       (await api.request(commitAdminCollectiveClientGrowth, { body, idempotencyKey })).data,
-    onSettled: async () => {
-      await refreshInvestorValues(queryClient)
+    onSettled: async (_data, _error, variables) => {
+      await Promise.all([
+        refreshInvestorValues(queryClient),
+        queryClient.invalidateQueries({ queryKey: qk.admin.fundClientPositions(variables.body.fundId) }),
+      ])
     },
+  })
+}
+
+export const useFundClientPositions = (
+  fundId: string,
+): UseQueryResult<DataOf<typeof listAdminFundClientPositions>> => {
+  const api = useApi()
+  return useQuery({
+    queryKey: qk.admin.fundClientPositions(fundId),
+    enabled: fundId !== "",
+    staleTime: STALE.MONEY,
+    queryFn: async () => (await api.request(listAdminFundClientPositions, { params: { fundId } })).data,
   })
 }
