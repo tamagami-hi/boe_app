@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto"
 
 import type { UnitOfWork } from "./db/database.js"
 import type { SipPlan } from "./db/repositories.js"
-import type { OrderState } from "./db/types.js"
 import { createSipInstallmentOrder } from "./domain/client/createSipInstallmentOrder.js"
+import { isInstallmentPeriodResolved } from "./domain/client/sipInstallmentPeriod.js"
 import type { AuditWriteRepository } from "./repositories/auditRepository.js"
 import type { NotificationWriteRepository } from "./repositories/notificationRepository.js"
 import type { OrderWriteRepository } from "./repositories/orderRepository.js"
@@ -33,8 +33,6 @@ export interface SipScheduleSummary {
   readonly plansAdvanced: number
   readonly plansCompleted: number
 }
-
-const OPEN_ORDER_STATES: readonly OrderState[] = ["submitted", "payment_pending"]
 
 const dateOnly = (value: Date | string): string => {
   const iso = typeof value === "string" ? value : value.toISOString()
@@ -100,13 +98,10 @@ const advanceOnePlan = async (
         return { kind: "created" as const, resolved: result.outcome === "created" }
       }
 
-      if (OPEN_ORDER_STATES.includes(existing.state)) {
+      if (!isInstallmentPeriodResolved(existing.state)) {
         return { kind: "waiting" as const, resolved: false }
       }
-      if (existing.state !== "accepted") {
-        return { kind: "waiting" as const, resolved: false }
-      }
-      return { kind: "accepted" as const, resolved: true }
+      return { kind: "resolved" as const, resolved: true }
     })
 
     if (outcome.kind === "created") {

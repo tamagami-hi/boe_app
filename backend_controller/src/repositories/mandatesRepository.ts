@@ -2,6 +2,7 @@ import { sql } from "kysely"
 
 import type { MandateCancelCommand, MandateCollectionAttempt, MandateSetupAttempt, PaymentMandate, SipPlan, Transaction } from "../db/repositories.js"
 import type { MandateState, SipState } from "../db/types.js"
+import { termEndPeriod } from "../domain/client/sipInstallmentPeriod.js"
 import {
   deriveSipStateForMandate,
   transitionMandateState,
@@ -451,7 +452,9 @@ export const createMandatesRepository = (): MandatesRepository => ({
     if (mandate === undefined || mandate.provider_subscription_id === null) return false
     const count = await tx.selectFrom("investment_orders").select(({ fn }) => fn.countAll<string>().as("count"))
       .where("sip_plan_id", "=", sip.id).where("type", "=", "sip_installment").where("state", "=", "accepted").executeTakeFirstOrThrow()
-    if (Number(count.count) < sip.duration_months) return false
+    const isTermElapsed = sip.start_date !== null && sip.next_due_date !== null &&
+      sip.next_due_date.toISOString().slice(0, 10) >= termEndPeriod(sip.start_date, sip.duration_months)
+    if (Number(count.count) < sip.duration_months && !isTermElapsed) return false
     const updatedMandate = await tx.updateTable("payment_mandates").set({
       state: transitionMandateState("active", "cancel_pending"),
       cancellation_requested_at: input.now,

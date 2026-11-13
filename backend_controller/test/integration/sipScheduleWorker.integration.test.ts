@@ -212,4 +212,32 @@ describe("SIP schedule worker on PostgreSQL", () => {
     )
     expect(plan.rows[0]!.next_due_date).toBe("2026-12-05")
   })
+
+  test("moves a plan past a failed month without a new order for that month", async () => {
+    const { userId } = await seedEligibleClient()
+    const plan = await pool.query<{ id: string }>(
+      "insert into sip_plans (user_id, fund_id, amount_paise, debit_day, duration_months, collection_mode, state, start_date, next_due_date) " +
+        "values ($1, $2, 50000, 13, 12, 'manual_checkout', 'active', '2026-11-13', '2026-11-13') returning id",
+      [userId, fundId],
+    )
+    const sipPlanId = plan.rows[0]!.id
+    await runWorker(CREATED_AT)
+    const [november] = await installmentsOf(sipPlanId)
+    await pool.query(
+      "update investment_orders set state = 'payment_failed', failure_code = 'PROVIDER_DECLINED' where id = $1",
+      [november!.id],
+    )
+    const failedRow = (await pool.query("select * from investment_orders where id = $1", [november!.id])).rows
+
+    await runWorker(new Date("2026-11-20T06:00:00.000Z"))
+    await runWorker(new Date("2026-12-13T06:00:00.000Z"))
+    await runWorker(new Date("2026-12-13T06:00:00.000Z"))
+
+    const orders = await installmentsOf(sipPlanId)
+    expect(orders.map((order) => [order.due_period, order.state])).toEqual([
+      ["2026-11-01", "payment_failed"],
+      ["2026-12-01", "submitted"],
+    ])
+    expect((await pool.query("select * from investment_orders where id = $1", [november!.id])).rows).toEqual(failedRow)
+  })
 })

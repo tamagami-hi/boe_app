@@ -130,15 +130,16 @@ describe("runSipSchedulePass", () => {
     expect(summary.installmentsCreated).toBe(0)
   })
 
-  test("a failed installment order is not retried with a new order for the same month", async () => {
+  test("a failed installment order moves the plan to next month without a new order for its month", async () => {
     const deps = buildDeps()
     await runSipSchedulePass(deps)
     const orders = (deps as unknown as { __orders: Map<string, { state: string }> }).__orders
     for (const order of orders.values()) order.state = "payment_failed"
 
     await runSipSchedulePass(deps)
+    await runSipSchedulePass(deps)
     const plan = (deps as unknown as { __plans: Map<string, typeof basePlan> }).__plans.get("plan-1")!
-    expect(plan.next_due_date).toBe("2026-08-15")
+    expect(plan.next_due_date).toBe("2026-09-15")
     expect(orders.size).toBe(1)
   })
 })

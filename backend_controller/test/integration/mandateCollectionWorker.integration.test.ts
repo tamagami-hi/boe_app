@@ -109,6 +109,7 @@ const runPass = (at: Date): Promise<MandateCollectionSummary> => runMandateColle
 
 const inNotifyWindow = (month: string): Date => new Date(`${month}-04T12:00:00.000Z`)
 const afterDebit = (month: string): Date => new Date(`${month}-05T12:00:00.000Z`)
+const afterCollectionExpiry = (month: string): Date => new Date(`${month}-06T04:32:00.000Z`)
 
 const randomPhone = (): string => `+1415555${String(Math.floor(1000000 + Math.random() * 8999999))}`
 
@@ -139,7 +140,7 @@ const seedPublishedFund = async (): Promise<string> => {
   return id
 }
 
-const seedActiveAutoPayPlan = async (startDate: string): Promise<AutoPayPlan> => {
+const seedActiveAutoPayPlan = async (startDate: string, durationMonths = 12): Promise<AutoPayPlan> => {
   const user = await pool.query<{ id: string }>(
     "insert into users (email_normalized, phone_e164, full_name, account_state, activated_at, " +
       "email_verification_state, email_verified_at) values ($1, $2, 'Mandate Owner', 'active', now(), 'verified', now()) returning id",
@@ -155,7 +156,7 @@ const seedActiveAutoPayPlan = async (startDate: string): Promise<AutoPayPlan> =>
       fund_id: fundId,
       amount_paise: AMOUNT_PAISE,
       debit_day: 5,
-      duration_months: 12,
+      duration_months: durationMonths,
       state: "pending_mandate",
       collection_mode: "phonepe_autopay",
       start_date: startDate,
@@ -201,6 +202,33 @@ const nextDueDateOf = async (plan: AutoPayPlan): Promise<string | null> =>
     "select to_char(next_due_date, 'YYYY-MM-DD') next_due_date from sip_plans where id = $1 and user_id = $2",
     [plan.sipPlanId, plan.userId],
   )).rows[0]!.next_due_date
+
+const failedPeriodRowsOf = async (sipPlanId: string, duePeriod: string): Promise<Record<string, unknown>[]> =>
+  (await pool.query<Record<string, unknown>>(
+    "select row_to_json(investment_order) order_row, row_to_json(payment) payment_row, " +
+      "row_to_json(payment_attempt) attempt_row, row_to_json(collection) collection_row " +
+      "from investment_orders investment_order " +
+      "join payments payment on payment.order_id = investment_order.id " +
+      "join payment_attempts payment_attempt on payment_attempt.payment_id = payment.id " +
+      "join mandate_collection_attempts collection on collection.order_id = investment_order.id " +
+      "where investment_order.sip_plan_id = $1 and investment_order.due_period = $2",
+    [sipPlanId, duePeriod],
+  )).rows
+
+const sipStateOf = async (plan: AutoPayPlan): Promise<string> =>
+  (await pool.query<{ state: string }>("select state::text state from sip_plans where id = $1", [plan.sipPlanId])).rows[0]!.state
+
+const failPeriod = async (plan: AutoPayPlan, month: string): Promise<void> => {
+  await runPass(inNotifyWindow(month))
+  settleCollectionsOf(plan, "FAILED")
+  await runPass(afterCollectionExpiry(month))
+}
+
+const collectPeriod = async (plan: AutoPayPlan, month: string): Promise<void> => {
+  await runPass(inNotifyWindow(month))
+  settleCollectionsOf(plan, "COMPLETED")
+  await runPass(afterDebit(month))
+}
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer("postgres:16-alpine")
@@ -261,5 +289,64 @@ describe("AutoPay mandate collection worker on PostgreSQL", () => {
     expect(await collectionPeriodsOf(plan.sipPlanId)).toEqual(["2027-02-01", "2027-03-01", "2027-04-01"])
     expect(notifiedCountOf(plan)).toBe(3)
     expect(await nextDueDateOf(plan)).toBe("2027-05-05")
+  })
+
+  test("moves a plan past a failed period without collecting that period again", async () => {
+    const plan = await seedActiveAutoPayPlan("2028-01-10")
+
+    await failPeriod(plan, "2028-02")
+    const failedRows = await failedPeriodRowsOf(plan.sipPlanId, "2028-02-01")
+    expect(failedRows).toHaveLength(1)
+    await runPass(afterCollectionExpiry("2028-02"))
+    await collectPeriod(plan, "2028-03")
+    await runPass(afterDebit("2028-03"))
+
+    const orders = await installmentsOf(plan.sipPlanId)
+    expect(orders.map((order) => [order.due_period, order.state])).toEqual([
+      ["2028-02-01", "payment_failed"],
+      ["2028-03-01", "accepted"],
+    ])
+    expect(await collectionPeriodsOf(plan.sipPlanId)).toEqual(["2028-02-01", "2028-03-01"])
+    expect(notifiedCountOf(plan)).toBe(2)
+    expect(await failedPeriodRowsOf(plan.sipPlanId, "2028-02-01")).toEqual(failedRows)
+    expect(await nextDueDateOf(plan)).toBe("2028-04-05")
+  })
+
+  test("moves a plan past a period whose debit time passed with no collection", async () => {
+    const plan = await seedActiveAutoPayPlan("2029-01-10")
+
+    await runPass(afterDebit("2029-02"))
+    await collectPeriod(plan, "2029-03")
+    await runPass(afterDebit("2029-03"))
+
+    const orders = await installmentsOf(plan.sipPlanId)
+    expect(orders.map((order) => [order.due_period, order.state])).toEqual([["2029-03-01", "accepted"]])
+    expect(notifiedCountOf(plan)).toBe(1)
+    expect(await nextDueDateOf(plan)).toBe("2029-04-05")
+  })
+
+  test("ends the term after its last scheduled period without a make-up collection", async () => {
+    const plan = await seedActiveAutoPayPlan("2030-01-10", 3)
+    await pool.query(
+      "insert into investment_orders (user_id, fund_id, fund_version_id, sip_plan_id, type, state, amount_paise, due_period, accepted_at) " +
+        "select $1, id, current_published_version_id, $2, 'sip_installment', 'accepted', $3, '2030-01-01', now() from funds where id = $4",
+      [plan.userId, plan.sipPlanId, AMOUNT_PAISE, fundId],
+    )
+
+    await failPeriod(plan, "2030-02")
+    await runPass(afterCollectionExpiry("2030-02"))
+    await collectPeriod(plan, "2030-03")
+    await runPass(afterDebit("2030-03"))
+    await runPass(inNotifyWindow("2030-04"))
+    await runPass(inNotifyWindow("2030-04"))
+
+    const orders = await installmentsOf(plan.sipPlanId)
+    expect(orders.map((order) => [order.due_period, order.state])).toEqual([
+      ["2030-01-01", "accepted"],
+      ["2030-02-01", "payment_failed"],
+      ["2030-03-01", "accepted"],
+    ])
+    expect(notifiedCountOf(plan)).toBe(2)
+    expect(await sipStateOf(plan)).toBe("cancel_pending")
   })
 })

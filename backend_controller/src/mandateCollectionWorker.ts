@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto"
 import type { UnitOfWork } from "./db/database.js"
 import type { MandateCollectionAttempt, PaymentAttempt, SipPlan } from "./db/repositories.js"
 import { createSipInstallmentOrder } from "./domain/client/createSipInstallmentOrder.js"
+import { isInstallmentPeriodResolved } from "./domain/client/sipInstallmentPeriod.js"
 import { reconcileCollectionFact } from "./domain/payments/reconcileCollectionFact.js"
 import { applyCanonicalPaymentOutcome } from "./domain/payments/applyCanonicalPaymentOutcome.js"
 import { reconcileMandateFact } from "./domain/payments/reconcileMandateFacts.js"
@@ -89,17 +90,16 @@ const prepareCollection = async (deps: MandateCollectionDeps, plan: SipPlan) => 
     const notifyAt = new Date(debitAt.getTime() - NOTIFY_LEAD_MS)
     const duePeriod = firstOfMonth(locked.next_due_date)
     const existing = await deps.orderRepository.findInstallmentByPeriod(tx, { sipPlanId: locked.id, duePeriod })
-    if (existing !== null) {
-      if (existing.state === "accepted") {
-        await deps.sipPlanRepository.advanceNextDueDate(tx, {
-          sipPlanId: locked.id,
-          nextDueDate: nextMonthlyDueDate(locked.next_due_date, locked.debit_day),
-          now,
-        })
-      }
+    const isPeriodResolved = existing === null ? now >= debitAt : isInstallmentPeriodResolved(existing.state)
+    if (isPeriodResolved) {
+      await deps.sipPlanRepository.advanceNextDueDate(tx, {
+        sipPlanId: locked.id,
+        nextDueDate: nextMonthlyDueDate(locked.next_due_date, locked.debit_day),
+        now,
+      })
       return null
     }
-    if (now < notifyAt || now >= debitAt) return null
+    if (existing !== null || now < notifyAt) return null
     const mandate = await deps.mandatesRepository.findCurrentMandateForOwner(tx, { sipPlanId: locked.id, userId: locked.user_id })
     if (mandate === null || mandate.state !== "active" || mandate.provider_subscription_id === null) return null
     const created = await createSipInstallmentOrder(tx, {

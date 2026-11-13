@@ -94,12 +94,13 @@ export const createSipPlanRepository = (): SipPlanRepository => ({
   listAutoPayTermCompletionCandidates: async (tx, limit) => tx.selectFrom("sip_plans").selectAll()
     .where("state", "=", "active").where("collection_mode", "=", "phonepe_autopay")
     .where("duration_months", "is not", null)
-    .where(sql<boolean>`(
+    .where(sql<boolean>`((
       select count(*) from investment_orders investment_order
       where investment_order.sip_plan_id = sip_plans.id
         and investment_order.type = 'sip_installment'
         and investment_order.state = 'accepted'
-    ) >= sip_plans.duration_months`)
+    ) >= sip_plans.duration_months or sip_plans.next_due_date >=
+      (date_trunc('month', sip_plans.start_date::timestamp) + make_interval(months => sip_plans.duration_months))::date)`)
     .orderBy("updated_at").orderBy("id").limit(limit).forUpdate().skipLocked().execute(),
 
   lockById: async (tx, input) => {
