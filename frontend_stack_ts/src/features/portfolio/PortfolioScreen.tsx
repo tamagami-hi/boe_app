@@ -8,6 +8,7 @@ import { countOf } from "~/domain/plural"
 import { formatPercent } from "~/domain/percent"
 import { INVESTMENTS_RECORDED_NOTE } from "~/features/investing/InvestmentsRecorded"
 import { useOnlinePaymentsOff } from "~/features/investing/onlinePayments"
+import { MaturityOffersCard } from "~/features/maturity-options/MaturityOffersCard"
 import { useFundCatalogue, usePortfolio } from "~/features/shared/queries"
 import { cx } from "~/lib/cx"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
@@ -40,6 +41,8 @@ const PortfolioScreen = (): React.ReactElement => {
         title="Portfolio"
         description="What you own today, and how it has grown."
       />
+
+      <MaturityOffersCard />
 
       <AsyncBoundary
         query={query}

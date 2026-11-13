@@ -21,16 +21,19 @@ const WEBVIEW_ORIGIN_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"])
 
 const ENTRY_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu
 
-const ENTRY_DESTINATIONS: Readonly<Record<string, (entryId: string) => string>> = {
-  client_value_updated: (entryId) => `/portfolio/value-updates?entry=${entryId}`,
-  client_contribution_recorded: (entryId) => `/activity/receipts/${entryId}`,
+type PayloadDestination = Readonly<{ key: string; build: (id: string) => string }>
+
+const PAYLOAD_DESTINATIONS: Readonly<Record<string, PayloadDestination>> = {
+  client_value_updated: { key: "entryId", build: (entryId) => `/portfolio/value-updates?entry=${entryId}` },
+  client_contribution_recorded: { key: "entryId", build: (entryId) => `/activity/receipts/${entryId}` },
+  maturity_options_sent: { key: "offerId", build: (offerId) => `/maturity-options/${offerId}` },
 }
 
 export const notificationLink = (kind: string, payload: Readonly<Record<string, unknown>>): unknown => {
-  const entryId = payload.entryId
-  const build = Object.hasOwn(ENTRY_DESTINATIONS, kind) ? ENTRY_DESTINATIONS[kind] : undefined
-  if (build !== undefined && typeof entryId === "string" && ENTRY_ID_PATTERN.test(entryId)) {
-    return build(entryId)
+  const destination = Object.hasOwn(PAYLOAD_DESTINATIONS, kind) ? PAYLOAD_DESTINATIONS[kind] : undefined
+  const id = destination === undefined ? undefined : payload[destination.key]
+  if (destination !== undefined && typeof id === "string" && ENTRY_ID_PATTERN.test(id)) {
+    return destination.build(id)
   }
   return payload.deepLink ?? payload.link ?? payload.path
 }

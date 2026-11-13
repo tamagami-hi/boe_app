@@ -11,6 +11,7 @@ const CATEGORIES: Readonly<Record<string, NotificationCategory>> = {
   fund_receipt_acknowledged: { label: "Investment", tone: "positive" },
   sip_installment_due: { label: "SIP", tone: "info" },
   support_request_updated: { label: "Support", tone: "info" },
+  maturity_options_sent: { label: "Maturity", tone: "info" },
   app_update_available: { label: "App", tone: "neutral" },
 }
 

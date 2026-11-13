@@ -17,6 +17,7 @@ export const CLIENT_MONEY_PREFIXES = [
   ["client", "receipts"],
   ["client", "receipt"],
   ["client", "sip-schedules"],
+  ["client", "maturity-options"],
 ] as const
 
 export const qk = {
@@ -43,6 +44,8 @@ export const qk = {
     receipts: () => ["client", "receipts"] as const,
     receipt: (entryId: string) => ["client", "receipt", entryId] as const,
     sipSchedules: () => ["client", "sip-schedules"] as const,
+    maturityOffers: () => ["client", "maturity-options"] as const,
+    maturityOffer: (offerId: string) => ["client", "maturity-options", offerId] as const,
     notifications: () => ["client", "notifications"] as const,
     supportFaqs: () => ["client", "support", "faqs"] as const,
     supportTickets: () => ["client", "support", "tickets"] as const,

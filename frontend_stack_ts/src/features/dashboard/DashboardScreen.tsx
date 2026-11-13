@@ -8,6 +8,7 @@ import { formatDate } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { formatPercent } from "~/domain/percent"
 import { clientEmailVerification } from "~/domain/clientStatus"
+import { MaturityOffersCard } from "~/features/maturity-options/MaturityOffersCard"
 import { PendingPaymentRecovery } from "~/features/payments/PendingPaymentRecovery"
 import { InvestingStatus } from "~/features/profile/InvestingStatus"
 import { useEligibility, useFunds, usePortfolio, useSipPlans } from "~/features/shared/queries"
@@ -60,6 +61,8 @@ const DashboardScreen = (): React.ReactElement => {
       <PageHeader title={`Good to see you, ${firstName}`} />
 
       <PendingPaymentRecovery />
+
+      <MaturityOffersCard />
 
       {verificationState !== null && verificationState !== "verified" ? (
         <Reveal delayMs={60}>
