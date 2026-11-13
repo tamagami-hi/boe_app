@@ -11,3 +11,9 @@ export const parsePositiveRupees = (text: string): Paise | null => {
     throw error
   }
 }
+
+export const paiseToRupeeText = (paise: string): string => {
+  const padded = paise.padStart(3, "0")
+  const fraction = padded.slice(-2)
+  return fraction === "00" ? padded.slice(0, -2) : `${padded.slice(0, -2)}.${fraction}`
+}

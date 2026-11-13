@@ -24,6 +24,7 @@ import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 
 import { POOL_META, POOL_TOP } from "./portfolio.recipe"
+import { SipSchedulesSection } from "./SipSchedulesSection"
 
 const PortfolioScreen = (): React.ReactElement => {
   const query = usePortfolio()
@@ -142,6 +143,8 @@ SIP plans
           </>
         )}
       </AsyncBoundary>
+
+      <SipSchedulesSection />
     </Page>
   )
 }

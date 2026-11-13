@@ -1,0 +1,150 @@
+import { useState } from "react"
+
+import { Section } from "~/app/layouts/Section"
+import { useSession } from "~/app/providers/SessionProvider"
+import { formatYearMonth } from "~/domain/dates"
+import { toPaise } from "~/domain/money"
+import { useClientSipSchedules } from "~/features/admin/client-values/sipScheduleQueries"
+import { AdminTable } from "~/features/admin/shared/AdminTable"
+import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
+import { MoneyValue } from "~/ui/patterns/MoneyValue"
+import { Badge } from "~/ui/primitives/Badge"
+import { Button } from "~/ui/primitives/Button"
+import { Card } from "~/ui/primitives/Card"
+import { Skeleton } from "~/ui/primitives/Feedback"
+import { PROSE_SM } from "~/ui/recipes/datalist"
+import { ACTION_ROW } from "~/ui/recipes/layout"
+
+import { SipScheduleCreateForm } from "./SipScheduleCreateForm"
+import { SipScheduleEditor } from "./SipScheduleEditor"
+
+export type SipScheduleSectionProps = Readonly<{ userId: string; canStart: boolean }>
+
+export const SipScheduleSection = ({ userId, canStart }: SipScheduleSectionProps): React.ReactElement | null => {
+  const { hasAnyPermission } = useSession()
+  const canRead = hasAnyPermission(["client_position.write", "client_values.read"])
+  const canWrite = hasAnyPermission(["client_position.write"])
+  const schedules = useClientSipSchedules(canRead ? userId : "")
+  const [creating, setCreating] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  if (!canRead) return null
+
+  const reload = (): void => {
+    void schedules.refetch()
+  }
+  const editing = schedules.data?.items.find((item) => item.scheduleId === editingId)
+
+  return (
+    <Section
+      title="SIP schedules"
+      description="Monthly investments the client pays BeOnEdge directly. Nothing is collected automatically: each monthly investment you record can be linked to one month, and the client sees how many months are paid."
+      actions={
+        canWrite && canStart && !creating ? (
+          <Button
+            size="sm"
+            tone="secondary"
+            onClick={() => {
+              setCreating(true)
+            }}
+          >
+            Start a SIP schedule
+          </Button>
+        ) : null
+      }
+    >
+      {creating ? (
+        <SipScheduleCreateForm
+          userId={userId}
+          onReload={reload}
+          onClose={() => {
+            setCreating(false)
+          }}
+        />
+      ) : null}
+
+      <AsyncBoundary
+        query={schedules}
+        skeleton={
+          <Card>
+            <Skeleton height="1rem" width="40%" />
+            <Skeleton height="2rem" />
+          </Card>
+        }
+        isEmpty={(data) => data.items.length === 0}
+        empty={
+          <Card>
+            <p className={PROSE_SM}>This client has no SIP schedule.</p>
+          </Card>
+        }
+      >
+        {(data) => (
+          <AdminTable
+            caption="SIP schedules"
+            rows={data.items}
+            rowKey={(row) => row.scheduleId}
+            columns={[
+              { key: "fund", header: "Fund", render: (row) => row.fundName },
+              {
+                key: "amount",
+                header: "Monthly",
+                numeric: true,
+                render: (row) => <MoneyValue amount={toPaise(row.monthlyAmountPaise)} size="sm" showDecimals />,
+              },
+              {
+                key: "months",
+                header: "Months",
+                render: (row) => `${formatYearMonth(row.startMonth)} to ${formatYearMonth(row.endMonth)}`,
+              },
+              {
+                key: "paid",
+                header: "Paid",
+                render: (row) => `${String(row.monthsPaid)} of ${String(row.monthCount)}`,
+              },
+              {
+                key: "due",
+                header: "Unpaid to date",
+                numeric: true,
+                render: (row) => String(row.monthsDue),
+              },
+              {
+                key: "state",
+                header: "State",
+                render: (row) => <Badge tone={row.state === "active" ? "positive" : "neutral"}>{row.state === "active" ? "Active" : "Closed"}</Badge>,
+              },
+              {
+                key: "manage",
+                header: "",
+                render: (row) =>
+                  canWrite ? (
+                    <span className={ACTION_ROW}>
+                      <Button
+                        size="sm"
+                        tone="ghost"
+                        onClick={() => {
+                          setEditingId(row.scheduleId)
+                        }}
+                      >
+                        Manage
+                      </Button>
+                    </span>
+                  ) : null,
+              },
+            ]}
+          />
+        )}
+      </AsyncBoundary>
+
+      {editing === undefined ? null : (
+        <SipScheduleEditor
+          key={editing.scheduleId}
+          userId={userId}
+          schedule={editing}
+          onReload={reload}
+          onClose={() => {
+            setEditingId(null)
+          }}
+        />
+      )}
+    </Section>
+  )
+}

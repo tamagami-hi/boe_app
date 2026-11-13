@@ -63,6 +63,8 @@ export const formatDateTime = (value: string): string =>
 
 export const formatMonth = (value: string): string => monthFormatter.format(parseIsoDateTime(value))
 
+export const formatYearMonth = (month: string): string => formatMonth(`${month}-01T00:00:00Z`)
+
 const startOfUtcDay = (date: Date): number =>
   Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
 

@@ -30,6 +30,7 @@ import { ClientHubActions } from "./ClientHubActions"
 import { ClientHubTabs } from "./ClientHubTabs"
 import { ClientNomineeSection } from "./ClientNomineeSection"
 import { PasswordLinkPanel } from "./PasswordLinkPanel"
+import { SipScheduleSection } from "./SipScheduleSection"
 import { UserLifecyclePanel } from "./UserLifecyclePanel"
 
 const ORDER_TYPE_LABEL = {
@@ -148,6 +149,10 @@ const UserDetailScreen = (): React.ReactElement => {
                   investorLabel={data.user.fullName === "" ? data.user.email : data.user.fullName}
                 />
               </Section>
+            ) : null}
+
+            {data.roles.length === 0 ? (
+              <SipScheduleSection userId={userId} canStart={canRecordFor(data.user.accountState)} />
             ) : null}
 
             <ClientHubTabs userId={userId} isClient={data.roles.length === 0} />

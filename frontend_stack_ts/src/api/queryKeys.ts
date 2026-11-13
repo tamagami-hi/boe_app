@@ -16,6 +16,7 @@ export const CLIENT_MONEY_PREFIXES = [
   ["client", "value-updates"],
   ["client", "receipts"],
   ["client", "receipt"],
+  ["client", "sip-schedules"],
 ] as const
 
 export const qk = {
@@ -41,6 +42,7 @@ export const qk = {
     statements: () => ["client", "statements"] as const,
     receipts: () => ["client", "receipts"] as const,
     receipt: (entryId: string) => ["client", "receipt", entryId] as const,
+    sipSchedules: () => ["client", "sip-schedules"] as const,
     notifications: () => ["client", "notifications"] as const,
     supportFaqs: () => ["client", "support", "faqs"] as const,
     supportTickets: () => ["client", "support", "tickets"] as const,
@@ -68,6 +70,7 @@ export const qk = {
     fundClientPositions: (fundId: string) => ["admin", "fund", fundId, "client-positions"] as const,
     clientPortfolioSummary: (userId: string) => ["admin", "investor", userId, "portfolio-summary"] as const,
     clientLedgerPage: (userId: string) => ["admin", "investor", userId, "ledger-page"] as const,
+    clientSipSchedules: (userId: string) => ["admin", "investor", userId, "sip-schedules"] as const,
     clientValueSummaryRoot: () => ["admin", "client-value-summaries"] as const,
     clientValueSummaries: (filter: string) => ["admin", "client-value-summaries", filter] as const,
     fundValueUpdates: () => ["admin", "fund-value-updates"] as const,

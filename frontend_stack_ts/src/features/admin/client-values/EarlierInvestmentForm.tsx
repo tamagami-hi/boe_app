@@ -28,6 +28,8 @@ import {
 } from "./recordingCategories"
 import { useRecordClientContribution } from "./recordingQueries"
 import { parsePositiveRupees } from "./rupeeAmount"
+import { SipMonthLinkField } from "./SipMonthLinkField"
+import { sipMonthLabel, useSipMonthLink } from "./sipMonthLink"
 
 const CATEGORY_OPTIONS = RECORDING_CATEGORIES.map((category) => ({
   value: category.value,
@@ -43,8 +45,14 @@ type Outcome =
 
 const IDLE: Outcome = { kind: "idle" }
 
+const MONTHLY_REASON = "recorded_offline_monthly_investment"
+
 const describeRejection = (error: unknown): string => {
   if (!isApiError(error)) return "This investment could not be sent. Reload the page and try again."
+  const linkRefusals = Object.entries(error.fields ?? {}).filter(([field]) => field.startsWith("sipScheduleLink"))
+  if (linkRefusals.length > 0) {
+    return `SIP schedule month: ${linkRefusals.flatMap(([, messages]) => messages).join(" ")}`
+  }
   if (error.code === "RESOURCE_NOT_FOUND") {
     return "That investor or fund could not be found. Check the selection and try again."
   }
@@ -76,6 +84,7 @@ export const EarlierInvestmentForm = ({
   const [confirmingRestart, setConfirmingRestart] = useState(false)
 
   const category = recordingCategoryCopy(reasonCode)
+  const sipLink = useSipMonthLink(userId, fundId, reasonCode === MONTHLY_REASON)
   const amountPaise = parsePositiveRupees(rupees)
   const trimmedNote = note.trim()
   const request = {
@@ -85,6 +94,7 @@ export const EarlierInvestmentForm = ({
     effectiveDate,
     reasonCode,
     ...(trimmedNote === "" ? {} : { note: trimmedNote }),
+    ...(sipLink.link === null ? {} : { sipScheduleLink: sipLink.link }),
   }
   const idempotencyKey = useIdempotencyKey({ ...request, attempt })
 
@@ -98,12 +108,14 @@ export const EarlierInvestmentForm = ({
   const today = indiaToday()
   const futureDated = effectiveDate !== "" && effectiveDate > today
   const amountInvalid = rupees !== "" && amountPaise === null
-  const incomplete = fundId === "" || effectiveDate === "" || futureDated || amountPaise === null
+  const incomplete =
+    fundId === "" || effectiveDate === "" || futureDated || amountPaise === null || sipLink.blocking
 
   const send = (): void => {
     setConfirmingRecord(false)
     if (amountPaise === null) return
     if (outcome.kind === "rejected") setOutcome(IDLE)
+    sipLink.choose(sipLink.selected)
     record.mutate(
       { ...request, amountPaise, idempotencyKey },
       {
@@ -134,6 +146,7 @@ export const EarlierInvestmentForm = ({
     setEffectiveDate("")
     setReasonCode(DEFAULT_RECORDING_REASON)
     setNote("")
+    sipLink.reset()
     startNewAttempt()
   }
 
@@ -259,6 +272,8 @@ export const EarlierInvestmentForm = ({
           </FormField>
         </div>
 
+        <SipMonthLinkField state={sipLink} disabled={locked} />
+
         <FormField label="Note" hint="Internal. Recorded on the ledger entry, never shown to the investor.">
           {({ id }) => (
             <Input
@@ -304,6 +319,9 @@ export const EarlierInvestmentForm = ({
           </DetailRow>
           <DetailRow label="Dated">{effectiveDate === "" ? "" : formatDate(effectiveDate)}</DetailRow>
           <DetailRow label="Category">{category.label}</DetailRow>
+          {sipLink.link === null || sipLink.schedule === null ? null : (
+            <DetailRow label="SIP month">{sipMonthLabel(sipLink.schedule, sipLink.link.month)}</DetailRow>
+          )}
         </DataList>
         <Prose>{category.confirmBody}</Prose>
       </ConfirmDialog>

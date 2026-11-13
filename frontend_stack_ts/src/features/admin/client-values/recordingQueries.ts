@@ -16,6 +16,7 @@ export type RecordedContributionInput = Readonly<{
   effectiveDate: string
   reasonCode: AdminRecordingReasonCode
   note?: string
+  sipScheduleLink?: Readonly<{ scheduleId: string; month: string }>
 }>
 
 export const useRecordClientContribution = (): UseMutationResult<
