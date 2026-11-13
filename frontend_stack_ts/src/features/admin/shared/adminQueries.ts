@@ -16,7 +16,6 @@ import {
   getAdminMandate,
   getAdminUser,
   listAdminApplications,
-  listAdminAuditEvents,
   listAdminEmailDeliveries,
   listAdminFaqs,
   listAdminFundReceipts,
@@ -322,32 +321,6 @@ export const useMandateAction = (
       await queryClient.invalidateQueries({ queryKey: qk.admin.mandate(mandateId) })
       await queryClient.invalidateQueries({ queryKey: ["admin", "mandates"] })
     },
-  })
-}
-
-export type AuditFilter = Readonly<{ entityType?: string; command?: string }>
-
-export const useAdminAuditEvents = (
-  filter: AuditFilter,
-): PagedQuery<DataOf<typeof listAdminAuditEvents>> => {
-  const api = useApi()
-  const key = `${filter.entityType ?? ""}:${filter.command ?? ""}`
-  return usePagedQuery({
-    queryKey: qk.admin.auditLogs(key),
-    staleTime: STALE.MONEY,
-    fetchPage: async (after) =>
-      api.request(listAdminAuditEvents, {
-        query: {
-          limit: LIST_LIMIT,
-          after,
-          ...(filter.entityType === undefined || filter.entityType === ""
-            ? {}
-            : { entityType: filter.entityType }),
-          ...(filter.command === undefined || filter.command === ""
-            ? {}
-            : { command: filter.command }),
-        },
-      }),
   })
 }
 

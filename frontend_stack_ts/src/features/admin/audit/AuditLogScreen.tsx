@@ -2,67 +2,113 @@ import { useState } from "react"
 
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
-import { formatDateTime } from "~/domain/dates"
-import { useAdminAuditEvents } from "~/features/admin/shared/adminQueries"
-import { AdminTable } from "~/features/admin/shared/AdminTable"
+import { FilterChip, FilterRow } from "~/features/admin/shared/AdminTable"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
-import { LoadMore } from "~/ui/patterns/LoadMore"
 import { EmptyState } from "~/ui/patterns/EmptyState"
+import { LoadMore } from "~/ui/patterns/LoadMore"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
-import { Input } from "~/ui/primitives/FormField"
+import { FormField, Input } from "~/ui/primitives/FormField"
+import { ADMIN_CONTROLS } from "~/ui/recipes/admin"
 
-import { ADMIN_CODE, ADMIN_CONTROLS } from "~/ui/recipes/admin"
-import { ENTRY_TEXT } from "~/ui/recipes/datalist"
-import { META_TEXT } from "~/ui/recipes/text"
+import { useAuditTrail, type AuditPreset } from "./auditQueries"
+import { AuditTrailTable } from "./AuditTrailTable"
+
+const PRESETS: readonly Readonly<{ value: AuditPreset | null; label: string }>[] = [
+  { value: null, label: "All events" },
+  { value: "recordings", label: "Recordings" },
+  { value: "reversals", label: "Reversals" },
+  { value: "growth", label: "Value updates" },
+  { value: "maturity", label: "Maturity settlements" },
+  { value: "refunds", label: "Refunds" },
+]
+
+type TextFilters = Readonly<{ entityType: string; command: string }>
 
 const AuditLogScreen = (): React.ReactElement => {
-  const [entityType, setEntityType] = useState("")
-  const [command, setCommand] = useState("")
-  const [applied, setApplied] = useState<Readonly<{ entityType: string; command: string }>>({
-    entityType: "",
-    command: "",
+  const [preset, setPreset] = useState<AuditPreset | null>(null)
+  const [fromDate, setFromDate] = useState("")
+  const [toDate, setToDate] = useState("")
+  const [draft, setDraft] = useState<TextFilters>({ entityType: "", command: "" })
+  const [applied, setApplied] = useState<TextFilters>({ entityType: "", command: "" })
+  const rangeError = fromDate !== "" && toDate !== "" && fromDate > toDate ? "The end date is before the start date." : undefined
+  const query = useAuditTrail({
+    preset,
+    entityType: applied.entityType,
+    command: applied.command,
+    fromDate: rangeError === undefined ? fromDate : "",
+    toDate: rangeError === undefined ? toDate : "",
   })
-  const query = useAdminAuditEvents(applied)
 
   const apply = (): void => {
-    setApplied({ entityType: entityType.trim(), command: command.trim() })
+    setApplied({ entityType: draft.entityType.trim(), command: draft.command.trim() })
   }
+
+  const textInput = (field: keyof TextFilters, placeholder: string, label: string): React.ReactElement => (
+    <Input
+      type="search"
+      placeholder={placeholder}
+      aria-label={label}
+      value={draft[field]}
+      onChange={(event) => {
+        setDraft({ ...draft, [field]: event.target.value })
+      }}
+      onBlur={apply}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") apply()
+      }}
+    />
+  )
 
   return (
     <Page width="wide">
       <PageHeader
         title="Audit log"
-        description="Every administrative command, who ran it, what it touched and which request it belonged to. Filtering runs on the server, so it covers the whole log."
+        description="Every administrative command, who ran it, what it touched and which request it belonged to. Money commands show the client and amount the audit record names. Filtering runs on the server, so it covers the whole log. Dates are India dates."
       />
 
+      <FilterRow label="Show">
+        {PRESETS.map((option) => (
+          <FilterChip
+            key={option.label}
+            active={option.value === preset}
+            label={option.label}
+            onSelect={() => {
+              setPreset(option.value)
+            }}
+          />
+        ))}
+      </FilterRow>
+
       <div className={ADMIN_CONTROLS}>
-        <Input
-          type="search"
-          placeholder="Entity type, for example content_item"
-          aria-label="Filter by entity type"
-          value={entityType}
-          onChange={(event) => {
-            setEntityType(event.target.value)
-          }}
-          onBlur={apply}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") apply()
-          }}
-        />
-        <Input
-          type="search"
-          placeholder="Command, for example user.suspended"
-          aria-label="Filter by command"
-          value={command}
-          onChange={(event) => {
-            setCommand(event.target.value)
-          }}
-          onBlur={apply}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") apply()
-          }}
-        />
+        <FormField label="From">
+          {({ id }) => (
+            <Input
+              id={id}
+              type="date"
+              value={fromDate}
+              onChange={(event) => {
+                setFromDate(event.target.value)
+              }}
+            />
+          )}
+        </FormField>
+        <FormField label="To" error={rangeError}>
+          {({ id, describedBy, invalid }) => (
+            <Input
+              id={id}
+              type="date"
+              value={toDate}
+              invalid={invalid}
+              aria-describedby={describedBy}
+              onChange={(event) => {
+                setToDate(event.target.value)
+              }}
+            />
+          )}
+        </FormField>
+        {textInput("entityType", "Entity type, for example content_item", "Filter by entity type")}
+        {textInput("command", "Command, for example user.suspended", "Filter by command")}
       </div>
 
       <AsyncBoundary
@@ -74,67 +120,9 @@ const AuditLogScreen = (): React.ReactElement => {
           </Card>
         }
         isEmpty={(data) => data.items.length === 0}
-        empty={
-          <EmptyState
-            title="No audit entry matches"
-            description="Clear the filters to see the whole log."
-          />
-        }
+        empty={<EmptyState title="No audit entry matches" description="Clear the filters to see the whole log." />}
       >
-        {(data) => (
-          <AdminTable
-            caption="Audit log"
-            rows={data.items}
-            rowKey={(row) => row.id}
-            columns={[
-              {
-                key: "when",
-                header: "When",
-                render: (row) => formatDateTime(row.occurredAt),
-              },
-              {
-                key: "actor",
-                header: "Actor",
-                render: (row) => (
-                  <span className={ENTRY_TEXT}>
-                    <span>{row.actorEmail ?? row.actorType}</span>
-                    <span className={META_TEXT}>{row.actorType}</span>
-                  </span>
-                ),
-              },
-              { key: "command", header: "Command", render: (row) => row.command },
-              {
-                key: "entity",
-                header: "Entity",
-                render: (row) => (
-                  <span className={ENTRY_TEXT}>
-                    <span>{row.entityType}</span>
-                    <span className={ADMIN_CODE}>{row.entityId}</span>
-                  </span>
-                ),
-              },
-              {
-                key: "transition",
-                header: "Transition",
-                render: (row) =>
-                  row.fromState === null && row.toState === null
-                    ? "—"
-                    : `${row.fromState ?? "—"} → ${row.toState ?? "—"}`,
-              },
-              {
-                key: "version",
-                header: "Version",
-                numeric: true,
-                render: (row) => String(row.entityVersion),
-              },
-              {
-                key: "request",
-                header: "Request",
-                render: (row) => <span className={ADMIN_CODE}>{row.requestId}</span>,
-              },
-            ]}
-          />
-        )}
+        {(data) => <AuditTrailTable caption="Audit log, newest first" rows={data.items} showClient />}
       </AsyncBoundary>
       <LoadMore list={query} noun="audit events" />
     </Page>

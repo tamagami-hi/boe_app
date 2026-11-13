@@ -201,6 +201,17 @@ export const ADMIN_ROUTES: RouteManifest = [
     back: { kind: "parent", path: "/client-values" },
   },
   {
+    id: "client-values-exports",
+    path: "/client-values/exports",
+    title: "Accounting exports",
+    access: "session",
+    role: "admin",
+    permissions: ["client_values.read"],
+    element: () => import("~/features/admin/reports/AccountingExportsScreen"),
+    nav: { domain: "client-values", order: 6.6, label: "Exports" },
+    back: { kind: "parent", path: "/client-values" },
+  },
+  {
     id: "client-values-individual",
     path: "/client-values/individual",
     title: "Individual adjustment",
