@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "finding",
-  "nextNumber": 2,
+  "nextNumber": 14,
   "entries": [
     {
       "id": "finding-1",
@@ -22,6 +22,282 @@
         "agent": "claude-opus-5-5"
       },
       "at": "2026-11-13T08:12:38.547Z"
+    },
+    {
+      "id": "finding-2",
+      "kind": "finding",
+      "title": "DD 7/8: no per-user invested/returns on user pages and no cross-client ROI dashboard; walls rule constrains it",
+      "text": "STATIC (explorer, to verify in T7). derivePortfolio (domain/client/portfolioLedger.ts:71-137) computes invested, value, growth, simple return % (no XIRR), lastActivityDate (date only) but only client routes use it. Admin GET /v1/admin/client-growth/investors/{userId}/positions (adminClientGrowthRoutes.ts:553-578) returns per-fund principal/value/growth, no %, no total, no timestamp; shown only in ClientPositionDetailScreen and IndividualClientGrowthScreen. AdminUser/user detail (admin-oversight.ts:213-307) carry no money; UserDetailScreen shows recent orders only. Overview shows queue counts only. Real last-updated = max client_value_entries.created_at / client_growth_batches.created_at, not exposed. Walls: investment-architecture.guard.test.ts:153-175 forbids 'aum' paths referencing client_value and clientGrowth paths referencing aum, so an ROI summary must read client_value_entries in a neutrally named module; any AUM side-by-side is a separate frontend call. Do not add fields to existing responses (strict client parsing breaks older admin builds); add new endpoints: GET /v1/admin/clients/{userId}/portfolio-summary and GET /v1/admin/client-values/summary (perm client_values.read). 'Updating client investment amount' most likely = growth adjustment (Adjust one investor / collective), which changes value not principal.",
+      "paths": [],
+      "tags": [
+        "dd-point-7",
+        "dd-point-8",
+        "roi"
+      ],
+      "refs": [
+        "M1-admin-audit:T3-invest-roi"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "explorer-invest-roi"
+      },
+      "at": "2026-11-13T08:14:37.914Z"
+    },
+    {
+      "id": "finding-3",
+      "kind": "finding",
+      "title": "Recording: correction/earlier are free-text reason codes; monthly investment = new reason option",
+      "text": "STATIC (explorer, to verify in T7). One flow: POST /v1/admin/clients/{userId}/recorded-contributions (adminClientPositionRoutes.ts:53-149; contract admin-money.ts:713-756), Idempotency-Key required, perm client_position.write, effectiveDate not in future (UTC day). Admin UI options are REASON_OPTIONS in features/admin/client-values/EarlierInvestmentForm.tsx:23-26: recorded_offline_investment / recorded_offline_correction. reasonCode is free text (adminRouteKit.ts:22; db text CHECK non-blank). recordContribution.ts:69-103 writes recorded_offline order + succeeded payment + allocation + contribution ledger entry (principal=value>0) + audit + notification text 'before you joined the app' (:41-47). Both options behave identically and can only add; lowering = reversal. Monthly investment: add third reason code (e.g. recorded_offline_monthly_investment) + reason-dependent copy (form, section titles in UserDetailScreen/ClientPositionDetailScreen/ClientPositionsScreen/CreateClientScreen, notification text). No migration, no contract change; previous release tolerant (reasonCode z.string()). Client app still labels it 'Earlier investment' (ActivityScreen.tsx:32); a distinct client label needs a new order_type value, which old clients' strict response parsing (api/http.ts:296) would reject -> not recommended without minimumSupportedVersion bump. Caveat: 00:00-05:30 IST today's date refused as future (UTC).",
+      "paths": [
+        "frontend_stack_ts/src/features/admin/client-values/**",
+        "backend_controller/src/domain/admin/recordContribution.ts",
+        "backend_controller/src/routes/adminClientPositionRoutes.ts"
+      ],
+      "tags": [
+        "monthly-investment",
+        "recording"
+      ],
+      "refs": [
+        "M1-admin-audit:T3-invest-roi"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "explorer-invest-roi"
+      },
+      "at": "2026-11-13T08:15:01.680Z"
+    },
+    {
+      "id": "finding-4",
+      "kind": "finding",
+      "title": "DD 5/6: no nominee anywhere; maturity is manual per position with no term; SIP paid count derivable",
+      "text": "STATIC (explorer). Nominee: zero repo matches. Natural home: nullable users.nominee_name (additive migration, check like full_name 010:41-45), client producer (new POST /v1/client/profile/nominee + ProfileScreen form), admin consumer (AdminUser + UserDetailScreen), audit event, tombstone clears it. /newuser is .strict() and owned by landing; keep out initially. Maturity: client_position_maturities (051) per (user,fund), pending->settled (withdrawal|reinvestment), admin-only trigger (adminMaturityRoutes.ts, MaturityPanel.tsx), no worker, no term; fund minimum_duration_months is display-only; 12 only as SIP UI default. Marking matured writes no ledger; withdrawal writes negative ledger + pending payout; reinvest moves growth to principal. Matured does not block contributions/SIPs; clients cannot see maturity status. SIP paid count: accepted sip_installment orders per plan (query exists sipPlanRepository.ts:94-103); not exposed per plan; client portfolio sipInstallmentCount is per fund and ignores reversals. Offline recorded contributions have no sip_plan_id. Safe 6b = scheduled pass creating pending maturity only (no payout), needs migration (marked_by_user_id NOT NULL -> nullable + actor_type, 039 pattern) and a configured term.",
+      "paths": [],
+      "tags": [
+        "dd-point-5",
+        "dd-point-6",
+        "nominee",
+        "maturity",
+        "sip"
+      ],
+      "refs": [
+        "M1-admin-audit:T4-sip-nominee"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "explorer-sip-nominee"
+      },
+      "at": "2026-11-13T08:15:02.109Z"
+    },
+    {
+      "id": "finding-5",
+      "kind": "finding",
+      "title": "Suspected bug: AutoPay SIP next_due_date may never advance; failed/refunded instalment stalls a plan",
+      "text": "STATIC, LIKELY not proven (explorer; verify in T7). mandateCollectionWorker.ts:89-101 prepareCollection advances next_due_date only when the existing order is accepted AND now is between notifyAt and debitAt; debit happens at debitAt (10:00 IST, :60-66), so acceptance cannot occur inside that window and the early return at :90 skips later passes. No other code advances AutoPay next_due_date; no test. Also: manual SIP worker treats any non-accepted state as waiting (sipScheduleWorker.ts:99-104) so refund_*/cancelled instalments block forever; AutoPay failed debit blocks the month (mandate_collection_attempts unique per plan+period, 035:233) with no retry/skip. Manual vs AutoPay completion use different rules (elapsed months vs accepted count). Matured positions still accept SIP contributions.",
+      "paths": [
+        "backend_controller/src/mandateCollectionWorker.ts",
+        "backend_controller/src/sipScheduleWorker.ts"
+      ],
+      "tags": [
+        "bug",
+        "sip",
+        "autopay"
+      ],
+      "refs": [
+        "M1-admin-audit:T4-sip-nominee"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "explorer-sip-nominee"
+      },
+      "at": "2026-11-13T08:15:02.569Z",
+      "retiredAt": "2026-11-13T08:16:13.607Z",
+      "retiredWhy": "replaced by finding-6"
+    },
+    {
+      "id": "finding-6",
+      "kind": "finding",
+      "title": "BUG (verified STATIC): AutoPay SIP next_due_date never advances after a scheduled debit",
+      "text": "Verified in T7 by reading backend_controller/src/mandateCollectionWorker.ts. runMandateCollectionPass lists plans via listAutoPayDue (next_due_date <= now+24h IST; sipPlanRepository.ts:89-92). prepareCollection returns null when now >= debitAt (:90), BEFORE the only code that advances next_due_date (:95-101, which also requires the period's order to be accepted). The collection is debited at debitAt (10:00 IST) and resolved afterwards by reconcileCollections, so the order becomes accepted only after the window closes; every later pass exits at :90. advanceNextDueDate has no other AutoPay caller (only sipScheduleWorker for manual_checkout, and mandatesRepository.ts:379 at activation). mandateCollectionWorker.test.ts has no multi-month advance case; integration tests do not cover it. Effect: AutoPay plans collect the setup instalment plus the first scheduled month, then stop scheduling; plan stays active, re-listed each pass. No wrong money moves (missed collections only). Fix direction: advance when the period's order is accepted regardless of window (or on collection success), with a failing test first. Not RUNTIME-verified; whether AutoPay commands are enabled in production (commandEnabled) is unknown.",
+      "paths": [
+        "backend_controller/src/mandateCollectionWorker.ts",
+        "backend_controller/src/repositories/sipPlanRepository.ts"
+      ],
+      "tags": [
+        "bug",
+        "autopay",
+        "sip",
+        "fix-first"
+      ],
+      "refs": [
+        "finding-5",
+        "M1-admin-audit:T7-close-gap-report"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "at": "2026-11-13T08:16:13.607Z",
+      "replaces": "finding-5"
+    },
+    {
+      "id": "finding-7",
+      "kind": "finding",
+      "title": "DD 2/3/4: web app already live on app.beonedge.in; gaps are AutoPay-on-web, signup landing page, mail links",
+      "text": "STATIC (explorer). Web: release_manager/nginx/app.beonedge.in.conf serves the client SPA same-origin with cookie auth (client_web; clientRuntime.ts:67-73). Web limits: no biometrics/PIN lock, app-update gate off, no push anywhere, statements on-screen only, checkout full-page redirect with return via PHONEPE_CHECKOUT_REDIRECT_URL on www.beonedge.in (landing must forward to app.beonedge.in/pay/return), AutoPay SIP setup refused on web (SipStartScreen.tsx:233-235) so iOS users have no AutoPay path; no iOS project, no PWA manifest; ResetPasswordScreen pushes APK first. No admin.beonedge.in nginx site though prod allowlist names it. backend .env.production.example:95 CORS_ORIGIN includes beonedge.in while stack example omits it. Signup: /newuser is server-to-server (x-signup-key), creates submitted application, returns no next URL; client app has no 'application received' page; redirect straight to /login would fail until approval. PRODUCT.md:18-25 says signup sets no password but /newuser takes one (doc drift). Mail: email/emailTemplates.ts account_approved, password_set_link, password_reset_link, password_app_download, app_update_notice carry APK/password links only; no web-app link; EmailTemplateConfig has only SUPPORT_EMAIL. Add CLIENT_WEB_APP_URL -> EmailTemplateConfig.webAppUrl rendered at send time (queued payloads unaffected). App-update mail goes to every active user incl. web/iOS.",
+      "paths": [],
+      "tags": [
+        "dd-point-2",
+        "dd-point-3",
+        "dd-point-4",
+        "web",
+        "email"
+      ],
+      "refs": [
+        "M1-admin-audit:T5-web-mail-reviews",
+        "finding-1"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "explorer-web-mail-reviews"
+      },
+      "at": "2026-11-13T08:16:14.104Z"
+    },
+    {
+      "id": "finding-8",
+      "kind": "finding",
+      "title": "DD 1 + cleanup: no reviews feature, no admin support view; one-click prod delete blocked by FKs and rule 11",
+      "text": "STATIC (explorer). Reviews: nothing exists (application_reviews is unrelated). support_requests table + client /v1/client/support/{faqs,tickets} exist but there is NO admin support view (no route, contract, screen). Minimal reviews: new app_reviews table (user_id, rating 1-5, comment, state pending/published/hidden, moderator cols, version), client POST/GET /v1/client/reviews, admin list+moderate, contracts, client screen under profile, admin screen; profile = users.full_name, masked when tombstoned. Keep reviews inside the gated app/admin (PRODUCT.md public-site boundary). Cleanup: admin can suspend/reinstate/close only (adminOversightRoutes.ts); users.pii_tombstoned_at exists and is read but never set; legal_holds table exists. user_id fans out to identity, money (orders, allocations, payments, attempts, client_value_entries, maturities, withdrawals), SIP/mandates, notifications, support, deliveries, admin_email_messages, audit actor columns. Most FKs ON DELETE RESTRICT (017:47,78,120) and rule 11 forbids deleting ledger/order/payment/audit/consent/application/delivery rows. Production-acceptable form: per-user PII tombstone keeping records. Non-prod reset exists only for the local throwaway stack (test_e2e/local-stack.sh down); no dev-VPS reset script.",
+      "paths": [],
+      "tags": [
+        "dd-point-1",
+        "cleanup",
+        "reviews",
+        "support"
+      ],
+      "refs": [
+        "M1-admin-audit:T5-web-mail-reviews"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "explorer-web-mail-reviews"
+      },
+      "at": "2026-11-13T08:16:14.591Z"
+    },
+    {
+      "id": "finding-9",
+      "kind": "finding",
+      "title": "BUG (verified): individual client growth can double-append; new idempotency key per attempt",
+      "text": "Verified STATIC in T7. frontend_stack_ts/src/features/admin/shared/adminQueries.ts:586-602 useIndividualClientGrowth mints a fresh key inside mutationFn (mintIdempotencyKey() at :598), unlike createClient (:560-564) and recordedContribution (:644-649) which take a caller-held key. AdminIndividualClientGrowthBody (packages/contracts/src/operations/admin-money.ts:46-55) has no expected-version/latestEntryId guard, so a retry after a timeout or a second click on the still-filled form (IndividualClientGrowthScreen ~:359) appends a second growth_adjustment. Violates RULES rule 6 (never mint a new key to recover an unknown result). Timeout path also tells the admin 'Nothing has changed' (~:139), possibly false. Collective growth commit (:718) mints per call too (preview/commit flow; check). Success invalidation only covers ['admin','users'] (:602, :722) so investor positions stay stale. Directly affects DD point 8 (returns after updates).",
+      "paths": [
+        "frontend_stack_ts/src/features/admin/shared/adminQueries.ts",
+        "frontend_stack_ts/src/features/admin/client-values/IndividualClientGrowthScreen.tsx"
+      ],
+      "tags": [
+        "bug",
+        "fix-first",
+        "idempotency",
+        "client-growth"
+      ],
+      "refs": [
+        "M1-admin-audit:T1-fe-audit"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "explorer-admin-fe"
+      },
+      "at": "2026-11-13T08:19:32.591Z"
+    },
+    {
+      "id": "finding-10",
+      "kind": "finding",
+      "title": "Admin FE: failed reads render as empty/'Not set' (rule 4); FundAum offers re-init on failure",
+      "text": "STATIC (explorer; ClientPositionDetailScreen verified). Pattern `data?.items ?? []` with no AsyncBoundary/error state: ClientPositionDetailScreen.tsx:80-81 (positions + ledger tables look empty on load/failure), IndividualClientGrowthScreen.tsx:77,84-86 ('This investor holds no fund'), MaturityPanel.tsx:40,96,103, CollectiveAumGrowthScreen.tsx:91,191, CollectiveClientGrowthScreen.tsx:52, EarlierInvestmentForm.tsx:97-105 and SendEmailScreen.tsx:153 (pickers silently empty), comboboxes show 'No ... matches' on failure. FundAumScreen.tsx:67-111 shows 'Not set' and the 'Set opening AUM' form when the fund read fails or loads. OverviewScreen.tsx:55-71 fetches all 4 queues regardless of permission; 403/failed both render '—'; missing key in map (:119-120); requiresAll ignored (:80-84, also AdminFrame.tsx:54-59). AsyncBoundary.tsx:51 and LoadMore hide background/next-page failures. Possible unbounded refetch loop api/paged.ts:92 with loadAll when a next page fails (unconfirmed).",
+      "paths": [
+        "frontend_stack_ts/src/features/admin/**",
+        "frontend_stack_ts/src/ui/patterns/AsyncBoundary.tsx",
+        "frontend_stack_ts/src/api/paged.ts"
+      ],
+      "tags": [
+        "bug",
+        "rule-4",
+        "error-states"
+      ],
+      "refs": [
+        "M1-admin-audit:T1-fe-audit"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "explorer-admin-fe"
+      },
+      "at": "2026-11-13T08:19:33.065Z"
+    },
+    {
+      "id": "finding-11",
+      "kind": "finding",
+      "title": "Admin FE: wrong permission gating, float paise in mandates, false 'Nothing changed', missing links",
+      "text": "STATIC (explorer; mandate float verified). Mandate amountPaise is z.number() in contract (admin-money.ts:521,566,604) and UI divides by 100 (MandateListScreen.tsx:113, MandateDetailScreen.tsx:99,252) — breaks paise-string rule. False 'Nothing changed' on transport errors without isUnknownWriteOutcome: UserDetailScreen.tsx:76-111, ApplicationDetailScreen ~45, RefundQueueScreen ~70, FundReceiptDetailScreen ~50. Gating: ClientPositionsScreen.tsx:34,57 disables Open unless write though route allows client_values.read; client_position.write-only admins see links to growth screens they cannot open; login-events link shown to users.read_limited (UserDetailScreen.tsx:154 vs adminRoutes.ts:92); RefundQueue read-only branch unreachable (route needs refunds.write). Gaps: users directory/detail show no invested/value/returns/nominee/SIP/last sign-in; no link from user to investor record (ClientPositionDetailScreen has no URL param, :55), mandates, receipts, send-email (?userId= is read but never linked); no search on applications/receipts/refunds/payments/mandates/deliveries; raw paise inputs (FundAum opening, MaturityPanel:89, individual growth) vs rupees in EarlierInvestmentForm; no confirm on receipt acknowledge/individual growth; no admin support/tickets view. Unused ops: correctAdminFundAumSnapshot, reconcileAdminMandateCollection. All admin ops declare admin-web cookie auth while APK sends bearer (check backend, T2).",
+      "paths": [
+        "frontend_stack_ts/src/features/admin/**"
+      ],
+      "tags": [
+        "bug",
+        "permissions",
+        "ux-gap"
+      ],
+      "refs": [
+        "M1-admin-audit:T1-fe-audit"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "explorer-admin-fe"
+      },
+      "at": "2026-11-13T08:19:33.506Z"
+    },
+    {
+      "id": "finding-12",
+      "kind": "finding",
+      "title": "Admin API: app-config publish has no version guard; mandate reconcile not atomic (both verified)",
+      "text": "Verified STATIC in T7. (1) adminContentRoutes.ts:438-480 publish computes max(version)+1 with no expectedVersion/If-Match and an optional idempotency key; concurrent publishes collide on app_config_versions_version_uk (016:132, likely 500) and a stale screen can silently undo minimumSupportedVersion raised by a required app-update announcement (appUpdateAnnouncement.ts:128). (2) adminMandateRoutes.ts:371 calls reconcileMandateFact inside runAdminMutation's tx, but reconcileMandateFacts.ts:94 opens its own unitOfWork transaction, so the mandate state change commits apart from the audit row and idempotency receipt. Mandate routes only mount when the PhonePe verifier and relay recurring gateway are configured (composition.ts:719-753), so with payments disabled (rule-2) this is dormant but must be fixed before re-enable.",
+      "paths": [
+        "backend_controller/src/routes/adminContentRoutes.ts",
+        "backend_controller/src/routes/adminMandateRoutes.ts"
+      ],
+      "tags": [
+        "bug",
+        "fix-first",
+        "app-config",
+        "mandates"
+      ],
+      "refs": [
+        "M1-admin-audit:T2-api-audit",
+        "rule-2"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "explorer-admin-api"
+      },
+      "at": "2026-11-13T08:20:03.263Z"
+    },
+    {
+      "id": "finding-13",
+      "kind": "finding",
+      "title": "Admin API: route/contract paths match; validation drift, optional keys, UTC dates, open Q-013/Q-017",
+      "text": "STATIC (explorer). All 17 admin route modules mounted; 87 admin routes each have a matching contract op; no automated parity check (backend never imports contracts). Drift: client-growth signedPaise regex allows zero/leading zeros/over-bigint (adminClientGrowthRoutes.ts:92-95) vs bounded contract; create-fund openingAum lacks bigint max (adminCatalogRoutes.ts:73-76); AUM bps 0 allowed by contract, refused by backend; email template route limits looser than contract (domain enforces); contract marks x-csrf-token required though admin_native bearer skips CSRF; listAdminInvestorPositions documents RESOURCE_NOT_FOUND but returns empty. Validation: growth effectiveDate regex-only (2026-13-45 reaches Postgres), no future guard on growth/AUM dates; not-future checks use UTC so IST 00:00-05:30 cannot record today. Optional idempotency on fund create/version/lifecycle/stocks, FAQ, app-config, suspend/reinstate/close (retried create-fund duplicates fund + opening AUM). Growth commit uses its own idempotency protocol without rejectExpiredKey. users.read_limited returns full email/phone. Open: Q-013 sole admin can suspend/close itself; Q-017 set/reset links share 10-min lifetime; 7 permission codes unenforced; maker-checker unwired; seed re-grants revoked rows; changing ADMIN_LOGIN_ID makes a second superadmin. Append-only is by comment only (no triggers/grants). No delete/anonymize code; pii_tombstoned_at never set; 63 FKs to users mostly RESTRICT; audit_events/auth_login_events have no FK and would retain PII.",
+      "paths": [],
+      "tags": [
+        "validation",
+        "contracts",
+        "permissions",
+        "open-questions"
+      ],
+      "refs": [
+        "M1-admin-audit:T2-api-audit"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "explorer-admin-api"
+      },
+      "at": "2026-11-13T08:20:03.734Z"
     }
   ]
 }

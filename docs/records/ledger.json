@@ -48,7 +48,8 @@
         {
           "id": "T1-fe-audit",
           "track": "main",
-          "status": "planned",
+          "status": "landed",
+          "commit": "77a7fb7",
           "also": [],
           "brief": "Explorer: admin frontend wiring, error states, users/overview screens, nav reachability",
           "paths": [
@@ -62,7 +63,8 @@
         {
           "id": "T2-api-audit",
           "track": "main",
-          "status": "planned",
+          "status": "landed",
+          "commit": "77a7fb7",
           "also": [],
           "brief": "Explorer: admin route/contract parity, mounting, permissions, validation, delete/cleanup capability, recorded-but-unfixed items",
           "paths": [
@@ -77,7 +79,8 @@
         {
           "id": "T3-invest-roi",
           "track": "main",
-          "status": "planned",
+          "status": "landed",
+          "commit": "77a7fb7",
           "also": [],
           "brief": "Explorer: recordContribution kinds, monthly-investment category feasibility, per-client invested/returns, overall ROI dashboard, last-updated",
           "covers": [
@@ -87,7 +90,8 @@
         {
           "id": "T4-sip-nominee",
           "track": "main",
-          "status": "planned",
+          "status": "landed",
+          "commit": "77a7fb7",
           "also": [],
           "brief": "Explorer: nominee field presence, maturity mechanics and 12-month auto-maturity, SIP installments-paid count",
           "covers": [
@@ -97,7 +101,8 @@
         {
           "id": "T5-web-mail-reviews",
           "track": "main",
-          "status": "planned",
+          "status": "landed",
+          "commit": "77a7fb7",
           "also": [],
           "brief": "Explorer: browser web app status, signup redirect to app.beonedge.in, invitation mail links, reviews/comments, one-click DB cleanup vs rule 11",
           "covers": [
@@ -108,14 +113,15 @@
           "id": "T6-ci-evidence",
           "track": "main",
           "status": "landed",
-          "commit": "06e95af",
+          "commit": "77a7fb7",
           "also": [],
           "brief": "Record CI evidence for current main (deps not installed locally; GitHub CI run on v0.15.4)"
         },
         {
           "id": "T7-close-gap-report",
           "track": "main",
-          "status": "planned",
+          "status": "landed",
+          "commit": "77a7fb7",
           "also": [],
           "brief": "Verify key explorer claims in source, then write consolidated fix-first list + gap matrix per DD point + maintainer questions",
           "covers": [

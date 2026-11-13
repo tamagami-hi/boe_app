@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "rule",
-  "nextNumber": 2,
+  "nextNumber": 3,
   "entries": [
     {
       "id": "rule-1",
@@ -16,6 +16,26 @@
         "agent": "claude-opus-5-5"
       },
       "at": "2026-11-13T08:11:00.059Z"
+    },
+    {
+      "id": "rule-2",
+      "kind": "rule",
+      "title": "Maintainer decision 2026-11-13: AutoPay and normal online payments stay disabled until the maintainer enables them",
+      "text": "Decision (maintainer, 2026-11-13, in chat): AutoPay and normal (one-time gateway checkout) payments are turned off for the time being and remain disabled unless the maintainer decides to activate them. Agents never enable them, never change payment env keys, and never treat a fix as permission to re-enable. Implications for planning: admin offline recording (recordContribution, incl. the new monthly-investment category) is the primary way investments enter the ledger; the AutoPay next_due_date bug (finding-6) becomes a must-fix-before-re-enable item rather than urgent; DD point 6 SIP months-paid must count offline-recorded monthly investments to be meaningful; question row 7 (AutoPay on web) is deferred. Known switches (STATIC): AutoPay via PHONEPE_AUTOPAY_ENABLED / PHONEPE_AUTOPAY_COLLECTION_ENABLED (default false, environment.ts:101-102); one-time checkout has no dedicated flag, only removing the relay (PAYMENTS_SERVICE_URL/SECRET) which makes POST pay return a generic DEPENDENCY_UNAVAILABLE (clientOrderRoutes.ts:154-156). To be recorded in the next plan's decision record.",
+      "paths": [],
+      "tags": [
+        "decision",
+        "payments",
+        "autopay"
+      ],
+      "refs": [
+        "finding-6"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "at": "2026-11-13T08:18:41.707Z"
     }
   ]
 }

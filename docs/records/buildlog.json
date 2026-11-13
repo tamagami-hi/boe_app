@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "preambles": [],
+  "entries": [
+    {
+      "group": "admin-improvements",
+      "milestone": "M1-admin-audit",
+      "title": "Admin-side audit and gap analysis vs DD requests",
+      "date": "2026-11-13",
+      "markdown": "",
+      "commits": [],
+      "built": "Read-only audit by five parallel explorers (admin FE, admin API, investment/ROI, SIP/maturity/nominee, web/mail/reviews/cleanup) plus a boe_landing check; nothing in source changed.",
+      "verified": [
+        {
+          "what": "Current main code builds and passes all suites",
+          "check": "GitHub CI run 38216879911 on ba8b196 (contracts, backend check + integration, frontend check + both builds)",
+          "totals": {
+            "jobs": 3,
+            "failed": 0
+          }
+        },
+        {
+          "what": "AutoPay next_due_date never advances after scheduled debit",
+          "check": "STATIC read of mandateCollectionWorker.ts:85-101 and every advanceNextDueDate caller"
+        },
+        {
+          "what": "Individual growth mints a new idempotency key per attempt, no version guard",
+          "check": "STATIC read of adminQueries.ts:586-602 and AdminIndividualClientGrowthBody"
+        },
+        {
+          "what": "App-config publish lacks version guard; mandate reconcile opens a nested transaction",
+          "check": "STATIC read of adminContentRoutes.ts:438-480, adminMandateRoutes.ts:362-378, reconcileMandateFacts.ts:88-98"
+        },
+        {
+          "what": "Recording reason options and before-the-app notification copy; no nominee anywhere",
+          "check": "STATIC read of EarlierInvestmentForm.tsx:23-26, recordContribution.ts:41-47, repo-wide grep"
+        }
+      ],
+      "decided": [
+        "Maintainer 2026-11-13: AutoPay and normal online payments stay disabled until the maintainer enables them (rule-2)",
+        "Maintainer 2026-11-13: tally record commits are batched one per phase (records.commit=false)"
+      ],
+      "corrected": [
+        "CLAUDE.md and the v0.15.0 plan status still describe v0.15.0 as unreleased while VERSION is 0.15.4",
+        "PRODUCT.md says signup sets no password, but /newuser takes one",
+        "Explorer-suspected AutoPay bug upgraded from likely to verified (finding-6 replaces finding-5)"
+      ],
+      "open": [
+        "Question rows 1-8 await maintainer answers",
+        "No local checks run: node_modules absent and RULES forbids installing to make checks runnable",
+        "Nothing RUNTIME-verified; all findings STATIC",
+        "Next: write the approved-scope plan in plans/ before any implementation"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "schema": 1,
+  "nextRow": 9,
+  "open": [
+    {
+      "row": 1,
+      "group": "admin-improvements",
+      "question": "One-click user DB cleanup: is this (a) wiping test data on the dev stack, or (b) removing a real client in production? Production hard delete is blocked by ON DELETE RESTRICT and rule 11; the safe production form is a per-user PII tombstone that keeps money/audit records.",
+      "meanwhile": "Nothing built. Plan treats it as a dev-only reset tool plus an optional per-user production tombstone, each needing a separate approval.",
+      "asked": "2026-11-13T08:16:45.300Z",
+      "by": "claude-opus-5-5"
+    },
+    {
+      "row": 2,
+      "group": "admin-improvements",
+      "question": "Monthly investment category: is an admin-side category enough (new reason code; clients still see it as an 'earlier investment' style entry), or must clients see a distinct 'Monthly investment' label (needs a new order type and a minimumSupportedVersion bump so old APKs do not break)?",
+      "meanwhile": "Assume admin-side reason code with reason-specific admin copy and notification text; no migration, no client label change.",
+      "asked": "2026-11-13T08:16:45.773Z",
+      "by": "claude-opus-5-5"
+    },
+    {
+      "row": 3,
+      "group": "admin-improvements",
+      "question": "Auto-maturity after 12 months: counted per fund position or per SIP plan; from first contribution or plan start; do offline-recorded investments count; should a matured position block new investments; and does 'mature' ever mean an automatic payout (real fund movement is a maintainer safety decision)?",
+      "meanwhile": "Assume mark-as-matured only (pending maturity, no payout), per fund position, 12 months from first contribution, offline included, no blocking; withdrawal/reinvest stay manual admin actions.",
+      "asked": "2026-11-13T08:16:46.177Z",
+      "by": "claude-opus-5-5"
+    },
+    {
+      "row": 4,
+      "group": "admin-improvements",
+      "question": "Nominee: name only, or also relationship / date of birth / share? One nominee or several? Can the client edit it in the app, or only an admin?",
+      "meanwhile": "Assume one nominee name (plus optional relationship), editable by client in Profile and by admin, audited, shown on admin user page.",
+      "asked": "2026-11-13T08:16:46.608Z",
+      "by": "claude-opus-5-5"
+    },
+    {
+      "row": 5,
+      "group": "admin-improvements",
+      "question": "Signup redirect: after a beonedge.in signup, should users land on an 'application received, sign in after approval' page on app.beonedge.in, or go straight to sign-in (which fails until approved)? The redirect itself is a boe_landing change.",
+      "meanwhile": "Assume a new public 'application received' page in the client app; boe_landing redirects to it on success.",
+      "asked": "2026-11-13T08:16:47.130Z",
+      "by": "claude-opus-5-5"
+    },
+    {
+      "row": 6,
+      "group": "admin-improvements",
+      "question": "Reviews: are client reviews visible only to admins, or also to other clients in the app? Moderate before or after they appear? (Showing them on beonedge.in would bring investing content onto the public site.)",
+      "meanwhile": "Assume admin-only list with client name/profile, moderation state kept for later publishing; nothing on the public site.",
+      "asked": "2026-11-13T08:16:47.561Z",
+      "by": "claude-opus-5-5"
+    },
+    {
+      "row": 7,
+      "group": "admin-improvements",
+      "question": "Web app parity: should AutoPay SIP setup work in a browser (iOS users currently have no AutoPay path), and should APK update mail stop going to web/iOS-only users?",
+      "meanwhile": "Assume web keeps manual monthly SIP checkout; AutoPay-on-web scoped separately after checking the provider's web mandate flow.",
+      "asked": "2026-11-13T08:16:48.028Z",
+      "by": "claude-opus-5-5"
+    },
+    {
+      "row": 8,
+      "group": "admin-improvements",
+      "question": "ROI dashboard: is 'updating client investment amount' the growth adjustment (value changes, principal does not)? Is simple return (growth / invested) the ROI you want, or annualised (XIRR)?",
+      "meanwhile": "Assume growth adjustment, simple return %, last-updated = latest ledger entry time per client.",
+      "asked": "2026-11-13T08:16:48.592Z",
+      "by": "claude-opus-5-5"
+    }
+  ],
+  "answered": []
+}
