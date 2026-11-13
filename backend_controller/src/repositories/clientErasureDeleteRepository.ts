@@ -74,7 +74,7 @@ const deleteIdentity = async (tx: Transaction, input: ClientDeletionInput): Prom
 const deleteAccount = async (tx: Transaction, input: ClientDeletionInput): Promise<number> =>
   total([
     await sql`delete from users where id = ${input.userId}`.execute(tx),
-    await sql`delete from application_consents where application_id = ${input.linkedApplicationId}::uuid`.execute(tx),
+    await sql`delete from application_consents where application_id = any(${[...input.applicationIds]}::uuid[])`.execute(tx),
     await sql`delete from application_reviews where application_id = ${input.linkedApplicationId}::uuid`.execute(tx),
     await sql`delete from applications where id = ${input.linkedApplicationId}::uuid`.execute(tx),
   ])

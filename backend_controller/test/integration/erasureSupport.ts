@@ -183,6 +183,13 @@ const populateCopies = async (harness: ErasureHarness, client: SeededClient): Pr
   const { stack, admin } = harness
   const q = (text: string, values: readonly unknown[]) => stack.pool.query(text, [...values])
   const national = client.phone.slice(3)
+  for (const applicationId of [client.applicationId, client.rejectedApplicationId]) {
+    await q(
+      "insert into application_consents (application_id, consent_document_id, accepted_at, ip_hmac, ip_hmac_key_version, user_agent) " +
+        "select $1, id, now(), $2, 'ck1', $3 from consent_documents order by id limit 1",
+      [applicationId, randomBytes(32), `Erase-Agent/${client.id}`],
+    )
+  }
   await q(
     "insert into user_contact_history (user_id, change_kind, previous_email_normalized, previous_phone_e164, " +
       "new_email_normalized, new_phone_e164, actor_user_id, request_id, reason_code, reason_detail) " +
@@ -443,5 +450,13 @@ export const othersSnapshot = async (stack: PasswordMailStack, ownIds: readonly 
   }
   return parts.join("\n")
 }
+
+export const consentsOf = async (stack: PasswordMailStack, client: SeededClient): Promise<readonly Row[]> =>
+  (
+    await stack.pool.query<Row>(
+      "select application_id, user_agent, ip_hmac from application_consents where application_id = any($1::uuid[]) order by application_id",
+      [[client.applicationId, client.rejectedApplicationId]],
+    )
+  ).rows
 
 export const userRow = (stack: PasswordMailStack, id: string): Promise<Row> => stack.first("select * from users where id = $1", [id])

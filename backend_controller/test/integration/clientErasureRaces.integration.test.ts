@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto"
 
+import type { PoolClient } from "pg"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 
 import {
@@ -9,6 +10,7 @@ import {
   recordFor,
   seedClient,
   startErasureHarness,
+  tableSnapshot,
   userRow,
   type ErasureHarness,
 } from "./erasureSupport.js"
@@ -24,6 +26,45 @@ interface Outcome {
 const ROUNDS = 4
 
 let harness: ErasureHarness
+
+type Claim = (connection: PoolClient, deliveryId: string, outboxId: string) => Promise<void>
+
+const IN_FLIGHT: readonly (readonly [string, string, Claim])[] = [
+  [
+    "a delivery marked sending",
+    "email_deliveries",
+    async (connection, deliveryId) => {
+      await connection.query("select id from email_deliveries where id = $1 for update", [deliveryId])
+      await connection.query(
+        "update email_deliveries set state = 'sending', attempt_count = attempt_count + 1, last_attempt_at = now() where id = $1",
+        [deliveryId],
+      )
+    },
+  ],
+  [
+    "an outbox event claimed by the worker",
+    "outbox_events",
+    async (connection, _deliveryId, outboxId) => {
+      await connection.query(
+        "update outbox_events set state = 'processing', lease_generation = lease_generation + 1, locked_at = now(), " +
+          "locked_by = 'erase-test-worker', lease_expires_at = now() + interval '5 minutes' where id = $1",
+        [outboxId],
+      )
+    },
+  ],
+]
+
+const waitForLockWait = async (): Promise<void> => {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const waiting = await harness.stack.first(
+      "select count(*)::int as c from pg_stat_activity where wait_event_type = 'Lock' and datname = current_database()",
+      [],
+    )
+    if (Number(waiting.c) > 0) return
+    await new Promise((resolve) => setTimeout(resolve, 25))
+  }
+  throw new Error("the erasure never waited on the mail lock")
+}
 
 beforeAll(async () => {
   harness = await startErasureHarness()
@@ -73,7 +114,33 @@ describe("erasure is idempotent", () => {
   })
 })
 
-describe("erasure does not race money or sign-in into a half state", () => {
+describe("erasure does not race money, mail or sign-in into a half state", () => {
+  test.each(IN_FLIGHT)("refuses and changes nothing when %s commits while erasure waits", async (_label, table, claim) => {
+    const { stack } = harness
+    const client = await seedClient(harness, { verified: true })
+    const delivery = await stack.first(
+      "select id, outbox_event_id from email_deliveries where user_id = $1 and state = 'queued' order by created_at limit 1",
+      [client.id],
+    )
+    const before = await tableSnapshot(stack, [table])
+    const connection = await stack.pool.connect()
+    try {
+      await connection.query("begin")
+      await claim(connection, String(delivery.id), String(delivery.outbox_event_id))
+      const pending = erase(harness, client.id, "kept_as_record")
+      await waitForLockWait()
+      await connection.query("commit")
+      const response = await pending
+      expect(response.statusCode).toBe(409)
+      expect(envelopeOf<never>(response).error.fields).toHaveProperty("mail_in_flight")
+    } finally {
+      connection.release()
+    }
+    expect(await tableSnapshot(stack, [table])).toBe(before)
+    expect((await userRow(stack, client.id)).pii_tombstoned_at).toBeNull()
+    expect(await stack.count("email_deliveries", "user_id = $1 and recipient_ciphertext is null", [client.id])).toBe(0)
+  })
+
   test("a concurrent recording either lands before the erasure, which then refuses, or is refused after it", async () => {
     const { stack } = harness
     for (let round = 0; round < ROUNDS; round += 1) {

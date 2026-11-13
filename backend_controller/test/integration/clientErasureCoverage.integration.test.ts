@@ -15,7 +15,7 @@ const EXEMPT = "exempt"
 const SUBJECT_FKS: Readonly<Record<string, string>> = {
   "admin_email_messages.recipient_user_id -> users": "G2 kept, G3 deleted",
   "admin_sip_schedules.user_id -> users": "guard refuses active; G2 kept, G3 deleted",
-  "application_consents.application_id -> applications": "G2 kept (no contact text), G3 deleted with the linked application",
+  "application_consents.application_id -> applications": "G2 user agent nulled; G3 deleted for linked and matched applications",
   "application_reviews.application_id -> applications": "reason text scrubbed; G3 deletes the linked application's",
   "auth_sessions.user_id -> users": "G2 revoked, G3 deleted",
   "client_maturity_offers.user_id -> users": "guard refuses open; any row forces G2",
@@ -97,7 +97,7 @@ const COLUMN_COVERAGE: Readonly<Record<string, string>> = {
   "admin_sip_schedules.request_id": CODES,
   "admin_sip_schedules.state": CODES,
   "application_consents.ip_hmac_key_version": CODES,
-  "application_consents.user_agent": exempt("browser user agent, not a contact detail (DEC-29)"),
+  "application_consents.user_agent": handled("nulled for linked and matched applications (G2) or deleted (G3)"),
   "application_reviews.idempotency_key": CODES,
   "application_reviews.reason_code": CODES,
   "application_reviews.reason_detail": handled("contact and name text replaced"),

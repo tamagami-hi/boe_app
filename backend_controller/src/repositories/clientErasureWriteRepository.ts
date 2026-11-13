@@ -53,6 +53,7 @@ export interface ClientErasureWriteRepository {
     input: Readonly<{ applicationIds: readonly string[]; erasedEmail: string; now: Date }>,
   ) => Promise<number>
   eraseProviderEventPayloads: (tx: Transaction, userId: string, now: Date) => Promise<number>
+  clearConsentUserAgents: (tx: Transaction, applicationIds: readonly string[]) => Promise<number>
 }
 
 const affected = (result: { readonly numAffectedRows?: bigint }): number => Number(result.numAffectedRows ?? 0n)
@@ -228,6 +229,14 @@ export const createClientErasureWriteRepository = (): ClientErasureWriteReposito
           updated_at = ${input.now},
           version = version + 1
         where id = any(${[...input.applicationIds]}::uuid[]) and state <> 'submitted'
+      `.execute(tx),
+    ),
+
+  clearConsentUserAgents: async (tx, applicationIds) =>
+    affected(
+      await sql`
+        update application_consents set user_agent = null
+        where application_id = any(${[...applicationIds]}::uuid[]) and user_agent is not null
       `.execute(tx),
     ),
 

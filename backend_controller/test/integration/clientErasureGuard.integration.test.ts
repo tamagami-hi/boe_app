@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto"
+import { randomBytes, randomUUID } from "node:crypto"
 
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 
@@ -12,6 +12,7 @@ import {
   tableSnapshot,
   userRow,
   type ErasureHarness,
+  type SeededClient,
 } from "./erasureSupport.js"
 
 interface Check {
@@ -45,6 +46,72 @@ const hold = async (entityType: string, entityId: string): Promise<string> =>
 
 const release = (holdId: string) =>
   harness.stack.pool.query("update legal_holds set released_at = now(), released_by = $2 where id = $1", [holdId, harness.admin.userId])
+
+const failedOrder = async (client: SeededClient): Promise<Readonly<{ orderId: string; paymentId: string }>> => {
+  const { stack, fundId } = harness
+  const version = await stack.first("select current_published_version_id as id from funds where id = $1", [fundId])
+  const order = await stack.first(
+    "insert into investment_orders (user_id, fund_id, fund_version_id, type, state, amount_paise, failure_code) " +
+      "values ($1, $2, $3, 'lump_sum', 'payment_failed', 50000, 'payment_failed') returning id",
+    [client.id, fundId, version.id],
+  )
+  const payment = await stack.first(
+    "insert into payments (order_id, user_id, amount_paise, state, failed_at) values ($1, $2, 50000, 'failed', now()) returning id",
+    [order.id, client.id],
+  )
+  return { orderId: String(order.id), paymentId: String(payment.id) }
+}
+
+const cancelledMandate = async (client: SeededClient): Promise<string> => {
+  const connection = await harness.stack.pool.connect()
+  try {
+    await connection.query("begin")
+    const sip = await connection.query<{ id: string }>(
+      "insert into sip_plans (user_id, fund_id, amount_paise, debit_day, duration_months, state, cancelled_at, collection_mode) " +
+        "values ($1, $2, 50000, 5, 12, 'cancelled', now(), 'phonepe_autopay') returning id",
+      [client.id, harness.fundId],
+    )
+    const mandate = await connection.query<{ id: string }>(
+      "insert into payment_mandates (sip_plan_id, user_id, fund_id, provider, merchant_subscription_id, state, cancelled_at, " +
+        "amount_type, max_amount_paise, frequency) values ($1, $2, $3, 'phonepe', $4, 'cancelled', now(), 'fixed', 50000, 'monthly') returning id",
+      [sip.rows[0]?.id, client.id, harness.fundId, `erase-${randomUUID().slice(0, 18)}`],
+    )
+    await connection.query("commit")
+    return String(mandate.rows[0]?.id)
+  } catch (error) {
+    await connection.query("rollback")
+    throw error
+  } finally {
+    connection.release()
+  }
+}
+
+const HELD_ENTITIES: readonly (readonly [string, (client: SeededClient) => Promise<string>])[] = [
+  [
+    "email_provider_event",
+    async (client) => {
+      const delivery = await harness.stack.first("select id from email_deliveries where user_id = $1 order by created_at limit 1", [client.id])
+      return String(
+        (
+          await harness.stack.first(
+            "insert into email_provider_events (sns_message_id, sns_topic_arn, sns_type, ses_event_type, email_delivery_id, payload_sha256, " +
+              "state, processed_at, expires_at) values ($1, 'arn:aws:sns:ap-south-1:0:ses', 'Notification', 'Delivery', $2, $3, 'processed', now(), " +
+              "now() + interval '30 days') returning id",
+            [randomUUID(), delivery.id, randomBytes(32)],
+          )
+        ).id,
+      )
+    },
+  ],
+  [
+    "audit_event",
+    async (client) =>
+      String((await harness.stack.first("select id from audit_events where entity_type = 'user' and entity_id = $1 limit 1", [client.id])).id),
+  ],
+  ["payment", async (client) => (await failedOrder(client)).paymentId],
+  ["investment_order", async (client) => (await failedOrder(client)).orderId],
+  ["mandate", cancelledMandate],
+]
 
 beforeAll(async () => {
   harness = await startErasureHarness()
@@ -121,6 +188,15 @@ describe("the erasure guard", () => {
     const onDelivery = await hold("email_delivery", String(delivery.id))
     await refusedWithoutChange(client.id, "deleted", ["legal_hold"])
     await release(onDelivery)
+    expect(await blockerCodes(client.id)).toEqual([])
+  })
+
+  test.each(HELD_ENTITIES)("refuses while a legal hold sits on the client's %s", async (entityType, entityOf) => {
+    const client = await seedClient(harness, { verified: true })
+    const held = await hold(entityType, await entityOf(client))
+    expect(await blockerCodes(client.id)).toEqual(["legal_hold"])
+    await refusedWithoutChange(client.id, "kept_as_record", ["legal_hold"])
+    await release(held)
     expect(await blockerCodes(client.id)).toEqual([])
   })
 

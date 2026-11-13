@@ -6,6 +6,7 @@ import { adminHeaders } from "./adminSessionSupport.js"
 import {
   checkErase,
   clientLogin,
+  consentsOf,
   envelopeOf,
   erase,
   growIndividually,
@@ -97,6 +98,7 @@ describe("a verified client is kept as a record without contact details", () => 
     await reverseEntry(harness, client.id, recorded.entryId, 120_000n)
     expect((await clientLogin(harness, client.email)).statusCode).toBe(200)
     const ledger = await stack.pool.query("select * from client_value_entries where user_id = $1 order by created_at", [client.id])
+    const credentialVersion = Number((await stack.first("select version from user_credentials where user_id = $1", [client.id])).version)
     const own = await ownIdsOf(stack, client)
     const others = await othersSnapshot(stack, own)
 
@@ -119,7 +121,9 @@ describe("a verified client is kept as a record without contact details", () => 
     expect((await stack.pool.query("select * from client_value_entries where user_id = $1 order by created_at", [client.id])).rows).toEqual(
       ledger.rows,
     )
-    expect(await stack.first("select password_hash from user_credentials where user_id = $1", [client.id])).toEqual({ password_hash: null })
+    const credential = await stack.first("select password_hash, version from user_credentials where user_id = $1", [client.id])
+    expect(credential.password_hash).toBeNull()
+    expect(Number(credential.version)).toBeGreaterThan(credentialVersion)
     expect(await stack.count("auth_sessions", "user_id = $1 and state = 'active'", [client.id])).toBe(0)
     expect(
       await stack.count("email_deliveries", "(user_id = $1 or application_id = $2) and recipient_ciphertext is not null", [
@@ -198,6 +202,7 @@ describe("a client who never verified their email is deleted completely", () => 
       await stack.count("idempotency_records", "response_body::text like $1 and actor_scope <> $2", [`%${client.id}%`, `admin:${harness.admin.userId}`]),
     ).toBe(0)
     expect(await stack.count("email_deliveries", "application_id = $1", [client.rejectedApplicationId])).toBe(0)
+    expect(await consentsOf(stack, client)).toEqual([])
     expect(await stack.first("select pii_tombstoned_at is not null as tombstoned from applications where id = $1", [client.rejectedApplicationId])).toEqual({
       tombstoned: true,
     })

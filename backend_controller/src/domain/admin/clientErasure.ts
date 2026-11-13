@@ -146,6 +146,7 @@ const keepAsRecord = async (
   await write.rewriteContactHistory(tx, rewrite)
   await write.overwriteLoginEmails(tx, rewrite)
   await write.tombstoneApplications(tx, { applicationIds: reach.applicationIds, erasedEmail, now })
+  await write.clearConsentUserAgents(tx, reach.applicationIds)
   await write.eraseProviderEventPayloads(tx, subject.id, now)
   const owner = ownerOf(subject, reach, reach.applicationIds)
   for (const target of [...CLIENT_SCRUB_TARGETS, RECEIPT_SCRUB_TARGET]) {

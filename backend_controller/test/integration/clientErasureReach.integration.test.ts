@@ -3,7 +3,7 @@ import { randomBytes, randomUUID } from "node:crypto"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 
 import { adminHeaders } from "./adminSessionSupport.js"
-import { erase, seedClient, startErasureHarness, userRow, type ErasureHarness } from "./erasureSupport.js"
+import { consentsOf, erase, seedClient, startErasureHarness, userRow, type ErasureHarness } from "./erasureSupport.js"
 
 let harness: ErasureHarness
 
@@ -35,7 +35,10 @@ describe("erasure reaches only the client's own contacts", () => {
         "values ($1, $2, 'Family Member', 'rejected', now(), now()) returning *",
       [`relative-${randomUUID()}@example.com`, client.phone],
     )
+    const consents = await consentsOf(stack, client)
+    expect(consents.map((row) => row.user_agent)).toEqual([`Erase-Agent/${client.id}`, `Erase-Agent/${client.id}`])
     expect((await erase(harness, client.id, "kept_as_record")).statusCode).toBe(200)
+    expect(await consentsOf(stack, client)).toEqual(consents.map((row) => ({ ...row, user_agent: null })))
     expect(await stack.first("select * from applications where id = $1", [relative.id])).toEqual(relative)
     expect(await stack.first("select pii_tombstoned_at is not null as tombstoned from applications where id = $1", [client.rejectedApplicationId])).toEqual({
       tombstoned: true,
