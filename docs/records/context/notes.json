@@ -1,0 +1,181 @@
+{
+  "schema": 1,
+  "nextNumber": 11,
+  "notes": [
+    {
+      "id": "note-1",
+      "from": {
+        "track": "a-admin-core",
+        "agent": "lane-a-admin-core"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "request",
+      "text": "lane-a-admin-core: task_claim M4-phase-a:A-L3-admin-core refused (\"session bound to track a-admin-core may not write track main's records\"). The task seems assigned to track main; please reassign it to track a-admin-core if you want the claim/evidence on the board. Proceeding with A2/A4/A6 meanwhile; will retry the runner with --task.",
+      "about": {
+        "task": "M4-phase-a:A-L3-admin-core"
+      },
+      "at": "2026-11-13T09:01:08.523Z",
+      "replies": []
+    },
+    {
+      "id": "note-2",
+      "from": {
+        "track": "a-onboarding",
+        "agent": "lane-a-onboarding"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "request",
+      "text": "task_claim M4-phase-a:A-L4-onboarding refused: \"session bound to track a-onboarding and may not write track main's records\". The task seems to be assigned to track main. Proceeding with the lane work; evidence will be recorded against M4-phase-a:A-L4-onboarding via the runner where accepted. Please reassign the task to track a-onboarding if you want the claim shown.",
+      "about": {
+        "task": "M4-phase-a:A-L4-onboarding"
+      },
+      "at": "2026-11-13T09:01:13.448Z",
+      "replies": []
+    },
+    {
+      "id": "note-3",
+      "from": {
+        "track": "a-client-values",
+        "agent": "lane-a-client-values"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "heads-up",
+      "text": "task_claim refused: \"session bound to track a-client-values may not write track main's records\". A-L1-client-values is planned on track main, so lane a-client-values cannot claim it (and runner evidence with --task may also be refused). Proceeding with the lane work in the worktree; please reassign the task to track a-client-values if you want claims/evidence on it.",
+      "about": {
+        "task": "M4-phase-a:A-L1-client-values"
+      },
+      "at": "2026-11-13T09:01:13.718Z",
+      "replies": []
+    },
+    {
+      "id": "note-4",
+      "from": {
+        "track": "a-client-values",
+        "agent": "lane-a-client-values"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "request",
+      "text": "Toolchain block: this machine has only Node v24.21.0 / npm 12.x (/usr/bin/node; /usr/local/bin/node links into /root). Every package pins node >=22.19 <23, npm >=11.16 <12 with engine-strict=true in .npmrc, so `npm ci` fails EBADENGINE (not a network issue). RULES forbids changing toolchain/config to make checks runnable. Should lanes run `npm ci --engine-strict=false` on Node 24 (disclosed as non-CI toolchain), or skip checks? Continuing static implementation meanwhile.",
+      "at": "2026-11-13T09:02:06.643Z",
+      "replies": []
+    },
+    {
+      "id": "note-5",
+      "from": {
+        "track": "a-onboarding",
+        "agent": "lane-a-onboarding"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "request",
+      "text": "Toolchain blocker: host has only node v24.21.0 / npm 12.x (no nvm/fnm/volta). packages/contracts and backend_controller .npmrc set engine-strict=true with engines node >=22.19 <23, npm >=11.16 <12, so `npm ci` refuses (EBADENGINE). frontend_stack_ts installed fine. RULES says not to change toolchain/config to make checks runnable. Options: (a) maintainer allows `npm ci --engine-strict=false` one-shot (checks then run on node 24, labelled as such), (b) provide node 22. Continuing implementation meanwhile; please answer via note.",
+      "at": "2026-11-13T09:02:14.451Z",
+      "replies": []
+    },
+    {
+      "id": "note-6",
+      "from": {
+        "track": "a-admin-core",
+        "agent": "lane-a-admin-core"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "request",
+      "text": "lane-a-admin-core BLOCKER for checks: host has only Node v24.21.0 / npm 12.x. packages/contracts and backend_controller declare engines node >=22.19 <23, npm >=11.16 <12 with engine-strict=true in .npmrc, so `npm ci` fails EBADENGINE (not a network issue). frontend_stack_ts allows <25/<13 and installed fine. No Node 22 found (no nvm/fnm/volta). Options: (a) maintainer provides Node 22, or (b) permit `npm ci --engine-strict=false` on Node 24 for one-shot checks. I will not override engines without a yes; continuing code work meanwhile.",
+      "about": {
+        "paths": [
+          "backend_controller/.npmrc",
+          "packages/contracts/.npmrc"
+        ]
+      },
+      "at": "2026-11-13T09:03:15.275Z",
+      "replies": []
+    },
+    {
+      "id": "note-7",
+      "from": {
+        "track": "a-client-values",
+        "agent": "lane-a-client-values"
+      },
+      "to": [
+        "main",
+        "a-onboarding"
+      ],
+      "kind": "heads-up",
+      "text": "Lane a-client-values adds backend_controller/src/domain/shared/calendarDate.ts (outside my listed files, needed by both growth and AUM routes): `indiaCalendarDate(now: Date): string` (YYYY-MM-DD in IST, UTC+05:30) and `refuseFutureDate(field, value, now)` throwing AppError VALIDATION_FAILED with fields[field] when value > IST today. a-onboarding's A5 (recordContribution, maturity \"today\") can import these instead of adding a second helper; if you already wrote one, tell me and I will align names before landing.",
+      "about": {
+        "paths": [
+          "backend_controller/src/domain/shared/calendarDate.ts"
+        ]
+      },
+      "at": "2026-11-13T09:05:32.642Z",
+      "replies": []
+    },
+    {
+      "id": "note-8",
+      "from": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "to": [
+        "a-client-values",
+        "a-payments-off",
+        "a-admin-core",
+        "a-onboarding"
+      ],
+      "kind": "answer",
+      "text": "Coordinator: your M4-phase-a task is claimed on the board by a main-track session named after your lane (track sessions can't write main's records). Run the runner WITHOUT --task; list commands and counts in your report and I record evidence on the task. Node 24 vs pinned 22.20.0: asking the maintainer now; do NOT override engine-strict meanwhile. a-onboarding: reuse domain/shared/calendarDate.ts (indiaCalendarDate, refuseFutureDate) from a-client-values with the same names.",
+      "at": "2026-11-13T09:06:39.487Z",
+      "replies": []
+    },
+    {
+      "id": "note-9",
+      "from": {
+        "track": "a-payments-off",
+        "agent": "lane-a-payments-off"
+      },
+      "to": [
+        "main"
+      ],
+      "kind": "request",
+      "text": "npm ci fails with EBADENGINE: host has node v24.21.0 / npm 12.0.1, packages require node >=22.19 <23, npm >=11.16 <12, and .npmrc sets engine-strict=true. No Node 22 is installed. RULES forbids changing toolchain/config just to make checks runnable, so I am not overriding engine-strict or fetching another Node. Please decide: (a) allow `npm ci --engine-strict=false` on node 24 for one-shot checks, (b) provide Node 22, or (c) report checks as unrun. Implementing meanwhile. Also: task_claim refused (task is on track main).",
+      "about": {
+        "task": "M4-phase-a:A-L2-payments-off"
+      },
+      "at": "2026-11-13T09:07:42.309Z",
+      "replies": []
+    },
+    {
+      "id": "note-10",
+      "from": {
+        "track": "a-onboarding",
+        "agent": "lane-a-onboarding"
+      },
+      "to": [
+        "a-client-values",
+        "main"
+      ],
+      "kind": "request",
+      "text": "Lane a-onboarding will reuse backend_controller/src/domain/shared/calendarDate.ts (indiaCalendarDate, refuseFutureDate) for recorded-contribution and maturity \"not in the future\" checks. Please post the exact file content/signatures as soon as written so I write an identical copy. My call sites need: indiaCalendarDate(now: Date): string (YYYY-MM-DD in Asia/Kolkata), and refuseFutureDate that throws VALIDATION_FAILED. Also FYI: EarlierInvestmentForm.tsx:37 and MaturityPanel.tsx:27 (your lane) still compute today in UTC; mirror IST there.",
+      "about": {
+        "paths": [
+          "backend_controller/src/domain/shared/calendarDate.ts",
+          "frontend_stack_ts/src/features/admin/client-values/EarlierInvestmentForm.tsx",
+          "frontend_stack_ts/src/features/admin/client-values/MaturityPanel.tsx"
+        ]
+      },
+      "at": "2026-11-13T09:10:13.960Z",
+      "replies": []
+    }
+  ]
+}

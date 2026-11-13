@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "rule",
-  "nextNumber": 8,
+  "nextNumber": 9,
   "entries": [
     {
       "id": "rule-1",
@@ -146,6 +146,35 @@
         "agent": "claude-opus-5-5"
       },
       "at": "2026-11-13T08:58:07.425Z"
+    },
+    {
+      "id": "rule-8",
+      "kind": "rule",
+      "title": "Decisions 2026-11-13 (second round): containers, SIP, maturity, identity, data reform, reviews, ROI",
+      "text": "Maintainer answers via in-chat questions, 2026-11-13. G2: container runtime allowed for the testcontainers integration suite (throwaway PostgreSQL, cleaned up). Q-021: admin-tracked SIP schedule (monthly amount, fund, start month, months; monthly recordings linked to a month; client sees N of M paid; no collection); maturity date per client fund holding. Q-024: BOTH an audited admin contact-correction action for clients who have not set a password (old links retired, new invite to corrected address) AND closed accounts releasing their email/phone. Q-017: admin invite (set) links valid 24 hours; email codes and reset links stay 10 minutes. Q-025: setting the password through the invite link marks that email verified. Q-019: reform fixes duplicates and fills missing new details (categories, maturity dates, SIP schedules, nominees); dev copy has names/emails/phones masked. Duplicates: duplicate investments get reversal entries keeping both rows; duplicate client accounts are closed and merged into the real one only after the maintainer confirms each pair. Q-020: client reviews wanted, admins only, with client profile; nothing public. Q-022: dashboards show simple return % as main figure plus annualised (XIRR) secondary. Q-023: app-update mail keeps going to all active clients.",
+      "paths": [],
+      "tags": [
+        "decision",
+        "identity",
+        "maturity",
+        "sip",
+        "data-reform",
+        "reviews",
+        "roi"
+      ],
+      "refs": [
+        "rule-7",
+        "M3-gates:G2-permissions",
+        "M3-gates:G3-answer-identity",
+        "M3-gates:G4-answer-sip-maturity",
+        "M3-gates:G5-answer-data-reform",
+        "M3-gates:G6-answer-reviews"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "at": "2026-11-13T09:04:48.090Z"
     }
   ]
 }

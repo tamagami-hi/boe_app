@@ -872,6 +872,278 @@
       "agent": "claude-opus-5-5",
       "verb": "track_open",
       "target": "a-onboarding"
+    },
+    {
+      "at": "2026-11-13T09:01:08.562Z",
+      "session": "afebd8bc-47b0-4988-b446-08ce07e08ad8",
+      "track": "a-admin-core",
+      "agent": "lane-a-admin-core",
+      "verb": "note_post",
+      "target": "M4-phase-a:A-L3-admin-core, request"
+    },
+    {
+      "at": "2026-11-13T09:01:13.482Z",
+      "session": "0a35075b-d9f7-45c1-b5be-a3e13bfe8244",
+      "track": "a-onboarding",
+      "agent": "lane-a-onboarding",
+      "verb": "note_post",
+      "target": "M4-phase-a:A-L4-onboarding, request"
+    },
+    {
+      "at": "2026-11-13T09:01:13.751Z",
+      "session": "275ce6cd-592a-4453-8f40-54a0d47424f9",
+      "track": "a-client-values",
+      "agent": "lane-a-client-values",
+      "verb": "note_post",
+      "target": "M4-phase-a:A-L1-client-values, heads-up"
+    },
+    {
+      "at": "2026-11-13T09:02:06.671Z",
+      "session": "275ce6cd-592a-4453-8f40-54a0d47424f9",
+      "track": "a-client-values",
+      "agent": "lane-a-client-values",
+      "verb": "note_post",
+      "target": "request"
+    },
+    {
+      "at": "2026-11-13T09:02:14.480Z",
+      "session": "0a35075b-d9f7-45c1-b5be-a3e13bfe8244",
+      "track": "a-onboarding",
+      "agent": "lane-a-onboarding",
+      "verb": "note_post",
+      "target": "request"
+    },
+    {
+      "at": "2026-11-13T09:03:15.310Z",
+      "session": "afebd8bc-47b0-4988-b446-08ce07e08ad8",
+      "track": "a-admin-core",
+      "agent": "lane-a-admin-core",
+      "verb": "note_post",
+      "target": "request"
+    },
+    {
+      "at": "2026-11-13T09:04:48.110Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "context_put",
+      "target": "rule"
+    },
+    {
+      "at": "2026-11-13T09:04:48.673Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "milestone_deliver",
+      "target": "M4-phase-a"
+    },
+    {
+      "at": "2026-11-13T09:04:49.123Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_plan",
+      "target": "M4-phase-a"
+    },
+    {
+      "at": "2026-11-13T09:04:49.598Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_wait",
+      "target": "M4-phase-a / A-L5-identity"
+    },
+    {
+      "at": "2026-11-13T09:04:50.029Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_wait",
+      "target": "M8-phase-e / E1-reviews"
+    },
+    {
+      "at": "2026-11-13T09:05:32.693Z",
+      "session": "275ce6cd-592a-4453-8f40-54a0d47424f9",
+      "track": "a-client-values",
+      "agent": "lane-a-client-values",
+      "verb": "note_post",
+      "target": "heads-up"
+    },
+    {
+      "at": "2026-11-13T09:05:48.475Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_land",
+      "target": "M4-phase-a / B-L3-returns"
+    },
+    {
+      "at": "2026-11-13T09:05:48.935Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_land",
+      "target": "M4-phase-a / D1-dev-cleanup"
+    },
+    {
+      "at": "2026-11-13T09:05:49.364Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_land",
+      "target": "M4-phase-a / D2-prod-reform"
+    },
+    {
+      "at": "2026-11-13T09:05:49.818Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_land",
+      "target": "M4-phase-a / E1-reviews"
+    },
+    {
+      "at": "2026-11-13T09:05:50.304Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_plan",
+      "target": "M5-phase-b"
+    },
+    {
+      "at": "2026-11-13T09:05:50.834Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_plan",
+      "target": "M7-phase-d"
+    },
+    {
+      "at": "2026-11-13T09:05:51.340Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_plan",
+      "target": "M8-phase-e"
+    },
+    {
+      "at": "2026-11-13T09:06:24.242Z",
+      "session": "c8da83b9-315d-4e51-b6bb-75db89ca7bf8",
+      "track": "main",
+      "agent": "lane-a-client-values",
+      "verb": "task_claim",
+      "target": "M4-phase-a / A-L1-client-values"
+    },
+    {
+      "at": "2026-11-13T09:06:24.841Z",
+      "session": "e22ee350-15fd-4e6a-86fa-feadfdbf2e84",
+      "track": "main",
+      "agent": "lane-a-payments-off",
+      "verb": "task_claim",
+      "target": "M4-phase-a / A-L2-payments-off"
+    },
+    {
+      "at": "2026-11-13T09:06:25.348Z",
+      "session": "60d84e4d-7c9b-4632-8154-f9d7f38b10de",
+      "track": "main",
+      "agent": "lane-a-admin-core",
+      "verb": "task_claim",
+      "target": "M4-phase-a / A-L3-admin-core"
+    },
+    {
+      "at": "2026-11-13T09:06:25.876Z",
+      "session": "95b875c4-a565-406c-9bc5-35da2c6acc10",
+      "track": "main",
+      "agent": "lane-a-onboarding",
+      "verb": "task_claim",
+      "target": "M4-phase-a / A-L4-onboarding"
+    },
+    {
+      "at": "2026-11-13T09:06:26.308Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_land",
+      "target": "M3-gates / G2-permissions"
+    },
+    {
+      "at": "2026-11-13T09:06:26.841Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_land",
+      "target": "M3-gates / G3-answer-identity"
+    },
+    {
+      "at": "2026-11-13T09:06:27.346Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_land",
+      "target": "M3-gates / G4-answer-sip-maturity"
+    },
+    {
+      "at": "2026-11-13T09:06:27.820Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_land",
+      "target": "M3-gates / G5-answer-data-reform"
+    },
+    {
+      "at": "2026-11-13T09:06:28.320Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_land",
+      "target": "M3-gates / G6-answer-reviews"
+    },
+    {
+      "at": "2026-11-13T09:06:38.999Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_wait",
+      "target": "M6-phase-c / C-L2-sip-schedule"
+    },
+    {
+      "at": "2026-11-13T09:06:39.501Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "note_post",
+      "target": "answer"
+    },
+    {
+      "at": "2026-11-13T09:07:42.352Z",
+      "session": "ff8ce9de-cf77-4518-8aa6-ace22343fd00",
+      "track": "a-payments-off",
+      "agent": "lane-a-payments-off",
+      "verb": "note_post",
+      "target": "M4-phase-a:A-L2-payments-off, request"
+    },
+    {
+      "at": "2026-11-13T09:09:44.259Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "context_put",
+      "target": "howto"
+    },
+    {
+      "at": "2026-11-13T09:09:44.768Z",
+      "session": "f7d165c7-4660-4a9c-99f8-c81ba1e07bb5",
+      "track": "main",
+      "agent": "claude-opus-5-5",
+      "verb": "task_plan",
+      "target": "M8-phase-e"
+    },
+    {
+      "at": "2026-11-13T09:10:14.000Z",
+      "session": "0a35075b-d9f7-45c1-b5be-a3e13bfe8244",
+      "track": "a-onboarding",
+      "agent": "lane-a-onboarding",
+      "verb": "note_post",
+      "target": "request"
     }
   ]
 }

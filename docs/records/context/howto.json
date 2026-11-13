@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "kind": "howto",
+  "nextNumber": 2,
+  "entries": [
+    {
+      "id": "howto-1",
+      "kind": "howto",
+      "title": "Run checks on the pinned Node 22.20.0 / npm 11.16.0 from ~/.local/node-22.20.0",
+      "text": "The host has Node 24 / npm 12; packages pin node >=22.19 <23 and npm >=11.16 <12 with engine-strict. Maintainer decided 2026-11-13 to stay on Node 22 (production images node:22.23.2, CI .nvmrc 22.20.0); a Node 24 upgrade is a separate later task. Official node-v22.20.0-linux-x64 (SHA256 verified against nodejs.org SHASUMS256.txt) is unpacked at $HOME/.local/node-22.20.0 with npm 11.16.0. Prefix every npm/node command: PATH=\"$HOME/.local/node-22.20.0/bin:$PATH\" npm ci && PATH=\"$HOME/.local/node-22.20.0/bin:$PATH\" npm run check. Never use --engine-strict=false or edit engines/.nvmrc.",
+      "paths": [],
+      "tags": [
+        "toolchain",
+        "node"
+      ],
+      "refs": [
+        "rule-8"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5"
+      },
+      "at": "2026-11-13T09:09:44.246Z"
+    }
+  ]
+}

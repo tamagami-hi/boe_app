@@ -256,7 +256,8 @@
         {
           "id": "G2-permissions",
           "track": "main",
-          "status": "planned",
+          "status": "landed",
+          "commit": "81b29aa",
           "also": [],
           "brief": "MAINTAINER: allow opening tally tracks/worktrees and npm ci in them (approved with the plan); container runtime for the testcontainers integration suite still needs a yes",
           "covers": [
@@ -266,7 +267,8 @@
         {
           "id": "G3-answer-identity",
           "track": "main",
-          "status": "planned",
+          "status": "landed",
+          "commit": "81b29aa",
           "also": [],
           "brief": "MAINTAINER: answer Q-024 (correct mistyped client email/phone), Q-017 (invite link lifetime), Q-025 (password set verifies email); gates the identity parts of A7",
           "covers": [
@@ -276,7 +278,8 @@
         {
           "id": "G4-answer-sip-maturity",
           "track": "main",
-          "status": "planned",
+          "status": "landed",
+          "commit": "81b29aa",
           "also": [],
           "brief": "MAINTAINER: answer Q-021 (admin-tracked SIP meaning; maturity per holding or per investment); gates C2/C3",
           "covers": [
@@ -286,17 +289,25 @@
         {
           "id": "G5-answer-data-reform",
           "track": "main",
-          "status": "planned",
+          "status": "landed",
+          "commit": "81b29aa",
           "also": [],
           "brief": "MAINTAINER: answer Q-019 (what the reform fixes; masked PII on dev) and separately approve the destructive reform; gates Phase D",
           "covers": [
             "G-answers"
+          ],
+          "deferred": [
+            {
+              "what": "separate maintainer approval of the destructive production reform after the pre-flight report",
+              "to": "M7-phase-d:D2-prod-reform"
+            }
           ]
         },
         {
           "id": "G6-answer-reviews",
           "track": "main",
-          "status": "planned",
+          "status": "landed",
+          "commit": "81b29aa",
           "also": [],
           "brief": "MAINTAINER: answer Q-020 (client reviews wanted? who sees them); gates E1",
           "covers": [
@@ -388,6 +399,10 @@
         {
           "id": "A7",
           "what": "Onboarding fixes from plan 2E (review step, field errors, +91 length, account-state check, eligibility failure state, expired-link action, web-neutral copy, invited label, harness in CI)"
+        },
+        {
+          "id": "A8",
+          "what": "Identity follow-up: admin contact correction before password set, closed accounts release contacts (history kept), 24h invite links, invite link marks email verified"
         }
       ],
       "tasks": [
@@ -478,17 +493,91 @@
           ]
         },
         {
+          "id": "A-L5-identity",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Lane track/a-identity (after A-L4 lands): audited admin contact correction for clients without a password (retire old links, invite the corrected address); closed accounts release email/phone via an explicit audited action that keeps the original contacts in an append-only history table (additive migration 064) and frees the live columns without breaking the previous release's lookups; separate 24h invite (set) link lifetime config while reset links and email codes stay 10 min; password set through an invite/reset link marks the email at that revision verified. Tests for each (identity/auth critical) plus populated-upgrade test.",
+          "paths": [
+            "backend_controller/src/domain/admin/createClientAccount.ts",
+            "backend_controller/src/domain/auth/passwordCredential.ts",
+            "backend_controller/src/routes/adminOversightRoutes.ts",
+            "backend_controller/src/runtime/environment.ts",
+            "backend_controller/db/migrations",
+            "frontend_stack_ts/src/features/admin/users"
+          ],
+          "covers": [
+            "A8"
+          ],
+          "waitsOn": [
+            {
+              "task": "M4-phase-a:A-L4-onboarding",
+              "what": "shares createClientAccount and users screens with lane 4"
+            }
+          ]
+        },
+        {
+          "id": "B-L3-returns",
+          "track": "main",
+          "status": "landed",
+          "commit": "d72e2b1",
+          "also": [],
+          "brief": "Lane track/b-returns: B4 admin portfolio summary endpoints (new contract file, module outside aum/clientGrowth paths), users list/detail figures and onward links; B5 ROI dashboard: simple return % as main figure plus annualised XIRR as secondary column (pure function, integer paise inputs, tested against independently computed values), totals, per-client returns, last updated",
+          "deferred": [
+            {
+              "what": "misplaced duplicate filed under M4 by the coordinator; the real task is in Phase B",
+              "to": "M5-phase-b:B-L3-returns"
+            }
+          ]
+        },
+        {
+          "id": "D1-dev-cleanup",
+          "track": "main",
+          "status": "landed",
+          "commit": "d72e2b1",
+          "also": [],
+          "brief": "Lane track/d-data: dev-only tooling that refuses production NODE_ENV/database: masked import of a production copy (names, emails, phones replaced; amounts and dates real), and a cleanup that keeps every client and investment record",
+          "deferred": [
+            {
+              "what": "misplaced duplicate filed under M4 by the coordinator; the real task is in Phase D",
+              "to": "M7-phase-d:D1-dev-cleanup"
+            }
+          ]
+        },
+        {
+          "id": "D2-prod-reform",
+          "track": "main",
+          "status": "landed",
+          "commit": "d72e2b1",
+          "also": [],
+          "brief": "Lane track/d-data (after D1): read-only production pre-flight report listing suspected duplicate investments and duplicate client pairs plus clients missing categories/maturity dates/SIP schedules/nominees; one-time reform rehearsed on dev: duplicate investments get reversal entries (both rows kept), duplicate client pairs merged into the real account only for pairs the maintainer confirmed, missing details filled from a maintainer-approved sheet; rollback-boundary registration and populated-upgrade test; production run only after separate approval",
+          "deferred": [
+            {
+              "what": "misplaced duplicate filed under M4 by the coordinator; the real task is in Phase D",
+              "to": "M7-phase-d:D2-prod-reform"
+            }
+          ]
+        },
+        {
+          "id": "E1-reviews",
+          "track": "main",
+          "status": "landed",
+          "commit": "d72e2b1",
+          "also": [],
+          "brief": "Lane track/e-reviews: client rating 1-5 + comment in the app (new table, additive migration, new client endpoint and screen), admin-only list with client profile and moderation state; nothing public",
+          "deferred": [
+            {
+              "what": "misplaced duplicate filed under M4 by the coordinator; the real task is in Phase E",
+              "to": "M8-phase-e:E1-reviews"
+            }
+          ]
+        },
+        {
           "id": "A-close",
           "track": "main",
           "status": "planned",
           "also": [],
-          "brief": "Review each lane diff, land lanes through the tally queue, run the full verification sweep on main, record evidence, write the plan section 8 handoff",
-          "waitsOn": [
-            {
-              "task": "M3-gates:G2-permissions",
-              "what": "integration suite needs the maintainer's yes for a container runtime (G2)"
-            }
-          ]
+          "brief": "Review each lane diff, land lanes through the tally queue, run the full verification sweep on main, record evidence, write the plan section 8 handoff"
         }
       ]
     },
@@ -565,7 +654,7 @@
           "track": "main",
           "status": "planned",
           "also": [],
-          "brief": "Lane track/b-returns: B4 admin portfolio summary endpoints (new contract file, module outside aum/clientGrowth paths), users list/detail figures and onward links; B5 ROI dashboard screen and route",
+          "brief": "Lane track/b-returns: B4 admin portfolio summary endpoints (new contract file, module outside aum/clientGrowth paths), users list/detail figures and onward links; B5 ROI dashboard: simple return % main figure plus annualised XIRR secondary (pure function on integer paise and dates, tested against independently computed values), totals, per-client returns, last updated",
           "covers": [
             "B4",
             "B5"
@@ -652,8 +741,8 @@
           ],
           "waitsOn": [
             {
-              "task": "M3-gates:G4-answer-sip-maturity",
-              "what": "needs the maintainer's answer to Q-021 (G4), and Phase B landed"
+              "task": "M5-phase-b:B-close",
+              "what": "Q-021 answered; still starts after Phase B lands (shared recording and admin routing files)"
             }
           ]
         },
@@ -705,15 +794,9 @@
           "track": "main",
           "status": "planned",
           "also": [],
-          "brief": "Lane track/d-data: dev-only cleanup command refusing production NODE_ENV/database, keeping all client and investment records, removing only what Q-019 names",
+          "brief": "Lane track/d-data: dev-only tooling refusing production NODE_ENV/database: masked import of a production copy (names, emails, phones replaced; amounts and dates real) and a cleanup that keeps every client and investment record",
           "covers": [
             "D1"
-          ],
-          "waitsOn": [
-            {
-              "task": "M3-gates:G5-answer-data-reform",
-              "what": "needs Q-019 answer (G5)"
-            }
           ]
         },
         {
@@ -721,7 +804,7 @@
           "track": "main",
           "status": "planned",
           "also": [],
-          "brief": "Lane track/d-data (after D1): read-only production pre-flight report script for the maintainer, one-time reform rehearsed on dev against a masked copy, rollback-boundary registration in release_manager, populated-upgrade test",
+          "brief": "Lane track/d-data (after D1): read-only production pre-flight listing suspected duplicate investments, duplicate client pairs, and clients missing categories/maturity dates/SIP schedules/nominees; one-time reform rehearsed on dev: duplicate investments reversed (both rows kept), duplicate client pairs merged only where the maintainer confirmed, missing details filled from a maintainer-approved sheet; rollback boundary + populated-upgrade test; production run only after separate approval",
           "covers": [
             "D2"
           ],
@@ -764,14 +847,14 @@
           "track": "main",
           "status": "planned",
           "also": [],
-          "brief": "Client reviews and comments per Q-020 answer",
+          "brief": "Lane track/e-reviews: client rating 1-5 + comment (new table, additive migration, new client endpoint and screen), admin-only list with client profile and moderation state; nothing public",
           "covers": [
             "E1"
           ],
           "waitsOn": [
             {
-              "task": "M3-gates:G6-answer-reviews",
-              "what": "needs Q-020 answer (G6)"
+              "task": "M5-phase-b:B-close",
+              "what": "answered (admins only); starts after Phase B lands because it shares admin routing and the client profile area"
             }
           ]
         },
@@ -789,6 +872,22 @@
               "task": "M6-phase-c:C-close",
               "what": "scheduled after Phase C; must land before the maintainer re-enables payments (G10)"
             }
+          ]
+        },
+        {
+          "id": "E3-node24-upgrade",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Separate tested runtime upgrade to Node 24 LTS before Node 22 support ends (April 2027): Dockerfiles (pinned digests), CI node-version, engines + .nvmrc in 3 packages, release_manager runtime_contract test, lockfile/native-dep check; maintainer decides timing (production runtime change)",
+          "paths": [
+            "backend_controller/Dockerfile",
+            "frontend_stack_ts/Dockerfile",
+            ".github/workflows/ci.yml",
+            "backend_controller/package.json",
+            "frontend_stack_ts/package.json",
+            "packages/contracts/package.json",
+            "release_manager/tests/runtime_contract.test.sh"
           ]
         },
         {
