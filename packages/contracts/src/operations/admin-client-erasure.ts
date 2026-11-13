@@ -19,6 +19,7 @@ export const ClientErasureBlockerCode = z.enum([
   "open_payments",
   "open_refunds",
   "open_withdrawals",
+  "failed_withdrawals",
   "unsettled_maturities",
   "active_sip_schedules",
   "scheduled_maturities",

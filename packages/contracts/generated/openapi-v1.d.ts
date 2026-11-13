@@ -17688,7 +17688,7 @@ export interface operations {
                             keptBecause: "email_verified" | "money_records" | null;
                             blockers: {
                                 /** @enum {string} */
-                                code: "staff_account" | "legal_hold" | "holds_money" | "open_orders" | "open_payments" | "open_refunds" | "open_withdrawals" | "unsettled_maturities" | "active_sip_schedules" | "scheduled_maturities" | "open_maturity_offers" | "active_sip_plans" | "mail_in_flight";
+                                code: "staff_account" | "legal_hold" | "holds_money" | "open_orders" | "open_payments" | "open_refunds" | "open_withdrawals" | "failed_withdrawals" | "unsettled_maturities" | "active_sip_schedules" | "scheduled_maturities" | "open_maturity_offers" | "active_sip_plans" | "mail_in_flight";
                                 count: number;
                                 message: string;
                             }[];

@@ -67,6 +67,7 @@ const ErasureForm = ({ userId, check, onRecheck, rechecking, onErased }: FormPro
           return
         }
         setHeld(null)
+        setTyped("")
         setOutcome({ kind: "rejected", lines: rejectionLines(error) })
         onRecheck()
       },
