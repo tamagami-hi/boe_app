@@ -50,7 +50,7 @@ import { SIP_CARD_TOP } from "./sip.recipe"
 import { upcomingDueDate } from "./sipSchedule"
 
 const MANUAL_EXPLANATION =
-  "This plan is your monthly commitment, and nothing is taken automatically. You pay each month's amount to the BeOnEdge team directly. The team records each payment, and it then shows in your portfolio. Contact them through Support in your profile."
+  "This plan is your monthly commitment, and nothing is taken automatically. Each month's investment is recorded by the BeOnEdge team and then shows in your portfolio."
 
 const AUTOPAY_EXPLANATION =
   "This plan is collected by PhonePe UPI AutoPay. PhonePe lets you know a day before each collection."
@@ -235,7 +235,7 @@ Back to SIP plans
                   )}
                   <div className={STAT_ROOT}>
                     <span className={STAT_LABEL}>Paid by</span>
-                    <span className={ITEM_TITLE}>{isAutoPay ? "AutoPay" : "You, to the BeOnEdge team"}</span>
+                    <span className={ITEM_TITLE}>{isAutoPay ? "AutoPay" : "You, each month"}</span>
                   </div>
                 </div>
                 {status.detail === undefined ? null : (

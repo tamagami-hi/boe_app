@@ -88,8 +88,8 @@ const ONLINE_PAYMENT_UNAVAILABLE_TITLE = "Online payment is not available"
 
 const AUTOPAY_UNAVAILABLE_TITLE = "AutoPay is not available"
 
-const PAY_TEAM_DIRECTLY =
-  "You can still invest by paying the BeOnEdge team directly. The team records each payment, and it then shows in your portfolio. Contact them through Support in your profile."
+const RECORDED_INVESTMENTS_STILL_SHOW =
+  "Investments recorded by the BeOnEdge team still appear in your portfolio."
 
 const AUTOPAY_UNCONFIRMED =
   "We couldn't confirm this. No AutoPay was authorised. Check SIP plans before trying again."
@@ -145,7 +145,7 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
       VALIDATION_FAILED: { message: "Check the amount and try again." },
       DEPENDENCY_UNAVAILABLE: {
         title: ONLINE_PAYMENT_UNAVAILABLE_TITLE,
-        message: `Online payment is not available in the app right now, so nothing was charged or saved. ${PAY_TEAM_DIRECTLY}`,
+        message: `Online payment is not available in the app right now, so nothing was charged or saved. ${RECORDED_INVESTMENTS_STILL_SHOW}`,
       },
     },
     transport: { offline: { message: UNCONFIRMED_MONEY_SAFE }, timeout: { message: UNCONFIRMED_MONEY_SAFE } },
@@ -157,7 +157,7 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
     codes: {
       DEPENDENCY_UNAVAILABLE: {
         title: ONLINE_PAYMENT_UNAVAILABLE_TITLE,
-        message: `Online payment is not available in the app right now, so nothing was charged. This investment request stays in Activity. ${PAY_TEAM_DIRECTLY}`,
+        message: `Online payment is not available in the app right now, so nothing was charged. This investment request stays in Activity. ${RECORDED_INVESTMENTS_STILL_SHOW}`,
       },
       STATE_CONFLICT: {
         message: "This investment can no longer be paid. Open it from Activity to see its status.",
@@ -174,7 +174,7 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
       VALIDATION_FAILED: { message: "Check the amount and schedule, then try again." },
       DEPENDENCY_UNAVAILABLE: {
         title: ONLINE_PAYMENT_UNAVAILABLE_TITLE,
-        message: `Online payment is not available in the app right now, so this SIP was not created and nothing was charged or saved. ${PAY_TEAM_DIRECTLY}`,
+        message: `Online payment is not available in the app right now, so this SIP was not created and nothing was charged or saved. ${RECORDED_INVESTMENTS_STILL_SHOW}`,
       },
     },
     transport: {
@@ -189,7 +189,7 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
     codes: {
       DEPENDENCY_UNAVAILABLE: {
         title: AUTOPAY_UNAVAILABLE_TITLE,
-        message: `AutoPay is not available in the app right now, so it was not set up and nothing was charged or saved. ${PAY_TEAM_DIRECTLY}`,
+        message: `AutoPay is not available in the app right now, so it was not set up and nothing was charged or saved. ${RECORDED_INVESTMENTS_STILL_SHOW}`,
       },
       STATE_CONFLICT: AUTOPAY_STATE_CONFLICT,
     },
@@ -202,7 +202,7 @@ const CONTEXTS: Readonly<Record<FailureContext, ContextRules>> = {
     codes: {
       DEPENDENCY_UNAVAILABLE: {
         title: AUTOPAY_UNAVAILABLE_TITLE,
-        message: `AutoPay is not available in the app right now, so nothing was authorised or charged, and this SIP stays as it is. ${PAY_TEAM_DIRECTLY}`,
+        message: `AutoPay is not available in the app right now, so nothing was authorised or charged, and this SIP stays as it is. ${RECORDED_INVESTMENTS_STILL_SHOW}`,
       },
       STATE_CONFLICT: AUTOPAY_STATE_CONFLICT,
     },

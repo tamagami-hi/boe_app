@@ -227,7 +227,7 @@ const SipStartForm = (): React.ReactElement => {
                     {
                       value: "manual_checkout",
                       label: "Pay each month myself",
-                      hint: "Nothing is taken automatically. You pay each month's amount to the BeOnEdge team directly, and the team records it.",
+                      hint: "Nothing is taken automatically. Each month's investment is recorded by the BeOnEdge team.",
                     },
                     {
                       value: "phonepe_autopay",
