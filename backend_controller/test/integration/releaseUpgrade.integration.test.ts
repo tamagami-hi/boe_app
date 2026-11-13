@@ -272,7 +272,7 @@ afterAll(async () => {
 describe("upgrading a populated v0.14.7 database to v0.15.0 in one run", () => {
   test("applies every migration after 051", async () => {
     const applied = (await pool.query<{ version: string }>("select version from schema_migrations where version > $1 order by version", [RELEASED_SCHEMA])).rows
-    expect(applied.map((row) => row.version.slice(0, 3))).toEqual(["052", "053", "054", "055", "056", "057", "058", "059", "060", "061", "062", "063", "064", "065", "066", "067", "068"])
+    expect(applied.map((row) => row.version.slice(0, 3))).toEqual(["052", "053", "054", "055", "056", "057", "058", "059", "060", "061", "062", "063", "064", "065", "066", "067", "068", "069"])
   })
 
   test("keeps every existing row in every existing table exactly as it was, and adds none", async () => {

@@ -6,14 +6,22 @@ import { createAdminCatalogRepository } from "../repositories/adminCatalogReposi
 import { createAdminOversightRepository } from "../repositories/adminOversightRepository.js"
 import { createAuditTrailRepository } from "../repositories/auditTrailRepository.js"
 import { createAdminSipScheduleRepository } from "../repositories/adminSipScheduleRepository.js"
+import { createClientErasureDeleteRepository } from "../repositories/clientErasureDeleteRepository.js"
+import { createClientErasureInspectRepository } from "../repositories/clientErasureInspectRepository.js"
+import { createClientErasureWriteRepository } from "../repositories/clientErasureWriteRepository.js"
 import { createClientReturnsRepository } from "../repositories/clientReturnsRepository.js"
+import { createEmailChangeRepository } from "../repositories/emailChangeRepository.js"
+import { createEmailVerificationRepository } from "../repositories/emailVerificationRepository.js"
 import { createFundAumRepository } from "../repositories/fundAumRepository.js"
 import { createMaturityRepository } from "../repositories/maturityRepository.js"
 import { createMonthlyRecordingSheetRepository } from "../repositories/monthlyRecordingSheetRepository.js"
+import { createPasswordTokenRepository } from "../repositories/passwordTokenRepository.js"
+import { createUserContactRepository } from "../repositories/userContactRepository.js"
 import { createUserNomineeRepository } from "../repositories/userNomineeRepository.js"
 import { registerAdminAuditTrailRoutes } from "../routes/adminAuditTrailRoutes.js"
 import { registerAdminAumRoutes } from "../routes/adminAumRoutes.js"
 import { registerAdminCatalogRoutes } from "../routes/adminCatalogRoutes.js"
+import { registerAdminClientErasureRoutes } from "../routes/adminClientErasureRoutes.js"
 import { registerAdminClientGrowthRoutes, type AdminClientGrowthDeps } from "../routes/adminClientGrowthRoutes.js"
 import { registerAdminClientReturnRoutes, type AdminClientReturnDeps } from "../routes/adminClientReturnRoutes.js"
 import { registerAdminContentRoutes, type AdminContentDeps } from "../routes/adminContentRoutes.js"
@@ -247,6 +255,19 @@ export const registerAdminSurface = (application: FastifyInstance, deps: AdminSu
   registerAdminNomineeRoutes(application, {
     webAuth, unitOfWork, clock, userRepository, auditRepository, idempotencyRepository,
     userNomineeRepository: createUserNomineeRepository(),
+    config: { idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
+  })
+
+  registerAdminClientErasureRoutes(application, {
+    webAuth, unitOfWork, clock, crypto, identityLockRepository, clientGrowthRepository, authSessionRepository,
+    auditRepository, idempotencyRepository,
+    erasureInspectRepository: createClientErasureInspectRepository(),
+    erasureWriteRepository: createClientErasureWriteRepository(),
+    erasureDeleteRepository: createClientErasureDeleteRepository(),
+    userContactRepository: createUserContactRepository(),
+    passwordTokenRepository: createPasswordTokenRepository(),
+    emailVerificationRepository: createEmailVerificationRepository(),
+    emailChangeRepository: createEmailChangeRepository(),
     config: { idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
   })
 

@@ -26,6 +26,7 @@ export const CORRECTION_PASSWORD_SET_MESSAGE =
 export const CORRECTION_UNCHANGED_MESSAGE = "Enter an email address or phone number that differs from the current one."
 export const RELEASE_NOT_CLOSED_MESSAGE = "Only a closed account can release its email and phone."
 export const RELEASE_ALREADY_DONE_MESSAGE = "This account's email and phone were already released."
+export const RELEASE_ERASED_MESSAGE = "This client was erased, so their email and phone are already removed."
 export const STALE_ACCOUNT_MESSAGE = "The account changed since you opened it. Reload it and try again."
 
 export const CORRECTION_LIMIT = 3
@@ -235,6 +236,7 @@ const requireReleasable = async (
   }
   await requireClientAccount(tx, deps, input.userId)
   if (user.account_state !== "closed") throw conflict(RELEASE_NOT_CLOSED_MESSAGE)
+  if (user.pii_tombstoned_at !== null) throw conflict(RELEASE_ERASED_MESSAGE)
   if ((await deps.userContactRepository.findRelease(tx, input.userId)) !== null) {
     throw conflict(RELEASE_ALREADY_DONE_MESSAGE)
   }
