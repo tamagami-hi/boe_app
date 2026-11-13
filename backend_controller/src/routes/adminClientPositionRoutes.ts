@@ -16,6 +16,7 @@ import {
 } from "../domain/admin/reverseLedgerEntry.js"
 import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { refuseFutureDate } from "../domain/shared/calendarDate.js"
+import { RECORDING_REASON_CODES } from "../domain/shared/recordingCategory.js"
 import { parseOrThrow } from "../http/validation.js"
 import {
   adminIdempotencyScope,
@@ -55,7 +56,7 @@ const recordedContributionSchema = z
     fundId: uuidParam,
     amountPaise: positivePaiseSchema,
     effectiveDate: dateSchema,
-    reasonCode: reasonCodeSchema,
+    reasonCode: z.enum(RECORDING_REASON_CODES),
     note: reasonDetailSchema.optional(),
   })
   .strict()

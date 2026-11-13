@@ -14,7 +14,7 @@ const positionDeps = () =>
     clientPositionRepository: {
       findFundVersionForDate: vi
         .fn()
-        .mockResolvedValue({ fundVersionId: "version-2024", historical: true }),
+        .mockResolvedValue({ fundVersionId: "version-2024", fundName: "Fund 2024", historical: true }),
       insertRecordedOrder: vi.fn().mockResolvedValue({ id: "order-1" }),
       insertRecordedPayment: vi.fn().mockResolvedValue({ id: "payment-1" }),
       insertRecordedAllocation: vi.fn().mockResolvedValue({ id: "allocation-1" }),
@@ -51,7 +51,7 @@ const input = {
   fundId: "fund-1",
   amountPaise: 500_000n,
   effectiveDate: HISTORICAL_DATE,
-  reasonCode: "recorded_offline_investment",
+  reasonCode: "recorded_offline_investment" as const,
   note: null,
   actorUserId: "admin-1",
   requestId: "11111111-1111-4111-8111-111111111111",

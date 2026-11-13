@@ -23,6 +23,7 @@ const ENTRY_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a
 
 const ENTRY_DESTINATIONS: Readonly<Record<string, (entryId: string) => string>> = {
   client_value_updated: (entryId) => `/portfolio/value-updates?entry=${entryId}`,
+  client_contribution_recorded: (entryId) => `/activity/receipts/${entryId}`,
 }
 
 export const notificationLink = (kind: string, payload: Readonly<Record<string, unknown>>): unknown => {

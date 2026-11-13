@@ -117,7 +117,7 @@ const CREATE_CLIENT = {
 const RECORD_CONTRIBUTION = {
   url: `/v1/admin/clients/${CLIENT_ID}/recorded-contributions`,
   key: "record-contribution-0001",
-  payload: { fundId: FUND_ID, amountPaise: "500000", effectiveDate: "2025-12-01", reasonCode: "earlier_investment" },
+  payload: { fundId: FUND_ID, amountPaise: "500000", effectiveDate: "2025-12-01", reasonCode: "recorded_offline_investment" },
 }
 const REVERSE_ENTRY = {
   url: `/v1/admin/clients/${CLIENT_ID}/ledger-entries/${LEDGER_ENTRY_ID}/reversal`,

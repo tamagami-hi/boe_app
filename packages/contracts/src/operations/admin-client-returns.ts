@@ -2,7 +2,7 @@ import { z } from "zod"
 
 import { createSuccessEnvelopeSchema } from "../envelope.js"
 import { IsoDateTime, SignedPaise, Uuid } from "../scalars.js"
-import { AdminLedgerEntry } from "./admin-money.js"
+import { AdminLedgerEntry } from "./admin-client-positions.js"
 import {
   ADMIN_PAGED_READ_ERRORS,
   ADMIN_READ_ERRORS,

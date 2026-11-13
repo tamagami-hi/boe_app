@@ -31,7 +31,7 @@ const ENTRIES = [
   {
     to: "/client-values/position",
     title: "One investor's record",
-    hint: "See every position and ledger entry, record an investment made before the app, and reverse an entry that should not be there.",
+    hint: "See every position and ledger entry, record an investment, and reverse an entry that should not be there.",
   },
 ] as const
 

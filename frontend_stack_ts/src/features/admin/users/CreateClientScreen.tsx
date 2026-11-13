@@ -328,8 +328,8 @@ const CreateClientScreen = (): React.ReactElement => {
 
           {canRecordInvestment ? (
             <Section
-              title="Record an earlier investment"
-              description="Optional. Records money this client invested before using BeOnEdge, one fund at a time. It is not a charge and not growth."
+              title="Record an investment"
+              description="Optional. Records money this client has already paid to BeOnEdge, one fund at a time. It is not a charge and not growth."
             >
               <EarlierInvestmentForm userId={created.userId} investorLabel={request.fullName} />
             </Section>

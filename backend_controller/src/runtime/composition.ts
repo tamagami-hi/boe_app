@@ -69,7 +69,6 @@ import { createMaturityRepository } from "../repositories/maturityRepository.js"
 import { registerAdminMaturityRoutes } from "../routes/adminMaturityRoutes.js"
 import { createClientGrowthRepository } from "../repositories/clientGrowthRepository.js"
 import { createClientPositionRepository } from "../repositories/clientPositionRepository.js"
-import { registerAdminClientPositionRoutes } from "../routes/adminClientPositionRoutes.js"
 import { createClientReturnsRepository } from "../repositories/clientReturnsRepository.js"
 import { registerAdminClientReturnRoutes } from "../routes/adminClientReturnRoutes.js"
 import { registerClientAccountRoutes } from "../routes/clientAccountRoutes.js"
@@ -78,6 +77,7 @@ import { createEmailChangeRepository } from "../repositories/emailChangeReposito
 import { registerClientProfileRoutes } from "../routes/clientProfileRoutes.js"
 import { registerPasswordRoutes } from "../routes/passwordRoutes.js"
 import { registerAdminEmailSurface } from "./adminEmailComposition.js"
+import { registerRecordingSurface } from "./recordingComposition.js"
 import { registerAdminClientOnboardingRoutes } from "../routes/adminClientOnboardingRoutes.js"
 import { createPasswordTokenRepository } from "../repositories/passwordTokenRepository.js"
 import { registerClientOrderRoutes } from "../routes/clientOrderRoutes.js"
@@ -666,18 +666,10 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       notificationRepository,
     })
 
-    registerAdminClientPositionRoutes(application, {
-      webAuth,
-      unitOfWork,
-      database,
-      clock,
-      config: { idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
-      clientPositionRepository,
-      clientGrowthRepository,
-      userRepository,
-      auditRepository,
-      idempotencyRepository,
-      notificationRepository,
+    registerRecordingSurface(application, {
+      webAuth, accessTokenService, clientWeb, unitOfWork, database, clock,
+      clientPositionRepository, clientGrowthRepository, userRepository, auditRepository, idempotencyRepository, notificationRepository,
+      config: { idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs, cursorKey: serverConfig.cursorKey },
     })
 
     registerAdminClientReturnRoutes(application, {

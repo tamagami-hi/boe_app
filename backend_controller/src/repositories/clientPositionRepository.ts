@@ -77,7 +77,7 @@ export interface ClientPositionRepository {
   findFundVersionForDate: (
     tx: Transaction,
     input: Readonly<{ fundId: string; effectiveDate: string }>,
-  ) => Promise<Readonly<{ fundVersionId: string; historical: boolean }> | null>
+  ) => Promise<Readonly<{ fundVersionId: string; fundName: string; historical: boolean }> | null>
   insertRecordedOrder: (tx: Transaction, input: RecordedOrderInput) => Promise<{ readonly id: string }>
   insertRecordedPayment: (
     tx: Transaction,
@@ -167,8 +167,8 @@ const entrySelection = sql`
 
 export const createClientPositionRepository = (): ClientPositionRepository => ({
   findFundVersionForDate: async (tx, input) => {
-    const historical = await sql<{ readonly id: string }>`
-      select v.id
+    const historical = await sql<{ readonly id: string; readonly name: string }>`
+      select v.id, v.name
       from fund_versions v
       where v.fund_id = ${input.fundId}
         and v.created_at < (${input.effectiveDate}::date + interval '1 day')
@@ -176,15 +176,15 @@ export const createClientPositionRepository = (): ClientPositionRepository => ({
       limit 1
     `.execute(tx)
     const found = historical.rows[0]
-    if (found !== undefined) return { fundVersionId: found.id, historical: true }
+    if (found !== undefined) return { fundVersionId: found.id, fundName: found.name, historical: true }
 
     const current = await tx
       .selectFrom("funds")
-      .select("current_published_version_id")
-      .where("id", "=", input.fundId)
+      .innerJoin("fund_versions", "fund_versions.id", "funds.current_published_version_id")
+      .select(["fund_versions.id as id", "fund_versions.name as name"])
+      .where("funds.id", "=", input.fundId)
       .executeTakeFirst()
-    const fallback = current?.current_published_version_id ?? null
-    return fallback === null ? null : { fundVersionId: fallback, historical: false }
+    return current === undefined ? null : { fundVersionId: current.id, fundName: current.name, historical: false }
   },
 
   insertRecordedOrder: async (tx, input) =>

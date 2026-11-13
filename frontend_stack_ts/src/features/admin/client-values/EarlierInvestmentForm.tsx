@@ -6,7 +6,6 @@ import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDate } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
-import { useRecordClientContribution } from "~/features/admin/shared/adminQueries"
 import { useAdminFundCatalogue } from "~/features/admin/shared/queries"
 import { DataList, DetailRow, Prose } from "~/ui/patterns/DataList"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
@@ -21,12 +20,19 @@ import { ACTION_ROW, STACK_LG } from "~/ui/recipes/layout"
 
 import { CatalogueFundPicker } from "./CatalogueFundPicker"
 import { indiaToday } from "./indiaToday"
+import {
+  DEFAULT_RECORDING_REASON,
+  RECORDING_CATEGORIES,
+  isRecordingReason,
+  recordingCategoryCopy,
+} from "./recordingCategories"
+import { useRecordClientContribution } from "./recordingQueries"
 import { parsePositiveRupees } from "./rupeeAmount"
 
-const REASON_OPTIONS = [
-  { value: "recorded_offline_investment", label: "Investment made before the app" },
-  { value: "recorded_offline_correction", label: "Correction to an earlier record" },
-] as const
+const CATEGORY_OPTIONS = RECORDING_CATEGORIES.map((category) => ({
+  value: category.value,
+  label: category.label,
+}))
 
 const NOTE_MAX_LENGTH = 2_000
 
@@ -45,9 +51,6 @@ const describeRejection = (error: unknown): string => {
   return error.message
 }
 
-const reasonLabel = (value: string): string =>
-  REASON_OPTIONS.find((option) => option.value === value)?.label ?? value
-
 export type EarlierInvestmentFormProps = Readonly<{
   userId: string
   investorLabel: string
@@ -65,13 +68,14 @@ export const EarlierInvestmentForm = ({
   const [fundId, setFundId] = useState("")
   const [rupees, setRupees] = useState("")
   const [effectiveDate, setEffectiveDate] = useState("")
-  const [reasonCode, setReasonCode] = useState<string>(REASON_OPTIONS[0].value)
+  const [reasonCode, setReasonCode] = useState(DEFAULT_RECORDING_REASON)
   const [note, setNote] = useState("")
   const [attempt, setAttempt] = useState(0)
   const [outcome, setOutcome] = useState<Outcome>(IDLE)
   const [confirmingRecord, setConfirmingRecord] = useState(false)
   const [confirmingRestart, setConfirmingRestart] = useState(false)
 
+  const category = recordingCategoryCopy(reasonCode)
   const amountPaise = parsePositiveRupees(rupees)
   const trimmedNote = note.trim()
   const request = {
@@ -128,7 +132,7 @@ export const EarlierInvestmentForm = ({
     setFundId("")
     setRupees("")
     setEffectiveDate("")
-    setReasonCode(REASON_OPTIONS[0].value)
+    setReasonCode(DEFAULT_RECORDING_REASON)
     setNote("")
     startNewAttempt()
   }
@@ -138,7 +142,7 @@ export const EarlierInvestmentForm = ({
       <div className={STACK_LG}>
         {canWrite ? null : (
           <Alert tone="info" title="Read only">
-            Recording an earlier investment needs the client_position.write permission.
+            Recording an investment needs the client_position.write permission.
           </Alert>
         )}
 
@@ -180,7 +184,7 @@ export const EarlierInvestmentForm = ({
         {recorded === undefined ? null : (
           <Alert
             tone="success"
-            title="Earlier investment recorded"
+            title={category.recordedTitle}
             action={
               <Button size="sm" tone="secondary" onClick={recordAnother}>
                 Record another investment
@@ -202,7 +206,7 @@ export const EarlierInvestmentForm = ({
           <FormField
             label="Amount in rupees"
             required
-            hint="The original amount invested, not including any growth since. Up to two decimal places, for example 250000 or 250000.50."
+            hint={category.amountHint}
             error={amountInvalid ? "Enter an amount above zero in rupees, with at most two decimal places." : undefined}
           >
             {({ id, describedBy, invalid }) => (
@@ -221,10 +225,10 @@ export const EarlierInvestmentForm = ({
 
         <div className={ADMIN_FORM_GRID}>
           <FormField
-            label="Date of the investment"
+            label={category.dateLabel}
             required
-            hint="The real date the money was invested. It decides which statement period the entry lands in."
-            error={futureDated ? "A past investment cannot be dated in the future." : undefined}
+            hint={category.dateHint}
+            error={futureDated ? category.futureDateError : undefined}
           >
             {({ id }) => (
               <Input
@@ -240,15 +244,15 @@ export const EarlierInvestmentForm = ({
             )}
           </FormField>
 
-          <FormField label="Reason" required>
+          <FormField label="Category" required hint="The client sees this label on their receipt.">
             {({ id }) => (
               <Select
                 id={id}
-                options={REASON_OPTIONS.map((option) => ({ ...option }))}
+                options={CATEGORY_OPTIONS}
                 value={reasonCode}
                 disabled={locked}
                 onChange={(event) => {
-                  setReasonCode(event.target.value)
+                  if (isRecordingReason(event.target.value)) setReasonCode(event.target.value)
                 }}
               />
             )}
@@ -285,8 +289,8 @@ export const EarlierInvestmentForm = ({
 
       <ConfirmDialog
         open={confirmingRecord && amountPaise !== null}
-        title="Record this earlier investment?"
-        confirmLabel="Record the investment"
+        title={category.confirmTitle}
+        confirmLabel={category.confirmLabel}
         onConfirm={send}
         onCancel={() => {
           setConfirmingRecord(false)
@@ -298,15 +302,10 @@ export const EarlierInvestmentForm = ({
           <DetailRow label="Amount" emphasis="lead">
             {amountPaise === null ? null : <MoneyValue amount={amountPaise} size="sm" showDecimals />}
           </DetailRow>
-          <DetailRow label="Invested on">{effectiveDate === "" ? "" : formatDate(effectiveDate)}</DetailRow>
-          <DetailRow label="Reason">{reasonLabel(reasonCode)}</DetailRow>
+          <DetailRow label="Dated">{effectiveDate === "" ? "" : formatDate(effectiveDate)}</DetailRow>
+          <DetailRow label="Category">{category.label}</DetailRow>
         </DataList>
-        <Prose>
-          This records money the investor already invested before using BeOnEdge. It does not charge
-          them or start a payment, and it is not growth: what they invested and its current value
-          both rise by this amount. The investor is notified. A mistake is corrected later with a
-          reversal, not by editing.
-        </Prose>
+        <Prose>{category.confirmBody}</Prose>
       </ConfirmDialog>
 
       <ConfirmDialog

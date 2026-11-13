@@ -34,7 +34,7 @@ import { UserLifecyclePanel } from "./UserLifecyclePanel"
 const ORDER_TYPE_LABEL = {
   lump_sum: "One-off investment",
   sip_installment: "SIP instalment",
-  recorded_offline: "Recorded earlier investment",
+  recorded_offline: "Recorded investment",
 } as const
 
 const UserDetailScreen = (): React.ReactElement => {
@@ -139,8 +139,8 @@ const UserDetailScreen = (): React.ReactElement => {
 
             {data.roles.length === 0 && isRecording && canRecordFor(data.user.accountState) ? (
               <Section
-                title="Record an earlier investment"
-                description="Records money this client invested before using BeOnEdge, one fund at a time. It is not a charge and not growth."
+                title="Record an investment"
+                description="Records an earlier investment, a monthly investment or a correction, one fund at a time. It is not a charge and not growth."
               >
                 <EarlierInvestmentForm
                   userId={userId}

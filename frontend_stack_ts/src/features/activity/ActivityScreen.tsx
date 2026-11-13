@@ -135,6 +135,11 @@ const ActivityScreen = (): React.ReactElement => {
             ? "Your investments, value updates and withdrawals, newest first."
             : "Everything that has happened to your investments, and every payment behind it."
         }
+        actions={
+          <ButtonLink to="/activity/receipts" tone="secondary" size="sm">
+            Receipts
+          </ButtonLink>
+        }
       />
 
       {paymentsOff ? null : (
@@ -185,6 +190,11 @@ const ActivityScreen = (): React.ReactElement => {
                         <span className={META_MUTED}>
                           {formatDate(`${entry.date}T00:00:00Z`)}
                         </span>
+                        {entry.type === "recorded_offline" ? (
+                          <Link to={`/activity/receipts/${entry.id}`} className={LINK_TEXT}>
+                            View receipt
+                          </Link>
+                        ) : null}
                       </div>
                       <div className={ROW_RIGHT}>
                         <MoneyValue

@@ -42,7 +42,7 @@ const ENTRY_LABEL: Readonly<Record<string, string>> = {
 const ORDER_LABEL: Readonly<Record<string, string>> = {
   lump_sum: "One-off",
   sip_installment: "SIP",
-  recorded_offline: "Recorded earlier",
+  recorded_offline: "Recorded",
 }
 
 const REVERSAL_REASON = "admin_correction_reversal"
@@ -114,7 +114,7 @@ const ClientPositionDetailScreen = (): React.ReactElement => {
     <Page width="wide">
       <PageHeader
         title="One investor's record"
-        description="Review an investor’s positions, record earlier investments, settle matured positions and correct entries."
+        description="Review an investor’s positions, record investments, settle matured positions and correct entries."
       />
 
       {canWrite ? null : (
@@ -212,8 +212,8 @@ const ClientPositionDetailScreen = (): React.ReactElement => {
           )}
 
           <Section
-            title="Record an investment made before the app"
-            description="Written as what it was: an accepted order, a succeeded payment, an allocation and an ordinary contribution, all dated by the real investment date so the statement for that period is right. The investor is notified."
+            title="Record an investment"
+            description="An earlier investment, a monthly investment or a correction, written as an accepted order, a succeeded payment, an allocation and an ordinary contribution, all dated by the real date so the statement for that period is right. The investor is notified and sees a receipt."
           >
             <EarlierInvestmentForm
               key={userId}

@@ -7,6 +7,11 @@ import type { NotificationWriteRepository } from "../../repositories/notificatio
 import type { UserWriteRepository } from "../../repositories/userRepository.js"
 import type { UserId } from "../../db/repositories.js"
 import type { UserAccountState } from "../../db/types.js"
+import {
+  RECORDING_CATEGORY_TEXT,
+  recordingCategoryOf,
+  type RecordingReasonCode,
+} from "../shared/recordingCategory.js"
 
 export interface RecordContributionDeps {
   readonly clientPositionRepository: ClientPositionRepository
@@ -22,7 +27,7 @@ export interface RecordContributionInput {
   readonly fundId: string
   readonly amountPaise: bigint
   readonly effectiveDate: string
-  readonly reasonCode: string
+  readonly reasonCode: RecordingReasonCode
   readonly note: string | null
   readonly actorUserId: string
   readonly requestId: string
@@ -41,16 +46,12 @@ export interface RecordedContribution {
 
 export const RECORDED_CONTRIBUTION_NOTIFICATION = Object.freeze({
   kind: "client_contribution_recorded",
-  title: "Your investment was recorded",
-  body:
-    "A payment you made to BeOnEdge has been added to your portfolio. " +
-    "Open your portfolio to check it, and contact support if you do not recognise it.",
   deepLink: "/portfolio",
 })
 
 const RECORDABLE_ACCOUNT_STATES: ReadonlySet<UserAccountState> = new Set(["active", "suspended"])
-const NOT_RECORDABLE_STATE_MESSAGE = "Earlier investments can only be recorded for an active or suspended client account."
-const NOT_A_CLIENT_MESSAGE = "Earlier investments can only be recorded for client accounts."
+const NOT_RECORDABLE_STATE_MESSAGE = "Investments can only be recorded for an active or suspended client account."
+const NOT_A_CLIENT_MESSAGE = "Investments can only be recorded for client accounts."
 
 const midday = (effectiveDate: string): Date => new Date(`${effectiveDate}T12:00:00.000Z`)
 
@@ -73,6 +74,7 @@ export const recordContribution = async (
   deps: RecordContributionDeps,
   input: RecordContributionInput,
 ): Promise<RecordedContribution> => {
+  const category = recordingCategoryOf(input.reasonCode)
   await deps.clientGrowthRepository.lockPosition(tx, input.userId, input.fundId)
   await requireRecordableClient(tx, deps, input.userId as UserId)
 
@@ -143,18 +145,26 @@ export const recordContribution = async (
       effectiveDate: input.effectiveDate,
       recordedAt: deps.clock().toISOString(),
       reasonCode: input.reasonCode,
+      category,
       fundVersionId: version.fundVersionId,
       fundVersionEffectiveOnDate: version.historical,
       paymentAttemptCreated: false,
     },
   })
 
+  const text = RECORDING_CATEGORY_TEXT[category]
   await deps.notificationRepository.create(tx, {
     userId: input.userId,
     kind: RECORDED_CONTRIBUTION_NOTIFICATION.kind,
-    title: RECORDED_CONTRIBUTION_NOTIFICATION.title,
-    body: RECORDED_CONTRIBUTION_NOTIFICATION.body,
-    payload: { fundId: input.fundId, deepLink: RECORDED_CONTRIBUTION_NOTIFICATION.deepLink },
+    title: text.notificationTitle,
+    body: text.notificationBody(version.fundName),
+    payload: {
+      fundId: input.fundId,
+      deepLink: RECORDED_CONTRIBUTION_NOTIFICATION.deepLink,
+      entryId: entry.id,
+      orderId: order.id,
+      category,
+    },
   })
 
   return {
