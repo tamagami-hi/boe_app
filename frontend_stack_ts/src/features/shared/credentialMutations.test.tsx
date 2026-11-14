@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { ApiError, TransportError } from "~/api/errors"
 import type { HttpClient } from "~/api/http"
+import { useSealedMutation } from "~/api/sealedMutation"
 import type { SealedMutationResult } from "~/api/sealedMutation"
 import { ApiProvider } from "~/app/providers/ApiProvider"
 import { createQueryClient } from "~/app/providers/QueryProvider"
@@ -42,13 +43,16 @@ const OUTCOMES = {
 
 type Outcome = keyof typeof OUTCOMES
 
-const answering = (first: Outcome): Readonly<{ api: HttpClient; bodies: unknown[] }> => {
+type Answering = Readonly<{ api: HttpClient; send: (body: unknown) => Promise<unknown>; bodies: unknown[] }>
+
+const answering = (first: Outcome): Answering => {
   const bodies: unknown[] = []
-  const request = (_operation: unknown, options?: Readonly<{ body?: unknown }>): Promise<unknown> => {
-    bodies.push(options?.body)
+  const send = (body: unknown): Promise<unknown> => {
+    bodies.push(body)
     return OUTCOMES[bodies.length === 1 ? first : "success"]()
   }
-  return { api: { request: request as unknown as HttpClient["request"] }, bodies }
+  const request = (_operation: unknown, options?: Readonly<{ body?: unknown }>): Promise<unknown> => send(options?.body)
+  return { api: { request: request as unknown as HttpClient["request"] }, send, bodies }
 }
 
 const providers = (api: HttpClient, queryClient: QueryClient) => {
@@ -137,9 +141,11 @@ const CASES = [
   credentialCase("the email verification code", useVerifyEmail, CODE, [CODE]),
 ]
 
-const RUNS = CASES.flatMap((testCase) =>
-  (Object.keys(OUTCOMES) as Outcome[]).map((outcome) => [testCase.name, outcome, testCase] as const),
-)
+const HOOK_RUNS = CASES.map((testCase) => [testCase.name, testCase] as const)
+
+const HELPER_INPUT = { currentPassword: PASSWORD, newPassword: NEW_PASSWORD }
+
+const HELPER_SECRETS = [PASSWORD, NEW_PASSWORD]
 
 const settled = async (queryClient: QueryClient, bodies: readonly unknown[], sent: number): Promise<void> => {
   await waitFor(() => {
@@ -148,34 +154,63 @@ const settled = async (queryClient: QueryClient, bodies: readonly unknown[], sen
   })
 }
 
-const leaked = (queryClient: QueryClient, mounted: Mounted, secrets: readonly string[]): string[] =>
-  exposedText([queryClient.getMutationCache().getAll().map((mutation) => mutation.state), mounted.observed()]).filter(
-    (text) => secrets.some((secret) => text.includes(secret)),
+const leaked = (queryClient: QueryClient, observed: unknown, secrets: readonly string[]): string[] =>
+  exposedText([queryClient.getMutationCache().getAll().map((mutation) => mutation.state), observed]).filter((text) =>
+    secrets.some((secret) => text.includes(secret)),
   )
+
+const expectSent = (bodies: readonly unknown[], secrets: readonly string[]): void => {
+  for (const body of bodies) {
+    for (const secret of secrets) expect(JSON.stringify(body)).toContain(secret)
+  }
+}
 
 afterEach(() => {
   cleanup()
 })
 
-describe("mutations that send a credential", () => {
-  it.each(RUNS)(
-    "%s sends its credential but leaves none in the mutation cache after a %s outcome and after a retry",
-    async (_name, outcome, testCase) => {
+describe("useSealedMutation", () => {
+  it.each(Object.keys(OUTCOMES) as Outcome[])(
+    "keeps a stable mutate and leaves no input in the mutation cache after a %s outcome and after a retry",
+    async (outcome) => {
       const queryClient = createQueryClient()
-      const { api, bodies } = answering(outcome)
-      const mounted = testCase.mount(api, queryClient)
-
-      mounted.submit()
-      await settled(queryClient, bodies, 1)
-      expect(leaked(queryClient, mounted, testCase.secrets)).toEqual([])
-
-      mounted.submit()
-      await settled(queryClient, bodies, 2)
-      expect(leaked(queryClient, mounted, testCase.secrets)).toEqual([])
-
-      for (const body of bodies) {
-        for (const secret of testCase.secrets) expect(JSON.stringify(body)).toContain(secret)
+      const { api, send, bodies } = answering(outcome)
+      const { result } = renderHook(
+        () => useSealedMutation({ mutationFn: async (input: typeof HELPER_INPUT) => send(input) }),
+        { wrapper: providers(api, queryClient) },
+      )
+      const { mutate, mutateAsync } = result.current
+      const submit = (): void => {
+        act(() => {
+          result.current.mutate(HELPER_INPUT)
+        })
       }
+
+      submit()
+      await settled(queryClient, bodies, 1)
+      expect(leaked(queryClient, result.current, HELPER_SECRETS)).toEqual([])
+
+      submit()
+      await settled(queryClient, bodies, 2)
+      expect(leaked(queryClient, result.current, HELPER_SECRETS)).toEqual([])
+
+      expect(result.current.mutate).toBe(mutate)
+      expect(result.current.mutateAsync).toBe(mutateAsync)
+      expectSent(bodies, HELPER_SECRETS)
     },
   )
+})
+
+describe("mutations that send a credential", () => {
+  it.each(HOOK_RUNS)("%s sends its credential but leaves none in the mutation cache", async (_name, testCase) => {
+    const queryClient = createQueryClient()
+    const { api, bodies } = answering("success")
+    const mounted = testCase.mount(api, queryClient)
+
+    mounted.submit()
+    await settled(queryClient, bodies, 1)
+
+    expect(leaked(queryClient, mounted.observed(), testCase.secrets)).toEqual([])
+    expectSent(bodies, testCase.secrets)
+  })
 })

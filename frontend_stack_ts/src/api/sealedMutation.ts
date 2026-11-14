@@ -1,5 +1,6 @@
 import { useMutation } from "@tanstack/react-query"
 import type { MutateOptions, UseMutationOptions, UseMutationResult } from "@tanstack/react-query"
+import { useCallback } from "react"
 
 const SPENT_MESSAGE = "These details were already sent once. Enter them again to retry."
 
@@ -21,10 +22,14 @@ type WithoutMutate<TResult> = TResult extends unknown ? Omit<TResult, "mutate" |
 
 export type SealedCallbacks<TData, TInput> = MutateOptions<TData, Error, Sealed<TInput>>
 
+type SealedMutate<TData, TInput> = (input: TInput, callbacks?: SealedCallbacks<TData, TInput>) => void
+
+type SealedMutateAsync<TData, TInput> = (input: TInput, callbacks?: SealedCallbacks<TData, TInput>) => Promise<TData>
+
 export type SealedMutationResult<TData, TInput> = WithoutMutate<UseMutationResult<TData, Error, Sealed<TInput>>> &
   Readonly<{
-    mutate: (input: TInput, callbacks?: SealedCallbacks<TData, TInput>) => void
-    mutateAsync: (input: TInput, callbacks?: SealedCallbacks<TData, TInput>) => Promise<TData>
+    mutate: SealedMutate<TData, TInput>
+    mutateAsync: SealedMutateAsync<TData, TInput>
   }>
 
 export type SealedMutationOptions<TData, TInput> = Omit<
@@ -42,11 +47,16 @@ export const useSealedMutation = <TData, TInput>({
     retry: false,
     mutationFn: async (sealed: Sealed<TInput>) => mutationFn(sealed.open()),
   })
-  return {
-    ...mutation,
-    mutate: (input, callbacks) => {
-      mutation.mutate(seal(input), callbacks)
+  const { mutate, mutateAsync } = mutation
+  const mutateSealed = useCallback<SealedMutate<TData, TInput>>(
+    (input, callbacks) => {
+      mutate(seal(input), callbacks)
     },
-    mutateAsync: async (input, callbacks) => mutation.mutateAsync(seal(input), callbacks),
-  }
+    [mutate],
+  )
+  const mutateAsyncSealed = useCallback<SealedMutateAsync<TData, TInput>>(
+    async (input, callbacks) => mutateAsync(seal(input), callbacks),
+    [mutateAsync],
+  )
+  return { ...mutation, mutate: mutateSealed, mutateAsync: mutateAsyncSealed }
 }
