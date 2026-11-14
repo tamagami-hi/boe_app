@@ -46862,15 +46862,10 @@
                         "token": {
                           "type": "string",
                           "pattern": "^[A-Za-z0-9_-]{43}$/u"
-                        },
-                        "expiresAt": {
-                          "type": "string",
-                          "format": "date-time"
                         }
                       },
                       "required": [
-                        "token",
-                        "expiresAt"
+                        "token"
                       ],
                       "additionalProperties": false
                     },

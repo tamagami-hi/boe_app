@@ -178,8 +178,10 @@ the site config does on top of that:
 
 - `boe-security-headers.conf` adds `Referrer-Policy: strict-origin-when-cross-origin`
   after the backend's header, and browsers apply the last valid value. The page has no
-  links or subresources, so no referrer leaves it either way. A dedicated location that
-  omits that header would make `no-referrer` the effective value.
+  links or subresources, so no referrer leaves it either way. A location with no
+  `add_header` of its own still inherits the server-level headers; only a location that
+  declares its own `add_header` lines and does not include the snippet drops them, which
+  would make `no-referrer` the effective value.
 - The access log records the path, which carries the token. A token opens once and
   expires after `EMAIL_VERIFICATION_CODE_TTL_MS`, the lifetime password links use.
 

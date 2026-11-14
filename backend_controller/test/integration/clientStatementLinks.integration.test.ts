@@ -27,10 +27,11 @@ interface Client extends SeededClient {
 
 interface IssuedLink {
   readonly token: string
-  readonly expiresAt: string
 }
 
 const CONCURRENT_OPENS = 8
+const LOCK_POLL_MS = 20
+const LOCK_WAIT_LIMIT_MS = 10_000
 const A_MONTHLY_PAISE = 12_000_000n
 const B_MONTHLY_PAISE = 77_777_700n
 
@@ -58,6 +59,19 @@ const issue = async (client: Client, fromPeriod: string, toPeriod: string): Prom
 const open = (token: string) => app.inject({ method: "GET", url: `/v1/public/statement-links/${token}` })
 
 const linkRow = (userId: string) => harness.stack.first("select * from client_statement_links where user_id = $1", [userId])
+
+const waitForLockWaiter = async (): Promise<void> => {
+  const deadline = Date.now() + LOCK_WAIT_LIMIT_MS
+  while (Date.now() < deadline) {
+    const waiting = await harness.stack.first(
+      "select count(*)::int as c from pg_stat_activity where datname = current_database() and wait_event_type = 'Lock'",
+      [],
+    )
+    if (Number(waiting.c) > 0) return
+    await new Promise((resolve) => setTimeout(resolve, LOCK_POLL_MS))
+  }
+  throw new Error("no request waited on the client's row")
+}
 
 beforeAll(async () => {
   harness = await startErasureHarness()
@@ -97,8 +111,10 @@ describe("one-time statement links", () => {
 
     const aliceLink = await issue(alice, "2025-01", "2025-02")
     await issue(bob, "2025-03", "2025-03")
-    expect(Date.parse(aliceLink.expiresAt) - Date.now()).toBeLessThanOrEqual(TTL_MS)
-    expect((await linkRow(alice.id)).token_hash).toEqual(harness.stack.crypto.hashToken(aliceLink.token).hash)
+    expect(Object.keys(aliceLink)).toEqual(["token"])
+    const stored = await linkRow(alice.id)
+    expect(stored.token_hash).toEqual(harness.stack.crypto.hashToken(aliceLink.token).hash)
+    expect(Number(stored.expires_at) - Number(stored.created_at)).toBe(TTL_MS)
     expect(await rowsMentioningId(harness.stack, aliceLink.token)).toEqual({})
 
     const first = await open(aliceLink.token)
@@ -177,6 +193,27 @@ describe("one-time statement links", () => {
     )
     expect(statuses.filter((status) => status === 200)).toHaveLength(1)
     expect(statuses.filter((status) => status === 404)).toHaveLength(CONCURRENT_OPENS - 1)
+  })
+
+  test("a link requested while erasure holds the client cannot outlive it", async () => {
+    const henry = await signIn(await seedClient(harness, { verified: true }))
+    await recordFor(harness, henry.id, A_MONTHLY_PAISE, "2025-01-15")
+    const eraser = await harness.stack.pool.connect()
+    try {
+      await eraser.query("begin")
+      await eraser.query("select id from users where id = $1 for update", [henry.id])
+      await eraser.query("update users set account_state = 'closed', closed_at = now() where id = $1", [henry.id])
+      await eraser.query("delete from client_statement_links where user_id = $1", [henry.id])
+      const pending = request(henry, { fromPeriod: "2025-01", toPeriod: "2025-01" })
+      await waitForLockWaiter()
+      await eraser.query("commit")
+      const response = await pending
+      expect(response.statusCode).toBe(403)
+      expect(envelopeOf(response).error.code).toBe("ACCOUNT_NOT_ACTIVE")
+      expect(await harness.stack.count("client_statement_links", "user_id = $1", [henry.id])).toBe(0)
+    } finally {
+      eraser.release()
+    }
   })
 
   test("a new link retires the previous one and erasure removes the client's link", async () => {

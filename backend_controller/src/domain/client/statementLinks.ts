@@ -7,7 +7,7 @@ import { derivePortfolio } from "./portfolioLedger.js"
 import { toLedgerEntries } from "./portfolioProjection.js"
 import { deriveStatements, type StatementPeriod } from "./statements.js"
 
-export const PERIOD_ORDER_MESSAGE = "The first month must not be after the last month."
+const PERIOD_ORDER_MESSAGE = "The first month must not be after the last month."
 
 export interface StatementLinkDeps {
   readonly statementLinkRepository: StatementLinkRepository
@@ -25,7 +25,6 @@ export interface StatementLinkRequest {
 
 export interface IssuedStatementLink {
   readonly token: string
-  readonly expiresAt: Date
 }
 
 export interface StatementDocument {
@@ -54,6 +53,7 @@ export const issueStatementLink = async (
   if (input.fromPeriod > input.toPeriod) {
     throw new AppError("VALIDATION_FAILED", { fields: { toPeriod: [PERIOD_ORDER_MESSAGE] } })
   }
+  if (!(await deps.statementLinkRepository.lockActiveClient(tx, input.userId))) throw new AppError("ACCOUNT_NOT_ACTIVE")
   const owned = new Set((await statementsOf(tx, deps, input.userId)).periods.map((period) => period.period))
   if (!owned.has(input.fromPeriod) || !owned.has(input.toPeriod)) throw new AppError("RESOURCE_NOT_FOUND")
 
@@ -69,7 +69,7 @@ export const issueStatementLink = async (
     expiresAt,
     now,
   })
-  return { token: minted.token, expiresAt }
+  return { token: minted.token }
 }
 
 export const openStatementLink = async (

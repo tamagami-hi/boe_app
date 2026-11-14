@@ -18,11 +18,23 @@ export interface ConsumedStatementLink {
 }
 
 export interface StatementLinkRepository {
+  lockActiveClient: (tx: Transaction, userId: string) => Promise<boolean>
   issue: (tx: Transaction, input: IssueStatementLinkInput) => Promise<void>
   consume: (tx: Transaction, input: Readonly<{ tokenHash: Buffer; now: Date }>) => Promise<ConsumedStatementLink | null>
 }
 
 export const createStatementLinkRepository = (): StatementLinkRepository => ({
+  lockActiveClient: async (tx, userId) => {
+    const row = await tx
+      .selectFrom("users")
+      .select("id")
+      .where("id", "=", userId)
+      .where("account_state", "=", "active")
+      .forShare()
+      .executeTakeFirst()
+    return row !== undefined
+  },
+
   issue: async (tx, input) => {
     const link = {
       token_hash: input.tokenHash,

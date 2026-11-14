@@ -25746,8 +25746,6 @@ export interface operations {
                         ok: true;
                         data: {
                             token: string;
-                            /** Format: date-time */
-                            expiresAt: string;
                         };
                         error: null;
                         meta: {

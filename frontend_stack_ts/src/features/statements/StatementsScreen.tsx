@@ -1,4 +1,4 @@
-import { isApiError } from "~/api/errors"
+import { isTransportError } from "~/api/errors"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { formatDate, formatMonth } from "~/domain/dates"
@@ -33,7 +33,9 @@ const rangeOf = (items: readonly Readonly<{ period: string }>[]): StatementRange
 }
 
 const openProblem = (error: Error | null, result: OpenResult | undefined): string | null => {
-  if (error !== null) return isApiError(error) ? OPEN_FAILED : error.message
+  if (error !== null) {
+    return isTransportError(error) && (error.kind === "offline" || error.kind === "timeout") ? error.message : OPEN_FAILED
+  }
   return result === undefined || result.ok ? null : result.reason
 }
 

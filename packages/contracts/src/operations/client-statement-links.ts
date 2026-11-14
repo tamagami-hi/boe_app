@@ -1,7 +1,6 @@
 import { z } from "zod"
 
 import { createSuccessEnvelopeSchema } from "../envelope.js"
-import { IsoDateTime } from "../scalars.js"
 import { defineOperation, MAX_JSON_BODY_BYTES } from "./descriptor.js"
 
 export const StatementMonth = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/u)
@@ -16,7 +15,6 @@ export type IssueClientStatementLinkBody = z.infer<typeof IssueClientStatementLi
 
 export const ClientStatementLink = z.strictObject({
   token: StatementLinkToken,
-  expiresAt: IsoDateTime,
 })
 export type ClientStatementLink = z.infer<typeof ClientStatementLink>
 

@@ -40,7 +40,7 @@ const issueLink = async (deps: RouteDeps, request: FastifyRequest, reply: Fastif
   const issued = await deps.unitOfWork.execute((tx) =>
     issueStatementLink(tx, deps, { userId: principal.userId, fromPeriod: body.fromPeriod, toPeriod: body.toPeriod }),
   )
-  return reply.sendData({ token: issued.token, expiresAt: issued.expiresAt.toISOString() }, { status: 201 })
+  return reply.sendData({ token: issued.token }, { status: 201 })
 }
 
 const sendPage = (reply: FastifyReply, status: number, html: string): FastifyReply =>

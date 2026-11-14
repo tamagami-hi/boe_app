@@ -51,7 +51,7 @@ const formatMonth = (period: string): string => monthFormatter.format(new Date(`
 
 const formatCalendarDate = (date: string): string => dateFormatter.format(new Date(`${date}T00:00:00Z`))
 
-export const formatStatementRupees = (paise: bigint, showSign: boolean): string => {
+const formatStatementRupees = (paise: bigint, showSign: boolean): string => {
   const magnitude = paise < 0n ? -paise : paise
   const amount = `₹${groupIndian(((magnitude + HALF_RUPEE) / PAISE_PER_RUPEE).toString())}`
   if (paise < 0n) return `-${amount}`

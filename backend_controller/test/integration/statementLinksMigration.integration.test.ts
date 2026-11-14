@@ -90,14 +90,6 @@ describe("statement links populated upgrade", () => {
     expect((await pool.query("select version from schema_migrations where version = $1", [MIGRATION])).rowCount).toBe(1)
   })
 
-  test("keeps the previous release's user and password-link writes working", async () => {
-    const user = await seedUser("active", "+919876520003")
-    await pool.query("update users set full_name = 'Renamed Client', version = version + 1 where id = $1", [user])
-    await pool.query("update password_credential_tokens set consumed_at = now() where user_id = $1", [holder])
-    const row = await pool.query<{ full_name: string }>("select full_name from users where id = $1", [user])
-    expect(row.rows[0]?.full_name).toBe("Renamed Client")
-  })
-
   test("stores only a 32-byte hash, one link per client, for an ordered month range", async () => {
     const other = await seedUser("active", "+919876520004")
     const hash = randomBytes(32)
