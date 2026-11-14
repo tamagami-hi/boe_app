@@ -1,6 +1,6 @@
 # BeOnEdge admin improvements: recording categories, receipts, value updates, returns, maturity, nominee, and fixes
 
-Status: **Approved by the maintainer on 2026-11-13. Phases A, B and C, and Phase E steps E1 and E2, are complete on local `main` (not pushed or released). Phase D and E3 wait for the maintainer. Phases F and G are complete on local `main` (section 8). Nothing from Phases A to G is pushed or released. Phase H is being built.** One question is open (Q-036, section 0a). What still needs the maintainer: publishing `featureFlags.onlinePayments=false` (G11), the production reform's own destructive-change approval after the pre-flight report (D2), releases, and the decision to resume payments. Checks run in the pinned Node 22.20.0 / npm 11.16.0 container `tools/node22-container/run.sh` (tally `howto-2`).
+Status: **Approved by the maintainer on 2026-11-13. Phases A, B and C, and Phase E steps E1 and E2, are complete on local `main` (not pushed or released). Phase D and E3 wait for the maintainer. Phases F and G are complete on local `main` (section 8). Nothing from Phases A to G is pushed or released. Phase H is being built.** No question is open. What still needs the maintainer: publishing `featureFlags.onlinePayments=false` (G11), the production reform's own destructive-change approval after the pre-flight report (D2), releases, and the decision to resume payments. Checks run in the pinned Node 22.20.0 / npm 11.16.0 container `tools/node22-container/run.sh` (tally `howto-2`).
 
 Prepared: 2026-11-13. The investigation was static source reading only. No local checks ran (no dependencies are installed, and `RULES.md` forbids installing them just to make checks runnable). Nothing was diagnosed on a VPS, no test ran, no mail was sent, and nothing was deployed. GitHub CI run 38216879911 passed contracts, backend (including integration) and frontend on `ba8b196` (v0.15.4). The detailed evidence is held as tally records under `docs/records/`: findings `finding-1` to `finding-18` (excluding the retired `finding-5`), decisions `rule-2` to `rule-6`, and milestones `M1-admin-audit` and `M2-plan`.
 
@@ -8,11 +8,11 @@ Governing process: root [RULES.md](../RULES.md). The application is in productio
 
 ## 0a. Open questions and conservative defaults
 
-IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-025 were answered on 2026-11-13, and Q-027 to Q-029 on 2026-11-14; all are in the decision record. Q-026 and Q-030 to Q-032 were answered on 2026-11-14 (DEC-29 to DEC-32). Tally question rows 1 to 21 are marked answered, each citing its decision ID. Q-036 (row 22) is open.
+IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-025 were answered on 2026-11-13, and Q-027 to Q-029 on 2026-11-14; all are in the decision record. Q-026 and Q-030 to Q-032 were answered on 2026-11-14 (DEC-29 to DEC-32). Q-036 was answered on 2026-11-14 (DEC-36). Tally question rows 1 to 22 are marked answered, each citing its decision ID. No question is open.
 
 | ID | Open decision | Conservative behavior meanwhile |
 | --- | --- | --- |
-| Q-036 | Which staff roles may open a client's page? Today the support role (`users.read_limited`) is shown client links from tickets and reviews but the page needs `users.read`, and the finance role has neither, so its maturity and growth screens cannot name or open clients. Should support, finance or both get read access to client pages? | No permission changes. Links are hidden where the role would be refused, and screens that cannot name clients say so instead of showing raw ids (tally question row 22). |
+| — | No open questions. | — |
 
 ### Decision record
 
@@ -57,6 +57,7 @@ IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-0
 | DEC-33 | 2026-11-14 | Phase G go-ahead: build client erasure (DEC-29) now. | Built (Phase G close, section 8). |
 | DEC-34 | 2026-11-14 | "ok proceed with the next implementations": after Phases F and G, build what remains that needs no maintainer step, which is the gaps the client and admin experience review still shows on `main` (U-close, under DEC-19) and the carried-forward items such as a statement the APK can keep. | Phase H (tally phase `H`), being built (section 6). |
 | DEC-35 | 2026-11-14 | Tally rulebook: adopt tally's template, keep only the process rules `RULES.md` does not cover, tailored to this repository, and retire the rest as covered by `RULES.md` ("Process those rules and then read what we have and then adapt to whats best"). | In force. Tally rules are `rule-16` (`RULES.md` is the rulebook), `rule-17` and `rule-18` (payments off; no bank details or reference numbers) and `rule-48` to `rule-54` (scratch, decide once, record once, read once, check once, review once, three attempts). The other 22 template rules are retired, each citing its `RULES.md` rule; write-tests-first conflicted with rule 10. Records now commit once per tally phase. |
+| DEC-36 | 2026-11-14 | Q-036: neither the support nor the finance role gets access to client pages; permissions stay as they are. | Being built in Phase H: client links are hidden for roles the page refuses, and screens that cannot name clients for a role say so without raw ids. |
 
 #### Replaced
 
@@ -447,7 +448,7 @@ On 2026-11-14, U-close checked the client and admin findings of section 2F (tall
   - The app-update notice opens the update sheet.
   - The dashboard and portfolio show the admin SIP schedules ("N of M months paid"), so a client with only a schedule is not told they have no SIP plans.
 - **H3. Admin access and flow** (lane `h-admin-access`):
-  - Client links are hidden for roles the page would refuse (Q-036).
+  - Client links are hidden for roles the page would refuse (DEC-36).
   - The client values cards are gated by the permissions their routes need, and admin accounts leave the client pickers.
   - The payment sheet joins the navigation, and the client page's SIP schedule rows offer "Record this month", which opens the record form prefilled as a monthly investment with the schedule amount and today's IST date.
   - Overview tiles open filtered lists, the email list links to the client, and the sidebar is grouped by section.
