@@ -22,6 +22,8 @@ export const ClientReceipt = z.strictObject({
 })
 export type ClientReceipt = z.infer<typeof ClientReceipt>
 
+export const ClientReceiptsQuery = ListQuery.extend({ fundId: Uuid.optional() })
+
 export const ClientReceiptsData = z.strictObject({ items: z.array(ClientReceipt) })
 export type ClientReceiptsData = z.infer<typeof ClientReceiptsData>
 
@@ -36,7 +38,7 @@ export const listClientReceipts = defineOperation({
   credentialPolicy: "native-bearer",
   idempotency: "naturally-idempotent",
   responseCacheControl: "no-store",
-  request: { query: ListQuery },
+  request: { query: ClientReceiptsQuery },
   success: { status: 200, schema: createPaginatedSuccessEnvelopeSchema(ClientReceiptsData) },
   errorCodes: [
     "AUTHENTICATION_REQUIRED",

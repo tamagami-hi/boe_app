@@ -15,6 +15,7 @@ export interface ClientValueUpdateRow {
 
 export interface ClientValueUpdatePageQuery {
   readonly userId: string
+  readonly fundId?: string
   readonly limit: number
   readonly afterCursorAt?: string
   readonly afterId?: string
@@ -31,11 +32,13 @@ export const createClientValueUpdateRepository = (): ClientValueUpdateRepository
   listByUser: async (tx, query) => {
     const afterCursorAt = query.afterCursorAt ?? null
     const afterId = query.afterId ?? null
+    const fundId = query.fundId ?? null
     const result = await sql<ClientValueUpdateRow>`
       with visible as (
         select e.id, e.fund_id, e.entry_type, e.effective_date, e.value_delta_paise, e.created_at
         from client_value_entries e
         where e.user_id = ${query.userId}
+          and (${fundId}::uuid is null or e.fund_id = ${fundId}::uuid)
           and e.entry_type <> 'reversal'
           and not exists (
             select 1 from client_value_entries r where r.reverses_entry_id = e.id

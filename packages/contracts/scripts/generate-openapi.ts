@@ -22,6 +22,7 @@ import { ADMIN_REPORT_OPERATIONS } from "../src/operations/admin-reports.js"
 import { ADMIN_SUPPORT_OPERATIONS } from "../src/operations/admin-support.js"
 import { APP_OPERATIONS } from "../src/operations/app.js"
 import { CLIENT_ACCOUNT_OPERATIONS } from "../src/operations/client-account.js"
+import { CLIENT_INVESTED_FUND_OPERATIONS } from "../src/operations/client-invested-funds.js"
 import { CLIENT_MATURITY_OPERATIONS } from "../src/operations/client-maturity.js"
 import { CLIENT_ORDER_OPERATIONS } from "../src/operations/client-orders.js"
 import { CLIENT_PROFILE_OPERATIONS } from "../src/operations/client-profile.js"
@@ -62,6 +63,7 @@ export const ALL_OPERATIONS: readonly GeneratableOperation[] = Object.freeze([
   ...OPS_OPERATIONS,
   ...CLIENT_OPERATIONS,
   ...CLIENT_ACCOUNT_OPERATIONS,
+  ...CLIENT_INVESTED_FUND_OPERATIONS,
   ...CLIENT_ORDER_OPERATIONS,
   ...CLIENT_PROFILE_OPERATIONS,
   ...CLIENT_RECEIPT_OPERATIONS,

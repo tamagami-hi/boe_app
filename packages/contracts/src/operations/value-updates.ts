@@ -18,6 +18,8 @@ export const ClientValueUpdateItem = z.strictObject({
 })
 export type ClientValueUpdateItem = z.infer<typeof ClientValueUpdateItem>
 
+export const ClientValueUpdatesQuery = ListQuery.extend({ fundId: Uuid.optional() })
+
 export const ClientValueUpdatesData = z.strictObject({ items: z.array(ClientValueUpdateItem) })
 export type ClientValueUpdatesData = z.infer<typeof ClientValueUpdatesData>
 
@@ -29,7 +31,7 @@ export const listClientValueUpdates = defineOperation({
   credentialPolicy: "native-bearer",
   idempotency: "naturally-idempotent",
   responseCacheControl: "no-store",
-  request: { query: ListQuery },
+  request: { query: ClientValueUpdatesQuery },
   success: { status: 200, schema: createPaginatedSuccessEnvelopeSchema(ClientValueUpdatesData) },
   errorCodes: [
     "AUTHENTICATION_REQUIRED",

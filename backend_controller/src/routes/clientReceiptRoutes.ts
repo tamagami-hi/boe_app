@@ -29,6 +29,7 @@ const receiptsQuerySchema = z
   .object({
     after: z.string().min(1).optional(),
     limit: z.coerce.number().int().min(1).max(MAX_PAGE_LIMIT).default(25),
+    fundId: z.string().uuid().optional(),
   })
   .strict()
 
@@ -57,11 +58,12 @@ const listReceipts = async (deps: ClientReceiptDeps, request: FastifyRequest, re
   const principal = await resolveClientPrincipal(request, deps)
   const query = parseOrThrow(receiptsQuerySchema, request.query)
   const now = deps.clock()
-  const filterHash = computeFilterHash({ userId: principal.userId })
+  const filters = query.fundId === undefined ? { userId: principal.userId } : { userId: principal.userId, fundId: query.fundId }
+  const filterHash = computeFilterHash(filters)
   const keyset = readKeyset(deps.config.cursorKey, query.after, RECEIPTS_ROUTE, filterHash, now)
 
   const rows = await deps.clientReceiptRepository.listByUser(deps.database, {
-    userId: principal.userId,
+    ...filters,
     ...keyset,
     limit: query.limit + 1,
   })

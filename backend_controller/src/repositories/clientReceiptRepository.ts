@@ -19,7 +19,7 @@ export interface ClientReceiptRow {
 export interface ClientReceiptRepository {
   listByUser: (
     tx: Transaction,
-    input: KeysetBoundary & Readonly<{ userId: string; limit: number }>,
+    input: KeysetBoundary & Readonly<{ userId: string; fundId?: string; limit: number }>,
   ) => Promise<readonly WithCursor<ClientReceiptRow>[]>
   findByUser: (
     tx: Transaction,
@@ -55,6 +55,7 @@ export const createClientReceiptRepository = (): ClientReceiptRepository => ({
       ${RECEIPT_SELECTION}
       where v.user_id = ${input.userId}
         and ${RECORDING_FILTER}
+        and (${input.fundId ?? null}::uuid is null or v.fund_id = ${input.fundId ?? null}::uuid)
         and ${keysetCondition({ time: "v.created_at", id: "v.id" }, "before", input)}
       order by v.created_at desc, v.id desc
       limit ${input.limit}

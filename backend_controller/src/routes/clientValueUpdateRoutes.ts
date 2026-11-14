@@ -30,6 +30,7 @@ export const valueUpdatesQuerySchema = z
   .object({
     after: z.string().min(1).optional(),
     limit: z.coerce.number().int().min(1).max(MAX_PAGE_LIMIT).default(DEFAULT_PAGE_LIMIT),
+    fundId: z.string().uuid().optional(),
   })
   .strict()
 
@@ -60,13 +61,14 @@ const listValueUpdates = async (
   const principal = await resolveClientPrincipal(request, deps)
   const query = parseOrThrow(valueUpdatesQuerySchema, request.query)
   const now = deps.clock()
-  const filterHash = computeFilterHash({ userId: principal.userId })
+  const filters = query.fundId === undefined ? { userId: principal.userId } : { userId: principal.userId, fundId: query.fundId }
+  const filterHash = computeFilterHash(filters)
   const keyset = readPosition(
     readKeysetValues(deps.config.cursorKey, query.after, VALUE_UPDATES_ROUTE, filterHash, now),
   )
 
   const rows = await deps.clientValueUpdateRepository.listByUser(deps.database, {
-    userId: principal.userId,
+    ...filters,
     ...keyset,
     limit: query.limit + 1,
   })

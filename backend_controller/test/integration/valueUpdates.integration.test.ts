@@ -18,12 +18,14 @@ import type { WebAuthDeps } from "../../src/domain/auth/webAuth.js"
 import { createAuditRepository } from "../../src/repositories/auditRepository.js"
 import { createAuthSessionRepository } from "../../src/repositories/authSessionRepository.js"
 import { createClientGrowthRepository } from "../../src/repositories/clientGrowthRepository.js"
+import { createClientInvestedFundRepository } from "../../src/repositories/clientInvestedFundRepository.js"
 import { createClientValueUpdateRepository } from "../../src/repositories/clientValueUpdateRepository.js"
 import { createIdempotencyRepository } from "../../src/repositories/idempotencyRepository.js"
 import { createLoginEventRepository } from "../../src/repositories/loginEventRepository.js"
 import { createNotificationRepository } from "../../src/repositories/notificationRepository.js"
 import { createUserRepository } from "../../src/repositories/userRepository.js"
 import { registerAdminClientGrowthRoutes } from "../../src/routes/adminClientGrowthRoutes.js"
+import { registerClientInvestedFundRoutes } from "../../src/routes/clientInvestedFundRoutes.js"
 import { registerClientValueUpdateRoutes } from "../../src/routes/clientValueUpdateRoutes.js"
 import { registerWebAuthRoutes } from "../../src/routes/webAuthRoutes.js"
 import { createApplication } from "../../src/runtime/application.js"
@@ -60,6 +62,12 @@ interface ValueUpdate {
 interface Client {
   readonly userId: string
   readonly token: string
+}
+
+interface InvestedFund {
+  readonly fundId: string
+  readonly fundName: string
+  readonly fundPublished: boolean
 }
 
 let container: StartedPostgreSqlContainer
@@ -240,6 +248,12 @@ const valueUpdates = async (client: Client, query = "") =>
     headers: { authorization: `Bearer ${client.token}` },
   })
 
+const clientGet = async (client: Client, url: string) =>
+  app.inject({ method: "GET", url, headers: { authorization: `Bearer ${client.token}` } })
+
+const fundNameOf = async (versionId: string): Promise<string> =>
+  (await pool.query<{ name: string }>("select name from fund_versions where id = $1", [versionId])).rows[0]!.name
+
 interface Sheet {
   readonly fund: { fundId: string; versionId: string }
   readonly asha: Client
@@ -317,6 +331,12 @@ beforeAll(async () => {
         clientValueUpdateRepository: createClientValueUpdateRepository(),
         clock: () => new Date(),
         config: { cursorKey: randomBytes(32) },
+      })
+      registerClientInvestedFundRoutes(instance, {
+        accessTokenService,
+        database,
+        clientWeb: { originAllowlist: [] },
+        clientInvestedFundRepository: createClientInvestedFundRepository(),
       })
     },
   })
@@ -497,5 +517,58 @@ describe("GET /v1/client/value-updates", () => {
     expect(anonymous.statusCode).toBe(401)
     const asAdmin = await app.inject({ method: "GET", url: "/v1/client/value-updates", headers: adminHeaders(finance) })
     expect(asAdmin.statusCode).toBe(401)
+  })
+})
+
+describe("GET /v1/client/invested-funds", () => {
+  test("names every fund the client holds, archived ones too, and answers 404 for a fund only another client holds", async () => {
+    const sheet = await seedSheet()
+    const archived = await seedFund(`vu-${randomUUID().slice(0, 8)}`)
+    await seedContribution(sheet.asha.userId, archived, 200_000)
+    await pause()
+    const archivedUpdate = await individualGrowth(sheet.asha.userId, archived.fundId, "4000")
+    await pool.query("update funds set state = 'archived', archived_at = now() where id = $1", [archived.fundId])
+    const openFund: InvestedFund = {
+      fundId: sheet.fund.fundId,
+      fundName: await fundNameOf(sheet.fund.versionId),
+      fundPublished: true,
+    }
+    const archivedFund: InvestedFund = {
+      fundId: archived.fundId,
+      fundName: await fundNameOf(archived.versionId),
+      fundPublished: false,
+    }
+
+    const listed = await clientGet(sheet.asha, "/v1/client/invested-funds")
+    expect(listed.statusCode).toBe(200)
+    const expected = [openFund, archivedFund].sort((left, right) => left.fundName.localeCompare(right.fundName))
+    expect(dataOf<{ items: InvestedFund[] }>(listed).items).toEqual(expected)
+    const own = await clientGet(sheet.asha, `/v1/client/invested-funds/${archived.fundId}`)
+    expect(own.statusCode).toBe(200)
+    expect(dataOf<{ investedFund: InvestedFund }>(own).investedFund).toEqual(archivedFund)
+
+    const crossRead = await clientGet(sheet.bala, `/v1/client/invested-funds/${archived.fundId}`)
+    expect(crossRead.statusCode).toBe(404)
+    expect(errorOf(crossRead)).toBe("RESOURCE_NOT_FOUND")
+    expect(dataOf<{ items: InvestedFund[] }>(await clientGet(sheet.bala, "/v1/client/invested-funds")).items).toEqual([openFund])
+    expect((await clientGet(sheet.asha, `/v1/client/invested-funds/${randomUUID()}`)).statusCode).toBe(404)
+    expect(errorOf(await clientGet(sheet.asha, "/v1/client/invested-funds/not-a-fund"))).toBe("VALIDATION_FAILED")
+    expect((await app.inject({ method: "GET", url: "/v1/client/invested-funds" })).statusCode).toBe(401)
+    const asAdmin = await app.inject({ method: "GET", url: `/v1/client/invested-funds/${archived.fundId}`, headers: adminHeaders(finance) })
+    expect(asAdmin.statusCode).toBe(401)
+
+    const filtered = await valueUpdates(sheet.asha, `?fundId=${archived.fundId}`)
+    expect(filtered.statusCode).toBe(200)
+    expect(dataOf<{ items: ValueUpdate[] }>(filtered).items.map((item) => [item.entryId, item.valueAfterPaise])).toEqual([
+      [archivedUpdate, "204000"],
+    ])
+    expect(dataOf<{ items: ValueUpdate[] }>(await valueUpdates(sheet.bala, `?fundId=${archived.fundId}`)).items).toEqual([])
+
+    const unfiltered = await valueUpdates(sheet.asha, "?limit=1")
+    expect(pageOf(unfiltered).hasMore).toBe(true)
+    const cursor = encodeURIComponent(pageOf(unfiltered).nextCursor!)
+    const rebound = await valueUpdates(sheet.asha, `?limit=1&fundId=${archived.fundId}&after=${cursor}`)
+    expect(rebound.statusCode).toBe(400)
+    expect(errorOf(rebound)).toBe("CURSOR_INVALID")
   })
 })
