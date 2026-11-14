@@ -169,6 +169,22 @@ oracle. `GET /metrics` has no nginx location at all — it is guarded inside the
 by `isPrivateRequest` (`runtime/metrics.ts:50`), which admits loopback, the Docker bridge
 and RFC1918 ranges so the monitoring stack can scrape it.
 
+The one-time statement page (Phase H, migration 070) needs no nginx change. The APK
+opens `https://<host>/api/v1/public/statement-links/<token>` in the phone's browser,
+built from its configured API base and the contract path; the general `/api/` location
+(`boe_general`) proxies it. The backend answers HTML with `Cache-Control: no-store`,
+`Referrer-Policy: no-referrer` and a script-free `Content-Security-Policy`. Two things
+the site config does on top of that:
+
+- `boe-security-headers.conf` adds `Referrer-Policy: strict-origin-when-cross-origin`
+  after the backend's header, and browsers apply the last valid value. The page has no
+  links or subresources, so no referrer leaves it either way. A dedicated location that
+  omits that header would make `no-referrer` the effective value.
+- The access log records the path, which carries the token. A token opens once and
+  expires after `EMAIL_VERIFICATION_CODE_TTL_MS`, the lifetime password links use.
+
+During maintenance this path answers the JSON maintenance body like every `/api/` path.
+
 ## Maintenance mode and required updates
 
 A deploy or rollback raises a maintenance flag for its stack, `<stack_dir>/maintenance/active`,

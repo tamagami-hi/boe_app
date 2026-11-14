@@ -7,6 +7,7 @@ import type { FundReceiptAcknowledgementsTable, InvestmentAllocationsTable, Inve
 import type { AuditEventsTable, IdempotencyRecordsTable, LegalHoldsTable, PermissionsTable, RateLimitWindowsTable, RolePermissionsTable, RolesTable, UserRolesTable, WorkerHeartbeatsTable } from "./schema/platform.js"
 import type { ClientMaturityOffersTable, ClientMaturitySchedulesTable } from "./schema/maturitySchedules.js"
 import type { AdminSipScheduleMonthsTable, AdminSipSchedulesTable } from "./schema/sipSchedules.js"
+import type { ClientStatementLinksTable } from "./schema/statementLinks.js"
 
 export type * from "./schema/identity.js"
 export type * from "./schema/platform.js"
@@ -17,6 +18,7 @@ export type * from "./schema/payments.js"
 export type * from "./schema/ledger.js"
 export type * from "./schema/sipSchedules.js"
 export type * from "./schema/maturitySchedules.js"
+export type * from "./schema/statementLinks.js"
 
 export interface Database {
   applications: ApplicationsTable
@@ -84,4 +86,5 @@ export interface Database {
   client_reviews: ClientReviewsTable
   client_maturity_schedules: ClientMaturitySchedulesTable
   client_maturity_offers: ClientMaturityOffersTable
+  client_statement_links: ClientStatementLinksTable
 }

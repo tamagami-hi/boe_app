@@ -44,6 +44,7 @@ export interface ClientErasureWriteRepository {
   lockMail: (tx: Transaction, reach: MailReach) => Promise<number>
   tombstoneUser: (tx: Transaction, input: TombstoneUserInput) => Promise<User | null>
   clearPassword: (tx: Transaction, userId: string, now: Date) => Promise<void>
+  deleteStatementLinks: (tx: Transaction, userId: string) => Promise<void>
   overwriteEmailChangeTargets: (tx: Transaction, userId: string, target: SealedTarget) => Promise<void>
   eraseMail: (tx: Transaction, input: MailErasureInput) => Promise<number>
   rewriteContactHistory: (tx: Transaction, input: ContactRewriteInput) => Promise<number>
@@ -145,6 +146,10 @@ export const createClientErasureWriteRepository = (): ClientErasureWriteReposito
           updated_at = ${now}, version = version + 1
       where user_id = ${userId}
     `.execute(tx)
+  },
+
+  deleteStatementLinks: async (tx, userId) => {
+    await sql`delete from client_statement_links where user_id = ${userId}`.execute(tx)
   },
 
   overwriteEmailChangeTargets: async (tx, userId, target) => {

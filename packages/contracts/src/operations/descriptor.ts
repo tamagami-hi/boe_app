@@ -18,6 +18,12 @@ export type OperationSecurityPolicy =
       responseCacheControl?: never
     }>
   | Readonly<{
+      authChannel: "public-token"
+      credentialPolicy: "public-path-token"
+      idempotency: "single-use-token"
+      responseCacheControl: "no-store"
+    }>
+  | Readonly<{
       authChannel: "native-activation"
       credentialPolicy: "native-body-token-only"
       idempotency: "single-use-token"
@@ -79,6 +85,7 @@ type OperationBase = Readonly<{
     status: 200 | 201 | 202
     schema: z.ZodType
   }>
+  responseMediaType?: "text/html"
   errorCodes: readonly ErrorCode[]
 }>
 

@@ -112,6 +112,7 @@ const revokeAccess = async (tx: Transaction, deps: ClientErasureDeps, userId: st
   const erasedEmail = erasedEmailFor(userId)
   await deps.authSessionRepository.revokeAllForUser(tx, { userId: userId as UserId, reason: "account_erased", now })
   await deps.erasureWriteRepository.clearPassword(tx, userId, now)
+  await deps.erasureWriteRepository.deleteStatementLinks(tx, userId)
   await deps.passwordTokenRepository.consumeActive(tx, { userId, now })
   await deps.emailVerificationRepository.consumeActiveCode(tx, { userId, now })
   await deps.emailChangeRepository.retireActive(tx, { userId, now })

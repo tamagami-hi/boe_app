@@ -59,6 +59,7 @@ import { registerClientEmailVerificationRoutes } from "../routes/clientEmailVeri
 import { createEmailChangeRepository } from "../repositories/emailChangeRepository.js"
 import { registerClientNomineeRoutes } from "../routes/clientNomineeRoutes.js"
 import { registerClientProfileRoutes } from "../routes/clientProfileRoutes.js"
+import { registerClientStatementLinkRoutes } from "../routes/clientStatementLinkRoutes.js"
 import { registerPasswordRoutes } from "../routes/passwordRoutes.js"
 import { registerAdminEmailSurface } from "./adminEmailComposition.js"
 import { registerAdminSurface } from "./adminComposition.js"
@@ -494,6 +495,10 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
       clock,
       config: { cursorKey: serverConfig.cursorKey },
       appUpdate: serverConfig.appUpdate,
+    })
+    registerClientStatementLinkRoutes(application, {
+      accessTokenService, database, clientWeb, unitOfWork, clock, crypto, clientValueEntryRepository,
+      config: { linkTtlMs: serverConfig.emailVerification.codeTtlMs },
     })
 
     registerPublicContentRoutes(application, {

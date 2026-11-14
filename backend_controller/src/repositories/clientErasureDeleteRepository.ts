@@ -57,6 +57,7 @@ const deleteIdentity = async (tx: Transaction, input: ClientDeletionInput): Prom
       where user_id = ${input.userId} or (${unlinkedLoginEmails(input.userId, input.emails)})
     `.execute(tx),
     await sql`delete from password_credential_tokens where user_id = ${input.userId}`.execute(tx),
+    await sql`delete from client_statement_links where user_id = ${input.userId}`.execute(tx),
     await sql`delete from email_verification_codes where user_id = ${input.userId}`.execute(tx),
     await sql`delete from email_change_requests where user_id = ${input.userId}`.execute(tx),
     await sql`delete from user_credentials where user_id = ${input.userId}`.execute(tx),

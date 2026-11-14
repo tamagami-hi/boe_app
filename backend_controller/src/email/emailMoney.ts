@@ -20,7 +20,7 @@ const MONTH_NAMES = [
   "December",
 ] as const
 
-const groupIndian = (digits: string): string => {
+export const groupIndian = (digits: string): string => {
   if (digits.length <= 3) return digits
   const head = digits.slice(0, -3)
   return `${head.replace(LAKH_GROUPS, ",")},${digits.slice(-3)}`

@@ -29,6 +29,7 @@ import { CLIENT_PROFILE_OPERATIONS } from "../src/operations/client-profile.js"
 import { CLIENT_RECEIPT_OPERATIONS } from "../src/operations/client-receipts.js"
 import { CLIENT_REVIEW_OPERATIONS } from "../src/operations/client-reviews.js"
 import { CLIENT_SIP_OPERATIONS } from "../src/operations/client-sips.js"
+import { CLIENT_STATEMENT_LINK_OPERATIONS } from "../src/operations/client-statement-links.js"
 import { CLIENT_WEB_AUTH_OPERATIONS } from "../src/operations/client-web-auth.js"
 import { CLIENT_OPERATIONS } from "../src/operations/client.js"
 import { NATIVE_AUTH_OPERATIONS } from "../src/operations/native-auth.js"
@@ -54,6 +55,7 @@ type GeneratableOperation = Readonly<{
     maxBodyBytes?: number
   }>
   success: Readonly<{ status: 200 | 201 | 202; schema: z.ZodType }>
+  responseMediaType?: "text/html"
   errorCodes: readonly ErrorCode[]
 }>
 
@@ -93,6 +95,7 @@ export const ALL_OPERATIONS: readonly GeneratableOperation[] = Object.freeze([
   ...RECORDING_SHEET_OPERATIONS,
   ...ADMIN_MATURITY_SCHEDULE_OPERATIONS,
   ...CLIENT_MATURITY_OPERATIONS,
+  ...CLIENT_STATEMENT_LINK_OPERATIONS,
 ])
 
 type RouteConfig = Parameters<OpenAPIRegistry["registerPath"]>[0]
@@ -135,17 +138,19 @@ export const buildOpenApiDocument = () => {
       ...new Set(operation.errorCodes.map((code) => ERROR_DEFINITIONS[code].httpStatus)),
     ].sort((left, right) => left - right)
 
+    const mediaType = operation.responseMediaType ?? "application/json"
+    const errorContent =
+      operation.responseMediaType === undefined
+        ? { "application/json": { schema: ErrorEnvelopeComponent } }
+        : { [mediaType]: { schema: z.string() } }
     const responses: ResponsesConfig = {
       [operation.success.status]: {
         description: "Success",
-        content: { "application/json": { schema: operation.success.schema } },
+        content: { [mediaType]: { schema: operation.success.schema } },
       },
     }
     for (const status of errorStatuses) {
-      responses[status] = {
-        description: "Error",
-        content: { "application/json": { schema: ErrorEnvelopeComponent } },
-      }
+      responses[status] = { description: "Error", content: errorContent }
     }
 
     const method = operation.method.toLowerCase() as "get" | "post" | "patch" | "delete"

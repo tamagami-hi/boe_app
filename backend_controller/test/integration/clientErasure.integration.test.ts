@@ -125,6 +125,7 @@ describe("a verified client is kept as a record without contact details", () => 
     expect(credential.password_hash).toBeNull()
     expect(Number(credential.version)).toBeGreaterThan(credentialVersion)
     expect(await stack.count("auth_sessions", "user_id = $1 and state = 'active'", [client.id])).toBe(0)
+    expect(await stack.count("client_statement_links", "user_id = $1", [client.id])).toBe(0)
     expect(
       await stack.count("email_deliveries", "(user_id = $1 or application_id = $2) and recipient_ciphertext is not null", [
         client.id,

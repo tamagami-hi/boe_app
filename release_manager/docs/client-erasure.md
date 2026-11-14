@@ -81,6 +81,7 @@ Besides the application linked to the account, erasure matches earlier applicati
 | `auth_sessions`, `auth_refresh_tokens` | IP, user agent | revoked | deleted |
 | `auth_login_events` | email typed at sign-in | email to the tombstone placeholder: the client's rows, and rows with no user whose email is one of the client's and is held by no other account | deleted (same selection) |
 | `password_credential_tokens`, `email_verification_codes` | link and code hashes | consumed | deleted |
+| `client_statement_links` (070, Phase H) | one statement link per client: token hash, covered months, expiry | deleted | deleted. A link needs ledger rows, which force G2, so a G3 client has one only if it was inserted by hand; the delete keeps the 070 `ON DELETE RESTRICT` key from blocking |
 | `email_change_requests` | encrypted target email | retired; target re-encrypted as the placeholder | deleted |
 | `email_deliveries` (user, linked or matched application, every template including Phase F `maturity_options`) | encrypted recipient, recipient HMAC, masked recipient, encrypted failure detail | locked; queued and retryable cancelled (with their outbox events); recipient and failure envelopes nulled, HMAC and masked value set to the placeholder's, `erased_at` | deleted |
 | `email_delivery_payloads` | sealed names and links | scrubbed (`scrubbed_at`) | deleted |
@@ -249,6 +250,7 @@ UNION ALL SELECT 'touch_support_requests', count(*) FROM support_requests WHERE 
 UNION ALL SELECT 'touch_reviews', count(*) FROM client_reviews WHERE user_id = :'user_id'
 UNION ALL SELECT 'touch_email_change_requests', count(*) FROM email_change_requests WHERE user_id = :'user_id'
 UNION ALL SELECT 'touch_password_links', count(*) FROM password_credential_tokens WHERE user_id = :'user_id'
+UNION ALL SELECT 'touch_statement_links', count(*) FROM client_statement_links WHERE user_id = :'user_id'
 UNION ALL SELECT 'touch_audit_rows_about_client', count(*) FROM audit_about
 UNION ALL SELECT 'touch_matching_receipts', count(*) FROM idempotency_records
   WHERE actor_scope = 'user:' || :'user_id' OR actor_user_id = :'user_id'
@@ -287,6 +289,7 @@ Rollback boundary: **no.** 069 adds a condition that only an erasing transaction
 - `clientErasureRaces.integration.test.ts`: same-key replay, a new key answering "already erased", two concurrent erasures erasing once, concurrent recording or sign-in never leaving a half state, and a delivery marked `sending` or an outbox event claimed by a concurrent transaction while erasure waits on the mail lock making it refuse with every other table byte-identical.
 - `clientErasureMigration.integration.test.ts`: the 069 populated upgrade and the trigger's negative controls, including deletes of another user's row, of a user with a ledger row and of a verified user.
 - `clientErasureCoverage.integration.test.ts`: the reviewed foreign-key and column classification.
+- Every seeded client in `erasureSupport.ts` holds a statement link (Phase H, 070): the G2 test asserts it is deleted, the G3 test that no row naming the client remains, and `clientStatementLinks.integration.test.ts` that an erased client's live link no longer opens.
 - `erasureContacts.test.ts`: the scrubber's boundaries, case handling, names and JSON rules.
 - Frontend `ClientEraseScreen.test.tsx`: the typed `ERASE` gate, an unknown outcome replaying the held key and request, the typed word cleared after a refusal, and a failed check showing an error with retry and no erase action.
 - `releaseUpgrade` expects 068 and 069.

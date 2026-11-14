@@ -219,6 +219,11 @@ const populateCopies = async (harness: ErasureHarness, client: SeededClient): Pr
     "insert into auth_login_events (user_id, email_normalized, channel, outcome, request_id) values (null, $1, 'client_web', 'unknown_identity', $2)",
     [client.oldEmail, randomUUID()],
   )
+  await q(
+    "insert into client_statement_links (user_id, token_hash, token_key_version, from_period, to_period, expires_at) " +
+      "values ($1, $2, 'tk1', '2025-01', '2025-02', now() + interval '10 minutes')",
+    [client.id, randomBytes(32)],
+  )
   await q("insert into notifications (user_id, kind, title, body, payload) values ($1, 'admin_note', 'Hello', $2, $3)", [
     client.id,
     `We will call ${client.phone}`,
@@ -367,7 +372,12 @@ export const erase = (
     payload: { confirm: "ERASE", expectedPath },
   })
 
-export const recordFor = (harness: ErasureHarness, userId: string, amountPaise: bigint): Promise<RecordedContribution> => {
+export const recordFor = (
+  harness: ErasureHarness,
+  userId: string,
+  amountPaise: bigint,
+  effectiveDate = "2025-01-15",
+): Promise<RecordedContribution> => {
   const { stack } = harness
   return stack.unitOfWork.execute((tx) =>
     recordContribution(
@@ -386,7 +396,7 @@ export const recordFor = (harness: ErasureHarness, userId: string, amountPaise: 
         userId,
         fundId: harness.fundId,
         amountPaise,
-        effectiveDate: "2025-01-15",
+        effectiveDate,
         reasonCode: "recorded_offline_investment",
         note: null,
         actorUserId: harness.admin.userId,
