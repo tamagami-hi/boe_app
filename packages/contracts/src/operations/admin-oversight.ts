@@ -232,11 +232,15 @@ export const AdminUser = z.strictObject({
 })
 export type AdminUser = z.infer<typeof AdminUser>
 
+export const AdminUserDirectorySegment = z.enum(["clients", "pending_invites"])
+export type AdminUserDirectorySegment = z.infer<typeof AdminUserDirectorySegment>
+
 export const AdminUserDirectoryQuery = z.strictObject({
   after: AdminCursor,
   limit: AdminLimit,
   status: AdminUserAccountState.optional(),
   q: z.string().trim().min(1).max(120).optional(),
+  segment: AdminUserDirectorySegment.optional(),
 })
 
 export const listAdminUsers = defineOperation({

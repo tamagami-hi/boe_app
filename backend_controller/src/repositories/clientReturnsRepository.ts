@@ -3,6 +3,7 @@ import { sql } from "kysely"
 import type { Transaction } from "../db/repositories.js"
 import type { ClientValueEntryType } from "../db/types.js"
 import type { LedgerFact } from "../domain/admin/clientReturns.js"
+import { isPendingInvite } from "./userSegments.js"
 
 export interface UserLedgerFact extends LedgerFact {
   readonly userId: string
@@ -100,11 +101,7 @@ export const createClientReturnsRepository = (): ClientReturnsRepository => ({
     const result = await sql<{ readonly count: number; readonly oldestInvitedAt: Date | null }>`
       select count(*)::int as "count", min(u.created_at) as "oldestInvitedAt"
       from users u
-      left join user_credentials c on c.user_id = u.id
-      where u.account_state in ('invited', 'active')
-        and u.pii_tombstoned_at is null
-        and c.password_hash is null
-        and not exists (select 1 from user_roles ur where ur.user_id = u.id)
+      where ${isPendingInvite()}
     `.execute(tx)
     const row = result.rows[0]
     return { count: row?.count ?? 0, oldestInvitedAt: row?.oldestInvitedAt ?? null }

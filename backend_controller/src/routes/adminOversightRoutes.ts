@@ -2,7 +2,7 @@
  * Admin oversight routes. Web-cookie transport, RBAC per group, CSRF on unsafe
  * methods, keyset cursors.
  *
- *   GET   /v1/admin/users                     directory (state/search filters)      users.read
+ *   GET   /v1/admin/users                     directory (state/search/segment filters) users.read
  *   GET   /v1/admin/users/:id/detail          one user + roles/email verification/recent orders    users.read
  *   GET   /v1/admin/users/:id/login-events    per-user sign-in attempts            users.read
  *   POST  /v1/admin/users/:id/suspend         lifecycle: active -> suspended        users.suspend
@@ -78,6 +78,7 @@ const usersQuerySchema = z
     ...pageQuery,
     status: z.enum(["invited", "active", "suspended", "closed"]).optional(),
     q: searchSchema.optional(),
+    segment: z.enum(["clients", "pending_invites"]).optional(),
   })
   .strict()
 
@@ -309,13 +310,14 @@ const listUsers = async (deps: AdminOversightDeps, request: FastifyRequest, repl
     reply,
     USERS_ROUTE,
     ["users.read", "users.read_limited"],
-    { status: query.status ?? null, q: query.q ?? null },
+    { status: query.status ?? null, q: query.q ?? null, ...(query.segment === undefined ? {} : { segment: query.segment }) },
     async (limit, keyset) =>
       deps.oversightRepository.listUsers(deps.database, {
         ...keyset,
         limit,
         ...(query.status === undefined ? {} : { state: query.status }),
         ...(query.q === undefined ? {} : { search: query.q }),
+        ...(query.segment === undefined ? {} : { segment: query.segment }),
       }),
     mapUser,
   )

@@ -15877,6 +15877,7 @@ export interface operations {
                 limit?: number;
                 status?: "invited" | "active" | "suspended" | "closed";
                 q?: string;
+                segment?: "clients" | "pending_invites";
             };
             header?: never;
             path?: never;

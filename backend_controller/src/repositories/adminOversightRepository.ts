@@ -20,6 +20,7 @@ import type {
   UserAccountState,
 } from "../db/types.js"
 import { cursorTime, keysetCondition, type KeysetBoundary, type WithCursor } from "./keysetBoundary.js"
+import { userSegmentClause, type UserDirectorySegment } from "./userSegments.js"
 
 export interface OversightPageQuery extends KeysetBoundary {
   readonly limit: number
@@ -45,6 +46,7 @@ export interface UserListRow {
 export interface UserListQuery extends OversightPageQuery {
   readonly state?: UserAccountState
   readonly search?: string
+  readonly segment?: UserDirectorySegment
 }
 
 export interface OrderListRow {
@@ -224,7 +226,7 @@ export const createAdminOversightRepository = (): AdminOversightRepository => ({
     const result = await sql<WithCursor<UserListRow>>`
       select ${USER_COLUMNS}, ${cursorTime("u.created_at")} as "cursorAt" ${USER_JOINS}
       where true
-      ${stateClause} ${searchClause} ${keyset(query, "u")}
+      ${stateClause} ${searchClause} ${userSegmentClause(query.segment)} ${keyset(query, "u")}
       order by u.created_at desc, u.id desc
       limit ${query.limit}
     `.execute(tx)
