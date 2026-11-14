@@ -13,13 +13,18 @@ import type { AuditTrailItem } from "./auditQueries"
 type RecordLink = Readonly<{ to: string; label: string }>
 
 const ORDER_ENTITIES: ReadonlySet<string> = new Set(["refund_operation", "fund_receipt_acknowledgement"])
+const MATURITY_ENTITIES: ReadonlySet<string> = new Set([
+  "client_position_maturity",
+  "client_maturity_schedule",
+  "client_maturity_offer",
+])
 
 const recordLinkOf = (row: AuditTrailItem): RecordLink | null => {
   if (row.entityType === "support_request") return { to: `/support/${row.entityId}`, label: "Support request" }
   if (row.client !== null && row.ledgerEntryId !== null) {
     return { to: `/users/${row.client.userId}?tab=ledger`, label: "Ledger entry" }
   }
-  if (row.client !== null && row.entityType === "client_position_maturity") {
+  if (row.client !== null && MATURITY_ENTITIES.has(row.entityType)) {
     return { to: `/users/${row.client.userId}?tab=maturity`, label: "Maturity" }
   }
   if (row.orderId !== null && ORDER_ENTITIES.has(row.entityType)) return { to: `/receipts/${row.orderId}`, label: "Order" }

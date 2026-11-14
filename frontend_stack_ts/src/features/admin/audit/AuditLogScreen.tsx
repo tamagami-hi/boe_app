@@ -19,7 +19,7 @@ const PRESETS: readonly Readonly<{ value: AuditPreset | null; label: string }>[]
   { value: "recordings", label: "Recordings" },
   { value: "reversals", label: "Reversals" },
   { value: "growth", label: "Value updates" },
-  { value: "maturity", label: "Maturity settlements" },
+  { value: "maturity", label: "Maturities" },
   { value: "refunds", label: "Refunds" },
 ]
 
