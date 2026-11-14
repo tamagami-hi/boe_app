@@ -7,17 +7,18 @@ import { useSession } from "~/app/providers/SessionProvider"
 import { formatDate } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { formatPercent } from "~/domain/percent"
-import { clientEmailVerification } from "~/domain/clientStatus"
 import { MaturityOffersCard } from "~/features/maturity-options/MaturityOffersCard"
 import { PendingPaymentRecovery } from "~/features/payments/PendingPaymentRecovery"
+import { SipSchedulesSection } from "~/features/portfolio/SipSchedulesSection"
+import { useEmailVerificationStatus } from "~/features/profile/EmailVerificationStatus"
 import { InvestingStatus } from "~/features/profile/InvestingStatus"
+import { InlineReadFailure } from "~/features/shared/InlineReadFailure"
 import { useEligibility, useFunds, usePortfolio, useSipPlans } from "~/features/shared/queries"
 import { cx } from "~/lib/cx"
 import { Reveal } from "~/ui/motion/Reveal"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { MoneyFootnote } from "~/ui/patterns/MoneyFootnote"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
-import { StatusBadge } from "~/ui/patterns/StatusBadge"
 import { ITEM_TITLE, STAT_LABEL, STAT_ROOT } from "~/ui/recipes/datalist"
 
 import {
@@ -55,6 +56,9 @@ const DashboardScreen = (): React.ReactElement => {
 
   const firstName = session.principal?.fullName.split(" ")[0] ?? "there"
   const verificationState = eligibility.data?.emailVerificationState ?? null
+  const emailStatus = useEmailVerificationStatus(META_MUTED)
+  const sipPlanCount = sips.data?.items.length ?? 0
+  const isSipReadFailed = sips.data === undefined && sips.isError
 
   return (
     <Page width="default">
@@ -139,29 +143,45 @@ See portfolio
           <Reveal delayMs={180}>
             <Card>
               <span className={STAT_LABEL}>Account</span>
-              {verificationState === null ? null : (
+              {emailStatus === null ? null : (
                 <div className={STATUS_ROW}>
                   <span className={META_MUTED}>Email</span>
-                  <StatusBadge status={clientEmailVerification(verificationState)} />
+                  {emailStatus}
                 </div>
               )}
               <div className={STATUS_ROW}>
                 <span className={META_MUTED}>Investing</span>
                 <InvestingStatus availableLabel="Available" className={META_MUTED} />
               </div>
-              {sips.data === undefined ? null : (
+              {isSipReadFailed ? (
                 <div className={STATUS_ROW}>
                   <span className={META_MUTED}>SIP plans</span>
-                  <span className={META_MUTED}>{String(sips.data.items.length)}</span>
+                  <InlineReadFailure
+                    className={META_MUTED}
+                    retrying={sips.isFetching}
+                    onRetry={() => {
+                      void sips.refetch()
+                    }}
+                  />
                 </div>
+              ) : null}
+              {sipPlanCount === 0 ? null : (
+                <>
+                  <div className={STATUS_ROW}>
+                    <span className={META_MUTED}>SIP plans</span>
+                    <span className={META_MUTED}>{String(sipPlanCount)}</span>
+                  </div>
+                  <ButtonLink to="/sips" tone="secondary" size="sm" trailing>
+                    Manage SIPs
+                  </ButtonLink>
+                </>
               )}
-              <ButtonLink to="/sips" tone="secondary" size="sm" trailing>
-Manage SIPs
-</ButtonLink>
             </Card>
           </Reveal>
         </div>
       </div>
+
+      <SipSchedulesSection />
 
       <Section
         title="Funds"

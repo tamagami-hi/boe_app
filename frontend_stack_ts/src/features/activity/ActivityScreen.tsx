@@ -8,6 +8,8 @@ import { toPaise } from "~/domain/money"
 import { clientInvestmentStatus } from "~/domain/status"
 import { INVESTMENTS_RECORDED_HERE } from "~/features/investing/InvestmentsRecorded"
 import { useOnlinePaymentsOff } from "~/features/investing/onlinePayments"
+import { FundName, FundNamesFailure, useFundNames } from "~/features/invested-funds/FundNames"
+import { investedFundPath } from "~/features/invested-funds/investedFundPath"
 import {
   useFundCatalogue,
   usePayments,
@@ -109,6 +111,7 @@ const ActivityScreen = (): React.ReactElement => {
   const ledger = useTransactions()
   const payments = usePayments(filter)
   const funds = useFundCatalogue()
+  const names = useFundNames()
   const portfolio = usePortfolio()
 
   const nameFor = (fundId: string | null): string =>
@@ -177,6 +180,7 @@ const ActivityScreen = (): React.ReactElement => {
         >
           {(data) => (
             <div className={cx(CARD_STACK, FEED_MEASURE)}>
+              <FundNamesFailure names={names} />
               {[...data.items]
                 .sort(newestFirst)
                 .map((entry) => (
@@ -184,8 +188,8 @@ const ActivityScreen = (): React.ReactElement => {
                     <div className={ROW}>
                       <div className={ROW_LEFT}>
                         <Badge tone={TONE[entry.type]}>{LABEL[entry.type]}</Badge>
-                        <Link to={`/funds/${entry.fundId}`} className={LINK_TEXT}>
-                          {nameFor(entry.fundId)}
+                        <Link to={investedFundPath(entry.fundId)} className={LINK_TEXT}>
+                          <FundName names={names} fundId={entry.fundId} />
                         </Link>
                         <span className={META_MUTED}>
                           {formatDate(`${entry.date}T00:00:00Z`)}

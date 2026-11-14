@@ -4,6 +4,7 @@ import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { formatDate } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
+import { investedFundPath } from "~/features/invested-funds/investedFundPath"
 import { usePortfolio } from "~/features/shared/queries"
 import { cx } from "~/lib/cx"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
@@ -12,8 +13,9 @@ import { LoadMore } from "~/ui/patterns/LoadMore"
 import { MoneyFootnote } from "~/ui/patterns/MoneyFootnote"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { Badge } from "~/ui/primitives/Badge"
+import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
-import { Skeleton } from "~/ui/primitives/Feedback"
+import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 import { FEED_MEASURE } from "~/ui/recipes/layout"
 import { CARD_STACK } from "~/ui/recipes/surface"
 import { LINK_TEXT, META_MUTED } from "~/ui/recipes/text"
@@ -21,11 +23,18 @@ import { LINK_TEXT, META_MUTED } from "~/ui/recipes/text"
 import { POOL_META, POOL_TOP } from "./portfolio.recipe"
 import { useValueUpdates } from "./valueUpdateQueries"
 
+const NOT_LISTED =
+  "The update from your notification is no longer in this list. It may have been corrected since."
+
 const ValueUpdatesScreen = (): React.ReactElement => {
   const [params] = useSearchParams()
   const highlighted = params.get("entry")
   const query = useValueUpdates()
   const portfolio = usePortfolio()
+  const isHighlightMissing =
+    highlighted !== null &&
+    query.data !== undefined &&
+    !query.data.items.some((update) => update.entryId === highlighted)
 
   return (
     <Page width="default">
@@ -33,6 +42,21 @@ const ValueUpdatesScreen = (): React.ReactElement => {
         title="Value updates"
         description="Each time BeOnEdge updates the value of one of your investments, it is recorded here."
       />
+
+      {!isHighlightMissing ? null : query.hasMore ? (
+        <Alert
+          tone="info"
+          action={
+            <Button tone="secondary" size="sm" loading={query.isLoadingMore} onClick={query.loadMore}>
+              Show older updates
+            </Button>
+          }
+        >
+          The update from your notification is older than the ones shown here.
+        </Alert>
+      ) : (
+        <Alert tone="info">{NOT_LISTED}</Alert>
+      )}
 
       <AsyncBoundary
         query={query}
@@ -55,7 +79,7 @@ const ValueUpdatesScreen = (): React.ReactElement => {
             {data.items.map((update) => (
               <Card key={update.entryId} tone={update.entryId === highlighted ? "elevated" : "default"}>
                 <div className={POOL_TOP}>
-                  <Link to={`/funds/${update.fundId}`} className={LINK_TEXT}>
+                  <Link to={investedFundPath(update.fundId)} className={LINK_TEXT}>
                     {update.fundName}
                   </Link>
                   <MoneyValue amount={toPaise(update.changePaise)} size="md" tone="signed" showSign />

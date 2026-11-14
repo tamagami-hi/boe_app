@@ -4,10 +4,8 @@ import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { useSession } from "~/app/providers/SessionProvider"
-import { clientEmailVerification } from "~/domain/clientStatus"
 import { userAccountState } from "~/domain/status"
 import { useAuthPort } from "~/features/auth/authPort"
-import { useEligibility } from "~/features/shared/queries"
 import { cx } from "~/lib/cx"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { StatusBadge } from "~/ui/patterns/StatusBadge"
@@ -16,6 +14,7 @@ import { Card } from "~/ui/primitives/Card"
 import { ENTRY_GLYPH, ENTRY_TEXT, ITEM_TITLE, NAV_LIST, NAV_ROW } from "~/ui/recipes/datalist"
 import { HINT_MUTED } from "~/ui/recipes/text"
 
+import { useEmailVerificationStatus } from "./EmailVerificationStatus"
 import { InvestingStatus } from "./InvestingStatus"
 import { NomineeSection } from "./NomineeSection"
 import {
@@ -95,7 +94,7 @@ const initialsOf = (fullName: string): string => {
 const ProfileScreen = (): React.ReactElement => {
   const { principal, signedOut } = useSession()
   const auth = useAuthPort()
-  const eligibility = useEligibility()
+  const emailVerification = useEmailVerificationStatus()
   const navigate = useNavigate()
 
   const signOut = (): void => {
@@ -106,8 +105,6 @@ const ProfileScreen = (): React.ReactElement => {
   }
 
   if (principal === null) return <Page width="default">{null}</Page>
-
-  const verification = eligibility.data?.emailVerificationState ?? null
 
   return (
     <Page width="default">
@@ -128,10 +125,8 @@ const ProfileScreen = (): React.ReactElement => {
           <DetailRow label="Account">
             <StatusBadge status={userAccountState(principal.accountState)} />
           </DetailRow>
-          {verification === null ? null : (
-            <DetailRow label="Email verification">
-              <StatusBadge status={clientEmailVerification(verification)} />
-            </DetailRow>
+          {emailVerification === null ? null : (
+            <DetailRow label="Email verification">{emailVerification}</DetailRow>
           )}
           <DetailRow label="Investing">
             <InvestingStatus availableLabel="Unlocked" />

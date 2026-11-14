@@ -8,6 +8,7 @@ import { CLIENT_ROUTES } from "~/app/routing/clientRoutes"
 import { notificationLink, resolveDestination, type Destination } from "~/app/routing/resolveDestination"
 import { formatDateTime } from "~/domain/dates"
 import { describeClientFailure } from "~/domain/failure"
+import { useUpdatePrompt } from "~/features/app-update/updatePrompt"
 import { notificationCategory } from "~/domain/notifications"
 import { useMarkNotificationRead, useNotifications } from "~/features/shared/queries"
 import { cx } from "~/lib/cx"
@@ -28,6 +29,8 @@ import { NOTIFICATION_TAPPABLE, NOTIFICATION_UNREAD } from "./notifications.reci
 
 const LEGACY_CLIENT_PREFIX = "/app/"
 
+const APP_UPDATE_KIND = "app_update_available"
+
 const deepLinkOf = (kind: string, payload: Record<string, unknown>): string | null => {
   const candidate = notificationLink(kind, payload)
   return typeof candidate === "string" && candidate.trim() !== "" ? candidate.trim() : null
@@ -43,12 +46,15 @@ const destinationOf = (kind: string, payload: Record<string, unknown>): Destinat
 
 type ReadableNotification = Readonly<{ id: string; read: boolean }>
 
+type ActionableNotification = ReadableNotification & Readonly<{ kind: string; payload: Record<string, unknown> }>
+
 const NotificationsScreen = (): React.ReactElement => {
   const query = useNotifications()
   const markRead = useMarkNotificationRead()
   const navigate = useNavigate()
   const toast = useToast()
   const pendingReads = useRef<ReadonlySet<string>>(new Set())
+  const updatePrompt = useUpdatePrompt()
 
   const follow = (destination: Destination): void => {
     if (destination.kind === "internal") {
@@ -79,6 +85,20 @@ const NotificationsScreen = (): React.ReactElement => {
   const open = (item: ReadableNotification, destination: Destination): void => {
     if (!item.read) markOneRead(item.id)
     follow(destination)
+  }
+
+  const actionOf = (item: ActionableNotification): (() => void) | null => {
+    const destination = destinationOf(item.kind, item.payload)
+    if (destination !== null) {
+      return () => {
+        open(item, destination)
+      }
+    }
+    if (item.kind !== APP_UPDATE_KIND || !updatePrompt.isAvailable) return null
+    return () => {
+      if (!item.read) markOneRead(item.id)
+      updatePrompt.open()
+    }
   }
 
   return (
@@ -112,22 +132,14 @@ const NotificationsScreen = (): React.ReactElement => {
             )}
             <div className={cx(CARD_STACK, FEED_MEASURE)}>
               {data.items.map((item) => {
-                const destination = destinationOf(item.kind, item.payload)
+                const action = actionOf(item)
                 const category = notificationCategory(item.kind)
                 return (
                   <Card key={item.id} tone={item.read ? "default" : "elevated"}>
                     <div className={STACK_SM}>
                       <div
-                        className={
-                          destination === null ? STACK_SM : cx(STACK_SM, NOTIFICATION_TAPPABLE)
-                        }
-                        onClick={
-                          destination === null
-                            ? undefined
-                            : () => {
-                                open(item, destination)
-                              }
-                        }
+                        className={action === null ? STACK_SM : cx(STACK_SM, NOTIFICATION_TAPPABLE)}
+                        onClick={action ?? undefined}
                       >
                         <div className={ROW_BETWEEN}>
                           <span
@@ -145,14 +157,8 @@ const NotificationsScreen = (): React.ReactElement => {
                         </div>
                       </div>
                       <div className={cx(ACTION_ROW, "pt-1")}>
-                        {destination === null ? null : (
-                          <Button
-                            tone="secondary"
-                            size="sm"
-                            onClick={() => {
-                              open(item, destination)
-                            }}
-                          >
+                        {action === null ? null : (
+                          <Button tone="secondary" size="sm" onClick={action}>
                             Open
                           </Button>
                         )}

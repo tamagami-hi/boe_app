@@ -18,6 +18,7 @@ export const CLIENT_MONEY_PREFIXES = [
   ["client", "receipt"],
   ["client", "sip-schedules"],
   ["client", "maturity-options"],
+  ["client", "invested-funds"],
 ] as const
 
 export const qk = {
@@ -35,6 +36,9 @@ export const qk = {
     fund: (fundId: string) => ["client", "fund", fundId] as const,
     transactions: (filter: string) => ["client", "transactions", filter] as const,
     valueUpdates: () => ["client", "value-updates"] as const,
+    fundValueUpdates: (fundId: string) => ["client", "value-updates", "fund", fundId] as const,
+    investedFunds: () => ["client", "invested-funds"] as const,
+    investedFund: (fundId: string) => ["client", "invested-funds", fundId] as const,
     payments: (status: string) => ["client", "payments", status] as const,
     payment: (paymentId: string) => ["client", "payment", paymentId] as const,
     orders: () => ["client", "orders"] as const,
@@ -42,6 +46,7 @@ export const qk = {
     autopay: (sipPlanId: string) => ["client", "autopay", sipPlanId] as const,
     statements: () => ["client", "statements"] as const,
     receipts: () => ["client", "receipts"] as const,
+    fundReceipts: (fundId: string) => ["client", "receipts", "fund", fundId] as const,
     receipt: (entryId: string) => ["client", "receipt", entryId] as const,
     sipSchedules: () => ["client", "sip-schedules"] as const,
     maturityOffers: () => ["client", "maturity-options"] as const,

@@ -8,8 +8,10 @@ import { countOf } from "~/domain/plural"
 import { formatPercent } from "~/domain/percent"
 import { INVESTMENTS_RECORDED_NOTE } from "~/features/investing/InvestmentsRecorded"
 import { useOnlinePaymentsOff } from "~/features/investing/onlinePayments"
+import { FundName, FundNamesFailure, useFundNames } from "~/features/invested-funds/FundNames"
+import { investedFundPath } from "~/features/invested-funds/investedFundPath"
 import { MaturityOffersCard } from "~/features/maturity-options/MaturityOffersCard"
-import { useFundCatalogue, usePortfolio } from "~/features/shared/queries"
+import { usePortfolio, useSipPlans } from "~/features/shared/queries"
 import { cx } from "~/lib/cx"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { EmptyState } from "~/ui/patterns/EmptyState"
@@ -29,11 +31,10 @@ import { SipSchedulesSection } from "./SipSchedulesSection"
 
 const PortfolioScreen = (): React.ReactElement => {
   const query = usePortfolio()
-  const funds = useFundCatalogue()
+  const names = useFundNames()
+  const sips = useSipPlans()
   const paymentsOff = useOnlinePaymentsOff()
-
-  const nameFor = (fundId: string): string =>
-    funds.data?.items.find((fund) => fund.id === fundId)?.name ?? "Fund"
+  const showsSipPlans = (sips.data === undefined && sips.isError) || (sips.data?.items.length ?? 0) > 0
 
   return (
     <Page width="default">
@@ -106,18 +107,23 @@ const PortfolioScreen = (): React.ReactElement => {
                   <ButtonLink to="/portfolio/value-updates" tone="secondary" size="sm">
                     Value updates
                   </ButtonLink>
-                  <ButtonLink to="/sips" tone="secondary" size="sm">
-SIP plans
-</ButtonLink>
+                  {showsSipPlans ? (
+                    <ButtonLink to="/sips" tone="secondary" size="sm">
+                      SIP plans
+                    </ButtonLink>
+                  ) : null}
                 </span>
               }
             >
+              <FundNamesFailure names={names} />
               <div className={CARD_COLUMNS_WRAP[3]}>
                 {data.pools.map((pool) => (
-                <Link key={pool.fundId} to={`/funds/${pool.fundId}`} className={CARD_LINK}>
+                <Link key={pool.fundId} to={investedFundPath(pool.fundId)} className={CARD_LINK}>
                   <Card>
                     <div className={POOL_TOP}>
-                      <span className={ITEM_TITLE}>{nameFor(pool.fundId)}</span>
+                      <span className={ITEM_TITLE}>
+                        <FundName names={names} fundId={pool.fundId} />
+                      </span>
                       <MoneyValue amount={toPaise(pool.currentValuePaise)} size="md" />
                     </div>
                     <div className={cx(POOL_META, META_MUTED)}>
