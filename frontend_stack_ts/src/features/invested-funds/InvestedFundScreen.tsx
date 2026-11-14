@@ -16,7 +16,7 @@ import { InvestedFundSummary } from "./InvestedFundSummary"
 import { useInvestedFund } from "./investedFundQueries"
 
 const CLOSED_FUND =
-  "BeOnEdge is not taking new investments in this fund. Your investment, its recorded payments and its value updates stay here."
+  "This fund is not open in the fund list right now. Your investment in it, its recorded payments and its value updates are shown here."
 
 const InvestedFundScreen = (): React.ReactElement => {
   const { fundId = "" } = useParams<{ fundId: string }>()

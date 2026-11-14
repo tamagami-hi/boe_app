@@ -33,20 +33,38 @@ const asStrings = (value: unknown): readonly string[] =>
 const firstString = (record: PublishedDocument, keys: readonly string[]): string | null =>
   keys.map((key) => asString(record[key])).find((value) => value !== null) ?? null
 
+const MAILTO = "mailto:"
+const TEL = "tel:"
+const HTTPS = "https://"
+
+const dialable = (text: string): string => text.replace(/[ -]/gu, "")
+
+const mailtoOf = (value: string): string | null => (EMAIL_PATTERN.test(value) ? `${MAILTO}${value}` : null)
+
+const telOf = (value: string): string | null => (PHONE_PATTERN.test(value) ? `${TEL}${dialable(value)}` : null)
+
 const emailContact = (label: string, value: string | null): readonly LegalContact[] =>
-  value === null ? [] : [{ label, value, href: EMAIL_PATTERN.test(value) ? `mailto:${value}` : null }]
+  value === null ? [] : [{ label, value, href: mailtoOf(value) }]
 
 const phoneContact = (label: string, value: string | null): readonly LegalContact[] =>
-  value === null ? [] : [{ label, value, href: PHONE_PATTERN.test(value) ? `tel:${value.replace(/[ -]/gu, "")}` : null }]
+  value === null ? [] : [{ label, value, href: telOf(value) }]
 
 const textContact = (label: string, value: string | null): readonly LegalContact[] =>
   value === null ? [] : [{ label, value, href: null }]
 
+const checkedLink = (href: string, value: string): string | null => {
+  const scheme = href.toLowerCase()
+  if (scheme.startsWith(MAILTO)) return href.slice(MAILTO.length) === value ? mailtoOf(value) : null
+  if (scheme.startsWith(TEL)) return dialable(href.slice(TEL.length)) === dialable(value) ? telOf(value) : null
+  if (scheme.startsWith(HTTPS)) return href === value ? href : null
+  return null
+}
+
 const hrefOf = (record: PublishedDocument, value: string): string | null => {
   const explicit = firstString(record, ["url", "href"])
-  if (explicit !== null) return explicit
-  if (asString(record.email) === value && EMAIL_PATTERN.test(value)) return `mailto:${value}`
-  if (asString(record.phone) === value && PHONE_PATTERN.test(value)) return `tel:${value.replace(/[ -]/gu, "")}`
+  if (explicit !== null) return checkedLink(explicit, value)
+  if (asString(record.email) === value) return mailtoOf(value)
+  if (asString(record.phone) === value) return telOf(value)
   return null
 }
 
