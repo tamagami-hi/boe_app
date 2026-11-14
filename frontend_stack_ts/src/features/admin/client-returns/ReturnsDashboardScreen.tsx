@@ -57,11 +57,12 @@ const ReturnsDashboardScreen = (): React.ReactElement => {
 
   const clientCell = (row: ClientValueSummary): React.ReactElement => {
     const name = names.get(row.userId)
+    if (!canOpenClient) {
+      return name === undefined ? <span className={META_TEXT}>Name not available</span> : <span>{name}</span>
+    }
     return (
       <span className={ENTRY_TEXT}>
-        {name !== undefined || canOpenClient ? (
-          <ClientPageLink userId={row.userId}>{name ?? "Open client"}</ClientPageLink>
-        ) : null}
+        <ClientPageLink userId={row.userId}>{name ?? "Open client"}</ClientPageLink>
         <span className={ADMIN_CODE}>{row.userId}</span>
       </span>
     )
@@ -75,8 +76,8 @@ const ReturnsDashboardScreen = (): React.ReactElement => {
       />
 
       {canReadUsers ? null : (
-        <Alert tone="info" title="Client names are not shown">
-          Your account cannot read the client directory, so each row shows the client&apos;s reference instead of a name.
+        <Alert tone="info" title="Client names are not available">
+          Your role cannot read client names, so the rows below are not named. Every row and figure is still shown.
         </Alert>
       )}
 
@@ -90,7 +91,7 @@ const ReturnsDashboardScreen = (): React.ReactElement => {
             </Button>
           }
         >
-          The figures are complete. Rows show the client id until the directory loads.
+          The figures are complete. Client names appear once the directory loads.
         </Alert>
       ) : null}
 

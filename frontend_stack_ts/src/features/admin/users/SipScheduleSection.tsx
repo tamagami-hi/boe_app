@@ -4,6 +4,8 @@ import { Section } from "~/app/layouts/Section"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatYearMonth } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
+import { indiaToday } from "~/features/admin/client-values/indiaToday"
+import { thisMonthStatus } from "~/features/admin/client-values/recordingPrefill"
 import { useClientSipSchedules, type AdminSipScheduleItem } from "~/features/admin/client-values/sipScheduleQueries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
@@ -14,9 +16,38 @@ import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 import { PROSE_SM } from "~/ui/recipes/datalist"
 import { ACTION_ROW } from "~/ui/recipes/layout"
+import { META_TEXT } from "~/ui/recipes/text"
 
 import { SipScheduleCreateForm } from "./SipScheduleCreateForm"
 import { SipScheduleEditor } from "./SipScheduleEditor"
+
+const MONTH_NOTE = {
+  paid: "This month is already recorded.",
+  outside: "This month is outside the schedule.",
+} as const
+
+type RecordMonthActionProps = Readonly<{
+  schedule: AdminSipScheduleItem
+  blocked: boolean
+  onRecord: (schedule: AdminSipScheduleItem) => void
+}>
+
+const RecordMonthAction = ({ schedule, blocked, onRecord }: RecordMonthActionProps): React.ReactElement => {
+  const status = thisMonthStatus(schedule, indiaToday())
+  if (status !== "unpaid") return <span className={META_TEXT}>{MONTH_NOTE[status]}</span>
+  return (
+    <Button
+      size="sm"
+      tone="secondary"
+      disabled={blocked}
+      onClick={() => {
+        onRecord(schedule)
+      }}
+    >
+      Record this month
+    </Button>
+  )
+}
 
 export type SipScheduleSectionProps = Readonly<{
   userId: string
@@ -129,16 +160,7 @@ export const SipScheduleSection = ({
                   canWrite ? (
                     <span className={ACTION_ROW}>
                       {canRecordMonth && row.state === "active" ? (
-                        <Button
-                          size="sm"
-                          tone="secondary"
-                          disabled={isRecordBlocked}
-                          onClick={() => {
-                            onRecordMonth(row)
-                          }}
-                        >
-                          Record this month
-                        </Button>
+                        <RecordMonthAction schedule={row} blocked={isRecordBlocked} onRecord={onRecordMonth} />
                       ) : null}
                       <Button
                         size="sm"
