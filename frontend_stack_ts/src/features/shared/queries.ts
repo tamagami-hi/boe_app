@@ -38,6 +38,7 @@ import type { DataOf } from "~/api/http"
 import { usePagedQuery } from "~/api/paged"
 import type { PagedQuery } from "~/api/paged"
 import { CLIENT_MONEY_PREFIXES, STALE, qk } from "~/api/queryKeys"
+import { useSealedMutation, type SealedMutationResult } from "~/api/sealedMutation"
 import { useApi } from "~/app/providers/ApiProvider"
 import { useSession } from "~/app/providers/SessionProvider"
 
@@ -293,13 +294,12 @@ export const useRequestPasswordReset = (): UseMutationResult<void, Error, string
 
 export type RedeemPasswordResetInput = Readonly<{ token: string; newPassword: string }>
 
-export const useRedeemPasswordReset = (): UseMutationResult<
+export const useRedeemPasswordReset = (): SealedMutationResult<
   DataOf<typeof redeemPasswordReset>,
-  Error,
   RedeemPasswordResetInput
 > => {
   const api = useApi()
-  return useMutation({
+  return useSealedMutation({
     mutationFn: async (input: RedeemPasswordResetInput) => {
       return (await api.request(redeemPasswordReset, { body: input })).data
     },
@@ -308,20 +308,20 @@ export const useRedeemPasswordReset = (): UseMutationResult<
 
 export type ChangePasswordInput = Readonly<{ currentPassword: string; newPassword: string }>
 
-export const useChangePassword = (): UseMutationResult<void, Error, ChangePasswordInput> => {
+export const useChangePassword = (): SealedMutationResult<void, ChangePasswordInput> => {
   const api = useApi()
-  return useMutation({
+  return useSealedMutation({
     mutationFn: async (input: ChangePasswordInput) => {
       await api.request(changeClientPassword, { body: input })
     },
   })
 }
 
-export const useVerifyEmail = (): UseMutationResult<void, Error, string> => {
+export const useVerifyEmail = (): SealedMutationResult<void, string> => {
   const api = useApi()
   const queryClient = useQueryClient()
   const { principal } = useSession()
-  return useMutation({
+  return useSealedMutation({
     mutationFn: async (code: string) => {
       await api.request(verifyEmail, { body: { code } })
     },

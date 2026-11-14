@@ -1,9 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import type { UseQueryResult } from "@tanstack/react-query"
 
 import { changeClientNominee, getClientNominee } from "~/api/generated/operations"
 import type { DataOf } from "~/api/http"
 import { STALE, qk } from "~/api/queryKeys"
+import { useSealedMutation, type SealedMutationResult } from "~/api/sealedMutation"
 import { useApi } from "~/app/providers/ApiProvider"
 import type { NomineeInput } from "~/domain/nominee"
 
@@ -21,10 +22,10 @@ export const useClientNominee = (): UseQueryResult<ClientNominee> => {
 
 export type ClientNomineeChangeInput = Readonly<{ input: NomineeInput; currentPassword: string }>
 
-export const useChangeClientNominee = (): UseMutationResult<ClientNomineeChange, Error, ClientNomineeChangeInput> => {
+export const useChangeClientNominee = (): SealedMutationResult<ClientNomineeChange, ClientNomineeChangeInput> => {
   const api = useApi()
   const queryClient = useQueryClient()
-  return useMutation({
+  return useSealedMutation({
     mutationFn: async ({ input, currentPassword }: ClientNomineeChangeInput) =>
       (await api.request(changeClientNominee, { body: { ...input, currentPassword } })).data,
     onSuccess: (result) => {

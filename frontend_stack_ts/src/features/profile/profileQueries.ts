@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import type { UseQueryResult } from "@tanstack/react-query"
 
 import {
   changeClientPhone,
@@ -9,6 +9,7 @@ import {
 } from "~/api/generated/operations"
 import type { DataOf } from "~/api/http"
 import { STALE, qk } from "~/api/queryKeys"
+import { useSealedMutation, type SealedMutationResult } from "~/api/sealedMutation"
 import { useApi } from "~/app/providers/ApiProvider"
 
 export type ClientProfile = DataOf<typeof getClientProfile>
@@ -23,14 +24,13 @@ export const useClientProfile = (): UseQueryResult<ClientProfile> => {
   })
 }
 
-export const useChangeClientPhone = (): UseMutationResult<
+export const useChangeClientPhone = (): SealedMutationResult<
   PhoneChange,
-  Error,
   Readonly<{ phone: string; currentPassword: string }>
 > => {
   const api = useApi()
   const queryClient = useQueryClient()
-  return useMutation({
+  return useSealedMutation({
     mutationFn: async (body: Readonly<{ phone: string; currentPassword: string }>) =>
       (await api.request(changeClientPhone, { body })).data,
     onSuccess: (result) => {
@@ -44,14 +44,13 @@ export const useChangeClientPhone = (): UseMutationResult<
 
 export type EmailChangeRequested = DataOf<typeof requestClientEmailChange>
 
-export const useRequestEmailChange = (): UseMutationResult<
+export const useRequestEmailChange = (): SealedMutationResult<
   EmailChangeRequested,
-  Error,
   Readonly<{ newEmail: string; currentPassword: string }>
 > => {
   const api = useApi()
   const queryClient = useQueryClient()
-  return useMutation({
+  return useSealedMutation({
     mutationFn: async (body: Readonly<{ newEmail: string; currentPassword: string }>) =>
       (await api.request(requestClientEmailChange, { body })).data,
     onSettled: async () => {
@@ -60,13 +59,12 @@ export const useRequestEmailChange = (): UseMutationResult<
   })
 }
 
-export const useConfirmEmailChange = (): UseMutationResult<
+export const useConfirmEmailChange = (): SealedMutationResult<
   DataOf<typeof confirmClientEmailChange>,
-  Error,
   Readonly<{ code: string }>
 > => {
   const api = useApi()
-  return useMutation({
+  return useSealedMutation({
     mutationFn: async (body: Readonly<{ code: string }>) =>
       (await api.request(confirmClientEmailChange, { body })).data,
   })
