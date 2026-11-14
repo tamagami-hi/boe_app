@@ -48,7 +48,9 @@ describe("ES256 access-token service", () => {
   test("rejects a tampered token and a malformed token", async () => {
     const service = createAccessTokenService(baseConfig)
     const token = await service.sign({ sub: "user-1", sid: "session-1" })
-    const tampered = `${token.slice(0, -2)}xy`
+    const position = token.lastIndexOf(".") + 11
+    const flipped = token[position] === "A" ? "B" : "A"
+    const tampered = `${token.slice(0, position)}${flipped}${token.slice(position + 1)}`
     await expect(service.verify(tampered)).rejects.toMatchObject({ code: "AUTHENTICATION_REQUIRED" })
     await expect(service.verify("not-a-jwt")).rejects.toMatchObject({ code: "AUTHENTICATION_REQUIRED" })
   })
