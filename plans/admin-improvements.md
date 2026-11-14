@@ -1,6 +1,6 @@
 # BeOnEdge admin improvements: recording categories, receipts, value updates, returns, maturity, nominee, and fixes
 
-Status: **Approved by the maintainer on 2026-11-13. Phases A, B and C, and Phase E steps E1 and E2, are complete on local `main` (not pushed or released). Phase D and E3 wait for the maintainer. Phases F and G are complete on local `main` (section 8). Nothing from Phases A to G is pushed or released. Phase H is being built.** No question is open. What still needs the maintainer: publishing `featureFlags.onlinePayments=false` (G11), the production reform's own destructive-change approval after the pre-flight report (D2), releases, and the decision to resume payments. Checks run in the pinned Node 22.20.0 / npm 11.16.0 container `tools/node22-container/run.sh` (tally `howto-2`).
+Status: **Approved by the maintainer on 2026-11-13. Phases A, B and C, and Phase E steps E1 and E2, are complete on local `main` (not pushed or released). Phase D and E3 wait for the maintainer. Phases F, G and H are complete on local `main` (section 8). Nothing from Phases A to H is pushed or released.** Q-037 is open (section 0a). What still needs the maintainer: publishing `featureFlags.onlinePayments=false` (G11), the production reform's own destructive-change approval after the pre-flight report (D2), releases, and the decision to resume payments. Checks run in the pinned Node 22.20.0 / npm 11.16.0 container `tools/node22-container/run.sh` (tally `howto-2`).
 
 Prepared: 2026-11-13. The investigation was static source reading only. No local checks ran (no dependencies are installed, and `RULES.md` forbids installing them just to make checks runnable). Nothing was diagnosed on a VPS, no test ran, no mail was sent, and nothing was deployed. GitHub CI run 38216879911 passed contracts, backend (including integration) and frontend on `ba8b196` (v0.15.4). The detailed evidence is held as tally records under `docs/records/`: findings `finding-1` to `finding-18` (excluding the retired `finding-5`), decisions `rule-2` to `rule-6`, and milestones `M1-admin-audit` and `M2-plan`.
 
@@ -8,11 +8,11 @@ Governing process: root [RULES.md](../RULES.md). The application is in productio
 
 ## 0a. Open questions and conservative defaults
 
-IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-025 were answered on 2026-11-13, and Q-027 to Q-029 on 2026-11-14; all are in the decision record. Q-026 and Q-030 to Q-032 were answered on 2026-11-14 (DEC-29 to DEC-32). Q-036 was answered on 2026-11-14 (DEC-36). Tally question rows 1 to 22 are marked answered, each citing its decision ID. No question is open.
+IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-025 were answered on 2026-11-13, and Q-027 to Q-029 on 2026-11-14; all are in the decision record. Q-026 and Q-030 to Q-032 were answered on 2026-11-14 (DEC-29 to DEC-32). Q-036 was answered on 2026-11-14 (DEC-36). Tally question rows 1 to 22 are marked answered, each citing its decision ID. Q-037 (tally question row 23) is open.
 
 | ID | Open decision | Conservative behavior meanwhile |
 | --- | --- | --- |
-| — | No open questions. | — |
+| Q-037 | Phase H2 shows the support and grievance contacts from the published legal documents (`content_items`: investor charter, grievance matrix) on the client's Support, Grievance and Login screens. Production runs only `seed:auth`; the content seed (`backend_controller/src/db/seedContent.ts`) holds placeholder contacts (`beonedge.example` addresses, `+91-80-1234-5678/5679`), and the admin panel edits only FAQs and app config. Do the production legal documents exist, and do they carry real contacts? | H2 is on local `main` as built: contacts show when the documents carry them, and the earlier fallback text shows when the documents are absent. Nothing is released and no contact value is invented. Before release the real contacts must be confirmed, or published through a reviewed seed change or an admin editor for these documents. |
 
 ### Decision record
 
@@ -434,7 +434,7 @@ It touches no other client.
 
 ### Phase H — experience gaps and carried items (DEC-34; tally phase `H`)
 
-On 2026-11-14, U-close checked the client and admin findings of section 2F (tally `finding-19`, `finding-20`) against `main` at `5def38f`. The items below are what is still open. Items that touch payment, AutoPay or gateway screens are parked under DEC-14 (see the end of this section). Four lanes run in parallel:
+On 2026-11-14, U-close checked the client and admin findings of section 2F (tally `finding-19`, `finding-20`) against `main` at `5def38f`. The items below are what is still open. Items that touch payment, AutoPay or gateway screens are parked under DEC-14 (see the end of this section). Five lanes ran in parallel; H5 was built by a second Claude instance (the maintainer's `claude-pro` terminal agent) and reviewed like the others:
 
 - **H1. Statement the APK can keep** (lane `h-statement`, migration 070):
   - In the APK the app asks the server for a one-time statement link and opens it in the phone's browser with the existing Browser plugin. From there the client can print it, save it as a PDF or share it. No new native plugin is added.
@@ -460,6 +460,9 @@ On 2026-11-14, U-close checked the client and admin findings of section 2F (tall
   - The audit presets cover the maturity schedule and offer commands.
   - Money displays keep paise where amounts can carry them, and dates are formatted.
   - The remaining fund and AUM inputs take rupees.
+- **H5. Carried hygiene** (lane `h-hygiene`):
+  - No password or code stays in the client's in-memory mutation cache once a request settles, for the nominee change and every other client request that sends one.
+  - New nominee audit rows record the user's version as their entity version and keep the nominee version in their metadata. Earlier rows are not rewritten.
 - **Parked under DEC-14** (payments, AutoPay and the gateway stay untouched until the maintainer resumes them; tally `finding-27`):
   - endless polling of old in-progress payments;
   - no client cancel for pending payments;
@@ -740,10 +743,10 @@ Every lane landed on local `main` through the tally queue, one at a time, each a
     - an unpaid month on a manual plan still blocks that plan;
     - a client may retry checkout on a failed instalment after the plan has moved on.
   - Smaller items:
-    - nominee audit rows record `nominee_version` as their entity version;
-    - the client nominee mutation keeps the password in the in-memory mutation cache until garbage collection;
+    - nominee audit rows record `nominee_version` as their entity version (done in Phase H, H5);
+    - the client nominee mutation keeps the password in the in-memory mutation cache until garbage collection (done in Phase H, H5);
     - the 066 query plan was measured on 60,000 rows, not production volume;
-    - the APK statement PDF is still a proposal.
+    - the APK statement PDF is still a proposal (done in Phase H, H1, as a one-time statement link).
   - Q-026 and Q-027 to Q-029 are open.
 - **Not verified.** No browser or device run of any new screen, no real mail, no APK export, nothing on a VPS.
 
@@ -869,3 +872,100 @@ The table map, the pre-flight query and the cost notes are in [client-erasure.md
 - **Landing run (TESTED, tally ticket c6d434f4):** all eight commits passed the contracts build, backend `npm run check` and frontend `npm run check` on `main`.
 - **Sweep on `e29ff37` (TESTED, clean detached worktree, Node 22.20.0 container), covering Phases F and G together:** contracts `npm run check` passed 98 tests, with 185 operations reachable; backend `npm run check` passed 101 files / 1204 tests; `npm run test:integration -- --coverage.enabled=false` passed 65 files / 557 tests; frontend `npm run check` passed 35 files / 320 tests, with the generated client unchanged at 185 operations; `build:client` (including the Android dist check) and `build:admin` passed with their bundle boot checks. This also completes the sweep deferred from the Phase F close.
 - **Not verified.** No browser or device run of the erase or maturity screens, no real mail, no APK export, nothing on a VPS, and the pre-flight has not been run on production.
+
+### Phase H close (2026-11-14)
+
+Phase H (DEC-34, DEC-36) was built on five lanes, each on its own tally track, and landed on local `main` through the tally queue in this order: H3, H4, H2, H5, H1. A second Claude instance, the maintainer's `claude-pro` terminal agent (Opus, effort xhigh), built H5. It also gave every lane its one independent review (rule 53), and H1's review included the security and database review. The coordinator reviewed each lane's fix commits as the follow-up. Nothing is pushed, released or deployed.
+
+| Lane | Commits on `main` |
+| --- | --- |
+| H3 `h-admin-access` | `159e600`, `40c7821`, review fixes `a2b6376` |
+| H4 `h-admin-money` | `21d5815`, `74e6900`, `8c582ce`, `a1775e5`, review fixes `59fecc0`, `9ed3914` |
+| H2 `h-client` | `b96a097`, `e477bbe`, `3110e62`, review fixes `f272573` |
+| H5 `h-hygiene` | `8042a1a`, `6be1460`, review fixes `edbdd70` |
+| H1 `h-statement` | `916ac64`, `6b0d0c5`, review fixes `f837ed4` |
+
+- **H1, the statement the APK can keep.**
+  - **How it works.** `POST /v1/client/statement-links` (`{fromPeriod, toPeriod}`) answers `{token}`. It only accepts months of the caller's own statement, and the user comes only from the session. The public `GET /v1/public/statement-links/{token}` renders the web print view's statement on the server, with the market-risk line and the as-of date.
+  - **Page headers:** `no-store`, `no-referrer`, and a CSP with `default-src 'none'` and a hash-pinned style.
+  - **Error page:** used, expired, unknown and suspended links all get the same 404 page.
+  - **The APK** opens the link with the existing Browser plugin. The Statements screen shows the risk line and the as-of date.
+  - **Migration 070** (`client_statement_links`):
+    - one row per client, holding only an HMAC of the token, the months and the expiry;
+    - opening a link uses it up in one conditional update, and a new link retires the old one;
+    - issuing a link locks the active user row, so a link cannot outlive a concurrent erasure;
+    - G2 and G3 erasure delete the client's link, and the erasure coverage test classifies the table.
+  - **070 is not a rollback boundary.** It only adds a table that v0.15.4 never reads.
+- **H2, client fixes.**
+  - **Contacts:** the legal and grievance screens render both published content shapes, and Support and Login show the published contacts. A content link becomes tappable only for a matching email, a matching phone number, or an identical https URL.
+  - **Failed reads:** fund names, the SIP read and the email verification row show an error with retry.
+  - **Held funds:** new `GET /v1/client/invested-funds` and `/{fundId}` name every fund the client holds, including paused and archived ones. A new "Your investment" screen shows the client's own pool, with receipts and value updates filtered by an optional `fundId`.
+  - **App-update notice:** it opens the update sheet.
+  - **Admin SIP schedules:** shown on the dashboard. A failed SIP read never shows as "no SIP plans".
+- **H3, admin access and flow.**
+  - **Client links (DEC-36):** they render as plain text for roles the client page refuses. The page's route now needs only `users.read`, which is what its read checks. The review's role table confirmed that no role gains or loses access the backend grants.
+  - **Returns dashboard:** for roles without `users.read`, rows show no ids and say names are not available.
+  - **Client values cards:** gated by their routes' permissions.
+  - **Client pickers:** `GET /v1/admin/users` takes an optional `segment` (`clients`, `pending_invites`). The overview tile counts with the same filter.
+  - **Navigation:** the payment sheet is in the sidebar as "Monthly payments", and the sidebar is grouped by section.
+  - **SIP schedule rows:** they offer "Record this month" only while this IST month is unpaid. It opens the record form prefilled and still needs confirmation, and it is disabled while a recording is held.
+  - **Lists and email:** overview tiles open filtered lists, the email list links to the client, and the send-email field names the chosen client.
+- **H4, admin money screens.**
+  - **Investor record:** it can be linked by client (`?userId=`), and its ledger pages past 100 rows on the existing paged endpoint. The capped endpoint stays for released APKs.
+  - **Collective preview:** it shows a role notice or an error with retry, never raw ids.
+  - **Maturity:** the dialogs and the client page section show failed reads with retry. A re-read can no longer drop a held, unconfirmed write.
+  - **Audit presets:** they cover the maturity schedule and offer commands. The preset key is unchanged.
+  - **Money:**
+    - money displays in the lane's screens keep paise (rule 15 search named in `59fecc0`), and dates are formatted;
+    - fund minimums, opening AUM and fund-size adjustments are typed in rupees;
+    - request bodies are unchanged.
+- **H5, carried hygiene from C1.**
+  - **Sealed credentials:** seven client requests that send a password or code now go through `src/api/sealedMutation.ts`. After any outcome, nothing readable stays in the mutation cache. They are:
+    - the nominee change and the phone change;
+    - the email change request and its code;
+    - the password change and the password reset;
+    - the email verification code.
+
+    The class search covered every contract body carrying a credential. Logins and refresh run outside TanStack, and no admin mutation sends one.
+  - **Nominee audit rows:** new `user.nominee_changed` rows record `users.version` as their entity version, with `metadata.nomineeVersion`. Earlier rows are not rewritten. The reader sweep confirmed that every reader handles both shapes: the admin audit contract types `metadata` as unknown.
+- **Compatibility (rule 11, `finding-14`).**
+  - **Additive only:** the changes are new endpoints and new optional query parameters (`segment`, `fundId`). No existing response gained a key or an enum value.
+  - **Rollback caveat:** against a rolled-back backend, the new admin build's client pickers show their error with retry, because the previous release refuses `segment`.
+- **Lane defaults for the maintainer to review:**
+  - **Link lifetime:** the statement link reuses the email verification lifetime (10 minutes by default; rule 16).
+  - **Opened links:** reloading an opened statement page shows "not available", and the figures are whole rupees, as in the web print view.
+  - **Referrer-Policy:** nginx's server-level `Referrer-Policy` overrides the page's `no-referrer`. The page has no links or subresources. A dedicated location is the maintainer's call (`DEPLOY.md`).
+  - **"Held" fund:** any `client_value_entries` row counts.
+  - **Contact source:** the support contact comes from the investor charter's contact block.
+  - **Fund minimum:** an empty minimum is sent as 0, meaning none.
+  - **Receipt screens:** the fund receipt queue and detail screens still round to rupees. Their rows come only from gateway settlement, so they are parked under DEC-14 with `finding-27`.
+- **Carried, recorded on each task as deferred:**
+  - **H1:**
+    - other client writes, such as support tickets, take no user-row lock, so an erasure racing one can leave a row for a closed account (the same class as H1's fixed race);
+    - the statement page renderer lives in `domain/` and imports email helpers.
+  - **H2:**
+    - no test covers the receipts `fundId` filter (the query stays scoped to the user);
+    - payment screens keep the "Fund" fallback (DEC-14).
+  - **H3:**
+    - closing the record form drops a held write (this predates the phase);
+    - stale `?q=` and unknown filter values stay in the URL;
+    - the audit trail's client links bypass the role check;
+    - small duplications;
+    - the sidebar groups have no group semantics for screen readers.
+  - **H4:**
+    - a failed "Show more" is silent;
+    - `?userId=` is read only on first mount;
+    - an unknown linked id shows a retry that cannot succeed.
+  - **H5:** the password panels keep typed passwords in form state after an error.
+- **Open:** Q-037 (section 0a), whether the production legal documents carry real contacts. Answer it before release.
+- **Landing runs (TESTED, tally tickets `5e6b6132`, `592abbbb`, `6b34a683`, `b9379c08`, `4621ac8c`):** every commit passed the contracts build, backend `npm run check` and frontend `npm run check` in a clean checkout. Ticket `01f69b6d` passed the same checks, but tally refused the fast-forward because the operator checkout held an uncommitted plan edit. It was rerun as `4621ac8c`.
+- **Process note:** five concurrent `claude-pro` runs at xhigh reached that account's usage limit after about 35 minutes. One fix build stopped partway, and was finished by the original lane agent from its tally hand-off. Two reviews stopped short. The coordinator completed the missing H5 reader sweep, recorded as tally evidence.
+- **Sweep on `f837ed4` (TESTED, clean detached worktree, Node 22.20.0 container, tally sweep record):**
+  - contracts: `npm run check` passed 98 tests, with 189 operations reachable (185 before Phase H, plus two statement-link and two invested-funds operations);
+  - backend: `npm run check` passed 101 files / 1204 tests;
+  - integration: `npm run test:integration -- --coverage.enabled=false` passed 68 files / 569 tests;
+  - frontend: `npm run check` passed 40 files / 336 tests, with the generated client unchanged at 189 operations;
+  - builds: `build:client` (17 assets, 935,102 bytes, with the Android dist check) and `build:admin` passed with their bundle boot checks.
+- **Not verified.**
+  - No browser, device or emulator run of any Phase H screen. That includes the Browser plugin opening a statement link, and printing, saving or sharing it in Android Chrome.
+  - No APK export, no real mail, nothing on a VPS.

@@ -49,7 +49,8 @@ are container builds, so do not mix them with host `npm`.
   client receipts, value updates, returns dashboards, maturity management, nominee,
   and admin fixes; approved, Phases A, B and C and Phase E steps E1-E2 complete
   on local `main`; Phase D and E3 wait for the maintainer, Phases F (maturity
-  choices) and G (client erasure) are complete on local `main`.
+  choices), G (client erasure) and H (experience gaps, APK statement link) are
+  complete on local `main`.
 - [Client erasure](release_manager/docs/client-erasure.md): what the Phase G erase
   command touches, its read-only pre-flight query and the migration 069 notes; read it
   before the first production erase.
