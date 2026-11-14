@@ -1484,6 +1484,10 @@
     {
       "commit": "212a7f0",
       "note": "Maintainer release cut v0.16.0 (status.sh): VERSION 0.15.4 -> 0.16.0, tag v0.16.0 pushed to GitHub. Ships Phases A-C, E1-E2, F, G and H (migrations 061-070). Not yet deployed: G7 dev and G8 production stay open."
+    },
+    {
+      "commit": "6e97a25",
+      "note": "Flaky-test fix after CI run 43627313231 failed on 4da065c: the tampered-token test now changes a full signature character. Red control 1/4 failed with the token left valid; backend check 101 files / 1204 tests in the Node 22 container."
     }
   ]
 }
