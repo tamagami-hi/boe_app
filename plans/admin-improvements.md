@@ -55,6 +55,8 @@ IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-0
 | DEC-31 | 2026-11-14 | Q-031: the admin fills in the figures for options 2 and 3 before sending; the client only picks one. | Built in Phase F. |
 | DEC-32 | 2026-11-14 | Q-032: an extension's new maturity date is filled in as the old date plus the months added, and the admin can change it. | Built in Phase F. |
 | DEC-33 | 2026-11-14 | Phase G go-ahead: build client erasure (DEC-29) now. | Built (Phase G close, section 8). |
+| DEC-34 | 2026-11-14 | "ok proceed with the next implementations": after Phases F and G, build what remains that needs no maintainer step, which is the gaps the client and admin experience review still shows on `main` (U-close, under DEC-19) and the carried-forward items such as a statement the APK can keep. | Phase H (tally phase `H`), being planned. |
+| DEC-35 | 2026-11-14 | Tally rulebook: adopt tally's template, keep only the process rules `RULES.md` does not cover, tailored to this repository, and retire the rest as covered by `RULES.md` ("Process those rules and then read what we have and then adapt to whats best"). | In force. Tally rules are `rule-16` (`RULES.md` is the rulebook), `rule-17` and `rule-18` (payments off; no bank details or reference numbers) and `rule-48` to `rule-54` (scratch, decide once, record once, read once, check once, review once, three attempts). The other 22 template rules are retired, each citing its `RULES.md` rule; write-tests-first conflicted with rule 10. Records now commit once per tally phase. |
 
 #### Replaced
 
