@@ -1,12 +1,22 @@
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
+import { Button } from "~/ui/primitives/Button"
 import { Alert } from "~/ui/primitives/Feedback"
 
-import { gainOf, money, type ActiveSip, type Choice, type HoldingFigures } from "./resolutionCopy"
+import {
+  gainOf,
+  money,
+  type ActiveSip,
+  type Choice,
+  type FactsReload,
+  type HoldingFigures,
+  type HoldingRead,
+} from "./resolutionCopy"
 
 export type ResolutionFactsProps = Readonly<{
   choice: Choice
-  holding: HoldingFigures | null
+  holding: HoldingRead
   activeSip: ActiveSip | null | undefined
+  reload: FactsReload
 }>
 
 const gainText = (holding: HoldingFigures): string => {
@@ -14,6 +24,12 @@ const gainText = (holding: HoldingFigures): string => {
   if (gain === 0n) return "None"
   return gain > 0n ? `Gain of ${money(gain.toString())}` : `Loss of ${money((-gain).toString())}`
 }
+
+const ReadAgain = ({ reload }: Readonly<{ reload: FactsReload }>): React.ReactElement => (
+  <Button size="sm" tone="secondary" loading={reload.refreshing} onClick={reload.onReload}>
+    Read again
+  </Button>
+)
 
 const SipFigures = ({ activeSip }: Readonly<{ activeSip: ActiveSip }>): React.ReactElement => (
   <DataList>
@@ -26,11 +42,17 @@ const SipFigures = ({ activeSip }: Readonly<{ activeSip: ActiveSip }>): React.Re
 export const ActiveSipFacts = ({
   choice,
   activeSip,
-}: Readonly<{ choice: Exclude<Choice, "return_all">; activeSip: ActiveSip | null | undefined }>): React.ReactElement => {
+  reload,
+}: Readonly<{
+  choice: Exclude<Choice, "return_all">
+  activeSip: ActiveSip | null | undefined
+  reload: FactsReload
+}>): React.ReactElement => {
   if (activeSip === undefined) {
     return (
-      <Alert tone="error" title="SIP schedules unavailable">
-        The client&apos;s SIP schedules could not be read, so the schedule this option affects cannot be shown. Reload before choosing this option.
+      <Alert tone="error" title="SIP schedules not read" action={<ReadAgain reload={reload} />}>
+        The client&apos;s SIP schedules could not be read, so the schedule this option affects cannot be shown. Read them
+        again before choosing this option.
       </Alert>
     )
   }
@@ -53,22 +75,36 @@ export const ActiveSipFacts = ({
   )
 }
 
-export const HoldingFacts = ({ holding }: Readonly<{ holding: HoldingFigures | null }>): React.ReactElement =>
-  holding === null ? (
-    <Alert tone="error" title="Holding figures unavailable">
-      The current value could not be read. Reload before resolving.
-    </Alert>
-  ) : (
+export const HoldingFacts = ({
+  holding,
+  reload,
+}: Readonly<{ holding: HoldingRead; reload: FactsReload }>): React.ReactElement => {
+  if (holding.state === "failed") {
+    return (
+      <Alert tone="error" title="Holding not read" action={<ReadAgain reload={reload} />}>
+        The current value could not be read. Read it again before resolving.
+      </Alert>
+    )
+  }
+  if (holding.state === "none") {
+    return (
+      <Alert tone="warning" title="No position in this fund">
+        The client holds nothing in this fund now, so there is no value to return or reinvest.
+      </Alert>
+    )
+  }
+  return (
     <DataList>
-      <DetailRow label="Current value">{money(holding.currentValuePaise)}</DetailRow>
-      <DetailRow label="Amount invested">{money(holding.principalPaise)}</DetailRow>
-      <DetailRow label="Gain or loss">{gainText(holding)}</DetailRow>
+      <DetailRow label="Current value">{money(holding.figures.currentValuePaise)}</DetailRow>
+      <DetailRow label="Amount invested">{money(holding.figures.principalPaise)}</DetailRow>
+      <DetailRow label="Gain or loss">{gainText(holding.figures)}</DetailRow>
     </DataList>
   )
+}
 
-export const ResolutionFacts = ({ choice, holding, activeSip }: ResolutionFactsProps): React.ReactElement => (
+export const ResolutionFacts = ({ choice, holding, activeSip, reload }: ResolutionFactsProps): React.ReactElement => (
   <>
-    <HoldingFacts holding={holding} />
-    {choice === "return_all" ? null : <ActiveSipFacts choice={choice} activeSip={activeSip} />}
+    <HoldingFacts holding={holding} reload={reload} />
+    {choice === "return_all" ? null : <ActiveSipFacts choice={choice} activeSip={activeSip} reload={reload} />}
   </>
 )

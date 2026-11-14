@@ -7,6 +7,16 @@ export type Choice = "return_all" | "one_time_and_sip" | "sip_extension"
 
 export type HoldingFigures = Readonly<{ principalPaise: string; currentValuePaise: string }>
 
+export type HoldingRead =
+  | Readonly<{ state: "read"; figures: HoldingFigures }>
+  | Readonly<{ state: "none" }>
+  | Readonly<{ state: "failed" }>
+
+export const figuresOf = (holding: HoldingRead): HoldingFigures | null =>
+  holding.state === "read" ? holding.figures : null
+
+export type FactsReload = Readonly<{ refreshing: boolean; onReload: () => void }>
+
 export type ActiveSip = Readonly<{ monthlyAmountPaise: string; monthsPaid: number; monthCount: number }>
 
 export const money = (paise: string): string => formatINR(toPaise(paise), { showDecimals: true })

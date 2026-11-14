@@ -16,20 +16,22 @@ import { formatMaturityDate, monthAfter } from "./maturityPresentation"
 import { useResolveMaturity, type MaturityScheduleItem, type ResolveMaturityBody } from "./maturityQueries"
 import {
   explanationOf,
+  figuresOf,
   resolutionOutcomeText,
   type ActiveSip,
   type Choice,
+  type FactsReload,
   type HoldingFigures,
+  type HoldingRead,
 } from "./resolutionCopy"
 import { ResolutionFacts } from "./ResolutionFacts"
 
 export type MaturityResolveDialogProps = Readonly<{
   userId: string
   schedule: MaturityScheduleItem
-  holding: HoldingFigures | null
+  holding: HoldingRead
   activeSip: ActiveSip | null | undefined
-  refreshing: boolean
-  onReload: () => void
+  reload: FactsReload
   onClose: () => void
 }>
 
@@ -64,19 +66,25 @@ const bodyOf = ({ choice, expectedVersion, effectiveDate, holding, sip, extensio
 
 const laterMonth = (left: string, right: string): string => (left > right ? left : right)
 
+const returnUnavailableHint = (holding: HoldingRead): string =>
+  holding.state === "failed"
+    ? "Unavailable: the current value could not be read."
+    : "Unavailable: there is no value in this fund to return."
+
 export const MaturityResolveDialog = ({
   userId,
   schedule,
   holding,
   activeSip,
-  refreshing,
-  onReload,
+  reload,
   onClose,
 }: MaturityResolveDialogProps): React.ReactElement => {
+  const { refreshing, onReload } = reload
+  const figures = figuresOf(holding)
   const write = useHeldWrite(useResolveMaturity(userId), "The resolution could not be sent. Reload the page and try again.")
   const today = indiaToday()
   const earliestMonth = laterMonth(monthAfter(schedule.maturityDate), today.slice(0, 7))
-  const canReturn = holding !== null && BigInt(holding.currentValuePaise) > 0n
+  const canReturn = figures !== null && BigInt(figures.currentValuePaise) > 0n
   const canExtend = activeSip !== undefined && activeSip !== null && extensionRoom(activeSip.monthCount) > 0
   const [choice, setChoice] = useState<Choice>(canReturn ? "return_all" : "one_time_and_sip")
   const [effectiveDate, setEffectiveDate] = useState(schedule.maturityDate)
@@ -92,7 +100,7 @@ export const MaturityResolveDialog = ({
     choice,
     expectedVersion: schedule.version,
     effectiveDate,
-    holding,
+    holding: figures,
     sip: followUpOf(draft, earliestMonth),
     extension: canExtend ? extensionOf(extensionDraft, schedule.maturityDate, room) : null,
   })
@@ -102,7 +110,7 @@ export const MaturityResolveDialog = ({
     {
       value: "return_all",
       label: "Return all the money to the client",
-      hint: canReturn ? "Withdraw the whole value and record a payout." : "Unavailable: the current value could not be read or is zero.",
+      hint: canReturn ? "Withdraw the whole value and record a payout." : returnUnavailableHint(holding),
       disabled: !canReturn,
     },
     {
@@ -171,9 +179,9 @@ export const MaturityResolveDialog = ({
               if (!locked) setChoice(next)
             }}
           />
-          <ResolutionFacts choice={choice} holding={holding} activeSip={activeSip} />
+          <ResolutionFacts choice={choice} holding={holding} activeSip={activeSip} reload={reload} />
           <Alert tone="info" title="What happens">
-            {explanationOf(choice, holding)}
+            {explanationOf(choice, figures)}
           </Alert>
           {needsDate ? (
             <FormField

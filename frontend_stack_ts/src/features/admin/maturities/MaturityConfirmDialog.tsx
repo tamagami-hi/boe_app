@@ -19,16 +19,25 @@ import {
   type MaturityScheduleItem,
 } from "./maturityQueries"
 import { ActiveSipFacts, HoldingFacts } from "./ResolutionFacts"
-import { explanationOf, money, resolutionOutcomeText, type ActiveSip, type Choice, type HoldingFigures } from "./resolutionCopy"
+import {
+  explanationOf,
+  figuresOf,
+  money,
+  resolutionOutcomeText,
+  type ActiveSip,
+  type Choice,
+  type FactsReload,
+  type HoldingFigures,
+  type HoldingRead,
+} from "./resolutionCopy"
 
 export type MaturityConfirmDialogProps = Readonly<{
   userId: string
   schedule: MaturityScheduleItem
   offer: MaturityOfferSummary
-  holding: HoldingFigures | null
+  holding: HoldingRead
   activeSip: ActiveSip | null | undefined
-  refreshing: boolean
-  onReload: () => void
+  reload: FactsReload
   onClose: () => void
 }>
 
@@ -92,10 +101,11 @@ export const MaturityConfirmDialog = ({
   offer,
   holding,
   activeSip,
-  refreshing,
-  onReload,
+  reload,
   onClose,
 }: MaturityConfirmDialogProps): React.ReactElement => {
+  const { refreshing, onReload } = reload
+  const figures = figuresOf(holding)
   const write = useHeldWrite(useConfirmMaturityOffer(userId), "The confirmation could not be sent. Reload the page and try again.")
   const today = indiaToday()
   const [effectiveDate, setEffectiveDate] = useState(schedule.maturityDate)
@@ -107,7 +117,7 @@ export const MaturityConfirmDialog = ({
   const body =
     choice === null
       ? null
-      : bodyOf({ choice, versions: { expectedVersion: schedule.version, offerVersion: offer.version }, effectiveDate, holding })
+      : bodyOf({ choice, versions: { expectedVersion: schedule.version, offerVersion: offer.version }, effectiveDate, holding: figures })
   const ready = body !== null && sipKnown && !refreshing && (!needsDate || dateValid)
   const changedSinceSent = write.outcome.kind === "rejected" && write.outcome.code === "STATE_CONFLICT"
 
@@ -160,11 +170,11 @@ export const MaturityConfirmDialog = ({
                 : "Something changed since you opened this. Close it, check the client's current choice and the figures, then confirm again."}
             </Alert>
           ) : null}
-          <HoldingFacts holding={holding} />
+          <HoldingFacts holding={holding} reload={reload} />
           <OfferedFigures choice={choice} offer={offer} />
-          {choice === "return_all" ? null : <ActiveSipFacts choice={choice} activeSip={activeSip} />}
+          {choice === "return_all" ? null : <ActiveSipFacts choice={choice} activeSip={activeSip} reload={reload} />}
           <Alert tone="info" title="What happens">
-            {explanationOf(choice, holding)}
+            {explanationOf(choice, figures)}
           </Alert>
           {needsDate ? (
             <FormField

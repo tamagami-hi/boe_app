@@ -12,7 +12,7 @@ import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { Badge } from "~/ui/primitives/Badge"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
-import { Skeleton } from "~/ui/primitives/Feedback"
+import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 import { ENTRY_TEXT, PROSE_SM } from "~/ui/recipes/datalist"
 import { ACTION_ROW } from "~/ui/recipes/layout"
 import { META_TEXT } from "~/ui/recipes/text"
@@ -53,6 +53,7 @@ export const ClientMaturitySection = ({ userId, canSet }: ClientMaturitySectionP
     .filter((row) => !openFunds.has(row.fundId))
     .map((row) => ({ fundId: row.fundId, label: fundName(row.fundId) }))
   const canStart = canWrite && canSet && positions.data !== undefined && schedules.data !== undefined
+  const isPositionsFailed = canWrite && canSet && positions.data === undefined && positions.error != null
 
   return (
     <Section
@@ -84,6 +85,27 @@ export const ClientMaturitySection = ({ userId, canSet }: ClientMaturitySectionP
           }}
         />
       )}
+
+      {isPositionsFailed ? (
+        <Alert
+          tone="error"
+          title="Holdings not read"
+          action={
+            <Button
+              size="sm"
+              tone="secondary"
+              loading={positions.isFetching}
+              onClick={() => {
+                void positions.refetch()
+              }}
+            >
+              Try again
+            </Button>
+          }
+        >
+          This client&apos;s holdings could not be read, so a new maturity date cannot be set yet.
+        </Alert>
+      ) : null}
 
       <HeldWriteNotice write={cancel} subject="the maturity date was cancelled" onReload={reload} />
 

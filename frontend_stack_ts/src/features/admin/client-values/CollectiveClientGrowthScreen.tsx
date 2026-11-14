@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useState } from "react"
 
 import { isApiError, isUnknownWriteOutcome } from "~/api/errors"
 import { useIdempotencyKey } from "~/api/idempotency"
@@ -8,7 +8,6 @@ import { Section } from "~/app/layouts/Section"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { formatDate } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
-import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { useAdminFundCatalogue } from "~/features/admin/shared/queries"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { DataList, DetailRow, Stat } from "~/ui/patterns/DataList"
@@ -29,11 +28,11 @@ import { PROSE_SM } from "~/ui/recipes/datalist"
 import { ACTION_ROW, STACK_LG } from "~/ui/recipes/layout"
 
 import { CatalogueFundPicker } from "./CatalogueFundPicker"
+import { CollectivePreviewTable } from "./CollectivePreviewTable"
 import { useCommitCollectiveClientGrowth, usePreviewCollectiveClientGrowth } from "./growthQueries"
 import type { CollectiveGrowthCommitInput } from "./growthQueries"
 import { DEFAULT_GROWTH_REASON, GROWTH_REASON_OPTIONS } from "./growthReasons"
 import { indiaToday } from "./indiaToday"
-import { investorLabel, useInvestorDirectory } from "./investorQueries"
 
 const MIN_BASIS_POINTS = -2_000
 const MAX_BASIS_POINTS = 2_000
@@ -62,7 +61,6 @@ const describeCommitRejection = (error: unknown): CommitOutcome => {
 
 const CollectiveClientGrowthScreen = (): React.ReactElement => {
   const funds = useAdminFundCatalogue()
-  const directory = useInvestorDirectory()
   const preview = usePreviewCollectiveClientGrowth()
   const commit = useCommitCollectiveClientGrowth()
 
@@ -78,10 +76,6 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
   const [confirmingRestart, setConfirmingRestart] = useState(false)
   const [confirmingCommit, setConfirmingCommit] = useState(false)
 
-  const investorNames = useMemo(
-    () => new Map((directory.data?.items ?? []).map((user) => [user.id, investorLabel(user)])),
-    [directory.data],
-  )
   const fund = (funds.data?.items ?? []).find((entry) => entry.id === fundId)
   const fundLabel = fund?.name ?? fund?.slug ?? fundId
 
@@ -293,6 +287,7 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
                     size="md"
                     tone="signed"
                     showSign
+                    showDecimals
                   />
                 </Stat>
                 <Stat label="Mode">
@@ -309,50 +304,7 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
           </Section>
 
           <Section title="Every position in the batch">
-            <AdminTable
-              caption="Preview targets"
-              rows={plan.targets}
-              rowKey={(row) => row.userId}
-              columns={[
-                {
-                  key: "user",
-                  header: "Investor",
-                  render: (row) =>
-                    investorNames.get(row.userId) ?? <span className={ADMIN_CODE}>{row.userId}</span>,
-                },
-                {
-                  key: "principal",
-                  header: "Invested",
-                  numeric: true,
-                  render: (row) => <MoneyValue amount={toPaise(row.principalPaise)} size="sm" />,
-                },
-                {
-                  key: "before",
-                  header: "Before",
-                  numeric: true,
-                  render: (row) => <MoneyValue amount={toPaise(row.beforePaise)} size="sm" />,
-                },
-                {
-                  key: "delta",
-                  header: "Change",
-                  numeric: true,
-                  render: (row) => (
-                    <MoneyValue
-                      amount={toPaise(row.deltaPaise)}
-                      size="sm"
-                      tone="signed"
-                      showSign
-                    />
-                  ),
-                },
-                {
-                  key: "after",
-                  header: "After",
-                  numeric: true,
-                  render: (row) => <MoneyValue amount={toPaise(row.afterPaise)} size="sm" />,
-                },
-              ]}
-            />
+            <CollectivePreviewTable targets={plan.targets} />
           </Section>
 
           <Section
@@ -445,7 +397,7 @@ const CollectiveClientGrowthScreen = (): React.ReactElement => {
               {String(plan.targetCount)}
             </DetailRow>
             <DetailRow label="Total change">
-              <MoneyValue amount={toPaise(plan.totalDeltaPaise)} size="sm" tone="signed" showSign />
+              <MoneyValue amount={toPaise(plan.totalDeltaPaise)} size="sm" tone="signed" showSign showDecimals />
             </DetailRow>
             <DetailRow label="Effective date">{effectiveDate === "" ? "" : formatDate(effectiveDate)}</DetailRow>
             <DetailRow label="Reason">

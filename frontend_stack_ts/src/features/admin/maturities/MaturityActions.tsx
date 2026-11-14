@@ -12,6 +12,7 @@ import { formatMaturityDate } from "./maturityPresentation"
 import { useWithdrawMaturityOffer, type MaturityOfferSummary, type MaturityScheduleItem } from "./maturityQueries"
 import { MaturityResolveDialog } from "./MaturityResolveDialog"
 import { MaturitySendDialog } from "./MaturitySendDialog"
+import type { HoldingRead } from "./resolutionCopy"
 
 export type MaturityActionKind = "resolve" | "send" | "confirm" | "withdraw"
 
@@ -127,6 +128,14 @@ const ClosedOfferModal = ({ onClose }: Readonly<{ onClose: () => void }>): React
 
 export type MaturityActionDialogProps = Readonly<{ userId: string; action: MaturityAction; onClose: () => void }>
 
+type PositionsRead = ReturnType<typeof useAdminInvestorPositions>
+
+const holdingOf = (positions: PositionsRead, fundId: string): HoldingRead => {
+  if (positions.data === undefined) return { state: "failed" }
+  const row = positions.data.items.find((item) => item.fundId === fundId)
+  return row === undefined ? { state: "none" } : { state: "read", figures: row }
+}
+
 export const MaturityActionDialog = ({ userId, action, onClose }: MaturityActionDialogProps): React.ReactElement => {
   const positions = useAdminInvestorPositions(userId)
   const sips = useClientSipSchedules(userId)
@@ -139,17 +148,19 @@ export const MaturityActionDialog = ({ userId, action, onClose }: MaturityAction
   }
   if (positions.isPending || sips.isPending) return <ReadingModal onClose={onClose} />
 
-  const holding = positions.data?.items.find((row) => row.fundId === schedule.fundId) ?? null
+  const holding = holdingOf(positions, schedule.fundId)
   const activeSip =
     sips.data === undefined ? undefined : (sips.data.items.find((row) => row.fundId === schedule.fundId && row.state === "active") ?? null)
   const shared = {
     userId,
     schedule,
     activeSip,
-    refreshing: positions.isFetching || sips.isFetching,
-    onReload: () => {
-      void positions.refetch()
-      void sips.refetch()
+    reload: {
+      refreshing: positions.isFetching || sips.isFetching,
+      onReload: () => {
+        void positions.refetch()
+        void sips.refetch()
+      },
     },
     onClose,
   }

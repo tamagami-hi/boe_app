@@ -16,14 +16,13 @@ import { FollowUpSipFields, followUpOf, type FollowUpDraft } from "./FollowUpSip
 import { formatMaturityDate, monthAfter } from "./maturityPresentation"
 import { useSendMaturityOptions, type MaturityScheduleItem } from "./maturityQueries"
 import { ActiveSipFacts } from "./ResolutionFacts"
-import type { ActiveSip } from "./resolutionCopy"
+import type { ActiveSip, FactsReload } from "./resolutionCopy"
 
 export type MaturitySendDialogProps = Readonly<{
   userId: string
   schedule: MaturityScheduleItem
   activeSip: ActiveSip | null | undefined
-  refreshing: boolean
-  onReload: () => void
+  reload: FactsReload
   onClose: () => void
 }>
 
@@ -41,10 +40,10 @@ export const MaturitySendDialog = ({
   userId,
   schedule,
   activeSip,
-  refreshing,
-  onReload,
+  reload,
   onClose,
 }: MaturitySendDialogProps): React.ReactElement => {
+  const { refreshing, onReload } = reload
   const write = useHeldWrite(useSendMaturityOptions(userId), "The options could not be sent. Reload the page and try again.")
   const earliestMonth = laterMonth(monthAfter(schedule.maturityDate), indiaToday().slice(0, 7))
   const [draft, setDraft] = useState<FollowUpDraft>({ rupees: "", startMonth: earliestMonth, months: "12" })
@@ -114,7 +113,7 @@ export const MaturitySendDialog = ({
           <div className={STACK_SM}>
             <span className={ITEM_TITLE}>3. Extend the SIP</span>
             {activeSip === undefined ? (
-              <ActiveSipFacts choice="sip_extension" activeSip={activeSip} />
+              <ActiveSipFacts choice="sip_extension" activeSip={activeSip} reload={reload} />
             ) : room === 0 ? (
               <ExtensionUnavailable activeSip={activeSip} />
             ) : (
@@ -128,7 +127,7 @@ export const MaturitySendDialog = ({
                 />
                 {offerExtension ? (
                   <>
-                    <ActiveSipFacts choice="sip_extension" activeSip={activeSip} />
+                    <ActiveSipFacts choice="sip_extension" activeSip={activeSip} reload={reload} />
                     <ExtensionFields
                       draft={extensionDraft}
                       maturityDate={schedule.maturityDate}
