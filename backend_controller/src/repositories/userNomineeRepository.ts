@@ -14,6 +14,7 @@ export interface NomineeHolder {
   readonly accountState: UserAccountState
   readonly tombstoned: boolean
   readonly version: number
+  readonly userVersion: number
 }
 
 export interface NomineeReplacement {
@@ -36,6 +37,7 @@ interface HolderRow {
   readonly account_state: UserAccountState
   readonly pii_tombstoned_at: Date | null
   readonly nominee_version: number
+  readonly version: string
 }
 
 const HOLDER_COLUMNS = [
@@ -45,6 +47,7 @@ const HOLDER_COLUMNS = [
   "account_state",
   "pii_tombstoned_at",
   "nominee_version",
+  "version",
 ] as const
 
 const toHolder = (row: HolderRow): NomineeHolder => ({
@@ -56,6 +59,7 @@ const toHolder = (row: HolderRow): NomineeHolder => ({
   accountState: row.account_state,
   tombstoned: row.pii_tombstoned_at !== null,
   version: row.nominee_version,
+  userVersion: Number(row.version),
 })
 
 export const createUserNomineeRepository = (): UserNomineeRepository => ({

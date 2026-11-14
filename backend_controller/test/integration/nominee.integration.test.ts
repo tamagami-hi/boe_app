@@ -187,20 +187,35 @@ describe("a client's own nominee", () => {
     const cleared = await clientPost(asha, { name: null, relation: null })
     expect(dataOf<NomineeResponse>(cleared)).toEqual({ userId: asha.id, nominee: null, version: 2, status: "changed" })
 
+    const { version: userVersion } = await nomineeRow(asha.id)
     expect(await auditRows(asha.id)).toEqual([
       {
         actor_type: "user",
         actor_user_id: asha.id,
         command: "user.nominee_changed",
-        entity_version: "1",
-        metadata: { change: "added", nameChanged: true, relationChanged: true, previousName: null, currentName: "M***" },
+        entity_version: userVersion,
+        metadata: {
+          change: "added",
+          nameChanged: true,
+          relationChanged: true,
+          previousName: null,
+          currentName: "M***",
+          nomineeVersion: 1,
+        },
       },
       {
         actor_type: "user",
         actor_user_id: asha.id,
         command: "user.nominee_changed",
-        entity_version: "2",
-        metadata: { change: "removed", nameChanged: true, relationChanged: true, previousName: "M***", currentName: null },
+        entity_version: userVersion,
+        metadata: {
+          change: "removed",
+          nameChanged: true,
+          relationChanged: true,
+          previousName: "M***",
+          currentName: null,
+          nomineeVersion: 2,
+        },
       },
     ])
     expect(await stack.count("audit_events", "metadata::text like $1", ["%Krishnan%"])).toBe(0)

@@ -51,13 +51,17 @@ const changeKind = (previous: Nominee | null, next: Nominee | null): "added" | "
   return next === null ? "removed" : "updated"
 }
 
-const auditMetadata = (previous: Nominee | null, next: Nominee | null): Record<string, unknown> => ({
-  change: changeKind(previous, next),
-  nameChanged: previous?.name !== next?.name,
-  relationChanged: previous?.relation !== next?.relation,
-  previousName: previous === null ? null : maskName(previous.name),
-  currentName: next === null ? null : maskName(next.name),
-})
+const auditMetadata = (previous: Nominee | null, updated: NomineeHolder): Record<string, unknown> => {
+  const next = updated.nominee
+  return {
+    change: changeKind(previous, next),
+    nameChanged: previous?.name !== next?.name,
+    relationChanged: previous?.relation !== next?.relation,
+    previousName: previous === null ? null : maskName(previous.name),
+    currentName: next === null ? null : maskName(next.name),
+    nomineeVersion: updated.version,
+  }
+}
 
 const applyChange = async (tx: Transaction, deps: NomineeDeps, input: ChangeInput): Promise<NomineeChange> => {
   const { holder } = input
@@ -78,8 +82,8 @@ const applyChange = async (tx: Transaction, deps: NomineeDeps, input: ChangeInpu
     entityType: "user",
     entityId: holder.userId,
     requestId: input.requestId,
-    entityVersion: updated.version,
-    metadata: auditMetadata(holder.nominee, updated.nominee),
+    entityVersion: updated.userVersion,
+    metadata: auditMetadata(holder.nominee, updated),
   })
   return { status: "changed", holder: updated }
 }
