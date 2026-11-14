@@ -18,6 +18,7 @@ import {
 } from "~/app/routing/clientRoutes"
 import type { GuardTargets } from "~/app/routing/guards"
 import { AuthPortProvider } from "~/features/auth/authPort"
+import { LoginHelp } from "~/features/auth/LoginHelp"
 import type { AuthPort } from "~/features/auth/authPort"
 import { ClientFrame } from "~/shells/client/ClientFrame"
 import { ClientRoutes } from "~/shells/client/ClientRoutes"
@@ -59,6 +60,7 @@ const ClientShellRoot = (): React.ReactElement => {
       homePath: CLIENT_HOME_PATH,
       supportPath: CLIENT_SUPPORT_PATH,
       audienceLabel: "Client access",
+      loginHelp: <LoginHelp />,
     }),
     [runtime],
   )

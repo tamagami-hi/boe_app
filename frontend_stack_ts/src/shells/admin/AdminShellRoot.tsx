@@ -48,6 +48,7 @@ const AdminShellRoot = (): React.ReactElement => {
       homePath: ADMIN_HOME_PATH,
       supportPath: null,
       audienceLabel: "Administrator console",
+      loginHelp: null,
     }),
     [runtime],
   )

@@ -11,47 +11,9 @@ import { Skeleton } from "~/ui/primitives/Feedback"
 import { PROSE_PANEL } from "~/ui/recipes/surface"
 import { CARD_TITLE, META_ROW } from "~/ui/recipes/text"
 
-import {
-  CONTACT_LABEL,
-  CONTACT_LIST,
-  DOC_LIST,
-  DOC_SECTION,
-  CONTACT_ROW,
-  CONTACT_VALUE,
-} from "./legal.recipe"
-
-export type LegalSection = Readonly<{ heading: string; body: string }>
-
-export type LegalContact = Readonly<{ label: string; value: string }>
-
-const asString = (value: unknown): string | null =>
-  typeof value === "string" && value.trim() !== "" ? value : null
-
-const readSections = (document: Record<string, unknown>): readonly LegalSection[] => {
-  const raw = document.sections
-  if (!Array.isArray(raw)) return []
-  return raw.flatMap((entry) => {
-    if (typeof entry !== "object" || entry === null) return []
-    const record = entry as Record<string, unknown>
-    const heading = asString(record.heading) ?? asString(record.title)
-    const body = asString(record.body) ?? asString(record.text)
-    if (heading === null || body === null) return []
-    return [{ heading, body }]
-  })
-}
-
-const readContacts = (document: Record<string, unknown>): readonly LegalContact[] => {
-  const raw = document.contacts
-  if (!Array.isArray(raw)) return []
-  return raw.flatMap((entry) => {
-    if (typeof entry !== "object" || entry === null) return []
-    const record = entry as Record<string, unknown>
-    const label = asString(record.label) ?? asString(record.name)
-    const value = asString(record.value) ?? asString(record.email) ?? asString(record.phone)
-    if (label === null || value === null) return []
-    return [{ label, value }]
-  })
-}
+import { LegalSections } from "./LegalSections"
+import { PublishedContactList } from "./PublishedContactList"
+import { readBody, readContacts, readSections, type PublishedDocument } from "./publishedContent"
 
 export type LegalDocumentScreenProps = Readonly<{
   kind: LegalDocumentKind
@@ -90,10 +52,10 @@ export const LegalDocumentScreen = ({
         }
       >
         {(data) => {
-          const document = data as unknown as Record<string, unknown>
-          const sections = readSections(document)
+          const document = data as unknown as PublishedDocument
+          const sections = readSections(document, "sections")
           const contacts = readContacts(document)
-          const body = asString(document.body)
+          const body = readBody(document)
           const isPublished = body !== null || sections.length > 0 || contacts.length > 0
 
           return (
@@ -106,26 +68,13 @@ export const LegalDocumentScreen = ({
 
               {body === null ? null : <Prose>{body}</Prose>}
 
-              {sections.length === 0 ? null : (
-                <div className={DOC_LIST}>
-                  {sections.map((section) => (
-                    <div key={section.heading} className={DOC_SECTION}>
-                      <h2 className={CARD_TITLE}>{section.heading}</h2>
-                      <Prose>{section.body}</Prose>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <LegalSections sections={sections} />
 
               {contacts.length === 0 ? null : (
-                <ul className={CONTACT_LIST}>
-                  {contacts.map((contact) => (
-                    <li key={contact.label} className={CONTACT_ROW}>
-                      <span className={CONTACT_LABEL}>{contact.label}</span>
-                      <span className={CONTACT_VALUE}>{contact.value}</span>
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  <h2 className={CARD_TITLE}>Contact</h2>
+                  <PublishedContactList contacts={contacts} />
+                </>
               )}
 
               {isPublished ? null : (

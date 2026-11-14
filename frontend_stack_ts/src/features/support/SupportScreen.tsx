@@ -7,6 +7,7 @@ import { isApiError } from "~/api/errors"
 import { formatDateTime } from "~/domain/dates"
 import { supportRequestState } from "~/domain/status"
 import { SUPPORT_CATEGORIES, supportCategoryLabel } from "~/domain/supportCategories"
+import { SupportContacts, useSupportContacts } from "~/features/legal/SupportContacts"
 import {
   useCreateSupportTicket,
   useSupportFaqs,
@@ -35,10 +36,16 @@ const TICKET_BODY = cx(PROSE_SM, PROSE_PRE)
 const MAX_SUBJECT = 200
 const MAX_BODY = 5_000
 
+const CONTACTS_TITLE = "Contact the BeOnEdge team"
+
+const CONTACTS_UNPUBLISHED =
+  "Contact details are not published yet. Requests you send here reach the BeOnEdge team."
+
 const SupportScreen = (): React.ReactElement => {
   const faqs = useSupportFaqs()
   const tickets = useSupportTickets()
   const create = useCreateSupportTicket()
+  const hasContacts = useSupportContacts().length > 0
 
   const [category, setCategory] = useState<string>("general")
   const [subject, setSubject] = useState("")
@@ -126,8 +133,9 @@ const SupportScreen = (): React.ReactElement => {
             >
               {create.isSuccess && subject === "" && body === "" ? (
                 <Alert tone="success" title="Request sent">
-                  The BeOnEdge team will review it, and its status below will update. For anything
-                  urgent, contact the BeOnEdge team directly.
+                  {hasContacts
+                    ? `The BeOnEdge team will review it, and its status below will update. For anything urgent, use the contact details under ${CONTACTS_TITLE}.`
+                    : "The BeOnEdge team will review it, and its status below will update."}
                 </Alert>
               ) : null}
               {failureMessage === null ? null : (
@@ -243,6 +251,11 @@ const SupportScreen = (): React.ReactElement => {
         <LoadMore list={tickets} noun="requests" />
       </Section>
 
+      <Section title={CONTACTS_TITLE}>
+        <Card>
+          <SupportContacts unpublished={CONTACTS_UNPUBLISHED} />
+        </Card>
+      </Section>
     </Page>
   )
 }

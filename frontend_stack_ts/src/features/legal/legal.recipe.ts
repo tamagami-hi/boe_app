@@ -9,3 +9,5 @@ export const CONTACT_ROW = "flex flex-wrap items-baseline gap-x-3 gap-y-2"
 export const CONTACT_LABEL = "min-w-32 font-ui text-sm text-fg-muted"
 
 export const CONTACT_VALUE = "font-ui text-sm font-semibold text-fg"
+
+export const DOC_ITEMS = "m-0 flex max-w-[68ch] list-disc flex-col gap-1.5 pl-5 font-ui text-base leading-relaxed text-fg-muted"

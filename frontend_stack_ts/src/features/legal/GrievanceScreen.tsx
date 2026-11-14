@@ -1,80 +1,32 @@
-
-
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
-import { useToast } from "~/app/providers/ToastProvider"
 import { Section } from "~/app/layouts/Section"
-import { CLIENT_ROUTES, CLIENT_SUPPORT_PATH } from "~/app/routing/clientRoutes"
-import { resolveDestination } from "~/app/routing/resolveDestination"
+import { CLIENT_SUPPORT_PATH } from "~/app/routing/clientRoutes"
 import { formatDate } from "~/domain/dates"
-import { openDestination } from "~/platform/openExternal"
 import { useLegalDocument } from "~/features/shared/queries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
-import { Prose } from "~/ui/patterns/DataList"
-
+import { DataList, DetailRow, Prose } from "~/ui/patterns/DataList"
 import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 import { PROSE_PANEL } from "~/ui/recipes/surface"
-import { CARD_TITLE, LINK_TEXT_SM, META_ROW } from "~/ui/recipes/text"
+import { CARD_TITLE, META_ROW } from "~/ui/recipes/text"
 
-import {
-  CONTACT_LABEL,
-  CONTACT_LIST,
-  DOC_LIST,
-  DOC_SECTION,
-  CONTACT_ROW,
-  CONTACT_VALUE,
-} from "./legal.recipe"
+import { LegalSections } from "./LegalSections"
+import { PublishedContactList } from "./PublishedContactList"
+import { readBody, readContacts, readFacts, readSections, type PublishedDocument } from "./publishedContent"
 
 const FALLBACK =
   "The full grievance policy is not available yet. You can still raise a complaint through support. It gets a reference straight away, and the BeOnEdge team will review it."
 
-type Step = Readonly<{ heading: string; body: string }>
-type Contact = Readonly<{ label: string; value: string; href: string | null }>
+const RAISE_FIRST =
+  "Send the details through support. You get a reference straight away, and the BeOnEdge team will review the request and update its status there."
 
-const asString = (value: unknown): string | null =>
-  typeof value === "string" && value.trim() !== "" ? value : null
-
-const readSteps = (document: Record<string, unknown>): readonly Step[] => {
-  const raw = Array.isArray(document.steps)
-    ? document.steps
-    : Array.isArray(document.sections)
-      ? document.sections
-      : []
-  return raw.flatMap((entry) => {
-    if (typeof entry !== "object" || entry === null) return []
-    const record = entry as Record<string, unknown>
-    const heading = asString(record.heading) ?? asString(record.title) ?? asString(record.stage)
-    const body = asString(record.body) ?? asString(record.text) ?? asString(record.detail)
-    if (heading === null || body === null) return []
-    return [{ heading, body }]
-  })
-}
-
-const readContacts = (document: Record<string, unknown>): readonly Contact[] => {
-  const raw = Array.isArray(document.contacts) ? document.contacts : []
-  return raw.flatMap((entry) => {
-    if (typeof entry !== "object" || entry === null) return []
-    const record = entry as Record<string, unknown>
-    const label = asString(record.label) ?? asString(record.name)
-    const value =
-      asString(record.value) ?? asString(record.email) ?? asString(record.phone) ?? asString(record.url)
-    if (label === null || value === null) return []
-    return [{ label, value, href: asString(record.url) ?? asString(record.href) }]
-  })
-}
+const URGENT_CONTACTS = " For anything urgent, use the grievance contacts above."
 
 const GrievanceScreen = (): React.ReactElement => {
   const query = useLegalDocument("grievance")
-  const toast = useToast()
-
-  const follow = (candidate: string): void => {
-    void openDestination(resolveDestination(candidate, CLIENT_ROUTES)).then((result) => {
-      if (result.ok) return
-      toast.show("We couldn't open that on this device.", "error")
-    })
-  }
+  const hasContacts = query.data !== undefined && readContacts(query.data).length > 0
 
   return (
     <Page width="default">
@@ -98,11 +50,13 @@ const GrievanceScreen = (): React.ReactElement => {
         }
       >
         {(data) => {
-          const document = data as unknown as Record<string, unknown>
-          const steps = readSteps(document)
+          const document = data as unknown as PublishedDocument
+          const steps = readSections(document, "steps")
+          const sections = steps.length > 0 ? steps : readSections(document, "sections")
+          const timelines = readFacts(document, "timelines")
           const contacts = readContacts(document)
-          const body = asString(document.body)
-          const isPublished = body !== null || steps.length > 0 || contacts.length > 0
+          const body = readBody(document)
+          const isPublished = body !== null || sections.length > 0 || contacts.length > 0
 
           return (
             <Card>
@@ -114,38 +68,26 @@ const GrievanceScreen = (): React.ReactElement => {
 
               {body === null ? null : <Prose>{body}</Prose>}
 
-              {steps.length === 0 ? null : (
-                <div className={DOC_LIST}>
-                  {steps.map((step) => (
-                    <div key={step.heading} className={DOC_SECTION}>
-                      <h2 className={CARD_TITLE}>{step.heading}</h2>
-                      <Prose>{step.body}</Prose>
-                    </div>
-                  ))}
-                </div>
+              <LegalSections sections={sections} />
+
+              {timelines.length === 0 ? null : (
+                <>
+                  <h2 className={CARD_TITLE}>Timelines</h2>
+                  <DataList>
+                    {timelines.map((fact) => (
+                      <DetailRow key={fact.label} label={fact.label}>
+                        {fact.value}
+                      </DetailRow>
+                    ))}
+                  </DataList>
+                </>
               )}
 
               {contacts.length === 0 ? null : (
-                <ul className={CONTACT_LIST}>
-                  {contacts.map((contact) => (
-                    <li key={contact.label} className={CONTACT_ROW}>
-                      <span className={CONTACT_LABEL}>{contact.label}</span>
-                      {contact.href === null ? (
-                        <span className={CONTACT_VALUE}>{contact.value}</span>
-                      ) : (
-                        <button
-                          type="button"
-                          className={LINK_TEXT_SM}
-                          onClick={() => {
-                            follow(contact.href ?? "")
-                          }}
-                        >
-                          {contact.value}
-                        </button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  <h2 className={CARD_TITLE}>Grievance contacts</h2>
+                  <PublishedContactList contacts={contacts} />
+                </>
               )}
 
               {isPublished ? null : <Prose>{FALLBACK}</Prose>}
@@ -156,11 +98,11 @@ const GrievanceScreen = (): React.ReactElement => {
 
       <Section
         title="Raise it with us first"
-        description="Send the details through support. You get a reference straight away, and the BeOnEdge team will review the request and update its status there. For anything urgent, contact the BeOnEdge team directly."
+        description={hasContacts ? `${RAISE_FIRST}${URGENT_CONTACTS}` : RAISE_FIRST}
       >
         <ButtonLink to={CLIENT_SUPPORT_PATH} trailing>
-Open support
-</ButtonLink>
+          Open support
+        </ButtonLink>
       </Section>
     </Page>
   )

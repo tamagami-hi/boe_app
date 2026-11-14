@@ -1,4 +1,5 @@
 import { createContext, useContext } from "react"
+import type { ReactNode } from "react"
 
 import type { Principal } from "~/app/providers/SessionProvider"
 
@@ -15,6 +16,7 @@ export type AuthPort = Readonly<{
   homePath: string
   supportPath: string | null
   audienceLabel: string
+  loginHelp: ReactNode
 }>
 
 const AuthPortContext = createContext<AuthPort | null>(null)

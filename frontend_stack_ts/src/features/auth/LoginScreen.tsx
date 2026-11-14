@@ -116,6 +116,7 @@ const LoginScreen = (): React.ReactElement => {
           Forgot your password?
         </ButtonLink>
       </Form>
+      {port.loginHelp}
     </AuthLayout>
   )
 }
