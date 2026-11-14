@@ -1,6 +1,7 @@
 import type { appendAdminIndividualClientGrowth } from "~/api/generated/operations"
 import type { DataOf } from "~/api/http"
 import { Section } from "~/app/layouts/Section"
+import { formatDate } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
@@ -22,18 +23,18 @@ export const GrowthReceipt = ({ receipt }: GrowthReceiptProps): React.ReactEleme
           <span className={ADMIN_CODE}>{receipt.entryId}</span>
         </DetailRow>
         <DetailRow label="Amount invested">
-          <MoneyValue amount={toPaise(receipt.principalPaise)} size="sm" />
+          <MoneyValue amount={toPaise(receipt.principalPaise)} size="sm" showDecimals />
         </DetailRow>
         <DetailRow label="Value before">
-          <MoneyValue amount={toPaise(receipt.beforePaise)} size="sm" />
+          <MoneyValue amount={toPaise(receipt.beforePaise)} size="sm" showDecimals />
         </DetailRow>
         <DetailRow label="Adjustment">
-          <MoneyValue amount={toPaise(receipt.deltaPaise)} size="sm" tone="signed" showSign />
+          <MoneyValue amount={toPaise(receipt.deltaPaise)} size="sm" tone="signed" showSign showDecimals />
         </DetailRow>
         <DetailRow label="Value after">
-          <MoneyValue amount={toPaise(receipt.afterPaise)} size="sm" />
+          <MoneyValue amount={toPaise(receipt.afterPaise)} size="sm" showDecimals />
         </DetailRow>
-        <DetailRow label="Effective date">{receipt.effectiveDate}</DetailRow>
+        <DetailRow label="Effective date">{formatDate(receipt.effectiveDate)}</DetailRow>
       </DataList>
     </Card>
   </Section>

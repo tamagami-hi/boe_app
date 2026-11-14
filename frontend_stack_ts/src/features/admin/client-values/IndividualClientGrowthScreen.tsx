@@ -27,6 +27,8 @@ import type { IndividualGrowthInput } from "./growthQueries"
 import { DEFAULT_GROWTH_REASON, GROWTH_REASON_OPTIONS } from "./growthReasons"
 import { indiaToday } from "./indiaToday"
 import { InvestorPicker } from "./InvestorPicker"
+import { useLinkedInvestor } from "./linkedInvestor"
+import { useLinkedRecord } from "./linkedRecord"
 import { parsePositiveRupees } from "./rupeeAmount"
 
 type Mode = "rate" | "amount"
@@ -62,10 +64,12 @@ const describeRejection = (error: unknown): string => {
 const IndividualClientGrowthScreen = (): React.ReactElement => {
   const funds = useAdminFundCatalogue()
   const growth = useIndividualClientGrowth()
+  const { linked, relink } = useLinkedRecord()
 
   const [mode, setMode] = useState<Mode>("rate")
-  const [userId, setUserId] = useState("")
-  const [fundId, setFundId] = useState("")
+  const [userId, setUserId] = useState(linked.userId)
+  const [pickedLabel, setPickedLabel] = useState("")
+  const [fundId, setFundId] = useState(linked.fundId)
   const [basisPoints, setBasisPoints] = useState("")
   const [direction, setDirection] = useState<Direction>("increase")
   const [rupees, setRupees] = useState("")
@@ -78,6 +82,7 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
   const [confirmingRestart, setConfirmingRestart] = useState(false)
 
   const positions = useAdminInvestorPositions(userId)
+  const investor = useLinkedInvestor(userId, pickedLabel)
 
   const fundName = (id: string): string => {
     const fund = (funds.data?.items ?? []).find((entry) => entry.id === id)
@@ -120,7 +125,7 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
   const invalidAmount = mode === "amount" && signedPaise === null
   const incomplete =
     userId === "" ||
-    fundId === "" ||
+    selectedPosition === null ||
     reasonCode === "" ||
     effectiveDate === "" ||
     futureDated ||
@@ -280,9 +285,12 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
             disabled={locked}
             onChange={(choice) => {
               setUserId(choice.userId)
+              setPickedLabel(choice.label)
               setFundId("")
+              relink({ userId: choice.userId, fundId: "" })
             }}
           />
+          {investor.notice}
 
           <div className={STACK_SM}>
             <FormField
@@ -300,6 +308,7 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
                   disabled={locked || positionItems.length === 0}
                   onChange={(event) => {
                     setFundId(event.target.value)
+                    relink({ userId, fundId: event.target.value })
                   }}
                 />
               )}
@@ -320,10 +329,10 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
           {selectedPosition === null ? null : (
             <DataList>
               <DetailRow label="Amount invested">
-                <MoneyValue amount={toPaise(selectedPosition.principalPaise)} size="sm" />
+                <MoneyValue amount={toPaise(selectedPosition.principalPaise)} size="sm" showDecimals />
               </DetailRow>
               <DetailRow label="Current value">
-                <MoneyValue amount={toPaise(selectedPosition.currentValuePaise)} size="sm" />
+                <MoneyValue amount={toPaise(selectedPosition.currentValuePaise)} size="sm" showDecimals />
               </DetailRow>
               <DetailRow label="Gain so far">
                 <MoneyValue
@@ -331,6 +340,7 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
                   size="sm"
                   tone="signed"
                   showSign
+                  showDecimals
                 />
               </DetailRow>
               {mode === "rate" && rateInBand ? (
@@ -348,10 +358,11 @@ const IndividualClientGrowthScreen = (): React.ReactElement => {
                       size="sm"
                       tone="signed"
                       showSign
+                      showDecimals
                     />
                   </DetailRow>
                   <DetailRow label="Projected value after this adjustment">
-                    <MoneyValue amount={toPaise(adjustment.projected.toString())} size="sm" />
+                    <MoneyValue amount={toPaise(adjustment.projected.toString())} size="sm" showDecimals />
                   </DetailRow>
                 </>
               )}

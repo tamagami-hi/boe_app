@@ -3,6 +3,7 @@ import { useState } from "react"
 
 import { isApiError } from "~/api/errors"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
+import { formatDate } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { Button } from "~/ui/primitives/Button"
@@ -35,8 +36,8 @@ export const WithdrawalPayoutPanel = ({ payout, fundName, canWrite }: Props): Re
   return (
     <Card>
       <div className={STACK_LG}>
-        <p>{fundName} · {payout.effectiveDate} · {payout.state}</p>
-        <MoneyValue amount={toPaise(payout.amountPaise)} size="sm" />
+        <p>{fundName} · {formatDate(payout.effectiveDate)} · {payout.state}</p>
+        <MoneyValue amount={toPaise(payout.amountPaise)} size="sm" showDecimals />
         <p>{payout.transferReference ?? payout.failureCode ?? "Awaiting transfer confirmation"}</p>
         {payout.state === "failed" ? <Alert tone="info" title="Transfer failed">The withdrawal remains recorded. Reconcile the transfer separately; this status does not restore the investor&apos;s balance.</Alert> : null}
         {update.error === null ? null : <Alert tone="error" title="Status not updated">{isApiError(update.error) ? update.error.message : "Could not update the payout. Refresh and try again."}</Alert>}

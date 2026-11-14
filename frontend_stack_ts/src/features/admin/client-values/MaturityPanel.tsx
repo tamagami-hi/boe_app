@@ -4,6 +4,7 @@ import { useState } from "react"
 import { isApiError } from "~/api/errors"
 import { Section } from "~/app/layouts/Section"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
+import { formatDate } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
@@ -87,11 +88,11 @@ export const MaturityPanel = ({ userId, canWrite, positions, fundName }: Props):
               <FormField label="Position" required>{({ id }) => <Select id={id} value={fundId} options={[{ value: "", label: "Choose a fund position" }, ...positions.map((row) => ({ value: row.fundId, label: fundName(row.fundId) }))]} onChange={(event) => { changeFund(event.target.value) }} />}</FormField>
               <FormField label={pending === undefined ? "Maturity date" : "Settlement date"} required>{({ id }) => <Input id={id} type="date" value={date} max={indiaToday()} min={pending?.maturedOn} onChange={(event) => { setDate(event.target.value) }} />}</FormField>
             </div>
-            {position === undefined ? null : <p>Current value: <MoneyValue amount={toPaise(position.currentValuePaise)} size="sm" /></p>}
+            {position === undefined ? null : <p>Current value: <MoneyValue amount={toPaise(position.currentValuePaise)} size="sm" showDecimals /></p>}
             <FormField label="Note" hint="Optional context for the record.">{({ id }) => <Input id={id} value={note} maxLength={2000} onChange={(event) => { setNote(event.target.value) }} />}</FormField>
             {pending === undefined ? <Button disabled={!isReady || position === undefined || (BigInt(position.currentValuePaise) <= 0n && BigInt(position.principalPaise) <= 0n)} onClick={markMatured}>Mark matured</Button> : (
               <>
-                <p>Matured on {pending.maturedOn}. A settlement uses the position&apos;s current value.</p>
+                <p>Matured on {formatDate(pending.maturedOn)}. A settlement uses the position&apos;s current value.</p>
                 <FormField label="Withdrawal amount in rupees" hint="A positive amount up to the current value, with at most two decimal places.">{({ id, describedBy }) => <AmountInput id={id} value={withdrawalRupees} decimals describedBy={describedBy} onChange={setWithdrawalRupees} />}</FormField>
                 <Button disabled={!isReady || !isAmountValid || date < pending.maturedOn} onClick={() => { setAction("withdrawal") }}>Record withdrawal</Button>
                 <Button disabled={!isReady || position === undefined || position.currentValuePaise === position.principalPaise || date < pending.maturedOn} onClick={() => { setAction("reinvestment") }}>Reinvest full position</Button>
@@ -103,8 +104,8 @@ export const MaturityPanel = ({ userId, canWrite, positions, fundName }: Props):
           {(data) => (
             <AdminTable caption="Maturity history (latest 100)" rows={data.items} rowKey={(row) => row.id} columns={[
               { key: "fund", header: "Fund", render: (row) => fundName(row.fundId) },
-              { key: "date", header: "Matured", render: (row) => row.maturedOn },
-              { key: "value", header: "Value at maturity", render: (row) => <MoneyValue amount={toPaise(row.valueAtMaturityPaise)} size="sm" /> },
+              { key: "date", header: "Matured", render: (row) => formatDate(row.maturedOn) },
+              { key: "value", header: "Value at maturity", render: (row) => <MoneyValue amount={toPaise(row.valueAtMaturityPaise)} size="sm" showDecimals /> },
               { key: "state", header: "Status", render: (row) => row.settlement ?? row.state },
             ]} />
           )}

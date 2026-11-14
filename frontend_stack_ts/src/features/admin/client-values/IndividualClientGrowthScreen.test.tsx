@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { useState } from "react"
+import { MemoryRouter } from "react-router-dom"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { ApiError, TransportError } from "~/api/errors"
@@ -54,6 +55,10 @@ vi.mock("./growthQueries", () => ({
   },
 }))
 
+vi.mock("~/app/providers/SessionProvider", () => ({
+  useSession: () => ({ hasAnyPermission: () => true }),
+}))
+
 vi.mock("~/features/admin/users/userDirectoryQueries", () => ({
   useAdminUsers: () => ({
     data: { items: [{
@@ -72,6 +77,13 @@ vi.mock("~/features/admin/users/userDirectoryQueries", () => ({
 }))
 
 vi.mock("~/features/admin/shared/adminQueries", () => ({
+  useAdminUser: () => ({
+    data: undefined,
+    error: null,
+    isPending: true,
+    isFetching: false,
+    refetch: () => Promise.resolve(),
+  }),
   useAdminInvestorPositions: (userId: string) => ({
     data:
       userId === ""
@@ -131,9 +143,11 @@ beforeEach(() => {
   sent.length = 0
   nextFailure = null
   render(
-    <OverlayStackProvider>
-      <IndividualClientGrowthScreen />
-    </OverlayStackProvider>,
+    <MemoryRouter>
+      <OverlayStackProvider>
+        <IndividualClientGrowthScreen />
+      </OverlayStackProvider>
+    </MemoryRouter>,
   )
   fillForm()
 })

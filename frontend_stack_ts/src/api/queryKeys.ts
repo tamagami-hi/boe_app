@@ -70,8 +70,6 @@ export const qk = {
     appUpdatePreview: (mandatory: boolean, message: string) =>
       ["admin", "app-update-preview", mandatory ? "required" : "optional", message] as const,
     investorPositions: (userId: string) => ["admin", "investor", userId, "positions"] as const,
-    clientLedgerEntries: (userId: string, fundId: string) =>
-      ["admin", "investor", userId, "ledger-entries", fundId] as const,
     fundClientPositions: (fundId: string) => ["admin", "fund", fundId, "client-positions"] as const,
     clientPortfolioSummary: (userId: string) => ["admin", "investor", userId, "portfolio-summary"] as const,
     clientLedgerPage: (userId: string) => ["admin", "investor", userId, "ledger-page"] as const,
