@@ -10,6 +10,7 @@ import { useToast } from "~/app/providers/ToastProvider"
 import { formatDateTime } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { fundState } from "~/domain/status"
+import { paiseToRupeeText } from "~/features/admin/client-values/rupeeAmount"
 import {
   useAdminFund,
   usePublishFundVersion,
@@ -19,6 +20,7 @@ import {
   EMPTY_TERMS,
   FundTermsFields,
   SubmitRow,
+  termsBodyOf,
   useFundTerms,
 } from "~/features/admin/funds/FundTermsForm"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
@@ -87,8 +89,8 @@ const FundWorkspaceScreen = (): React.ReactElement => {
       objective: fund.objective ?? "",
       riskLevel: fund.riskLevel ?? "moderate",
       returnTier: fund.returnTier ?? "moderate",
-      minimumSipPaise: Number(fund.minimumSipPaise ?? "0"),
-      minimumPurchasePaise: Number(fund.minimumPurchasePaise ?? "0"),
+      minimumSipRupees: paiseToRupeeText(fund.minimumSipPaise ?? "0"),
+      minimumPurchaseRupees: paiseToRupeeText(fund.minimumPurchasePaise ?? "0"),
       minimumDurationMonths: null,
       recommendedHoldingMonths: null,
       disclosure: { title: "", body: "" },
@@ -143,7 +145,7 @@ const FundWorkspaceScreen = (): React.ReactElement => {
                 {data.fund.aum === null ? (
                   "Not set"
                 ) : (
-                  <MoneyValue amount={toPaise(data.fund.aum.aumPaise)} size="sm" />
+                  <MoneyValue amount={toPaise(data.fund.aum.aumPaise)} size="sm" showDecimals />
                 )}
               </Row>
               <Row label="Versions">{String(data.versions.length)}</Row>
@@ -190,7 +192,9 @@ const FundWorkspaceScreen = (): React.ReactElement => {
             <form
               onSubmit={(event) => {
                 event.preventDefault()
-                publish.mutate(terms, {
+                const body = termsBodyOf(terms)
+                if (body === null) return
+                publish.mutate(body, {
                   onSuccess: () => {
                     toast.show("New version published.")
                   },

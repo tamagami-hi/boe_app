@@ -6,9 +6,12 @@ import { mintIdempotencyKey } from "~/api/idempotency"
 import { Section } from "~/app/layouts/Section"
 import { ConfirmDialog } from "~/app/overlays/ConfirmDialog"
 import { useToast } from "~/app/providers/ToastProvider"
+import { formatDate } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
+import { parseNonZeroSignedRupees, parseRupees } from "~/features/admin/client-values/rupeeAmount"
 import { useAppendAumGrowth } from "~/features/admin/shared/queries"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
+import { AmountInput } from "~/ui/primitives/AmountInput"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Alert } from "~/ui/primitives/Feedback"
@@ -17,6 +20,30 @@ import { ADMIN_FILTER, ADMIN_FILTER_ROW, ADMIN_FORM_GRID } from "~/ui/recipes/ad
 import { ACTION_ROW, STACK_LG } from "~/ui/recipes/layout"
 
 type AdjustmentMode = "target" | "amount" | "percent"
+
+type ChangeField = Readonly<{ targetAumPaise: string } | { growthPaise: string } | { growthBasisPoints: number }>
+
+const RUPEES_ERROR = "Enter rupees with at most two decimal places."
+
+const MODE_FIELD: Readonly<Record<AdjustmentMode, Readonly<{ label: string; hint: string }>>> = {
+  target: { label: "New fund size", hint: "The complete new total in rupees, up to two decimal places. Zero is allowed." },
+  amount: {
+    label: "Adjustment in rupees",
+    hint: "Up to two decimal places. A positive amount increases the size; start with a minus sign to decrease it.",
+  },
+  percent: { label: "Adjustment (basis points)", hint: "100 basis points = 1%. Use a minus sign to decrease." },
+}
+
+const changeFieldOf = (mode: AdjustmentMode, value: string): ChangeField | null => {
+  const text = value.trim()
+  if (mode === "percent") return { growthBasisPoints: Number(text) }
+  if (mode === "target") {
+    const targetAumPaise = parseRupees(text)
+    return targetAumPaise === null ? null : { targetAumPaise }
+  }
+  const growthPaise = parseNonZeroSignedRupees(text)
+  return growthPaise === null ? null : { growthPaise }
+}
 
 const isUncertainError = (error: unknown): boolean =>
   error !== null && (isTransportError(error) || !isApiError(error) || error.status >= 500)
@@ -56,9 +83,13 @@ export const FundSizeAdjustmentForm = ({ fundId, currentAumPaise, currentAsOfDat
       setIsConfirming(true)
       return
     }
+    const change = changeFieldOf(mode, value)
+    if (change === null) {
+      setValidationError(mode === "amount" ? `${RUPEES_ERROR} The adjustment cannot be zero.` : RUPEES_ERROR)
+      return
+    }
     const parsed = AdminAumGrowthBody.safeParse({
-      ...(mode === "target" ? { targetAumPaise: value } : mode === "amount"
-        ? { growthPaise: value } : { growthBasisPoints: Number(value) }),
+      ...change,
       asOfDate,
       reasonCode: reasonCode.trim(),
       ...(note.trim() === "" ? {} : { note: note.trim() }),
@@ -112,8 +143,10 @@ export const FundSizeAdjustmentForm = ({ fundId, currentAumPaise, currentAsOfDat
               ))}
             </div>
             <div className={ADMIN_FORM_GRID}>
-              <FormField required label={mode === "target" ? "New fund size (paise)" : mode === "amount" ? "Adjustment (paise)" : "Adjustment (basis points)"} hint={mode === "target" ? "Enter the complete new total. 100 paise = ₹1. Zero is allowed." : mode === "amount" ? "Use a positive value to increase or a minus sign to decrease. 100 paise = ₹1." : "100 basis points = 1%. Use a minus sign to decrease."}>
-                {({ id, describedBy }) => <Input disabled={hasUncertainOutcome} id={id} aria-describedby={describedBy} required mono inputMode={mode === "target" ? "numeric" : "text"} pattern={mode === "target" ? "(0|[1-9][0-9]*)" : "-?(0|[1-9][0-9]*)"} value={value} onChange={(event) => { setValue(event.target.value) }} />}
+              <FormField required label={MODE_FIELD[mode].label} hint={MODE_FIELD[mode].hint}>
+                {({ id, describedBy }) => mode === "target"
+                  ? <AmountInput disabled={hasUncertainOutcome} id={id} describedBy={describedBy} decimals value={value} onChange={setValue} />
+                  : <Input disabled={hasUncertainOutcome} id={id} aria-describedby={describedBy} required mono inputMode="text" pattern={mode === "amount" ? "-?(0|[1-9][0-9]*)(\\.[0-9]{1,2})?" : "-?(0|[1-9][0-9]*)"} value={value} onChange={(event) => { setValue(event.target.value) }} />}
               </FormField>
               <FormField label="As of date" required>
                 {({ id }) => <Input disabled={hasUncertainOutcome} id={id} type="date" required min={currentAsOfDate ?? undefined} value={asOfDate} onChange={(event) => { setAsOfDate(event.target.value) }} />}
@@ -138,7 +171,7 @@ export const FundSizeAdjustmentForm = ({ fundId, currentAumPaise, currentAsOfDat
           {pendingBody?.targetAumPaise === undefined ? null : <div>New fund size: <MoneyValue amount={toPaise(pendingBody.targetAumPaise)} showDecimals /></div>}
           {pendingBody?.growthPaise === undefined ? null : <div>Adjustment: <MoneyValue amount={toPaise(pendingBody.growthPaise)} showSign showDecimals /></div>}
           {pendingBody?.growthBasisPoints === undefined ? null : <div>Adjustment: {String(pendingBody.growthBasisPoints / 100)}%</div>}
-          <div>As of: {pendingBody?.asOfDate}</div>
+          <div>As of: {pendingBody === null ? "" : formatDate(pendingBody.asOfDate)}</div>
         </div>
       </ConfirmDialog>
     </>

@@ -11,6 +11,7 @@ import { useSession } from "~/app/providers/SessionProvider"
 import { useToast } from "~/app/providers/ToastProvider"
 import { formatDate } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
+import { parseRupees } from "~/features/admin/client-values/rupeeAmount"
 import {
   useAdminAumHistory,
   useAdminFund,
@@ -20,6 +21,7 @@ import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { LoadMore } from "~/ui/patterns/LoadMore"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
+import { AmountInput } from "~/ui/primitives/AmountInput"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
@@ -57,14 +59,22 @@ const failureMessage = (error: unknown): string => {
 const OpeningAumForm = ({ fundId }: Readonly<{ fundId: string }>): React.ReactElement => {
   const initialize = useInitializeAum(fundId)
   const toast = useToast()
-  const [openingPaise, setOpeningPaise] = useState("0")
+  const [openingRupees, setOpeningRupees] = useState("0")
   const [openingDate, setOpeningDate] = useState(today)
   const [openingReason, setOpeningReason] = useState("initial_aum")
+  const [isAttempted, setAttempted] = useState(false)
+  const openingPaise = parseRupees(openingRupees)
+  const openingError =
+    openingPaise === null && (isAttempted || openingRupees !== "")
+      ? "Enter the opening AUM in rupees, with at most two decimal places. Zero is allowed."
+      : undefined
 
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault()
+        setAttempted(true)
+        if (openingPaise === null) return
         initialize.mutate(
           { aumPaise: openingPaise, asOfDate: openingDate, reasonCode: openingReason },
           {
@@ -91,17 +101,15 @@ const OpeningAumForm = ({ fundId }: Readonly<{ fundId: string }>): React.ReactEl
           description="This fund has no AUM yet. Record the absolute size once; you can increase or decrease it afterward."
         >
           <div className={ADMIN_FORM_GRID}>
-            <FormField label="Opening AUM (paise)" required>
-              {({ id }) => (
-                <Input
+            <FormField label="Opening AUM" required hint="In rupees, up to two decimal places." error={openingError}>
+              {({ id, describedBy, invalid }) => (
+                <AmountInput
                   id={id}
-                  required
-                  mono
-                  inputMode="numeric"
-                  value={openingPaise}
-                  onChange={(event) => {
-                    setOpeningPaise(event.target.value.replace(/[^0-9]/gu, ""))
-                  }}
+                  decimals
+                  value={openingRupees}
+                  invalid={invalid}
+                  describedBy={describedBy}
+                  onChange={setOpeningRupees}
                 />
               )}
             </FormField>
@@ -151,7 +159,7 @@ const CurrentFundSize = ({ current }: Readonly<{ current: FundAum | null }>): Re
       <span className={LIST_VALUE}>No opening AUM has been recorded for this fund</span>
     ) : (
       <>
-        <MoneyValue amount={toPaise(current.aumPaise)} size="xl" />
+        <MoneyValue amount={toPaise(current.aumPaise)} size="xl" showDecimals />
         <span className={LIST_LABEL}>
           {current.asOfDate === null
             ? "As-of date not recorded"
@@ -229,7 +237,7 @@ const FundAumScreen = (): React.ReactElement => {
                     <span className={ITEM_TITLE}>
                       {formatDate(`${snapshot.asOfDate}T00:00:00Z`)}
                     </span>
-                    <MoneyValue amount={toPaise(snapshot.aumPaise)} size="md" />
+                    <MoneyValue amount={toPaise(snapshot.aumPaise)} size="md" showDecimals />
                   </div>
                   <div className={ADMIN_META}>
                     <span>Revision {String(snapshot.revision)}</span>

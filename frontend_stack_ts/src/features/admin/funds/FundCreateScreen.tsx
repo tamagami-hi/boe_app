@@ -6,13 +6,16 @@ import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { useToast } from "~/app/providers/ToastProvider"
+import { parseRupees } from "~/features/admin/client-values/rupeeAmount"
 import { useCreateAdminFund } from "~/features/admin/shared/queries"
 import {
   EMPTY_TERMS,
   FundTermsFields,
   SubmitRow,
+  termsBodyOf,
   useFundTerms,
 } from "~/features/admin/funds/FundTermsForm"
+import { AmountInput } from "~/ui/primitives/AmountInput"
 import { Alert } from "~/ui/primitives/Feedback"
 import { Card } from "~/ui/primitives/Card"
 import { FormField, Input } from "~/ui/primitives/FormField"
@@ -40,24 +43,28 @@ const FundCreateScreen = (): React.ReactElement => {
   const create = useCreateAdminFund()
   const [terms, setTerms] = useFundTerms(EMPTY_TERMS)
   const [slug, setSlug] = useState("")
-  const [aumPaise, setAumPaise] = useState("0")
+  const [aumRupees, setAumRupees] = useState("0")
+  const [isAttempted, setAttempted] = useState(false)
   const [asOfDate, setAsOfDate] = useState(today)
   const [reasonCode, setReasonCode] = useState("initial_aum")
   const [note, setNote] = useState("")
 
   const fields = create.error instanceof ApiError ? create.error.fields : null
+  const aumPaise = parseRupees(aumRupees)
+  const termsBody = termsBodyOf(terms)
+  const aumError =
+    aumPaise === null && (isAttempted || aumRupees !== "")
+      ? "Enter the opening AUM in rupees, with at most two decimal places. Zero is allowed."
+      : fields?.["openingAum.aumPaise"]?.[0]
 
   const submit = (event: { preventDefault: () => void }): void => {
     event.preventDefault()
+    setAttempted(true)
+    if (aumPaise === null || termsBody === null) return
     create.mutate(
       {
         slug,
-        terms: {
-          ...terms,
-          returnTier: terms.returnTier,
-          minimumDurationMonths: terms.minimumDurationMonths,
-          recommendedHoldingMonths: terms.recommendedHoldingMonths,
-        },
+        terms: termsBody,
         openingAum: {
           aumPaise,
           asOfDate,
@@ -86,6 +93,12 @@ const FundCreateScreen = (): React.ReactElement => {
           {failureMessage(create.error)}
         </Alert>
       )}
+
+      {isAttempted && (aumPaise === null || termsBody === null) ? (
+        <Alert tone="error" title="Check the amounts">
+          Nothing was sent. Every amount is in rupees with at most two decimal places.
+        </Alert>
+      ) : null}
 
       <form onSubmit={submit} noValidate className={STACK_LG}>
         <Card>
@@ -125,18 +138,20 @@ const FundCreateScreen = (): React.ReactElement => {
             description="The absolute fund size at a point in time. Later changes are recorded as growth entries, never edits."
           >
             <div className={ADMIN_FORM_GRID}>
-              <FormField label="Opening AUM (paise)" required hint="Integer paise.">
-                {({ id, invalid }) => (
-                  <Input
+              <FormField
+                label="Opening AUM"
+                required
+                hint="In rupees, up to two decimal places."
+                error={aumError}
+              >
+                {({ id, describedBy, invalid }) => (
+                  <AmountInput
                     id={id}
-                    required
-                    mono
-                    inputMode="numeric"
-                    value={aumPaise}
+                    decimals
+                    value={aumRupees}
                     invalid={invalid}
-                    onChange={(event) => {
-                      setAumPaise(event.target.value.replace(/[^0-9]/gu, ""))
-                    }}
+                    describedBy={describedBy}
+                    onChange={setAumRupees}
                   />
                 )}
               </FormField>

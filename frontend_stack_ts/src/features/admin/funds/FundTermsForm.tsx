@@ -1,5 +1,7 @@
 import { useState } from "react"
 
+import { parseRupeesToSafePaise } from "~/features/admin/client-values/rupeeAmount"
+import { AmountInput } from "~/ui/primitives/AmountInput"
 import { Button } from "~/ui/primitives/Button"
 import { FormField, Input } from "~/ui/primitives/FormField"
 import type { FieldErrors } from "~/api/errors"
@@ -17,11 +19,24 @@ export type FundTerms = Readonly<{
   objective: string
   riskLevel: (typeof RISK_LEVELS)[number]
   returnTier: (typeof RETURN_TIERS)[number]
+  minimumSipRupees: string
+  minimumPurchaseRupees: string
+  minimumDurationMonths: number | null
+  recommendedHoldingMonths: number | null
+  disclosure: Readonly<{ title: string; body: string }>
+}>
+
+export type FundTermsBody = Readonly<{
+  name: string
+  category: string
+  objective: string
+  riskLevel: FundTerms["riskLevel"]
+  returnTier: FundTerms["returnTier"]
   minimumSipPaise: number
   minimumPurchasePaise: number
   minimumDurationMonths: number | null
   recommendedHoldingMonths: number | null
-  disclosure: Readonly<{ title: string; body: string }>
+  disclosure: FundTerms["disclosure"]
 }>
 
 export const EMPTY_TERMS: FundTerms = {
@@ -30,8 +45,8 @@ export const EMPTY_TERMS: FundTerms = {
   objective: "",
   riskLevel: "moderate",
   returnTier: "moderate",
-  minimumSipPaise: 0,
-  minimumPurchasePaise: 0,
+  minimumSipRupees: "",
+  minimumPurchaseRupees: "",
   minimumDurationMonths: null,
   recommendedHoldingMonths: null,
   disclosure: { title: "", body: "" },
@@ -43,9 +58,29 @@ const positiveOrNull = (value: string): number | null => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null
 }
 
-const nonNegative = (value: string): number => {
-  const parsed = Number.parseInt(value, 10)
-  return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0
+const minimumPaiseOf = (rupees: string): number | null => (rupees === "" ? 0 : parseRupeesToSafePaise(rupees))
+
+const MINIMUM_ERROR = "Enter rupees with at most two decimal places, or leave it empty for no minimum."
+
+const minimumErrorOf = (rupees: string, serverError: string | undefined): string | undefined =>
+  minimumPaiseOf(rupees) === null ? MINIMUM_ERROR : serverError
+
+export const termsBodyOf = (terms: FundTerms): FundTermsBody | null => {
+  const minimumSipPaise = minimumPaiseOf(terms.minimumSipRupees)
+  const minimumPurchasePaise = minimumPaiseOf(terms.minimumPurchaseRupees)
+  if (minimumSipPaise === null || minimumPurchasePaise === null) return null
+  return {
+    name: terms.name,
+    category: terms.category,
+    objective: terms.objective,
+    riskLevel: terms.riskLevel,
+    returnTier: terms.returnTier,
+    minimumSipPaise,
+    minimumPurchasePaise,
+    minimumDurationMonths: terms.minimumDurationMonths,
+    recommendedHoldingMonths: terms.recommendedHoldingMonths,
+    disclosure: terms.disclosure,
+  }
 }
 
 export type FundTermsFormProps = Readonly<{
@@ -140,29 +175,39 @@ export const FundTermsFields = ({
         )}
       </FormField>
 
-      <FormField label="Minimum lump sum (paise)" hint="Integer paise. 0 means no minimum.">
-        {({ id }) => (
-          <Input
+      <FormField
+        label="Minimum lump sum"
+        hint="In rupees, up to two decimal places. Leave it empty for no minimum."
+        error={minimumErrorOf(terms.minimumPurchaseRupees, fields?.["terms.minimumPurchasePaise"]?.[0])}
+      >
+        {({ id, describedBy, invalid }) => (
+          <AmountInput
             id={id}
-            mono
-            inputMode="numeric"
-            value={String(terms.minimumPurchasePaise)}
-            onChange={(event) => {
-              setTerms({ ...terms, minimumPurchasePaise: nonNegative(event.target.value) })
+            decimals
+            value={terms.minimumPurchaseRupees}
+            invalid={invalid}
+            describedBy={describedBy}
+            onChange={(next) => {
+              setTerms({ ...terms, minimumPurchaseRupees: next })
             }}
           />
         )}
       </FormField>
 
-      <FormField label="Minimum SIP (paise)" hint="Integer paise. 0 means no minimum.">
-        {({ id }) => (
-          <Input
+      <FormField
+        label="Minimum SIP"
+        hint="In rupees, up to two decimal places. Leave it empty for no minimum."
+        error={minimumErrorOf(terms.minimumSipRupees, fields?.["terms.minimumSipPaise"]?.[0])}
+      >
+        {({ id, describedBy, invalid }) => (
+          <AmountInput
             id={id}
-            mono
-            inputMode="numeric"
-            value={String(terms.minimumSipPaise)}
-            onChange={(event) => {
-              setTerms({ ...terms, minimumSipPaise: nonNegative(event.target.value) })
+            decimals
+            value={terms.minimumSipRupees}
+            invalid={invalid}
+            describedBy={describedBy}
+            onChange={(next) => {
+              setTerms({ ...terms, minimumSipRupees: next })
             }}
           />
         )}
