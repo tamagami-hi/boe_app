@@ -1,40 +1,86 @@
+import { isApiError } from "~/api/errors"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { formatDate, formatMonth } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { countOf } from "~/domain/plural"
-import { useStatements } from "~/features/shared/queries"
+import { usePortfolio, useStatements } from "~/features/shared/queries"
 import { cx } from "~/lib/cx"
 import { isNative } from "~/platform/capacitor"
+import type { OpenResult } from "~/platform/openExternal"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { EmptyState } from "~/ui/patterns/EmptyState"
+import { MoneyFootnote } from "~/ui/patterns/MoneyFootnote"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
+import { Button } from "~/ui/primitives/Button"
 import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
-import { Skeleton } from "~/ui/primitives/Feedback"
+import { Alert, Skeleton } from "~/ui/primitives/Feedback"
 import { STAT_LABEL, STAT_ROOT, SUMMARY_GRID } from "~/ui/recipes/datalist"
 import { CARD_COLUMNS, ROW_BETWEEN_BASELINE } from "~/ui/recipes/layout"
 import { CARD_STACK } from "~/ui/recipes/surface"
 import { CARD_TITLE, META_TEXT } from "~/ui/recipes/text"
 
+import { useOpenStatement } from "./statementLinkQueries"
+import type { StatementRange } from "./statementLinkQueries"
+
+const OPEN_FAILED = "The statement could not be opened. Try again."
+
+const rangeOf = (items: readonly Readonly<{ period: string }>[]): StatementRange | null => {
+  const newest = items[0]
+  const oldest = items[items.length - 1]
+  return newest === undefined || oldest === undefined ? null : { fromPeriod: oldest.period, toPeriod: newest.period }
+}
+
+const openProblem = (error: Error | null, result: OpenResult | undefined): string | null => {
+  if (error !== null) return isApiError(error) ? OPEN_FAILED : error.message
+  return result === undefined || result.ok ? null : result.reason
+}
+
 const StatementsScreen = (): React.ReactElement => {
   const query = useStatements()
+  const portfolio = usePortfolio()
+  const openStatement = useOpenStatement()
+  const native = isNative()
+  const range = rangeOf(query.data?.items ?? [])
+  const problem = openProblem(openStatement.error, openStatement.data)
 
   return (
     <Page width="default">
       <PageHeader
         title="Statements"
-        description="A month-by-month record of your investments and their value."
-        {...(isNative()
-          ? {}
-          : {
-              actions: (
-                <ButtonLink to="/statements/print" tone="secondary" size="sm">
-                  Print statement
-                </ButtonLink>
-              ),
-            })}
+        description={
+          native
+            ? "A month-by-month record of your investments and their value. Open statement shows it in your browser, where you can print or save it."
+            : "A month-by-month record of your investments and their value."
+        }
+        actions={
+          native ? (
+            range === null ? undefined : (
+              <Button
+                tone="secondary"
+                size="sm"
+                loading={openStatement.isPending}
+                onClick={() => {
+                  openStatement.mutate(range)
+                }}
+              >
+                Open statement
+              </Button>
+            )
+          ) : (
+            <ButtonLink to="/statements/print" tone="secondary" size="sm">
+              Print statement
+            </ButtonLink>
+          )
+        }
       />
+
+      {problem === null ? null : (
+        <Alert tone="error" title="Statement not opened">
+          {problem}
+        </Alert>
+      )}
 
       <AsyncBoundary
         query={query}
@@ -111,6 +157,8 @@ const StatementsScreen = (): React.ReactElement => {
           </div>
         )}
       </AsyncBoundary>
+
+      <MoneyFootnote lastUpdated={portfolio.data?.lastUpdated ?? null} />
     </Page>
   )
 }

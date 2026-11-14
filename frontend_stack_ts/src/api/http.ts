@@ -101,6 +101,11 @@ const buildPath = (
     return encodeURIComponent(value)
   })
 
+export const operationUrl = (
+  operation: Pick<AnyOperation, "path">,
+  params: Readonly<Record<string, string>>,
+): string => `${resolveApiBase()}${buildPath(operation.path, params)}`
+
 const buildQuery = (query: Readonly<Record<string, QueryValue>> | undefined): string => {
   if (query === undefined) return ""
   const search = new URLSearchParams()
