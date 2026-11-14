@@ -1,6 +1,6 @@
 # BeOnEdge admin improvements: recording categories, receipts, value updates, returns, maturity, nominee, and fixes
 
-Status: **Approved by the maintainer on 2026-11-13. Phases A, B and C, and Phase E steps E1 and E2, are complete on local `main` (not pushed or released). Phase D and E3 wait for the maintainer. Phases F, G and H are complete on local `main` (section 8). Nothing from Phases A to H is pushed or released.** Q-037 is open (section 0a). What still needs the maintainer: publishing `featureFlags.onlinePayments=false` (G11), the production reform's own destructive-change approval after the pre-flight report (D2), releases, and the decision to resume payments. Checks run in the pinned Node 22.20.0 / npm 11.16.0 container `tools/node22-container/run.sh` (tally `howto-2`).
+Status: **Approved by the maintainer on 2026-11-13. Phases A, B and C, and Phase E steps E1 and E2, are complete on local `main` (not pushed or released). Phase D and E3 wait for the maintainer. Phases F, G and H are complete on local `main` (section 8). Nothing from Phases A to H is pushed or released.** No question is open. What still needs the maintainer: publishing `featureFlags.onlinePayments=false` (G11), the production reform's own destructive-change approval after the pre-flight report (D2), releases, and the decision to resume payments. Checks run in the pinned Node 22.20.0 / npm 11.16.0 container `tools/node22-container/run.sh` (tally `howto-2`).
 
 Prepared: 2026-11-13. The investigation was static source reading only. No local checks ran (no dependencies are installed, and `RULES.md` forbids installing them just to make checks runnable). Nothing was diagnosed on a VPS, no test ran, no mail was sent, and nothing was deployed. GitHub CI run 38216879911 passed contracts, backend (including integration) and frontend on `ba8b196` (v0.15.4). The detailed evidence is held as tally records under `docs/records/`: findings `finding-1` to `finding-18` (excluding the retired `finding-5`), decisions `rule-2` to `rule-6`, and milestones `M1-admin-audit` and `M2-plan`.
 
@@ -8,11 +8,11 @@ Governing process: root [RULES.md](../RULES.md). The application is in productio
 
 ## 0a. Open questions and conservative defaults
 
-IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-025 were answered on 2026-11-13, and Q-027 to Q-029 on 2026-11-14; all are in the decision record. Q-026 and Q-030 to Q-032 were answered on 2026-11-14 (DEC-29 to DEC-32). Q-036 was answered on 2026-11-14 (DEC-36). Tally question rows 1 to 22 are marked answered, each citing its decision ID. Q-037 (tally question row 23) is open.
+IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-025 were answered on 2026-11-13, and Q-027 to Q-029 on 2026-11-14; all are in the decision record. Q-026 and Q-030 to Q-032 were answered on 2026-11-14 (DEC-29 to DEC-32). Q-036 and Q-037 were answered on 2026-11-14 (DEC-36, DEC-37). Tally question rows 1 to 23 are marked answered, each citing its decision ID. No question is open.
 
 | ID | Open decision | Conservative behavior meanwhile |
 | --- | --- | --- |
-| Q-037 | Phase H2 shows the support and grievance contacts from the published legal documents (`content_items`: investor charter, grievance matrix) on the client's Support, Grievance and Login screens. Production runs only `seed:auth`; the content seed (`backend_controller/src/db/seedContent.ts`) holds placeholder contacts (`beonedge.example` addresses, `+91-80-1234-5678/5679`), and the admin panel edits only FAQs and app config. Do the production legal documents exist, and do they carry real contacts? | H2 is on local `main` as built: contacts show when the documents carry them, and the earlier fallback text shows when the documents are absent. Nothing is released and no contact value is invented. Before release the real contacts must be confirmed, or published through a reviewed seed change or an admin editor for these documents. |
+| — | No open questions. | — |
 
 ### Decision record
 
@@ -55,9 +55,10 @@ IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-0
 | DEC-31 | 2026-11-14 | Q-031: the admin fills in the figures for options 2 and 3 before sending; the client only picks one. | Built in Phase F. |
 | DEC-32 | 2026-11-14 | Q-032: an extension's new maturity date is filled in as the old date plus the months added, and the admin can change it. | Built in Phase F. |
 | DEC-33 | 2026-11-14 | Phase G go-ahead: build client erasure (DEC-29) now. | Built (Phase G close, section 8). |
-| DEC-34 | 2026-11-14 | "ok proceed with the next implementations": after Phases F and G, build what remains that needs no maintainer step, which is the gaps the client and admin experience review still shows on `main` (U-close, under DEC-19) and the carried-forward items such as a statement the APK can keep. | Phase H (tally phase `H`), being built (section 6). |
+| DEC-34 | 2026-11-14 | "ok proceed with the next implementations": after Phases F and G, build what remains that needs no maintainer step, which is the gaps the client and admin experience review still shows on `main` (U-close, under DEC-19) and the carried-forward items such as a statement the APK can keep. | Built: Phase H (tally phase `H`) is complete on local `main` and closed (section 8, Phase H close). |
 | DEC-35 | 2026-11-14 | Tally rulebook: adopt tally's template, keep only the process rules `RULES.md` does not cover, tailored to this repository, and retire the rest as covered by `RULES.md` ("Process those rules and then read what we have and then adapt to whats best"). | In force. Tally rules are `rule-16` (`RULES.md` is the rulebook), `rule-17` and `rule-18` (payments off; no bank details or reference numbers) and `rule-48` to `rule-54` (scratch, decide once, record once, read once, check once, review once, three attempts). The other 22 template rules are retired, each citing its `RULES.md` rule; write-tests-first conflicted with rule 10. Records now commit once per tally phase. |
-| DEC-36 | 2026-11-14 | Q-036: neither the support nor the finance role gets access to client pages; permissions stay as they are. | Being built in Phase H: client links are hidden for roles the page refuses, and screens that cannot name clients for a role say so without raw ids. |
+| DEC-36 | 2026-11-14 | Q-036: neither the support nor the finance role gets access to client pages; permissions stay as they are. | Built in Phase H (H3, H4): client links are hidden for roles the page refuses, and screens that cannot name clients for a role say so without raw ids. |
+| DEC-37 | 2026-11-14 | Q-037: production's published legal documents (investor charter, grievance) already carry BeOnEdge's real support and grievance contacts, so the contacts H2 shows are correct. Had they been placeholders or missing, the choice was a one-time migration filling them only where placeholders or absent. | In force; no change needed. |
 
 #### Replaced
 
@@ -957,7 +958,7 @@ Phase H (DEC-34, DEC-36) was built on five lanes, each on its own tally track, a
     - `?userId=` is read only on first mount;
     - an unknown linked id shows a retry that cannot succeed.
   - **H5:** the password panels keep typed passwords in form state after an error.
-- **Open:** Q-037 (section 0a), whether the production legal documents carry real contacts. Answer it before release.
+- **Q-037**, whether the production legal documents carry real contacts, was answered after the close: they do (DEC-37), so nothing changes.
 - **Landing runs (TESTED, tally tickets `5e6b6132`, `592abbbb`, `6b34a683`, `b9379c08`, `4621ac8c`):** every commit passed the contracts build, backend `npm run check` and frontend `npm run check` in a clean checkout. Ticket `01f69b6d` passed the same checks, but tally refused the fast-forward because the operator checkout held an uncommitted plan edit. It was rerun as `4621ac8c`.
 - **Process note:** five concurrent `claude-pro` runs at xhigh reached that account's usage limit after about 35 minutes. One fix build stopped partway, and was finished by the original lane agent from its tally hand-off. Two reviews stopped short. The coordinator completed the missing H5 reader sweep, recorded as tally evidence.
 - **Sweep on `f837ed4` (TESTED, clean detached worktree, Node 22.20.0 container, tally sweep record):**
