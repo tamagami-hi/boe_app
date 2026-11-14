@@ -24,7 +24,6 @@ import {
   listAdminPayments,
   listAdminRefunds,
   listAdminUserLoginEvents,
-  listAdminUsers,
   reconcileAdminMandate,
   reconcileAdminRefund,
   retryAdminRefund,
@@ -92,31 +91,6 @@ export const useDecideApplication = (
       await queryClient.invalidateQueries({ queryKey: ["admin", "applications"] })
       await queryClient.invalidateQueries({ queryKey: qk.admin.application(applicationId) })
     },
-  })
-}
-
-export type AdminUserFilter = Readonly<{
-  status?: "invited" | "active" | "suspended" | "closed"
-  q?: string
-}>
-
-export const useAdminUsers = (
-  filter: AdminUserFilter,
-): PagedQuery<DataOf<typeof listAdminUsers>> => {
-  const api = useApi()
-  const key = `${filter.status ?? "any"}:${filter.q ?? ""}`
-  return usePagedQuery({
-    queryKey: qk.admin.users(key),
-    staleTime: STALE.MONEY,
-    fetchPage: async (after) =>
-      api.request(listAdminUsers, {
-        query: {
-          limit: LIST_LIMIT,
-          after,
-          ...(filter.status === undefined ? {} : { status: filter.status }),
-          ...(filter.q === undefined || filter.q === "" ? {} : { q: filter.q }),
-        },
-      }),
   })
 }
 

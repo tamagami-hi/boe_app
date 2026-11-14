@@ -1,17 +1,16 @@
 import { useState } from "react"
-import { Link } from "react-router-dom"
 
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { useSession } from "~/app/providers/SessionProvider"
 import { AdminTable, FilterChip, FilterRow } from "~/features/admin/shared/AdminTable"
+import { ClientPageLink } from "~/features/admin/shared/clientPageLink"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { LoadMore } from "~/ui/patterns/LoadMore"
 import { Badge } from "~/ui/primitives/Badge"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
-import { ADMIN_CELL_LINK } from "~/ui/recipes/admin"
 import { ENTRY_TEXT } from "~/ui/recipes/datalist"
 import { META_TEXT } from "~/ui/recipes/text"
 
@@ -80,9 +79,7 @@ const MaturitiesScreen = (): React.ReactElement => {
                 header: "Client",
                 render: (row) => (
                   <span className={ENTRY_TEXT}>
-                    <Link to={`/users/${row.userId}`} className={ADMIN_CELL_LINK}>
-                      {row.clientName}
-                    </Link>
+                    <ClientPageLink userId={row.userId}>{row.clientName}</ClientPageLink>
                     <span className={META_TEXT}>{row.fundName}</span>
                   </span>
                 ),

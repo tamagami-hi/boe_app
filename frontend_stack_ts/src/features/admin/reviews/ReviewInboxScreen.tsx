@@ -6,6 +6,7 @@ import { PageHeader } from "~/app/layouts/PageHeader"
 import { formatDateTime } from "~/domain/dates"
 import { REVIEW_STATE_OPTIONS, ratingText, reviewState, type ReviewState } from "~/domain/reviews"
 import { AdminTable, FilterChip, FilterRow } from "~/features/admin/shared/AdminTable"
+import { ClientPageLink } from "~/features/admin/shared/clientPageLink"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { EmptyState } from "~/ui/patterns/EmptyState"
 import { LoadMore } from "~/ui/patterns/LoadMore"
@@ -15,7 +16,7 @@ import { Skeleton } from "~/ui/primitives/Feedback"
 import { ADMIN_CELL_LINK } from "~/ui/recipes/admin"
 import { META_TEXT } from "~/ui/recipes/text"
 
-import { ClientLink, commentExcerpt, useCanOpenClient } from "./reviewPresentation"
+import { commentExcerpt } from "./reviewPresentation"
 import { useReviewInbox } from "./reviewQueries"
 
 type StateFilter = ReviewState | "any"
@@ -34,7 +35,6 @@ const ReviewInboxScreen = (): React.ReactElement => {
   const [state, setState] = useState<StateFilter>("new")
   const [rating, setRating] = useState<number | null>(null)
   const query = useReviewInbox({ state: state === "any" ? null : state, rating })
-  const canOpenClient = useCanOpenClient()
 
   return (
     <Page width="wide">
@@ -102,7 +102,7 @@ const ReviewInboxScreen = (): React.ReactElement => {
               {
                 key: "client",
                 header: "Client",
-                render: (row) => <ClientLink userId={row.userId} name={row.clientName} canOpen={canOpenClient} />,
+                render: (row) => <ClientPageLink userId={row.userId}>{row.clientName}</ClientPageLink>,
               },
               {
                 key: "comment",

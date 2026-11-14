@@ -4,7 +4,8 @@ import { useSearchParams } from "react-router-dom"
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
-import { useAdminUsers } from "~/features/admin/shared/adminQueries"
+import { useSession } from "~/app/providers/SessionProvider"
+import { useAdminUsers } from "~/features/admin/users/userDirectoryQueries"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { DataList, DetailRow, Prose } from "~/ui/patterns/DataList"
 import { Button } from "~/ui/primitives/Button"
@@ -18,7 +19,7 @@ import { ADMIN_EMAIL_PREVIEW, ADMIN_FORM_GRID } from "~/ui/recipes/admin"
 import { STACK_LG } from "~/ui/recipes/layout"
 
 import type { EmailPreview, QueuedEmail } from "./emailMessageQueries"
-import { useEmailPreview, useSendEmail, useSendTestEmail } from "./emailMessageQueries"
+import { useChosenClient, useEmailPreview, useSendEmail, useSendTestEmail } from "./emailMessageQueries"
 import type { EmailTemplateList } from "./emailTemplateQueries"
 import { useEmailTemplates } from "./emailTemplateQueries"
 import { AppUpdateAnnouncementPanel } from "./AppUpdateAnnouncementPanel"
@@ -180,14 +181,47 @@ const MODES: readonly TabItem<Mode>[] = [
   { value: "update", label: "App update to all clients" },
 ]
 
+const CLIENT_HINT = "Search by name, email or phone."
+
+type ClientNaming = Readonly<{ label: string | null; hint: string }>
+
+type NamingSources = Readonly<{
+  userId: string
+  typed: boolean
+  listedLabel: string | null
+  chosen: Readonly<{ id: string; fullName: string; email: string }> | null
+  chosenFailed: boolean
+  recipient: Readonly<{ userId: string; fullName: string }> | null
+}>
+
+const clientNaming = ({ userId, typed, listedLabel, chosen, chosenFailed, recipient }: NamingSources): ClientNaming => {
+  if (userId === "" || typed) return { label: null, hint: CLIENT_HINT }
+  if (listedLabel !== null) return { label: listedLabel, hint: CLIENT_HINT }
+  if (chosen !== null && chosen.id === userId) {
+    return { label: chosen.fullName === "" ? chosen.email : chosen.fullName, hint: CLIENT_HINT }
+  }
+  if (recipient !== null && recipient.userId === userId) return { label: recipient.fullName, hint: CLIENT_HINT }
+  return {
+    label: null,
+    hint: chosenFailed
+      ? "The chosen client's name could not be read. Choose a template to see who it is, or search for the client."
+      : "A client is chosen from their page. Choose a template to see who it is.",
+  }
+}
+
 const OneClientMode = (): React.ReactElement => {
   const [searchParams] = useSearchParams()
+  const { hasAnyPermission } = useSession()
   const [templateId, setTemplateId] = useState(searchParams.get("templateId") ?? "")
   const [userId, setUserId] = useState(searchParams.get("userId") ?? "")
   const [clientQuery, setClientQuery] = useState("")
   const templates = useEmailTemplates(false)
-  const clients = useAdminUsers(clientQuery.trim() === "" ? { status: "active" } : { status: "active", q: clientQuery.trim() })
+  const search = clientQuery.trim()
+  const clients = useAdminUsers(
+    search === "" ? { status: "active", segment: "clients" } : { status: "active", segment: "clients", q: search },
+  )
   const preview = useEmailPreview(templateId, userId)
+  const chosen = useChosenClient(clientQuery === "" ? userId : "", hasAnyPermission(["users.read"]))
 
   const picker = templatePicker(templates)
   const hasTemplatesFailed = hasFailed(templates)
@@ -201,6 +235,15 @@ const OneClientMode = (): React.ReactElement => {
       })),
     [clients.data],
   )
+
+  const naming = clientNaming({
+    userId,
+    typed: clientQuery !== "",
+    listedLabel: clientOptions.find((option) => option.value === userId)?.label ?? null,
+    chosen: chosen.data?.user ?? null,
+    chosenFailed: chosen.error !== null,
+    recipient: preview.data?.recipient ?? null,
+  })
 
   return (
     <>
@@ -222,7 +265,7 @@ const OneClientMode = (): React.ReactElement => {
           </FormField>
           <FormField
             label="Client"
-            hint="Search by name, email or phone."
+            hint={naming.hint}
             error={hasClientsFailed ? "The client list could not be loaded." : undefined}
           >
             {({ id }) => (
@@ -231,7 +274,7 @@ const OneClientMode = (): React.ReactElement => {
                 options={clientOptions}
                 value={userId}
                 onChange={setUserId}
-                query={clientQuery}
+                query={naming.label ?? clientQuery}
                 onQueryChange={setClientQuery}
                 placeholder="Start typing a name"
                 loading={clients.isFetching}

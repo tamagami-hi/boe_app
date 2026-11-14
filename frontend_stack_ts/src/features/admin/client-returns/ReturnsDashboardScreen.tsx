@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react"
-import { Link } from "react-router-dom"
 
 import { isSessionEnded } from "~/api/errors"
 
@@ -11,6 +10,7 @@ import { formatDate, formatDateTime } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { investorLabel, useInvestorDirectory } from "~/features/admin/client-values/investorQueries"
 import { AdminTable, FilterChip, FilterRow } from "~/features/admin/shared/AdminTable"
+import { ClientPageLink, useCanOpenClientPage } from "~/features/admin/shared/clientPageLink"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { Stat } from "~/ui/patterns/DataList"
 import { EmptyState } from "~/ui/patterns/EmptyState"
@@ -19,7 +19,7 @@ import { MoneyValue } from "~/ui/patterns/MoneyValue"
 import { Button } from "~/ui/primitives/Button"
 import { Card } from "~/ui/primitives/Card"
 import { Alert, Skeleton } from "~/ui/primitives/Feedback"
-import { ADMIN_CELL_LINK, ADMIN_CODE, ADMIN_FIGURE } from "~/ui/recipes/admin"
+import { ADMIN_CODE, ADMIN_FIGURE } from "~/ui/recipes/admin"
 import { ENTRY_TEXT } from "~/ui/recipes/datalist"
 import { META_TEXT } from "~/ui/recipes/text"
 
@@ -50,6 +50,7 @@ const useClientNames = (enabled: boolean) => {
 const ReturnsDashboardScreen = (): React.ReactElement => {
   const { hasAnyPermission } = useSession()
   const canReadUsers = hasAnyPermission(["users.read", "users.read_limited"])
+  const canOpenClient = useCanOpenClientPage()
   const [sort, setSort] = useState<ReturnSort>("return_desc")
   const summaries = useClientValueSummaries(sort)
   const { names, hasNamesFailed, retryNames } = useClientNames(canReadUsers)
@@ -58,10 +59,8 @@ const ReturnsDashboardScreen = (): React.ReactElement => {
     const name = names.get(row.userId)
     return (
       <span className={ENTRY_TEXT}>
-        {canReadUsers ? (
-          <Link to={`/users/${row.userId}`} className={ADMIN_CELL_LINK}>
-            {name ?? "Open client"}
-          </Link>
+        {name !== undefined || canOpenClient ? (
+          <ClientPageLink userId={row.userId}>{name ?? "Open client"}</ClientPageLink>
         ) : null}
         <span className={ADMIN_CODE}>{row.userId}</span>
       </span>
@@ -74,6 +73,12 @@ const ReturnsDashboardScreen = (): React.ReactElement => {
         title="Returns"
         description="Every client with a recorded investment, folded from the client value ledger on each read. Fund AUM is a separate record and is not reconciled here."
       />
+
+      {canReadUsers ? null : (
+        <Alert tone="info" title="Client names are not shown">
+          Your account cannot read the client directory, so each row shows the client&apos;s reference instead of a name.
+        </Alert>
+      )}
 
       {hasNamesFailed ? (
         <Alert

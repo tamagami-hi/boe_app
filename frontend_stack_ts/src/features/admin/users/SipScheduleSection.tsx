@@ -4,7 +4,7 @@ import { Section } from "~/app/layouts/Section"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatYearMonth } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
-import { useClientSipSchedules } from "~/features/admin/client-values/sipScheduleQueries"
+import { useClientSipSchedules, type AdminSipScheduleItem } from "~/features/admin/client-values/sipScheduleQueries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { MoneyValue } from "~/ui/patterns/MoneyValue"
@@ -18,9 +18,19 @@ import { ACTION_ROW } from "~/ui/recipes/layout"
 import { SipScheduleCreateForm } from "./SipScheduleCreateForm"
 import { SipScheduleEditor } from "./SipScheduleEditor"
 
-export type SipScheduleSectionProps = Readonly<{ userId: string; canStart: boolean }>
+export type SipScheduleSectionProps = Readonly<{
+  userId: string
+  canStart: boolean
+  onRecordMonth?: (schedule: AdminSipScheduleItem) => void
+  isRecordBlocked?: boolean
+}>
 
-export const SipScheduleSection = ({ userId, canStart }: SipScheduleSectionProps): React.ReactElement | null => {
+export const SipScheduleSection = ({
+  userId,
+  canStart,
+  onRecordMonth,
+  isRecordBlocked = false,
+}: SipScheduleSectionProps): React.ReactElement | null => {
   const { hasAnyPermission } = useSession()
   const canRead = hasAnyPermission(["client_position.write", "client_values.read"])
   const canWrite = hasAnyPermission(["client_position.write"])
@@ -33,6 +43,7 @@ export const SipScheduleSection = ({ userId, canStart }: SipScheduleSectionProps
     void schedules.refetch()
   }
   const editing = schedules.data?.items.find((item) => item.scheduleId === editingId)
+  const canRecordMonth = canWrite && canStart && onRecordMonth !== undefined
 
   return (
     <Section
@@ -117,6 +128,18 @@ export const SipScheduleSection = ({ userId, canStart }: SipScheduleSectionProps
                 render: (row) =>
                   canWrite ? (
                     <span className={ACTION_ROW}>
+                      {canRecordMonth && row.state === "active" ? (
+                        <Button
+                          size="sm"
+                          tone="secondary"
+                          disabled={isRecordBlocked}
+                          onClick={() => {
+                            onRecordMonth(row)
+                          }}
+                        >
+                          Record this month
+                        </Button>
+                      ) : null}
                       <Button
                         size="sm"
                         tone="ghost"
@@ -133,6 +156,12 @@ export const SipScheduleSection = ({ userId, canStart }: SipScheduleSectionProps
           />
         )}
       </AsyncBoundary>
+
+      {canRecordMonth && isRecordBlocked ? (
+        <p className={PROSE_SM}>
+          The recording form above is sending a recording or holding one that was not confirmed. Finish it before recording another month.
+        </p>
+      ) : null}
 
       {editing === undefined ? null : (
         <SipScheduleEditor

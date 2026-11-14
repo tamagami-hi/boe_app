@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useParams } from "react-router-dom"
 
 import { Page } from "~/app/layouts/Page"
@@ -10,6 +10,9 @@ import { toPaise } from "~/domain/money"
 import { emailVerificationState, orderState, userAccountState } from "~/domain/status"
 import { PortfolioSummarySection } from "~/features/admin/client-returns/PortfolioSummarySection"
 import { EarlierInvestmentForm } from "~/features/admin/client-values/EarlierInvestmentForm"
+import { indiaToday } from "~/features/admin/client-values/indiaToday"
+import { monthlyPrefillOf, type RecordingPrefill } from "~/features/admin/client-values/recordingPrefill"
+import type { AdminSipScheduleItem } from "~/features/admin/client-values/sipScheduleQueries"
 import { ClientMaturitySection } from "~/features/admin/maturities/ClientMaturitySection"
 import { useAdminUser } from "~/features/admin/shared/adminQueries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
@@ -47,10 +50,23 @@ const UserDetailScreen = (): React.ReactElement => {
 
   const canRecordInvestment = hasAnyPermission(["client_position.write"])
   const [isRecording, setRecording] = useState(false)
+  const [prefill, setPrefill] = useState<Readonly<{ id: number; values: RecordingPrefill }> | null>(null)
+  const [isFormHolding, setFormHolding] = useState(false)
+  const recordingForm = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (prefill !== null) recordingForm.current?.scrollIntoView({ block: "start" })
+  }, [prefill])
+
   const canRecordFor = (accountState: string): boolean =>
     canRecordInvestment && (accountState === "active" || accountState === "suspended")
 
   const reloadUser = async (): Promise<boolean> => (await query.refetch()).isSuccess
+
+  const recordMonth = (schedule: AdminSipScheduleItem): void => {
+    setPrefill((current) => ({ id: (current?.id ?? 0) + 1, values: monthlyPrefillOf(schedule, indiaToday()) }))
+    setRecording(true)
+  }
 
   return (
     <Page width="wide">
@@ -136,6 +152,7 @@ const UserDetailScreen = (): React.ReactElement => {
                 isRecording={isRecording}
                 onToggleRecord={() => {
                   setRecording((open) => !open)
+                  setPrefill(null)
                 }}
               />
             ) : null}
@@ -145,15 +162,25 @@ const UserDetailScreen = (): React.ReactElement => {
                 title="Record an investment"
                 description="Records an earlier investment, a monthly investment or a correction, one fund at a time. It is not a charge and not growth."
               >
-                <EarlierInvestmentForm
-                  userId={userId}
-                  investorLabel={data.user.fullName === "" ? data.user.email : data.user.fullName}
-                />
+                <div ref={recordingForm}>
+                  <EarlierInvestmentForm
+                    key={prefill === null ? "blank" : `prefill-${String(prefill.id)}`}
+                    userId={userId}
+                    investorLabel={data.user.fullName === "" ? data.user.email : data.user.fullName}
+                    {...(prefill === null ? {} : { prefill: prefill.values })}
+                    onHoldChange={setFormHolding}
+                  />
+                </div>
               </Section>
             ) : null}
 
             {data.roles.length === 0 ? (
-              <SipScheduleSection userId={userId} canStart={canRecordFor(data.user.accountState)} />
+              <SipScheduleSection
+                userId={userId}
+                canStart={canRecordFor(data.user.accountState)}
+                onRecordMonth={recordMonth}
+                isRecordBlocked={isFormHolding}
+              />
             ) : null}
 
             {data.roles.length === 0 ? (

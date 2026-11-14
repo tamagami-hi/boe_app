@@ -22,10 +22,15 @@ export type SipMonthLinkState = Readonly<{
 
 type Choice = Readonly<{ scheduleId: string; month: string }>
 
-export const useSipMonthLink = (userId: string, fundId: string, monthly: boolean): SipMonthLinkState => {
+export const useSipMonthLink = (
+  userId: string,
+  fundId: string,
+  monthly: boolean,
+  initial: SipMonthLink | null = null,
+): SipMonthLinkState => {
   const wanted = monthly && fundId !== ""
   const schedules = useClientSipSchedules(wanted ? userId : "")
-  const [choice, setChoice] = useState<Choice | null>(null)
+  const [choice, setChoice] = useState<Choice | null>(initial)
 
   const schedule =
     schedules.data?.items.find((item) => item.fundId === fundId && item.state === "active") ?? null

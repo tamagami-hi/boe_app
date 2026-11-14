@@ -79,7 +79,7 @@ export const ADMIN_ROUTES: RouteManifest = [
     title: "User",
     access: "session",
     role: "admin",
-    permissions: ["users.read", "users.read_limited"],
+    permissions: ["users.read"],
     element: () => import("~/features/admin/users/UserDetailScreen"),
     back: { kind: "parent", path: "/users" },
   },
@@ -207,7 +207,7 @@ export const ADMIN_ROUTES: RouteManifest = [
     role: "admin",
     permissions: ["client_values.read"],
     element: () => import("~/features/admin/client-returns/ReturnsDashboardScreen"),
-    nav: { domain: "client-values", order: 6.5, label: "Returns" },
+    nav: { domain: "client-values", order: 6.2, label: "Returns" },
     back: { kind: "parent", path: "/client-values" },
   },
   {
@@ -218,7 +218,7 @@ export const ADMIN_ROUTES: RouteManifest = [
     role: "admin",
     permissions: ["client_values.read"],
     element: () => import("~/features/admin/reports/AccountingExportsScreen"),
-    nav: { domain: "client-values", order: 6.6, label: "Exports" },
+    nav: { domain: "client-values", order: 6.4, label: "Exports" },
     back: { kind: "parent", path: "/client-values" },
   },
   {
@@ -229,7 +229,7 @@ export const ADMIN_ROUTES: RouteManifest = [
     role: "admin",
     permissions: ["client_position.write", "client_values.read"],
     element: () => import("~/features/admin/maturities/MaturitiesScreen"),
-    nav: { domain: "client-values", order: 6.7, label: "Maturities" },
+    nav: { domain: "client-values", order: 6.3, label: "Maturities" },
     back: { kind: "parent", path: "/client-values" },
   },
   {
@@ -270,6 +270,7 @@ export const ADMIN_ROUTES: RouteManifest = [
     role: "admin",
     permissions: ["client_position.write"],
     element: () => import("~/features/admin/payment-sheet/PaymentSheetScreen"),
+    nav: { domain: "client-values", order: 6.1, label: "Monthly payments" },
     back: { kind: "parent", path: "/client-values" },
   },
   {
@@ -290,7 +291,7 @@ export const ADMIN_ROUTES: RouteManifest = [
     role: "admin",
     permissions: ["support.read"],
     element: () => import("~/features/admin/support/SupportInboxScreen"),
-    nav: { domain: "support", order: 6, label: "Support" },
+    nav: { domain: "support", order: 6.5, label: "Support" },
     back: { kind: "parent", path: ADMIN_HOME_PATH },
   },
   {
@@ -499,7 +500,7 @@ export const ADMIN_NAV_DOMAINS: Readonly<Record<string, string>> = {
 }
 
 export const ADMIN_LINK_MAP: Readonly<Record<string, readonly string[]>> = {
-  overview: ["applications", "users", "funds", "receipts", "payments", "audit"],
+  overview: ["applications", "users", "funds", "receipts", "payments", "audit", "emails", "client-values", "support"],
   applications: ["application-detail"],
   users: ["user-detail", "client-create"],
   "client-create": ["user-detail"],
@@ -529,5 +530,6 @@ export const ADMIN_LINK_MAP: Readonly<Record<string, readonly string[]>> = {
   receipts: ["receipt-detail"],
   mandates: ["mandate-detail"],
   "email-templates": ["email-template-new", "email-template-detail"],
+  emails: ["user-detail"],
   "app-config": [],
 }

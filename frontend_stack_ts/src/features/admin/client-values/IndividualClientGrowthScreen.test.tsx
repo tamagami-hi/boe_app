@@ -54,7 +54,7 @@ vi.mock("./growthQueries", () => ({
   },
 }))
 
-vi.mock("~/features/admin/shared/adminQueries", () => ({
+vi.mock("~/features/admin/users/userDirectoryQueries", () => ({
   useAdminUsers: () => ({
     data: { items: [{
         id: USER_ID,
@@ -69,6 +69,9 @@ vi.mock("~/features/admin/shared/adminQueries", () => ({
     isFetching: false,
     refetch: () => undefined,
   }),
+}))
+
+vi.mock("~/features/admin/shared/adminQueries", () => ({
   useAdminInvestorPositions: (userId: string) => ({
     data:
       userId === ""

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 
-import { useAdminUsers } from "~/features/admin/shared/adminQueries"
+import { useAdminUsers } from "~/features/admin/users/userDirectoryQueries"
 import { Button } from "~/ui/primitives/Button"
 import { Combobox } from "~/ui/primitives/Combobox"
 import { FormField } from "~/ui/primitives/FormField"
@@ -25,7 +25,7 @@ export const InvestorPicker = ({
 }: InvestorPickerProps): React.ReactElement => {
   const [query, setQuery] = useState("")
   const search = query.trim()
-  const investors = useAdminUsers(search === "" ? {} : { q: search })
+  const investors = useAdminUsers(search === "" ? { segment: "clients" } : { segment: "clients", q: search })
   const failed = investors.data === undefined && investors.error != null
 
   const options = useMemo(

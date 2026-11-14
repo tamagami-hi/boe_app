@@ -1,10 +1,9 @@
-
-
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { Section } from "~/app/layouts/Section"
 import { ContentGrid } from "~/app/layouts/ContentGrid"
 import { useSession } from "~/app/providers/SessionProvider"
+import { useRouteAccess } from "~/features/admin/shared/routeAccess"
 import { Prose, Stat } from "~/ui/patterns/DataList"
 
 import { ButtonLink } from "~/ui/primitives/ButtonLink"
@@ -13,28 +12,31 @@ import { Alert } from "~/ui/primitives/Feedback"
 
 const ENTRIES = [
   {
+    routeId: "client-values-monthly",
     to: "/client-values/monthly",
     title: "Monthly value update",
     hint: "Type each client's gain since they invested for one fund. The changes are previewed and written together, and every client is notified.",
-    requires: ["client_values.read", "client_growth.write"],
   },
   {
+    routeId: "client-values-payment-sheet",
     to: "/client-values/payment-sheet",
     title: "Monthly payments",
     hint: "Record a month of SIP payments for every client in one sheet, or paste them in. Each row is recorded on its own and every client is notified.",
-    requires: ["client_position.write"],
   },
   {
+    routeId: "client-values-individual",
     to: "/client-values/individual",
     title: "One investor",
     hint: "Adjust a single position by an amount or a rate. Written straight to the ledger.",
   },
   {
+    routeId: "client-values-collective",
     to: "/client-values/collective",
     title: "A whole fund",
     hint: "Preview every position in a fund, then commit the exact numbers the server recomputed.",
   },
   {
+    routeId: "client-values-position",
     to: "/client-values/position",
     title: "One investor's record",
     hint: "See every position and ledger entry, record an investment, and reverse an entry that should not be there.",
@@ -42,7 +44,8 @@ const ENTRIES = [
 ] as const
 
 const ClientValuesScreen = (): React.ReactElement => {
-  const { hasAnyPermission, hasAllPermissions } = useSession()
+  const { hasAnyPermission } = useSession()
+  const canOpen = useRouteAccess()
   const canWrite = hasAnyPermission(["client_growth.write", "client_position.write"])
 
   return (
@@ -66,9 +69,9 @@ const ClientValuesScreen = (): React.ReactElement => {
               <Stat label={entry.title} hint={entry.hint}>
                 <span />
               </Stat>
-              <ButtonLink to={entry.to} tone="secondary" size="sm" disabled={"requires" in entry ? !hasAllPermissions(entry.requires) : !canWrite} trailing>
-Open
-</ButtonLink>
+              <ButtonLink to={entry.to} tone="secondary" size="sm" disabled={!canOpen(entry.routeId)} trailing>
+                Open
+              </ButtonLink>
             </Card>
           ))}
         </ContentGrid>

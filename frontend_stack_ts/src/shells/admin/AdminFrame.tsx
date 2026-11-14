@@ -25,6 +25,8 @@ import {
   ADMIN_NAV_MORE,
   ADMIN_SHELL,
   ADMIN_SIDEBAR,
+  ADMIN_SIDEBAR_GROUP,
+  ADMIN_SIDEBAR_GROUP_LABEL,
   ADMIN_SIDEBAR_LINK,
   ADMIN_TITLE,
   ADMIN_TOPBAR,
@@ -85,15 +87,20 @@ export const AdminFrame = ({ children }: AdminFrameProps): React.ReactElement =>
       <div className={ADMIN_BODY}>
         <nav className={ADMIN_SIDEBAR} aria-label="Primary">
           <span className={ADMIN_WORDMARK}>BeOnEdge</span>
-          {permitted.map((entry) => (
-            <Link
-              key={entry.id}
-              to={entry.path}
-              className={ADMIN_SIDEBAR_LINK}
-              aria-current={entry.id === activeId ? "page" : undefined}
-            >
-              {entry.nav.label}
-            </Link>
+          {groups.map((group) => (
+            <div key={group.domain} className={ADMIN_SIDEBAR_GROUP}>
+              {group.entries.length > 1 ? <span className={ADMIN_SIDEBAR_GROUP_LABEL}>{group.label}</span> : null}
+              {group.entries.map((entry) => (
+                <Link
+                  key={entry.id}
+                  to={entry.path}
+                  className={ADMIN_SIDEBAR_LINK}
+                  aria-current={entry.id === activeId ? "page" : undefined}
+                >
+                  {entry.nav.label}
+                </Link>
+              ))}
+            </div>
           ))}
         </nav>
 

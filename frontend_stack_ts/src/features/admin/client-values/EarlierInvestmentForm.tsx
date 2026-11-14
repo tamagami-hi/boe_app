@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { isApiError, isUnknownWriteOutcome } from "~/api/errors"
 import { useIdempotencyKey } from "~/api/idempotency"
@@ -26,6 +26,7 @@ import {
   isRecordingReason,
   recordingCategoryCopy,
 } from "./recordingCategories"
+import { MONTHLY_RECORDING_REASON, type RecordingPrefill } from "./recordingPrefill"
 import { useRecordClientContribution } from "./recordingQueries"
 import { parsePositiveRupees } from "./rupeeAmount"
 import { SipMonthLinkField } from "./SipMonthLinkField"
@@ -45,8 +46,6 @@ type Outcome =
 
 const IDLE: Outcome = { kind: "idle" }
 
-const MONTHLY_REASON = "recorded_offline_monthly_investment"
-
 const describeRejection = (error: unknown): string => {
   if (!isApiError(error)) return "This investment could not be sent. Reload the page and try again."
   const linkRefusals = Object.entries(error.fields ?? {}).filter(([field]) => field.startsWith("sipScheduleLink"))
@@ -62,21 +61,25 @@ const describeRejection = (error: unknown): string => {
 export type EarlierInvestmentFormProps = Readonly<{
   userId: string
   investorLabel: string
+  prefill?: RecordingPrefill
+  onHoldChange?: (holding: boolean) => void
 }>
 
 export const EarlierInvestmentForm = ({
   userId,
   investorLabel,
+  prefill,
+  onHoldChange,
 }: EarlierInvestmentFormProps): React.ReactElement => {
   const { hasAnyPermission } = useSession()
   const canWrite = hasAnyPermission(["client_position.write"])
   const funds = useAdminFundCatalogue()
   const record = useRecordClientContribution()
 
-  const [fundId, setFundId] = useState("")
-  const [rupees, setRupees] = useState("")
-  const [effectiveDate, setEffectiveDate] = useState("")
-  const [reasonCode, setReasonCode] = useState(DEFAULT_RECORDING_REASON)
+  const [fundId, setFundId] = useState(prefill?.fundId ?? "")
+  const [rupees, setRupees] = useState(prefill?.rupees ?? "")
+  const [effectiveDate, setEffectiveDate] = useState(prefill?.effectiveDate ?? "")
+  const [reasonCode, setReasonCode] = useState(prefill?.reasonCode ?? DEFAULT_RECORDING_REASON)
   const [note, setNote] = useState("")
   const [attempt, setAttempt] = useState(0)
   const [outcome, setOutcome] = useState<Outcome>(IDLE)
@@ -84,7 +87,7 @@ export const EarlierInvestmentForm = ({
   const [confirmingRestart, setConfirmingRestart] = useState(false)
 
   const category = recordingCategoryCopy(reasonCode)
-  const sipLink = useSipMonthLink(userId, fundId, reasonCode === MONTHLY_REASON)
+  const sipLink = useSipMonthLink(userId, fundId, reasonCode === MONTHLY_RECORDING_REASON, prefill?.sipMonth ?? null)
   const amountPaise = parsePositiveRupees(rupees)
   const trimmedNote = note.trim()
   const request = {
@@ -104,7 +107,16 @@ export const EarlierInvestmentForm = ({
   }
 
   const recorded = record.data
-  const locked = !canWrite || record.isPending || outcome.kind === "unknown" || recorded !== undefined
+  const holding = record.isPending || outcome.kind === "unknown"
+  const locked = !canWrite || holding || recorded !== undefined
+
+  useEffect(() => {
+    onHoldChange?.(holding)
+    return () => {
+      onHoldChange?.(false)
+    }
+  }, [holding, onHoldChange])
+
   const today = indiaToday()
   const futureDated = effectiveDate !== "" && effectiveDate > today
   const amountInvalid = rupees !== "" && amountPaise === null

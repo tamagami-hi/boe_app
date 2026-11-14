@@ -6,6 +6,7 @@ import { Section } from "~/app/layouts/Section"
 import { useSession } from "~/app/providers/SessionProvider"
 import { formatDateTime } from "~/domain/dates"
 import { ratingText, reviewState } from "~/domain/reviews"
+import { ClientPageLink } from "~/features/admin/shared/clientPageLink"
 import { cx } from "~/lib/cx"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
@@ -14,20 +15,18 @@ import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 import { PROSE_PRE, PROSE_SM } from "~/ui/recipes/datalist"
 
-import { ClientLink, useCanOpenClient } from "./reviewPresentation"
 import { ReviewModerationForm } from "./ReviewModerationForm"
 import { useReview, type ReviewDetail } from "./reviewQueries"
 
 const MESSAGE_TEXT = cx(PROSE_SM, PROSE_PRE)
 
 const ReviewSummary = ({ review }: Readonly<{ review: ReviewDetail }>): React.ReactElement => {
-  const canOpenClient = useCanOpenClient()
   return (
     <Section title="Review">
       <Card>
         <DataList split>
           <DetailRow label="Client" emphasis="lead">
-            <ClientLink userId={review.userId} name={review.clientName} canOpen={canOpenClient} />
+            <ClientPageLink userId={review.userId}>{review.clientName}</ClientPageLink>
           </DetailRow>
           <DetailRow label="Rating">{ratingText(review.rating)}</DetailRow>
           <DetailRow label="State">

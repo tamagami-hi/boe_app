@@ -1,13 +1,13 @@
 import { useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 
 import { Modal } from "~/app/overlays/Modal"
 import { useSession } from "~/app/providers/SessionProvider"
+import { ClientPageLink } from "~/features/admin/shared/clientPageLink"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { Badge } from "~/ui/primitives/Badge"
 import { Button } from "~/ui/primitives/Button"
 import { Skeleton } from "~/ui/primitives/Feedback"
-import { ADMIN_CELL_LINK } from "~/ui/recipes/admin"
 import { ENTRY_TEXT, LIST_ROOT, LIST_ROW } from "~/ui/recipes/datalist"
 import { BODY_SM, META_TEXT } from "~/ui/recipes/text"
 
@@ -77,9 +77,9 @@ export const MaturityDuePrompt = ({ dismissed, onDismiss }: MaturityDuePromptPro
                 return (
                   <li key={item.scheduleId} className={LIST_ROW}>
                     <span className={ENTRY_TEXT}>
-                      <Link to={`/users/${item.userId}`} className={ADMIN_CELL_LINK} onClick={onDismiss}>
+                      <ClientPageLink userId={item.userId} onOpen={onDismiss}>
                         {item.clientName}
-                      </Link>
+                      </ClientPageLink>
                       <span className={META_TEXT}>
                         {`${item.fundName}, ${formatMaturityDate(item.maturityDate)}, ${dueTextOf(item)}`}
                       </span>

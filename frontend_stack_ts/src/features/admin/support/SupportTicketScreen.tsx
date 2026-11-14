@@ -7,6 +7,7 @@ import { useSession } from "~/app/providers/SessionProvider"
 import { formatDateTime } from "~/domain/dates"
 import { supportRequestState } from "~/domain/status"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
+import { ClientPageLink } from "~/features/admin/shared/clientPageLink"
 import { cx } from "~/lib/cx"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { DataList, DetailRow } from "~/ui/patterns/DataList"
@@ -26,20 +27,12 @@ import { useSupportTicket, useUserSupportTickets, type SupportTicketDetail } fro
 const MESSAGE_TEXT = cx(PROSE_SM, PROSE_PRE)
 
 const TicketSummary = ({ ticket }: Readonly<{ ticket: SupportTicketDetail }>): React.ReactElement => {
-  const { hasAnyPermission } = useSession()
-  const canOpenUser = hasAnyPermission(["users.read", "users.read_limited"])
   return (
     <Section title="Request">
       <Card>
         <DataList split>
           <DetailRow label="Client" emphasis="lead">
-            {canOpenUser ? (
-              <Link to={`/users/${ticket.userId}`} className={ADMIN_CELL_LINK}>
-                {ticket.clientName}
-              </Link>
-            ) : (
-              ticket.clientName
-            )}
+            <ClientPageLink userId={ticket.userId}>{ticket.clientName}</ClientPageLink>
           </DetailRow>
           <DetailRow label="Reference">
             <span className={ADMIN_CODE}>{ticket.reference}</span>

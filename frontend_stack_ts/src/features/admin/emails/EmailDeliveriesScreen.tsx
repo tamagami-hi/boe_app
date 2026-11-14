@@ -1,5 +1,3 @@
-import { useState } from "react"
-
 import { Page } from "~/app/layouts/Page"
 import { PageHeader } from "~/app/layouts/PageHeader"
 import { useSession } from "~/app/providers/SessionProvider"
@@ -7,6 +5,8 @@ import { formatDateTime } from "~/domain/dates"
 import { emailDeliveryState } from "~/domain/status"
 import { useAdminEmailDeliveries } from "~/features/admin/shared/adminQueries"
 import { AdminTable, FilterChip, FilterRow } from "~/features/admin/shared/AdminTable"
+import { ClientPageLink } from "~/features/admin/shared/clientPageLink"
+import { useUrlFilter } from "~/features/admin/shared/urlFilter"
 import { AsyncBoundary } from "~/ui/patterns/AsyncBoundary"
 import { LoadMore } from "~/ui/patterns/LoadMore"
 import { EmptyState } from "~/ui/patterns/EmptyState"
@@ -44,8 +44,8 @@ const TEMPLATES = [
 ] as const
 
 const EmailDeliveriesScreen = (): React.ReactElement => {
-  const [state, setState] = useState<string>("any")
-  const [templateKey, setTemplateKey] = useState<string>("any")
+  const [state, setState] = useUrlFilter("state", STATES, "any")
+  const [templateKey, setTemplateKey] = useUrlFilter("template", TEMPLATES, "any")
   const query = useAdminEmailDeliveries({
     ...(state === "any" ? {} : { state }),
     ...(templateKey === "any" ? {} : { templateKey }),
@@ -116,7 +116,11 @@ const EmailDeliveriesScreen = (): React.ReactElement => {
             rowKey={(row) => row.emailDeliveryId}
             columns={[
               { key: "template", header: "Template", render: (row) => row.templateKey },
-              { key: "recipient", header: "Recipient", render: (row) => row.recipientMasked },
+              {
+                key: "recipient",
+                header: "Recipient",
+                render: (row) => <ClientPageLink userId={row.userId}>{row.recipientMasked}</ClientPageLink>,
+              },
               {
                 key: "state",
                 header: "State",

@@ -62,6 +62,11 @@ export const ADMIN_SIDEBAR = [
 export const ADMIN_WORDMARK =
   "mb-5 px-3 font-display text-md font-medium tracking-display text-nav-fg"
 
+export const ADMIN_SIDEBAR_GROUP = "flex flex-col gap-0.5"
+
+export const ADMIN_SIDEBAR_GROUP_LABEL =
+  "mt-3 px-3 pb-1 font-ui text-2xs font-semibold uppercase tracking-eyebrow text-nav-fg-muted"
+
 export const ADMIN_SIDEBAR_LINK = [
   "block rounded-full px-3 py-2 no-underline",
   "font-ui text-sm font-semibold text-nav-fg-muted",

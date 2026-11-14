@@ -93,7 +93,7 @@ export const DailyTiles = ({ reachablePaths }: Props): React.ReactElement => {
         <DailyTile
           label="Invites not accepted"
           hint="Clients who have not set a password yet. Open a client to send a new invite link."
-          to="/users"
+          to="/users?segment=pending_invites"
           canOpen={reachablePaths.has("/users")}
         >
           {canReadInvites ? (
@@ -116,7 +116,7 @@ export const DailyTiles = ({ reachablePaths }: Props): React.ReactElement => {
         <DailyTile
           label="Failed emails"
           hint="Deliveries the mail provider refused for good. They are not retried."
-          to="/emails"
+          to="/emails?state=permanent_failed"
           canOpen={reachablePaths.has("/emails")}
         >
           {canReadEmails ? (
