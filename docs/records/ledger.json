@@ -1310,10 +1310,6 @@
               "to": "M3-gates:G10-payments-decision"
             },
             {
-              "what": "Placeholder contacts if the dev content seed reached production: maintainer question Q-037, before release",
-              "to": "M3-gates:G8-prod-release"
-            },
-            {
               "what": "AccountPasswordPanel and ResetPasswordScreen keep typed passwords in form state after an error (h-hygiene review F3)",
               "to": "M13-carried:carried-lows"
             }
@@ -1476,6 +1472,10 @@
     {
       "commit": "d28e13b",
       "note": "docs(plan): U-close and Phase H scope (also recorded as U-close's landing)"
+    },
+    {
+      "commit": "b66cdf7",
+      "note": "Plan: Q-037 answered as DEC-37 (production legal documents carry real contacts); DEC-34 and DEC-36 marked built; no code change."
     }
   ]
 }

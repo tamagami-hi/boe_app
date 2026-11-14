@@ -1,16 +1,7 @@
 {
   "schema": 1,
   "nextRow": 24,
-  "open": [
-    {
-      "row": 23,
-      "group": "admin-improvements",
-      "question": "Lane h-client (H2) now shows the support and grievance contacts on the client's Support, Grievance and Login screens, reading them from the legal documents in `content_items` (investor charter, grievance matrix). The production stack runs only `seed:auth`. The content seed (`backend_controller/src/db/seedContent.ts`) holds placeholder contacts (support@ and grievance@ on beonedge.example, and +91-80-1234-5678/5679), and the admin panel can edit only FAQs and app config, not these documents. Do the production legal documents exist, and do they carry real contacts? If they are absent, the screens fall back to their previous text. If they were seeded with the placeholders, clients would now see fake contacts. Before release, the real contacts must be published, through a reviewed seed change or an admin editor for these documents.",
-      "meanwhile": "The lane lands on local main as built: the contacts show when the documents carry them, and the earlier fallback text appears when they are absent. Nothing is released, and no real contact values are invented.",
-      "asked": "2026-11-14T05:13:50.647Z",
-      "by": "claude-opus-5-5 coordinator"
-    }
-  ],
+  "open": [],
   "answered": [
     {
       "row": 1,
@@ -231,6 +222,16 @@
       "by": "claude-opus-5-5 coordinator",
       "answeredAt": "2026-11-14T04:42:33.285Z",
       "decision": "DEC-36"
+    },
+    {
+      "row": 23,
+      "group": "admin-improvements",
+      "question": "Lane h-client (H2) now shows the support and grievance contacts on the client's Support, Grievance and Login screens, reading them from the legal documents in `content_items` (investor charter, grievance matrix). The production stack runs only `seed:auth`. The content seed (`backend_controller/src/db/seedContent.ts`) holds placeholder contacts (support@ and grievance@ on beonedge.example, and +91-80-1234-5678/5679), and the admin panel can edit only FAQs and app config, not these documents. Do the production legal documents exist, and do they carry real contacts? If they are absent, the screens fall back to their previous text. If they were seeded with the placeholders, clients would now see fake contacts. Before release, the real contacts must be published, through a reviewed seed change or an admin editor for these documents.",
+      "meanwhile": "The lane lands on local main as built: the contacts show when the documents carry them, and the earlier fallback text appears when they are absent. Nothing is released, and no real contact values are invented.",
+      "asked": "2026-11-14T05:13:50.647Z",
+      "by": "claude-opus-5-5 coordinator",
+      "answeredAt": "2026-11-14T11:12:49.190Z",
+      "decision": "DEC-37"
     }
   ]
 }
