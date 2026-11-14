@@ -20,7 +20,8 @@ import {
   resolutionOutcomeText,
   type ActiveSip,
   type Choice,
-  type FactsReload,
+  factsReloadOf,
+  type ReadsReload,
   type HoldingFigures,
   type HoldingRead,
 } from "./resolutionCopy"
@@ -31,7 +32,7 @@ export type MaturityResolveDialogProps = Readonly<{
   schedule: MaturityScheduleItem
   holding: HoldingRead
   activeSip: ActiveSip | null | undefined
-  reload: FactsReload
+  reload: ReadsReload
   onClose: () => void
 }>
 
@@ -179,7 +180,7 @@ export const MaturityResolveDialog = ({
               if (!locked) setChoice(next)
             }}
           />
-          <ResolutionFacts choice={choice} holding={holding} activeSip={activeSip} reload={reload} />
+          <ResolutionFacts choice={choice} holding={holding} activeSip={activeSip} reload={factsReloadOf(reload, write)} />
           <Alert tone="info" title="What happens">
             {explanationOf(choice, figures)}
           </Alert>

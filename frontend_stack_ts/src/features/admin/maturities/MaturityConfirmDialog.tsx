@@ -26,7 +26,8 @@ import {
   resolutionOutcomeText,
   type ActiveSip,
   type Choice,
-  type FactsReload,
+  factsReloadOf,
+  type ReadsReload,
   type HoldingFigures,
   type HoldingRead,
 } from "./resolutionCopy"
@@ -37,7 +38,7 @@ export type MaturityConfirmDialogProps = Readonly<{
   offer: MaturityOfferSummary
   holding: HoldingRead
   activeSip: ActiveSip | null | undefined
-  reload: FactsReload
+  reload: ReadsReload
   onClose: () => void
 }>
 
@@ -107,6 +108,7 @@ export const MaturityConfirmDialog = ({
   const { refreshing, onReload } = reload
   const figures = figuresOf(holding)
   const write = useHeldWrite(useConfirmMaturityOffer(userId), "The confirmation could not be sent. Reload the page and try again.")
+  const factsReload = factsReloadOf(reload, write)
   const today = indiaToday()
   const [effectiveDate, setEffectiveDate] = useState(schedule.maturityDate)
   const choice = choiceOf(offer)
@@ -170,9 +172,9 @@ export const MaturityConfirmDialog = ({
                 : "Something changed since you opened this. Close it, check the client's current choice and the figures, then confirm again."}
             </Alert>
           ) : null}
-          <HoldingFacts holding={holding} reload={reload} />
+          <HoldingFacts holding={holding} reload={factsReload} />
           <OfferedFigures choice={choice} offer={offer} />
-          {choice === "return_all" ? null : <ActiveSipFacts choice={choice} activeSip={activeSip} reload={reload} />}
+          {choice === "return_all" ? null : <ActiveSipFacts choice={choice} activeSip={activeSip} reload={factsReload} />}
           <Alert tone="info" title="What happens">
             {explanationOf(choice, figures)}
           </Alert>

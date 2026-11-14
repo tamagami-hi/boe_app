@@ -1,3 +1,5 @@
+import { useState } from "react"
+
 import { Modal } from "~/app/overlays/Modal"
 import { useClientSipSchedules } from "~/features/admin/client-values/sipScheduleQueries"
 import { useAdminInvestorPositions } from "~/features/admin/shared/adminQueries"
@@ -139,14 +141,17 @@ const holdingOf = (positions: PositionsRead, fundId: string): HoldingRead => {
 export const MaturityActionDialog = ({ userId, action, onClose }: MaturityActionDialogProps): React.ReactElement => {
   const positions = useAdminInvestorPositions(userId)
   const sips = useClientSipSchedules(userId)
+  const [hasOpened, setOpened] = useState(false)
   const { schedule, kind } = action
   const offer = schedule.offer
+  const isFirstReadPending = positions.isPending || sips.isPending
+  if (!hasOpened && !isFirstReadPending) setOpened(true)
 
   if ((kind === "confirm" || kind === "withdraw") && offer === null) return <ClosedOfferModal onClose={onClose} />
   if (kind === "withdraw" && offer !== null) {
     return <MaturityWithdrawDialog userId={userId} schedule={schedule} offer={offer} onClose={onClose} />
   }
-  if (positions.isPending || sips.isPending) return <ReadingModal onClose={onClose} />
+  if (!hasOpened && isFirstReadPending) return <ReadingModal onClose={onClose} />
 
   const holding = holdingOf(positions, schedule.fundId)
   const activeSip =

@@ -32,13 +32,14 @@ type DirectoryRead = Pick<Directory, "data" | "error" | "hasMore">
 
 const investorNamesOf = (canReadNames: boolean, { data, error, hasMore }: DirectoryRead): InvestorNames => {
   if (!canReadNames || hasCode(error, "AUTHORIZATION_DENIED")) return { kind: "forbidden" }
-  if (error != null) return { kind: "failed" }
-  if (data === undefined) return { kind: "loading" }
-  return {
-    kind: "ready",
-    byUserId: new Map(data.items.map((user) => [user.id, investorLabel(user)])),
-    isComplete: !hasMore,
+  if (data !== undefined) {
+    return {
+      kind: "ready",
+      byUserId: new Map(data.items.map((user) => [user.id, investorLabel(user)])),
+      isComplete: !hasMore,
+    }
   }
+  return error == null ? { kind: "loading" } : { kind: "failed" }
 }
 
 const nameOf = (names: InvestorNames, userId: string): string => {

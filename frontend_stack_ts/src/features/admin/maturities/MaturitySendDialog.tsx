@@ -16,13 +16,13 @@ import { FollowUpSipFields, followUpOf, type FollowUpDraft } from "./FollowUpSip
 import { formatMaturityDate, monthAfter } from "./maturityPresentation"
 import { useSendMaturityOptions, type MaturityScheduleItem } from "./maturityQueries"
 import { ActiveSipFacts } from "./ResolutionFacts"
-import type { ActiveSip, FactsReload } from "./resolutionCopy"
+import { factsReloadOf, type ActiveSip, type ReadsReload } from "./resolutionCopy"
 
 export type MaturitySendDialogProps = Readonly<{
   userId: string
   schedule: MaturityScheduleItem
   activeSip: ActiveSip | null | undefined
-  reload: FactsReload
+  reload: ReadsReload
   onClose: () => void
 }>
 
@@ -45,6 +45,7 @@ export const MaturitySendDialog = ({
 }: MaturitySendDialogProps): React.ReactElement => {
   const { refreshing, onReload } = reload
   const write = useHeldWrite(useSendMaturityOptions(userId), "The options could not be sent. Reload the page and try again.")
+  const factsReload = factsReloadOf(reload, write)
   const earliestMonth = laterMonth(monthAfter(schedule.maturityDate), indiaToday().slice(0, 7))
   const [draft, setDraft] = useState<FollowUpDraft>({ rupees: "", startMonth: earliestMonth, months: "12" })
   const [extensionDraft, setExtensionDraft] = useState<ExtensionDraft>(initialExtensionDraft(schedule.maturityDate))
@@ -113,7 +114,7 @@ export const MaturitySendDialog = ({
           <div className={STACK_SM}>
             <span className={ITEM_TITLE}>3. Extend the SIP</span>
             {activeSip === undefined ? (
-              <ActiveSipFacts choice="sip_extension" activeSip={activeSip} reload={reload} />
+              <ActiveSipFacts choice="sip_extension" activeSip={activeSip} reload={factsReload} />
             ) : room === 0 ? (
               <ExtensionUnavailable activeSip={activeSip} />
             ) : (
@@ -127,7 +128,7 @@ export const MaturitySendDialog = ({
                 />
                 {offerExtension ? (
                   <>
-                    <ActiveSipFacts choice="sip_extension" activeSip={activeSip} reload={reload} />
+                    <ActiveSipFacts choice="sip_extension" activeSip={activeSip} reload={factsReload} />
                     <ExtensionFields
                       draft={extensionDraft}
                       maturityDate={schedule.maturityDate}

@@ -15,7 +15,16 @@ export type HoldingRead =
 export const figuresOf = (holding: HoldingRead): HoldingFigures | null =>
   holding.state === "read" ? holding.figures : null
 
-export type FactsReload = Readonly<{ refreshing: boolean; onReload: () => void }>
+export type ReadsReload = Readonly<{ refreshing: boolean; onReload: () => void }>
+
+export type FactsReload = ReadsReload & Readonly<{ isWriteHeld: boolean }>
+
+type WriteState = Readonly<{ pending: boolean; outcome: Readonly<{ kind: string }> }>
+
+export const factsReloadOf = (reload: ReadsReload, write: WriteState): FactsReload => ({
+  ...reload,
+  isWriteHeld: write.pending || write.outcome.kind === "unknown",
+})
 
 export type ActiveSip = Readonly<{ monthlyAmountPaise: string; monthsPaid: number; monthCount: number }>
 

@@ -26,7 +26,7 @@ const gainText = (holding: HoldingFigures): string => {
 }
 
 const ReadAgain = ({ reload }: Readonly<{ reload: FactsReload }>): React.ReactElement => (
-  <Button size="sm" tone="secondary" loading={reload.refreshing} onClick={reload.onReload}>
+  <Button size="sm" tone="secondary" loading={reload.refreshing} disabled={reload.isWriteHeld} onClick={reload.onReload}>
     Read again
   </Button>
 )
