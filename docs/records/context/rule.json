@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "rule",
-  "nextNumber": 16,
+  "nextNumber": 55,
   "entries": [
     {
       "id": "rule-1",
@@ -15,7 +15,9 @@
         "track": "main",
         "agent": "claude-opus-5-5"
       },
-      "at": "2026-11-13T08:11:00.059Z"
+      "at": "2026-11-13T08:11:00.059Z",
+      "retiredAt": "2026-11-14T04:30:20.296Z",
+      "retiredWhy": "replaced by rule-16"
     },
     {
       "id": "rule-2",
@@ -336,7 +338,9 @@
         "agent": "claude-opus-5-5 coordinator"
       },
       "at": "2026-11-13T21:09:01.568Z",
-      "replaces": "rule-2"
+      "replaces": "rule-2",
+      "retiredAt": "2026-11-14T04:30:20.392Z",
+      "retiredWhy": "replaced by rule-17"
     },
     {
       "id": "rule-15",
@@ -358,7 +362,760 @@
         "agent": "claude-opus-5-5 coordinator"
       },
       "at": "2026-11-13T21:09:01.819Z",
-      "replaces": "rule-11"
+      "replaces": "rule-11",
+      "retiredAt": "2026-11-14T04:30:20.485Z",
+      "retiredWhy": "replaced by rule-18"
+    },
+    {
+      "id": "rule-16",
+      "kind": "rule",
+      "title": "RULES.md is the sole rulebook; read README.md then RULES.md before any work",
+      "text": "Read root README.md and RULES.md completely at session start and after compaction. RULES.md is the only authority for safety, production-data compatibility (rule 11: expand-first migrations, no destructive changes without a separate maintainer decision), no new source comments (rule 9), critical-only tests (rule 10), Git identity and authorization (rule 14), and verification. Never deploy, touch the VPS, move real money, or send real customer mail. This tally entry points there and does not restate or override it.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:30:20.296Z",
+      "replaces": "rule-1",
+      "section": "authority",
+      "source": "RULES.md, the maintainer's rulebook (2026-11-13)"
+    },
+    {
+      "id": "rule-17",
+      "kind": "rule",
+      "title": "Never enable payments or AutoPay; no payment or gateway work until the maintainer resumes it",
+      "text": "Never enable AutoPay or online payments, never change payment configuration or payment env keys, and do no payment, AutoPay or gateway work until the maintainer says to resume it. A fix is never permission to re-enable. Admin recording is how investments enter the ledger. Source: decisions DEC-22 and DEC-14 (group admin-improvements).",
+      "paths": [],
+      "tags": [
+        "payments",
+        "autopay",
+        "constraint"
+      ],
+      "refs": [
+        "DEC-22",
+        "DEC-14"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:30:20.392Z",
+      "replaces": "rule-14",
+      "section": "safety",
+      "source": "DEC-22 and DEC-14"
+    },
+    {
+      "id": "rule-18",
+      "kind": "rule",
+      "title": "No bank details, payment methods, payment instructions or reference numbers anywhere",
+      "text": "Never put bank details, payment methods or payment instructions in code, copy, FAQ seeds or emails, and never add a reference number (UTR or other) to investments the admin records. Source: decisions DEC-25 and DEC-13 (group admin-improvements).",
+      "paths": [],
+      "tags": [
+        "payments",
+        "copy",
+        "constraint"
+      ],
+      "refs": [
+        "DEC-25",
+        "DEC-13"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:30:20.485Z",
+      "replaces": "rule-15",
+      "section": "safety",
+      "source": "DEC-25 and DEC-13"
+    },
+    {
+      "id": "rule-19",
+      "kind": "rule",
+      "title": "When two sources disagree, the higher one wins",
+      "text": "Highest first: these rules; the decisions; the code as last verified, with the checks record and the build log; the commit bodies, which say why; the open questions and what each says to do meanwhile; the plans, which say what is intended, not built. A plan that differs from the code is corrected, unless the code breaks a rule or a decision; then the code is fixed.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "authority",
+      "source": "tally's rulebook template",
+      "template": "authority-order",
+      "tailor": "Is there a source outside this repository (a specification, another system's documents) that wins over this repository's summary of it? Name it and where it is.",
+      "retiredAt": "2026-11-14T04:33:43.479Z",
+      "retiredWhy": "Covered by RULES.md 'Authority' sets the order of sources here; RULES.md is the one rulebook (DEC-35)."
+    },
+    {
+      "id": "rule-20",
+      "kind": "rule",
+      "title": "Never push, release or deploy unasked",
+      "text": "Pushing, publishing, releasing and deploying are the operator's to do or to ask for. An agent builds and verifies on this machine, and never runs a command with raised privileges.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "safety",
+      "source": "tally's rulebook template",
+      "template": "ship-only-when-asked",
+      "tailor": "How is this project released and deployed, and who runs it? Name the commands an agent never runs.",
+      "retiredAt": "2026-11-14T04:33:43.506Z",
+      "retiredWhy": "Covered by RULES.md rules 2 and 14, and rule-16; RULES.md is the one rulebook (DEC-35)."
+    },
+    {
+      "id": "rule-21",
+      "kind": "rule",
+      "title": "Credentials belong to the operator",
+      "text": "Never print a secret's value, never commit one, and never create, change or remove a credential or a .env file. Code reads a secret from its environment and, when it is missing, names it and stops.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "safety",
+      "source": "tally's rulebook template",
+      "template": "secrets",
+      "retiredAt": "2026-11-14T04:33:43.543Z",
+      "retiredWhy": "Covered by RULES.md rule 3; RULES.md is the one rulebook (DEC-35)."
+    },
+    {
+      "id": "rule-22",
+      "kind": "rule",
+      "title": "Change nothing outside this repository that cannot be undone",
+      "text": "Until the operator names what this project must never do, these are forbidden: spending money, sending a message to a person, and any request that changes another system.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "safety",
+      "source": "tally's rulebook template",
+      "template": "never-do",
+      "tailor": "What must this project never do, whatever the tests say (place an order, charge a card, send mail, write to a system it does not own)? Each is a rule of its own.",
+      "retiredAt": "2026-11-14T04:33:43.573Z",
+      "retiredWhy": "Covered by RULES.md rules 1 to 3, rule-16 and rule-17; RULES.md is the one rulebook (DEC-35)."
+    },
+    {
+      "id": "rule-23",
+      "kind": "rule",
+      "title": "What this project does not own is read-only",
+      "text": "Data, services, containers and files that belong to something else on this machine are never written, moved, restarted, pruned or deleted. Every command is scoped to this project's own names, never to everything on the machine.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "safety",
+      "source": "tally's rulebook template",
+      "template": "not-ours",
+      "tailor": "What shares this project's machine or feeds it data? Name what is read-only, and the names (project, containers, folders) that mark what is this project's own.",
+      "retiredAt": "2026-11-14T04:33:43.595Z",
+      "retiredWhy": "Covered by RULES.md rule 3 (never stop an unfamiliar service; local one-shot checks only); RULES.md is the one rulebook (DEC-35)."
+    },
+    {
+      "id": "rule-24",
+      "kind": "rule",
+      "title": "A result that breaks an invariant is wrong, whatever the tests say",
+      "text": "Until the operator names this project's invariants, a change that alters what a result means is the operator's to decide, never the builder's.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "safety",
+      "source": "tally's rulebook template",
+      "template": "invariants",
+      "tailor": "What must always hold in this project's results (no look-ahead, no money created or lost, nothing sent twice)? Each is a rule of its own, with the test that enforces it.",
+      "retiredAt": "2026-11-14T04:33:43.620Z",
+      "retiredWhy": "Covered by RULES.md rules 4, 5, 6 and 11 name this project's invariants; RULES.md is the one rulebook (DEC-35)."
+    },
+    {
+      "id": "rule-25",
+      "kind": "rule",
+      "title": "Unknown stays unknown",
+      "text": "A value that is missing, unreadable or inconsistent is reported as missing and refused. It is never filled in, guessed or repaired silently, and every value shown traces back to where it came from.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "safety",
+      "source": "tally's rulebook template",
+      "template": "unknown",
+      "retiredAt": "2026-11-14T04:33:43.647Z",
+      "retiredWhy": "Covered by RULES.md rule 4; RULES.md is the one rulebook (DEC-35)."
+    },
+    {
+      "id": "rule-26",
+      "kind": "rule",
+      "title": "Do not invent a value a result depends on",
+      "text": "A price, a rate, a limit or a size that is not configured or verified gets no default. Show it as unconfigured and refuse the run that needs it, naming it. A number that must exist and is not verified is labelled unverified wherever it is printed.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "safety",
+      "source": "tally's rulebook template",
+      "template": "no-invented-values",
+      "tailor": "Which values must never be defaulted here?",
+      "retiredAt": "2026-11-14T04:33:43.673Z",
+      "retiredWhy": "Covered by RULES.md rule 7; RULES.md is the one rulebook (DEC-35)."
+    },
+    {
+      "id": "rule-27",
+      "kind": "rule",
+      "title": "Stored formats stay readable by the previous release",
+      "text": "A rollback swaps the code and keeps the data. So a schema, a file format or a stored record changes additively: add a field in one release, and drop one only in a later release.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "safety",
+      "source": "tally's rulebook template",
+      "template": "stored-formats",
+      "tailor": "What does this project store for good, and which formats does this rule cover?",
+      "retiredAt": "2026-11-14T04:33:43.701Z",
+      "retiredWhy": "Covered by RULES.md rule 11; RULES.md is the one rulebook (DEC-35)."
+    },
+    {
+      "id": "rule-28",
+      "kind": "rule",
+      "title": "Open decisions and gates are the operator's, and only those",
+      "text": "A choice is the operator's when it changes what a result means or costs, what is stored for good, what the project may do, or an existing decision. It becomes a question that states the conservative behaviour to build meanwhile, and is never decided in code. Every other choice is the builder's: make it, record it in one line, and go on. Report a gate's evidence; never declare it closed.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "safety",
+      "source": "tally's rulebook template",
+      "template": "operators-choices",
+      "retiredAt": "2026-11-14T04:33:43.735Z",
+      "retiredWhy": "Covered by RULES.md 'Authority' and rule 16; RULES.md is the one rulebook (DEC-35)."
+    },
+    {
+      "id": "rule-29",
+      "kind": "rule",
+      "title": "Write the test first and see it fail on its assertion",
+      "text": "A failure to compile proves nothing. A test added for code that already exists is proven once, by breaking that code by hand and seeing the assertion fail. A fixture written from the code's own belief proves nothing. Never weaken a failing test: decide which side is wrong and say so in the commit.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "working",
+      "source": "tally's rulebook template",
+      "template": "tests-first",
+      "tailor": "Where do the tests live, what coverage must hold, and which areas are tested whatever the coverage says?",
+      "retiredAt": "2026-11-14T04:33:43.756Z",
+      "retiredWhy": "Covered by RULES.md rule 10 governs tests here: tests only where silent failure is expensive, each new guard proven by a controlled negative case; write-tests-first conflicts with it; RULES.md is the one rulebook (DEC-35)."
+    },
+    {
+      "id": "rule-30",
+      "kind": "rule",
+      "title": "No comments in source",
+      "text": "Name things so the code reads on its own, and put the why in the commit body. A script that guards a dangerous step is the exception: its gates carry their reasons.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "working",
+      "source": "tally's rulebook template",
+      "template": "no-comments",
+      "retiredAt": "2026-11-14T04:33:43.782Z",
+      "retiredWhy": "Covered by RULES.md rule 9; RULES.md is the one rulebook (DEC-35)."
+    },
+    {
+      "id": "rule-31",
+      "kind": "rule",
+      "title": "Keep it simple",
+      "text": "No hardening against a threat that does not apply. No abstraction, switch or option until something concrete needs it.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "working",
+      "source": "tally's rulebook template",
+      "template": "simple",
+      "retiredAt": "2026-11-14T04:33:43.805Z",
+      "retiredWhy": "Covered by RULES.md rule 11, last bullet; RULES.md is the one rulebook (DEC-35)."
+    },
+    {
+      "id": "rule-32",
+      "kind": "rule",
+      "title": "Source and test files stay under 400 lines, 800 at most",
+      "text": "A change that takes a file past 400 lines splits it in the same change. Lockfiles, generated files, fixtures, data and reports are exempt.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "working",
+      "source": "tally's rulebook template",
+      "template": "small-files",
+      "retiredAt": "2026-11-14T04:33:43.829Z",
+      "retiredWhy": "Covered by RULES.md rule 12; RULES.md is the one rulebook (DEC-35)."
+    },
+    {
+      "id": "rule-33",
+      "kind": "rule",
+      "title": "No silenced warnings, and nothing without a reader",
+      "text": "The linter and the type checker run with warnings as errors, and the source silences none. A new field or option gets its reader in the same change; when the reader comes later, so does the field.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "working",
+      "source": "tally's rulebook template",
+      "template": "no-silenced-warnings",
+      "retiredAt": "2026-11-14T04:33:43.854Z",
+      "retiredWhy": "Covered by RULES.md rule 13; RULES.md is the one rulebook (DEC-35)."
+    },
+    {
+      "id": "rule-34",
+      "kind": "rule",
+      "title": "One commit per task, and main stays linear",
+      "text": "Each commit builds and passes the tests on its own. Sessions working at the same time each commit to their own track's branch in its own worktree, rebase it on main after every task and land it by fast-forward through tally. Main never holds a merge commit, and a track's branch is never pushed.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "working",
+      "source": "tally's rulebook template",
+      "template": "one-commit-per-task",
+      "retiredAt": "2026-11-14T04:33:43.878Z",
+      "retiredWhy": "Covered by RULES.md rule 14 and WORKFLOW.md; tally landing keeps main linear; RULES.md is the one rulebook (DEC-35)."
+    },
+    {
+      "id": "rule-35",
+      "kind": "rule",
+      "title": "The commit body is the log",
+      "text": "The subject is type(scope): an imperative summary, under about 70 characters. The body says why, the tradeoffs, the earlier belief it corrects and the numbers it relies on, and never restates the diff. One identity, the repository's, and no line that names an agent or a tool.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "working",
+      "source": "tally's rulebook template",
+      "template": "commit-body",
+      "retiredAt": "2026-11-14T04:33:43.902Z",
+      "retiredWhy": "Covered by RULES.md rule 14; RULES.md is the one rulebook (DEC-35)."
+    },
+    {
+      "id": "rule-36",
+      "kind": "rule",
+      "title": "When you fix a bug, ask whether it is an instance or a class",
+      "text": "Search the code around it for the same shape, fix what you find, and say in the commit what you searched.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "working",
+      "source": "tally's rulebook template",
+      "template": "instance-or-class",
+      "retiredAt": "2026-11-14T04:33:43.929Z",
+      "retiredWhy": "Covered by RULES.md rule 15; RULES.md is the one rulebook (DEC-35)."
+    },
+    {
+      "id": "rule-37",
+      "kind": "rule",
+      "title": "Collect questions; do not stop to ask them",
+      "text": "Add a question only for a choice that is the operator's. Take the conservative reading (the one that refuses, holds or reports unknown, never one that invents a value), write it as the question's meanwhile, build it, and keep going. Stop only for what only the operator can do: a credential, a push, a deploy, raised privileges.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "working",
+      "source": "tally's rulebook template",
+      "template": "collect-questions",
+      "retiredAt": "2026-11-14T04:33:43.949Z",
+      "retiredWhy": "Covered by RULES.md rule 16, which also forbids the shortcut for fund movement, identity, destructive changes, real sends and deployment; RULES.md is the one rulebook (DEC-35)."
+    },
+    {
+      "id": "rule-38",
+      "kind": "rule",
+      "title": "Report real numbers, measured once",
+      "text": "A count, a timing or a size is measured, not remembered, by whoever claims it, and written down with its command. A speed claim also names the machine and the data. Anyone else measures it again only when it looks wrong or a decision rests on it, never when its code has not changed.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "working",
+      "source": "tally's rulebook template",
+      "template": "real-numbers",
+      "retiredAt": "2026-11-14T04:33:43.969Z",
+      "retiredWhy": "Covered by RULES.md rule 17; RULES.md is the one rulebook (DEC-35)."
+    },
+    {
+      "id": "rule-39",
+      "kind": "rule",
+      "title": "Trust the code over the docs",
+      "text": "Check a document's claim against the source before building on it. When they differ, settle it by the order of authority and correct the one that lost, once.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "working",
+      "source": "tally's rulebook template",
+      "template": "code-over-docs",
+      "retiredAt": "2026-11-14T04:33:43.995Z",
+      "retiredWhy": "Covered by RULES.md 'Authority' and 'Preparing context' step 7; RULES.md is the one rulebook (DEC-35)."
+    },
+    {
+      "id": "rule-40",
+      "kind": "rule",
+      "title": "The records describe the code by the end of each milestone",
+      "text": "A milestone is not done until the ledger, the checks record, the build log and the context entries its changes touch say what was built. Never leave a record that describes behaviour the code no longer has.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "working",
+      "source": "tally's rulebook template",
+      "template": "records-describe-the-code",
+      "retiredAt": "2026-11-14T04:33:44.015Z",
+      "retiredWhy": "Covered by RULES.md rule 18 and 'Updating documents and plans'; RULES.md is the one rulebook (DEC-35)."
+    },
+    {
+      "id": "rule-41",
+      "kind": "rule",
+      "title": "Scratch stays under .temp/",
+      "text": "Everything an agent writes that is not part of the repository (plans, notes, logs, throwaway scripts and builds) goes under .temp/ in the checkout it works in, one folder per track. Nothing there is ever cited: what a record relies on is recorded through tally.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "working",
+      "source": "tally's rulebook template",
+      "template": "scratch",
+      "retiredAt": "2026-11-14T04:33:44.035Z",
+      "retiredWhy": "replaced by rule-48"
+    },
+    {
+      "id": "rule-42",
+      "kind": "rule",
+      "title": "Decide once",
+      "text": "A choice recorded as a decision, in the build log, or settled by the order of authority is not reopened on opinion by a later step or agent. Evidence reopens it: a failing test or a measurement that shows a builder's choice wrong corrects it, and that is recorded; one that shows a decision wrong becomes a question.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "once",
+      "source": "tally's rulebook template",
+      "template": "decide-once",
+      "retiredAt": "2026-11-14T04:33:44.061Z",
+      "retiredWhy": "replaced by rule-49"
+    },
+    {
+      "id": "rule-43",
+      "kind": "rule",
+      "title": "Record once",
+      "text": "Each fact has one home: a decision in the decisions, an open question in the questions, what was built and measured in the build log, the code as last verified in the checks record, progress in the ledger, and why in the commit body. Everything else points to that home and never copies it.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "once",
+      "source": "tally's rulebook template",
+      "template": "record-once",
+      "retiredAt": "2026-11-14T04:33:44.084Z",
+      "retiredWhy": "replaced by rule-50"
+    },
+    {
+      "id": "rule-44",
+      "kind": "rule",
+      "title": "Read once",
+      "text": "Read what the brief and the task name, not every document. Hand a helper these rules and the paths and ids it needs, never \"read everything\".",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "once",
+      "source": "tally's rulebook template",
+      "template": "read-once",
+      "retiredAt": "2026-11-14T04:33:44.110Z",
+      "retiredWhy": "replaced by rule-51"
+    },
+    {
+      "id": "rule-45",
+      "kind": "rule",
+      "title": "Check once",
+      "text": "Before running a check, compare the code fingerprint with the checks record: while they match, the record is the verification, and nothing runs again. While working, run the checks of the part you changed, and the tests before each commit. The whole sweep runs once, before the milestone's last commit and before review.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "once",
+      "source": "tally's rulebook template",
+      "template": "check-once",
+      "tailor": "What is this project's whole sweep, command by command?",
+      "retiredAt": "2026-11-14T04:33:44.143Z",
+      "retiredWhy": "replaced by rule-52"
+    },
+    {
+      "id": "rule-46",
+      "kind": "rule",
+      "title": "Review once, against the plan",
+      "text": "A review checks, in this order: that every item the milestone was to deliver exists, by path and test name; the rules that tests cannot see, read against the diff; the sweep, once at HEAD; and the numbers a decision rests on. It blocks only on a missing item, a failing check, a broken rule, behaviour that differs from a decision or a plan, or a wrong number. A follow-up looks only at the fix commits.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "once",
+      "source": "tally's rulebook template",
+      "template": "review-once",
+      "retiredAt": "2026-11-14T04:33:44.175Z",
+      "retiredWhy": "replaced by rule-53"
+    },
+    {
+      "id": "rule-47",
+      "kind": "rule",
+      "title": "Three attempts, then move on",
+      "text": "When the same failure survives three different attempts, stop that path. Record what was tried and the error, add a question if only the operator can unblock it, and go on with the next task that does not depend on it. The stopped task stays open, and the milestone's report names it.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:32:54.199Z",
+      "section": "once",
+      "source": "tally's rulebook template",
+      "template": "three-attempts",
+      "retiredAt": "2026-11-14T04:33:44.200Z",
+      "retiredWhy": "replaced by rule-54"
+    },
+    {
+      "id": "rule-48",
+      "kind": "rule",
+      "title": "Scratch stays under .temp/",
+      "text": "Everything an agent writes that is not part of the repository (plans, notes, logs, throwaway scripts and builds) goes under .temp/ in the checkout it works in: the session's scratch folder .temp/<track>/ that session_open names. Run logs go under <repo>/.temp/tally/logs/<track>/ so they outlive the worktree. Nothing there is ever cited: what a record relies on is recorded through tally or the plan.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:33:44.035Z",
+      "replaces": "rule-41",
+      "section": "working",
+      "source": "tally template, tailored for this repository on the operator's word (DEC-35)",
+      "template": "scratch"
+    },
+    {
+      "id": "rule-49",
+      "kind": "rule",
+      "title": "Decide once",
+      "text": "A choice recorded as a decision (DEC-n), settled by RULES.md's order of authority, or recorded as a lane default in the plan's section 8 is not reopened on opinion by a later step or agent. Evidence reopens it: a failing test or a measurement that shows a builder's choice wrong corrects it, and that is recorded; one that shows a maintainer decision wrong becomes a question (Q-0nn) for the maintainer.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:33:44.061Z",
+      "replaces": "rule-42",
+      "section": "once",
+      "source": "tally template, tailored for this repository on the operator's word (DEC-35)",
+      "template": "decide-once"
+    },
+    {
+      "id": "rule-50",
+      "kind": "rule",
+      "title": "Record once",
+      "text": "Each fact has one home, and everything else points to it by id. A maintainer decision: tally decisions (DEC-n, group admin-improvements); the active plan's decision record shows the same id, as RULES.md requires. An open question: tally questions, whose text starts with the plan's Q-0nn. What was built, verified and left open: the plan's section 8 close entry for the phase, with tally evidence for each run. Progress: the ledger. Why: the commit body. Operator procedures: release_manager/docs. Never copy a fact into a second home.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:33:44.084Z",
+      "replaces": "rule-43",
+      "section": "once",
+      "source": "tally template, tailored for this repository on the operator's word (DEC-35)",
+      "template": "record-once"
+    },
+    {
+      "id": "rule-51",
+      "kind": "rule",
+      "title": "Read once",
+      "text": "Read README.md and RULES.md completely, as RULES.md requires, then only what the brief and the task name: the plan sections, DEC and Q ids, and paths. Hand a helper the rule ids, the paths and the ids it needs, never \"read everything\".",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:33:44.110Z",
+      "replaces": "rule-44",
+      "section": "once",
+      "source": "tally template, tailored for this repository on the operator's word (DEC-35)",
+      "template": "read-once"
+    },
+    {
+      "id": "rule-52",
+      "kind": "rule",
+      "title": "Check once",
+      "text": "While working, run the checks of the part you changed in the pinned Node 22 container (tools/node22-container/run.sh; howto-2), and the unit's npm run check before each commit. The whole sweep runs once, on a clean checkout, before a phase's close and before its final review: packages/contracts npm run check and npm run build; backend_controller npm run check; backend_controller npm run test:integration -- --coverage.enabled=false; frontend_stack_ts npm run check, npm run build:client and npm run build:admin. A landing's per-commit checks do not replace it. Record the sweep as tally evidence with its counts, and do not rerun it while the code is unchanged.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:33:44.143Z",
+      "replaces": "rule-45",
+      "section": "once",
+      "source": "tally template, tailored for this repository on the operator's word (DEC-35)",
+      "template": "check-once"
+    },
+    {
+      "id": "rule-53",
+      "kind": "rule",
+      "title": "Review once, against the plan",
+      "text": "Every lane gets one independent review before it lands, against the plan and the decisions: every item it was to deliver exists, by path and test name; the rules tests cannot see (RULES.md rules 4, 9, 10, 11, 13), read against the diff; and the numbers a decision rests on. It blocks only on a missing item, a broken rule, behaviour that differs from a decision, or a wrong number. A follow-up looks only at the fix commits. A destructive or irreversible change (RULES.md rule 11) also gets a database review.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:33:44.175Z",
+      "replaces": "rule-46",
+      "section": "once",
+      "source": "tally template, tailored for this repository on the operator's word (DEC-35)",
+      "template": "review-once"
+    },
+    {
+      "id": "rule-54",
+      "kind": "rule",
+      "title": "Three attempts, then move on",
+      "text": "When the same failure survives three different attempts, stop that path. Record what was tried and the error, add a question if only the operator can unblock it, and go on with the next task that does not depend on it. The stopped task stays open, and the milestone's report names it.",
+      "paths": [],
+      "tags": [],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:33:44.200Z",
+      "replaces": "rule-47",
+      "section": "once",
+      "source": "tally template, tailored for this repository on the operator's word (DEC-35)",
+      "template": "three-attempts"
     }
   ]
 }

@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "convention",
-  "nextNumber": 8,
+  "nextNumber": 11,
   "entries": [
     {
       "id": "convention-1",
@@ -135,7 +135,9 @@
         "track": "main",
         "agent": "claude-opus-5-5 coordinator"
       },
-      "at": "2026-11-13T21:09:03.313Z"
+      "at": "2026-11-13T21:09:03.313Z",
+      "retiredAt": "2026-11-14T04:30:39.935Z",
+      "retiredWhy": "replaced by convention-8"
     },
     {
       "id": "convention-7",
@@ -154,7 +156,76 @@
         "agent": "claude-opus-5-5 coordinator"
       },
       "at": "2026-11-13T21:16:41.045Z",
-      "replaces": "convention-4"
+      "replaces": "convention-4",
+      "retiredAt": "2026-11-14T04:38:15.734Z",
+      "retiredWhy": "replaced by convention-10"
+    },
+    {
+      "id": "convention-8",
+      "kind": "convention",
+      "title": "Where each kind of record goes in this repository's tally (phases, rule sections)",
+      "text": "- Rules: only standing constraints agents must obey, each with a section (authority, safety, working, once) and a source (RULES.md or a decision id). Only an operator session writes one (context_put kind rule, or rule_tailor). RULES.md stays the rulebook; tally rules point at it or carry a maintainer constraint from a decision.\n- Decisions: everything the maintainer decided, in decisions.json (group admin-improvements), ids DEC-n, entered with the tally CLI decision add --operator. The plan's decision record shows the same DEC ids.\n- Questions: open choices with the conservative behaviour meanwhile; the tally text starts with the plan's Q-0nn id; an answered row cites its DEC id.\n- Phases: each new stretch of work is a tally phase (phase_add, with its approving DEC id); its milestones use the phase id as stage. Stage `build` holds Phases A to G and the maintainer gates. Records commit once per phase (records.commitAt phase): phase_close commits them; records_commit only before the maintainer pushes mid-phase.\n- Findings: verified facts and defects. Conventions: how lanes work together. Howtos: commands.\n- Plans, steps and progress stay in plans/admin-improvements.md; tasks, tracks, hand-offs, evidence and the ledger stay in tally.\nNever put a decision or a question's answer in a rule entry (DEC-28).",
+      "paths": [],
+      "tags": [
+        "records",
+        "structure",
+        "phases"
+      ],
+      "refs": [
+        "DEC-28",
+        "DEC-34"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:30:39.935Z",
+      "replaces": "convention-6",
+      "retiredAt": "2026-11-14T04:34:23.837Z",
+      "retiredWhy": "replaced by convention-9"
+    },
+    {
+      "id": "convention-9",
+      "kind": "convention",
+      "title": "Where each kind of record goes in this repository's tally (phases, rulebook)",
+      "text": "- Rules (rulebook_get): only standing constraints, each with a section and a source. rule-16 points to RULES.md, the one rulebook; rule-17 and rule-18 carry maintainer constraints from decisions; rule-48 to rule-54 are tally's process rules tailored here (DEC-35). A template rule RULES.md covers stays retired. Only an operator session writes or tailors a rule.\n- Decisions: everything the maintainer decided, in decisions.json (group admin-improvements), ids DEC-n, entered with the tally CLI decision add --operator; the plan's decision record shows the same ids.\n- Questions: open choices with the conservative behaviour meanwhile; the tally text starts with the plan's Q-0nn id; an answered row cites its DEC id.\n- Phases: each new stretch of work is a tally phase (phase_add with its approving DEC id); its milestones use the phase id as stage. Stage `build` holds Phases A to G and the maintainer gates. Records commit once per phase (records.commitAt phase): phase_close commits them on the maintainer's word; records_commit only before the maintainer pushes mid-phase.\n- Findings: verified facts and defects. Conventions: how lanes work together. Howtos: commands.\n- Plans, steps and close entries stay in plans/admin-improvements.md; tasks, tracks, hand-offs, evidence and the ledger stay in tally.\nNever put a decision or a question's answer in a rule entry (DEC-28).",
+      "paths": [],
+      "tags": [
+        "records",
+        "structure",
+        "phases",
+        "rulebook"
+      ],
+      "refs": [
+        "DEC-28",
+        "DEC-34",
+        "DEC-35"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:34:23.837Z",
+      "replaces": "convention-8"
+    },
+    {
+      "id": "convention-10",
+      "kind": "convention",
+      "title": "Migration numbers: 068 Phase F, 069 Phase G, 070 Phase H statement links",
+      "text": "061 identity, 062 investment email, 063 nominee, 064 admin SIP schedules, 065 maturity schedules, 066 audit index, 067 client reviews, 068 Phase F maturity choices, 069 Phase G client erasure, 070 Phase H one-time statement links (lane h-statement). Phase H's other lanes add no migration; if one needs a migration it takes 071 and tells the coordinator. Each lane adds its number to the releaseUpgrade integration test's expected list. A new table that holds client data must also be classified in clientErasureCoverage.integration.test.ts and handled by the Phase G erase paths.",
+      "paths": [
+        "backend_controller/db/migrations"
+      ],
+      "tags": [
+        "migration"
+      ],
+      "refs": [],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:38:15.734Z",
+      "replaces": "convention-7"
     }
   ]
 }

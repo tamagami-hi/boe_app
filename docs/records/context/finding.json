@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "finding",
-  "nextNumber": 27,
+  "nextNumber": 28,
   "entries": [
     {
       "id": "finding-1",
@@ -602,6 +602,28 @@
         "agent": "lane-b-receipts"
       },
       "at": "2026-11-13T13:28:08.034Z"
+    },
+    {
+      "id": "finding-27",
+      "kind": "finding",
+      "title": "Payment-screen defects parked under DEC-14 until the maintainer resumes payments (U-close, 2026-11-14)",
+      "text": "STATIC, from the U-close client audit on 5def38f. Parked because payments, AutoPay and the gateway stay untouched (DEC-14, rule-17):\n- features/shared/queries.ts:44-46,246-253: payment_in_progress polls every 4 s, then every 60 s, forever, and ignores payments-off. stalePaymentExpiry.ts:36-41 expires only never-sent attempts.\n- No client cancel for a pending payment: client order routes are create and pay only (clientOrderRoutes.ts:354-355).\n- SipDetailScreen.tsx:318,353,368 and clientStatus.ts:35,43,55,61: AutoPay and \"collected\" wording, and a retry that is hidden while payments are off.\n- features/investing/onlinePayments.ts:13-16: the payments-off flag fails open when the config read fails or is still loading.\n- createSipInstallmentOrder.ts:77-84: the sip_installment_due notice says to pay in the app, but no screen can pay an instalment.\n- SipDetailScreen.tsx:77-83,199-201: a failed AutoPay read shows an AutoPay plan as manual, with pause, resume and cancel. clientSipPlanRoutes.ts:135-155 does not check the collection mode.\n- clientPortfolioRoutes.ts:192-200: lumpSumCount still counts recorded payments, though no screen reads it.\nFix these before any payments re-enable (with E2's leftovers).",
+      "paths": [],
+      "tags": [
+        "payments",
+        "parked",
+        "ux"
+      ],
+      "refs": [
+        "DEC-14",
+        "DEC-34",
+        "M9-ux-review:U-close"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-14T04:38:01.834Z"
     }
   ]
 }

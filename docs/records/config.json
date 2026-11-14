@@ -36,7 +36,9 @@
   "records": {
     "dir": "docs/records",
     "commitPrefix": "records:",
-    "commit": false
+    "commit": true,
+    "batch": true,
+    "commitAt": "phase"
   },
   "locks": [
     "landing"

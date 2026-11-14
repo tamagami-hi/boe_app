@@ -288,6 +288,86 @@
       },
       "openedAt": "2026-11-13T21:16:41.307Z",
       "closedAt": "2026-11-13T23:13:24.609Z"
+    },
+    {
+      "name": "h-statement",
+      "branch": "track/h-statement",
+      "worktree": ".temp/worktrees/h-statement",
+      "purpose": "Phase H1: APK statement via one-time link opened in the phone's browser; migration 070",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-14T04:38:29.271Z",
+      "closedAt": "2026-11-14T06:00:47.325Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      }
+    },
+    {
+      "name": "h-client",
+      "branch": "track/h-client",
+      "worktree": ".temp/worktrees/h-client",
+      "purpose": "Phase H2: client experience fixes from the U-close audit",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-14T04:38:29.682Z",
+      "closedAt": "2026-11-14T05:47:07.376Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      }
+    },
+    {
+      "name": "h-admin-access",
+      "branch": "track/h-admin-access",
+      "worktree": ".temp/worktrees/h-admin-access",
+      "purpose": "Phase H3: admin access and flow fixes from the U-close audit",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-14T04:38:30.033Z",
+      "closedAt": "2026-11-14T05:32:28.764Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      }
+    },
+    {
+      "name": "h-admin-money",
+      "branch": "track/h-admin-money",
+      "worktree": ".temp/worktrees/h-admin-money",
+      "purpose": "Phase H4: admin money screen fixes from the U-close audit",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-14T04:38:30.451Z",
+      "closedAt": "2026-11-14T05:41:11.700Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      }
+    },
+    {
+      "name": "h-hygiene",
+      "branch": "track/h-hygiene",
+      "worktree": ".temp/worktrees/h-hygiene",
+      "purpose": "Phase H5 (built by the claude-pro terminal agent): carried hygiene items from the C1 nominee lane",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-14T04:52:45.107Z",
+      "closedAt": "2026-11-14T05:51:42.259Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      }
     }
   ]
 }

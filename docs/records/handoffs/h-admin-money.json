@@ -1,0 +1,79 @@
+{
+  "schema": 1,
+  "track": "h-admin-money",
+  "current": {
+    "task": "H-L4-admin-money",
+    "from": "lane-h-admin-money",
+    "track": "h-admin-money",
+    "at": "2026-11-14T05:27:29.998Z",
+    "lines": [
+      "H-L4 rule-53 follow-up done: 2 commits on 83bdc3f, not rebased, landed or pushed. Branch head a2839ea.",
+      "51b1a67 fix(admin-money): showDecimals on 14 MoneyValue displays in 7 files (the earlier session's uncommitted edits, reviewed and kept unchanged):",
+      "  fund-aum AumOverviewScreen, FundAumHistoryScreen, CollectiveAumGrowthScreen (Before, Change, After); funds FundListScreen; client-returns ReturnFigures (3), ReturnsDashboardScreen (3, money props only), directoryReturns (2).",
+      "  Fix 1 search: grep of features/admin for single and multi-line <MoneyValue, formatINR, formatRupees, paiseToRupeeText, money(; every other in-lane hit already shows paise or is an input, percent or count.",
+      "a2839ea fix(admin-money): fixes 2-4.",
+      "  Fix 2: CollectivePreviewTable investorNamesOf checks directory data before its error; no permission or AUTHORIZATION_DENIED still returns the role notice first (DEC-36).",
+      "  Fix 3a: Read again (ResolutionFacts) is disabled while the dialog's write is sending or unconfirmed (factsReloadOf in resolutionCopy.ts, used by the resolve, confirm and send dialogs).",
+      "  Fix 3b (rule 15, same class): MaturityActionDialog shows the reading modal only until its first read settles. Before, any refetch of a read with no data (Read again, HeldWriteNotice 'Reload the schedules', and useResolveMaturity's own onSettled invalidation of ['admin','investor',userId]) remounted and dropped the held write and its key.",
+      "  Proof: a temporary test (kept at .temp/h-admin-money/MaturityActions.heldWrite.test.tsx.kept, not committed) passed with both guards; removing either failed it (two red evidence records). Not committed under rule 10: a lost key cannot apply money twice, since every resolution carries the schedule's expectedVersion and the server refuses a second one.",
+      "  Fix 4: rupeeAmount.test.ts keeps only the sign and safe-integer cases (2 tests); the two cases repeating domain/money.test.ts and their constants are gone.",
+      "Checks via the tally runner in the container: frontend check 36 files/324 tests (fix 1 alone), 36 files/322 tests (final); build:client (17 assets, 922041 bytes, boot guard 7 chunks) and build:admin (boot guard) on a2839ea.",
+      "Recorded, not fixed:",
+      "  receipts/FundReceiptQueueScreen.tsx:100 and FundReceiptDetailScreen.tsx:106 round to rupees; their rows are created only by applyCanonicalPaymentOutcome (gateway settlement), so they sit under DEC-14/rule-17. No other lane touches them; the maintainer or coordinator may decide otherwise.",
+      "  users/UserDetailScreen.tsx:208 (orders column) rounds; h-admin-access edits that file.",
+      "  payments/PaymentEvidenceScreen.tsx:65 and refunds/RefundQueueScreen.tsx:157 round; parked under DEC-14.",
+      "  A failed Show more on the investor record is silent (shared LoadMore has no error state; also ClientLedgerTab, FundAumScreen).",
+      "  ?userId= is read only on first mount (ClientPositionDetailScreen, IndividualClientGrowthScreen useState(linked...)); a same-screen link to another client is ignored.",
+      "  A linked id that matches no user shows 'Name not loaded ... Try again' (linkedInvestor.tsx), which can never succeed; recording is still refused server-side for non-clients.",
+      "Landing notes: IndividualClientGrowthScreen.test.tsx must keep both lanes' mock additions (h-admin-access userDirectoryQueries; this lane MemoryRouter, useSession, useAdminUser). ReturnsDashboardScreen and queryKeys.ts overlap h-admin-access and h-client in separate hunks."
+    ]
+  },
+  "history": [
+    {
+      "task": "H-L4-admin-money",
+      "from": "lane-h-admin-money",
+      "track": "h-admin-money",
+      "at": "2026-11-14T05:04:02.147Z",
+      "lines": [
+        "H-L4 admin money: built on track/h-admin-money, 4 commits on d28e13b, not landed or pushed.",
+        "974c3e9 feat(admin-money): investor record and value update read ?userId= (value update also ?fundId=), UUID-checked, picker writes back with replace; client page Update value and Investor record carry the client.",
+        "  Linked client named via useAdminUser (users.read). No users.read: 'Names are not available for this role' (DEC-36). Failed read: error with Try again.",
+        "  Investor record ledger now uses useClientLedgerPage (listAdminClientLedgerPage, 50/page, Show more). ledgerQueries.ts and qk.admin.clientLedgerEntries removed. Old capped endpoint stays on the backend for released APKs.",
+        "  Paise shown in investor record, value update, GrowthReceipt, ClientLedgerTab, MaturityPanel, WithdrawalPayoutPanel; effective/matured/payout dates formatted.",
+        "  Value update refuses a fund the client does not hold (selectedPosition null blocks submit).",
+        "de04374 fix(admin-money): CollectivePreviewTable.tsx (new) - names: forbidden (no users.read/users.read_limited or 403) shows a role notice and hides the column, no ids (DEC-36); failed shows error + Try again; partial walk shows Loading name.",
+        "  Maturity dialogs: HoldingRead read/none/failed in resolutionCopy.ts; HoldingFacts/ActiveSipFacts take reload and offer Read again; no position says the client holds nothing; return hint split.",
+        "  ClientMaturitySection: failed positions read shows error + Try again instead of silently hiding Set a maturity date.",
+        "18bd5b5 fix(audit): maturity preset adds client_maturity_schedule.created/updated/cancelled/resolved and client_maturity_offer.sent/chosen/confirmed/withdrawn/superseded/closed; label Maturities; schedule and offer rows link to the Maturity tab. Preset key unchanged (APK safe).",
+        "83bdc3f feat(admin-funds): fund minimums, opening AUM (create + AUM screen), fund size target/adjustment take rupees via rupeeTextToPaise wrappers in client-values/rupeeAmount.ts; bodies unchanged (AUM strings, terms numbers <= MAX_SAFE_INTEGER). Empty minimum = 0 (no minimum).",
+        "  rupeeAmount.test.ts 4 tests; controlled mutation (Number() + float rounding) failed all 4, reverted (tally red evidence).",
+        "Item 8 not changed: backend reasonCodeSchema accepts any 1-80 char code; quarterly_valuation in adminClientGrowthRoutes.schema.test.ts is an arbitrary fixture, not a mismatch.",
+        "Checks (container, tally evidence): frontend check per commit 35/320 then 36/324; backend check 101 files/1204 tests; integration 65 files/557 tests (coverage off); contracts check+build 7/98; build:client and build:admin with boot guards.",
+        "Not checked: no browser/runtime run of the screens (STATIC + TESTED only).",
+        "Coordination: IndividualClientGrowthScreen.test.tsx gained MemoryRouter, SessionProvider mock and useAdminUser mock; h-admin-access adds a userDirectoryQueries mock there (note-55). Expect a small merge in that test and ClientHubActions if they touch it.",
+        "Mandates link on the client page left as /mandates (payments parked, rule-17). Docs: no section 8 entry written; the phase close records it."
+      ]
+    },
+    {
+      "task": "H-L4-admin-money",
+      "from": "claude-pro-h-admin-money-fix",
+      "track": "h-admin-money",
+      "at": "2026-11-14T05:19:03.303Z",
+      "lines": [
+        "H-L4 rule-53 follow-up fix session (claude-pro-h-admin-money-fix) STOPPED EARLY: usage limit. NOTHING COMMITTED; branch still at 83bdc3f.",
+        "UNCOMMITTED in worktree (fix 1 done, unchecked): showDecimals added to 14 MoneyValue displays in 7 files:",
+        "  fund-aum/AumOverviewScreen.tsx:99, FundAumHistoryScreen.tsx:73, CollectiveAumGrowthScreen.tsx:366/373/386 (Before, Change, After); funds/FundListScreen.tsx:150;",
+        "  client-returns/ReturnFigures.tsx:27/30/33, ReturnsDashboardScreen.tsx:152/158/165 (money props only, h-admin-access also edits this file), directoryReturns.tsx:57/63.",
+        "Fix 1 search: grep in features/admin/{fund-aum,funds,client-values,maturities,payment-sheet,client-returns} for <MoneyValue (single and multi-line), formatINR, formatRupees, paiseToRupeeText, money( and Paise. Every other hit already had showDecimals or is an input/percent/count.",
+        "  maturities/resolutionCopy.ts money() already uses showDecimals; payment-sheet already shows paise; FundHoldingsScreen shows stock weights only.",
+        "Out-of-lane rounding found, NOT changed: receipts/FundReceiptQueueScreen.tsx:100, receipts/FundReceiptDetailScreen.tsx:106, users/UserDetailScreen.tsx:208 (orders); refunds and payments screens parked under DEC-14.",
+        "TODO fix 2: client-values/CollectivePreviewTable.tsx investorNamesOf - check data before error (as linkedInvestor.tsx does); AUTHORIZATION_DENIED / no permission must still give the forbidden notice.",
+        "TODO fix 3: maturities/ResolutionFacts.tsx ~28 + MaturityActions.tsx ~149 - disable or hide Read again while a resolve write is held unconfirmed or sending; prove with a controlled negative test (red evidence) or explain under rule 10.",
+        "TODO fix 4: client-values/rupeeAmount.test.ts - remove the first two it() cases and the NOT_RUPEES/TOO_PRECISE constants (re-test rupeeTextToPaise, covered by domain/money.test.ts); keep the sign and safe-integer cases.",
+        "TODO checks (container): frontend_stack_ts npm run check, build:client, build:admin; logs under .temp/tally/logs/h-admin-money/; record tally evidence. No checks were run this session.",
+        "TODO commit(s) on track/h-admin-money: verify identity tamagami-hi <193059379+tamagami-hi@users.noreply.github.com>; body 150-200 words naming the fix 1 search; no trailers.",
+        "Carried, record only (not fixing): failed Show more on the investor record is silent (shared LoadMore pattern); linked ?userId= read only on first mount; a linked id matching no user shows 'Name not loaded ... Try again'."
+      ]
+    }
+  ]
+}

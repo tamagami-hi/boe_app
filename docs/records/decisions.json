@@ -330,6 +330,36 @@
       "state": "built",
       "by": "operator",
       "on": "2026-11-13T23:15:43.262Z"
+    },
+    {
+      "id": "DEC-34",
+      "group": "admin-improvements",
+      "text": "\"ok proceed with the next implementations\": after Phases F and G, build what remains that needs no maintainer step: the gaps the client and admin experience review still shows on main (U-close, under the DEC-19 delegation) and the carried-forward items such as the APK statement. Phase D, E3, releases and the G11 publish stay with the maintainer.",
+      "since": "2026-11-14",
+      "status": "Decided, being built (Phase H)",
+      "state": "decided, not built",
+      "by": "operator",
+      "on": "2026-11-14T04:30:29.035Z"
+    },
+    {
+      "id": "DEC-35",
+      "group": "admin-improvements",
+      "text": "Tally rulebook: adopt tally's template, keep only the process rules RULES.md does not cover (scratch, decide once, record once, read once, check once, review once, three attempts), tailored to this repository, and retire the rest as covered by RULES.md, which stays the one rulebook (\"Process those rules and then read what we have and then adapt to whats best\").",
+      "since": "2026-11-14",
+      "status": "In force",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-14T04:32:54.094Z"
+    },
+    {
+      "id": "DEC-36",
+      "group": "admin-improvements",
+      "text": "Q-036: neither the support nor the finance role gets access to client pages; permissions stay as they are. Client links are hidden for roles the page refuses, and screens that cannot name clients for a role say so, without raw ids.",
+      "since": "2026-11-14",
+      "status": "Decided, being built (Phase H3, H4)",
+      "state": "decided, not built",
+      "by": "operator",
+      "on": "2026-11-14T04:42:33.053Z"
     }
   ],
   "replaced": []

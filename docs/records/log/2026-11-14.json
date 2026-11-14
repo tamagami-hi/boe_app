@@ -1,0 +1,1343 @@
+{
+  "schema": 1,
+  "date": "2026-11-14",
+  "events": [
+    {
+      "at": "2026-11-14T04:25:43.459Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_claim",
+      "target": "M9-ux-review / U-close"
+    },
+    {
+      "at": "2026-11-14T04:30:20.315Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "rule_tailor",
+      "target": "rule-1"
+    },
+    {
+      "at": "2026-11-14T04:30:20.401Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "rule_tailor",
+      "target": "rule-14"
+    },
+    {
+      "at": "2026-11-14T04:30:20.504Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "rule_tailor",
+      "target": "rule-15"
+    },
+    {
+      "at": "2026-11-14T04:30:20.612Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "repo_configure"
+    },
+    {
+      "at": "2026-11-14T04:30:29.127Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "phase_add",
+      "target": "experience gaps and carried items, H"
+    },
+    {
+      "at": "2026-11-14T04:30:39.946Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_put",
+      "target": "convention"
+    },
+    {
+      "at": "2026-11-14T04:32:54.215Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "rulebook_adopt"
+    },
+    {
+      "at": "2026-11-14T04:33:43.492Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_retire",
+      "target": "rule-19"
+    },
+    {
+      "at": "2026-11-14T04:33:43.523Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_retire",
+      "target": "rule-20"
+    },
+    {
+      "at": "2026-11-14T04:33:43.556Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_retire",
+      "target": "rule-21"
+    },
+    {
+      "at": "2026-11-14T04:33:43.583Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_retire",
+      "target": "rule-22"
+    },
+    {
+      "at": "2026-11-14T04:33:43.604Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_retire",
+      "target": "rule-23"
+    },
+    {
+      "at": "2026-11-14T04:33:43.629Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_retire",
+      "target": "rule-24"
+    },
+    {
+      "at": "2026-11-14T04:33:43.658Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_retire",
+      "target": "rule-25"
+    },
+    {
+      "at": "2026-11-14T04:33:43.681Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_retire",
+      "target": "rule-26"
+    },
+    {
+      "at": "2026-11-14T04:33:43.717Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_retire",
+      "target": "rule-27"
+    },
+    {
+      "at": "2026-11-14T04:33:43.744Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_retire",
+      "target": "rule-28"
+    },
+    {
+      "at": "2026-11-14T04:33:43.764Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_retire",
+      "target": "rule-29"
+    },
+    {
+      "at": "2026-11-14T04:33:43.792Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_retire",
+      "target": "rule-30"
+    },
+    {
+      "at": "2026-11-14T04:33:43.814Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_retire",
+      "target": "rule-31"
+    },
+    {
+      "at": "2026-11-14T04:33:43.839Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_retire",
+      "target": "rule-32"
+    },
+    {
+      "at": "2026-11-14T04:33:43.862Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_retire",
+      "target": "rule-33"
+    },
+    {
+      "at": "2026-11-14T04:33:43.887Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_retire",
+      "target": "rule-34"
+    },
+    {
+      "at": "2026-11-14T04:33:43.913Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_retire",
+      "target": "rule-35"
+    },
+    {
+      "at": "2026-11-14T04:33:43.936Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_retire",
+      "target": "rule-36"
+    },
+    {
+      "at": "2026-11-14T04:33:43.955Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_retire",
+      "target": "rule-37"
+    },
+    {
+      "at": "2026-11-14T04:33:43.980Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_retire",
+      "target": "rule-38"
+    },
+    {
+      "at": "2026-11-14T04:33:44.002Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_retire",
+      "target": "rule-39"
+    },
+    {
+      "at": "2026-11-14T04:33:44.022Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_retire",
+      "target": "rule-40"
+    },
+    {
+      "at": "2026-11-14T04:33:44.045Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "rule_tailor",
+      "target": "rule-41"
+    },
+    {
+      "at": "2026-11-14T04:33:44.070Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "rule_tailor",
+      "target": "rule-42"
+    },
+    {
+      "at": "2026-11-14T04:33:44.092Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "rule_tailor",
+      "target": "rule-43"
+    },
+    {
+      "at": "2026-11-14T04:33:44.123Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "rule_tailor",
+      "target": "rule-44"
+    },
+    {
+      "at": "2026-11-14T04:33:44.158Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "rule_tailor",
+      "target": "rule-45"
+    },
+    {
+      "at": "2026-11-14T04:33:44.186Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "rule_tailor",
+      "target": "rule-46"
+    },
+    {
+      "at": "2026-11-14T04:33:44.217Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "rule_tailor",
+      "target": "rule-47"
+    },
+    {
+      "at": "2026-11-14T04:34:23.523Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_other"
+    },
+    {
+      "at": "2026-11-14T04:34:23.844Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_put",
+      "target": "convention"
+    },
+    {
+      "at": "2026-11-14T04:38:01.603Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "question_add"
+    },
+    {
+      "at": "2026-11-14T04:38:01.845Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_put",
+      "target": "finding"
+    },
+    {
+      "at": "2026-11-14T04:38:15.445Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_land",
+      "target": "M9-ux-review / U-close"
+    },
+    {
+      "at": "2026-11-14T04:38:15.746Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_put",
+      "target": "convention"
+    },
+    {
+      "at": "2026-11-14T04:38:29.020Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "milestone_add",
+      "target": "Phase H: experience gaps and the APK statement, M12-phase-h"
+    },
+    {
+      "at": "2026-11-14T04:38:29.382Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "track_open",
+      "target": "h-statement"
+    },
+    {
+      "at": "2026-11-14T04:38:29.786Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "track_open",
+      "target": "h-client"
+    },
+    {
+      "at": "2026-11-14T04:38:30.184Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "track_open",
+      "target": "h-admin-access"
+    },
+    {
+      "at": "2026-11-14T04:38:30.598Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "track_open",
+      "target": "h-admin-money"
+    },
+    {
+      "at": "2026-11-14T04:38:48.725Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_plan",
+      "target": "M12-phase-h"
+    },
+    {
+      "at": "2026-11-14T04:38:48.996Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_plan",
+      "target": "M12-phase-h"
+    },
+    {
+      "at": "2026-11-14T04:38:49.301Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_plan",
+      "target": "M12-phase-h"
+    },
+    {
+      "at": "2026-11-14T04:38:49.590Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_plan",
+      "target": "M12-phase-h"
+    },
+    {
+      "at": "2026-11-14T04:38:49.882Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_plan",
+      "target": "M12-phase-h"
+    },
+    {
+      "at": "2026-11-14T04:41:22.061Z",
+      "session": "82298c56-e350-427a-b718-d18d5ce84569",
+      "track": "h-client",
+      "agent": "lane-h-client",
+      "verb": "task_claim",
+      "target": "M12-phase-h / H-L2-client"
+    },
+    {
+      "at": "2026-11-14T04:41:23.146Z",
+      "session": "a01840c1-8e10-418a-b3a2-915ac65ebbbe",
+      "track": "h-admin-money",
+      "agent": "lane-h-admin-money",
+      "verb": "task_claim",
+      "target": "M12-phase-h / H-L4-admin-money"
+    },
+    {
+      "at": "2026-11-14T04:41:23.690Z",
+      "session": "40e74f60-14bc-41d3-8124-889b5a94a3f6",
+      "track": "h-admin-access",
+      "agent": "lane-h-admin-access",
+      "verb": "task_claim",
+      "target": "M12-phase-h / H-L3-admin-access"
+    },
+    {
+      "at": "2026-11-14T04:41:28.111Z",
+      "session": "cbc32582-3c4f-47e7-8003-c86d1cdd3455",
+      "track": "h-statement",
+      "agent": "lane-h-statement",
+      "verb": "task_claim",
+      "target": "M12-phase-h / H-L1-statement"
+    },
+    {
+      "at": "2026-11-14T04:42:38.651Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_other"
+    },
+    {
+      "at": "2026-11-14T04:42:38.909Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_other"
+    },
+    {
+      "at": "2026-11-14T04:46:45.648Z",
+      "session": "40e74f60-14bc-41d3-8124-889b5a94a3f6",
+      "track": "h-admin-access",
+      "agent": "lane-h-admin-access",
+      "verb": "note_post",
+      "target": "M12-phase-h:H-L3-admin-access, heads-up"
+    },
+    {
+      "at": "2026-11-14T04:51:12.615Z",
+      "session": "82298c56-e350-427a-b718-d18d5ce84569",
+      "track": "h-client",
+      "agent": "lane-h-client",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L2-client, red"
+    },
+    {
+      "at": "2026-11-14T04:51:12.905Z",
+      "session": "82298c56-e350-427a-b718-d18d5ce84569",
+      "track": "h-client",
+      "agent": "lane-h-client",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L2-client, green"
+    },
+    {
+      "at": "2026-11-14T04:52:45.205Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "track_open",
+      "target": "h-hygiene"
+    },
+    {
+      "at": "2026-11-14T04:52:50.242Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_plan",
+      "target": "M12-phase-h"
+    },
+    {
+      "at": "2026-11-14T04:53:38.677Z",
+      "session": "341e52a2-08ae-4b97-95df-e26844a041f2",
+      "track": "h-hygiene",
+      "agent": "claude-pro-h-hygiene",
+      "verb": "task_claim",
+      "target": "M12-phase-h / H-L5-hygiene"
+    },
+    {
+      "at": "2026-11-14T04:55:06.696Z",
+      "session": "82298c56-e350-427a-b718-d18d5ce84569",
+      "track": "h-client",
+      "agent": "lane-h-client",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L2-client, red"
+    },
+    {
+      "at": "2026-11-14T04:55:06.976Z",
+      "session": "82298c56-e350-427a-b718-d18d5ce84569",
+      "track": "h-client",
+      "agent": "lane-h-client",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L2-client, green"
+    },
+    {
+      "at": "2026-11-14T04:55:07.259Z",
+      "session": "82298c56-e350-427a-b718-d18d5ce84569",
+      "track": "h-client",
+      "agent": "lane-h-client",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L2-client, green"
+    },
+    {
+      "at": "2026-11-14T04:55:41.502Z",
+      "session": "a01840c1-8e10-418a-b3a2-915ac65ebbbe",
+      "track": "h-admin-money",
+      "agent": "lane-h-admin-money",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L4-admin-money, red"
+    },
+    {
+      "at": "2026-11-14T04:55:52.725Z",
+      "session": "a01840c1-8e10-418a-b3a2-915ac65ebbbe",
+      "track": "h-admin-money",
+      "agent": "lane-h-admin-money",
+      "verb": "note_post",
+      "target": "M12-phase-h:H-L4-admin-money, heads-up"
+    },
+    {
+      "at": "2026-11-14T04:57:37.249Z",
+      "session": "a01840c1-8e10-418a-b3a2-915ac65ebbbe",
+      "track": "h-admin-money",
+      "agent": "lane-h-admin-money",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L4-admin-money, green"
+    },
+    {
+      "at": "2026-11-14T04:58:48.394Z",
+      "session": "a01840c1-8e10-418a-b3a2-915ac65ebbbe",
+      "track": "h-admin-money",
+      "agent": "lane-h-admin-money",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L4-admin-money, green"
+    },
+    {
+      "at": "2026-11-14T04:59:04.527Z",
+      "session": "40e74f60-14bc-41d3-8124-889b5a94a3f6",
+      "track": "h-admin-access",
+      "agent": "lane-h-admin-access",
+      "verb": "evidence_run",
+      "target": "M12-phase-h / H-L3-admin-access, sweep"
+    },
+    {
+      "at": "2026-11-14T04:59:08.829Z",
+      "session": "cbc32582-3c4f-47e7-8003-c86d1cdd3455",
+      "track": "h-statement",
+      "agent": "lane-h-statement",
+      "verb": "evidence_run",
+      "target": "M12-phase-h / H-L1-statement, red"
+    },
+    {
+      "at": "2026-11-14T05:00:21.765Z",
+      "session": "a01840c1-8e10-418a-b3a2-915ac65ebbbe",
+      "track": "h-admin-money",
+      "agent": "lane-h-admin-money",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L4-admin-money, green"
+    },
+    {
+      "at": "2026-11-14T05:00:22.189Z",
+      "session": "a01840c1-8e10-418a-b3a2-915ac65ebbbe",
+      "track": "h-admin-money",
+      "agent": "lane-h-admin-money",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L4-admin-money, green"
+    },
+    {
+      "at": "2026-11-14T05:02:27.596Z",
+      "session": "a01840c1-8e10-418a-b3a2-915ac65ebbbe",
+      "track": "h-admin-money",
+      "agent": "lane-h-admin-money",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L4-admin-money, green"
+    },
+    {
+      "at": "2026-11-14T05:02:28.001Z",
+      "session": "a01840c1-8e10-418a-b3a2-915ac65ebbbe",
+      "track": "h-admin-money",
+      "agent": "lane-h-admin-money",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L4-admin-money, green"
+    },
+    {
+      "at": "2026-11-14T05:03:42.069Z",
+      "session": "a01840c1-8e10-418a-b3a2-915ac65ebbbe",
+      "track": "h-admin-money",
+      "agent": "lane-h-admin-money",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L4-admin-money, sweep"
+    },
+    {
+      "at": "2026-11-14T05:03:42.424Z",
+      "session": "a01840c1-8e10-418a-b3a2-915ac65ebbbe",
+      "track": "h-admin-money",
+      "agent": "lane-h-admin-money",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L4-admin-money, sweep"
+    },
+    {
+      "at": "2026-11-14T05:04:02.214Z",
+      "session": "a01840c1-8e10-418a-b3a2-915ac65ebbbe",
+      "track": "h-admin-money",
+      "agent": "lane-h-admin-money",
+      "verb": "handoff_write",
+      "target": "H-L4-admin-money"
+    },
+    {
+      "at": "2026-11-14T05:04:04.997Z",
+      "session": "a01840c1-8e10-418a-b3a2-915ac65ebbbe",
+      "track": "h-admin-money",
+      "agent": "lane-h-admin-money",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-14T05:05:37.389Z",
+      "session": "341e52a2-08ae-4b97-95df-e26844a041f2",
+      "track": "h-hygiene",
+      "agent": "claude-pro-h-hygiene",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L5-hygiene, red"
+    },
+    {
+      "at": "2026-11-14T05:06:00.875Z",
+      "session": "341e52a2-08ae-4b97-95df-e26844a041f2",
+      "track": "h-hygiene",
+      "agent": "claude-pro-h-hygiene",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L5-hygiene, red"
+    },
+    {
+      "at": "2026-11-14T05:06:46.895Z",
+      "session": "341e52a2-08ae-4b97-95df-e26844a041f2",
+      "track": "h-hygiene",
+      "agent": "claude-pro-h-hygiene",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L5-hygiene, green"
+    },
+    {
+      "at": "2026-11-14T05:07:11.055Z",
+      "session": "341e52a2-08ae-4b97-95df-e26844a041f2",
+      "track": "h-hygiene",
+      "agent": "claude-pro-h-hygiene",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L5-hygiene, red"
+    },
+    {
+      "at": "2026-11-14T05:07:20.826Z",
+      "session": "40e74f60-14bc-41d3-8124-889b5a94a3f6",
+      "track": "h-admin-access",
+      "agent": "lane-h-admin-access",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L3-admin-access, red"
+    },
+    {
+      "at": "2026-11-14T05:07:21.698Z",
+      "session": "40e74f60-14bc-41d3-8124-889b5a94a3f6",
+      "track": "h-admin-access",
+      "agent": "lane-h-admin-access",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L3-admin-access, red"
+    },
+    {
+      "at": "2026-11-14T05:07:22.660Z",
+      "session": "40e74f60-14bc-41d3-8124-889b5a94a3f6",
+      "track": "h-admin-access",
+      "agent": "lane-h-admin-access",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L3-admin-access, red"
+    },
+    {
+      "at": "2026-11-14T05:07:31.543Z",
+      "session": "40e74f60-14bc-41d3-8124-889b5a94a3f6",
+      "track": "h-admin-access",
+      "agent": "lane-h-admin-access",
+      "verb": "note_post",
+      "target": "M12-phase-h:H-L3-admin-access, heads-up"
+    },
+    {
+      "at": "2026-11-14T05:07:59.480Z",
+      "session": "cbc32582-3c4f-47e7-8003-c86d1cdd3455",
+      "track": "h-statement",
+      "agent": "lane-h-statement",
+      "verb": "handoff_write",
+      "target": "H-L1-statement"
+    },
+    {
+      "at": "2026-11-14T05:08:02.740Z",
+      "session": "cbc32582-3c4f-47e7-8003-c86d1cdd3455",
+      "track": "h-statement",
+      "agent": "lane-h-statement",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-14T05:08:17.128Z",
+      "session": "82298c56-e350-427a-b718-d18d5ce84569",
+      "track": "h-client",
+      "agent": "lane-h-client",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L2-client, green"
+    },
+    {
+      "at": "2026-11-14T05:08:17.476Z",
+      "session": "82298c56-e350-427a-b718-d18d5ce84569",
+      "track": "h-client",
+      "agent": "lane-h-client",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L2-client, green"
+    },
+    {
+      "at": "2026-11-14T05:08:46.379Z",
+      "session": "341e52a2-08ae-4b97-95df-e26844a041f2",
+      "track": "h-hygiene",
+      "agent": "claude-pro-h-hygiene",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L5-hygiene, green"
+    },
+    {
+      "at": "2026-11-14T05:09:06.605Z",
+      "session": "341e52a2-08ae-4b97-95df-e26844a041f2",
+      "track": "h-hygiene",
+      "agent": "claude-pro-h-hygiene",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L5-hygiene, green"
+    },
+    {
+      "at": "2026-11-14T05:09:22.112Z",
+      "session": "40e74f60-14bc-41d3-8124-889b5a94a3f6",
+      "track": "h-admin-access",
+      "agent": "lane-h-admin-access",
+      "verb": "handoff_write",
+      "target": "H-L3-admin-access"
+    },
+    {
+      "at": "2026-11-14T05:09:30.272Z",
+      "session": "40e74f60-14bc-41d3-8124-889b5a94a3f6",
+      "track": "h-admin-access",
+      "agent": "lane-h-admin-access",
+      "verb": "note_post",
+      "target": "M12-phase-h:H-L3-admin-access, finding"
+    },
+    {
+      "at": "2026-11-14T05:09:33.204Z",
+      "session": "40e74f60-14bc-41d3-8124-889b5a94a3f6",
+      "track": "h-admin-access",
+      "agent": "lane-h-admin-access",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-14T05:10:17.790Z",
+      "session": "341e52a2-08ae-4b97-95df-e26844a041f2",
+      "track": "h-hygiene",
+      "agent": "claude-pro-h-hygiene",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L5-hygiene, green"
+    },
+    {
+      "at": "2026-11-14T05:10:40.757Z",
+      "session": "341e52a2-08ae-4b97-95df-e26844a041f2",
+      "track": "h-hygiene",
+      "agent": "claude-pro-h-hygiene",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L5-hygiene, green"
+    },
+    {
+      "at": "2026-11-14T05:10:57.118Z",
+      "session": "341e52a2-08ae-4b97-95df-e26844a041f2",
+      "track": "h-hygiene",
+      "agent": "claude-pro-h-hygiene",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L5-hygiene, green"
+    },
+    {
+      "at": "2026-11-14T05:12:06.826Z",
+      "session": "82298c56-e350-427a-b718-d18d5ce84569",
+      "track": "h-client",
+      "agent": "lane-h-client",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L2-client, sweep"
+    },
+    {
+      "at": "2026-11-14T05:12:07.097Z",
+      "session": "82298c56-e350-427a-b718-d18d5ce84569",
+      "track": "h-client",
+      "agent": "lane-h-client",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L2-client, sweep"
+    },
+    {
+      "at": "2026-11-14T05:12:07.434Z",
+      "session": "82298c56-e350-427a-b718-d18d5ce84569",
+      "track": "h-client",
+      "agent": "lane-h-client",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L2-client, sweep"
+    },
+    {
+      "at": "2026-11-14T05:12:07.700Z",
+      "session": "82298c56-e350-427a-b718-d18d5ce84569",
+      "track": "h-client",
+      "agent": "lane-h-client",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L2-client, sweep"
+    },
+    {
+      "at": "2026-11-14T05:12:08.010Z",
+      "session": "82298c56-e350-427a-b718-d18d5ce84569",
+      "track": "h-client",
+      "agent": "lane-h-client",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L2-client, sweep"
+    },
+    {
+      "at": "2026-11-14T05:12:08.287Z",
+      "session": "82298c56-e350-427a-b718-d18d5ce84569",
+      "track": "h-client",
+      "agent": "lane-h-client",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L2-client, sweep"
+    },
+    {
+      "at": "2026-11-14T05:12:09.576Z",
+      "session": "341e52a2-08ae-4b97-95df-e26844a041f2",
+      "track": "h-hygiene",
+      "agent": "claude-pro-h-hygiene",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L5-hygiene, green"
+    },
+    {
+      "at": "2026-11-14T05:12:31.728Z",
+      "session": "82298c56-e350-427a-b718-d18d5ce84569",
+      "track": "h-client",
+      "agent": "lane-h-client",
+      "verb": "handoff_write",
+      "target": "H-L2-client"
+    },
+    {
+      "at": "2026-11-14T05:12:35.100Z",
+      "session": "82298c56-e350-427a-b718-d18d5ce84569",
+      "track": "h-client",
+      "agent": "lane-h-client",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-14T05:12:53.235Z",
+      "session": "341e52a2-08ae-4b97-95df-e26844a041f2",
+      "track": "h-hygiene",
+      "agent": "claude-pro-h-hygiene",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L5-hygiene, green"
+    },
+    {
+      "at": "2026-11-14T05:13:50.656Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "question_add"
+    },
+    {
+      "at": "2026-11-14T05:14:48.005Z",
+      "session": "341e52a2-08ae-4b97-95df-e26844a041f2",
+      "track": "h-hygiene",
+      "agent": "claude-pro-h-hygiene",
+      "verb": "handoff_write",
+      "target": "H-L5-hygiene"
+    },
+    {
+      "at": "2026-11-14T05:14:52.270Z",
+      "session": "341e52a2-08ae-4b97-95df-e26844a041f2",
+      "track": "h-hygiene",
+      "agent": "claude-pro-h-hygiene",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-14T05:17:07.687Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L4-admin-money, evidence"
+    },
+    {
+      "at": "2026-11-14T05:17:12.085Z",
+      "session": "e4af4ca2-599c-4aaf-88c6-96369ed09b8d",
+      "track": "h-admin-money",
+      "agent": "claude-pro-h-admin-money-fix",
+      "verb": "task_claim",
+      "target": "M12-phase-h / H-L4-admin-money"
+    },
+    {
+      "at": "2026-11-14T05:19:03.330Z",
+      "session": "e4af4ca2-599c-4aaf-88c6-96369ed09b8d",
+      "track": "h-admin-money",
+      "agent": "claude-pro-h-admin-money-fix",
+      "verb": "handoff_write",
+      "target": "H-L4-admin-money"
+    },
+    {
+      "at": "2026-11-14T05:19:04.269Z",
+      "session": "e4af4ca2-599c-4aaf-88c6-96369ed09b8d",
+      "track": "h-admin-money",
+      "agent": "claude-pro-h-admin-money-fix",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-14T05:20:57.611Z",
+      "session": "6084399a-01b9-4ee9-b668-e3ee74ec9935",
+      "track": "h-statement",
+      "agent": "lane-h-statement",
+      "verb": "task_claim",
+      "target": "M12-phase-h / H-L1-statement"
+    },
+    {
+      "at": "2026-11-14T05:21:05.439Z",
+      "session": "772e694d-c04c-42c2-a14a-624505f288e6",
+      "track": "h-client",
+      "agent": "lane-h-client",
+      "verb": "task_claim",
+      "target": "M12-phase-h / H-L2-client"
+    },
+    {
+      "at": "2026-11-14T05:21:07.587Z",
+      "session": "491c4330-1148-4452-bdbe-10f2d2962f35",
+      "track": "h-admin-access",
+      "agent": "lane-h-admin-access",
+      "verb": "task_claim",
+      "target": "M12-phase-h / H-L3-admin-access"
+    },
+    {
+      "at": "2026-11-14T05:21:18.142Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L1-statement, evidence"
+    },
+    {
+      "at": "2026-11-14T05:21:18.449Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L2-client, evidence"
+    },
+    {
+      "at": "2026-11-14T05:21:18.711Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L3-admin-access, evidence"
+    },
+    {
+      "at": "2026-11-14T05:21:18.946Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L5-hygiene, evidence"
+    },
+    {
+      "at": "2026-11-14T05:22:13.214Z",
+      "session": "4982b566-cce9-4260-ad17-54d757085703",
+      "track": "h-hygiene",
+      "agent": "fix-h-hygiene",
+      "verb": "task_claim",
+      "target": "M12-phase-h / H-L5-hygiene"
+    },
+    {
+      "at": "2026-11-14T05:23:52.070Z",
+      "session": "a1518ebb-4d1e-468b-b10b-a4d4b097d306",
+      "track": "h-admin-money",
+      "agent": "lane-h-admin-money",
+      "verb": "task_claim",
+      "target": "M12-phase-h / H-L4-admin-money"
+    },
+    {
+      "at": "2026-11-14T05:23:52.360Z",
+      "session": "a1518ebb-4d1e-468b-b10b-a4d4b097d306",
+      "track": "h-admin-money",
+      "agent": "lane-h-admin-money",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L4-admin-money, red"
+    },
+    {
+      "at": "2026-11-14T05:23:52.683Z",
+      "session": "a1518ebb-4d1e-468b-b10b-a4d4b097d306",
+      "track": "h-admin-money",
+      "agent": "lane-h-admin-money",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L4-admin-money, red"
+    },
+    {
+      "at": "2026-11-14T05:25:05.536Z",
+      "session": "491c4330-1148-4452-bdbe-10f2d2962f35",
+      "track": "h-admin-access",
+      "agent": "lane-h-admin-access",
+      "verb": "handoff_write",
+      "target": "H-L3-admin-access"
+    },
+    {
+      "at": "2026-11-14T05:25:09.169Z",
+      "session": "491c4330-1148-4452-bdbe-10f2d2962f35",
+      "track": "h-admin-access",
+      "agent": "lane-h-admin-access",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-14T05:25:12.205Z",
+      "session": "772e694d-c04c-42c2-a14a-624505f288e6",
+      "track": "h-client",
+      "agent": "lane-h-client",
+      "verb": "handoff_write",
+      "target": "H-L2-client"
+    },
+    {
+      "at": "2026-11-14T05:25:12.509Z",
+      "session": "772e694d-c04c-42c2-a14a-624505f288e6",
+      "track": "h-client",
+      "agent": "lane-h-client",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-14T05:25:51.727Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L3-admin-access, evidence"
+    },
+    {
+      "at": "2026-11-14T05:25:52.025Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L2-client, evidence"
+    },
+    {
+      "at": "2026-11-14T05:25:58.237Z",
+      "session": "3f1070e5-84ca-4cbf-beba-41e8e0fb89d7",
+      "track": "h-admin-access",
+      "agent": "claude-opus-5-5 coordinator (landing)",
+      "verb": "land_start",
+      "target": "M12-phase-h / H-L3-admin-access"
+    },
+    {
+      "at": "2026-11-14T05:27:25.519Z",
+      "session": "4982b566-cce9-4260-ad17-54d757085703",
+      "track": "h-hygiene",
+      "agent": "fix-h-hygiene",
+      "verb": "handoff_write",
+      "target": "H-L5-hygiene"
+    },
+    {
+      "at": "2026-11-14T05:27:28.172Z",
+      "session": "4982b566-cce9-4260-ad17-54d757085703",
+      "track": "h-hygiene",
+      "agent": "fix-h-hygiene",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-14T05:27:30.028Z",
+      "session": "a1518ebb-4d1e-468b-b10b-a4d4b097d306",
+      "track": "h-admin-money",
+      "agent": "lane-h-admin-money",
+      "verb": "handoff_write",
+      "target": "H-L4-admin-money"
+    },
+    {
+      "at": "2026-11-14T05:27:33.141Z",
+      "session": "a1518ebb-4d1e-468b-b10b-a4d4b097d306",
+      "track": "h-admin-money",
+      "agent": "lane-h-admin-money",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-14T05:27:51.837Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L5-hygiene, evidence"
+    },
+    {
+      "at": "2026-11-14T05:28:12.908Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L4-admin-money, evidence"
+    },
+    {
+      "at": "2026-11-14T05:28:40.828Z",
+      "session": "6084399a-01b9-4ee9-b668-e3ee74ec9935",
+      "track": "h-statement",
+      "agent": "lane-h-statement",
+      "verb": "handoff_write",
+      "target": "H-L1-statement"
+    },
+    {
+      "at": "2026-11-14T05:28:43.743Z",
+      "session": "6084399a-01b9-4ee9-b668-e3ee74ec9935",
+      "track": "h-statement",
+      "agent": "lane-h-statement",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-14T05:29:13.671Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-L1-statement, evidence"
+    },
+    {
+      "at": "2026-11-14T05:32:16.567Z",
+      "session": "a41bf5ae-4d19-438c-8780-8fe6a28512f7",
+      "track": "h-admin-money",
+      "agent": "claude-opus-5-5 coordinator (landing)",
+      "verb": "land_start",
+      "target": "M12-phase-h / H-L4-admin-money"
+    },
+    {
+      "at": "2026-11-14T05:32:28.511Z",
+      "session": "3f1070e5-84ca-4cbf-beba-41e8e0fb89d7",
+      "track": "h-admin-access",
+      "agent": "claude-opus-5-5 coordinator (landing)",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-14T05:32:30.143Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "track_close",
+      "target": "h-admin-access"
+    },
+    {
+      "at": "2026-11-14T05:32:46.119Z",
+      "session": "7d426ebb-3d80-4c79-bec2-f87b6b0bc7be",
+      "track": "h-client",
+      "agent": "claude-opus-5-5 coordinator (landing)",
+      "verb": "land_start",
+      "target": "M12-phase-h / H-L2-client"
+    },
+    {
+      "at": "2026-11-14T05:41:06.993Z",
+      "session": "a41bf5ae-4d19-438c-8780-8fe6a28512f7",
+      "track": "h-admin-money",
+      "agent": "claude-opus-5-5 coordinator (landing)",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-14T05:41:12.894Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "track_close",
+      "target": "h-admin-money"
+    },
+    {
+      "at": "2026-11-14T05:41:20.715Z",
+      "session": "464eca81-f297-4b4c-bdf2-823f1d19ef1b",
+      "track": "h-hygiene",
+      "agent": "claude-opus-5-5 coordinator (landing)",
+      "verb": "land_start",
+      "target": "M12-phase-h / H-L5-hygiene"
+    },
+    {
+      "at": "2026-11-14T05:47:02.885Z",
+      "session": "7d426ebb-3d80-4c79-bec2-f87b6b0bc7be",
+      "track": "h-client",
+      "agent": "claude-opus-5-5 coordinator (landing)",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-14T05:47:08.584Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "track_close",
+      "target": "h-client"
+    },
+    {
+      "at": "2026-11-14T05:47:18.680Z",
+      "session": "2103cc40-e766-4eaa-8cb5-1b837434b9e0",
+      "track": "h-statement",
+      "agent": "claude-opus-5-5 coordinator (landing)",
+      "verb": "land_start",
+      "target": "M12-phase-h / H-L1-statement"
+    },
+    {
+      "at": "2026-11-14T05:51:37.094Z",
+      "session": "464eca81-f297-4b4c-bdf2-823f1d19ef1b",
+      "track": "h-hygiene",
+      "agent": "claude-opus-5-5 coordinator (landing)",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-14T05:51:43.340Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "track_close",
+      "target": "h-hygiene"
+    },
+    {
+      "at": "2026-11-14T05:56:09.511Z",
+      "session": "2103cc40-e766-4eaa-8cb5-1b837434b9e0",
+      "track": "h-statement",
+      "agent": "claude-opus-5-5 coordinator (landing)",
+      "verb": "land_start",
+      "target": "M12-phase-h / H-L1-statement"
+    },
+    {
+      "at": "2026-11-14T06:00:41.423Z",
+      "session": "2103cc40-e766-4eaa-8cb5-1b837434b9e0",
+      "track": "h-statement",
+      "agent": "claude-opus-5-5 coordinator (landing)",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-14T06:00:48.507Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "track_close",
+      "target": "h-statement"
+    },
+    {
+      "at": "2026-11-14T06:03:36.653Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "evidence_record",
+      "target": "M12-phase-h / H-close, sweep"
+    },
+    {
+      "at": "2026-11-14T06:04:23.039Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_land",
+      "target": "M12-phase-h / H-close"
+    },
+    {
+      "at": "2026-11-14T06:10:28.989Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "milestone_add",
+      "target": "Carried review findings, not scheduled, M13-carried"
+    },
+    {
+      "at": "2026-11-14T06:10:35.800Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_plan",
+      "target": "M13-carried"
+    },
+    {
+      "at": "2026-11-14T06:10:54.792Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_land",
+      "target": "M12-phase-h / H-L1-statement"
+    },
+    {
+      "at": "2026-11-14T06:10:55.121Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_land",
+      "target": "M12-phase-h / H-L2-client"
+    },
+    {
+      "at": "2026-11-14T06:10:55.469Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_land",
+      "target": "M12-phase-h / H-L3-admin-access"
+    },
+    {
+      "at": "2026-11-14T06:10:55.830Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_land",
+      "target": "M12-phase-h / H-L4-admin-money"
+    },
+    {
+      "at": "2026-11-14T06:10:56.095Z",
+      "session": "0d2b6307-9af1-4ee7-abc8-bfc594f722d3",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_land",
+      "target": "M12-phase-h / H-L5-hygiene"
+    }
+  ]
+}

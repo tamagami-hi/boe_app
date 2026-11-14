@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "track": "h-admin-access",
+  "current": {
+    "task": "H-L3-admin-access",
+    "from": "lane-h-admin-access",
+    "track": "h-admin-access",
+    "at": "2026-11-14T05:25:05.508Z",
+    "lines": [
+      "Lane h-admin-access (H3, DEC-34; no permission/role/seed change, DEC-36). Commits on track/h-admin-access: 2278ef7 feat(admin-api) segment filter; 015e25c fix(admin-ui) access and flow; d1dc5e6 fix(admin-ui) review-1 follow-up. Not rebased, landed or pushed.",
+      "Review-1 fixes in d1dc5e6 (finding numbers from .temp/tally/logs/h-admin-access/review-1.md):",
+      "F1 (blocking): ReturnsDashboardScreen.tsx: roles without users.read get no raw id. Rows say 'Name not available' (or the plain name when the directory is readable), and the notice says client names are not available for the role; every row and figure stays. users.read holders keep link + id. The names-failed alert now reads 'Client names appear once the directory loads'. Only the client cell and notice lines changed; h-admin-money's showDecimals hunks in this file are elsewhere.",
+      "F2 (blocking): new users/UserDetailScreen.test.tsx renders the real UserDetailScreen + EarlierInvestmentForm + SipScheduleSection (other sections mocked), holds a recording as unconfirmed, asserts Record this month is disabled, then Check again resends the same key and re-enables it. Red control (disabled={blocked} removed) failed 1/1 via .temp/tally/run red, then reverted.",
+      "F3 (recommended): Record this month shows only when this IST month is an unpaid schedule month (recordingPrefill.ts thisMonthStatus); otherwise the row says 'This month is already recorded.' or 'This month is outside the schedule.' monthlyPrefillOf now always links this month (sipMonth no longer nullable), so no silent fallback to nextUnpaidMonth.",
+      "Checks for d1dc5e6 (container, shell runner): frontend check 37 files/323 tests, build:client, build:admin pass. Backend and contracts unchanged since 015e25c (backend check 101/1204, integration 66/560, contracts 98 recorded earlier).",
+      "Recorded, not fixed (per coordinator):",
+      "- Closing the record form via ClientHubActions while a recording is unconfirmed drops the held write (pre-existing; review F4).",
+      "- Directory keeps a stale ?q= in the URL: chips rewrite the URL but the applied search lives in component state (review F5).",
+      "- Unknown filter values (for example ?segment=admins) fall back to the default but stay in the URL (review F6).",
+      "- audit/AuditTrailTable.tsx links bypass ClientPageLink (h-admin-money's file; audit.read is superadmin-only) (review F7).",
+      "- useChosenClient duplicates useAdminUser; ClientHubActions.isOpen duplicates useRouteAccess; sidebar group labels are bare spans without role=group/aria-labelledby (review F8).",
+      "Merge notes for landing: IndividualClientGrowthScreen.test.tsx (split vi.mock) and ReturnsDashboardScreen.tsx overlap with h-admin-money; generated OpenAPI overlaps with h-client and h-statement (regenerate with the scripts).",
+      "UNVERIFIED: no browser run (no dev-server permission). Review left unchecked what the admin sign-in returns in roles for staff roles (affects every admin route equally)."
+    ]
+  },
+  "history": [
+    {
+      "task": "H-L3-admin-access",
+      "from": "lane-h-admin-access",
+      "track": "h-admin-access",
+      "at": "2026-11-14T05:09:22.090Z",
+      "lines": [
+        "Lane h-admin-access (H3, DEC-34; no permission/role/seed change per DEC-36). Commits on track/h-admin-access: 2278ef7 feat(admin-api) segment filter; 015e25c fix(admin-ui) access and flow. Not landed, not pushed.",
+        "API: GET /v1/admin/users takes optional segment=clients|pending_invites (contracts admin-oversight.ts AdminUserDirectorySegment; OpenAPI regenerated). Predicate lives in backend src/repositories/userSegments.ts and is shared with countPendingInvites (overview tile), so list and count agree. Response shape unchanged; filter hash includes segment only when sent, so existing cursors and released APKs are unchanged. Previous-release backend rejects segment (strict query) -> new admin build vs rolled-back API shows the picker error.",
+        "Item 1: user-detail route is users.read only (adminRoutes.ts). New shared/clientPageLink.tsx (ClientPageLink, useCanOpenClientPage) + shared/routeAccess.ts (useRouteAccess reads ADMIN_ROUTES). Used in directory, support ticket, review inbox/detail, maturities screen + due prompt (link only), returns dashboard, email list. Returns dashboard shows an info alert when the role cannot read names (finance) and keeps the id as reference.",
+        "Not changed: audit/AuditTrailTable.tsx (h-admin-money; audit.read is superadmin-only), ApplicationDetailScreen and CreateClientScreen (every seeded holder of applications.read/clients.create has users.read). Told h-admin-money (note-56).",
+        "Item 2: ClientPositionsScreen cards gate by routeId via useRouteAccess.",
+        "Item 3: useAdminUsers moved from shared/adminQueries.ts to users/userDirectoryQueries.ts (convention-5) with segment; InvestorPicker and SendEmailScreen ask segment=clients. IndividualClientGrowthScreen.test.tsx got a split vi.mock; h-admin-money also edits that test (MemoryRouter, useSession, useAdminUser) -> expect a small merge at landing.",
+        "Item 4: payment sheet nav entry (client-values 6.1 'Monthly payments'). SipScheduleSection active rows: 'Record this month' -> UserDetailScreen sets a prefill (client-values/recordingPrefill.ts monthlyPrefillOf) and remounts EarlierInvestmentForm by prefill id. Prefill = Monthly investment, schedule fund, schedule amount, indiaToday(), SIP month = current IST month when unpaid, else the form's existing default (next unpaid). Confirm step and held key unchanged. Form reports holding (pending/unknown) via onHoldChange; row actions are disabled while holding. Default open via ClientHubActions is still blank Earlier investment.",
+        "Pre-existing, not changed: closing the form with ClientHubActions while a recording is unconfirmed unmounts it and drops the held state.",
+        "Item 5: tiles open /users?segment=pending_invites and /emails?state=permanent_failed. Directory and email list read filters from the URL via shared/urlFilter.ts (status, segment; state, template). Item 6: email list Recipient links to the client when userId is present (full read only) and the role can open the page.",
+        "Item 7: AdminFrame sidebar renders navGroups with labels for groups of 2+; orders now client-values 6-6.4, support 6.5, reviews 6.6; mobile primaries unchanged. Item 8: send-email names the chosen client from the directory page, else getAdminUser (users.read), else the preview recipient, else a hint.",
+        "Tests: backend test/integration/adminUserDirectory.integration.test.ts (3); frontend client-values/EarlierInvestmentForm.test.tsx (2). Controls recorded as red evidence: always-true client predicate failed 2/3; skipping confirm failed 2/2; fresh key per send failed 1/2.",
+        "Checks at 015e25c (container): contracts check+build 98 tests; backend check 101 files/1204 tests; frontend check 36 files/322 tests, build:client, build:admin pass; backend integration 66 files/560 tests pass (second attempt). First integration attempt: all tests passed but an unhandled 57P01 'terminating connection due to administrator command' in adminSipSchedules teardown made it exit 1; that file passed alone (8 tests). Flaky under parallel lane load, untouched by this lane.",
+        "evidence 22e19c71 (exit 127) is a harness failure: the MCP evidence_run has no docker on PATH. Use .temp/tally/run from a shell instead.",
+        "UNVERIFIED: nothing was run in a browser (no dev server permission). No migration, no payment work, no docs changed (Q-036 -> DEC-36 row and Phase H close are the coordinator's)."
+      ]
+    }
+  ]
+}

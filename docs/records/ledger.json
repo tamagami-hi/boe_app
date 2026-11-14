@@ -1116,7 +1116,8 @@
         {
           "id": "U-close",
           "track": "main",
-          "status": "planned",
+          "status": "landed",
+          "commit": "d28e13b",
           "also": [],
           "brief": "Verify key claims, update plan with prioritised additions/simplifications, plan tasks on the board",
           "covers": [
@@ -1230,6 +1231,209 @@
           "brief": "Review, land, sweep, plan section 8 entry, records commit"
         }
       ]
+    },
+    {
+      "id": "M12-phase-h",
+      "stage": "H",
+      "group": "admin-improvements",
+      "name": "Phase H: experience gaps and the APK statement",
+      "track": "all",
+      "weight": 5,
+      "delivers": [
+        {
+          "id": "H1-statement",
+          "what": "APK statement through a one-time link opened in the phone's browser, server-rendered with risk line and as-of date; Statements screen risk line and as-of date (migration 070)"
+        },
+        {
+          "id": "H2-client",
+          "what": "Client fixes: contacts render, failed reads show errors, paused-fund holdings, app-update notice opens, admin SIP schedules on dashboard and portfolio, support line on login"
+        },
+        {
+          "id": "H3-admin-access",
+          "what": "Admin access and flow: role-safe client links, card gating, clients-only pickers, payment sheet in nav and Record this month, filtered overview tiles, email list client links, grouped sidebar, send-email client field"
+        },
+        {
+          "id": "H4-admin-money",
+          "what": "Admin money screens: linkable paged investor record, collective preview error, maturity failed-read retries, audit maturity presets, paise kept in displays, rupee fund and AUM inputs"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "H-L1-statement",
+          "track": "h-statement",
+          "status": "landed",
+          "commit": "f837ed4",
+          "also": [
+            "6b0d0c5",
+            "916ac64"
+          ],
+          "brief": "APK statement via a one-time link (migration 070): authenticated client request issues a short-lived single-use link bound to the client and period (hash stored); GET renders the server-side statement page with risk line and as-of date; APK opens it with the existing Browser plugin; Statements screen gains the risk line and as-of date; erasure coverage for the new table.",
+          "covers": [
+            "H1-statement"
+          ],
+          "deferred": [
+            {
+              "what": "Other client writes (support tickets and similar) take no user-row lock, so an erasure racing one can leave a row for a closed account (rule 15 class note from the F1 fix)",
+              "to": "M13-carried:carried-lows"
+            },
+            {
+              "what": "Statement page renderer lives in domain/client and imports email/ helpers (layering, review-1 F4)",
+              "to": "M13-carried:carried-lows"
+            },
+            {
+              "what": "Not verified on a device: Browser plugin open, Android Chrome print/save/share; nginx Referrer-Policy on the VPS is the maintainer's call (DEPLOY.md)",
+              "to": "M3-gates:G7-dev-release"
+            }
+          ]
+        },
+        {
+          "id": "H-L2-client",
+          "track": "h-client",
+          "status": "landed",
+          "commit": "f272573",
+          "also": [
+            "3110e62",
+            "b96a097",
+            "e477bbe"
+          ],
+          "brief": "Client fixes: legal and grievance screens render the published content shape (contacts show), login support line, failed reads show errors with retry (fund catalogue, SIP, email verification row), paused or archived fund holdings keep names and open the holding, app-update notice opens the sheet, admin SIP schedules (N of M) on dashboard and portfolio. No payment, AutoPay or gateway screens (finding-27).",
+          "covers": [
+            "H2-client"
+          ],
+          "deferred": [
+            {
+              "what": "No test covers the receipts fundId filter (scoped to the signed-in user, no access risk) (review-1 F4)",
+              "to": "M13-carried:carried-lows"
+            },
+            {
+              "what": "Payment tab, online payment history and SIP screens keep the catalogue Fund fallback: parked under DEC-14 (finding-27)",
+              "to": "M3-gates:G10-payments-decision"
+            },
+            {
+              "what": "Placeholder contacts if the dev content seed reached production: maintainer question Q-037, before release",
+              "to": "M3-gates:G8-prod-release"
+            },
+            {
+              "what": "AccountPasswordPanel and ResetPasswordScreen keep typed passwords in form state after an error (h-hygiene review F3)",
+              "to": "M13-carried:carried-lows"
+            }
+          ]
+        },
+        {
+          "id": "H-L3-admin-access",
+          "track": "h-admin-access",
+          "status": "landed",
+          "commit": "a2b6376",
+          "also": [
+            "159e600",
+            "40c7821"
+          ],
+          "brief": "Admin access and flow: hide client links for roles the page refuses (Q-036, no permission change), client values cards gated by their routes' permissions, clients-only pickers, payment sheet in navigation, Record this month on SIP schedule rows with prefilled monthly form, filtered overview tiles, email list client links, grouped sidebar, send-email client field.",
+          "covers": [
+            "H3-admin-access"
+          ],
+          "deferred": [
+            {
+              "what": "Closing the record form while a recording is unconfirmed drops the held write (pre-existing; review-1 F4)",
+              "to": "M13-carried:carried-lows"
+            },
+            {
+              "what": "Directory URL keeps a stale ?q=; unknown filter values stay in the URL (review-1 F5, F6)",
+              "to": "M13-carried:carried-lows"
+            },
+            {
+              "what": "AuditTrailTable client links bypass ClientPageLink (h-admin-money file; audit.read superadmin-only) (review-1 F7)",
+              "to": "M13-carried:carried-lows"
+            },
+            {
+              "what": "useChosenClient and ClientHubActions.isOpen duplication; sidebar group labels lack group semantics (review-1 F8)",
+              "to": "M13-carried:carried-lows"
+            }
+          ]
+        },
+        {
+          "id": "H-L4-admin-money",
+          "track": "h-admin-money",
+          "status": "landed",
+          "commit": "9ed3914",
+          "also": [
+            "21d5815",
+            "59fecc0",
+            "74e6900",
+            "8c582ce",
+            "a1775e5"
+          ],
+          "brief": "Admin money screens: investor record linkable by client and paged past 100, collective preview error with retry instead of raw ids, maturity dialog and client page maturity section failed reads with retry, audit presets cover maturity schedule and offer commands, paise kept in displays and dates formatted, fund and AUM inputs in rupees.",
+          "covers": [
+            "H4-admin-money"
+          ],
+          "deferred": [
+            {
+              "what": "A failed Show more is silent (shared LoadMore has no error state: investor record, ClientLedgerTab, FundAumScreen)",
+              "to": "M13-carried:carried-lows"
+            },
+            {
+              "what": "?userId= on the investor record and value update is read only on first mount",
+              "to": "M13-carried:carried-lows"
+            },
+            {
+              "what": "A linked id that matches no user shows Name not loaded ... Try again, which cannot succeed",
+              "to": "M13-carried:carried-lows"
+            },
+            {
+              "what": "Fund receipt queue and detail round to rupees; rows come only from gateway settlement, so parked under DEC-14 (finding-27)",
+              "to": "M3-gates:G10-payments-decision"
+            },
+            {
+              "what": "UserDetailScreen orders column rounds to rupees (orders are payment rows, DEC-14)",
+              "to": "M3-gates:G10-payments-decision"
+            }
+          ]
+        },
+        {
+          "id": "H-L5-hygiene",
+          "track": "h-hygiene",
+          "status": "landed",
+          "commit": "edbdd70",
+          "also": [
+            "6be1460",
+            "8042a1a"
+          ],
+          "brief": "Carried C1 nominee items, built by the claude-pro terminal agent: the client nominee mutation must not keep the current password in the TanStack mutation cache after it settles; nominee audit rows record nominee_version as the entity version of a user entity, so either record it under a nominee-specific entity version field in metadata or correct the convention for new rows only (existing audit rows are never rewritten). Same-shape search for other password-carrying mutations (rule 15).",
+          "deferred": [
+            {
+              "what": "AccountPasswordPanel and ResetPasswordScreen keep typed passwords in React form state after an error; ResetPasswordScreen keeps newPassword after success until unmount (review-1 F3; component state, not the mutation cache)",
+              "to": "M13-carried:carried-lows"
+            }
+          ]
+        },
+        {
+          "id": "H-close",
+          "track": "main",
+          "status": "landed",
+          "commit": "5fe24c2",
+          "also": [],
+          "brief": "Reviews, landings, full sweep, plan section 8 Phase H close, then phase_close on the maintainer's word (records commit)"
+        }
+      ]
+    },
+    {
+      "id": "M13-carried",
+      "stage": "build",
+      "group": "admin-improvements",
+      "name": "Carried review findings, not scheduled",
+      "track": "main",
+      "weight": 1,
+      "waits": "the maintainer deciding when (or whether) to schedule them; none blocks a release",
+      "tasks": [
+        {
+          "id": "carried-lows",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "LOW and class findings carried from the Phase H reviews (plan section 8, Phase H close, 'Carried'): user-row lock for other client writes racing erasure; statement renderer layering; receipts fundId filter test; password panels clearing form state; record form close dropping a held write; stale ?q= and unknown URL filters; audit trail client links; duplication and sidebar group semantics; silent Show more failure; ?userId= read on first mount only; unknown linked id retry. Not scheduled; the maintainer decides."
+        }
+      ]
     }
   ],
   "other": [
@@ -1260,6 +1464,18 @@
     {
       "commit": "5a3b9dd",
       "note": "docs(plan): Q-030 to Q-032 recorded as DEC-30 to DEC-32, Phase G started (DEC-33)"
+    },
+    {
+      "commit": "fb10a30",
+      "note": "docs(plan): DEC-34 Phase H and DEC-35 tally rulebook adoption recorded"
+    },
+    {
+      "commit": "8e26c31",
+      "note": "docs(plan): Q-036 answered as DEC-36, no client-page access for support or finance"
+    },
+    {
+      "commit": "d28e13b",
+      "note": "docs(plan): U-close and Phase H scope (also recorded as U-close's landing)"
     }
   ]
 }

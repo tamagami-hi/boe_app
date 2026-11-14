@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "track": "h-client",
+  "current": {
+    "task": "H-L2-client",
+    "from": "lane-h-client",
+    "track": "h-client",
+    "at": "2026-11-14T05:25:12.165Z",
+    "lines": [
+      "Lane h-client (M12-phase-h:H-L2-client). Four commits on track/h-client, not landed, not rebased, not pushed:",
+      "- 221d62a feat(invested-funds): GET /v1/client/invested-funds and /{fundId}; optional fundId on /v1/client/receipts and /v1/client/value-updates.",
+      "- 3784dd6 fix(client-ui): legal and grievance screens render the published content shape; Support and Login show published contacts.",
+      "- 08fe83c fix(client-ui): Your investment screen, fund names with error+retry, failed eligibility/SIP reads, admin SIP schedules on Dashboard, app-update Open, value-update highlight notice.",
+      "- 0fffd8a fix(client-ui): review follow-up (review-1.md) F2, F3, F6.",
+      "Review follow-up, done:",
+      "- F2: InvestedFundScreen CLOSED_FUND now says only that the fund is not open in the fund list right now and the investment and its history are shown here (recordContribution does not check fund state).",
+      "- F3: publishedContent.ts checkedLink: a content url/href becomes a link only as mailto for an email-shaped value equal to its address, tel for a phone-shaped value with the same digits, or https when the displayed text is that same URL; otherwise plain text.",
+      "- F6: frontend_stack_ts/src/features/dashboard/DashboardScreen.test.tsx 'shows a failed SIP read as an error with retry, never as having no SIP plans'. Red run with isSipReadFailed forced to false fails it (runner records 20261114T052211Z and 20261114T052438Z on the final test); break reverted.",
+      "Recorded, not fixed:",
+      "- F4: no test covers the receipts fundId filter. The query stays limited to the signed-in user, so no access risk; a broken filter would show another of the client's own funds' receipts on Your investment. 221d62a's body cited a recordingReceipts run that did not exercise the filter; corrected in 0fffd8a's body.",
+      "- F5: the payment tab, online payment history and SIP screens keep the catalogue 'Fund' fallback: parked under DEC-14 (finding-27).",
+      "- F1: placeholder contacts in production is maintainer question Q-037; unchanged.",
+      "Follow-up evidence (shell runner): frontend check 36 files, 321 tests, boot passed (first attempt failed lint on a type assertion in the new test, fixed); build:client 17 assets 932,640 bytes with Android dist and boot checks; build:admin boot check. Backend and contracts unchanged since the 08fe83c sweep (contracts 98; backend 101 files/1204; integration 65 files/558).",
+      "Defaults from the first pass still stand: invested-funds naming (guard bans 'holdings'); held = any client_value_entries row; routes in recordingComposition.ts; fundId in the cursor hash only when sent; support contact from the investor-charter contact block; login help via AuthPort.loginHelp (admin null); gateway SIP entries only with gateway plans or a failed read; app-update Open only when an optional update is offered.",
+      "Not verified: no browser or device run (no dev server started).",
+      "Shared files (rebase conflicts likely with h-statement, h-admin-access, h-admin-money): clientRoutes.ts, queryKeys.ts, authPort.ts, both shell roots, contracts index.ts, generate-openapi.ts, generated OpenAPI and frontend generated operations (regenerate, never hand-merge). Not touched: features/shared/queries.ts mutations, profileQueries.ts, nomineeQueries.ts (lane h-hygiene).",
+      "Start times on the first-pass non-sweep evidence records are approximate; runner records are exact.",
+      "Plan section 8 not edited: the coordinator writes the Phase H close entry."
+    ]
+  },
+  "history": [
+    {
+      "task": "H-L2-client",
+      "from": "lane-h-client",
+      "track": "h-client",
+      "at": "2026-11-14T05:12:31.679Z",
+      "lines": [
+        "Lane h-client (M12-phase-h:H-L2-client). Commits on track/h-client, not landed, not pushed:",
+        "- 221d62a feat(invested-funds): GET /v1/client/invested-funds and /{fundId} (contract client-invested-funds.ts); optional fundId on /v1/client/receipts and /v1/client/value-updates.",
+        "- 3784dd6 fix(client-ui): legal and grievance screens render the published content shape; Support and Login show published contacts.",
+        "- 08fe83c fix(client-ui): Your investment screen (/portfolio/funds/:fundId), fund names with error+retry, failed eligibility/SIP reads, admin SIP schedules on Dashboard, app-update Open, value-update highlight notice.",
+        "No migration (071 not taken). No released response shape changed: new endpoints and optional query params only.",
+        "Defaults a reviewer should examine:",
+        "- Endpoint named invested-funds, not holdings: investment-architecture.guard bans the word holdings in backend source; the first backend check failed on it.",
+        "- Invested fund = any fund with a client_value_entries row for the user; name = current published version name else slug (as value updates); fundPublished = state published and a published version.",
+        "- Routes register in recordingComposition.ts (composition.ts untouched). Cursor filter hash includes fundId only when sent, so existing cursors stay valid.",
+        "- Support contact = investor-charter document's contact block (Legal says the charter names who to contact). Grievance shows its own summary, steps, timelines and contacts.",
+        "- Readers accept both shapes: contacts[] (label/value) and contact{} (officerName, email, phone, hours, address); sections with body or items; steps with title/description/timeline/contactEmail. mailto/tel links only for values shaped like an email or phone; anything else is plain text.",
+        "- Login help is client-only, supplied by the client shell via AuthPort.loginHelp (admin passes null). Generic login refusal unchanged; unpublished content gives neutral copy with no address.",
+        "- Portfolio, Activity ledger and Value updates link to Your investment; Fund details only while published; closed funds get an info note.",
+        "- Activity payment tab and OnlinePaymentHistory still name funds from the catalogue (Fund on failure): payment surfaces parked (finding-27).",
+        "- Gateway SIP row and Manage SIPs (Dashboard) and the SIP plans button (Portfolio) show only with gateway plans or after a failed SIP read; admin schedules via SipSchedulesSection on Dashboard (already on Portfolio). SIP screens untouched.",
+        "- App-update notice: Open shows only when the update feed offers an optional update (UpdatePrompt context in AppUpdateGate); it marks the notice read and reopens the sheet.",
+        "- Email verification rows show Couldn't check + Try again on a failed eligibility read (InlineReadFailure, shared with InvestingStatus).",
+        "- Value updates: notified entry on an older page gives a Show older updates notice; not found after all pages says it may have been corrected.",
+        "Evidence (tally): mutation dropping the user scope in findByUser fails the new 404 test; frontend check 35 files/320 tests on 3784dd6 alone; admin cross-target dist check passes. Full rule-52 sweep on clean 08fe83c: contracts 98 tests; backend check 101 files/1204; integration 65 files/558; frontend check 35/320; build:client (17 assets, 932,428 bytes) and build:admin pass. Start times on non-sweep records are approximate.",
+        "Not verified: no browser or device run (no dev server started); real published content in production unknown.",
+        "Risk for the maintainer (possible Q): the content seed's contacts are placeholders (support@beonedge.example, grievance@beonedge.example, +91-80-1234-5678/5679). Production runs only seed:auth, so the legal rows may be absent (screens fall back) or hold placeholders, which now render. No admin editor exists for these documents.",
+        "An earlier draft leaked client screens into the admin bundle through CLIENT_ROUTES; fixed (contacts resolve without the route manifest) and checked with check-android-dist --variant=admin.",
+        "Shared files touched (expect rebase conflicts with other Phase H lanes): frontend clientRoutes.ts, queryKeys.ts, authPort.ts and both shell roots; contracts index.ts, scripts/generate-openapi.ts, generated OpenAPI; frontend generated operations (regenerate, never hand-merge).",
+        "Plan section 8 not edited (parallel lanes): the coordinator writes the Phase H close entry."
+      ]
+    }
+  ]
+}
