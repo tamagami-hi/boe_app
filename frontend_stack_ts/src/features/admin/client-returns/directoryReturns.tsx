@@ -54,13 +54,13 @@ export const useDirectoryReturns = (userIds: readonly string[]): DirectoryReturn
         key: "invested",
         header: "Invested",
         numeric: true,
-        render: (row) => cell(row, (summary) => <MoneyValue amount={toPaise(summary.investedPaise)} size="sm" />),
+        render: (row) => cell(row, (summary) => <MoneyValue amount={toPaise(summary.investedPaise)} size="sm" showDecimals />),
       },
       {
         key: "value",
         header: "Value",
         numeric: true,
-        render: (row) => cell(row, (summary) => <MoneyValue amount={toPaise(summary.currentValuePaise)} size="sm" />),
+        render: (row) => cell(row, (summary) => <MoneyValue amount={toPaise(summary.currentValuePaise)} size="sm" showDecimals />),
       },
       {
         key: "return",

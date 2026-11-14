@@ -147,7 +147,7 @@ New fund
                       <span>No AUM</span>
                     ) : (
                       <span>
-                        AUM <MoneyValue amount={toPaise(fund.aum.aumPaise)} size="sm" />
+                        AUM <MoneyValue amount={toPaise(fund.aum.aumPaise)} size="sm" showDecimals />
                       </span>
                     )}
                   </div>

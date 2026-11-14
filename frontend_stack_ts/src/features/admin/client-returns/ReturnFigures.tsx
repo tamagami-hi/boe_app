@@ -24,13 +24,13 @@ export const ReturnFigures = ({ returns, asOfDate, lead }: Props): React.ReactEl
     <div className={ADMIN_SUMMARY_GRID}>
       {lead}
       <Stat label="Invested" hint="Principal recorded, after reversals and withdrawals.">
-        <MoneyValue amount={toPaise(returns.investedPaise)} size="md" />
+        <MoneyValue amount={toPaise(returns.investedPaise)} size="md" showDecimals />
       </Stat>
       <Stat label="Current value">
-        <MoneyValue amount={toPaise(returns.currentValuePaise)} size="md" />
+        <MoneyValue amount={toPaise(returns.currentValuePaise)} size="md" showDecimals />
       </Stat>
       <Stat label="Growth">
-        <MoneyValue amount={toPaise(returns.growthPaise)} size="md" tone="signed" showSign />
+        <MoneyValue amount={toPaise(returns.growthPaise)} size="md" tone="signed" showSign showDecimals />
       </Stat>
       <Stat label="Simple return" hint="Growth divided by the amount invested.">
         <ReturnValue basisPoints={returns.simpleReturnBasisPoints} size="md" />

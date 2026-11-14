@@ -363,7 +363,7 @@ const CollectiveAumGrowthScreen = (): React.ReactElement => {
                   key: "before",
                   header: "Before",
                   numeric: true,
-                  render: (row) => <MoneyValue amount={toPaise(row.beforeAumPaise)} size="sm" />,
+                  render: (row) => <MoneyValue amount={toPaise(row.beforeAumPaise)} size="sm" showDecimals />,
                 },
                 {
                   key: "delta",
@@ -375,6 +375,7 @@ const CollectiveAumGrowthScreen = (): React.ReactElement => {
                       size="sm"
                       tone="signed"
                       showSign
+                      showDecimals
                     />
                   ),
                 },
@@ -382,7 +383,7 @@ const CollectiveAumGrowthScreen = (): React.ReactElement => {
                   key: "after",
                   header: "After",
                   numeric: true,
-                  render: (row) => <MoneyValue amount={toPaise(row.afterAumPaise)} size="sm" />,
+                  render: (row) => <MoneyValue amount={toPaise(row.afterAumPaise)} size="sm" showDecimals />,
                 },
               ]}
             />

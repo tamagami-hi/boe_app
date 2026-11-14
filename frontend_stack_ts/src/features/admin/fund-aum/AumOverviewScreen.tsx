@@ -96,7 +96,7 @@ Create a fund
                   row.aum === null ? (
                     <span className={META_TEXT}>Not initialised</span>
                   ) : (
-                    <MoneyValue amount={toPaise(row.aum.aumPaise)} size="md" />
+                    <MoneyValue amount={toPaise(row.aum.aumPaise)} size="md" showDecimals />
                   ),
               },
               {

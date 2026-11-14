@@ -70,7 +70,7 @@ const FundAumHistoryScreen = (): React.ReactElement => {
                 key: "aum",
                 header: "Fund size",
                 numeric: true,
-                render: (row) => <MoneyValue amount={toPaise(row.aumPaise)} size="sm" />,
+                render: (row) => <MoneyValue amount={toPaise(row.aumPaise)} size="sm" showDecimals />,
               },
               {
                 key: "batch",

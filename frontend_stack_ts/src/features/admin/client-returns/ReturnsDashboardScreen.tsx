@@ -155,20 +155,20 @@ const ReturnsDashboardScreen = (): React.ReactElement => {
                     key: "invested",
                     header: "Invested",
                     numeric: true,
-                    render: (row) => <MoneyValue amount={toPaise(row.investedPaise)} size="sm" />,
+                    render: (row) => <MoneyValue amount={toPaise(row.investedPaise)} size="sm" showDecimals />,
                   },
                   {
                     key: "value",
                     header: "Current value",
                     numeric: true,
-                    render: (row) => <MoneyValue amount={toPaise(row.currentValuePaise)} size="sm" />,
+                    render: (row) => <MoneyValue amount={toPaise(row.currentValuePaise)} size="sm" showDecimals />,
                   },
                   {
                     key: "growth",
                     header: "Growth",
                     numeric: true,
                     render: (row) => (
-                      <MoneyValue amount={toPaise(row.growthPaise)} size="sm" tone="signed" showSign />
+                      <MoneyValue amount={toPaise(row.growthPaise)} size="sm" tone="signed" showSign showDecimals />
                     ),
                   },
                   {
