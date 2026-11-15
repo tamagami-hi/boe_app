@@ -386,20 +386,30 @@
       "group": "admin-improvements",
       "text": "2026-11-15, upcoming (not started): nominee by request. A client has at most one nominee (already true in the data model). The client can no longer set, change or remove the nominee directly; instead the client sends a nominee request with name and relation, the admin is notified, and the admin accepts it (the nominee is set) or declines it. The admin can still set or change a nominee directly from the admin panel.",
       "since": "2026-11-15",
-      "status": "Upcoming: recorded for a later phase, not started",
-      "state": "other",
+      "status": "Decided, not built: next build (M15 nominee by request); waits for the maintainer's go-ahead",
+      "state": "decided, not built",
       "by": "operator",
-      "on": "2026-11-15T08:41:48.373Z"
+      "on": "2026-11-15T09:30:33.033Z"
     },
     {
       "id": "DEC-40",
       "group": "admin-improvements",
       "text": "2026-11-15, next (recorded, not started): a complete UI overhaul, checked, fixed and implemented separately for mobile and for the web browser, for both the client and the admin app, so four surfaces: client on the phone (APK), client in a browser, admin on the phone (APK), admin in a browser. It starts with a read-only audit of each surface; fixes and new work follow from a plan the maintainer approves.",
       "since": "2026-11-15",
-      "status": "Next: recorded, starts with a read-only audit on the maintainer's go-ahead",
-      "state": "other",
+      "status": "Decided, not built: next build (M16 UI overhaul, audits first); waits for the maintainer's go-ahead",
+      "state": "decided, not built",
       "by": "operator",
-      "on": "2026-11-15T08:47:49.353Z"
+      "on": "2026-11-15T09:30:33.268Z"
+    },
+    {
+      "id": "DEC-41",
+      "group": "admin-improvements",
+      "text": "2026-11-15, next build (recorded, not started): SIP early exit. When a client stops an admin-tracked SIP before its tenure, the admin closes the SIP and returns the money in one action recorded as an early closure, not a maturity, and shown so in the admin and client apps; a maturity date set on that holding is cancelled with it. Today the admin can close a schedule (client page, SIP schedules, Manage, Close the schedule) but can return money only through Mark matured plus Record withdrawal, which records it as a maturity.",
+      "since": "2026-11-15",
+      "status": "Decided, not built: next build (M17 SIP early exit); waits for the maintainer's go-ahead",
+      "state": "decided, not built",
+      "by": "operator",
+      "on": "2026-11-15T09:30:33.489Z"
     }
   ],
   "replaced": []

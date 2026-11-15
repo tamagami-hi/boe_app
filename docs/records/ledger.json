@@ -1552,6 +1552,24 @@
           "brief": "From the four audits, a fix and implementation plan per surface for the maintainer to approve; then lanes per surface."
         }
       ]
+    },
+    {
+      "id": "M17-sip-early-exit",
+      "stage": "build",
+      "group": "admin-improvements",
+      "name": "SIP early exit (DEC-41, next build)",
+      "track": "main",
+      "weight": 1,
+      "waits": "the maintainer's go-ahead and the open details in plan section 6, \"Next build: SIP early exit\"",
+      "tasks": [
+        {
+          "id": "X1-sip-early-exit",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "DEC-41 (next build, not started; do not begin without the maintainer's go-ahead): one admin action that closes an admin-tracked SIP before its tenure, records the money returned as an early exit (not a maturity), cancels a maturity date on that holding, in one transaction, shown as an early closure to admin and client. Settle first: client notification, amount below current value, undo, statements and investor record. AutoPay and gateway plans stay parked (DEC-14)."
+        }
+      ]
     }
   ],
   "other": [
@@ -1642,6 +1660,10 @@
     {
       "commit": "ab1759d",
       "note": "Plan: DEC-40 UI overhaul across four surfaces recorded as the next phase (not started); plan text and decision only."
+    },
+    {
+      "commit": "d3f1b60",
+      "note": "Plan: DEC-41 SIP early exit recorded for the next build phase (decided, not built); plan text and decision only."
     }
   ]
 }
