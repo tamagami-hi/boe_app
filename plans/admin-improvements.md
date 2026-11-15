@@ -62,6 +62,7 @@ IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-0
 | DEC-38 | 2026-11-15 | The company is BeOnEdge LLP, not "BeOnEdge Financial Services Pvt. Ltd.". Migration 071 republishes the stored investor charter and grievance document only where the contact address is exactly the seed's wrong name (old version archived, nothing deleted). The login screen shows only the support email. | Built on local `main` (section 8, fixes after v0.16.1). |
 | DEC-39 | 2026-11-15 | Nominee by request: a client keeps at most one nominee, can no longer set, change or remove it directly, and instead sends a request with name and relation. The admin is notified and accepts or declines it. The admin can still set or change a nominee directly. | Upcoming: recorded, not started (section 6, "Upcoming: nominee by request"). |
 | DEC-40 | 2026-11-15 | A complete UI overhaul, checked, fixed and implemented separately for mobile and the web browser, for both the client and the admin app (four surfaces). It starts with a read-only audit of each surface. | Next: recorded, not started (section 6, "Next: UI overhaul"). |
+| DEC-41 | 2026-11-15 | SIP early exit: closing an admin-tracked SIP before its tenure and returning the money in one action, recorded and shown as an early closure, not a maturity. | Next build: recorded, not started (section 6, "Next build: SIP early exit"). |
 
 #### Replaced
 
@@ -497,6 +498,31 @@ The maintainer asked on 2026-11-15 for this to be recorded for a later phase, no
   - client and admin endpoints and screens;
   - an audit row for each request and decision;
   - erasure coverage for the new table.
+
+### Next build: SIP early exit (DEC-41, not started)
+
+The maintainer asked on 2026-11-15, after a review of what exists, for this to be recorded for the next build phase.
+
+- **What exists today:**
+  - Closing works. On the client page, open SIP schedules, click Manage on the row, then Close the schedule. No more monthly recordings can link to it, the linked ones stay, the client sees it closed, and it can be reopened (Phase C, C2).
+  - Returning money works only through the Maturity tab's "Maturity and settlement" panel: Mark matured (dated today), then Record withdrawal, then confirm the bank transfer outcome. That records the exit as a maturity.
+  - Closing and returning are two separate actions in two places.
+- **Wanted:** one early-exit action that:
+  - closes the SIP before its tenure;
+  - records the money returned to the client;
+  - is recorded and shown as an early closure, not a maturity, in the admin and client apps;
+  - cancels a maturity date set on that holding, in the same action.
+- **To settle when the phase starts:**
+  - whether the client is told by email, in the app, or both;
+  - whether the returned amount may be less than the current value, for example after an exit charge;
+  - whether an early exit can be undone;
+  - how it shows in statements and the investor record.
+- **Shape:**
+  - one admin command in one transaction: close the schedule, record the withdrawal payout as an early exit, cancel the maturity schedule;
+  - an expand-first migration only if a new record kind is needed;
+  - client and admin screens;
+  - audit rows.
+- **Out of scope:** AutoPay and gateway SIP plans stay parked under DEC-14.
 
 ### Next: UI overhaul, four surfaces (DEC-40, not started)
 
