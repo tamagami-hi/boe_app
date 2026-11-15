@@ -60,6 +60,7 @@ IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-0
 | DEC-36 | 2026-11-14 | Q-036: neither the support nor the finance role gets access to client pages; permissions stay as they are. | Built in Phase H (H3, H4): client links are hidden for roles the page refuses, and screens that cannot name clients for a role say so without raw ids. |
 | DEC-37 | 2026-11-14 | Q-037: production's published legal documents (investor charter, grievance) already carry BeOnEdge's real support and grievance contacts, so the contacts H2 shows are correct. Had they been placeholders or missing, the choice was a one-time migration filling them only where placeholders or absent. | In force; no change needed. |
 | DEC-38 | 2026-11-15 | The company is BeOnEdge LLP, not "BeOnEdge Financial Services Pvt. Ltd.". Migration 071 republishes the stored investor charter and grievance document only where the contact address is exactly the seed's wrong name (old version archived, nothing deleted). The login screen shows only the support email. | Built on local `main` (section 8, fixes after v0.16.1). |
+| DEC-39 | 2026-11-15 | Nominee by request: a client keeps at most one nominee, can no longer set, change or remove it directly, and instead sends a request with name and relation. The admin is notified and accepts or declines it. The admin can still set or change a nominee directly. | Upcoming: recorded, not started (section 6, "Upcoming: nominee by request"). |
 
 #### Replaced
 
@@ -473,6 +474,28 @@ On 2026-11-14, U-close checked the client and admin findings of section 2F (tall
   - the SIP instalment notice that says to pay in the app;
   - a failed AutoPay read showing manual pause, resume and cancel, which the backend does not check either;
   - `lumpSumCount` still counting recorded payments in the API.
+
+### Upcoming: nominee by request (DEC-39, not started)
+
+The maintainer asked on 2026-11-15 for this to be recorded for a later phase, not built now.
+
+- **Today (Phase C, C1):** the database already holds at most one nominee per client, as two columns on the client's account (migration 063). On Profile, the client can save, replace or remove that one nominee at any time by entering their current password. The admin can set it from the client page.
+- **Wanted:**
+  - The client cannot set, change or remove the nominee directly.
+  - The client sends a nominee request with a name and a relation.
+  - The admin is notified, then accepts the request, which sets the nominee, or declines it.
+  - The admin can still set or change a nominee directly.
+- **To settle when the phase starts:**
+  - whether the client re-enters their password to send a request;
+  - how the admin is notified (a queue with an overview count, as for support and reviews, and whether by email too);
+  - whether the client hears the decision in the app, by email, or both, and whether a decline carries a reason;
+  - one open request per client, and whether the client can withdraw it;
+  - what replaces the client's direct nominee endpoint. That endpoint has never been released, so it can change.
+- **Shape:**
+  - an expand-first migration (the next number) for nominee requests;
+  - client and admin endpoints and screens;
+  - an audit row for each request and decision;
+  - erasure coverage for the new table.
 
 ## 7. Plan changes and approval gate
 
