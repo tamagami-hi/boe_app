@@ -101,7 +101,7 @@ const INVESTOR_CHARTER: SeedContentDocument = {
       email: SUPPORT_EMAIL,
       phone: "+91-80-1234-5678",
       hours: "Monday - Friday, 9:00 AM - 6:00 PM IST",
-      address: "BeOnEdge Financial Services Pvt. Ltd.",
+      address: "BeOnEdge LLP",
     },
   },
 }
@@ -155,7 +155,7 @@ const GRIEVANCE: SeedContentDocument = {
       phone: "+91-80-1234-5679",
       hours: "Monday - Friday, 9:00 AM - 6:00 PM IST",
       officerName: "Grievance Officer",
-      address: "BeOnEdge Financial Services Pvt. Ltd.",
+      address: "BeOnEdge LLP",
     },
   },
 }

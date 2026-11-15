@@ -15,9 +15,9 @@ export const useSupportContacts = (): readonly LegalContact[] => {
   return query.data === undefined ? [] : contactsOf(query.data)
 }
 
-export type SupportContactsProps = Readonly<{ unpublished: string }>
+export type SupportContactsProps = Readonly<{ unpublished: string; pick?: (contact: LegalContact) => boolean }>
 
-export const SupportContacts = ({ unpublished }: SupportContactsProps): React.ReactElement => {
+export const SupportContacts = ({ unpublished, pick }: SupportContactsProps): React.ReactElement => {
   const query = useLegalDocument(SUPPORT_CONTACT_DOCUMENT)
 
   return (
@@ -27,7 +27,8 @@ export const SupportContacts = ({ unpublished }: SupportContactsProps): React.Re
       fallback={<Prose>{unpublished}</Prose>}
     >
       {(data) => {
-        const contacts = contactsOf(data)
+        const published = contactsOf(data)
+        const contacts = pick === undefined ? published : published.filter(pick)
         return contacts.length === 0 ? <Prose>{unpublished}</Prose> : <PublishedContactList contacts={contacts} />
       }}
     </AsyncBoundary>
