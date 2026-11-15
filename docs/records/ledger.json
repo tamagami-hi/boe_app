@@ -1558,6 +1558,10 @@
     {
       "commit": "d74e10a",
       "note": "Maintainer request 2026-11-15: login help shows only the support email (no phone, hours, address); company name corrected to BeOnEdge LLP in the content seed. Container checks: backend 101/1204, frontend 40/336 with boot check, contracts build. Stored documents seeded earlier still carry the old name until corrected."
+    },
+    {
+      "commit": "674c593",
+      "note": "Plan section 8: the fixes entry after v0.16.1 now records the admin consoles (M14 F2) and the commits of migration 071; plan text only."
     }
   ]
 }
