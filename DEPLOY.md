@@ -197,7 +197,7 @@ each is reachable only from a device signed in to the tailnet:
 | Type in the browser | Lands on | Stack | Served by |
 | --- | --- | --- | --- |
 | `admin.boe.dev.app.internal` | `https://beonedge-vps.tail4ea2bc.ts.net` | dev (admin 47422, backend 47423) | the VPS's own Tailscale node and `admin.tailscale.conf` |
-| `admin.boe.app.internal` | `https://boe-prod-admin.tail4ea2bc.ts.net` | production (admin 47412, backend 47413) | a second Tailscale node, `boe-prod-admin`, and `admin-prod.tailscale.conf` |
+| `admin.boe.app.internal` | `https://boe-prod-admin.tail4ea2bc.ts.net` | production (admin 47412, backend 47413) | a separate Tailscale container, `boe-prod-admin`, and `admin-prod.tailscale.conf` |
 
 The `.internal` names only redirect, over plain HTTP, to the HTTPS Tailscale names. Two
 browser rules make this necessary:
@@ -208,50 +208,75 @@ browser rules make this necessary:
 Each stack needs its own Tailscale name, because cookies are scoped to a host, not a port:
 two consoles on one name would share sessions.
 
+Why production's node is a container:
+- A userspace `tailscaled` forwards any port it does not serve to the loopback of the
+  machine it runs on.
+- Run on the VPS itself, it would open the backend, Postgres, SSH and every other
+  loopback-only service to the tailnet.
+- In its own container, that loopback is empty. The node reaches nginx only through the
+  `boe_prod_admin_proxy` network (`10.251.47.0/24`), on `10.251.47.1:47491`.
+- It is not part of the production stack, so an image rollback cannot take it down.
+
 **Until these steps are done**, `admin.boe.app.internal` still reaches the dev console,
 through the old redirect.
 
 ### One-time setup on the VPS
 
-1. **Ship both nginx configs** with `nginx_ship.sh`. Then link the new site, test and
-   reload:
+1. **Install both nginx configs.** `nginx_ship.sh` stages them under the stacks' `NGINX`
+   folder and prints the `cp` and `ln -sfn` commands that install them. Run those for
+   `boe-admin-tailscale` and `boe-admin-prod-tailscale`, then:
 
    ```bash
-   sudo ln -s /etc/nginx/sites-available/boe-admin-prod-tailscale /etc/nginx/sites-enabled/
    sudo nginx -t && sudo systemctl reload nginx
    ```
 
-   `admin.tailscale.conf` now answers `admin.boe.dev.app.internal` and no longer answers
-   `admin.boe.app.internal`. `admin-prod.tailscale.conf` redirects `admin.boe.app.internal`
-   and listens for the production console on `127.0.0.1:47491` only.
+   - `admin.tailscale.conf` now answers `admin.boe.dev.app.internal`, no longer
+     `admin.boe.app.internal`.
+   - `admin-prod.tailscale.conf` redirects `admin.boe.app.internal`.
+   - It also listens on port 47491 for the production console, accepting only
+     `10.251.47.0/24`. ufw keeps 47491 closed to everything else.
 
-2. **Start the second Tailscale node.** It runs in userspace networking with its own state,
-   socket and port, so it never touches the host's `tailscaled`, `tailscale0` or nginx's
-   port 443:
+2. **Prepare the tailnet.** In the Tailscale admin console:
+   - Add the tag `tag:boe-prod-admin` and an access rule that lets only operator devices
+     reach it, and only on port 443. For example, in the policy file:
+
+     ```json
+     "tagOwners": { "tag:boe-prod-admin": ["autogroup:admin"] },
+     "acls": [ { "action": "accept", "src": ["autogroup:admin"], "dst": ["tag:boe-prod-admin:443"] } ]
+     ```
+
+     Fit `src` to who operates the console. This rule is required, not optional: the
+     container is the first fence, and the rule is the second.
+   - Create a one-off, non-ephemeral auth key with that tag. Tagged nodes do not expire, so
+     the console will not drop off the tailnet after the key-expiry period.
+   - Never put the key in the repository or in a stack `.env`.
+
+3. **Start the container.** Copy `release_manager/tailscale/docker-compose.boe-prod-admin.yml`
+   and `serve.json` to a folder on the VPS, for example
+   `/srv/dev_stack/BOE_APP/admin_tailnet/`. Next to them, create a `.env` that holds only
+   `TAILSCALE_IMAGE=tailscale/tailscale:<version>`, pinned to a released version, never
+   `latest` or `stable`. The `serve` configuration needs Tailscale 1.52 or newer. Then, in
+   that folder:
 
    ```bash
-   sudo install -m 0644 release_manager/tailscale/tailscaled-boe-prod-admin.service /etc/systemd/system/
-   sudo systemctl daemon-reload
-   sudo systemctl enable --now tailscaled-boe-prod-admin
+   TS_AUTHKEY=<the key> docker compose -f docker-compose.boe-prod-admin.yml up -d
+   docker compose -f docker-compose.boe-prod-admin.yml exec tailscale tailscale serve status
    ```
 
-3. **Join it to the tailnet** as `boe-prod-admin`. In the Tailscale admin console, create a
-   one-off auth key. Never put the key in the repository or in a stack `.env`. Then run:
-
-   ```bash
-   sudo tailscale --socket=/run/tailscale-boe-prod-admin/tailscaled.sock up --hostname=boe-prod-admin --auth-key=<the key>
-   sudo tailscale --socket=/run/tailscale-boe-prod-admin/tailscaled.sock serve --bg --https=443 http://127.0.0.1:47491
-   ```
-
-   `serve` gets the `boe-prod-admin.tail4ea2bc.ts.net` certificate itself and keeps the
-   setting across restarts. Check it with
-   `sudo tailscale --socket=/run/tailscale-boe-prod-admin/tailscaled.sock serve status`.
-   Consider restricting the node in the tailnet's access rules to operator devices only.
+   - The key is used once. Later starts reuse the state in the
+     `boe_prod_admin_tailnet_state` volume.
+   - `serve` gets the `boe-prod-admin.tail4ea2bc.ts.net` certificate itself.
+   - If the tailnet shows the name as `boe-prod-admin-1`, an old node holds the name.
+     Remove that node and restart the container.
 
 4. **Allow the production console's origin.** In the production stack's `.env`, set
    `WEB_ORIGIN_ALLOWLIST=https://app.beonedge.in,https://boe-prod-admin.tail4ea2bc.ts.net,https://localhost`.
-   `admin.beonedge.in` was never served and can go. Then restart the production backend
-   (redeploy, or `docker compose ... up -d backend`).
+   `admin.beonedge.in` was never served and can go. Then redeploy the same version, so the
+   backend reads the value:
+
+   ```bash
+   ./release_manager/deploy.sh --prod --force
+   ```
 
 ### On each device
 
@@ -263,7 +288,9 @@ Add both names to the hosts file. `100.122.85.101` is the VPS's Tailscale addres
 100.122.85.101 admin.boe.app.internal
 ```
 
-The `.ts.net` names need no hosts entry; MagicDNS resolves them on tailnet devices.
+- The `.ts.net` names need no hosts entry; MagicDNS resolves them on tailnet devices.
+- Type the names with `http://` the first time. A browser may otherwise try `https://` or
+  run a search.
 
 ### Check it
 
@@ -271,16 +298,19 @@ The `.ts.net` names need no hosts entry; MagicDNS resolves them on tailnet devic
   with dev data.
 - `http://admin.boe.app.internal` must land on `https://boe-prod-admin.tail4ea2bc.ts.net`
   with production data.
-- `/api/health/live` reports only `{"status":"ok"}` and no version, so it cannot tell the two
-  apart. The address bar and the data can.
+- The address bar and the data tell the two apart. Health endpoints are not reachable from
+  a browser on either console.
+- From an operator device, `nc -vz boe-prod-admin.tail4ea2bc.ts.net 47413` must fail, and so
+  must the same check on ports 5432 and 22. Only 443 answers.
 - A browser off the tailnet must get nothing from either name.
 
 ### Known limits of the production console
 
-- Every request reaches nginx from `127.0.0.1`, because `serve` proxies it there. So:
-  - all production console users share one sign-in rate-limit bucket (5 per minute,
-    burst 10);
-  - the backend records `127.0.0.1` as the client address for those sessions.
+- Every request reaches nginx from the container's address in `10.251.47.0/24`. So all
+  production console users share one sign-in rate-limit bucket (5 per minute, burst 10).
+- Which client address the backend records for those sessions has not been checked. It is
+  the container's address, or the device's tailnet address if `serve` forwards one.
+- `/api/metrics` and `/api/health/` answer 404 on the production console.
 - The dev console keeps per-device addresses, because Tailscale traffic reaches its nginx
   directly.
 

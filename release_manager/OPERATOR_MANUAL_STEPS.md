@@ -274,7 +274,7 @@ reached only over Tailscale, and the admin app itself ships as an APK:
   `beonedge-vps.tail4ea2bc.ts.net`.
 - `admin.boe.app.internal`: `admin-prod.tailscale.conf`, installed as
   `boe-admin-prod-tailscale`. It redirects to the production console on
-  `boe-prod-admin.tail4ea2bc.ts.net`, which a second Tailscale node serves.
+  `boe-prod-admin.tail4ea2bc.ts.net`, which a separate Tailscale container serves.
 
 Neither is in the copy loop above. The full one-time setup is in DEPLOY.md,
 "Admin consoles over Tailscale".

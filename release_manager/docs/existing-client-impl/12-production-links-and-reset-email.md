@@ -11,7 +11,7 @@ Verified 2026-09-10. Existing explicit URL settings remain authoritative; no NOD
 | PUBLIC_API_BASE_URL | https://dev-app.beonedge.in/api | https://app.beonedge.in/api | Passed by Compose, but not consumed by the current backend link builders |
 | CORS_ORIGIN | https://dev-app.beonedge.in | https://app.beonedge.in | Browser access; fallback when WEB_ORIGIN_ALLOWLIST is absent |
 
-Production WEB_ORIGIN_ALLOWLIST should be `https://app.beonedge.in,https://admin.beonedge.in,https://localhost`. Keep the client origin first. Android needs `https://localhost`. NODE_ENV still configures runtime behavior and existing payment callback validation; use production for production, development for development.
+Production WEB_ORIGIN_ALLOWLIST should be `https://app.beonedge.in,https://boe-prod-admin.tail4ea2bc.ts.net,https://localhost` (the production admin console over Tailscale; see DEPLOY.md, "Admin consoles over Tailscale"). Keep the client origin first. Android needs `https://localhost`. NODE_ENV still configures runtime behavior and existing payment callback validation; use production for production, development for development.
 
 The private stack .env is protected from conflicting inherited shell values by the deploy wrapper. SPA/API and APK build targets are selected during export/native build. Changing runtime .env cannot retarget an already compiled development APK into a production APK.
 
