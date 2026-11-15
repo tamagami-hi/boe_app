@@ -380,6 +380,16 @@
       "state": "built",
       "by": "operator",
       "on": "2026-11-15T07:36:33.309Z"
+    },
+    {
+      "id": "DEC-39",
+      "group": "admin-improvements",
+      "text": "2026-11-15, upcoming (not started): nominee by request. A client has at most one nominee (already true in the data model). The client can no longer set, change or remove the nominee directly; instead the client sends a nominee request with name and relation, the admin is notified, and the admin accepts it (the nominee is set) or declines it. The admin can still set or change a nominee directly from the admin panel.",
+      "since": "2026-11-15",
+      "status": "Upcoming: recorded for a later phase, not started",
+      "state": "other",
+      "by": "operator",
+      "on": "2026-11-15T08:41:48.373Z"
     }
   ],
   "replaced": []

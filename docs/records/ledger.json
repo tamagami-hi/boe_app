@@ -1488,6 +1488,24 @@
           "landedAt": "2026-11-15T08:08:08.243Z"
         }
       ]
+    },
+    {
+      "id": "M15-nominee-requests",
+      "stage": "build",
+      "group": "admin-improvements",
+      "name": "Nominee by request (DEC-39, upcoming)",
+      "track": "main",
+      "weight": 1,
+      "waits": "the maintainer's go-ahead to start, and the open details in plan section 6, \"Upcoming: nominee by request\"",
+      "tasks": [
+        {
+          "id": "N1-nominee-requests",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "DEC-39 (upcoming, not started; do not begin without the maintainer's go-ahead): client sends a nominee request (name, relation) instead of setting it; the admin is notified and accepts (sets the nominee) or declines; the admin can still set it directly; one nominee per client stays. Settle first: password on request, admin notification, client notification and decline reason, one open request and withdrawal, replacing the unreleased client direct endpoint. Expand-first migration, endpoints, screens, audit rows, erasure coverage."
+        }
+      ]
     }
   ],
   "other": [
@@ -1562,6 +1580,18 @@
     {
       "commit": "674c593",
       "note": "Plan section 8: the fixes entry after v0.16.1 now records the admin consoles (M14 F2) and the commits of migration 071; plan text only."
+    },
+    {
+      "commit": "59ec683",
+      "note": "Maintainer release flow (status.sh, update working tree): commits the tally log left by the previous session close; records only."
+    },
+    {
+      "commit": "00e1c01",
+      "note": "Maintainer release cut v0.16.2 (status.sh): VERSION 0.16.1 -> 0.16.2, tag v0.16.2, pushed. Carries the login email-only fix, migration 071 (DEC-38) and the Tailscale admin consoles (M14 F2). Not deployed by tally's knowledge: G7 and G8 stay open."
+    },
+    {
+      "commit": "10ff46a",
+      "note": "Plan: DEC-39 nominee by request recorded as an upcoming phase (not started); plan text and decision only."
     }
   ]
 }
