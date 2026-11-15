@@ -980,12 +980,23 @@ The maintainer cut v0.16.0 and v0.16.1 from local `main` and is verifying the bu
 | --- | --- |
 | A flaky backend test: the tampered-token test now changes a full signature character | `6e97a25` |
 | The login screen shows only the support email (DEC-38), and the content seed names the company BeOnEdge LLP | `d74e10a` |
-| Migration 071 corrects the stored company name (DEC-38, tally M14 F1) | this lane |
+| Migration 071 corrects the stored company name (DEC-38, tally M14 F1) | `91502a5`, `b5a360a` |
+| A Tailscale-only browser admin console for each stack (tally M14 F2) | `a764def`, `1f029df`, `c3aa119` |
 
 - **Migration 071.** For `investor-charter` and `grievance-redressal`, it republishes a published document whose `contact.address` is exactly `BeOnEdge Financial Services Pvt. Ltd.`, with `BeOnEdge LLP`. The old version is archived and nothing is deleted. Any other address, including one that only contains the old name, is left alone.
   - v0.16.1 runs against 071 unchanged, and 071 is not a rollback boundary.
   - The read-only production pre-check, the lock and the cache delay are in [migration-071-company-name.md](../release_manager/docs/migration-071-company-name.md).
   - The `claude-pro` database review (Opus, xhigh) cleared the SQL. Its two test findings were fixed: the negative case now contains the old name without equalling it, and a padding assertion is gone. It also asked for this record and the pre-check before release.
   - Two negative controls each failed the test: dropping the address filter, and matching addresses that only begin with the old name.
+- **Admin consoles.**
+  - `admin.boe.dev.app.internal` redirects to the dev console on `beonedge-vps.tail4ea2bc.ts.net`.
+  - `admin.boe.app.internal` redirects to a new production console on `boe-prod-admin.tail4ea2bc.ts.net`, served by a separate Tailscale container. Both are reachable only over the tailnet.
+  - The `claude-pro` review found that the first design, a second `tailscaled` on the VPS itself, would have opened the host's loopback-only services to the tailnet. The container closes that.
+  - Its follow-up review found that ufw would have blocked the container's connection to nginx, and that the access rule needed to replace broader grants. Both are fixed in `c3aa119`.
+  - The steps are in DEPLOY.md, "Admin consoles over Tailscale". The maintainer does every step on the VPS and in the tailnet.
+  - An explicit default server and the stale `admin.beonedge.in` references are carried in `M13-carried:carried-lows`.
 - **The APK export on the maintainer's machine.** It failed because `frontend_stack_ts/node_modules` was missing and `packages/contracts/dist` was stale. Both were restored. `emu/boe_update.sh` assumes both and checks neither, which is left for the maintainer.
-- **Not verified.** No device run of the login screen, and the migration has not run against the dev or production databases.
+- **Not verified.**
+  - No device run of the login screen.
+  - The migration has not run against the dev or production databases.
+  - The admin consoles are checked statically only (`nginx -t`, Compose validation, contract tests). No Tailscale node was joined, and nothing was deployed.
