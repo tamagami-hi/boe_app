@@ -1506,6 +1506,52 @@
           "brief": "DEC-39 (upcoming, not started; do not begin without the maintainer's go-ahead): client sends a nominee request (name, relation) instead of setting it; the admin is notified and accepts (sets the nominee) or declines; the admin can still set it directly; one nominee per client stays. Settle first: password on request, admin notification, client notification and decline reason, one open request and withdrawal, replacing the unreleased client direct endpoint. Expand-first migration, endpoints, screens, audit rows, erasure coverage."
         }
       ]
+    },
+    {
+      "id": "M16-ui-overhaul",
+      "stage": "build",
+      "group": "admin-improvements",
+      "name": "UI overhaul, four surfaces (DEC-40, next)",
+      "track": "all",
+      "weight": 3,
+      "waits": "the maintainer's go-ahead and the start-up choices in plan section 6, \"Next: UI overhaul\" (visual direction, reference devices and widths, which surface first)",
+      "tasks": [
+        {
+          "id": "U1-audit-client-mobile",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Read-only UI audit of the client app on the phone (APK): layout and navigation, touch targets, states, accessibility, copy, design-system consistency; findings with screenshots. Waits for the maintainer's go-ahead (DEC-40)."
+        },
+        {
+          "id": "U2-audit-client-web",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Read-only UI audit of the client app in a browser at phone, tablet and desktop widths; same checklist as U1. Waits for the go-ahead (DEC-40)."
+        },
+        {
+          "id": "U3-audit-admin-mobile",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Read-only UI audit of the admin app on the phone (APK); same checklist. Waits for the go-ahead (DEC-40)."
+        },
+        {
+          "id": "U4-audit-admin-web",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "Read-only UI audit of the admin app in a browser (the Tailscale consoles) at laptop and desktop widths; same checklist. Waits for the go-ahead (DEC-40)."
+        },
+        {
+          "id": "U5-overhaul-plan",
+          "track": "main",
+          "status": "planned",
+          "also": [],
+          "brief": "From the four audits, a fix and implementation plan per surface for the maintainer to approve; then lanes per surface."
+        }
+      ]
     }
   ],
   "other": [
@@ -1592,6 +1638,10 @@
     {
       "commit": "10ff46a",
       "note": "Plan: DEC-39 nominee by request recorded as an upcoming phase (not started); plan text and decision only."
+    },
+    {
+      "commit": "ab1759d",
+      "note": "Plan: DEC-40 UI overhaul across four surfaces recorded as the next phase (not started); plan text and decision only."
     }
   ]
 }

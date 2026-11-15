@@ -390,6 +390,16 @@
       "state": "other",
       "by": "operator",
       "on": "2026-11-15T08:41:48.373Z"
+    },
+    {
+      "id": "DEC-40",
+      "group": "admin-improvements",
+      "text": "2026-11-15, next (recorded, not started): a complete UI overhaul, checked, fixed and implemented separately for mobile and for the web browser, for both the client and the admin app, so four surfaces: client on the phone (APK), client in a browser, admin on the phone (APK), admin in a browser. It starts with a read-only audit of each surface; fixes and new work follow from a plan the maintainer approves.",
+      "since": "2026-11-15",
+      "status": "Next: recorded, starts with a read-only audit on the maintainer's go-ahead",
+      "state": "other",
+      "by": "operator",
+      "on": "2026-11-15T08:47:49.353Z"
     }
   ],
   "replaced": []
