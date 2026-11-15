@@ -59,6 +59,7 @@ IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-0
 | DEC-35 | 2026-11-14 | Tally rulebook: adopt tally's template, keep only the process rules `RULES.md` does not cover, tailored to this repository, and retire the rest as covered by `RULES.md` ("Process those rules and then read what we have and then adapt to whats best"). | In force. Tally rules are `rule-16` (`RULES.md` is the rulebook), `rule-17` and `rule-18` (payments off; no bank details or reference numbers) and `rule-48` to `rule-54` (scratch, decide once, record once, read once, check once, review once, three attempts). The other 22 template rules are retired, each citing its `RULES.md` rule; write-tests-first conflicted with rule 10. Records now commit once per tally phase. |
 | DEC-36 | 2026-11-14 | Q-036: neither the support nor the finance role gets access to client pages; permissions stay as they are. | Built in Phase H (H3, H4): client links are hidden for roles the page refuses, and screens that cannot name clients for a role say so without raw ids. |
 | DEC-37 | 2026-11-14 | Q-037: production's published legal documents (investor charter, grievance) already carry BeOnEdge's real support and grievance contacts, so the contacts H2 shows are correct. Had they been placeholders or missing, the choice was a one-time migration filling them only where placeholders or absent. | In force; no change needed. |
+| DEC-38 | 2026-11-15 | The company is BeOnEdge LLP, not "BeOnEdge Financial Services Pvt. Ltd.". Migration 071 republishes the stored investor charter and grievance document only where the contact address is exactly the seed's wrong name (old version archived, nothing deleted). The login screen shows only the support email. | Built on local `main` (section 8, fixes after v0.16.1). |
 
 #### Replaced
 
@@ -970,3 +971,21 @@ Phase H (DEC-34, DEC-36) was built on five lanes, each on its own tally track, a
 - **Not verified.**
   - No browser, device or emulator run of any Phase H screen. That includes the Browser plugin opening a statement link, and printing, saving or sharing it in Android Chrome.
   - No APK export, no real mail, nothing on a VPS.
+
+### Fixes after v0.16.1 (2026-11-15)
+
+The maintainer cut v0.16.0 and v0.16.1 from local `main` and is verifying the builds before one deployment. These fixes came out of that check. None of them is released yet.
+
+| Fix | Commits on `main` |
+| --- | --- |
+| A flaky backend test: the tampered-token test now changes a full signature character | `6e97a25` |
+| The login screen shows only the support email (DEC-38), and the content seed names the company BeOnEdge LLP | `d74e10a` |
+| Migration 071 corrects the stored company name (DEC-38, tally M14 F1) | this lane |
+
+- **Migration 071.** For `investor-charter` and `grievance-redressal`, it republishes a published document whose `contact.address` is exactly `BeOnEdge Financial Services Pvt. Ltd.`, with `BeOnEdge LLP`. The old version is archived and nothing is deleted. Any other address, including one that only contains the old name, is left alone.
+  - v0.16.1 runs against 071 unchanged, and 071 is not a rollback boundary.
+  - The read-only production pre-check, the lock and the cache delay are in [migration-071-company-name.md](../release_manager/docs/migration-071-company-name.md).
+  - The `claude-pro` database review (Opus, xhigh) cleared the SQL. Its two test findings were fixed: the negative case now contains the old name without equalling it, and a padding assertion is gone. It also asked for this record and the pre-check before release.
+  - Two negative controls each failed the test: dropping the address filter, and matching addresses that only begin with the old name.
+- **The APK export on the maintainer's machine.** It failed because `frontend_stack_ts/node_modules` was missing and `packages/contracts/dist` was stale. Both were restored. `emu/boe_update.sh` assumes both and checks neither, which is left for the maintainer.
+- **Not verified.** No device run of the login screen, and the migration has not run against the dev or production databases.

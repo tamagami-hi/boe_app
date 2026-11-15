@@ -51,6 +51,8 @@ are container builds, so do not mix them with host `npm`.
   on local `main`; Phase D and E3 wait for the maintainer, Phases F (maturity
   choices), G (client erasure) and H (experience gaps, APK statement link) are
   complete on local `main`.
+- [Migration 071](release_manager/docs/migration-071-company-name.md): the company-name
+  correction in the published legal documents and its read-only production pre-check.
 - [Client erasure](release_manager/docs/client-erasure.md): what the Phase G erase
   command touches, its read-only pre-flight query and the migration 069 notes; read it
   before the first production erase.
