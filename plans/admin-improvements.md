@@ -61,6 +61,7 @@ IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-0
 | DEC-37 | 2026-11-14 | Q-037: production's published legal documents (investor charter, grievance) already carry BeOnEdge's real support and grievance contacts, so the contacts H2 shows are correct. Had they been placeholders or missing, the choice was a one-time migration filling them only where placeholders or absent. | In force; no change needed. |
 | DEC-38 | 2026-11-15 | The company is BeOnEdge LLP, not "BeOnEdge Financial Services Pvt. Ltd.". Migration 071 republishes the stored investor charter and grievance document only where the contact address is exactly the seed's wrong name (old version archived, nothing deleted). The login screen shows only the support email. | Built on local `main` (section 8, fixes after v0.16.1). |
 | DEC-39 | 2026-11-15 | Nominee by request: a client keeps at most one nominee, can no longer set, change or remove it directly, and instead sends a request with name and relation. The admin is notified and accepts or declines it. The admin can still set or change a nominee directly. | Upcoming: recorded, not started (section 6, "Upcoming: nominee by request"). |
+| DEC-40 | 2026-11-15 | A complete UI overhaul, checked, fixed and implemented separately for mobile and the web browser, for both the client and the admin app (four surfaces). It starts with a read-only audit of each surface. | Next: recorded, not started (section 6, "Next: UI overhaul"). |
 
 #### Replaced
 
@@ -496,6 +497,40 @@ The maintainer asked on 2026-11-15 for this to be recorded for a later phase, no
   - client and admin endpoints and screens;
   - an audit row for each request and decision;
   - erasure coverage for the new table.
+
+### Next: UI overhaul, four surfaces (DEC-40, not started)
+
+The maintainer asked on 2026-11-15 for a complete UI overhaul: check, fix and new work, handled separately for mobile and for the web browser, for both apps.
+
+| Surface | Built from | Where it runs |
+| --- | --- | --- |
+| Client, mobile | client build in the Capacitor APK | Android phones |
+| Client, web | the same client build | `app.beonedge.in` (`dev-app` for dev) in a browser |
+| Admin, mobile | admin build in the Capacitor APK | Android phones |
+| Admin, web | the same admin build | the Tailscale admin consoles in a browser |
+
+- **Same code, different layouts.** One frontend serves all four; `VITE_BEO_APP_TARGET` picks client or admin at build time. "Separately for mobile and web" therefore means each surface gets its own audit, its own fixes, and layouts suited to its screen and input, not a second app.
+- **The order:**
+  1. A read-only audit of each surface, recorded as tally findings with screenshots. It covers:
+     - layout and navigation, per screen width;
+     - touch targets and keyboard use;
+     - loading, empty and error states;
+     - accessibility;
+     - copy;
+     - consistency with the design system in `frontend_stack_ts/src/ui`.
+  2. A fix and implementation plan per surface, for the maintainer to approve.
+  3. Lanes per surface, each reviewed and landed through tally like every phase.
+- **Binding while doing it:**
+  - `RULES.md` "Product, copy, and accessibility";
+  - the design system's tokens, primitives and recipes, with no restyling around them;
+  - released APKs keep working, under rule 11;
+  - payment, AutoPay and gateway screens stay parked under DEC-14;
+  - no bank details or payment instructions anywhere.
+- **To settle at the start:**
+  - whether the overhaul keeps today's visual identity and refines it, or sets a new direction;
+  - which phones and browser widths are the reference;
+  - which surface goes first.
+- **Earlier client UI briefs:** `release_manager/docs/` holds three client UI-UX briefs from September 2026. They are inputs to the client audits, not decisions.
 
 ## 7. Plan changes and approval gate
 
