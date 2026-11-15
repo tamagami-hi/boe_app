@@ -345,6 +345,16 @@ Do **not** add rules for the 474xx ports. They are loopback-bound; UFW never
 sees that traffic, and opening them would be actively harmful if a binding were
 ever changed to `0.0.0.0`.
 
+The one exception is nginx's production admin listener on 47491. The
+`boe-prod-admin` Tailscale container reaches it over its own Docker bridge,
+`boepadmin0`, so it needs exactly this rule and no wider one:
+
+```bash
+sudo ufw allow in on boepadmin0 from 10.251.47.0/24 to 10.251.47.1 port 47491 proto tcp
+```
+
+DEPLOY.md, "Admin consoles over Tailscale", has the rest of that setup.
+
 > Docker publishes ports by writing iptables rules that can bypass UFW. The
 > protection here is that every compose port is written as
 > `"127.0.0.1:PORT:PORT"`. Keep it that way.

@@ -234,19 +234,40 @@ through the old redirect.
      `admin.boe.app.internal`.
    - `admin-prod.tailscale.conf` redirects `admin.boe.app.internal`.
    - It also listens on port 47491 for the production console, accepting only
-     `10.251.47.0/24`. ufw keeps 47491 closed to everything else.
+     `10.251.47.0/24`.
+
+   Then let the container's bridge, and nothing else, through ufw to that listener:
+
+   ```bash
+   sudo ufw allow in on boepadmin0 from 10.251.47.0/24 to 10.251.47.1 port 47491 proto tcp
+   ```
+
+   The bridge `boepadmin0` appears when the container's network is created in step 3. The
+   rule can be added before that.
 
 2. **Prepare the tailnet.** In the Tailscale admin console:
    - Add the tag `tag:boe-prod-admin` and an access rule that lets only operator devices
-     reach it, and only on port 443. For example, in the policy file:
+     reach it, and only on port 443. Access rules only ever grant access, so:
+     - add the rule to the existing `acls` array, never replacing the array, or the dev
+       console and SSH over the tailnet stop working;
+     - remove or narrow every existing rule whose `dst` covers the tag, including the
+       default `"dst": ["*:*"]`, or the new rule restricts nothing.
+
+     For example, in the policy file:
 
      ```json
      "tagOwners": { "tag:boe-prod-admin": ["autogroup:admin"] },
-     "acls": [ { "action": "accept", "src": ["autogroup:admin"], "dst": ["tag:boe-prod-admin:443"] } ]
+     "acls": [ { "action": "accept", "src": ["autogroup:admin"], "dst": ["tag:boe-prod-admin:443"] } ],
+     "tests": [
+       { "src": "<an operator>", "accept": ["tag:boe-prod-admin:443"], "deny": ["tag:boe-prod-admin:22", "tag:boe-prod-admin:47413"] },
+       { "src": "<a non-operator>", "deny": ["tag:boe-prod-admin:443"] }
+     ]
      ```
 
-     Fit `src` to who operates the console. This rule is required, not optional: the
-     container is the first fence, and the rule is the second.
+     Fit `src` to who operates the console, and fill the `tests` with real users or
+     devices. Tailscale refuses a policy whose tests fail, which is the proof that the
+     rule works. This rule is required, not optional: the container is the first fence,
+     and the rule is the second.
    - Create a one-off, non-ephemeral auth key with that tag. Tagged nodes do not expire, so
      the console will not drop off the tailnet after the key-expiry period.
    - Never put the key in the repository or in a stack `.env`.
@@ -271,12 +292,16 @@ through the old redirect.
 
 4. **Allow the production console's origin.** In the production stack's `.env`, set
    `WEB_ORIGIN_ALLOWLIST=https://app.beonedge.in,https://boe-prod-admin.tail4ea2bc.ts.net,https://localhost`.
-   `admin.beonedge.in` was never served and can go. Then redeploy the same version, so the
-   backend reads the value:
+   `admin.beonedge.in` was never served and can go. Then, from the build machine, redeploy
+   the version that is running, so the backend reads the value:
 
    ```bash
    ./release_manager/deploy.sh --prod --force
    ```
+
+   `deploy.sh` ships the newest staged bundle. If a newer one is staged, add
+   `--bundle <the deployed bundle>`. The confirmation prompt shows which version it will
+   ship.
 
 ### On each device
 
@@ -298,10 +323,13 @@ Add both names to the hosts file. `100.122.85.101` is the VPS's Tailscale addres
   with dev data.
 - `http://admin.boe.app.internal` must land on `https://boe-prod-admin.tail4ea2bc.ts.net`
   with production data.
-- The address bar and the data tell the two apart. Health endpoints are not reachable from
-  a browser on either console.
-- From an operator device, `nc -vz boe-prod-admin.tail4ea2bc.ts.net 47413` must fail, and so
-  must the same check on ports 5432 and 22. Only 443 answers.
+- The address bar and the data tell the two apart. `/api/health/` and `/api/metrics` are not
+  reachable from a browser on either console. `/api/v1/health` answers only
+  `{"status":"ok"}` on both, so it cannot tell them apart.
+- From an operator device, `nc -vz -w 5 boe-prod-admin.tail4ea2bc.ts.net 47413` must fail,
+  and so must the same check on ports 5432 and 22. Only 443 answers. The container refuses
+  those ports even without the access rule, so the policy `tests` in step 2 are what prove
+  the rule.
 - A browser off the tailnet must get nothing from either name.
 
 ### Known limits of the production console

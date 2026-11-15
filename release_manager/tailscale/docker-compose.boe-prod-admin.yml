@@ -30,6 +30,8 @@ services:
 networks:
   admin_proxy:
     name: boe_prod_admin_proxy
+    driver_opts:
+      com.docker.network.bridge.name: boepadmin0
     ipam:
       config:
         - subnet: 10.251.47.0/24
