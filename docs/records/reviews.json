@@ -1,0 +1,118 @@
+{
+  "schema": 1,
+  "nextId": 6,
+  "reviews": [
+    {
+      "id": "review-1",
+      "milestone": "M14-fixes",
+      "task": "F1-company-name-content",
+      "track": "f-company-name",
+      "commit": "91502a5",
+      "reviewer": "claude-pro (Opus, effort xhigh), read-only database review",
+      "verdict": "fix",
+      "blocking": 1,
+      "findings": {
+        "medium": 1,
+        "low": 3
+      },
+      "summary": "Read the migration and tests before commit (now 91502a5). SQL cleared as written: exact match on two keys, archive before insert, max(version)+1 incl. drafts, fields carried, no-op when nothing matches, lock and temp table safe in the runner, v0.16.1 compatible. Blocking before release (F1): record the approval, a read-only production pre-check and the compatibility statement. LOW: negative fixture should contain the old name without equalling it (F2); a schema_migrations assertion is padding (F3); no audit row, optional (F4).",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/f-company-name/review-1.md",
+        "sha256": "fc7c5ab87d612222e259ded64d56ba4436bc3839b28230c4a0ca292b33b1a0cc",
+        "bytes": 8348
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-15T07:32:40.875Z"
+    },
+    {
+      "id": "review-2",
+      "milestone": "M14-fixes",
+      "task": "F1-company-name-content",
+      "track": "f-company-name",
+      "commit": "b5a360a",
+      "reviewer": "claude-opus-5-5 coordinator (follow-up on the fixes only)",
+      "verdict": "land",
+      "blocking": 0,
+      "summary": "F1 fixed: DEC-38 recorded in tally and the plan's decision record; plan section 8 'Fixes after v0.16.1'; release_manager/docs/migration-071-company-name.md holds the read-only production pre-check, the v0.16.1 compatibility and rollback statement, the lock and the cache delay. F2 fixed: the grievance fixture is '<old name>, Kolkata', and a LIKE-prefix variant of the migration fails the test (red run). F3 fixed: padding assertion removed. F4 declined: seed-published rows have no audit row either; the change is traceable from archived_at, the new row and schema_migrations.",
+      "follows": "review-1",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-15T07:32:54.619Z"
+    },
+    {
+      "id": "review-3",
+      "milestone": "M14-fixes",
+      "task": "F2-admin-consoles",
+      "track": "f-admin-consoles",
+      "commit": "a764def",
+      "reviewer": "claude-pro (Opus, effort xhigh), read-only infrastructure and security review",
+      "verdict": "fix",
+      "blocking": 1,
+      "findings": {
+        "high": 1,
+        "medium": 1,
+        "low": 8
+      },
+      "summary": "No exposure off the tailnet, no prod/dev mix-up, sign-in works. HIGH F1: a userspace tailscaled on the VPS forwards unserved ports to host loopback, opening the prod backend, Postgres, SSH and more to the tailnet; needs tagged key, mandatory ACL and port checks. MEDIUM F2: untagged key expiry drops the console. LOW: /api/metrics and client-address note (F3), false health-check note (F4), install/restart steps (F5), implicit default server (F6), state dir mode (F7), stale allowlist doc (F8), stale admin.beonedge.in refs (F9), subject wording (F10).",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/f-admin-consoles/review-1.md",
+        "sha256": "e87b9bc3ca78af40aa980935b1992f73749b51a97f28ed1bbfa008f29687855d",
+        "bytes": 12470
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-15T07:52:54.749Z"
+    },
+    {
+      "id": "review-4",
+      "milestone": "M14-fixes",
+      "task": "F2-admin-consoles",
+      "track": "f-admin-consoles",
+      "commit": "1f029df",
+      "reviewer": "claude-pro (Opus, effort xhigh), follow-up on the fix commit",
+      "verdict": "fix",
+      "blocking": 1,
+      "findings": {
+        "high": 1,
+        "medium": 1,
+        "low": 2
+      },
+      "summary": "F1 closed: the container leaves no tailnet path to any host service but nginx on 47491; F2, F3, F4, F5, F7, F8 closed; F6 and F9 deferred. New HIGH N1: ufw drops the container's connection to 10.251.47.1:47491, so the prod console would not load, and the operator manual forbade the needed rule. MEDIUM N2: the access rule only grants, so broader grants must be removed and policy tests added; nc checks cannot prove it. LOW N3 health wording, N4 redeploy runs from the build machine.",
+      "follows": "review-3",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/f-admin-consoles/review-2.md",
+        "sha256": "3ff4fe0d9693bd8f574207a4245c7e03e57c5702fe69e6ef76714301e3cc72dc",
+        "bytes": 11771
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-15T08:03:29.641Z"
+    },
+    {
+      "id": "review-5",
+      "milestone": "M14-fixes",
+      "task": "F2-admin-consoles",
+      "track": "f-admin-consoles",
+      "commit": "c3aa119",
+      "reviewer": "claude-opus-5-5 coordinator (follow-up on c3aa119 only)",
+      "verdict": "land",
+      "blocking": 0,
+      "summary": "N1 fixed: the compose network names its bridge boepadmin0; DEPLOY.md step 1 adds exactly 'ufw allow in on boepadmin0 from 10.251.47.0/24 to 10.251.47.1 port 47491 proto tcp', and OPERATOR_MANUAL_STEPS section 6 names 47491 as the one exception. N2 fixed: merge into the existing acls, remove or narrow wider grants covering the tag, policy tests for operator accept 443 / deny 22, 47413 and non-operator deny 443; nc -w 5 and a note that only the tests prove the rule. N3 and N4 wording fixed. Compose validates. F6 (default server) and F9 (stale admin.beonedge.in refs) stay deferred.",
+      "follows": "review-4",
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-15T08:03:29.935Z"
+    }
+  ]
+}

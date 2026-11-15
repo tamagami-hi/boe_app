@@ -370,6 +370,16 @@
       "state": "in force",
       "by": "operator",
       "on": "2026-11-14T11:12:48.957Z"
+    },
+    {
+      "id": "DEC-38",
+      "group": "admin-improvements",
+      "text": "2026-11-15: the company is BeOnEdge LLP, not 'BeOnEdge Financial Services Pvt. Ltd.'. The maintainer approved migration 071, which corrects the stored investor-charter and grievance-redressal documents: only a published document whose contact address is exactly the seed's wrong name gets a new published version with 'BeOnEdge LLP'; the old version is archived, nothing is deleted, and any other address is left alone. The login screen shows only the support email (no phone, hours or address).",
+      "since": "2026-11-15",
+      "status": "Built on local main (b5a360a): login email-only d74e10a, migration 071; not released",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-15T07:36:33.309Z"
     }
   ],
   "replaced": []

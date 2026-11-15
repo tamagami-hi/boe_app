@@ -1430,6 +1430,64 @@
           "brief": "LOW and class findings carried from the Phase H reviews (plan section 8, Phase H close, 'Carried'): user-row lock for other client writes racing erasure; statement renderer layering; receipts fundId filter test; password panels clearing form state; record form close dropping a held write; stale ?q= and unknown URL filters; audit trail client links; duplication and sidebar group semantics; silent Show more failure; ?userId= read on first mount only; unknown linked id retry. Not scheduled; the maintainer decides."
         }
       ]
+    },
+    {
+      "id": "M14-fixes",
+      "stage": "build",
+      "group": "admin-improvements",
+      "name": "Maintainer fixes after v0.16.1",
+      "track": "all",
+      "weight": 1,
+      "tasks": [
+        {
+          "id": "F1-company-name-content",
+          "track": "f-company-name",
+          "status": "landed",
+          "commit": "b5a360a",
+          "also": [
+            "91502a5"
+          ],
+          "brief": "Maintainer 2026-11-15: the company is BeOnEdge LLP. Migration 071 publishes a corrected version of each published investor-charter and grievance-redressal document whose contact address is exactly 'BeOnEdge Financial Services Pvt. Ltd.' (old version archived, nothing deleted, no-op where the address differs), with a populated-upgrade test and 071 in the release upgrade list. Needs a database review (rule-53).",
+          "paths": [
+            "backend_controller/db/migrations/071_correct_company_name.sql",
+            "backend_controller/test/integration/companyNameMigration.integration.test.ts",
+            "backend_controller/test/integration/releaseUpgrade.integration.test.ts"
+          ],
+          "landedAt": "2026-11-15T07:36:09.353Z"
+        },
+        {
+          "id": "F2-admin-consoles",
+          "track": "f-admin-consoles",
+          "status": "landed",
+          "commit": "c3aa119",
+          "also": [
+            "1f029df",
+            "a764def"
+          ],
+          "brief": "Maintainer 2026-11-15: two Tailscale-only browser admin consoles. admin.boe.dev.app.internal redirects to the dev console https://beonedge-vps.tail4ea2bc.ts.net (unchanged); admin.boe.app.internal redirects to a new production console https://boe-prod-admin.tail4ea2bc.ts.net, served by a second tailscaled instance (userspace, own state and socket) proxying HTTPS to a loopback-only nginx listener for the prod admin SPA (47412) and backend (47413). Repo: nginx configs and ship map, systemd unit, prod WEB_ORIGIN_ALLOWLIST example, CORS map, DEPLOY.md steps. The maintainer creates the auth key and deploys.",
+          "paths": [
+            "release_manager/nginx/admin.tailscale.conf",
+            "release_manager/nginx/admin-prod.tailscale.conf",
+            "release_manager/nginx/boe-shared.conf",
+            "release_manager/lib/nginx_ship.sh",
+            "release_manager/tailscale/tailscaled-boe-prod-admin.service",
+            "release_manager/stacks/prod_release/.env.example",
+            "release_manager/OPERATOR_MANUAL_STEPS.md",
+            "DEPLOY.md"
+          ],
+          "deferred": [
+            {
+              "what": "No explicit default_server on :80/:443, so an unmatched Host gets the first site's answer (review F6)",
+              "to": "M13-carried:carried-lows"
+            },
+            {
+              "what": "Stale admin.beonedge.in and dev-admin.beonedge.in references: Prometheus probes and alerts, OPERATOR_MANUAL DNS/certbot steps, .env.production.example, boe-shared.conf map entry (review F9)",
+              "to": "M13-carried:carried-lows"
+            }
+          ],
+          "landedAt": "2026-11-15T08:08:08.243Z"
+        }
+      ]
     }
   ],
   "other": [

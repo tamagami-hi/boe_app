@@ -368,6 +368,38 @@
         "track": "main",
         "agent": "claude-opus-5-5 coordinator"
       }
+    },
+    {
+      "name": "f-company-name",
+      "branch": "track/f-company-name",
+      "worktree": ".temp/worktrees/f-company-name",
+      "purpose": "M14 F1: migration 071 corrects the stored company name to BeOnEdge LLP in the published legal documents",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-15T07:19:32.587Z",
+      "closedAt": "2026-11-15T07:36:31.735Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      }
+    },
+    {
+      "name": "f-admin-consoles",
+      "branch": "track/f-admin-consoles",
+      "worktree": ".temp/worktrees/f-admin-consoles",
+      "purpose": "M14 F2: separate Tailscale-only browser admin consoles for dev (admin.boe.dev.app.internal) and production (admin.boe.app.internal)",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-15T07:37:14.136Z",
+      "closedAt": "2026-11-15T08:08:23.367Z",
+      "closedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      }
     }
   ]
 }

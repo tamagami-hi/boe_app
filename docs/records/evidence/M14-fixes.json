@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "milestone": "M14-fixes",
+  "records": [
+    {
+      "id": "bb51e429-83ba-420a-bc32-d7e6358cd62f",
+      "task": "F1-company-name-content",
+      "track": "f-company-name",
+      "agent": "claude-opus-5-5 coordinator",
+      "kind": "green",
+      "command": [
+        "tools/node22-container/run.sh",
+        "npm run check && npm run test:integration -- --coverage.enabled=false (backend_controller)"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/f-company-name/backend_controller",
+      "started": "2026-11-15T07:24:30Z",
+      "seconds": 150,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/f-company-name/integration.log",
+        "sha256": "d935340bb38b535f81a1506d980c551cceb9ff0a628c9da5a09b2720f2dc658e",
+        "bytes": 13458
+      },
+      "summary": {
+        "backend_files": 101,
+        "backend_tests": 1204,
+        "integration_files": 69,
+        "integration_tests": 571,
+        "failed": 0
+      },
+      "note": "Before the review's test edits; the edited migration test passed 2/2 afterwards (green-2.log). Red controls: no address filter (red-no-address-filter.log) and LIKE-prefix match (red-like.log) each failed the untouched-rows test."
+    },
+    {
+      "id": "0fd7774c-2cee-4d93-800d-f77f956128ef",
+      "task": "F2-admin-consoles",
+      "track": "f-admin-consoles",
+      "agent": "claude-opus-5-5 coordinator",
+      "kind": "green",
+      "command": [
+        "nginx -t (temp prefix, both admin configs + boe-shared)",
+        "docker compose -f docker-compose.boe-prod-admin.yml config -q",
+        "bash tests/{env_contract,deploy_env_validation,paths_contract}.test.sh",
+        "vitest originExamples + environment (Node 22 container)"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/f-admin-consoles",
+      "started": "2026-11-15T07:45:00Z",
+      "seconds": 120,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/f-admin-consoles/origin-tests.log",
+        "sha256": "3703579be36f3dbd73e9affce2caf6a574fcbd205e7a5334b3e9011aa0ad7449",
+        "bytes": 391
+      },
+      "summary": {
+        "nginx_t": "ok",
+        "compose_config": "ok",
+        "compose_without_image": "refused",
+        "release_contract_tests": 3,
+        "backend_tests": 27,
+        "failed": 0
+      },
+      "note": "Static checks only: nothing was deployed, no Tailscale node joined, no ufw or tailnet policy changed. The live behaviour of userspace tailscaled forwarding, serve.json and X-Forwarded-For is unverified (review-2 section 3)."
+    }
+  ]
+}
