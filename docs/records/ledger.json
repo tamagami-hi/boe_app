@@ -1488,6 +1488,18 @@
     {
       "commit": "6e97a25",
       "note": "Flaky-test fix after CI run 43627313231 failed on 4da065c: the tampered-token test now changes a full signature character. Red control 1/4 failed with the token left valid; backend check 101 files / 1204 tests in the Node 22 container."
+    },
+    {
+      "commit": "315e839",
+      "note": "Maintainer release flow (status.sh, update working tree): commits the tally log left by the previous session close; records only."
+    },
+    {
+      "commit": "65d1857",
+      "note": "Maintainer release cut v0.16.1 (status.sh): VERSION 0.16.0 -> 0.16.1, tag v0.16.1; carries the flaky-test fix 6e97a25. Not yet deployed by tally's knowledge: G7 and G8 stay open."
+    },
+    {
+      "commit": "d74e10a",
+      "note": "Maintainer request 2026-11-15: login help shows only the support email (no phone, hours, address); company name corrected to BeOnEdge LLP in the content seed. Container checks: backend 101/1204, frontend 40/336 with boot check, contracts build. Stored documents seeded earlier still carry the old name until corrected."
     }
   ]
 }

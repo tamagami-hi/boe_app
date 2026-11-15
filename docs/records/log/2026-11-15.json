@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "date": "2026-11-15",
+  "events": [
+    {
+      "at": "2026-11-15T07:17:33.792Z",
+      "session": "b319b2f9-ce05-46a2-acef-d1e3b9cc378f",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_other"
+    },
+    {
+      "at": "2026-11-15T07:17:34.068Z",
+      "session": "b319b2f9-ce05-46a2-acef-d1e3b9cc378f",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_other"
+    },
+    {
+      "at": "2026-11-15T07:17:34.362Z",
+      "session": "b319b2f9-ce05-46a2-acef-d1e3b9cc378f",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_other"
+    }
+  ]
+}
