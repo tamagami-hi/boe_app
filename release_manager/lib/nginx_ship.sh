@@ -45,6 +45,7 @@ nginx_ship_map() {
 app.beonedge.in.conf|sites-available/boe-app|site
 dev-app.beonedge.in.conf|sites-available/boe-dev-app|site
 admin.tailscale.conf|sites-available/boe-admin-tailscale|site
+admin-prod.tailscale.conf|sites-available/boe-admin-prod-tailscale|site
 boe-shared.conf|conf.d/boe-shared.conf|http
 boe-security-headers.conf|snippets/boe-security-headers.conf|snippet
 MAP

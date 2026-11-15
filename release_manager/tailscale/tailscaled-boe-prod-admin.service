@@ -1,0 +1,15 @@
+[Unit]
+Description=Tailscale node boe-prod-admin (BeOnEdge production admin console)
+Documentation=https://tailscale.com/kb/
+Wants=network-pre.target
+After=network-pre.target NetworkManager.service systemd-resolved.service tailscaled.service
+
+[Service]
+ExecStart=/usr/sbin/tailscaled --tun=userspace-networking --statedir=/var/lib/tailscale-boe-prod-admin --socket=/run/tailscale-boe-prod-admin/tailscaled.sock --port=41642
+RuntimeDirectory=tailscale-boe-prod-admin
+StateDirectory=tailscale-boe-prod-admin
+Restart=on-failure
+Type=notify
+
+[Install]
+WantedBy=multi-user.target

@@ -266,12 +266,18 @@ plus the client and admin APKs under `/downloads/`) and `app.beonedge.in`
 (production, once the dev bundle is signed off). `beonedge.in` is the marketing
 site and its config lives in the separate landing repository, not here.
 
-There is **no admin domain**. The admin console is reached over Tailscale —
-`admin.tailscale.conf`, `server_name admin.boe.app.internal`, installed as
-`boe-admin-tailscale` and never exposed publicly — and the admin app itself
-ships as an APK. `admin.tailscale.conf` is deliberately not in the copy loop
-above, because the live copy is pointed at whichever stack the console should
-talk to; see the note in that file before overwriting it.
+There is **no public admin domain**. Each stack has a browser admin console
+reached only over Tailscale, and the admin app itself ships as an APK:
+
+- `admin.boe.dev.app.internal`: `admin.tailscale.conf`, installed as
+  `boe-admin-tailscale`. It redirects to the dev console on
+  `beonedge-vps.tail4ea2bc.ts.net`.
+- `admin.boe.app.internal`: `admin-prod.tailscale.conf`, installed as
+  `boe-admin-prod-tailscale`. It redirects to the production console on
+  `boe-prod-admin.tail4ea2bc.ts.net`, which a second Tailscale node serves.
+
+Neither is in the copy loop above. The full one-time setup is in DEPLOY.md,
+"Admin consoles over Tailscale".
 
 `boe-shared.conf` must go in `conf.d/` — it holds the `http`-level
 `map $http_upgrade $connection_upgrade` and the rate-limit zones that the site

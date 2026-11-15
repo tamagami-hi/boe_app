@@ -147,6 +147,7 @@ installing a differently-named vhost by hand leaves two configs serving the same
 | `app.beonedge.in.conf` | `sites-available/boe-app` |
 | `dev-app.beonedge.in.conf` | `sites-available/boe-dev-app` |
 | `admin.tailscale.conf` | `sites-available/boe-admin-tailscale` |
+| `admin-prod.tailscale.conf` | `sites-available/boe-admin-prod-tailscale` |
 | `boe-shared.conf` | `conf.d/boe-shared.conf` |
 | `boe-security-headers.conf` | `snippets/boe-security-headers.conf` |
 
@@ -186,6 +187,102 @@ the site config does on top of that:
   expires after `EMAIL_VERIFICATION_CODE_TTL_MS`, the lifetime password links use.
 
 During maintenance this path answers the JSON maintenance body like every `/api/` path.
+
+## Admin consoles over Tailscale
+
+The client apps are public: `dev-app.beonedge.in` for the dev build and `app.beonedge.in`
+for production. The admin consoles are not. Each stack has its own browser console, and
+each is reachable only from a device signed in to the tailnet:
+
+| Type in the browser | Lands on | Stack | Served by |
+| --- | --- | --- | --- |
+| `admin.boe.dev.app.internal` | `https://beonedge-vps.tail4ea2bc.ts.net` | dev (admin 47422, backend 47423) | the VPS's own Tailscale node and `admin.tailscale.conf` |
+| `admin.boe.app.internal` | `https://boe-prod-admin.tail4ea2bc.ts.net` | production (admin 47412, backend 47413) | a second Tailscale node, `boe-prod-admin`, and `admin-prod.tailscale.conf` |
+
+The `.internal` names only redirect, over plain HTTP, to the HTTPS Tailscale names. Two
+browser rules make this necessary:
+- The console's `__Host-` session cookies are refused on plain HTTP.
+- No public authority issues a certificate for a `.internal` name, while `tailscale cert`
+  and `tailscale serve` issue real ones for `*.ts.net`.
+
+Each stack needs its own Tailscale name, because cookies are scoped to a host, not a port:
+two consoles on one name would share sessions.
+
+**Until these steps are done**, `admin.boe.app.internal` still reaches the dev console,
+through the old redirect.
+
+### One-time setup on the VPS
+
+1. **Ship both nginx configs** with `nginx_ship.sh`. Then link the new site, test and
+   reload:
+
+   ```bash
+   sudo ln -s /etc/nginx/sites-available/boe-admin-prod-tailscale /etc/nginx/sites-enabled/
+   sudo nginx -t && sudo systemctl reload nginx
+   ```
+
+   `admin.tailscale.conf` now answers `admin.boe.dev.app.internal` and no longer answers
+   `admin.boe.app.internal`. `admin-prod.tailscale.conf` redirects `admin.boe.app.internal`
+   and listens for the production console on `127.0.0.1:47491` only.
+
+2. **Start the second Tailscale node.** It runs in userspace networking with its own state,
+   socket and port, so it never touches the host's `tailscaled`, `tailscale0` or nginx's
+   port 443:
+
+   ```bash
+   sudo install -m 0644 release_manager/tailscale/tailscaled-boe-prod-admin.service /etc/systemd/system/
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now tailscaled-boe-prod-admin
+   ```
+
+3. **Join it to the tailnet** as `boe-prod-admin`. In the Tailscale admin console, create a
+   one-off auth key. Never put the key in the repository or in a stack `.env`. Then run:
+
+   ```bash
+   sudo tailscale --socket=/run/tailscale-boe-prod-admin/tailscaled.sock up --hostname=boe-prod-admin --auth-key=<the key>
+   sudo tailscale --socket=/run/tailscale-boe-prod-admin/tailscaled.sock serve --bg --https=443 http://127.0.0.1:47491
+   ```
+
+   `serve` gets the `boe-prod-admin.tail4ea2bc.ts.net` certificate itself and keeps the
+   setting across restarts. Check it with
+   `sudo tailscale --socket=/run/tailscale-boe-prod-admin/tailscaled.sock serve status`.
+   Consider restricting the node in the tailnet's access rules to operator devices only.
+
+4. **Allow the production console's origin.** In the production stack's `.env`, set
+   `WEB_ORIGIN_ALLOWLIST=https://app.beonedge.in,https://boe-prod-admin.tail4ea2bc.ts.net,https://localhost`.
+   `admin.beonedge.in` was never served and can go. Then restart the production backend
+   (redeploy, or `docker compose ... up -d backend`).
+
+### On each device
+
+Add both names to the hosts file. `100.122.85.101` is the VPS's Tailscale address
+(`beonedge-vps`):
+
+```
+100.122.85.101 admin.boe.dev.app.internal
+100.122.85.101 admin.boe.app.internal
+```
+
+The `.ts.net` names need no hosts entry; MagicDNS resolves them on tailnet devices.
+
+### Check it
+
+- `http://admin.boe.dev.app.internal` must land on `https://beonedge-vps.tail4ea2bc.ts.net`
+  with dev data.
+- `http://admin.boe.app.internal` must land on `https://boe-prod-admin.tail4ea2bc.ts.net`
+  with production data.
+- `/api/health/live` reports only `{"status":"ok"}` and no version, so it cannot tell the two
+  apart. The address bar and the data can.
+- A browser off the tailnet must get nothing from either name.
+
+### Known limits of the production console
+
+- Every request reaches nginx from `127.0.0.1`, because `serve` proxies it there. So:
+  - all production console users share one sign-in rate-limit bucket (5 per minute,
+    burst 10);
+  - the backend records `127.0.0.1` as the client address for those sessions.
+- The dev console keeps per-device addresses, because Tailscale traffic reaches its nginx
+  directly.
 
 ## Maintenance mode and required updates
 
@@ -245,9 +342,9 @@ app configuration (`GET /v1/app-config` answers `config: null`) never shows the 
 
 ## How admin and the APKs connect
 
-- **Admin console in a browser**: served by the admin SPA container behind
-  `admin.tailscale.conf`. It authenticates with HttpOnly cookies on the `web` session
-  channel plus a CSRF synchroniser token.
+- **Admin console in a browser**: one console per stack, reachable only over Tailscale
+  (see "Admin consoles over Tailscale" below). It authenticates with HttpOnly cookies on
+  the `web` session channel plus a CSRF synchroniser token.
 - **Both APKs**: built with the API base pointed at the stack's public host. The APK's own
   content origin is **`https://localhost`** (Capacitor serves the bundle over
   `androidScheme=https`), so every request carries `Origin: https://localhost`. That exact
