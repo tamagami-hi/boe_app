@@ -107,10 +107,14 @@ All bound to `127.0.0.1`.
 
 ## Tester access
 
-`dev-app.beonedge.in` and `dev-admin.beonedge.in` are internet-reachable, so they
-carry a second layer in front of the application login:
+Only `dev-app.beonedge.in` is internet-reachable. The dev admin console is not:
+it is reached only over Tailscale, at `admin.boe.dev.app.internal` (DEPLOY.md,
+"Admin consoles over Tailscale").
 
-- HTTP basic auth (`/etc/nginx/auth/dev-testers.htpasswd`)
+`dev-app.beonedge.in` carries a second layer in front of the application login:
+
+- HTTP basic auth (`/etc/nginx/auth/dev-testers.htpasswd`), once enabled as in
+  `OPERATOR_MANUAL_STEPS.md` §5.6
 - `X-Robots-Tag: noindex, nofollow, noarchive`
 - separate development accounts
 - no production data
@@ -137,6 +141,6 @@ Built on the build machine, not here:
 Deploying with a bundle that contains APKs publishes them into `dev_apk/` and
 `dev_admin_apk/` automatically.
 
-> Current limitation: dev and prod APKs share the applicationId
-> `com.beonedge.app`, so they cannot be installed on the same device at the same
-> time. See `FACTS_VS_PLAN.md` §6 item 8.
+> Dev and prod APKs install side by side: `emu/boe_update.sh` gives dev builds
+> the applicationIds `com.beonedge.app.dev` and `com.beonedge.app.dev.admin`, and
+> production builds `com.beonedge.app` and `com.beonedge.app.admin`.

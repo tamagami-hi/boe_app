@@ -9,11 +9,22 @@ authorize an agent to commit, push, export, connect to the VPS, or deploy.
 - `boe_app` on `main` is the full integration checkout and the maintainer's release
   location. Check `git status` and `git worktree list` rather than assuming a
   particular branch or extra worktree exists.
-- Maintainer-approved `wt/admin` and `wt/client` worktrees may be used for
-  development when present. Their names are historical: `frontend_stack_ts/` is
-  one package compiling both client/admin variants, not two separate frontends.
-- Verify sparse worktrees contain the live backend/frontend/contracts paths.
-  Do not rely on missing deployment tooling as a safety boundary.
+- Work runs in lanes, each a tally track. The coordinator (tally's operator
+  session on `main`) opens a track as a branch `track/<name>` cut from `main`,
+  with its own worktree under `.temp/worktrees/<name>/`. A lane works only in
+  that worktree, opens its tally session there and claims its planned task.
+- A track reaches `main` only through tally's landing queue. The coordinator
+  lands it with `land_start` and `land_wait`: tally rebases the track onto
+  `main` in a clean checkout and hands back the landing script to run. Lanes do
+  not merge, rebase, push or land themselves.
+- `frontend_stack_ts/` is one package compiling both client/admin variants, not
+  two separate frontends. The `wt/admin` and `wt/client` worktrees that
+  `release_manager/status.sh` still handles under Git predate tally tracks;
+  lanes do not use them.
+- Verify a worktree contains the live backend/frontend/contracts paths before
+  relying on it. Do not rely on missing deployment tooling as a safety boundary.
+- Decisions, questions, progress, reviews and handoffs live in tally
+  (`docs/records/`), not in new Markdown files.
 - Integrate only authorized, reviewed work into `main`. Run the relevant checks
   and preserve unrelated user changes. Committing, branching, and pushing require
   explicit authorization and the identity check in `RULES.md` rule 14.
@@ -23,12 +34,16 @@ authorize an agent to commit, push, export, connect to the VPS, or deploy.
 ## Verification and CI
 
 The full applicable sweep is in [RULES.md](RULES.md#verification-boundaries).
-`.github/workflows/ci.yml` defines backend, frontend, and contracts jobs:
+`.github/workflows/ci.yml` defines four jobs, run on pushes and pull requests to
+`main`:
 
-- Backend runs `npm run check` and PostgreSQL integration tests.
+- Backend runs `npm run check` and the PostgreSQL integration tests, with
+  coverage disabled for the integration run.
 - Frontend builds contracts, then runs typecheck, lint, tests, generated-client
   drift checks, both variant builds, and the native PhonePe-target guard.
 - Contracts runs its package `npm run check`.
+- Onboarding harness runs the root `npm run test:onboarding:harness`
+  (`test_e2e/onboarding-harness.test.mjs`).
 
 CI configuration is not proof of GitHub branch protection or runtime behavior.
 Release-manager shell tests/verification are separate; inspect a script before
@@ -46,14 +61,10 @@ VPS. Never report a deployment or device check from a unit-test result.
 5. If recovery is needed, the maintainer selects a rollback only after checking
    the current schema/configuration. Database restoration is separate and destructive.
 
-| Operator action | Reference command |
-| --- | --- |
-| Inspect/prepare release state | `./release_manager/status.sh` |
-| Export production bundle | `./release_manager/export.sh --prod` |
-| Deploy production bundle | `./release_manager/deploy.sh --prod` |
-| List production rollback choices | `./release_manager/rollback.sh --prod --list` |
+The commands are in [release_manager/README.md](release_manager/README.md#normal-flow)
+("Normal flow"); flags and recovery semantics are in
+[DEPLOY.md](DEPLOY.md#release-flow) ("Release flow").
 
 `VERSION` and local tags describe source/release metadata, not proof of the version
 running on the VPS. The selected stack's `paths.json` names its deployed version
-file; live inspection requires permission. Detailed flags and recovery semantics
-are in [DEPLOY.md](DEPLOY.md) and [release_manager/README.md](release_manager/README.md).
+file; live inspection requires permission.

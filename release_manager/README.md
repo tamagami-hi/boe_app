@@ -95,7 +95,7 @@ release_manager/
 │
 ├── lib/                        shared, sourced by the local scripts
 │   ├── stacks.sh               THE stack registry — the single source of truth
-│   ├── paths.sh                generates + reads paths.json
+│   ├── paths.sh                validates + reads paths.json (nothing generates it)
 │   ├── version.sh              semver helpers (also used by the APK builder)
 │   ├── ui.sh                   output helpers
 │   └── repo_sync.sh            git local-vs-origin comparison
@@ -110,9 +110,12 @@ release_manager/
 ├── build/                      staged bundles, per stack (gitignored)
 ├── state/versions.json         local ledger of built vs deployed (gitignored)
 │
-├── FACTS_VS_PLAN.md            verified VPS reality vs the plan, and the gaps
-├── OPERATOR_MANUAL_STEPS.md    everything you must do by hand
-└── BeOnEdge Application Deployment.md    the architecture plan
+├── docs/                       topic records and operator notes
+│   └── Completed/              dated history, including the architecture plan,
+│                               "BeOnEdge Application Deployment.md"
+│
+├── FACTS_VS_PLAN.md            VPS reality vs the plan, as captured on 2026-07-31
+└── OPERATOR_MANUAL_STEPS.md    everything you must do by hand, and the known gaps
 ```
 
 `monitor_service/` is deliberately outside the BOE_APP business runtime. It is
@@ -120,7 +123,7 @@ currently shipped by this operator pipeline only to preserve the existing VPS
 deployment path; it is the extraction boundary for the future independent
 monitoring/operations repository. It must not gain business logic or arbitrary
 production database write access. See
-`docs/complexity-audit-2026-08-26/DEPLOYMENT_CONSTRAINTS_IMPLEMENTATION.md`.
+`docs/Completed/complexity-audit-2026-08-26/DEPLOYMENT_CONSTRAINTS_IMPLEMENTATION.md`.
 
 `BOE_APP/`, `recent_builds/` and `rollback/` are the **previous** single-stack
 pipeline, kept for reference. Nothing new reads them.
@@ -179,35 +182,9 @@ including secrets. Shipping excludes `.env` and never deletes unmanaged files.
 
 ---
 
-## Before the first deploy
+## Manual steps and known gaps
 
-Two things block deployment and only you can do them:
-
-1. `sudo chown -R beonedge:beonedge /srv/backup/BOE_APP` — it is currently
-   root-owned, and the VPS has no passwordless sudo, so deploys cannot write
-   rollback artifacts.
-2. Create and fill each stack-local `.env` with mode `600` (or root-owned mode
-   `640` and readable by the `beonedge` group).
-
-Then:
-
-```bash
-./release_manager/status.sh --diagnose      # confirms readiness, names blockers
-./release_manager/verify.sh --remote        # proves the tooling is consistent
-```
-
-Full detail: **`OPERATOR_MANUAL_STEPS.md`**.
-
----
-
-## Known application gaps
-
-Reported by the tooling rather than silently worked around:
-
-- No Gradle product flavors, so dev and prod APKs cannot be co-installed.
-  Release signing and version injection are done: `emu/boe_update.sh` builds a
-  signed, non-debuggable release APK whenever `android/keystore.properties` exists.
-- No backend `/metrics`, so Prometheus has no application-level series.
-- No WebSocket support; the `/ws/` nginx blocks are commented out.
-- Backend health routes have no `/api` prefix; nginx strips it. See
-  `FACTS_VS_PLAN.md` §4 D1.
+What only you can do on the VPS, what blocks a first deploy, and the application
+gaps the tooling reports are kept in one place:
+**[`OPERATOR_MANUAL_STEPS.md`](OPERATOR_MANUAL_STEPS.md)**.
+`./release_manager/status.sh --diagnose` names whatever still blocks.

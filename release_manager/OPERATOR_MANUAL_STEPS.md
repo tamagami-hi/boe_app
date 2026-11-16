@@ -216,12 +216,13 @@ All A records point at the router's static public IP:
 A   @           <STATIC_PUBLIC_IP>
 A   www         <STATIC_PUBLIC_IP>
 A   app         <STATIC_PUBLIC_IP>
-A   admin       <STATIC_PUBLIC_IP>
 A   dev         <STATIC_PUBLIC_IP>
 A   dev-app     <STATIC_PUBLIC_IP>
-A   dev-admin   <STATIC_PUBLIC_IP>
 A   monitor     <STATIC_PUBLIC_IP>
 ```
+
+No `admin` or `dev-admin` record is needed. The admin consoles are reached only
+over Tailscale; see DEPLOY.md, "Admin consoles over Tailscale".
 
 Confirm the public IP is not CGNAT — inbound connections must reach the router:
 
@@ -235,8 +236,7 @@ ISP is using CGNAT and inbound forwarding cannot work.
 Verify propagation before requesting certificates:
 
 ```bash
-for h in app.beonedge.in admin.beonedge.in dev-app.beonedge.in \
-         dev-admin.beonedge.in monitor.beonedge.in; do
+for h in app.beonedge.in dev-app.beonedge.in monitor.beonedge.in; do
   printf '%-26s %s\n' "$h" "$(dig +short "$h" | tr '\n' ' ')"
 done
 ```
@@ -279,9 +279,8 @@ reached only over Tailscale, and the admin app itself ships as an APK:
 Neither is in the copy loop above. The full one-time setup is in DEPLOY.md,
 "Admin consoles over Tailscale".
 
-`boe-shared.conf` must go in `conf.d/` — it holds the `http`-level
-`map $http_upgrade $connection_upgrade` and the rate-limit zones that the site
-configs reference.
+`boe-shared.conf` must go in `conf.d/` — it holds the `http`-level maps and
+rate-limit zones that the site configs reference.
 
 > The configs as shipped contain **only the port-80 server blocks**. Certbot adds
 > the `443` blocks in step 5.5. This ordering matters: certbot needs a working
@@ -295,10 +294,13 @@ There is currently **no** `/etc/letsencrypt` and nothing listening on `:443`.
 sudo apt install -y certbot python3-certbot-nginx
 
 sudo certbot --nginx -d app.beonedge.in
-sudo certbot --nginx -d admin.beonedge.in
-sudo certbot --nginx -d dev-app.beonedge.in -d dev-admin.beonedge.in
+sudo certbot --nginx -d dev-app.beonedge.in
 sudo certbot --nginx -d monitor.beonedge.in
 ```
+
+The admin consoles need no certbot certificate: their HTTPS names are
+`*.ts.net`, and Tailscale issues those. See DEPLOY.md, "Admin consoles over
+Tailscale".
 
 Verify renewal actually works — an expired certificate is a silent outage:
 
@@ -430,27 +432,11 @@ Production follows the same route, but requires a cut release first:
 These are code changes, deliberately out of scope of the deployment scripts.
 Each is currently detected and reported rather than silently worked around.
 
-1. **`frontend_stack_ts/Dockerfile` needs `ARG VITE_BEO_APP_TARGET`.**
-   Without it the user and admin images build identically. `export.sh` refuses to
-   proceed and prints the exact two lines to add.
+1. **WebSocket support.** The backend has none, and the nginx configs carry no
+   `/ws/` location. Add one when there is something to serve.
 
-2. **Gradle product flavors** (`android/app/build.gradle`).
-   One `applicationId` means dev and prod APKs cannot be co-installed, and
-   `boe_update.sh` still warns about that. Release signing and version
-   injection are now done: the builder produces a signed, non-debuggable
-   `assembleRelease` (sidecar records `signing: "release"`) whenever the
-   gitignored `android/keystore.properties` is present, so production APK
-   publishing is no longer refused on signing grounds.
-
-3. **Backend `/metrics` endpoint.** None exists, so Prometheus has no
-   application-level series. Monitoring currently covers host, container and
-   blackbox probes only.
-
-4. **WebSocket support.** The backend has none. The `/ws/` blocks in the nginx
-   configs are commented out; uncomment them when there is something to serve.
-
-5. **Backend health paths.** Real routes are `/health/live` and `/health/ready`
+2. **Backend health paths.** Real routes are `/health/live` and `/health/ready`
    with no `/api` prefix. The nginx configs strip `/api` before proxying, so
-   `/api/health/ready` works publicly with no code change. If you later add an
-   `/api` prefix in the application, remove the trailing slash from
-   `proxy_pass` in every config.
+   `/api/health/ready` works from the VPS's loopback with no code change; nginx
+   denies it to every other address. If you later add an `/api` prefix in the
+   application, remove the trailing slash from `proxy_pass` in every config.

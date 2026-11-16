@@ -17,7 +17,7 @@ Normally you drive deployments from the build machine
 | `prod_rollback.sh` | Roll back to a previously archived release. |
 | `_boe_lib.sh` | Shared runtime library (locking, checksums, health, backups). |
 | `_boe_deploy.sh` / `_boe_rollback.sh` | The generic flows the two entry points drive. |
-| `paths.json` | **Generated.** Every path both sides use. Never hand-edit. |
+| `paths.json` | Every path both sides use: the hand-edited contract, shipped byte-for-byte from the repository. Change it there and re-ship; never edit it here. |
 | `docker-compose.prod_app.yml` | The stack definition. Replaced by each deploy. |
 | `manifest.json` | Incoming release metadata + SHA-256 checksums. |
 | `release-version.json` | What is **actually deployed** right now. |

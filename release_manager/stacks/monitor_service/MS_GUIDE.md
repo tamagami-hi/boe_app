@@ -137,10 +137,11 @@ curl -X POST http://127.0.0.1:47431/-/reload
 
 ## What monitoring cannot see yet
 
-- **No application metrics.** The backend exposes no `/metrics` endpoint, so
-  there are no request-rate, latency or auth-failure series. Coverage is host,
-  container and blackbox probes. The scrape jobs are written and commented out in
-  `prometheus.yml`, ready for when the endpoint exists.
+- **Few application metrics.** The backend's `/metrics` endpoint answers only
+  private addresses. It reports worker heartbeats, backlog counts and stale
+  mandate-operation counts, and Prometheus scrapes it as `boe_backend_prod` and
+  `boe_backend_dev` through the Docker bridge gateway. There are no request-rate,
+  latency or auth-failure series.
 - **No WebSocket metrics** — the backend has no WebSocket support.
 - **No log aggregation.** Loki and Promtail are a later phase; use
   `docker compose logs` for now.
