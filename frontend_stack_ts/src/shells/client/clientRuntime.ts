@@ -10,7 +10,7 @@ import {
 } from "~/api/generated/operations"
 import { createHttpClient } from "~/api/http"
 import type { HttpClient, TransportOutcome } from "~/api/http"
-import { createRefreshCoordinator } from "~/api/session/refresh"
+import { createRefreshCoordinator, isAnotherUser } from "~/api/session/refresh"
 import type { RefreshCoordinator, RefreshOutcome } from "~/api/session/refresh"
 import {
   createTokenStore,
@@ -118,6 +118,7 @@ export const createClientRuntime = (): ClientRuntime => {
   const executeCookieRefresh = async (): Promise<RefreshOutcome> => {
     try {
       const recovered = await bareClient.request(getClientWebCsrf, { unauthenticated: true })
+      if (isAnotherUser(tokenStore, "client", recovered.data.user.userId)) return "replaced"
       const { data } = await bareClient.request(clientWebRefresh, {
         body: { rotationId: rotationId.value },
         headers: { "x-csrf-token": recovered.data.csrfToken },

@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
-import { getAdminSession } from "~/api/generated/operations"
+import { archiveAdminFaq, getAdminSession } from "~/api/generated/operations"
 import { mintIdempotencyKey } from "~/api/idempotency"
+import { SESSION_INVALIDATED_EVENT } from "~/api/session/scope"
 import { keepHeldRecording, loadHeldRecordings } from "~/features/admin/payment-sheet/heldRecordings"
 import { MONTHLY_REASON } from "~/features/admin/payment-sheet/recordingSheet"
 import { keepHold, loadHold } from "~/features/admin/shared/heldWriteStore"
@@ -296,5 +297,145 @@ describe("admin session start", () => {
     expect(sessionStorage.length).toBe(2)
     expect(loadHold(HOLD_SLOT, OPERATOR.userId, (value) => value)).not.toBeNull()
     expect([...loadHeldRecordings(HOLD_MONTH, OPERATOR.userId).keys()]).toEqual([OWN_SCHEDULE])
+  })
+})
+
+type Reply = readonly [status: number, body: unknown]
+
+type Sent = Readonly<{ route: string; headers: Headers }>
+
+const routeFetch = (routes: Readonly<Record<string, readonly Reply[]>>): Sent[] => {
+  const sent: Sent[] = []
+  const answered = new Map<string, number>()
+  window.__BOE_API_BASE__ = "http://api.test"
+  globalThis.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = input instanceof Request ? input.url : String(input)
+    const route = `${init?.method ?? "GET"} ${new URL(url).pathname}`
+    sent.push({ route, headers: new Headers(init?.headers) })
+    const replies = routes[route] ?? []
+    const index = answered.get(route) ?? 0
+    answered.set(route, index + 1)
+    const [status, body] = replies[Math.min(index, replies.length - 1)] ?? [404, failure("RESOURCE_NOT_FOUND")]
+    return Promise.resolve(new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } }))
+  }
+  return sent
+}
+
+const listenForSessionEnd = (): (() => readonly unknown[]) => {
+  const seen: unknown[] = []
+  const listener = (event: Event): void => {
+    seen.push((event as CustomEvent<unknown>).detail)
+  }
+  window.addEventListener(SESSION_INVALIDATED_EVENT, listener)
+  return () => {
+    window.removeEventListener(SESSION_INVALIDATED_EVENT, listener)
+    return seen
+  }
+}
+
+const OTHER_OPERATOR = { ...OPERATOR, userId: OTHER_ADMIN_ID, fullName: "Other Operator", email: "other@example.com" }
+
+type Operator = typeof OPERATOR
+
+const csrfFor = (user: Operator): unknown => ({
+  ok: true,
+  data: { user, csrfToken: `csrf-of-${user.userId}`, csrfTokenExpiresAt: "2026-01-01T00:00:00.000Z" },
+  error: null,
+  meta: META,
+})
+
+const refreshedAs = (user: Operator): unknown => ({
+  ok: true,
+  data: { ...COOKIE_LOGIN_RESPONSE.data, user, csrfToken: `rotated-csrf-of-${user.userId}` },
+  error: null,
+  meta: META,
+})
+
+const FAQ_ID = "00000000-0000-4000-8000-0000000000f1"
+const WRITE_KEY = "held-write-key-0001"
+const ARCHIVE = `DELETE /v1/admin/faqs/${FAQ_ID}`
+const CSRF = "GET /v1/auth/web/csrf"
+const REFRESH = "POST /v1/auth/web/refresh"
+
+const ARCHIVED = {
+  ok: true,
+  data: {
+    faq: {
+      id: FAQ_ID,
+      contentKey: "faq-returns",
+      question: "When are values updated?",
+      answer: "Every month.",
+      category: "general",
+      order: 1,
+      status: "archived",
+      version: 2,
+      publishedAt: null,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-02T00:00:00.000Z",
+    },
+  },
+  error: null,
+  meta: META,
+}
+
+const signedInTab = (): AdminRuntime => {
+  const runtime = createAdminRuntime()
+  runtime.tokenStore.update("admin", { csrfToken: "csrf-of-the-tab", principal: JSON.stringify(OPERATOR) })
+  return runtime
+}
+
+const archiveFaq = (runtime: AdminRuntime) =>
+  runtime.http.request(archiveAdminFaq, { params: { faqId: FAQ_ID }, idempotencyKey: WRITE_KEY })
+
+describe("admin cookie refresh after another admin signs in to the browser", () => {
+  const originalFetch = globalThis.fetch
+
+  beforeEach(() => {
+    sessionStorage.clear()
+  })
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+    delete window.__BOE_API_BASE__
+    sessionStorage.clear()
+  })
+
+  it("ends the tab's session without rotating the other admin's session or resending the write as them", async () => {
+    holdClientWrites()
+    const sent = routeFetch({
+      [ARCHIVE]: [[401, failure("AUTHENTICATION_REQUIRED")], [200, ARCHIVED]],
+      [CSRF]: [[200, csrfFor(OTHER_OPERATOR)]],
+      [REFRESH]: [[200, refreshedAs(OTHER_OPERATOR)]],
+    })
+    const ended = listenForSessionEnd()
+    const runtime = signedInTab()
+
+    await expect(archiveFaq(runtime)).rejects.toMatchObject({ code: "AUTHENTICATION_REQUIRED" })
+
+    expect(sent.map(({ route }) => route)).toEqual([ARCHIVE, CSRF])
+    expect(ended()).toEqual([{ scope: "admin", reason: "revoked" }])
+    expect(runtime.tokenStore.read("admin", "principal")).toBeNull()
+    expect(runtime.tokenStore.read("admin", "csrfToken")).toBeNull()
+    expect(heldWritesInTab()).toBe(0)
+  })
+
+  it("resends the write once with the same key when the refresh returns the admin the tab holds", async () => {
+    const sent = routeFetch({
+      [ARCHIVE]: [[401, failure("AUTHENTICATION_REQUIRED")], [200, ARCHIVED]],
+      [CSRF]: [[200, csrfFor(OPERATOR)]],
+      [REFRESH]: [[200, refreshedAs(OPERATOR)]],
+    })
+    const ended = listenForSessionEnd()
+    const runtime = signedInTab()
+
+    const { data } = await archiveFaq(runtime)
+
+    expect(data.faq.id).toBe(FAQ_ID)
+    expect(sent.map(({ route }) => route)).toEqual([ARCHIVE, CSRF, REFRESH, ARCHIVE])
+    const writes = sent.filter(({ route }) => route === ARCHIVE)
+    expect(writes.map(({ headers }) => headers.get("idempotency-key"))).toEqual([WRITE_KEY, WRITE_KEY])
+    expect(writes[1]?.headers.get("x-csrf-token")).toBe(`rotated-csrf-of-${OPERATOR.userId}`)
+    expect(ended()).toEqual([])
+    expect(JSON.parse(runtime.tokenStore.read("admin", "principal") ?? "null")).toMatchObject({ userId: OPERATOR.userId })
   })
 })

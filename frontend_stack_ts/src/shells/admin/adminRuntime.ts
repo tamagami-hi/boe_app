@@ -11,7 +11,7 @@ import {
 } from "~/api/generated/operations"
 import { createHttpClient } from "~/api/http"
 import type { HttpClient, TransportOutcome } from "~/api/http"
-import { createRefreshCoordinator } from "~/api/session/refresh"
+import { createRefreshCoordinator, isAnotherUser } from "~/api/session/refresh"
 import type { RefreshCoordinator, RefreshOutcome } from "~/api/session/refresh"
 import {
   createTokenStore,
@@ -169,6 +169,7 @@ export const createAdminRuntime = (): AdminRuntime => {
   const executeCookieRefresh = async (): Promise<RefreshOutcome> => {
     try {
       const recovered = await bareClient.request(getWebCsrf, { unauthenticated: true })
+      if (isAnotherUser(tokenStore, "admin", recovered.data.user.userId)) return "replaced"
       const { data } = await bareClient.request(webRefresh, {
         body: { rotationId: rotationId.value },
         headers: { "x-csrf-token": recovered.data.csrfToken },

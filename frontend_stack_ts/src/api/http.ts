@@ -340,11 +340,9 @@ export const createHttpClient = (deps: HttpClientDeps): HttpClient => {
       if (error.code !== "AUTHENTICATION_REQUIRED") throw error
 
       const outcome = await deps.refreshCoordinator.refreshOnce(deps.scope)
-      if (outcome === "unauthenticated") {
-        endSession("expired")
-        throw error
-      }
-      return await sendOnce(operation, options)
+      if (outcome === "rotated") return await sendOnce(operation, options)
+      endSession(outcome === "replaced" ? "revoked" : "expired")
+      throw error
     }
   }
 
