@@ -84,7 +84,7 @@ Besides the application linked to the account, erasure matches earlier applicati
 | `client_statement_links` (070, Phase H) | one statement link per client: token hash, covered months, expiry | deleted | deleted. A link needs ledger rows, which force G2, so a G3 client has one only if it was inserted by hand; the delete keeps the 070 `ON DELETE RESTRICT` key from blocking |
 | `email_change_requests` | encrypted target email | retired; target re-encrypted as the placeholder | deleted |
 | `email_deliveries` (user, linked or matched application, every template including Phase F `maturity_options`) | encrypted recipient, recipient HMAC, masked recipient, encrypted failure detail | locked; queued and retryable cancelled (with their outbox events); recipient and failure envelopes nulled, HMAC and masked value set to the placeholder's, `erased_at` | deleted |
-| `email_delivery_payloads` | sealed names and links | scrubbed (`scrubbed_at`) | deleted |
+| `email_delivery_payloads` | sealed names, links and nominee decline reasons | scrubbed (`scrubbed_at`) | deleted |
 | `email_provider_events` (those deliveries, and unmatched events correlated to them) | encrypted SES payload | payload erased (`erased_at`) | deleted; a row a suppression references is detached from the delivery and its payload erased |
 | `email_send_attempts` | worker ids | kept | deleted |
 | `outbox_events` (those deliveries, aggregate user or application) | JSON payload | contact and name values replaced; pending cancelled | deleted |
@@ -112,6 +112,8 @@ No client data: `funds`, `fund_versions`, `fund_disclosure_versions`, `fund_stoc
 The coverage test (`clientErasureCoverage.integration.test.ts`) holds this classification in code: every foreign key to `users` or `applications` must be listed as a client subject or a staff actor, and every `text`, `varchar` or `jsonb` column of a table the client can own must be listed as handled or exempt with a reason. A new table, foreign key or column fails it until someone reviews it.
 
 Kept on purpose in G2 and worth the maintainer's review: IP addresses and user agents on sessions, consents and audit rows. DEC-29 names contact details; these are not contacts.
+
+Also kept in both paths: a nominee request's decline reason (072) inside the admin decision's idempotency receipt, which outlives the client. The receipt scrub replaces contacts, whole-value names and nominee objects only, so the reason stays, with any email or phone inside it replaced; this matches DEC-29, which covers contact details.
 
 ## Cost inside the locked transaction
 
@@ -277,6 +279,11 @@ Reading it: every `block_*` row must be 0, and `already_erased` 0, or the comman
 Migration order: 069 follows Phase F's 068 (convention-7) and does not depend on it; `releaseUpgrade` expects both.
 
 Rollback boundary: **no.** 069 adds a condition that only an erasing transaction can meet, plus indexes; the previous release (v0.15.x) never sets the setting, does not read `user_contact_history` at all, and is unaffected by extra indexes, so it runs unchanged against 069 and an images-only rollback works. The erasures themselves are irreversible by decision (DEC-29): rolling back the images does not restore erased or deleted data, and a snapshot restore would also discard every other transaction since. Against the previous release, a G2-erased client looks like an A8-released closed account with the name "Tombstoned"; a G3-erased client no longer exists.
+
+Rollback after 072 (Phase I): an images-only rollback to v0.16.2 runs against 072, but v0.16.2's erase command does not know `client_nominee_requests`, which gives two limits until the roll-forward:
+
+- **G3, never-verified client with any nominee request:** v0.16.2 deletes the user row without deleting the requests first, and the 072 `user_id` key is `ON DELETE RESTRICT`. The erase fails with a foreign-key error, answered as a 500. The transaction rolls back, so no data is lost and nothing is half-erased, but that client cannot be erased until the new release is back.
+- **G2, verified client:** the 072 trigger still tombstones the requests, nulls the reason and withdraws a pending request when v0.16.2 sets the tombstone, and v0.16.2 replaces every `nominee` object inside JSON such as receipts. Its scrubber does not know the requested names, though, so a requested name that never became the nominee stays readable where the client's free text quotes it (support tickets, notifications, notes). A later erase answers `already_erased` and does not scrub again, so erase such a client after the roll-forward where possible.
 
 ## Tests
 

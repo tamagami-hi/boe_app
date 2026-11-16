@@ -105,6 +105,7 @@ const informClient = async (
     recipient: client,
     nomineeRequestId: request.id,
     decision,
+    declineReason: request.declineReason,
     requestId,
   })
 }

@@ -77,6 +77,9 @@ export const useDecideNomineeRequest = (userId: string): UseMutationResult<Nomin
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: NomineeDecisionInput) => decide(api, input),
+    onSuccess: (decision) => {
+      queryClient.setQueryData(qk.admin.userNominee(userId), decision.nominee)
+    },
     onSettled: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: qk.admin.user(userId) }),

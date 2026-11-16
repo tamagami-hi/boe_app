@@ -29,6 +29,7 @@ export type AdminNomineeRequestPageRow = WithCursor<AdminNomineeRequestRow>
 export type QueuedNomineeRequestRow = AdminNomineeRequestPageRow & Readonly<{ queueRank: string }>
 
 export interface QueuePosition {
+  readonly asOf: Date
   readonly afterRank?: string
   readonly afterCreatedAt?: string
   readonly afterId?: string
@@ -93,17 +94,18 @@ const ADMIN_SOURCE = sql`
   left join users d on d.id = r.decided_by_user_id
 `
 
-const QUEUE_RANK = sql`(case when r.state = 'pending' then 0 else 1 end)`
+const queueRank = (asOf: Date): RawBuilder<number> =>
+  sql<number>`(case when r.state = 'pending' or r.decided_at > ${asOf}::timestamptz then 0 else 1 end)`
 
 const NEWEST_FIRST = { time: "r.created_at", id: "r.id" } as const
 
 const queueCondition = (input: QueuePosition): RawBuilder<boolean> => {
-  const { afterRank, afterCreatedAt, afterId } = input
+  const { asOf, afterRank, afterCreatedAt, afterId } = input
   if (afterRank === undefined || afterCreatedAt === undefined || afterId === undefined) return sql<boolean>`true`
   const rank = Number(afterRank)
   return sql<boolean>`(
-    ${QUEUE_RANK} > ${rank}
-    or (${QUEUE_RANK} = ${rank} and ${keysetCondition(NEWEST_FIRST, "before", { afterCreatedAt, afterId })})
+    ${queueRank(asOf)} > ${rank}
+    or (${queueRank(asOf)} = ${rank} and ${keysetCondition(NEWEST_FIRST, "before", { afterCreatedAt, afterId })})
   )`
 }
 
@@ -172,10 +174,10 @@ export const createNomineeRequestRepository = (): NomineeRequestRepository => ({
   listQueue: async (tx, input) => {
     const stateClause = input.state === undefined ? sql`` : sql`and r.state = ${input.state}`
     const result = await sql<QueuedNomineeRequestRow>`
-      select ${ADMIN_COLUMNS}, ${QUEUE_RANK}::text as "queueRank"
+      select ${ADMIN_COLUMNS}, ${queueRank(input.asOf)}::text as "queueRank"
       ${ADMIN_SOURCE}
       where ${queueCondition(input)} ${stateClause}
-      order by ${QUEUE_RANK} asc, r.created_at desc, r.id desc
+      order by ${queueRank(input.asOf)} asc, r.created_at desc, r.id desc
       limit ${input.limit}
     `.execute(tx)
     return result.rows

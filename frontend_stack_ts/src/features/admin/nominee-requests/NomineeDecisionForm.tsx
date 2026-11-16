@@ -157,7 +157,7 @@ export const NomineeDecisionForm = ({
       <div className={FIELD_MEASURE}>
         <FormField
           label="Reason for declining (optional)"
-          hint={`The client sees this reason with the decline. Up to ${String(DECLINE_REASON_MAX_LENGTH)} characters on one line.`}
+          hint={`The client sees this reason in the app and in the email. Up to ${String(DECLINE_REASON_MAX_LENGTH)} characters on one line.`}
           error={reasonProblem ?? undefined}
         >
           {({ id, describedBy, invalid }) => (

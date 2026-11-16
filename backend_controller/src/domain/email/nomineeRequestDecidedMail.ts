@@ -12,6 +12,7 @@ export interface NomineeRequestDecidedMailInput {
   readonly recipient: Pick<User, "id" | "email_normalized" | "full_name" | "email_revision">
   readonly nomineeRequestId: string
   readonly decision: NomineeRequestDecision
+  readonly declineReason: string | null
   readonly requestId: string
 }
 
@@ -37,5 +38,8 @@ export const queueNomineeRequestDecidedMail = (
       decision: input.decision,
       boundEmailRevision: String(input.recipient.email_revision),
     },
-    sealedPayload: { fullName: input.recipient.full_name },
+    sealedPayload: {
+      fullName: input.recipient.full_name,
+      ...(input.declineReason === null ? {} : { declineReason: input.declineReason }),
+    },
   })

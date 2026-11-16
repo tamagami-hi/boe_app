@@ -15,7 +15,7 @@ import type { WebAuthDeps } from "../domain/auth/webAuth.js"
 import { AppError } from "../http/errorCatalog.js"
 import { createdAtKeyset, paginate, readKeyset, readKeysetValues } from "../http/pagination.js"
 import { parseOrThrow } from "../http/validation.js"
-import type { AdminNomineeRequestRow, QueuedNomineeRequestRow } from "../repositories/nomineeRequestRepository.js"
+import type { AdminNomineeRequestRow, QueuedNomineeRequestRow, QueuePosition } from "../repositories/nomineeRequestRepository.js"
 import {
   adminIdempotencyScope,
   computeFilterHash,
@@ -77,24 +77,33 @@ const decisionBody = (decision: NomineeDecision, row: AdminNomineeRequestRow | n
 const paramOf = (request: FastifyRequest, name: "requestId" | "userId"): string =>
   parseOrThrow(uuidParam, (request.params as Record<string, unknown> | undefined)?.[name])
 
-const readQueuePosition = (deps: AdminNomineeRequestDeps, after: string | undefined, filterHash: string, now: Date) => {
+const readQueuePosition = (
+  deps: AdminNomineeRequestDeps,
+  after: string | undefined,
+  filterHash: string,
+  now: Date,
+): QueuePosition => {
   const values = readKeysetValues(deps.config.cursorKey, after, QUEUE_ROUTE, filterHash, now)
-  if (values.length === 0) return {}
-  const [afterRank, afterCreatedAt, afterId] = values
+  if (values.length === 0) return { asOf: now }
+  const [asOf, afterRank, afterCreatedAt, afterId] = values
   if (
+    asOf === undefined ||
     afterRank === undefined ||
     afterCreatedAt === undefined ||
     afterId === undefined ||
+    !CURSOR_TIME.test(asOf) ||
     !CURSOR_RANK.test(afterRank) ||
     !CURSOR_TIME.test(afterCreatedAt) ||
     !uuidParam.safeParse(afterId).success
   ) {
     throw new AppError("CURSOR_INVALID")
   }
-  return { afterRank, afterCreatedAt, afterId }
+  return { asOf: new Date(asOf), afterRank, afterCreatedAt, afterId }
 }
 
-const queueKeyset = (row: QueuedNomineeRequestRow): readonly string[] => [row.queueRank, row.cursorAt, row.id]
+const queueKeyset =
+  (asOf: Date) =>
+  (row: QueuedNomineeRequestRow): readonly string[] => [asOf.toISOString(), row.queueRank, row.cursorAt, row.id]
 
 const listQueue = async (deps: AdminNomineeRequestDeps, request: FastifyRequest, reply: FastifyReply) => {
   const principal = await resolveAdminPrincipal(request, deps.webAuth, { requireCsrf: false })
@@ -110,7 +119,7 @@ const listQueue = async (deps: AdminNomineeRequestDeps, request: FastifyRequest,
       limit: query.limit + 1,
     }),
   )
-  const { items, page } = paginate(deps.config.cursorKey, rows, query.limit, QUEUE_ROUTE, filterHash, now, queueKeyset)
+  const { items, page } = paginate(deps.config.cursorKey, rows, query.limit, QUEUE_ROUTE, filterHash, now, queueKeyset(position.asOf))
   return reply.sendData({ items: items.map(adminRequestBody) }, { status: 200, page })
 }
 

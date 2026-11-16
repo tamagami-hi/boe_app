@@ -19,11 +19,11 @@ const decidedCopy = (decision: NomineeDecision): Readonly<{ title: string; body:
   decision.request.state === "accepted"
     ? {
         title: "Request accepted",
-        body: `The nominee is now ${decision.request.nominee.name} (${decision.request.nominee.relation}). The client is told in the app and by email.`,
+        body: `The nominee is now ${decision.request.nominee.name} (${decision.request.nominee.relation}). The client is told in the app, and by email while the account is active.`,
       }
     : {
         title: "Request declined",
-        body: "The nominee did not change. The client is told in the app and by email, with your reason if you gave one.",
+        body: "The nominee did not change. The client is told in the app, and by email while the account is active, with your reason if you gave one.",
       }
 
 type Props = Readonly<{
@@ -37,7 +37,6 @@ export const ClientNomineeRequestPanel = ({ userId, nomineeVersion, accountState
   const { hasAnyPermission } = useSession()
   const canDecide = hasAnyPermission(["clients.create"])
   const [decided, setDecided] = useState<NomineeDecision | null>(null)
-
 
   return (
     <div className={STACK_LG}>

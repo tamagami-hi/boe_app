@@ -12,6 +12,7 @@ import { bearer, registerNomineeTestSurface, seedNomineeClient, type NomineeClie
 import { PASSWORD, PasswordMailStack, type Row } from "./passwordMailSupport.js"
 
 const REQUESTED = { name: "Lakshmi Iyer", relation: "Mother" }
+const DECLINE_REASON = "Please send the nominee's full name <as on their ID>."
 const WRONG_PASSWORD = "not the client's real password"
 
 interface RequestBody {
@@ -92,6 +93,17 @@ const decisionTrail = async (userId: string, requestId: string) => ({
   notifications: await stack.count("notifications", "user_id = $1", [userId]),
   mail: await stack.count("email_deliveries", "user_id = $1 and template_key = 'nominee_request_decided'", [userId]),
 })
+
+const deliverDecisionMail = async (userId: string) => {
+  const transport = stack.transport()
+  const guard = createNomineeRequestDecidedGuard({
+    nomineeRequestRepository: createNomineeRequestRepository(),
+    userRepository: stack.userRepository,
+  })
+  await stack.dispatch(transport, stack.clock, stack.crypto, [["nominee_request_decided", guard]])
+  const email = (await stack.first("select email_normalized from users where id = $1", [userId])).email_normalized
+  return transport.messages.filter((message) => message.to === email)
+}
 
 beforeAll(async () => {
   stack = await PasswordMailStack.start({ seed: true })
@@ -208,13 +220,16 @@ describe("the admin nominee request commands", () => {
     expect(dataOf<{ pendingCount: number }>(summary).pendingCount).toBe(
       await stack.count("client_nominee_requests", "state = 'pending'"),
     )
-    const declined = await decide("decline", request.id, { expectedVersion: 1, reason: "Please send the nominee's full name." }, onboarding)
+    const declined = await decide("decline", request.id, { expectedVersion: 1, reason: DECLINE_REASON }, onboarding)
     expect(declined.statusCode).toBe(200)
-    expect(dataOf<Decision>(declined).request).toMatchObject({ state: "declined", declineReason: "Please send the nominee's full name." })
+    expect(dataOf<Decision>(declined).request).toMatchObject({ state: "declined", declineReason: DECLINE_REASON })
     expect(dataOf<{ request: RequestBody }>(await latest(client)).request).toMatchObject({
       state: "declined",
-      declineReason: "Please send the nominee's full name.",
+      declineReason: DECLINE_REASON,
     })
+    const [mail] = await deliverDecisionMail(client.id)
+    expect(mail?.text).toContain(`The reason the team gave: ${DECLINE_REASON}`)
+    expect(mail?.html).toContain("full name &lt;as on their ID&gt;.")
     expect(codeOf(await decide("decline", randomUUID(), { expectedVersion: 1, reason: null }))).toBe("RESOURCE_NOT_FOUND")
   })
 
@@ -274,16 +289,7 @@ describe("the admin nominee request commands", () => {
       await stack.first("select kind, payload from notifications where user_id = $1", [client.id]),
     ).toEqual({ kind: "nominee_request_decided", payload: { nomineeRequestId: request.id, decision: "accepted", deepLink: "/profile" } })
 
-    const transport = stack.transport()
-    const guard = createNomineeRequestDecidedGuard({
-      nomineeRequestRepository: createNomineeRequestRepository(),
-      userRepository: stack.userRepository,
-    })
-    await stack.dispatch(transport, stack.clock, stack.crypto, [["nominee_request_decided", guard]])
-    const email = (await stack.first("select email_normalized from users where id = $1", [client.id])).email_normalized
-    expect(transport.messages.filter((message) => message.to === email).map((message) => message.subject)).toEqual([
-      "Your nominee request was accepted",
-    ])
+    expect((await deliverDecisionMail(client.id)).map((message) => message.subject)).toEqual(["Your nominee request was accepted"])
   })
 
   test("lets exactly one of two concurrent decisions win", async () => {
