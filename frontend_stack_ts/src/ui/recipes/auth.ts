@@ -29,9 +29,9 @@ export const AUTH_MARKERS = [
 ].join(" ")
 
 export const AUTH_MARKER = [
-  "inline-flex items-center gap-2 font-ui text-xs font-medium text-fg-faint",
+  "inline-flex items-center gap-2 font-ui text-xs font-medium text-fg-muted",
   "lg:justify-start lg:gap-3 lg:border-t lg:border-hairline lg:py-3",
-  "lg:text-sm lg:text-fg-muted lg:last:border-b",
+  "lg:text-sm lg:last:border-b",
 ].join(" ")
 
 export const AUTH_MARKER_DOT = "size-1 lg:size-[5px] rounded-full bg-gold"
