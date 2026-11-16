@@ -14,6 +14,7 @@ import { computeFilterHash } from "../http/cursor.js"
 import { createdAtKeyset, DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, paginate, readKeyset } from "../http/pagination.js"
 import { createFixedWindowRateLimiter, type FixedWindowRateLimiter } from "../http/rateLimit.js"
 import { parseOrThrow } from "../http/validation.js"
+import { createActiveClientLockRepository } from "../repositories/activeClientLockRepository.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
 import { createClientReviewRepository, type ClientReviewRow } from "../repositories/clientReviewRepository.js"
 
@@ -91,6 +92,7 @@ export const registerClientReviewRoutes = (application: FastifyInstance, base: C
   const deps: ReviewRouteDeps = {
     ...base,
     clientReviewRepository: createClientReviewRepository(),
+    activeClientLockRepository: createActiveClientLockRepository(),
     submissionLimiter: createFixedWindowRateLimiter(
       { windowMs: REVIEW_SUBMISSION_WINDOW_MS, maxRequests: REVIEW_SUBMISSION_MAX_REQUESTS },
       base.clock,

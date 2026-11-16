@@ -2,7 +2,7 @@ import { randomInt } from "node:crypto"
 
 import { bytesEqual } from "../../crypto/primitives.js"
 import type { CryptoContext } from "../../crypto/context.js"
-import type { Transaction, UserId } from "../../db/repositories.js"
+import type { Transaction, User, UserId } from "../../db/repositories.js"
 import { AppError } from "../../http/errorCatalog.js"
 import type { AuditWriteRepository } from "../../repositories/auditRepository.js"
 import type {
@@ -10,6 +10,7 @@ import type {
   EmailVerificationRepository,
 } from "../../repositories/emailVerificationRepository.js"
 import type { UserWriteRepository } from "../../repositories/userRepository.js"
+import { refuseInactiveClient } from "./activeClientLock.js"
 
 export interface EmailVerificationConfig {
   readonly codeTtlMs: number
@@ -39,6 +40,13 @@ export const generateVerificationCode = (): string => {
 
 const isVerified = (verification: EmailVerificationRecord): boolean => verification.state === "verified"
 
+const lockActiveUser = async (tx: Transaction, deps: EmailVerificationDeps, userId: string): Promise<User> => {
+  const user = await deps.userRepository.lockById(tx, userId as UserId)
+  if (user === null) throw new AppError("RESOURCE_NOT_FOUND")
+  refuseInactiveClient(user)
+  return user
+}
+
 export interface RequestEmailVerificationCodeResult {
   readonly alreadyVerified: boolean
   readonly email: string
@@ -52,8 +60,7 @@ export const requestEmailVerificationCode = async (
   input: Readonly<{ userId: string; requestId: string }>,
 ): Promise<RequestEmailVerificationCodeResult> => {
   const now = deps.clock()
-  const user = await deps.userRepository.lockById(tx, input.userId as UserId)
-  if (user === null) throw new AppError("RESOURCE_NOT_FOUND")
+  const user = await lockActiveUser(tx, deps, input.userId)
 
   const verified = await deps.emailVerificationRepository.findVerifiedByUser(tx, input.userId)
   if (verified !== null && isVerified(verified)) {
@@ -108,6 +115,7 @@ export const verifyEmail = async (
   input: Readonly<{ userId: string; code: string; requestId: string }>,
 ): Promise<VerifyEmailOutcome> => {
   const now = deps.clock()
+  await lockActiveUser(tx, deps, input.userId)
   const verified = await deps.emailVerificationRepository.findVerifiedByUser(tx, input.userId)
   if (verified !== null && isVerified(verified)) {
     return { kind: "already_verified", verification: verified }

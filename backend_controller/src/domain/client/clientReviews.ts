@@ -2,6 +2,7 @@ import type { Transaction } from "../../db/repositories.js"
 import { AppError } from "../../http/errorCatalog.js"
 import type { AuditWriteRepository } from "../../repositories/auditRepository.js"
 import type { ClientReviewRepository, ClientReviewRow } from "../../repositories/clientReviewRepository.js"
+import { lockActiveClient, type ActiveClientLockDeps } from "./activeClientLock.js"
 
 export const REVIEW_SUBMISSION_WINDOW_MS = 10 * 60_000
 export const REVIEW_SUBMISSION_MAX_REQUESTS = 5
@@ -9,7 +10,7 @@ export const REVIEW_SUBMISSION_MAX_REQUESTS = 5
 const ALREADY_REVIEWED_MESSAGE =
   "You have already shared a review this month. You can share another from the first day of next month."
 
-export interface ClientReviewDeps {
+export interface ClientReviewDeps extends ActiveClientLockDeps {
   readonly clientReviewRepository: ClientReviewRepository
   readonly auditRepository: AuditWriteRepository
   readonly clock: () => Date
@@ -27,6 +28,7 @@ export const submitClientReview = async (
   deps: ClientReviewDeps,
   command: SubmitClientReviewCommand,
 ): Promise<ClientReviewRow> => {
+  await lockActiveClient(tx, deps, command.userId)
   const created = await deps.clientReviewRepository.insertOncePerMonth(tx, {
     userId: command.userId,
     rating: command.rating,

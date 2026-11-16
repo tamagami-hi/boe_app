@@ -25,6 +25,7 @@ import { z } from "zod"
 import type { UnitOfWork } from "../db/database.js"
 import type { Database, PaymentState } from "../db/types.js"
 import { resolveClientPrincipal, type ClientRequestAuthDeps } from "../domain/auth/clientWebAuth.js"
+import { lockActiveClient, type ActiveClientLockDeps } from "../domain/client/activeClientLock.js"
 import { projectPaymentStatus } from "../domain/client/clientStatus.js"
 import { toLedgerEntries } from "../domain/client/portfolioProjection.js"
 import { deriveStatements } from "../domain/client/statements.js"
@@ -32,6 +33,7 @@ import { computeFilterHash } from "../http/cursor.js"
 import { AppError } from "../http/errorCatalog.js"
 import { createdAtKeyset, paginate, readKeyset } from "../http/pagination.js"
 import { parseOrThrow } from "../http/validation.js"
+import { createActiveClientLockRepository } from "../repositories/activeClientLockRepository.js"
 import type { AuditWriteRepository } from "../repositories/auditRepository.js"
 import type {
   ClientAccountRepository,
@@ -68,6 +70,8 @@ export interface ClientAccountDeps extends ClientRequestAuthDeps {
     readonly downloadBaseUrl: string | null
   }
 }
+
+type AccountWriteDeps = ClientAccountDeps & ActiveClientLockDeps
 
 const NOTIFICATIONS_ROUTE = "/v1/client/notifications"
 const APP_VERSION_ROUTE = "/v1/client/app-version"
@@ -255,7 +259,7 @@ const mapFaq = (row: ContentDocumentRow): Record<string, unknown> => ({
  * a second round trip.
  */
 const reportAppVersion = async (
-  deps: ClientAccountDeps,
+  deps: AccountWriteDeps,
   request: FastifyRequest,
   reply: FastifyReply,
 ): Promise<FastifyReply> => {
@@ -270,13 +274,14 @@ const reportAppVersion = async (
           applicationId: body.applicationId,
         })
 
-  const result = await deps.unitOfWork.execute((tx) =>
-    reconcileAppVersion(
+  const result = await deps.unitOfWork.execute(async (tx) => {
+    await lockActiveClient(tx, deps, principal.userId)
+    return reconcileAppVersion(
       tx,
       { notificationRepository: deps.notificationRepository, clock: deps.clock },
       { userId: principal.userId, versionCode: body.versionCode, latest },
-    ),
-  )
+    )
+  })
 
   return reply.sendData({
     updateAvailable: result.updateAvailable,
@@ -321,7 +326,7 @@ const listNotifications = async (
 }
 
 const markNotificationRead = async (
-  deps: ClientAccountDeps,
+  deps: AccountWriteDeps,
   request: FastifyRequest,
   reply: FastifyReply,
 ): Promise<FastifyReply> => {
@@ -329,13 +334,14 @@ const markNotificationRead = async (
   const notificationId = parseOrThrow(uuidParam, (request.params as { notificationId?: string }).notificationId)
   parseOrThrow(markReadSchema, request.body ?? {})
 
-  const row = await deps.unitOfWork.execute((tx) =>
-    deps.clientAccountRepository.markNotificationRead(tx, {
+  const row = await deps.unitOfWork.execute(async (tx) => {
+    await lockActiveClient(tx, deps, principal.userId)
+    return deps.clientAccountRepository.markNotificationRead(tx, {
       userId: principal.userId,
       notificationId,
       now: deps.clock(),
-    }),
-  )
+    })
+  })
   // Another account's notification is indistinguishable from a missing one.
   if (row === null) throw new AppError("RESOURCE_NOT_FOUND")
   return reply.sendData(mapNotification(row))
@@ -461,7 +467,7 @@ const listTickets = async (
 const nextReference = (): string => `REQ-${randomUUID().replace(/-/gu, "").slice(0, 8).toUpperCase()}`
 
 const createTicket = async (
-  deps: ClientAccountDeps,
+  deps: AccountWriteDeps,
   request: FastifyRequest,
   reply: FastifyReply,
 ): Promise<FastifyReply> => {
@@ -469,6 +475,7 @@ const createTicket = async (
   const body = parseOrThrow(createTicketSchema, request.body ?? {})
 
   const row = await deps.unitOfWork.execute(async (tx) => {
+    await lockActiveClient(tx, deps, principal.userId)
     const created = await deps.clientAccountRepository.createSupportRequest(tx, {
       userId: principal.userId,
       reference: nextReference(),
@@ -523,15 +530,16 @@ export const registerClientAccountRoutes = (
   application: FastifyInstance,
   deps: ClientAccountDeps,
 ): void => {
-  application.post(APP_VERSION_ROUTE, async (request, reply) => reportAppVersion(deps, request, reply))
+  const writeDeps: AccountWriteDeps = { ...deps, activeClientLockRepository: createActiveClientLockRepository() }
+  application.post(APP_VERSION_ROUTE, async (request, reply) => reportAppVersion(writeDeps, request, reply))
   application.get(NOTIFICATIONS_ROUTE, async (request, reply) => listNotifications(deps, request, reply))
   application.patch(`${NOTIFICATIONS_ROUTE}/:notificationId`, async (request, reply) =>
-    markNotificationRead(deps, request, reply),
+    markNotificationRead(writeDeps, request, reply),
   )
   application.get(PAYMENTS_ROUTE, async (request, reply) => listPayments(deps, request, reply))
   application.get(STATEMENTS_ROUTE, async (request, reply) => listStatements(deps, request, reply))
   application.get(FAQS_ROUTE, async (request, reply) => listFaqs(deps, request, reply))
   application.get(TICKETS_ROUTE, async (request, reply) => listTickets(deps, request, reply))
-  application.post(TICKETS_ROUTE, async (request, reply) => createTicket(deps, request, reply))
+  application.post(TICKETS_ROUTE, async (request, reply) => createTicket(writeDeps, request, reply))
   application.get(RESEARCH_ROUTE, async (request, reply) => researchContext(deps, request, reply))
 }

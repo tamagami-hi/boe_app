@@ -4,13 +4,14 @@ import { AppError } from "../../http/errorCatalog.js"
 import type { ClientValueEntryRepository } from "../../repositories/clientValueEntryRepository.js"
 import type { SipEarlyExitRepository } from "../../repositories/earlyExitRepository.js"
 import type { StatementLinkRepository } from "../../repositories/statementLinkRepository.js"
+import { lockActiveClient, type ActiveClientLockDeps } from "./activeClientLock.js"
 import { derivePortfolio } from "./portfolioLedger.js"
 import { toLedgerEntries } from "./portfolioProjection.js"
 import { deriveStatements, type StatementPeriod } from "./statements.js"
 
 const PERIOD_ORDER_MESSAGE = "The first month must not be after the last month."
 
-export interface StatementLinkDeps {
+export interface StatementLinkDeps extends ActiveClientLockDeps {
   readonly statementLinkRepository: StatementLinkRepository
   readonly clientValueEntryRepository: Pick<ClientValueEntryRepository, "listByUser">
   readonly sipEarlyExitRepository: Pick<SipEarlyExitRepository, "listByUser">
@@ -62,7 +63,7 @@ export const issueStatementLink = async (
   if (input.fromPeriod > input.toPeriod) {
     throw new AppError("VALIDATION_FAILED", { fields: { toPeriod: [PERIOD_ORDER_MESSAGE] } })
   }
-  if (!(await deps.statementLinkRepository.lockActiveClient(tx, input.userId))) throw new AppError("ACCOUNT_NOT_ACTIVE")
+  await lockActiveClient(tx, deps, input.userId)
   const owned = new Set((await statementsOf(tx, deps, input.userId)).periods.map((period) => period.period))
   if (!owned.has(input.fromPeriod) || !owned.has(input.toPeriod)) throw new AppError("RESOURCE_NOT_FOUND")
 

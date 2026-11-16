@@ -12,6 +12,7 @@ import {
   STATEMENT_PAGE_CSP,
 } from "../domain/client/statementPage.js"
 import { parseOrThrow } from "../http/validation.js"
+import { createActiveClientLockRepository } from "../repositories/activeClientLockRepository.js"
 import type { ClientValueEntryRepository } from "../repositories/clientValueEntryRepository.js"
 import { createSipEarlyExitRepository } from "../repositories/earlyExitRepository.js"
 import { createStatementLinkRepository } from "../repositories/statementLinkRepository.js"
@@ -72,6 +73,7 @@ export const registerClientStatementLinkRoutes = (application: FastifyInstance, 
   const deps: RouteDeps = {
     ...base,
     statementLinkRepository: createStatementLinkRepository(),
+    activeClientLockRepository: createActiveClientLockRepository(),
     sipEarlyExitRepository: createSipEarlyExitRepository(),
   }
   application.post(ISSUE_ROUTE, (request, reply) => issueLink(deps, request, reply))
