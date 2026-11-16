@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "track": "d-docs-guides",
+  "current": {
+    "task": "D1-docs-guides",
+    "from": "claude-pro-d-docs-guides",
+    "track": "d-docs-guides",
+    "at": "2026-11-16T13:06:57.683Z",
+    "lines": [
+      "Track d-docs-guides, task M18-docs-cleanup:D1-docs-guides (DEC-60, docs-cleanup report sections 2a, 3, 4). Docs only; not landed, pushed or rebased. Base is main 25a195a.",
+      "Commit a084a2e docs: correct stale operator guides and WORKFLOW per DEC-60",
+      "Commit a0b5e69 docs: replace PRODUCT.md with an app brief, archive the site brief",
+      "Checks: git diff --check is clean on both commits. No application or runtime checks were run (docs only). Identity is tamagami-hi, with no trailers.",
+      "DONE release_manager/README.md: layout tree (paths.sh validates and reads, nothing generates; architecture plan under docs/Completed/; FACTS_VS_PLAN dated 2026-07-31); line 123 path now under docs/Completed/; the /metrics gap is dropped; 'Before the first deploy' and 'Known application gaps' are now one pointer to OPERATOR_MANUAL_STEPS.md.",
+      "DONE OPERATOR_MANUAL_STEPS.md section 9: items 1 (Dockerfile ARG, present at Dockerfile:19) and 3 (/metrics) removed. prometheus.yml already scrapes /metrics (jobs boe_backend_prod and boe_backend_dev), so item 3 was not restated.",
+      "DONE beyond the report, verified STATIC: section 9 item 2 (Gradle flavors) removed, because emu/boe_update.sh injects per-target applicationIds and the APKs co-install. The WebSocket item now says no /ws/ location exists (removed in 5c389f2). The health item now says /api/health/ is loopback-only (app.beonedge.in.conf:150).",
+      "DONE OPERATOR_MANUAL_STEPS.md 5.3 and 5.5: the admin and dev-admin DNS records, propagation check and certbot lines are dropped, pointing to DEPLOY.md 'Admin consoles over Tailscale'. 5.4: the stale $http_upgrade map claim is fixed. DEPLOY.md was not edited.",
+      "DONE PROD_GUIDE.md line 20: paths.json is the hand-edited contract. MS_GUIDE.md: /metrics is guarded and scraped. DEV_GUIDE.md: Tester access covers dev-app only (admin is Tailscale-only); basic auth applies once enabled as in section 5.6; the stale applicationId limitation note is fixed (it also cited the wrong FACTS_VS_PLAN item).",
+      "DONE WORKFLOW.md: tally tracks with worktrees under .temp/worktrees/ and the landing queue; wt/admin and wt/client are marked as predating tracks; CI's four jobs, onboarding-harness included; the release table is now links to release_manager/README.md 'Normal flow' and DEPLOY.md 'Release flow'; one line says records live in tally (docs/records/).",
+      "DONE PRODUCT.md: the old text is in release_manager/docs/Completed/PRODUCT-beonedge-in-2026-09.md, unchanged under one dated line (beonedge.in, boe_landing, archived 2026-11-16, DEC-60). The new PRODUCT.md is 79 lines: Register product, the seven old headings, users, the four surfaces (DEC-40), DEC-45, the DEC-56 widths, payments off (DEC-14, DEC-22), no bank details (DEC-25), and pointers to RULES.md.",
+      "SKIPPED: nothing in the brief was found already correct.",
+      "LEFT, outside the brief, recorded as finding-29: prometheus.yml blackbox still probes admin.beonedge.in, dev-admin.beonedge.in and monitor.beonedge.in; OPERATOR still keeps the monitor host in 5.3, 5.5 and 5.6, and its @/www/dev A records are unverified; MS_GUIDE's Grafana is 'publicly proxied'; the README's BOE_APP/ folder; status.sh still handles wt/*.",
+      "WAITS for other lanes or the coordinator: the README.md links (Current documents, a tally line, moved files, no phase status) after e-node24; the DEPLOY.md:537 link to existing-client-impl/06 after its move; the archive moves (git mv) of plans/app-onboarding-contact-investment-email.md, the four 'BeOnEdge Client*.md' briefs (after u-audits) and release_manager/docs/existing-client-impl/; the client-erasure.md status line after the Phase I lanes; the plan section 6 sentences.",
+      "Conflicts: none expected. On 2026-11-16 the other lanes' diffs touched README.md (e-node24) and plans/ui-overhaul/ only, none of this lane's files."
+    ]
+  },
+  "history": []
+}

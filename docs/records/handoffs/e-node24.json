@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "track": "e-node24",
+  "current": {
+    "task": "E3-node24-build",
+    "from": "claude-opus-5-5 builder e-node24",
+    "track": "e-node24",
+    "at": "2026-11-16T12:39:37.855Z",
+    "lines": [
+      "Lane e-node24 (DEC-48, held on track/e-node24 until DEC-57: lands after Phase I is released, own release, dev ~1 day first). Cut from main a842496; not rebased; nothing pushed or merged.",
+      "Commits: e97e8ba build(tools): Node 24 check container; f14fb73 fix(contracts): decode punycode labels before URL host validation; 12a023f build(runtime): packages, images, CI on Node 24.22.3 (+README).",
+      "Node: 24.22.3 (newest Node 24 LTS patch, security release 2026-11-10). Image node:24.22.3-alpine3.24@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5 (index digest, like the old pin). OpenSSL 3.5.9, ada 4.0.0, ICU 78.3, undici 7.30.2.",
+      "Note: Node 26 became Active LTS 2026-10-28; Node 24 is Maintenance LTS (EOL end of April 2028). DEC-48 names 24, so not reopened.",
+      "Version files: .nvmrc 24.22.3 x3 (CI reads them; ci.yml itself unchanged). engines node >=24.11.0 <25 in all three (lane default: 24.11.0 = first Node 24 LTS; floor admits host Node 24.21.0 used for APK builds, D-016; frontend npm range <13 kept). @types/node 24.19.2 (newest 24.x on npm). npm stays 11.16.0 (packageManager/engines).",
+      "Lockfiles: npm install in the Node 24 container changed only root engines, @types/node 22.20.1->24.19.2 and undici-types 6.21.0->7.24.6 in each of the three.",
+      "Production pins: backend_controller/Dockerfile (2 FROM), frontend_stack_ts/Dockerfile (deps FROM), release_manager/tests/runtime_contract.test.sh PATCHED_NODE_BASE. Nothing else in release_manager/ or ci.yml pins Node.",
+      "Frontend image build stage now uses Node 24's bundled npm 11.19.1 for npm ci (was 10.9.8 under 22.23.2); the backend image still installs npm 11.16.0.",
+      "Native deps (all load on Node 24.22.3 musl, evidence 3ab66acf/e8c79346/d4df3f0d): backend argon2 0.44.0 (prod; N-API musl prebuild, hash+verify), rollup 4.62.2 musl, esbuild 0.28.1 and vite's 0.25.12, ssh2 1.17.0 + cpu-features 0.0.10 (install scripts disabled, pure JS), protobufjs 7.6.5 (script only, no native); frontend esbuild 0.25.12, rollup 4.63.0 musl, lightningcss 1.33.0 and 1.32.0 (under @tailwindcss/node), @tailwindcss/oxide 4.3.3 musl; contracts esbuild 0.25.12, tsx's 0.28.1, rollup 4.62.2 musl. @napi-rs/lzma-linux-x64-gnu (rollup optional, glibc only) is skipped on musl; oxide-wasm32-wasi not installed.",
+      "Real Node 24 break found: ada 4.0.0 implements whatwg/url PR 914 (merged 2026-06-25): all-ASCII hosts whose UTS46 ToASCII fails now parse instead of throwing. MaskedEmail's isLowercaseIdnaDomain relied on new URL() rejecting bad xn-- labels; contracts scalar test failed on 24.22.3 (evidence 78e37251, exit 1). Fixed in f14fb73 with an RFC 3492 decoder (packages/contracts/src/punycode.ts) + URL round trip of the Unicode form.",
+      "IDNA differential (evidence ba4e3593, 52,581 domains): new code on Node 22.20.0 = old except 41 'xn---' leading-delimiter labels (RFC 3492 and ICU reject; ada 2.9.2 was lenient). On 24.22.3 old code accepted 52,176 vs 25,212; new code differs from old-on-22 by +134 (Unicode 16/17 characters) and -15 bidi-rule failures (ada 4 enforces CheckBidi as the URL Standard and browsers do). Backend does not import contracts; the scalar runs in the frontend (browser) and tests.",
+      "Behaviour search (STATIC, backend/contracts/frontend tooling/test_e2e/release_manager): url.parse/legacy url (none; only file URL helpers), URL host parsing (fixed above; other uses compare hostnames to allow-lists), Buffer/SlowBuffer (none), util.is*/_extend (none), Dirent.path (code uses parentPath), fs constants/rmdir/exists (none), stream internals (none), crypto (AES-256-GCM with full 16-byte tags, no createCipher/Hash ctor/fips), fetch/undici 7 (relay gateways, certificate fetcher redirect:error + AbortSignal.timeout; no dispatcher/duplex), OpenSSL/TLS options (none; prod 22.23.2 already OpenSSL 3.5.7), spawn shell:true (none), script flags (--env-file-if-exists, --import=tsx, --input-type=module, --watch, --test: all supported), node:test harness, Intl en-IN. No other change needed.",
+      "Checks, Node 24.22.3 container on the final tree (TESTED): contracts npm ci + check 7 files/98 tests, 189 ops, OpenAPI valid (70d0634e); backend npm ci + check 101 files/1204 tests incl. coverage gate, build, smoke source+dist (0dacb54b); integration with coverage disabled as CI 69 files/571 tests (8286f231); frontend npm ci + check 40 files/336 tests, generated client unchanged 189 ops, build:client (17 assets, 936,416 bytes) and build:admin with boot checks (3298858c); root onboarding harness 7 tests (40a5e77f); runtime contract test PASS (c44723c1).",
+      "Docker (RUNTIME, version print only): backend image built, node v24.22.3, OpenSSL 3.5.9 (5c42688e); frontend client and admin images built, build stage node v24.22.3, runtime nginx 1.31.1 (4842f76b). Check images removed afterwards.",
+      "Per-commit: e97e8ba adds only tools/ (no code). f14fb73 alone (git archive export, Node 22.20.0): contracts 98 tests (f9fb4fe9) and frontend 40/336 + boot checks. 12a023f = the tree all Node 24 checks ran on.",
+      "Rollback (rule 11): no schema, migration, API or data change; the previous release's Node 22 images run against the same database, so an images-only rollback holds.",
+      "Remove tools/node22-container in the release after the Node 24 release has shipped, once the maintainer no longer needs Node 22 checks (README states this). The boe-node24-check:24.22.3-alpine3.24 image stays on the host for later sessions.",
+      "For the coordinator at landing: replace tally howto-2 (Node 22 container) with the Node 24 one; update the plan status line and E3 entry, CLAUDE.md (untracked: 'Node.js 22 ESM', node22-container) and the tally project stack line. WORKFLOW.md, DEPLOY.md and release_manager guides have no Node version or container reference; FACTS_VS_PLAN.md and Completed/ are dated history, left as is.",
+      "Not verified: no deploy, no VPS, no CI run on GitHub, production images built but not run as services (no healthcheck, migrate or worker run), no APK/Gradle/emulator build, no browser run of the MaskedEmail change, npm audit not compared (lockfile diff is limited to @types/node and undici-types)."
+    ]
+  },
+  "history": []
+}

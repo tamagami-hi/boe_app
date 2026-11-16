@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "track": "u-static-client",
+  "current": {
+    "task": "U6-static-client",
+    "from": "claude-opus-5-5 auditor u-static-client",
+    "track": "u-static-client",
+    "at": "2026-11-16T12:42:14.873Z",
+    "lines": [
+      "Commit e236093 on track/u-static-client (docs only): plans/ui-overhaul/consistency-client.md, 444 lines, read of main d4c817e; evidence STATIC, git diff --check only, no app checks run.",
+      "Scope: 35 client routes; 98 client .tsx files counted (features, shells/client, app; admin excluded); ui/ 47 files (37 full, 5 part); features 113 files (92 full, 3 part, 18 data modules consulted only).",
+      "Findings: 55 total = 1 high, 24 medium, 30 low (CC-01..CC-55).",
+      "High CC-01: phone header back on /funds/:fundId/invest/{lumpsum,sip} navigates to literal /funds/:fundId (ClientFrame.tsx:54-59,107 uses route.back.path unsubstituted; backPolicy.ts:45 substitutes). Shell code, parked routes: maintainer to say if DEC-14 covers the fix.",
+      "Key mediums: no in-app back at 1280/1440 (header lg:hidden) and ad hoc back links in 4 styles; 3 back behaviours (header push, hardware replace, browser history); no section highlight on nested routes; route titles unused, no document.title; no scroll/focus reset on navigation; fg-faint text 2.79-2.99:1 (risk line, STAT_LABEL, hints); gold chart series 1-2; risk line missing on Funds and Fund detail; 44 of 48 MoneyValue round away paise; LoadMore page failure silent in 9 lists (rule 4); card links have no interactive state; 5 link styles; same action styled 3-5 ways.",
+      "Pattern counts: Button 61, ButtonLink 41, raw button 12; Card 90; Section 33; PageHeader 31; AsyncBoundary 35; Skeleton 70; EmptyState 18; Alert 57; Form 11, FormField 23; MoneyValue 48 (4 with paise), MoneyFootnote 10; DataList 10, DetailRow 35; LoadMore 9; ConfirmDialog 5; toast.show 3; StatusBadge 13, Badge 8; 15 inline SVG glyphs in 9 files; 4 card-grid systems; 2 private table recipe sets.",
+      "Parked under DEC-14, no change proposed: invest lumpsum, invest SIP, /pay/return (only dead end), payment status, /sips, /sips/:id, PendingPaymentRecovery, Activity payments tab, RiskConsent, payments flag reader.",
+      "Not determinable from code (for u-audits): real rendering at 360/390/768/1280/1440, scroll position after navigation (CC-07), how CC-01 error renders, contrast on mesh/gradient backgrounds, WebView hardware back and window.confirm, screen-reader order, whether production amounts carry paise.",
+      "Phase I screens (nominee requests, SIP early exit) are not on main at d4c817e; the nominee form audited is the old direct-edit one. Audit them when they land (DEC-47)."
+    ]
+  },
+  "history": []
+}

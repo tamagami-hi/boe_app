@@ -1,0 +1,910 @@
+{
+  "schema": 1,
+  "milestone": "M15-nominee-requests",
+  "records": [
+    {
+      "id": "d58aa329-cd41-44de-90d3-9fe4c4d6c240",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "runner",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T12:06:26Z",
+      "seconds": 24,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T120626Z-978010-green.log",
+        "sha256": "a6a06ca49275547de1c2610093c60b1ae9f682d271a274195d022b36e7266695",
+        "bytes": 7866
+      },
+      "summary": {
+        "passed": 98,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "contracts npm run check"
+    },
+    {
+      "id": "7489096c-b1cc-4124-99ad-c8a6e83cf7f4",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "runner",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T12:07:55Z",
+      "seconds": 42,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T120755Z-995506-green.log",
+        "sha256": "ee839308e6653ae9f0204cf6a096e0281026261056f303bd18e1c89e109eca27",
+        "bytes": 16384
+      },
+      "summary": {
+        "passed": 1204,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "backend npm run check"
+    },
+    {
+      "id": "04dbd02c-9b63-4995-bf74-7994af0a27b8",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "runner",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T12:09:29Z",
+      "seconds": 72,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T120929Z-1027855-green.log",
+        "sha256": "efc705474e38bd1a566e603f40778156795e33942093275519781b7b1d877e20",
+        "bytes": 6135
+      },
+      "summary": {
+        "passed": 336,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend npm run check at the backend-only state (commit 1)"
+    },
+    {
+      "id": "58cd0306-7347-4e88-b8ba-196ea9cde477",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "runner",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T12:09:35Z",
+      "seconds": 41,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T120935Z-1030378-green.log",
+        "sha256": "99eaae3d579edc79dcd5c7396db040860bb38aa0600f1ea8c603b9c1c93a9af3",
+        "bytes": 16483
+      },
+      "summary": {
+        "passed": 578,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "backend npm run test:integration, coverage off"
+    },
+    {
+      "id": "533fe222-2819-414c-95dc-f6e451ef57f2",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false test/integration/nomineeRequests.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T12:12:25Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T121225Z-1121589-red.log",
+        "sha256": "a0f4c1d0409d150873d8831b01062ae93162df7fbf04a826923d5494efff5acd",
+        "bytes": 5052
+      },
+      "summary": {
+        "passed": 5,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "controlled negative: one-pending-index reverted after the run"
+    },
+    {
+      "id": "c8f686c4-c48c-4f1c-bbf6-7050cc55797d",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false test/integration/nomineeRequests.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T12:12:32Z",
+      "seconds": 9,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T121232Z-1128390-red.log",
+        "sha256": "0a2b72c73977a8613123f417a279d27edb31e59d244558044dc78c7af4b5f598",
+        "bytes": 2498
+      },
+      "summary": {
+        "passed": 5,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "controlled negative: one-pending-check reverted after the run"
+    },
+    {
+      "id": "3c0c16c4-a053-4776-a748-fc48e804d4e7",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false test/integration/nomineeRequests.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T12:12:41Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T121241Z-1133614-red.log",
+        "sha256": "4963acb882c864cc652b2520f88a5fc3e7c11470aec24a5d49edd26e476bdf04",
+        "bytes": 4231
+      },
+      "summary": {
+        "passed": 3,
+        "failed": 3,
+        "ignored": 0
+      },
+      "note": "controlled negative: concurrent-decisions reverted after the run"
+    },
+    {
+      "id": "7a0ad33e-5c7b-49d9-99dc-d9c77a6d7422",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false test/integration/nomineeRequests.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T12:12:48Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T121248Z-1137883-red.log",
+        "sha256": "c048c220484828dd4d07fe8cfaa0ce886c513fad9deb88b3c3cf9678e3c72ae1",
+        "bytes": 2300
+      },
+      "summary": {
+        "passed": 5,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "controlled negative: client-ownership reverted after the run"
+    },
+    {
+      "id": "aff0c5e1-11af-4384-8ca5-0e157586bd71",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false test/integration/nomineeRequests.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T12:12:55Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T121255Z-1143242-red.log",
+        "sha256": "8f8d88a208093bbe8d1e8fbf462c2ac9f5a9205576d45be32e5ac30e7e6a0f58",
+        "bytes": 2279
+      },
+      "summary": {
+        "passed": 5,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "controlled negative: admin-permission reverted after the run"
+    },
+    {
+      "id": "bf120510-dde7-4e14-a2b4-9b8382cae14c",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false test/integration/nominee.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T12:13:02Z",
+      "seconds": 5,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T121302Z-1147203-red.log",
+        "sha256": "6610477b1de6c411358a22984855d5538073c116ccfac08b4acd766a749c6c24",
+        "bytes": 2983
+      },
+      "summary": {
+        "passed": 5,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "controlled negative: direct-change-refused reverted after the run"
+    },
+    {
+      "id": "94d1119e-a866-4694-ae7f-288f3933a4bb",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false test/integration/clientErasure.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T12:13:07Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T121307Z-1151301-red.log",
+        "sha256": "df6d5b8dabd90c577688f7f2b78cecade69b591ccbac59cff330ee4eb9eec225",
+        "bytes": 2262
+      },
+      "summary": {
+        "passed": 4,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "controlled negative: erasure-delete reverted after the run"
+    },
+    {
+      "id": "bd975087-a2f8-4955-92dd-e8484fa63d39",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false test/integration/clientErasure.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T12:13:14Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T121314Z-1154984-red.log",
+        "sha256": "9cccbc24592ec2a6a94befc52d32570bfdf336fe3fee2e450fd51670c05c106e",
+        "bytes": 4424
+      },
+      "summary": {
+        "passed": 2,
+        "failed": 3,
+        "ignored": 0
+      },
+      "note": "controlled negative: erasure-names reverted after the run"
+    },
+    {
+      "id": "72e937d5-5e53-4a2d-8069-7224f9904e1e",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false test/integration/clientErasureCoverage.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T12:13:21Z",
+      "seconds": 5,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T121321Z-1158061-red.log",
+        "sha256": "bf07c768e3e818398c411805c0219d390599f6f248de880e13a90db8d576632a",
+        "bytes": 3985
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "controlled negative: erasure-coverage reverted after the run"
+    },
+    {
+      "id": "df5ed510-f163-4831-abe0-6e20ff49c52d",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx vitest run src/features/shared/credentialMutations.test.tsx"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T12:18:01Z",
+      "seconds": 3,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T121801Z-1345470-red.log",
+        "sha256": "efef5e9f783ab0bfc11eb81a6b5ae93a7c7dfdf29ef75feb8881fc95c91a90b0",
+        "bytes": 2608
+      },
+      "summary": {
+        "passed": 9,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "controlled negative: send-request hook without the sealed mutation keeps the password; reverted"
+    },
+    {
+      "id": "29f4de9c-f1fd-4268-b9f9-77ad0e7faf9a",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "runner",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T12:18:10Z",
+      "seconds": 58,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T121810Z-1349779-green.log",
+        "sha256": "86815c2e5508b43843d8cc6ddb8052addd508354fcf0982a629d49271877683f",
+        "bytes": 6127
+      },
+      "summary": {
+        "passed": 336,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend npm run check"
+    },
+    {
+      "id": "e391b67e-cd31-4b8f-8960-6f351750a5bb",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "runner",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T12:19:08Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T121908Z-1381486-green.log",
+        "sha256": "8c14272693cb82ac2e920a3a85144dfd622d09cb2b50eb36cbdd8d6f3497067a",
+        "bytes": 2133
+      },
+      "note": "frontend npm run build:client"
+    },
+    {
+      "id": "cc62c652-141a-4092-bc59-2a96bdc6c507",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "runner",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T12:19:15Z",
+      "seconds": 14,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T121915Z-1387404-green.log",
+        "sha256": "42abb1c1f2f08219722d165a7e490e6ded1a32eacc332cee705475dd1dd76709",
+        "bytes": 2361
+      },
+      "note": "frontend npm run build:admin"
+    },
+    {
+      "id": "4ea251e1-6961-4681-9f88-5f17cc479b4c",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "claude-opus-5-5 fixer i-nominee-requests",
+      "kind": "other",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/nomineeRequests.integration.test.ts",
+        "-t",
+        "TMP"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T12:59:55Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T125955Z-2196101-other.log",
+        "sha256": "d8c020021d3c7f1c2045ffd7307c080440b59e2aaf9a2c8e0933b87cfc8cde58",
+        "bytes": 619
+      },
+      "summary": {
+        "passed": 1,
+        "failed": 0,
+        "ignored": 6
+      },
+      "note": "temporary uncommitted paging check, fix in place: decided-between-pages row neither repeated nor skipped"
+    },
+    {
+      "id": "35d50bab-d51e-4a67-b182-81b357e2390f",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "claude-opus-5-5 fixer i-nominee-requests",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/nomineeRequests.integration.test.ts",
+        "-t",
+        "TMP"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T13:00:07Z",
+      "seconds": 6,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T130007Z-2199220-red.log",
+        "sha256": "12dcac8966a0770b7ecbcb737385a33a138de2fec6c2cf5746f53a424933fb19",
+        "bytes": 2206
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 6
+      },
+      "note": "control: queue rank by current state only (asOf ignored) repeats the row decided between page loads"
+    },
+    {
+      "id": "20f06fc8-7311-42bd-8557-b7ed6abcc730",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "claude-opus-5-5 fixer i-nominee-requests",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/nomineeRequests.integration.test.ts",
+        "-t",
+        "need users.read"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T13:00:27Z",
+      "seconds": 6,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T130027Z-2206022-red.log",
+        "sha256": "c7809d04d68c78f7b848cf19cc420dcdf7eb2103baaad7c50fa8765040e50560",
+        "bytes": 2977
+      },
+      "summary": {
+        "passed": 0,
+        "failed": 1,
+        "ignored": 5
+      },
+      "note": "control: decline reason left out of the sealed payload, the decline mail lacks the reason"
+    },
+    {
+      "id": "7aee9eda-bdcf-4e11-baf4-3095dd90c936",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "claude-opus-5-5 fixer i-nominee-requests",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T13:00:40Z",
+      "seconds": 57,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T130040Z-2211414-green.log",
+        "sha256": "3a97619630ec188fd131b788d285a80f112f188756b94ba9768053d734e1db16",
+        "bytes": 6620
+      },
+      "summary": {
+        "passed": 336,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "id": "f10401ff-2140-4c01-a63c-49250a6a3ae3",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "claude-opus-5-5 fixer i-nominee-requests",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T13:00:39Z",
+      "seconds": 60,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T130039Z-2210893-green.log",
+        "sha256": "14b3dde812408889fdbf897f87cc59b667f8af43b5e95ed84a3807d130549061",
+        "bytes": 16473
+      },
+      "summary": {
+        "passed": 1204,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "id": "8da4243e-4e64-452c-9d7a-64c3567b5582",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "claude-opus-5-5 fixer i-nominee-requests",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T13:01:41Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T130141Z-2232750-green.log",
+        "sha256": "990b6bba58d1a2b9d8ae27353dfe617fa137033635f98d0c329b43af87eb999e",
+        "bytes": 2133
+      }
+    },
+    {
+      "id": "26c317b3-7476-4426-940f-def495262fb8",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "claude-opus-5-5 fixer i-nominee-requests",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T13:01:48Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T130148Z-2234954-green.log",
+        "sha256": "75232dff5a5a37c0f1b4780604544ae2e1895b9a353ee84101f48906446eef1a",
+        "bytes": 2361
+      }
+    },
+    {
+      "id": "fae7bbc7-8b8e-4303-9318-9cf30f72a4b3",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "claude-opus-5-5 fixer i-nominee-requests",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T13:02:01Z",
+      "seconds": 45,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T130201Z-2240013-green.log",
+        "sha256": "0b18ec1aaa3b2b5612356f9cd5e35137a7e94df085891920bb2d4764671b06b3",
+        "bytes": 20160
+      },
+      "summary": {
+        "passed": 578,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "id": "59639a38-b43e-475f-a2cb-54fbd0dc3084",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "claude-opus-5-5 fixer i-nominee-requests",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T13:20:46Z",
+      "seconds": 19,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T132046Z-2573097-green.log",
+        "sha256": "485411bc207106b31b7041096991f23470d0271b50d30775dbd9764cbde108ea",
+        "bytes": 13475
+      },
+      "summary": {
+        "passed": 98,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "id": "d6fcbb28-191f-4a96-adf8-f5da6c3dd37e",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "claude-opus-5-5 fixer i-nominee-requests",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T13:21:10Z",
+      "seconds": 22,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T132110Z-2575807-green.log",
+        "sha256": "b8241835b098b3039b56496476b672d7c134ccb22bbb74520bf05890aca9083e",
+        "bytes": 7377
+      },
+      "summary": {
+        "passed": 98,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "id": "02d86ee8-4c72-458e-b0b5-44d1d68cfef1",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "claude-opus-5-5 fixer i-nominee-requests",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T13:21:39Z",
+      "seconds": 46,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T132139Z-2579717-green.log",
+        "sha256": "bd6aa37b44d8bfe4ff2257fc342a7331e5a5d082751118f5586da6a65003221a",
+        "bytes": 6334
+      },
+      "summary": {
+        "passed": 336,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "id": "e5fd0983-1920-411c-9cb6-6d844c2a3e8b",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "claude-opus-5-5 fixer i-nominee-requests",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T13:21:39Z",
+      "seconds": 47,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T132139Z-2579162-green.log",
+        "sha256": "d91cabb8d38641a4917fefa53f81aca12896d65e64cb63d50187cc02547063b4",
+        "bytes": 16288
+      },
+      "summary": {
+        "passed": 1204,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "id": "021de6ba-d4f4-4887-8fa7-fcd5f4f145d9",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "claude-opus-5-5 fixer i-nominee-requests",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/nomineeRequests.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T13:22:44Z",
+      "seconds": 5,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T132244Z-2591387-red.log",
+        "sha256": "c5b062dff08f21270cf534abefa94cb25a1b1772d939ce274dd00e369c46ebd3",
+        "bytes": 2412
+      },
+      "summary": {
+        "passed": 5,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "temporary nominee key back in the decision response; reverted"
+    },
+    {
+      "id": "c4655068-456a-4df7-bbbe-7338570c49bf",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "claude-opus-5-5 fixer i-nominee-requests",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T13:22:55Z",
+      "seconds": 34,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T132255Z-2593833-green.log",
+        "sha256": "a926b2fe92e2e4745d0d401e6119727c0c5b2317d041dd35b0fe1c05586defc2",
+        "bytes": 15394
+      },
+      "summary": {
+        "passed": 578,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "id": "7f23bd5c-8263-4caf-a802-144a9055c6c9",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "claude-opus-5-5 fixer i-nominee-requests",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T13:23:34Z",
+      "seconds": 5,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T132334Z-2637363-green.log",
+        "sha256": "79de9de1a8e6efd3002f45124c064a51173787ef3c3d2ab6145d3b998c2ffb09",
+        "bytes": 2133
+      }
+    },
+    {
+      "id": "0f71a4c9-eccf-4c31-94d1-b35e8116c290",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "agent": "claude-opus-5-5 fixer i-nominee-requests",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-nominee-requests",
+      "started": "2026-11-16T13:23:39Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-nominee-requests/20261116T132339Z-2638266-green.log",
+        "sha256": "6c5d5e257166423839acb6d53961cb74804e685138bb6f083bfcdc5ddf9b4dcb",
+        "bytes": 2361
+      }
+    }
+  ]
+}

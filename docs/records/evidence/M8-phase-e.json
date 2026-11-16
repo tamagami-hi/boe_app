@@ -1,0 +1,421 @@
+{
+  "schema": 1,
+  "milestone": "M8-phase-e",
+  "records": [
+    {
+      "id": "78e37251-a04c-493a-9d40-caecb0bab72a",
+      "task": "E3-node24-build",
+      "track": "e-node24",
+      "agent": "claude-opus-5-5 builder e-node24",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "node --version && npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/e-node24",
+      "started": "2026-11-16T12:20:49Z",
+      "seconds": 19,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/e-node24/20261116T122049Z-1479660-green.log",
+        "sha256": "7213bd55723ebb99d1f89938c1ae6d2a3bd025eab3a9a1fe29b40b179f986dd2",
+        "bytes": 4524
+      },
+      "summary": {
+        "passed": 97,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "contracts npm ci + npm run check, Node 24.22.3 container"
+    },
+    {
+      "id": "70d0634e-db5a-44e0-bcf5-39b115f5d0ab",
+      "task": "E3-node24-build",
+      "track": "e-node24",
+      "agent": "claude-opus-5-5 builder e-node24",
+      "kind": "green",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "node --version && npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/e-node24",
+      "started": "2026-11-16T12:26:22Z",
+      "seconds": 25,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/e-node24/20261116T122622Z-1743448-green.log",
+        "sha256": "34c6dee5421a453839ce526f3189e7b947a96cea050765ad64619fb0c6496eb6",
+        "bytes": 7927
+      },
+      "summary": {
+        "passed": 98,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "contracts npm ci + npm run check on Node 24.22.3 after the IDNA fix"
+    },
+    {
+      "id": "c11aaf3b-e8f2-46fa-9b23-64d86b132645",
+      "task": "E3-node24-build",
+      "track": "e-node24",
+      "agent": "claude-opus-5-5 builder e-node24",
+      "kind": "evidence",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "node --version && npx vitest run src/scalars.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/e-node24",
+      "started": "2026-11-16T12:26:57Z",
+      "seconds": 2,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/e-node24/20261116T122657Z-1757264-evidence.log",
+        "sha256": "d67d9d3a473cee82764d86c72a395c9b94f9691ee34c6f68d7f28bf87d76f679",
+        "bytes": 328
+      },
+      "summary": {
+        "passed": 20,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "IDNA fix keeps the scalar test green on Node 22.20.0 (node22 container, same node_modules)"
+    },
+    {
+      "id": "c44723c1-e414-459a-ace3-8aa8770f0a72",
+      "task": "E3-node24-build",
+      "track": "e-node24",
+      "agent": "claude-opus-5-5 builder e-node24",
+      "kind": "green",
+      "command": [
+        "bash",
+        "release_manager/tests/runtime_contract.test.sh"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/e-node24",
+      "started": "2026-11-16T12:27:14Z",
+      "seconds": 0,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/e-node24/20261116T122714Z-1768648-green.log",
+        "sha256": "c18dfab7fdd9b791b71e693d94acbea12b6afb9196931a465e411f82fa8b0912",
+        "bytes": 68
+      },
+      "note": "release_manager runtime contract test with the Node 24.22.3 base"
+    },
+    {
+      "id": "40a5e77f-7d89-49c4-b946-0cf71d108bf9",
+      "task": "E3-node24-build",
+      "track": "e-node24",
+      "agent": "claude-opus-5-5 builder e-node24",
+      "kind": "green",
+      "command": [
+        "tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "node --version && node --test test_e2e/onboarding-harness.test.mjs"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/e-node24",
+      "started": "2026-11-16T12:27:14Z",
+      "seconds": 1,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/e-node24/20261116T122714Z-1769399-green.log",
+        "sha256": "3cc9712b302a6d4d1ae996241860d3f36e3971160f61af683aad5103fc590966",
+        "bytes": 751
+      },
+      "note": "root onboarding harness (CI job reads backend .nvmrc) on Node 24.22.3"
+    },
+    {
+      "id": "0dacb54b-380b-4bcd-8d7b-c0c526d362ad",
+      "task": "E3-node24-build",
+      "track": "e-node24",
+      "agent": "claude-opus-5-5 builder e-node24",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "node --version && npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/e-node24",
+      "started": "2026-11-16T12:27:07Z",
+      "seconds": 52,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/e-node24/20261116T122707Z-1763885-green.log",
+        "sha256": "cadd692559e7780c1f2ab59e943cd0d84d76072a95ed2a6d7e3f6ec092d888f1",
+        "bytes": 16911
+      },
+      "summary": {
+        "passed": 1204,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "backend npm ci + npm run check on Node 24.22.3"
+    },
+    {
+      "id": "3298858c-f767-47f3-bd13-b525335d6b89",
+      "task": "E3-node24-build",
+      "track": "e-node24",
+      "agent": "claude-opus-5-5 builder e-node24",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "node --version && npm ci && npm run check && npm run build:client && npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/e-node24",
+      "started": "2026-11-16T12:27:08Z",
+      "seconds": 59,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/e-node24/20261116T122708Z-1764612-green.log",
+        "sha256": "30f8358d55ed5ac010f2b79ed6a442d14907c18ac7b22faeb2fe5035ea7a83af",
+        "bytes": 11950
+      },
+      "summary": {
+        "passed": 336,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend npm ci + npm run check + build:client + build:admin on Node 24.22.3"
+    },
+    {
+      "id": "8286f231-7778-4515-bc47-6c7cf27d4eb4",
+      "task": "E3-node24-build",
+      "track": "e-node24",
+      "agent": "claude-opus-5-5 builder e-node24",
+      "kind": "green",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "sh",
+        "-c",
+        "node --version && npm run test:integration -- --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/e-node24",
+      "started": "2026-11-16T12:28:39Z",
+      "seconds": 39,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/e-node24/20261116T122839Z-1815794-green.log",
+        "sha256": "3ea0070a8d31e7ca492677605cc924bcaabc9f220367bb33eb8f340f23716ea3",
+        "bytes": 15638
+      },
+      "summary": {
+        "passed": 571,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "backend integration suite (testcontainers PostgreSQL, coverage disabled as in CI) on Node 24.22.3"
+    },
+    {
+      "id": "5c42688e-57cd-4c89-9a34-6f4e062791a5",
+      "task": "E3-node24-build",
+      "track": "e-node24",
+      "agent": "claude-opus-5-5 builder e-node24",
+      "kind": "green",
+      "command": [
+        "sh",
+        "-c",
+        "docker build -q -t boe-e-node24-check/backend:local backend_controller && docker run --rm --network none boe-e-node24-check/backend:local node -p \"\\\"node \\\" + process.version + \\\" openssl \\\" + process.versions.openssl + \\\" npm-in-image \\\" + require(\\\"/app/package.json\\\").engines.node\" && docker run --rm --network none --entrypoint npm boe-e-node24-check/backend:local --version"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/e-node24",
+      "started": "2026-11-16T12:28:50Z",
+      "seconds": 64,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/e-node24/20261116T122850Z-1834050-green.log",
+        "sha256": "1a00023fbfb49887af3b9f060e517cdc065f50300dcec37b0a073697829ae6db",
+        "bytes": 135
+      },
+      "note": "one-shot docker build of backend_controller/Dockerfile on node:24.22.3-alpine3.24 (digest-pinned) and version print"
+    },
+    {
+      "id": "4842f76b-bfd1-43f9-90be-c4f535270800",
+      "task": "E3-node24-build",
+      "track": "e-node24",
+      "agent": "claude-opus-5-5 builder e-node24",
+      "kind": "green",
+      "command": [
+        "sh",
+        "-c",
+        "docker build -q --build-arg VITE_BEO_APP_TARGET=client -f frontend_stack_ts/Dockerfile -t boe-e-node24-check/app:local . && docker build -q --build-arg VITE_BEO_APP_TARGET=admin -f frontend_stack_ts/Dockerfile -t boe-e-node24-check/admin:local . && docker build -q --target deps -f frontend_stack_ts/Dockerfile -t boe-e-node24-check/frontend-deps:local . && docker run --rm --network none boe-e-node24-check/frontend-deps:local sh -c \"node --version && npm --version\" && docker run --rm --network none --entrypoint nginx boe-e-node24-check/app:local -v"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/e-node24",
+      "started": "2026-11-16T12:30:11Z",
+      "seconds": 56,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/e-node24/20261116T123011Z-1880168-green.log",
+        "sha256": "80df221da4158853896ee9dd88009d3123f68fd69fed3debedf397695d8d19c4",
+        "bytes": 261
+      },
+      "note": "one-shot docker build of frontend_stack_ts/Dockerfile (client and admin) on node:24.22.3-alpine3.24 and version print"
+    },
+    {
+      "id": "3ab66acf-882a-40bc-bcc0-935258ded531",
+      "task": "E3-node24-build",
+      "track": "e-node24",
+      "agent": "claude-opus-5-5 builder e-node24",
+      "kind": "evidence",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "node",
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/e-node24/.temp/e-node24/native-load.mjs",
+        "argon2",
+        "esbuild",
+        "vite-esbuild",
+        "rollup",
+        "ssh2",
+        "protobufjs"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/e-node24",
+      "started": "2026-11-16T12:35:48Z",
+      "seconds": 0,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/e-node24/20261116T123548Z-1926691-evidence.log",
+        "sha256": "ceb5646c1eb9163cac1fe06154db0b5f623933973bb81f5b9c13f68c8290038b",
+        "bytes": 367
+      },
+      "note": "native deps load under Node 24.22.3 musl (backend, after npm ci)"
+    },
+    {
+      "id": "e8c79346-9a2b-4364-9582-74b8b9bf1458",
+      "task": "E3-node24-build",
+      "track": "e-node24",
+      "agent": "claude-opus-5-5 builder e-node24",
+      "kind": "evidence",
+      "command": [
+        "../tools/node24-container/run.sh",
+        "node",
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/e-node24/.temp/e-node24/native-load.mjs",
+        "esbuild",
+        "rollup",
+        "lightningcss",
+        "tailwind-lightningcss",
+        "oxide"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/e-node24",
+      "started": "2026-11-16T12:35:48Z",
+      "seconds": 1,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/e-node24/20261116T123548Z-1927083-evidence.log",
+        "sha256": "8c4c6bf1ac2685acaebc63e3b0c30b7c46650536040f059c0ee345789635ccf4",
+        "bytes": 338
+      },
+      "note": "native deps load under Node 24.22.3 musl (frontend, after npm ci)"
+    },
+    {
+      "id": "d4df3f0d-4322-4ad4-905b-946d665f3052",
+      "task": "E3-node24-build",
+      "track": "e-node24",
+      "agent": "claude-opus-5-5 builder e-node24",
+      "kind": "evidence",
+      "command": [
+        "../../tools/node24-container/run.sh",
+        "node",
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/e-node24/.temp/e-node24/native-load.mjs",
+        "esbuild",
+        "tsx-esbuild",
+        "rollup"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/e-node24",
+      "started": "2026-11-16T12:35:49Z",
+      "seconds": 0,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/e-node24/20261116T123549Z-1927518-evidence.log",
+        "sha256": "69776ba1be6db48546c836d4c55c34846f0e838968f772e5116519ba560209dd",
+        "bytes": 181
+      },
+      "note": "native deps load under Node 24.22.3 musl (contracts, after npm ci)"
+    },
+    {
+      "id": "ba4e3593-bf73-4467-b97f-b7715f917ba4",
+      "task": "E3-node24-build",
+      "track": "e-node24",
+      "agent": "claude-opus-5-5 builder e-node24",
+      "kind": "evidence",
+      "command": [
+        "python3",
+        "-I",
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/e-node24/.temp/e-node24/idn/summary.py",
+        "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/e-node24/.temp/e-node24/idn"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/e-node24",
+      "started": "2026-11-16T12:35:59Z",
+      "seconds": 0,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/e-node24/20261116T123559Z-1930118-evidence.log",
+        "sha256": "3e20f990de6841d0b8d87a8a3eea4edaa37d39b0fe9dd722c0c6154c1543d759",
+        "bytes": 853
+      },
+      "note": "IDNA differential: MaskedEmail domain check old vs new across Node 22.20.0, 22.23.2, 24.21.0 and 24.22.3 (52,581 domains)"
+    },
+    {
+      "id": "f9fb4fe9-af0b-4b1f-9f62-4b0d75f9442c",
+      "task": "E3-node24-build",
+      "track": "e-node24",
+      "agent": "claude-opus-5-5 builder e-node24",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "node --version && npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/e-node24",
+      "started": "2026-11-16T12:31:48Z",
+      "seconds": 372,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/e-node24/20261116T123148Z-1901601-green.log",
+        "sha256": "fad83b903bac360554017520fc6747a6bf05dba91beba85d8d66bb3140ce735b",
+        "bytes": 8263
+      },
+      "summary": {
+        "passed": 98,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "commit f14fb73 alone (git archive export) on Node 22.20.0: contracts npm ci + npm run check"
+    },
+    {
+      "id": "a2df9f52-6e0b-477f-aa34-220611ce2408",
+      "task": "E3-node24-build",
+      "track": "e-node24",
+      "agent": "claude-opus-5-5 builder e-node24",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "node --version && npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/e-node24",
+      "started": "2026-11-16T12:38:09Z",
+      "seconds": 52,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/e-node24/20261116T123809Z-1953613-green.log",
+        "sha256": "c7664c0d8acd41caba0538b05bf78dbee91fc055157e513043d04fce1fc5f364",
+        "bytes": 7275
+      },
+      "summary": {
+        "passed": 336,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "commit f14fb73 alone (git archive export) on Node 22.20.0: frontend npm ci + npm run check"
+    }
+  ]
+}

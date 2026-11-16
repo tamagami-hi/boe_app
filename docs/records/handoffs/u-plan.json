@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "track": "u-plan",
+  "current": {
+    "task": "U5-overhaul-plan",
+    "from": "claude-pro-u-plan",
+    "track": "u-plan",
+    "at": "2026-11-16T13:33:10.783Z",
+    "lines": [
+      "U5 (M16-ui-overhaul:U5-overhaul-plan) is done on track/u-plan; docs only; not landed, pushed or rebased (the coordinator lands it).",
+      "Commits on track/u-plan, cut from main 02985f9:",
+      "- fd6c1dc docs(ui): move the six UI audits to docs/ui-overhaul (git mv; 3 sibling links and 4 scratch paths now point to .temp/closed/u-audits/)",
+      "- 3d98a2e docs(ui): propose the fix plan for the four UI overhaul surfaces (docs/ui-overhaul/plan.md, 187 lines)",
+      "Status of the plan: proposed, not approved. It assigns all 214 audit findings by id (checked by script: 0 missing).",
+      "Fix first (11): FX-1 client router rebuilt every render (UCM-01, UCW-01); FX-2 admin detail-row collapse (UAW-01, UAM-08); FX-3 header back to literal /funds/:fundId (CC-01); FX-4 unknown outcomes and new keys (CA-02, CA-03, CA-19); FX-5 held writes lost, no confirms (CA-04, CA-05, CA-27, CL-06); FX-6 silent Show more (CC-13, CA-12, CL-11, finding-25); FX-7 faint text contrast; FX-8 admin failed reads as ids or dead retries (CA-13, CA-14, CA-06, UAM-18, CL-13); FX-9 fund terms prefill (CA-08); FX-10 UTC default dates (CA-26); FX-11 admin login dead link (CA-07).",
+      "Foundations FD-1 to FD-14: header and back, route titles, active nav, table to card, money, risk line, links, buttons and confirms, states and role notice, disabled buttons, forms, 12 px type floor, dates, focus not hidden.",
+      "Lanes proposed (26 plus one audit), each with owned files and done criteria in plan section 4:",
+      "- Stage A fix first: fx-shell, fx-ui-recipes, fx-paging, fx-admin-held, then fx-admin-values and fx-admin-funds.",
+      "- Stage B foundations: fd-header, fd-client-shell, fd-admin-shell, fd-money, fd-actions, fd-states-forms, fd-tables.",
+      "- Client phone: cp-auth, cp-money, cp-activity, cp-profile. Client web: cw-layout, cw-funds-statements.",
+      "- Admin web: aw-client-page, aw-funds-overview, aw-values, aw-lists. Admin phone: ap-filters, ap-values-phone, ap-lists-phone.",
+      "- u8-phase-i-audit: read-only audit of the Phase I screens once both Phase I lanes land, before cp-profile and aw-client-page.",
+      "All lanes start after both Phase I lanes are on main (DEC-42, DEC-46). No lane edits a parked DEC-14 file; FX-2, FX-6, FX-7 reach parked screens through shared recipes, FX-3 changes the back target on the two parked invest routes (shell only).",
+      "Carried LOWs: plan section 5 gives them ids CL-01 to CL-15. Folded: CL-05 to CL-13 (9 items) into the lanes named there; CL-04 parked (DEC-14); still carried: CL-01, CL-02, CL-03, CL-14, CL-15.",
+      "Questions for the maintainer (plan-local ids UQ-1 to UQ-7, not entered in tally as Q-0nn, to avoid an id clash; the coordinator may enter them):",
+      "- UQ-1 risk line on admin money screens: recommend no (client disclosure), keep source and freshness.",
+      "- UQ-2 maturity payout 'Bank transfer reference' (required by contract admin-maturity.ts:49 and migration 051's check) vs DEC-13 / rule-18: recommend yes, rule-18 applies; a separate backend+contract+UI lane makes it optional with an expand-only migration; default: field stays, no UI lane touches it. SIP early exit payouts use the same panel.",
+      "- UQ-3 client-values hub for users.read roles: recommend no permission change (DEC-36), one role notice.",
+      "- UQ-4 CC-01 fix on the parked invest pages' shared header: recommend yes, ClientFrame.tsx only with createBackPolicyResolver.",
+      "- UQ-5 admin phone bottom bar: recommend Overview, Users, Client values, Support.",
+      "- UQ-6 landing time versus DEC-57: recommend landing Stage A after the Node 24 release is cut.",
+      "- UQ-7 local stack and browser for each lane's screenshot pass, as DEC-47 allowed the audits: recommend yes, same scope.",
+      "Tally findings added: finding-30 to finding-35 (one per audit: U1, U2, U3, U4, U6, U7) and finding-36 to finding-46 (FX-1 to FX-11).",
+      "Left for the coordinator:",
+      "- plans/admin-improvements.md section 6 (line 621) still says the audits live under plans/ui-overhaul/ (this lane may not edit it); README current-documents has no docs/ui-overhaul entry yet (README is off limits here). Both fit M18-docs-cleanup:D2-docs-after-lanes.",
+      "- The M16 tasks U1 to U4, U6, U7 still list plans/ui-overhaul/ paths in tally.",
+      "Not run: no application check, test, build, dev server or browser; documentation only, git diff --check clean. The fix-first file:line evidence was re-read on 02985f9 (STATIC); the frontend has not changed since the audited commits."
+    ]
+  },
+  "history": []
+}

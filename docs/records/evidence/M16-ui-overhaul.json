@@ -1,0 +1,169 @@
+{
+  "schema": 1,
+  "milestone": "M16-ui-overhaul",
+  "records": [
+    {
+      "id": "b8f72dda-57a2-428d-8491-66c0bbe0d31c",
+      "task": "U7-static-admin",
+      "track": "u-static-admin",
+      "agent": "claude-opus-5-5 auditor u-static-admin",
+      "kind": "evidence",
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "d4c817e",
+        "HEAD"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/u-static-admin",
+      "started": "2026-11-16T12:51:50Z",
+      "seconds": 1,
+      "exit": 0,
+      "summary": {
+        "commit": "6b7fcb7",
+        "routes": 46,
+        "findings": 47,
+        "high": 8,
+        "medium": 23,
+        "low": 16,
+        "adminFilesRead": 157,
+        "uiFilesRead": 47
+      },
+      "note": "Docs-only STATIC audit plans/ui-overhaul/consistency-admin.md committed as 6b7fcb7; whitespace check clean; no application checks run (docs only)."
+    },
+    {
+      "id": "e6036316-cacf-4c61-8351-fac31141cc34",
+      "task": "U1-audit-client-mobile",
+      "track": "u-audits",
+      "agent": "claude-opus-5-5 auditor u-audits",
+      "kind": "evidence",
+      "command": [
+        "node",
+        ".temp/u-audits/scripts/capture.mjs",
+        "client",
+        "360x800,390x844,768x1024,1280x800,1440x900"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/u-audits",
+      "started": "2026-11-16T12:29:20Z",
+      "seconds": 314,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/u-audits/.temp/u-audits/logs/capture-client.log",
+        "sha256": "648c01579cb923cf14029be3822254d9610d3267b1f914d1039bd74bd41f7994",
+        "bytes": 10557
+      },
+      "summary": {
+        "routes_per_width": 45,
+        "widths": 5,
+        "phone_widths": "360x800,390x844",
+        "findings_U1": 30,
+        "high": 1,
+        "medium": 11,
+        "low": 18,
+        "doc_commit": "c5fe81e"
+      },
+      "note": "Runtime capture of every client route (viewport + full-page shots, in-page probe) on a throwaway local stack at a842496; plans/ui-overhaul/audit-client-mobile.md in c5fe81e. Start time approximate from file times. States run: logs/states-client.log (13 screens, 500 and 7 s delay)."
+    },
+    {
+      "id": "f0f76137-537c-4df1-8ff9-75f7a30e9f0c",
+      "task": "U2-audit-client-web",
+      "track": "u-audits",
+      "agent": "claude-opus-5-5 auditor u-audits",
+      "kind": "evidence",
+      "command": [
+        "node",
+        ".temp/u-audits/scripts/states.mjs",
+        "client",
+        "390x844,1280x800"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/u-audits",
+      "started": "2026-11-16T12:38:01Z",
+      "seconds": 650,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/u-audits/.temp/u-audits/logs/states-client.log",
+        "sha256": "ded88df56de7b1520ad9a2ec08d30f7b29a9c4f0850ce5bd309c111b25a8f346",
+        "bytes": 3577
+      },
+      "summary": {
+        "screens": 13,
+        "modes": "500 and 7s delay",
+        "failure_shown": 11,
+        "endless_skeleton": 2,
+        "findings_U2": 24,
+        "high": 1,
+        "medium": 9,
+        "low": 14,
+        "doc_commit": "c5fe81e"
+      },
+      "note": "Failed and slow reads on 13 client screens at 390 and 1280; Home and Profile never show a failure (UCW-01). Route captures at 768/1280/1440 are in the U1 capture run (logs/capture-client.log). plans/ui-overhaul/audit-client-web.md in c5fe81e."
+    },
+    {
+      "id": "a44b5cba-ad15-48cb-a7ce-abda30bc7e2a",
+      "task": "U3-audit-admin-mobile",
+      "track": "u-audits",
+      "agent": "claude-opus-5-5 auditor u-audits",
+      "kind": "evidence",
+      "command": [
+        "node",
+        ".temp/u-audits/scripts/capture.mjs",
+        "admin",
+        "390x844,1280x800,1440x900,1920x1080"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/u-audits",
+      "started": "2026-11-16T12:34:34Z",
+      "seconds": 197,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/u-audits/.temp/u-audits/logs/capture-admin.log",
+        "sha256": "dcd3e3460a493aab1b3cbd50e8727ce5cb841d1a2e8b071c122dd041e79c343c",
+        "bytes": 9451
+      },
+      "summary": {
+        "routes_per_width": 47,
+        "widths": 4,
+        "phone_width": "390x844",
+        "findings_U3": 29,
+        "high": 0,
+        "medium": 12,
+        "low": 17,
+        "doc_commit": "c5fe81e"
+      },
+      "note": "Runtime capture of every admin route as superadmin on the local stack at a842496; failed/slow reads in logs/states-admin.log (16 screens, all show a failure with retry); keyboard walks in logs/keyboard.log. plans/ui-overhaul/audit-admin-mobile.md in c5fe81e. Start time approximate."
+    },
+    {
+      "id": "0f804de4-b4a4-4d15-91b7-3a2663ff03b1",
+      "task": "U4-audit-admin-web",
+      "track": "u-audits",
+      "agent": "claude-opus-5-5 auditor u-audits",
+      "kind": "evidence",
+      "command": [
+        "node",
+        ".temp/u-audits/scripts/states.mjs",
+        "admin",
+        "390x844,1440x900"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/u-audits",
+      "started": "2026-11-16T12:48:51Z",
+      "seconds": 567,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/u-audits/.temp/u-audits/logs/states-admin.log",
+        "sha256": "bd5a2f653b81d82e909cf30c7a2085715d34f7b97b5ae572390b364f11e70c9b",
+        "bytes": 4543
+      },
+      "summary": {
+        "screens": 16,
+        "modes": "500 and 7s delay",
+        "failure_shown": 16,
+        "endless_skeleton": 0,
+        "findings_U4": 29,
+        "high": 1,
+        "medium": 11,
+        "low": 17,
+        "doc_commit": "c5fe81e"
+      },
+      "note": "Failed and slow reads on 16 admin screens at 390 and 1440; every screen showed a failure with Try again. Route captures at 1280/1440/1920 are in the U3 capture run (logs/capture-admin.log); keyboard walks in logs/keyboard.log. plans/ui-overhaul/audit-admin-web.md in c5fe81e."
+    }
+  ]
+}

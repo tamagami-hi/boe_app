@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "howto",
-  "nextNumber": 3,
+  "nextNumber": 4,
   "entries": [
     {
       "id": "howto-1",
@@ -44,6 +44,32 @@
       },
       "at": "2026-11-13T09:25:56.484Z",
       "replaces": "howto-1"
+    },
+    {
+      "id": "howto-3",
+      "kind": "howto",
+      "title": "Landing E3 (Node 24): switch tally commands.test to the Node 24 container in the same landing",
+      "text": "When lane e-node24 lands (only when DEC-57 allows: after Phase I is released, as its own release), every package's .npmrc has engine-strict=true and engines becomes >=24.11.0 <25, so the Node 22 check container refuses npm ci, and the Node 24 container refuses main before E3. In one step with nothing else landing in between: rebase e-node24 onto main, re-run the full sweep in tools/node24-container, change docs/records/config.json commands.test from tools/node22-container/run.sh to tools/node24-container/run.sh with repo_configure, then land. In the same landing docs commit update howto-2, the plan's E3 entry and CLAUDE.md, record the Node 22 container's removal condition in the plan, and correct the handoff wording (MaskedEmail has no consumer). Source: review-8.",
+      "paths": [
+        "docs/records/config.json",
+        "tools/node22-container",
+        "tools/node24-container"
+      ],
+      "tags": [
+        "node24",
+        "landing"
+      ],
+      "refs": [
+        "DEC-48",
+        "DEC-57",
+        "review-8",
+        "howto-2"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-16T13:02:43.266Z"
     }
   ]
 }

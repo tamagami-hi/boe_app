@@ -1038,19 +1038,26 @@
           ]
         },
         {
-          "id": "E3-node24-upgrade",
-          "track": "main",
+          "id": "E3-node24-build",
+          "track": "e-node24",
           "status": "planned",
           "also": [],
-          "brief": "Separate tested runtime upgrade to Node 24 LTS before Node 22 support ends (April 2027): Dockerfiles (pinned digests), CI node-version, engines + .nvmrc in 3 packages, release_manager runtime_contract test, lockfile/native-dep check; maintainer decides timing (production runtime change)",
+          "brief": "Lane e-node24 build of E3 (DEC-48, held until DEC-57): Node 24.22.3 in .nvmrc, engines, @types/node, lockfiles, production Dockerfiles, runtime contract test; tools/node24-container; docs; native-dependency and Node 23/24 behaviour checks. Evidence for M8-phase-e:E3-node24-upgrade (track main), which this track could not claim.",
           "paths": [
             "backend_controller/Dockerfile",
             "frontend_stack_ts/Dockerfile",
-            ".github/workflows/ci.yml",
             "backend_controller/package.json",
+            "backend_controller/package-lock.json",
+            "backend_controller/.nvmrc",
             "frontend_stack_ts/package.json",
+            "frontend_stack_ts/package-lock.json",
+            "frontend_stack_ts/.nvmrc",
             "packages/contracts/package.json",
-            "release_manager/tests/runtime_contract.test.sh"
+            "packages/contracts/package-lock.json",
+            "packages/contracts/.nvmrc",
+            "release_manager/tests/runtime_contract.test.sh",
+            "tools/node24-container/**",
+            "README.md"
           ]
         },
         {
@@ -1063,7 +1070,7 @@
           "deferred": [
             {
               "what": "E3 Node 24 upgrade: maintainer decides timing",
-              "to": "M8-phase-e:E3-node24-upgrade"
+              "to": "M8-phase-e:E3-node24-build"
             }
           ]
         }
@@ -1500,10 +1507,16 @@
       "tasks": [
         {
           "id": "N1-nominee-requests",
-          "track": "main",
-          "status": "planned",
-          "also": [],
-          "brief": "DEC-39 (upcoming, not started; do not begin without the maintainer's go-ahead): client sends a nominee request (name, relation) instead of setting it; the admin is notified and accepts (sets the nominee) or declines; the admin can still set it directly; one nominee per client stays. Settle first: password on request, admin notification, client notification and decline reason, one open request and withdrawal, replacing the unreleased client direct endpoint. Expand-first migration, endpoints, screens, audit rows, erasure coverage."
+          "track": "i-nominee-requests",
+          "status": "landed",
+          "commit": "3b639c8",
+          "also": [
+            "71ec05a",
+            "a92dbcf",
+            "d89446a"
+          ],
+          "brief": "DEC-39 with DEC-44 and DEC-49 to DEC-53: client nominee requests (password re-entry, one pending, withdraw), admin queue with overview count, accept or decline with optional reason, in-app and email notice, direct client change refused, erasure coverage; migration 072, template nominee_request_decided; lands before i-sip-early-exit.",
+          "landedAt": "2026-11-16T13:30:52.157Z"
         }
       ]
     },
@@ -1518,38 +1531,90 @@
       "tasks": [
         {
           "id": "U1-audit-client-mobile",
-          "track": "main",
-          "status": "planned",
+          "track": "u-audits",
+          "status": "landed",
+          "commit": "5b6c45d",
           "also": [],
-          "brief": "Read-only UI audit of the client app on the phone (APK): layout and navigation, touch targets, states, accessibility, copy, design-system consistency; findings with screenshots. Waits for the maintainer's go-ahead (DEC-40)."
+          "brief": "Read-only runtime audit of the client app at phone widths 360 and 390 in a browser (DEC-47, DEC-56): every route screenshotted; navigation and page-shell inventory, back controls, touch targets, states, accessibility, copy, design-system use. plans/ui-overhaul/audit-client-mobile.md.",
+          "paths": [
+            "plans/ui-overhaul/audit-client-mobile.md"
+          ],
+          "landedAt": "2026-11-16T13:13:19.581Z"
         },
         {
           "id": "U2-audit-client-web",
-          "track": "main",
-          "status": "planned",
+          "track": "u-audits",
+          "status": "landed",
+          "commit": "5b6c45d",
           "also": [],
-          "brief": "Read-only UI audit of the client app in a browser at phone, tablet and desktop widths; same checklist as U1. Waits for the go-ahead (DEC-40)."
+          "brief": "Read-only runtime audit of the client app at web widths 768, 1280, 1440 (DEC-47, DEC-56); same checklist and inventory as U1. plans/ui-overhaul/audit-client-web.md.",
+          "paths": [
+            "plans/ui-overhaul/audit-client-web.md"
+          ],
+          "landedAt": "2026-11-16T13:13:33.375Z"
         },
         {
           "id": "U3-audit-admin-mobile",
-          "track": "main",
-          "status": "planned",
+          "track": "u-audits",
+          "status": "landed",
+          "commit": "5b6c45d",
           "also": [],
-          "brief": "Read-only UI audit of the admin app on the phone (APK); same checklist. Waits for the go-ahead (DEC-40)."
+          "brief": "Read-only runtime audit of the admin app at phone width 390 (DEC-47, DEC-56); same checklist and inventory. plans/ui-overhaul/audit-admin-mobile.md.",
+          "paths": [
+            "plans/ui-overhaul/audit-admin-mobile.md"
+          ],
+          "landedAt": "2026-11-16T13:13:33.685Z"
         },
         {
           "id": "U4-audit-admin-web",
-          "track": "main",
-          "status": "planned",
+          "track": "u-audits",
+          "status": "landed",
+          "commit": "5b6c45d",
           "also": [],
-          "brief": "Read-only UI audit of the admin app in a browser (the Tailscale consoles) at laptop and desktop widths; same checklist. Waits for the go-ahead (DEC-40)."
+          "brief": "Read-only runtime audit of the admin app at web widths 1280, 1440, 1920 (DEC-47, DEC-56); same checklist and inventory. plans/ui-overhaul/audit-admin-web.md.",
+          "paths": [
+            "plans/ui-overhaul/audit-admin-web.md"
+          ],
+          "landedAt": "2026-11-16T13:13:34.011Z"
+        },
+        {
+          "id": "U6-static-client",
+          "track": "u-static-client",
+          "status": "landed",
+          "commit": "8d6c020",
+          "also": [],
+          "brief": "Code-side consistency inventory of the client app for every route: navigation and back controls, page shells and headers, actions, forms, states, money and date display, design-system use; phone versus web layout code. Docs only: plans/ui-overhaul/consistency-client.md (DEC-47, DEC-56).",
+          "paths": [
+            "plans/ui-overhaul/consistency-client.md"
+          ],
+          "landedAt": "2026-11-16T13:15:03.649Z"
+        },
+        {
+          "id": "U7-static-admin",
+          "track": "u-static-admin",
+          "status": "landed",
+          "commit": "02985f9",
+          "also": [],
+          "brief": "Code-side consistency inventory of the admin app for every route: navigation and back controls, page shells and headers, actions, forms, tables, states, money and date display, design-system use; phone versus web layout code. Docs only: plans/ui-overhaul/consistency-admin.md (DEC-47, DEC-56).",
+          "paths": [
+            "plans/ui-overhaul/consistency-admin.md"
+          ],
+          "landedAt": "2026-11-16T13:16:43.698Z"
         },
         {
           "id": "U5-overhaul-plan",
-          "track": "main",
-          "status": "planned",
-          "also": [],
-          "brief": "From the four audits, a fix and implementation plan per surface for the maintainer to approve; then lanes per surface."
+          "track": "u-plan",
+          "status": "landed",
+          "commit": "ae90152",
+          "also": [
+            "7d60d6e"
+          ],
+          "brief": "From the six audits (U1 to U4, U6, U7): move them to docs/ui-overhaul/ (DEC-60 Q4), write docs/ui-overhaul/plan.md with the fix plan per surface (client phone first, DEC-56), shared foundations and fix-first defects, lanes and order, folding in the overlapping carried LOWs (M13), the maintainer's questions with recommendations; one tally finding per audit and one per real defect (DEC-60). For the maintainer's approval; no source change.",
+          "paths": [
+            "docs/ui-overhaul",
+            "plans/ui-overhaul"
+          ],
+          "landedAt": "2026-11-16T13:37:24.348Z"
         }
       ]
     },
@@ -1564,10 +1629,66 @@
       "tasks": [
         {
           "id": "X1-sip-early-exit",
+          "track": "i-sip-early-exit",
+          "status": "landed",
+          "commit": "d62caa4",
+          "also": [
+            "0c91426",
+            "32332e0",
+            "5826ad4",
+            "9799eb9",
+            "ee53326"
+          ],
+          "brief": "DEC-41 with DEC-43, DEC-44, DEC-54, DEC-55: one admin command closes an active admin SIP early, withdraws the holding's full current value with a pending payout, cancels a scheduled maturity, notifies in app and by email; Early exit and Closed early labels; no undo; erasure coverage; migration 073 after 072, template sip_early_exit.",
+          "deferred": [
+            {
+              "what": "The SIP schedule editor's own Done button can unmount it while a write is held and drop the Idempotency-Key (pre-existing; review-14 N3)",
+              "to": "M13-carried:carried-lows"
+            }
+          ],
+          "landedAt": "2026-11-16T21:18:42.174Z"
+        }
+      ]
+    },
+    {
+      "id": "M18-docs-cleanup",
+      "stage": "build",
+      "group": "admin-improvements",
+      "name": "Docs cleanup (DEC-60)",
+      "track": "all",
+      "weight": 2,
+      "tasks": [
+        {
+          "id": "D1-docs-guides",
+          "track": "d-docs-guides",
+          "status": "landed",
+          "commit": "a0b5e69",
+          "also": [
+            "a084a2e"
+          ],
+          "brief": "DEC-60: fix the stale lines in release_manager/README.md, release_manager/OPERATOR_MANUAL_STEPS.md, the stack guides (PROD_GUIDE, MS_GUIDE, DEV_GUIDE) and WORKFLOW.md per the docs-cleanup report; replace PRODUCT.md with a short brief for this app and archive the old text (it describes beonedge.in). Not README.md, DEPLOY.md, client-erasure.md or plans/.",
+          "paths": [
+            "release_manager/README.md",
+            "release_manager/OPERATOR_MANUAL_STEPS.md",
+            "release_manager/stacks",
+            "WORKFLOW.md",
+            "PRODUCT.md",
+            "release_manager/docs/Completed"
+          ],
+          "deferred": [
+            {
+              "what": "Items found outside the brief: prometheus.yml probes for admin, dev-admin and monitor hostnames with no nginx config; monitor.beonedge.in DNS and certbot steps; Grafana described as publicly proxied; stale BOE_APP/ and wt/* references (finding-29)",
+              "to": "M18-docs-cleanup:D2-docs-after-lanes"
+            }
+          ],
+          "landedAt": "2026-11-16T13:11:35.550Z"
+        },
+        {
+          "id": "D2-docs-after-lanes",
           "track": "main",
           "status": "planned",
           "also": [],
-          "brief": "DEC-41 (next build, not started; do not begin without the maintainer's go-ahead): one admin action that closes an admin-tracked SIP before its tenure, records the money returned as an early exit (not a maturity), cancels a maturity date on that holding, in one transaction, shown as an early closure to admin and client. Settle first: client notification, amount below current value, undo, statements and investor record. AutoPay and gateway plans stay parked (DEC-14)."
+          "brief": "DEC-60, after the lanes land: client-erasure.md status line; archive the four UI briefs, existing-client-impl/ and the previous plan with link updates in README, DEPLOY and the plan; README current-documents and the tally line; RULES.md edits for decisions in tally alone and docs/<programme>/; reword tally rule-48."
         }
       ]
     }
@@ -1668,6 +1789,22 @@
     {
       "commit": "411eadd",
       "note": "Plan: Phase I go-ahead (DEC-42) for nominee requests and SIP early exit as two lanes, DEC-43 to DEC-45, open defaults Q-038 to Q-044, lane migrations 072/073 and template keys; documentation only."
+    },
+    {
+      "commit": "a842496",
+      "note": "Plan: DEC-46 to DEC-48, independent work beside Phase I (carried LOWs after Phase I, UI audits now, Node 24 lane held until the maintainer says land); documentation only."
+    },
+    {
+      "commit": "d4c817e",
+      "note": "Plan: the maintainer's answers taken as recommended, DEC-49 to DEC-58 (Q-038 to Q-044, UI widths and order, Node 24 landing, G11 timing, earlier defaults kept); documentation only."
+    },
+    {
+      "commit": "25a195a",
+      "note": "Docs cleanup pass 1 (DEC-60): CLAUDE.md trimmed to pointers and tracked, paths.json handoff archived, CAPACITOR_CONFIG and migration-071 status fixed, plan records DEC-59, DEC-60 and Q-013 as Q-45; documentation only."
+    },
+    {
+      "commit": "948bda3",
+      "note": "Plan: Phase I close (nominee requests 072, SIP early exit 073, reviews, rollback limits, release notes), DEC-61 and DEC-62 rows, Phase I decisions marked built; documentation only."
     }
   ]
 }

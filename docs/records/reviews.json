@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "nextId": 6,
+  "nextId": 17,
   "reviews": [
     {
       "id": "review-1",
@@ -113,6 +113,231 @@
         "agent": "claude-opus-5-5 coordinator"
       },
       "at": "2026-11-15T08:03:29.935Z"
+    },
+    {
+      "id": "review-6",
+      "milestone": "M15-nominee-requests",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "commit": "0fce13c",
+      "reviewer": "claude-pro (opus, xhigh), independent of the builder",
+      "verdict": "fix",
+      "blocking": 2,
+      "findings": {
+        "medium": 2,
+        "low": 4
+      },
+      "summary": "Land after fixes. M1: the decline reason is not in the email although DEC-51 says it is, and the admin copy claims it is. M2: after an images-only rollback, v0.16.2 cannot erase a client with a nominee request (FK restrict) and cannot scrub requested names; record it in the handoff and the erasure doc's rollback section. Lows: the dead nominee field in the decision response, the reason surviving in the decision receipt, queue paging across rank changes, a stray blank line. Compatibility, authorization, concurrency, password handling, erasure and migration 072 checked clean.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-nominee-requests.out.md",
+        "sha256": "10d6e36b3ad94dd4bc5c164c7b2792d8ae604e85aced2cbddfeddb7a45468421",
+        "bytes": 11548
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-16T12:52:33.164Z"
+    },
+    {
+      "id": "review-7",
+      "milestone": "M17-sip-early-exit",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "commit": "20e3161",
+      "reviewer": "claude-pro (opus, xhigh), independent of the builder",
+      "verdict": "fix",
+      "blocking": 2,
+      "findings": {
+        "high": 1,
+        "medium": 1,
+        "low": 4
+      },
+      "summary": "Land after fixes. H1: early-exit payouts are withdrawal_operations rows with maturity_id NULL; on an images-only rollback v0.16.2's admin app rejects that client's payout list and lets an early-closed schedule be reopened; needs a maintainer decision accepting it with a rollback note, or a separate payout table. M1: after success the panel's figures refetch to zero beside the success alert. Lows: other rows' actions drop the held key while the outcome is unknown; no refusal for principal below zero (500 at the CHECK); the preview takes FOR UPDATE locks; loss-case copy says the holding goes to zero while invested stays. Money split, idempotency, atomicity, maturity behaviour, permissions, erasure and 073 checked clean.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-sip-early-exit.out.md",
+        "sha256": "83670a83fdd8335abdcfd7c5c9c9e98843a50b3cb0d3cbe57b8b343ba8ee6b92",
+        "bytes": 11404
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-16T12:52:33.525Z"
+    },
+    {
+      "id": "review-8",
+      "milestone": "M8-phase-e",
+      "task": "E3-node24-build",
+      "track": "e-node24",
+      "commit": "12a023f",
+      "reviewer": "claude-pro (opus, xhigh), independent of the builder",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "medium": 1,
+        "low": 4
+      },
+      "summary": "No code defects; land when DEC-57 allows. M1 is a landing step, not code: tally commands.test still runs tools/node22-container, which engine-strict refuses after 12a023f, so the config must switch to tools/node24-container in the same landing with nothing landing between. Lows: plan, howto-2 and CLAUDE.md still name Node 22 as the main check; the handoff overstates MaskedEmail's reach (it has no consumer); the frontend image uses the base image's npm; an unreachable empty-label check. Decoder, hostile input, pins, engines, CI, lockfiles, check container and rollback checked clean.",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-node24.out.md",
+        "sha256": "31ad55e90e926e5f3436926e452a259214c3ba7e52b9ed89d94bcbc6c71f115f",
+        "bytes": 8994
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-16T13:02:42.800Z"
+    },
+    {
+      "id": "review-9",
+      "milestone": "M18-docs-cleanup",
+      "task": "D1-docs-guides",
+      "track": "d-docs-guides",
+      "commit": "a0b5e69",
+      "reviewer": "claude-opus-5-5 coordinator (not the builder; claude-pro built it)",
+      "verdict": "land",
+      "blocking": 0,
+      "summary": "Docs only. Read both commits' diffs and spot-checked three claims against source: Prometheus scrapes the guarded /metrics (prometheus.yml), dev and prod APKs carry different app ids so they co-install (emu/boe_update.sh:190-192), and /api/health/ allows only loopback (app.beonedge.in.conf:150-153). The PRODUCT.md archive keeps the old text unchanged under one dated line. No file a running lane edits is touched. Out-of-brief items recorded as finding-29.",
+      "by": {
+        "track": "d-docs-guides",
+        "agent": "claude-opus-5-5 coordinator (landing)"
+      },
+      "at": "2026-11-16T13:07:52.596Z"
+    },
+    {
+      "id": "review-10",
+      "milestone": "M16-ui-overhaul",
+      "task": "U1-audit-client-mobile",
+      "track": "u-audits",
+      "commit": "c5fe81e",
+      "reviewer": "claude-opus-5-5 coordinator (not the auditor)",
+      "verdict": "land",
+      "blocking": 0,
+      "summary": "Docs-only audit (U1 to U4 in one commit, 112 findings). Spot-checked two high findings in source: ClientRoutes rebuilds the router each render and buildRouter makes new lazy screens per call (the Home and Profile remount on a failing read, UCM-01/UCW-01), and the datalist recipe's fixed 14rem label column from lg (UAW-01). Back-control and title findings agree with the independent code inventories (CC, CA). Screenshots stay out of git.",
+      "by": {
+        "track": "u-audits",
+        "agent": "claude-opus-5-5 coordinator (landing)"
+      },
+      "at": "2026-11-16T13:10:32.876Z"
+    },
+    {
+      "id": "review-11",
+      "milestone": "M16-ui-overhaul",
+      "task": "U6-static-client",
+      "track": "u-static-client",
+      "commit": "e236093",
+      "reviewer": "claude-opus-5-5 coordinator (not the auditor)",
+      "verdict": "land",
+      "blocking": 0,
+      "summary": "Docs-only code inventory of the client app (35 routes, 55 findings). Spot-checked the high finding CC-01 in source: ClientFrame.tsx navigates to the parent pattern literally, and clientRoutes.ts:109 gives /funds/:fundId as the parent of the invest pages. Its back-control and money findings agree with the runtime audit (UCM, UCW).",
+      "by": {
+        "track": "u-static-client",
+        "agent": "claude-opus-5-5 coordinator (landing)"
+      },
+      "at": "2026-11-16T13:10:33.201Z"
+    },
+    {
+      "id": "review-12",
+      "milestone": "M16-ui-overhaul",
+      "task": "U7-static-admin",
+      "track": "u-static-admin",
+      "commit": "6b7fcb7",
+      "reviewer": "claude-opus-5-5 coordinator (not the auditor)",
+      "verdict": "land",
+      "blocking": 0,
+      "summary": "Docs-only code inventory of the admin app (46 routes, 47 findings, 8 high). Its CA-01 (no admin back control) and CA-11 (tables scroll sideways at 390 px) agree with the independent runtime audit (UAM, UAW). The high write-safety findings (CA-02 to CA-05: unknown outcomes shown as failures, new idempotency keys on retry, held writes lost on close, unconfirmed irreversible actions) go to the U5 plan for verification and fixing.",
+      "by": {
+        "track": "u-static-admin",
+        "agent": "claude-opus-5-5 coordinator (landing)"
+      },
+      "at": "2026-11-16T13:10:33.503Z"
+    },
+    {
+      "id": "review-13",
+      "milestone": "M15-nominee-requests",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "commit": "0770454",
+      "reviewer": "claude-pro (opus, xhigh), independent of the builder",
+      "verdict": "fix",
+      "blocking": 1,
+      "findings": {
+        "medium": 1,
+        "low": 4
+      },
+      "summary": "Follow-up of 0770454. Closed: the reason in the email (DEC-51), the dead nominee field (now read), the receipt line, queue paging (HMAC-bound, old cursors answered CURSOR_INVALID), the nit. New blocking M1 from 73b91e4: the decision response nests {userId, nominee:{name, relation}}, and the erasure scrubber replaces name and relation only at the top of a nominee object, so the admin decision receipt keeps the nominee's name permanently; the new doc text says the opposite. Recommended: drop nominee from the decision response, contract, generated exports and setQueryData, then correct client-erasure.md. Lows: rollback paragraph wording, phone replacement wording, the erasure paging residual, commit-body precision.",
+      "follows": "review-6",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-nominee-requests-2.out.md",
+        "sha256": "44a37e7544bcf8527dcaa09e4a34d04e6756d941ec32c3d6468b8d18f7d05810",
+        "bytes": 9777
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-16T13:16:55.638Z"
+    },
+    {
+      "id": "review-14",
+      "milestone": "M17-sip-early-exit",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "commit": "e59d7bd",
+      "reviewer": "claude-pro (opus, xhigh), independent of the builder",
+      "verdict": "land",
+      "blocking": 0,
+      "findings": {
+        "low": 3,
+        "info": 1
+      },
+      "summary": "Follow-up of e3e81f4 and e59d7bd: land. F1 accepted (DEC-59) with the DEPLOY note accurate against v0.16.2; F2, F3, F4 and F6 closed; F5 deferred with a sound reason; no regressions. Lows: the note understated that the whole payout list of that client fails on v0.16.2, and omitted that a queued early-exit email is dead-lettered by the v0.16.2 worker (both fixed in docs commit e50c496); the SIP schedule editor's own Done can still drop a held key (pre-existing, carried to the UI write-safety lane). Info: DEC-43 says the holding goes to zero, but in a loss the uncovered invested amount stays; a maintainer question.",
+      "follows": "review-7",
+      "report": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/main/delegate/r-sip-early-exit-2.out.md",
+        "sha256": "3f1ecff200118646511645111640a1085a5474c2aeedf670abd08e2d6106eedd",
+        "bytes": 8792
+      },
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-16T13:19:09.555Z"
+    },
+    {
+      "id": "review-15",
+      "milestone": "M15-nominee-requests",
+      "task": "N1-nominee-requests",
+      "track": "i-nominee-requests",
+      "commit": "a5b8313",
+      "reviewer": "claude-opus-5-5 coordinator (not the builder or fixer)",
+      "verdict": "land",
+      "blocking": 0,
+      "summary": "Follow-up of a5b8313 against review-13's one blocking finding: the decision response is now {request} only (route, domain result, contract AdminNomineeDecisionData, regenerated OpenAPI), the setQueryData that read the nominee is removed, so the admin receipt holds only request.nominee, which both releases scrub. The integration test asserts the response shape and checks the nominee version in the database; its red control failed and was reverted. client-erasure.md wording corrected (G2 scope, the stored +91 phone form, receipt contents). Checks recorded green: contracts 98, backend 1204, integration 578, frontend 336, both builds.",
+      "follows": "review-13",
+      "by": {
+        "track": "i-nominee-requests",
+        "agent": "claude-opus-5-5 coordinator (landing)"
+      },
+      "at": "2026-11-16T13:25:00.587Z"
+    },
+    {
+      "id": "review-16",
+      "milestone": "M16-ui-overhaul",
+      "task": "U5-overhaul-plan",
+      "track": "u-plan",
+      "commit": "3d98a2e",
+      "reviewer": "claude-opus-5-5 coordinator (not the planner)",
+      "verdict": "land",
+      "blocking": 0,
+      "summary": "Docs only, proposed and not approved. The six audits moved with git mv to docs/ui-overhaul/ (DEC-60). plan.md (187 lines) assigns all 214 findings by id; read its status, inputs and fix-first table: FX-1 to FX-11 each cite file:line evidence, which matches what the coordinator re-read for FX-1 to FX-3, and each says how it reaches parked payment screens. Foundations, lanes per surface, carried LOWs and seven maintainer questions follow. Tally findings 30 to 46 added.",
+      "by": {
+        "track": "u-plan",
+        "agent": "claude-opus-5-5 coordinator (landing)"
+      },
+      "at": "2026-11-16T13:34:05.227Z"
     }
   ]
 }

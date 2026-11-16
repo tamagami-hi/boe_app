@@ -1,0 +1,1128 @@
+{
+  "schema": 1,
+  "milestone": "M17-sip-early-exit",
+  "records": [
+    {
+      "id": "6b96eeed-03bf-4c3c-a8bd-55d42f675899",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/sipEarlyExit.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T11:48:03Z",
+      "seconds": 6,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T114803Z-748845-red.log",
+        "sha256": "28a3464b1529f4467105b0291f1ac5ca393a4c34c8d539a9d6a91475e4c06d4e",
+        "bytes": 2189
+      },
+      "summary": {
+        "passed": 4,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "controlled negative: refusal-rules disabled"
+    },
+    {
+      "id": "ff6de42a-c20a-4d33-8a71-3ea1bc01859b",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/sipEarlyExit.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T11:48:10Z",
+      "seconds": 6,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T114810Z-751324-red.log",
+        "sha256": "fbdae4ae0361e5fcc75abe6de17d9c2ae2e939a54769777ef8d12e13f3388f6c",
+        "bytes": 4238
+      },
+      "summary": {
+        "passed": 4,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "controlled negative: value-check disabled"
+    },
+    {
+      "id": "0766ea61-4a93-4a5a-8d15-cae4c65860c9",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/sipEarlyExit.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T11:48:16Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T114816Z-755553-red.log",
+        "sha256": "75ff15f6e0fc9ae990945dd3e9b8777dc79a7f408570ae1ed311b8945157d305",
+        "bytes": 2836
+      },
+      "summary": {
+        "passed": 4,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "controlled negative: payout-filter disabled"
+    },
+    {
+      "id": "e581258b-96b2-4c49-a77f-4b3df6a389c1",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/sipEarlyExit.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T11:48:23Z",
+      "seconds": 6,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T114823Z-757282-red.log",
+        "sha256": "7a2fba67beb115c96df0f83c43d024c83d024cce40d84158282247af477d27d9",
+        "bytes": 3242
+      },
+      "summary": {
+        "passed": 4,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "controlled negative: reopen-guard disabled"
+    },
+    {
+      "id": "14abdf49-8db8-43b2-875d-26ab9eeae4e7",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/sipEarlyExit.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T11:48:29Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T114829Z-759400-red.log",
+        "sha256": "459d499514458417d0c7f1e92cca7c91e172d71cdba37aa019cc1922b37b43a8",
+        "bytes": 3534
+      },
+      "summary": {
+        "passed": 3,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "controlled negative: one-transaction disabled"
+    },
+    {
+      "id": "7319ac25-297e-4ec9-8716-ddd16ec1dab6",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/sipEarlyExit.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T11:48:36Z",
+      "seconds": 12,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T114836Z-761344-red.log",
+        "sha256": "4aeb792f2ecd766890f358cd55298d9545af777180c540c90d0772207f5f975e",
+        "bytes": 2117
+      },
+      "summary": {
+        "passed": 4,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "controlled negative: write-permission disabled"
+    },
+    {
+      "id": "77d5d42f-ebcf-461a-83be-e5e891d0607d",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/releaseUpgrade.integration.test.ts test/integration/clientErasureCoverage.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T11:48:58Z",
+      "seconds": 5,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T114858Z-764897-red.log",
+        "sha256": "c1b5a9d463c02b276d61c3632c9c4805c610ae8fe4659aad7bb0c1fb0ed5e83f",
+        "bytes": 5214
+      },
+      "summary": {
+        "passed": 5,
+        "failed": 3,
+        "ignored": 0
+      },
+      "note": "controlled negative: migration lists without 073 and sip_early_exits"
+    },
+    {
+      "id": "a403cd48-5801-4174-b197-12a320862882",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T11:49:45Z",
+      "seconds": 19,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T114945Z-774823-green.log",
+        "sha256": "91c1d1108fe0783de50549aa0b7e6bd410814e2335c2f822caea1e9be761c3a7",
+        "bytes": 68867
+      },
+      "summary": {
+        "passed": 98,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "contracts npm run check"
+    },
+    {
+      "id": "6bdd8cac-91dc-48df-89c0-964b89f54668",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T11:50:13Z",
+      "seconds": 24,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T115013Z-779610-green.log",
+        "sha256": "f9bfe724374124de33240d81c3ca92b78a68bf095d6a975f5d46c08d5e0b307b",
+        "bytes": 7690
+      },
+      "summary": {
+        "passed": 98,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "contracts npm run check"
+    },
+    {
+      "id": "28559cfe-204f-47a3-bf3c-eac99f145013",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T11:50:42Z",
+      "seconds": 32,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T115042Z-783805-green.log",
+        "sha256": "0107c5b0698b08b9b40dbd720aa97c4dda6a6082ed6f6e63ee8b7b2436ea567f",
+        "bytes": 10487
+      },
+      "summary": {
+        "passed": 1203,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "backend npm run check"
+    },
+    {
+      "id": "0e197c63-e1f7-4262-8154-ba7bda85cc16",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T12:14:17Z",
+      "seconds": 41,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T121417Z-1183270-green.log",
+        "sha256": "223b8b37f3c6bd54da6cbaca13f2c8875b974464d6e737f64087268b62ddb18b",
+        "bytes": 19278
+      },
+      "summary": {
+        "passed": 575,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "backend npm run test:integration (coverage off, rule-52 form)"
+    },
+    {
+      "id": "02646f45-85a6-47e3-ae7e-ec4c35c02b29",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T12:14:17Z",
+      "seconds": 52,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T121417Z-1183767-green.log",
+        "sha256": "7cda8c9d4a857a315c20b58d07dd9588a5b9bd74864fb9381b5384262d0f001c",
+        "bytes": 7789
+      },
+      "summary": {
+        "passed": 98,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "contracts npm run check"
+    },
+    {
+      "id": "14475c1e-d610-4d58-9ae4-f6e714e9e673",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/sipEarlyExit.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T12:16:37Z",
+      "seconds": 8,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T121637Z-1291435-red.log",
+        "sha256": "d6e3417b743dabc0131cb2dd87fd54cad50f8944558c6510b5d54f1c4e2c33ec",
+        "bytes": 2192
+      },
+      "summary": {
+        "passed": 4,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "controlled negative: early-exit refusal rules removed (refuseSipEarlyExit call deleted)"
+    },
+    {
+      "id": "5c97348b-9024-42ca-8525-93384abf41b6",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/sipEarlyExit.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T12:16:45Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T121645Z-1298728-red.log",
+        "sha256": "0c3e958b91fb0a00f015beba92a92ca41bbbcc80416f372673a658a260855475",
+        "bytes": 4238
+      },
+      "summary": {
+        "passed": 4,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "controlled negative: expected-value check removed from the early exit"
+    },
+    {
+      "id": "47bab4ac-127a-486d-a5fe-eac823d88864",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/sipEarlyExit.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T12:16:52Z",
+      "seconds": 8,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T121652Z-1304693-red.log",
+        "sha256": "a8fd4c97cd327b6d41f027988b7d3bcd7c86a55e75cf22199080a3b07386bb90",
+        "bytes": 2836
+      },
+      "summary": {
+        "passed": 4,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "controlled negative: maturity payout list no longer hides early-exit payouts (maturity_id filter removed)"
+    },
+    {
+      "id": "a3284b4d-ef85-48c4-aed8-1de58622716d",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/sipEarlyExit.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T12:17:00Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T121700Z-1309176-red.log",
+        "sha256": "484adac31dc57ff5d418e4004d2194a61a98d27980672c196a2bb24bffd161ea",
+        "bytes": 3242
+      },
+      "summary": {
+        "passed": 4,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "controlled negative: reopening a schedule closed early is no longer refused"
+    },
+    {
+      "id": "e68edd31-ffec-4dc6-9722-ab66b10f17fe",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/sipEarlyExit.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T12:17:17Z",
+      "seconds": 7,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T121717Z-1317940-red.log",
+        "sha256": "fde6a3d215d2760e15b0461f4cecb59287f8d17458287b7d3dcf87bf40e6cfa6",
+        "bytes": 3535
+      },
+      "summary": {
+        "passed": 3,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "controlled negative: early exit run outside its transaction (each statement autocommits)"
+    },
+    {
+      "id": "d0771cee-1dfa-48bf-8a8b-1ef42e703b58",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/sipEarlyExit.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T12:17:24Z",
+      "seconds": 8,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T121724Z-1322352-red.log",
+        "sha256": "ffe736aee725158619007b706bfe01de18ff887adea127c6a7c5799850a4fe56",
+        "bytes": 2114
+      },
+      "summary": {
+        "passed": 4,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "controlled negative: write permission check removed from the early-exit command"
+    },
+    {
+      "id": "557ff4b1-1525-4e39-87a1-90ae0a226f44",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/releaseUpgrade.integration.test.ts test/integration/clientErasureCoverage.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T12:17:32Z",
+      "seconds": 6,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T121732Z-1327235-red.log",
+        "sha256": "0a4808d278f6570ae6e1911468d1da4dcc938ffea7be8b3c6333da3b9443c5c0",
+        "bytes": 3813
+      },
+      "summary": {
+        "passed": 6,
+        "failed": 2,
+        "ignored": 0
+      },
+      "note": "controlled negative: 073 left out of the release-upgrade list and sip_early_exits left unclassified for erasure"
+    },
+    {
+      "id": "f7fd96f6-3de4-407c-a5ed-b0f31b9aa618",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npx tsx scripts/with-container-runtime.ts npx vitest run --config vitest.integration.config.ts --coverage.enabled=false test/integration/sipEarlyExit.integration.test.ts test/integration/maturitySettlement.integration.test.ts test/integration/maturitySchedules.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T12:17:38Z",
+      "seconds": 8,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T121738Z-1331519-red.log",
+        "sha256": "507672a10a8bbf06056cf892e0380ec0db5adbd5c207226c0a3dc3a8671d5575",
+        "bytes": 6132
+      },
+      "summary": {
+        "passed": 22,
+        "failed": 3,
+        "ignored": 0
+      },
+      "note": "controlled negative: shared withdrawal split drops the growth portion (everything taken as principal)"
+    },
+    {
+      "id": "106dda42-93e0-427f-8c3d-0de4ac691532",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T12:18:00Z",
+      "seconds": 57,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T121800Z-1343296-green.log",
+        "sha256": "84dc2369cc1968bda64086bef4348f81e75b2af3eb9075ba8ed655385b760c37",
+        "bytes": 16641
+      },
+      "summary": {
+        "passed": 1204,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "backend npm run check"
+    },
+    {
+      "id": "8b9bf5a4-5654-4752-8796-3881ab1eaade",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T12:18:00Z",
+      "seconds": 55,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T121800Z-1343791-green.log",
+        "sha256": "521b672d8b7598b8e742bc0bfdbe8b50e262841257880fce85f3af5c0167045d",
+        "bytes": 6484
+      },
+      "summary": {
+        "passed": 336,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend npm run check"
+    },
+    {
+      "id": "b50436e0-0dd2-4760-8437-8d7bb8345a00",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T12:19:09Z",
+      "seconds": 76,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T121909Z-1381886-green.log",
+        "sha256": "8f16e931c43628ab1417ff0c91579b0ac8f91602e0bdb37b25c5398af0983a38",
+        "bytes": 6626
+      },
+      "summary": {
+        "passed": 336,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend npm run check (final state)"
+    },
+    {
+      "id": "e288f8d2-8849-41a9-8fde-3f16dccfdd96",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run test:integration -- --coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T12:19:10Z",
+      "seconds": 45,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T121910Z-1382422-green.log",
+        "sha256": "de1861bf17123c802955bfa161c92e9c9be24158ed6fd8432606130f1affcf87",
+        "bytes": 20801
+      },
+      "summary": {
+        "passed": 576,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "backend npm run test:integration (coverage off, final state)"
+    },
+    {
+      "id": "760a8f39-9bd8-4d0e-9e63-3d5999cb041b",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T12:20:25Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T122025Z-1467067-green.log",
+        "sha256": "7933920066e6af19b14aa1caae577550b245e081ee6d767af1ce2d30a7bbb704",
+        "bytes": 2133
+      },
+      "note": "frontend npm run build:client (final state)"
+    },
+    {
+      "id": "a0513e32-4b53-445d-b863-c3c207257972",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "runner",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm run build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T12:20:31Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T122031Z-1469593-green.log",
+        "sha256": "7102b0ee2257e05b17087b82630cd4e4ac95e4d83a4cb86610cba493c0f33ce4",
+        "bytes": 2361
+      },
+      "note": "frontend npm run build:admin (final state)"
+    },
+    {
+      "id": "0b1f5442-3ea5-4f72-bd3c-59ffa21c8145",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "claude-opus-5-5 fixer i-sip-early-exit",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/sipEarlyExit.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T13:01:08Z",
+      "seconds": 9,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T130108Z-2218850-red.log",
+        "sha256": "6288e7c747d207cc342b1b50b369d559eca445699ccd80d807b1959c219e5cd2",
+        "bytes": 2831
+      },
+      "summary": {
+        "passed": 4,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "control F4a: principal_below_zero refusal removed; the below-zero exit must fail (500 at the CHECK, preview refusal null)"
+    },
+    {
+      "id": "a3577518-8eca-4cec-95ea-15fb25e4dc14",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "claude-opus-5-5 fixer i-sip-early-exit",
+      "kind": "red",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false",
+        "test/integration/sipEarlyExit.integration.test.ts"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T13:01:25Z",
+      "seconds": 11,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T130125Z-2226443-red.log",
+        "sha256": "a02a4cdeaccaa3f2621cf037c62c1fc6598b1192d8abb7ccd43885d8565e0dbc",
+        "bytes": 2830
+      },
+      "summary": {
+        "passed": 4,
+        "failed": 1,
+        "ignored": 0
+      },
+      "note": "control F4b: already_closed_early refusal removed; a second exit on a reopened schedule must fail (500 at sip_early_exits_schedule_uk)"
+    },
+    {
+      "id": "45891735-c9e2-420a-b8ce-0c8940d43512",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "claude-opus-5-5 fixer i-sip-early-exit",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T13:01:43Z",
+      "seconds": 47,
+      "exit": 1,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T130143Z-2233657-green.log",
+        "sha256": "4ceed56b1e81bf103eb4fa7c5fc7faf83fdd0c736391d5d1ee68aabf516ae4f5",
+        "bytes": 8918
+      },
+      "summary": {
+        "passed": 98,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "contracts check after the refusal-code enum gained two values"
+    },
+    {
+      "id": "f13656cc-64f9-4040-ad1b-66796f0b9449",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "claude-opus-5-5 fixer i-sip-early-exit",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T13:02:40Z",
+      "seconds": 36,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T130240Z-2288685-green.log",
+        "sha256": "718bacf79436fc20fbb22a15e855342a679ff04199555cd2e72d96d9890dbe67",
+        "bytes": 7787
+      },
+      "summary": {
+        "passed": 98,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "contracts check with the regenerated OpenAPI staged"
+    },
+    {
+      "id": "83857b4b-fe48-46c9-bb59-d2eb3b06b86c",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "claude-opus-5-5 fixer i-sip-early-exit",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T13:06:27Z",
+      "seconds": 55,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T130627Z-2315114-green.log",
+        "sha256": "c07dea0c42564925ea50811637ca1c4f93a2ac5433eb46e2b670484d90c24f54",
+        "bytes": 16288
+      },
+      "summary": {
+        "passed": 1204,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "backend check after the F4 refusals"
+    },
+    {
+      "id": "3d51ad28-297b-43e3-82c3-de683da01cc8",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "claude-opus-5-5 fixer i-sip-early-exit",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T13:06:28Z",
+      "seconds": 53,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T130628Z-2315715-green.log",
+        "sha256": "50310f62b8f96a13804e703bfa2e3d4d43f4c7b3e336e99adc19c19b6ed22cb7",
+        "bytes": 6620
+      },
+      "summary": {
+        "passed": 336,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "frontend check after F2, F3 and F6"
+    },
+    {
+      "id": "123395b8-38c5-470c-9a4d-8c8ca9ddf00b",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "claude-opus-5-5 fixer i-sip-early-exit",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T13:07:26Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T130726Z-2336045-green.log",
+        "sha256": "0c9176611f79ebe798ba632e2f6affca76212fd6c247f1fe8341e9a9e6d7c599",
+        "bytes": 2133
+      },
+      "note": "build:client after the fix"
+    },
+    {
+      "id": "eb1ca945-f76a-4fa3-9745-9d18191a0aa8",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "claude-opus-5-5 fixer i-sip-early-exit",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T13:07:32Z",
+      "seconds": 6,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T130732Z-2339265-green.log",
+        "sha256": "1c80a5cbc4f8f1e454133c03738abae32c75246b23a5b370719d8a809c602e5a",
+        "bytes": 2361
+      },
+      "note": "build:admin after the fix"
+    },
+    {
+      "id": "8875d677-24b3-42f3-9999-18bac9ddb998",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "claude-opus-5-5 fixer i-sip-early-exit",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T13:07:45Z",
+      "seconds": 43,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T130745Z-2344752-green.log",
+        "sha256": "230a37e14c57505cb57acf6eb2018f8aea09967976c0eec671bdbe825dd8c42d",
+        "bytes": 19498
+      },
+      "summary": {
+        "passed": 576,
+        "failed": 0,
+        "ignored": 0
+      },
+      "note": "full integration suite after the F4 refusals"
+    },
+    {
+      "id": "d4af1f3e-9505-42d4-b936-ee99ca2e1750",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "claude-opus-5-5 rebaser i-sip-early-exit",
+      "kind": "green",
+      "command": [
+        "../../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T13:36:47Z",
+      "seconds": 34,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T133647Z-2757266-green.log",
+        "sha256": "633a12599490afc374adfe31945db3b27b84690ac34ec76654141bfea7870b4a",
+        "bytes": 8489
+      },
+      "summary": {
+        "passed": 98,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "id": "81242acc-f4b6-4c3b-ae33-bd56cfae4771",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "claude-opus-5-5 rebaser i-sip-early-exit",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T13:37:30Z",
+      "seconds": 52,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T133730Z-2763328-green.log",
+        "sha256": "a5b16ef7ba99ea1067bc7e9d3e914e6a95aaeb6ae9e3cf85d963f731da192372",
+        "bytes": 7241
+      },
+      "summary": {
+        "passed": 336,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "id": "f4c008b7-f76d-4e64-a651-1f3376fa7845",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "claude-opus-5-5 rebaser i-sip-early-exit",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "sh",
+        "-c",
+        "npm ci && npm run check"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T13:37:30Z",
+      "seconds": 54,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T133730Z-2762780-green.log",
+        "sha256": "df8e949458eee775f0f7da061ce5a707ebf3136c150dd5f96694b4c54334141b",
+        "bytes": 17171
+      },
+      "summary": {
+        "passed": 1204,
+        "failed": 0,
+        "ignored": 0
+      }
+    },
+    {
+      "id": "d548274a-28dd-4204-995b-ad2969055a8d",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "claude-opus-5-5 rebaser i-sip-early-exit",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:client"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T13:38:42Z",
+      "seconds": 7,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T133842Z-2774939-green.log",
+        "sha256": "070d88392ae64cb690ee9515cf81a8c0ed8d2ce3cb1ecc0fc5943e2a077a7d8e",
+        "bytes": 2133
+      }
+    },
+    {
+      "id": "783fa2f8-56aa-4cc5-9841-96c6ee084e05",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "claude-opus-5-5 rebaser i-sip-early-exit",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "build:admin"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T13:38:49Z",
+      "seconds": 13,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T133849Z-2783064-green.log",
+        "sha256": "3bcc1a18b004d939747f4725de1e5a5e7c1a137484d2e69f2dc82d4c395dcd7c",
+        "bytes": 2361
+      }
+    },
+    {
+      "id": "f8a1d04d-a764-405f-ba98-a13a035cb1fd",
+      "task": "X1-sip-early-exit",
+      "track": "i-sip-early-exit",
+      "agent": "claude-opus-5-5 rebaser i-sip-early-exit",
+      "kind": "green",
+      "command": [
+        "../tools/node22-container/run.sh",
+        "npm",
+        "run",
+        "test:integration",
+        "--",
+        "--coverage.enabled=false"
+      ],
+      "cwd": "/home/nethunter07/PROJECTS/boe_app/.temp/worktrees/i-sip-early-exit",
+      "started": "2026-11-16T13:38:42Z",
+      "seconds": 36,
+      "exit": 0,
+      "log": {
+        "path": "/home/nethunter07/PROJECTS/boe_app/.temp/tally/logs/i-sip-early-exit/20261116T133842Z-2774372-green.log",
+        "sha256": "7b5b26fb1c63af17e001d12414fc5896ea801c8239cbbd33251712640627fc7a",
+        "bytes": 15846
+      },
+      "summary": {
+        "passed": 583,
+        "failed": 0,
+        "ignored": 0
+      }
+    }
+  ]
+}

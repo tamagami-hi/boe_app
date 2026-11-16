@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "track": "u-audits",
+  "current": {
+    "from": "claude-opus-5-5 auditor u-audits",
+    "track": "u-audits",
+    "at": "2026-11-16T13:09:10.985Z",
+    "lines": [
+      "u-audits: read-only UI audits U1-U4 (DEC-40, DEC-45, DEC-47) at a842496. Commit c5fe81e on track/u-audits (docs only, not landed): plans/ui-overhaul/audit-{client-mobile,client-web,admin-mobile,admin-web}.md.",
+      "Counts: U1 client phone 30 (1 high, 11 medium, 18 low); U2 client web 24 (1/9/14); U3 admin phone 29 (0/12/17); U4 admin web 29 (1/11/17). Total 112: 3 high, 43 medium, 66 low. Shell inventory rows: 90 + 135 + 47 + 141 = 413.",
+      "Highs: UCM-01/UCW-01 Home and Profile endless skeleton + read loop (~78 req/min per endpoint) on failed reads; likely cause ClientRoutes.tsx:16-29 rebuilding the router + buildRouter.tsx:31-35 new lazy() per render. UAW-01 DetailRow lg grid (datalist.ts:3-7) collapses to 1-char column: admin Overview tile and Erase client (6,450 px page).",
+      "Tally: U1-U4 (now on track u-audits) were claimed once each after the coordinator re-planned them, one evidence record each (capture and states runs), then released. Not landed; U5 (plan) is next and is not this lane's.",
+      "Widths: client 360x800, 390x844, 768x1024, 1280x800, 1440x900; admin 390x844, 1280x800, 1440x900, 1920x1080. Chromium 1248 via Playwright 1.59.1 (root node_modules in the worktree, executablePath to ~/.cache/ms-playwright/chromium-1248).",
+      "Scratch (not committed): .temp/u-audits/ in the worktree: notes.md (setup + restart steps), scripts/, results/*.json, shots/ (all screenshots), logs/ (runs, probes.txt), env/ (scratch backend.env, generated keys, creds.json with local test passwords; never print).",
+      "Restart: docker run the two lines from test_e2e/local-stack.sh (boe-local-pg 5433, boe-local-mail 1025/8025); in the Node 22 container run migrate.ts up, seed.ts, seedAuth.ts with --env-file=.temp/u-audits/env/backend.env; backend src/server.ts (47502), npm run dev (5174), npm run dev:admin (5175). Data was made by scripts/seedA-F.mjs + seedClientActs.mjs (reseed needed after down).",
+      "Env notes: CLIENT_WEB_APP_URL must be a bare https origin or empty; WEB_COOKIE_SECURE=false; PASSWORD_BREACH_CHECK_MODE=bypass; payments unconfigured; app config unpublished (= production until G11). Payments-off copy checked by faking GET /v1/app-config in the browser only.",
+      "Stopped at the end: backend and both dev-server containers, boe-local-pg and boe-local-mail removed; docker ps shows nothing of this lane.",
+      "Not checked: APK, Android back, native plugins; real screen reader; roles other than superadmin (DEC-36); browser zoom 200/400%; non-Chromium browsers; contrast over gradients (~60% of text skipped); print output; Phase I screens (audit when they land).",
+      "For U5: the static lanes u-static-client and u-static-admin cover the code inventory; merge with these runtime findings. Parked DEC-14 screens are listed with no proposals."
+    ]
+  },
+  "history": [
+    {
+      "from": "claude-opus-5-5 auditor u-audits",
+      "track": "u-audits",
+      "at": "2026-11-16T13:07:49.820Z",
+      "lines": [
+        "u-audits: read-only UI audits U1-U4 (DEC-40, DEC-45, DEC-47) at a842496. Commit c5fe81e on track/u-audits (docs only, not landed): plans/ui-overhaul/audit-{client-mobile,client-web,admin-mobile,admin-web}.md.",
+        "Counts: U1 client phone 30 (1 high, 11 medium, 18 low); U2 client web 24 (1/9/14); U3 admin phone 29 (0/12/17); U4 admin web 29 (1/11/17). Total 112: 3 high, 43 medium, 66 low. Shell inventory rows: 90 + 135 + 47 + 141 = 413.",
+        "Highs: UCM-01/UCW-01 Home and Profile endless skeleton + read loop (~78 req/min per endpoint) on failed reads; likely cause ClientRoutes.tsx:16-29 rebuilding the router + buildRouter.tsx:31-35 new lazy() per render. UAW-01 DetailRow lg grid (datalist.ts:3-7) collapses to 1-char column: admin Overview tile and Erase client (6,450 px page).",
+        "Task claim: tally refused task_claim/task_plan for M16-ui-overhaul U1-U4 (tasks are on track main). Note note-80 asks main to move or claim them; tasks were not claimed.",
+        "Widths: client 360x800, 390x844, 768x1024, 1280x800, 1440x900; admin 390x844, 1280x800, 1440x900, 1920x1080. Chromium 1248 via Playwright 1.59.1 (root node_modules in the worktree, executablePath to ~/.cache/ms-playwright/chromium-1248).",
+        "Scratch (not committed): .temp/u-audits/ in the worktree: notes.md (setup + restart steps), scripts/, results/*.json, shots/ (all screenshots), logs/probes.txt, env/ (scratch backend.env, generated keys, creds.json with local test passwords; never print).",
+        "Restart: docker run the two lines from test_e2e/local-stack.sh (boe-local-pg 5433, boe-local-mail 1025/8025); in the Node 22 container run migrate.ts up, seed.ts, seedAuth.ts with --env-file=.temp/u-audits/env/backend.env; backend src/server.ts (47502), npm run dev (5174), npm run dev:admin (5175). Data was made by scripts/seedA-F.mjs + seedClientActs.mjs (reseed needed after down).",
+        "Env notes: CLIENT_WEB_APP_URL must be a bare https origin or empty; WEB_COOKIE_SECURE=false; PASSWORD_BREACH_CHECK_MODE=bypass; payments unconfigured; app config unpublished (= production until G11). Payments-off copy checked by faking GET /v1/app-config in the browser only.",
+        "Stopped at the end: backend and both dev-server containers, boe-local-pg and boe-local-mail removed; docker ps shows nothing of this lane.",
+        "Not checked: APK, Android back, native plugins; real screen reader; roles other than superadmin (DEC-36); browser zoom 200/400%; non-Chromium browsers; contrast over gradients (~60% of text skipped); print output; Phase I screens (audit when they land).",
+        "For U5: the static lanes u-static-client and u-static-admin cover the code inventory; merge with these runtime findings. Parked DEC-14 screens are listed with no proposals."
+      ]
+    }
+  ]
+}

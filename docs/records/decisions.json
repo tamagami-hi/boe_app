@@ -386,10 +386,10 @@
       "group": "admin-improvements",
       "text": "2026-11-15, upcoming (not started): nominee by request. A client has at most one nominee (already true in the data model). The client can no longer set, change or remove the nominee directly; instead the client sends a nominee request with name and relation, the admin is notified, and the admin accepts it (the nominee is set) or declines it. The admin can still set or change a nominee directly from the admin panel.",
       "since": "2026-11-15",
-      "status": "Decided, not built: being built in Phase I, lane i-nominee-requests (DEC-42)",
-      "state": "decided, not built",
+      "status": "Built: Phase I lane i-nominee-requests, on main at 3b639c8",
+      "state": "built",
       "by": "operator",
-      "on": "2026-11-16T10:54:55.695Z"
+      "on": "2026-11-16T21:19:36.171Z"
     },
     {
       "id": "DEC-40",
@@ -406,40 +406,40 @@
       "group": "admin-improvements",
       "text": "2026-11-15, next build (recorded, not started): SIP early exit. When a client stops an admin-tracked SIP before its tenure, the admin closes the SIP and returns the money in one action recorded as an early closure, not a maturity, and shown so in the admin and client apps; a maturity date set on that holding is cancelled with it. Today the admin can close a schedule (client page, SIP schedules, Manage, Close the schedule) but can return money only through Mark matured plus Record withdrawal, which records it as a maturity.",
       "since": "2026-11-15",
-      "status": "Decided, not built: being built in Phase I, lane i-sip-early-exit (DEC-42)",
-      "state": "decided, not built",
+      "status": "Built: Phase I lane i-sip-early-exit, on main at d62caa4",
+      "state": "built",
       "by": "operator",
-      "on": "2026-11-16T10:54:55.966Z"
+      "on": "2026-11-16T21:19:36.422Z"
     },
     {
       "id": "DEC-42",
       "group": "admin-improvements",
       "text": "Phase I go-ahead: build nominee by request (DEC-39) and SIP early exit (DEC-41) now as two parallel lanes; start the UI overhaul (DEC-40) after they land, so its audit covers the new screens.",
       "since": "2026-11-16",
-      "status": "In force: Phase I builds M15 and M17 as two lanes; the UI overhaul follows",
-      "state": "in force",
+      "status": "Built: Phase I complete on main (3b639c8, d62caa4)",
+      "state": "built",
       "by": "operator",
-      "on": "2026-11-16T10:54:54.446Z"
+      "on": "2026-11-16T21:19:39.150Z"
     },
     {
       "id": "DEC-43",
       "group": "admin-improvements",
       "text": "An early exit returns the full current value of the client's holding in the SIP's fund. The holding goes to zero; no exit charge and no partial amount.",
       "since": "2026-11-16",
-      "status": "Decided, not built: lane i-sip-early-exit",
-      "state": "decided, not built",
+      "status": "Built: the value goes to zero; DEC-62 states the loss case",
+      "state": "built",
       "by": "operator",
-      "on": "2026-11-16T10:54:54.714Z"
+      "on": "2026-11-16T21:19:36.672Z"
     },
     {
       "id": "DEC-44",
       "group": "admin-improvements",
       "text": "The client is told in the app and by email when the admin accepts or declines their nominee request and when their SIP is closed early.",
       "since": "2026-11-16",
-      "status": "Decided, not built: both Phase I lanes",
-      "state": "decided, not built",
+      "status": "Built in both Phase I lanes; email only to active accounts",
+      "state": "built",
       "by": "operator",
-      "on": "2026-11-16T10:54:55.054Z"
+      "on": "2026-11-16T21:19:36.992Z"
     },
     {
       "id": "DEC-45",
@@ -450,6 +450,176 @@
       "state": "in force",
       "by": "operator",
       "on": "2026-11-16T10:54:55.358Z"
+    },
+    {
+      "id": "DEC-46",
+      "group": "admin-improvements",
+      "text": "Use the extra capacity (more worktrees, the claude-pro account) on independent work: the carried LOW findings (M13), the UI overhaul audits and the Node 24 upgrade (E3); anything that can conflict with Phase I waits until it lands.",
+      "since": "2026-11-16",
+      "status": "In force: independent work runs beside Phase I; what can conflict waits for Phase I to land",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-16T12:09:11.607Z"
+    },
+    {
+      "id": "DEC-47",
+      "group": "admin-improvements",
+      "text": "The UI overhaul's read-only audits start now, in parallel with Phase I, replacing DEC-42's order for the audits only. Local dev servers and a local browser are allowed; phone surfaces are checked at phone width in a browser, not an emulator. Fixes wait for the per-surface plan (U5) and its approval.",
+      "since": "2026-11-16",
+      "status": "In force: the UI audits U1 to U4 start now; Phase I screens are audited when they land",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-16T12:09:11.879Z"
+    },
+    {
+      "id": "DEC-48",
+      "group": "admin-improvements",
+      "text": "Build the Node 24 upgrade (E3) now. Landing puts Node 24 into the next release cut, so it waits on its branch for the maintainer's word; deploy timing is the maintainer's.",
+      "since": "2026-11-16",
+      "status": "Decided, not built: lane e-node24; held on its branch until the maintainer says to land",
+      "state": "decided, not built",
+      "by": "operator",
+      "on": "2026-11-16T12:09:12.132Z"
+    },
+    {
+      "id": "DEC-49",
+      "group": "admin-improvements",
+      "text": "Q-038: the client re-enters their password to send a nominee request; a wrong password refuses it and counts against the existing password-recheck limit.",
+      "since": "2026-11-16",
+      "status": "Built: lane i-nominee-requests (3b639c8)",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-16T21:19:37.238Z"
+    },
+    {
+      "id": "DEC-50",
+      "group": "admin-improvements",
+      "text": "Q-039: admins see nominee requests in an admin queue with an overview count, as support and reviews have; no email to admins.",
+      "since": "2026-11-16",
+      "status": "Built: lane i-nominee-requests (3b639c8)",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-16T21:19:37.469Z"
+    },
+    {
+      "id": "DEC-51",
+      "group": "admin-improvements",
+      "text": "Q-040: a decline may carry an optional reason, which the client sees in the app and in the email.",
+      "since": "2026-11-16",
+      "status": "Built: lane i-nominee-requests (3b639c8)",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-16T21:19:37.713Z"
+    },
+    {
+      "id": "DEC-52",
+      "group": "admin-improvements",
+      "text": "Q-041: one pending nominee request per client, which the client can withdraw while it is pending.",
+      "since": "2026-11-16",
+      "status": "Built: lane i-nominee-requests (3b639c8)",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-16T21:19:37.958Z"
+    },
+    {
+      "id": "DEC-53",
+      "group": "admin-improvements",
+      "text": "Q-042: reading the nominee stays; the direct change refuses with an existing error code released apps show as a refusal. Raising minimumSupportedVersion at the Phase I release is the maintainer's call.",
+      "since": "2026-11-16",
+      "status": "Built: lane i-nominee-requests (3b639c8)",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-16T21:19:38.192Z"
+    },
+    {
+      "id": "DEC-54",
+      "group": "admin-improvements",
+      "text": "Q-043: an early exit cannot be undone; a mistake is put right with a correction recording, both rows kept.",
+      "since": "2026-11-16",
+      "status": "Built: lane i-sip-early-exit (d62caa4)",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-16T21:19:38.427Z"
+    },
+    {
+      "id": "DEC-55",
+      "group": "admin-improvements",
+      "text": "Q-044: the payout row is labelled Early exit in activity, statements and the investor record; the SIP shows Closed early with the date; totals do not change.",
+      "since": "2026-11-16",
+      "status": "Built: lane i-sip-early-exit (d62caa4)",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-16T21:19:38.658Z"
+    },
+    {
+      "id": "DEC-56",
+      "group": "admin-improvements",
+      "text": "Reference widths: client phone 360 and 390, client web 768, 1280, 1440, admin phone 390, admin web 1280, 1440, 1920. Fixes go client phone first, then client web, admin web, admin phone.",
+      "since": "2026-11-16",
+      "status": "In force for DEC-40, the UI overhaul",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-16T12:14:11.777Z"
+    },
+    {
+      "id": "DEC-57",
+      "group": "admin-improvements",
+      "text": "Node 24 (E3) lands after Phase I is released and ships as its own release with no features, on dev for about a day before production.",
+      "since": "2026-11-16",
+      "status": "In force: e-node24 waits on its branch until Phase I is released",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-16T12:14:12.019Z"
+    },
+    {
+      "id": "DEC-58",
+      "group": "admin-improvements",
+      "text": "Publish featureFlags.onlinePayments=false (G11) right after the next production deploy; keep the earlier lane defaults as built (statement link, Referrer-Policy, SIP schedule rules, monthly reviews, admin nominee permission).",
+      "since": "2026-11-16",
+      "status": "In force: G11 stays the maintainer's action",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-16T12:14:12.258Z"
+    },
+    {
+      "id": "DEC-59",
+      "group": "admin-improvements",
+      "text": "Early-exit payouts stay in withdrawal_operations with no maturity. Accepted: after an images-only rollback to v0.16.2 the old admin app cannot load the payout list of a client who had an early exit, and could reopen an early-closed schedule, until roll-forward. Nothing is lost.",
+      "since": "2026-11-16",
+      "status": "In force: accepted; lane i-sip-early-exit adds the DEPLOY.md rollback note",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-16T12:55:56.732Z"
+    },
+    {
+      "id": "DEC-60",
+      "group": "admin-improvements",
+      "text": "Docs cleanup, all nine answers as recommended: decisions and questions in tally alone from the Phase I close; PRODUCT.md replaced by an app brief; UI audits as Markdown tables plus tally findings; new programme plans under docs/<programme>/; admin-improvements.md closes at the Phase I close; CLAUDE.md trimmed and tracked; the Completed archive stays protected; guide fixes do not wait for Node 24; review-report links accepted and rule-48 reworded.",
+      "since": "2026-11-16",
+      "status": "In force: docs cleanup in progress (pass 1 done; the rest as lanes land; RULES.md edits at the Phase I close)",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-16T12:55:57.049Z"
+    },
+    {
+      "id": "DEC-61",
+      "group": "admin-improvements",
+      "text": "The UI overhaul fix plan docs/ui-overhaul/plan.md (U5) is approved with its seven questions as recommended: UQ-1 no market-risk line on admin screens (they keep source and freshness lines); UQ-2 the maturity payout's bank transfer reference becomes optional in its own small expand-only lane (rule-18), unchanged until then; UQ-3 no permission change, one plain notice; UQ-4 fix the CC-01 back arrow in ClientFrame.tsx only, with the existing back resolver; UQ-5 admin phone bottom bar Overview, Users, Client values, Support; UQ-6 the fix lanes land after the Node 24 release is cut; UQ-7 local stack and browser allowed for each lane's screenshot pass.",
+      "since": "2026-11-16",
+      "status": "In force: the UI fix lanes are built on branches and land after the Node 24 release is cut (UQ-6)",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-16T13:56:17.352Z"
+    },
+    {
+      "id": "DEC-62",
+      "group": "admin-improvements",
+      "text": "SIP early exit at a loss: the client receives the full current value and the value goes to zero; any invested amount the value does not cover stays on record, as with maturity withdrawals, and erasure stays refused until a correction is recorded. DEC-43's 'the holding goes to zero' means the value goes to zero.",
+      "since": "2026-11-16",
+      "status": "Built as decided (d62caa4)",
+      "state": "built",
+      "by": "operator",
+      "on": "2026-11-16T21:19:38.904Z"
     }
   ],
   "replaced": []

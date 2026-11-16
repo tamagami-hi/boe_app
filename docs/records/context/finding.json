@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "finding",
-  "nextNumber": 28,
+  "nextNumber": 47,
   "entries": [
     {
       "id": "finding-1",
@@ -624,6 +624,566 @@
         "agent": "claude-opus-5-5 coordinator"
       },
       "at": "2026-11-14T04:38:01.834Z"
+    },
+    {
+      "id": "finding-28",
+      "kind": "finding",
+      "title": "export.sh:216 points to the wrong FACTS_VS_PLAN item for the Dockerfile ARG, which already exists",
+      "text": "release_manager/export.sh line 216 tells the operator to see release_manager/FACTS_VS_PLAN.md section 6 item 7 for the VITE_BEO_APP_TARGET build ARG, but section 6 item 7 is about /metrics, and frontend_stack_ts/Dockerfile already declares the ARG (line 19). A script fix for later (rule 9: no comment added); FACTS_VS_PLAN.md stays as a dated record. Found by the docs-cleanup investigation, 2026-11-16 (DEC-60).",
+      "paths": [
+        "release_manager/export.sh",
+        "release_manager/FACTS_VS_PLAN.md"
+      ],
+      "tags": [
+        "docs",
+        "release"
+      ],
+      "refs": [
+        "DEC-60"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-16T12:55:16.066Z"
+    },
+    {
+      "id": "finding-29",
+      "kind": "finding",
+      "title": "Stale public-host refs left after D1: prometheus probes admin/dev-admin/monitor hosts; monitor and Grafana docs",
+      "text": "Found while correcting the guides for M18-docs-cleanup:D1 (DEC-60). These were outside the lane's brief, so they were left unchanged. STATIC unless marked.\n1. Config: release_manager/stacks/monitor_service/config/prometheus/prometheus.yml job blackbox_https probes https://admin.beonedge.in, https://dev-admin.beonedge.in and https://monitor.beonedge.in. None has an nginx server block. The admin consoles are Tailscale-only (DEPLOY.md \"Admin consoles over Tailscale\"), and monitor.beonedge.in \"does not exist yet\" (release_manager/nginx/boe-shared.conf:70). Those three targets can only report down. This needs a config fix; rule 9 applies to its comment lines.\n2. OPERATOR_MANUAL_STEPS.md still has a monitor A record and the propagation check in 5.3, `certbot -d monitor.beonedge.in` in 5.5, and \"the shipped dev and monitor configs\" in 5.6, but no monitor vhost ships. The 5.3 A records for @, www and dev point at the VPS, while beonedge.in is hosted on AWS (UNVERIFIED: real DNS not checked).\n3. MS_GUIDE.md calls Grafana \"the only publicly proxied service\" and says to reach it \"via nginx\". Grafana is served inside the Tailscale admin console (release_manager/nginx/admin.tailscale.conf:242-245, snippet boe-monitor-grafana.conf).\n4. release_manager/README.md says the old pipeline lives in `BOE_APP/`, `recent_builds/` and `rollback/`, but no `BOE_APP/` is tracked. status.sh Git still handles the wt/admin and wt/client worktrees, which no longer exist (git worktree list, 2026-11-16).",
+      "paths": [
+        "release_manager/stacks/monitor_service/config/prometheus/prometheus.yml",
+        "release_manager/OPERATOR_MANUAL_STEPS.md",
+        "release_manager/stacks/monitor_service/MS_GUIDE.md",
+        "release_manager/README.md",
+        "release_manager/status.sh"
+      ],
+      "tags": [
+        "docs",
+        "release",
+        "monitoring",
+        "tailscale"
+      ],
+      "refs": [
+        "DEC-60",
+        "M18-docs-cleanup:D1-docs-guides"
+      ],
+      "by": {
+        "track": "d-docs-guides",
+        "agent": "claude-pro-d-docs-guides"
+      },
+      "at": "2026-11-16T13:06:41.351Z"
+    },
+    {
+      "id": "finding-30",
+      "kind": "finding",
+      "title": "UI audit U1, client phone (360, 390): 30 findings, 1 high, 11 medium, 18 low",
+      "text": "RUNTIME, read-only audit of the client app at 360x800 and 390x844 in Chromium through Playwright (DEC-47, DEC-56), commit a842496, local throwaway stack, payments unconfigured. Document: docs/ui-overhaul/audit-client-mobile.md (ids UCM-01 to UCM-30), with a per-route and per-width navigation and page-shell inventory. Screenshots and probe JSON: .temp/closed/u-audits/ (not committed).\nMain results:\n- UCM-01 (high, rule 4): Home and Profile never leave skeletons and \"Checking...\" on a failed eligibility read; Home re-requests its reads about 78 times a minute (fix-first FX-1).\n- Navigation: no page title in the app bar, back arrows on tab roots, 22 sub-pages mark no tab, back goes to a fixed parent, literal /funds/:fundId on the invest routes (UCM-02 to 04).\n- Words that assume online payments until G11 is published (UCM-05).\n- Accessibility: faint text 2.79 to 2.99:1 on 21 routes (UCM-08, FX-7), disabled primaries look enabled (UCM-09), 586 text nodes at 10 px (UCM-10).\n- Risk line missing on Funds, fund page and empty Portfolio (UCM-11); maturity choice preselects withdrawal (UCM-07).\nEvery finding is assigned to a lane in docs/ui-overhaul/plan.md (U5, proposed, not approved).",
+      "paths": [
+        "docs/ui-overhaul/audit-client-mobile.md",
+        "docs/ui-overhaul/plan.md"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "audit",
+        "client",
+        "phone"
+      ],
+      "refs": [
+        "M16-ui-overhaul:U1-audit-client-mobile",
+        "M16-ui-overhaul:U5-overhaul-plan",
+        "DEC-40",
+        "DEC-47",
+        "DEC-56",
+        "DEC-60"
+      ],
+      "by": {
+        "track": "u-plan",
+        "agent": "claude-pro-u-plan"
+      },
+      "at": "2026-11-16T13:30:49.750Z"
+    },
+    {
+      "id": "finding-31",
+      "kind": "finding",
+      "title": "UI audit U2, client web (768, 1280, 1440): 24 findings, 1 high, 9 medium, 14 low",
+      "text": "RUNTIME, read-only audit of the client app at 768x1024 (touch), 1280x800 and 1440x900 in Chromium through Playwright (DEC-47, DEC-56), commit a842496, same local stack and data as U1. Document: docs/ui-overhaul/audit-client-web.md (ids UCW-01 to UCW-24), with a per-route and per-width navigation and page-shell inventory. Screenshots: .temp/closed/u-audits/ (not committed).\nMain results:\n- UCW-01 (high, rule 4): the Home and Profile failure loop of UCM-01 also happens at web widths (fix-first FX-1).\n- From 1024 px the floating pill bar replaces the app bar, so 27 signed-in routes have no back control (UCW-02); no tab is current on 22 sub-pages (UCW-03); every browser tab reads \"BeOnEdge\", WCAG 2.4.2 (UCW-04).\n- Faint text contrast on 22 routes (UCW-05, FX-7); disabled primaries look enabled (UCW-06).\n- Detail rows stop at 44 rem inside wider cards (UCW-12); three table styles across the apps (UCW-14).\n- No horizontal overflow at any width; layout is otherwise stable.\nEvery finding is assigned to a lane in docs/ui-overhaul/plan.md (U5, proposed, not approved).",
+      "paths": [
+        "docs/ui-overhaul/audit-client-web.md",
+        "docs/ui-overhaul/plan.md"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "audit",
+        "client",
+        "web"
+      ],
+      "refs": [
+        "M16-ui-overhaul:U2-audit-client-web",
+        "M16-ui-overhaul:U5-overhaul-plan",
+        "DEC-40",
+        "DEC-47",
+        "DEC-56",
+        "DEC-60"
+      ],
+      "by": {
+        "track": "u-plan",
+        "agent": "claude-pro-u-plan"
+      },
+      "at": "2026-11-16T13:30:56.009Z"
+    },
+    {
+      "id": "finding-32",
+      "kind": "finding",
+      "title": "UI audit U3, admin phone (390): 29 findings, 0 high, 12 medium, 17 low",
+      "text": "RUNTIME, read-only audit of the admin console at 390x844 in Chromium through Playwright (DEC-47, DEC-56), commit a842496, local throwaway stack, signed in as the seeded superadmin (other roles not checked). Document: docs/ui-overhaul/audit-admin-mobile.md (ids UAM-01 to UAM-29), with a per-route navigation and page-shell inventory. Screenshots: .temp/closed/u-audits/ (not committed).\nMain results:\n- No back control on any of 47 routes; 23 detail routes mark nothing in the bottom bar (UAM-01); page title printed twice and different on 13 routes (UAM-02).\n- 17 screens are tables of 3 to 10 columns, 672 to 1,117 px wide, in a 346 px scroll box with columns cut mid-amount (UAM-03).\n- Filter-chip walls before content (UAM-04); engineering copy and raw codes (UAM-05); destructive actions beside routine ones (UAM-06).\n- Faint text contrast, 173 failing nodes on 21 routes (UAM-07, FX-7); erase explanation squeezed (UAM-08, FX-2); only 4 of 45 admin feature files use Form (UAM-09); focus hidden under the bottom bar on 6 of 43 stops (UAM-27).\n- Failed reads are handled well: every tested screen shows the failure panel with \"Try again\".\nEvery finding is assigned to a lane in docs/ui-overhaul/plan.md (U5, proposed, not approved).",
+      "paths": [
+        "docs/ui-overhaul/audit-admin-mobile.md",
+        "docs/ui-overhaul/plan.md"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "audit",
+        "admin",
+        "phone"
+      ],
+      "refs": [
+        "M16-ui-overhaul:U3-audit-admin-mobile",
+        "M16-ui-overhaul:U5-overhaul-plan",
+        "DEC-40",
+        "DEC-47",
+        "DEC-56",
+        "DEC-60"
+      ],
+      "by": {
+        "track": "u-plan",
+        "agent": "claude-pro-u-plan"
+      },
+      "at": "2026-11-16T13:31:02.827Z"
+    },
+    {
+      "id": "finding-33",
+      "kind": "finding",
+      "title": "UI audit U4, admin web (1280, 1440, 1920): 29 findings, 1 high, 11 medium, 17 low",
+      "text": "RUNTIME, read-only audit of the admin console at 1280x800, 1440x900 and 1920x1080 in Chromium through Playwright (DEC-47, DEC-56), commit a842496, local stack, superadmin. Document: docs/ui-overhaul/audit-admin-web.md (ids UAW-01 to UAW-29), with a per-route and per-width navigation and page-shell inventory. Screenshots: .temp/closed/u-audits/ (not committed).\nMain results:\n- UAW-01 (high): the shared detail row collapses its value column to one character inside narrow containers; Overview dates run down the page and the Erase client explanation becomes a 6,450 px column of single letters (fix-first FX-2).\n- No back control and no current sidebar entry on 23 detail and sub-pages (UAW-02); every tab titled \"BeOnEdge\" (UAW-03); the sidebar is 1,112 px, taller than an 800 or 900 px screen (UAW-04); no skip link and focus below the fold (UAW-27).\n- Users and Monthly payments tables wider than the 940 px column at 1280 (UAW-05); client page 4,500 to 5,300 px of twelve sections (UAW-11).\n- Faint text contrast (UAW-06, FX-7), disabled primaries look enabled (UAW-07), engineering copy (UAW-08), forms without Form (UAW-10).\nEvery finding is assigned to a lane in docs/ui-overhaul/plan.md (U5, proposed, not approved).",
+      "paths": [
+        "docs/ui-overhaul/audit-admin-web.md",
+        "docs/ui-overhaul/plan.md"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "audit",
+        "admin",
+        "web"
+      ],
+      "refs": [
+        "M16-ui-overhaul:U4-audit-admin-web",
+        "M16-ui-overhaul:U5-overhaul-plan",
+        "DEC-40",
+        "DEC-47",
+        "DEC-56",
+        "DEC-60"
+      ],
+      "by": {
+        "track": "u-plan",
+        "agent": "claude-pro-u-plan"
+      },
+      "at": "2026-11-16T13:31:09.220Z"
+    },
+    {
+      "id": "finding-34",
+      "kind": "finding",
+      "title": "UI audit U6, client code inventory: 55 findings, 1 high, 24 medium, 30 low (STATIC)",
+      "text": "STATIC, read-only code inventory of the client app at commit d4c817e (lane u-static-client): 35 routes, 113 feature files, 47 ui files. Document: docs/ui-overhaul/consistency-client.md (ids CC-01 to CC-55), with route, back-control, navigation and pattern inventories (buttons, cards, forms, states, dialogs, money, dates, spacing, icons, bypasses of ui/).\nMain results:\n- CC-01 (high): the phone header back pushes the literal parent path /funds/:fundId on the two invest routes; hardware back fills the parameter in (fix-first FX-3).\n- Three back behaviours (header push, hardware replace, browser history) and no back at web widths (CC-02, CC-03); no current tab on nested routes (CC-05); no route titles (CC-06); no scroll or focus reset on navigation (CC-07).\n- fg-faint text fails contrast (CC-08, FX-7); gold chart series against RULES (CC-09); risk line missing on Funds and fund page (CC-10); 44 of 48 MoneyValue calls round while 4 show paise (CC-11).\n- A failed \"Show more\" is silent on 9 lists (CC-13, FX-6); card links have no interactive state (CC-14); five navigation styles (CC-15).\nEvery finding is assigned to a lane in docs/ui-overhaul/plan.md (U5, proposed, not approved).",
+      "paths": [
+        "docs/ui-overhaul/consistency-client.md",
+        "docs/ui-overhaul/plan.md"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "audit",
+        "client",
+        "static"
+      ],
+      "refs": [
+        "M16-ui-overhaul:U6-static-client",
+        "M16-ui-overhaul:U5-overhaul-plan",
+        "DEC-40",
+        "DEC-45",
+        "DEC-56",
+        "DEC-60"
+      ],
+      "by": {
+        "track": "u-plan",
+        "agent": "claude-pro-u-plan"
+      },
+      "at": "2026-11-16T13:31:16.517Z"
+    },
+    {
+      "id": "finding-35",
+      "kind": "finding",
+      "title": "UI audit U7, admin code inventory: 47 findings, 8 high, 23 medium, 16 low (STATIC)",
+      "text": "STATIC, read-only code inventory of the admin app at commit d4c817e (lane u-static-admin): 46 manifest routes, 157 admin feature files, 47 ui files. Document: docs/ui-overhaul/consistency-admin.md (ids CA-01 to CA-47), with route and pattern inventories (back, headers, buttons, tables, filters, paging, forms, states, dialogs, money, dates, copy) and the parked DEC-14 list.\nHigh findings:\n- CA-01: no back control or breadcrumb on any admin page.\n- CA-02: unknown write outcomes reported as definite failures (rule 4). CA-03: retries mint a new Idempotency-Key (rule 6). CA-04: held writes discarded on close. CA-05: money and irreversible actions without a confirm (fix-first FX-4, FX-5).\n- CA-06: the seeded finance role cannot pick an investor and sees a retry that cannot succeed (FX-8, DEC-36).\n- CA-07: the admin sign-in links to a client-only reset route (FX-11).\n- CA-08: publishing new fund terms starts from blank durations and disclosure (FX-9).\nAlso: silent Show more (CA-12, FX-6), raw ids on failed reads (CA-13, FX-8), UTC default dates (CA-26, FX-10), the maturity payout's \"Bank transfer reference\" field against rule-18 (section 6; plan question UQ-2).\nEvery finding is assigned to a lane in docs/ui-overhaul/plan.md (U5, proposed, not approved).",
+      "paths": [
+        "docs/ui-overhaul/consistency-admin.md",
+        "docs/ui-overhaul/plan.md"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "audit",
+        "admin",
+        "static"
+      ],
+      "refs": [
+        "M16-ui-overhaul:U7-static-admin",
+        "M16-ui-overhaul:U5-overhaul-plan",
+        "DEC-40",
+        "DEC-45",
+        "DEC-56",
+        "DEC-60"
+      ],
+      "by": {
+        "track": "u-plan",
+        "agent": "claude-pro-u-plan"
+      },
+      "at": "2026-11-16T13:31:22.756Z"
+    },
+    {
+      "id": "finding-36",
+      "kind": "finding",
+      "title": "FX-1 (rule 4): client router rebuilt every render; Home and Profile hang on a failed eligibility read",
+      "text": "RUNTIME (U1, U2) and STATIC, re-read on 02985f9. UCM-01, UCW-01.\nSymptom: with client reads failing, Home keeps 10 skeletons and \"Checking...\" for good and re-requests each of its seven reads about 78 times a minute; Profile keeps \"Checking...\" and a blank nominee panel. Other screens show the failure panel in 8 to 15 s. Evidence: .temp/closed/u-audits/shots/states/client/390x844/dashboard.fail.60s.png, results/states-client.json.\nCause: frontend_stack_ts/src/shells/client/ClientRoutes.tsx:12-30 calls buildRouter in render (only the gate object is memoised), and app/routing/buildRouter.tsx:31-35,81-88 creates a new lazy() component per route on every call, so each eligibility state change remounts the open screen and restarts its reads. A half-filled form would also reset on an eligibility refetch. The admin shell memoises its router once (shells/admin/AdminShellRoot.tsx:56-65).\nRule 4: a failed read must never become an endless skeleton.\nFix direction: stable router and lazy components; let the eligibility failure reach the existing failure patterns; run the boot guards and the acyclic chunk check (rule 8).\nPayment screens: none touched. Plan: docs/ui-overhaul/plan.md, lane fx-shell.",
+      "paths": [
+        "frontend_stack_ts/src/shells/client/ClientRoutes.tsx",
+        "frontend_stack_ts/src/app/routing/buildRouter.tsx",
+        "frontend_stack_ts/src/features/profile/EmailVerificationStatus.tsx",
+        "docs/ui-overhaul/plan.md"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "fix-first",
+        "rule-4",
+        "bug",
+        "client"
+      ],
+      "refs": [
+        "finding-30",
+        "finding-31",
+        "M16-ui-overhaul:U5-overhaul-plan"
+      ],
+      "by": {
+        "track": "u-plan",
+        "agent": "claude-pro-u-plan"
+      },
+      "at": "2026-11-16T13:31:31.282Z"
+    },
+    {
+      "id": "finding-37",
+      "kind": "finding",
+      "title": "FX-2: admin detail row collapses at 1024 px and up in narrow containers (Overview, Erase client)",
+      "text": "RUNTIME (U4, U3) and STATIC, re-read on 02985f9. UAW-01 (high), UAM-08.\nfrontend_stack_ts/src/ui/recipes/datalist.ts:3-15: LIST_ROW becomes a grid with a fixed 14rem label column from lg (1024 px) on the viewport, and LIST_VALUE uses overflow-wrap:anywhere. Inside a quarter-width tile or a half-width split, the value column shrinks to about one character and breaks per letter.\n- Overview: \"Last value update per fund\" dates run vertically out of their tile and over the next one at 1280 and 1440 (features/admin/overview/DailyTiles.tsx:146-150).\n- Erase client: both \"Erasing it means\" rows become single-letter columns; the page is 6,450 px at every desktop width (features/admin/users/ClientErasureNotices.tsx:35-38). The explanation of an irreversible action is unreadable.\nEvidence: .temp/closed/u-audits/work/sheets/zoom-overview-both.png, zoom-erase-1440.png.\nRule: RULES \"Product, copy, and accessibility\" (WCAG 2.2 AA reflow, readable text).\nFix direction: the row responds to its container (container query or a stacked variant); long explanations as prose.\nPayment screens: the recipe also draws detail rows on the parked PaymentStatusScreen and SipDetailScreen; their layout changes, their files do not. Plan: docs/ui-overhaul/plan.md, lane fx-ui-recipes.",
+      "paths": [
+        "frontend_stack_ts/src/ui/recipes/datalist.ts",
+        "frontend_stack_ts/src/features/admin/overview/DailyTiles.tsx",
+        "frontend_stack_ts/src/features/admin/users/ClientErasureNotices.tsx",
+        "docs/ui-overhaul/plan.md"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "fix-first",
+        "accessibility",
+        "layout",
+        "admin"
+      ],
+      "refs": [
+        "finding-32",
+        "finding-33",
+        "M16-ui-overhaul:U5-overhaul-plan"
+      ],
+      "by": {
+        "track": "u-plan",
+        "agent": "claude-pro-u-plan"
+      },
+      "at": "2026-11-16T13:31:38.466Z"
+    },
+    {
+      "id": "finding-38",
+      "kind": "finding",
+      "title": "FX-3: client header back goes to the literal /funds/:fundId on the invest routes (shell code)",
+      "text": "STATIC (U6) and RUNTIME probe (U1 logs/probes.txt), re-read on 02985f9. CC-01 (high), UCM-04 (part).\nfrontend_stack_ts/src/shells/client/ClientFrame.tsx:53-59 takes route.back.path as written and :106-108 navigates to it, so on /funds/:fundId/invest/lumpsum and /invest/sip (parents at app/routing/clientRoutes.ts:109,119) the header back opens fund id \":fundId\" and an error page. Android hardware back fills the parameter in through createBackPolicyResolver (app/native/backPolicy.ts:42-45).\nRule 15: the two back paths should share one resolver; high-severity broken navigation.\nDEC-14: the two routes are parked, but the fault is in shared shell code. Recommended fix: ClientFrame.tsx alone resolves its target with the existing createBackPolicyResolver; no file under features/orders, sip, payments or investing changes, and the window.confirm transactional prompt (CC-24) stays parked. The maintainer is asked to confirm (plan question UQ-4).\nPlan: docs/ui-overhaul/plan.md, lane fx-shell; the same resolver then feeds the back foundation FD-1.",
+      "paths": [
+        "frontend_stack_ts/src/shells/client/ClientFrame.tsx",
+        "frontend_stack_ts/src/app/native/backPolicy.ts",
+        "frontend_stack_ts/src/app/routing/clientRoutes.ts",
+        "docs/ui-overhaul/plan.md"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "fix-first",
+        "navigation",
+        "client",
+        "dec-14"
+      ],
+      "refs": [
+        "finding-34",
+        "finding-30",
+        "DEC-14",
+        "M16-ui-overhaul:U5-overhaul-plan"
+      ],
+      "by": {
+        "track": "u-plan",
+        "agent": "claude-pro-u-plan"
+      },
+      "at": "2026-11-16T13:31:45.474Z"
+    },
+    {
+      "id": "finding-39",
+      "kind": "finding",
+      "title": "FX-4 (rules 4, 6): admin writes show unknown outcomes as failures and mint a new idempotency key on retry",
+      "text": "STATIC (U7), re-read on 02985f9. CA-02, CA-03, CA-19; same class as finding-9.\nUnknown outcome (timeout, transport error, 5xx) reported as definite: features/admin/funds/FundCreateScreen.tsx:26-38 (\"We could not reach the backend. Nothing was created.\"), FundWorkspaceScreen.tsx:52-55, content/FaqListScreen.tsx:58-63, client-values/MaturityPanel.tsx:83, WithdrawalPayoutPanel.tsx:43, funds/FundHoldingsScreen.tsx:145-150, applications/ApplicationDetailScreen.tsx:29-36.\nNew Idempotency-Key per click (all under frontend_stack_ts/src/features/admin/): shared/adminQueries.ts:477 (ledger reversal), :87 (application decide), :347,367,391,407 (FAQ); client-values/maturityQueries.ts:41,58,76 (mark matured, settle, payout); shared/queries.ts:102,122,141,162 (fund create, publish, lifecycle, opening AUM); funds/FundHoldingsScreen.tsx:79,86,106; fund-aum/FundSizeAdjustmentForm.tsx:48-49 drops the held key on IDEMPOTENCY_IN_PROGRESS.\nThe correct model exists: users/useHeldWrite.ts with HeldWriteNotice and api/errors.ts:79 isUnknownWriteOutcome; 17 hand-written copies drift (CA-19).\nRules 4 and 6. Payment screens: the parked MandateDetailScreen is excluded; the maturity payout write is in (its reference field is plan question UQ-2).\nPlan: docs/ui-overhaul/plan.md, lanes fx-admin-held, fx-admin-values, fx-admin-funds.",
+      "paths": [
+        "frontend_stack_ts/src/features/admin/shared/adminQueries.ts",
+        "frontend_stack_ts/src/features/admin/shared/queries.ts",
+        "frontend_stack_ts/src/features/admin/client-values/maturityQueries.ts",
+        "frontend_stack_ts/src/features/admin/funds/FundCreateScreen.tsx",
+        "frontend_stack_ts/src/features/admin/users/useHeldWrite.ts",
+        "docs/ui-overhaul/plan.md"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "fix-first",
+        "rule-4",
+        "rule-6",
+        "idempotency",
+        "admin"
+      ],
+      "refs": [
+        "finding-35",
+        "finding-9",
+        "M16-ui-overhaul:U5-overhaul-plan"
+      ],
+      "by": {
+        "track": "u-plan",
+        "agent": "claude-pro-u-plan"
+      },
+      "at": "2026-11-16T13:31:53.722Z"
+    },
+    {
+      "id": "finding-40",
+      "kind": "finding",
+      "title": "FX-5 (rule 6): admin held writes lost on close; money and irreversible actions run without a confirm",
+      "text": "STATIC (U7), re-read on 02985f9. CA-04, CA-05, CA-27; carried CL-06 (M13-carried).\nHeld writes discarded (paths under frontend_stack_ts/src/features/admin/): users/ClientHubActions.tsx:40-50 closes the recording form with no hold check (isFormHolding exists at UserDetailScreen.tsx:54 but is not passed); SIP schedule forms remount (SipScheduleCreateForm.tsx:125, SipScheduleEditor.tsx:139); maturity dialogs close while held (MaturityActions.tsx:73-75,108, MaturityConfirmDialog.tsx:133-135, MaturityResolveDialog.tsx:137-139); the position picker stays enabled (client-values/ClientPositionDetailScreen.tsx:145-151). Keys live in useRef (api/idempotency.ts:45-48); no admin route is transactional.\nNo confirm: fund Archive (irreversible) and Pause in one click (funds/FundWorkspaceScreen.tsx:165-187); \"Append the adjustment\" (client-values/IndividualClientGrowthScreen.tsx:486); \"Mark matured\" (MaturityPanel.tsx:93); \"Record opening AUM\" (fund-aum/FundAumScreen.tsx:143); collective AUM commit; \"Remove the nominee\" in the primary tone (users/ClientNomineeSection.tsx:194-203).\nPayment sheet: invalid ticked rows silently left out of the confirm (payment-sheet/PaymentSheetScreen.tsx:173-175); it records admin investments and is not a gateway screen.\nRule 6, rule 4; PRODUCT \"deliberate actions\". Plan: docs/ui-overhaul/plan.md, lanes fx-admin-values, fx-admin-funds.",
+      "paths": [
+        "frontend_stack_ts/src/features/admin/users/ClientHubActions.tsx",
+        "frontend_stack_ts/src/features/admin/funds/FundWorkspaceScreen.tsx",
+        "frontend_stack_ts/src/features/admin/client-values/IndividualClientGrowthScreen.tsx",
+        "frontend_stack_ts/src/features/admin/users/ClientNomineeSection.tsx",
+        "frontend_stack_ts/src/features/admin/payment-sheet/PaymentSheetScreen.tsx",
+        "docs/ui-overhaul/plan.md"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "fix-first",
+        "rule-6",
+        "confirm",
+        "admin"
+      ],
+      "refs": [
+        "finding-35",
+        "M13-carried:carried-lows",
+        "M16-ui-overhaul:U5-overhaul-plan"
+      ],
+      "by": {
+        "track": "u-plan",
+        "agent": "claude-pro-u-plan"
+      },
+      "at": "2026-11-16T13:32:02.216Z"
+    },
+    {
+      "id": "finding-41",
+      "kind": "finding",
+      "title": "FX-6 (rule 4): a failed \"Show more\" or background refetch is silent in both apps",
+      "text": "STATIC (U6, U7), re-read on 02985f9. CC-13, CA-12; carried CL-11 (H4); related finding-25.\nfrontend_stack_ts/src/ui/patterns/LoadMore.tsx:11-21 renders only \"N so far\" and \"Show more\"; PagedListState (api/paged.ts:12-17) carries no error, and AsyncBoundary (ui/patterns/AsyncBoundary.tsx:52) shows an error only when there is no data. So when the next page or a refetch fails, the loaded rows stay and nothing says the list is incomplete. 34 LoadMore lists: 9 client (notifications, reviews, value updates, activity, support, receipts, invested-fund lists) and 25 admin (users, ledger, audit, maturities, emails and others). finding-25: the paged hook can re-fire fetchNextPage after a failed page under loadAll.\nRule 4: a failed read must render an explicit failure and safe recovery, not a shorter list.\nFix direction: LoadMore gets an inline error with \"Try again\" through Alert; AsyncBoundary shows a stale notice when an error arrives with data; a failed page does not re-fire on its own.\nPayment screens: the same pattern serves the parked payments tab and SIP list; behaviour only, no parked file. Plan: docs/ui-overhaul/plan.md, lane fx-paging.",
+      "paths": [
+        "frontend_stack_ts/src/ui/patterns/LoadMore.tsx",
+        "frontend_stack_ts/src/ui/patterns/AsyncBoundary.tsx",
+        "frontend_stack_ts/src/api/paged.ts",
+        "docs/ui-overhaul/plan.md"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "fix-first",
+        "rule-4",
+        "paging",
+        "client",
+        "admin"
+      ],
+      "refs": [
+        "finding-34",
+        "finding-35",
+        "finding-25",
+        "M13-carried:carried-lows",
+        "M16-ui-overhaul:U5-overhaul-plan"
+      ],
+      "by": {
+        "track": "u-plan",
+        "agent": "claude-pro-u-plan"
+      },
+      "at": "2026-11-16T13:32:09.017Z"
+    },
+    {
+      "id": "finding-42",
+      "kind": "finding",
+      "title": "FX-7 (accessibility): faint text token is 2.79 to 2.99:1; it draws the risk line, dates and labels",
+      "text": "RUNTIME (U1 to U4) and STATIC (U6), re-read on 02985f9. UCM-08, UCW-05, UAM-07, UAW-06, CC-08.\nfrontend_stack_ts/src/ui/tokens/tokens-core.css:15,35: --be-fg-faint is --be-slate-2 #8a929d, measured 2.79:1 on the page background and 2.99:1 on cards; WCAG 2.2 AA needs 4.5:1. --be-fg-muted measures 5.3 to 5.7:1.\nIt draws meaningful text through META_TEXT (ui/recipes/text.ts:26), which carries \"Investments are subject to market risk.\" and \"Last updated\"; META_ROW and REFERENCE_TEXT (text.ts:34,37); STAT_LABEL, the label on every money figure (datalist.ts:26); FIELD_HINT (field.ts:12); STATE_REFERENCE (state.ts:19); the sign-in markers and risk footnote (auth.ts:32,65); placeholders (ui/styles/base.css). Failing text on 21 routes (client 390), 22 (client 1280), 21 (admin 390, 173 nodes) and 21 (admin 1440, 166 nodes); about 60% of text sits on gradients and was not measured.\nRule: RULES \"Product, copy, and accessibility\" (WCAG 2.2 AA, readable contrast).\nFix direction (DEC-45): text recipes move to fg-muted; fg-faint stays for glyphs and rules, so the look barely changes.\nPayment screens: tokens and recipes reach parked screens' text; no parked file changes. Plan: docs/ui-overhaul/plan.md, lane fx-ui-recipes.",
+      "paths": [
+        "frontend_stack_ts/src/ui/tokens/tokens-core.css",
+        "frontend_stack_ts/src/ui/recipes/text.ts",
+        "frontend_stack_ts/src/ui/recipes/datalist.ts",
+        "frontend_stack_ts/src/ui/recipes/field.ts",
+        "frontend_stack_ts/src/ui/recipes/state.ts",
+        "frontend_stack_ts/src/ui/recipes/auth.ts",
+        "docs/ui-overhaul/plan.md"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "fix-first",
+        "accessibility",
+        "contrast",
+        "client",
+        "admin"
+      ],
+      "refs": [
+        "finding-30",
+        "finding-31",
+        "finding-32",
+        "finding-33",
+        "finding-34",
+        "M16-ui-overhaul:U5-overhaul-plan"
+      ],
+      "by": {
+        "track": "u-plan",
+        "agent": "claude-pro-u-plan"
+      },
+      "at": "2026-11-16T13:32:18.627Z"
+    },
+    {
+      "id": "finding-43",
+      "kind": "finding",
+      "title": "FX-8 (rule 4): admin failed reads shown as raw ids, absence, capped lists or retries that cannot succeed",
+      "text": "STATIC (U7) and RUNTIME (U3, U4 not-found states), re-read on 02985f9. CA-13, CA-14, CA-06 (notice only), UAM-18, UAW-19; carried CL-13 (H4). Class of finding-10.\nPaths under frontend_stack_ts/src/features/admin/:\n- Raw fund UUIDs while the catalogue loads or fails: users/ClientLedgerTab.tsx:70-73, ClientMaturityTab.tsx:16-19, client-values/IndividualClientGrowthScreen.tsx:87-90, ClientPositionDetailScreen.tsx:71-74, users/ClientMaturitySection.tsx:47-50, fund-aum/CollectiveAumGrowthScreen.tsx:176-179.\n- \"Unavailable\" for both failure and absence (users/directoryReturns.tsx:32-35); pending names shown as absent (client-returns/ReturnsDashboardScreen.tsx:59-66); queue 404 as \"n/a\" (overview/OverviewScreen.tsx:89-90); a failed prompt read titled \"Maturities need your decision\" (maturities/MaturityDuePrompt.tsx:31,45,55).\n- Pickers and lists that stop at 25 or 100 rows silently (client-values/InvestorPicker.tsx:26-29, MaturityPanel.tsx:46-47 deriving pending from a capped list).\n- Retries that can never succeed: the seeded finance role on the investor picker (CA-06, DEC-36), an unknown linked user id (CL-13), unknown application, receipt or mandate ids shown as a red error with \"Try again\" (UAM-18).\nRule 4. Payment screens: OverviewScreen shares tile code with three parked queue tiles; only failure rendering changes. Plan: docs/ui-overhaul/plan.md, lanes fx-admin-values, fx-admin-funds.",
+      "paths": [
+        "frontend_stack_ts/src/features/admin/users/ClientLedgerTab.tsx",
+        "frontend_stack_ts/src/features/admin/client-values/InvestorPicker.tsx",
+        "frontend_stack_ts/src/features/admin/client-values/MaturityPanel.tsx",
+        "frontend_stack_ts/src/features/admin/maturities/MaturityDuePrompt.tsx",
+        "frontend_stack_ts/src/features/admin/overview/OverviewScreen.tsx",
+        "docs/ui-overhaul/plan.md"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "fix-first",
+        "rule-4",
+        "admin"
+      ],
+      "refs": [
+        "finding-35",
+        "finding-32",
+        "finding-33",
+        "finding-10",
+        "M13-carried:carried-lows",
+        "M16-ui-overhaul:U5-overhaul-plan"
+      ],
+      "by": {
+        "track": "u-plan",
+        "agent": "claude-pro-u-plan"
+      },
+      "at": "2026-11-16T13:32:26.931Z"
+    },
+    {
+      "id": "finding-44",
+      "kind": "finding",
+      "title": "FX-9 (rule 7): \"Publish new terms\" starts blank, so a fund terms version can drop duration and disclosure",
+      "text": "STATIC (U7 CA-08, high), re-read on 02985f9; not seen at runtime.\nfrontend_stack_ts/src/features/admin/funds/FundWorkspaceScreen.tsx:84-98 seeds the \"Publish new terms\" form from the fund row but sets minimumDurationMonths: null, recommendedHoldingMonths: null and disclosure { title: \"\", body: \"\" }. The current values are in the fund read (data.versions and data.disclosures; packages/contracts/src/operations/admin-fund-aum.ts:101-102,296-300). An admin who changes one field can publish a new version that drops the durations and the disclosure the client sees, and the form does not say those fields are not carried over.\nRule 7: no invented defaults; a published terms version should carry the values the admin did not change.\nFix direction: prefill from the latest version and disclosure, with standard FormField hints. A test is justified (rule 10: critical published data): new terms keep the current values.\nPayment screens: none. Plan: docs/ui-overhaul/plan.md, lane fx-admin-funds.",
+      "paths": [
+        "frontend_stack_ts/src/features/admin/funds/FundWorkspaceScreen.tsx",
+        "packages/contracts/src/operations/admin-fund-aum.ts",
+        "docs/ui-overhaul/plan.md"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "fix-first",
+        "rule-7",
+        "funds",
+        "admin"
+      ],
+      "refs": [
+        "finding-35",
+        "M16-ui-overhaul:U5-overhaul-plan"
+      ],
+      "by": {
+        "track": "u-plan",
+        "agent": "claude-pro-u-plan"
+      },
+      "at": "2026-11-16T13:32:32.972Z"
+    },
+    {
+      "id": "finding-45",
+      "kind": "finding",
+      "title": "FX-10: admin fund and AUM forms default the effective date to the UTC day, not IST",
+      "text": "STATIC (U7 CA-26), re-read on 02985f9.\nfrontend_stack_ts/src/features/admin/funds/FundCreateScreen.tsx:26, fund-aum/FundAumScreen.tsx:39, fund-aum/FundSizeAdjustmentForm.tsx:70 and fund-aum/CollectiveAumGrowthScreen.tsx:48 take today as new Date().toISOString().slice(0, 10), the UTC date. Between 00:00 and 05:30 IST the fund creation, opening AUM, fund size and collective AUM forms default a money record's effective date to yesterday. support/supportPresentation.ts:21-24 computes ticket \"Age\" on UTC days, so \"Today\" flips at 05:30 IST. The client-values forms already use IST through client-values/indiaToday.ts:4.\nRule 7: reuse the established product value (IST calendar dates, as the client-values and recording forms do); a wrong default date on a money record is easy to miss.\nFix direction: move indiaToday beside indiaCalendarDate in domain/dates.ts (lane fx-admin-held) and use it for every default date and day count (lane fx-admin-funds).\nPayment screens: none. Plan: docs/ui-overhaul/plan.md.",
+      "paths": [
+        "frontend_stack_ts/src/features/admin/funds/FundCreateScreen.tsx",
+        "frontend_stack_ts/src/features/admin/fund-aum/FundAumScreen.tsx",
+        "frontend_stack_ts/src/features/admin/fund-aum/FundSizeAdjustmentForm.tsx",
+        "frontend_stack_ts/src/features/admin/fund-aum/CollectiveAumGrowthScreen.tsx",
+        "frontend_stack_ts/src/features/admin/support/supportPresentation.ts",
+        "docs/ui-overhaul/plan.md"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "fix-first",
+        "dates",
+        "ist",
+        "admin"
+      ],
+      "refs": [
+        "finding-35",
+        "finding-13",
+        "M16-ui-overhaul:U5-overhaul-plan"
+      ],
+      "by": {
+        "track": "u-plan",
+        "agent": "claude-pro-u-plan"
+      },
+      "at": "2026-11-16T13:32:39.824Z"
+    },
+    {
+      "id": "finding-46",
+      "kind": "finding",
+      "title": "FX-11: admin sign-in shows \"Forgot your password?\" to a client-only route that ends on not found",
+      "text": "STATIC (U7 CA-07, high), re-read on 02985f9.\nfrontend_stack_ts/src/features/auth/LoginScreen.tsx:115-117 always renders a ButtonLink to CLIENT_FORGOT_PASSWORD_PATH. The admin route manifest has no reset route, so the catch-all guard sends an anonymous admin back to /login?from=/password/forgot, and after signing in they land on \"We could not find that page\". The admin auth port already passes supportPath: null and loginHelp: null (shells/admin/AdminShellRoot.tsx:42-54), the pattern for leaving out client-only parts.\nA dead link on the admin console's front door; no money or data risk.\nFix direction: hide the link when the auth port has no reset path, set to null by the admin shell. No new primitive.\nPayment screens: none. Plan: docs/ui-overhaul/plan.md, lane fx-shell.",
+      "paths": [
+        "frontend_stack_ts/src/features/auth/LoginScreen.tsx",
+        "frontend_stack_ts/src/shells/admin/AdminShellRoot.tsx",
+        "docs/ui-overhaul/plan.md"
+      ],
+      "tags": [
+        "ui-overhaul",
+        "fix-first",
+        "auth",
+        "admin"
+      ],
+      "refs": [
+        "finding-35",
+        "M16-ui-overhaul:U5-overhaul-plan"
+      ],
+      "by": {
+        "track": "u-plan",
+        "agent": "claude-pro-u-plan"
+      },
+      "at": "2026-11-16T13:32:45.176Z"
     }
   ]
 }
