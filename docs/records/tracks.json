@@ -400,6 +400,28 @@
         "track": "main",
         "agent": "claude-opus-5-5 coordinator"
       }
+    },
+    {
+      "name": "i-nominee-requests",
+      "branch": "track/i-nominee-requests",
+      "worktree": ".temp/worktrees/i-nominee-requests",
+      "purpose": "Phase I, M15 N1: nominee by request (DEC-39, DEC-44, Q-038 to Q-042), migration 072, template nominee_request_decided; lands before i-sip-early-exit",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-16T10:55:16.733Z"
+    },
+    {
+      "name": "i-sip-early-exit",
+      "branch": "track/i-sip-early-exit",
+      "worktree": ".temp/worktrees/i-sip-early-exit",
+      "purpose": "Phase I, M17 X1: SIP early exit (DEC-41, DEC-43, DEC-44, Q-043, Q-044), migration 073, template sip_early_exit; lands after i-nominee-requests",
+      "openedBy": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "openedAt": "2026-11-16T10:55:17.194Z"
     }
   ]
 }

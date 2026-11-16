@@ -386,30 +386,70 @@
       "group": "admin-improvements",
       "text": "2026-11-15, upcoming (not started): nominee by request. A client has at most one nominee (already true in the data model). The client can no longer set, change or remove the nominee directly; instead the client sends a nominee request with name and relation, the admin is notified, and the admin accepts it (the nominee is set) or declines it. The admin can still set or change a nominee directly from the admin panel.",
       "since": "2026-11-15",
-      "status": "Decided, not built: next build (M15 nominee by request); waits for the maintainer's go-ahead",
+      "status": "Decided, not built: being built in Phase I, lane i-nominee-requests (DEC-42)",
       "state": "decided, not built",
       "by": "operator",
-      "on": "2026-11-15T09:30:33.033Z"
+      "on": "2026-11-16T10:54:55.695Z"
     },
     {
       "id": "DEC-40",
       "group": "admin-improvements",
       "text": "2026-11-15, next (recorded, not started): a complete UI overhaul, checked, fixed and implemented separately for mobile and for the web browser, for both the client and the admin app, so four surfaces: client on the phone (APK), client in a browser, admin on the phone (APK), admin in a browser. It starts with a read-only audit of each surface; fixes and new work follow from a plan the maintainer approves.",
       "since": "2026-11-15",
-      "status": "Decided, not built: next build (M16 UI overhaul, audits first); waits for the maintainer's go-ahead",
+      "status": "Decided, not built: next, after Phase I (DEC-42); keeps today's identity (DEC-45)",
       "state": "decided, not built",
       "by": "operator",
-      "on": "2026-11-15T09:30:33.268Z"
+      "on": "2026-11-16T10:54:56.252Z"
     },
     {
       "id": "DEC-41",
       "group": "admin-improvements",
       "text": "2026-11-15, next build (recorded, not started): SIP early exit. When a client stops an admin-tracked SIP before its tenure, the admin closes the SIP and returns the money in one action recorded as an early closure, not a maturity, and shown so in the admin and client apps; a maturity date set on that holding is cancelled with it. Today the admin can close a schedule (client page, SIP schedules, Manage, Close the schedule) but can return money only through Mark matured plus Record withdrawal, which records it as a maturity.",
       "since": "2026-11-15",
-      "status": "Decided, not built: next build (M17 SIP early exit); waits for the maintainer's go-ahead",
+      "status": "Decided, not built: being built in Phase I, lane i-sip-early-exit (DEC-42)",
       "state": "decided, not built",
       "by": "operator",
-      "on": "2026-11-15T09:30:33.489Z"
+      "on": "2026-11-16T10:54:55.966Z"
+    },
+    {
+      "id": "DEC-42",
+      "group": "admin-improvements",
+      "text": "Phase I go-ahead: build nominee by request (DEC-39) and SIP early exit (DEC-41) now as two parallel lanes; start the UI overhaul (DEC-40) after they land, so its audit covers the new screens.",
+      "since": "2026-11-16",
+      "status": "In force: Phase I builds M15 and M17 as two lanes; the UI overhaul follows",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-16T10:54:54.446Z"
+    },
+    {
+      "id": "DEC-43",
+      "group": "admin-improvements",
+      "text": "An early exit returns the full current value of the client's holding in the SIP's fund. The holding goes to zero; no exit charge and no partial amount.",
+      "since": "2026-11-16",
+      "status": "Decided, not built: lane i-sip-early-exit",
+      "state": "decided, not built",
+      "by": "operator",
+      "on": "2026-11-16T10:54:54.714Z"
+    },
+    {
+      "id": "DEC-44",
+      "group": "admin-improvements",
+      "text": "The client is told in the app and by email when the admin accepts or declines their nominee request and when their SIP is closed early.",
+      "since": "2026-11-16",
+      "status": "Decided, not built: both Phase I lanes",
+      "state": "decided, not built",
+      "by": "operator",
+      "on": "2026-11-16T10:54:55.054Z"
+    },
+    {
+      "id": "DEC-45",
+      "group": "admin-improvements",
+      "text": "The UI overhaul keeps today's BeOnEdge identity and design system and refines it per surface; it does not set a new visual direction.",
+      "since": "2026-11-16",
+      "status": "In force for DEC-40, the UI overhaul",
+      "state": "in force",
+      "by": "operator",
+      "on": "2026-11-16T10:54:55.358Z"
     }
   ],
   "replaced": []

@@ -1664,6 +1664,10 @@
     {
       "commit": "d3f1b60",
       "note": "Plan: DEC-41 SIP early exit recorded for the next build phase (decided, not built); plan text and decision only."
+    },
+    {
+      "commit": "411eadd",
+      "note": "Plan: Phase I go-ahead (DEC-42) for nominee requests and SIP early exit as two lanes, DEC-43 to DEC-45, open defaults Q-038 to Q-044, lane migrations 072/073 and template keys; documentation only."
     }
   ]
 }

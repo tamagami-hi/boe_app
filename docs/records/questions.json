@@ -1,7 +1,71 @@
 {
   "schema": 1,
-  "nextRow": 24,
-  "open": [],
+  "nextRow": 45,
+  "open": [
+    {
+      "row": 38,
+      "group": "admin-improvements",
+      "question": "Q-038: Does a client re-enter their password to send a nominee request?",
+      "meanwhile": "Yes, as the direct change does today; a wrong password refuses the request and counts against the existing password-recheck limit.",
+      "asked": "2026-11-16T10:55:09.170Z",
+      "by": "claude-opus-5-5 coordinator",
+      "track": "main"
+    },
+    {
+      "row": 39,
+      "group": "admin-improvements",
+      "question": "Q-039: How is the admin told about a new nominee request?",
+      "meanwhile": "A request queue in the admin app with a count on the overview, as support and reviews have; no email to admins.",
+      "asked": "2026-11-16T10:55:09.443Z",
+      "by": "claude-opus-5-5 coordinator",
+      "track": "main"
+    },
+    {
+      "row": 40,
+      "group": "admin-improvements",
+      "question": "Q-040: Does a declined nominee request carry a reason?",
+      "meanwhile": "The admin may add an optional reason, which the client sees with the decline.",
+      "asked": "2026-11-16T10:55:09.721Z",
+      "by": "claude-opus-5-5 coordinator",
+      "track": "main"
+    },
+    {
+      "row": 41,
+      "group": "admin-improvements",
+      "question": "Q-041: How many open nominee requests can a client have, and can they withdraw one?",
+      "meanwhile": "One pending request at a time; the client can withdraw it while it is pending.",
+      "asked": "2026-11-16T10:55:10.025Z",
+      "by": "claude-opus-5-5 coordinator",
+      "track": "main"
+    },
+    {
+      "row": 42,
+      "group": "admin-improvements",
+      "question": "Q-042: What happens to the client's direct nominee change (POST /v1/client/profile/nominee)?",
+      "meanwhile": "Reading the nominee stays. The direct change refuses with an existing error code that released apps already show as a refusal; a v0.16.x APK with the old form shows that refusal instead of saving.",
+      "asked": "2026-11-16T10:55:10.282Z",
+      "by": "claude-opus-5-5 coordinator",
+      "track": "main"
+    },
+    {
+      "row": 43,
+      "group": "admin-improvements",
+      "question": "Q-043: Can an early exit be undone?",
+      "meanwhile": "No. The schedule stays closed, and a mistake is put right with the existing correction recordings.",
+      "asked": "2026-11-16T10:55:10.572Z",
+      "by": "claude-opus-5-5 coordinator",
+      "track": "main"
+    },
+    {
+      "row": 44,
+      "group": "admin-improvements",
+      "question": "Q-044: How does an early exit show in statements and the investor record?",
+      "meanwhile": "The withdrawal row is labelled \"Early exit\" and the closed schedule shows \"Closed early\" with the date; totals do not change.",
+      "asked": "2026-11-16T10:55:10.835Z",
+      "by": "claude-opus-5-5 coordinator",
+      "track": "main"
+    }
+  ],
   "answered": [
     {
       "row": 1,

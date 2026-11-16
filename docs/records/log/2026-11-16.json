@@ -1,0 +1,179 @@
+{
+  "schema": 1,
+  "date": "2026-11-16",
+  "events": [
+    {
+      "at": "2026-11-16T10:54:42.549Z",
+      "session": "cea6c030-4dae-4966-90b7-20c23d8e3eab",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "session_open"
+    },
+    {
+      "at": "2026-11-16T10:54:53.794Z",
+      "session": "cea6c030-4dae-4966-90b7-20c23d8e3eab",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "task_other"
+    },
+    {
+      "at": "2026-11-16T10:55:09.180Z",
+      "session": "cea6c030-4dae-4966-90b7-20c23d8e3eab",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "question_add"
+    },
+    {
+      "at": "2026-11-16T10:55:09.451Z",
+      "session": "cea6c030-4dae-4966-90b7-20c23d8e3eab",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "question_add"
+    },
+    {
+      "at": "2026-11-16T10:55:09.727Z",
+      "session": "cea6c030-4dae-4966-90b7-20c23d8e3eab",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "question_add"
+    },
+    {
+      "at": "2026-11-16T10:55:10.033Z",
+      "session": "cea6c030-4dae-4966-90b7-20c23d8e3eab",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "question_add"
+    },
+    {
+      "at": "2026-11-16T10:55:10.298Z",
+      "session": "cea6c030-4dae-4966-90b7-20c23d8e3eab",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "question_add"
+    },
+    {
+      "at": "2026-11-16T10:55:10.585Z",
+      "session": "cea6c030-4dae-4966-90b7-20c23d8e3eab",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "question_add"
+    },
+    {
+      "at": "2026-11-16T10:55:10.849Z",
+      "session": "cea6c030-4dae-4966-90b7-20c23d8e3eab",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "question_add"
+    },
+    {
+      "at": "2026-11-16T10:55:16.929Z",
+      "session": "cea6c030-4dae-4966-90b7-20c23d8e3eab",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "track_open",
+      "target": "i-nominee-requests"
+    },
+    {
+      "at": "2026-11-16T10:55:17.310Z",
+      "session": "cea6c030-4dae-4966-90b7-20c23d8e3eab",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "track_open",
+      "target": "i-sip-early-exit"
+    },
+    {
+      "at": "2026-11-16T10:57:08.539Z",
+      "session": "cea6c030-4dae-4966-90b7-20c23d8e3eab",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "context_put",
+      "target": "convention"
+    },
+    {
+      "at": "2026-11-16T10:57:18.123Z",
+      "session": "cea6c030-4dae-4966-90b7-20c23d8e3eab",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "note_post",
+      "target": "M17-sip-early-exit:X1-sip-early-exit, request"
+    },
+    {
+      "at": "2026-11-16T10:57:19.271Z",
+      "session": "f1a0677d-d326-4efe-9b7e-e94bef987367",
+      "track": "i-sip-early-exit",
+      "agent": "claude-pro-i-sip-early-exit",
+      "verb": "session_open"
+    },
+    {
+      "at": "2026-11-16T10:57:20.327Z",
+      "session": "f812cd3f-c261-4aed-8bb9-42fab9e7fb01",
+      "track": "i-nominee-requests",
+      "agent": "claude-pro-i-nominee-requests",
+      "verb": "session_open"
+    },
+    {
+      "at": "2026-11-16T10:57:26.143Z",
+      "session": "cea6c030-4dae-4966-90b7-20c23d8e3eab",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-16T11:29:40.333Z",
+      "session": "f812cd3f-c261-4aed-8bb9-42fab9e7fb01",
+      "track": "i-nominee-requests",
+      "agent": "claude-pro-i-nominee-requests",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-16T11:29:46.577Z",
+      "session": "e8367c33-9d24-4713-8f31-a86d5891c547",
+      "track": "i-nominee-requests",
+      "agent": "claude-opus-5-5 builder i-nominee-requests",
+      "verb": "session_open"
+    },
+    {
+      "at": "2026-11-16T11:29:53.253Z",
+      "session": "f1a0677d-d326-4efe-9b7e-e94bef987367",
+      "track": "i-sip-early-exit",
+      "agent": "claude-pro-i-sip-early-exit",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-16T11:29:55.884Z",
+      "session": "fc77631b-d091-4ca5-abfa-34342d94462c",
+      "track": "i-sip-early-exit",
+      "agent": "claude-opus-5-5 builder i-sip-early-exit",
+      "verb": "session_open"
+    },
+    {
+      "at": "2026-11-16T11:30:12.474Z",
+      "session": "fc77631b-d091-4ca5-abfa-34342d94462c",
+      "track": "i-sip-early-exit",
+      "agent": "claude-opus-5-5 builder i-sip-early-exit",
+      "verb": "note_post",
+      "target": "M17-sip-early-exit:X1-sip-early-exit, request"
+    },
+    {
+      "at": "2026-11-16T11:52:31.276Z",
+      "session": "e8367c33-9d24-4713-8f31-a86d5891c547",
+      "track": "i-nominee-requests",
+      "agent": "claude-opus-5-5 builder i-nominee-requests",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-16T11:52:31.587Z",
+      "session": "fc77631b-d091-4ca5-abfa-34342d94462c",
+      "track": "i-sip-early-exit",
+      "agent": "claude-opus-5-5 builder i-sip-early-exit",
+      "verb": "session_close"
+    },
+    {
+      "at": "2026-11-16T11:59:47.425Z",
+      "session": "841a8bf8-0dd6-4a16-a156-2070454da9dd",
+      "track": "main",
+      "agent": "claude-opus-5-5 coordinator",
+      "verb": "session_open"
+    }
+  ]
+}

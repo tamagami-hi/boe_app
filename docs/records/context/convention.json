@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "kind": "convention",
-  "nextNumber": 11,
+  "nextNumber": 12,
   "entries": [
     {
       "id": "convention-1",
@@ -225,7 +225,30 @@
         "agent": "claude-opus-5-5 coordinator"
       },
       "at": "2026-11-14T04:38:15.734Z",
-      "replaces": "convention-7"
+      "replaces": "convention-7",
+      "retiredAt": "2026-11-16T10:57:08.529Z",
+      "retiredWhy": "replaced by convention-11"
+    },
+    {
+      "id": "convention-11",
+      "kind": "convention",
+      "title": "Migration numbers: 071 company name, 072 nominee requests, 073 SIP early exit (Phase I)",
+      "text": "061 identity, 062 investment email, 063 nominee, 064 admin SIP schedules, 065 maturity schedules, 066 audit index, 067 client reviews, 068 Phase F maturity choices, 069 Phase G client erasure, 070 Phase H one-time statement links, 071 company name correction (M14 F1). Phase I: 072 nominee requests (lane i-nominee-requests, adds template key nominee_request_decided), 073 SIP early exit (lane i-sip-early-exit, adds sip_early_exit and lists nominee_request_decided too). Both replace email_deliveries_template_check, so 072 lands first and 073 after it. Each lane adds its number to the releaseUpgrade integration test's expected list. A new table that holds client data must also be classified in clientErasureCoverage.integration.test.ts and handled by the Phase G erase paths.",
+      "paths": [
+        "backend_controller/db/migrations"
+      ],
+      "tags": [
+        "migration"
+      ],
+      "refs": [
+        "DEC-42"
+      ],
+      "by": {
+        "track": "main",
+        "agent": "claude-opus-5-5 coordinator"
+      },
+      "at": "2026-11-16T10:57:08.529Z",
+      "replaces": "convention-10"
     }
   ]
 }
