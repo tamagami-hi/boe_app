@@ -26561,7 +26561,8 @@
                 "app_update_notice",
                 "investment_recorded",
                 "maturity_options",
-                "nominee_request_decided"
+                "nominee_request_decided",
+                "sip_early_exit"
               ]
             },
             "required": false,
@@ -41944,6 +41945,1085 @@
                               "totalMonths",
                               "monthsPaid",
                               "state"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/clients/{userId}/sip-schedules/{scheduleId}/early-exit": {
+      "get": {
+        "operationId": "getAdminSipEarlyExitPreview",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "scheduleId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "scheduleId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "scheduleVersion": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "scheduleState": {
+                          "type": "string"
+                        },
+                        "fundId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "fundName": {
+                          "type": "string"
+                        },
+                        "principalPaise": {
+                          "type": "string",
+                          "pattern": "^-?(0|[1-9][0-9]*)$/u"
+                        },
+                        "currentValuePaise": {
+                          "type": "string",
+                          "pattern": "^(0|[1-9][0-9]*)$/u"
+                        },
+                        "principalPortionPaise": {
+                          "type": "string",
+                          "pattern": "^(0|[1-9][0-9]*)$/u"
+                        },
+                        "growthPortionPaise": {
+                          "type": "string",
+                          "pattern": "^(0|[1-9][0-9]*)$/u"
+                        },
+                        "effectiveDate": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$/u"
+                        },
+                        "maturity": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "scheduleId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "maturityDate": {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$/u"
+                            }
+                          },
+                          "required": [
+                            "scheduleId",
+                            "maturityDate"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "refusal": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "schedule_closed",
+                                "no_value",
+                                "maturity_settling",
+                                "maturity_due",
+                                "later_entry"
+                              ]
+                            },
+                            "message": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "message"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "scheduleId",
+                        "scheduleVersion",
+                        "scheduleState",
+                        "fundId",
+                        "fundName",
+                        "principalPaise",
+                        "currentValuePaise",
+                        "principalPortionPaise",
+                        "growthPortionPaise",
+                        "effectiveDate",
+                        "maturity",
+                        "refusal"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "exitAdminSipScheduleEarly",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "scheduleId",
+            "in": "path"
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expectedVersion": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "expectedValuePaise": {
+                    "type": "string",
+                    "pattern": "^(0|[1-9][0-9]*)$/u"
+                  }
+                },
+                "required": [
+                  "expectedVersion",
+                  "expectedValuePaise"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "earlyExit": {
+                          "type": "object",
+                          "properties": {
+                            "earlyExitId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "scheduleId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "userId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "fundId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "fundName": {
+                              "type": "string"
+                            },
+                            "entryId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "amountPaise": {
+                              "type": "string",
+                              "pattern": "^(0|[1-9][0-9]*)$/u"
+                            },
+                            "principalBeforePaise": {
+                              "type": "string",
+                              "pattern": "^(0|[1-9][0-9]*)$/u"
+                            },
+                            "valueBeforePaise": {
+                              "type": "string",
+                              "pattern": "^(0|[1-9][0-9]*)$/u"
+                            },
+                            "effectiveDate": {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$/u"
+                            },
+                            "cancelledMaturityScheduleId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "uuid"
+                            },
+                            "cancelledMaturityDate": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$/u"
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "payout": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "userId": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "fundId": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "ledgerEntryId": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "state": {
+                                  "type": "string",
+                                  "enum": [
+                                    "pending",
+                                    "paid",
+                                    "failed"
+                                  ]
+                                },
+                                "amountPaise": {
+                                  "type": "string",
+                                  "pattern": "^(0|[1-9][0-9]*)$/u"
+                                },
+                                "growthPortionPaise": {
+                                  "type": "string",
+                                  "pattern": "^(0|[1-9][0-9]*)$/u"
+                                },
+                                "principalPortionPaise": {
+                                  "type": "string",
+                                  "pattern": "^(0|[1-9][0-9]*)$/u"
+                                },
+                                "effectiveDate": {
+                                  "type": "string",
+                                  "format": "date"
+                                },
+                                "transferReference": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "failureCode": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "version": {
+                                  "type": "string",
+                                  "pattern": "^(0|[1-9][0-9]*)$/u"
+                                },
+                                "createdAt": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "userId",
+                                "fundId",
+                                "ledgerEntryId",
+                                "state",
+                                "amountPaise",
+                                "growthPortionPaise",
+                                "principalPortionPaise",
+                                "effectiveDate",
+                                "transferReference",
+                                "failureCode",
+                                "version",
+                                "createdAt"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "earlyExitId",
+                            "scheduleId",
+                            "userId",
+                            "fundId",
+                            "fundName",
+                            "entryId",
+                            "amountPaise",
+                            "principalBeforePaise",
+                            "valueBeforePaise",
+                            "effectiveDate",
+                            "cancelledMaturityScheduleId",
+                            "cancelledMaturityDate",
+                            "createdAt",
+                            "payout"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "earlyExit"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/clients/{userId}/sip-early-exits": {
+      "get": {
+        "operationId": "listAdminClientSipEarlyExits",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "earlyExitId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "scheduleId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "userId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "fundId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "fundName": {
+                                "type": "string"
+                              },
+                              "entryId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "amountPaise": {
+                                "type": "string",
+                                "pattern": "^(0|[1-9][0-9]*)$/u"
+                              },
+                              "principalBeforePaise": {
+                                "type": "string",
+                                "pattern": "^(0|[1-9][0-9]*)$/u"
+                              },
+                              "valueBeforePaise": {
+                                "type": "string",
+                                "pattern": "^(0|[1-9][0-9]*)$/u"
+                              },
+                              "effectiveDate": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$/u"
+                              },
+                              "cancelledMaturityScheduleId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "uuid"
+                              },
+                              "cancelledMaturityDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$/u"
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "payout": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "userId": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "fundId": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "ledgerEntryId": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                  },
+                                  "state": {
+                                    "type": "string",
+                                    "enum": [
+                                      "pending",
+                                      "paid",
+                                      "failed"
+                                    ]
+                                  },
+                                  "amountPaise": {
+                                    "type": "string",
+                                    "pattern": "^(0|[1-9][0-9]*)$/u"
+                                  },
+                                  "growthPortionPaise": {
+                                    "type": "string",
+                                    "pattern": "^(0|[1-9][0-9]*)$/u"
+                                  },
+                                  "principalPortionPaise": {
+                                    "type": "string",
+                                    "pattern": "^(0|[1-9][0-9]*)$/u"
+                                  },
+                                  "effectiveDate": {
+                                    "type": "string",
+                                    "format": "date"
+                                  },
+                                  "transferReference": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "failureCode": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "version": {
+                                    "type": "string",
+                                    "pattern": "^(0|[1-9][0-9]*)$/u"
+                                  },
+                                  "createdAt": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "userId",
+                                  "fundId",
+                                  "ledgerEntryId",
+                                  "state",
+                                  "amountPaise",
+                                  "growthPortionPaise",
+                                  "principalPortionPaise",
+                                  "effectiveDate",
+                                  "transferReference",
+                                  "failureCode",
+                                  "version",
+                                  "createdAt"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "earlyExitId",
+                              "scheduleId",
+                              "userId",
+                              "fundId",
+                              "fundName",
+                              "entryId",
+                              "amountPaise",
+                              "principalBeforePaise",
+                              "valueBeforePaise",
+                              "effectiveDate",
+                              "cancelledMaturityScheduleId",
+                              "cancelledMaturityDate",
+                              "createdAt",
+                              "payout"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/client/sip-early-exits": {
+      "get": {
+        "operationId": "listClientSipEarlyExits",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "earlyExitId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "scheduleId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "fundId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "fundName": {
+                                "type": "string"
+                              },
+                              "entryId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "amountPaise": {
+                                "type": "string",
+                                "pattern": "^(0|[1-9][0-9]*)$/u"
+                              },
+                              "effectiveDate": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$/u"
+                              },
+                              "closedAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "earlyExitId",
+                              "scheduleId",
+                              "fundId",
+                              "fundName",
+                              "entryId",
+                              "amountPaise",
+                              "effectiveDate",
+                              "closedAt"
                             ],
                             "additionalProperties": false
                           }

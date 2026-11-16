@@ -2548,6 +2548,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/clients/{userId}/sip-schedules/{scheduleId}/early-exit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getAdminSipEarlyExitPreview"];
+        put?: never;
+        post: operations["exitAdminSipScheduleEarly"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/clients/{userId}/sip-early-exits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listAdminClientSipEarlyExits"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/client/sip-early-exits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listClientSipEarlyExits"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/client/reviews": {
         parameters: {
             query?: never;
@@ -16094,7 +16142,7 @@ export interface operations {
         parameters: {
             query?: {
                 state?: "queued" | "sending" | "sent" | "delivered" | "retryable_failed" | "permanent_failed" | "cancelled";
-                templateKey?: "application_rejected" | "account_approved" | "password_set_link" | "password_reset_link" | "password_app_download" | "contact_phone_changed" | "email_change_code" | "contact_email_changed" | "admin_message" | "app_update_notice" | "investment_recorded" | "maturity_options" | "nominee_request_decided";
+                templateKey?: "application_rejected" | "account_approved" | "password_set_link" | "password_reset_link" | "password_app_download" | "contact_phone_changed" | "email_change_code" | "contact_email_changed" | "admin_message" | "app_update_notice" | "investment_recorded" | "maturity_options" | "nominee_request_decided" | "sip_early_exit";
                 applicationId?: string;
                 userId?: string;
                 after?: string;
@@ -23823,6 +23871,515 @@ export interface operations {
                                 totalMonths: number;
                                 monthsPaid: number;
                                 state: string;
+                            }[];
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getAdminSipEarlyExitPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+                scheduleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            /** Format: uuid */
+                            scheduleId: string;
+                            scheduleVersion: number;
+                            scheduleState: string;
+                            /** Format: uuid */
+                            fundId: string;
+                            fundName: string;
+                            principalPaise: string;
+                            currentValuePaise: string;
+                            principalPortionPaise: string;
+                            growthPortionPaise: string;
+                            effectiveDate: string;
+                            maturity: {
+                                /** Format: uuid */
+                                scheduleId: string;
+                                maturityDate: string;
+                            } | null;
+                            refusal: {
+                                /** @enum {string} */
+                                code: "schedule_closed" | "no_value" | "maturity_settling" | "maturity_due" | "later_entry";
+                                message: string;
+                            } | null;
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    exitAdminSipScheduleEarly: {
+        parameters: {
+            query?: never;
+            header: {
+                "idempotency-key": string;
+                "x-csrf-token": string;
+            };
+            path: {
+                userId: string;
+                scheduleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    expectedValuePaise: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            earlyExit: {
+                                /** Format: uuid */
+                                earlyExitId: string;
+                                /** Format: uuid */
+                                scheduleId: string;
+                                /** Format: uuid */
+                                userId: string;
+                                /** Format: uuid */
+                                fundId: string;
+                                fundName: string;
+                                /** Format: uuid */
+                                entryId: string;
+                                amountPaise: string;
+                                principalBeforePaise: string;
+                                valueBeforePaise: string;
+                                effectiveDate: string;
+                                /** Format: uuid */
+                                cancelledMaturityScheduleId: string | null;
+                                cancelledMaturityDate: string | null;
+                                /** Format: date-time */
+                                createdAt: string;
+                                payout: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    userId: string;
+                                    /** Format: uuid */
+                                    fundId: string;
+                                    /** Format: uuid */
+                                    ledgerEntryId: string;
+                                    /** @enum {string} */
+                                    state: "pending" | "paid" | "failed";
+                                    amountPaise: string;
+                                    growthPortionPaise: string;
+                                    principalPortionPaise: string;
+                                    /** Format: date */
+                                    effectiveDate: string;
+                                    transferReference: string | null;
+                                    failureCode: string | null;
+                                    version: string;
+                                    /** Format: date-time */
+                                    createdAt: string;
+                                };
+                            };
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listAdminClientSipEarlyExits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            items: {
+                                /** Format: uuid */
+                                earlyExitId: string;
+                                /** Format: uuid */
+                                scheduleId: string;
+                                /** Format: uuid */
+                                userId: string;
+                                /** Format: uuid */
+                                fundId: string;
+                                fundName: string;
+                                /** Format: uuid */
+                                entryId: string;
+                                amountPaise: string;
+                                principalBeforePaise: string;
+                                valueBeforePaise: string;
+                                effectiveDate: string;
+                                /** Format: uuid */
+                                cancelledMaturityScheduleId: string | null;
+                                cancelledMaturityDate: string | null;
+                                /** Format: date-time */
+                                createdAt: string;
+                                payout: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    /** Format: uuid */
+                                    userId: string;
+                                    /** Format: uuid */
+                                    fundId: string;
+                                    /** Format: uuid */
+                                    ledgerEntryId: string;
+                                    /** @enum {string} */
+                                    state: "pending" | "paid" | "failed";
+                                    amountPaise: string;
+                                    growthPortionPaise: string;
+                                    principalPortionPaise: string;
+                                    /** Format: date */
+                                    effectiveDate: string;
+                                    transferReference: string | null;
+                                    failureCode: string | null;
+                                    version: string;
+                                    /** Format: date-time */
+                                    createdAt: string;
+                                };
+                            }[];
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listClientSipEarlyExits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            items: {
+                                /** Format: uuid */
+                                earlyExitId: string;
+                                /** Format: uuid */
+                                scheduleId: string;
+                                /** Format: uuid */
+                                fundId: string;
+                                fundName: string;
+                                /** Format: uuid */
+                                entryId: string;
+                                amountPaise: string;
+                                effectiveDate: string;
+                                /** Format: date-time */
+                                closedAt: string;
                             }[];
                         };
                         error: null;

@@ -40,6 +40,7 @@ import { OPS_OPERATIONS } from "../src/operations/ops.js"
 import { PUBLIC_CONTENT_OPERATIONS } from "../src/operations/public-content.js"
 import { PUBLIC_OPERATIONS } from "../src/operations/public.js"
 import { RECORDING_SHEET_OPERATIONS } from "../src/operations/recording-sheet.js"
+import { SIP_EARLY_EXIT_OPERATIONS } from "../src/operations/sip-early-exits.js"
 import { SIP_SCHEDULE_OPERATIONS } from "../src/operations/sip-schedules.js"
 import { VALUE_UPDATE_OPERATIONS } from "../src/operations/value-updates.js"
 import { WEB_AUTH_OPERATIONS } from "../src/operations/web-auth.js"
@@ -95,6 +96,7 @@ export const ALL_OPERATIONS: readonly GeneratableOperation[] = Object.freeze([
   ...CLIENT_NOMINEE_REQUEST_OPERATIONS,
   ...ADMIN_NOMINEE_REQUEST_OPERATIONS,
   ...SIP_SCHEDULE_OPERATIONS,
+  ...SIP_EARLY_EXIT_OPERATIONS,
   ...CLIENT_REVIEW_OPERATIONS,
   ...RECORDING_SHEET_OPERATIONS,
   ...ADMIN_MATURITY_SCHEDULE_OPERATIONS,

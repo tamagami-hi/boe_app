@@ -14,6 +14,7 @@ import { ButtonLink } from "~/ui/primitives/ButtonLink"
 import { Card } from "~/ui/primitives/Card"
 import { Skeleton } from "~/ui/primitives/Feedback"
 
+import { StatementEarlyExits } from "./StatementEarlyExits"
 import {
   STATEMENT_CAPTION,
   STATEMENT_HEAD_CELL,
@@ -134,6 +135,8 @@ const StatementPrintScreen = (): React.ReactElement => {
           </Card>
         )}
       </AsyncBoundary>
+
+      <StatementEarlyExits />
 
       <MoneyFootnote lastUpdated={portfolio.data?.lastUpdated ?? null} />
     </Page>

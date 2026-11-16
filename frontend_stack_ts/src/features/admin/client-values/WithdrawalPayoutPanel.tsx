@@ -16,7 +16,7 @@ import { STACK_LG } from "~/ui/recipes/layout"
 
 import { useUpdatePayout } from "./maturityQueries"
 
-type Props = Readonly<{ payout: AdminWithdrawalPayout; fundName: string; canWrite: boolean }>
+type Props = Readonly<{ payout: Omit<AdminWithdrawalPayout, "maturityId">; fundName: string; canWrite: boolean }>
 
 export const WithdrawalPayoutPanel = ({ payout, fundName, canWrite }: Props): React.ReactElement => {
   const update = useUpdatePayout(payout.userId)

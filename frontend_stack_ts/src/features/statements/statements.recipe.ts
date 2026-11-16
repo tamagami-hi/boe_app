@@ -30,3 +30,5 @@ export const STATEMENT_MONTH_CELL = [
 export const STATEMENT_NUMERIC_CELL = "border-b border-hairline px-3 py-2 text-right align-top"
 
 export const STATEMENT_PREPARED = "m-0 font-ui text-sm text-fg-muted"
+
+export const STATEMENT_NOTES = "m-0 flex list-disc flex-col gap-1 pl-5 font-ui text-sm text-fg-muted"

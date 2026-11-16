@@ -17,6 +17,7 @@ export const CLIENT_MONEY_PREFIXES = [
   ["client", "receipts"],
   ["client", "receipt"],
   ["client", "sip-schedules"],
+  ["client", "sip-early-exits"],
   ["client", "maturity-options"],
   ["client", "invested-funds"],
 ] as const
@@ -50,6 +51,7 @@ export const qk = {
     fundReceipts: (fundId: string) => ["client", "receipts", "fund", fundId] as const,
     receipt: (entryId: string) => ["client", "receipt", entryId] as const,
     sipSchedules: () => ["client", "sip-schedules"] as const,
+    sipEarlyExits: () => ["client", "sip-early-exits"] as const,
     maturityOffers: () => ["client", "maturity-options"] as const,
     maturityOffer: (offerId: string) => ["client", "maturity-options", offerId] as const,
     notifications: () => ["client", "notifications"] as const,
@@ -84,6 +86,9 @@ export const qk = {
     clientPortfolioSummary: (userId: string) => ["admin", "investor", userId, "portfolio-summary"] as const,
     clientLedgerPage: (userId: string) => ["admin", "investor", userId, "ledger-page"] as const,
     clientSipSchedules: (userId: string) => ["admin", "investor", userId, "sip-schedules"] as const,
+    clientSipEarlyExits: (userId: string) => ["admin", "investor", userId, "sip-early-exits"] as const,
+    sipEarlyExitPreview: (userId: string, scheduleId: string) =>
+      ["admin", "investor", userId, "sip-early-exit-preview", scheduleId] as const,
     recordingSheetRoot: () => ["admin", "recording-sheet"] as const,
     recordingSheet: (month: string, fundId: string) => ["admin", "recording-sheet", month, fundId] as const,
     clientMaturitySchedules: (userId: string) => ["admin", "investor", userId, "maturity-schedules"] as const,

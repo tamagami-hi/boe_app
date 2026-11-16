@@ -6,6 +6,8 @@ import { useSession } from "~/app/providers/SessionProvider"
 import { formatDate, formatDateTime } from "~/domain/dates"
 import { toPaise } from "~/domain/money"
 import { useClientLedgerPage } from "~/features/admin/client-returns/returnQueries"
+import { EARLY_EXIT_LABEL, EarlyExitLabelFailure } from "~/features/admin/client-values/EarlyExitLabelFailure"
+import { earlyExitEntryIds, useClientSipEarlyExits } from "~/features/admin/client-values/earlyExitQueries"
 import { useReverseClientLedgerEntry } from "~/features/admin/shared/adminQueries"
 import { AdminTable } from "~/features/admin/shared/AdminTable"
 import { useAdminFundCatalogue } from "~/features/admin/shared/queries"
@@ -62,6 +64,8 @@ export const ClientLedgerTab = ({ userId }: Props): React.ReactElement => {
   const { hasAnyPermission } = useSession()
   const canWrite = hasAnyPermission(["client_position.write"])
   const ledger = useClientLedgerPage(userId)
+  const earlyExits = useClientSipEarlyExits(userId)
+  const earlyExitEntries = earlyExitEntryIds(earlyExits)
   const funds = useAdminFundCatalogue()
   const reverse = useReverseClientLedgerEntry()
   const [pending, setPending] = useState<string | null>(null)
@@ -94,6 +98,7 @@ export const ClientLedgerTab = ({ userId }: Props): React.ReactElement => {
           {failure.message}
         </Alert>
       )}
+      <EarlyExitLabelFailure query={earlyExits} />
       {reverse.data === undefined ? null : (
         <Alert tone="success" title="Entry reversed">
           The reversal carries the original&apos;s effective date, so that statement period is corrected too.
@@ -124,7 +129,7 @@ export const ClientLedgerTab = ({ userId }: Props): React.ReactElement => {
                 header: "Entry",
                 render: (row) => (
                   <Badge tone={row.entryType === "reversal" ? "neutral" : "info"}>
-                    {`${ENTRY_LABEL[row.entryType] ?? row.entryType}${
+                    {`${earlyExitEntries.has(row.entryId) ? EARLY_EXIT_LABEL : (ENTRY_LABEL[row.entryType] ?? row.entryType)}${
                       row.orderType === null ? "" : ` · ${ORDER_LABEL[row.orderType] ?? row.orderType}`
                     }`}
                   </Badge>

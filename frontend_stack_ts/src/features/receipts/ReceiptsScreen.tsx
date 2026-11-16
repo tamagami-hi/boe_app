@@ -21,6 +21,7 @@ import { META_MUTED } from "~/ui/recipes/text"
 
 import { ROW, ROW_LEFT, ROW_RIGHT } from "~/features/activity/activity.recipe"
 
+import { EarlyExitReceipts } from "./EarlyExitReceipts"
 import { useReceipts } from "./receiptQueries"
 
 const ReceiptsScreen = (): React.ReactElement => {
@@ -73,6 +74,8 @@ const ReceiptsScreen = (): React.ReactElement => {
         )}
       </AsyncBoundary>
       <LoadMore list={receipts} noun="receipts" />
+
+      <EarlyExitReceipts />
 
       <MoneyFootnote lastUpdated={portfolio.data?.lastUpdated ?? null} />
     </Page>

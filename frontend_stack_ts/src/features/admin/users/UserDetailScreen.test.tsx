@@ -93,6 +93,12 @@ vi.mock("~/features/admin/client-values/sipScheduleQueries", () => ({
   }),
 }))
 
+vi.mock("~/features/admin/client-values/earlyExitQueries", () => ({
+  useClientSipEarlyExits: () => ({ data: { items: [] }, error: null, isPending: false, refetch: () => Promise.resolve() }),
+}))
+vi.mock("~/features/admin/client-values/SipEarlyExitList", () => ({ SipEarlyExitList: () => null }))
+vi.mock("./SipEarlyExitPanel", () => ({ SipEarlyExitPanel: () => null }))
+
 vi.mock("~/features/admin/client-values/recordingQueries", () => ({
   useRecordClientContribution: () => {
     const [data, setData] = useState<typeof RECORDED | undefined>(undefined)

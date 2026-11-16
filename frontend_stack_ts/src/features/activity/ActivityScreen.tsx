@@ -10,6 +10,8 @@ import { INVESTMENTS_RECORDED_HERE } from "~/features/investing/InvestmentsRecor
 import { useOnlinePaymentsOff } from "~/features/investing/onlinePayments"
 import { FundName, FundNamesFailure, useFundNames } from "~/features/invested-funds/FundNames"
 import { investedFundPath } from "~/features/invested-funds/investedFundPath"
+import { EARLY_EXIT_LABEL, useSipEarlyExits } from "~/features/portfolio/sipEarlyExitQueries"
+import { InlineReadFailure } from "~/features/shared/InlineReadFailure"
 import {
   useFundCatalogue,
   usePayments,
@@ -113,6 +115,8 @@ const ActivityScreen = (): React.ReactElement => {
   const funds = useFundCatalogue()
   const names = useFundNames()
   const portfolio = usePortfolio()
+  const earlyExits = useSipEarlyExits()
+  const earlyExitEntries = new Set((earlyExits.data?.items ?? []).map((exit) => exit.entryId))
 
   const nameFor = (fundId: string | null): string =>
     fundId === null
@@ -181,13 +185,24 @@ const ActivityScreen = (): React.ReactElement => {
           {(data) => (
             <div className={cx(CARD_STACK, FEED_MEASURE)}>
               <FundNamesFailure names={names} />
+              {earlyExits.isError && data.items.some((entry) => entry.type === "withdrawal") ? (
+                <InlineReadFailure
+                  label="Couldn’t check which withdrawals were early exits"
+                  retrying={earlyExits.isFetching}
+                  onRetry={() => {
+                    void earlyExits.refetch()
+                  }}
+                />
+              ) : null}
               {[...data.items]
                 .sort(newestFirst)
                 .map((entry) => (
                   <Card key={entry.id}>
                     <div className={ROW}>
                       <div className={ROW_LEFT}>
-                        <Badge tone={TONE[entry.type]}>{LABEL[entry.type]}</Badge>
+                        <Badge tone={TONE[entry.type]}>
+                          {entry.type === "withdrawal" && earlyExitEntries.has(entry.id) ? EARLY_EXIT_LABEL : LABEL[entry.type]}
+                        </Badge>
                         <Link to={investedFundPath(entry.fundId)} className={LINK_TEXT}>
                           <FundName names={names} fundId={entry.fundId} />
                         </Link>

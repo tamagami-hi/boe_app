@@ -27,11 +27,14 @@ import { Alert } from "~/ui/primitives/Feedback"
 import { ADMIN_CODE } from "~/ui/recipes/admin"
 
 import { EarlierInvestmentForm } from "./EarlierInvestmentForm"
+import { EARLY_EXIT_LABEL, EarlyExitLabelFailure } from "./EarlyExitLabelFailure"
+import { earlyExitEntryIds, useClientSipEarlyExits } from "./earlyExitQueries"
 import { InvestorPicker } from "./InvestorPicker"
 import { useLinkedInvestor } from "./linkedInvestor"
 import { useLinkedRecord } from "./linkedRecord"
 import { ListSkeleton } from "./ListSkeleton"
 import { MaturityPanel } from "./MaturityPanel"
+import { SipEarlyExitList } from "./SipEarlyExitList"
 
 const ENTRY_LABEL: Readonly<Record<string, string>> = {
   contribution: "Contribution",
@@ -65,6 +68,8 @@ const ClientPositionDetailScreen = (): React.ReactElement => {
 
   const positions = useAdminInvestorPositions(userId)
   const ledger = useClientLedgerPage(userId)
+  const earlyExits = useClientSipEarlyExits(userId)
+  const earlyExitEntries = earlyExitEntryIds(earlyExits)
   const investor = useLinkedInvestor(userId, pickedLabel)
 
   const fundCatalogue = funds.data?.items ?? []
@@ -220,6 +225,8 @@ const ClientPositionDetailScreen = (): React.ReactElement => {
             />
           )}
 
+          <SipEarlyExitList userId={userId} canWrite={canWrite} />
+
           <Section
             title="Record an investment"
             description="An earlier investment, a monthly investment or a correction, written as an accepted order, a succeeded payment, an allocation and an ordinary contribution, all dated by the real date so the statement for that period is right. The investor is notified and sees a receipt."
@@ -235,6 +242,7 @@ const ClientPositionDetailScreen = (): React.ReactElement => {
             title="Ledger entries"
             description="Append-only. Reversing an entry writes a new row that negates it; an entry can be reversed once."
           >
+            <EarlyExitLabelFailure query={earlyExits} />
             <AsyncBoundary
               query={ledger}
               skeleton={<ListSkeleton />}
@@ -259,7 +267,7 @@ const ClientPositionDetailScreen = (): React.ReactElement => {
                       header: "Entry",
                       render: (row) => (
                         <Badge tone={row.entryType === "reversal" ? "neutral" : "info"}>
-                          {`${ENTRY_LABEL[row.entryType] ?? row.entryType}${
+                          {`${earlyExitEntries.has(row.entryId) ? EARLY_EXIT_LABEL : (ENTRY_LABEL[row.entryType] ?? row.entryType)}${
                             row.orderType === null ? "" : ` · ${ORDER_LABEL[row.orderType] ?? row.orderType}`
                           }`}
                         </Badge>
