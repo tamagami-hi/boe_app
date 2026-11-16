@@ -135,12 +135,17 @@ including customer activity. Such a migration needs maintainer approval under `R
 rule 11 and must be registered as a rollback boundary (migrations 025 and 042 are).
 
 Migration 073 (SIP early exit) is not such a boundary, but an images-only rollback to
-v0.16.2 after it is degraded for any client with an early exit (DEC-59). Nothing is lost:
+v0.16.2 after it is degraded for any client with an early exit (DEC-59). No money row or
+record is lost:
 
-- The v0.16.2 admin app cannot load that client's maturity payout list, so an early-exit
-  payout cannot be marked paid until the roll-forward.
+- The v0.16.2 admin app cannot load that client's maturity payout list at all, so no
+  payout of that client, maturity or early exit, can be marked paid or failed until the
+  roll-forward.
 - v0.16.2 lets an early-closed SIP schedule be reopened. After the roll-forward, a second
   early exit on that schedule is refused with `409 STATE_CONFLICT` and writes nothing.
+- An early-exit email still queued at the rollback is dead-lettered by the v0.16.2 email
+  worker, which has no `sip_early_exit` template (the same case as `finding-26`), and is not
+  re-sent after the roll-forward. The in-app notice is not affected.
 
 Per-stack backup roots live under `/srv/backup/BOE_APP/` (`PROD_ROLLBACK/`, `DB_BACKUPS/`,
 `LOGS/`) and are addressed through `paths.json`, never by literal path.
