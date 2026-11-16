@@ -32,7 +32,7 @@
   --be-bg-inverse: var(--be-ink);
   --be-fg: var(--be-ink);
   --be-fg-muted: var(--be-slate);
-  --be-fg-faint: var(--be-slate-2);
+  --be-fg-faint: rgb(38 44 54 / 68%);
   --be-fg-inverse: var(--be-ivory);
   --be-accent: var(--be-gold);
   --be-surface: var(--be-bg-elevated);

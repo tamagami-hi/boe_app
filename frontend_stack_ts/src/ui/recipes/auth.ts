@@ -62,7 +62,7 @@ export const AUTH_PANEL_TITLE =
   "m-0 font-display text-xl lg:text-2xl font-normal leading-snug tracking-display text-fg"
 
 export const AUTH_FOOTNOTE = [
-  "relative z-2 m-0 text-center font-ui text-xs text-fg-faint",
+  "relative z-2 m-0 text-center font-ui text-xs text-fg-muted",
   "px-[max(var(--be-space-5),var(--be-safe-left))]",
   "pb-[calc(var(--be-space-5)+var(--be-safe-bottom))]",
   "lg:absolute lg:bottom-0 lg:left-0 lg:w-[51%] lg:px-10 lg:pb-8 lg:text-left",
