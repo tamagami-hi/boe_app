@@ -84,6 +84,8 @@ IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-0
 | DEC-60 | 2026-11-16 | Docs cleanup, all nine answers of the cleanup report as recommended (2026-11-16): decisions and questions live in tally alone from the Phase I close; `PRODUCT.md` is replaced by a short brief for this app before the UI fix plan; UI audits are Markdown tables plus tally findings; new programme plans and audits go under `docs/<programme>/`; this plan closes at the Phase I close; `CLAUDE.md` is trimmed and tracked; the archive under `release_manager/docs/Completed/` stays protected; the guide fixes do not wait for Node 24; review-report links in tally are accepted and tally `rule-48` is reworded. | In progress: the first docs commit is made; the rest follows as the lanes land (rule changes in `RULES.md` at the Phase I close). |
 | DEC-61 | 2026-11-16 | The UI overhaul fix plan `docs/ui-overhaul/plan.md` (U5) is approved, with its seven questions as recommended: no market-risk line on admin screens; the maturity payout's bank transfer reference becomes optional in its own small expand-only lane (`rule-18`); no permission change, one plain notice; the CC-01 back arrow is fixed in `ClientFrame.tsx` only, with the existing back resolver; the admin phone bottom bar is Overview, Users, Client values and Support; the fix lanes land after the Node 24 release is cut; a local stack and browser are allowed for each lane's screenshot pass. | In force; the stage A lanes are built on branches and held until the Node 24 release is cut. |
 | DEC-62 | 2026-11-16 | SIP early exit at a loss: the client receives the full current value and the value goes to zero; an invested amount the value does not cover stays on record, as with maturity withdrawals, and erasure stays refused until a correction is recorded. DEC-43's "the holding goes to zero" means the value. | Built as decided. |
+| DEC-63 | 2026-11-17 | Small text on the patterned sign-in background or a page gradient (the sign-in footnote, and the "Values recorded by BeOnEdge … Investments are subject to market risk." source and risk line) uses the normal body grey there, so it reaches 4.5:1; the background stays as it is. | Built on lane `fx-ui-recipes` (held until the Node 24 release, DEC-61). |
+| DEC-64 | 2026-11-17 | Body text is made slightly darker (about 8:1 on the page), so faint text, now at 4.5:1 or more, stays clearly quieter than body text; a small app-wide refinement under DEC-45. The maintainer kept it after seeing that the faint-text change is barely visible. | Built on lane `fx-ui-recipes` (held until the Node 24 release, DEC-61). |
 
 #### Replaced
 
@@ -1214,3 +1216,20 @@ DEC-42's two lanes are on local `main`. Neither is pushed or released.
   - no money moved;
   - nothing deployed;
   - no real rollback rehearsed.
+
+### Carried backend fixes (2026-11-17)
+
+Lane `c-carried-backend` (`M13-carried:CL-backend`) landed at `8f0090d` (commits `ccdda78`, `4027e64` and `8f0090d`):
+- **CL-01:** client writes that change client-owned rows take the user-row lock erasure uses, before any other row, and refuse a closed or erased account with `ACCOUNT_NOT_ACTIVE`, a code released apps already handle. The writes are:
+  - support tickets;
+  - reviews;
+  - statement links;
+  - the app version report;
+  - notification read;
+  - the email verification request and check.
+
+  Asking for or checking an email code after erasure is now refused; before, an erased client could get a code at the placeholder address. The code check's inverted lock order is fixed.
+- **CL-02:** the statement page no longer imports the email helpers. `escapeHtml` and `groupIndian` moved unchanged to `domain/shared/displayText.ts`.
+- **Review:** `review-22` (land), with three small follow-ups fixed in `8f0090d`.
+- **Checks (TESTED, Node 22 container):** backend 1,204 tests; integration 73 files / 589 tests, including the 6-case race test; the tally landing re-ran the checks in a clean checkout.
+- **Not verified:** nothing run against a live app or the VPS.
