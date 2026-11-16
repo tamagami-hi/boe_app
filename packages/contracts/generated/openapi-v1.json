@@ -39910,51 +39910,10 @@
                             "decidedByName"
                           ],
                           "additionalProperties": false
-                        },
-                        "nominee": {
-                          "type": "object",
-                          "properties": {
-                            "userId": {
-                              "type": "string",
-                              "format": "uuid"
-                            },
-                            "nominee": {
-                              "type": [
-                                "object",
-                                "null"
-                              ],
-                              "properties": {
-                                "name": {
-                                  "type": "string",
-                                  "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
-                                },
-                                "relation": {
-                                  "type": "string",
-                                  "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
-                                }
-                              },
-                              "required": [
-                                "name",
-                                "relation"
-                              ],
-                              "additionalProperties": false
-                            },
-                            "version": {
-                              "type": "integer",
-                              "minimum": 0
-                            }
-                          },
-                          "required": [
-                            "userId",
-                            "nominee",
-                            "version"
-                          ],
-                          "additionalProperties": false
                         }
                       },
                       "required": [
-                        "request",
-                        "nominee"
+                        "request"
                       ],
                       "additionalProperties": false
                     },
@@ -40254,51 +40213,10 @@
                             "decidedByName"
                           ],
                           "additionalProperties": false
-                        },
-                        "nominee": {
-                          "type": "object",
-                          "properties": {
-                            "userId": {
-                              "type": "string",
-                              "format": "uuid"
-                            },
-                            "nominee": {
-                              "type": [
-                                "object",
-                                "null"
-                              ],
-                              "properties": {
-                                "name": {
-                                  "type": "string",
-                                  "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
-                                },
-                                "relation": {
-                                  "type": "string",
-                                  "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
-                                }
-                              },
-                              "required": [
-                                "name",
-                                "relation"
-                              ],
-                              "additionalProperties": false
-                            },
-                            "version": {
-                              "type": "integer",
-                              "minimum": 0
-                            }
-                          },
-                          "required": [
-                            "userId",
-                            "nominee",
-                            "version"
-                          ],
-                          "additionalProperties": false
                         }
                       },
                       "required": [
-                        "request",
-                        "nominee"
+                        "request"
                       ],
                       "additionalProperties": false
                     },

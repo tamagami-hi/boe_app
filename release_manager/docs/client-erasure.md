@@ -55,7 +55,7 @@ The pass then works only on the client's own rows (listed in the table map) and:
 - replaces whole emails, case-insensitively and only where no further address characters touch them, and their masked `x***@domain` form;
 - replaces phones as `+E.164`, digits without `+`, and the ten-digit national number for `+91`, only between digit boundaries, so no longer number is cut;
 - in free text, also replaces the client's full name, case-insensitively and only as whole words;
-- in JSON, sets values equal to the client's name or nominee, and any `nominee` object, to `Tombstoned` (a name inside a longer JSON sentence is not replaced).
+- in JSON, replaces emails as above but a phone only in its stored `+91…` form, so amounts and other numbers are never hit; sets string values equal to the client's name or nominee to `Tombstoned`; and sets the `name` and `relation` fields directly inside any object under a `nominee` key to `Tombstoned`. A name inside a longer JSON sentence, a national-format phone, and a name or relation nested one object deeper are not replaced.
 
 Phone endings (last four digits) in audit metadata are left: the code already treats them as redactions. Financial identifiers are never rewritten: `withdrawal_operations.transfer_reference` and `provider_payment_details.provider_reference` stay as they are.
 
@@ -99,7 +99,7 @@ Besides the application linked to the account, erasure matches earlier applicati
 | `client_maturity_offers` (068, append-only, deletes refused by trigger) | figures, chosen option, states; no contact columns | kept unchanged (guard requires none open) | never present: an offer needs a maturity schedule, which needs a ledger position, and any offer row forces G2; its trigger therefore needs no erase path |
 | `audit_events` about the client (entity the user, an application or one of the client's rows above, actor the client, or `metadata.userId` the client) | metadata, reason text | contact and name text replaced | deleted; the one erasure row is written after |
 | `audit_events`, all others | | untouched | untouched |
-| `idempotency_records`: the client's own scope, and receipts whose body contains the client's id | response bodies (contact corrections, nominee changes) | contact, name and nominee values replaced; receipts kept so replays still answer | client-scope rows deleted; others kept with contacts replaced |
+| `idempotency_records`: the client's own scope, and receipts whose body contains the client's id | response bodies (contact corrections, nominee changes, nominee request decisions) | contact, name and nominee values replaced; receipts kept so replays still answer | client-scope rows deleted; others kept with contacts replaced |
 | `client_value_entries`, `withdrawal_operations`, `client_position_maturities`, `fund_receipt_acknowledgements` | money; free-text notes | kept; amounts, dates and ids untouched; contact and name text in the notes replaced | presence forces G2 |
 | `investment_orders`, `investment_allocations`, `payments`, `payment_attempts`, `refund_operations`, `provider_payment_details` | money; financial identifiers | kept unchanged | presence forces G2 |
 | `provider_events` | encrypted webhook payload | payload erased (`erased_at`) | presence forces G2 |
@@ -113,7 +113,7 @@ The coverage test (`clientErasureCoverage.integration.test.ts`) holds this class
 
 Kept on purpose in G2 and worth the maintainer's review: IP addresses and user agents on sessions, consents and audit rows. DEC-29 names contact details; these are not contacts.
 
-Also kept in both paths: a nominee request's decline reason (072) inside the admin decision's idempotency receipt, which outlives the client. The receipt scrub replaces contacts, whole-value names and nominee objects only, so the reason stays, with any email or phone inside it replaced; this matches DEC-29, which covers contact details.
+Also kept in both paths: the admin's accept or decline receipt for a nominee request (072), which outlives the client. Its body holds only the request: the scrub sets the requested name and relation (`request.nominee`) to `Tombstoned` and replaces `clientName`, a whole-value name. The decline reason stays. Inside it, the scrub replaces an email and its masked form, but a phone only in its stored `+91…` form: a ten-digit national number, or a name, written in the reason stays readable. DEC-29 reads "emails and phones erased everywhere", so this one free-text field is worth the maintainer's review.
 
 ## Cost inside the locked transaction
 
@@ -283,7 +283,7 @@ Rollback boundary: **no.** 069 adds a condition that only an erasing transaction
 Rollback after 072 (Phase I): an images-only rollback to v0.16.2 runs against 072, but v0.16.2's erase command does not know `client_nominee_requests`, which gives two limits until the roll-forward:
 
 - **G3, never-verified client with any nominee request:** v0.16.2 deletes the user row without deleting the requests first, and the 072 `user_id` key is `ON DELETE RESTRICT`. The erase fails with a foreign-key error, answered as a 500. The transaction rolls back, so no data is lost and nothing is half-erased, but that client cannot be erased until the new release is back.
-- **G2, verified client:** the 072 trigger still tombstones the requests, nulls the reason and withdraws a pending request when v0.16.2 sets the tombstone, and v0.16.2 replaces every `nominee` object inside JSON such as receipts. Its scrubber does not know the requested names, though, so a requested name that never became the nominee stays readable where the client's free text quotes it (support tickets, notifications, notes). A later erase answers `already_erased` and does not scrub again, so erase such a client after the roll-forward where possible.
+- **G2, a verified client or one with money rows:** when v0.16.2 sets the tombstone, the 072 trigger still tombstones the requests, nulls the reason and withdraws a pending request, and v0.16.2's receipt scrub still sets `request.nominee` in the admin decision receipts to `Tombstoned`. Its scrubber does not know the requested names, though, so a requested name that never became the nominee stays readable in any text v0.16.2 scrubs by name: audit `reason_detail` and metadata, application review text, support tickets, notifications, ledger, maturity, payout and receipt notes, and JSON values equal to the name. A later erase answers `already_erased` and does not scrub again, so erase such a client after the roll-forward where possible.
 
 ## Tests
 

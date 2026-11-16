@@ -2,7 +2,6 @@ import type { Transaction, UserId } from "../../db/repositories.js"
 import { AppError } from "../../http/errorCatalog.js"
 import type { NotificationWriteRepository } from "../../repositories/notificationRepository.js"
 import type { NomineeRequestRepository, NomineeRequestRow } from "../../repositories/nomineeRequestRepository.js"
-import type { NomineeHolder } from "../../repositories/userNomineeRepository.js"
 import type { UserWriteRepository } from "../../repositories/userRepository.js"
 import { changeClientNominee, type AdminNomineeDeps } from "../client/nominee.js"
 import { NOMINEE_REQUEST_ENTITY, REQUEST_STALE_MESSAGE, requirePendingVersion } from "../client/nomineeRequests.js"
@@ -39,7 +38,6 @@ export interface DeclineNomineeRequestCommand extends DecisionBase {
 
 export interface NomineeDecision {
   readonly request: NomineeRequestRow
-  readonly holder: NomineeHolder
 }
 
 const NOTIFICATION_COPY: Readonly<Record<Decision, Readonly<{ title: string; body: string }>>> = {
@@ -57,14 +55,14 @@ const lockPending = async (
   tx: Transaction,
   deps: NomineeDecisionDeps,
   command: DecisionBase,
-): Promise<Readonly<{ current: NomineeRequestRow; holder: NomineeHolder }>> => {
+): Promise<NomineeRequestRow> => {
   const seen = await deps.nomineeRequestRepository.find(tx, command.nomineeRequestId)
   if (seen === null) throw new AppError("RESOURCE_NOT_FOUND")
   const holder = await deps.userNomineeRepository.lock(tx, seen.userId)
   const current = await deps.nomineeRequestRepository.lock(tx, command.nomineeRequestId)
   if (holder === null || current === null) throw new AppError("RESOURCE_NOT_FOUND")
   requirePendingVersion(current, command.expectedVersion)
-  return { current, holder }
+  return current
 }
 
 const close = async (
@@ -135,7 +133,7 @@ export const acceptNomineeRequest = async (
   deps: NomineeDecisionDeps,
   command: AcceptNomineeRequestCommand,
 ): Promise<NomineeDecision> => {
-  const { current } = await lockPending(tx, deps, command)
+  const current = await lockPending(tx, deps, command)
   const change = await changeClientNominee(tx, deps, {
     userId: current.userId,
     nominee: { name: current.nomineeName, relation: current.nomineeRelation },
@@ -149,7 +147,7 @@ export const acceptNomineeRequest = async (
     nomineeVersion: change.holder.version,
   })
   await informClient(tx, deps, closed, "accepted", command.requestId)
-  return { request: closed, holder: change.holder }
+  return { request: closed }
 }
 
 export const declineNomineeRequest = async (
@@ -157,9 +155,9 @@ export const declineNomineeRequest = async (
   deps: NomineeDecisionDeps,
   command: DeclineNomineeRequestCommand,
 ): Promise<NomineeDecision> => {
-  const { holder } = await lockPending(tx, deps, command)
+  await lockPending(tx, deps, command)
   const closed = await close(tx, deps, command, { state: "declined", reason: command.reason })
   await auditDecision(tx, deps, command, closed, { withReason: command.reason !== null })
   await informClient(tx, deps, closed, "declined", command.requestId)
-  return { request: closed, holder }
+  return { request: closed }
 }

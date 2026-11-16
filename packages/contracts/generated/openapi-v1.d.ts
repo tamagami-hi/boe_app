@@ -22806,15 +22806,6 @@ export interface operations {
                                 clientName: string;
                                 decidedByName: string | null;
                             };
-                            nominee: {
-                                /** Format: uuid */
-                                userId: string;
-                                nominee: {
-                                    name: string;
-                                    relation: string;
-                                } | null;
-                                version: number;
-                            };
                         };
                         error: null;
                         meta: {
@@ -22969,15 +22960,6 @@ export interface operations {
                                 userId: string;
                                 clientName: string;
                                 decidedByName: string | null;
-                            };
-                            nominee: {
-                                /** Format: uuid */
-                                userId: string;
-                                nominee: {
-                                    name: string;
-                                    relation: string;
-                                } | null;
-                                version: number;
                             };
                         };
                         error: null;

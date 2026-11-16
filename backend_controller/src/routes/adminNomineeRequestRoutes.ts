@@ -27,7 +27,7 @@ import {
   uuidParam,
 } from "./adminRouteKit.js"
 import { clientNomineeRequestBody } from "./clientNomineeRequestRoutes.js"
-import { declineReasonSchema, nomineeBody } from "./nomineeSchemas.js"
+import { declineReasonSchema } from "./nomineeSchemas.js"
 
 const QUEUE_ROUTE = "/v1/admin/nominee-requests"
 const SUMMARY_ROUTE = "/v1/admin/overview/nominee-requests"
@@ -69,9 +69,9 @@ const adminRequestBody = (row: AdminNomineeRequestRow) => ({
   decidedByName: row.decidedByName,
 })
 
-const decisionBody = (decision: NomineeDecision, row: AdminNomineeRequestRow | null) => {
+const decisionBody = (row: AdminNomineeRequestRow | null) => {
   if (row === null) throw new AppError("INTERNAL_ERROR")
-  return { request: adminRequestBody(row), nominee: nomineeBody(decision.holder) }
+  return { request: adminRequestBody(row) }
 }
 
 const paramOf = (request: FastifyRequest, name: "requestId" | "userId"): string =>
@@ -175,7 +175,7 @@ const commitDecision = async (deps: AdminNomineeRequestDeps, reply: FastifyReply
     execute: async (tx) => {
       const decision = await write.run(tx)
       const row = await deps.nomineeRequestRepository.findForAdmin(tx, decision.request.id)
-      return { status: 200, body: decisionBody(decision, row) }
+      return { status: 200, body: decisionBody(row) }
     },
   })
   return reply.sendData(result.body, { status: result.status, ...(result.replay ? { idempotencyReplay: true } : {}) })

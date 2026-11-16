@@ -25,7 +25,6 @@ interface RequestBody {
 
 interface Decision {
   readonly request: RequestBody & { readonly userId: string; readonly decidedByName: string | null }
-  readonly nominee: { readonly nominee: { readonly name: string; readonly relation: string } | null; readonly version: number }
 }
 
 let stack: PasswordMailStack
@@ -266,16 +265,19 @@ describe("the admin nominee request commands", () => {
     const key = randomUUID()
     const accepted = await decide("accept", request.id, { expectedVersion: 1, expectedNomineeVersion: 1 }, admin, key)
     expect(accepted.statusCode).toBe(200)
-    expect(dataOf<Decision>(accepted)).toMatchObject({
-      request: { id: request.id, userId: client.id, state: "accepted", version: 2 },
-      nominee: { nominee: REQUESTED, version: 2 },
-    })
+    expect(Object.keys(dataOf<Decision>(accepted))).toEqual(["request"])
+    expect(dataOf<Decision>(accepted).request).toMatchObject({ id: request.id, userId: client.id, state: "accepted", version: 2 })
     expect(typeof dataOf<Decision>(accepted).request.decidedByName).toBe("string")
     const replay = await decide("accept", request.id, { expectedVersion: 1, expectedNomineeVersion: 1 }, admin, key)
     expect(dataOf<Decision>(replay)).toEqual(dataOf<Decision>(accepted))
     expect(codeOf(await decide("accept", request.id, { expectedVersion: 1, expectedNomineeVersion: 2 }))).toBe("STATE_CONFLICT")
 
-    expect(await nomineeOf(client.id)).toMatchObject({ nominee_name: REQUESTED.name, nominee_relation: REQUESTED.relation, version: "1" })
+    expect(await nomineeOf(client.id)).toMatchObject({
+      nominee_name: REQUESTED.name,
+      nominee_relation: REQUESTED.relation,
+      nominee_version: 2,
+      version: "1",
+    })
     expect(await decisionTrail(client.id, request.id)).toEqual({
       audits: [
         { command: "nominee_request.accepted", actor_type: "admin" },

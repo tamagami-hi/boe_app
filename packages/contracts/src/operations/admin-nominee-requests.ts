@@ -13,7 +13,7 @@ import {
 } from "./admin-shared.js"
 import { ClientNomineeRequest, NomineeRequestState } from "./client-nominee-requests.js"
 import { defineOperation, MAX_JSON_BODY_BYTES } from "./descriptor.js"
-import { NOMINEE_LETTER_OR_NUMBER, NOMINEE_VISIBLE_TEXT, NomineeData, NomineeVersion } from "./nominee.js"
+import { NOMINEE_LETTER_OR_NUMBER, NOMINEE_VISIBLE_TEXT, NomineeVersion } from "./nominee.js"
 
 export const MAX_NOMINEE_DECLINE_REASON_LENGTH = 500
 
@@ -49,7 +49,7 @@ export const AdminNomineeRequestSummary = z.strictObject({
 })
 export type AdminNomineeRequestSummary = z.infer<typeof AdminNomineeRequestSummary>
 
-export const AdminNomineeDecisionData = z.strictObject({ request: AdminNomineeRequest, nominee: NomineeData })
+export const AdminNomineeDecisionData = z.strictObject({ request: AdminNomineeRequest })
 export type AdminNomineeDecisionData = z.infer<typeof AdminNomineeDecisionData>
 
 export const AcceptNomineeRequestBody = z.strictObject({
