@@ -73,6 +73,9 @@ IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-0
 | DEC-43 | 2026-11-16 | An early exit returns the full current value of the client's holding in the SIP's fund. The holding goes to zero; no exit charge and no partial amount. | Built into lane `i-sip-early-exit`. |
 | DEC-44 | 2026-11-16 | The client is told in the app and by email when the admin accepts or declines their nominee request and when their SIP is closed early. | Built into both Phase I lanes. |
 | DEC-45 | 2026-11-16 | The UI overhaul keeps today's BeOnEdge identity and design system and refines it per surface; it does not set a new visual direction. | In force for DEC-40. |
+| DEC-46 | 2026-11-16 | Use the extra capacity, as more worktrees and the `claude-pro` account, on independent work: the carried LOW findings (`M13-carried:carried-lows`), the UI overhaul audits, and the Node 24 upgrade (E3). "If it can conflict, then wait for these to complete then proceed with further work." | In force. The carried findings touch screens the Phase I lanes change, so they start after Phase I lands. |
+| DEC-47 | 2026-11-16 | The UI overhaul's read-only audits (U1 to U4) start now, in parallel with Phase I. This replaces DEC-42's "after Phase I" for the audits only. Local dev servers and a local browser are allowed for screenshots. The phone surfaces are checked at phone width in a browser, not an emulator. | In force. The Phase I screens are audited when they land. Fixes still wait for the per-surface plan (U5) and its approval. |
+| DEC-48 | 2026-11-16 | Build the Node 24 upgrade (E3) now. | Being built in lane `e-node24`. Landing it puts Node 24 into the next release cut, so it is held on its branch until the maintainer says to land it. The deploy timing is the maintainer's. |
 
 #### Replaced
 
@@ -598,7 +601,7 @@ The maintainer asked on 2026-11-15, after a review of what exists, for this to b
 
 ### Next: UI overhaul, four surfaces (DEC-40, after Phase I)
 
-The maintainer asked on 2026-11-15 for a complete UI overhaul: check, fix and new work, handled separately for mobile and for the web browser, for both apps. It starts after Phase I lands (DEC-42) and keeps today's identity, refining it (DEC-45).
+The maintainer asked on 2026-11-15 for a complete UI overhaul: check, fix and new work, handled separately for mobile and for the web browser, for both apps. It keeps today's identity, refining it (DEC-45). The read-only audits start now, in parallel with Phase I (DEC-47), and the Phase I screens are audited when they land. Fixes wait for the per-surface plan and its approval.
 
 | Surface | Built from | Where it runs |
 | --- | --- | --- |
