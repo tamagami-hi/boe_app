@@ -207,6 +207,7 @@ const contactTextQuery = (subject: ErasureSubject) => sql<{ readonly kind: strin
   union select 'email', email_normalized from applications where id = ${subject.applicationId}::uuid
   union select 'phone', phone_e164 from applications where id = ${subject.applicationId}::uuid
   union select 'name', full_name from applications where id = ${subject.applicationId}::uuid
+  union select 'name', nominee_name from client_nominee_requests where user_id = ${subject.id}
 `
 
 const sealedRecipientQuery = (subject: ErasureSubject) => sql<{
@@ -232,6 +233,7 @@ const ownedEntityQuery = (subject: ErasureSubject, applicationIds: readonly stri
   union all select 'application', unnest(${uuids(applicationIds)})
   union all select 'support_request', id from support_requests where user_id = ${subject.id}
   union all select 'client_review', id from client_reviews where user_id = ${subject.id}
+  union all select 'client_nominee_request', id from client_nominee_requests where user_id = ${subject.id}
   union all select 'admin_sip_schedule', id from admin_sip_schedules where user_id = ${subject.id}
   union all select 'client_maturity_schedule', id from client_maturity_schedules where user_id = ${subject.id}
   union all select 'client_maturity_offer', id from client_maturity_offers where user_id = ${subject.id}

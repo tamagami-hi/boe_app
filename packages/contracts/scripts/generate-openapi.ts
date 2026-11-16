@@ -17,6 +17,7 @@ import { ADMIN_MATURITY_OPERATIONS } from "../src/operations/admin-maturity.js"
 import { ADMIN_MATURITY_SCHEDULE_OPERATIONS } from "../src/operations/admin-maturity-schedules.js"
 import { ADMIN_MONEY_OPERATIONS } from "../src/operations/admin-money.js"
 import { ADMIN_NATIVE_AUTH_OPERATIONS } from "../src/operations/admin-native-auth.js"
+import { ADMIN_NOMINEE_REQUEST_OPERATIONS } from "../src/operations/admin-nominee-requests.js"
 import { ADMIN_OVERSIGHT_OPERATIONS } from "../src/operations/admin-oversight.js"
 import { ADMIN_REPORT_OPERATIONS } from "../src/operations/admin-reports.js"
 import { ADMIN_SUPPORT_OPERATIONS } from "../src/operations/admin-support.js"
@@ -24,6 +25,7 @@ import { APP_OPERATIONS } from "../src/operations/app.js"
 import { CLIENT_ACCOUNT_OPERATIONS } from "../src/operations/client-account.js"
 import { CLIENT_INVESTED_FUND_OPERATIONS } from "../src/operations/client-invested-funds.js"
 import { CLIENT_MATURITY_OPERATIONS } from "../src/operations/client-maturity.js"
+import { CLIENT_NOMINEE_REQUEST_OPERATIONS } from "../src/operations/client-nominee-requests.js"
 import { CLIENT_ORDER_OPERATIONS } from "../src/operations/client-orders.js"
 import { CLIENT_PROFILE_OPERATIONS } from "../src/operations/client-profile.js"
 import { CLIENT_RECEIPT_OPERATIONS } from "../src/operations/client-receipts.js"
@@ -90,6 +92,8 @@ export const ALL_OPERATIONS: readonly GeneratableOperation[] = Object.freeze([
   ...VALUE_UPDATE_OPERATIONS,
   ...ADMIN_REPORT_OPERATIONS,
   ...NOMINEE_OPERATIONS,
+  ...CLIENT_NOMINEE_REQUEST_OPERATIONS,
+  ...ADMIN_NOMINEE_REQUEST_OPERATIONS,
   ...SIP_SCHEDULE_OPERATIONS,
   ...CLIENT_REVIEW_OPERATIONS,
   ...RECORDING_SHEET_OPERATIONS,

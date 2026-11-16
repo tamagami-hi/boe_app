@@ -3,7 +3,6 @@ import { AppError } from "../../http/errorCatalog.js"
 import type { AuditWriteRepository } from "../../repositories/auditRepository.js"
 import type { Nominee, NomineeHolder, UserNomineeRepository } from "../../repositories/userNomineeRepository.js"
 import type { UserWriteRepository } from "../../repositories/userRepository.js"
-import { passwordMatches, type ContactDetailsDeps } from "./contactDetails.js"
 
 export const NOMINEE_CLIENT_ONLY_MESSAGE = "A nominee can only be recorded for a client account."
 export const NOMINEE_CLOSED_MESSAGE =
@@ -22,14 +21,10 @@ export interface AdminNomineeDeps extends NomineeDeps {
   readonly userRepository: Pick<UserWriteRepository, "findActiveRolesAndPermissions">
 }
 
-export type OwnNomineeDeps = NomineeDeps & Pick<ContactDetailsDeps, "credentialRepository" | "userRepository">
-
 export interface NomineeChange {
   readonly status: "changed" | "unchanged"
   readonly holder: NomineeHolder
 }
-
-export type OwnNomineeChange = NomineeChange | Readonly<{ status: "incorrect_password" }>
 
 interface ChangeInput {
   readonly holder: NomineeHolder
@@ -41,10 +36,10 @@ interface ChangeInput {
 
 const conflict = (message: string): AppError => new AppError("STATE_CONFLICT", { message })
 
-const sameNominee = (left: Nominee | null, right: Nominee | null): boolean =>
+export const sameNominee = (left: Nominee | null, right: Nominee | null): boolean =>
   left === null || right === null ? left === right : left.name === right.name && left.relation === right.relation
 
-const maskName = (name: string): string => `${[...name][0] ?? ""}${MASK_MARKER}`
+export const maskNomineeName = (name: string): string => `${[...name][0] ?? ""}${MASK_MARKER}`
 
 const changeKind = (previous: Nominee | null, next: Nominee | null): "added" | "removed" | "updated" => {
   if (previous === null) return "added"
@@ -57,8 +52,8 @@ const auditMetadata = (previous: Nominee | null, updated: NomineeHolder): Record
     change: changeKind(previous, next),
     nameChanged: previous?.name !== next?.name,
     relationChanged: previous?.relation !== next?.relation,
-    previousName: previous === null ? null : maskName(previous.name),
-    currentName: next === null ? null : maskName(next.name),
+    previousName: previous === null ? null : maskNomineeName(previous.name),
+    currentName: next === null ? null : maskNomineeName(next.name),
     nomineeVersion: updated.version,
   }
 }
@@ -112,26 +107,6 @@ export const readClientNominee = async (
   const holder = await readNominee(tx, deps, userId)
   if (await holdsRoles(tx, deps, userId)) throw new AppError("RESOURCE_NOT_FOUND")
   return holder
-}
-
-export const changeOwnNominee = async (
-  tx: Transaction,
-  deps: OwnNomineeDeps,
-  input: Readonly<{ userId: string; nominee: Nominee | null; currentPassword: string; requestId: string }>,
-): Promise<OwnNomineeChange> => {
-  const holder = await deps.userNomineeRepository.lock(tx, input.userId)
-  if (holder === null) throw new AppError("RESOURCE_NOT_FOUND")
-  if (holder.accountState !== "active" || holder.tombstoned) throw new AppError("ACCOUNT_NOT_ACTIVE")
-  if (!(await passwordMatches(tx, deps, input.userId as UserId, input.currentPassword))) {
-    return { status: "incorrect_password" }
-  }
-  return applyChange(tx, deps, {
-    holder,
-    nominee: input.nominee,
-    actorType: "user",
-    actorUserId: input.userId,
-    requestId: input.requestId,
-  })
 }
 
 export const changeClientNominee = async (

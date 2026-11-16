@@ -46,6 +46,7 @@ export interface SeededClient {
   readonly oldPhone: string
   readonly changeTarget: string
   readonly nominee: string
+  readonly requestedNominee: string
   readonly applicationId: string
   readonly rejectedApplicationId: string
 }
@@ -152,6 +153,7 @@ export const seedClient = async (
   const oldPhone = `+9197${String(Math.floor(10_000_000 + Math.random() * 89_999_999))}`
   const name = `Erase Subject ${randomUUID().slice(0, 6)}`
   const nominee = `Nominee Person ${randomUUID().slice(0, 6)}`
+  const requestedNominee = `Requested Person ${randomUUID().slice(0, 6)}`
   const application = await stack.first(
     "insert into applications (email_normalized, phone_e164, full_name, state, submitted_at, decided_at) " +
       "values ($1, $2, $3, 'approved', now(), now()) returning id",
@@ -171,12 +173,34 @@ export const seedClient = async (
     [oldEmail, oldPhone, name],
   )
   const client = {
-    id, email, phone, name, oldEmail, oldPhone, changeTarget, nominee,
+    id, email, phone, name, oldEmail, oldPhone, changeTarget, nominee, requestedNominee,
     applicationId: String(application.id),
     rejectedApplicationId: String(rejected.id),
   }
   await populateCopies(harness, client)
   return client
+}
+
+const seedNomineeRequests = async (harness: ErasureHarness, client: SeededClient): Promise<void> => {
+  const { stack, admin } = harness
+  await stack.pool.query(
+    "insert into client_nominee_requests (user_id, nominee_name, nominee_relation, state, decline_reason, decided_by_user_id, decided_at, created_at) " +
+      "values ($1, $2, 'Brother', 'declined', $3, $4, now(), now() - interval '1 day')",
+    [client.id, client.requestedNominee, `Called ${client.phone} about ${client.requestedNominee}`, admin.userId],
+  )
+  const pending = await stack.first(
+    "insert into client_nominee_requests (user_id, nominee_name, nominee_relation) values ($1, $2, 'Brother') returning id",
+    [client.id, client.requestedNominee],
+  )
+  await stack.pool.query(
+    "insert into audit_events (actor_type, actor_user_id, command, entity_type, entity_id, request_id, entity_version, metadata) " +
+      "values ('admin', $1, 'nominee_request.noted', 'client_nominee_request', $2, $3, 1, $4)",
+    [admin.userId, pending.id, randomUUID(), JSON.stringify({ requestedName: client.requestedNominee })],
+  )
+  await stack.pool.query("insert into notifications (user_id, kind, title, body, payload) values ($1, 'nominee_request_decided', 'Nominee', $2, '{}')", [
+    client.id,
+    `Your request to name ${client.requestedNominee} was declined.`,
+  ])
 }
 
 const populateCopies = async (harness: ErasureHarness, client: SeededClient): Promise<void> => {
@@ -229,6 +253,7 @@ const populateCopies = async (harness: ErasureHarness, client: SeededClient): Pr
     `We will call ${client.phone}`,
     JSON.stringify({ contact: client.email }),
   ])
+  await seedNomineeRequests(harness, client)
   await q(
     "insert into support_requests (user_id, reference, category, subject, body) values ($1, $2, 'account', 'Help', $3)",
     [client.id, `REQ-${randomUUID().slice(0, 6)}`, `Call me on ${national} or write to ${client.email.toUpperCase()}. ${client.name.toLowerCase()}`],
@@ -301,6 +326,7 @@ export const needlesOf = (client: SeededClient): readonly string[] => [
   client.phone.slice(3),
   client.name,
   client.nominee,
+  client.requestedNominee,
 ]
 
 export const readableCopies = async (stack: PasswordMailStack, needles: readonly string[]): Promise<readonly string[]> => {
@@ -436,7 +462,8 @@ export const ownIdsOf = async (stack: PasswordMailStack, client: SeededClient): 
   const rows = await stack.pool.query<{ id: string }>(
     "select id from email_deliveries where user_id = $1 or application_id = any($2::uuid[]) " +
       "union all select outbox_event_id from email_deliveries where (user_id = $1 or application_id = any($2::uuid[])) and outbox_event_id is not null " +
-      "union all select id from auth_login_events where user_id is null and email_normalized = any($3::text[])",
+      "union all select id from auth_login_events where user_id is null and email_normalized = any($3::text[]) " +
+      "union all select id from client_nominee_requests where user_id = $1",
     [client.id, apps, [client.email, client.oldEmail, client.changeTarget]],
   )
   return [client.id, ...apps, ...rows.rows.map((row) => row.id)]

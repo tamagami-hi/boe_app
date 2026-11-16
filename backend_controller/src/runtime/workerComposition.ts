@@ -10,6 +10,7 @@ import { createAppUpdateNoticeGuard } from "../domain/email/appUpdateNoticeGuard
 import { createEmailChangeMailGuard } from "../domain/email/emailChangeMailGuard.js"
 import { createInvestmentRecordedGuard } from "../domain/email/investmentRecordedGuard.js"
 import { createMaturityOptionsGuard } from "../domain/email/maturityOptionsGuard.js"
+import { createNomineeRequestDecidedGuard } from "../domain/email/nomineeRequestDecidedGuard.js"
 import { createPasswordLinkMailGuard } from "../domain/email/passwordLinkMailGuard.js"
 import { createAdminEmailMessageRepository } from "../repositories/adminEmailMessageRepository.js"
 import { createAppUpdateAnnouncementRepository } from "../repositories/appUpdateAnnouncementRepository.js"
@@ -17,6 +18,8 @@ import { createClientMaturityOfferRepository } from "../repositories/clientMatur
 import { createClientReceiptRepository } from "../repositories/clientReceiptRepository.js"
 import { createEmailChangeRepository } from "../repositories/emailChangeRepository.js"
 import { createEmailTemplateRepository } from "../repositories/emailTemplateRepository.js"
+import { createNomineeRequestRepository } from "../repositories/nomineeRequestRepository.js"
+import { NOMINEE_REQUEST_DECIDED_TEMPLATE_KEY } from "../email/nomineeRequestDecidedEmail.js"
 import { createTransactionalEmailSender } from "../email/transactionalEmailSender.js"
 import { deriveEmailSendTiming, EMAIL_PASS_BUDGET_MS } from "../email/sendTiming.js"
 import { createDatabase, createUnitOfWork } from "../db/database.js"
@@ -125,6 +128,13 @@ export const composeEmailDispatchWorker = (
         "maturity_options",
         createMaturityOptionsGuard({
           maturityOfferRepository: createClientMaturityOfferRepository(),
+          userRepository: createUserRepository(),
+        }),
+      ],
+      [
+        NOMINEE_REQUEST_DECIDED_TEMPLATE_KEY,
+        createNomineeRequestDecidedGuard({
+          nomineeRequestRepository: createNomineeRequestRepository(),
           userRepository: createUserRepository(),
         }),
       ],

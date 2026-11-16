@@ -57,15 +57,14 @@ import { createClientPositionRepository } from "../repositories/clientPositionRe
 import { registerClientAccountRoutes } from "../routes/clientAccountRoutes.js"
 import { registerClientEmailVerificationRoutes } from "../routes/clientEmailVerificationRoutes.js"
 import { createEmailChangeRepository } from "../repositories/emailChangeRepository.js"
-import { registerClientNomineeRoutes } from "../routes/clientNomineeRoutes.js"
 import { registerClientProfileRoutes } from "../routes/clientProfileRoutes.js"
 import { registerClientStatementLinkRoutes } from "../routes/clientStatementLinkRoutes.js"
 import { registerPasswordRoutes } from "../routes/passwordRoutes.js"
 import { registerAdminEmailSurface } from "./adminEmailComposition.js"
 import { registerAdminSurface } from "./adminComposition.js"
+import { registerNomineeSurface } from "./nomineeComposition.js"
 import { registerAdminClientOnboardingRoutes } from "../routes/adminClientOnboardingRoutes.js"
 import { createPasswordTokenRepository } from "../repositories/passwordTokenRepository.js"
-import { createUserNomineeRepository } from "../repositories/userNomineeRepository.js"
 import { registerClientOrderRoutes } from "../routes/clientOrderRoutes.js"
 import { registerClientSipPlanRoutes } from "../routes/clientSipPlanRoutes.js"
 import { registerClientAutoPaySipRoutes } from "../routes/clientAutoPaySipRoutes.js"
@@ -425,9 +424,15 @@ export const composeBackend = (source: Readonly<Record<string, string | undefine
         resendCooldownMs: serverConfig.emailVerification.resendCooldownMs,
       },
     })
-    registerClientNomineeRoutes(application, {
-      accessTokenService, database, clientWeb, unitOfWork, clock, auditRepository, passwordRecheckLimiter,
-      userRepository, credentialRepository, userNomineeRepository: createUserNomineeRepository(),
+    registerNomineeSurface(application, {
+      accessTokenService, database, clientWeb, webAuth, unitOfWork, clock, crypto, auditRepository, passwordRecheckLimiter,
+      userRepository, credentialRepository, idempotencyRepository, notificationRepository, outboxRepository,
+      emailDeliveryRepository,
+      config: {
+        cursorKey: serverConfig.cursorKey,
+        idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs,
+        sesConfigurationSet: serverConfig.sesConfigurationSet,
+      },
     })
 
     registerPasswordRoutes(application, {

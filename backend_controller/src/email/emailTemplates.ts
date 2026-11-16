@@ -1,6 +1,13 @@
 import { renderEmail, type EmailBlock, type RenderedEmail } from "./emailLayout.js"
 import { formatCalendarDate, formatRupeesFromPaise } from "./emailMoney.js"
+import {
+  requiredString,
+  stringField,
+  webAppBlocks,
+  type EmailTemplateModule,
+} from "./emailTemplateParts.js"
 import { EmailValidationError } from "./emailValidation.js"
+import { nomineeRequestDecidedTemplate } from "./nomineeRequestDecidedEmail.js"
 
 export interface EmailTemplateConfig {
   /** Address investors are told to contact. */
@@ -28,6 +35,12 @@ const TEMPLATE_VERSIONS: ReadonlyMap<string, readonly string[]> = new Map([
   ["maturity_options", ["v1"]],
 ])
 
+const TEMPLATE_MODULES: readonly EmailTemplateModule[] = [nomineeRequestDecidedTemplate]
+
+const MODULE_BY_KEY: ReadonlyMap<string, EmailTemplateModule> = new Map(
+  TEMPLATE_MODULES.map((module) => [module.key, module]),
+)
+
 export interface PasswordLinkInput {
   readonly link: string
   readonly validForMs: number
@@ -36,17 +49,6 @@ export interface PasswordLinkInput {
 export interface VerificationCodeInput {
   readonly code: string
   readonly validForMs: number
-}
-
-const stringField = (data: Readonly<Record<string, unknown>>, key: string): string | null => {
-  const value = data[key]
-  return typeof value === "string" && value.length > 0 ? value : null
-}
-
-const requiredString = (data: Readonly<Record<string, unknown>>, key: string): string => {
-  const value = stringField(data, key)
-  if (value === null) throw new EmailValidationError("EMAIL_TEMPLATE_DATA_INVALID")
-  return value
 }
 
 const requiredDuration = (data: Readonly<Record<string, unknown>>, key: string): number => {
@@ -71,13 +73,6 @@ const describeDuration = (ms: number): string => {
   const seconds = Math.max(1, Math.floor(ms / 1000))
   if (seconds % SECONDS_PER_HOUR === 0) return plural(seconds / SECONDS_PER_HOUR, "hour")
   return seconds % 60 === 0 ? plural(seconds / 60, "minute") : plural(seconds, "second")
-}
-
-const WEB_APP_LEAD = "On an iPhone or a computer, you can open the BeOnEdge web app at"
-
-const webAppBlocks = (config: EmailTemplateConfig): readonly EmailBlock[] => {
-  const url = config.webAppUrl ?? null
-  return url === null ? [] : [{ kind: "link", lead: WEB_APP_LEAD, url }]
 }
 
 const downloadBlocks = (downloadUrl: string | null): readonly EmailBlock[] =>
@@ -500,7 +495,7 @@ const buildTemplate = (
     case "maturity_options":
       return maturityOptionsEmail(maturityOptionsInput(templateData), config)
     default:
-      return null
+      return MODULE_BY_KEY.get(templateKey)?.render(templateData, config) ?? null
   }
 }
 
@@ -511,7 +506,7 @@ export const renderEmailTemplate = (
   templateData: Readonly<Record<string, unknown>>,
   config: EmailTemplateConfig,
 ): TemplateRenderResult => {
-  const versions = TEMPLATE_VERSIONS.get(templateKey)
+  const versions = TEMPLATE_VERSIONS.get(templateKey) ?? MODULE_BY_KEY.get(templateKey)?.versions
   if (versions === undefined) return { kind: "unrenderable", errorCode: "TEMPLATE_UNKNOWN" }
   if (!versions.includes(templateVersion)) return { kind: "unrenderable", errorCode: "TEMPLATE_VERSION_UNSUPPORTED" }
   try {

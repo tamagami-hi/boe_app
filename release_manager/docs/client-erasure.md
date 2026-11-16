@@ -25,7 +25,7 @@ Refused with `STATE_CONFLICT`, naming every reason (in `message` and in `fields`
 | Code | Refused when |
 | --- | --- |
 | `staff_account` | The account has any `user_roles` row, active or revoked. Staff are never erasable here. |
-| `legal_hold` | An unreleased, unexpired `legal_holds` row on any of the client's entities: the user, the linked and matched applications, their email deliveries and those deliveries' provider events, audit rows about the client, and the client's orders, payments, payment attempts, ledger entries, payouts, maturities, schedules, offers, sessions, tickets, reviews, refunds, receipts and SIP plans. A hold of type `mandate` is matched through the existing mandate lookup (`findMandateForAdmin`), so the erasure code does not read the mandate tables. |
+| `legal_hold` | An unreleased, unexpired `legal_holds` row on any of the client's entities: the user, the linked and matched applications, their email deliveries and those deliveries' provider events, audit rows about the client, and the client's orders, payments, payment attempts, ledger entries, payouts, maturities, schedules, offers, sessions, tickets, reviews, nominee requests (072), refunds, receipts and SIP plans. A hold of type `mandate` is matched through the existing mandate lookup (`findMandateForAdmin`), so the erasure code does not read the mandate tables. |
 | `holds_money` | In any fund, the sum of `principal_delta_paise` or of `value_delta_paise` over non-reversal, non-reversed `client_value_entries` is not zero (the same basis as the portfolio position queries). |
 | `open_orders` | An order in `submitted`, `payment_pending`, `review_pending`, `refund_pending` or `refund_failed`. |
 | `open_payments` | A payment in `created`, `provider_pending`, `refund_pending`, `refund_failed` or `reconciliation_required`; a payment attempt in `created`, `provider_pending` or `reconciliation_required`; or a provider webhook still `received` or `processing`. |
@@ -93,6 +93,7 @@ Besides the application linked to the account, erasure matches earlier applicati
 | `notifications` | title, body, payload | contact and name text replaced | deleted |
 | `support_requests` | subject, body, resolution note | contact and name text replaced | deleted |
 | `client_reviews` | comment, moderation note | cleared by the 067 trigger on tombstone | deleted |
+| `client_nominee_requests` (072, Phase I) | requested nominee name and relation, admin decline reason | name and relation set to `Tombstoned`, reason nulled and a pending request closed as `withdrawn` by the 072 trigger when the tombstone is set; the requested names also join the names the scrubber replaces in the client's other text | deleted |
 | `admin_sip_schedules` | none | kept (guard requires none active) | deleted |
 | `admin_sip_schedule_months`, `client_maturity_schedules` | none | kept | never present (they need ledger rows, so G2 applies) |
 | `client_maturity_offers` (068, append-only, deletes refused by trigger) | figures, chosen option, states; no contact columns | kept unchanged (guard requires none open) | never present: an offer needs a maturity schedule, which needs a ledger position, and any offer row forces G2; its trigger therefore needs no erase path |
@@ -164,6 +165,7 @@ WITH subject AS (
   UNION ALL SELECT 'application', id FROM apps
   UNION ALL SELECT 'support_request', id FROM support_requests WHERE user_id = :'user_id'
   UNION ALL SELECT 'client_review', id FROM client_reviews WHERE user_id = :'user_id'
+  UNION ALL SELECT 'client_nominee_request', id FROM client_nominee_requests WHERE user_id = :'user_id'
   UNION ALL SELECT 'admin_sip_schedule', id FROM admin_sip_schedules WHERE user_id = :'user_id'
   UNION ALL SELECT 'client_maturity_schedule', id FROM client_maturity_schedules WHERE user_id = :'user_id'
   UNION ALL SELECT 'client_maturity_offer', id FROM client_maturity_offers WHERE user_id = :'user_id'
@@ -248,6 +250,7 @@ UNION ALL SELECT 'touch_payment_webhook_payloads', count(*) FROM provider_events
 UNION ALL SELECT 'touch_notifications', count(*) FROM notifications WHERE user_id = :'user_id'
 UNION ALL SELECT 'touch_support_requests', count(*) FROM support_requests WHERE user_id = :'user_id'
 UNION ALL SELECT 'touch_reviews', count(*) FROM client_reviews WHERE user_id = :'user_id'
+UNION ALL SELECT 'touch_nominee_requests', count(*) FROM client_nominee_requests WHERE user_id = :'user_id'
 UNION ALL SELECT 'touch_email_change_requests', count(*) FROM email_change_requests WHERE user_id = :'user_id'
 UNION ALL SELECT 'touch_password_links', count(*) FROM password_credential_tokens WHERE user_id = :'user_id'
 UNION ALL SELECT 'touch_statement_links', count(*) FROM client_statement_links WHERE user_id = :'user_id'
@@ -289,7 +292,8 @@ Rollback boundary: **no.** 069 adds a condition that only an erasing transaction
 - `clientErasureRaces.integration.test.ts`: same-key replay, a new key answering "already erased", two concurrent erasures erasing once, concurrent recording or sign-in never leaving a half state, and a delivery marked `sending` or an outbox event claimed by a concurrent transaction while erasure waits on the mail lock making it refuse with every other table byte-identical.
 - `clientErasureMigration.integration.test.ts`: the 069 populated upgrade and the trigger's negative controls, including deletes of another user's row, of a user with a ledger row and of a verified user.
 - `clientErasureCoverage.integration.test.ts`: the reviewed foreign-key and column classification.
+- Every seeded client in `erasureSupport.ts` also holds a declined and a pending nominee request (Phase I, 072), an admin audit row about the pending one, and a notification naming the requested nominee: the G2 test asserts both requests read `Tombstoned` with no reason and the pending one is `withdrawn`, and that the requested name is readable nowhere; the G3 test that no row naming the client remains. `nomineeRequestsMigration.integration.test.ts` covers the trigger on a previous-release tombstone write.
 - Every seeded client in `erasureSupport.ts` holds a statement link (Phase H, 070): the G2 test asserts it is deleted, the G3 test that no row naming the client remains, and `clientStatementLinks.integration.test.ts` that an erased client's live link no longer opens.
 - `erasureContacts.test.ts`: the scrubber's boundaries, case handling, names and JSON rules.
 - Frontend `ClientEraseScreen.test.tsx`: the typed `ERASE` gate, an unknown outcome replaying the held key and request, the typed word cleared after a refusal, and a failed check showing an error with retry and no erase action.
-- `releaseUpgrade` expects 068 and 069.
+- `releaseUpgrade` expects 068 and 069, and 072 since Phase I.

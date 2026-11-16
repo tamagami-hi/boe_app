@@ -7,6 +7,7 @@ const VISIBLE_TEXT = /^(?!\u200C|\u200D)(?:[^\p{Cf}\p{Zl}\p{Zp}]|\u200C|\u200D)*
 const LETTER_OR_NUMBER = /[\p{L}\p{N}]/u
 const MIN_LENGTH = 2
 const MAX_LENGTH = 120
+const MAX_DECLINE_REASON_LENGTH = 500
 
 const nomineeText = z
   .string()
@@ -19,6 +20,23 @@ const nomineeText = z
     message: "must not contain invisible or formatting characters, or start or end with a joiner",
   })
   .refine((value) => LETTER_OR_NUMBER.test(value), { message: "must contain a letter or a number" })
+
+export const declineReasonSchema = z
+  .string()
+  .trim()
+  .refine((value) => Array.from(value).length >= 1 && Array.from(value).length <= MAX_DECLINE_REASON_LENGTH, {
+    message: `must be 1 to ${String(MAX_DECLINE_REASON_LENGTH)} characters`,
+  })
+  .refine((value) => !CONTROL_CHARACTERS.test(value), { message: "must not contain control characters or line breaks" })
+  .refine((value) => VISIBLE_TEXT.test(value), {
+    message: "must not contain invisible or formatting characters, or start or end with a joiner",
+  })
+  .refine((value) => LETTER_OR_NUMBER.test(value), { message: "must contain a letter or a number" })
+
+export const requestedNomineeFields = {
+  name: nomineeText,
+  relation: nomineeText,
+}
 
 export const nomineeFields = {
   name: nomineeText.nullable(),

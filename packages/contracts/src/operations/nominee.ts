@@ -5,10 +5,10 @@ import { FullName, PasswordInput, Uuid } from "../scalars.js"
 import { ADMIN_READ_ERRORS, ADMIN_WRITE_ERRORS, RequiredAdminMutationHeaders } from "./admin-shared.js"
 import { defineOperation, MAX_JSON_BODY_BYTES } from "./descriptor.js"
 
-const VISIBLE_TEXT = /^(?!\u200C|\u200D)(?:[^\p{Cf}\p{Zl}\p{Zp}]|\u200C|\u200D)*(?<!\u200C|\u200D)$/u
-const LETTER_OR_NUMBER = /[\p{L}\p{N}]/u
+export const NOMINEE_VISIBLE_TEXT = /^(?!\u200C|\u200D)(?:[^\p{Cf}\p{Zl}\p{Zp}]|\u200C|\u200D)*(?<!\u200C|\u200D)$/u
+export const NOMINEE_LETTER_OR_NUMBER = /[\p{L}\p{N}]/u
 
-export const NomineeText = FullName.regex(VISIBLE_TEXT).regex(LETTER_OR_NUMBER)
+export const NomineeText = FullName.regex(NOMINEE_VISIBLE_TEXT).regex(NOMINEE_LETTER_OR_NUMBER)
 export type NomineeText = z.infer<typeof NomineeText>
 
 export const NomineeName = NomineeText
@@ -17,7 +17,7 @@ export type NomineeName = z.infer<typeof NomineeName>
 export const NomineeRelation = NomineeText
 export type NomineeRelation = z.infer<typeof NomineeRelation>
 
-const NomineeVersion = z.number().int().nonnegative()
+export const NomineeVersion = z.number().int().nonnegative()
 
 export const Nominee = z.strictObject({ name: NomineeName, relation: NomineeRelation })
 export type Nominee = z.infer<typeof Nominee>
@@ -79,6 +79,7 @@ export const changeClientNominee = defineOperation({
     "AUTHENTICATION_REQUIRED",
     "SESSION_INVALID",
     "ACCOUNT_NOT_ACTIVE",
+    "AUTHORIZATION_DENIED",
     "CSRF_INVALID",
     "INVALID_CREDENTIALS",
     "RESOURCE_NOT_FOUND",

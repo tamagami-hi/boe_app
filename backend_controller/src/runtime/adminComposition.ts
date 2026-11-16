@@ -18,7 +18,6 @@ import { createMaturityRepository } from "../repositories/maturityRepository.js"
 import { createMonthlyRecordingSheetRepository } from "../repositories/monthlyRecordingSheetRepository.js"
 import { createPasswordTokenRepository } from "../repositories/passwordTokenRepository.js"
 import { createUserContactRepository } from "../repositories/userContactRepository.js"
-import { createUserNomineeRepository } from "../repositories/userNomineeRepository.js"
 import { registerAdminAuditTrailRoutes } from "../routes/adminAuditTrailRoutes.js"
 import { registerAdminAumRoutes } from "../routes/adminAumRoutes.js"
 import { registerAdminCatalogRoutes } from "../routes/adminCatalogRoutes.js"
@@ -30,7 +29,6 @@ import { registerAdminFundGrowthPreviewRoutes } from "../routes/adminFundGrowthP
 import { registerAdminFundReceiptRoutes, type AdminFundReceiptDeps } from "../routes/adminFundReceiptRoutes.js"
 import { registerAdminIdentityRoutes, type AdminIdentityDeps } from "../routes/adminIdentityRoutes.js"
 import { registerAdminMaturityRoutes, type AdminMaturityDeps } from "../routes/adminMaturityRoutes.js"
-import { registerAdminNomineeRoutes } from "../routes/adminNomineeRoutes.js"
 import { registerAdminOversightRoutes, type AdminOversightDeps } from "../routes/adminOversightRoutes.js"
 import { registerAdminRecordingSheetRoutes } from "../routes/adminRecordingSheetRoutes.js"
 import { registerAdminReportRoutes } from "../routes/adminReportRoutes.js"
@@ -251,12 +249,6 @@ export const registerAdminSurface = (application: FastifyInstance, deps: AdminSu
       cursorKey: serverConfig.cursorKey,
       sesConfigurationSet: serverConfig.sesConfigurationSet,
     },
-  })
-
-  registerAdminNomineeRoutes(application, {
-    webAuth, unitOfWork, clock, userRepository, auditRepository, idempotencyRepository,
-    userNomineeRepository: createUserNomineeRepository(),
-    config: { idempotencyTtlMs: serverConfig.ttls.idempotencyTtlMs },
   })
 
   registerAdminClientErasureRoutes(application, {

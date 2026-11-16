@@ -127,6 +127,17 @@ describe("a verified client is kept as a record without contact details", () => 
     expect(await stack.count("auth_sessions", "user_id = $1 and state = 'active'", [client.id])).toBe(0)
     expect(await stack.count("client_statement_links", "user_id = $1", [client.id])).toBe(0)
     expect(
+      (
+        await stack.pool.query(
+          "select nominee_name, nominee_relation, state, decline_reason from client_nominee_requests where user_id = $1 order by created_at",
+          [client.id],
+        )
+      ).rows,
+    ).toEqual([
+      { nominee_name: "Tombstoned", nominee_relation: "Tombstoned", state: "declined", decline_reason: null },
+      { nominee_name: "Tombstoned", nominee_relation: "Tombstoned", state: "withdrawn", decline_reason: null },
+    ])
+    expect(
       await stack.count("email_deliveries", "(user_id = $1 or application_id = $2) and recipient_ciphertext is not null", [
         client.id,
         client.rejectedApplicationId,

@@ -2340,6 +2340,134 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/client/nominee-requests/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getLatestClientNomineeRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/client/nominee-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["sendClientNomineeRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/client/nominee-requests/{requestId}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["withdrawClientNomineeRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/nominee-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listAdminNomineeRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/overview/nominee-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getAdminNomineeRequestSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/users/{userId}/nominee-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listAdminUserNomineeRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/nominee-requests/{requestId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["acceptAdminNomineeRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/nominee-requests/{requestId}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["declineAdminNomineeRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/clients/{userId}/sip-schedules": {
         parameters: {
             query?: never;
@@ -15966,7 +16094,7 @@ export interface operations {
         parameters: {
             query?: {
                 state?: "queued" | "sending" | "sent" | "delivered" | "retryable_failed" | "permanent_failed" | "cancelled";
-                templateKey?: "application_rejected" | "account_approved" | "password_set_link" | "password_reset_link" | "password_app_download" | "contact_phone_changed" | "email_change_code" | "contact_email_changed" | "admin_message" | "app_update_notice" | "investment_recorded" | "maturity_options";
+                templateKey?: "application_rejected" | "account_approved" | "password_set_link" | "password_reset_link" | "password_app_download" | "contact_phone_changed" | "email_change_code" | "contact_email_changed" | "admin_message" | "app_update_notice" | "investment_recorded" | "maturity_options" | "nominee_request_decided";
                 applicationId?: string;
                 userId?: string;
                 after?: string;
@@ -21848,6 +21976,1009 @@ export interface operations {
                             version: number;
                             /** @enum {string} */
                             status: "changed" | "unchanged";
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getLatestClientNomineeRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            request: {
+                                /** Format: uuid */
+                                id: string;
+                                nominee: {
+                                    name: string;
+                                    relation: string;
+                                };
+                                /** @enum {string} */
+                                state: "pending" | "accepted" | "declined" | "withdrawn";
+                                declineReason: string | null;
+                                /** Format: date-time */
+                                createdAt: string;
+                                /** Format: date-time */
+                                decidedAt: string | null;
+                                version: number;
+                            } | null;
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    sendClientNomineeRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    relation: string;
+                    currentPassword: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            request: {
+                                /** Format: uuid */
+                                id: string;
+                                nominee: {
+                                    name: string;
+                                    relation: string;
+                                };
+                                /** @enum {string} */
+                                state: "pending" | "accepted" | "declined" | "withdrawn";
+                                declineReason: string | null;
+                                /** Format: date-time */
+                                createdAt: string;
+                                /** Format: date-time */
+                                decidedAt: string | null;
+                                version: number;
+                            };
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    withdrawClientNomineeRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            request: {
+                                /** Format: uuid */
+                                id: string;
+                                nominee: {
+                                    name: string;
+                                    relation: string;
+                                };
+                                /** @enum {string} */
+                                state: "pending" | "accepted" | "declined" | "withdrawn";
+                                declineReason: string | null;
+                                /** Format: date-time */
+                                createdAt: string;
+                                /** Format: date-time */
+                                decidedAt: string | null;
+                                version: number;
+                            };
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listAdminNomineeRequests: {
+        parameters: {
+            query?: {
+                after?: string;
+                limit?: number;
+                state?: "pending" | "accepted" | "declined" | "withdrawn";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            items: {
+                                /** Format: uuid */
+                                id: string;
+                                nominee: {
+                                    name: string;
+                                    relation: string;
+                                };
+                                /** @enum {string} */
+                                state: "pending" | "accepted" | "declined" | "withdrawn";
+                                declineReason: string | null;
+                                /** Format: date-time */
+                                createdAt: string;
+                                /** Format: date-time */
+                                decidedAt: string | null;
+                                version: number;
+                                /** Format: uuid */
+                                userId: string;
+                                clientName: string;
+                                decidedByName: string | null;
+                            }[];
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                            page: {
+                                nextCursor: string | null;
+                                limit: number;
+                                hasMore: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getAdminNomineeRequestSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            pendingCount: number;
+                            /** Format: date-time */
+                            oldestPendingAt: string | null;
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listAdminUserNomineeRequests: {
+        parameters: {
+            query?: {
+                after?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            items: {
+                                /** Format: uuid */
+                                id: string;
+                                nominee: {
+                                    name: string;
+                                    relation: string;
+                                };
+                                /** @enum {string} */
+                                state: "pending" | "accepted" | "declined" | "withdrawn";
+                                declineReason: string | null;
+                                /** Format: date-time */
+                                createdAt: string;
+                                /** Format: date-time */
+                                decidedAt: string | null;
+                                version: number;
+                                /** Format: uuid */
+                                userId: string;
+                                clientName: string;
+                                decidedByName: string | null;
+                            }[];
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                            page: {
+                                nextCursor: string | null;
+                                limit: number;
+                                hasMore: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    acceptAdminNomineeRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                "idempotency-key": string;
+                "x-csrf-token": string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    expectedNomineeVersion: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            request: {
+                                /** Format: uuid */
+                                id: string;
+                                nominee: {
+                                    name: string;
+                                    relation: string;
+                                };
+                                /** @enum {string} */
+                                state: "pending" | "accepted" | "declined" | "withdrawn";
+                                declineReason: string | null;
+                                /** Format: date-time */
+                                createdAt: string;
+                                /** Format: date-time */
+                                decidedAt: string | null;
+                                version: number;
+                                /** Format: uuid */
+                                userId: string;
+                                clientName: string;
+                                decidedByName: string | null;
+                            };
+                            nominee: {
+                                /** Format: uuid */
+                                userId: string;
+                                nominee: {
+                                    name: string;
+                                    relation: string;
+                                } | null;
+                                version: number;
+                            };
+                        };
+                        error: null;
+                        meta: {
+                            /** Format: uuid */
+                            requestId: string;
+                            /** Format: date-time */
+                            timestamp: string;
+                            idempotencyReplay?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    declineAdminNomineeRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                "idempotency-key": string;
+                "x-csrf-token": string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    expectedVersion: number;
+                    reason: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        data: {
+                            request: {
+                                /** Format: uuid */
+                                id: string;
+                                nominee: {
+                                    name: string;
+                                    relation: string;
+                                };
+                                /** @enum {string} */
+                                state: "pending" | "accepted" | "declined" | "withdrawn";
+                                declineReason: string | null;
+                                /** Format: date-time */
+                                createdAt: string;
+                                /** Format: date-time */
+                                decidedAt: string | null;
+                                version: number;
+                                /** Format: uuid */
+                                userId: string;
+                                clientName: string;
+                                decidedByName: string | null;
+                            };
+                            nominee: {
+                                /** Format: uuid */
+                                userId: string;
+                                nominee: {
+                                    name: string;
+                                    relation: string;
+                                } | null;
+                                version: number;
+                            };
                         };
                         error: null;
                         meta: {

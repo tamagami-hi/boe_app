@@ -26560,7 +26560,8 @@
                 "admin_message",
                 "app_update_notice",
                 "investment_recorded",
-                "maturity_options"
+                "maturity_options",
+                "nominee_request_decided"
               ]
             },
             "required": false,
@@ -38272,6 +38273,2032 @@
                         "nominee",
                         "version",
                         "status"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/client/nominee-requests/latest": {
+      "get": {
+        "operationId": "getLatestClientNomineeRequest",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "request": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "nominee": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string",
+                                  "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
+                                },
+                                "relation": {
+                                  "type": "string",
+                                  "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "relation"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "pending",
+                                "accepted",
+                                "declined",
+                                "withdrawn"
+                              ]
+                            },
+                            "declineReason": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "decidedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "date-time"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "nominee",
+                            "state",
+                            "declineReason",
+                            "createdAt",
+                            "decidedAt",
+                            "version"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "request"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/client/nominee-requests": {
+      "post": {
+        "operationId": "sendClientNomineeRequest",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
+                  },
+                  "relation": {
+                    "type": "string",
+                    "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
+                  },
+                  "currentPassword": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "relation",
+                  "currentPassword"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "request": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "nominee": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string",
+                                  "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
+                                },
+                                "relation": {
+                                  "type": "string",
+                                  "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "relation"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "pending",
+                                "accepted",
+                                "declined",
+                                "withdrawn"
+                              ]
+                            },
+                            "declineReason": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "decidedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "date-time"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "nominee",
+                            "state",
+                            "declineReason",
+                            "createdAt",
+                            "decidedAt",
+                            "version"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "request"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/client/nominee-requests/{requestId}/withdraw": {
+      "post": {
+        "operationId": "withdrawClientNomineeRequest",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "requestId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expectedVersion": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "expectedVersion"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "request": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "nominee": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string",
+                                  "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
+                                },
+                                "relation": {
+                                  "type": "string",
+                                  "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "relation"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "pending",
+                                "accepted",
+                                "declined",
+                                "withdrawn"
+                              ]
+                            },
+                            "declineReason": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "decidedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "date-time"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "nominee",
+                            "state",
+                            "declineReason",
+                            "createdAt",
+                            "decidedAt",
+                            "version"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "request"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/nominee-requests": {
+      "get": {
+        "operationId": "listAdminNomineeRequests",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": false,
+            "name": "after",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "accepted",
+                "declined",
+                "withdrawn"
+              ]
+            },
+            "required": false,
+            "name": "state",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "nominee": {
+                                "type": "object",
+                                "properties": {
+                                  "name": {
+                                    "type": "string",
+                                    "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
+                                  },
+                                  "relation": {
+                                    "type": "string",
+                                    "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
+                                  }
+                                },
+                                "required": [
+                                  "name",
+                                  "relation"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "pending",
+                                  "accepted",
+                                  "declined",
+                                  "withdrawn"
+                                ]
+                              },
+                              "declineReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "decidedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "date-time"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0
+                              },
+                              "userId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "clientName": {
+                                "type": "string"
+                              },
+                              "decidedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "nominee",
+                              "state",
+                              "declineReason",
+                              "createdAt",
+                              "decidedAt",
+                              "version",
+                              "userId",
+                              "clientName",
+                              "decidedByName"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        },
+                        "page": {
+                          "type": "object",
+                          "properties": {
+                            "nextCursor": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "limit": {
+                              "type": "integer"
+                            },
+                            "hasMore": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "nextCursor",
+                            "limit",
+                            "hasMore"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp",
+                        "page"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/overview/nominee-requests": {
+      "get": {
+        "operationId": "getAdminNomineeRequestSummary",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "pendingCount": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "oldestPendingAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "pendingCount",
+                        "oldestPendingAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/users/{userId}/nominee-requests": {
+      "get": {
+        "operationId": "listAdminUserNomineeRequests",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": false,
+            "name": "after",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "nominee": {
+                                "type": "object",
+                                "properties": {
+                                  "name": {
+                                    "type": "string",
+                                    "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
+                                  },
+                                  "relation": {
+                                    "type": "string",
+                                    "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
+                                  }
+                                },
+                                "required": [
+                                  "name",
+                                  "relation"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "pending",
+                                  "accepted",
+                                  "declined",
+                                  "withdrawn"
+                                ]
+                              },
+                              "declineReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "decidedAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "format": "date-time"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0
+                              },
+                              "userId": {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              "clientName": {
+                                "type": "string"
+                              },
+                              "decidedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "nominee",
+                              "state",
+                              "declineReason",
+                              "createdAt",
+                              "decidedAt",
+                              "version",
+                              "userId",
+                              "clientName",
+                              "decidedByName"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        },
+                        "page": {
+                          "type": "object",
+                          "properties": {
+                            "nextCursor": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "limit": {
+                              "type": "integer"
+                            },
+                            "hasMore": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "nextCursor",
+                            "limit",
+                            "hasMore"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp",
+                        "page"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/nominee-requests/{requestId}/accept": {
+      "post": {
+        "operationId": "acceptAdminNomineeRequest",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "requestId",
+            "in": "path"
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expectedVersion": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "expectedNomineeVersion": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "expectedVersion",
+                  "expectedNomineeVersion"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "request": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "nominee": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string",
+                                  "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
+                                },
+                                "relation": {
+                                  "type": "string",
+                                  "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "relation"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "pending",
+                                "accepted",
+                                "declined",
+                                "withdrawn"
+                              ]
+                            },
+                            "declineReason": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "decidedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "date-time"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0
+                            },
+                            "userId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "clientName": {
+                              "type": "string"
+                            },
+                            "decidedByName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "nominee",
+                            "state",
+                            "declineReason",
+                            "createdAt",
+                            "decidedAt",
+                            "version",
+                            "userId",
+                            "clientName",
+                            "decidedByName"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "nominee": {
+                          "type": "object",
+                          "properties": {
+                            "userId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "nominee": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "name": {
+                                  "type": "string",
+                                  "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
+                                },
+                                "relation": {
+                                  "type": "string",
+                                  "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "relation"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "userId",
+                            "nominee",
+                            "version"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "request",
+                        "nominee"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "null"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "idempotencyReplay": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "timestamp"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data",
+                    "error",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/nominee-requests/{requestId}/decline": {
+      "post": {
+        "operationId": "declineAdminNomineeRequest",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "requestId",
+            "in": "path"
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expectedVersion": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "reason": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
+                  }
+                },
+                "required": [
+                  "expectedVersion",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "request": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "nominee": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string",
+                                  "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
+                                },
+                                "relation": {
+                                  "type": "string",
+                                  "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "relation"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "pending",
+                                "accepted",
+                                "declined",
+                                "withdrawn"
+                              ]
+                            },
+                            "declineReason": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "decidedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "format": "date-time"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0
+                            },
+                            "userId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "clientName": {
+                              "type": "string"
+                            },
+                            "decidedByName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "nominee",
+                            "state",
+                            "declineReason",
+                            "createdAt",
+                            "decidedAt",
+                            "version",
+                            "userId",
+                            "clientName",
+                            "decidedByName"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "nominee": {
+                          "type": "object",
+                          "properties": {
+                            "userId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "nominee": {
+                              "type": [
+                                "object",
+                                "null"
+                              ],
+                              "properties": {
+                                "name": {
+                                  "type": "string",
+                                  "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
+                                },
+                                "relation": {
+                                  "type": "string",
+                                  "pattern": "^(?!\\u200C|\\u200D)(?:[^\\p{Cf}\\p{Zl}\\p{Zp}]|\\u200C|\\u200D)*(?<!\\u200C|\\u200D)$/u"
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "relation"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "userId",
+                            "nominee",
+                            "version"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "request",
+                        "nominee"
                       ],
                       "additionalProperties": false
                     },
