@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import type { ReactNode } from "react"
 
+import { createBackPolicyResolver } from "~/app/native/backPolicy"
 import { CLIENT_HOME_PATH, CLIENT_ROUTES } from "~/app/routing/clientRoutes"
 import { findRoute, navRoutes } from "~/app/routing/routeManifest"
 import { useSession } from "~/app/providers/SessionProvider"
@@ -31,6 +32,8 @@ import {
 
 const TABS = navRoutes(CLIENT_ROUTES)
 
+const resolveBackPolicy = createBackPolicyResolver(CLIENT_ROUTES, CLIENT_HOME_PATH)
+
 export type ClientFrameProps = Readonly<{ children: ReactNode }>
 
 export const ClientFrame = ({ children }: ClientFrameProps): React.ReactElement => {
@@ -53,7 +56,7 @@ export const ClientFrame = ({ children }: ClientFrameProps): React.ReactElement 
   const activeId = route.id
   const backPath =
     route.back.kind === "parent"
-      ? route.back.path
+      ? resolveBackPolicy({ pathname: location.pathname }).parentPath
       : route.back.kind === "home"
         ? CLIENT_HOME_PATH
         : null
