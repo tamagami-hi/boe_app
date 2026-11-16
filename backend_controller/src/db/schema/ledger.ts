@@ -78,7 +78,7 @@ export interface WithdrawalOperationsTable {
   id: Generated<string>
   user_id: string
   fund_id: string
-  maturity_id: string
+  maturity_id: Nullable<string>
   ledger_entry_id: string
   state: Generated<WithdrawalState>
   amount_paise: BigIntString

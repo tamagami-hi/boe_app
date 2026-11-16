@@ -11,6 +11,7 @@ import { createEmailChangeMailGuard } from "../domain/email/emailChangeMailGuard
 import { createInvestmentRecordedGuard } from "../domain/email/investmentRecordedGuard.js"
 import { createMaturityOptionsGuard } from "../domain/email/maturityOptionsGuard.js"
 import { createNomineeRequestDecidedGuard } from "../domain/email/nomineeRequestDecidedGuard.js"
+import { createSipEarlyExitGuard } from "../domain/email/earlyExitGuard.js"
 import { createPasswordLinkMailGuard } from "../domain/email/passwordLinkMailGuard.js"
 import { createAdminEmailMessageRepository } from "../repositories/adminEmailMessageRepository.js"
 import { createAppUpdateAnnouncementRepository } from "../repositories/appUpdateAnnouncementRepository.js"
@@ -35,6 +36,7 @@ import { createNotificationRepository } from "../repositories/notificationReposi
 import { createOrderRepository } from "../repositories/orderRepository.js"
 import { createPaymentsRepository } from "../repositories/paymentsRepository.js"
 import { createRefundRepository } from "../repositories/refundRepository.js"
+import { createSipEarlyExitRepository } from "../repositories/earlyExitRepository.js"
 import {
   createInvestmentSettlementRepository,
 } from "../repositories/investmentSettlementRepository.js"
@@ -137,6 +139,10 @@ export const composeEmailDispatchWorker = (
           nomineeRequestRepository: createNomineeRequestRepository(),
           userRepository: createUserRepository(),
         }),
+      ],
+      [
+        "sip_early_exit",
+        createSipEarlyExitGuard({ sipEarlyExitRepository: createSipEarlyExitRepository(), userRepository: createUserRepository() }),
       ],
     ]),
     clock: (): Date => new Date(),

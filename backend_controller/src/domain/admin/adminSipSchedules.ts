@@ -42,6 +42,7 @@ export interface EditSipScheduleCommand {
 const STALE_MESSAGE = "Someone changed this SIP schedule since you opened it. Reload it and try again."
 const ACTIVE_EXISTS_MESSAGE = "This client already has an active SIP schedule for this fund. Close it first."
 const ALREADY_CLOSED_MESSAGE = "This SIP schedule is already closed."
+const CLOSED_EARLY_MESSAGE = "This SIP schedule was closed early and cannot be reopened. Start a new SIP schedule instead."
 
 const loadRow = async (
   tx: Transaction,
@@ -178,6 +179,9 @@ const applyEdit = async (
   }
   if (next.monthCount !== current.monthCount) await refuseOrphanedMonths(tx, deps, current, next.monthCount)
   if (next.state === "active" && current.state !== "active") {
+    if (await deps.sipScheduleRepository.wasClosedEarly(tx, current.id)) {
+      throw new AppError("STATE_CONFLICT", { message: CLOSED_EARLY_MESSAGE })
+    }
     const activeExists = await deps.sipScheduleRepository.hasOtherActive(tx, {
       userId: current.userId,
       fundId: current.fundId,

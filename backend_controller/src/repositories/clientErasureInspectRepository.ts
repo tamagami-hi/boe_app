@@ -194,6 +194,7 @@ const moneyRecordsQuery = (userId: string) => sql<{ readonly present: boolean }>
     or exists (select 1 from client_maturity_schedules where user_id = ${userId})
     or exists (select 1 from client_maturity_offers where user_id = ${userId})
     or exists (select 1 from admin_sip_schedule_months where user_id = ${userId})
+    or exists (select 1 from sip_early_exits where user_id = ${userId})
     or exists (select 1 from sip_plans where user_id = ${userId})
   ) as present
 `
@@ -235,6 +236,7 @@ const ownedEntityQuery = (subject: ErasureSubject, applicationIds: readonly stri
   union all select 'client_review', id from client_reviews where user_id = ${subject.id}
   union all select 'client_nominee_request', id from client_nominee_requests where user_id = ${subject.id}
   union all select 'admin_sip_schedule', id from admin_sip_schedules where user_id = ${subject.id}
+  union all select 'sip_early_exit', id from sip_early_exits where user_id = ${subject.id}
   union all select 'client_maturity_schedule', id from client_maturity_schedules where user_id = ${subject.id}
   union all select 'client_maturity_offer', id from client_maturity_offers where user_id = ${subject.id}
   union all select 'auth_session', id from auth_sessions where user_id = ${subject.id}

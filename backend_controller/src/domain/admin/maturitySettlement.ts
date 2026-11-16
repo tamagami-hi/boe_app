@@ -5,6 +5,7 @@ import type { ClientGrowthRepository } from "../../repositories/clientGrowthRepo
 import type { MaturityRepository, SettlementEntryInput } from "../../repositories/maturityRepository.js"
 import type { NotificationWriteRepository } from "../../repositories/notificationRepository.js"
 import { indiaCalendarDate } from "../shared/calendarDate.js"
+import { recordWithdrawalWithPayout } from "./withdrawalEntry.js"
 
 export { updateWithdrawalPayout } from "./withdrawalPayout.js"
 
@@ -157,19 +158,11 @@ export const withdrawMaturedPosition = async (
   if (input.amountPaise > basis.currentValuePaise) {
     throw new AppError("VALIDATION_FAILED", { message: "Withdrawal exceeds the current position value." })
   }
-  const gain = basis.currentValuePaise > basis.principalPaise ? basis.currentValuePaise - basis.principalPaise : 0n
-  const growthPortionPaise = input.amountPaise < gain ? input.amountPaise : gain
-  const principalPortionPaise = input.amountPaise - growthPortionPaise
-  const entry: SettlementEntryInput = { ...input, entryType: "withdrawal",
-    principalDeltaPaise: -principalPortionPaise, valueDeltaPaise: -input.amountPaise }
-  const inserted = await deps.maturityRepository.insertSettlementEntry(tx, entry)
-  const payout = await deps.maturityRepository.insertWithdrawalPayout(tx, {
-    ...input, ledgerEntryId: inserted.id, growthPortionPaise, principalPortionPaise,
-  })
-  return recordSettlement(tx, deps, input, entry, {
-    entryId: inserted.id, payoutId: payout.id,
-    principalDeltaPaise: entry.principalDeltaPaise, valueDeltaPaise: entry.valueDeltaPaise,
-    principalPaise: basis.principalPaise - principalPortionPaise,
+  const recorded = await recordWithdrawalWithPayout(tx, deps, basis, input)
+  return recordSettlement(tx, deps, input, recorded.entry, {
+    entryId: recorded.entryId, payoutId: recorded.payoutId,
+    principalDeltaPaise: recorded.entry.principalDeltaPaise, valueDeltaPaise: recorded.entry.valueDeltaPaise,
+    principalPaise: basis.principalPaise - recorded.principalPortionPaise,
     currentValuePaise: basis.currentValuePaise - input.amountPaise,
   })
 }

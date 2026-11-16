@@ -272,7 +272,7 @@ afterAll(async () => {
 describe("upgrading a populated v0.14.7 database to v0.15.0 in one run", () => {
   test("applies every migration after 051", async () => {
     const applied = (await pool.query<{ version: string }>("select version from schema_migrations where version > $1 order by version", [RELEASED_SCHEMA])).rows
-    expect(applied.map((row) => row.version.slice(0, 3))).toEqual(["052", "053", "054", "055", "056", "057", "058", "059", "060", "061", "062", "063", "064", "065", "066", "067", "068", "069", "070", "071", "072"])
+    expect(applied.map((row) => row.version.slice(0, 3))).toEqual(["052", "053", "054", "055", "056", "057", "058", "059", "060", "061", "062", "063", "064", "065", "066", "067", "068", "069", "070", "071", "072", "073"])
   })
 
   test("keeps every existing row in every existing table exactly as it was, and adds none", async () => {
@@ -327,6 +327,7 @@ describe("upgrading a populated v0.14.7 database to v0.15.0 in one run", () => {
     expect(await count("client_maturity_offers")).toBe(0)
     expect(await count("client_reviews")).toBe(0)
     expect(await count("client_nominee_requests")).toBe(0)
+    expect(await count("sip_early_exits")).toBe(0)
   })
 
   test("accepts every template key the new release queues and still refuses an unknown one", async () => {
@@ -344,7 +345,7 @@ describe("upgrading a populated v0.14.7 database to v0.15.0 in one run", () => {
       }
     }
 
-    for (const key of ["password_set_link", "password_reset_link", "password_app_download", "contact_phone_changed", "email_change_code", "contact_email_changed", "admin_message", "app_update_notice", "investment_recorded", "maturity_options", "nominee_request_decided"]) {
+    for (const key of ["password_set_link", "password_reset_link", "password_app_download", "contact_phone_changed", "email_change_code", "contact_email_changed", "admin_message", "app_update_notice", "investment_recorded", "maturity_options", "nominee_request_decided", "sip_early_exit"]) {
       expect(await accepts(key), key).toBe(true)
     }
     expect(await accepts("statement_ready")).toBe(false)

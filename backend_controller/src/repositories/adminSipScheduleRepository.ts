@@ -87,6 +87,7 @@ export interface AdminSipScheduleRepository {
     scheduleId: string,
   ) => Promise<Readonly<{ userId: string; fundId: string }> | null>
   lockById: (tx: Transaction, scheduleId: string) => Promise<LockedSipSchedule | null>
+  wasClosedEarly: (tx: Transaction, scheduleId: string) => Promise<boolean>
   hasOtherActive: (
     tx: Transaction,
     input: Readonly<{ userId: string; fundId: string; exceptScheduleId: string | null }>,
@@ -171,6 +172,9 @@ export const createAdminSipScheduleRepository = (): AdminSipScheduleRepository =
       .select(["user_id as userId", "fund_id as fundId"])
       .where("id", "=", scheduleId)
       .executeTakeFirst()) ?? null,
+
+  wasClosedEarly: async (tx, scheduleId) =>
+    (await tx.selectFrom("sip_early_exits").select("id").where("schedule_id", "=", scheduleId).executeTakeFirst()) !== undefined,
 
   lockById: async (tx, scheduleId) => {
     const result = await sql<LockedSipSchedule>`

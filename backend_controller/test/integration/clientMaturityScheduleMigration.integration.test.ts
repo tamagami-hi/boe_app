@@ -225,7 +225,7 @@ describe("client maturity schedule populated upgrade", () => {
     )
     await expect(pool.query("update client_maturity_schedules set maturity_date = '2031-01-01' where id = $1", [open])).rejects.toThrow(/never changes/u)
     await expect(pool.query("delete from client_maturity_schedules where id = $1", [open])).rejects.toThrow(/never deleted/u)
-    await expect(pool.query("truncate client_maturity_schedules, client_maturity_offers")).rejects.toThrow(
+    await expect(pool.query("truncate client_maturity_schedules, client_maturity_offers, sip_early_exits")).rejects.toThrow(
       /client_maturity_schedules rows are never deleted/u,
     )
     await expect(

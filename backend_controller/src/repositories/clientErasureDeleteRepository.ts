@@ -65,6 +65,7 @@ const deleteIdentity = async (tx: Transaction, input: ClientDeletionInput): Prom
     await sql`delete from support_requests where user_id = ${input.userId}`.execute(tx),
     await sql`delete from client_reviews where user_id = ${input.userId}`.execute(tx),
     await sql`delete from client_nominee_requests where user_id = ${input.userId}`.execute(tx),
+    await sql`delete from sip_early_exits where user_id = ${input.userId}`.execute(tx),
     await sql`delete from admin_sip_schedules where user_id = ${input.userId}`.execute(tx),
     await sql`delete from user_contact_history where user_id = ${input.userId}`.execute(tx),
     await sql`

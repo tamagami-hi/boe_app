@@ -39,6 +39,7 @@ import { registerClientSipScheduleRoutes } from "../routes/clientSipScheduleRout
 import type { ServerConfig } from "./environment.js"
 import { registerMaturitySurface } from "./maturityComposition.js"
 import { registerRecordingSurface, type RecordingSurfaceDeps } from "./recordingComposition.js"
+import { registerSipEarlyExitSurface } from "./earlyExitComposition.js"
 
 type AdminServerConfig = Pick<ServerConfig, "appUpdate" | "cursorKey" | "fundAum" | "sesConfigurationSet" | "ttls">
 
@@ -240,7 +241,7 @@ export const registerAdminSurface = (application: FastifyInstance, deps: AdminSu
     notificationRepository,
   })
 
-  registerMaturitySurface(application, {
+  const maturitySurfaceDeps = {
     webAuth, unitOfWork, database, clock, maturityRepository, clientGrowthRepository, sipScheduleRepository,
     userRepository, auditRepository, idempotencyRepository, notificationRepository, outboxRepository,
     emailDeliveryRepository, crypto, accessTokenService, clientWeb,
@@ -249,7 +250,9 @@ export const registerAdminSurface = (application: FastifyInstance, deps: AdminSu
       cursorKey: serverConfig.cursorKey,
       sesConfigurationSet: serverConfig.sesConfigurationSet,
     },
-  })
+  }
+  registerMaturitySurface(application, maturitySurfaceDeps)
+  registerSipEarlyExitSurface(application, maturitySurfaceDeps)
 
   registerAdminClientErasureRoutes(application, {
     webAuth, unitOfWork, clock, crypto, identityLockRepository, clientGrowthRepository, authSessionRepository,

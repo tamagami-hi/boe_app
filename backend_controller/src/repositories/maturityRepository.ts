@@ -39,7 +39,7 @@ export interface SettleMaturityInput {
 export interface RecordWithdrawalPayoutInput {
   readonly userId: string
   readonly fundId: string
-  readonly maturityId: string
+  readonly maturityId: string | null
   readonly ledgerEntryId: string
   readonly amountPaise: bigint
   readonly growthPortionPaise: bigint
@@ -323,7 +323,7 @@ export const createMaturityRepository = (): MaturityRepository => ({
         w.transfer_reference as "transferReference",
         w.created_at as "createdAt"
       from withdrawal_operations w
-      where w.user_id = ${input.userId}
+      where w.user_id = ${input.userId} and w.maturity_id is not null
       order by w.created_at desc, w.id desc
       limit ${input.limit}
     `.execute(tx)

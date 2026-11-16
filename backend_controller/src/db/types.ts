@@ -9,6 +9,7 @@ import type { ClientMaturityOffersTable, ClientMaturitySchedulesTable } from "./
 import type { AdminSipScheduleMonthsTable, AdminSipSchedulesTable } from "./schema/sipSchedules.js"
 import type { ClientStatementLinksTable } from "./schema/statementLinks.js"
 import type { ClientNomineeRequestsTable } from "./schema/nomineeRequests.js"
+import type { SipEarlyExitsTable } from "./schema/sipEarlyExits.js"
 
 export type * from "./schema/identity.js"
 export type * from "./schema/platform.js"
@@ -21,6 +22,7 @@ export type * from "./schema/sipSchedules.js"
 export type * from "./schema/maturitySchedules.js"
 export type * from "./schema/statementLinks.js"
 export type * from "./schema/nomineeRequests.js"
+export type * from "./schema/sipEarlyExits.js"
 
 export interface Database {
   applications: ApplicationsTable
@@ -90,4 +92,5 @@ export interface Database {
   client_maturity_offers: ClientMaturityOffersTable
   client_statement_links: ClientStatementLinksTable
   client_nominee_requests: ClientNomineeRequestsTable
+  sip_early_exits: SipEarlyExitsTable
 }

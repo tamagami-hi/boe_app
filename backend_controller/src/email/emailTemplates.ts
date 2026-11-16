@@ -8,6 +8,7 @@ import {
 } from "./emailTemplateParts.js"
 import { EmailValidationError } from "./emailValidation.js"
 import { nomineeRequestDecidedTemplate } from "./nomineeRequestDecidedEmail.js"
+import { sipEarlyExitTemplate } from "./earlyExitTemplate.js"
 
 export interface EmailTemplateConfig {
   /** Address investors are told to contact. */
@@ -35,7 +36,7 @@ const TEMPLATE_VERSIONS: ReadonlyMap<string, readonly string[]> = new Map([
   ["maturity_options", ["v1"]],
 ])
 
-const TEMPLATE_MODULES: readonly EmailTemplateModule[] = [nomineeRequestDecidedTemplate]
+const TEMPLATE_MODULES: readonly EmailTemplateModule[] = [nomineeRequestDecidedTemplate, sipEarlyExitTemplate]
 
 const MODULE_BY_KEY: ReadonlyMap<string, EmailTemplateModule> = new Map(
   TEMPLATE_MODULES.map((module) => [module.key, module]),

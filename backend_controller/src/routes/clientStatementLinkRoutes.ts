@@ -13,6 +13,7 @@ import {
 } from "../domain/client/statementPage.js"
 import { parseOrThrow } from "../http/validation.js"
 import type { ClientValueEntryRepository } from "../repositories/clientValueEntryRepository.js"
+import { createSipEarlyExitRepository } from "../repositories/earlyExitRepository.js"
 import { createStatementLinkRepository } from "../repositories/statementLinkRepository.js"
 
 export interface ClientStatementLinkRouteDeps extends ClientRequestAuthDeps {
@@ -68,7 +69,11 @@ const openLink = async (deps: RouteDeps, request: FastifyRequest, reply: Fastify
 }
 
 export const registerClientStatementLinkRoutes = (application: FastifyInstance, base: ClientStatementLinkRouteDeps): void => {
-  const deps: RouteDeps = { ...base, statementLinkRepository: createStatementLinkRepository() }
+  const deps: RouteDeps = {
+    ...base,
+    statementLinkRepository: createStatementLinkRepository(),
+    sipEarlyExitRepository: createSipEarlyExitRepository(),
+  }
   application.post(ISSUE_ROUTE, (request, reply) => issueLink(deps, request, reply))
   application.get(OPEN_ROUTE, (request, reply) => openLink(deps, request, reply))
 }

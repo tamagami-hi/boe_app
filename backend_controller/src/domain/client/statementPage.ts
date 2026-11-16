@@ -2,7 +2,7 @@ import { createHash } from "node:crypto"
 
 import { groupIndian } from "../../email/emailMoney.js"
 import { escapeHtml } from "../../email/emailValidation.js"
-import type { StatementDocument } from "./statementLinks.js"
+import type { StatementDocument, StatementEarlyExit } from "./statementLinks.js"
 import type { StatementPeriod } from "./statements.js"
 
 const LOCALE = "en-IN"
@@ -88,6 +88,12 @@ const table = (periods: readonly StatementPeriod[]): string =>
         `<tbody>${periods.map(row).join("")}</tbody></table></div>`,
       ].join("")
 
+const earlyExitLine = (exit: StatementEarlyExit): string =>
+  `<li>${escapeHtml(`Early exit: your SIP in ${exit.fundName} was closed early on ${formatCalendarDate(exit.effectiveDate)}, and its full value, ${formatStatementRupees(exit.amountPaise, false)}, was withdrawn. It is counted under Withdrawals.`)}</li>`
+
+const earlyExitNotes = (exits: readonly StatementEarlyExit[]): string =>
+  exits.length === 0 ? "" : `<ul class="note">${exits.map(earlyExitLine).join("")}</ul>`
+
 const footnote = (lastUpdated: string | null): string => {
   const freshness = lastUpdated === null ? [] : [`Last updated ${formatCalendarDate(lastUpdated)}`]
   return `<p class="note">${escapeHtml([SOURCE, ...freshness, MARKET_RISK].join(SEPARATOR))}</p>`
@@ -114,6 +120,7 @@ export const renderStatementPage = (document: StatementDocument): string => {
       `<p class="meta">${escapeHtml(`Prepared for ${document.holderName} on ${prepared}`)}</p>`,
       `<p class="meta">${escapeHtml(`Covering ${covering}`)}</p>`,
       table(document.periods),
+      earlyExitNotes(document.earlyExits),
       footnote(document.lastUpdated),
     ].join(""),
   )

@@ -42,7 +42,7 @@ Refused with `STATE_CONFLICT`, naming every reason (in `message` and in `fields`
 ## Paths
 
 - **G2, kept as a record** (`kept_as_record`): the client completed email verification (`users.email_verification_state = 'verified'`, or `email_verified_at` set, or an `email_verification.completed` audit row), or any money row exists. `keptBecause` says which.
-- **G3, deleted** (`deleted`): never verified and no row in `client_value_entries`, `investment_orders`, `investment_allocations`, `payments`, `payment_attempts`, `provider_payment_details`, `provider_events`, `withdrawal_operations`, `client_position_maturities`, `client_maturity_schedules`, `client_maturity_offers`, `admin_sip_schedule_months` or `sip_plans`. Money records are never deleted; their presence falls back to G2 and the answer says `keptBecause: "money_records"`.
+- **G3, deleted** (`deleted`): never verified and no row in `client_value_entries`, `investment_orders`, `investment_allocations`, `payments`, `payment_attempts`, `provider_payment_details`, `provider_events`, `withdrawal_operations`, `client_position_maturities`, `client_maturity_schedules`, `client_maturity_offers`, `admin_sip_schedule_months`, `sip_early_exits` or `sip_plans`. Money records are never deleted; their presence falls back to G2 and the answer says `keptBecause: "money_records"`.
 
 Placeholders: the live `users` columns are unique, so the email becomes `released+<id>@released.invalid` and the phone a `+999` number from the A8 release sequence (both refused on every creation and correction path, and already proven against the previous release's lookups by the A8 tests); a test erases two clients and checks both are distinct. Everywhere else the existing tombstone values are used: `tombstone+<id>@invalid.example`, `tombstone`, `Tombstoned`. Contact-history rows get `tombstone-previous` and `tombstone-new` as phones, because `user_contact_history_changed` requires the two sides to differ.
 
@@ -83,7 +83,7 @@ Besides the application linked to the account, erasure matches earlier applicati
 | `password_credential_tokens`, `email_verification_codes` | link and code hashes | consumed | deleted |
 | `client_statement_links` (070, Phase H) | one statement link per client: token hash, covered months, expiry | deleted | deleted. A link needs ledger rows, which force G2, so a G3 client has one only if it was inserted by hand; the delete keeps the 070 `ON DELETE RESTRICT` key from blocking |
 | `email_change_requests` | encrypted target email | retired; target re-encrypted as the placeholder | deleted |
-| `email_deliveries` (user, linked or matched application, every template including Phase F `maturity_options`) | encrypted recipient, recipient HMAC, masked recipient, encrypted failure detail | locked; queued and retryable cancelled (with their outbox events); recipient and failure envelopes nulled, HMAC and masked value set to the placeholder's, `erased_at` | deleted |
+| `email_deliveries` (user, linked or matched application, every template including Phase F `maturity_options` and Phase I `sip_early_exit`) | encrypted recipient, recipient HMAC, masked recipient, encrypted failure detail | locked; queued and retryable cancelled (with their outbox events); recipient and failure envelopes nulled, HMAC and masked value set to the placeholder's, `erased_at` | deleted |
 | `email_delivery_payloads` | sealed names, links and nominee decline reasons | scrubbed (`scrubbed_at`) | deleted |
 | `email_provider_events` (those deliveries, and unmatched events correlated to them) | encrypted SES payload | payload erased (`erased_at`) | deleted; a row a suppression references is detached from the delivery and its payload erased |
 | `email_send_attempts` | worker ids | kept | deleted |
@@ -96,6 +96,7 @@ Besides the application linked to the account, erasure matches earlier applicati
 | `client_nominee_requests` (072, Phase I) | requested nominee name and relation, admin decline reason | name and relation set to `Tombstoned`, reason nulled and a pending request closed as `withdrawn` by the 072 trigger when the tombstone is set; the requested names also join the names the scrubber replaces in the client's other text | deleted |
 | `admin_sip_schedules` | none | kept (guard requires none active) | deleted |
 | `admin_sip_schedule_months`, `client_maturity_schedules` | none | kept | never present (they need ledger rows, so G2 applies) |
+| `sip_early_exits` (073, Phase I) | schedule, ledger entry, payout and cancelled maturity links, amounts; no contact or free-text column | kept unchanged: it links ledger and payout rows that stay | never present: an early exit writes a withdrawal ledger row and a payout, and any early-exit row forces G2; G3 still deletes the client's rows before `admin_sip_schedules`, so the 073 `ON DELETE RESTRICT` key can never block it |
 | `client_maturity_offers` (068, append-only, deletes refused by trigger) | figures, chosen option, states; no contact columns | kept unchanged (guard requires none open) | never present: an offer needs a maturity schedule, which needs a ledger position, and any offer row forces G2; its trigger therefore needs no erase path |
 | `audit_events` about the client (entity the user, an application or one of the client's rows above, actor the client, or `metadata.userId` the client) | metadata, reason text | contact and name text replaced | deleted; the one erasure row is written after |
 | `audit_events`, all others | | untouched | untouched |
@@ -169,6 +170,7 @@ WITH subject AS (
   UNION ALL SELECT 'client_review', id FROM client_reviews WHERE user_id = :'user_id'
   UNION ALL SELECT 'client_nominee_request', id FROM client_nominee_requests WHERE user_id = :'user_id'
   UNION ALL SELECT 'admin_sip_schedule', id FROM admin_sip_schedules WHERE user_id = :'user_id'
+  UNION ALL SELECT 'sip_early_exit', id FROM sip_early_exits WHERE user_id = :'user_id'
   UNION ALL SELECT 'client_maturity_schedule', id FROM client_maturity_schedules WHERE user_id = :'user_id'
   UNION ALL SELECT 'client_maturity_offer', id FROM client_maturity_offers WHERE user_id = :'user_id'
   UNION ALL SELECT 'auth_session', id FROM auth_sessions WHERE user_id = :'user_id'
@@ -231,7 +233,7 @@ UNION ALL SELECT 'money_rows_force_keep', (
   + (SELECT count(*) FROM provider_events WHERE user_id = :'user_id') + (SELECT count(*) FROM withdrawal_operations WHERE user_id = :'user_id')
   + (SELECT count(*) FROM client_position_maturities WHERE user_id = :'user_id') + (SELECT count(*) FROM client_maturity_schedules WHERE user_id = :'user_id')
   + (SELECT count(*) FROM client_maturity_offers WHERE user_id = :'user_id') + (SELECT count(*) FROM admin_sip_schedule_months WHERE user_id = :'user_id')
-  + (SELECT count(*) FROM sip_plans WHERE user_id = :'user_id'))
+  + (SELECT count(*) FROM sip_early_exits WHERE user_id = :'user_id') + (SELECT count(*) FROM sip_plans WHERE user_id = :'user_id'))
 UNION ALL SELECT 'info_known_emails', count(*) FROM known_emails
 UNION ALL SELECT 'touch_applications_linked_and_matched', count(*) FROM apps
 UNION ALL SELECT 'touch_application_consents', count(*) FROM application_consents WHERE application_id IN (SELECT id FROM apps)
@@ -303,4 +305,5 @@ Rollback after 072 (Phase I): an images-only rollback to v0.16.2 runs against 07
 - Every seeded client in `erasureSupport.ts` holds a statement link (Phase H, 070): the G2 test asserts it is deleted, the G3 test that no row naming the client remains, and `clientStatementLinks.integration.test.ts` that an erased client's live link no longer opens.
 - `erasureContacts.test.ts`: the scrubber's boundaries, case handling, names and JSON rules.
 - Frontend `ClientEraseScreen.test.tsx`: the typed `ERASE` gate, an unknown outcome replaying the held key and request, the typed word cleared after a refusal, and a failed check showing an error with retry and no erase action.
-- `releaseUpgrade` expects 068 and 069, and 072 since Phase I.
+- `releaseUpgrade` expects 068 and 069, and 072 and 073 since Phase I.
+- An early exit's payout (`withdrawal_operations` with no maturity, 073) is pending until the admin records the transfer, so the existing open-withdrawal blocker refuses erasure meanwhile.
