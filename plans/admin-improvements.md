@@ -1,6 +1,6 @@
 # BeOnEdge admin improvements: recording categories, receipts, value updates, returns, maturity, nominee, and fixes
 
-Status: **Approved by the maintainer on 2026-11-13. Phases A, B and C, and Phase E steps E1 and E2, are complete on local `main` (not pushed or released). Phase D and E3 wait for the maintainer. Phases F, G and H are complete on local `main` (section 8). Nothing from Phases A to H is pushed or released.** No question is open. What still needs the maintainer: publishing `featureFlags.onlinePayments=false` (G11), the production reform's own destructive-change approval after the pre-flight report (D2), releases, and the decision to resume payments. Checks run in the pinned Node 22.20.0 / npm 11.16.0 container `tools/node22-container/run.sh` (tally `howto-2`).
+Status: **Approved by the maintainer on 2026-11-13. Phases A, B and C, and Phase E steps E1 and E2, are complete on `main`. Phase D and E3 wait for the maintainer. Phases F, G and H are complete on local `main` (section 8), and releases v0.16.0 to v0.16.2 were cut from `main` on 2026-11-15. Phase I (DEC-42: nominee by request and SIP early exit) is in progress; the UI overhaul (DEC-40) follows it.** Questions Q-038 to Q-044 are open with conservative defaults (section 0a). What still needs the maintainer: publishing `featureFlags.onlinePayments=false` (G11), the production reform's own destructive-change approval after the pre-flight report (D2), releases, and the decision to resume payments. Checks run in the pinned Node 22.20.0 / npm 11.16.0 container `tools/node22-container/run.sh` (tally `howto-2`).
 
 Prepared: 2026-11-13. The investigation was static source reading only. No local checks ran (no dependencies are installed, and `RULES.md` forbids installing them just to make checks runnable). Nothing was diagnosed on a VPS, no test ran, no mail was sent, and nothing was deployed. GitHub CI run 38216879911 passed contracts, backend (including integration) and frontend on `ba8b196` (v0.15.4). The detailed evidence is held as tally records under `docs/records/`: findings `finding-1` to `finding-18` (excluding the retired `finding-5`), decisions `rule-2` to `rule-6`, and milestones `M1-admin-audit` and `M2-plan`.
 
@@ -8,11 +8,17 @@ Governing process: root [RULES.md](../RULES.md). The application is in productio
 
 ## 0a. Open questions and conservative defaults
 
-IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-025 were answered on 2026-11-13, and Q-027 to Q-029 on 2026-11-14; all are in the decision record. Q-026 and Q-030 to Q-032 were answered on 2026-11-14 (DEC-29 to DEC-32). Q-036 and Q-037 were answered on 2026-11-14 (DEC-36, DEC-37). Tally question rows 1 to 23 are marked answered, each citing its decision ID. No question is open.
+IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-025 were answered on 2026-11-13, and Q-027 to Q-029 on 2026-11-14; all are in the decision record. Q-026 and Q-030 to Q-032 were answered on 2026-11-14 (DEC-29 to DEC-32). Q-036 and Q-037 were answered on 2026-11-14 (DEC-36, DEC-37). Tally question rows 1 to 23 are marked answered, each citing its decision ID. Q-038 to Q-044 are open: Phase I builds their conservative defaults, and the maintainer can change any of them.
 
 | ID | Open decision | Conservative behavior meanwhile |
 | --- | --- | --- |
-| — | No open questions. | — |
+| Q-038 | Does a client re-enter their password to send a nominee request? | Yes, as the direct change does today. A wrong password refuses the request and counts against the existing password-recheck limit. |
+| Q-039 | How is the admin told about a new nominee request? | A request queue in the admin app with a count on the overview, as support and reviews have. No email to admins. |
+| Q-040 | Does a declined nominee request carry a reason? | The admin may add an optional reason, which the client sees with the decline. |
+| Q-041 | How many open nominee requests can a client have, and can they withdraw one? | One pending request at a time. The client can withdraw it while it is pending. |
+| Q-042 | What happens to the client's direct nominee change (`POST /v1/client/profile/nominee`)? | Reading the nominee stays. The direct change refuses with an existing error code that released apps already show as a refusal. Any v0.16.x APK that has the old form shows that refusal instead of saving. |
+| Q-043 | Can an early exit be undone? | No. The schedule stays closed, and a mistake is put right with the existing correction recordings. |
+| Q-044 | How does an early exit show in statements and the investor record? | The withdrawal row is labelled "Early exit", and the closed schedule shows "Closed early" with the date. Totals do not change. |
 
 ### Decision record
 
@@ -60,9 +66,13 @@ IDs continue from the previous plan and are never reused. Q-017 and Q-019 to Q-0
 | DEC-36 | 2026-11-14 | Q-036: neither the support nor the finance role gets access to client pages; permissions stay as they are. | Built in Phase H (H3, H4): client links are hidden for roles the page refuses, and screens that cannot name clients for a role say so without raw ids. |
 | DEC-37 | 2026-11-14 | Q-037: production's published legal documents (investor charter, grievance) already carry BeOnEdge's real support and grievance contacts, so the contacts H2 shows are correct. Had they been placeholders or missing, the choice was a one-time migration filling them only where placeholders or absent. | In force; no change needed. |
 | DEC-38 | 2026-11-15 | The company is BeOnEdge LLP, not "BeOnEdge Financial Services Pvt. Ltd.". Migration 071 republishes the stored investor charter and grievance document only where the contact address is exactly the seed's wrong name (old version archived, nothing deleted). The login screen shows only the support email. | Built on local `main` (section 8, fixes after v0.16.1). |
-| DEC-39 | 2026-11-15 | Nominee by request: a client keeps at most one nominee, can no longer set, change or remove it directly, and instead sends a request with name and relation. The admin is notified and accepts or declines it. The admin can still set or change a nominee directly. | Upcoming: recorded, not started (section 6, "Upcoming: nominee by request"). |
-| DEC-40 | 2026-11-15 | A complete UI overhaul, checked, fixed and implemented separately for mobile and the web browser, for both the client and the admin app (four surfaces). It starts with a read-only audit of each surface. | Next: recorded, not started (section 6, "Next: UI overhaul"). |
-| DEC-41 | 2026-11-15 | SIP early exit: closing an admin-tracked SIP before its tenure and returning the money in one action, recorded and shown as an early closure, not a maturity. | Next build: recorded, not started (section 6, "Next build: SIP early exit"). |
+| DEC-39 | 2026-11-15 | Nominee by request: a client keeps at most one nominee, can no longer set, change or remove it directly, and instead sends a request with name and relation. The admin is notified and accepts or declines it. The admin can still set or change a nominee directly. | Being built in Phase I (lane `i-nominee-requests`, section 6). |
+| DEC-40 | 2026-11-15 | A complete UI overhaul, checked, fixed and implemented separately for mobile and the web browser, for both the client and the admin app (four surfaces). It starts with a read-only audit of each surface. | Next, after Phase I (DEC-42); section 6, "Next: UI overhaul". |
+| DEC-41 | 2026-11-15 | SIP early exit: closing an admin-tracked SIP before its tenure and returning the money in one action, recorded and shown as an early closure, not a maturity. | Being built in Phase I (lane `i-sip-early-exit`, section 6). |
+| DEC-42 | 2026-11-16 | Phase I go-ahead: build nominee by request (DEC-39) and SIP early exit (DEC-41) now as two parallel lanes; start the UI overhaul (DEC-40) after they land, so its audit covers the new screens. | In force (section 6, Phase I). |
+| DEC-43 | 2026-11-16 | An early exit returns the full current value of the client's holding in the SIP's fund. The holding goes to zero; no exit charge and no partial amount. | Built into lane `i-sip-early-exit`. |
+| DEC-44 | 2026-11-16 | The client is told in the app and by email when the admin accepts or declines their nominee request and when their SIP is closed early. | Built into both Phase I lanes. |
+| DEC-45 | 2026-11-16 | The UI overhaul keeps today's BeOnEdge identity and design system and refines it per surface; it does not set a new visual direction. | In force for DEC-40. |
 
 #### Replaced
 
@@ -477,9 +487,71 @@ On 2026-11-14, U-close checked the client and admin findings of section 2F (tall
   - a failed AutoPay read showing manual pause, resume and cancel, which the backend does not check either;
   - `lumpSumCount` still counting recorded payments in the API.
 
-### Upcoming: nominee by request (DEC-39, not started)
+### Phase I — nominee by request and SIP early exit (DEC-42; tally `M15-nominee-requests`, `M17-sip-early-exit`)
 
-The maintainer asked on 2026-11-15 for this to be recorded for a later phase, not built now.
+Two lanes run in parallel. Each is built, independently reviewed and landed through the tally queue.
+
+| Lane | Task | Migration | Email template key |
+| --- | --- | --- | --- |
+| `i-nominee-requests` | `M15-nominee-requests:N1-nominee-requests` | `072` | `nominee_request_decided` |
+| `i-sip-early-exit` | `M17-sip-early-exit:X1-sip-early-exit` | `073` | `sip_early_exit` |
+
+Shared rules for both lanes:
+- **Landing order.** `i-nominee-requests` lands first. Both migrations replace `email_deliveries_template_check`. `073` lists every key `068` allows plus both new keys, so it must apply after `072`. If the early-exit lane is ready first, it waits.
+- **Compatibility (rule 11).**
+  - No new key on an existing response.
+  - No new value in a state or kind that the previous release reads.
+  - New data comes through new tables and new operations.
+- **Permissions (DEC-36).** No new role or permission. A new admin command uses the permission of the existing route it extends: the admin nominee route, and maturity withdrawal with schedule close.
+- **Shared files.**
+  - Routes register through composition modules, not by growing `composition.ts`.
+  - Each new template sits in its own module with a one-line registration.
+  - Both lanes touch `queryKeys.ts`, `packages/contracts/src/index.ts` and the generated exports; these are rebased at landing.
+- **Tests (rule 10)** cover only:
+  - authorization;
+  - one pending request per client, and concurrent decisions;
+  - atomicity of each command;
+  - early-exit money and duplicate writes;
+  - the migrations' populated-upgrade lists.
+
+**Lane `i-nominee-requests` (DEC-39, DEC-44, Q-038 to Q-042):**
+- **Migration `072`** adds a nominee-request table:
+  - the client, name and relation, with the same checks as `063`;
+  - state `pending`, `accepted`, `declined` or `withdrawn`;
+  - an optional decline reason;
+  - who decided and when, and a version;
+  - at most one `pending` row per client.
+- **Client:**
+  - read their latest request;
+  - send a request (password re-entry);
+  - withdraw a pending one.
+  - Profile shows the current nominee read-only, with the request form, the pending state or the decision.
+  - The direct change refuses (Q-042).
+- **Admin:**
+  - a paged queue, pending first, and its count on the overview;
+  - the client page shows a pending request;
+  - accept sets the nominee and closes the request in one transaction, through the same path as the admin's direct change;
+  - decline takes an optional reason;
+  - the admin's direct change stays.
+- **Every request, withdrawal and decision** writes an audit row. A decision notifies the client in the app and by email.
+- **Client erasure** covers the new table as it covers the nominee columns. `release_manager/docs/client-erasure.md` is updated.
+
+**Lane `i-sip-early-exit` (DEC-41, DEC-43, DEC-44, Q-043, Q-044):** one admin command on an active admin SIP schedule, in one transaction, with a caller-held idempotency key and version checks. It:
+- closes the schedule as an early exit;
+- withdraws the full current value of the client's holding in the schedule's fund through the existing withdrawal settlement, which creates the pending payout the admin then marks paid as today;
+- cancels an open maturity schedule on that holding;
+- writes audit rows, notifies the client in the app and by email, and records the early exit in a new table from migration `073`. That table links the schedule, the withdrawal entry, the payout and any cancelled maturity.
+
+It refuses, and changes nothing, when:
+- the schedule is not active;
+- the holding's value is zero;
+- a maturity on the holding is already being settled.
+
+Client and admin screens show "Closed early" and label the withdrawal "Early exit" in activity, statements and the investor record (Q-044). There is no undo (Q-043).
+
+### Nominee by request: the request as recorded (DEC-39)
+
+The maintainer asked on 2026-11-15 for this to be recorded for a later phase; DEC-42 started it on 2026-11-16.
 
 - **Today (Phase C, C1):** the database already holds at most one nominee per client, as two columns on the client's account (migration 063). On Profile, the client can save, replace or remove that one nominee at any time by entering their current password. The admin can set it from the client page.
 - **Wanted:**
@@ -499,9 +571,9 @@ The maintainer asked on 2026-11-15 for this to be recorded for a later phase, no
   - an audit row for each request and decision;
   - erasure coverage for the new table.
 
-### Next build: SIP early exit (DEC-41, not started)
+### SIP early exit: the request as recorded (DEC-41)
 
-The maintainer asked on 2026-11-15, after a review of what exists, for this to be recorded for the next build phase.
+The maintainer asked on 2026-11-15, after a review of what exists, for this to be recorded for the next build phase. DEC-42 started it on 2026-11-16, and DEC-43, DEC-44, Q-043 and Q-044 settle the points below.
 
 - **What exists today:**
   - Closing works. On the client page, open SIP schedules, click Manage on the row, then Close the schedule. No more monthly recordings can link to it, the linked ones stay, the client sees it closed, and it can be reopened (Phase C, C2).
@@ -524,9 +596,9 @@ The maintainer asked on 2026-11-15, after a review of what exists, for this to b
   - audit rows.
 - **Out of scope:** AutoPay and gateway SIP plans stay parked under DEC-14.
 
-### Next: UI overhaul, four surfaces (DEC-40, not started)
+### Next: UI overhaul, four surfaces (DEC-40, after Phase I)
 
-The maintainer asked on 2026-11-15 for a complete UI overhaul: check, fix and new work, handled separately for mobile and for the web browser, for both apps.
+The maintainer asked on 2026-11-15 for a complete UI overhaul: check, fix and new work, handled separately for mobile and for the web browser, for both apps. It starts after Phase I lands (DEC-42) and keeps today's identity, refining it (DEC-45).
 
 | Surface | Built from | Where it runs |
 | --- | --- | --- |
@@ -552,8 +624,7 @@ The maintainer asked on 2026-11-15 for a complete UI overhaul: check, fix and ne
   - released APKs keep working, under rule 11;
   - payment, AutoPay and gateway screens stay parked under DEC-14;
   - no bank details or payment instructions anywhere.
-- **To settle at the start:**
-  - whether the overhaul keeps today's visual identity and refines it, or sets a new direction;
+- **To settle at the start** (the visual direction is settled by DEC-45):
   - which phones and browser widths are the reference;
   - which surface goes first.
 - **Earlier client UI briefs:** `release_manager/docs/` holds three client UI-UX briefs from September 2026. They are inputs to the client audits, not decisions.
