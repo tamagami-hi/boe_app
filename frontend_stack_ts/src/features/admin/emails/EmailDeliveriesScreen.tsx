@@ -42,6 +42,7 @@ const TEMPLATES = [
   { value: "investment_recorded", label: "Investment added" },
   { value: "maturity_options", label: "Maturity options" },
   { value: "nominee_request_decided", label: "Nominee request decided" },
+  { value: "sip_early_exit", label: "SIP closed early" },
 ] as const
 
 const EmailDeliveriesScreen = (): React.ReactElement => {
